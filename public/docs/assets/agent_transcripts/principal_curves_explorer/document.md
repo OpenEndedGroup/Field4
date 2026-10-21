@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="pc_strands" index="0" -->
 
 ```edn [field-box id="pc_strands" role="properties"]
-{"id" "pc_strands" "index" 0 "name" "1 - Three strands, under a bending slider" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Three strands, under a bending slider" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_strands_code_.kt" "lines" 26 "characters" 1098 "sha256" "ba5357a4e723ab452a4b55e27fdeb059e843798acbc4338c160681957fee5129"}]}
+{"id" "pc_strands" "index" 0 "name" "1 - Three strands, under a bending slider" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Three strands, under a bending slider" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_strands_code_.kt" "lines" 31 "characters" 1141 "sha256" "54590ce4a11b918e70ef897ce52ee17c6fc16aa0249fe27bc933fcb7a40a19ff"}]}
 ```
 
 ```kotlin [field-property box="pc_strands" name="code" path="pc_strands_code_.kt"]
@@ -34,8 +34,13 @@ val canvas = Img(420, 270, 3, FloatArray(420 * 270 * 3) { 0.06f })
 
 fun show(mu: Double) {
     val forest = PrincipalCurves.fit(points, curves = 3, nodes = 45, parameters = ElasticParameters(mu = mu))
-    showImgGrid("mu = $mu" to canvas.drawFLines([forest.pointsFLine(2.0)] + forest.widthFLines() + forest.toFLines(), scale = 2.0),
-        channel = "fit", columns = 1, cellSide = 520)
+    showImgGrid(
+        "mu = $mu" to
+            canvas.drawFLines([forest.pointsFLine(2.0)] + forest.widthFLines() + forest.toFLines(), scale = 2.0),
+        channel = "fit",
+        columns = 1,
+        cellSide = 520,
+    )
     forest.close()
 }
 
@@ -48,7 +53,7 @@ show(0.1)
 <!-- field-box id="pc_leaf" index="1" -->
 
 ```edn [field-box id="pc_leaf" role="properties"]
-{"id" "pc_leaf" "index" 1 "name" "2 - A leaf as a tree" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A leaf as a tree" "_tombstone" false "frame" #afield/rect [560.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_leaf_code_.kt" "lines" 14 "characters" 935 "sha256" "0955f660274a9d753ab3c694f8c3423d20934c0db9e579cbd99a479101c81387"}]}
+{"id" "pc_leaf" "index" 1 "name" "2 - A leaf as a tree" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A leaf as a tree" "_tombstone" false "frame" #afield/rect [560.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_leaf_code_.kt" "lines" 22 "characters" 976 "sha256" "8d75098c4e1adb10636d4ea05122610141d2f10a0ef450b7244aeba07b7c3e99"}]}
 ```
 
 ```kotlin [field-property box="pc_leaf" name="code" path="pc_leaf_code_.kt"]
@@ -60,12 +65,20 @@ val points = ArrayList<Double>()
 val weights = ArrayList<Double>()
 for (y in 0 until print.height) for (x in 0 until print.width) {
     val green = print.at(x, y, 1) - maxOf(print.at(x, y, 0), print.at(x, y, 2))
-    if (green > 0.04) { points.add(x.toDouble()); points.add(y.toDouble()); weights.add(green.toDouble()) }
+    if (green > 0.04) {
+        points.add(x.toDouble())
+        points.add(y.toDouble())
+        weights.add(green.toDouble())
+    }
 }
-val forest = PrincipalCurves.fit(points.toDoubleArray(), weights = weights.toDoubleArray(), nodes = 40, allowBranching = true)
+val forest =
+    PrincipalCurves.fit(points.toDoubleArray(), weights = weights.toDoubleArray(), nodes = 40, allowBranching = true)
 val dark = Img(print.width, print.height, 3, FloatArray(print.width * print.height * 3))
-showImgGrid("as a tree" to print.overlay(dark, 0.6).drawFLines(forest.widthFLines(1.0) + forest.toFLines(thickness = 2.5)),
-    columns = 1, cellSide = 320)
+showImgGrid(
+    "as a tree" to print.overlay(dark, 0.6).drawFLines(forest.widthFLines(1.0) + forest.toFLines(thickness = 2.5)),
+    columns = 1,
+    cellSide = 320,
+)
 ```
 
 ## 3. 3 - Following points that move
@@ -73,33 +86,40 @@ showImgGrid("as a tree" to print.overlay(dark, 0.6).drawFLines(forest.widthFLine
 <!-- field-box id="pc_live" index="2" -->
 
 ```edn [field-box id="pc_live" role="properties"]
-{"id" "pc_live" "index" 2 "name" "3 - Following points that move" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Following points that move" "_tombstone" false "frame" #afield/rect [60.0 260.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_live_code_.kt" "lines" 24 "characters" 1055 "sha256" "d0b25b20b44ebd51ccb40c5e344d07529dfe93b432b317c8d499c4473cdbcaf5"}]}
+{"id" "pc_live" "index" 2 "name" "3 - Following points that move" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Following points that move" "_tombstone" false "frame" #afield/rect [60.0 260.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_live_code_.kt" "lines" 31 "characters" 1116 "sha256" "ebb729adacd97ee1be9e9cadebad639370892460b5baefb7d0836891e7f1f2a1"}]}
 ```
 
 ```kotlin [field-property box="pc_live" name="code" path="pc_live_code_.kt"]
 import afield.geometry.curves.principal.*
 
-// Launch this one (Alt-R). 2000 points scatter around a wave that travels and bends; one
-// forest follows them, refined five iterations a frame. The graph is never regrown, so its
-// nodes keep their identities from frame to frame.
+/*
+Launch this one (Alt+Up). 2000 points scatter around a wave that travels and bends; one
+forest follows them, refined five iterations a frame. The graph is never regrown, so its
+nodes keep their identities from frame to frame.
+*/
 val random = java.util.Random(3)
 val offsets = DoubleArray(2000) { random.nextGaussian() * 4 }
 val along = DoubleArray(2000) { random.nextDouble() }
-fun points(time: Double) = DoubleArray(4000).also { p ->
-    for (i in 0 until 2000) {
-        val t = along[i]
-        p[2 * i] = 20 + 360 * t
-        p[2 * i + 1] = 110 + 50 * sin(5 * t + time) * cos(time * 0.3) + offsets[i] * (1 + t)
+fun points(time: Double) =
+    DoubleArray(4000).also { p ->
+        for (i in 0 until 2000) {
+            val t = along[i]
+            p[2 * i] = 20 + 360 * t
+            p[2 * i + 1] = 110 + 50 * sin(5 * t + time) * cos(time * 0.3) + offsets[i] * (1 + t)
+        }
     }
-}
 val forest = PrincipalCurves.fit(points(0.0), nodes = 24)
 val canvas = Img(400, 220, 3, FloatArray(400 * 220 * 3) { 0.06f })
 
 loop {
     forest.setPoints(points(frameNumber / 30.0))
     forest.refine(5)
-    showImgGrid("frame $frameNumber" to canvas.drawFLines([forest.pointsFLine(1.5)] + forest.widthFLines() + forest.toFLines(), scale = 2.0),
-        columns = 1, cellSide = 600)
+    showImgGrid(
+        "frame $frameNumber" to
+            canvas.drawFLines([forest.pointsFLine(1.5)] + forest.widthFLines() + forest.toFLines(), scale = 2.0),
+        columns = 1,
+        cellSide = 600,
+    )
 }
 ```
 

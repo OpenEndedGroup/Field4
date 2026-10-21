@@ -3,6 +3,9 @@ description: 'Editable lines and point defocus: a source RTT, two reductions, ci
   aperture filters, and a composite. One shader pair and one optional resource per
   box; no personal code. Run the macro to wire the graph, then edit individual shaders
   and re-execute their boxes.'
+docs:
+  - page: aperture_playground.md
+    why: "Walks through the source, reductions, aperture filters and composite in this document."
 operations:
 - create:
     box: agent_graphics_context
@@ -47,7 +50,6 @@ operations:
             height = window.height
             format = VK_FORMAT_R16G16B16A16_SFLOAT
             useDepth = false
-            clearFirst = true
             clearColor = vec(0, 0, 0, 0)
             debugName = "paint-source"
         }
@@ -58,7 +60,7 @@ operations:
         println("paint source RTT ready: ${paintSource.width}x${paintSource.height}")
 
         var module = moduleHere {
-            paintSource.apply()
+            +paintSource
             blend = false
             depthTest = false
             depthWrite = false
@@ -130,14 +132,13 @@ operations:
             height = (paintSource.height / 2).coerceAtLeast(1)
             format = VK_FORMAT_R16G16B16A16_SFLOAT
             useDepth = false
-            clearFirst = true
             clearColor = vec(0, 0, 0, 0)
             debugName = "paintHalf"
         }
         paintHalf.setDefaultSampler(anisotropyEnable = false)
         var module = moduleHere {
             textures("paintSource" to paintSource)
-            paintHalf.apply()
+            +paintHalf
             blend = false
             depthTest = false
             depthWrite = false
@@ -186,14 +187,13 @@ operations:
             height = (paintSource.height / 4).coerceAtLeast(1)
             format = VK_FORMAT_R16G16B16A16_SFLOAT
             useDepth = false
-            clearFirst = true
             clearColor = vec(0, 0, 0, 0)
             debugName = "paintQuarter"
         }
         paintQuarter.setDefaultSampler(anisotropyEnable = false)
         var module = moduleHere {
             textures("paintHalf" to paintHalf)
-            paintQuarter.apply()
+            +paintQuarter
             blend = false
             depthTest = false
             depthWrite = false
@@ -242,14 +242,13 @@ operations:
             height = (paintSource.height / 2).coerceAtLeast(1)
             format = VK_FORMAT_R16G16B16A16_SFLOAT
             useDepth = false
-            clearFirst = true
             clearColor = vec(0, 0, 0, 0)
             debugName = "paintMedium"
         }
         paintMedium.setDefaultSampler(anisotropyEnable = false)
         var module = moduleHere {
             textures("paintHalf" to paintHalf)
-            paintMedium.apply()
+            +paintMedium
             blend = false
             depthTest = false
             depthWrite = false
@@ -319,14 +318,13 @@ operations:
             height = (paintSource.height / 4).coerceAtLeast(1)
             format = VK_FORMAT_R16G16B16A16_SFLOAT
             useDepth = false
-            clearFirst = true
             clearColor = vec(0, 0, 0, 0)
             debugName = "paintBroad"
         }
         paintBroad.setDefaultSampler(anisotropyEnable = false)
         var module = moduleHere {
             textures("paintQuarter" to paintQuarter)
-            paintBroad.apply()
+            +paintBroad
             blend = false
             depthTest = false
             depthWrite = false

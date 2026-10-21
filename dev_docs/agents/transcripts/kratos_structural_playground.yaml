@@ -9,6 +9,9 @@ description: >
   line says which just happened. TetGen tetrahedralizes the Manifold surface and Kratos solves
   linear elasticity on it. Requires the optional Kratos environment (or its container image),
   Manifold and the TetGen wrapper. The whole experiment is editable Kotlin.
+docs:
+  - page: tetgen.md#into-kratos
+    why: "Explains meshing for Kratos, including 10-node elements."
 operations:
   - create:
       box: kratos_structural

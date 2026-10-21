@@ -6,7 +6,7 @@ val sourceFaces = source.topology.elements(2)
 // The first pair are the cube's opposite z faces. Attributes do both jobs here: `raise`
 // selects the domain of kis, while `height` is deployed independently over that domain.
 val raisedFaces = sourceFaces.take(2)
-val raisedHeights = listOf(0.22, 0.68)
+val raisedHeights = [0.22, 0.68]
 for (i in raisedFaces.indices) {
     source = source.withAttributes(
         raisedFaces[i].id,
@@ -80,4 +80,4 @@ displayOpen("polytope")
 
 // These are registered polytope value printers. They reduce the larger immutable objects
 // to public data-class summaries, then use Field's normal nested data-class visualizer.
-viz("inspection", listOf(result, triangles))
+viz("inspection", [result, triangles])

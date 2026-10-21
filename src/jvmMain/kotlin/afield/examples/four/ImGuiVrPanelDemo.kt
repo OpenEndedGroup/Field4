@@ -84,7 +84,6 @@ class ImGuiVrPanelDemo(
             parameters = {
                 width = 2048
                 height = 2048
-                clearFirst = true
                 format = VK_FORMAT_B8G8R8A8_SRGB
                 mipLevels = 4
             },

@@ -1,0 +1,71 @@
+{
+  "baseline": "4c02898d9",
+  "sources": [
+    {
+      "path": "public/docs/assets/canonical_graphics/e1d6dd17-1ebd-40e7-a0ef-309779c562ff_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/92e4a943-1cc2-433c-9953-18e0107f3854_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/55bc1784-bc44-40eb-bc01-d02eca463445_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/f1d2cbea-b20d-4794-b9f7-37b847dcdeb6_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/3cbcadc0-b279-470d-9a5f-afc120518829_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/57eb613c-90e0-46e1-b075-8e1578bc4934_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/f1d2cbea-b20d-4794-b9f7-37b847dcdeb6_fragment_.glsl",
+      "kotlinBodies": 0,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/audio_ai_underfit_mancini.yaml",
+      "kotlinBodies": 2,
+      "collectionConversions": 1,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/audio_ai_underfit_mancini.md",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "kotlinBodies": 33,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/metadata.edn",
+      "kotlinBodies": 0,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

@@ -1,6 +1,9 @@
 name: direct_lighting
 description: Live direct lighting with optional pinned RTXDI initial, temporal and spatial resampling,
   ray-query shadows and reference comparison.
+docs:
+  - page: direct_lighting.md
+    why: "Explains the lighting, resampling and shadow options in this document."
 operations:
 - create:
     box: agent_graphics_context

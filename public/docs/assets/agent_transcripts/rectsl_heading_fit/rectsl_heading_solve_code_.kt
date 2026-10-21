@@ -6,7 +6,7 @@ atan2(rise, 1), so asking for 45 degrees is asking for rise = 1 — an answer yo
 check by hand, which is the point of choosing it.
 */
 val duration = 4.0
-fun clock(): Track<Double> = LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(duration, duration)))
+fun clock(): Track<Double> = LinearScalarTrack([TcbKey(0.0, 0.0), TcbKey(duration, duration)])
 
 val rise = FreeParamTrack("rise", 0.15)
 val heading = HeadingTrack(clock(), BinaryDoubleTrack(clock(), rise, TrackOp2.MUL))
@@ -17,7 +17,7 @@ val graph = heading.toFn(Functions.Domain(0.0, duration)).orThrow()
 val slots = freeParameterSlots(graph)
 
 val fit = heading.fitParameters(
-    listOf(TrackFitTarget(1.0, PI / 4.0), TrackFitTarget(3.0, PI / 4.0)),
+    [TrackFitTarget(1.0, PI / 4.0), TrackFitTarget(3.0, PI / 4.0)],
     over = Functions.Domain(0.0, duration),
     iterations = 600,
 )

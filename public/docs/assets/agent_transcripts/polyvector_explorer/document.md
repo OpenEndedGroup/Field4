@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="pv_photograph" index="0" -->
 
 ```edn [field-box id="pv_photograph" role="properties"]
-{"id" "pv_photograph" "index" 0 "name" "2 - A photograph's edges, off the main thread" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A photograph's edges, off the main thread" "_tombstone" false "frame" #afield/rect [60.0 900.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pv_photograph_code_.kt" "lines" 18 "characters" 1142 "sha256" "ddeb62d044e04d9900720517e91b55679320ba1e380abe1b88a97eca775f8bf9"}]}
+{"id" "pv_photograph" "index" 0 "name" "2 - A photograph's edges, off the main thread" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A photograph's edges, off the main thread" "_tombstone" false "frame" #afield/rect [60.0 900.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pv_photograph_code_.kt" "lines" 25 "characters" 1204 "sha256" "63be2ee5560a70831069d6ff9c935c0adfe9c1bd4bc398e3ce15b8656e100170"}]}
 ```
 
 ```kotlin [field-property box="pv_photograph" name="code" path="pv_photograph_code_.kt"]
@@ -22,15 +22,22 @@ import afield.geometry.vectorize.polyvector.*
 val print = imgFromFile("public/docs/assets/vision/fline-viewer.jpg", 3).crop(78, 262, 128, 236).scaleBy(2.0)
 val edges = print.luma().gaussianBlur(1.2).sobel().magnitude()
 val strongest = edges.data.sortedDescending()[edges.data.size / 50]
-val evidence = Img(edges.width, edges.height, 1, FloatArray(edges.data.size) { (edges.data[it] / strongest).coerceIn(0f, 1f) })
+val evidence =
+    Img(edges.width, edges.height, 1, FloatArray(edges.data.size) { (edges.data[it] / strongest).coerceIn(0f, 1f) })
 val drawing = Img(evidence.width, evidence.height, 3, FloatArray(evidence.data.size * 3) { 1f - evidence.data[it / 3] })
 
 markdown("Vectorizing the edges of the leaf print...")
-runAsync(onResult = { result: PolyvectorDrawing ->
-    val dark = Img(print.width, print.height, 3, FloatArray(print.width * print.height * 3))
-    markdown("${result.curves.size} curves, coverage ${"%.2f".format(result.coverage())}")
-    showImgGrid("curves" to print.overlay(dark, 0.55).drawFLines(result.toFLines(thickness = 1.5)), columns = 1, cellSide = 360)
-}) {
+runAsync(
+    onResult = { result: PolyvectorDrawing ->
+        val dark = Img(print.width, print.height, 3, FloatArray(print.width * print.height * 3))
+        markdown("${result.curves.size} curves, coverage ${result.coverage().f2}")
+        showImgGrid(
+            "curves" to print.overlay(dark, 0.55).drawFLines(result.toFLines(thickness = 1.5)),
+            columns = 1,
+            cellSide = 360,
+        )
+    },
+) {
     Polyvector.vectorizeAsync(drawing)
 }
 ```
@@ -40,7 +47,7 @@ runAsync(onResult = { result: PolyvectorDrawing ->
 <!-- field-box id="pv_sketch" index="1" -->
 
 ```edn [field-box id="pv_sketch" role="properties"]
-{"id" "pv_sketch" "index" 1 "name" "1 - A sketch, re-traced under a slider" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A sketch, re-traced under a slider" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pv_sketch_code_.kt" "lines" 46 "characters" 2388 "sha256" "fcdece1b2e42b25cad23f25cc79fcdff9a7929476e32b79a9e28d50cc620d95c"}]}
+{"id" "pv_sketch" "index" 1 "name" "1 - A sketch, re-traced under a slider" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A sketch, re-traced under a slider" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pv_sketch_code_.kt" "lines" 56 "characters" 2391 "sha256" "9a6de317fe5c9f037d40dab4d82fba99277c3fc7e8deb1aab53d6d9c7b6b706d"}]}
 ```
 
 ```kotlin [field-property box="pv_sketch" name="code" path="pv_sketch_code_.kt"]
@@ -50,24 +57,27 @@ import afield.geometry.vectorize.polyvector.*
 // soft pencil line about three pixels wide.
 val random = java.util.Random(3)
 val strokes = [
-    [Vec2(40f, 200f), Vec2(110f, 60f), Vec2(180f, 200f)],         // an A
-    [Vec2(70f, 140f), Vec2(150f, 140f)],                         // its crossbar
-    [Vec2(220f, 60f), Vec2(220f, 200f)],                         // a post
-    [Vec2(220f, 130f), Vec2(300f, 130f)],                        // meeting a beam: a T
-    [Vec2(250f, 60f), Vec2(340f, 200f)],                         // and a stroke crossing it: an X
-    (0..30).map { Vec2(40f + 300f * it / 30, (245 + 12 * sin(it / 30.0 * 2 * PI)).toFloat()) },  // a wave
+    [Vec2(40f, 200f), Vec2(110f, 60f), Vec2(180f, 200f)], // an A
+    [Vec2(70f, 140f), Vec2(150f, 140f)], // its crossbar
+    [Vec2(220f, 60f), Vec2(220f, 200f)], // a post
+    [Vec2(220f, 130f), Vec2(300f, 130f)], // meeting a beam: a T
+    [Vec2(250f, 60f), Vec2(340f, 200f)], // and a stroke crossing it: an X
+    (0..30).map { Vec2(40f + 300f * it / 30, (245 + 12 * sin(it / 30.0 * 2 * PI)).toFloat()) }, // a wave
 ]
-val w = 380; val h = 280
+val w = 380
+val h = 280
 val ink = FloatArray(w * h)
 for (stroke in strokes) repeat(3) {
     val jitter = { random.nextGaussian().toFloat() * 1.5f }
     val pts = stroke.map { Vec2(it.x + jitter(), it.y + jitter()) }
     for (k in 0 until pts.size - 1) {
-        val a = pts[k]; val b = pts[k + 1]
+        val a = pts[k]
+        val b = pts[k + 1]
         val n = (a.distance(b) * 2).toInt()
         for (s in 0..n) {
             val t = s.toFloat() / n
-            val cx = a.x + (b.x - a.x) * t; val cy = a.y + (b.y - a.y) * t
+            val cx = a.x + (b.x - a.x) * t
+            val cy = a.y + (b.y - a.y) * t
             for (y in (cy - 4).toInt()..(cy + 4).toInt()) for (x in (cx - 4).toInt()..(cx + 4).toInt()) {
                 if (x !in 0 until w || y !in 0 until h) continue
                 val d = hypot(x + 0.5 - cx, y + 0.5 - cy) / 1.6
@@ -83,10 +93,17 @@ val field = Polyvector.fitField(Polyvector.inkOf(drawing))
 // The field is built once; dragging the slider only re-traces it, so it answers quickly.
 fun show(prune: Double) {
     val result = field.trace(TraceParameters(pruneRatio = prune))
-    showImgGrid("${result.curves.size} curves, coverage ${"%.2f".format(result.coverage())}" to
-        Img(w, h, 3, FloatArray(w * h * 3) { 0.04f + 0.7f * ink[it / 3] })
-  .drawFLines(listOf(result.streamlinesFLine()) + result.toFLines(color = Vec4(1f, 0.4f, 0.2f, 1f), thickness = 2.0), scale = 2.0),
-        channel = "curves", columns = 1, cellSide = 640)
+    showImgGrid(
+        "${result.curves.size} curves, coverage ${result.coverage().f2}" to
+            Img(w, h, 3, FloatArray(w * h * 3) { 0.04f + 0.7f * ink[it / 3] })
+                .drawFLines(
+                    [result.streamlinesFLine()] + result.toFLines(color = Vec4(1f, 0.4f, 0.2f, 1f), thickness = 2.0),
+                    scale = 2.0,
+                ),
+        channel = "curves",
+        columns = 1,
+        cellSide = 640,
+    )
 }
 slider("prune short branches", min = 0.0, max = 1.0, step = 0.05, initialValue = 0.75) { show(it) }
 show(0.75)
@@ -97,7 +114,7 @@ show(0.75)
 <!-- field-box id="pv_geometry" index="2" -->
 
 ```edn [field-box id="pv_geometry" role="properties"]
-{"id" "pv_geometry" "index" 2 "name" "3 - From pixels to geometry" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - From pixels to geometry" "_tombstone" false "frame" #afield/rect [560.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pv_geometry_code_.kt" "lines" 54 "characters" 3133 "sha256" "ceb4477a2f16a83c4469a416ecf2fbbaca1ca33622ec0e564caceb91c0a9e7d0"}]}
+{"id" "pv_geometry" "index" 2 "name" "3 - From pixels to geometry" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - From pixels to geometry" "_tombstone" false "frame" #afield/rect [560.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pv_geometry_code_.kt" "lines" 76 "characters" 3126 "sha256" "2d732888e53bef479d228c87fc062eefba1f28b7a4a53f805812b31ac8144d2d"}]}
 ```
 
 ```kotlin [field-property box="pv_geometry" name="code" path="pv_geometry_code_.kt"]
@@ -107,24 +124,27 @@ import afield.geometry.vectorize.polyvector.*
 // soft pencil line about three pixels wide.
 val random = java.util.Random(3)
 val strokes = [
-    [Vec2(40f, 200f), Vec2(110f, 60f), Vec2(180f, 200f)],         // an A
-    [Vec2(70f, 140f), Vec2(150f, 140f)],                         // its crossbar
-    [Vec2(220f, 60f), Vec2(220f, 200f)],                         // a post
-    [Vec2(220f, 130f), Vec2(300f, 130f)],                        // meeting a beam: a T
-    [Vec2(250f, 60f), Vec2(340f, 200f)],                         // and a stroke crossing it: an X
-    (0..30).map { Vec2(40f + 300f * it / 30, (245 + 12 * sin(it / 30.0 * 2 * PI)).toFloat()) },  // a wave
+    [Vec2(40f, 200f), Vec2(110f, 60f), Vec2(180f, 200f)], // an A
+    [Vec2(70f, 140f), Vec2(150f, 140f)], // its crossbar
+    [Vec2(220f, 60f), Vec2(220f, 200f)], // a post
+    [Vec2(220f, 130f), Vec2(300f, 130f)], // meeting a beam: a T
+    [Vec2(250f, 60f), Vec2(340f, 200f)], // and a stroke crossing it: an X
+    (0..30).map { Vec2(40f + 300f * it / 30, (245 + 12 * sin(it / 30.0 * 2 * PI)).toFloat()) }, // a wave
 ]
-val w = 380; val h = 280
+val w = 380
+val h = 280
 val ink = FloatArray(w * h)
 for (stroke in strokes) repeat(3) {
     val jitter = { random.nextGaussian().toFloat() * 1.5f }
     val pts = stroke.map { Vec2(it.x + jitter(), it.y + jitter()) }
     for (k in 0 until pts.size - 1) {
-        val a = pts[k]; val b = pts[k + 1]
+        val a = pts[k]
+        val b = pts[k + 1]
         val n = (a.distance(b) * 2).toInt()
         for (s in 0..n) {
             val t = s.toFloat() / n
-            val cx = a.x + (b.x - a.x) * t; val cy = a.y + (b.y - a.y) * t
+            val cx = a.x + (b.x - a.x) * t
+            val cy = a.y + (b.y - a.y) * t
             for (y in (cy - 4).toInt()..(cy + 4).toInt()) for (x in (cx - 4).toInt()..(cx + 4).toInt()) {
                 if (x !in 0 until w || y !in 0 until h) continue
                 val d = hypot(x + 0.5 - cx, y + 0.5 - cy) / 1.6
@@ -141,10 +161,28 @@ val curves = Polyvector.vectorize(drawing).toFLines().map { it.bySimplifying(2f)
 // From here on the drawing is geometry: FLines, which anything that works on FLines works on.
 // (byWaving's frequency is per node interval; this asks for one wave every 16 pixels.)
 val light = Vec4(0.92f, 0.9f, 0.85f, 1f)
-fun styled(lines: List<FLine>, thickness: Double) = lines.onEach { it.properties["color"] = light; it.properties["thickness"] = thickness }
-val engraved = styled(curves.flatMap { c -> [c] + [3f, 6f, 9f].flatMap { d -> c.byCreatingParallelCurves(d, 120).toList() } }, 1.0)
-val combed = styled(curves.flatMap { c -> [c] + c.byCreatingNormalLines(samples = (c.length() / 4).toInt().coerceAtLeast(2), length = 14f) }, 1.0)
-val waved = styled(curves.map { it.byWaving(amplitude = 3f, frequency = it.length() / 16f / (it.nodes.size - 1), samples = (it.length() * 2).toInt().coerceAtLeast(20)) }, 1.6)
+fun styled(lines: List<FLine>, thickness: Double) = lines.onEach {
+    it.color = light
+    it.thickness = thickness
+}
+val engraved =
+    styled(curves.flatMap { c -> [c] + [3f, 6f, 9f].flatMap { d -> c.byCreatingParallelCurves(d, 120).toList() } }, 1.0)
+val combed = styled(
+    curves.flatMap { c ->
+        [c] + c.byCreatingNormalLines(samples = (c.length() / 4).toInt().coerceAtLeast(2), length = 14f)
+    },
+    1.0,
+)
+val waved = styled(
+    curves.map {
+        it.byWaving(
+            amplitude = 3f,
+            frequency = it.length() / 16f / (it.nodes.size - 1),
+            samples = (it.length() * 2).toInt().coerceAtLeast(20),
+        )
+    },
+    1.6,
+)
 
 val black = Img(w, h, 3, FloatArray(w * h * 3) { 0.04f })
 val pencil = Img(w, h, 3, FloatArray(w * h * 3) { 0.04f + 0.7f * ink[it / 3] })
@@ -153,7 +191,8 @@ showImgGrid(
     "parallel curves" to black.drawFLines(engraved, scale = 2.0),
     "normals" to black.drawFLines(combed, scale = 2.0),
     "waves" to black.drawFLines(waved, scale = 2.0),
-    columns = 2, cellSide = 440,
+    columns = 2,
+    cellSide = 440,
 )
 ```
 

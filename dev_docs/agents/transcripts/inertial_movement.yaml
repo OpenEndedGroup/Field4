@@ -15,6 +15,11 @@ description: >
 
   Replayed end to end in CI: launch all three, run 90 real runloop frames, stop.
   After Daniel Holden's "Inertial Easing" and "A New Movement Model" (theorangeduck.com).
+docs:
+  - page: movement_examples.md
+    why: "Explains springs, damping and the movement model these boxes build."
+  - page: interpolants_examples.md#inertia-re-aiming-a-blend-that-is-already-moving
+    why: "Explains inertial easing of a blend already in motion."
 operations:
   - create:
       box: inertial_hello

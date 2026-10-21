@@ -87,7 +87,7 @@ frames {
 <!-- field-box id="pp_compute" index="2" -->
 
 ```edn [field-box id="pp_compute" role="properties"]
-{"id" "pp_compute" "index" 2 "name" "four bands into four push constants" "parents" ["root" "pp_audio"] "children" ["pp_draw"] "properties" {"children" #{#afield/box "pp_draw"} "parents" #{#afield/box "root" #afield/box "pp_audio"} "name" "four bands into four push constants" "_tombstone" false "frame" #afield/rect [260.0 120.0 240.0 50.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "pp_compute_compute_.glsl" "lines" 53 "characters" 1760 "sha256" "c7c2433f6d573147bfb67cd9b0abc11e49a2a38289d4414701aedd0f5af0b9af"} {"name" "code" "language" "kotlin" "path" "pp_compute_code_.kt" "lines" 50 "characters" 1620 "sha256" "89e43f24a5293aded9d19c3c14bc374e2ace29b54ebfa007497b2653b79e3873"}]}
+{"id" "pp_compute" "index" 2 "name" "four bands into four push constants" "parents" ["root" "pp_audio"] "children" ["pp_draw"] "properties" {"children" #{#afield/box "pp_draw"} "parents" #{#afield/box "root" #afield/box "pp_audio"} "name" "four bands into four push constants" "_tombstone" false "frame" #afield/rect [260.0 120.0 240.0 50.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "pp_compute_compute_.glsl" "lines" 53 "characters" 1760 "sha256" "c7c2433f6d573147bfb67cd9b0abc11e49a2a38289d4414701aedd0f5af0b9af"} {"name" "code" "language" "kotlin" "path" "pp_compute_code_.kt" "lines" 49 "characters" 1617 "sha256" "a74044d3669216ce0687f87bddca379e1ddf0c0cddd916b5c18535215d13fd68"}]}
 ```
 
 ```glsl [field-property box="pp_compute" name="compute" path="pp_compute_compute_.glsl"]
@@ -149,8 +149,7 @@ void main() {
 ```kotlin [field-property box="pp_compute" name="code" path="pp_compute_code_.kt"]
 val N = 24000
 // How hard each band energy pushes its ring (radius, thickness, particle size).
-var gain = 2.4
-gain = 2.4 // Edit this assignment and Alt+Enter it to change all four running bands.
+var gain = 2.4 // Edit this value and Alt+Enter its declaration to change all four running bands.
 
 // One compute dispatch per frame, registered under a name so a rerun replaces it.
 var particles = computeModuleHere {}

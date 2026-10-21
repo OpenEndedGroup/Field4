@@ -4030,49 +4030,45 @@ The assembler. It keeps no state between calls, so one instance can assemble any
 
 ## NanoComputeShader.kt { #nanocomputeshader-kt }
 
-The host side of `nano_compute.glsl`, the GLSL compute port of the Nano VM: the buffer layout a
-caller has to honour, the mapping struct, and the packing helpers for getting bytes in and out.
+The host side of `nano_compute.glsl`, the GLSL compute port of the Nano VM: the buffer layout a caller has to honour,
+the mapping struct, and the packing helpers for getting bytes in and out.
 
-The shader runs one independent Nano VM instance per GPU invocation, decoding the same opcode
-map `NanoVM.kt` documents. Three of its four storage buffers hold bytes and are cut into
-non-overlapping per-instance slices; the fourth, at binding 0, holds one `NanoMapping` per
-dispatch id and says where that instance's three slices begin. **Nothing in the tree dispatches
-it.** `SOURCE` reads the GLSL off the classpath and the helpers below build the buffers, so what
-is missing is the Vulkan plumbing: pipeline, descriptor sets, submit and readback.
+The shader runs one independent Nano VM instance per GPU invocation, decoding the same opcode map `NanoVM.kt`
+documents. Three of its four storage buffers hold bytes and are cut into non-overlapping per-instance slices; the
+fourth, at binding 0, holds one `NanoMapping` per dispatch id and says where that instance's three slices begin.
+**Nothing in the tree dispatches it.** `SOURCE` reads the GLSL off the classpath and the helpers below build the
+buffers, so what is missing is the Vulkan plumbing: pipeline, descriptor sets, submit and readback.
 
 ### Buffer bindings
-
-| binding | layout           | access | description                          |
-|---------|------------------|--------|--------------------------------------|
-| 0       | `NanoMapping[]`  | r-only | dispatch-id → slice offsets          |
-| 1       | `uint[]` (bytes) | r/w    | RAM: persistent working memory       |
-| 2       | `uint[]` (bytes) | r-only | code: assembled Nano programs        |
-| 3       | `uint[]` (bytes) | r/w    | OUT stream: results of OUT rX        |
+| binding | layout           | access | description                    |
+|---------|------------------|--------|--------------------------------|
+| 0       | `NanoMapping[]`  | r-only | dispatch-id → slice offsets    |
+| 1       | `uint[]` (bytes) | r/w    | RAM: persistent working memory |
+| 2       | `uint[]` (bytes) | r-only | code: assembled Nano programs  |
+| 3       | `uint[]` (bytes) | r/w    | OUT stream: results of OUT rX  |
 
 #### Byte-packing
 
-All three byte buffers pack 4 bytes per `uint`: the byte at logical offset B lives in word
-`B >> 2` at bit-shift `(B & 3) << 3`.  A host has to honour that when uploading code and RAM and
-when reading OUT results back, which is what `packBytes`, `packPrograms` and `unpackBytes` are
-for.
+All three byte buffers pack 4 bytes per `uint`: the byte at logical offset B lives in word `B >> 2` at bit-shift `(B
+& 3) << 3`. A host has to honour that when uploading code and RAM and when reading OUT results back, which is what
+`packBytes`, `packPrograms` and `unpackBytes` are for.
 
-### Push constants (16 bytes, std430)
+### Push constants (20 bytes, std430)
+| field           | type   | description                                    |
+|-----------------|--------|------------------------------------------------|
+| numInstances    | uint32 | total instances (over-dispatch guard)          |
+| defaultMaxSteps | uint32 | step limit when mapping.maxSteps == 0          |
+| ramSize         | uint32 | RAM bytes per instance; **must be power-of-2** |
+| codeSize        | uint32 | code bytes per instance (≤ 256)                |
 
-| field            | type   | description                                  |
-|------------------|--------|----------------------------------------------|
-| numInstances     | uint32 | total instances (over-dispatch guard)        |
-| defaultMaxSteps  | uint32 | step limit when mapping.maxSteps == 0        |
-| ramSize          | uint32 | RAM bytes per instance; **must be power-of-2**|
-| codeSize         | uint32 | code bytes per instance (≤ 256)              |
-
-### Mapping buffer layout (NanoMapping struct, 16 bytes each)
-
-| field      | type   | description                                       |
-|------------|--------|---------------------------------------------------|
-| ramBase    | uint32 | byte offset into RAM buffer for this instance     |
-| codeBase   | uint32 | byte offset into code buffer for this instance    |
-| outputBase | uint32 | byte offset into OUT buffer for this instance     |
-| maxSteps   | uint32 | per-instance step cap (0 → use push-constant)     |
+### Mapping buffer layout (NanoMapping struct, 20 bytes each)
+| field          | type   | description                                    |
+|----------------|--------|------------------------------------------------|
+| ramBase        | uint32 | byte offset into RAM buffer for this instance  |
+| codeBase       | uint32 | byte offset into code buffer for this instance |
+| outputBase     | uint32 | byte offset into OUT buffer for this instance  |
+| maxSteps       | uint32 | per-instance step cap (0 → use push-constant)  |
+| outputCapacity | uint32 | maximum OUT bytes; overflow halts this VM      |
 
 ### Minimal dispatch example (pseudocode)
 
@@ -4092,19 +4088,19 @@ val mappings  = NanoComputeShader.buildMappings(N, ramSize, codeSize, outSize)
 
 ### NanoComputeShader { #nanocomputeshader-kt-nanocomputeshader }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">NanoComputeShader</span></code>](source/jvmMain/afield/lang/nano/NanoComputeShader/#L70)
+[<code class="highlight"><span class="k">object</span> <span class="nc">NanoComputeShader</span></code>](source/jvmMain/afield/lang/nano/NanoComputeShader/#L63)
 
 The GLSL source, the mapping-buffer builder and the byte-packing helpers, and nothing that talks to a device.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="nanocomputeshader-kt--nanocomputeshader--source"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">SOURCE</span><span class="p">:</span> <span class="nc">String</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/lang/nano/NanoComputeShader/#L73) | Source of the `nano_compute.glsl` compute shader. |
-| <a id="nanocomputeshader-kt--nanocomputeshader--nanomapping"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">NanoMapping</span><span class="p">(</span><span class="k">val</span> <span class="n">ramBase</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">codeBase</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">outputBase</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span></code>](source/jvmMain/afield/lang/nano/NanoComputeShader/#L91) | Kotlin mirror of the `NanoMapping` GPU struct (16 bytes, std430). |
-| <a id="nanocomputeshader-kt--nanocomputeshader--buildmappings"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">buildMappings</span><span class="p">(</span><span class="n">numInstances</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ramSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">NanoVM</span><span class="p">.</span><span class="nc">RAM&#95;SIZE</span><span class="p">,</span> <span class="n">codeSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">outSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteBuffer</span></code>](source/jvmMain/afield/lang/nano/NanoComputeShader/#L113) | Build a flat `ByteBuffer` containing one [`NanoMapping`](languages.md#nanocomputeshader-kt--nanocomputeshader--nanomapping) per instance, with each instance allocated contiguous, non-overlapping slices. |
-| <a id="nanocomputeshader-kt--nanocomputeshader--packbytes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">packBytes</span><span class="p">(</span><span class="n">bytes</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteBuffer</span></code>](source/jvmMain/afield/lang/nano/NanoComputeShader/#L149) | Pack `bytes` into a `uint[]`-compatible `ByteBuffer` using the shader's 4-bytes-per-uint little-endian layout. |
-| <a id="nanocomputeshader-kt--nanocomputeshader--unpackbytes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">unpackBytes</span><span class="p">(</span><span class="n">buf</span><span class="p">:</span> <span class="nc">ByteBuffer</span><span class="p">,</span> <span class="n">baseOffset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">length</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/lang/nano/NanoComputeShader/#L164) | Unpack [`length`](graphics.md#flinemeasure-kt--length) bytes from a `uint[]`-packed `ByteBuffer` starting at byte offset `baseOffset`. |
-| <a id="nanocomputeshader-kt--nanocomputeshader--packprograms"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">packPrograms</span><span class="p">(</span><span class="n">programs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ByteArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">codeSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteBuffer</span></code>](source/jvmMain/afield/lang/nano/NanoComputeShader/#L181) | Pack `programs` (each up to `codeSize` bytes) into a single flat `ByteBuffer` ready for binding as the code SSBO. |
-| <a id="nanocomputeshader-kt--nanocomputeshader--assemble"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">assemble</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/lang/nano/NanoComputeShader/#L205) | Assemble `source` with [`NanoAssembler`](languages.md#nanoassembler-kt-nanoassembler) and return the raw bytes, or throw [`NanoAssemblyException`](languages.md#nanointerface-kt-nanoassemblyexception) on error. Useful for building code buffers inline. |
+| <a id="nanocomputeshader-kt--nanocomputeshader--source"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">SOURCE</span><span class="p">:</span> <span class="nc">String</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/lang/nano/NanoComputeShader/#L66) | Source of the `nano_compute.glsl` compute shader. |
+| <a id="nanocomputeshader-kt--nanocomputeshader--nanomapping"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">NanoMapping</span><span class="p">(</span><span class="k">val</span> <span class="n">ramBase</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">codeBase</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">outputBase</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">outputCapacity</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span></code>](source/jvmMain/afield/lang/nano/NanoComputeShader/#L82) | Kotlin mirror of the `NanoMapping` GPU struct (20 bytes, std430). |
+| <a id="nanocomputeshader-kt--nanocomputeshader--buildmappings"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">buildMappings</span><span class="p">(</span><span class="n">numInstances</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ramSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">NanoVM</span><span class="p">.</span><span class="nc">RAM&#95;SIZE</span><span class="p">,</span> <span class="n">codeSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">outSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteBuffer</span></code>](source/jvmMain/afield/lang/nano/NanoComputeShader/#L105) | Build a flat `ByteBuffer` containing one [`NanoMapping`](languages.md#nanocomputeshader-kt--nanocomputeshader--nanomapping) per instance, with each instance allocated contiguous, non-overlapping slices. |
+| <a id="nanocomputeshader-kt--nanocomputeshader--packbytes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">packBytes</span><span class="p">(</span><span class="n">bytes</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteBuffer</span></code>](source/jvmMain/afield/lang/nano/NanoComputeShader/#L145) | Pack `bytes` into a `uint[]`-compatible `ByteBuffer` using the shader's 4-bytes-per-uint little-endian layout. |
+| <a id="nanocomputeshader-kt--nanocomputeshader--unpackbytes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">unpackBytes</span><span class="p">(</span><span class="n">buf</span><span class="p">:</span> <span class="nc">ByteBuffer</span><span class="p">,</span> <span class="n">baseOffset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">length</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/lang/nano/NanoComputeShader/#L159) | Unpack [`length`](graphics.md#flinemeasure-kt--length) bytes from a `uint[]`-packed `ByteBuffer` starting at byte offset `baseOffset`. |
+| <a id="nanocomputeshader-kt--nanocomputeshader--packprograms"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">packPrograms</span><span class="p">(</span><span class="n">programs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ByteArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">codeSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteBuffer</span></code>](source/jvmMain/afield/lang/nano/NanoComputeShader/#L175) | Pack `programs` (each up to `codeSize` bytes) into a single flat `ByteBuffer` ready for binding as the code SSBO. |
+| <a id="nanocomputeshader-kt--nanocomputeshader--assemble"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">assemble</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/lang/nano/NanoComputeShader/#L198) | Assemble `source` with [`NanoAssembler`](languages.md#nanoassembler-kt-nanoassembler) and return the raw bytes, or throw [`NanoAssemblyException`](languages.md#nanointerface-kt-nanoassemblyexception) on error. Useful for building code buffers inline. |
 
 ## NanoDisassembler.kt { #nanodisassembler-kt }
 

@@ -500,11 +500,58 @@ can inspect and adapt them. The backdoor `macro`/`transcript` command surface:
 | `macro run <name> [--selection <uid>]` | apply a macro |
 | `macro undo <name> [--selection <uid>]` | reverse a macro's supported ops |
 | `macro save-selection <name> --indices 3,4,5` | save chosen transcript entries as a macro |
+| `macro run <name> --as-copy --offset-x 0 --offset-y 300` | replay as a copy: fresh uids for the boxes it creates, frames shifted |
+| `macro step <name> --step 0` | replay operation 0 alone (0-based) |
+| `macro rename <name> --new-name <other>` | rename a saved macro (its `name:` line follows) |
+| `macro delete <name>` | delete a saved macro (moved to the scope's `.deleted/`) |
 
 Typical adapt loop: `macro read <theirs>` to understand it, edit the YAML for your ends
 (rename target boxes, change properties, add a `save`), `macro write <yours> --file …`,
 then `macro run <yours>`. For blank-canvas / multi-box construction, use stable ids and
 run **without** `--selection` — selection remapping is meant for single-box edit macros.
+
+---
+
+## Recording a macro: what the recorder writes
+
+The Macro Recorder (palette: **Macro Recorder**, `macroTranscriptPanel()`; a `FieldPanel`) records
+between **Record** and **Save**. Since 2026-10-20 the recording is the document's semantic history,
+not just its edits:
+
+| What you do on the canvas | What is recorded | Where |
+|---|---|---|
+| make a box | `create {box, name, frame, properties}` | `box(uid, onCreated=…)` in the `set-string` / `set-rect` / `set-rects` handlers |
+| drag / resize | `move {box, from, to}` | the same handlers |
+| type in a property | `edit {box, property, from, to}` | `set-string` |
+| `g` (connect) / disconnect | `connect` / `disconnect {parent, child}` | `-connect` / `-disconnect` in `Boxes.kt` |
+| delete | `delete {box, name}` | `-delete-box` |
+| run / launch / stop | `execute` / `launch` / `stop` | `executing.kt` |
+
+A new box's first values fold into its `create`: the canvas sends a new box's name, frame and
+code at once, and the server handles them concurrently, so whichever arrives first makes the
+box; the others — and a drag or rename of it before anything else touched it — become the
+create's `name`, `frame` and `properties`. Before this, the recorder had no `create`, `delete`,
+`connect` or `disconnect` at all, and a recording replayed into a fresh document as edits of
+boxes that did not exist (`applied=2 skipped=5`, zero boxes). A saved recording drops idle waits
+(the person's pauses) and keeps only waits right after an `execute` / `launch`.
+
+`MacroRecordReplayRoundTripTest` (jvmTest) records through the same calls the handlers make,
+saves, replays into a fresh document, and compares every live box's name, frame, code and
+children; the `macro-recorder-roundtrip` UI regression does it through the real panel and
+canvas messages and checks the copy replay and Step.
+
+### Replaying a recording
+
+- **Run** replays as recorded: the same uids, so into a fresh document it rebuilds the same
+  document, and into the source document it re-applies (creates find their boxes already there).
+- **As a copy** (`--as-copy`, `MacroReplayOptions.asCopy`) gives every box the macro creates a
+  fresh uid, consistently through its later ops, so each run makes a new set; **offset**
+  (`--offset-x/--offset-y`) shifts those boxes' frames. Boxes the macro did not create are left
+  alone.
+- **Step** (`macro step --step N`) replays one operation; the panel keeps the cursor, marks
+  stepped operations, and **Reset** starts again.
+- With a selection, the first box the macro *edits* (never one it creates) is remapped to the
+  selected box.
 
 ---
 

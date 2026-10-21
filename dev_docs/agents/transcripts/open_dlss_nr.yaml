@@ -1,6 +1,9 @@
 name: open_dlss_nr
 description: Editable animated ink shader, native OpenDLSS-NR, independent grading
   and a six-second GPU capture box. Source mode works without the optional backend.
+docs:
+  - page: open_dlss_nr.md
+    why: "Walks through the DLSS denoiser setup this document builds."
 operations:
 - create:
     box: agent_graphics_context

@@ -316,7 +316,7 @@ class RectSLLive internal constructor(private val box: Box) {
             blend = true
             depthTest = false
             primitiveType = triangles
-            t.apply()
+            +t
             errorHandler = { message, _ -> error = message }
         }).pointer()
         if (!fresh.current.valid) {

@@ -4,6 +4,11 @@ description: >
   snippet, and transport controls (play / loop / speed / time-scrub) in the
   playground box's output area. Edit the `rectsl` string and re-run to change it
   live; scrub the "time" slider to freeze on a frame, or check "play" to loop it.
+docs:
+  - page: rectsl_examples.md
+    why: "Gives worked RectSL scenes to paste into the playground."
+  - page: rectsl_cheatsheet.md
+    why: "Lists the RectSL vocabulary for editing the snippet."
 operations:
   # 1. renderer box — owns the on-screen Window + Renderer and pumps the loop.
   - create:

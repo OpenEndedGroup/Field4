@@ -60,6 +60,7 @@ rate candidates on the board itself.
 Start the isolated worker and API from the field-audio-ai checkout:
 
 ```diffstatic {data-lang=bash}
+export FIELD_AUDIO_UNDERFIT_SOURCE_WAV=/path/to/your-source.wav  # at least 12 seconds
 export FIELD_AUDIO_UNDERFIT_LORA_ROOT=/path/to/audio-project/underfit-loras
 ./scripts/run-underfit-worker.sh
 ./scripts/run-api.sh

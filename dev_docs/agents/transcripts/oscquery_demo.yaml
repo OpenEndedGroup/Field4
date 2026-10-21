@@ -1,5 +1,10 @@
 # Generated from oscquery_demo/metadata.edn by afield.examples.DocumentToTranscript.
 name: "oscquery_demo"
+docs:
+  - page: oscquery.md
+    why: "Explains publishing box parameters over OSCQuery."
+  - page: osc.md
+    why: "Covers sending and receiving plain OSC messages."
 operations:
   - create:
       box: "oscq-publish"
@@ -27,8 +32,8 @@ operations:
 
           q.float("/demo/cutoff", 20.0..20000.0, 1000.0, "filter cutoff in Hz") { show() }
           q.bool("/demo/on", true, "sound on") { show() }
-          q.menu("/demo/scene", listOf("dawn", "dusk", "night"), "dusk") { show() }
-          q.vector("/demo/xy", listOf(0.5, 0.5), description = "a point on a pad") { show() }
+          q.menu("/demo/scene", ["dawn", "dusk", "night"], "dusk") { show() }
+          q.vector("/demo/xy", [0.5, 0.5], description = "a point on a pad") { show() }
 
           show()
           markdown("Browse **http://localhost:${q.httpPort}/** for the namespace, or **?HOST_INFO** for the service.")

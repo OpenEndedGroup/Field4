@@ -29,6 +29,9 @@ description: >
   Replay into a fresh Field with the agent backdoor (field_run_transcript) or open the materialized
   document; then change any net and re-run that box. Each `execute` op omits inline code, so it runs
   the box's stored `code` property. See public/docs/petri_nets.md and public/docs/petri_cheatsheet.md.
+docs:
+  - page: petri_nets.md
+    why: "Explains Petri nets as sequencers and the pattern bridge used here."
 operations:
   # 1 ── the smallest thing that plays: a token going round.
   - create:
@@ -233,18 +236,18 @@ operations:
           showPetriNet(naive, w = 760.0, h = 460.0)
 
           for ((label, net) in
-              listOf(
+              [
                   "all left-handed" to naive,
                   "one reaches right first" to table(reverseLast = true, fairly = false),
                   "…and round-robin conflict" to table(reverseLast = true, fairly = true),
-              )) {
+              ]) {
               val stuck = net.deadTransitions()
               println(
                   "%-26s deadlocks=%-5s never fires: %s"
                       .format(
                           label,
                           net.willDeadlock(),
-                          stuck.ifEmpty { listOf("—") }.joinToString(", "),
+                          stuck.ifEmpty { ["—"] }.joinToString(", "),
                       ),
               )
           }

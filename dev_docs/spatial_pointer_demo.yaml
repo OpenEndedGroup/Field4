@@ -32,7 +32,7 @@ operations:
               val hz = (d / 2).toFloat()
               val b = TriMeshBuilder()
               val at =
-                  listOf(
+                  [
                           vec(-hx, -hy, -hz),
                           vec(hx, -hy, -hz),
                           vec(hx, hy, -hz),
@@ -41,7 +41,7 @@ operations:
                           vec(hx, -hy, hz),
                           vec(hx, hy, hz),
                           vec(-hx, hy, hz),
-                      )
+                      ]
                       .map { b.vertex(vec(it.x + cx, it.y + cy, it.z + cz)) }
               b.quad(at[3], at[2], at[1], at[0])
               b.quad(at[4], at[5], at[6], at[7])
@@ -149,7 +149,7 @@ operations:
               val hz = (d / 2).toFloat()
               val b = TriMeshBuilder()
               val at =
-                  listOf(
+                  [
                           vec(-hx, -hy, -hz),
                           vec(hx, -hy, -hz),
                           vec(hx, hy, -hz),
@@ -158,7 +158,7 @@ operations:
                           vec(hx, -hy, hz),
                           vec(hx, hy, hz),
                           vec(-hx, hy, hz),
-                      )
+                      ]
                       .map { b.vertex(vec(it.x + cx, it.y + cy, it.z + cz)) }
               b.quad(at[3], at[2], at[1], at[0])
               b.quad(at[4], at[5], at[6], at[7])

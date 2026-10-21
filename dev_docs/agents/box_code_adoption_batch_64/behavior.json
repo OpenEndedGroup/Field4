@@ -1,0 +1,19 @@
+{
+  "teachers": [
+    {
+      "teacher": "learned_from_module",
+      "actualTrainingAndValidationSamplesEqual": true,
+      "manifestMatchesActualSourceDigest": true,
+      "sourceDigestBefore": "90ea8bef8d49804c5a7ffb4529ff0b269de84cd7fd41c95a614499ae02f02658",
+      "sourceDigestAfter": "bf7cbccfd392cddcb1b0713527f2fec54e3ef4ab604d0c70f8a9afaeaafa28e1"
+    },
+    {
+      "teacher": "gpu_shader_learning",
+      "actualTrainingAndValidationSamplesEqual": true,
+      "manifestMatchesActualSourceDigest": true,
+      "sourceDigestBefore": "5be8effdd0ee4b28d0d1018f95e5b4fc6a70022247c04e902d5cb01b311dba62",
+      "sourceDigestAfter": "240635b29335423f9ae6afb27cecea05e4bafe709670fcf74c17ae07e4fb4f73"
+    }
+  ],
+  "limits": "Complete authored shader pairs and actual teacher setup/callbacks, with capture resolution reduced to 96\u00d764 and five real parameter slices. No cooperative-vector training/view, neural inference or public capture is claimed. Helper adoption leaves lifecycle fixes for group 3."
+}

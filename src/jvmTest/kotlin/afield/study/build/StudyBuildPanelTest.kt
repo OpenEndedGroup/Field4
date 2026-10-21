@@ -169,6 +169,39 @@ class StudyBuildPanelTest {
         } finally { dir.deleteRecursively() }
     }
 
+    @Test fun aFailedAttemptsFailureNotesShowWithItsFailureUntilTheInputsChange() {
+        val dir = java.nio.file.Files.createTempDirectory("study-build-panel-").toFile()
+        val shape = java.util.concurrent.atomic.AtomicReference("stair at 3")
+        val stage = StudyBuildStage("layout", "House layout", "v1", setOf("shape"),
+            failureNotes = { r -> listOf(StudyBuildNotice("Held: ${r.problem?.details?.get("held")}.", StudyBuildNoticeKind.ERROR)) }) {
+            throw StudyBuildFailure(StudyBuildProblem("held", "Two routes were held", details = mapOf("held" to "r3, r7")))
+        }
+        try {
+            StudyBuilds(dir, listOf(stage), { mapOf("shape" to shape.get()) }).use { builds ->
+                val job = builds.start("layout", builds.stages().single().fingerprint!!)
+                val deadline = System.nanoTime() + 5_000_000_000L
+                while (builds.job(job.id).status in setOf(StudyBuildStatus.QUEUED, StudyBuildStatus.RUNNING)) {
+                    check(System.nanoTime() < deadline) { "Build never finished" }; Thread.sleep(5)
+                }
+                val failed = builds.stages().single()
+                assertNull(failed.current)
+                assertTrue(failed.resultNotes.isEmpty(), "a failed attempt's notes are not the current result's")
+                assertEquals(listOf("Held: r3, r7."), failed.failureNotes.map { it.message })
+                assertEquals(failed.failureNotes, builds.resultNotes(job.id))
+                val html = studyBuildStageHtml(failed, listOf(failed), emptyList())
+                assertContains(html, "Build failed")
+                assertContains(html, "<p class=\"study-build-error\">Needs correction: Held: r3, r7.</p>")
+                assertFalse(html.contains("Current"), html)
+
+                shape.set("stair at 4")
+                val changed = builds.stages().single()
+                assertTrue(changed.failureNotes.isEmpty(), "a failure against earlier inputs is not shown as this design's")
+                assertFalse(studyBuildStageHtml(changed, listOf(changed), emptyList()).contains("Held: r3"))
+                assertEquals(listOf("Held: r3, r7."), builds.resultNotes(job.id).map { it.message }, "inspecting the attempt still explains it")
+            }
+        } finally { dir.deleteRecursively() }
+    }
+
     @Test fun failedAttemptCanNameTheBoxThatShowsWhereItFails() {
         val view = mapOf("box" to "plan\"box", "caption" to "Walls <W3> & W4 overlap", "viewId" to "plan-view")
         val state = failedState("fp-now", details = mapOf("geometryView" to view))

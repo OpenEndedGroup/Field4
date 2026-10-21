@@ -19,7 +19,7 @@ once.target {
 }
 source = target.otherImageView
 
-val module = moduleHere { target.apply() }
+val module = moduleHere { +target }
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle

@@ -7,7 +7,7 @@ showPatRoll("continuous-parameter")
 displayOpen("main")
 
 val curve = sine().rangex(300, 6000)
-for (n in listOf(4, 8, 16)) {
+for (n in [4, 8, 16]) {
     val notes =
         (pat("45*$n") with cutoff(curve)).events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
     println(

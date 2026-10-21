@@ -1,7 +1,8 @@
-var bbc = LoadedTexture("/Users/marc/Desktop/bbc.jpg")
+// Bundled textures make this lesson runnable; change these paths to try your own images.
+var bbc = LoadedTexture("public/docs/assets/afield_four_graphics/docs-checker-texture.png")
 bbc.transferNow()
 
-var bbc2 = LoadedTexture("/Users/marc/Desktop/bbc2.jpg")
+var bbc2 = LoadedTexture("public/docs/assets/rt-uv-gradient.png")
 bbc2.transferNow()
 
 var asArray: Array<ImageView> = arrayOf(bbc.imageView, bbc2.imageView, bbc.imageView)

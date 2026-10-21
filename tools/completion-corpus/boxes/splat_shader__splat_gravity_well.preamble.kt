@@ -17,8 +17,8 @@ import afield.graphics.vulkan.buffers.*
 /*compute-pc-binding:splatCount*/ var ComputeMesh.splatCount by ComputeMesh.BoundFromStructure<Any>()
 /*compute-pc-binding-group:splatCount*/ var ComputeMeshGroup.splatCount by ComputeMeshGroup.BoundFromStructure<Any>()
 /*compute-pc-structure:t*/ var Structure.t by Structure.FromStructure<Any>()
-/*compute-pc-binding:t*/ var ComputeMesh.t by ComputeMesh.BoundFromStructure<Float>()
-/*compute-pc-binding-group:t*/ var ComputeMeshGroup.t by ComputeMeshGroup.BoundFromStructure<Float>()
+/*compute-pc-binding:t*/ var ComputeMesh.t by ComputeMesh.BoundFromStructure<Number>()
+/*compute-pc-binding-group:t*/ var ComputeMeshGroup.t by ComputeMeshGroup.BoundFromStructure<Number>()
 var Box.window by Inheritance<Window>() /*from:splat_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:splat_renderer*/ /**/
 val Why.window by Whying() /*from:splat_renderer*/ /**/

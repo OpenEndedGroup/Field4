@@ -488,7 +488,6 @@ class ShaderLatticeBoltzmannSystem(
         colorAttachments = attachments
         colorFormats = List(attachments) { format }
         clearColor = settings.clearColor
-        clearFirst = true
         colorStoreOp = VK_ATTACHMENT_STORE_OP_STORE
         colorSampled = true
         useDepth = false
@@ -501,7 +500,7 @@ class ShaderLatticeBoltzmannSystem(
         resolver: (Introspected.Texture) -> Pair<HasImageViewArray, TextureSampler>?
     ): ModulePointer = Module(
         parameters(renderer) {
-            target.apply()
+            +target
             name = "${settings.name}-$suffix"
             depthTest = false
             blend = false
@@ -517,7 +516,7 @@ class ShaderLatticeBoltzmannSystem(
         configure: Parameters.() -> Unit,
         resolver: (Introspected.Texture) -> Pair<HasImageViewArray, TextureSampler>?
     ): Parameters = parameters(renderer) {
-        target.apply()
+        +target
         this.name = name
         depthTest = false
         blend = true

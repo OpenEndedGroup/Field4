@@ -1,6 +1,9 @@
 name: open_dlss_nr_cubes
 description: Editable rasterized cubes and checkerboard plane, OpenDLSS-NR, independent grading and a
   six-second GPU capture. Source mode works without the optional backend.
+docs:
+  - page: open_dlss_nr.md
+    why: "Walks through the DLSS denoiser setup used on this cube scene."
 operations:
 - create:
     box: agent_graphics_context

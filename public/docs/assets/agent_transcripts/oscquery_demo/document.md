@@ -93,7 +93,7 @@ loop {
 <!-- field-box id="oscq-publish" index="4" -->
 
 ```edn [field-box id="oscq-publish" role="properties"]
-{"id" "oscq-publish" "index" 4 "name" "1. Publish parameters (run first)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Publish parameters (run first)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-publish_code_.kt" "lines" 24 "characters" 995 "sha256" "3e836f28b82b57d863e67dd91b1f4449396cc6393c65db4433aa666638eaaaa4"}]}
+{"id" "oscq-publish" "index" 4 "name" "1. Publish parameters (run first)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Publish parameters (run first)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-publish_code_.kt" "lines" 24 "characters" 983 "sha256" "739df92b719db1fb79b378cd510f925944e24153e46c19c2bc43a8909a16e2f0"}]}
 ```
 
 ```kotlin [field-property box="oscq-publish" name="code" path="oscq-publish_code_.kt"]
@@ -116,8 +116,8 @@ fun show() = markdown(
 
 q.float("/demo/cutoff", 20.0..20000.0, 1000.0, "filter cutoff in Hz") { show() }
 q.bool("/demo/on", true, "sound on") { show() }
-q.menu("/demo/scene", listOf("dawn", "dusk", "night"), "dusk") { show() }
-q.vector("/demo/xy", listOf(0.5, 0.5), description = "a point on a pad") { show() }
+q.menu("/demo/scene", ["dawn", "dusk", "night"], "dusk") { show() }
+q.vector("/demo/xy", [0.5, 0.5], description = "a point on a pad") { show() }
 
 show()
 markdown("Browse **http://localhost:${q.httpPort}/** for the namespace, or **?HOST_INFO** for the service.")

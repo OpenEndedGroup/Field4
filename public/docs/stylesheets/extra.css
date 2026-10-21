@@ -1235,20 +1235,24 @@ button.md-search__icon[aria-label="Clear"] {
     display: flex;
     align-items: flex-start;
     gap: 0.42rem;
-    padding-left: 0.85rem;
+    padding-left: 0.3rem;
+    /* The row carries the label's size so the dot can centre on its first line (0.7em = half of
+       line-height 1.4); a dot pinned to top: 0 sat above the text it labels. */
+    font-size: 0.54rem;
+    line-height: 1.4;
     color: rgba(245, 245, 245, 0.7);
 }
 
 .field-reading-rail__dot {
     position: absolute;
     left: calc(var(--field-rail-line-x) - 0.9rem);
-    top: 0;
+    top: 0.7em;
     width: 0.3rem;
     height: 0.3rem;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.62);
     background: var(--mono-bg);
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
     box-shadow: 0 0 0 0.2rem #0e0e0e;
 }
 

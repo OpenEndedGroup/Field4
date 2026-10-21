@@ -20,7 +20,7 @@ data class MouseEvent(
     val buttonsDown: Set<String> = emptySet(),
     val button: String? = null,
     val type: Type,
-    /** The window's size, in the same units as [pos]. */
+    /** The window's size, in the same units as [pos]: window points, not framebuffer pixels. */
     val windowSize: Vec2 = Vec2(1f, 1f),
 ) {
     enum class Type { MOVE, DOWN, UP, DRAG, SCROLL }
@@ -128,7 +128,10 @@ class MouseEvents(
                 // fire only when an onDown or onUp for the same button happened to be registered.
                 val buttonsRequested: Set<String> =
                     (down.keys + up.keys + buttonDrag.keys + (if (drag.isNotEmpty()) ANY_DRAG_BUTTONS else emptySet())).toSet()
-                val size = Vec2(renderer.window.width.toFloat(), renderer.window.height.toFloat())
+                // The cursor is in window points; Window.width/height are the framebuffer's
+                // pixels, twice as many on a Retina display, which put uv's far corner at (0.5, 0.5).
+                val points = renderer.window.size()
+                val size = Vec2(points.w.toFloat(), points.h.toFloat())
                 val nowDown = mutableSetOf<String>()
 
                 buttonsRequested.forEach { bName ->

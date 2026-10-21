@@ -2409,6 +2409,15 @@ fun moveCanvasCamera(nextX: Double, nextY: Double, zoom: Double = mainZoom) {
     applyViewportTranslation(nextX, nextY, zoom = zoom.coerceIn(MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM))
 }
 
+/**
+ * Moves the main pane's camera for a canvas flight ([afield.app.canvas.CanvasFlightClient]). Unlike
+ * [moveCanvasCamera] it stops no flight, and it never dims the editor or brightens the grid as a pan
+ * does, so a filmed frame depends on the flight's clock alone. The server hears of it when [settled].
+ */
+internal fun flyCanvasCamera(nextX: Double, nextY: Double, zoom: Double, settled: Boolean) {
+    applyViewportTranslation(nextX, nextY, syncServer = settled, zoom = zoom.coerceIn(MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM))
+}
+
 /** Pans the pane under the pointer by a screen delta (wheel and middle-drag). */
 private fun panCanvasBy(dx: Double, dy: Double, pane: CanvasPane) {
     cancelNavigationPanAnimation()
@@ -2552,6 +2561,7 @@ private fun registerCanvasZoomActions() {
     window.asDynamic().frameSelected = ::frameSelected
     window.asDynamic().setCanvasZoom = ::setCanvasZoom
     window.asDynamic().resetCanvasZoom = ::resetCanvasZoom
+    window.asDynamic().moveCanvasCamera = { x: Double, y: Double, zoom: Double -> moveCanvasCamera(x, y, zoom) }
     window.asDynamic().canvasZoom = { mainZoom }
     window.asDynamic().splitCanvasAt = { cx: Double?, cy: Double? -> CanvasCamera.splitAt(cx, cy) }
     // For tests: what the palette commands do, at an explicit position or pane.
@@ -2685,6 +2695,8 @@ fun frameSelected() {
 }
 
 private fun cancelNavigationPanAnimation() {
+    // Any other move of the camera (a pan, a zoom, a bookmark, Frame Selected) ends a live flight.
+    afield.app.canvas.CanvasFlightClient.stopLive("the canvas was moved")
     navigationPanAnimationGeneration += 1
     navigationPanAnimationHandle?.let { window.cancelAnimationFrame(it) }
     navigationPanAnimationHandle = null
@@ -6660,6 +6672,10 @@ suspend fun main() {
                     handleCustomizationRequest(found, set)
                 }
 
+                "tint" -> {
+                    applyBoxTint(found, set.value)
+                }
+
                 "layers" -> {
                     layerDebugLog(
                         "recv set-string layers",
@@ -7786,6 +7802,7 @@ suspend fun main() {
         initMenuSupport()
         registerBuiltinCommands()
         initializeBookmarkSystem()
+        afield.app.canvas.CanvasFlightClient.install()
         initializeDrawingLayer()
         initializeDependencyLayer()
         registerCanvasZoomActions()
@@ -8001,4 +8018,18 @@ private fun setGoJobsBadge(uid: String, count: Int, strands: List<String>) {
             box.appendChild(badge)
         }
     }, GO_JOBS_BADGE_DELAY_MS)
+}
+
+/**
+ * Show a box's `tint` (Box.tint on the JVM): a CSS colour washed over the box with a bright edge, or
+ * none for a blank value. The look is `.box.tinted` in field.css.
+ */
+fun applyBoxTint(box: HTMLElement, value: String?) {
+    if (value.isNullOrBlank()) {
+        box.classList.remove("tinted")
+        box.style.removeProperty("--box-tint")
+    } else {
+        box.style.setProperty("--box-tint", value)
+        box.classList.add("tinted")
+    }
 }

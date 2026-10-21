@@ -3,7 +3,7 @@ val square = Img.generate(2000, 2000) { x, y -> if (x in 500..1499 && y in 500..
 val harris = square.harrisCorners(threshold = 0.05, minDistance = 120, maxCount = 20)
 val fast = square.fastCorners(threshold = 0.2, minDistance = 120, maxCount = 20)
 
-val truth = listOf(500.0 to 500.0, 1499.0 to 500.0, 500.0 to 1499.0, 1499.0 to 1499.0)
+val truth = [500.0 to 500.0, 1499.0 to 500.0, 500.0 to 1499.0, 1499.0 to 1499.0]
 val worst = truth.maxOf { (ex, ey) -> harris.minOf { hypot(it.x - ex, it.y - ey) } }
 
 // Three lines at exactly known (rho, theta), plus a decoy ring Hough must not fit.

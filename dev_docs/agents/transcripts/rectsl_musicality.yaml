@@ -10,6 +10,9 @@ description: >
   try `"bd*4"` -> `"bd(3,8)"`, or add `mini 4 iter` before the quote. Replay this file
   into a fresh Field with the agent backdoor (field_run_transcript) to see it on
   screen with no other setup.
+docs:
+  - page: rectsl_cheatsheet.md
+    why: "Lists the RectSL vocabulary, including its pattern forms."
 operations:
   # 1. renderer box — owns the on-screen Window + Renderer and pumps the loop.
   - create:

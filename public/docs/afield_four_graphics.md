@@ -796,7 +796,7 @@ void main()
 
 It also shows how to place a primitive using the file's own transform: `camera.m() * meshes[0].meshes[2].bindPose.m` composes the view matrix with the primitive's bind pose. That is the hand-written form of the `model` default `applyToMesh` supplies, and the fix for any loop that assigns `modelView` itself.
 
-Neither carries a figure: both need a glTF file on disk, and the repository ships none. The paths above point at the [glTF Sample Models](https://github.com/KhronosGroup/glTF-Sample-Models) collection, which the saved lessons were written against. Their paths are relative to the directory Field runs from, so clone that collection into your Field checkout or point the paths at your own copy. If you want geometry from disk with assets that *are* in the tree, see [Geometry from disk](geometry_from_disk.md).
+Neither carries a figure: these saved lessons use an external glTF file on disk. The paths above point at the [glTF Sample Models](https://github.com/KhronosGroup/glTF-Sample-Models) collection, which the saved lessons were written against. Their paths are relative to the directory Field runs from, so clone that collection into your Field checkout or point the paths at your own copy. If you want geometry from disk with assets that *are* in the tree, see [Geometry from disk](geometry_from_disk.md).
 
 ## Render to texture
 
@@ -915,7 +915,7 @@ prop<HasImageView>(otherView) = target.otherImageView
 renderer.renderList += "target" to target
 
 var module = moduleHere {
-    target.apply()
+    +target
 }
 var m = Mesh()
 
@@ -943,7 +943,7 @@ Reading `otherView` at a slightly offset coordinate and writing the channels bac
 prop<HasImageView>(bbc) = target.thisImageView
 ```
 
-Note the property type here is `HasImageView`, not `RenderToTexture`. A ping-pong target is not one image, so the two halves are handed out individually, and `HasImageView` is the interface that any bindable image satisfies. `module { target.apply() }` inside the module builder is what matches the module's pipeline state (format, sample count, attachment layout) to the target it draws into; without it the pipeline and the target disagree.
+Note the property type here is `HasImageView`, not `RenderToTexture`. A ping-pong target is not one image, so the two halves are handed out individually, and `HasImageView` is the interface that any bindable image satisfies. `module { +target }` inside the module builder is what matches the module's pipeline state (format, sample count, attachment layout) to the target it draws into; without it the pipeline and the target disagree.
 
 ## A blur kernel across three boxes
 
@@ -964,7 +964,6 @@ void main()
 prop<RenderToTexture>(b0) = target
 
 prop<RenderToTexture>(b1) = RenderToTexture {
-    clearFirst = true
     useDepth = false
     mipLevels = 10
     colorLayerCount = 2
@@ -976,7 +975,7 @@ renderer.renderList += "b1" to b1
 var module = moduleHere {
     primitiveType = triangle_strip
     depth = 0
-    b1.apply()
+    +b1
 }
 
 var m = Mesh()
@@ -1365,13 +1364,13 @@ prop<RenderToTexture>(target) = streamer.start().first()
 
 renderer.renderList += "target" to target
 
-var module = moduleHere { target.apply() }
+var module = moduleHere { +target }
 var m = Mesh()
 module += "mainMesh" to m
 target += "boo" to module
 ```
 
-The shape is exactly the `RenderToTexture` producer from earlier (`renderList +=`, `target +=`, `target.apply()`) with the target supplied by the streamer instead of constructed directly. `once.streamer { … }` is the live-coding guard: re-running the box re-runs everything except the block that allocated the stream, so you can edit the drawing without tearing down the connection. `prop<RenderToTexture>(target) = …` publishes the target as a typed property, so child boxes inherit it as `target` the same way the particle draw box inherits `outputPositions`.
+The shape is exactly the `RenderToTexture` producer from earlier (`renderList +=`, `target +=`, `+target`) with the target supplied by the streamer instead of constructed directly. `once.streamer { … }` is the live-coding guard: re-running the box re-runs everything except the block that allocated the stream, so you can edit the drawing without tearing down the connection. `prop<RenderToTexture>(target) = …` publishes the target as a typed property, so child boxes inherit it as `target` the same way the particle draw box inherits `outputPositions`.
 
 The picture this produces arrives at a receiver on `127.0.0.1:9001` rather than in a window.
 

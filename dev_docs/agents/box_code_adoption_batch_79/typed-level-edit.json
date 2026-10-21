@@ -1,0 +1,6 @@
+{
+  "path": "dev_docs/agents/transcripts/staged_project.yaml",
+  "old": "if (getPropertyRaw(\"level\") == null) setPropertyRaw(\"level\", json.writeValueAsString(json.readTree(first)))",
+  "new": "prop<String?>(level)\n          if (level == null) level = json.writeValueAsString(json.readTree(first))",
+  "getter": "level.orEmpty()"
+}

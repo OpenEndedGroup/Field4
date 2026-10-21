@@ -7,6 +7,9 @@ description: >
   warmth with SetNumbers on each run, showing the new revision over its parent and their
   difference. "try things", also its child, sweeps the ring count and tries two candidates without
   publishing. Companion to public/docs/studies.md. Pure CPU; no Window, no Renderer.
+docs:
+  - page: studies.md
+    why: "Explains studies: defining one in a box and driving it from others."
 operations:
   - create:
       box: rings_study

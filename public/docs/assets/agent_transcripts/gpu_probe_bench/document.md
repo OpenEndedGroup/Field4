@@ -51,7 +51,7 @@ gradient is a backward difference, so the two are exact adjoints and div.grad is
 precisely the 5-point Laplacian the Jacobi sweeps invert.
 
 ```edn [field-box id="probe_chain" role="properties"]
-{"id" "probe_chain" "index" 1 "name" "3 - divergence, 12 Jacobi sweeps, project" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "3 - divergence, 12 Jacobi sweeps, project" "_tombstone" false "frame" #afield/rect [520.0 200.0 460.0 160.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_chain_code_.kt" "lines" 230 "characters" 8461 "sha256" "4121c1e379b6ba0b811414d90d0a9de2cd5e940557a5a3673be2eb3e76780c50"}]}
+{"id" "probe_chain" "index" 1 "name" "3 - divergence, 12 Jacobi sweeps, project" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "3 - divergence, 12 Jacobi sweeps, project" "_tombstone" false "frame" #afield/rect [520.0 200.0 460.0 160.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_chain_code_.kt" "lines" 230 "characters" 8455 "sha256" "c63348a7d82ad446a8718570166428bed2813398b4119c2178383bf04a83765b"}]}
 ```
 
 ```kotlin [field-property box="probe_chain" name="code" path="probe_chain_code_.kt"]
@@ -254,7 +254,7 @@ frames {
         println("  frames  sweeps   max |div| after   reduction")
         var first = 0f
         var last = 0f
-        for (f in listOf(1, 2, 4, 8)) {
+        for (f in [1, 2, 4, 8]) {
             probe.idle()
             probe.fill(pressureA, 0f)
             probe.fill(pressureB, 0f)

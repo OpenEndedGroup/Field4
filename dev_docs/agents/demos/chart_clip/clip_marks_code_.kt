@@ -24,7 +24,7 @@ counting those would be measuring the wrong thing.
 */
 val plot = c.plotRect()
 println("plotRect: $plot")
-listOf("area", "line", "points").forEach { name ->
+["area", "line", "points"].forEach { name ->
     val ns =
         c.toFLines().filter { it.label?.startsWith(name) == true }.flatMap { l -> l.nodes.mapNotNull { it.toOrNull } }
     val over: Double = ns.maxOf { p ->

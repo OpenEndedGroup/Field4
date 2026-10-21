@@ -32,7 +32,7 @@ start(renderer::run)
 <!-- field-box id="polytope_lineage_trace" index="1" -->
 
 ```edn [field-box id="polytope_lineage_trace" role="properties"]
-{"id" "polytope_lineage_trace" "index" 1 "name" "lineage chooses the material" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "lineage chooses the material" "_tombstone" false "frame" #afield/rect [320.0 140.0 280.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_lineage_trace_code_.kt" "lines" 101 "characters" 4282 "sha256" "d263abb7f0fb5d19d5f7aabaf91ba56169c02958335e0364ed498fca5fc35ffd"}]}
+{"id" "polytope_lineage_trace" "index" 1 "name" "lineage chooses the material" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "lineage chooses the material" "_tombstone" false "frame" #afield/rect [320.0 140.0 280.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_lineage_trace_code_.kt" "lines" 109 "characters" 4553 "sha256" "edd0506cf3f50875cb2e1ff015adda7b9fd8f687075a6c862013cd55d39641f1"}]}
 ```
 
 ```kotlin [field-property box="polytope_lineage_trace" name="code" path="polytope_lineage_trace_code_.kt"]
@@ -45,6 +45,14 @@ import afield.graphics.vulkan.util.Camera
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)
+
+// Start here when changing render cost, lighting or convergence.
+val samplesPerFrame = 2
+val maxBounces = 8
+val exposure = 1.35f
+val environmentRotation = 2.1f
+val indirectClamp = 10f // Optional biased suppression of indirect fireflies.
+val targetSamples = 900
 
 /*
 ---- the topology ---------------------------------------------------------------
@@ -124,15 +132,15 @@ val camera = Camera(renderer).also {
 }
 // 1000 x 614 is the window's own aspect, so the blit fills it rather than letterboxing.
 tracer = PathTracingRenderer(renderer, scene, environment, 1000, 614, camera).install()
-tracer.samplesPerFrame = 2
-tracer.maxBounces = 8
-tracer.exposure = 1.35f
-tracer.environmentRotation = 2.1f
-tracer.indirectClamp = 10f // Optional biased suppression of indirect fireflies.
+tracer.samplesPerFrame = samplesPerFrame
+tracer.maxBounces = maxBounces
+tracer.exposure = exposure
+tracer.environmentRotation = environmentRotation
+tracer.indirectClamp = indirectClamp
 tracer.blitToScreen()
 println("${tracer.backend}: ${tracer.triangleCount} triangles")
 frames {
-    while (tracer.samples < 900) {
+    while (tracer.samples < targetSamples) {
         frame()
     }
     println("lineage study converged: ${tracer.samples} samples")

@@ -87,7 +87,7 @@ val splatFragment =
 // Declared every run, like its companion: `addPassChain` replaces by name, and nothing in
 // this chain is persistent, so the whole tree simply rebuilds on the next frame.
 tree = bundle.addPassChain(
-    listOf(
+    [
         FabricatePassSpec(
             name = "points",
             fragment = pointsFragment,
@@ -108,7 +108,7 @@ tree = bundle.addPassChain(
             format = VK_FORMAT_R32G32B32A32_SFLOAT,
             source = "points",
         ),
-    ) +
+    ] +
         FabricatePassLibrary.mortonPointQuadtree(
             prefix = "quadtree",
             points = "points",

@@ -1,5 +1,8 @@
 name: gpu_shader_learning
 description: Train on moduleHere RGB directly on the GPU, freeze the fit, and save portable learned weights.
+docs:
+  - page: gpu_shader_learning.md
+    why: "Explains training on moduleHere output on the GPU and saving weights."
 operations:
 - create:
     box: agent_graphics_context
@@ -10,13 +13,47 @@ operations:
       w: 300.0
       h: 100.0
     properties:
-      code: "import afield.graphics.vulkan.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableRayTracing = true\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+      code: |-
+        import afield.graphics.vulkan.util.Options
+
+        prop<Window>(window)
+        prop<Renderer>(renderer)
+
+        Options.enableRayTracing = true
+        Options.enableVR = false
+        Options.enableHDR = false
+        Options.profiling = false
+
+        once.renderer {
+            window = Window("Field")
+            Renderer(window)
+        }
+
+        println("agent graphics renderer ready")
+        start(renderer::run)
 - launch:
     box: agent_graphics_context
     property: code
     type: code
     strand: renderer
-    code: "import afield.graphics.vulkan.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableRayTracing = true\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+    code: |-
+      import afield.graphics.vulkan.util.Options
+
+      prop<Window>(window)
+      prop<Renderer>(renderer)
+
+      Options.enableRayTracing = true
+      Options.enableVR = false
+      Options.enableHDR = false
+      Options.profiling = false
+
+      once.renderer {
+          window = Window("Field")
+          Renderer(window)
+      }
+
+      println("agent graphics renderer ready")
+      start(renderer::run)
 - wait:
     frames: 3
 - create:
@@ -28,13 +65,13 @@ operations:
       w: 420.0
       h: 100.0
     properties:
-      code: |-
+      code: |
         import afield.graphics.shader.learning.*
         import java.io.File
         import org.lwjgl.vulkan.VK13.*
 
         prop<GpuShaderLearningView>(lab)
-        fromContextWithNameOrNull<GpuShaderLearningView>("lab")?.close()
+        val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
         check(renderer.device.supportsCooperativeVectorTraining) {
             "GPU learning needs enabled cooperative-vector training. learned_from_module provides offline training."
         }
@@ -45,19 +82,19 @@ operations:
             format = VK_FORMAT_R32G32B32A32_SFLOAT
         }
         val teacher = moduleHere {
-            source.apply()
+            +source
             depthTest = false
             depthWrite = false
             blend = false
         }
-        val mesh = Mesh(renderer, teacher)
-        mesh.resize(3, 0, teacher)
-        mesh.push.setMembers(teacher.current.fi.pushConstants.single().members)
+        val mesh = fullscreenTriangle(teacher)
         teacher += "fullscreen" to mesh
         source += "teacher" to teacher
-        lab =
-            GpuShaderLearningView(renderer, source) { t -> mesh.push["state"] = vec(source.width, source.height, t, 0) }
-                .install()
+        val ownedLab = runScope.own(
+            GpuShaderLearningView(renderer, source) { t -> mesh.state = { vec(source.width, source.height, t, 0) } }
+                .install(),
+        )
+        lab = ownedLab
         var learn = true
         var view = 2
         var reset = false
@@ -88,18 +125,18 @@ operations:
                     println("Teacher changed; restarting the fit.")
                 }
                 if (reset) {
-                    lab.model.reset()
+                    ownedLab.model.reset()
                     reset = false
                 }
-                lab.learning = learn
-                lab.iterationsPerFrame = iterations
-                lab.view = view
-                lab.parameter = if (learn) (phase % 13) / 6f - 1 else kotlin.math.sin(phase * .018f)
+                ownedLab.learning = learn
+                ownedLab.iterationsPerFrame = iterations
+                ownedLab.view = view
+                ownedLab.parameter = if (learn) (phase % 13) / 6f - 1 else kotlin.math.sin(phase * .018f)
                 if (save) {
                     save = false
                     runCatching {
                         val directory = File("build/shader-learning/gpu-${System.currentTimeMillis()}")
-                        lab.model.save(
+                        ownedLab.model.save(
                             directory,
                             sourceHash,
                             "Fullscreen module; camera, textures and other controls fixed; normalized time varies",
@@ -113,7 +150,7 @@ operations:
             }
         }
             .end {
-                lab.close()
+                ownedLab.close()
                 owner.cleanup += Runnable {
                     teacher.current.cleanup()
                     source.imageViewArray.forEach { it.imageView.cleanup() }
@@ -121,8 +158,12 @@ operations:
                     source.defaultSampler?.cleanup()
                 }
             }
-      vertex: "#version 460\nvoid main() {\n    vec2 p=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);\n    gl_Position=vec4(p*2-1,0,1);\n\
-        }\n"
+      vertex: |-
+        #version 460
+        void main() {
+            vec2 p=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);
+            gl_Position=vec4(p*2-1,0,1);
+        }
       fragment: |-
         #version 460
         layout(push_constant) uniform P {
@@ -150,13 +191,13 @@ operations:
     property: code
     type: code
     strand: scene
-    code: |-
+    code: |
       import afield.graphics.shader.learning.*
       import java.io.File
       import org.lwjgl.vulkan.VK13.*
 
       prop<GpuShaderLearningView>(lab)
-      fromContextWithNameOrNull<GpuShaderLearningView>("lab")?.close()
+      val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
       check(renderer.device.supportsCooperativeVectorTraining) {
           "GPU learning needs enabled cooperative-vector training. learned_from_module provides offline training."
       }
@@ -167,19 +208,19 @@ operations:
           format = VK_FORMAT_R32G32B32A32_SFLOAT
       }
       val teacher = moduleHere {
-          source.apply()
+          +source
           depthTest = false
           depthWrite = false
           blend = false
       }
-      val mesh = Mesh(renderer, teacher)
-      mesh.resize(3, 0, teacher)
-      mesh.push.setMembers(teacher.current.fi.pushConstants.single().members)
+      val mesh = fullscreenTriangle(teacher)
       teacher += "fullscreen" to mesh
       source += "teacher" to teacher
-      lab =
-          GpuShaderLearningView(renderer, source) { t -> mesh.push["state"] = vec(source.width, source.height, t, 0) }
-              .install()
+      val ownedLab = runScope.own(
+          GpuShaderLearningView(renderer, source) { t -> mesh.state = { vec(source.width, source.height, t, 0) } }
+              .install(),
+      )
+      lab = ownedLab
       var learn = true
       var view = 2
       var reset = false
@@ -210,18 +251,18 @@ operations:
                   println("Teacher changed; restarting the fit.")
               }
               if (reset) {
-                  lab.model.reset()
+                  ownedLab.model.reset()
                   reset = false
               }
-              lab.learning = learn
-              lab.iterationsPerFrame = iterations
-              lab.view = view
-              lab.parameter = if (learn) (phase % 13) / 6f - 1 else kotlin.math.sin(phase * .018f)
+              ownedLab.learning = learn
+              ownedLab.iterationsPerFrame = iterations
+              ownedLab.view = view
+              ownedLab.parameter = if (learn) (phase % 13) / 6f - 1 else kotlin.math.sin(phase * .018f)
               if (save) {
                   save = false
                   runCatching {
                       val directory = File("build/shader-learning/gpu-${System.currentTimeMillis()}")
-                      lab.model.save(
+                      ownedLab.model.save(
                           directory,
                           sourceHash,
                           "Fullscreen module; camera, textures and other controls fixed; normalized time varies",
@@ -235,7 +276,7 @@ operations:
           }
       }
           .end {
-              lab.close()
+              ownedLab.close()
               owner.cleanup += Runnable {
                   teacher.current.cleanup()
                   source.imageViewArray.forEach { it.imageView.cleanup() }

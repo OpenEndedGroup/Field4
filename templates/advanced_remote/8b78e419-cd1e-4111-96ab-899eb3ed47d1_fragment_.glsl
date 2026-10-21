@@ -1,34 +1,14 @@
 precision highp float;
 precision highp int;
-// the stuff above just needs to be there
 
-// these are _inputs_ from the vertex shader
-// you'll see declarations just like these
-// there
+// The remote JavaScript scene supplies UVs and the video texture.
 varying vec3 vNormal;
 varying vec3 pos;
 varying vec2 vUv;
-
 uniform sampler2D map;
-// this is the declaration for a texture map called 'map
-//uniform sampler2D map;
 
-void main()
-{
-    // and this is how we look up a texture
-    // given texture coordinates 'vUv'
-    //vec4 m = texture2D(map, vUv);
-
-    // in Javascript we'd call this 'vec'
-    // but here we have to say vec4
-    // Start opaque; the sampled texture RGB below replaces this base color.
-    gl_FragColor = vec4(1,0,0,1);
-
-    vec4 texcol = texture2D(map, vUv);
-    gl_FragColor.x = texcol.x;
-    gl_FragColor.y = texcol.y;
-    gl_FragColor.z = texcol.z;
-
-    // this counts as the world most simple 'blue' screen
-    if (gl_FragColor.z>0.9) discard;
+void main() {
+    // Keep the sampled RGB opaque; remove pixels whose blue channel exceeds the key.
+    gl_FragColor = vec4(texture2D(map, vUv).rgb, 1.0);
+    if (gl_FragColor.b > 0.9) discard;
 }

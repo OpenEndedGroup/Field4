@@ -288,7 +288,6 @@ class ShaderDlaSystem(
         format = settings.format
         colorFormats = listOf(settings.format)
         clearColor = settings.clearColor
-        clearFirst = true
         colorStoreOp = VK_ATTACHMENT_STORE_OP_STORE
         colorSampled = true
         useDepth = false
@@ -325,7 +324,7 @@ class ShaderDlaSystem(
 
         preserveModule = Module(
             parameters(renderer) {
-                this@ShaderDlaSystem.simulation.apply()
+                +this@ShaderDlaSystem.simulation
                 name = "${settings.name}-preserve"
                 depthTest = false
                 blend = false
@@ -348,7 +347,7 @@ class ShaderDlaSystem(
 
         particleModule = Module(
             parameters(renderer) {
-                this@ShaderDlaSystem.simulation.apply()
+                +this@ShaderDlaSystem.simulation
                 name = "${settings.name}-particles"
                 depthTest = false
                 blend = true

@@ -187,6 +187,12 @@ class DocumentedApiEvaluationTest {
      * and "no cheap evaluator exists" are different sentences.
      */
     private val COMPILE_ONLY_REMAINDER: Map<String, String> = mapOf(
+        // temporal_memory.md (2026-10-20): the temporal_memory transcript is COMPILE_ONLY because its
+        // dance boxes start a Timestral worker that needs a downloaded checkpoint; they run only as
+        // docs captures. This row is a TODO: trimStill is cheap to cover in a jvmTest.
+        "trimStill" to "temporal_memory.md; temporal_memory is COMPILE_ONLY (Timestral checkpoint); the dance captures run it outside CI",
+        "medianFLine" to "temporal_memory.md; temporal_memory is COMPILE_ONLY — needs a Timestral forecast, which needs a downloaded checkpoint",
+        "bandFLine" to "temporal_memory.md; temporal_memory is COMPILE_ONLY — needs a Timestral forecast, which needs a downloaded checkpoint",
         // The oscquery_demo starting point (2026-10-09) is COMPILE_ONLY: its boxes publish a service on
         // fixed ports and loop until stopped. OscQueryRoundTripTest runs the server, client, mirror and
         // DNS-SD discovery these Box wrappers call.
@@ -257,11 +263,6 @@ class DocumentedApiEvaluationTest {
                 "Interpolant override sampled by the reconstruction jitter path. The documents that " +
                 "teach it are reconstruction documents, and those transcripts need a supporting " +
                 "device.",
-        "modelView" to
-            "afield_four_graphics.md and three reconstruction pages; this is the scene-local view " +
-                "matrix a caller passes in, not a Field entry point — the same shape as modelWorld " +
-                "above. The lexical census sees the name; the containing graphics transcripts are " +
-                "COMPILE_ONLY.",
         "computeBarrier" to
             "agent_transcripts.md; a Vulkan compute barrier task. Its compiled graphics " +
                 "transcripts need a live device to submit and observe the dependency.",
@@ -282,6 +283,19 @@ class DocumentedApiEvaluationTest {
             "openxr_eye_intersection.md; this is the scene-local matrix callback parameter of " +
                 "lineMesh, not a global Field API. The lexical census includes its invocation; " +
                 "the containing OpenXR transcript is COMPILE_ONLY and needs a live headset.",
+        // The madp Fern port (2026-10-20): GLSL functions a student writes in an IteratedSystem's
+        // compute tab, called by the points/system harness's main(), never by Kotlin, so no
+        // Kotlin evaluator can count them. IteratedSystemShaderTest compiles every system in
+        // fern_iterated_systems against the harness; running them needs a Vulkan device.
+        "initParticle" to
+            "agent_transcripts.md (fern_iterated_systems); a GLSL function in a system's compute " +
+                "tab, called by the points/system harness. Compiled by IteratedSystemShaderTest.",
+        "shouldDraw" to
+            "agent_transcripts.md (fern_iterated_systems); a GLSL function in a system's compute " +
+                "tab, called by the points/system harness. Compiled by IteratedSystemShaderTest.",
+        "pointSize" to
+            "agent_transcripts.md (fern_iterated_systems); a GLSL function in a system's compute " +
+                "tab, called by the points/system harness. Compiled by IteratedSystemShaderTest.",
         "flowMask" to
             "flow_grain.md; this is an editable GLSL obstacle callback. The native flow_grain " +
                 "capture evaluates it on a GPU; headless CI compiles the document's Kotlin only.",

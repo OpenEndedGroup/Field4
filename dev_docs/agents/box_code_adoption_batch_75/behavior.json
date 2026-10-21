@@ -1,0 +1,32 @@
+{
+  "realPrivateApi": {
+    "ok": true,
+    "version": "0.1.0",
+    "project_root": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/adoption-43/field-audio-project"
+  },
+  "livePipelines": [
+    {
+      "case": "muscriptor-transcript",
+      "actualVerdict": "VERIFIED75 unavailable muscriptor-transcript: afield.audio.ai.FieldAudioJobException: ANALYSIS_FAILED: MuScriptor transcription worker unavailable: <urlopen error [Errno 61] Connection refused>",
+      "completed": false
+    },
+    {
+      "case": "muscriptor-page",
+      "actualVerdict": "VERIFIED75 unavailable muscriptor-page: afield.audio.ai.FieldAudioJobException: ANALYSIS_FAILED: MuScriptor transcription worker unavailable: <urlopen error [Errno 61] Connection refused>",
+      "completed": false
+    },
+    {
+      "case": "speech-transcript",
+      "actualVerdict": "VERIFIED75 unavailable speech-transcript: afield.audio.ai.FieldAudioJobException: ANALYSIS_FAILED: speech embedding worker unavailable: <urlopen error [Errno 61] Connection refused>",
+      "completed": false
+    },
+    {
+      "case": "speech-page",
+      "actualVerdict": "VERIFIED75 unavailable speech-page: afield.audio.ai.FieldAudioJobException: ANALYSIS_FAILED: speech embedding worker unavailable: <urlopen error [Errno 61] Connection refused>",
+      "completed": false
+    }
+  ],
+  "followOnTypecheckedWithExportedAnalysisResult": true,
+  "bothCaptionExpressionsReflectEditedControls": true,
+  "limits": "Six-second generated WAV is an explicit input substitution and source range is shortened for the speech fit. No model outputs are substituted. Real terminal worker errors, where present, are preserved exactly; missing optional neural workers are not counted as successful transcription/embedding/model acceptance. Existing real trackAnalysis Stop/socket and coroutine cancellation evidence is retained in batches 43 and 74."
+}

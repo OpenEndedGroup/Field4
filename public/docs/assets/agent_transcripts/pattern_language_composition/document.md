@@ -244,7 +244,7 @@ pattern: one literal per note, typed by hand. Now a parameter can be a FUNCTION,
 the note count does not change when you read it.
 
 ```edn [field-box id="pat_demo_parameter" role="properties"]
-{"id" "pat_demo_parameter" "index" 4 "name" "3 — a parameter, not a staircase" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a parameter, not a staircase" "_tombstone" false "frame" #afield/rect [60.0 520.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_parameter_code_.kt" "lines" 38 "characters" 1315 "sha256" "3ba5005807b5a8f2e9aee3557e7699f24761c9eebd2498f7784ba0685dbd9a7a"}]}
+{"id" "pat_demo_parameter" "index" 4 "name" "3 — a parameter, not a staircase" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a parameter, not a staircase" "_tombstone" false "frame" #afield/rect [60.0 520.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_parameter_code_.kt" "lines" 38 "characters" 1309 "sha256" "38c303533a34b4afc1dec55be7feafbaa8bda3f815988483198fd07fba3fe2bd"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_parameter" name="code" path="pat_demo_parameter_code_.kt"]
@@ -257,7 +257,7 @@ showPatRoll("continuous-parameter")
 displayOpen("main")
 
 val curve = sine().rangex(300, 6000)
-for (n in listOf(4, 8, 16)) {
+for (n in [4, 8, 16]) {
     val notes =
         (pat("45*$n") with cutoff(curve)).events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
     println(
@@ -418,7 +418,7 @@ below must come out arc-for-arc identical — and the roll draws them one above 
 so you can check by eye as well as by assertion.
 
 ```edn [field-box id="pat_demo_mini_notation" role="properties"]
-{"id" "pat_demo_mini_notation" "index" 7 "name" "8 — mini-notation markers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — mini-notation markers" "_tombstone" false "frame" #afield/rect [820.0 1560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_mini_notation_code_.kt" "lines" 48 "characters" 1871 "sha256" "eaa0e9e1ee18643c8983448ecb8a6a8861603c2c569d51b855070cf51fab084b"}]}
+{"id" "pat_demo_mini_notation" "index" 7 "name" "8 — mini-notation markers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — mini-notation markers" "_tombstone" false "frame" #afield/rect [820.0 1560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_mini_notation_code_.kt" "lines" 48 "characters" 1865 "sha256" "348ba57e316d71fe9fad0e0a9d3843e2b04354794f5de6ce5c2948000af04275"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_mini_notation" name="code" path="pat_demo_mini_notation_code_.kt"]
@@ -430,11 +430,11 @@ so you can check by eye as well as by assertion.
 showPatRoll("mini-notation")
 displayOpen("main")
 
-val pairs = listOf(
+val pairs = [
     "bd sd . hh hh hh" to "[bd sd] [hh hh hh]", // `.` groups
     "bd _ _ sd" to "bd@3 sd", // `_` extends
     "bd ! ! sd" to "bd!3 sd", // bare `!` repeats
-)
+]
 for ((shorthand, bracketed) in pairs) {
     val a = pat(shorthand).events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
     val b = pat(bracketed).events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="morpho_search_recursion" index="0" -->
 
 ```edn [field-box id="morpho_search_recursion" role="properties"]
-{"id" "morpho_search_recursion" "index" 0 "name" "A recursion, found — reducing a bus to one bit, then drawn at three widths" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A recursion, found — reducing a bus to one bit, then drawn at three widths" "_tombstone" false "frame" #afield/rect [60.0 520.0 590.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "morpho_search_recursion_code_.kt" "lines" 87 "characters" 3689 "sha256" "4ea732e633dd6656fcdc1977b0623838311f87f3780b26ea2407b63eee008d64"}]}
+{"id" "morpho_search_recursion" "index" 0 "name" "A recursion, found — reducing a bus to one bit, then drawn at three widths" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A recursion, found — reducing a bus to one bit, then drawn at three widths" "_tombstone" false "frame" #afield/rect [60.0 520.0 590.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "morpho_search_recursion_code_.kt" "lines" 87 "characters" 3665 "sha256" "fc312dae97642e0959225c728ed9b65c1e9f92247f807f084e862a090af8cc93"}]}
 ```
 
 ```kotlin [field-property box="morpho_search_recursion" name="code" path="morpho_search_recursion_code_.kt"]
@@ -26,10 +26,10 @@ SPLIT, which means every correct answer is divide-and-conquer by construction.
 val problem = MorphoProblems.orReduce()
 println(problem)
 
-val runs = listOf(
+val runs = [
     MorphoSearch.random(problem.spec, problem.generator, 6000, seed = 2),
     MorphoSearch.evolve(problem.spec, problem.generator, 6000, seed = 2, mu = 24, lambda = 40),
-)
+]
 runs.forEach { println(it.summary()) }
 
 // Cheapest correct design across both runs; if a seed happens not to solve it, fall back
@@ -47,8 +47,8 @@ whose two halves differ, and it will happily return a design that is silently wr
 5, 7 and 9. Re-compiled here at widths nothing was selected on: same source text, new
 signature, nothing to translate and nothing to get wrong.
 */
-listOf(7, 9, 16, 32, 48).forEach { w ->
-    val f = MorphoSearch.generalization(best.genome, problem.spec, listOf(w))
+[7, 9, 16, 32, 48].forEach { w ->
+    val f = MorphoSearch.generalization(best.genome, problem.spec, [w])
     println("  at %2d bits: %s".format(w, f))
 }
 
@@ -75,7 +75,7 @@ conceit and it now applies to a design nobody wrote.
 */
 val source = best.genome.render()
 val panels =
-    listOf(4, 8, 16).map { w ->
+    [4, 8, 16].map { w ->
         val c = morphoCircuit(MorphoProblems.ROOT, w, source = source)
         c.growFully(relaxSteps = 220)
         "evolved or-reduce at %d bits — %d gates, depth %d".format(w, c.netlist.gateCount, c.depth.toInt()) to
@@ -109,7 +109,7 @@ showPlaneGrid(
 <!-- field-box id="morpho_search_control" index="1" -->
 
 ```edn [field-box id="morpho_search_control" role="properties"]
-{"id" "morpho_search_control" "index" 1 "name" "Does selection beat sampling? One-bit full adder, three drivers, one budget" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Does selection beat sampling? One-bit full adder, three drivers, one budget" "_tombstone" false "frame" #afield/rect [60.0 60.0 600.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "morpho_search_control_code_.kt" "lines" 49 "characters" 1973 "sha256" "ebd298627144e6a8edf7a8c1e91e5360f1cb7e9db582b143e94dd4428c7110d6"}]}
+{"id" "morpho_search_control" "index" 1 "name" "Does selection beat sampling? One-bit full adder, three drivers, one budget" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Does selection beat sampling? One-bit full adder, three drivers, one budget" "_tombstone" false "frame" #afield/rect [60.0 60.0 600.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "morpho_search_control_code_.kt" "lines" 49 "characters" 1967 "sha256" "9a87a50fb19d92cdf55ac354c5be37ea2e0302f378f1da51638b7c810b7f0469"}]}
 ```
 
 ```kotlin [field-property box="morpho_search_control" name="code" path="morpho_search_control_code_.kt"]
@@ -131,11 +131,11 @@ println(
 
 // Same generator, same seed, same budget. One unit of budget is one invocation of
 // morpho's compiler, which is the only resource all three spend at comparable rates.
-val runs = listOf(
+val runs = [
     MorphoSearch.random(problem.spec, problem.generator, budget, seed = 2),
     MorphoSearch.hillClimb(problem.spec, problem.generator, budget, seed = 2),
     MorphoSearch.evolve(problem.spec, problem.generator, budget, seed = 2),
-)
+]
 runs.forEach { println(it.summary()) }
 
 // What was actually found, in MorphoHDL. This is paste-into-a-morpho-box text.
@@ -169,7 +169,7 @@ showPlaneGrid(
 <!-- field-box id="morpho_search_adder" index="2" -->
 
 ```edn [field-box id="morpho_search_adder" role="properties"]
-{"id" "morpho_search_adder" "index" 2 "name" "The recursive adder is not found — and the target is provably in the space" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The recursive adder is not found — and the target is provably in the space" "_tombstone" false "frame" #afield/rect [60.0 1020.0 590.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "morpho_search_adder_code_.kt" "lines" 75 "characters" 3150 "sha256" "85c1070f4cccc532703b707a7c4458f2c2b1971510ef3ff09746aadc1f819eb6"}]}
+{"id" "morpho_search_adder" "index" 2 "name" "The recursive adder is not found — and the target is provably in the space" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The recursive adder is not found — and the target is provably in the space" "_tombstone" false "frame" #afield/rect [60.0 1020.0 590.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "morpho_search_adder_code_.kt" "lines" 75 "characters" 3042 "sha256" "fe4bf813d43d8195ed48b3f22debc4980b5f391d218274fff4743f65a1207cc3"}]}
 ```
 
 ```kotlin [field-property box="morpho_search_adder" name="code" path="morpho_search_adder_code_.kt"]
@@ -180,7 +180,7 @@ import afield.lang.morpho.*
 val free = MorphoProblems.recursiveAdder()
 val guided = MorphoProblems.guidedRecursiveAdder()
 val budget = 6000
-val runs = listOf(
+val runs = [
     MorphoSearch.random(free.spec, free.generator, budget, seed = 1),
     MorphoSearch.hillClimb(free.spec, free.generator, budget, seed = 1),
     MorphoSearch.evolve(free.spec, free.generator, budget, seed = 1),
@@ -191,7 +191,7 @@ val runs = listOf(
         seed = 1,
         label = "evolution, SPLITs given",
     ),
-)
+]
 runs.forEach { println(it.summary()) }
 
 /*
@@ -200,32 +200,32 @@ the ripple skeleton, written by hand in exactly the grammar the generator emits,
 by exactly the evaluator the search used.
 */
 val target = MorphoGenome(
-    listOf(
+    [
         MorphoCellGenome(
             name = MorphoProblems.ROOT,
-            inputs = listOf("a", "b", "c"),
-            statements = listOf(
-                MorphoStatement(listOf("a0", "a1"), "SPLIT", listOf("a")),
-                MorphoStatement(listOf("b0", "b1"), "SPLIT", listOf("b")),
-                MorphoStatement(listOf("s0", "cm"), MorphoProblems.ROOT, listOf("a0", "b0", "c")),
-                MorphoStatement(listOf("s1", "co"), MorphoProblems.ROOT, listOf("a1", "b1", "cm")),
-                MorphoStatement(listOf("sum"), "CAT", listOf("s0", "s1")),
-            ),
-            outputs = listOf("sum", "co"),
+            inputs = ["a", "b", "c"],
+            statements = [
+                MorphoStatement(["a0", "a1"], "SPLIT", ["a"]),
+                MorphoStatement(["b0", "b1"], "SPLIT", ["b"]),
+                MorphoStatement(["s0", "cm"], MorphoProblems.ROOT, ["a0", "b0", "c"]),
+                MorphoStatement(["s1", "co"], MorphoProblems.ROOT, ["a1", "b1", "cm"]),
+                MorphoStatement(["sum"], "CAT", ["s0", "s1"]),
+            ],
+            outputs = ["sum", "co"],
             fallback = "full_adder",
         ),
-    ),
+    ],
     free.generator.preamble,
 )
 println()
 println(target.cells[0].render())
 println("  scored at 2/4/8: " + MorphoEvaluator(free.spec).evaluate(target.render(), target.rootName))
-println("  at 16 bits:      " + MorphoSearch.generalization(target, free.spec, listOf(16)))
-println("  at 32 bits:      " + MorphoSearch.generalization(target, free.spec, listOf(32)))
+println("  at 16 bits:      " + MorphoSearch.generalization(target, free.spec, [16]))
+println("  at 32 bits:      " + MorphoSearch.generalization(target, free.spec, [32]))
 
 // What the humans cost, through the same evaluator rather than quoted from a paper.
 val references =
-    listOf("ripple_adder", "brent_kung_adder").mapNotNull { design ->
+    ["ripple_adder", "brent_kung_adder"].mapNotNull { design ->
         free.reference(design).cost?.let { MorphoCostPoint(design, it.gates, it.depth, reference = true) }
     }
 references.forEach { println("  reference ${it.label}: ${it.gates} gates, depth ${it.depth}") }

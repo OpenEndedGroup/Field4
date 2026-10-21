@@ -746,7 +746,7 @@ object GaussianSplatRenderer {
         colorBlendOp = config.blend.colorBlendOp
         alphaBlendOp = config.blend.alphaBlendOp
         viewport = config.viewport
-        renderToTexture?.apply()
+        renderToTexture?.let { +it }
     }
 
     fun load(

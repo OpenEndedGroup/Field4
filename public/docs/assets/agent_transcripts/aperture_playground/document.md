@@ -32,7 +32,7 @@ start(renderer::run)
 <!-- field-box id="aperture_source" index="1" -->
 
 ```edn [field-box id="aperture_source" role="properties"]
-{"id" "aperture_source" "index" 1 "name" "2. Source RTT — lines and points" "parents" ["root" "agent_graphics_context"] "children" ["aperture_half"] "properties" {"children" #{#afield/box "aperture_half"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "2. Source RTT — lines and points" "_tombstone" false "frame" #afield/rect [460.0 70.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_source_code_.kt" "lines" 43 "characters" 1638 "sha256" "f9f25cfe543ead7ceb7c7f250cb87f5516da0d41a6092836b5ba519d6938a65f"} {"name" "vertex" "language" "glsl" "path" "aperture_source_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_source_fragment_.glsl" "lines" 26 "characters" 927 "sha256" "52fd5840bbc29fbd596a4b00c17be6df51103f76300a2782bb35816e2a2a0c8f"}]}
+{"id" "aperture_source" "index" 1 "name" "2. Source RTT — lines and points" "parents" ["root" "agent_graphics_context"] "children" ["aperture_half"] "properties" {"children" #{#afield/box "aperture_half"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "2. Source RTT — lines and points" "_tombstone" false "frame" #afield/rect [460.0 70.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_source_code_.kt" "lines" 42 "characters" 1609 "sha256" "acee10cdd84d073f0ad22c3ce29a672989be8f86e0a487978afafbcfd21f86d7"} {"name" "vertex" "language" "glsl" "path" "aperture_source_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_source_fragment_.glsl" "lines" 26 "characters" 927 "sha256" "52fd5840bbc29fbd596a4b00c17be6df51103f76300a2782bb35816e2a2a0c8f"}]}
 ```
 
 ```kotlin [field-property box="aperture_source" name="code" path="aperture_source_code_.kt"]
@@ -49,7 +49,6 @@ paintSource = RenderToTexture {
     height = window.height
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
-    clearFirst = true
     clearColor = vec(0, 0, 0, 0)
     debugName = "paint-source"
 }
@@ -60,7 +59,7 @@ apertureControl = vec(1.5, 0, 0, 0)
 println("paint source RTT ready: ${paintSource.width}x${paintSource.height}")
 
 var module = moduleHere {
-    paintSource.apply()
+    +paintSource
     blend = false
     depthTest = false
     depthWrite = false
@@ -126,7 +125,7 @@ void main() {
 <!-- field-box id="aperture_half" index="2" -->
 
 ```edn [field-box id="aperture_half" role="properties"]
-{"id" "aperture_half" "index" 2 "name" "3. Reduce ½" "parents" ["root" "aperture_source"] "children" ["aperture_quarter" "aperture_medium"] "properties" {"children" #{#afield/box "aperture_quarter" #afield/box "aperture_medium"} "parents" #{#afield/box "root" #afield/box "aperture_source"} "name" "3. Reduce ½" "_tombstone" false "frame" #afield/rect [460.0 260.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_half_code_.kt" "lines" 25 "characters" 776 "sha256" "52d58efb26969957cb6eafe1a7bc4b1c86037c3b6cd1fa98dfdaa2bbb7b8d986"} {"name" "vertex" "language" "glsl" "path" "aperture_half_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_half_fragment_.glsl" "lines" 11 "characters" 454 "sha256" "f7dad831d940b89297b19153878272f3195716a1205a80dc454f539f74a25ad9"}]}
+{"id" "aperture_half" "index" 2 "name" "3. Reduce ½" "parents" ["root" "aperture_source"] "children" ["aperture_quarter" "aperture_medium"] "properties" {"children" #{#afield/box "aperture_quarter" #afield/box "aperture_medium"} "parents" #{#afield/box "root" #afield/box "aperture_source"} "name" "3. Reduce ½" "_tombstone" false "frame" #afield/rect [460.0 260.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_half_code_.kt" "lines" 24 "characters" 747 "sha256" "71201efba72a931f8788ac5b2106c137fe90e79e07ea99086e0e442c940d2182"} {"name" "vertex" "language" "glsl" "path" "aperture_half_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_half_fragment_.glsl" "lines" 11 "characters" 454 "sha256" "f7dad831d940b89297b19153878272f3195716a1205a80dc454f539f74a25ad9"}]}
 ```
 
 ```kotlin [field-property box="aperture_half" name="code" path="aperture_half_code_.kt"]
@@ -137,14 +136,13 @@ propDown<RenderToTexture>(paintHalf) = RenderToTexture {
     height = (paintSource.height / 2).coerceAtLeast(1)
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
-    clearFirst = true
     clearColor = vec(0, 0, 0, 0)
     debugName = "paintHalf"
 }
 paintHalf.setDefaultSampler(anisotropyEnable = false)
 var module = moduleHere {
     textures("paintSource" to paintSource)
-    paintHalf.apply()
+    +paintHalf
     blend = false
     depthTest = false
     depthWrite = false
@@ -187,7 +185,7 @@ void main() {
 <!-- field-box id="aperture_quarter" index="3" -->
 
 ```edn [field-box id="aperture_quarter" role="properties"]
-{"id" "aperture_quarter" "index" 3 "name" "4. Reduce ¼" "parents" ["root" "aperture_half"] "children" ["aperture_broad"] "properties" {"children" #{#afield/box "aperture_broad"} "parents" #{#afield/box "root" #afield/box "aperture_half"} "name" "4. Reduce ¼" "_tombstone" false "frame" #afield/rect [460.0 440.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_quarter_code_.kt" "lines" 25 "characters" 793 "sha256" "051ad22d86a65f45288e02232028773c1507b4bb3cae7c53f98e69ac3635f415"} {"name" "vertex" "language" "glsl" "path" "aperture_quarter_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_quarter_fragment_.glsl" "lines" 11 "characters" 444 "sha256" "ced8adc4342a1323b853755fe2038584cf0c1fbf839ea5bb709bc6da8f6315f6"}]}
+{"id" "aperture_quarter" "index" 3 "name" "4. Reduce ¼" "parents" ["root" "aperture_half"] "children" ["aperture_broad"] "properties" {"children" #{#afield/box "aperture_broad"} "parents" #{#afield/box "root" #afield/box "aperture_half"} "name" "4. Reduce ¼" "_tombstone" false "frame" #afield/rect [460.0 440.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_quarter_code_.kt" "lines" 24 "characters" 764 "sha256" "b0697c332a8bc46ad7c599c7630211881867c79ff1884838b1a97d70f2dca534"} {"name" "vertex" "language" "glsl" "path" "aperture_quarter_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_quarter_fragment_.glsl" "lines" 11 "characters" 444 "sha256" "ced8adc4342a1323b853755fe2038584cf0c1fbf839ea5bb709bc6da8f6315f6"}]}
 ```
 
 ```kotlin [field-property box="aperture_quarter" name="code" path="aperture_quarter_code_.kt"]
@@ -198,14 +196,13 @@ propDown<RenderToTexture>(paintQuarter) = RenderToTexture {
     height = (paintSource.height / 4).coerceAtLeast(1)
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
-    clearFirst = true
     clearColor = vec(0, 0, 0, 0)
     debugName = "paintQuarter"
 }
 paintQuarter.setDefaultSampler(anisotropyEnable = false)
 var module = moduleHere {
     textures("paintHalf" to paintHalf)
-    paintQuarter.apply()
+    +paintQuarter
     blend = false
     depthTest = false
     depthWrite = false
@@ -334,7 +331,7 @@ void main() {
 <!-- field-box id="aperture_broad" index="5" -->
 
 ```edn [field-box id="aperture_broad" role="properties"]
-{"id" "aperture_broad" "index" 5 "name" "6. Aperture 24 px" "parents" ["root" "aperture_quarter"] "children" ["aperture_composite"] "properties" {"children" #{#afield/box "aperture_composite"} "parents" #{#afield/box "root" #afield/box "aperture_quarter"} "name" "6. Aperture 24 px" "_tombstone" false "frame" #afield/rect [890.0 440.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_broad_code_.kt" "lines" 28 "characters" 898 "sha256" "821cc3fbd5107d84571f217c229d2419555ff80a91c6f62b6c7a5d889b6292bf"} {"name" "vertex" "language" "glsl" "path" "aperture_broad_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_broad_fragment_.glsl" "lines" 27 "characters" 1057 "sha256" "6b5b546e1ec925580d3684b191205d36c33888920fc31f265d98955e79995c63"}]}
+{"id" "aperture_broad" "index" 5 "name" "6. Aperture 24 px" "parents" ["root" "aperture_quarter"] "children" ["aperture_composite"] "properties" {"children" #{#afield/box "aperture_composite"} "parents" #{#afield/box "root" #afield/box "aperture_quarter"} "name" "6. Aperture 24 px" "_tombstone" false "frame" #afield/rect [890.0 440.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_broad_code_.kt" "lines" 27 "characters" 869 "sha256" "471870b0a902c2ecdfe175f53075f2c88fe01629e484c36d51e1b58a197e67ae"} {"name" "vertex" "language" "glsl" "path" "aperture_broad_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_broad_fragment_.glsl" "lines" 27 "characters" 1057 "sha256" "6b5b546e1ec925580d3684b191205d36c33888920fc31f265d98955e79995c63"}]}
 ```
 
 ```kotlin [field-property box="aperture_broad" name="code" path="aperture_broad_code_.kt"]
@@ -345,14 +342,13 @@ propDown<RenderToTexture>(paintBroad) = RenderToTexture {
     height = (paintSource.height / 4).coerceAtLeast(1)
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
-    clearFirst = true
     clearColor = vec(0, 0, 0, 0)
     debugName = "paintBroad"
 }
 paintBroad.setDefaultSampler(anisotropyEnable = false)
 var module = moduleHere {
     textures("paintQuarter" to paintQuarter)
-    paintBroad.apply()
+    +paintBroad
     blend = false
     depthTest = false
     depthWrite = false
@@ -414,7 +410,7 @@ void main() {
 <!-- field-box id="aperture_medium" index="6" -->
 
 ```edn [field-box id="aperture_medium" role="properties"]
-{"id" "aperture_medium" "index" 6 "name" "5. Aperture 4 / 10 px" "parents" ["root" "aperture_half"] "children" ["aperture_composite"] "properties" {"children" #{#afield/box "aperture_composite"} "parents" #{#afield/box "root" #afield/box "aperture_half"} "name" "5. Aperture 4 / 10 px" "_tombstone" false "frame" #afield/rect [890.0 260.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_medium_code_.kt" "lines" 28 "characters" 899 "sha256" "e72062210b2dae13b31324475f8317984ac0bccff9ffc5220952b4f04f5525d3"} {"name" "vertex" "language" "glsl" "path" "aperture_medium_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_medium_fragment_.glsl" "lines" 29 "characters" 1115 "sha256" "b4e3de183e9ee1c6d70d5df07b441dda42849d8a08d1b5b6f65a6cb87ff904e1"}]}
+{"id" "aperture_medium" "index" 6 "name" "5. Aperture 4 / 10 px" "parents" ["root" "aperture_half"] "children" ["aperture_composite"] "properties" {"children" #{#afield/box "aperture_composite"} "parents" #{#afield/box "root" #afield/box "aperture_half"} "name" "5. Aperture 4 / 10 px" "_tombstone" false "frame" #afield/rect [890.0 260.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_medium_code_.kt" "lines" 27 "characters" 870 "sha256" "fccffc49ddccd6ef85057cd3f4ce17fa284c321fed95b09d020ff68d146176ab"} {"name" "vertex" "language" "glsl" "path" "aperture_medium_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_medium_fragment_.glsl" "lines" 29 "characters" 1115 "sha256" "b4e3de183e9ee1c6d70d5df07b441dda42849d8a08d1b5b6f65a6cb87ff904e1"}]}
 ```
 
 ```kotlin [field-property box="aperture_medium" name="code" path="aperture_medium_code_.kt"]
@@ -425,14 +421,13 @@ propDown<RenderToTexture>(paintMedium) = RenderToTexture {
     height = (paintSource.height / 2).coerceAtLeast(1)
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
-    clearFirst = true
     clearColor = vec(0, 0, 0, 0)
     debugName = "paintMedium"
 }
 paintMedium.setDefaultSampler(anisotropyEnable = false)
 var module = moduleHere {
     textures("paintHalf" to paintHalf)
-    paintMedium.apply()
+    +paintMedium
     blend = false
     depthTest = false
     depthWrite = false

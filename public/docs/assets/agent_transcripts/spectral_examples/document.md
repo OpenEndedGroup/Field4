@@ -57,7 +57,7 @@ From `code`
 Synthesise a rising linear chirp + two steady tones, FFT it, draw the one-sided spectrum.
 
 ```edn [field-box id="spectral_one_spectrum" role="properties"]
-{"id" "spectral_one_spectrum" "index" 1 "name" "one spectrum (chirp + tones)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "one spectrum (chirp + tones)" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_one_spectrum_code_.kt" "lines" 37 "characters" 1189 "sha256" "947730db553f05567988a51025fd464ccfb9a86c5f01fbe80801ec2163d000af"}]}
+{"id" "spectral_one_spectrum" "index" 1 "name" "one spectrum (chirp + tones)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "one spectrum (chirp + tones)" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_one_spectrum_code_.kt" "lines" 37 "characters" 1183 "sha256" "01e932c3d5ab9fce79b80d434d93fa900a311e36f1004ebddd8850af60c5079b"}]}
 ```
 
 ```kotlin [field-property box="spectral_one_spectrum" name="code" path="spectral_one_spectrum_code_.kt"]
@@ -90,10 +90,10 @@ showSignals(
     channel = "main",
     xTitle = "frequency (Hz)",
     yTitle = "magnitude",
-    marks = listOf(
+    marks = [
         "centroid ${"%.0f".format(centroid)} Hz" to centroid,
         "85% rolloff ${"%.0f".format(rolloff)} Hz" to rolloff,
-    ),
+    ],
 )
 println(
     "peak=${"%.0f".format(peak)}Hz centroid=${"%.0f".format(centroid)}Hz rolloff=${"%.0f".format(rolloff)}Hz bins=${mag.size}",

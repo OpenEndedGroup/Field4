@@ -1,0 +1,10 @@
+{
+  "spans": 95,
+  "distinctKotlinBodies": 91,
+  "formattedBodies": 84,
+  "editedFiles": 22,
+  "executableTokensAndRawLiteralsPreserved": true,
+  "layoutPunctuation": "Ktfmt may change commas and semicolons; all other executable tokens match",
+  "fragmentAndFoldMarkersPreserved": true,
+  "actualFormatter": "Field editor import analysis and ktfmt; no GLSL bodies in scoped sources"
+}

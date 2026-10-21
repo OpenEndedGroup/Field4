@@ -17,6 +17,9 @@ description: >
   of SVG per redraw, against 95 kB of PNG. The first box is executed; the second is a `loop { }`,
   so it is launched, given 90 real runloop frames, and stopped. Executed end to end by
   examples.demo-transcript.exec.
+docs:
+  - page: stipple_transport.md
+    why: "Explains stippling an image with even dot spacing."
 operations:
   - create:
       box: stipple_hello

@@ -17,11 +17,17 @@ green:
 import afield.geometry.topology.morsesmale.*
 
 // Three hills and two pits on a 240 × 180 grid.
-val bumps = [Triple(70.0, 60.0, 1.0), Triple(165.0, 50.0, 0.8), Triple(120.0, 125.0, 0.9),
-    Triple(45.0, 140.0, -0.6), Triple(195.0, 135.0, -0.7)]
-val field = Img.generate(240, 180) { x, y ->
-    bumps.sumOf { (cx, cy, a) -> a * exp(-((x - cx).pow(2) + (y - cy).pow(2)) / 900.0) }.toFloat()
-}
+val bumps = [
+    Triple(70.0, 60.0, 1.0),
+    Triple(165.0, 50.0, 0.8),
+    Triple(120.0, 125.0, 0.9),
+    Triple(45.0, 140.0, -0.6),
+    Triple(195.0, 135.0, -0.7),
+]
+val field =
+    Img.generate(240, 180) { x, y ->
+        bumps.sumOf { (cx, cy, a) -> a * exp(-((x - cx).pow(2) + (y - cy).pow(2)) / 900.0) }.toFloat()
+    }
 
 val result = MorseSmale.compute(field)
 println(result)
@@ -30,7 +36,8 @@ val shaded = field.normalized().colormap("viridis")
 showImgGrid(
     "the field" to shaded.drawFLines(emptyList(), scale = 2.0),
     "its Morse–Smale complex" to shaded.drawFLines(result.toFLines() + result.criticalPointsFLine(), scale = 2.0),
-    columns = 2, cellSide = 480,
+    columns = 2,
+    cellSide = 480,
 )
 ```
 
@@ -65,20 +72,30 @@ complex at any threshold without recomputing it:
 import afield.geometry.topology.morsesmale.*
 
 // The same five bumps, now under fine noise: hundreds of extra hills and pits a pixel or two across.
-val bumps = [Triple(70.0, 60.0, 1.0), Triple(165.0, 50.0, 0.8), Triple(120.0, 125.0, 0.9),
-    Triple(45.0, 140.0, -0.6), Triple(195.0, 135.0, -0.7)]
+val bumps = [
+    Triple(70.0, 60.0, 1.0),
+    Triple(165.0, 50.0, 0.8),
+    Triple(120.0, 125.0, 0.9),
+    Triple(45.0, 140.0, -0.6),
+    Triple(195.0, 135.0, -0.7),
+]
 val random = java.util.Random(4)
-val field = Img.generate(240, 180) { x, y ->
-    (bumps.sumOf { (cx, cy, a) -> a * exp(-((x - cx).pow(2) + (y - cy).pow(2)) / 900.0) } + 0.05 * random.nextGaussian()).toFloat()
-}.gaussianBlur(1.0)
+val field =
+    Img.generate(240, 180) { x, y ->
+            (bumps.sumOf { (cx, cy, a) -> a * exp(-((x - cx).pow(2) + (y - cy).pow(2)) / 900.0) } +
+                    0.05 * random.nextGaussian())
+                .toFloat()
+        }
+        .gaussianBlur(1.0)
 
 val complex = MorseSmale.build(field)
 val shaded = field.normalized().colormap("viridis")
-val panels = [0.0, 0.02, 0.3].map { p ->
-    val r = complex.simplify(p)
-    "persistence $p: ${r.criticalPoints.size} critical points" to
-        shaded.drawFLines(r.toFLines() + r.criticalPointsFLine(4.0), scale = 2.0)
-}
+val panels =
+    [0.0, 0.02, 0.3].map { p ->
+        val r = complex.simplify(p)
+        "persistence $p: ${r.criticalPoints.size} critical points" to
+            shaded.drawFLines(r.toFLines() + r.criticalPointsFLine(4.0), scale = 2.0)
+    }
 showImgGrid(*panels.toTypedArray(), columns = 3, cellSide = 480)
 complex.close()
 ```
@@ -112,11 +129,11 @@ println(result)
 
 showImgGrid(
     "photograph" to print,
-    "basins" to print.overlay(result.segmentationImage(), 0.55)
-        .drawFLines(result.toFLines(traceAscending = false)),
+    "basins" to print.overlay(result.segmentationImage(), 0.55).drawFLines(result.toFLines(traceAscending = false)),
     "ridges" to
         print.drawFLines(result.toFLines(traceDescending = false, thickness = 2.0) + result.criticalPointsFLine(5.0)),
-    columns = 3, cellSide = 320,
+    columns = 3,
+    cellSide = 320,
 )
 ```
 
@@ -138,8 +155,14 @@ val complex = MorseSmale.build(print.luma().gaussianBlur(3.0))
 fun show(p: Double) {
     val r = complex.simplify(p)
     showImgGrid(
-        "${r.criticalPoints.size} points, ${r.separatrixCount} curves" to print.drawFLines(r.toFLines(traceDescending = false, thickness = 2.0) + r.criticalPointsFLine(5.0), scale = 2.0),
-        channel = "ridges", columns = 1, cellSide = 520,
+        "${r.criticalPoints.size} points, ${r.separatrixCount} curves" to
+            print.drawFLines(
+                r.toFLines(traceDescending = false, thickness = 2.0) + r.criticalPointsFLine(5.0),
+                scale = 2.0,
+            ),
+        channel = "ridges",
+        columns = 1,
+        cellSide = 520,
     )
 }
 
@@ -165,30 +188,42 @@ This example walks the network around one saddle and prints the strongest persis
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morse_smale/network.png" alt="a markdown output: the network summary line giving its node and curve counts, then a table of the four separatrices of one saddle, two running down to minima and two up to maxima, with each one's curve id, the id of the node it ends at, its persistence and its number of points, then a table of the four most persistent pairs of the persistence diagram" wait="2" capture="box" open-outputs="true" padding="20" requires="morse-smale" name="morse-smale-network" embed=true}
 import afield.geometry.topology.morsesmale.*
 
-val bumps = [Triple(70.0, 60.0, 1.0), Triple(165.0, 50.0, 0.8), Triple(120.0, 125.0, 0.9),
-    Triple(45.0, 140.0, -0.6), Triple(195.0, 135.0, -0.7)]
-val field = Img.generate(240, 180) { x, y ->
-    bumps.sumOf { (cx, cy, a) -> a * exp(-((x - cx).pow(2) + (y - cy).pow(2)) / 900.0) }.toFloat()
-}
+val bumps = [
+    Triple(70.0, 60.0, 1.0),
+    Triple(165.0, 50.0, 0.8),
+    Triple(120.0, 125.0, 0.9),
+    Triple(45.0, 140.0, -0.6),
+    Triple(195.0, 135.0, -0.7),
+]
+val field =
+    Img.generate(240, 180) { x, y ->
+        bumps.sumOf { (cx, cy, a) -> a * exp(-((x - cx).pow(2) + (y - cy).pow(2)) / 900.0) }.toFloat()
+    }
 val result = MorseSmale.compute(field)
 val network = result.network
 
 // The saddle between the two upper hills, and the four separatrices that leave it.
 val saddle = result.criticalPoints.filter { it.type == CriticalType.SADDLE }.minBy { abs(it.x - 118) + abs(it.y - 55) }
-val arcs = network.curvesAt(saddle.id).joinToString("\n") { c ->
-    val end = result.complex.critical(c.endNode!!)!!
-    "| ${c.id} | ${if (c.attributes["kind"] == 0.0) "down" else "up"} to ${end.type.name.lowercase()} ${end.id} " +
-        "| %.3f | ${c.vertexCount} |".format(c.attributes["persistence"])
-}
+val arcs =
+    network.curvesAt(saddle.id).joinToString("\n") { c ->
+        val end = result.complex.critical(c.endNode!!)!!
+        "| ${c.id} | ${if (c.attributes["kind"] == 0.0) "down" else "up"} to ${end.type.name.lowercase()} ${end.id} " +
+            "| ${c.attributes.getValue("persistence").f3} | ${c.vertexCount} |"
+    }
 
 // The persistence diagram, strongest pairs first.
-val pairs = result.complex.persistencePairs.filter { it.death != null }.sortedByDescending { it.persistence }.take(4)
-    .joinToString("\n") { "| ${it.dimension} | ${it.birth} | ${it.death} | %.3f |".format(it.persistence) }
+val pairs =
+    result.complex.persistencePairs
+        .filter { it.death != null }
+        .sortedByDescending { it.persistence }
+        .take(4)
+        .joinToString("\n") { "| ${it.dimension} | ${it.birth} | ${it.death} | ${it.persistence.f3} |" }
 
-markdown("""
+markdown(
+    """
 $network
 
-**Saddle ${saddle.id}** at (%.1f, %.1f), value %.3f:
+**Saddle ${saddle.id}** at (${saddle.x.f1}, ${saddle.y.f1}), value ${saddle.value.f3}:
 
 | curve | runs | persistence | points |
 | --- | --- | ---: | ---: |
@@ -199,7 +234,8 @@ $arcs
 | dimension | birth | death | persistence |
 | ---: | ---: | ---: | ---: |
 $pairs
-""".format(saddle.x, saddle.y, saddle.value))
+""",
+)
 ```
 
 The parts of a result:
@@ -229,9 +265,11 @@ analysed, and the result is shown when it arrives:
 import afield.geometry.topology.morsesmale.*
 
 val photo = imgFromFile("public/docs/assets/vision/fline-viewer.jpg", 3)
-runAsync(onResult = { r: MorseSmaleResult ->
-    showImgGrid("ridges" to photo.drawFLines(r.toFLines(traceDescending = false)), columns = 1, cellSide = 800)
-}) {
+runAsync(
+    onResult = { r: MorseSmaleResult ->
+        showImgGrid("ridges" to photo.drawFLines(r.toFLines(traceDescending = false)), columns = 1, cellSide = 800)
+    },
+) {
     MorseSmale.computeAsync(photo.luma().gaussianBlur(2.0), persistence = 0.05)
 }
 ```

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_graphics_context" index="0" -->
 
 ```edn [field-box id="agent_graphics_context" role="properties"]
-{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["path_traced_reconstruction"] "properties" {"children" #{#afield/box "path_traced_reconstruction"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 17 "characters" 332 "sha256" "f6d44c51bceafe38b76c3155a6a00e129dbebbff1c01db27a846eea5bd4da524"}]}
+{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["path_traced_reconstruction"] "properties" {"children" #{#afield/box "path_traced_reconstruction"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 17 "characters" 331 "sha256" "0925cc7e55ed8f4619c46cce4c8106e5e68b88f1ffcd20f5957115422d43b653"}]}
 ```
 
 ```kotlin [field-property box="agent_graphics_context" name="code" path="agent_graphics_context_code_.kt"]
@@ -39,7 +39,7 @@ start(renderer::run)
 <!-- field-box id="path_traced_reconstruction" index="1" -->
 
 ```edn [field-box id="path_traced_reconstruction" role="properties"]
-{"id" "path_traced_reconstruction" "index" 1 "name" "path traced reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "path traced reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_traced_reconstruction_code_.kt" "lines" 60 "characters" 2553 "sha256" "1ec07ef0c0bc9f0df9034986e30bbf212c9a2fbb6d556d5b1b17a09d0b3d70dc"}]}
+{"id" "path_traced_reconstruction" "index" 1 "name" "path traced reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "path traced reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_traced_reconstruction_code_.kt" "lines" 61 "characters" 2628 "sha256" "d0c6a91d64e5ef3900fac1387684e29a4bd2189bcd6145b4bec9994a8033e154"}]}
 ```
 
 ```kotlin [field-property box="path_traced_reconstruction" name="code" path="path_traced_reconstruction_code_.kt"]
@@ -47,7 +47,7 @@ import afield.graphics.scene.fabricated.*
 import afield.media.reconstruction.*
 
 prop<PathTracedReconstruction>(lab)
-fromContextWithNameOrNull<PathTracedReconstruction>("lab")?.close()
+val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
 NgxSupport.rayReconstructionAvailability(renderer.device).getOrThrow()
 val scene = PathTraceScene().apply {
     val floor = material(PathTraceMaterial.diffuse(.45f, .5f, .55f))
@@ -68,7 +68,8 @@ val camera = Camera(renderer).also {
 }
 // Keep the tracer uninstalled: lab records trace -> raw guides -> NGX in one ordered pass.
 val tracer = PathTracingRenderer(renderer, scene, PathTraceEnvironment.constant(.08f, .1f, .15f), 1920, 1080, camera)
-lab = PathTracedReconstruction(tracer).install()
+val ownedLab = runScope.own(PathTracedReconstruction(tracer).install())
+lab = ownedLab
 var view = 2
 var move = false
 var cut = false
@@ -88,7 +89,7 @@ println(
 frames {
     var phase = 0.0
     while (true) {
-        lab.view = PathTracedReconstruction.View.entries[view]
+        ownedLab.view = PathTracedReconstruction.View.entries[view]
         tracer.samplesPerFrame = samples
         if (move) {
             phase += .015
@@ -96,12 +97,12 @@ frames {
         }
         if (cut) {
             camera.at.z = if (camera.at.z > 7) 6f else 7.5f
-            lab.reset("camera cut")
+            ownedLab.reset("camera cut")
             cut = false
         }
         frame()
     }
 }
-    .end { lab.close() }
+    .end { ownedLab.close() }
 ```
 

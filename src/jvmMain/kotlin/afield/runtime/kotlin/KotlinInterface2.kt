@@ -135,7 +135,8 @@ import kotlin.system.measureNanoTime
  *
  * Each box gets its own [KotlinInterface2], with its own REPL history and snippet classloader. It
  * compiles snippets with the K2 compiler, evaluates them, tracks the variables and functions they
- * declare, and answers completion requests in the editor.
+ * declare, and answers completion requests in the editor. Redeclaring a plain `var` resets older
+ * mutable bindings of the same name and Kotlin type after evaluation; captured `val`s stay fixed.
  */
 
 class KotlinInterface2(
@@ -560,7 +561,12 @@ class KotlinInterface2(
                     runtimeClass = scriptInstance?.javaClass?.name ?: evalResult.javaClass.name
                     context.debugScripts.attachLatestRuntimeClass(scriptInstance?.javaClass?.name)
                 }
-                if (updateContext) contextUpdater.update()
+                if (updateContext) contextUpdater.update(
+                    when (val evaluated = r) {
+                        is ResultWithDiagnostics.Success -> evaluated.value.get().result
+                        else -> null
+                    }
+                )
             }
             lprintln("info,kotlin,evaluate", "evaluate=${formatMillis(ns)}")
             val success = r is ResultWithDiagnostics.Success && r.value.get().result !is ResultValue.Error
@@ -614,7 +620,12 @@ class KotlinInterface2(
                     runtimeClass = scriptInstance?.javaClass?.name ?: evalResult.javaClass.name
                     context.debugScripts.attachLatestRuntimeClass(scriptInstance?.javaClass?.name)
                 }
-                if (updateContext) contextUpdater.update()
+                if (updateContext) contextUpdater.update(
+                    when (val evaluated = r) {
+                        is ResultWithDiagnostics.Success -> evaluated.value.get().result
+                        else -> null
+                    }
+                )
             }
             lprintln("info,kotlin,evaluate", "evaluate=${formatMillis(ns)}")
             val boxContext = (implicits.firstOrNull { it is Box } as? Box) ?: associatedBox as? Box
@@ -3254,28 +3265,43 @@ class KotlinInterface2(
         private val ki: KotlinInterface2
     ) {
 
-        private var lastProcessedSnippet: LinkedSnippet<KJvmEvaluatedSnippet>? = null
+        private val processedSnippets =
+            Collections.newSetFromMap(IdentityHashMap<LinkedSnippet<KJvmEvaluatedSnippet>, Boolean>())
+
+        private class MutableBinding(val field: Field, val owner: Any, val type: KType) {
+            fun matches(field: Field, owner: Any): Boolean =
+                this.field == field && (Modifier.isStatic(field.modifiers) || this.owner === owner)
+        }
+
+        private val mutableBindings = mutableMapOf<String, MutableList<MutableBinding>>()
 
         // Track exported declarations by alias for idempotent preamble updates
         private val exportedDeclarations = mutableMapOf<String, String>()
 
-        fun update() {
+        fun update(evaluated: ResultValue? = null) {
             try {
                 var lastSnippet = evaluator.lastEvaluatedSnippet
                 val newSnippets = mutableListOf<Any>()
-                while (lastSnippet != lastProcessedSnippet && lastSnippet != null) {
-                    val line = lastSnippet.get().result.scriptInstance
-                    if (line != null) newSnippets.add(line)
+                // A cached evaluation can return to an older node. Do not replay that node's
+                // ancestors and propagate their stale fields over the just-evaluated initializer.
+                while (lastSnippet != null && processedSnippets.add(lastSnippet)) {
+                    val result = lastSnippet.get().result
+                    val line = result.scriptInstance
+                    // A failed initializer must leave the running code's values alone.
+                    if (line != null && result !is ResultValue.Error) newSnippets.add(line)
                     lastSnippet = lastSnippet.previous
                 }
                 newSnippets.reverse()
-                refreshVariables(newSnippets)
+                val hasNewDeclarations = newSnippets.isNotEmpty()
+                // Cached evaluation can reuse its history node and still rerun an initializer.
+                val current = evaluated?.takeUnless { it is ResultValue.Error }?.scriptInstance
+                if (current != null && newSnippets.none { it === current }) newSnippets.add(current)
+                refreshVariables(newSnippets, current)
                 refreshMethods(newSnippets)
-                if (newSnippets.isNotEmpty()) {
+                if (hasNewDeclarations) {
                     context.generation++
                 }
 
-                lastProcessedSnippet = evaluator.lastEvaluatedSnippet
             } catch (e: ReflectiveOperationException) {
                 lprintln("error,kotlin", "Exception updating current variables $e")
             } catch (e: NullPointerException) {
@@ -3520,17 +3546,17 @@ class KotlinInterface2(
         }
 
         @Throws(ReflectiveOperationException::class)
-        private fun refreshVariables(lines: List<Any>) {
+        private fun refreshVariables(lines: List<Any>, current: Any?) {
             for (line in lines) {
                 val seen = mutableSetOf<String>()
                 val fields = line.javaClass.declaredFields
-                findVariables(fields, line, seen)
+                findVariables(fields, line, seen, line === current)
                 findKotlinProperties(line, seen)
             }
         }
 
         @Throws(IllegalAccessException::class)
-        private fun findVariables(fields: Array<Field>, o: Any, seen: MutableSet<String>) {
+        private fun findVariables(fields: Array<Field>, o: Any, seen: MutableSet<String>, reset: Boolean) {
             for (field in fields) {
                 val fieldName = field.name
                 if (fieldName.contains("$\$implicitReceiver") || fieldName.contains("script$") || fieldName.endsWith("\$delegate")) {
@@ -3541,6 +3567,7 @@ class KotlinInterface2(
                 val value = field.get(o)
                 val descriptor = field.kotlinProperty
                 if (descriptor != null) {
+                    resetOlderMutableBindings(field, descriptor, o, value, reset)
                     context.vars[descriptor.name] = KotlinVariableInfo(value, descriptor, o)
                     seen += descriptor.name
                     val exportTargets = exportTargetsForProperty(field, descriptor)
@@ -3551,6 +3578,24 @@ class KotlinInterface2(
                         context.exportedVariables -= descriptor.name
                     }
                 }
+            }
+        }
+
+        /**
+         * A declaration rerun resets older mutable slots used by existing closures. This happens once
+         * after evaluation; it does not turn the snippets' fields into shared storage. Immutable
+         * snapshots, delegates and differently typed declarations keep their normal behavior.
+         */
+        private fun resetOlderMutableBindings(field: Field, descriptor: KProperty<*>, owner: Any, value: Any?, reset: Boolean) {
+            if (descriptor !is KMutableProperty<*>) return
+            if (descriptor.isLateinit && value == null) return
+            val type = descriptor.returnType
+            val bindings = mutableBindings.getOrPut(descriptor.name) { mutableListOf() }
+            for (older in bindings) {
+                if (reset && !older.matches(field, owner) && older.type == type) older.field.set(older.owner, value)
+            }
+            if (bindings.none { it.matches(field, owner) }) {
+                bindings.add(MutableBinding(field, owner, type))
             }
         }
 

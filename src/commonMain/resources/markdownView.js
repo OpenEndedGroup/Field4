@@ -1,5 +1,5 @@
 import { aiChatMarkdownToHtml } from "./afield.mjs";
-import { classifyGuideLink, guideAssetUrl, headingSlug } from "./documentGuideModel.js";
+import { classifyGuideLink, docsPageUrl, guideAssetUrl, headingSlug } from "./documentGuideModel.js";
 
 export const safeMarkdownUrl = (url, allowImageData = false) => {
         const raw = String(url || "").trim()
@@ -7,7 +7,7 @@ export const safeMarkdownUrl = (url, allowImageData = false) => {
         try {
                 const parsed = new URL(raw, window.location.href)
                 const protocol = parsed.protocol.toLowerCase()
-                if (protocol === "http:" || protocol === "https:" || protocol === "mailto:" || (!allowImageData && protocol === "field:")) {
+                if (protocol === "http:" || protocol === "https:" || protocol === "mailto:" || (!allowImageData && (protocol === "field:" || protocol === "field-docs:"))) {
                         return raw
                 }
                 if (allowImageData && protocol === "data:" && /^data:image\/(png|jpeg|gif|webp);base64,/i.test(raw)) {
@@ -243,6 +243,7 @@ export function renderFieldMarkdown(root, markdown, options = {}) {
             e.preventDefault(); e.stopPropagation();
             if (options.onLink) options.onLink(link);
             else if (link.kind === 'box') options.onBox?.(link);
+            else if (link.kind === 'docs') window.switchToDocsIframe?.(docsPageUrl(link.page));
             else if (link.kind === 'guide') {
                 if (anchor.getAttribute('href').startsWith('#')) headings.find(h => h.id === link.hash)?.node.scrollIntoView({block: 'start'});
                 else options.onGuide?.(link);

@@ -11,7 +11,7 @@ prop<RenderToTexture>(target) = streamer.start().first()
 
 renderer.renderList += "target" to target
 
-var module = moduleHere { target.apply() }
+var module = moduleHere { +target }
 var m = Mesh()
 module += "mainMesh" to m
 target += "boo" to module
@@ -20,7 +20,6 @@ val camera = Camera()
 m.p = camera.p
 m.m = camera.m
 m.finalColor = { vec(Math.random(), Math.random(), Math.random(), 1.0) }
-target.parameters.clearFirst = true
 
 var kc by keyCamera(camera = camera)
 loop {

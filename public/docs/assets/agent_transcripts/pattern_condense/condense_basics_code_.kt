@@ -11,12 +11,12 @@ POKE THIS: change a line in `rhythms`, or add one. A mask you invent comes back 
 a named figure - x(p,s) for Euclidean, x(kN) / x(gN) for Kolakoski - or spelled out, and
 which one you get is decided by character count and nothing else.
 */
-val rhythms = listOf(
+val rhythms = [
     "x ~ ~ x ~ x ~ ~",
     "x ~ ~ x x ~ x ~ ~ x ~ ~ x x ~ x",
     "bd [hh hh] sd [cp cp]",
     "a b c d e c a d",
-)
+]
 
 val found = showPatCondense(*rhythms.toTypedArray(), channel = "roll")
 

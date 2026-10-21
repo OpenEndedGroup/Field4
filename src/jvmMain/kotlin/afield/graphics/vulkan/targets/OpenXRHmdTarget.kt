@@ -550,7 +550,6 @@ class OpenXRHmdTarget(
             colorAttachments = 1,
             colorFormats = listOf(left.format),
             colorLayerCount = 1,
-            clearFirst = true,
             colorSampled = true,
             colorTransferSrc = true,
             useDepth = true,

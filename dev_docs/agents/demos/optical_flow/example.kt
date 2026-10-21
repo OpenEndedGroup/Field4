@@ -1,15 +1,16 @@
 import afield.media.vision.*
 
 prop<OpticalFlowDemo>(lab)
-fromContextWithNameOrNull<OpticalFlowDemo>("lab")?.close()
+val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
 // AUTO: the VK_NV_optical_flow engine where the device has one, portable pyramidal Lucas–Kanade everywhere else.
-lab = OpticalFlowDemo(renderer, backend = OpticalFlowBackend.AUTO)
-println("Optical flow backend: ${lab.flow.backend}")
+val ownedLab = runScope.own(OpticalFlowDemo(renderer, backend = OpticalFlowBackend.AUTO))
+lab = ownedLab
+println("Optical flow backend: ${ownedLab.flow.backend}")
 var gain = 1f
 var damping = .98f
 // The two backends report cost on different scales, so the rejection threshold starts at the demo's per-backend
 // default.
-var cost = lab.costThreshold
+var cost = ownedLab.costThreshold
 var deform = true
 var reset = false
 controlGroup("optical flow") {
@@ -18,8 +19,8 @@ controlGroup("optical flow") {
     slider(
         "Reject cost above",
         min = 0.0,
-        max = 6.0 * lab.costDisplayRange,
-        initialValue = lab.costThreshold.toDouble(),
+        max = 6.0 * ownedLab.costDisplayRange,
+        initialValue = ownedLab.costThreshold.toDouble(),
     ) {
         cost = it.toFloat()
     }
@@ -37,17 +38,17 @@ frames {
     var time = 0f
     while (true) {
         // Pixel displacement for the translation check; wiggle supplies its own motion.
-        lab.dx = if (deform) 0f else 12f
-        lab.dy = if (deform) 0f else -8f
-        lab.displayRange = if (deform) 3f else 20f
-        lab.gain = gain
-        lab.damping = damping
-        lab.costThreshold = cost
-        lab.deformation = deform
-        lab.update(time, reset)
+        ownedLab.dx = if (deform) 0f else 12f
+        ownedLab.dy = if (deform) 0f else -8f
+        ownedLab.displayRange = if (deform) 3f else 20f
+        ownedLab.gain = gain
+        ownedLab.damping = damping
+        ownedLab.costThreshold = cost
+        ownedLab.deformation = deform
+        ownedLab.update(time, reset)
         reset = false
-        time += lab.pairStep
+        time += ownedLab.pairStep
         frame()
     }
 }
-    .end { lab.close() }
+    .end { ownedLab.close() }
