@@ -48,6 +48,14 @@ class WindowPointer(
     @Volatile var down: Boolean = false
         private set
 
+    /**
+     * Whether the window has been polled yet. Until it has, [width] and [height] are the
+     * framebuffer's pixels, twice the points on a Retina display, so a sketch that places things
+     * by the window's size waits for this.
+     */
+    @Volatile var polled: Boolean = false
+        private set
+
     init {
         window.onPoll[name] = sequence {
             while (true) {
@@ -60,6 +68,7 @@ class WindowPointer(
                 val hovered = GLFW.glfwGetWindowAttrib(window.windowHandle, GLFW.GLFW_HOVERED) == GLFW.GLFW_TRUE
                 inside = hovered && x >= 0 && y >= 0 && x <= size.w && y <= size.h
                 down = window.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_LEFT)
+                polled = true
                 onPoll(this@WindowPointer)
                 yield(true)
             }

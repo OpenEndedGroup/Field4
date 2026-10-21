@@ -453,6 +453,8 @@ class ParticleSketch(
         override fun render(command: CommandBuffer, index: Int) {
             val module = module ?: return
             val mesh = mesh ?: return
+            // the world is the window's size in points, which the first poll brings
+            if (!windowPointer.polled) return
             val s = settings
 
             if (resetPending) {

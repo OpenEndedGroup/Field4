@@ -461,12 +461,13 @@ vec2 fieldForce(int r, RuleRecord rl, inout Boid me, uint self) {
 
 // ---- the walk ----
 
-// Columns (or rows) within `span` cells of `centre`, the page's neighbourSpan: every cell once when
-// the span covers the grid, wrapped when the edges wrap, clipped when they do not.
+// The k-th column (or row) within `span` cells of `centre`, the page's neighbourSpan: every cell
+// once when the span covers the grid, wrapped when the edges wrap, clipped when they do not.
+// -1 skips a clipped cell; -2 is past the end.
 int fieldSpan(int centre, int cells, int span, bool wrap, int k) {
-    if (cells <= 2 * span + 1) return k < cells ? k : -1;
+    if (cells <= 2 * span + 1) return k < cells ? k : -2;
+    if (k > 2 * span) return -2;
     int v = centre - span + k;
-    if (k > 2 * span) return -1;
     if (wrap) return (v % cells + cells) % cells;
     return (v < 0 || v >= cells) ? -1 : v;
 }
@@ -509,10 +510,12 @@ void fieldStep(uint i) {
         int spanY = spanX;
         for (int ky = 0; ky < 64; ky++) {
             int cy = fieldSpan(home.y, world.gridRows, spanY, wrap, ky);
-            if (cy < 0) break;
+            if (cy == -2) break;
+            if (cy < 0) continue;
             for (int kx = 0; kx < 64; kx++) {
                 int cx = fieldSpan(home.x, world.gridCols, spanX, wrap, kx);
-                if (cx < 0) break;
+                if (cx == -2) break;
+                if (cx < 0) continue;
                 uint cell = uint(cy * world.gridCells + cx);
                 for (uint q = flock.cellStart.v[cell]; q < flock.cellEnd.v[cell]; ++q) {
                     uint j = flock.gridValues.v[q];

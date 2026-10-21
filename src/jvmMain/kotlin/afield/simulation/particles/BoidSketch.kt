@@ -361,6 +361,9 @@ class BoidSketch(
     /** The buffer holding the latest step's boids. */
     val latest: FrameBufferGroup get() = resources.boids[resources.current]
 
+    /** The world's size in window points: the page's `W` and `H`. */
+    val size: Vector2f get() = vec(resources.windowPointer.width, resources.windowPointer.height)
+
     /** Steps taken since the flock started, the page's `t`. */
     val steps: Long get() = resources.stepCount
 
@@ -678,7 +681,8 @@ class BoidSketch(
         }
 
         override fun render(command: CommandBuffer, index: Int) {
-            if (module == null || !::flock.isInitialized) return
+            // boids are placed by the window's size in points, which the first poll brings
+            if (module == null || !::flock.isInitialized || !windowPointer.polled) return
             val s = settings
             val now = System.nanoTime()
             if (s.fps > 0 && lastNanos != 0L && now - lastNanos < (1e9 / s.fps).toLong()) return
