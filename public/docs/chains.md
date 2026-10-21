@@ -156,11 +156,29 @@ every box in the document does.
     ShaderTrinket, and draws it in the renderer window. Read a classmate's picture into your own
     shader and the room becomes one patch.
 
+-   ![Eight thick rings in teal, amber and blue, each with a pale dot at its centre, overlapping on a dark ground](assets/agent_transcripts_gallery/shadertrinket_flat_rings.png)
+
+    **[ShaderTrinket](agent_transcripts.md#shadertrinket).** A ShaderToy `mainImage` in a box,
+    recompiled on alt-R with any error marked on its own line. Each preset is a box you launch,
+    and the camera is one line away as `iChannel0`.
+
 -   ![A rippled pale-cyan terrain of triangles floating over a dark studio ground, casting a soft shadow onto it](assets/agent_transcripts_gallery/madp_geometry_terrain.png)
 
     **[Geometry](agent_transcripts.md#madp_geometry).** A model is a recipe of triangles emitted
     through a transform stack with a current colour and material, drawn in a studio-lit view you
     can orbit and export as GLB. The presets run from a rippled terrain to a Menger sponge.
+
+-   ![Field's canvas as a score: boxes spread left to right, an orange playhead crossing two lit boxes, and a dark panel under the first box showing rows of thin orange and blue bars](assets/agent_transcripts_gallery/madp_score.png)
+
+    **[Score](agent_transcripts.md#madp_score).** The canvas is the score: a playhead sweeps the
+    boxes, and each one draws and plays sound while the playhead is over it. Drag a box to move
+    it in time, or stretch it to make it last longer.
+
+-   ![A column of boxes on the left of the dark canvas, and to their right three drawn strokes as cyan lines strung with small coloured beads](assets/agent_transcripts_gallery/madp_line.png)
+
+    **[Line](agent_transcripts.md#madp_line).** Draw on the canvas and each stroke turns into a
+    moving, sounding object whose shape sets up a small synth choir. Every stroke keeps the code
+    it was drawn with, so an edit changes only the strokes you draw next.
 
 -   ![The Barnsley fern: a tall green frond of fine glowing dust on black, its leaflets built of smaller leaflets](assets/agent_transcripts_gallery/fern_iterated_systems_barnsley.png)
 
