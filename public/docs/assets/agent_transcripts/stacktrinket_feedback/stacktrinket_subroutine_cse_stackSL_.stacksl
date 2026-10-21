@@ -1,0 +1,24 @@
+# ring-a and ring-b are deliberately similar; ring-a is called twice.
+: ring-a
+  drop
+  0-> 0.982 *
+  p length 0.42 0.035 pulse 0.08 *
+  +
+;
+
+: ring-b
+  drop
+  0-> 0.982 *
+  p length 0.52 0.035 pulse 0.05 *
+  +
+;
+
+drop
+input ring-a
+input ring-b
++
+input ring-a
++ 0.333 *
+dup ->0
+palette
+saturate

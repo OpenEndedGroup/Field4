@@ -11,6 +11,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import land_precheck as precheck  # noqa: E402
 from land_precheck import Change  # noqa: E402
+from tools.git_isolation import scrub_process_env  # noqa: E402
+
+# This module builds scratch git repositories; an inherited GIT_DIR would redirect them.
+scrub_process_env()
 
 
 def keys(change: Change) -> set[str]:

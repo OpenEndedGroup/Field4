@@ -111,10 +111,20 @@ private fun replaceLinks(text: String): String {
     return sb.toString()
 }
 
+private val bulletMarker = Regex("^[-*]\\s+")
+private val numberMarker = Regex("^\\d+[.)]\\s+")
+
+/**
+ * Paragraphs, headings, tables and lists, for the chat panel and for box notes. A list is `-` or `*`
+ * items (`<ul>`) or `1.` / `1)` items (`<ol>`); an indented line after an item continues that item,
+ * so a list item may wrap over several source lines as Markdown allows.
+ */
 private fun renderTextBlock(text: String): String {
     val lines = text.split("\n")
     val html = StringBuilder()
-    var inList = false
+    // "ul", "ol", or null when not in a list
+    var listTag: String? = null
+    val item = mutableListOf<String>()
     val paragraph = mutableListOf<String>()
 
     fun flushParagraph() {
@@ -125,10 +135,19 @@ private fun renderTextBlock(text: String): String {
         paragraph.clear()
     }
 
+    fun flushItem() {
+        if (item.isEmpty()) return
+        html.append("<li>")
+        html.append(inlineFormat(item.joinToString(" ")))
+        html.append("</li>")
+        item.clear()
+    }
+
     fun closeList() {
-        if (inList) {
-            html.append("</ul>")
-            inList = false
+        flushItem()
+        if (listTag != null) {
+            html.append("</").append(listTag).append(">")
+            listTag = null
         }
     }
 
@@ -174,25 +193,35 @@ private fun renderTextBlock(text: String): String {
             continue
         }
 
-        if (Regex("^[-*]\\s+").containsMatchIn(line)) {
+        val marker = bulletMarker.find(line) ?: numberMarker.find(line)
+        if (marker != null) {
             flushParagraph()
-            if (!inList) {
-                html.append("<ul>")
-                inList = true
+            val tag = if (bulletMarker.containsMatchIn(line)) "ul" else "ol"
+            if (listTag != tag) {
+                closeList()
+                html.append("<").append(tag).append(">")
+                listTag = tag
             }
-            html.append("<li>")
-            html.append(inlineFormat(line.replaceFirst(Regex("^[-*]\\s+"), "")))
-            html.append("</li>")
+            flushItem()
+            item.add(line.substring(marker.range.last + 1))
             lineIndex++
             continue
         }
 
+        // an indented line straight after an item is more of that item
+        if (listTag != null && item.isNotEmpty() && raw.firstOrNull()?.isWhitespace() == true) {
+            item.add(line)
+            lineIndex++
+            continue
+        }
+
+        closeList()
         paragraph.add(line)
         lineIndex++
     }
 
     flushParagraph()
-    if (inList) html.append("</ul>")
+    closeList()
     return html.toString()
 }
 

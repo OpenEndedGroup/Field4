@@ -1428,6 +1428,19 @@ private fun visibleMonacoContainer(): HTMLElement? {
     return if (isOverlayVisible(container)) container else null
 }
 
+/**
+ * The rendered Markdown preview a `notes` (or Markdown `contents`) property shows in place of
+ * Monaco (`bootstrapMonaco.js`, `syncNotesMarkdownPreview`), when that is what the editor pane is
+ * showing; null otherwise. Monaco is hidden then, so a check for a visible `.monaco-editor` alone
+ * can never pass for notes.
+ */
+private fun visibleNotesPreview(): HTMLElement? {
+    val container = visibleMonacoContainer() ?: return null
+    if (!container.classList.contains("afield-notes-preview-active")) return null
+    val preview = container.querySelector(".afield-notes-preview") as? HTMLElement ?: return null
+    return if (isOverlayVisible(preview)) preview else null
+}
+
 private fun currentViewportRect() = Rect(
     window.scrollX,
     window.scrollY,
@@ -3126,7 +3139,8 @@ private fun prepareWindowScreenshot(req: WindowScreenshotRequest): WindowScreens
         )
     }
 
-    if (req.showEditor && !isOverlayVisible(visibleMonacoContainer()?.querySelector(".monaco-editor"))) {
+    val notesPreview = if (req.showEditor) visibleNotesPreview() else null
+    if (req.showEditor && notesPreview == null && !isOverlayVisible(visibleMonacoContainer()?.querySelector(".monaco-editor"))) {
         return WindowScreenshotResponse(uid = req.uid, success = false, message = "editor not visible yet")
     }
 
@@ -3142,8 +3156,9 @@ private fun prepareWindowScreenshot(req: WindowScreenshotRequest): WindowScreens
     if (req.editorOnly) {
         val editor = visibleMonacoContainer()
             ?: return WindowScreenshotResponse(uid = req.uid, success = false, message = "editor not visible yet")
-        fitEditorPaneToContentAndNote(editor)
-        val clip = clipForRenderedEditorContent(req.padding)
+        // a notes preview is laid out by the page, not Monaco: clip to the pane it fills
+        if (notesPreview == null) fitEditorPaneToContentAndNote(editor)
+        val clip = (if (notesPreview != null) clipForVisibleElement(editor, req.padding) else clipForRenderedEditorContent(req.padding))
             ?: return WindowScreenshotResponse(uid = req.uid, success = false, message = "invalid editor clip")
         return WindowScreenshotResponse(
             uid = req.uid,

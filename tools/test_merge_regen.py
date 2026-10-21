@@ -8,6 +8,10 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from tools.git_isolation import scrub_process_env  # noqa: E402
+
+# This module builds scratch git repositories; an inherited GIT_DIR would redirect them.
+scrub_process_env()
 
 SCRIPT = Path(__file__).resolve().parent / "merge_regen.py"
 ATTRIBUTES = (Path(__file__).resolve().parents[1] / ".gitattributes").read_text()

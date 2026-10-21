@@ -2426,6 +2426,20 @@ under the grids shows what Kotlin heard and changed. Launch the box, then type i
 
 [Open ↗](offline.html?file=assets/agent_transcripts/orca_duet/metadata.edn)
 
+### madp_chargrid
+
+**A picture as a grid of glyph indices.** A box's program writes numbers into a 40 × 25 grid with
+`SET(x, y, g, color, style)`, a charset string turns each number into a character, and each cell can
+carry a CSS colour and a rotation. `charGrid { }` runs the program once a tick and lets it read the
+last tick with `PREV`, which is all Conway's Life needs; `charStream { }` runs one long program in
+which every `SET` waits a tick, so 10 PRINT's maze types itself out. Every glyph can be a dough sound:
+the Glass box's charset is eight bars, A minor from E2 to E4, and its arpeggios draw and play at
+once. The lead box is the demo's plasma; the others are 10 PRINT, Life, matrix rain, Glass, spinners
+(one `CSSVAR` spins the whole field) and a C64 typewriter. A port of the madp charGrid demo; the
+design notes are in `dev_docs/madp/chargrid.md`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_chargrid/metadata.edn)
+
 ### madp_score
 
 **The canvas as a score.** Run the first box and an orange playhead sweeps the canvas from left to
@@ -3117,6 +3131,10 @@ the demo's helpers by the same names (`flock`, `clump`, `spring`, `collide`, `li
 `oscillate`, `bounce`, `wrap`, `ring`, ...); its code holds the demo's `init()` world settings and
 shows a trail slider, pause and reset. Launch another sketch box to switch to it.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/particles_sketchbook_boids.png" capture="native-window" native-wait-frames="90" trim-native=true wait="8.0" embed=true hidden=true timeout="300" name="gallery-particles-sketchbook" alt="Boids ribbon in the native window: a few hundred small glowing dots on near-black, gathered into loose schools in cyan, green, yellow and pink, with faint threads between close neighbours of the same school" macro-file="../../dev_docs/agents/transcripts/particles_sketchbook.yaml" capture-box="particles_renderer"}
+// The transcript builds every box and launches the renderer and boids ribbon.
+```
+
 [Open ↗](offline.html?file=assets/agent_transcripts/particles_sketchbook/metadata.edn)
 
 ### recstl_playground
@@ -3777,6 +3795,22 @@ binds the camera to `iChannel0` with `textures("iChannel0" to webcam())`. A port
 ShaderTrinket demo; the design notes are in `dev_docs/madp/shadertrinket.md`.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/shadertrinket/metadata.edn)
+
+### stacktrinket_feedback
+
+StackTrinket, the classroom StackSL editor, in Field: StackSL programs that read their own previous
+frame. A renderer box, then seven programs beneath it: the pulse ring, feedback fog, persistent
+bloom, store channels, subroutine cse, four memory bands and long memory ecology. Each box keeps its
+program in the `stackSL` tab and calls `stackFeedback()`, which draws it every frame with the last
+frame bound as `state` and follows edits live. The box's lowering panel shows how deep its stack
+ends and any error at its line and column, and its glsl panel the GLSL the program becomes.
+Launching a box replaces the program in the window.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/stacktrinket_feedback_pulse_ring.png" capture="native-window" native-wait-frames="90" trim-native=true wait="3.0" embed=true hidden=true timeout="300" name="gallery-stacktrinket-feedback" alt="The pulse ring in the native window: a soft white ring on black, centred, its radius half the window's width, fading smoothly to black on both sides" macro-file="../../dev_docs/agents/transcripts/stacktrinket_feedback.yaml" capture-box="stacktrinket_renderer"}
+// The transcript builds every box and launches the renderer and the pulse ring.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/stacktrinket_feedback/metadata.edn)
 
 ## Graphics building blocks
 

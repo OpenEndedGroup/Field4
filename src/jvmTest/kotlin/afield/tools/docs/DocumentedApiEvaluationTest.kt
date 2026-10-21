@@ -187,6 +187,11 @@ class DocumentedApiEvaluationTest {
      * and "no cheap evaluator exists" are different sentences.
      */
     private val COMPILE_ONLY_REMAINDER: Map<String, String> = mapOf(
+        // The stacktrinket_feedback starting point (2026-10-20) is COMPILE_ONLY: stackFeedback draws
+        // into a native window's ping-pong target, which needs a live Renderer. StackSLFeedbackTest
+        // compiles every preset and the fragment shader it builds to SPIR-V; the captures in
+        // dev_docs/madp/stacktrinket.md run it on a GPU.
+        "stackFeedback" to "stacktrinket_feedback draws into a native Vulkan window; StackSLFeedbackTest compiles its shader and presets to SPIR-V",
         // temporal_memory.md (2026-10-20): the temporal_memory transcript is COMPILE_ONLY because its
         // dance boxes start a Timestral worker that needs a downloaded checkpoint; they run only as
         // docs captures. This row is a TODO: trimStill is cheap to cover in a jvmTest.

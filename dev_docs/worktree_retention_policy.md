@@ -46,9 +46,17 @@ which matters because caches that carry their own `.gitignore` (`public/.cache`,
 reported file by file. Anything that does not match refuses the tree, and the refusal names it. The
 list is deliberately short; adding a pattern is a decision that the files it matches are worthless.
 
-Two expected precious files, `ARCHIVED_FILES`, are copied out instead of refusing:
+The reverse case matters too: git reports a wholly ignored directory as one entry, so a directory
+that does not match is opened and judged file by file. On 2026-10-21, 13 merged, clean trees (21 GiB)
+were refused for `.afield-local/`, whose only content was the 4 KB `last-workspace.txt` that
+`field.sh` rewrites. `.afield-local/last-workspace.txt` and `.afield-local/*.log` are now regenerable,
+but the folder as a whole is not: kept intermediate renders are copied there, and one such file still
+refuses its tree.
+
+Expected precious files, `ARCHIVED_FILES`, are copied out instead of refusing:
 `NIGHTLY_WORKLOG.md` (deliberately untracked, so it exists only on that disk) to
-`<repo>-archive/worklogs/`, and `.claude/settings.local.json` to `<repo>-archive/settings/`.
+`<repo>-archive/worklogs/`, and `.claude/settings.local.json` and `.claude/launch.json` to
+`<repo>-archive/settings/`.
 
 `.nightly-tmp/`, the nightly agents' scratch directory, used to make every nightly tree read as dirty
 — it was untracked, not ignored. It is now in `.gitignore`, and is also skipped by the dirty check for
