@@ -3119,6 +3119,10 @@ the demo's helpers by the same names (`flock`, `clump`, `spring`, `collide`, `li
 `oscillate`, `bounce`, `wrap`, `ring`, ...); its code holds the demo's `init()` world settings and
 shows a trail slider, pause and reset. Launch another sketch box to switch to it.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/particles_sketchbook_boids.png" capture="native-window" native-wait-frames="90" trim-native=true wait="8.0" embed=true hidden=true timeout="300" name="gallery-particles-sketchbook" alt="Boids ribbon in the native window: a few hundred small glowing dots on near-black, gathered into loose schools in cyan, green, yellow and pink, with faint threads between close neighbours of the same school" macro-file="../../dev_docs/agents/transcripts/particles_sketchbook.yaml" capture-box="particles_renderer"}
+// The transcript builds every box and launches the renderer and boids ribbon.
+```
+
 [Open ↗](offline.html?file=assets/agent_transcripts/particles_sketchbook/metadata.edn)
 
 ### recstl_playground
