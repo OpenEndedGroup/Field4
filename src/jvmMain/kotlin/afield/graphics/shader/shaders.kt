@@ -2311,6 +2311,9 @@ private fun builtInShaderInclude(inside: Box, includePath: String): String? {
         else if (includePath.startsWith("particles/") && !shaderIncludeRoots.containsKey("particles") &&
             afield.simulation.particles.ParticleShaders.has(includePath.removePrefix("particles/")))
             afield.simulation.particles.ParticleShaders.source(includePath.removePrefix("particles/"))
+        else if (includePath.startsWith("splat/") && !shaderIncludeRoots.containsKey("splat") &&
+            afield.graphics.scene.fabricated.SplatShader.hasInclude(includePath.removePrefix("splat/")))
+            afield.graphics.scene.fabricated.SplatShader.include(includePath.removePrefix("splat/"))
         else null
     }
 }
