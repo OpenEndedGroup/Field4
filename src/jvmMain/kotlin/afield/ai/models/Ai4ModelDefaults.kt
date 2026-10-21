@@ -35,6 +35,9 @@ internal object Ai4ModelDefaults {
         if (configured.isNotBlank()) return configured
 
         return when (provider) {
+            "local" -> if (default !in setOf(FLAGSHIP_MODEL, FAST_MODEL, FRONTIER_FALLBACK_MODEL)) default else settings.flagshipModel.takeIf { it.isNotBlank() }
+                ?: System.getenv("AFIELD_AI_MODEL")?.takeIf { it.isNotBlank() }
+                ?: throw IllegalStateException("Choose a local model in Welcome → AI → Local.")
             "anthropic" -> when (default) {
                 FLAGSHIP_MODEL -> ANTHROPIC_FLAGSHIP_MODEL
                 FAST_MODEL -> ANTHROPIC_FAST_MODEL

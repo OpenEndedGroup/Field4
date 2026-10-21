@@ -78,6 +78,33 @@ class AstraBridgeContractTest {
 
     private val mapper = ObjectMapper()
 
+    @Test
+    fun localProviderKeepsHistoryAndImagesWithoutHostedConversations() = withServer("local") { server, requests, bridge ->
+        server.createContext("/v1/responses") { exchange ->
+            requests.add(mapper.readTree(exchange.requestBody))
+            val body = finalResponse("resp_local_${requests.size}").toByteArray()
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(200, body.size.toLong())
+            exchange.responseBody.use { it.write(body) }
+        }
+        val state = bridge.startThread("local.kt", "val marker = 731", instructions = "Inspect the supplied image.")
+        assertTrue(state.conversationId.startsWith("local:"))
+        bridge.send(state, "Inspect", imageDataUrls = listOf("data:image/png;base64,aW1hZ2U="), vectorStoreIds = listOf("hosted-only"))
+        bridge.send(state, "Continue")
+        val firstInput = requests.first()["input"].toString()
+        assertTrue(firstInput.contains("input_image"))
+        assertTrue(firstInput.contains("val marker = 731"))
+        val resumed = requests.last()["input"].toString()
+        assertTrue(resumed.contains("Inspected roof."))
+        for (request in requests) {
+            assertFalse(request.has("conversation"))
+            assertFalse(request.has("previous_response_id"))
+            assertFalse(request.has("reasoning"))
+            assertFalse(request.has("context_management"))
+            assertFalse(request["tools"].toString().contains("file_search"))
+        }
+    }
+
     private fun response(id: String, output: String): String = """{
         "id":"$id", "object":"response", "created_at":1,
         "model":"gpt-6-astra", "status":"completed", "output":$output,
@@ -361,7 +388,7 @@ class AstraBridgeContractTest {
      */
     @Test
     fun aCappedTurnCanResumeToolsWithoutCarryingTheStopInstruction() {
-        for (provider in listOf("openai", "openrouter")) withServer(provider) { server, requests, bridge ->
+        for (provider in listOf("openai", "openrouter", "local")) withServer(provider) { server, requests, bridge ->
             var executions = 0
             bridge.registerTool(InspectPanel::class.java) { _, _ -> executions++; mapOf("checked" to true) }
             server.createContext("/v1/responses") { exchange ->

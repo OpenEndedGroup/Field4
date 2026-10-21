@@ -480,7 +480,10 @@ data class AiSettingsStatus(
     val flagshipModel: String = "",
     val fastModel: String = "",
     val fallbackModel: String = "",
-    val modelsByProvider: Map<String, AiProviderModelSettings> = emptyMap()
+    val modelsByProvider: Map<String, AiProviderModelSettings> = emptyMap(),
+    val localBaseUrl: String = "",
+    val hasLocalApiKey: Boolean = false,
+    val environmentOverrides: List<String> = emptyList()
 )
 
 @Serializable
@@ -491,7 +494,9 @@ data class AiSettingsUpdateRequest(
     val openRouterBaseUrl: String = "",
     val flagshipModel: String = "",
     val fastModel: String = "",
-    val fallbackModel: String = ""
+    val fallbackModel: String = "",
+    val localBaseUrl: String = "",
+    val localApiKey: String = ""
 )
 
 @Serializable
@@ -506,6 +511,20 @@ data class AiSettingsUpdateResponse(
     val flagshipModel: String,
     val fastModel: String,
     val fallbackModel: String,
+    val message: String,
+    val localBaseUrl: String = "",
+    val hasLocalApiKey: Boolean = false,
+    val environmentOverrides: List<String> = emptyList()
+)
+
+@Serializable
+data class LocalAiConnectionRequest(val baseUrl: String, val apiKey: String = "", val model: String = "")
+
+@Serializable
+data class LocalAiConnectionStatus(
+    val connected: Boolean,
+    val models: List<String> = emptyList(),
+    val modelAvailable: Boolean = false,
     val message: String
 )
 
