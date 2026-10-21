@@ -260,7 +260,7 @@ uses `EXT_meshopt_compression`, which three.js, Blender 4.2 and later, and most 
 tone mapping, a key light that casts soft shadows, a sky fill and a cool rim, ambient occlusion in
 creases, and a dark ground with a faint grid. Give a mesh a material to go with it:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 three {
     mesh(vase, wireframe = false, cullBackFaces = false,
         material = ThreeSurfaceMaterial(roughness = 0.4f, metalness = 0.6f))
