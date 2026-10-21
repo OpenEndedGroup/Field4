@@ -107,6 +107,30 @@ class SplatSet(initialCapacity: Int = 1024) {
     }
 
     /**
+     * A copy moved and scaled so [fit] comes out centred on the origin with a 90th-percentile
+     * radius of [radius]: centres and radii both scale, rotations and colours stay.
+     *
+     * An insert sees the splats in their own coordinates, so its spatial frequencies (a stripe
+     * every 1/38, noise at 3.2 per unit) are written for a cloud about a unit across, as the
+     * procedural ones are. A loaded capture or a model in metres is not; fit it first.
+     */
+    fun fitted(radius: Double = 1.0): SplatSet {
+        val f = fit()
+        val s = (radius / f.radius90).toFloat()
+        val out = SplatSet(count)
+        out.floats = floats.copyOf()
+        out.count = count
+        for (i in 0 until count) {
+            val o = i * STRIDE
+            out.floats[o] = (floats[o] - f.centre.x) * s
+            out.floats[o + 1] = (floats[o + 1] - f.centre.y) * s
+            out.floats[o + 2] = (floats[o + 2] - f.centre.z) * s
+            for (k in 8..10) out.floats[o + k] = floats[o + k] * s
+        }
+        return out
+    }
+
+    /**
      * A robust centre and radius for a cloud; see [SplatSet.fit].
      */
     data class Fit(val centre: Vector3f, val radius90: Float) {
@@ -148,9 +172,13 @@ class SplatSet(initialCapacity: Int = 1024) {
          *
          * The disc radius comes from how densely the vertices cover the surface — the square root
          * of the total triangle area per vertex, times 0.55 — clamped to between 0.08% and 3% of
-         * the bounding-box diagonal, and its thickness is an eighth of that, as in the demo.
+         * the bounding-box diagonal, and its thickness is an eighth of that, as in the demo. The
+         * demo's absolute floors are left out, so a model in millimetres gets the same discs as one
+         * in metres. Insert presets are written for a cloud about a unit across, so use [fitted].
+         *
+         * @param meshes which of the file's meshes to keep, by node name; all of them by default.
          */
-        fun fromGltf(path: String): SplatSet {
+        fun fromGltf(path: String, meshes: (name: String) -> Boolean = { true }): SplatSet {
             require(File(path).exists()) { "glTF file not found: $path" }
             val model = GltfSupport.loadGltfBasic(
                 path, GltfSupport.GltfLoadConfig(includeVertexColors = true, loadTextures = false, loadSkins = false)
@@ -159,7 +187,7 @@ class SplatSet(initialCapacity: Int = 1024) {
             class Vertex(val p: Vector3f, val n: Vector3f, val color: Vector4f)
             val vertices = ArrayList<Vertex>()
             var area = 0.0
-            for (mesh in model.meshes) {
+            for (mesh in model.meshes.filter { meshes(it.name) }) {
                 val world = mesh.bindMatrix ?: mesh.bindPose.toMatrix()
                 val normalMatrix = Matrix4f(world).invert().transpose()
                 val data = mesh.buffers.vertexData.duplicate().order(java.nio.ByteOrder.nativeOrder()).asFloatBuffer()
@@ -192,8 +220,10 @@ class SplatSet(initialCapacity: Int = 1024) {
             for (v in vertices) { min.min(v.p); max.max(v.p) }
             val diagonal = maxOf(Vector3f(max).sub(min).length().toDouble(), 0.001)
             val spacing = if (area > 0.0) sqrt(area / vertices.size) else diagonal / maxOf(sqrt(vertices.size.toDouble()), 1.0)
-            val radius = (spacing * 0.55).coerceIn(maxOf(diagonal * 0.0008, 0.0016), maxOf(diagonal * 0.03, 0.012))
-            val thickness = (radius * 0.12).coerceIn(maxOf(diagonal * 0.00015, 0.0008), maxOf(radius * 0.42, 0.0024))
+            // the demo also floors these at 0.0016 and 0.0008 in absolute units, which assumes a model
+            // about a metre across: on a 7 cm toy that is sixteen times the vertex spacing
+            val radius = (spacing * 0.55).coerceIn(diagonal * 0.0008, diagonal * 0.03)
+            val thickness = (radius * 0.12).coerceIn(diagonal * 0.00015, radius * 0.42)
             for (v in vertices) {
                 val q = ProceduralSplats.quaternionFromUnitVectors(0.0, 0.0, -1.0, v.n.x.toDouble(), v.n.y.toDouble(), v.n.z.toDouble())
                 set.push(

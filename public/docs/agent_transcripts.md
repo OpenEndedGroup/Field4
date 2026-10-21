@@ -2797,11 +2797,17 @@ rewrite its centre, radii, colour and rotation (`pos`, `scales`, `rgba`, `quat`,
 `t` to read). Each box's compute tab is just those lines between `#include "splat/insert"` and
 `#include "splat/end"`, and its code hands the module and a cloud to `SplatShader`. A passthrough on
 the icosphere shell leads; six of the demo's inserts follow, one on each of its procedural clouds
-(pulse rings, dissolve, gravity well, fern veins, lichen tangle, xray shell), each launching into
-the same window with the demo's turn and size sliders. The insert runs in a compute pass ahead of
-the depth sort, so a dissolve that throws splats outward is sorted where they went: measured on the
-GPU, editing the splat vertex shader instead draws half of all neighbouring pairs in the wrong order.
-`SplatSet.fromPly` and `SplatSet.fromGltf` load your own splats, or a mesh as one disc per vertex.
+(pulse rings, dissolve, gravity well, fern veins, lichen tangle, xray shell), and a last box runs
+scanlines over the ToyCar model, read with `SplatSet.fromGltf` as one disc per vertex. Each launches
+into the same window with the demo's turn, size and trail controls; the gravity well starts with
+its trail on, each frame laid over a fading copy of the last. The insert runs in a compute pass
+ahead of the depth sort, so a dissolve that throws splats outward is sorted where they went:
+measured on the GPU, editing the splat vertex shader instead draws half of all neighbouring pairs
+in the wrong order.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/splat_shader_passthrough.png" capture="native-window" native-wait-frames="90" trim-native=true wait="3.0" embed=true hidden=true timeout="300" name="gallery-splat-shader" alt="The icosphere shell in the native window: a sphere of about a thousand small glowing splats on black, coloured by longitude from cyan on the left through chartreuse at the front to red and orange on the right, with the far side's violet splats showing between the near ones" macro-file="../../dev_docs/agents/transcripts/splat_shader.yaml" capture-box="splat_renderer"}
+// The transcript builds every box and launches the renderer and the passthrough.
+```
 
 [Open ↗](offline.html?file=assets/agent_transcripts/splat_shader/metadata.edn)
 

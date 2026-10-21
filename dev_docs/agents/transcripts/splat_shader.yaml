@@ -2,15 +2,16 @@ name: splat_shader
 description: >
   Splat shader, the madp classroom demo, on Field's Vulkan Gaussian-splat renderer: a few lines of
   GLSL run once per splat per frame and rewrite its centre, radii, colour and rotation, and the
-  renderer sorts and draws the splats where those lines left them. Eight boxes: a renderer, a
+  renderer sorts and draws the splats where those lines left them. Nine boxes: a renderer, a
   passthrough on the icosphere shell (the lead box, which lists what the lines can touch), and six
   of the demo's example inserts, one on each of its six procedural clouds — pulse rings on the
   phyllotaxis bloom, dissolve on the icosphere shell, gravity well on the torus braid, fern veins
-  on the fern plume, lichen tangle on the coral branches, xray shell on the nautilus shell. Each
+  on the fern plume, lichen tangle on the coral branches, xray shell on the nautilus shell — and
+  scanlines over the committed ToyCar model, read with SplatSet.fromGltf as one disc per vertex. Each
   box's compute tab is the insert between `#include "splat/insert"` and `#include "splat/end"`;
-  its code hands that module and a cloud to `SplatShader`, with the demo's turn, size and splat
-  size sliders. Launching a box replaces the cloud showing. Requires a GPU/Vulkan window; capture
-  it with `native-screenshot <path> --uid splat_renderer`.
+  its code hands that module and a cloud to `SplatShader`, with the demo's turn, size, splat size,
+  trail and fade controls; the gravity well starts with its trail on. Launching a box replaces
+  the cloud showing. Requires a GPU/Vulkan window; capture it with `native-screenshot <path> --uid splat_renderer`.
 operations:
   - create:
       box: splat_renderer
@@ -84,7 +85,7 @@ operations:
   - create:
       box: splat_pulse_rings
       name: pulse rings
-      frame: { x: 40.0, y: 660.0, w: 300.0, h: 100.0 }
+      frame: { x: 40.0, y: 720.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           import afield.graphics.scene.fabricated.ProceduralSplats
@@ -120,7 +121,7 @@ operations:
   - create:
       box: splat_dissolve
       name: dissolve
-      frame: { x: 640.0, y: 660.0, w: 300.0, h: 100.0 }
+      frame: { x: 640.0, y: 720.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           import afield.graphics.scene.fabricated.ProceduralSplats
@@ -155,7 +156,7 @@ operations:
   - create:
       box: splat_gravity_well
       name: gravity well
-      frame: { x: 1240.0, y: 660.0, w: 300.0, h: 100.0 }
+      frame: { x: 1240.0, y: 720.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           import afield.graphics.scene.fabricated.ProceduralSplats
@@ -168,7 +169,11 @@ operations:
           */
           var module = computeModuleHere {}
 
-          val splats = SplatShader(module, ProceduralSplats.torusBraid())
+          // trail: each frame lands on a fading copy of the last, so the spin leaves streaks
+          val splats = SplatShader(module, ProceduralSplats.torusBraid()) {
+              trail = true
+              fade = 0.12
+          }
           showControls(splats)
         compute: |
           #version 450
@@ -188,7 +193,7 @@ operations:
   - create:
       box: splat_fern_veins
       name: fern veins
-      frame: { x: 40.0, y: 1120.0, w: 300.0, h: 100.0 }
+      frame: { x: 40.0, y: 1240.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           import afield.graphics.scene.fabricated.ProceduralSplats
@@ -221,7 +226,7 @@ operations:
   - create:
       box: splat_lichen_tangle
       name: lichen tangle
-      frame: { x: 640.0, y: 1120.0, w: 300.0, h: 100.0 }
+      frame: { x: 640.0, y: 1240.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           import afield.graphics.scene.fabricated.ProceduralSplats
@@ -261,7 +266,7 @@ operations:
   - create:
       box: splat_xray_shell
       name: xray shell
-      frame: { x: 1240.0, y: 1120.0, w: 300.0, h: 100.0 }
+      frame: { x: 1240.0, y: 1240.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           import afield.graphics.scene.fabricated.ProceduralSplats
@@ -290,6 +295,53 @@ operations:
           scales *= vec3(0.55, 0.55, 1.8);
 
           #include "splat/end"
+  - create:
+      box: splat_toy_car
+      name: scanlines on a model
+      frame: { x: 40.0, y: 1760.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.scene.fabricated.SplatSet
+          import afield.graphics.scene.fabricated.SplatShader
+          import afield.graphics.scene.fabricated.showControls
+
+          /*
+          Scanlines, on a mesh instead of a cloud. SplatSet.fromGltf reads a .glb through Field's
+          glTF loader and puts one flat disc on every vertex, facing along its normal and sized
+          from how densely the vertices cover the surface. Then bright bands sweep up through it.
+
+          The model is the Khronos ToyCar sample committed in this repository; the path is
+          relative to the repository root, so point it at a .glb of your own if Field was started
+          elsewhere. Textures are not sampled, so the discs start in the material colours.
+          */
+          var module = computeModuleHere {}
+
+          val path = "public/docs/assets/fabricate_demo/ToyCar.glb"
+          if (!java.io.File(path).isFile) {
+              println("no model at ${java.io.File(path).absolutePath}: point `path` at a .glb of your own")
+          } else {
+              // fitted(): centred and about a unit across, the size the insert's stripes are written for
+              // the ToyCar sample sits on a draped cloth, its "Fabric" mesh; leave that out
+              val car = SplatSet.fromGltf(path, meshes = { it != "Fabric" })
+              // the wheels and chassis pack most of the vertices near the middle, so frame it larger
+              val splats = SplatShader(module, car.fitted()) {
+                  size = 1.8
+              }
+              showControls(splats)
+          }
+        compute: |
+          #version 450
+          #include "splat/insert"
+
+          float stripe = sin((pos.y + t * 0.28) * 38.0);
+          float gate = smoothstep(0.35, 0.9, stripe);
+
+          pos.x += sin(pos.y * 9.0 + t * 2.0) * 0.025;
+          rgba.rgb = mix(rgba.rgb * 0.18, vec3(0.2, 1.0, 0.58), gate);
+          rgba.a *= 0.18 + gate * 0.82;
+          scales.xy *= 0.55 + gate * 1.7;
+
+          #include "splat/end"
   - connect: { parent: splat_renderer, child: splat_passthrough }
   - connect: { parent: splat_renderer, child: splat_pulse_rings }
   - connect: { parent: splat_renderer, child: splat_dissolve }
@@ -297,6 +349,7 @@ operations:
   - connect: { parent: splat_renderer, child: splat_fern_veins }
   - connect: { parent: splat_renderer, child: splat_lichen_tangle }
   - connect: { parent: splat_renderer, child: splat_xray_shell }
+  - connect: { parent: splat_renderer, child: splat_toy_car }
   - launch: { box: splat_renderer, property: code, strand: renderer }  # renderer first — it owns the loop
   - await: {}
   - launch: { box: splat_passthrough, property: code }

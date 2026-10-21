@@ -10,6 +10,11 @@ import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.Target
 import afield.graphics.vulkan.buffers.FrameBufferGroup
 import afield.graphics.vulkan.buffers.defaultBuffer
+import afield.graphics.vulkan.targets.PointAccumulation
+import afield.graphics.vulkan.targets.PointBlend
+import afield.graphics.vulkan.targets.PointToneMap
+import afield.graphics.render.Module
+import afield.graphics.render.pointer
 import afield.math.linalg.Matrix4f
 import afield.math.linalg.Rectanglef
 import afield.math.linalg.Vector3f
@@ -58,6 +63,11 @@ import afield.ui.output.displayOpen
  * lie within 1.08 of the origin ([SplatShaderSettings.size] times that), turned about +y at
  * [SplatShaderSettings.autoRotate], and seen from (0, 0.38, 2.65) with a 54° lens.
  *
+ * The splats are drawn into a [PointAccumulation] that keeps `1 - fade` of the previous frame,
+ * which is the demo's trail mode: with [SplatShaderSettings.trail] on, each frame is laid over a
+ * fading copy of the last, so moving splats leave streaks. With it off the accumulation is
+ * cleared every frame and the picture is the plain cloud.
+ *
  * Every SplatShader installs under the same name unless [SplatShaderSettings.name] says otherwise,
  * so launching one replaces the one showing.
  */
@@ -78,6 +88,9 @@ class SplatShader(
 
     /** The renderer's cloud: what the insert writes, and what is sorted and drawn. */
     val cloud: GaussianSplatRenderer.Cloud
+
+    /** What the cloud is drawn into, and what leaves the trail. */
+    val trail: PointAccumulation
 
     /** The dispatch in [module] that runs the insert, one invocation per splat. */
     val mesh: ComputeMesh
@@ -101,6 +114,17 @@ class SplatShader(
         val count = splats.count
         // Nothing frees a GPU buffer or a cloud once made, so a re-run of the same size takes the
         // last one's back rather than allocating its own.
+        trail = synchronized(kept) {
+            trails.getOrPut(renderer) { HashMap() }.getOrPut(settings.name) {
+                PointAccumulation(renderer) {
+                    name = "${settings.name}-trail"
+                    blend = PointBlend.ALPHA
+                    toneMap = PointToneMap.LINEAR
+                    exposure = 1.0
+                    fade = 1.0
+                }
+            }
+        }
         val shape = Shape(settings.name, count, settings.sortMode)
         val previous = synchronized(kept) { kept.getOrPut(renderer) { HashMap() }[shape] }
         if (previous != null) {
@@ -113,21 +137,34 @@ class SplatShader(
                 perFrame = false
             }.toBuffer(renderer)
             val (min, max) = splats.bounds()
+            val config = GaussianSplatRenderer.Config(
+                sortMode = settings.sortMode,
+                depthKey = GaussianSplatRenderer.DepthKey.ViewDepth,
+                // the insert can move splats under a still camera
+                sortOnlyWhenViewChanges = false,
+                maxScreenRadius = 256f
+            )
+            // the built-in splat shaders, with the trail's target format and the renderer's raster state
+            val renderModule = Module(
+                GaussianSplatRenderer.configureModule(
+                    trail.pointParameters("${settings.name}-splats") {
+                        vertex = GaussianSplatRenderer.splatVertexShader
+                        fragment = GaussianSplatRenderer.splatFragmentShader
+                    },
+                    config = config,
+                    name = "${settings.name}-splats-$count"
+                )
+            ).pointer()
             cloud = GaussianSplatRenderer.Cloud(
                 renderer = renderer,
                 camera = afield.graphics.vulkan.util.Camera(renderer),
                 table = null,
                 // Zeros: opacity 0 hides every splat until the insert has written it.
                 packed = GaussianSplatRenderer.PackedSplats(FloatArray(count * SplatSet.STRIDE), count, min, max),
-                config = GaussianSplatRenderer.Config(
-                    sortMode = settings.sortMode,
-                    depthKey = GaussianSplatRenderer.DepthKey.ViewDepth,
-                    // the insert can move splats under a still camera
-                    sortOnlyWhenViewChanges = false,
-                    maxScreenRadius = 256f
-                ),
+                config = config,
                 sourceName = settings.name,
-                capacity = count
+                capacity = count,
+                suppliedRenderModule = renderModule
             )
             synchronized(kept) { kept.getOrPut(renderer) { HashMap() }[shape] = Resources(source, cloud) }
         }
@@ -149,7 +186,10 @@ class SplatShader(
         }
         cloud.bindModel { model() }
         applyLook()
-        cloud.install(renderer.renderList, settings.name)
+        // one cloud in the trail at a time, under this name
+        trail.add(settings.name, cloud.renderModule)
+        trail.clear()
+        trail.installInto(renderer.renderList)
     }
 
     /** The model matrix this frame: the fit, the size, then the turn about +y. */
@@ -168,6 +208,7 @@ class SplatShader(
         camera.p.fov = Math.toRadians(settings.fovDegrees)
         camera.p.zNear = 0.01
         camera.p.zFar = 100.0
+        trail.settings.fade = if (settings.trail) settings.fade.coerceIn(0.0, 1.0) else 1.0
         cloud.sizeScale = settings.splatSize
         cloud.alphaScale = settings.alphaScale
         cloud.colorGamma = settings.colorGamma
@@ -185,9 +226,11 @@ class SplatShader(
         applyLook()
     }
 
-    /** Take the cloud off the renderer. Launching another SplatShader with the same name does this too. */
+    /** Take the cloud and its trail off the renderer. Launching another SplatShader with the same name does this too. */
     fun remove() {
-        cloud.remove(renderer.renderList, settings.name)
+        trail.target.modules.remove(settings.name)
+        renderer.renderList.preTargets.remove("${trail.settings.name}-accumulation")
+        renderer.renderList.modules.remove("${trail.settings.name}-display")
     }
 
     private data class Shape(val name: String, val count: Int, val sortMode: GaussianSplatRenderer.SortMode)
@@ -197,6 +240,9 @@ class SplatShader(
     companion object {
         /** The buffers and cloud each shape was last built with, per renderer. */
         private val kept = java.util.WeakHashMap<Renderer, HashMap<Shape, Resources>>()
+
+        /** One trail per name per renderer: its target is window-sized, and nothing frees it. */
+        private val trails = java.util.WeakHashMap<Renderer, HashMap<String, PointAccumulation>>()
 
         private val includes = setOf("insert", "end")
 
@@ -231,6 +277,15 @@ class SplatShaderSettings {
 
     /** The demo's size slider: a multiplier on the fitted size. */
     var size: Double = 1.0
+
+    /**
+     * The demo's trail mode: lay each frame over a fading copy of the last, so moving splats leave
+     * streaks. [fade] is how much of the old picture goes each frame.
+     */
+    var trail: Boolean = false
+
+    /** With [trail] on, the part of the previous frame that fades away each frame: the demo's 0.12. */
+    var fade: Double = 0.12
 
     /** Frame the cloud by its median and 90th-percentile radius; false draws it as it is. */
     var fit: Boolean = true
@@ -273,6 +328,8 @@ fun Box.showControls(shader: SplatShader, channel: String = "controls") {
         slider("size", min = 0.35, max = 2.5, step = 0.01, initialValue = s.size) { s.size = it }
         slider("splat size", min = 0.25, max = 4.0, step = 0.01, initialValue = s.splatSize.toDouble()) { s.splatSize = it.toFloat() }
         checkbox("play", initialValue = shader.playing) { shader.playing = it }
+        checkbox("trail", initialValue = s.trail) { s.trail = it }
+        slider("fade", min = 0.0, max = 1.0, step = 0.01, initialValue = s.fade) { s.fade = it }
         button("t = 0") { down -> if (down) shader.t = 0.0 }
     }
     displayOpen(channel)
