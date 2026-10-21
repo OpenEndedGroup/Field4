@@ -4,10 +4,11 @@ description: >-
   sounding object running code of its own. A box takes the pen with eachStroke { }; its block runs
   once for every new stroke (the demo's onStart, which may start a pattern playing through dough)
   and its draw { t -> } sixty times a second on the stroke's physics points, returning FLines that
-  the stroke layer draws on the canvas with trails. Six boxes: prism choir (the lead, a synth choir
+  the stroke layer draws on the canvas with trails. Six instrument boxes: prism choir (the lead, a synth choir
   shaped by the stroke and a ribbon its loudness opens), ribbon bloom, comet dust, curve choir (add,
   subtract, project, scale), magnet mesh (strokes pulled together by closestPoint) and step lattice
-  (a stroke quantised into a twelve-step sequencer whose cursor is the sounding step). Ported from
+  (a stroke quantised into a twelve-step sequencer whose cursor is the sounding step), plus draw for
+  me, which sends three strokes from the page the way the drawing layer does. Ported from
   aaaframe's madp/line.html; see dev_docs/madp/line.md.
 operations:
   - create:
@@ -15,6 +16,81 @@ operations:
       name: prism choir · run me, then draw
       frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
+        notes: |
+          # Line: strokes that come alive
+
+          **Line** is one of the madp classroom demos: a black page beside a code editor. Every stroke you draw
+          becomes an object with a life of its own. It moves, it makes sound, and the way it moves and sounds
+          comes from code you wrote. The point it teaches is that a gesture can be the start of a program
+          rather than its output: the shape of your hand sets up a synth and a motion, and from then on the
+          stroke plays and draws itself.
+
+          This document is that demo in Field. You draw on Field's own canvas, with the drawing layer, and the
+          strokes come alive on the canvas where you drew them.
+
+          ## Playing with it
+
+          1. Run this box. It takes the **pen**.
+          2. Press **Alt+D** for the drawing layer, choose the pencil, and draw on the empty canvas to the right.
+             Long arcs and loops suit this one. Press Alt+D again when you are done.
+          3. Each stroke turns into a ribbon that hums. The longer the stroke, the louder; the more it rises,
+             the brighter; left-to-right or right-to-left sets the pan. The louder the choir plays, the wider
+             the ribbon swings.
+          4. Edit the code and run the box again. Strokes you draw from then on use the new code; the ones
+             already on the canvas keep the code they were drawn with.
+          5. Run another box to give it the pen. `clearStrokes()` in any box wipes the page.
+
+          No pen handy? Run **draw for me**: it sends three strokes the way the drawing layer does when you
+          lift the pencil.
+
+          ## How a stroke's code is written
+
+          `eachStroke(trail = 0.18) { … }` is the whole program. Its block runs **once for each stroke**, when
+          it is drawn: that is where you look at the stroke's `points` and start a `sound(…)`. Inside it,
+          `draw { t -> … }` runs **sixty times a second** and returns the lines to show (FLines). Local `var`s
+          in the block belong to that one stroke and are shared by its sound and its drawing, which is how the
+          ribbon and the choir talk to each other.
+
+          `points` are physics points (`x`, `y`, `vx`, `vy`, `ax`, `ay`): set `ax`/`ay` to push them and Field
+          moves them after each frame. `trail` is how much of each frame the next one keeps, so 0.9 leaves long
+          trails. The verbs are the demo's: `resample`, `smooth`, `arcs`, `dots`, `atomize`, `wiggle`, `warp`,
+          `add`, `subtract`, `project`, `scale`, `transformTo`, `closestPoint`, `closestOutput`, `rms()`, and
+          the noise helpers `triWave`, `tri01`, `heldNoise`, `driftNoise`, `perlin2D`.
+
+          ## From the demo to Field
+
+          | the demo | here |
+          | --- | --- |
+          | `onStart(inputPoints, lineIndex)` | the `eachStroke { }` block, with `points` and `index` |
+          | `manipulatePoints(inputPoints, t)` | `draw { t -> }` |
+          | `ctrl.x`, shared by image and sound | a local `var x` in the block |
+          | draw commands (`smooth`, `arc`, `dot`, `{x0,y0,x1,y1}`, `connected:false`) | FLines: `smooth(curve)`, `arcs(curve)`, `dots(curve, r)`, `segment(…)`, `moveTo` |
+          | `color`, `fill`, `overshoot`, `ignore` | `line.color`, `line.filled`, `line.overshoot`, `line.ignore` |
+          | `'hsla(205, 96%, 68%, 0.9)'` | `cssHsla(205, 0.96, 0.68, 0.9)` |
+          | Strudel: `note("c3 e3").sound("sawtooth").gain(signal(() => …))` | `pat("c4 e4") with s("sawtooth") with gain(signal { … })` |
+          | `.stack(…)` | `stack(a, b)` |
+          | the editor's code, snapshotted at mouseup | the box's code when it last ran |
+          | the preset menu | one box per preset |
+          | Reset | `clearStrokes()` |
+
+          The sound runs on the same `dough.wasm` engine as the other madp demos, through Field's pattern
+          language, which is Tidal's. Two things differ from Strudel. Note names are an octave higher here
+          (`c5` is middle C), so every pattern is written up an octave and sounds at the same pitch. And
+          Strudel's synths are about a quarter as loud as dough's at the same gain, so the strokes play at that
+          level: the demo's gains sound as loud as they did, and `rms()` reads what it read there.
+
+          ## What is different
+
+          - The demo's own editor, AI completion, agent chat and saves are Field's editor, completion, AI4 and
+            documents.
+          - Strokes are not saved with the document, as in the demo.
+          - The demo steps its physics once per screen refresh, so on a 120 Hz display its strokes move twice
+            as fast as on a 60 Hz one. Here they always step 60 times a second.
+          - Panning or zooming the canvas clears the trails.
+          - Five of the demo's seventeen presets are here: ribbon bloom, comet dust, curve choir, magnet mesh
+            and step lattice. The rest repeat mechanisms these show.
+
+          The design notes are in `dev_docs/madp/line.md`.
         code: |
           /*
           Prism Choir: draw long arcs or loops.
@@ -80,6 +156,13 @@ operations:
       name: ribbon bloom
       frame: { x: 40.0, y: 180.0, w: 300.0, h: 100.0 }
       properties:
+        notes: |
+          # Ribbon bloom
+
+          Draw long swoops and loops. The stroke opens into a filled ribbon that breathes along its length,
+          with a bright spine down the middle. It shows how one curve becomes a shape: points pushed out along
+          the normal on one side (`normalAt`), back along the other, and the outline filled (`filled = true`)
+          under a separate stroke. No sound.
         code: |
           // Ribbon Bloom: draw long swoops and loops. The stroke becomes a filled, breathing ribbon with
           // a bright spine. Run this box to take the pen; it makes no sound.
@@ -118,6 +201,12 @@ operations:
       name: comet dust
       frame: { x: 40.0, y: 320.0, w: 300.0, h: 100.0 }
       properties:
+        notes: |
+          # Comet dust
+
+          Best with quick slashes and zig-zags. `atomize` breaks the stroke into separate segments, `wiggle`
+          shakes them apart with Perlin noise, and two rings of `dots` scatter sparks around it. The trail is
+          0.92, so each frame keeps most of the last and the motion smears into dust. No sound.
         code: |
           // Comet Dust: great with quick slashes and zig-zags. atomize() breaks the stroke into segments
           // that wiggle() shakes apart, dots() scatters sparks, and the long trail turns them to dust.
@@ -144,6 +233,13 @@ operations:
       name: curve choir · curve maths
       frame: { x: 40.0, y: 460.0, w: 300.0, h: 100.0 }
       properties:
+        notes: |
+          # Curve choir: curve maths
+
+          One stroke becomes four related curves. A noise "wind" warps the stroke; `add` pushes the stroke by
+          the wind's shape (which doubles it out from its centre), `subtract` pushes against it (which cancels
+          the shape, leaving a knot at the centre), `scale` makes a halo, and `project` squeezes one curve into
+          another's directions. Change one line and watch which curves follow. No sound.
         code: |
           // Curve Choir: one stroke blooms into four related curves. A noise wind warps the stroke;
           // add() and subtract() push the stroke by the wind's shape and against it, scale() blows up a
@@ -181,6 +277,13 @@ operations:
       name: magnet mesh · between strokes
       frame: { x: 40.0, y: 600.0, w: 300.0, h: 100.0 }
       properties:
+        notes: |
+          # Magnet mesh: between strokes
+
+          Draw two or three strokes near each other. Every point is pulled towards the nearest point of
+          another stroke (`closestPoint`), and every fifth point grows a filament to it, so neighbouring
+          strokes slowly knit together. This is the physics: the block sets `ax`/`ay`, and Field moves the
+          points. A single stroke on its own just sits there. No sound.
         code: |
           // Magnet Mesh: draw two or more strokes near each other. Each point is pulled towards the
           // nearest point of another stroke (closestPoint()), and every fifth one sprouts a filament to
@@ -220,6 +323,13 @@ operations:
       name: step lattice · a stroke as a sequencer
       frame: { x: 40.0, y: 740.0, w: 300.0, h: 100.0 }
       properties:
+        notes: |
+          # Step lattice: a stroke as a sequencer
+
+          Left to right is time, twelve steps a bar; up is pitch, a C major scale. When you draw, the stroke is
+          snapped onto that grid once, into a melody and a bass line, and they loop. The grid, the snapped notes
+          and a cursor are drawn over the stroke. The cursor reads `cycle`, the sound's own clock, so it always
+          marks the note you hear, and the note it is on brightens the filter.
         code: |
           // Step Lattice: left to right is time (twelve steps a bar), up is pitch (fourteen lanes of a
           // C major scale). The stroke is snapped onto that grid once, when it is drawn, into a melody
@@ -292,4 +402,36 @@ operations:
                   listOf(guides, connectors, melodyLine, beads)
               }
           }
+  - create:
+      box: madp_line_draw_for_me
+      name: draw for me
+      frame: { x: 380.0, y: 40.0, w: 200.0, h: 100.0 }
+      properties:
+        notes: |
+          # Draw for me
+
+          Three strokes for when there is no pen to hand. This box sends them from the page over the same
+          message the drawing layer sends when you lift the pencil, so whichever box holds the pen takes
+          them, exactly as it takes yours. Run a preset box first to choose what they become.
+        code: |
+          // Draws three strokes for you, as a hand would: the page sends them over the same `notation-scene`
+          // message the drawing layer sends when you lift the pencil, so whichever box holds the pen takes
+          // them. Needs the document open in a window.
+          val strokes = """[{"x":480,"y":520,"points":[[0,0],[19,-26],[39,-52],[58,-78],[78,-103],[97,-127],[117,-151],[136,-173],[155,-194],[175,-213],[194,-231],[214,-248],[233,-262],[252,-275],[272,-285],[291,-294],[311,-300],[330,-304],[350,-306],[369,-306],[388,-304],[408,-300],[427,-293],[447,-285],[466,-275],[486,-263],[505,-250],[524,-235],[544,-218],[563,-200],[583,-182],[602,-162],[621,-142],[641,-121],[660,-101],[670,-90]]},{"x":977,"y":348,"points":[[0,0],[-7,16],[-18,30],[-33,43],[-52,53],[-75,61],[-100,66],[-127,69],[-156,68],[-185,66],[-215,61],[-243,53],[-268,44],[-291,32],[-311,20],[-326,6],[-337,-8],[-343,-22],[-344,-37],[-341,-51],[-334,-64],[-323,-77],[-309,-88],[-292,-99],[-273,-107],[-253,-115],[-232,-121],[-211,-125],[-189,-128],[-168,-129],[-147,-129],[-127,-127],[-109,-124],[-91,-119],[-74,-113],[-59,-106],[-45,-97],[-32,-87],[-21,-76],[-13,-64],[-7,-52],[-3,-38],[-3,-25],[-6,-11],[-13,2],[-23,15],[-37,27],[-55,37],[-76,47],[-100,54],[-113,57]]},{"x":500,"y":680,"points":[[0,0],[20,8],[39,17],[59,25],[79,33],[99,41],[118,49],[138,56],[158,62],[177,68],[197,74],[217,79],[237,83],[256,87],[276,90],[296,92],[315,94],[335,95],[355,95],[374,94],[394,93],[414,91],[434,88],[453,85],[473,80],[493,76],[512,70],[532,65],[552,58],[572,52],[591,45],[611,37],[631,30],[650,22],[670,14],[680,10]]}]"""
+          val stamp = System.currentTimeMillis()
+          display(
+              "hand",
+              """
+          <script type="module">
+          import { send } from "./afield.mjs";
+          const elements = $strokes.map((s, i) => ({ id: "hand-$stamp-" + i, type: "freedraw", x: s.x, y: s.y,
+              width: 1, height: 1, angle: 0, strokeColor: "#1e1e1e", backgroundColor: "transparent", fillStyle: "solid",
+              strokeWidth: 2, strokeStyle: "solid", roughness: 1, opacity: 100, groupIds: [], frameId: null, roundness: null,
+              seed: 1, version: 1, versionNonce: 1, isDeleted: false, boundElements: [], link: null, locked: false,
+              points: s.points, pressures: [], simulatePressure: true }));
+          send("notation-scene", { scene: JSON.stringify({ type: "excalidraw", version: 2, elements }) });
+          </script>three strokes sent"""
+                  .trimIndent(),
+          )
   - launch: { box: madp_line_prism_choir, property: code }
+  - launch: { box: madp_line_draw_for_me, property: code }

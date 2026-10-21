@@ -2451,8 +2451,15 @@ stroke keeps the code it was drawn with, so edit the box and run it again, and o
 draw next change. Run another box to give it the pen: a filled ribbon, comet dust with long trails,
 curve maths that splits a stroke into four related curves, strokes that pull each other into a web,
 and a stroke snapped onto a twelve-step sequencer whose cursor marks the note you hear. The block
-in `eachStroke { }` runs once per stroke and its `draw { t -> }` sixty times a second. A port of
-the madp line demo; the design notes are in `dev_docs/madp/line.md`.
+in `eachStroke { }` runs once per stroke and its `draw { t -> }` sixty times a second. No pen to
+hand? **draw for me** sends three strokes the way the drawing layer does. The lead box's notes walk
+through the demo and how this version maps onto it. A port of the madp line demo; the design notes
+are in `dev_docs/madp/line.md`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_line.png" capture="window" clip="20,20,1260,780" wait="5.0" embed=true hidden=true timeout="180" name="gallery-madp-line" alt="The madp line boxes in a column on the left of the dark canvas; to their right three hand-drawn strokes have come alive as softly waving neon ribbons in pink, orange and violet, each strung with small coloured beads" macro-file="../../dev_docs/agents/transcripts/madp_line.yaml"}
+// The transcript builds every box, runs the prism choir to take the pen, then runs draw for me,
+// whose three strokes arrive over the drawing layer's own message and come alive.
+```
 
 [Open ↗](offline.html?file=assets/agent_transcripts/madp_line/metadata.edn)
 
