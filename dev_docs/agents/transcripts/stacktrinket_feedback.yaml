@@ -3,7 +3,8 @@ description: >
   StackTrinket, the madp classroom demo, in Field: StackSL programs drawn fullscreen every frame
   against their own previous frame. A renderer box, then seven program boxes beneath it — the pulse
   ring (the demo's starter, launched), feedback fog, persistent bloom, store channels, subroutine
-  cse, four memory bands and long memory ecology. Each box holds its program in the stackSL tab and
+  cse, four memory bands and long memory ecology — and a jam box that reads a classmate's WebRTC
+  stream (webrtcSource) as a second picture, `sample1`, beside `state`. Each box holds its program in the stackSL tab and
   one call in its code, stackFeedback(), which keeps a float16 ping-pong target with the last frame
   bound as `state`, follows edits to the program live, and shows stack depth, wires and
   diagnostics in the box's lowering panel and the lowered GLSL in its glsl panel. Launching a box replaces the program showing.

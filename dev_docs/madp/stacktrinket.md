@@ -102,3 +102,22 @@ What the references showed about the presets themselves: *long memory ecology* i
 `dup average … + +` adds the average back every frame and `mirror` folds the climbing values;
 without it the reads (about 1.65× the old picture) fill into a pale cyan fog. The box comment says
 so.
+
+## The jam box (2026-10-21)
+
+The classroom shader jam in StackSL, over `afield.media.webrtc` (`dev_docs/WEBRTC_SOURCES_SINKS.md`).
+
+- **Receive.** `stackFeedback { input("remote", stream) }` binds up to three textures beside `state`
+  as `sampleTextures[1..3]`, so `sample1`/`gather1`/`texelSize1` read them; no new StackSL word.
+  Each input is copied, once per step, into an image the size of the state and stored the way the
+  state is (row 0 = `uv.y 0`): Field's textures keep their top row first, so sampled as they are at
+  `uv` they read upside down beside `state`. A WebRTC stream's paints are `B8G8R8A8_SRGB`, so
+  sampling decoded them; the copy re-encodes sRGB sources, so the program reads the picture's own
+  numbers (the values a browser ShaderTrinket's `iChannel` gives).
+- **Verified** live against a browser ShaderTrinket (aaaframe `shadertrinket` page, driven by
+  `dev_docs/webrtc_latency/shadertrinket_driver.py` with an asymmetric, animated test card) on a
+  local aaaframe in local-auth mode: the card arrived the right way up (square top-left, band at
+  the bottom), and before the re-encode its 0.6 band read 0.31; after, 1.0 and 0.6 read 0.992 and
+  0.596. The card's 0.08 ground arrives as 0.043: the video codec crushes the darkest levels.
+- The stream is stretched to the state's shape, as ShaderTrinket's `iChannel` is.
+- Building it needed `-Pkotlin.daemon.jvmargs=-Xmx11g`: the merged main ran 7g and 9g out of heap.
