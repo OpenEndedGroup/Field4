@@ -2014,6 +2014,22 @@ and Delete.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/macro_recorder_stamp/metadata.edn)
 
+### madp_ga
+
+**Interactive evolution, after Karl Sims**, ported from the madp GA demo. Each tile is a short
+reverse-Polish colour program (`x 9 * sin 0.18 + y 0.55 + 0.62 hsl`) run once per pixel, and you
+are the fitness function: each box shows two parents and seven children in a 3×3 grid, and
+clicking two tiles makes them the parents of the next generation. The lead box starts from the
+demo's two starters, two more from its example programs, and the last changes the breeding rules
+so that only numbers mutate. The language is `ColorRpn` and the grid is `evolveByEye`, which takes
+any genome with a picture; design notes in `dev_docs/madp/ga.md`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_ga_lead.png" capture="box" open-outputs="true" wait="2.0" embed=true hidden=true timeout="180" padding="12" name="gallery-madp-ga-lead" alt="The GA grid on a near-black ground: a toolbar with Reroll, Fresh Parents and Start over and the mut, len and res settings, then nine tiles in three rows, the two parents (rainbow vertical stripes and rainbow spokes) outlined in blue and seven mutated children below them, each with its program written under it" macro-file="../../dev_docs/agents/transcripts/madp_ga.yaml" capture-box="madp_ga_lead"}
+// The transcript builds and runs every box; this is the lead box, starting from the demo's starters.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_ga/metadata.edn)
+
 ## Service-backed composition scenes
 
 <!-- transcript-index: verified-by = execute -->
