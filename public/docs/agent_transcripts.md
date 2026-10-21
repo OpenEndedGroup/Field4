@@ -2442,6 +2442,10 @@ A port of the madp tetra demo; the design notes are in `dev_docs/madp/tetra.md`.
     on the model: four unit vectors in any dimension embed exactly in 3D. The page's `tetra2` server
     also squared its distances twice before MDS, which this port does not repeat.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_tetra.png" capture="box" open-outputs="true" wait="10.0" embed=true hidden=true timeout="240" padding="12" name="gallery-madp-tetra" alt="Four photographs (a cat, a dog, a tiger and a red car) in coloured slots above a dark view of a tetrahedron with coloured spheres at its corners, each edge labelled with its CLIP distance, and a table of the six distances in the corner" macro-file="../../dev_docs/agents/transcripts/madp_tetra.yaml" capture-box="tetra"}
+// The transcript builds and runs every box; this is the starter, tetra.
+```
+
 [Open ↗](offline.html?file=assets/agent_transcripts/madp_tetra/metadata.edn)
 
 ### mqtt_demo
