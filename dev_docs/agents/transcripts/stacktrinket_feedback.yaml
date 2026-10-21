@@ -3,8 +3,10 @@ description: >
   StackTrinket, the madp classroom demo, in Field: StackSL programs drawn fullscreen every frame
   against their own previous frame. A renderer box, then seven program boxes beneath it — the pulse
   ring (the demo's starter, launched), feedback fog, persistent bloom, store channels, subroutine
-  cse, four memory bands and long memory ecology — and a jam box that reads a classmate's WebRTC
-  stream (webrtcSource) as a second picture, `sample1`, beside `state`. Each box holds its program in the stackSL tab and
+  cse, four memory bands and long memory ecology — and a jam box that publishes its program to the
+  class (webrtcPublish of StackSLFeedback.picture) and reads a classmate's WebRTC stream
+  (webrtcSource) as a second picture, `sample1`, beside `state`. Publishing needs the Field
+  Electron app. Each box holds its program in the stackSL tab and
   one call in its code, stackFeedback(), which keeps a float16 ping-pong target with the last frame
   bound as `state`, follows edits to the program live, and shows stack depth, wires and
   diagnostics in the box's lowering panel and the lowered GLSL in its glsl panel. Launching a box replaces the program showing.
@@ -350,9 +352,11 @@ operations:
         notes: |
           # Jam with a classmate
 
-          The classroom shader jam, in StackSL. This box lists everyone publishing on the class's
-          network (the same one browser ShaderTrinkets use) and hands the stream you pick to the
-          program as a second picture beside `state`.
+          The classroom shader jam, in StackSL. This box publishes its program to the class's
+          network (the one browser ShaderTrinkets use) as `@you/stacktrinket`, lists everyone else
+          publishing, and hands the stream you pick to the program as a second picture beside
+          `state`. In a browser ShaderTrinket, type `you/stacktrinket` into Receive to pull this
+          program into an `iChannel`.
 
           In the program, `0 sample1` reads the stream at this pixel, the way `prev` reads the last
           frame; `0.01 0 vec2 sample1` reads it a little to the side. The starting program keeps a
@@ -369,26 +373,35 @@ operations:
           shows the receiver's status line ("waiting for @… to publish"), so you can see what it is
           waiting for.
 
-          Needs Electron installed for the hidden page that receives the stream
-          (`./gradlew electronInstall`).
+          Publishing needs Field's Electron app (the `stream` panel is where the published frames
+          leave from); receiving needs Electron installed for the hidden page that plays the
+          stream (`./gradlew electronInstall`). Video only, and no TURN server: two machines whose
+          networks both block direct connections cannot see each other.
         code: |
+          import afield.media.webrtc.webrtcPublish
           import afield.media.webrtc.webrtcPublishers
           import afield.media.webrtc.webrtcSource
 
           /*
-          A classmate's WebRTC stream as a second picture beside `state`: `0 sample1` reads it
-          at this pixel. Pick whose stream from the publishers list. The program is in the
-          [[property stackSL]] tab; see this box's notes.
+          The shader jam in StackSL. This program is published to the class as
+          @you/stacktrinket, and a classmate's stream is a second picture beside `state`:
+          `0 sample1` reads it at this pixel. Pick whose stream from the publishers list. The
+          program is in the [[property stackSL]] tab; see this box's notes.
           */
           val publishers = webrtcPublishers()
           val stream = webrtcSource(publishers.names.firstOrNull() ?: "nobody", 640, 360)
+          val feedback = stackFeedback { input("remote", stream) }
+
+          // Publish what the window shows, as a 640×640 stream; its preview is the `stream` panel.
+          val sink = webrtcPublish(feedback.picture, "stacktrinket", 640, 640, show = "stream")
+
+          // Until you pick someone, show the first publisher who is not this box.
           publishers.onChange { names ->
-              if (stream.target == "nobody" && names.isNotEmpty()) stream.watch(names.first())
+              val others = names.filter { it != sink.publishedAs }
+              if (stream.target == "nobody" && others.isNotEmpty()) stream.watch(others.first())
           }
           publishers.onPick { name -> stream.watch(name) }
           display("publishers", publishers.html { stream.target })
-
-          stackFeedback { input("remote", stream) }
         stackSL: |
           # a slow grey memory of a classmate's stream
           0.0006 0.0010 vec2 sample 0.97 *

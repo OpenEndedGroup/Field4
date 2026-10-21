@@ -314,7 +314,8 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   demo as a starting point (`dev_docs/madp/stacktrinket.md`). A renderer, the pulse ring and six
   feedback presets, each a `stackSL` tab plus one `stackFeedback()` call
   (`afield/lang/stacksl/StackSLFeedback.kt`): a float16 ping-pong with the last frame bound as
-  `state`, live edits, and a lowering panel. A jam box takes a classmate's WebRTC stream as
+  `state`, live edits, and a lowering panel. A jam box publishes its program with
+  `webrtcPublish(feedback.picture, "stacktrinket")` and takes a classmate's WebRTC stream as
   `stackFeedback { input("remote", stream) }`, read by `sample1`. Compiled only (native window);
   `StackSLFeedbackTest` compiles all fifteen presets, an input and the fragment shaders to SPIR-V.
 - `sorting_networks.yaml`: the four runner fences of `public/docs/sorting_networks_examples.md`,

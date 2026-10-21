@@ -3906,9 +3906,9 @@ program in the `stackSL` tab and calls `stackFeedback()`, which draws it every f
 frame bound as `state` and follows edits live. The box's lowering panel shows how deep its stack
 ends and any error at its line and column, and its glsl panel the GLSL the program becomes.
 Launching a box replaces the program in the window. The jam box joins the classroom shader jam, the
-WebRTC network browser ShaderTrinkets use: it lists who is publishing and hands the stream you pick
-to its program as a second picture, which `0 sample1` reads at this pixel the way `prev` reads the
-last frame.
+WebRTC network browser ShaderTrinkets use. It publishes its program as `@you/stacktrinket`, lists
+who else is publishing, and hands the stream you pick to its program as a second picture, which
+`0 sample1` reads at this pixel the way `prev` reads the last frame.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/stacktrinket_feedback_pulse_ring.png" capture="native-window" native-wait-frames="90" trim-native=true wait="3.0" embed=true hidden=true timeout="300" name="gallery-stacktrinket-feedback" alt="The pulse ring in the native window: a soft white ring on black, centred, its radius half the window's width, fading smoothly to black on both sides" macro-file="../../dev_docs/agents/transcripts/stacktrinket_feedback.yaml" capture-box="stacktrinket_renderer"}
 // The transcript builds every box and launches the renderer and the pulse ring.
