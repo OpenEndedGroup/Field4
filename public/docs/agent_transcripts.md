@@ -3888,8 +3888,11 @@ draws into a canvas the renderer window shows. Launch the renderer, then the lea
 ShaderTrinket's default program); each preset box (Classic Plasma, Star Tunnel, Mandelbrot Glow,
 SDF Sphere Trace) replaces the picture when you launch it, the way choosing a preset does. Edit a
 `fragment` and press alt-R to recompile; an error is marked on its own line. The Camera Input Demo
-binds the camera to `iChannel0` with `textures("iChannel0" to webcam())`. A port of the madp
-ShaderTrinket demo; the design notes are in `dev_docs/madp/shadertrinket.md`.
+binds the camera to `iChannel0` with `textures("iChannel0" to webcam())`. The last two boxes are
+the classroom jam, as in [WebRTC streams](webrtc.md): Publish shares the canvas as
+`@you/field-shader`, and Live Stream lists everyone publishing and samples the one you click as
+`iChannel2`, from a browser ShaderTrinket or another Field. Both need the Field Electron app. A port
+of the madp ShaderTrinket demo; the design notes are in `dev_docs/madp/shadertrinket.md`.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/shadertrinket_flat_rings.png" capture="native-window" native-wait-frames="90" trim-native=true wait="6.0" embed=true hidden=true timeout="300" name="gallery-shadertrinket" alt="Flat Rings in the native window: eight thick rings in teal, amber and blue, each with a pale dot at its centre, drifting and overlapping over a faint dark checkerboard" macro-file="../../dev_docs/agents/transcripts/shadertrinket.yaml" capture-box="shadertrinket_renderer"}
 // The transcript builds every box and launches the renderer and the lead box, Flat Rings.
