@@ -1,5 +1,7 @@
 /*
-Spring mesh: nearby particles knit themselves into a spring web and local clumps.
+Spring mesh: nearby particles knit themselves into a spring web and local clumps. The
+web lasts a few seconds before clumping pulls it into balls, as it does in the demo;
+drag a long stroke through the window to watch it knit again.
 
 Springs live in eachPair because a spring is about two particles. The GPU sees every
 pair twice, once from each side, and spring() applies only p's half, so the two halves

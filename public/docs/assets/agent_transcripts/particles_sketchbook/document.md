@@ -43,7 +43,7 @@ Move the pointer over the renderer window and the vortex centre follows it; mous
 mouseInside are the pointer, in the same pixels as everything else.
 
 ```edn [field-box id="particles_vortex_brush" role="properties"]
-{"id" "particles_vortex_brush" "index" 1 "name" "vortex brush" "parents" ["root" "particles_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "particles_renderer"} "name" "vortex brush" "_tombstone" false "frame" #afield/rect [40.0 1120.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "particles_vortex_brush_code_.kt" "lines" 25 "characters" 754 "sha256" "aec81b1266c549813e3a504c7f3b43a6c32768ed3290798f1c1c7d2236ebd4f4"} {"name" "compute" "language" "glsl" "path" "particles_vortex_brush_compute_.glsl" "lines" 44 "characters" 1178 "sha256" "9197001c6e3002df58a3a425a9204cf4bff0432b50f52ac14ce771301c350005"}]}
+{"id" "particles_vortex_brush" "index" 1 "name" "vortex brush" "parents" ["root" "particles_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "particles_renderer"} "name" "vortex brush" "_tombstone" false "frame" #afield/rect [40.0 1120.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "particles_vortex_brush_code_.kt" "lines" 25 "characters" 755 "sha256" "dcbe9f6e1d2fdd0b2a6e89bd02adec93786cabf07ea3b88646ed1a96b4c3c1a8"} {"name" "compute" "language" "glsl" "path" "particles_vortex_brush_compute_.glsl" "lines" 44 "characters" 1178 "sha256" "9197001c6e3002df58a3a425a9204cf4bff0432b50f52ac14ce771301c350005"}]}
 ```
 
 ```kotlin [field-property box="particles_vortex_brush" name="code" path="particles_vortex_brush_code_.kt"]
@@ -63,12 +63,12 @@ val sketch = ParticleSketch(module) {
 }
 showControls(sketch)
 
-// four arcs around the middle; drag in the window for more
+// eight arcs around the middle; drag in the window for more
 if (sketch.isEmpty) {
-    for (k in 0 until 4) {
-        sketch.paint((0..30).map { i ->
-            val a = k * PI / 2 + i / 30.0 * 1.3
-            vec(550 + cos(a) * (90 + k * 40), 380 + sin(a) * (90 + k * 40))
+    for (k in 0 until 8) {
+        sketch.paint((0..40).map { i ->
+            val a = k * PI / 4 + i / 40.0 * 2.2
+            vec(550 + cos(a) * (70 + k * 30), 380 + sin(a) * (70 + k * 30))
         })
     }
 }
@@ -350,19 +350,23 @@ void draw() {
 
 From `code`
 
-Spring mesh: nearby particles knit themselves into a spring web and local clumps.
+Spring mesh: nearby particles knit themselves into a spring web and local clumps. The
+web lasts a few seconds before clumping pulls it into balls, as it does in the demo;
+drag a long stroke through the window to watch it knit again.
 
 Springs live in eachPair because a spring is about two particles. The GPU sees every
 pair twice, once from each side, and spring() applies only p's half, so the two halves
 add up to the whole spring. link() draws the thread once, from one side.
 
 ```edn [field-box id="particles_spring_mesh" role="properties"]
-{"id" "particles_spring_mesh" "index" 4 "name" "spring mesh" "parents" ["root" "particles_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "particles_renderer"} "name" "spring mesh" "_tombstone" false "frame" #afield/rect [640.0 200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "particles_spring_mesh_code_.kt" "lines" 25 "characters" 795 "sha256" "7250dc24792340ea01fba45bc3c7c90456847e86a3f6fc9e0788d98b003c43ab"} {"name" "compute" "language" "glsl" "path" "particles_spring_mesh_compute_.glsl" "lines" 28 "characters" 687 "sha256" "e0fd4285e7dccc92391734ad45bfcdc0bf1bad59431de6769c5bc5cf65bf1176"}]}
+{"id" "particles_spring_mesh" "index" 4 "name" "spring mesh" "parents" ["root" "particles_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "particles_renderer"} "name" "spring mesh" "_tombstone" false "frame" #afield/rect [640.0 200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "particles_spring_mesh_code_.kt" "lines" 27 "characters" 946 "sha256" "05e24860585668008bcea788cfbc2ca2571be089396a806d77542071af8d3ad1"} {"name" "compute" "language" "glsl" "path" "particles_spring_mesh_compute_.glsl" "lines" 28 "characters" 687 "sha256" "e0fd4285e7dccc92391734ad45bfcdc0bf1bad59431de6769c5bc5cf65bf1176"}]}
 ```
 
 ```kotlin [field-property box="particles_spring_mesh" name="code" path="particles_spring_mesh_code_.kt"]
 /*
-Spring mesh: nearby particles knit themselves into a spring web and local clumps.
+Spring mesh: nearby particles knit themselves into a spring web and local clumps. The
+web lasts a few seconds before clumping pulls it into balls, as it does in the demo;
+drag a long stroke through the window to watch it knit again.
 
 Springs live in eachPair because a spring is about two particles. The GPU sees every
 pair twice, once from each side, and spring() applies only p's half, so the two halves
@@ -623,7 +627,7 @@ Gravity is a world setting, added to every particle before anything else. Collis
 are pairwise, in eachPair; the walls are each particle's own business, in update().
 
 ```edn [field-box id="particles_bounce_house" role="properties"]
-{"id" "particles_bounce_house" "index" 7 "name" "bounce house" "parents" ["root" "particles_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "particles_renderer"} "name" "bounce house" "_tombstone" false "frame" #afield/rect [40.0 660.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "particles_bounce_house_code_.kt" "lines" 24 "characters" 730 "sha256" "6ad039c561d12e8de7cf534030718e9dc1dcb9125747a383e3b56be84e2da822"} {"name" "compute" "language" "glsl" "path" "particles_bounce_house_compute_.glsl" "lines" 24 "characters" 577 "sha256" "e1829207893a93e844ff427a1d24a010ed4207e8b80db98cecab28e7daa16b15"}]}
+{"id" "particles_bounce_house" "index" 7 "name" "bounce house" "parents" ["root" "particles_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "particles_renderer"} "name" "bounce house" "_tombstone" false "frame" #afield/rect [40.0 660.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "particles_bounce_house_code_.kt" "lines" 25 "characters" 827 "sha256" "75c315b6b1558bce66a5eb3ec04e4d8fec1cac4d9b4ca6ea7260ee5de55da876"} {"name" "compute" "language" "glsl" "path" "particles_bounce_house_compute_.glsl" "lines" 24 "characters" 577 "sha256" "e1829207893a93e844ff427a1d24a010ed4207e8b80db98cecab28e7daa16b15"}]}
 ```
 
 ```kotlin [field-property box="particles_bounce_house" name="code" path="particles_bounce_house_code_.kt"]
@@ -645,10 +649,11 @@ val sketch = ParticleSketch(module) {
 }
 showControls(sketch)
 
-// three pours across the top; drag in the window for more
+// six pours across the top; drag in the window for more
 if (sketch.isEmpty) {
-    for (k in 0 until 3) {
-        sketch.paint(220.0 + k * 330, 90.0, 380.0 + k * 330, 140.0)
+    for (k in 0 until 6) {
+        sketch.paint(120.0 + k * 160, 80.0 + (k % 2) * 60, 260.0 + k * 160, 200.0 - (k % 2) * 60)
+        sketch.paint(120.0 + k * 160, 260.0, 260.0 + k * 160, 300.0)
     }
 }
 ```

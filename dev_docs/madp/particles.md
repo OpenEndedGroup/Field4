@@ -70,10 +70,14 @@ Two alternatives were rejected:
 - **Links drawn from a separate neighbour query in the line pass**: it would split one piece of
   student code (`if (same group && close) link(…)`) across two shaders.
 
-What differs, and is said in the starting point: madp's pair loop is sequential (Gauss–Seidel:
-a collision's position correction is seen by the next pair), the GPU's is simultaneous (Jacobi:
-every pair sees the snapshot). Overlapping balls separate over a few frames instead of one; it reads
-the same.
+What differs: madp's pair loop is sequential (Gauss–Seidel: a collision's position correction is
+seen by the next pair), the GPU's is simultaneous (Jacobi: every pair sees the snapshot).
+Overlapping balls separate over a few frames instead of one; it reads the same. `collide()`
+collects its pushes and bounces and the harness applies them after the last pair. The first cut
+moved `p` in place, and because the walk visits cells left to right and bottom to top, the side
+visited last always won: bounce house piled into the bottom-left corner (madp's stays centred, mean
+x 0.50 over 13 s). The smoke now steps a four-way mirror-symmetric pile and requires it to stay
+symmetric (3.07 px asymmetry before the fix, 0.00 after).
 
 Links and overlays go into one **append buffer** (an atomic counter and a record per stroke), drawn
 as antialiased quads. A spring mesh draws about 18 links per particle (measured on madp: 13,762
@@ -88,6 +92,25 @@ background` (every preset sets them equal). So the port uses `PointAccumulation`
 `fade = 1 − trail`, alpha ("over") blending, and keeps **colours in sRGB, blended the way a canvas
 blends**, with its own display pass that converts to linear only at the end. Blending the same
 colours in linear light makes 12% links look three times brighter than madp's.
+
+## Time: madp's constants are per frame
+
+madp runs at the browser's 60 frames a second, and `drag(0.02)`, `world.damping` and the trail
+are all per-frame factors. A Field renderer window the display does not throttle draws thousands
+of frames a second (measured ~3,300 here), where those factors froze the world and erased the
+trail. So a sketch **steps at most `fps` times a second (default 60)**, with `dt` the time since the
+last step, and holds the picture between steps; the trail is also scaled to the step's length.
+madp's spring mesh does collapse into balls within a few seconds when it really runs at 60; the
+web it shows in a throttled browser tab is its first second.
+
+## The pointer
+
+Painting reads the GLFW cursor and button once a frame on the window's poll and hands them to
+`PaintBrush` (madp's mousedown/mousemove/mouseup rule, unit tested). `mouse` is in window points,
+and `mouseInside` is GLFW's `HOVERED`, madp's "over the canvas". A real drag could not be posted in
+a test here (no Accessibility grant), so the rule is tested and the GLFW reads are not. Along the
+way, `MouseEvents.windowSize` was in framebuffer pixels while `pos` is in points, so `uv` stopped at
+(0.5, 0.5) on Retina; fixed at the source.
 
 ## Shared vs local
 

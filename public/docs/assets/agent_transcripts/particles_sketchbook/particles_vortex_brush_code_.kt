@@ -14,12 +14,12 @@ val sketch = ParticleSketch(module) {
 }
 showControls(sketch)
 
-// four arcs around the middle; drag in the window for more
+// eight arcs around the middle; drag in the window for more
 if (sketch.isEmpty) {
-    for (k in 0 until 4) {
-        sketch.paint((0..30).map { i ->
-            val a = k * PI / 2 + i / 30.0 * 1.3
-            vec(550 + cos(a) * (90 + k * 40), 380 + sin(a) * (90 + k * 40))
+    for (k in 0 until 8) {
+        sketch.paint((0..40).map { i ->
+            val a = k * PI / 4 + i / 40.0 * 2.2
+            vec(550 + cos(a) * (70 + k * 30), 380 + sin(a) * (70 + k * 30))
         })
     }
 }

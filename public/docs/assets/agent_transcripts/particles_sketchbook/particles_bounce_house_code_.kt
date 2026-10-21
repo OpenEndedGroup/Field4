@@ -16,9 +16,10 @@ val sketch = ParticleSketch(module) {
 }
 showControls(sketch)
 
-// three pours across the top; drag in the window for more
+// six pours across the top; drag in the window for more
 if (sketch.isEmpty) {
-    for (k in 0 until 3) {
-        sketch.paint(220.0 + k * 330, 90.0, 380.0 + k * 330, 140.0)
+    for (k in 0 until 6) {
+        sketch.paint(120.0 + k * 160, 80.0 + (k % 2) * 60, 260.0 + k * 160, 200.0 - (k % 2) * 60)
+        sketch.paint(120.0 + k * 160, 260.0, 260.0 + k * 160, 300.0)
     }
 }
