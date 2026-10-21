@@ -265,15 +265,17 @@ From `notes`
 Jam with a classmate
 
 ```edn [field-box id="stacktrinket_jam" role="properties"]
-{"id" "stacktrinket_jam" "index" 4 "name" "jam with a classmate" "parents" ["root" "stacktrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "stacktrinket_renderer"} "name" "jam with a classmate" "_tombstone" false "frame" #afield/rect [640.0 1280.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "stacktrinket_jam_notes_.md" "lines" 23 "characters" 1127 "sha256" "88bc4d2d350378b72add6455ab4507746e0f3ac0bb5fd1ddae9f97e8e956d6c0"} {"name" "code" "language" "kotlin" "path" "stacktrinket_jam_code_.kt" "lines" 17 "characters" 688 "sha256" "ec5d621f621ddce5613c3f23886d86dfefc1d6d4e6dc35a4e85361a8b3ace5b3"} {"name" "stackSL" "language" "stacksl" "path" "stacktrinket_jam_stackSL_.stacksl" "lines" 5 "characters" 111 "sha256" "f60eed061112a670a484ac3e023165db2abfb4f31796f8d7936ea6b4a5a3df70"}]}
+{"id" "stacktrinket_jam" "index" 4 "name" "jam with a classmate" "parents" ["root" "stacktrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "stacktrinket_renderer"} "name" "jam with a classmate" "_tombstone" false "frame" #afield/rect [640.0 1280.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "stacktrinket_jam_notes_.md" "lines" 27 "characters" 1501 "sha256" "6aea7d4bc35a3f491aec76afee6fef89c91813240d13deaa1baa905dba7eb18d"} {"name" "code" "language" "kotlin" "path" "stacktrinket_jam_code_.kt" "lines" 24 "characters" 1138 "sha256" "2ae88c678636fa18db43615ad077b487aa9896d5f116c3a3601dafcc49eac996"} {"name" "stackSL" "language" "stacksl" "path" "stacktrinket_jam_stackSL_.stacksl" "lines" 5 "characters" 111 "sha256" "f60eed061112a670a484ac3e023165db2abfb4f31796f8d7936ea6b4a5a3df70"}]}
 ```
 
 ```markdown [field-property box="stacktrinket_jam" name="notes" path="stacktrinket_jam_notes_.md"]
 # Jam with a classmate
 
-The classroom shader jam, in StackSL. This box lists everyone publishing on the class's
-network (the same one browser ShaderTrinkets use) and hands the stream you pick to the
-program as a second picture beside `state`.
+The classroom shader jam, in StackSL. This box publishes its program to the class's
+network (the one browser ShaderTrinkets use) as `@you/stacktrinket`, lists everyone else
+publishing, and hands the stream you pick to the program as a second picture beside
+`state`. In a browser ShaderTrinket, type `you/stacktrinket` into Receive to pull this
+program into an `iChannel`.
 
 In the program, `0 sample1` reads the stream at this pixel, the way `prev` reads the last
 frame; `0.01 0 vec2 sample1` reads it a little to the side. The starting program keeps a
@@ -290,28 +292,37 @@ Click a name under `publishers` to switch stream. Until a stream arrives, the pi
 shows the receiver's status line ("waiting for @… to publish"), so you can see what it is
 waiting for.
 
-Needs Electron installed for the hidden page that receives the stream
-(`./gradlew electronInstall`).
+Publishing needs Field's Electron app (the `stream` panel is where the published frames
+leave from); receiving needs Electron installed for the hidden page that plays the
+stream (`./gradlew electronInstall`). Video only, and no TURN server: two machines whose
+networks both block direct connections cannot see each other.
 ```
 
 ```kotlin [field-property box="stacktrinket_jam" name="code" path="stacktrinket_jam_code_.kt"]
+import afield.media.webrtc.webrtcPublish
 import afield.media.webrtc.webrtcPublishers
 import afield.media.webrtc.webrtcSource
 
 /*
-A classmate's WebRTC stream as a second picture beside `state`: `0 sample1` reads it
-at this pixel. Pick whose stream from the publishers list. The program is in the
-[[property stackSL]] tab; see this box's notes.
+The shader jam in StackSL. This program is published to the class as
+@you/stacktrinket, and a classmate's stream is a second picture beside `state`:
+`0 sample1` reads it at this pixel. Pick whose stream from the publishers list. The
+program is in the [[property stackSL]] tab; see this box's notes.
 */
 val publishers = webrtcPublishers()
 val stream = webrtcSource(publishers.names.firstOrNull() ?: "nobody", 640, 360)
+val feedback = stackFeedback { input("remote", stream) }
+
+// Publish what the window shows, as a 640×640 stream; its preview is the `stream` panel.
+val sink = webrtcPublish(feedback.picture, "stacktrinket", 640, 640, show = "stream")
+
+// Until you pick someone, show the first publisher who is not this box.
 publishers.onChange { names ->
-    if (stream.target == "nobody" && names.isNotEmpty()) stream.watch(names.first())
+    val others = names.filter { it != sink.publishedAs }
+    if (stream.target == "nobody" && others.isNotEmpty()) stream.watch(others.first())
 }
 publishers.onPick { name -> stream.watch(name) }
 display("publishers", publishers.html { stream.target })
-
-stackFeedback { input("remote", stream) }
 ```
 
 ```stacksl [field-property box="stacktrinket_jam" name="stackSL" path="stacktrinket_jam_stackSL_.stacksl"]

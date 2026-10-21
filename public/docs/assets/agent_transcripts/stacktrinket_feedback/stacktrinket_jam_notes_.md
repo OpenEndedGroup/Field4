@@ -1,8 +1,10 @@
 # Jam with a classmate
 
-The classroom shader jam, in StackSL. This box lists everyone publishing on the class's
-network (the same one browser ShaderTrinkets use) and hands the stream you pick to the
-program as a second picture beside `state`.
+The classroom shader jam, in StackSL. This box publishes its program to the class's
+network (the one browser ShaderTrinkets use) as `@you/stacktrinket`, lists everyone else
+publishing, and hands the stream you pick to the program as a second picture beside
+`state`. In a browser ShaderTrinket, type `you/stacktrinket` into Receive to pull this
+program into an `iChannel`.
 
 In the program, `0 sample1` reads the stream at this pixel, the way `prev` reads the last
 frame; `0.01 0 vec2 sample1` reads it a little to the side. The starting program keeps a
@@ -19,5 +21,7 @@ Click a name under `publishers` to switch stream. Until a stream arrives, the pi
 shows the receiver's status line ("waiting for @… to publish"), so you can see what it is
 waiting for.
 
-Needs Electron installed for the hidden page that receives the stream
-(`./gradlew electronInstall`).
+Publishing needs Field's Electron app (the `stream` panel is where the published frames
+leave from); receiving needs Electron installed for the hidden page that plays the
+stream (`./gradlew electronInstall`). Video only, and no TURN server: two machines whose
+networks both block direct connections cannot see each other.
