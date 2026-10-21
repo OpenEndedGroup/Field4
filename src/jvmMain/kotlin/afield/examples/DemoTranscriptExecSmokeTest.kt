@@ -541,6 +541,10 @@ object DemoTranscriptExecSmokeTest {
         // dough through the audio device. ScoreTest steps the runner frame by frame and DoughLiveTest
         // measures the sound helper's levels, both headless.
         "madp_score",
+        // charGrid: both builders return animations that run until stopped, and their glyphs play dough
+        // through the audio device. CharGridTest checks the cells, the panel's diffs and the sound
+        // grouping headless.
+        "madp_chargrid",
         // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
         // measuring box whose numbers SceneOnARigTest already pins.
         "chain_scene_to_light",

@@ -2414,6 +2414,20 @@ under the grids shows what Kotlin heard and changed. Launch the box, then type i
 
 [Open ↗](offline.html?file=assets/agent_transcripts/orca_duet/metadata.edn)
 
+### madp_chargrid
+
+**A picture as a grid of glyph indices.** A box's program writes numbers into a 40 × 25 grid with
+`SET(x, y, g, color, style)`, a charset string turns each number into a character, and each cell can
+carry a CSS colour and a rotation. `charGrid { }` runs the program once a tick and lets it read the
+last tick with `PREV`, which is all Conway's Life needs; `charStream { }` runs one long program in
+which every `SET` waits a tick, so 10 PRINT's maze types itself out. Every glyph can be a dough sound:
+the Glass box's charset is eight bars, A minor from E2 to E4, and its arpeggios draw and play at
+once. The lead box is the demo's plasma; the others are 10 PRINT, Life, matrix rain, Glass, spinners
+(one `CSSVAR` spins the whole field) and a C64 typewriter. A port of the madp charGrid demo; the
+design notes are in `dev_docs/madp/chargrid.md`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_chargrid/metadata.edn)
+
 ### madp_score
 
 **The canvas as a score.** Run the first box and an orange playhead sweeps the canvas from left to
