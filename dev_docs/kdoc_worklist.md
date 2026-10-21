@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17408 of 33945 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17416 of 33954 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2238 undocumented entry points** (types, top-level functions and values) and 13590 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -131,7 +131,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FunctionFit.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt) | Function | functions_examples, autodiff_examples, pattern_language | 0 | 26 | 54% |
 | [FunctionGraphRules.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionGraphRules.kt) | Function | functions_examples | 0 | 26 | 36% |
 | [SonicPiPatterns.kt](../src/jvmMain/kotlin/afield/audio/synth/SonicPiPatterns.kt) | Audio | sonic_pi | 0 | 25 | 68% |
-| [alife_continuous.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_continuous.kt) | ALife | alife_examples | 0 | 25 | 57% |
+| [alife_continuous.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_continuous.kt) | ALife | alife_examples | 0 | 25 | 61% |
 | [Loris.kt](../src/jvmMain/kotlin/afield/audio/analysis/loris/Loris.kt) | Audio | loris | 0 | 24 | 42% |
 | [MorphoSpec.kt](../src/jvmMain/kotlin/afield/lang/morpho/MorphoSpec.kt) | Languages | morpho_search | 0 | 24 | 45% |
 | [StackSLEvolve.kt](../src/jvmMain/kotlin/afield/lang/stacksl/evolution/StackSLEvolve.kt) | Search | stacksl_evolve | 0 | 24 | 73% |
@@ -146,7 +146,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PopulationSearch.kt](../src/jvmMain/kotlin/afield/study/search/PopulationSearch.kt) | Search | alife_examples | 0 | 20 | 50% |
 | [Orca.kt](../src/jvmMain/kotlin/afield/audio/synth/Orca.kt) | Patterns | orca | 0 | 19 | 67% |
 | [Transforms.kt](../src/jvmMain/kotlin/afield/geometry/polytope/Transforms.kt) | Polytopes | polytope_examples | 0 | 19 | 76% |
-| [FunctionEvolve.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionEvolve.kt) | Function | functions_examples, alife_examples | 0 | 19 | 50% |
+| [FunctionEvolve.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionEvolve.kt) | Function | functions_examples | 0 | 19 | 50% |
 | [alife_ca.kt](../src/jvmMain/kotlin/afield/simulation/automata/alife_ca.kt) | ALife | alife_examples, chain_life3d_render | 0 | 19 | 71% |
 | [MorseSmale.kt](../src/jvmMain/kotlin/afield/geometry/topology/morsesmale/MorseSmale.kt) | Graphics | morse_smale, topology_tracking | 0 | 18 | 58% |
 | [DirectLighting.kt](../src/jvmMain/kotlin/afield/graphics/render/lighting/DirectLighting.kt) | Graphics | direct_lighting | 0 | 18 | 28% |
