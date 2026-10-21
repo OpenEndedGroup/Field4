@@ -760,6 +760,10 @@ object DemoTranscriptExecSmokeTest {
         // hermetic: the box's `clipEncode(…)` calls and its Depth Anything session are behind lazy
         // initialisation, so nothing here fetches the ~600MB of encoders that running it would.
         "onnx_webcam_live",
+        // The madp tetra port: running a box loads both CLIP towers (~600 MB fetched on first use),
+        // which a hermetic build must not do. `onnx.clip.smoke` encodes the same photographs and checks
+        // their simplex is exact and repeatable; EmbeddingSimplexTest holds the geometry.
+        "madp_tetra",
         // Both open a native Vulkan renderer and dispatch compute. Their numbers are checked
         // elsewhere and far more sharply than a replay could: `four.neural-particles.smoke` grades
         // the GPU's trajectories against the CPU integrator per particle, and

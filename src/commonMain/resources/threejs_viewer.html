@@ -883,6 +883,90 @@ function renderStudioAo() {
 }
 // [viewer-region studio] END
 
+// [viewer-region labels] BEGIN
+// Text anchored to points in the scene (`payload.labels`), an HTML block in a corner (`payload.overlays`),
+// a greyed-out "stale" state (`payload.dimmed`, `payload.note`), and no HUD (`payload.hud === false`). Labels are DOM elements re-projected
+// every frame rather than sprites, so they stay crisp at any DPR and take ordinary CSS; they are drawn for
+// a single view only (a contact sheet hides them). None of it is pickable: the layer ignores the pointer.
+const labelLayer = document.createElement('div');
+labelLayer.className = 'scene-label-layer';
+container.appendChild(labelLayer);
+const labelStyleSheet = document.createElement('style');
+labelStyleSheet.textContent = `
+  .scene-label-layer, .scene-overlay, .scene-note { position:absolute; pointer-events:none; }
+  .scene-label-layer { inset:0; overflow:hidden; }
+  #canvas-wrap canvas, .scene-label-layer { transition: opacity .2s, filter .2s; }
+  #canvas-wrap.scene-dimmed canvas, #canvas-wrap.scene-dimmed .scene-label-layer { opacity:.38; filter:grayscale(.8); }
+  .scene-label { position:absolute; transform:translate(-50%,-50%); white-space:nowrap; text-shadow:0 1px 5px #000; }
+  .scene-label.chip { min-width:24px; height:24px; padding:0 5px; display:inline-flex; align-items:center; justify-content:center;
+    border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.62); color:#f2f2f2; font-size:12px; }
+  .scene-label.tag { padding:2px 5px; color:rgba(230,230,230,.72); background:rgba(0,0,0,.48);
+    border:1px solid rgba(255,255,255,.08); font-size:10px; }
+  .scene-label.diamond { width:10px; height:10px; border:1px solid rgba(255,255,255,.54);
+    box-shadow:0 1px 7px rgba(0,0,0,.85); transform:translate(-50%,-50%) rotate(45deg); }
+  .scene-overlay { max-width:calc(100% - 24px); font-size:11px; }
+  .scene-overlay.top-right { top:12px; right:12px; } .scene-overlay.top-left { top:12px; left:12px; }
+  .scene-overlay.bottom-right { bottom:12px; right:12px; } .scene-overlay.bottom-left { bottom:12px; left:12px; }
+  body.hud-off #hud { display:none; }
+  .scene-note { left:16px; bottom:14px; color:rgba(255,255,255,.35); font-size:11px; letter-spacing:.05em; text-transform:uppercase; }
+`;
+document.head.appendChild(labelStyleSheet);
+let sceneLabels = [];
+let sceneOverlayEls = [];
+const sceneNote = document.createElement('div');
+sceneNote.className = 'scene-note';
+container.appendChild(sceneNote);
+
+function applyLabels(payload) {
+    labelLayer.replaceChildren();
+    sceneLabels = (payload.labels || []).map(spec => {
+        const el = document.createElement('div');
+        el.className = 'scene-label ' + (spec.style || 'tag');
+        el.textContent = spec.text || '';
+        if (spec.color) {
+            if ((spec.style || 'tag') === 'diamond') el.style.background = spec.color;
+            else el.style.color = spec.color;
+        }
+        if (spec.background) el.style.background = spec.background;
+        if (spec.border) el.style.borderColor = spec.border;
+        if (spec.title) el.title = spec.title;
+        labelLayer.appendChild(el);
+        return {el, at: new THREE.Vector3(spec.position[0], spec.position[1], spec.position[2])};
+    });
+    sceneOverlayEls.forEach(el => el.remove());
+    sceneOverlayEls = (payload.overlays || []).map(spec => {
+        const el = document.createElement('div');
+        el.className = 'scene-overlay ' + (spec.corner || 'top-right');
+        el.innerHTML = spec.html || '';
+        container.appendChild(el);
+        return el;
+    });
+    container.classList.toggle('scene-dimmed', !!payload.dimmed);
+    // A picture to look at rather than a model to inspect: no tool buttons, no counts.
+    document.body.classList.toggle('hud-off', payload.hud === false);
+    sceneNote.textContent = payload.note || '';
+}
+
+const labelProjection = new THREE.Vector3();
+function updateLabels(cam) {
+    const single = panelState.cameras.length <= 1;
+    labelLayer.style.display = single ? '' : 'none';
+    if (!single || sceneLabels.length === 0) return;
+    const width = container.clientWidth, height = container.clientHeight;
+    for (const label of sceneLabels) {
+        labelProjection.copy(label.at).project(cam);
+        const visible = labelProjection.z > -1 && labelProjection.z < 1;
+        label.el.style.display = visible ? '' : 'none';
+        if (!visible) continue;
+        // Kept inside the view, as the madp tetra page does, so a label never leaves by an edge.
+        const halfW = (label.el.offsetWidth || 24) / 2 + 6, halfH = (label.el.offsetHeight || 18) / 2 + 6;
+        const x = (labelProjection.x * 0.5 + 0.5) * width, y = (-labelProjection.y * 0.5 + 0.5) * height;
+        label.el.style.left = Math.min(width - halfW, Math.max(halfW, x)) + 'px';
+        label.el.style.top = Math.min(height - halfH, Math.max(halfH, y)) + 'px';
+    }
+}
+// [viewer-region labels] END
+
 const baseGeometryRoot = new THREE.Group();
 const editorOverlayRoot = new THREE.Group();
 scene.add(baseGeometryRoot);
@@ -6232,6 +6316,7 @@ function applyGeometry(payload) {
     grid.visible = wantHelpers;
     axes.visible = wantHelpers;
     applyStudio(payload.studio, payload.bounds);
+    applyLabels(payload);
     if (!hasFramedInitialGeometry && payload.bounds && payload.autoFrame !== false) {
         frameBounds(payload.bounds);
         hasFramedInitialGeometry = true;
@@ -7091,6 +7176,7 @@ function render() {
         renderer.setViewport(0, 0, container.clientWidth, container.clientHeight);
         renderGeometry(camera);
     }
+    updateLabels(camera);
 }
 
 /** Every panel of a contact sheet, each through its own camera into its own rectangle. */
