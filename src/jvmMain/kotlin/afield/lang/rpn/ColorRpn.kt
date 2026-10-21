@@ -1,4 +1,4 @@
-@file:afield.runtime.completion.CompletionCategory("Language")
+@file:afield.runtime.completion.CompletionCategory("Search")
 
 package afield.lang.rpn
 
