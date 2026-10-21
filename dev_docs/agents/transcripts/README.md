@@ -306,6 +306,12 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   regenerate the yaml after editing one, then re-add the replay's `launch`/`await` ops.
   `fieldml_afield_four_demo.yaml` also carries a `fieldml-four-renderer` box its document lacks (the
   document expects a renderer from the session), copied from `fieldml_frames_demo`; keep it.
+- `stacktrinket_feedback.yaml`: **StackSL with its own previous frame** — the madp StackTrinket
+  demo as a starting point (`dev_docs/madp/stacktrinket.md`). A renderer, the pulse ring and six
+  feedback presets, each a `stackSL` tab plus one `stackFeedback()` call
+  (`afield/lang/stacksl/StackSLFeedback.kt`): a float16 ping-pong with the last frame bound as
+  `state`, live edits, and a lowering panel. Compiled only (native window); `StackSLFeedbackTest`
+  compiles all fifteen presets and the fragment shader to SPIR-V.
 - `sorting_networks.yaml`: the four runner fences of `public/docs/sorting_networks_examples.md`,
   fold markers removed, one box each. Regenerate it when those fences change.
 - `interaction_nets_lambda.yaml`: **λ-calculus on interaction nets**, three pure-CPU boxes. A term is
