@@ -2422,6 +2422,20 @@ run it again after an edit. A port of the madp score demo; the design notes are 
 
 [Open ↗](offline.html?file=assets/agent_transcripts/madp_score/metadata.edn)
 
+### madp_line
+
+**Strokes that come alive.** Run the first box, press Alt+D, choose the pencil and draw on the
+empty canvas beside the boxes. Each stroke turns into a moving, sounding object: its shape sets up a
+small synth choir, and the louder the choir plays, the wider the stroke's ribbon swings. Every
+stroke keeps the code it was drawn with, so edit the box and run it again, and only the strokes you
+draw next change. Run another box to give it the pen: a filled ribbon, comet dust with long trails,
+curve maths that splits a stroke into four related curves, strokes that pull each other into a web,
+and a stroke snapped onto a twelve-step sequencer whose cursor marks the note you hear. The block
+in `eachStroke { }` runs once per stroke and its `draw { t -> }` sixty times a second. A port of
+the madp line demo; the design notes are in `dev_docs/madp/line.md`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_line/metadata.edn)
+
 ### mqtt_demo
 
 The demo for [MQTT](mqtt.md), on Field's own broker: one box plays three pretend sensors, one

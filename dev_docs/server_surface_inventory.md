@@ -494,6 +494,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `stop-box` | `executing.kt` |
 | `store-history-screenshot` | `history.kt` |
 | `string-update` | `Server.kt` |
+| `stroke-layer-ack` | `StrokeSketch.kt` |
 | `symbol-context` | `Server.kt` |
 | `transcript-line-activity` | `history.kt` |
 | `vec2-update` | `Server.kt` |
