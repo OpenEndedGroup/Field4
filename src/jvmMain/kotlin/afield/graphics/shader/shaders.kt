@@ -2305,6 +2305,12 @@ private fun builtInShaderInclude(inside: Box, includePath: String): String? {
         // a resources box has executed. An explicit include-root registration still wins.
         else -> if (includePath.startsWith("flow/") && !shaderIncludeRoots.containsKey("flow"))
             afield.simulation.flow.FlowShaders.source(includePath.removePrefix("flow/"))
+        else if (includePath.startsWith("points/") && !shaderIncludeRoots.containsKey("points") &&
+            afield.graphics.vulkan.targets.PointShaders.has(includePath.removePrefix("points/")))
+            afield.graphics.vulkan.targets.PointShaders.source(includePath.removePrefix("points/"))
+        else if (includePath.startsWith("particles/") && !shaderIncludeRoots.containsKey("particles") &&
+            afield.simulation.particles.ParticleShaders.has(includePath.removePrefix("particles/")))
+            afield.simulation.particles.ParticleShaders.source(includePath.removePrefix("particles/"))
         else null
     }
 }
