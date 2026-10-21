@@ -26,13 +26,13 @@ import afield.graphics.vulkan.targets.PointAccumulation
 import afield.graphics.vulkan.targets.PointBlend
 import afield.graphics.vulkan.targets.PointShaders
 import afield.graphics.vulkan.util.GpuNeighbourGrid
+import afield.graphics.vulkan.util.WindowPointer
 import afield.math.linalg.Rectanglef
 import afield.math.linalg.Vec4
 import afield.math.linalg.Vector2f
 import afield.math.linalg.vec
 import afield.ui.output.controlGroup
 import afield.ui.output.displayOpen
-import org.lwjgl.glfw.GLFW
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK13.VK_ACCESS_2_SHADER_READ_BIT
 import org.lwjgl.vulkan.VK13.VK_ACCESS_2_SHADER_WRITE_BIT
@@ -325,13 +325,14 @@ class ParticleSketch(
 
         val queue = ArrayDeque<Float>()
 
-        // pointer state, written by the window's poll and read by the frame
-        @Volatile var worldWidth = renderer.window.width.toFloat()
-        @Volatile var worldHeight = renderer.window.height.toFloat()
-        @Volatile var mouseX = 0f
-        @Volatile var mouseY = 0f
-        @Volatile var mouseInside = false
-        @Volatile var mouseDown = false
+        // the pointer and the window's size in points, read on the window's poll
+        private val brush = SpawnBrush()
+        val windowPointer = WindowPointer(renderer.window, "${shape.name}-pointer") { p ->
+            brush.spacing = settings.paintSpacing
+            brush.step(p.x.toDouble(), p.y.toDouble(), p.down && settings.paintWithMouse, p.inside, ::enqueue)
+        }
+        val worldWidth get() = windowPointer.width
+        val worldHeight get() = windowPointer.height
 
         private var module: ComputeModulePointer? = null
         private var mesh: ComputeMesh? = null
@@ -342,7 +343,6 @@ class ParticleSketch(
             buildDrawing()
             renderer.renderList.preTargets["${shape.name}-sketch"] = this
             display()
-            installPointer()
         }
 
         /** Particles alive; 0 as soon as [reset] is asked for, though the frame applies it. */
@@ -368,34 +368,6 @@ class ParticleSketch(
 
         fun paintAlong(x0: Double, y0: Double, x1: Double, y1: Double) =
             SpawnBrush.along(x0, y0, x1, y1, settings.paintSpacing, ::enqueue)
-
-        /** Reads the pointer and the window's size in points where GLFW allows it: on the poll. */
-        private fun installPointer() {
-            val window = renderer.window
-            val brush = SpawnBrush()
-            window.onPoll["${shape.name}-pointer"] = sequence {
-                while (true) {
-                    val size = window.size()
-                    worldWidth = size.w.toFloat().coerceAtLeast(1f)
-                    worldHeight = size.h.toFloat().coerceAtLeast(1f)
-                    val cursor = window.cursor
-                    val x = cursor.x.toDouble()
-                    val y = cursor.y.toDouble()
-                    mouseX = x.toFloat()
-                    mouseY = y.toFloat()
-                    // madp's mouse.inside is "over the canvas": the window has to be under the
-                    // pointer, not merely around where the pointer happens to be
-                    val hovered = GLFW.glfwGetWindowAttrib(window.windowHandle, GLFW.GLFW_HOVERED) == GLFW.GLFW_TRUE
-                    val inside = hovered && x >= 0 && y >= 0 && x <= size.w && y <= size.h
-                    mouseInside = inside
-                    val down = window.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_LEFT)
-                    mouseDown = down
-                    brush.spacing = settings.paintSpacing
-                    brush.step(x, y, down && settings.paintWithMouse, inside, ::enqueue)
-                    yield(true)
-                }
-            }
-        }
 
         private lateinit var strokesUnder: Mesh
         private lateinit var dots: Mesh
@@ -510,7 +482,7 @@ class ParticleSketch(
                 val c = s.particleColor
                 putFloat(c.x); putFloat(c.y); putFloat(c.z); putFloat(c.w)
                 putFloat(worldWidth); putFloat(worldHeight)
-                putFloat(mouseX); putFloat(mouseY)
+                putFloat(windowPointer.x); putFloat(windowPointer.y)
                 putFloat(s.gravity.x); putFloat(s.gravity.y)
                 putFloat(-GRID_MARGIN); putFloat(-GRID_MARGIN)
                 putFloat(time.toFloat())
@@ -521,8 +493,8 @@ class ParticleSketch(
                 putFloat(s.particleRadius.toFloat())
                 putFloat(1f / CELL_SIZE)
                 putInt(CELLS)
-                putInt(if (mouseInside) 1 else 0)
-                putInt(if (mouseDown) 1 else 0)
+                putInt(if (windowPointer.inside) 1 else 0)
+                putInt(if (windowPointer.down) 1 else 0)
                 putInt(alive)
                 putInt(shape.capacity)
                 putInt(spawnBase)
