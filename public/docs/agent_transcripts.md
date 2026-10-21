@@ -3213,6 +3213,26 @@ shows a trail slider, pause and reset. Launch another sketch box to switch to it
 
 [Open ↗](offline.html?file=assets/agent_transcripts/particles_sketchbook/metadata.edn)
 
+### madp_boids
+
+**boids**, the classroom flocking sketchbook, on the GPU. A flock is written as a spec: kinds of
+boid, each with a count, speed limits, a field of view, a look and a list of steering rules, and
+every boid's acceleration is the sum of its rules' Reynolds steering forces. A renderer box, then
+seven flocks: **murmuration** (the three classic rules, colour by heading, the pointer as a hawk,
+launched when the scene opens), **hawks** (predators that chase, eat and rest), **fireflies** (two
+swarms seeking moving points, glowing where trails cross), **ink** (a noise flow field on paper
+that keeps every stroke), **bait ball** (a mill of sardines blown open by sharks), **two tribes**
+(a mixed flock sorting itself by colour) and **conga** (one hand-written rule that makes chains).
+Each flock box's code is the spec and its compute tab says how the boids look; the controls are
+the page's fps, steps, trail and fade, with pause, reset, a metrics card and an inspector that
+shows what one boid sees. Launch another flock box to switch to it.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_boids_murmuration.png" capture="native-window" native-wait-frames="90" trim-native=true wait="8.0" embed=true hidden=true timeout="300" name="gallery-madp-boids" alt="Murmuration in the native window: several hundred small arrows on near-black, gathered into drifting flocks, each flock one colour because colour follows heading, mostly violet, blue and pink with one green flock heading the other way, with short fading trails behind them" macro-file="../../dev_docs/agents/transcripts/madp_boids.yaml" capture-box="boids_renderer"}
+// The transcript builds every box and launches the renderer and murmuration.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_boids/metadata.edn)
+
 ### recstl_playground
 
 A one-stop [RectSL](rectsl_examples.md) playground: a Window + Renderer, a

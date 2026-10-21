@@ -1,8 +1,10 @@
 #version 450
 #extension GL_EXT_buffer_reference : require
 
-// Draws one layer of a ParticleSketch's stroke list (links, rings, discs, overlay lines) as
-// quads; shape_fragment.glsl turns each into an antialiased shape. Records past the list's count,
+// Draws one layer of a ParticleSketch's (or a BoidSketch's) stroke list as quads; shape_fragment.glsl
+// turns each into an antialiased shape. kind: 0 line a.xy -> a.zw, 1 ring, 2 disc, 3 sector (a.z the
+// centre angle, a.w the half angle), 4 dashed ring (a.z dash, a.w gap, in pixels), 5 shaded rock;
+// all but the line are centred on a.xy. Records past the list's count,
 // or on the other layer, are moved off screen.
 
 struct Stroke {
@@ -24,6 +26,7 @@ layout(push_constant) uniform Push {
 layout(location = 0) out vec2 local;       // device pixels, relative to the shape's origin
 layout(location = 1) flat out vec4 shape;  // half width, radius, kind, length (device pixels)
 layout(location = 2) flat out vec4 color;
+layout(location = 3) flat out vec2 extra;    // sector: centre angle, half angle; dashed ring: dash, gap (pixels)
 
 const vec2 corner[6] = vec2[](
     vec2(0.0, -1.0), vec2(1.0, -1.0), vec2(1.0, 1.0),
@@ -35,6 +38,7 @@ void hide() {
     local = vec2(0.0);
     shape = vec4(0.0);
     color = vec4(0.0);
+    extra = vec2(0.0);
 }
 
 void main() {
@@ -50,6 +54,7 @@ void main() {
     vec2 c = corner[gl_VertexIndex % 6];
 
     vec2 a = s.a.xy * scale;
+    extra = kind == 4 ? s.a.zw * scale.x : s.a.zw;
     vec2 pixel;
     if (kind == 0) {
         // a quad along the segment, one pixel wider than the line on every side for the edge
