@@ -12,6 +12,15 @@ import javax.sound.midi.MidiMessage
 import javax.sound.midi.ShortMessage
 
 /**
+ * The box-facing side of RTP-MIDI: `rtpMidi(...)` opens or joins an AppleMIDI network session that
+ * a DAW, an iPad app or macOS *MIDI Network Setup* can connect to, and `rtpMidiDiscover()` lists the
+ * sessions already on the network.
+ *
+ * Sessions are shared per port across boxes and outlive a stopped box; each box's listeners are
+ * replaced when it re-runs. The wire protocol is in `RtpMidiSession.kt` and `RtpMidiCodec.kt`.
+ */
+
+/**
  * Process-wide RTP-MIDI state behind `Box.rtpMidi`: one session per control port, its Bonjour
  * advertisement, the per-box callbacks and the latest controller and note values.
  *

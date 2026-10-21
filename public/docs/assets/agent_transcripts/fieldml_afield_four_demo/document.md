@@ -25,19 +25,21 @@ cannot *call into* one, because it has no continuation to pass and nowhere to re
 Everything that actually draws, and everything that moves, is in the FieldML box.
 
 ```edn [field-box id="fieldml-four-renderer" role="properties"]
-{"id" "fieldml-four-renderer" "index" 0 "name" "window and renderer" "parents" ["root"] "children" ["fieldml-four-root"] "properties" {"children" #{#afield/box "fieldml-four-root"} "parents" #{#afield/box "root"} "name" "window and renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-four-renderer_code_.kt" "lines" 17 "characters" 808 "sha256" "1e50383768e5e02818d8e60964bf4290e5ed078f20502394ef5cf09acd1714dc"}]}
+{"id" "fieldml-four-renderer" "index" 0 "name" "window and renderer" "parents" ["root"] "children" ["fieldml-four-root"] "properties" {"children" #{#afield/box "fieldml-four-root"} "parents" #{#afield/box "root"} "name" "window and renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-four-renderer_code_.kt" "lines" 19 "characters" 789 "sha256" "0dddfff7fa404c8c6ca94aabdd414872867226d2f8657a4afe73212ba4a19834"}]}
 ```
 
 ```kotlin [field-property box="fieldml-four-renderer" name="code" path="fieldml-four-renderer_code_.kt"]
-// Scaffolding, and it is Kotlin for two reasons worth naming.
-//
-// `prop` and `once` are SOURCE MACROS -- mechanism A of dev_docs/FIELDML_HOST_BRIDGE.md.
-// They rewrite Kotlin source before it is compiled, so there is no JVM member for a
-// reflective bridge to reach. And `Renderer.run` is a `suspend` member: on the JVM it is
-// `run(Continuation)`, and FieldML can now *satisfy* a suspend function type but still
-// cannot *call into* one, because it has no continuation to pass and nowhere to resume.
-//
-// Everything that actually draws, and everything that moves, is in the FieldML box.
+/*
+Scaffolding, and it is Kotlin for two reasons worth naming.
+
+`prop` and `once` are SOURCE MACROS -- mechanism A of dev_docs/FIELDML_HOST_BRIDGE.md.
+They rewrite Kotlin source before it is compiled, so there is no JVM member for a
+reflective bridge to reach. And `Renderer.run` is a `suspend` member: on the JVM it is
+`run(Continuation)`, and FieldML can now *satisfy* a suspend function type but still
+cannot *call into* one, because it has no continuation to pass and nowhere to resume.
+
+Everything that actually draws, and everything that moves, is in the FieldML box.
+*/
 prop<Window>(window)
 prop<Renderer>(renderer)
 once.renderer {

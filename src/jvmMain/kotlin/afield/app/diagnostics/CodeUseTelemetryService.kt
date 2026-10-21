@@ -1,5 +1,15 @@
 package afield.app.diagnostics
 
+/**
+ * The local history of code Field compiles and runs, stored in SQLite and summarised for the
+ * code-use panels and agent tools.
+ *
+ * [CodeUseTelemetryService] takes records from the compile, evaluation and launch hooks without
+ * blocking them, persists the source by content hash, and resolves which library symbols each
+ * snippet used. The `CodeUse...Row` and [CodeUseSummary] types are the shapes its queries return.
+ * Storage, the analyzers and the failure policy are described on [CodeUseTelemetryService].
+ */
+
 import afield.app.server.Server
 import afield.app.server.flag
 import afield.app.server.home

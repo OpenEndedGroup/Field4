@@ -64,6 +64,30 @@ import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.math.sqrt
 
+/**
+ * Hybrid semantic search over Field's own source, the open workspace and the documentation, backed
+ * by a local Lucene index and an ONNX embedding model.
+ *
+ * Each indexed item is a [SemanticCapsule] carrying an intent text, an implementation text and a
+ * lexical text. [SemanticRetrievalService.query] runs BM25 and symbol matches alongside vector
+ * nearest-neighbour searches on the intent and implementation embeddings, fuses the ranks, and
+ * filters by corpus (`field-internals`, `workspace`, `documentation`), path, kind, document, box
+ * and property.
+ *
+ * #### Models and cache
+ *
+ * [OnnxSemanticEmbedder] implements [SemanticEmbedder] with a Hugging Face tokenizer and ONNX
+ * Runtime. The model presets download from Hugging Face through
+ * [SemanticRetrievalService.downloadPreset]; models, settings and the index live under
+ * `~/.afield/semantic-search` unless `afield.semanticSearch.cacheRoot` (or
+ * `AFIELD_SEMANTIC_SEARCH_CACHE_ROOT`) says otherwise.
+ *
+ * #### Rebuilding
+ *
+ * [SemanticRetrievalService.rebuild] and [SemanticRetrievalService.startRebuild] rebuild the index;
+ * [SemanticRetrievalService.startIdleRebuildWatcher] rebuilds when workspace documents change.
+ */
+
 private val semanticSearchProviders = setOf("cpu", "coreml", "coreml-mlprogram", "xnnpack")
 
 private fun semanticSearchProviderSetting(): String =

@@ -12,19 +12,25 @@ the committed film-dialogue sample, or replace the path with your own WAV:
 val client = LorisClient()
 val source = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
 display("status", "Starting Loris…")
-client.analyzeWavAsync(
-    source,
-    options = LorisOptions(resolutionHz = 35.0, windowWidthHz = 80.0),
-    onProgress = { stage -> display("status", stage) },
-).thenAccept { result ->
-    display("partials and sound", result.visualizationHtml(
-        LorisViewOptions(syncGroup = "my-partials")
-    ))
-    display("provenance", result.provenance)
-}.exceptionally { error ->
-    display("error", error.cause?.message ?: error.message ?: error.toString())
-    null
-}
+client
+    .analyzeWavAsync(
+        source,
+        options = LorisOptions(resolutionHz = 35.0, windowWidthHz = 80.0),
+        onProgress = { stage -> display("status", stage) },
+    )
+    .thenAccept { result ->
+        display(
+            "partials and sound",
+            result.visualizationHtml(
+                LorisViewOptions(syncGroup = "my-partials"),
+            ),
+        )
+        display("provenance", result.provenance)
+    }
+    .exceptionally { error ->
+        display("error", error.cause?.message ?: error.message ?: error.toString())
+        null
+    }
 ```
 
 `%docs` is the folder of documentation files that ships with Field. For your own recording, use `"~/Downloads/recording.wav".path`, or `"recording.wav".path` for
@@ -92,45 +98,61 @@ model with a player for its sound. Each breakpoint keeps its stored phase, so ex
 of attacks. The frequency cap in the code keeps every partial below half the sample rate.
 
 ```diffstatic {data-lang=kotlin}
-import kotlin.math.PI
-import kotlin.math.pow
-import kotlin.math.sin
-
 val client = LorisClient()
 val chunkStart = 6.0
 val chunkDuration = 3.0
-client.analyzeWavAsync(
-    "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
-    options = LorisOptions(resolutionHz = 35.0, windowWidthHz = 80.0,
-        frequencyDriftHz = 50.0, amplitudeFloorDb = -55.0),
-    onProgress = { display("status", it) },
-).thenCompose { analyzed ->
-    val model = analyzed.model
-    val changed = model.copy(partials = model.partials.map { partial ->
-        partial.copy(points = partial.points.map { point ->
-            val u = (point.timeSeconds - chunkStart) / chunkDuration
-            if (u <= 0.0 || u >= 1.0) point else {
-                val envelope = sin(PI * u).pow(2)
-                val octaves = 1.5 * envelope * sin(2 * PI * 4 * u)
-                val shutter = .25 + .75 * (.5 + .5 * sin(2 * PI * 12 * chunkDuration * u))
-                point.copy(
-                    frequencyHz = (point.frequencyHz * 2.0.pow(octaves)).coerceAtMost(model.sampleRate * .49),
-                    amplitude = point.amplitude * (1 - envelope + envelope * shutter),
-                    bandwidth = point.bandwidth * (1 - envelope) + .85 * envelope,
-                )
-            }
-        })
-    })
-    display("status", "Resynthesizing the whirlpool…")
-    client.synthesizeAsync(changed)
-}.thenAccept { edited ->
-    display("edited tracks and sound", edited.visualizationHtml(
-        LorisViewOptions(height = 400, syncGroup = "my-whirlpool")
-    ))
-}.exceptionally { error ->
-    display("error", error.cause?.message ?: error.message ?: error.toString())
-    null
-}
+client
+    .analyzeWavAsync(
+        "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
+        options = LorisOptions(
+            resolutionHz = 35.0,
+            windowWidthHz = 80.0,
+            frequencyDriftHz = 50.0,
+            amplitudeFloorDb = -55.0,
+        ),
+        onProgress = { display("status", it) },
+    )
+    .thenCompose { analyzed ->
+        val model = analyzed.model
+        val changed = model.copy(
+            partials =
+                model.partials.map { partial ->
+                    partial.copy(
+                        points =
+                            partial.points.map { point ->
+                                val u = (point.timeSeconds - chunkStart) / chunkDuration
+                                if (u <= 0.0 || u >= 1.0) point
+                                else {
+                                    val envelope = sin(PI * u).pow(2)
+                                    val octaves = 1.5 * envelope * sin(2 * PI * 4 * u)
+                                    val shutter = .25 + .75 * (.5 + .5 * sin(2 * PI * 12 * chunkDuration * u))
+                                    point.copy(
+                                        frequencyHz = (point.frequencyHz * 2.0.pow(octaves)).coerceAtMost(
+                                            model.sampleRate * .49,
+                                        ),
+                                        amplitude = point.amplitude * (1 - envelope + envelope * shutter),
+                                        bandwidth = point.bandwidth * (1 - envelope) + .85 * envelope,
+                                    )
+                                }
+                            },
+                    )
+                },
+        )
+        display("status", "Resynthesizing the whirlpool…")
+        client.synthesizeAsync(changed)
+    }
+    .thenAccept { edited ->
+        display(
+            "edited tracks and sound",
+            edited.visualizationHtml(
+                LorisViewOptions(height = 400, syncGroup = "my-whirlpool"),
+            ),
+        )
+    }
+    .exceptionally { error ->
+        display("error", error.cause?.message ?: error.message ?: error.toString())
+        null
+    }
 ```
 
 Here is the gesture on the film excerpt. Compare seconds 6–9 with the reconstruction above: the
@@ -155,25 +177,42 @@ phases, so attacks change character more than a dedicated pitch shifter would ma
 
 ```diffstatic {data-lang=kotlin}
 val client = LorisClient()
-client.analyzeWavAsync(
-    "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
-    options = LorisOptions(resolutionHz = 35.0, windowWidthHz = 80.0,
-        frequencyDriftHz = 50.0, amplitudeFloorDb = -55.0),
-    onProgress = { display("status", it) },
-).thenCompose { analyzed ->
-    display("status", "Resynthesizing changed envelopes…")
-    client.synthesizeAsync(analyzed.model.transformed(
-        frequencyScale = 0.75, bandwidthScale = 0.0, gain = 0.8,
-    ))
-}.thenAccept { edited ->
-    display("changed sound", edited.visualizationHtml(LorisViewOptions(
-        axis = LorisFrequencyAxis.ERB,
-        syncGroup = "changed-partials",
-    )))
-}.exceptionally { error ->
-    display("error", error.cause?.message ?: error.message ?: error.toString())
-    null
-}
+client
+    .analyzeWavAsync(
+        "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
+        options = LorisOptions(
+            resolutionHz = 35.0,
+            windowWidthHz = 80.0,
+            frequencyDriftHz = 50.0,
+            amplitudeFloorDb = -55.0,
+        ),
+        onProgress = { display("status", it) },
+    )
+    .thenCompose { analyzed ->
+        display("status", "Resynthesizing changed envelopes…")
+        client.synthesizeAsync(
+            analyzed.model.transformed(
+                frequencyScale = 0.75,
+                bandwidthScale = 0.0,
+                gain = 0.8,
+            ),
+        )
+    }
+    .thenAccept { edited ->
+        display(
+            "changed sound",
+            edited.visualizationHtml(
+                LorisViewOptions(
+                    axis = LorisFrequencyAxis.ERB,
+                    syncGroup = "changed-partials",
+                ),
+            ),
+        )
+    }
+    .exceptionally { error ->
+        display("error", error.cause?.message ?: error.message ?: error.toString())
+        null
+    }
 ```
 
 Here is that edit. Every segment is blue, because the edit set every bandwidth to zero:
@@ -191,9 +230,12 @@ resynthesis. For example, after analyzing a source, this keeps only tracks whose
 is below 900 Hz:
 
 ```diffstatic {data-lang=kotlin}
-val bassModel = analyzed.model.copy(partials = analyzed.model.partials.filter { partial ->
-    partial.points.map { it.frequencyHz }.average() < 900.0
-})
+val bassModel = analyzed.model.copy(
+    partials =
+        analyzed.model.partials.filter { partial ->
+            partial.points.map { it.frequencyHz }.average() < 900.0
+        },
+)
 client.synthesizeAsync(bassModel).thenAccept { display("low partials", it.visualizationHtml()) }
 ```
 
@@ -245,25 +287,39 @@ morphs from the first to the second between 0.4 and 1.6 seconds:
 
 ```diffstatic {data-lang=kotlin}
 val client = LorisClient()
-client.analyzeWavAsync(
-    "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
-    options = LorisOptions(resolutionHz = 35.0, windowWidthHz = 80.0,
-        frequencyDriftHz = 50.0, amplitudeFloorDb = -55.0),
-    onProgress = { display("status", it) },
-).thenAccept { analyzed ->
-    val film = analyzed.model
-    val a = client.distill(film.crop(1.6, 3.6), LorisReference.Estimated(150.0, 450.0)).model
-    val b = client.distill(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0)).model
-    display("labels", "A ${a.labelCounts()}  B ${b.labelCounts()}")
-    val end = a.durationSeconds
-    val aligned = client.dilate(b, [0.0, b.loudestTimeSeconds(), end],
-        [0.0, a.loudestTimeSeconds(), end], durationSeconds = end).model
-    val morphed = client.morph(a.dropUnlabeled(), aligned.dropUnlabeled(), LorisEnvelope.ramp(0.4, 1.6))
-    display("morph", morphed.visualizationHtml(LorisViewOptions(maximumHz = 5000.0, syncGroup = "my-morph")))
-}.exceptionally { error ->
-    display("error", error.cause?.message ?: error.message ?: error.toString())
-    null
-}
+client
+    .analyzeWavAsync(
+        "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
+        options = LorisOptions(
+            resolutionHz = 35.0,
+            windowWidthHz = 80.0,
+            frequencyDriftHz = 50.0,
+            amplitudeFloorDb = -55.0,
+        ),
+        onProgress = { display("status", it) },
+    )
+    .thenAccept { analyzed ->
+        val film = analyzed.model
+        val a = client.distill(film.crop(1.6, 3.6), LorisReference.Estimated(150.0, 450.0)).model
+        val b = client.distill(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0)).model
+        display("labels", "A ${a.labelCounts()}  B ${b.labelCounts()}")
+        val end = a.durationSeconds
+        val aligned =
+            client
+                .dilate(
+                    b,
+                    [0.0, b.loudestTimeSeconds(), end],
+                    [0.0, a.loudestTimeSeconds(), end],
+                    durationSeconds = end,
+                )
+                .model
+        val morphed = client.morph(a.dropUnlabeled(), aligned.dropUnlabeled(), LorisEnvelope.ramp(0.4, 1.6))
+        display("morph", morphed.visualizationHtml(LorisViewOptions(maximumHz = 5000.0, syncGroup = "my-morph")))
+    }
+    .exceptionally { error ->
+        display("error", error.cause?.message ?: error.message ?: error.toString())
+        null
+    }
 ```
 
 The three plots below are that pipeline on the film. The long straight segments are where the distiller joined

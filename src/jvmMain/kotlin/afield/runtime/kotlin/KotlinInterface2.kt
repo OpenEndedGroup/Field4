@@ -130,6 +130,14 @@ import kotlin.script.experimental.util.LinkedSnippet
 import kotlin.system.measureNanoTime
 
 
+/**
+ * The K2 implementation of [KotlinScriptEngine]: the engine that compiles and runs a box's Kotlin.
+ *
+ * Each box gets its own [KotlinInterface2], with its own REPL history and snippet classloader. It
+ * compiles snippets with the K2 compiler, evaluates them, tracks the variables and functions they
+ * declare, and answers completion requests in the editor.
+ */
+
 class KotlinInterface2(
     val propertyClasses: Map<String, KClass<*>> = emptyMap(),
     val properties: Map<String, Any?> = emptyMap(),

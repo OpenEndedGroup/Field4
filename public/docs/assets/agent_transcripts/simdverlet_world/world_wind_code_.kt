@@ -1,6 +1,4 @@
 import afield.simulation.physics.*
-import afield.geometry.path.FLine
-import afield.math.linalg.vec
 
 // A flag. It lies in the x/y plane and flaps in z, which is why the view at the bottom is
 // from ABOVE: seen from the front this is a rectangle standing perfectly still.

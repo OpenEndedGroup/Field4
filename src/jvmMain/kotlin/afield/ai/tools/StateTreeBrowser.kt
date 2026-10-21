@@ -46,6 +46,13 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 /**
+ * The States browser of AI4: how a box exposes a saved history with [stateTree], and the read-only view of it shared by the browser and by chat references.
+ *
+ * A provider supplies a snapshot, a reader for one saved state and, optionally, a fork callback.
+ * [StateTreeBrowser] pages and bounds the text it shows, and never restores a state.
+ */
+
+/**
  * Expose an existing history to AI4's States browser. Callbacks only read saved data; they must not
  * restore state or run admission checks. [read] returns metadata; [inspect] reads one exact saved ID.
  * Optional [fork] creates a named saved child and returns its ID without activation or restoration.

@@ -85,15 +85,21 @@ the only difference is where the factors of `stiffness × iterations = 960` sit.
 import afield.simulation.physics.*
 
 :::fold the sheet, and a ruler for comparing two of them
-// A 20 x 10 sheet hanging from every fourth particle of row 0. The plane view has y growing DOWN
-// the screen, so row 0 is the top and gravity is +y. Curvature is off: springs only, so that the
-// only thing in the picture is the thing being tested.
-fun sheet(stiffness: Float) = SimdVerlet(SimdVerlet.State3.empty()).addCloth(
-    width = 20, height = 10, spacing = 0.5f,
-    stiffness = stiffness,
-    curvatureStrength = 0f,
-    pinned = { col, row -> row == 0 && col % 4 == 0 },
-)
+/*
+A 20 x 10 sheet hanging from every fourth particle of row 0. The plane view has y growing DOWN
+the screen, so row 0 is the top and gravity is +y. Curvature is off: springs only, so that the
+only thing in the picture is the thing being tested.
+*/
+fun sheet(stiffness: Float) =
+    SimdVerlet(SimdVerlet.State3.empty())
+        .addCloth(
+            width = 20,
+            height = 10,
+            spacing = 0.5f,
+            stiffness = stiffness,
+            curvatureStrength = 0f,
+            pinned = { col, row -> row == 0 && col % 4 == 0 },
+        )
 
 // The largest distance between corresponding particles of two sheets, in world units. Spacing is
 // 0.5, so anything below ~1e-3 is invisible and anything below ~1e-6 is arithmetic noise.
@@ -113,11 +119,15 @@ fun apart(a: Cloth, b: Cloth): Double {
 // Frame every panel identically, on a window that just contains all of them — so the panels are
 // comparable AND none of them is mostly empty. cellHeight then follows the window's aspect.
 fun fit(cloths: List<Cloth>, pad: Double = 0.5): Rect {
-    var x0 = Double.MAX_VALUE; var y0 = Double.MAX_VALUE
-    var x1 = -Double.MAX_VALUE; var y1 = -Double.MAX_VALUE
+    var x0 = Double.MAX_VALUE
+    var y0 = Double.MAX_VALUE
+    var x1 = -Double.MAX_VALUE
+    var y1 = -Double.MAX_VALUE
     for (c in cloths) for (i in c.base until c.end) {
-        x0 = minOf(x0, c.sim.state.x[i].toDouble()); x1 = maxOf(x1, c.sim.state.x[i].toDouble())
-        y0 = minOf(y0, c.sim.state.y[i].toDouble()); y1 = maxOf(y1, c.sim.state.y[i].toDouble())
+        x0 = minOf(x0, c.sim.state.x[i].toDouble())
+        x1 = maxOf(x1, c.sim.state.x[i].toDouble())
+        y0 = minOf(y0, c.sim.state.y[i].toDouble())
+        y1 = maxOf(y1, c.sim.state.y[i].toDouble())
     }
     return Rect(x0 - pad, y0 - pad, (x1 - x0) + 2 * pad, (y1 - y0) + 2 * pad)
 }
@@ -138,12 +148,18 @@ val gaps = cloths.map { apart(it, reference) }
 :::fold draw the four sheets on one shared window
 val window = fit(cloths)
 showPlaneGrid(
-    *splits.mapIndexed { n, (k, iterations) ->
-        val gap = if (n == splits.lastIndex) "the reference"
-        else "furthest particle from the 960 x 1 sheet: ${"%.3g".format(gaps[n])} world units"
-        "stiffness ${k.toInt()} x $iterations iterations\n$gap" to cloths[n].sim.debugLines()
-    }.toTypedArray(),
-    columns = 2, cellWidth = 470, cellHeight = (470 * window.h / window.w).toInt(), window = window,
+    *splits
+        .mapIndexed { n, (k, iterations) ->
+            val gap =
+                if (n == splits.lastIndex) "the reference"
+                else "furthest particle from the 960 x 1 sheet: ${"%.3g".format(gaps[n])} world units"
+            "stiffness ${k.toInt()} x $iterations iterations\n$gap" to cloths[n].sim.debugLines()
+        }
+        .toTypedArray(),
+    columns = 2,
+    cellWidth = 470,
+    cellHeight = (470 * window.h / window.w).toInt(),
+    window = window,
 )
 :::endfold
 ```
@@ -167,12 +183,16 @@ every frame, plotted as its base-10 logarithm.
 import afield.simulation.physics.*
 
 :::fold the same sheet and ruler as above
-fun sheet(stiffness: Float) = SimdVerlet(SimdVerlet.State3.empty()).addCloth(
-    width = 20, height = 10, spacing = 0.5f,
-    stiffness = stiffness,
-    curvatureStrength = 0f,
-    pinned = { col, row -> row == 0 && col % 4 == 0 },
-)
+fun sheet(stiffness: Float) =
+    SimdVerlet(SimdVerlet.State3.empty())
+        .addCloth(
+            width = 20,
+            height = 10,
+            spacing = 0.5f,
+            stiffness = stiffness,
+            curvatureStrength = 0f,
+            pinned = { col, row -> row == 0 && col % 4 == 0 },
+        )
 
 fun apart(a: Cloth, b: Cloth): Double {
     var worst = 0.0
@@ -203,12 +223,16 @@ repeat(400) {
 }
 :::fold plot the three gaps
 showSignals(
-    *splits.dropLast(1).mapIndexed { n, (k, iterations) ->
-        "${k.toInt()} x $iterations  vs  960 x 1" to traces[n].toList()
-    }.toTypedArray(),
+    *splits
+        .dropLast(1)
+        .mapIndexed { n, (k, iterations) ->
+            "${k.toInt()} x $iterations  vs  960 x 1" to traces[n].toList()
+        }
+        .toTypedArray(),
     channel = "main",
     title = "Same product, different rounding: gap to the 960 x 1 sheet",
-    xTitle = "frame", yTitle = "log10(furthest particle, world units)",
+    xTitle = "frame",
+    yTitle = "log10(furthest particle, world units)",
 )
 :::endfold
 ```
@@ -235,12 +259,15 @@ import afield.simulation.physics.*
 
 :::fold the sheet, and a strain meter that reads the solver's own rest lengths
 fun sheet(stiffness: Float, curvature: Float = 0f) =
-    SimdVerlet(SimdVerlet.State3.empty()).addCloth(
-        width = 20, height = 10, spacing = 0.5f,
-        stiffness = stiffness,
-        curvatureStrength = curvature,
-        pinned = { col, row -> row == 0 && col % 4 == 0 },
-    )
+    SimdVerlet(SimdVerlet.State3.empty())
+        .addCloth(
+            width = 20,
+            height = 10,
+            spacing = 0.5f,
+            stiffness = stiffness,
+            curvatureStrength = curvature,
+            pinned = { col, row -> row == 0 && col % 4 == 0 },
+        )
 
 // Worst |length - rest| / rest over every live slot of every particle. Read straight out of the
 // constraint set, so it is the strain the SOLVER thinks it has, not one recomputed from the grid.
@@ -268,11 +295,15 @@ fun strain(cloth: Cloth): Double {
 // Frame every panel identically, on a window that just contains all of them — so the panels are
 // comparable AND none of them is mostly empty. cellHeight then follows the window's aspect.
 fun fit(cloths: List<Cloth>, pad: Double = 0.5): Rect {
-    var x0 = Double.MAX_VALUE; var y0 = Double.MAX_VALUE
-    var x1 = -Double.MAX_VALUE; var y1 = -Double.MAX_VALUE
+    var x0 = Double.MAX_VALUE
+    var y0 = Double.MAX_VALUE
+    var x1 = -Double.MAX_VALUE
+    var y1 = -Double.MAX_VALUE
     for (c in cloths) for (i in c.base until c.end) {
-        x0 = minOf(x0, c.sim.state.x[i].toDouble()); x1 = maxOf(x1, c.sim.state.x[i].toDouble())
-        y0 = minOf(y0, c.sim.state.y[i].toDouble()); y1 = maxOf(y1, c.sim.state.y[i].toDouble())
+        x0 = minOf(x0, c.sim.state.x[i].toDouble())
+        x1 = maxOf(x1, c.sim.state.x[i].toDouble())
+        y0 = minOf(y0, c.sim.state.y[i].toDouble())
+        y1 = maxOf(y1, c.sim.state.y[i].toDouble())
     }
     return Rect(x0 - pad, y0 - pad, (x1 - x0) + 2 * pad, (y1 - y0) + 2 * pad)
 }
@@ -282,25 +313,37 @@ fun fit(cloths: List<Cloth>, pad: Double = 0.5): Rect {
 fun runLadder(stiffness: Float, iterations: Int, curvature: Float = 0f): Triple<Cloth, Double, Int> {
     val cloth = sheet(stiffness, curvature)
     val s = cloth.sim.state
-    val lastX = s.x.copyOf(); val lastY = s.y.copyOf(); val lastZ = s.z.copyOf()
+    val lastX = s.x.copyOf()
+    val lastY = s.y.copyOf()
+    val lastZ = s.z.copyOf()
     var peak = 0.0
     var blewUpAt = -1
     for (frame in 1..400) {
         cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = 2f, iterations = iterations)
         val now = strain(cloth)
-        if (!now.isFinite()) { blewUpAt = frame; break }
+        if (!now.isFinite()) {
+            blewUpAt = frame
+            break
+        }
         peak = maxOf(peak, now)
-        s.x.copyInto(lastX); s.y.copyInto(lastY); s.z.copyInto(lastZ)
+        s.x.copyInto(lastX)
+        s.y.copyInto(lastY)
+        s.z.copyInto(lastZ)
     }
-    if (blewUpAt > 0) { lastX.copyInto(s.x); lastY.copyInto(s.y); lastZ.copyInto(s.z) }
+    if (blewUpAt > 0) {
+        lastX.copyInto(s.x)
+        lastY.copyInto(s.y)
+        lastZ.copyInto(s.z)
+    }
     return Triple(cloth, peak, blewUpAt)
 }
 
 // Each rung twice: springs alone, and again with the curvature force the starting place ships,
 // because that is the difference between this ladder and the one in dev_docs.
-val ladder = [0.8f to 8, 8f to 8, 20f to 16, 60f to 16].map { (k, i) ->
-    Triple(k to i, runLadder(k, i), runLadder(k, i, curvature = 100f))
-}
+val ladder =
+    [0.8f to 8, 8f to 8, 20f to 16, 60f to 16].map { (k, i) ->
+        Triple(k to i, runLadder(k, i), runLadder(k, i, curvature = 100f))
+    }
 :::fold draw the ladder on one shared window, so the rungs are comparable
 fun verdict(result: Triple<Cloth, Double, Int>): String {
     val (_, peak, blewUpAt) = result
@@ -309,13 +352,17 @@ fun verdict(result: Triple<Cloth, Double, Int>): String {
 
 val window = fit(ladder.map { it.second.first })
 showPlaneGrid(
-    *ladder.map { (setting, bare, curved) ->
-        val (k, iterations) = setting
-        "stiffness $k x $iterations  (product ${"%.0f".format(k * iterations)})\n" +
-            "peak strain ${verdict(bare)}  ·  with curvature 100: ${verdict(curved)}" to
-            bare.first.sim.debugLines()
-    }.toTypedArray(),
-    columns = 4, cellWidth = 380, cellHeight = (380 * window.h / window.w).toInt(), window = window,
+    *ladder
+        .map { (setting, bare, curved) ->
+            val (k, iterations) = setting
+            "stiffness $k x $iterations  (product ${"%.0f".format(k * iterations)})\n" +
+                "peak strain ${verdict(bare)}  ·  with curvature 100: ${verdict(curved)}" to bare.first.sim.debugLines()
+        }
+        .toTypedArray(),
+    columns = 4,
+    cellWidth = 380,
+    cellHeight = (380 * window.h / window.w).toInt(),
+    window = window,
 )
 :::endfold
 ```
@@ -355,11 +402,16 @@ The strain trace carries plenty of warning before the `NaN` arrives, for anyone 
 import afield.simulation.physics.*
 
 :::fold the sheet and the strain meter, exactly as above
-fun sheet(stiffness: Float) = SimdVerlet(SimdVerlet.State3.empty()).addCloth(
-    width = 20, height = 10, spacing = 0.5f,
-    stiffness = stiffness, curvatureStrength = 0f,
-    pinned = { col, row -> row == 0 && col % 4 == 0 },
-)
+fun sheet(stiffness: Float) =
+    SimdVerlet(SimdVerlet.State3.empty())
+        .addCloth(
+            width = 20,
+            height = 10,
+            spacing = 0.5f,
+            stiffness = stiffness,
+            curvatureStrength = 0f,
+            pinned = { col, row -> row == 0 && col % 4 == 0 },
+        )
 
 fun strain(cloth: Cloth): Double {
     val c = cloth.constraints
@@ -393,7 +445,10 @@ val traces = watched.map { (k, iterations) ->
     for (frame in 1..400) {
         cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = 2f, iterations = iterations)
         val now = strain(cloth)
-        if (!now.isFinite()) { diedAt = frame; break }
+        if (!now.isFinite()) {
+            diedAt = frame
+            break
+        }
         // 100 % strain — a spring at twice its rest length — is the point of no return here.
         if (warnedAt < 0 && now > 1.0) warnedAt = frame
         trace += kotlin.math.log10(maxOf(now, 1e-4))
@@ -410,7 +465,8 @@ showSignals(
     *traces.map { (label, trace, _) -> label to trace.toList() }.toTypedArray(),
     channel = "main",
     title = "Peak strain per frame — ${blewUp.first}: 100 % at $past100, NaN at $nan",
-    xTitle = "frame", yTitle = "log10(peak strain)",
+    xTitle = "frame",
+    yTitle = "log10(peak strain)",
 )
 :::endfold
 ```
@@ -456,12 +512,16 @@ the springs', and it defaults to a third of `stiffness`: 20 for the sheet below.
 import afield.simulation.physics.*
 
 :::fold the sheet, now with a curvature strength, and the same ruler
-fun sheet(curvature: Float) = SimdVerlet(SimdVerlet.State3.empty()).addCloth(
-    width = 20, height = 10, spacing = 0.5f,
-    stiffness = 60f,
-    curvatureStrength = curvature,
-    pinned = { col, row -> row == 0 && col % 4 == 0 },
-)
+fun sheet(curvature: Float) =
+    SimdVerlet(SimdVerlet.State3.empty())
+        .addCloth(
+            width = 20,
+            height = 10,
+            spacing = 0.5f,
+            stiffness = 60f,
+            curvatureStrength = curvature,
+            pinned = { col, row -> row == 0 && col % 4 == 0 },
+        )
 
 fun apart(a: Cloth, b: Cloth): Double {
     var worst = 0.0
@@ -479,11 +539,15 @@ fun apart(a: Cloth, b: Cloth): Double {
 // Frame every panel identically, on a window that just contains all of them — so the panels are
 // comparable AND none of them is mostly empty. cellHeight then follows the window's aspect.
 fun fit(cloths: List<Cloth>, pad: Double = 0.5): Rect {
-    var x0 = Double.MAX_VALUE; var y0 = Double.MAX_VALUE
-    var x1 = -Double.MAX_VALUE; var y1 = -Double.MAX_VALUE
+    var x0 = Double.MAX_VALUE
+    var y0 = Double.MAX_VALUE
+    var x1 = -Double.MAX_VALUE
+    var y1 = -Double.MAX_VALUE
     for (c in cloths) for (i in c.base until c.end) {
-        x0 = minOf(x0, c.sim.state.x[i].toDouble()); x1 = maxOf(x1, c.sim.state.x[i].toDouble())
-        y0 = minOf(y0, c.sim.state.y[i].toDouble()); y1 = maxOf(y1, c.sim.state.y[i].toDouble())
+        x0 = minOf(x0, c.sim.state.x[i].toDouble())
+        x1 = maxOf(x1, c.sim.state.x[i].toDouble())
+        y0 = minOf(y0, c.sim.state.y[i].toDouble())
+        y1 = maxOf(y1, c.sim.state.y[i].toDouble())
     }
     return Rect(x0 - pad, y0 - pad, (x1 - x0) + 2 * pad, (y1 - y0) + 2 * pad)
 }
@@ -499,12 +563,17 @@ val gaps = cloths.map { apart(it, cloths.first()) }
 :::fold draw the four
 val window = fit(cloths)
 showPlaneGrid(
-    *strengths.mapIndexed { n, strength ->
-        val label = if (strength == 0f) "curvature off" else "curvatureStrength = $strength"
-        "$label\nfurthest particle from the sheet with none: ${"%.3g".format(gaps[n])} world units" to
-            cloths[n].sim.debugLines()
-    }.toTypedArray(),
-    columns = 2, cellWidth = 470, cellHeight = (470 * window.h / window.w).toInt(), window = window,
+    *strengths
+        .mapIndexed { n, strength ->
+            val label = if (strength == 0f) "curvature off" else "curvatureStrength = $strength"
+            "$label\nfurthest particle from the sheet with none: ${"%.3g".format(gaps[n])} world units" to
+                cloths[n].sim.debugLines()
+        }
+        .toTypedArray(),
+    columns = 2,
+    cellWidth = 470,
+    cellHeight = (470 * window.h / window.w).toInt(),
+    window = window,
 )
 :::endfold
 ```
@@ -562,11 +631,16 @@ crease.
 import afield.simulation.physics.*
 
 :::fold the sheet, and the ruler
-fun sheet() = SimdVerlet(SimdVerlet.State3.empty()).addCloth(
-    width = 20, height = 10, spacing = 0.5f,
-    stiffness = 60f, curvatureStrength = 0f,
-    pinned = { col, row -> row == 0 && col % 4 == 0 },
-)
+fun sheet() =
+    SimdVerlet(SimdVerlet.State3.empty())
+        .addCloth(
+            width = 20,
+            height = 10,
+            spacing = 0.5f,
+            stiffness = 60f,
+            curvatureStrength = 0f,
+            pinned = { col, row -> row == 0 && col % 4 == 0 },
+        )
 
 fun apart(a: Cloth, b: Cloth): Double {
     var worst = 0.0
@@ -584,11 +658,15 @@ fun apart(a: Cloth, b: Cloth): Double {
 // Frame every panel identically, on a window that just contains all of them — so the panels are
 // comparable AND none of them is mostly empty. cellHeight then follows the window's aspect.
 fun fit(cloths: List<Cloth>, pad: Double = 0.5): Rect {
-    var x0 = Double.MAX_VALUE; var y0 = Double.MAX_VALUE
-    var x1 = -Double.MAX_VALUE; var y1 = -Double.MAX_VALUE
+    var x0 = Double.MAX_VALUE
+    var y0 = Double.MAX_VALUE
+    var x1 = -Double.MAX_VALUE
+    var y1 = -Double.MAX_VALUE
     for (c in cloths) for (i in c.base until c.end) {
-        x0 = minOf(x0, c.sim.state.x[i].toDouble()); x1 = maxOf(x1, c.sim.state.x[i].toDouble())
-        y0 = minOf(y0, c.sim.state.y[i].toDouble()); y1 = maxOf(y1, c.sim.state.y[i].toDouble())
+        x0 = minOf(x0, c.sim.state.x[i].toDouble())
+        x1 = maxOf(x1, c.sim.state.x[i].toDouble())
+        y0 = minOf(y0, c.sim.state.y[i].toDouble())
+        y1 = maxOf(y1, c.sim.state.y[i].toDouble())
     }
     return Rect(x0 - pad, y0 - pad, (x1 - x0) + 2 * pad, (y1 - y0) + 2 * pad)
 }
@@ -596,17 +674,22 @@ fun fit(cloths: List<Cloth>, pad: Double = 0.5): Rect {
 val good = sheet()
 val bad = sheet()
 
-// The bug. Particle (4, 7) keeps four slots, but slot 0 — its downward neighbour — now points at
-// (16, 2), most of a sheet away. The rest length is measured from the layout, so the constraint starts satisfied
-// and contributes almost no force: this is the kind of wiring mistake that does not announce itself.
+/*
+The bug. Particle (4, 7) keeps four slots, but slot 0 — its downward neighbour — now points at
+(16, 2), most of a sheet away. The rest length is measured from the layout, so the constraint starts satisfied
+and contributes almost no force: this is the kind of wiring mistake that does not announce itself.
+*/
 val from = bad[4, 7]
 val to = bad[16, 2]
 val s = bad.sim.state
-val rest = kotlin.math.sqrt(
-    ((s.x[from] - s.x[to]).toDouble()).let { it * it } +
-        ((s.y[from] - s.y[to]).toDouble()).let { it * it } +
-        ((s.z[from] - s.z[to]).toDouble()).let { it * it }
-).toFloat()
+val rest =
+    kotlin.math
+        .sqrt(
+            ((s.x[from] - s.x[to]).toDouble()).let { it * it } +
+                ((s.y[from] - s.y[to]).toDouble()).let { it * it } +
+                ((s.z[from] - s.z[to]).toDouble()).let { it * it },
+        )
+        .toFloat()
 bad.constraints.setSlot(from, 0, to, rest, 60f)
 
 repeat(200) {
@@ -618,14 +701,21 @@ val divergence = apart(good, bad)
 :::fold four panels: the wireframe of each, then the solver's own view of each
 val window = fit([good, bad])
 val pale = vec(0.74, 0.82, 0.94, 0.8)
-fun wire(c: Cloth) = c.lines().onEach { it.color = pale; it.thickness = 1.2 }
+fun wire(c: Cloth) = c.lines().onEach {
+    it.color = pale
+    it.thickness = 1.2
+}
 
 showPlaneGrid(
     "cloth.lines() — correctly wired\nthe grid, drawn row by row and column by column" to wire(good),
-    "cloth.lines() — one slot mis-wired\nfurthest particle from the correct sheet: ${"%.3g".format(divergence)} world units" to wire(bad),
+    "cloth.lines() — one slot mis-wired\nfurthest particle from the correct sheet: ${"%.3g".format(divergence)} world units" to
+        wire(bad),
     "sim.debugLines() — correctly wired\none segment per live constraint, pins in red" to good.sim.debugLines(),
     "sim.debugLines() — one slot mis-wired\nthe same sheet; the bug is the long diagonal" to bad.sim.debugLines(),
-    columns = 2, cellWidth = 470, cellHeight = (470 * window.h / window.w).toInt(), window = window,
+    columns = 2,
+    cellWidth = 470,
+    cellHeight = (470 * window.h / window.w).toInt(),
+    window = window,
 )
 :::endfold
 ```

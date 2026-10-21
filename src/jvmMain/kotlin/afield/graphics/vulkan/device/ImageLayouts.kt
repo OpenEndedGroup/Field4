@@ -6,6 +6,14 @@ import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_PREINITIALIZED
 import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_UNDEFINED
 
 /**
+ * Maps Field's logical image layouts to the layout handed to Vulkan, collapsing to `GENERAL`
+ * when the driver supports `VK_KHR_unified_image_layouts`.
+ *
+ * Every call that passes a layout to Vulkan goes through [vkLayout]; [ImageLayouts] holds the switch
+ * that [Device] sets.
+ */
+
+/**
  * `VK_KHR_unified_image_layouts`: with it, `GENERAL` is as good as any specialised layout for
  * every use, so a driver that offers it has nothing to gain from Field's per-use layouts, and a
  * layered driver such as KosmicKrisp has work to lose (a transition it must honour for Metal).

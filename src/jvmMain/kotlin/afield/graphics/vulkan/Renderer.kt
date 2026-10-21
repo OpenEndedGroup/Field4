@@ -47,6 +47,21 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.coroutineContext
 
+/**
+ * The Vulkan renderer: one [Renderer] owns the instance, device, queues, command pools and the
+ * swapchain of each of its windows, and records, submits and presents a frame per tick.
+ *
+ * A box beneath the renderer box reaches it as `renderer` and adds modules with `renderer += module`,
+ * which puts them in the main window's [Renderer.renderList]; compute modules go to
+ * [Renderer.computeList]. Each window has its own [RenderTarget], found with [Renderer.renderTargetFor].
+ * [Renderer.captureWindowToFile] writes a window's next frame to a PNG, and [Renderer.cleanup] shuts the
+ * renderer down, releasing its device, windows and targets.
+ *
+ * The file also holds [Target], the callback shape for drawing into a command buffer, and [CPUSpan],
+ * the per-span CPU timing statistics the frame loop records.
+ */
+
+/** Something that records drawing into [CommandBuffer] for swapchain image `index`. */
 fun interface Target { fun render(command: CommandBuffer, index: Int) }
 
 fun target(a: (CommandBuffer, Int) -> Unit) = object : Target {

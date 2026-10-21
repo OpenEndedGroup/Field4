@@ -10,7 +10,8 @@ import afield.ai.models.setupChanges
 import afield.ai.models.toolResultBlock
 
 import afield.ai.conversation.AiTurnInbox
-import afield.ai.conversation.isAiTurnCancellation
+import afield.ai.conversation.aiToolFailureEndsTurn
+import afield.ai.conversation.aiToolFailureMessage
 import afield.ai.models.LlmProgressUpdate
 import afield.runtime.languages.MalformedAI
 import afield.app.diagnostics.CodeUseFailureRow
@@ -56,6 +57,23 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+
+/**
+ * The request and result classes of the tools Field's AI agent can call, and the registry that
+ * dispatches a call by name to its handler.
+ *
+ * Each tool is a Kotlin data class: its simple name is the tool name, `@JsonClassDescription` and
+ * `@JsonPropertyDescription` are what the model reads, and [AgentToolMeta] records the tool's group
+ * and effects. The file covers attachments and definitions, Kotlin compile and evaluate, shader
+ * reload, render-window capture, macros, code-use queries, and the agent's scratchpad and checklist
+ * ([AgentMemoryState]). A result that carries pictures implements [CarriesToolImages], so the images
+ * travel as images rather than as base64 text inside the JSON output.
+ *
+ * `ToolSchema` emits the JSON Schema for a request class from Kotlin reflection alone, skipping
+ * `@JsonIgnore` and placeholder `unused` fields; `openAiTool` builds the OpenAI function tool and
+ * keeps nullable arguments optional. `AgentToolSchemaTest` checks that OpenAI accepts the argument
+ * schema of every registered tool.
+ */
 
 /**
  * Commentary tool: model uses this for non-code notes/questions/alternatives.
@@ -1192,9 +1210,9 @@ internal class ToolRegistry {
                 // Fall through to a document-authored tool with this name.
                 dynamicTool(dynamicToolsIn(ctx), name)!!.runBlockingFromToolLoop(ctx, rawArgs())
             }
-        } catch (e: Exception) {
-            if (view != null && !isAiTurnCancellation(e)) {
-                AgentExtensionRegistry.after(documentKey, view, ToolResultView(false, e.message ?: e::class.java.simpleName, (System.nanoTime() - started) / 1_000_000))
+        } catch (e: Throwable) {
+            if (view != null && !aiToolFailureEndsTurn(e)) {
+                AgentExtensionRegistry.after(documentKey, view, ToolResultView(false, aiToolFailureMessage(e), (System.nanoTime() - started) / 1_000_000))
             }
             throw e
         }

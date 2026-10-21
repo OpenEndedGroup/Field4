@@ -45,6 +45,16 @@ import afield.ui.visualization.registerValuePrinter
 import java.util.Base64
 
 /**
+ * Renders a [StudyReport] as an HTML card, so `display("main", report.h)` shows a study's revision,
+ * message and pictures in a box's output.
+ *
+ * [StudyReportView.html] builds the card and draws each picture at its own PNG width, capped at
+ * [StudyReportView.MAX_WIDTH]; [registerStudyReportView] installs it as the `.h` value printer when
+ * a new root starts.
+ */
+
+
+/**
  * `report.h`: a [StudyReport] as a card — its revision, its message if it has one, and its pictures at
  * their own pixel size (at most [MAX_WIDTH] CSS px), so a box shows what the model was shown with
  * `display("main", report.h)` rather than an `<img>` it builds itself.

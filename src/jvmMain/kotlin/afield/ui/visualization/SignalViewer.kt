@@ -46,6 +46,16 @@ import java.lang.ref.WeakReference
 import java.util.UUID
 import kotlin.math.*
 
+/**
+ * A zoomable viewer for functions of time: each [SignalChannel] is a lane drawn as a min/max
+ * envelope, resampled as you zoom.
+ *
+ * [SignalViewer] holds the lanes and answers the browser's window queries; [Box.displaySignal]
+ * shows it in an output channel and keeps it alive while it is visible. A lane built with
+ * [certifiedSignalChannel] also draws the interval-arithmetic bound of its function behind the
+ * sampled envelope.
+ */
+
 /** One lane, with an optional earlier version drawn in dashed grey. Evaluators must be pure. */
 data class SignalChannel(
     val name: String,

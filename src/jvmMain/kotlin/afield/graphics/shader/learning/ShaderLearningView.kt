@@ -16,6 +16,12 @@ import org.json.JSONObject
 import org.lwjgl.vulkan.VK13.*
 import java.io.File
 
+/**
+ * Side-by-side comparison of a real module's render target with its learned replacement.
+ *
+ * [ShaderLearningView] can show the learned output alone, skipping the source pass, or source, learned output and their amplified RGB error together. Load a model with it between frames.
+ */
+
 /** Compare a real module's render target with its learned replacement. View 1 skips the source pass
  * completely; view 2 renders source / learned / absolute RGB error x8. Source resources stay caller-owned.
  * Construct, load and close between frames. A rejected model leaves the last working model attached.

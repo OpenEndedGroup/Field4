@@ -15,11 +15,23 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.extension
 import kotlin.io.path.invariantSeparatorsPathString
 
+/**
+ * Suggests the guides and example files most related to a source path, for AI tools that hand an
+ * agent a symbol or file.
+ *
+ * [RelatedContextDiscovery.forPath] scores the Markdown files and the `.kt`/`.kts` files under an
+ * `examples/` directory beneath `src`, `dev_docs`, `public` and `docs` in the checkout against the
+ * path's directory and camel-case name tokens, and returns up to six of each, best first. The file list is walked once and each path's answer is
+ * cached. An `afield://` path gets the connected compute-and-render example.
+ */
+
+/** Up to six related guide paths and six example paths, best match first. */
 data class RelatedContextHints(
     val guides: List<String> = emptyList(),
     val examples: List<String> = emptyList()
 )
 
+/** Process-wide related-context lookup rooted at the current working directory. */
 object RelatedContextDiscovery {
     private val catalog = RelatedContextCatalog(Paths.get(System.getProperty("user.dir")).normalize())
 

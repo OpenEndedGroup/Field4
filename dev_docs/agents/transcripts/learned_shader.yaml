@@ -29,7 +29,50 @@ operations:
       w: 420.0
       h: 100.0
     properties:
-      code: "import afield.ui.output.controlGroup\nimport afield.ui.output.displayOpen\nimport afield.graphics.shader.learning.*\nimport afield.document.context.fromContextWithNameOrNull\n\nprop<LearnedShader>(lab)\nfromContextWithNameOrNull<LearnedShader>(\"lab\")?.close()\nvar cooperative=renderer.device.supportsCooperativeVector\nvar active=cooperative\nvar requestedView=2\nvar animate=true\nvar reload=false\nlab=LearnedShader(renderer,cooperative=cooperative)\ncontrolGroup(\"learned shader\") {\n    checkbox(\"Cooperative vectors\",initialValue=cooperative) { cooperative=it }\n    slider(\"0: Original · 1: Learned · 2: Compare\",min=0.0,max=2.0,step=1.0,initialValue=2.0) { requestedView=it.toInt() }\n    checkbox(\"Animate time\",initialValue=true) { animate=it }\n    button(\"Reload trained weights\") { if(it)reload=true }\n}\ndisplayOpen(\"learned shader\")\nprintln(\"Compare: original / learned / absolute RGB error × 8. Weights describe a 16 → 32 → 32 → 3 network.\")\nframes {\n    var time=0.0\n    while(true) {\n        if(cooperative!=active || reload) {\n            runCatching {\n                val next=LearnedShader(renderer,cooperative=cooperative,attach=false)\n                lab.close();lab=next.attach();active=cooperative\n            }.onFailure { println(\"Keeping working shader: ${it.message}\");cooperative=active }\n            reload=false\n        }\n        lab.view=requestedView\n        if(animate)time+=.01\n        lab.time=kotlin.math.sin(time).toFloat()\n        frame()\n    }\n}.end { lab.close() }\n"
+      code: |-
+        import afield.graphics.shader.learning.*
+
+        prop<LearnedShader>(lab)
+        fromContextWithNameOrNull<LearnedShader>("lab")?.close()
+        var cooperative = renderer.device.supportsCooperativeVector
+        var active = cooperative
+        var requestedView = 2
+        var animate = true
+        var reload = false
+        lab = LearnedShader(renderer, cooperative = cooperative)
+        controlGroup("learned shader") {
+            checkbox("Cooperative vectors", initialValue = cooperative) { cooperative = it }
+            slider("0: Original · 1: Learned · 2: Compare", min = 0.0, max = 2.0, step = 1.0, initialValue = 2.0) {
+                requestedView = it.toInt()
+            }
+            checkbox("Animate time", initialValue = true) { animate = it }
+            button("Reload trained weights") { if (it) reload = true }
+        }
+        displayOpen("learned shader")
+        println("Compare: original / learned / absolute RGB error × 8. Weights describe a 16 → 32 → 32 → 3 network.")
+        frames {
+            var time = 0.0
+            while (true) {
+                if (cooperative != active || reload) {
+                    runCatching {
+                        val next = LearnedShader(renderer, cooperative = cooperative, attach = false)
+                        lab.close()
+                        lab = next.attach()
+                        active = cooperative
+                    }
+                        .onFailure {
+                            println("Keeping working shader: ${it.message}")
+                            cooperative = active
+                        }
+                    reload = false
+                }
+                lab.view = requestedView
+                if (animate) time += .01
+                lab.time = kotlin.math.sin(time).toFloat()
+                frame()
+            }
+        }
+            .end { lab.close() }
 - connect:
     parent: agent_graphics_context
     child: learned_shader
@@ -38,7 +81,50 @@ operations:
     property: code
     type: code
     strand: scene
-    code: "import afield.ui.output.controlGroup\nimport afield.ui.output.displayOpen\nimport afield.graphics.shader.learning.*\nimport afield.document.context.fromContextWithNameOrNull\n\nprop<LearnedShader>(lab)\nfromContextWithNameOrNull<LearnedShader>(\"lab\")?.close()\nvar cooperative=renderer.device.supportsCooperativeVector\nvar active=cooperative\nvar requestedView=2\nvar animate=true\nvar reload=false\nlab=LearnedShader(renderer,cooperative=cooperative)\ncontrolGroup(\"learned shader\") {\n    checkbox(\"Cooperative vectors\",initialValue=cooperative) { cooperative=it }\n    slider(\"0: Original · 1: Learned · 2: Compare\",min=0.0,max=2.0,step=1.0,initialValue=2.0) { requestedView=it.toInt() }\n    checkbox(\"Animate time\",initialValue=true) { animate=it }\n    button(\"Reload trained weights\") { if(it)reload=true }\n}\ndisplayOpen(\"learned shader\")\nprintln(\"Compare: original / learned / absolute RGB error × 8. Weights describe a 16 → 32 → 32 → 3 network.\")\nframes {\n    var time=0.0\n    while(true) {\n        if(cooperative!=active || reload) {\n            runCatching {\n                val next=LearnedShader(renderer,cooperative=cooperative,attach=false)\n                lab.close();lab=next.attach();active=cooperative\n            }.onFailure { println(\"Keeping working shader: ${it.message}\");cooperative=active }\n            reload=false\n        }\n        lab.view=requestedView\n        if(animate)time+=.01\n        lab.time=kotlin.math.sin(time).toFloat()\n        frame()\n    }\n}.end { lab.close() }\n"
+    code: |-
+      import afield.graphics.shader.learning.*
+
+      prop<LearnedShader>(lab)
+      fromContextWithNameOrNull<LearnedShader>("lab")?.close()
+      var cooperative = renderer.device.supportsCooperativeVector
+      var active = cooperative
+      var requestedView = 2
+      var animate = true
+      var reload = false
+      lab = LearnedShader(renderer, cooperative = cooperative)
+      controlGroup("learned shader") {
+          checkbox("Cooperative vectors", initialValue = cooperative) { cooperative = it }
+          slider("0: Original · 1: Learned · 2: Compare", min = 0.0, max = 2.0, step = 1.0, initialValue = 2.0) {
+              requestedView = it.toInt()
+          }
+          checkbox("Animate time", initialValue = true) { animate = it }
+          button("Reload trained weights") { if (it) reload = true }
+      }
+      displayOpen("learned shader")
+      println("Compare: original / learned / absolute RGB error × 8. Weights describe a 16 → 32 → 32 → 3 network.")
+      frames {
+          var time = 0.0
+          while (true) {
+              if (cooperative != active || reload) {
+                  runCatching {
+                      val next = LearnedShader(renderer, cooperative = cooperative, attach = false)
+                      lab.close()
+                      lab = next.attach()
+                      active = cooperative
+                  }
+                      .onFailure {
+                          println("Keeping working shader: ${it.message}")
+                          cooperative = active
+                      }
+                  reload = false
+              }
+              lab.view = requestedView
+              if (animate) time += .01
+              lab.time = kotlin.math.sin(time).toFloat()
+              frame()
+          }
+      }
+          .end { lab.close() }
 - wait:
     frames: 12
 - create:
@@ -50,7 +136,47 @@ operations:
       w: 420.0
       h: 100.0
     properties:
-      code: "import afield.graphics.shader.learning.LearnedShader\nimport afield.document.context.fromContextWithNameOrNull\n\n// A separate scene: stop the original learned-shader box before launching this one.\n// Edit this box's fragment property while it runs; the network stays allocated.\nprop<AutoCloseable>(materialSession)\nfromContextWithNameOrNull<AutoCloseable>(\"materialSession\")?.close()\nval owner=renderer\nval passName=\"editable learned material\"\nval learned=LearnedShader(owner,name=passName,attach=false)\nlearned.view=1\nlearned.setParameter(.25f)\nprop<RenderToTexture>(learnedImage)=learned.output\nval material=moduleHere { depthTest=false; depthWrite=false; blend=false }\nval triangle=Mesh(owner,material)\ntriangle.resize(3,0,material)\nmaterial += \"fullscreen\" to triangle\n\n// Compute and resolve run before this ordinary fragment shader samples their RTT.\nowner.renderList.preTargets[passName]=learned\nowner.renderList.modules[passName]=material\nvar closed=false\nmaterialSession=AutoCloseable {\n    if(!closed) {\n        closed=true\n        owner.renderList.modules.remove(passName,material)\n        if(!owner.isClosed) {\n            learned.close()\n            owner.cleanup+=Runnable { material.current.cleanup() }\n        }\n    }\n}\nval ownedSession=materialSession\nprintln(\"Edit fragment: the learnedImage texture comes from the unchanged network. Stop the original comparison box to avoid rendering it too.\")\nframes { while(!closed && !owner.isClosed)frame() }.end { ownedSession.close() }\n"
+      code: |-
+        import afield.graphics.shader.learning.LearnedShader
+
+        // A separate scene: stop the original learned-shader box before launching this one.
+        // Edit this box's fragment property while it runs; the network stays allocated.
+        prop<AutoCloseable>(materialSession)
+        fromContextWithNameOrNull<AutoCloseable>("materialSession")?.close()
+        val owner = renderer
+        val passName = "editable learned material"
+        val learned = LearnedShader(owner, name = passName, attach = false)
+        learned.view = 1
+        learned.setParameter(.25f)
+        prop<RenderToTexture>(learnedImage) = learned.output
+        val material = moduleHere {
+            depthTest = false
+            depthWrite = false
+            blend = false
+        }
+        val triangle = Mesh(owner, material)
+        triangle.resize(3, 0, material)
+        material += "fullscreen" to triangle
+
+        // Compute and resolve run before this ordinary fragment shader samples their RTT.
+        owner.renderList.preTargets[passName] = learned
+        owner.renderList.modules[passName] = material
+        var closed = false
+        materialSession = AutoCloseable {
+            if (!closed) {
+                closed = true
+                owner.renderList.modules.remove(passName, material)
+                if (!owner.isClosed) {
+                    learned.close()
+                    owner.cleanup += Runnable { material.current.cleanup() }
+                }
+            }
+        }
+        val ownedSession = materialSession
+        println(
+            "Edit fragment: the learnedImage texture comes from the unchanged network. Stop the original comparison box to avoid rendering it too.",
+        )
+        frames { while (!closed && !owner.isClosed) frame() }.end { ownedSession.close() }
       vertex: "#version 460\nlayout(location=0) out vec2 uv;\nvoid main() {\n    vec2 p=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);\n\
         \    uv=vec2(p.x,1-p.y);\n    gl_Position=vec4(p*2-1,0,1);\n}\n"
       fragment: "#version 460\nlayout(set=0,binding=0) uniform sampler2D learnedImage;\nlayout(location=0) in vec2\

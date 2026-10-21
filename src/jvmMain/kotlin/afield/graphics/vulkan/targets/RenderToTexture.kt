@@ -31,6 +31,18 @@ import org.lwjgl.vulkan.VK13.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
 
+/**
+ * Offscreen rendering: [RenderToTexture] draws modules into its own color (and optional depth)
+ * images, which other modules then sample as textures.
+ *
+ * A box beneath the renderer builds one with a configuration block over [RTTParameters] (size,
+ * formats, attachment count, mip levels, clearing, depth), registers modules to draw into it, and
+ * hands its image views to whatever samples the result. The same target can be blitted to the
+ * window, read back to the CPU, or saved as a JPEG. [PingPongRenderToTexture] and
+ * [MultiPingPongRenderToTexture] build feedback and multi-pass chains from it.
+ */
+
+/** Configuration for a [RenderToTexture]: size, formats, attachments, clearing and depth, set in its constructor block. */
 data class RTTParameters(
     var width: Int = 1024,
     var height: Int = 1024,

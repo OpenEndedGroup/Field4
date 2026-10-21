@@ -165,6 +165,23 @@ launch queue, one rerun at a time, each awaited:
 - **Cycles.** A box reruns at most 3 times per cascade; at that point the cascade stops and logs
   on `warning,autorun`. A reader whose rerun fails is not retried in that cascade.
 
+### What counts as a declaration
+
+Two decisions read a box's code as text rather than through the macro: whether an ancestor
+supplies a name (`suppliersFor`), and whether a box still declares a name Down
+(`ReactiveRuns.isDeclaredDown`, which forgets a declaration once the code stops making it).
+Both match `propUp|propDown|propUpDown<T>(name` followed by `,` or `)` — a default value
+counts — as a whole word, after `ReactiveRuns.withoutComments` has blanked `//` and nesting
+`/* */` comments (a `//` inside a string literal is not a comment). So commenting a declaration
+out retires it, as it retires the macro expansion. A declaration always carries its type: the
+macro refuses `propDown(name)`, so no record is ever made for that spelling.
+
+Every per-box record in `ReactiveRuns` (Down declarations, the last run start, pull repeat
+windows, a successful pull's stamp) is keyed by document file *and* uid (`ReactiveRuns.docKey`).
+Two open documents can hold the same uid — a copied document keeps its uids — and keyed by uid
+alone, asking one document's box forgot the other's declaration, and a run in one made the
+other's reader look up to date.
+
 ### Testing
 
 - `tools/reactive_props_scenarios.py` drives a live Field through the backdoor: one fresh

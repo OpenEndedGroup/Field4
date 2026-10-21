@@ -5,7 +5,11 @@ layout(location = 2) flat in float vId;
 layout(location = 3) in float vAway;
 layout(location = 4) in float vRadius;
 layout(location = 0) out vec4 outColor;
-layout(push_constant) uniform matrices { mat4 p; mat4 m; vec4 params; } pc;
+layout(push_constant) uniform matrices {
+    mat4 p;
+    mat4 m;
+    vec4 params;
+} pc;
 
 // face_decay(vec4(place on the face xy, outward travel, polygon radius)):
 // radius is 0 at the face centre and 1 at its actual perimeter, including pentagons.

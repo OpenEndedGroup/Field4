@@ -37,8 +37,12 @@ m.finalColor = {
 
 val sc = 4.0
 m.set(4, 2) {
-    pos.add(-sc, -sc, 0); pos.add(sc, -sc, 0); pos.add(sc, sc, 0); pos.add(-sc, sc, 0)
-    tri.add(0, 1, 2); tri.add(0, 2, 3)
+    pos.add(-sc, -sc, 0)
+    pos.add(sc, -sc, 0)
+    pos.add(sc, sc, 0)
+    pos.add(-sc, sc, 0)
+    tri.add(0, 1, 2)
+    tri.add(0, 2, 3)
 }
 
 display("main", view.html())

@@ -6,18 +6,16 @@ import kotlin.math.abs
 /**
  * A soft raster, its exact reference, and the difference between them — as a picture.
  *
- * A bias is a number, and this project's own experience is that a number without a picture beside it
- * is a number nobody checks. The panel that matters here is the third one: `|soft - exact|`, on a heat
- * ramp with its own peak printed in the corner. A reader who has never opened this file can see from
- * it *where* the bias lives — a thin fringe along an oblique edge, a bright bar down a union seam, a
- * whole feature glowing when it is thinner than the band — which is the same conclusion the numbers
- * reach and reaches it faster.
+ * The third panel is `|soft - exact|` on a heat ramp, with its own peak printed in the corner. It
+ * shows *where* a soft raster's bias lives: a thin fringe along an oblique edge, a bright bar down a
+ * union seam, a whole feature glowing when it is thinner than the band.
  *
- * A CPU raster on purpose, for the reason [RectSLFitFigure] gives: per-pixel coverage *is* the data
- * here, so there is nothing a GPU would add except a device, a window and a render target. There is
- * no text primitive anywhere near this code, so the labels are [PLOT_GLYPHS], the same 3×5 dot-matrix
- * font RectSL's own plotting words use.
+ * The figure is a CPU raster, for the reason [RectSLFitFigure] gives: per-pixel coverage is the data
+ * here, so a GPU would add only a device, a window and a render target. The labels use the same 3×5
+ * dot-matrix font RectSL's own plotting words use.
  */
+
+/** Renders soft-versus-exact coverage figures as PNG panels. */
 object RectSLSoftRasterFigure {
 
     /** The palette, dark like the rest of Field's captures. */

@@ -1,3 +1,16 @@
+/**
+ * Where Field's AI features find their provider, API key, endpoint and model names.
+ *
+ * Each setting is read from an environment variable first and then from a file under
+ * `~/.afield/`: the provider (`AFIELD_AI_PROVIDER`, else `ai-provider.txt`, defaulting to
+ * `openai`), the OpenAI key (`OPENAI_PLATFORM_KEY` or `OPENAI_API_KEY`, else
+ * `openai-platform-key.txt`), the OpenRouter key and the per-provider model settings. The
+ * /welcome page writes the files through [saveAiSettings] and [saveOpenAiPlatformKey], and
+ * [aiProviderConfigRevision] changes on each [saveAiSettings] so cached clients know to rebuild.
+ * [activeAiProviderRuntimeConfig] resolves all of it into the one [AiProviderRuntimeConfig] a
+ * bridge is built from.
+ */
+
 package afield.ai.models
 
 import com.openai.client.OpenAIClient
@@ -13,9 +26,12 @@ const val OPENROUTER_API_KEY_ENV = "OPENROUTER_API_KEY"
 const val AFIELD_AI_PROVIDER_ENV = "AFIELD_AI_PROVIDER"
 const val AFIELD_AI_BASE_URL_ENV = "AFIELD_AI_BASE_URL"
 const val OPENROUTER_BASE_URL_ENV = "OPENROUTER_BASE_URL"
+const val LOCAL_AI_BASE_URL_ENV = "AFIELD_LOCAL_AI_BASE_URL"
+const val LOCAL_AI_API_KEY_ENV = "AFIELD_LOCAL_AI_API_KEY"
 
 private const val OPENAI_BASE_URL = "https://api.openai.com/v1"
 private const val OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+const val LOCAL_AI_DEFAULT_BASE_URL = "http://127.0.0.1:8081/v1"
 
 private val aiProviderConfigurationRevision = AtomicLong(0L)
 
@@ -55,7 +71,9 @@ data class AiSettingsSaveRequest(
     val openRouterBaseUrl: String?,
     val flagshipModel: String?,
     val fastModel: String?,
-    val fallbackModel: String?
+    val fallbackModel: String?,
+    val localBaseUrl: String? = null,
+    val localApiKey: String? = null
 )
 
 data class AiProviderRuntimeConfig(
@@ -66,25 +84,58 @@ data class AiProviderRuntimeConfig(
     val modelSettings: AiModelSettings
 ) {
     val isOpenRouter: Boolean get() = provider == "openrouter"
+    val usesStatelessResponses: Boolean get() = provider == "openrouter" || provider == "local"
 }
 
+private fun aiConfigDir(): File =
+    System.getProperty("afield.ai.configDir")?.let(::File)
+        ?: File(System.getProperty("user.home"), ".afield")
+
+internal fun aiSettingsEnvironmentOverrides(): List<String> = listOf(
+    AFIELD_AI_PROVIDER_ENV, AFIELD_AI_BASE_URL_ENV, LOCAL_AI_BASE_URL_ENV,
+    "AFIELD_AI_MODEL", "AFIELD_AI_FAST_MODEL", "AFIELD_AI_FALLBACK_MODEL"
+).filter { !System.getenv(it).isNullOrBlank() }
+
 fun openAiCredentialFile(): File =
-    File(File(System.getProperty("user.home"), ".afield"), "openai-platform-key.txt")
+    File(aiConfigDir(), "openai-platform-key.txt")
 
 fun openRouterCredentialFile(): File =
-    File(File(System.getProperty("user.home"), ".afield"), "openrouter-api-key.txt")
+    File(aiConfigDir(), "openrouter-api-key.txt")
+
+private fun localAiCredentialFile(): File =
+    File(aiConfigDir(), "local-ai-api-key.txt")
+
+internal fun readLocalAiCredential(): Pair<String, String>? {
+    System.getenv(LOCAL_AI_API_KEY_ENV)?.trim()?.takeIf { it.isNotBlank() }?.let {
+        return it to LOCAL_AI_API_KEY_ENV
+    }
+    val file = localAiCredentialFile()
+    return runCatching { file.takeIf { it.isFile }?.readText()?.trim()?.takeIf { it.isNotBlank() }?.let { it to file.absolutePath } }.getOrNull()
+}
+
+/** Accept an API base URL on this computer or another machine owned by the user. */
+internal fun normalizeLocalAiBaseUrl(value: String): String {
+    val uri = runCatching { java.net.URI(value.trim()) }.getOrNull()
+    require(uri != null && uri.scheme in setOf("http", "https") && !uri.host.isNullOrBlank() &&
+        uri.userInfo == null && uri.rawQuery == null && uri.rawFragment == null) {
+        "Enter an http:// or https:// API base URL, such as http://gpu-host:8081/v1."
+    }
+    val base = value.trim().trimEnd('/')
+    return if (uri.path.isNullOrEmpty() || uri.path == "/") "$base/v1" else base
+}
 
 private fun aiProviderFile(): File =
-    File(File(System.getProperty("user.home"), ".afield"), "ai-provider.txt")
+    File(aiConfigDir(), "ai-provider.txt")
 
 private fun aiModelSettingsFile(): File =
-    File(File(System.getProperty("user.home"), ".afield"), "ai-models.properties")
+    File(aiConfigDir(), "ai-models.properties")
 
 private fun normalizeProvider(provider: String?): String {
     val normalized = provider?.trim()?.lowercase(Locale.US)
     return when (normalized) {
         "openrouter", "router" -> "openrouter"
         "anthropic", "claude" -> "anthropic"
+        "local" -> "local"
         else -> "openai"
     }
 }
@@ -157,6 +208,13 @@ fun configuredAiModelSettings(provider: String = configuredAiProvider()): AiMode
 
 fun configuredAiBaseUrl(provider: String = configuredAiProvider()): String {
     System.getenv(AFIELD_AI_BASE_URL_ENV)?.trim()?.takeIf { it.isNotBlank() }?.let { return it.trimEnd('/') }
+    if (provider == "local") {
+        System.getenv(LOCAL_AI_BASE_URL_ENV)?.trim()?.takeIf { it.isNotBlank() }?.let { return normalizeLocalAiBaseUrl(it) }
+        val props = Properties()
+        runCatching { aiModelSettingsFile().takeIf { it.isFile }?.inputStream()?.use(props::load) }
+        return props.getProperty("local.baseUrl", "").trim().takeIf { it.isNotBlank() }
+            ?.let(::normalizeLocalAiBaseUrl) ?: LOCAL_AI_DEFAULT_BASE_URL
+    }
     if (provider == "openrouter") {
         System.getenv(OPENROUTER_BASE_URL_ENV)?.trim()?.takeIf { it.isNotBlank() }?.let { return it.trimEnd('/') }
         runCatching {
@@ -185,7 +243,11 @@ fun aiProviderStatus(): AiProviderStatus {
     val provider = configuredAiProvider()
     val openAi = readOpenAiCredential()
     val openRouter = readOpenRouterCredential()
-    val source = if (provider == "openrouter") openRouter?.second else openAi?.second
+    val source = when (provider) {
+        "local" -> readLocalAiCredential()?.second ?: "Local endpoint (no API key)"
+        "openrouter" -> openRouter?.second
+        else -> openAi?.second
+    }
     return AiProviderStatus(
         provider = provider,
         hasOpenAiPlatformKey = openAi != null,
@@ -211,6 +273,11 @@ fun saveAiSettings(request: AiSettingsSaveRequest): AiProviderStatus {
     val provider = normalizeProvider(request.provider)
     val suppliedOpenAiKey = request.openAiPlatformKey?.trim().orEmpty()
     val suppliedOpenRouterKey = request.openRouterApiKey?.trim().orEmpty()
+    // Validate before writing any setting, so a failed save keeps the working provider.
+    val localBaseUrl = if (provider == "local") normalizeLocalAiBaseUrl(request.localBaseUrl.orEmpty()) else null
+    if (provider == "local") require(!request.flagshipModel.isNullOrBlank()) { "Enter the model ID served by your local endpoint." }
+    val previousLocalBaseUrl = configuredAiBaseUrl("local")
+    val previousSavedProvider = runCatching { normalizeProvider(aiProviderFile().readText()) }.getOrDefault("openai")
     if (provider == "openai" && suppliedOpenAiKey.isBlank() && readOpenAiCredential() == null) {
         throw IllegalArgumentException("OpenAI selected, but no OpenAI Platform key is configured.")
     }
@@ -227,10 +294,28 @@ fun saveAiSettings(request: AiSettingsSaveRequest): AiProviderStatus {
         file.parentFile?.mkdirs()
         file.writeText("$key\n", Charsets.UTF_8)
     }
+    if (provider == "local") {
+        val key = request.localApiKey?.trim().orEmpty()
+        if (key.isNotBlank()) {
+            localAiCredentialFile().apply { parentFile.mkdirs(); writeText("$key\n") }
+        } else if (localBaseUrl != previousLocalBaseUrl) {
+            // A credential saved for one endpoint must not follow a URL change.
+            localAiCredentialFile().delete()
+        }
+    }
 
     val props = Properties()
     runCatching {
         aiModelSettingsFile().takeIf { it.exists() }?.inputStream()?.use(props::load)
+    }
+    // Older settings were global; move them to their original provider before switching.
+    listOf("flagshipModel", "fastModel", "fallbackModel", "reasoningEffort").forEach { name ->
+        val scoped = modelSettingKey(previousSavedProvider, name)
+        val legacy = props.getProperty(name, "").trim()
+        if (props.getProperty(scoped, "").isBlank() && legacy.isNotBlank()) props.setProperty(scoped, legacy)
+    }
+    props.getProperty("openRouterBaseUrl", "").trim().takeIf { it.isNotBlank() }?.let {
+        if (props.getProperty("openrouter.baseUrl", "").isBlank()) props.setProperty("openrouter.baseUrl", it)
     }
     fun replace(name: String, value: String?) {
         val key = modelSettingKey(provider, name)
@@ -241,6 +326,7 @@ fun saveAiSettings(request: AiSettingsSaveRequest): AiProviderStatus {
     replace("fastModel", request.fastModel)
     replace("fallbackModel", request.fallbackModel)
     if (provider == "openrouter") replace("baseUrl", request.openRouterBaseUrl?.trimEnd('/'))
+    if (provider == "local") replace("baseUrl", localBaseUrl)
     // Do not let legacy global overrides leak into another provider after this save.
     listOf("flagshipModel", "fastModel", "fallbackModel", "openRouterBaseUrl").forEach(props::remove)
     aiModelSettingsFile().parentFile?.mkdirs()
@@ -252,6 +338,15 @@ fun saveAiSettings(request: AiSettingsSaveRequest): AiProviderStatus {
 
 fun activeAiProviderRuntimeConfig(): AiProviderRuntimeConfig {
     val provider = configuredAiProvider()
+    if (provider == "local") {
+        val model = System.getenv("AFIELD_AI_MODEL")?.trim()?.takeIf { it.isNotBlank() }
+            ?: configuredAiModelSettings("local").flagshipModel
+        require(model.isNotBlank()) { "Choose a local model in Welcome → AI → Local." }
+        val credential = readLocalAiCredential()
+        return AiProviderRuntimeConfig("local", credential?.first ?: "local-no-key-required",
+            credential?.second ?: "Local endpoint (no API key)", normalizeLocalAiBaseUrl(configuredAiBaseUrl("local")),
+            configuredAiModelSettings("local"))
+    }
     val credential = if (provider == "openrouter") readOpenRouterCredential() else readOpenAiCredential()
     val (key, source) = credential
         ?: throw MissingOpenAiCredentialException(

@@ -16,6 +16,17 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
+ * Fits a `List<Vec3>` or an [FLine] with a tree of 3D polynomial curves, splitting a
+ * span until each leaf meets its error targets.
+ *
+ * The `fitPolynomialTree3D` extensions take a [PolynomialTreeFitConfig] (polynomial order, depth and leaf limits,
+ * RMS and max-error targets) and returns a [PolynomialTreeFitResult]. Split, stop and claim rules
+ * are pluggable through [PolynomialTreeSplitStrategies], [PolynomialTreeStopCriteria] and
+ * [PolynomialTreeClaimCriteria]; [PolynomialLeafFLineStyles] holds preset styles for
+ * drawing the fitted leaves as FLines.
+ */
+
+/**
  * Parametric 3D polynomial curve: x(t), y(t), z(t) for t in [0, 1].
  */
 data class Polynomial3Curve(

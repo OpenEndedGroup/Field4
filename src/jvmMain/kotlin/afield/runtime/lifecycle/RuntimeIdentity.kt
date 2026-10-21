@@ -37,6 +37,11 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import java.io.File
 import kotlin.reflect.KClass
 
+/**
+ * [RuntimeIdentity] records which compiled classes and native libraries produced a result, as
+ * hashes, and throws [RuntimeIdentityMismatch] from [RuntimeIdentity.verify] when a host has loaded different code.
+ */
+
 /** A native library's file name is its key in a [RuntimeIdentity]; [path] is where it was loaded from, kept for messages. */
 data class NativeLibraryIdentity(val path: String, val sha256: String)
 

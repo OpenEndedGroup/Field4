@@ -57,6 +57,16 @@ import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
 
+/**
+ * The server end of the drawing layer: [installNotationHandlers] registers the websocket handlers that
+ * receive each client's scene and selection, merge the scene into the document's copy, and pass what a
+ * person changed on to the box reactions and to arrow anchoring.
+ *
+ * Anchoring ties a mark, or each end of an arrow, to the box under it, so the drawing follows when boxes
+ * move. The drawing layer's **Anchor Drawing to Boxes** command applies it to the selection.
+ */
+
+
 /** A client's drawing, as it now stands in that window. */
 @Serializable
 data class NotationSceneUpdate(val scene: String)

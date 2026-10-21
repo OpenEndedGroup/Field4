@@ -3,6 +3,15 @@ package afield.media.video.diffusion
 import afield.graphics.vulkan.device.CommandBuffer
 import afield.graphics.vulkan.targets.RenderToTexture
 
+/**
+ * The interface a renderer implements to give streaming diffusion per-pixel motion:
+ * [StreamDiffusionMotionProvider], with the frame and request types it receives.
+ *
+ * A provider answers each [StreamDiffusionMotionRequest] with an RGBA32F texture mapping pixels of
+ * the current frame back to a reference frame, plus confidence and rejection channels. The view
+ * uses it for display reprojection, history blending and noise advection.
+ */
+
 /** IDs refer to source render frames, including frames not accepted by inference. */
 data class StreamDiffusionFrame(val id: Long, val timeNanos: Long, val generation: Long)
 enum class StreamDiffusionMotionUse { DISPLAY, HISTORY, NOISE }

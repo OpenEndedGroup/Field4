@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="mq_renderer" index="0" -->
 
 ```edn [field-box id="mq_renderer" role="properties"]
-{"id" "mq_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["mq_bundle"] "properties" {"children" #{#afield/box "mq_bundle"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_renderer_code_.kt" "lines" 11 "characters" 266 "sha256" "a87d7ab675bfdbe09722d6e3c67ce62447b4b2c965cfa016bb4ac3dee7d0cdef"}]}
+{"id" "mq_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["mq_bundle"] "properties" {"children" #{#afield/box "mq_bundle"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_renderer_code_.kt" "lines" 12 "characters" 267 "sha256" "b6347c6286b135778853929e303608bc8d42bc83387585a05c1c2b530702aac8"}]}
 ```
 
 ```kotlin [field-property box="mq_renderer" name="code" path="mq_renderer_code_.kt"]
 import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -39,14 +40,13 @@ From `code`
 `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
 
 ```edn [field-box id="mq_bundle" role="properties"]
-{"id" "mq_bundle" "index" 1 "name" "bundle" "parents" ["root" "mq_renderer"] "children" ["mq_tree"] "properties" {"children" #{#afield/box "mq_tree"} "parents" #{#afield/box "root" #afield/box "mq_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_bundle_code_.kt" "lines" 22 "characters" 683 "sha256" "128406020ba3cff2365d30737aeb7d2c36e9820dd3a69ede64116f2303f54b3b"}]}
+{"id" "mq_bundle" "index" 1 "name" "bundle" "parents" ["root" "mq_renderer"] "children" ["mq_tree"] "properties" {"children" #{#afield/box "mq_tree"} "parents" #{#afield/box "root" #afield/box "mq_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_bundle_code_.kt" "lines" 21 "characters" 650 "sha256" "2943be8803b9a6f05a48972eac51322efeebf7be600a138e18355c328ae07b4d"}]}
 ```
 
 ```kotlin [field-property box="mq_bundle" name="code" path="mq_bundle_code_.kt"]
 // `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
 import afield.graphics.scene.fabricated.StandardRenderer
 import afield.graphics.scene.fabricated.applyScenePlan
-import afield.math.linalg.Vector3f
 
 prop<StandardRenderer.Bundle>(bundle)
 
@@ -56,8 +56,8 @@ once.bundle {
         StandardRenderer.Config(
             renderWidth = 1024,
             renderHeight = 1024,
-            backgroundColor = Vector3f(0.02f, 0.02f, 0.03f)
-        )
+            backgroundColor = Vector3f(0.02f, 0.02f, 0.03f),
+        ),
     )
     b.applyScenePlan()
     b.present(renderer = renderer)
@@ -72,7 +72,7 @@ println("bundle ready: ${bundle.postStack.names()}")
 <!-- field-box id="mq_tree" index="2" -->
 
 ```edn [field-box id="mq_tree" role="properties"]
-{"id" "mq_tree" "index" 2 "name" "morton quadtree" "parents" ["root" "mq_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "mq_bundle"} "name" "morton quadtree" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_tree_code_.kt" "lines" 146 "characters" 6466 "sha256" "16236c92ac559c98bd748c5d8828fe038c6a20dcc90a971c32f7144b0a5d9f65"}]}
+{"id" "mq_tree" "index" 2 "name" "morton quadtree" "parents" ["root" "mq_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "mq_bundle"} "name" "morton quadtree" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_tree_code_.kt" "lines" 162 "characters" 6636 "sha256" "4ee0eb94348a596d0ab4704dad96919b0aa9f1824a2865e9a098d78d67ef84b6"}]}
 ```
 
 ```kotlin [field-property box="mq_tree" name="code" path="mq_tree_code_.kt"]
@@ -85,12 +85,13 @@ import org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT
 
 prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(tree)
 
-val grid = 16      // 16x16 = 256 points, one per texel of the point texture
-val depth = 4      // 16x16 leaf cells, so 8 bits of Morton code
+val grid = 16 // 16x16 = 256 points, one per texel of the point texture
+val depth = 4 // 16x16 leaf cells, so 8 bits of Morton code
 
 // The point set: three orbiting clusters, two of them stretched and leaning. One point
 // per texel, as (x, y, weight, value) — the layout `mortonPointQuadtree` reads.
-val pointsFragment = """
+val pointsFragment =
+    """
     #version 450
     layout(location = 0) in vec2 vUv;
     layout(push_constant) uniform PointPush {
@@ -126,10 +127,13 @@ val pointsFragment = """
     }
 """
 
-// A picture of the points to draw the tree over. Every texel gathers every point, which
-// is a scatter turned inside out — the only way a fragment shader draws a point set, and
-// the same reason the sort below is a gather.
-val splatFragment = """
+/*
+A picture of the points to draw the tree over. Every texel gathers every point, which
+is a scatter turned inside out — the only way a fragment shader draws a point set, and
+the same reason the sort below is a gather.
+*/
+val splatFragment =
+    """
     #version 450
     layout(location = 0) in vec2 vUv;
     layout(set = 0, binding = 0) uniform sampler2D sourceTex;
@@ -166,52 +170,62 @@ tree = bundle.addPassChain(
             name = "points",
             fragment = pointsFragment,
             size = FabricatePassSize.Absolute(grid, grid),
-            // fp32 throughout: a Morton code and a point index are exact integers rather
-            // than quantities, and a code that rounds is a point that changes cell at
-            // the *top* of the tree.
+            /*
+            fp32 throughout: a Morton code and a point index are exact integers rather
+            than quantities, and a code that rounds is a point that changes cell at
+            the *top* of the tree.
+            */
             format = VK_FORMAT_R32G32B32A32_SFLOAT,
             source = FabricatePassChain.CHAIN_INPUT,
-            push = mapOf("time" to 0f)
+            push = mapOf("time" to 0f),
         ),
         FabricatePassSpec(
             name = "view",
             fragment = splatFragment,
             size = FabricatePassSize.Absolute(512, 512),
             format = VK_FORMAT_R32G32B32A32_SFLOAT,
-            source = "points"
-        )
-    ) + FabricatePassLibrary.mortonPointQuadtree(
-        prefix = "quadtree",
-        points = "points",
-        pointGrid = grid,
-        depth = depth,
-        // A quarter of the points can land in one leaf cell, whose density against a
-        // uniform spread is then about 64. Correct, and four hundred times what an 8-bit
-        // preview of that plane could show; this only affects looking at it.
-        densityScale = 1f / 64f
-    ) + FabricatePassLibrary.adaptiveSummaryCells(
-        // The descent: from depth 1 down, stopping where a node already describes its
-        // points well enough. SPREAD refines where the mass is *narrower than the cell
-        // holding it* — which needs the second moments, and is therefore a criterion an
-        // occupancy quadtree cannot express at all. Empty space stops at depth 1; a tight
-        // cluster is chased to the leaves.
-        prefix = "quadtree",
-        name = "cut",
-        over = "view",
-        coarsest = 1,
-        finest = depth,
-        criterion = FabricatePassLibrary.SubdivisionCriterion.SPREAD,
-        threshold = 0.2f,
-        weightGain = 40f
-    ),
-    printReport = true
+            source = "points",
+        ),
+    ) +
+        FabricatePassLibrary.mortonPointQuadtree(
+            prefix = "quadtree",
+            points = "points",
+            pointGrid = grid,
+            depth = depth,
+            /*
+            A quarter of the points can land in one leaf cell, whose density against a
+            uniform spread is then about 64. Correct, and four hundred times what an 8-bit
+            preview of that plane could show; this only affects looking at it.
+            */
+            densityScale = 1f / 64f,
+        ) +
+        FabricatePassLibrary.adaptiveSummaryCells(
+            /*
+            The descent: from depth 1 down, stopping where a node already describes its
+            points well enough. SPREAD refines where the mass is *narrower than the cell
+            holding it* — which needs the second moments, and is therefore a criterion an
+            occupancy quadtree cannot express at all. Empty space stops at depth 1; a tight
+            cluster is chased to the leaves.
+            */
+            prefix = "quadtree",
+            name = "cut",
+            over = "view",
+            coarsest = 1,
+            finest = depth,
+            criterion = FabricatePassLibrary.SubdivisionCriterion.SPREAD,
+            threshold = 0.2f,
+            weightGain = 40f,
+        ),
+    printReport = true,
 )
 bundle.attachTo(renderer)
 bundle.present(renderer = renderer)
 
-// ── live knobs. One bound lambda moves the points, and everything downstream — codes,
-//    ranks, the sorted array, every node's range and every level of the summary — is
-//    recomputed from them on each frame.
+/*
+── live knobs. One bound lambda moves the points, and everything downstream — codes,
+   ranks, the sorted array, every node's range and every level of the summary — is
+   recomputed from them on each frame.
+*/
 tree["time"] = { renderer.frameCounter * 0.01f }
 tree["sigma"] = 1.2f
 tree["weightGain"] = 40f
@@ -220,7 +234,9 @@ tree["underGain"] = 0.5f
 // next frame, with nothing rebuilt and nothing reallocated.
 tree["threshold"] = 0.2f
 
-println("morton quadtree: ${tree.names().size} passes over ${grid * grid} points, " +
-        "leaf level ${tree.targetOf("quadtree-range-$depth")?.width}² nodes")
+println(
+    "morton quadtree: ${tree.names().size} passes over ${grid * grid} points, " +
+        "leaf level ${tree.targetOf("quadtree-range-$depth")?.width}² nodes",
+)
 ```
 

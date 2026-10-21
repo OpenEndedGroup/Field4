@@ -280,7 +280,7 @@ object FnRewriteKotlinLiveBoxProbe {
         // than trusting a return from main to bring the JVM down.
         // Refused legibly: a self-box hydration while the body runs is an error, given before a second run.
         val refused = entered == 1 && run != null &&
-            (run.errors.any { "whose code is running now" in it.toString() } || "whose code is running now" in run.message)
+            (run.errors.any { "whose code is running now" in it } || "whose code is running now" in run.message)
         println("PROBE refusedDuringBody=$refused")
         exitProcess(if ((completed || refused) && (mode != "failurecache" || negativeCacheVerified)) 0 else 1)
     }

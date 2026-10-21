@@ -57,6 +57,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
 /**
+ * The log archive behind the `/logs` iframe: [LogStream] keeps recent log records (still printing
+ * them to stdout) and streams them to the page.
+ *
+ * The page can ask for a filtered subset of the archive and then receive new entries live.
+ * [installLogStreamHandler] installs the socket handler it uses.
+ */
+
+/**
  * Capture all log events (while still emitting to stdout) and expose a lightweight streaming
  * API similar to browsing.kt. Designed for an iframe widget that can request subsets of the log
  * archive and stream future entries live.

@@ -99,6 +99,17 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.system.measureTimeMillis
 
+/**
+ * Records the operations a person or agent performs on a document and replays them as named macros.
+ *
+ * [OperationTranscript] logs edits, moves, executions, launches and stops as they happen
+ * (`recordEdit`, `recordMove`, `recordExecuteFragment`, `recordLaunch`, `recordStop`), and stores
+ * macros as YAML files in a `macros/` folder at document, project or workspace scope
+ * (`listMacros`, `writeMacro`, `runMacro`). The backdoor's `macro write` and `macro run` commands
+ * use this; the YAML format and examples are in `dev_docs/agents/OPERATION_TRANSCRIPT.md`.
+ */
+
+/** Runs one operation per key at a time; a caller arriving while it runs waits for the same result. */
 internal class InFlightOperationCoalescer<K, V> {
     private val active = ConcurrentHashMap<K, CompletableFuture<V>>()
 

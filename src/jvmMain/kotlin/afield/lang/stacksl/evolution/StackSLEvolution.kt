@@ -84,6 +84,15 @@ import kotlin.math.min
 import kotlin.random.Random
 
 /**
+ * The resumable StackSL search: [StackSLEvolution] holds the island populations, the stage
+ * schedule and the per-origin credit table between generations, and saves them as a
+ * [StackSLEvolutionSnapshot].
+ *
+ * The settings ([StackSLEvolveSettings], [StackSLStage]), the history records and the
+ * [StackSLPopulationArchive] that files snapshots on disk live here too.
+ */
+
+/**
  * A StackSL search you can stop, look at, steer and resume: [evolveStackSLTowards] taken apart.
  *
  * [evolveStackSLTowards] is one call that runs to its budget and returns. This is the same search

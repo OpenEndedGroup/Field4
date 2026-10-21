@@ -12,6 +12,12 @@ import afield.graphics.vulkan.targets.RenderToTexture
 import afield.graphics.texture.TextureSampler
 import afield.graphics.shader.fromViews
 
+/**
+ * An editable render-to-texture teacher next to a learner that trains on the GPU while it runs.
+ *
+ * [GpuShaderLearningView] pairs a source [RenderToTexture] with [GpuShaderTraining]; with [learning] off and the learned-only view selected, the source stops running and the learned function stays.
+ */
+
 /** An editable RTT teacher and its live GPU learner. Source lifetime remains with the caller.
  * View 1 with [learning]=false stops executing the source entirely; its learned function remains.
  * [parameter] is normalized to [-1,1], with the same value supplied to the teacher and network.

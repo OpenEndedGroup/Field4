@@ -1,5 +1,20 @@
 @file:Suppress("unused", "MemberVisibilityCanBePrivate")
 
+/**
+ * Re-exports the AI4 assistant's public types and helpers under one package, `afield.ai.compat`, so
+ * code that imports from this one package keeps compiling.
+ *
+ * Every declaration here is a `typealias` or a one-line forwarding `val` or `fun` into the package
+ * that now owns it: logging sinks from `afield.ai.diagnostics`, language specs such as
+ * [KOTLIN_SCRIPT] and the GLSL and Slang stage specs from `afield.runtime.languages`, tool request
+ * and result schemas from `afield.ai.tools`, and the completion helpers from `afield.ai.completion`.
+ * New code should import from those packages directly.
+ *
+ * The file also declares two `@RunsAt(installHandlers)` hooks, [ai4_install] and
+ * [docs_search_install], which call `installAi4` and `installDocsSearch` (the latter installs the
+ * `docs_search_input` message handler).
+ */
+
 package afield.ai.compat
 
 import afield.ai.conversation.*

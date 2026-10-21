@@ -25,6 +25,8 @@ import java.net.URI
  * among the window's targets (the tab strip is a separate page). Requested with
  * `playwright-open --electron` on the backdoor. macOS and Linux (native Wayland for the RTT view).
  */
+
+/** A running Electron app attached over CDP, for captures that only exist inside Electron. */
 class ElectronCaptureBrowser private constructor(
     private val process: Process,
     val browser: Browser,

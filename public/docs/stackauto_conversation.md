@@ -61,13 +61,15 @@ The two programs are strings at the end of the box's Kotlin, and both start iner
 <!-- stackauto-study-source:starter-slots -->
 ```diffstatic {data-lang=kotlin}
 // The vertex shader's slot: where each face goes. Talk to it in this box's AI4 chat.
-module.explode = """
+module.explode =
+    """
 # (start) every face where it belongs: pushed nowhere, shrunk not at all
 [0,0,0,0]
 """
 
 // The fragment shader's slot: each face's colour, and where it burns through.
-module.face_decay = """
+module.face_decay =
+    """
 # (start) one warm grey on every face, nothing burned
 [0.75,0.72,0.68,1]
 """
@@ -308,10 +310,14 @@ void main() {
             val ring = topology.faceCycle(face.id).map { xyz[topology.vertexMap.getValue(it)] }
             for (k in ring.indices) {
                 for ((p, r) in [c to 0f, ring[k] to 1f, ring[(k + 1) % ring.size] to 1f]) {
-                    pos.add(p.x, p.y, p.z); nrm.add(n.x, n.y, n.z); cen.add(c.x, c.y, c.z)
-                    fid.add(face.id.value.toFloat()); faceRadius.add(r)
+                    pos.add(p.x, p.y, p.z)
+                    nrm.add(n.x, n.y, n.z)
+                    cen.add(c.x, c.y, c.z)
+                    fid.add(face.id.value.toFloat())
+                    faceRadius.add(r)
                 }
-                tri.add(3 * t, 3 * t + 1, 3 * t + 2); t++
+                tri.add(3 * t, 3 * t + 1, 3 * t + 2)
+                t++
             }
         }
     }

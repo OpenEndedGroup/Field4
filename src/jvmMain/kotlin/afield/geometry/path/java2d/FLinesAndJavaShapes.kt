@@ -84,6 +84,17 @@ import java.util.function.Predicate
 import kotlin.math.*
 
 /**
+ * Converts [FLine]s to and from `java.awt.geom` shapes, and walks them by distance with
+ * [FLinesAndJavaShapes.Cursor].
+ *
+ * The round trip through `java.awt.geom` (geometry only, not attributes) gives 2D FLines
+ * Java2D's flattening, stroking, insetting and outsetting. `Cursor` moves along a
+ * line by arc length or by node parameter, reports the position, tangent and curvature there, and
+ * splits the line. `CubicSegment2` and `CubicSegment3` hold the per-segment cubic maths: roots,
+ * inflections, bounding boxes and intersections.
+ */
+
+/**
  * Utility classes for manipulating and traversing FLines.
  *
  *

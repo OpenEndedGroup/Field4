@@ -235,6 +235,12 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `stipple_sheet.yaml`: **the stipple transport sheet** — the companion to
   `stipple_transport.md`. Loads the committed two-image model and deforms particles and a lattice
   under transport-time, movie-time and step sliders. Pure CPU.
+- `lp_curves.yaml`: **linear programs as curves** — the companion to `lp_curves.md`. Every LP route
+  over one pentagon (central path, fan, primal-dual, PDHG, ellipsoid, simplex, cutting planes), and a
+  launched box that turns the objective while the polygon breathes. Pure CPU.
+- `lp_curves_3d.yaml`: **linear programs in three dimensions** — the companion to the "In three dimensions" section of `lp_curves.md`.
+  A point cloud's hull as an `LpPolytope` with four routes to one vertex (central path, primal-dual,
+  simplex along edges, PDHG), and a turning fan of central paths, both in `three { }`. Pure CPU.
 - `frames_lifecycle.yaml`: **a frame loop, from start to cleanup** — the companion to
   `animation_time_model.md`. Runs until stopped, stops itself with `end()`, re-run replaces, and a
   fourth box the reader drives to see which of `.end { }` and `finally` each way of stopping reaches.
@@ -251,6 +257,10 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `pattern_condense.yaml`: **the shortest way to write a rhythm down** — `patCondense` accepts a
   candidate only by re-parsing and playing it, which is why box 1 draws pairs rather than printing
   strings. Includes the loop closed from audio: samples in, `60(3,8)` out.
+- `clojure_box_parity.yaml`: **Clojure boxes doing what Kotlin and Python boxes do**: an error marked
+  on the line inside the `defn` that raised, a slider and checkbox whose handlers are Clojure fns or
+  atoms, and `(context ...)` reading a parent's property and Kotlin variable. Compile-only here (the
+  Kotlin root); `ClojureFieldCoreTest` runs the Clojure half.
 - `python_box_parity.yaml`: **Python boxes doing what Kotlin boxes do** — an error marked on the line
   inside the function that raised, and a slider and checkbox whose callbacks are Python. Same JEP
   prerequisite as `python_cells`, and compile-only here for the same reason.

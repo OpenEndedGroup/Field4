@@ -2,6 +2,10 @@
 
 package afield.audio.engine
 
+/**
+ * Banks built as arrays of the scalar models: [ResonatorBankArray] holds one [Resonator] per frequency and [TrackingResonatorBankArray] one [TrackingResonator], each updated sample by sample.
+ */
+
 import java.util.concurrent.ForkJoinPool
 
 class ResonatorBankArray(

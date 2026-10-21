@@ -17,6 +17,10 @@ import java.nio.file.Path
 import kotlin.io.path.exists
 
 /**
+ * Loading LuaJIT and binding its C API: [LuaLibrary] finds the optional native library, and the FFM downcalls that [LuaState] uses are bound here.
+ */
+
+/**
  * Where LuaJIT is, and what to do when it is not there.
  *
  * LuaJIT is an **optional** native dependency, like libpd, Manifold and Ceres: a clone of Field builds,

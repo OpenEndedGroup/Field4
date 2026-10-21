@@ -1,9 +1,14 @@
 import afield.graphics.scene.fabricated.PathTraceDemo
 import afield.graphics.scene.fabricated.PathTracingRenderer
 import java.io.File
+
 prop<PathTracingRenderer>(tracer)
-tracer = PathTraceDemo.install(renderer, width=1280, height=720,
-    environmentPath=File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
+tracer = PathTraceDemo.install(
+    renderer,
+    width = 1280,
+    height = 720,
+    environmentPath = File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath,
+)
 tracer.samplesPerFrame = 1
 tracer.maxBounces = 5
 tracer.indirectClamp = 10f // Optional biased suppression of indirect fireflies.
@@ -12,6 +17,8 @@ println("${tracer.backend}: ${tracer.triangleCount} triangles, ${tracer.width} x
 tracer.blitToScreen()
 // This coroutine only announces capture readiness; the named scene owns the tracer.
 frames {
-    while (tracer.samples < 1024) { frame() }
+    while (tracer.samples < 1024) {
+        frame()
+    }
     println("materials study converged: ${tracer.samples} samples")
 }

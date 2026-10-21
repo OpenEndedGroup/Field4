@@ -4,8 +4,12 @@
 #include "flow/strokes.glsl"
 #include "flow/grain.glsl"
 layout(local_size_x = 64) in;
-vec2 flowVelocity(vec2 p) { return sampleField(pc.auxiliary, p).xy; }
-float flowMask(vec2 p) { return rock(p) ? 0. : 1.; }
+vec2 flowVelocity(vec2 p) {
+    return sampleField(pc.auxiliary, p).xy;
+}
+float flowMask(vec2 p) {
+    return rock(p) ? 0. : 1.;
+}
 void main() {
     int id = int(gl_GlobalInvocationID.x);
     if (id >= 16000) return;

@@ -41,6 +41,15 @@ import java.net.SocketException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
+/**
+ * The OSCQuery service Field publishes: a namespace of typed parameters served as JSON over HTTP,
+ * set over OSC UDP, and pushed to WebSocket listeners.
+ *
+ * [OscQueryParam] is one address with its type tags, value, range and set callbacks;
+ * [OscQueryServer] holds the namespace and runs the HTTP/WebSocket and UDP sides. Box code usually
+ * reaches it through `Box.oscQuery` in `OscQueryBox.kt` rather than constructing a server directly.
+ */
+
 /** OSCQuery `ACCESS`: what a remote may do with a node. */
 enum class OscAccess(val code: Int) { NONE(0), READ(1), WRITE(2), READ_WRITE(3) }
 

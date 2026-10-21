@@ -1,5 +1,13 @@
 package afield.app.diagnostics
 
+/**
+ * Explicit frame boundaries and named stages for the Profiling panel, for code that has its own
+ * frame loop.
+ *
+ * Call [FrameProfile.beginFrame] once per frame while the panel is recording, and wrap stages in
+ * [FrameProfile.measure] or [profileScope]. Nothing is read or allocated while recording is off.
+ */
+
 import afield.data.table.div
 import afield.data.table.get
 import afield.data.table.minus

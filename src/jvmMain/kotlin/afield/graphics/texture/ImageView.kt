@@ -1,3 +1,11 @@
+/**
+ * [ImageView] wraps a `VkImageView` over an image, and the small interfaces Field's shader bindings use to find views and samplers.
+ *
+ * [HasImageView] and [HasImageViewArray] are what a texture binding accepts; [PreparesSampledImages]
+ * lets a source record its layout transitions before sampling, and [HasDefaultTextureSampler] carries
+ * the sampler a binding uses when none is given.
+ */
+
 package afield.graphics.texture
 
 import afield.graphics.vulkan.device.CommandBuffer

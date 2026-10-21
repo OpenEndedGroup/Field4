@@ -41,6 +41,15 @@ import java.util.concurrent.TimeUnit
 import kotlin.reflect.KClass
 import kotlin.time.Duration
 
+/**
+ * Helpers a [StudyBuildStage] uses to name what it runs: [fileIdentity] and [classIdentity] hash the
+ * source files or compiled classes behind a build, for its `recipeVersion` or an input, so results go
+ * stale when that code changes.
+ *
+ * [StudyBuildProcessResult] is what a stage's external process reported: exit code, retained log and
+ * last progress message.
+ */
+
 /** What [StudyBuildContext.runProcess] saw: the exit code, the retained [log], and the last progress message. */
 data class StudyBuildProcessResult(val exitCode: Int, val log: File, val lastMessage: String?)
 

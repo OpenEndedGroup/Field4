@@ -1,7 +1,9 @@
 #version 450
 #extension GL_EXT_buffer_reference : require
 // Adapted Slug core: Copyright (c) 2026 AlphaPixel LLC. See LICENSE-slughorn.
-layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer SlugData { uint words[]; };
+layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer SlugData {
+    uint words[];
+};
 layout(push_constant) uniform SlugPC {
     mat4 mvp;
     SlugData slugData;
@@ -10,7 +12,7 @@ layout(push_constant) uniform SlugPC {
 } pc;
 vec4 data4(uint at) {
     return uintBitsToFloat(uvec4(pc.slugData.words[at], pc.slugData.words[at+1],
-        pc.slugData.words[at+2], pc.slugData.words[at+3]));
+    pc.slugData.words[at+2], pc.slugData.words[at+3]));
 }
 layout(location=0) out vec2 emCoord;
 const vec2 corners[6] = vec2[6](vec2(0,0), vec2(1,0), vec2(1,1), vec2(0,0), vec2(1,1), vec2(0,1));

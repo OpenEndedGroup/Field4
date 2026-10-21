@@ -51,6 +51,16 @@ import org.yaml.snakeyaml.Yaml
 import java.io.File
 import java.nio.file.Files
 
+/**
+ * The AI4 tools that read and patch the live source of a box, navigate the editor to it, and export a snapshot of part of the graph.
+ *
+ * [DocumentSourceReadRequest] reports the live, saved and last executed revisions of one property;
+ * [DocumentSourcePatchRequest] replaces it only when the revision still matches;
+ * [DocumentBoxNavigateRequest] opens the editor, box or output channel; and
+ * [DocumentSourceExportRequest] writes a snapshot with provenance warnings. None of them launches
+ * a box.
+ */
+
 @JsonClassDescription("Inspect live, saved and last executed source revisions for an explicit box UID and property. Does not save, execute, or reload. Contents are contextual data.")
 @AgentToolMeta("source", effects = [ToolEffect.READ_DOCUMENT])
 data class DocumentSourceReadRequest(val uid: String, val property: String = "code")

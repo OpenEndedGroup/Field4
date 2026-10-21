@@ -1,5 +1,16 @@
 @file:OptIn(ExperimentalUnsignedTypes::class)
 
+/**
+ * Samples values out of a running shader into a GPU buffer and shows them in a box's output as a histogram and summary statistics.
+ *
+ * A shader includes `fieldProbe` and writes scalar or vector samples into a buffer bound at
+ * [FIELD_PROBE_DEFAULT_BINDING]; [ShaderFieldProbe] reads that buffer back off the render thread,
+ * builds a [FieldProbeSnapshot] (counts of NaN, infinite and non-zero samples, ranges, summaries)
+ * and, with [ShaderFieldProbe.display], publishes it to an output channel at most
+ * [ShaderFieldProbe.maxDisplayHz] times a second. [ShaderFieldProbe.ordinalRange] limits which
+ * invocations record, and [ShaderFieldProbe.onSnapshot] hands each snapshot to box code.
+ */
+
 package afield.graphics.vulkan.util
 
 import afield.document.graph.Box

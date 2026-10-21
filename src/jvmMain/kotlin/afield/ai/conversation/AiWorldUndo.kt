@@ -19,9 +19,11 @@ import java.security.MessageDigest
  * document, apart from the chat's own (`ai4_*`). Values are written out typed and quoted, lists in their own
  * order (their order can be a polygon's vertices or an authored sequence) and only sets and maps sorted, so
  * two different values never print alike. The one normalisation is for [LOADER_DEFAULTS], properties that
- * loading a document fills in when absent: without it an untouched box stopped matching its own fingerprint
- * once its document had been reopened.
+ * loading a document fills in when absent, so an untouched box still matches its own fingerprint after its
+ * document is reopened.
  */
+
+/** Fingerprints the boxes a chat turn created and decides which of them a world undo may delete. */
 object AiWorldUndo {
 
     /** Properties the document loader adds with these values when a box does not have them. */
@@ -31,6 +33,7 @@ object AiWorldUndo {
         "nested" to { v -> v is Collection<*> && v.isEmpty() },
     )
 
+    /** A 16-hex-digit SHA-256 prefix over [box]'s name, frame, links and saved properties, excluding `ai4_*`. */
     fun fingerprint(box: Box): String {
         val patterns = Box.ioPersistentProperties.map { it.toRegex() }
         val parts = box.properties.entries
@@ -67,6 +70,7 @@ object AiWorldUndo {
     fun fingerprints(boxes: Map<String, Box>, uids: Collection<String>): Map<String, String> =
         uids.distinct().mapNotNull { uid -> boxes[uid]?.takeIf { it.getPropertyRaw("_tombstone") != true }?.let { uid to fingerprint(it) } }.toMap()
 
+    /** The outcome of [plan]: boxes to delete, and boxes to keep paired with the reason they stay. */
     data class Plan(val delete: List<Box>, val keep: List<Pair<Box, String>>)
 
     /**

@@ -1,3 +1,11 @@
+/**
+ * Morphing one [FLine] into another: align, match and blend two drawings so any in-between shape can be drawn.
+ *
+ * [interpolatorTo] builds a reusable [FLineInterpolator] from an [FLineInterpolationConfig]
+ * (alignment, matching and motion settings), and [FLineInterpolator.lineAt] returns the line at a
+ * given `t`. [byInterpolatingTo] is the one-shot form for a single evaluation.
+ */
+
 package afield.geometry.path
 
 import afield.ai.learning.*

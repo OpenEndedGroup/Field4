@@ -26,6 +26,19 @@ import afield.ui.output.templates.filter
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
+/**
+ * Duplicating boxes inside a document: [copyBox] clones one box, [copyBoxes] clones a selection and
+ * rewires its connections, and [nextCopyName] names the results.
+ *
+ * [copyBox] copies the persistent properties except the graph edges (`parents`, `children`, `nested`,
+ * `nestedIn`), gives the copy a fresh uuid, a `(copy)` or `(copy n)` name and its own engine, connects it
+ * under root, and by default offsets its frame by 80 in x and y. [copyBoxes] also takes every box nested
+ * inside the selection and skips tombstoned ones. Connections between copied boxes point at the copies;
+ * connections to boxes outside the selection are kept, so a copy stays wired to the same outside parents and
+ * children. Only the top-level boxes of the selection are offset, so nested copies keep their place inside
+ * their copied container.
+ */
+
 private val copyRegex = Regex("""^(.*) \(copy(?: (\d+))?\)$""")
 
 /**
@@ -53,7 +66,7 @@ fun nextCopyName(name: String): String {
     }
 }
 
-
+/** Copies [boxes] and everything nested in them, as described above, and returns the new boxes. */
 fun copyBoxes(boxes: List<Box>): List<Box> {
     val sourceBoxes = collectAllNestedBoxes(
         boxes.filter { !it.getPropertyRaw("_tombstone").isTrue() }.toSet()
@@ -105,6 +118,7 @@ fun copyBoxes(boxes: List<Box>): List<Box> {
     return oldToNew.values.toList()
 }
 
+/** A copy of [b] in the same document, offset by 80 in x and y when [offsetFrame] is true. */
 @OptIn(ExperimentalUuidApi::class)
 fun copyBox(b: Box, offsetFrame: Boolean = true): Box {
     val newBox = Box(id = Uuid.random().toString())

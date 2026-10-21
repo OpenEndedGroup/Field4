@@ -1,3 +1,13 @@
+/**
+ * The OpenAI implementation of [LlmBridge]: Field's agent loop over the Responses API.
+ *
+ * Each turn sends the conversation and the shared tool definitions, runs the function calls the
+ * model returns through the [ToolRegistry], and feeds the outputs back until the model answers in
+ * text. Against OpenAI the history lives in a server-side conversation; against OpenRouter, which
+ * has none, the bridge keeps it locally per thread. Rate-limit waits, suspended turns and the
+ * request ledger are handled here too.
+ */
+
 package afield.ai.models
 
 import afield.ai.conversation.SuspendsTurn
@@ -15,6 +25,9 @@ import afield.ai.conversation.Stability
 import afield.ai.conversation.SuspendedRound
 import afield.ai.conversation.TurnContext
 import afield.ai.conversation.TurnSuspension
+import afield.ai.conversation.aiToolFailureEndsTurn
+import afield.ai.conversation.aiToolFailureMessage
+import afield.ai.conversation.aiToolNotRunOutput
 import afield.ai.conversation.isAiTurnCancellation
 import afield.ai.conversation.sha256
 import afield.ai.conversation.temporaryRateLimitDelay
@@ -129,8 +142,8 @@ class OpenAiIdeCodexBridge(
         val t0 = System.nanoTime()
 
         val localThreadId = UUID.randomUUID().toString()
-        if (runtimeConfig.isOpenRouter) {
-            val conversationId = "openrouter:$localThreadId"
+        if (runtimeConfig.usesStatelessResponses) {
+            val conversationId = "${runtimeConfig.provider}:$localThreadId"
             val ms = (System.nanoTime() - t0) / 1_000_000
             info("startThread(): stateless conversationId=$conversationId localThreadId=$localThreadId (${ms}ms)")
             return ThreadState(
@@ -193,7 +206,7 @@ class OpenAiIdeCodexBridge(
 
         // OpenRouter's stateless Responses path keeps its own history and its support for a per-request
         // `instructions` is unverified, so it stays on the one-string prompt.
-        val tc = turnContext?.takeIf { !runtimeConfig.isOpenRouter }
+        val tc = turnContext?.takeIf { !runtimeConfig.usesStatelessResponses }
         // Stable instructions go into the conversation once, as a developer message, and again only when
         // they change. Measured 2026-10-02: sent instead as every request's `instructions`, they never
         // formed a prompt-cache prefix shared between conversations — each task's first request paid ~8k
@@ -261,7 +274,7 @@ class OpenAiIdeCodexBridge(
                 mapOf(
                     "model" to chatModel.toString(),
                     "provider" to runtimeConfig.provider,
-                    "reasoningEffort" to if (runtimeConfig.isOpenRouter) "provider-default" else reasoningEffort.toString(),
+                    "reasoningEffort" to if (runtimeConfig.usesStatelessResponses) "provider-default" else reasoningEffort.toString(),
                     "conversationId" to state.conversationId,
                     "localThreadId" to state.localThreadId,
                     "previousResponseId" to (state.previousResponseId ?: ""),
@@ -363,6 +376,10 @@ class OpenAiIdeCodexBridge(
             promoted = ctx.promoted ?: state.promotedTools,
             progress = ctx.progress ?: onProgress?.let { p -> { line: String -> p(ProgressUpdate(title = line, phase = "tool")) } },
         )
+        // The calls the provider holds that it has no outputs for yet, and the outputs this turn has for
+        // them so far. A turn that fails while there are any leaves an output for each to the next one.
+        var openCalls: List<PendingToolCall> = emptyList()
+        var openOutputs: List<PendingToolOutput> = emptyList()
         try {
         // After a suspended turn, the outputs of the calls its last response made; after a capped turn, the
         // calls it left unrun and its forced final answer. Either goes ahead of this prompt.
@@ -375,14 +392,14 @@ class OpenAiIdeCodexBridge(
             .maxOutputTokens(maxOutputTokens)
             .toolChoice(ToolChoiceOptions.AUTO)
 
-        if (runtimeConfig.isOpenRouter) {
+        if (runtimeConfig.usesStatelessResponses) {
             paramsBuilder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state) + promptItems))
         } else if (imageDataUrls.isEmpty() && stableItem == null && continuationItems.isEmpty()) {
             paramsBuilder.input(inputText)
         } else {
             paramsBuilder.input(ResponseCreateParams.Input.ofResponse(promptItems))
         }
-        if (runtimeConfig.isOpenRouter) {
+        if (runtimeConfig.usesStatelessResponses) {
             // OpenRouter's Responses API is stateless; local history is sent in input instead.
         } else if (state.previousResponseId == null) {
             paramsBuilder.conversation(state.conversationId)
@@ -465,6 +482,8 @@ class OpenAiIdeCodexBridge(
             val toolOutputs = mutableListOf<ResponseInputItem>()
             val roundResults = mutableListOf<Any>()
             val roundOutputs = mutableListOf<PendingToolOutput>()
+            openCalls = calls.map { PendingToolCall(it.callId(), it.name()) }
+            openOutputs = roundOutputs
             for (call in calls) {
                 log.toolActivity(call.name())
                 val argumentSummary = summarizeToolArguments(call.name(), call.arguments())
@@ -495,9 +514,10 @@ class OpenAiIdeCodexBridge(
                 activeToolStarted = toolStarted
                 val toolResult: Any = try {
                     tools.execute(callCtx, call)
-                } catch (e: Exception) {
-                    if (isAiTurnCancellation(e)) throw e
-                    error("tool: ERROR name=${call.name()} msg=${e.message}")
+                } catch (e: Throwable) {
+                    if (aiToolFailureEndsTurn(e)) throw e
+                    val message = aiToolFailureMessage(e)
+                    error("tool: ERROR name=${call.name()} msg=$message")
                     toolIo(
                         "tool_exception",
                         mapOf(
@@ -505,13 +525,13 @@ class OpenAiIdeCodexBridge(
                             "toolName" to call.name(),
                             "callId" to call.callId(),
                             "exceptionType" to e::class.java.name,
-                            "message" to (e.message ?: "")
+                            "message" to message
                         )
                     )
                     mapOf(
                         "error" to true,
                         "tool" to call.name(),
-                        "message" to (e.message ?: e::class.java.name)
+                        "message" to message
                     )
                 }
 
@@ -648,8 +668,9 @@ class OpenAiIdeCodexBridge(
             // An image a co-scheduled call returned is not carried over; its JSON output is.
             TurnSuspension.of(roundResults)?.let { awaited ->
                 suspension = awaited
-                if (runtimeConfig.isOpenRouter) appendStatelessHistory(state, roundOutputs.map { functionOutput(it.callId, it.outputJson) })
+                if (runtimeConfig.usesStatelessResponses) appendStatelessHistory(state, roundOutputs.map { functionOutput(it.callId, it.outputJson) })
                 else state.suspendedRound = SuspendedRound(roundOutputs.toList())
+                openCalls = emptyList()
                 rounds++
                 info("turn suspended after round $rounds: waiting for ${awaited.jobs.size} build job(s) without the model")
                 toolIo("turn_suspended", mapOf("round" to rounds, "jobIds" to awaited.jobs.map { it.jobId },
@@ -670,7 +691,7 @@ class OpenAiIdeCodexBridge(
                 .model(chatModel)
                 .maxOutputTokens(maxOutputTokens)
                 .toolChoice(ToolChoiceOptions.AUTO)
-            if (runtimeConfig.isOpenRouter) {
+            if (runtimeConfig.usesStatelessResponses) {
                 followupBuilder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state) + toolOutputs))
             } else {
                 followupBuilder.previousResponseId(response.id())
@@ -688,6 +709,7 @@ class OpenAiIdeCodexBridge(
                 info("")
             }
             state.previousResponseId = response.id()
+            openCalls = emptyList()
             appendStatelessHistory(state, toolOutputs + inputItemsFromOutput(response))
             info("follow-up response id=${response.id()} outputItems=${response.output().size}")
             toolIo(
@@ -726,6 +748,8 @@ class OpenAiIdeCodexBridge(
                     "pendingCallIds" to pendingCalls.map { it.callId() }
                 )
             )
+            openCalls = pendingCalls.map { PendingToolCall(it.callId(), it.name()) }
+            openOutputs = emptyList()
             response = modelRequest("forced_final") { createForcedFinalResponse(
                 state = state,
                 previousResponse = response,
@@ -743,9 +767,10 @@ class OpenAiIdeCodexBridge(
             // The next turn branches from the response that made the pending calls, which
             // previousResponseId still names, never from this one: see CappedTurnContinuation.
             state.cappedTurnContinuation = CappedTurnContinuation(
-                pendingCalls = pendingCalls.map { PendingToolCall(it.callId(), it.name()) },
+                pendingCalls = openCalls,
                 finalText = extractOutputTextWithNewlines(response)
             )
+            openCalls = emptyList()
             info("forced-final response id=${response.id()} outputItems=${response.output().size}; " +
                 "the next turn continues from ${state.previousResponseId}")
             toolIo(
@@ -830,6 +855,7 @@ class OpenAiIdeCodexBridge(
         )
         } catch (failure: Throwable) {
             val cancelled = isAiTurnCancellation(failure)
+            if (openCalls.isNotEmpty()) runCatching { answerOpenCalls(state, openCalls, openOutputs, failure) }
             activeToolStarted?.let { toolElapsedMs += (System.nanoTime() - it) / 1_000_000 }
             if (!terminalRecorded) {
                 terminalRecorded = true
@@ -1134,7 +1160,7 @@ class OpenAiIdeCodexBridge(
         val builder = ResponseCreateParams.builder()
             .model(chatModel)
             .maxOutputTokens(maxOutputTokens)
-        if (runtimeConfig.isOpenRouter) {
+        if (runtimeConfig.usesStatelessResponses) {
             builder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state) + inputItems))
         } else {
             builder.previousResponseId(previousResponse.id())
@@ -1149,6 +1175,22 @@ class OpenAiIdeCodexBridge(
         // Stateless history gets nothing from this request either: its stop instruction and its reasoning
         // under that stop stay out, and the next turn adds the continuation as it does on the direct path.
         return createResponse(builder.build(), onTextDelta, onProgress, ledger)
+    }
+
+    /**
+     * Leave the next turn an output for each of [calls], the ones a failed turn left the provider holding
+     * without outputs: what [outputs] has for a call that ran, a "not finished" error for the rest. Without
+     * them the thread is poisoned: `previous_response_id` names a response whose function calls have no
+     * outputs, and the provider refuses every later request on it ("No tool output found for function call").
+     * The chained path sends them as the opening of the next turn, as after a suspended one; the stateless
+     * path appends them to its own history, which already holds the calls.
+     */
+    private fun answerOpenCalls(state: ThreadState, calls: List<PendingToolCall>, outputs: List<PendingToolOutput>, failure: Throwable) {
+        val byId = outputs.associateBy { it.callId }
+        val answered = calls.map { byId[it.callId] ?: aiToolNotRunOutput(it.callId, it.name, failure) }
+        if (runtimeConfig.usesStatelessResponses) appendStatelessHistory(state, answered.map { functionOutput(it.callId, it.outputJson) })
+        else state.suspendedRound = SuspendedRound(answered)
+        warn("turn failed with ${calls.size} call(s) unanswered by the provider; the next turn opens with their outputs")
     }
 
     private fun functionOutput(callId: String, outputJson: String): ResponseInputItem =
@@ -1260,10 +1302,10 @@ class OpenAiIdeCodexBridge(
         }
 
     private fun appendStatelessHistory(state: ThreadState, items: List<ResponseInputItem>) {
-        if (!runtimeConfig.isOpenRouter || items.isEmpty()) return
+        if (!runtimeConfig.usesStatelessResponses || items.isEmpty()) return
         val history = statelessHistory.computeIfAbsent(state.localThreadId) { seedHistory(state).toMutableList() }
         history += items
-        val maxItems = System.getenv("AFIELD_OPENROUTER_HISTORY_ITEMS")?.toIntOrNull()?.coerceAtLeast(8) ?: 80
+        val maxItems = System.getenv(if (runtimeConfig.provider == "local") "AFIELD_LOCAL_AI_HISTORY_ITEMS" else "AFIELD_OPENROUTER_HISTORY_ITEMS")?.toIntOrNull()?.coerceAtLeast(8) ?: 80
         if (history.size > maxItems) {
             val seedCount = seedHistory(state).size
             val removeCount = (history.size - maxItems).coerceAtMost((history.size - seedCount).coerceAtLeast(0))
@@ -1274,7 +1316,7 @@ class OpenAiIdeCodexBridge(
     }
 
     private fun addReasoningIfSupported(builder: ResponseCreateParams.Builder) {
-        if (!runtimeConfig.isOpenRouter) builder.reasoning(reasoningConfig)
+        if (!runtimeConfig.usesStatelessResponses) builder.reasoning(reasoningConfig)
     }
 
     private fun extractOutputTextWithNewlines(response: Response): String {
@@ -1458,7 +1500,7 @@ class OpenAiIdeCodexBridge(
         else -> "type=${toolResult::class.java.simpleName}"
     }
 
-    private fun supportsFileSearch(): Boolean = !runtimeConfig.isOpenRouter && chatModel != ChatModel.GPT_5_1_CODEX
+    private fun supportsFileSearch(): Boolean = !runtimeConfig.usesStatelessResponses && chatModel != ChatModel.GPT_5_1_CODEX
 
     /* ------------------------------ Tools ---------------------------------- */
 

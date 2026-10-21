@@ -1,3 +1,13 @@
+/**
+ * A per-session copy of everything written to `System.err`, kept under `build/logs/` in the working
+ * directory, with stack traces also pinned on the console.
+ *
+ * [SessionErrorLog.install] tees stderr: every byte still reaches the real stream, every line is
+ * appended to a `session-<timestamp>-pid<pid>.log` file (the newest 20 are kept, each capped at
+ * 32 MB), and a stack trace or slf4j `ERROR` line is raised as a sticky panel that a repaint of the
+ * log viewport does not clear.
+ */
+
 package afield.app.diagnostics.logging
 
 import java.io.ByteArrayOutputStream

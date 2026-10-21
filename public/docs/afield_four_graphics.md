@@ -434,11 +434,7 @@ inData.write {
 }
 ```
 
-`prop<FrameBufferGroup>(outputPositions) = outData
-prop<Int>(particleCount) = N
-
-// uint push members accept Int lambdas; the shader checks the tail group.
-m.count = { N }` is the publication. `m.something = { ... }` is a reflected push-constant member fed by a Kotlin lambda re-evaluated every dispatch, which is how the animation clock reaches the shader.
+The two `prop<…>` lines are the publication: `outputPositions` is the buffer and `particleCount` is how many particles it holds, and any box beneath this one inherits both. The dispatch is `(N + 63) / 64` groups of 64, rounded up so no particle is left out; the extra lanes in the last group are why `m.count = { N }` passes the count to the shader, which returns early for any index at or past it. Because `N` sets the buffer sizes, changing it is a rebuild rather than a live edit: stop the draw child first, so it is not reading a buffer that is about to be replaced, then rerun this box and then the draw box. `m.something = { ... }` is a reflected push-constant member fed by a Kotlin lambda re-evaluated every dispatch, which is how the animation clock reaches the shader.
 
 The compute shader takes both buffers as buffer references through its push-constant block, and calls `fieldProbe` to sample a value for the probe display:
 
@@ -501,7 +497,7 @@ m.set(N * 2 * 3, 0) {}
 m
 ```
 
-`m.inData = { outputPositions }` reads the parent's published property by name and binds it to this shader's `inData` buffer reference. No buffer is copied and nothing round-trips through the CPU: both boxes point at the same GPU allocation. `m.set(N*2*3, 0) {}` allocates six vertices per particle with an empty writer block, because the vertex shader synthesizes each quad's corners from `gl_VertexIndex` instead of reading vertex attributes:
+`m.inData = { outputPositions }` reads the parent's published property by name and binds it to this shader's `inData` buffer reference, and `particleCount` comes from the same parent, so the draw always sizes itself to the buffer it reads. No buffer is copied and nothing round-trips through the CPU: both boxes point at the same GPU allocation. `m.set(N*2*3, 0) {}` allocates six vertices per particle with an empty writer block, because the vertex shader synthesizes each quad's corners from `gl_VertexIndex` instead of reading vertex attributes:
 
 ```diffstatic {data-lang=glsl}
 #version 450
@@ -1132,7 +1128,7 @@ Beyond includes, a shader property is a template with values supplied from Kotli
 // we can define this first
 shaderTemplate["col"] = mapOf("fixedColor" to Resolver { "vec4(1,0.75,0,1)" })
 
-// then there's an execution break here
+// Run the declarations above first; rerun the module fragment to compile its generated shader interface.
 //%-
 var module = moduleHere {
     primitiveType = triangle_strip
@@ -1182,7 +1178,7 @@ shaderTemplate["pc"] = mapOf("dec" to Resolver { pc.glsl() })
 pc.a.x = 0.3f
 pc.otherDeclarations = "layout(offset=${pc.nextFreeOffset(16)}) uint foo;"
 
-// then there's an execution break here
+// Run the declarations above first; rerun the module fragment to compile its generated shader interface.
 //%-
 var module = moduleHere {
     primitiveType = triangle_strip
@@ -1375,7 +1371,7 @@ module += "mainMesh" to m
 target += "boo" to module
 ```
 
-The shape is exactly the `RenderToTexture` producer from earlier (`renderList +=`, `target +=`, `target.apply()`) with the target supplied by the streamer instead of constructed directly. `once.streamer { … }` is the live-coding guard: re-running the box re-runs everything except the block that allocated the stream, so you can edit the drawing without tearing down the connection. `@exported` publishes `target` for child boxes.
+The shape is exactly the `RenderToTexture` producer from earlier (`renderList +=`, `target +=`, `target.apply()`) with the target supplied by the streamer instead of constructed directly. `once.streamer { … }` is the live-coding guard: re-running the box re-runs everything except the block that allocated the stream, so you can edit the drawing without tearing down the connection. `prop<RenderToTexture>(target) = …` publishes the target as a typed property, so child boxes inherit it as `target` the same way the particle draw box inherits `outputPositions`.
 
 The picture this produces arrives at a receiver on `127.0.0.1:9001` rather than in a window.
 

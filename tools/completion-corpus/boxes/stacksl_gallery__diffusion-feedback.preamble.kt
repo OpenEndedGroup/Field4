@@ -8,7 +8,6 @@ import afield.graphics.scene.*
 import afield.graphics.render.*
 import afield.document.context.*
 import afield.graphics.vulkan.buffers.*
-import afield.graphics.vulkan.targets.PingPongRenderToTexture
 var Box.target by Inheritance<afield.graphics.vulkan.targets.PingPongRenderToTexture>() /**/
 val Once.target by Onceing<afield.graphics.vulkan.targets.PingPongRenderToTexture>() /**/
 val Why.target by Whying() /**/

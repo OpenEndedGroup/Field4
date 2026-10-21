@@ -31,13 +31,13 @@ operations:
               outColor = vec4(program(stackInput).rgb, 1.0);
           }
         code: |
-          val module = moduleHere { }
+          val module = moduleHere {}
           val mesh = Mesh()
           module += mesh named "fullscreen"
-          mesh.resize(3)   // three vertices and no attributes: the vertex shader makes the triangle
+          mesh.resize(3) // three vertices and no attributes: the vertex shader makes the triangle
           renderer += module
 
-          module.program = "uv 4.0 * fbm palette saturate"   // binds and hot-reloads
+          module.program = "uv 4.0 * fbm palette saturate" // binds and hot-reloads
   - connect: { parent: agent_graphics_context, child: stackauto_numbers }
   - launch: { box: stackauto_numbers, property: code }
   - await: { wait: pending }

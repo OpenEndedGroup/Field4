@@ -1,3 +1,7 @@
+/**
+ * Converts between arc length along an [FLine] and its node parameter, by flattening its curves to a tolerance.
+ */
+
 package afield.geometry.path
 
 import afield.lang.remotejs.JsFun
@@ -8,6 +12,9 @@ import java.util.*
 import kotlin.math.max
 import kotlin.math.sqrt
 
+/**
+ * Flattens a line to tolerance `tol`; [lengthToDot] turns a distance along it into a node parameter and [dotToLength] goes back.
+ */
 class PathFlattener(private val c: FLine, tol: Float) {
     private val cursor = FLinesAndJavaShapes.Cursor(c, tol)
 

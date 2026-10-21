@@ -78,6 +78,19 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.time.Duration
 
+/**
+ * Durable derived builds for a study: named stages whose results are fingerprinted against their
+ * inputs and recipe, kept on disk with their attempt history, and reported stale when either changes.
+ *
+ * A [StudyBuildStage] declares an id, a `recipeVersion`, the input keys it reads and the stages it
+ * depends on; [StudyBuilds] runs those stages on worker threads under a directory it owns through a
+ * file lock. A [StudyBuildGate] adds an input that exists only while a check passes, and
+ * `dependsOn(runner, stage)` names a stage of another runner in the same document. Reading
+ * [StudyBuilds.stages] recomputes currency, [StudyBuilds.start] and [StudyBuilds.cancel] drive one
+ * attempt, and [StudyBuilds.prune] deletes attempts that no current result, running build or pin needs. From a box, attach a
+ * runner with [Box.studyBuilds] (`BoxStudyBuilds.kt`).
+ */
+
 /** A build's execution state. Currency against the design is reported separately by [StudyStageState]. */
 enum class StudyBuildStatus { QUEUED, RUNNING, SUCCEEDED, FAILED, CANCELLED, OBSOLETE, INTERRUPTED }
 
@@ -130,9 +143,26 @@ data class StudyBuildInputHelp(val label: String, val message: String) {
 /** Presentation of retained result evidence, separate from execution and dependency currency. */
 enum class StudyBuildNoticeKind { INFO, WARNING, ERROR }
 
-/** A recipe's explanation of a result and the next action; never an acceptance override. */
-data class StudyBuildNotice(val message: String, val kind: StudyBuildNoticeKind = StudyBuildNoticeKind.WARNING) {
+/**
+ * A recipe's explanation of a result and the next action; never an acceptance override. [view] names a picture of
+ * the result to look at alongside the words: an agent that waited for the build is shown it when its chat resumes.
+ */
+data class StudyBuildNotice(val message: String, val kind: StudyBuildNoticeKind = StudyBuildNoticeKind.WARNING,
+    val view: StudyBuildView? = null) {
     init { require(message.isNotBlank()) { "Result feedback needs an explanation" } }
+}
+
+/**
+ * A view of a result: [box] (a uid or unique name) shows it once [show] has drawn it, and [caption] says what to look
+ * for. When a chat that awaited the build resumes (`afield.ai.agent.StudyBuildAwaits`), Field runs [show], captures
+ * the box's output and attaches the picture to the resumed message, so the agent sees the result as well as reading
+ * its facts and notes. [show] runs off the Runloop and only displays; it must not change the design or the record.
+ * Only [box] and [caption] are reported in tool results.
+ */
+class StudyBuildView(val box: String, val caption: String = "",
+    @get:com.fasterxml.jackson.annotation.JsonIgnore val show: (() -> Unit)? = null) {
+    init { require(box.isNotBlank()) { "A result view names the box that shows it" } }
+    override fun toString() = "StudyBuildView(box=$box, caption=$caption)"
 }
 
 /**

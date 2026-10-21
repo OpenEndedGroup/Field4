@@ -471,10 +471,10 @@ class ClojureHost(private val defaultNs: String = "user") {
                         lastLine = read.line
                         onForm?.invoke(read.line)
                         try {
-                            last = evalFn.invoke(read.form)
+                            last = withSourceName { evalFn.invoke(read.form) }
                         } catch (t: Throwable) {
                             flushClojureIO()
-                            return@withClojureIO EvalResult.Err(atLine(extractCompilerError(t), read.line))
+                            return@withClojureIO EvalResult.Err(atLine(atRaisingLine(extractCompilerError(t), t), read.line))
                         }
                         // Text this form printed without a newline belongs to this form, so it goes out
                         // now, while activeLine still says so, rather than with the next form's output.
@@ -485,7 +485,7 @@ class ClojureHost(private val defaultNs: String = "user") {
                         try {
                             last = (last as IFn).invoke()
                         } catch (t: Throwable) {
-                            return@withClojureIO EvalResult.Err(atLine(extractCompilerError(t), lastLine))
+                            return@withClojureIO EvalResult.Err(atLine(atRaisingLine(extractCompilerError(t), t), lastLine))
                         }
                     }
                     null
@@ -496,6 +496,49 @@ class ClojureHost(private val defaultNs: String = "user") {
         } catch (t: Throwable) {
             EvalResult.Err(atLine(extractCompilerError(t), activeLine))
         }
+    }
+
+    /**
+     * The file name every fn this host compiles is stamped with, unique to this host.
+     *
+     * Clojure writes `*file*` into each class it compiles as the class's source file, and the
+     * reader's `:line` metadata into its line table. So with this bound while a form is evaluated, a
+     * throw from inside a `defn` written in the box has a stack frame naming this file and the line
+     * *inside the box* that raised it, which is what [atRaisingLine] looks for.
+     */
+    private val sourceName = "field-clojure-box-${System.identityHashCode(this).toString(16)}.clj"
+
+    private fun <T> withSourceName(f: () -> T): T {
+        Var.pushThreadBindings(PersistentHashMap.create(mapOf(Compiler.SOURCE to sourceName)))
+        try {
+            return f()
+        } finally {
+            Var.popThreadBindings()
+        }
+    }
+
+    /**
+     * [error] moved to the line that raised it, when that line is in this host's code.
+     *
+     * A runtime throw comes out of `eval` wrapped in a `CompilerException` that names the top-level
+     * form being run, `(mean xs)` on line 6, not the `(/ …)` inside `mean` on line 4 that divided by
+     * zero. The innermost stack frame compiled from this code says where it really happened, the way
+     * a Python cell's traceback does. Only execution-phase errors move: a reader or compiler error
+     * already names its own line, and a throw from a fn defined elsewhere keeps the calling form.
+     */
+    private fun atRaisingLine(error: CompileError, t: Throwable): CompileError {
+        val compileTime = generateSequence(t) { it.cause }.any {
+            it is Compiler.CompilerException && (it.data as? ILookup)?.valAt(Compiler.CompilerException.ERR_PHASE) in
+                setOf(Compiler.CompilerException.PHASE_READ, Compiler.CompilerException.PHASE_MACROEXPANSION,
+                    Compiler.CompilerException.PHASE_COMPILE_SYNTAX_CHECK, Compiler.CompilerException.PHASE_COMPILATION)
+        }
+        if (compileTime) return error
+        // Innermost cause first: its trace is the one that starts where the throw happened.
+        val line = generateSequence(t) { it.cause }.toList().asReversed().asSequence()
+            .flatMap { it.stackTrace.asSequence() }
+            .firstOrNull { it.fileName == sourceName && it.lineNumber >= 1 }
+            ?.lineNumber ?: return error
+        return error.copy(line = line)
     }
 
     /**
@@ -934,6 +977,154 @@ object ClojureInterface {
         line.thickness = width
         return line
     }
+
+    /**
+     * One `(slider …)` or `(checkbox …)` a run asked for, waiting for [flushControls].
+     *
+     * Controls are collected rather than shown one by one because `Box.controlGroup` draws a whole
+     * channel at once: a second group in the same channel replaces the first. So a run's controls are
+     * gathered per box and drawn as one group per channel when the run ends, the approach Python
+     * boxes took on 2026-10-15 (`PythonInterface.flushPythonControls`).
+     */
+    class PendingControl(
+        val kind: String,
+        val label: String,
+        val channel: String,
+        val min: Double,
+        val max: Double,
+        val step: Double,
+        val value: Any,
+        val onChange: Any?,
+        val line: Int,
+    )
+
+    private val pendingControls = ConcurrentHashMap<String, MutableList<PendingControl>>()
+
+    /** True while [flushControls] runs, when a restored value is delivered synchronously. */
+    private var flushing = false
+
+    /**
+     * Ask for a slider in [channel] of [box]; drawn when the run ends. Returns [value].
+     *
+     * [onChange] is a one-argument fn, called with each new value, or an atom, which is `reset!` to it.
+     */
+    @JvmStatic
+    fun slider(box: Box, label: String, min: Double, max: Double, step: Double, value: Double, channel: String, onChange: Any?): Double {
+        require(max > min) { "slider \"$label\": max ($max) must be greater than min ($min)" }
+        pendingControls.getOrPut(box.id) { mutableListOf() } +=
+            PendingControl("slider", label, channel, min, max, step, value.coerceIn(min, max), onChange, thisLine)
+        return value
+    }
+
+    /** Ask for a checkbox in [channel] of [box]; drawn when the run ends. See [slider] for [onChange]. */
+    @JvmStatic
+    fun checkbox(box: Box, label: String, value: Boolean, channel: String, onChange: Any?): Boolean {
+        pendingControls.getOrPut(box.id) { mutableListOf() } +=
+            PendingControl("checkbox", label, channel, 0.0, 1.0, 1.0, value, onChange, thisLine)
+        return value
+    }
+
+    /** Forget whatever an earlier run of [box] asked for and did not get to draw. */
+    @JvmStatic
+    fun clearControls(box: Box) {
+        pendingControls.remove(box.id)
+    }
+
+    /**
+     * Draw the controls [box]'s run asked for, one `controlGroup` per channel, in the order asked.
+     *
+     * A control whose label was on screen before keeps the value it was moved to (`ControlGroupBuilder`
+     * caches by channel and label), and its callback is called with that value right here, so an atom
+     * or a `def` that a callback writes agrees with the control after a re-run.
+     */
+    @JvmStatic
+    fun flushControls(box: Box) {
+        val asked = pendingControls.remove(box.id) ?: return
+        val previous = flushing
+        flushing = true
+        try {
+            asked.groupBy { it.channel }.forEach { (channel, group) ->
+                box.controlGroup(channel) {
+                    for (c in group) when (c.kind) {
+                        "slider" -> slider(c.label, c.min, c.max, c.step, c.value as Double) { v -> deliverControl(box, c, v) }
+                        "checkbox" -> checkbox(c.label, c.value as Boolean) { v -> deliverControl(box, c, v) }
+                    }
+                }
+            }
+        } finally {
+            flushing = previous
+        }
+    }
+
+    /**
+     * Hand [value] to a control's callback. Moves from the page arrive off the runloop and are sent
+     * onto it, where box code runs; a restore during [flushControls] is already there and runs at once.
+     */
+    private fun deliverControl(box: Box, control: PendingControl, value: Any) {
+        if (flushing) invokeControl(box, control, value)
+        else controlDispatch { invokeControl(box, control, value) }
+    }
+
+    /** How a move from the page reaches the runloop; a test without a runloop runs it in place. */
+    internal var controlDispatch: (() -> Unit) -> Unit = { work -> inMain { work() } }
+
+    /**
+     * Call [control]'s callback now, with [box] as `(box)` so its `display` and `println` land in the
+     * box that drew the control. A throw is reported on the line the control was asked for.
+     */
+    @JvmStatic
+    fun invokeControl(box: Box, control: PendingControl, value: Any) {
+        val previousBox = thisBox
+        val previousLine = thisLine
+        thisBox = box
+        thisLine = control.line
+        try {
+            when (val f = control.onChange) {
+                null -> Unit
+                is IAtom -> f.reset(value)
+                is IFn -> f.invoke(value)
+                else -> throw IllegalArgumentException(
+                    "the change handler is a ${f.javaClass.simpleName}; pass a fn of one argument or an atom"
+                )
+            }
+        } catch (t: Throwable) {
+            box.error("${control.label}: ${t.message ?: t.javaClass.name}", "code", control.line)
+        } finally {
+            thisBox = previousBox
+            thisLine = previousLine
+        }
+    }
+
+    /**
+     * `fromContext` for a Clojure box: the nearest value, looking at [box]'s properties and then at
+     * each generation of parents (their properties, then their Kotlin top-level variables).
+     *
+     * [query] is either a `Class`, matching the nearest value that is an instance of it, or a name
+     * (string, keyword or symbol), matching the nearest non-null property or variable called that,
+     * which is how a Clojure box reads a property a parent exports. Returns `null` when nothing matches.
+     */
+    @JvmStatic
+    fun context(box: Box, query: Any): Any? {
+        val resolution = when (query) {
+            is Class<*> -> ContextResolution.walk(
+                box,
+                ContextResolution.Query.byType(query) { query.isInstance(it) },
+                ContextResolution.Policy.fromContext(false),
+                ContextResolution.Mechanism.FROM_CONTEXT,
+            )
+            is String, is clojure.lang.Named -> {
+                val name = (query as? clojure.lang.Named)?.name ?: query as String
+                ContextResolution.walk(
+                    box,
+                    ContextResolution.Query(name, listOf(name), { it != null }, { it.value != null }),
+                    ContextResolution.Policy.fromContext(false, selfCandidate = false),
+                    ContextResolution.Mechanism.FROM_CONTEXT_NAMED,
+                )
+            }
+            else -> throw IllegalArgumentException("context wants a class or a name, not ${query.javaClass.simpleName} $query")
+        }
+        return resolution?.value
+    }
 }
 
 @RunsAt(plugins)
@@ -1005,6 +1196,7 @@ class ClojureExecution(val inside: Box) : BoxExecution {
         val previousBox = ClojureInterface.thisBox
         val previousLine = ClojureInterface.thisLine
         ClojureInterface.thisBox = inside
+        ClojureInterface.clearControls(inside)
         // What each top-level form came to, for the box's line notes (afield.ui.output.LastRunNotes).
         val produced = ArrayList<afield.ui.output.LastRunNotes.Produced>()
         try {
@@ -1051,6 +1243,10 @@ class ClojureExecution(val inside: Box) : BoxExecution {
                 }
             }
         } finally {
+            // Drawn even after a throw, as a Python cell does: the controls asked for before the
+            // failing form are real, and a box half-built is easier to fix with them on screen.
+            runCatching { ClojureInterface.flushControls(inside) }
+                .onFailure { inside.error("controls: ${it.message ?: it.javaClass.name}", "code", -1) }
             ClojureInterface.thisBox = previousBox
             ClojureInterface.thisLine = previousLine
         }

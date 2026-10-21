@@ -4,6 +4,14 @@ package afield.audio.synth
 import kotlin.math.abs
 
 /**
+ * Shares one phase-tracking analysis of a signal between several tracked-phase banks in a graph.
+ *
+ * [TrackedPhaseAnalysis] runs its [PhaseTracker] over the source once per block and keeps the
+ * per-sample states; each [TrackedPhaseAnalysis.synthesize] call renders a [TrackedPhaseBank] from
+ * those states, so the tracker advances once however many outputs read it.
+ */
+
+/**
  * Analyze [source] once per graph block, retaining a reusable state for each sample. Several
  * [synthesize] outputs can share this analysis in one graph without advancing its tracker twice.
  * Like other stateful signals, this belongs to one audio context; inspect published values rather

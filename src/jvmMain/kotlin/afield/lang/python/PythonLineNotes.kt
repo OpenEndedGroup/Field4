@@ -1,3 +1,11 @@
+/**
+ * Line notes for Python boxes: a rewriter that records what each top-level statement of a cell
+ * evaluated to, for display beside the code.
+ *
+ * [PythonLineNotes] carries the rewriter as Python source and the environment switch that disables
+ * it. `PythonLineNotesTest` runs that source under a plain `python3`.
+ */
+
 package afield.lang.python
 
 /**

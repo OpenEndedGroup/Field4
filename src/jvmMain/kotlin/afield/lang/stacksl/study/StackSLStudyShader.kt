@@ -13,6 +13,14 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 /**
+ * The single fragment shader a StackSL study renders through, with its CPU, WebGL2 and knob-finding
+ * uses.
+ *
+ * [StackSLStudyShader] fixes the study frame, `program(vec4(uv, hash, seconds))` on a unit square with
+ * `y` upwards, and finds the numbers a person typed so they can be turned and written back.
+ */
+
+/**
  * The one shader a StackSL study renders through, and the three things done with it: render on the
  * CPU (the evidence a model is shown), translate to WebGL2 (the live preview a person turns knobs
  * on), and find the numbers a person typed (the knobs).

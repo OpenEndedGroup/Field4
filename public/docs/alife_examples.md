@@ -115,38 +115,48 @@ println("glider, 4 generations: rigid translation = " + translationBetween(glide
 println("glider, 8 generations: rigid translation = " + translationBetween(glider, glider.stepTimes(LIFE, 8)))
 
 // The control: one birth count away and the same seed is not a spaceship at all.
-println("same seed under B34/S23, 4 generations: " +
-    translationBetween(glider, glider.stepTimes(lifeRule("B34/S23"), 4)))
+println(
+    "same seed under B34/S23, 4 generations: " + translationBetween(glider, glider.stepTimes(lifeRule("B34/S23"), 4)),
+)
 
 val block = LifePatterns.block.centeredOn(20, 20)
 println("block is bit-identical after one step: " + block.step(LIFE).sameCellsAs(block))
 println("blinker's detected period: " + LifePatterns.blinker.centeredOn(20, 20).runUntilCycle(LIFE, 20).period)
 println("toad's detected period: " + LifePatterns.toad.centeredOn(20, 20).runUntilCycle(LIFE, 20).period)
 
-// The R-pentomino. The textbook figures -- peak 319 at generation 821, then 116 cells from
-// generation 1103 -- are facts about an UNBOUNDED board: six of those 116 cells are gliders still
-// in flight. So it needs room. 620 wide gives every glider more than the 1103/4 cells it can
-// travel, and liveBounds() confirms nothing reached an edge rather than assuming it.
+/*
+The R-pentomino. The textbook figures -- peak 319 at generation 821, then 116 cells from
+generation 1103 -- are facts about an UNBOUNDED board: six of those 116 cells are gliders still
+in flight. So it needs room. 620 wide gives every glider more than the 1103/4 cells it can
+travel, and liveBounds() confirms nothing reached an edge rather than assuming it.
+*/
 var g = LifePatterns.rPentomino.centeredOn(620, 620, wrap = false)
 var peak = 0
 var peakAt = 0
 for (gen in 1..1103) {
     g = g.step(LIFE)
     val pop = g.population()
-    if (pop > peak) { peak = pop; peakAt = gen }
+    if (pop > peak) {
+        peak = pop
+        peakAt = gen
+    }
 }
 val b = g.liveBounds()!!
 println("R-pentomino peak population " + peak + " at generation " + peakAt)
-println("population at generation 1103 = " + g.population() +
-    ", live cells " + b[0] + " clear of the board edge")
+println(
+    "population at generation 1103 = " + g.population() + ", live cells " + b[0] + " clear of the board edge",
+)
 
 :::fold draw the glider's first five generations, twelve pixels to a cell
 showImg(
     montage(
-        (0..4).map { "gen " + it to LifePatterns.glider.centeredOn(16, 16).stepTimes(LIFE, it).toImg(2).upscaleNearest(12) },
-        columns = 5, cellSide = 200
+        (0..4).map {
+            "gen " + it to LifePatterns.glider.centeredOn(16, 16).stepTimes(LIFE, it).toImg(2).upscaleNearest(12)
+        },
+        columns = 5,
+        cellSide = 200,
     ),
-    caption = "one glider, five generations: the same shape displaced by (1, 1)"
+    caption = "one glider, five generations: the same shape displaced by (1, 1)",
 )
 :::endfold
 ```
@@ -184,28 +194,32 @@ long quieting-down toward something stationary.
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/life.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="1000" embed=true name="alife-life-video" alt="Conway's Life: a glider drifting diagonally across a toroidal board, and the R-pentomino exploding and settling on a walled board"}
 :::static
 :::fold the two boards, integer-upscaled so a cell is a block you can count
-// Both boards are integer-upscaled to the same 384 pixels, so a cell is a block you can count:
-// twenty-four pixels for the glider's 16-cell torus, six for the R-pentomino's 64-cell walled
-// board.
+/*
+Both boards are integer-upscaled to the same 384 pixels, so a cell is a block you can count:
+twenty-four pixels for the glider's 16-cell torus, six for the R-pentomino's 64-cell walled
+board.
+*/
 fun boards(g: IntGrid, r: IntGrid, n: Int) = [
     "glider, gen " + n to g.toImg(2).upscaleNearest(24),
-    "R-pent " + n + ": " + r.population() + " live" to r.toImg(2).upscaleNearest(6)
+    "R-pent " + n + ": " + r.population() + " live" to r.toImg(2).upscaleNearest(6),
 ]
+
 :::endfold
 
-// 400 generations over 200 displayed frames: TWO generations per frame. Slower than every other
-// clip on this page -- the glider's period is FOUR generations, and a spaceship stepped
-// nine generations at a time is a strobe rather than a spaceship.
+/*
+400 generations over 200 displayed frames: TWO generations per frame. Slower than every other
+clip on this page -- the glider's period is FOUR generations, and a spaceship stepped
+nine generations at a time is a strobe rather than a spaceship.
+*/
 animateEvolution(
-    LifePatterns.glider.centeredOn(16, 16) to
-        LifePatterns.rPentomino.centeredOn(64, 64, wrap = false),
+    LifePatterns.glider.centeredOn(16, 16) to LifePatterns.rPentomino.centeredOn(64, 64, wrap = false),
     totalSteps = 400,
     seconds = 7.0,
     framesTarget = 200,
     columns = 2,
     cellSide = 384,
     step = { (g, r) -> g.step(LIFE) to r.step(LIFE) },
-    panels = { (g, r), n -> boards(g, r, n) }
+    panels = { (g, r), n -> boards(g, r, n) },
 )
 ```
 
@@ -229,10 +243,12 @@ does not, which is the control that stops "184 conserves density" from being a p
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/elementary.png" wait="5.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// Wolfram's elementary rules, and the sharpest evidence in the family: rule 90 from a single seed
-// IS Pascal's triangle mod 2, and `sierpinskiReference` computes that from Kummer's theorem
-// without running a cellular automaton at all. The equality is a cross-check between two
-// unrelated computations rather than a stepper agreeing with itself.
+/*
+Wolfram's elementary rules, and the sharpest evidence in the family: rule 90 from a single seed
+IS Pascal's triangle mod 2, and `sierpinskiReference` computes that from Kummer's theorem
+without running a cellular automaton at all. The equality is a cross-check between two
+unrelated computations rather than a stepper agreeing with itself.
+*/
 val w = 257
 val gens = 128
 val rule90 = elementaryCa(90, w, gens)
@@ -243,8 +259,10 @@ println("rule 90 vs Pascal mod 2: " + differing + " differing cells of " + rule9
 
 // A second, independent oracle: row g of that diagram holds exactly 2^(popcount g) live cells.
 val rows = (0 until gens).map { r -> (0 until w).count { rule90.cells[r * w + it] == 1 } }
-println("row populations are exactly 2^popcount(generation): " +
-    (rows == (0 until gens).map { 1 shl Integer.bitCount(it) }))
+println(
+    "row populations are exactly 2^popcount(generation): " +
+        (rows == (0 until gens).map { 1 shl Integer.bitCount(it) }),
+)
 
 // Rule 184 is the traffic rule: it conserves the number of 1s exactly, forever.
 val seedRow = IntArray(257) { if ((it * 7919) % 3 == 0) 1 else 0 }
@@ -254,8 +272,15 @@ println("rule 184 distinct row populations over 200 generations: " + pops.distin
 println("rule 90 distinct row populations: " + rows.distinct().size + " values, so NOT conserved")
 
 val col30 = elementaryCa(30, 601, 600).centerColumn()
-println("rule 30 centre column: " + col30.count { it == 1 } + "/600 ones, longest run " +
-    longestRunLength(col30) + " (rule 90's is " + longestRunLength(rule90.centerColumn()) + ")")
+println(
+    "rule 30 centre column: " +
+        col30.count { it == 1 } +
+        "/600 ones, longest run " +
+        longestRunLength(col30) +
+        " (rule 90's is " +
+        longestRunLength(rule90.centerColumn()) +
+        ")",
+)
 
 :::fold draw four of the 256 space-time diagrams, time downward
 showImg(
@@ -263,11 +288,13 @@ showImg(
         [
             "rule 90 = Pascal mod 2" to rule90.toImg(2),
             "rule 30" to elementaryCa(30, 257, 128).toImg(2),
-            "rule 110 (universal)" to elementaryCa(110, 257, 128, IntArray(257) { if (it % 13 == 0) 1 else 0 }).toImg(2),
-            "rule 184 (density-conserving)" to traffic.toImg(2)
+            "rule 110 (universal)" to
+                elementaryCa(110, 257, 128, IntArray(257) { if (it % 13 == 0) 1 else 0 }).toImg(2),
+            "rule 184 (density-conserving)" to traffic.toImg(2),
         ],
-        columns = 2, cellSide = 300
-    )
+        columns = 2,
+        cellSide = 300,
+    ),
 )
 :::endfold
 ```
@@ -304,13 +331,16 @@ val diagrams = [
     "rule 90" to elementaryCa(90, 257, 128).toImg(2),
     "rule 30" to elementaryCa(30, 257, 128).toImg(2),
     "rule 110" to elementaryCa(110, 257, 128, IntArray(257) { if (it % 13 == 0) 1 else 0 }).toImg(2),
-    "rule 184" to elementaryCa(184, 257, 128, seedRow).toImg(2)
+    "rule 184" to elementaryCa(184, 257, 128, seedRow).toImg(2),
 ]
+
 :::endfold
 
-// 128 generations over 128 displayed frames: ONE row of every diagram per frame. The upscale comes
-// AFTER the reveal, so `n` counts generations rather than pixels -- and `rowsRevealed` keeps the
-// full height, so montage frames each panel identically instead of rescaling a growing image.
+/*
+128 generations over 128 displayed frames: ONE row of every diagram per frame. The upscale comes
+AFTER the reveal, so `n` counts generations rather than pixels -- and `rowsRevealed` keeps the
+full height, so montage frames each panel identically instead of rescaling a growing image.
+*/
 animateEvolution(
     Unit,
     totalSteps = 128,
@@ -321,7 +351,7 @@ animateEvolution(
     step = { it },
     panels = { _, n ->
         diagrams.map { (name, img) -> name + ", gen " + n to img.rowsRevealed(n).upscaleNearest(2) }
-    }
+    },
 )
 ```
 
@@ -354,13 +384,15 @@ neighbourhood gives the **smaller** correlation length, because the spiral arms 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/cyclic.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// A cyclic cellular automaton: a cell in state s advances to s+1 as soon as any neighbour is
-// already in s+1. Nothing can skip, so the only durable structures are rotating bands.
-//
-// The measurement that makes "it self-organised" checkable: in an UNCORRELATED soup a cell can
-// advance exactly when one of its 8 Moore neighbours happens to hold its successor state, which
-// is 1 - (1 - 1/states)^8 -- a closed form. Once the field has organised, every cell is driven by
-// a neighbour and the advance fraction pins at 1.0, which no uncorrelated field does.
+/*
+A cyclic cellular automaton: a cell in state s advances to s+1 as soon as any neighbour is
+already in s+1. Nothing can skip, so the only durable structures are rotating bands.
+
+The measurement that makes "it self-organised" checkable: in an UNCORRELATED soup a cell can
+advance exactly when one of its 8 Moore neighbours happens to hold its successor state, which
+is 1 - (1 - 1/states)^8 -- a closed form. Once the field has organised, every cell is driven by
+a neighbour and the advance fraction pins at 1.0, which no uncorrelated field does.
+*/
 val rule = CYCLIC_LABYRINTH
 val soup = IntGrid.random(200, 200, states = rule.states, seed = 7L)
 val predicted = 1.0 - Math.pow(1.0 - 1.0 / rule.states, 8.0)
@@ -374,8 +406,12 @@ println("after 400 generations " + "%.4f".format(late) + " of cells advance ever
 // visibly different phase -- spiral cores -- and the difference is measurable as a length scale.
 val ex = CYCLIC_EXCITABLE
 val exSettled = IntGrid.random(200, 200, states = ex.states, seed = 7L).stepTimes(ex, 200)
-println("correlation length: labyrinth " + "%.2f".format(settled.toImg(rule.states).correlationLength(maxLag = 30)) +
-    ", excitable " + "%.2f".format(exSettled.toImg(ex.states).correlationLength(maxLag = 30)))
+println(
+    "correlation length: labyrinth " +
+        "%.2f".format(settled.toImg(rule.states).correlationLength(maxLag = 30)) +
+        ", excitable " +
+        "%.2f".format(exSettled.toImg(ex.states).correlationLength(maxLag = 30)),
+)
 
 :::fold one palette per rule, and three generations of the labyrinth beside the excitable phase
 val palette = cyclicPalette(rule.states)
@@ -385,10 +421,11 @@ showImg(
             "gen 0 (soup)" to soup.toImg(palette),
             "gen 40" to soup.stepTimes(rule, 40).toImg(palette),
             "gen 400" to settled.toImg(palette),
-            "excitable, gen 200" to exSettled.toImg(cyclicPalette(ex.states))
+            "excitable, gen 200" to exSettled.toImg(cyclicPalette(ex.states)),
         ],
-        columns = 2, cellSide = 280
-    )
+        columns = 2,
+        cellSide = 280,
+    ),
 )
 :::endfold
 ```
@@ -422,15 +459,18 @@ you cannot see any of that in a photograph of one.
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/cyclic.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="7" fps="20" timeout="240" w="520" embed=true name="alife-cyclic-video" alt="two cyclic cellular automata running: a random soup organising into rotating bands, and an excitable rule winding into spiral cores"}
 :::static
 :::fold one palette per rule, fixed by the rule and never by the frame
-// One palette per rule, FIXED -- it is a function of the rule's state count, never of the frame,
-// which is what makes generation 0 and generation 400 the same picture of the same thing. Three
-// pixels to a cell, nearest-neighbour, so the bands are countable and the encoder sees flat blocks.
+/*
+One palette per rule, FIXED -- it is a function of the rule's state count, never of the frame,
+which is what makes generation 0 and generation 400 the same picture of the same thing. Three
+pixels to a cell, nearest-neighbour, so the bands are countable and the encoder sees flat blocks.
+*/
 val pal = cyclicPalette(CYCLIC_LABYRINTH.states)
 val exPal = cyclicPalette(CYCLIC_EXCITABLE.states)
 fun soups(a: IntGrid, b: IntGrid, n: Int) = [
     "labyrinth, gen " + n to a.toImg(pal).upscaleNearest(3),
-    "excitable, gen " + n to b.toImg(exPal).upscaleNearest(3)
+    "excitable, gen " + n to b.toImg(exPal).upscaleNearest(3),
 ]
+
 :::endfold
 
 // Two cyclic rules from the same kind of soup, stepped together so the schedule is shared:
@@ -438,15 +478,14 @@ fun soups(a: IntGrid, b: IntGrid, n: Int) = [
 val rule = CYCLIC_LABYRINTH
 val ex = CYCLIC_EXCITABLE
 animateEvolution(
-    IntGrid.random(96, 96, states = rule.states, seed = 7L) to
-        IntGrid.random(96, 96, states = ex.states, seed = 7L),
+    IntGrid.random(96, 96, states = rule.states, seed = 7L) to IntGrid.random(96, 96, states = ex.states, seed = 7L),
     totalSteps = 400,
     seconds = 6.5,
     framesTarget = 130,
     columns = 2,
     cellSide = 288,
     step = { (a, b) -> a.step(rule) to b.step(ex) },
-    panels = { (a, b), n -> soups(a, b, n) }
+    panels = { (a, b), n -> soups(a, b, n) },
 )
 ```
 
@@ -482,39 +521,50 @@ Turing instability's short-scale advantage is gone and the same seed, the same r
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/gray-scott.png" wait="20.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// Gray-Scott reaction-diffusion. Two coupled fields, two parameters, and the whole zoo of
-// morphologies -- spots, worms, mazes, holes -- is a function of those two numbers.
-//
-// The point of `morphology()` is that a regime claim should be a claim about numbers. Spots and a
-// labyrinth can have identical coverage, identical mean and identical variance; what separates
-// them is the SHAPE of their features (isoperimetric ratio P^2/4piA, ~1 for a disc) and whether
-// one connected structure dominates.
+/*
+Gray-Scott reaction-diffusion. Two coupled fields, two parameters, and the whole zoo of
+morphologies -- spots, worms, mazes, holes -- is a function of those two numbers.
+
+The point of `morphology()` is that a regime claim should be a claim about numbers. Spots and a
+labyrinth can have identical coverage, identical mean and identical variance; what separates
+them is the SHAPE of their features (isoperimetric ratio P^2/4piA, ~1 for a disc) and whether
+one connected structure dominates.
+*/
 val side = 128
 val steps = 6000
-val runs = [
-    "spots 0.030/0.062" to GRAY_SCOTT_SPOTS,
-    "worms 0.037/0.060" to GRAY_SCOTT_WORMS,
-    "maze 0.029/0.057" to GRAY_SCOTT_MAZE,
-    "holes 0.039/0.058" to GRAY_SCOTT_HOLES
-].map { (label, p) -> label to grayScottSeed(side, side, patches = 6, patchSize = 14, seed = 11L).stepTimes(p, steps) }
+val runs =
+    [
+            "spots 0.030/0.062" to GRAY_SCOTT_SPOTS,
+            "worms 0.037/0.060" to GRAY_SCOTT_WORMS,
+            "maze 0.029/0.057" to GRAY_SCOTT_MAZE,
+            "holes 0.039/0.058" to GRAY_SCOTT_HOLES,
+        ]
+        .map { (label, p) ->
+            label to grayScottSeed(side, side, patches = 6, patchSize = 14, seed = 11L).stepTimes(p, steps)
+        }
 for ((label, end) in runs) println(label + " -> " + end.v.morphology())
 
-// Two controls. v = 0 is a fixed point of the equations, so an unseeded field never patterns;
-// and equal diffusion coefficients destroy the Turing instability entirely, which is Turing's
-// own argument restated as an experiment.
+/*
+Two controls. v = 0 is a fixed point of the equations, so an unseeded field never patterns;
+and equal diffusion coefficients destroy the Turing instability entirely, which is Turing's
+own argument restated as an experiment.
+*/
 val unseeded = grayScottSeed(side, side, patches = 0).stepTimes(GRAY_SCOTT_WORMS, 500)
 println("CONTROL no seed: max autocatalyst after 500 steps = " + unseeded.v.max())
-val equalD = grayScottSeed(side, side, patches = 6, patchSize = 14, seed = 11L)
-    .stepTimes(GrayScottParams(feed = 0.037, kill = 0.060, du = 0.08, dv = 0.08), steps)
+val equalD =
+    grayScottSeed(side, side, patches = 6, patchSize = 14, seed = 11L)
+        .stepTimes(GrayScottParams(feed = 0.037, kill = 0.060, du = 0.08, dv = 0.08), steps)
 println("CONTROL Du == Dv -> " + equalD.v.morphology())
 
 :::fold draw the four regimes and the two controls, all on one fixed magma range
 showImg(
     montage(
-        (runs + ["CONTROL no seed" to unseeded, "CONTROL Du == Dv" to equalD])
-            .map { (label, s) -> label to s.v.colormap("magma", 0f, 0.5f).upscaleNearest(2) },
-        columns = 3, cellSide = 260
-    )
+        (runs + ["CONTROL no seed" to unseeded, "CONTROL Du == Dv" to equalD]).map { (label, s) ->
+            label to s.v.colormap("magma", 0f, 0.5f).upscaleNearest(2)
+        },
+        columns = 3,
+        cellSide = 260,
+    ),
 )
 :::endfold
 ```
@@ -570,17 +620,22 @@ Those five events are not spread evenly through the 6000 steps, so the clip is n
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/gray-scott.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1000" embed=true name="alife-gray-scott-video" alt="a Gray-Scott maze pattern forming: six square seed patches buckle into four-lobed crosses, fill with labyrinth, grow into each other and anneal"}
 :::static
 :::fold the autocatalyst field, on a fixed colour range
-// The autocatalyst field on a FIXED 0..0.5 magma range. Auto-ranging per frame is what makes an
-// animation of a growing pattern appear to stand still, and it is the single easiest way to turn
-// a reaction-diffusion clip into a lie.
+/*
+The autocatalyst field on a FIXED 0..0.5 magma range. Auto-ranging per frame is what makes an
+animation of a growing pattern appear to stand still, and it is the single easiest way to turn
+a reaction-diffusion clip into a lie.
+*/
 fun view(s: GrayScottState, n: Int) =
     ["maze - step " + n + " of 6000" to s.v.colormap("magma", 0f, 0.5f).upscaleNearest(3)]
+
 :::endfold
 
-// The `maze` preset, the same 6000 steps the figure above measures, over 140 displayed frames --
-// but NOT 43 steps per frame. `ramp = 40` makes the last displayed frame advance forty times as
-// many steps as the first, which is the schedule a log-time process needs: the mid-point of the
-// clip is step 819 rather than step 3000. This is the number to change if you disagree.
+/*
+The `maze` preset, the same 6000 steps the figure above measures, over 140 displayed frames --
+but NOT 43 steps per frame. `ramp = 40` makes the last displayed frame advance forty times as
+many steps as the first, which is the schedule a log-time process needs: the mid-point of the
+clip is step 819 rather than step 3000. This is the number to change if you disagree.
+*/
 animateEvolution(
     grayScottSeed(128, 128, patches = 6, patchSize = 14, seed = 11L),
     totalSteps = 6000,
@@ -588,7 +643,7 @@ animateEvolution(
     ramp = 40.0,
     cellSide = 420,
     step = { it.step(GRAY_SCOTT_MAZE) },
-    panels = { s, n -> view(s, n) }
+    panels = { s, n -> view(s, n) },
 )
 ```
 
@@ -636,13 +691,15 @@ literature, which need initial arrays this family does not ship.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/lenia.png" wait="20.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// Lenia is a CONTINUOUS cellular automaton: one field in 0..1, one convolution kernel, one growth
-// mapping, and A <- clamp(A + dt * G(K * A)).
-//
-// The claim worth making about an implementation of it is a cross-check. With a uniform Moore ring
-// kernel, dt = 1 and a three-valued step growth mapping, Lenia reduces EXACTLY to an
-// outer-totalistic B/S rule -- so this float convolution and the integer Life stepper in
-// `alife_ca.kt` must agree bit for bit. `leniaFromLifeRule` builds that limit.
+/*
+Lenia is a CONTINUOUS cellular automaton: one field in 0..1, one convolution kernel, one growth
+mapping, and A <- clamp(A + dt * G(K * A)).
+
+The claim worth making about an implementation of it is a cross-check. With a uniform Moore ring
+kernel, dt = 1 and a three-valued step growth mapping, Lenia reduces EXACTLY to an
+outer-totalistic B/S rule -- so this float convolution and the integer Life stepper in
+`alife_ca.kt` must agree bit for bit. `leniaFromLifeRule` builds that limit.
+*/
 val discrete = leniaFromLifeRule(LIFE)
 println("discrete-limit kernel: " + discrete.taps.size + " taps summing to " + discrete.taps.weight.sum())
 
@@ -655,19 +712,27 @@ for (gen in 1..20) {
     worst = maxOf(worst, fieldMaxAbsDiff(field, grid.toImg(2)))
 }
 println("20 generations, float Lenia vs integer Life: worst per-cell difference " + worst)
-println("the glider the float stepper carried moved by " +
-    translationBetween(LifePatterns.glider.centeredOn(32, 32), field.toIntGrid(0.5f)))
+println(
+    "the glider the float stepper carried moved by " +
+        translationBetween(LifePatterns.glider.centeredOn(32, 32), field.toIntGrid(0.5f)),
+)
 
 // Control: move the growth window by one neighbour count and nothing else.
-println("CONTROL, growth window at B4/S234: difference " +
-    fieldMaxAbsDiff(LifePatterns.glider.centeredOn(32, 32).toImg(2).leniaTimes(leniaFromLifeRule(lifeRule("B4/S234")), 20), grid.toImg(2)))
+println(
+    "CONTROL, growth window at B4/S234: difference " +
+        fieldMaxAbsDiff(
+            LifePatterns.glider.centeredOn(32, 32).toImg(2).leniaTimes(leniaFromLifeRule(lifeRule("B4/S234")), 20),
+            grid.toImg(2),
+        ),
+)
 
 // The continuous regime, reported as a measured phase trichotomy rather than as a named creature:
 // this file ships no published Lenia initial pattern, so it claims none.
-val runs = [0.06, 0.14].map { mu ->
-    val r = LeniaPresets.ring(mu, sigma = 0.017, radius = 8, dt = 0.12)
-    mu to leniaRun(leniaSeed(96, 96, r, blobRadii = 1.6, seed = 9L), r, steps = 240)
-}
+val runs =
+    [0.06, 0.14].map { mu ->
+        val r = LeniaPresets.ring(mu, sigma = 0.017, radius = 8, dt = 0.12)
+        mu to leniaRun(leniaSeed(96, 96, r, blobRadii = 1.6, seed = 9L), r, steps = 240)
+    }
 for ((mu, run) in runs) println("mu = " + mu + " -> " + run)
 val wide = LeniaPresets.ring(0.60, sigma = 0.60, radius = 8, dt = 0.12)
 val sat = leniaRun(leniaSeed(96, 96, wide, blobRadii = 1.6, seed = 9L), wide, steps = 240)
@@ -678,12 +743,15 @@ showImg(
     montage(
         [
             "discrete limit == Life" to field.upscaleNearest(8),
-            "ring kernel R=8" to LeniaPresets.ring(0.15, radius = 8).kernelImg().normalized().upscaleNearest(10)
-        ] + runs.map { (mu, run) ->
-            "mu=" + mu + " " + run.phase.name.lowercase() to run.field.colormap("inferno", 0f, 1f).upscaleNearest(3)
-        } + ["wide sigma: saturation" to sat.field.colormap("inferno", 0f, 1f).upscaleNearest(3)],
-        columns = 3, cellSide = 280
-    )
+            "ring kernel R=8" to LeniaPresets.ring(0.15, radius = 8).kernelImg().normalized().upscaleNearest(10),
+        ] +
+            runs.map { (mu, run) ->
+                "mu=" + mu + " " + run.phase.name.lowercase() to run.field.colormap("inferno", 0f, 1f).upscaleNearest(3)
+            } +
+            ["wide sigma: saturation" to sat.field.colormap("inferno", 0f, 1f).upscaleNearest(3)],
+        columns = 3,
+        cellSide = 280,
+    ),
 )
 :::endfold
 ```
@@ -722,14 +790,17 @@ than it gains and runs down to nothing. Same code, same seed, one number.
 // every frame so the phase verdict is measured while you watch.
 fun fields(x: Img, y: Img, n: Int) = [
     "mu=0.06 " + n + " mean " + "%.3f".format(x.mean()) to x.colormap("inferno", 0f, 1f).upscaleNearest(4),
-    "mu=0.14 " + n + " mean " + "%.3f".format(y.mean()) to y.colormap("inferno", 0f, 1f).upscaleNearest(4)
+    "mu=0.14 " + n + " mean " + "%.3f".format(y.mean()) to y.colormap("inferno", 0f, 1f).upscaleNearest(4),
 ]
+
 :::endfold
 
-// Same seed, same ring kernel, one number different: where the growth window is centred.
-// 240 Lenia steps over 140 displayed frames -- but geometrically, not two per frame: `ramp = 25`
-// spends the first half of the clip on the first 40 steps, because that is where the blob decides
-// what it is going to be. Everything after is maintenance.
+/*
+Same seed, same ring kernel, one number different: where the growth window is centred.
+240 Lenia steps over 140 displayed frames -- but geometrically, not two per frame: `ramp = 25`
+spends the first half of the clip on the first 40 steps, because that is where the blob decides
+what it is going to be. Everything after is maintenance.
+*/
 val a = LeniaPresets.ring(0.06, sigma = 0.017, radius = 8, dt = 0.12)
 val b = LeniaPresets.ring(0.14, sigma = 0.017, radius = 8, dt = 0.12)
 animateEvolution(
@@ -740,7 +811,7 @@ animateEvolution(
     columns = 2,
     cellSide = 384,
     step = { (x, y) -> x.leniaTimes(a, 1) to y.leniaTimes(b, 1) },
-    panels = { (x, y), n -> fields(x, y, n) }
+    panels = { (x, y), n -> fields(x, y, n) },
 )
 ```
 
@@ -775,24 +846,37 @@ of `k` independent flocks tops out near `1/√k`.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/boids.png" wait="10.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// Reynolds' boids on a torus. A flock is not "dots that move together"; it is a population whose
-// alignment order parameter is far above what independent headings would give, AND whose
-// nearest-neighbour distribution has a floor. Both are measured against the same initial state run
-// with one weight zeroed -- so the difference is attributable to that weight and nothing else.
+/*
+Reynolds' boids on a torus. A flock is not "dots that move together"; it is a population whose
+alignment order parameter is far above what independent headings would give, AND whose
+nearest-neighbour distribution has a floor. Both are measured against the same initial state run
+with one weight zeroed -- so the difference is attributable to that weight and nothing else.
+*/
 val n = 400
 val start = BoidFlock.random(n, 260.0, 260.0, speed = 1.4, seed = 4L)
 val params = BoidParams()
 println("random-heading baseline for " + n + " agents: " + "%.3f".format(randomPolarizationBaseline(n)))
 println("initial polarization: " + "%.3f".format(start.order()))
 
-val flock = start.copy(); flock.stepTimes(params, 900)
-val noAlign = start.copy(); noAlign.stepTimes(params.copy(alignmentWeight = 0.0), 900)
-val noSep = start.copy(); noSep.stepTimes(params.copy(separationWeight = 0.0), 900)
+val flock = start.copy()
+flock.stepTimes(params, 900)
+val noAlign = start.copy()
+noAlign.stepTimes(params.copy(alignmentWeight = 0.0), 900)
+val noSep = start.copy()
+noSep.stepTimes(params.copy(separationWeight = 0.0), 900)
 
-println("flock polarization " + "%.3f".format(flock.order()) +
-    ", CONTROL with no alignment " + "%.3f".format(noAlign.order()))
-println("5th-percentile nearest neighbour: flock " + "%.2f".format(quantileOf(flock.neighborDistances(), 0.05)) +
-    ", CONTROL with no separation " + "%.2f".format(quantileOf(noSep.neighborDistances(), 0.05)))
+println(
+    "flock polarization " +
+        "%.3f".format(flock.order()) +
+        ", CONTROL with no alignment " +
+        "%.3f".format(noAlign.order()),
+)
+println(
+    "5th-percentile nearest neighbour: flock " +
+        "%.2f".format(quantileOf(flock.neighborDistances(), 0.05)) +
+        ", CONTROL with no separation " +
+        "%.2f".format(quantileOf(noSep.neighborDistances(), 0.05)),
+)
 println("mean speed " + "%.2f".format(flock.meanSpeed()) + " of a " + params.maxSpeed + " cap")
 
 :::fold draw the four populations with a five-unit motion streak behind each agent
@@ -802,10 +886,11 @@ showImg(
             "gen 0: order " + "%.2f".format(start.order()) to start.toImg(1.4, tail = 5.0),
             "900 steps: " + "%.2f".format(flock.order()) to flock.toImg(1.4, tail = 5.0),
             "no alignment: " + "%.2f".format(noAlign.order()) to noAlign.toImg(1.4, tail = 5.0),
-            "no separation" to noSep.toImg(1.4, tail = 5.0)
+            "no separation" to noSep.toImg(1.4, tail = 5.0),
         ],
-        columns = 2, cellSide = 300
-    )
+        columns = 2,
+        cellSide = 300,
+    ),
 )
 :::endfold
 ```
@@ -835,18 +920,23 @@ measured, because `order()` reads the velocity array and not the picture.
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/boids.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="9" fps="20" timeout="300" w="1000" embed=true name="alife-boids-video" alt="two boid populations from the same seed: the left forms coherent flocks, the right, with alignment switched off, stays a disordered gas"}
 :::static
 :::fold draw both populations, and measure the order parameter every frame
-// One pixel per domain unit, with an 8-unit motion streak behind each agent -- long enough to join
-// up at nine units of travel per frame. `order()` reads the velocity array, so neither choice
-// touches what is measured; the number in each caption is computed fresh every frame.
+/*
+One pixel per domain unit, with an 8-unit motion streak behind each agent -- long enough to join
+up at nine units of travel per frame. `order()` reads the velocity array, so neither choice
+touches what is measured; the number in each caption is computed fresh every frame.
+*/
 fun flocks(a: BoidFlock, b: BoidFlock, n: Int) = [
     "flock " + n + ": order " + "%.2f".format(a.order()) to a.toImg(1.0, tail = 8.0),
-    "no align " + n + ": " + "%.2f".format(b.order()) to b.toImg(1.0, tail = 8.0)
+    "no align " + n + ": " + "%.2f".format(b.order()) to b.toImg(1.0, tail = 8.0),
 ]
+
 :::endfold
 
-// The same initial state, twice, stepped together -- so the ONLY difference between the two panels
-// is the alignment weight. 900 steps over 140 displayed frames: six or seven steps per frame, and
-// no ramp -- a flock's rate of change is roughly constant, which is exactly when linear is right.
+/*
+The same initial state, twice, stepped together -- so the ONLY difference between the two panels
+is the alignment weight. 900 steps over 140 displayed frames: six or seven steps per frame, and
+no ramp -- a flock's rate of change is roughly constant, which is exactly when linear is right.
+*/
 val params = BoidParams()
 val blind = params.copy(alignmentWeight = 0.0)
 val start = BoidFlock.random(400, 260.0, 260.0, speed = 1.4, seed = 4L)
@@ -856,8 +946,12 @@ animateEvolution(
     seconds = 7.0,
     columns = 2,
     cellSide = 300,
-    step = { (a, b) -> a.step(params); b.step(blind); a to b },
-    panels = { (a, b), n -> flocks(a, b, n) }
+    step = { (a, b) ->
+        a.step(params)
+        b.step(blind)
+        a to b
+    },
+    panels = { (a, b), n -> flocks(a, b, n) },
 )
 ```
 
@@ -883,22 +977,28 @@ same decay, random turns) gives **0.185**. And the shapes differ as sharply: med
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/physarum.png" wait="8.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// Jones' Physarum model: agents deposit into a trail field, sense it three ways ahead, turn toward
-// the strongest, move. The transport network is nowhere in the code -- it is the fixed point of
-// that loop.
-//
-// The measurement: `topShare(0.05)` is the fraction of all deposit held by the brightest 5% of
-// pixels. A flat field gives 0.05. A network concentrates material into filaments and gives much
-// more. The control is the identical population with sensing switched off -- same count, same
-// seed, same deposit, same decay, random turns.
+/*
+Jones' Physarum model: agents deposit into a trail field, sense it three ways ahead, turn toward
+the strongest, move. The transport network is nowhere in the code -- it is the fixed point of
+that loop.
+
+The measurement: `topShare(0.05)` is the fraction of all deposit held by the brightest 5% of
+pixels. A flat field gives 0.05. A network concentrates material into filaments and gives much
+more. The control is the identical population with sensing switched off -- same count, same
+seed, same deposit, same decay, random turns.
+*/
 val side = 256
 val p = PhysarumParams()
 val sensing = PhysarumSwarm.disc(side, side, 6000, 0.55, seed = 6L).stepTimes(p, 400, seed = 6L)
-val blind = PhysarumSwarm.disc(side, side, 6000, 0.55, seed = 6L)
-    .stepTimes(p.copy(sensing = false), 400, seed = 6L)
+val blind = PhysarumSwarm.disc(side, side, 6000, 0.55, seed = 6L).stepTimes(p.copy(sensing = false), 400, seed = 6L)
 
-println("top-5% deposit share: sensing " + "%.3f".format(sensing.trail.topShare(0.05)) +
-    ", CONTROL sensing off " + "%.3f".format(blind.trail.topShare(0.05)) + " (a flat field gives 0.05)")
+println(
+    "top-5% deposit share: sensing " +
+        "%.3f".format(sensing.trail.topShare(0.05)) +
+        ", CONTROL sensing off " +
+        "%.3f".format(blind.trail.topShare(0.05)) +
+        " (a flat field gives 0.05)",
+)
 println("sensing morphology: " + sensing.trail.normalized().morphology())
 println("blind   morphology: " + blind.trail.normalized().morphology())
 
@@ -907,10 +1007,11 @@ showImg(
     montage(
         [
             "sensing" to sensing.trail.normalized().colormap("magma"),
-            "CONTROL: sensing off" to blind.trail.normalized().colormap("magma")
+            "CONTROL: sensing off" to blind.trail.normalized().colormap("magma"),
         ],
-        columns = 2, cellSide = 340
-    )
+        columns = 2,
+        cellSide = 340,
+    ),
 )
 :::endfold
 ```
@@ -954,32 +1055,37 @@ uniform, at a share that stays near a fifth of the sensing run's.
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/physarum.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="7" fps="20" timeout="300" w="1100" embed=true name="alife-physarum-video" alt="two Physarum populations from the same seed: the sensing one expands into a branching transport network, the blind one into a uniform blob"}
 :::static
 :::fold draw both trails on one derived colour range, and measure the share every frame
-// Both panels on ONE derived range, not on each other's maxima: a cell an agent occupies every
-// step accumulates `deposit` and keeps `decay` of what it had, so it converges to
-// deposit / (1 - decay) = 62.5. A lower ceiling clips the network to flat cream. The caption's number is `topShare(0.05)`, recomputed every frame.
+/*
+Both panels on ONE derived range, not on each other's maxima: a cell an agent occupies every
+step accumulates `deposit` and keeps `decay` of what it had, so it converges to
+deposit / (1 - decay) = 62.5. A lower ceiling clips the network to flat cream. The caption's number is
+`topShare(0.05)`, recomputed every frame.
+*/
 val p = PhysarumParams()
 val ceiling = (p.deposit / (1.0 - p.decay)).toFloat()
 fun trails(a: PhysarumSwarm, b: PhysarumSwarm, n: Int) = [
     "sensing " + n + "  " + "%.3f".format(a.trail.topShare(0.05)) to a.trail.colormap("magma", 0f, ceiling),
-    "blind " + n + "  " + "%.3f".format(b.trail.topShare(0.05)) to b.trail.colormap("magma", 0f, ceiling)
+    "blind " + n + "  " + "%.3f".format(b.trail.topShare(0.05)) to b.trail.colormap("magma", 0f, ceiling),
 ]
+
 :::endfold
 
-// Sensing and blind, from the same seed, stepped together: 400 steps over 140 displayed frames,
-// so three deposit-sense-move rounds per frame. `step` takes its rng explicitly, so each
-// population gets its own stream -- exactly what `stepTimes(p, 400, seed = 6L)` does internally,
-// which is why these panels land on the same numbers as the figure above.
+/*
+Sensing and blind, from the same seed, stepped together: 400 steps over 140 displayed frames,
+so three deposit-sense-move rounds per frame. `step` takes its rng explicitly, so each
+population gets its own stream -- exactly what `stepTimes(p, 400, seed = 6L)` does internally,
+which is why these panels land on the same numbers as the figure above.
+*/
 val rngA = kotlin.random.Random(6L)
 val rngB = kotlin.random.Random(6L)
 animateEvolution(
-    PhysarumSwarm.disc(256, 256, 6000, 0.55, seed = 6L) to
-        PhysarumSwarm.disc(256, 256, 6000, 0.55, seed = 6L),
+    PhysarumSwarm.disc(256, 256, 6000, 0.55, seed = 6L) to PhysarumSwarm.disc(256, 256, 6000, 0.55, seed = 6L),
     totalSteps = 400,
     seconds = 7.0,
     columns = 2,
     cellSide = 300,
     step = { (a, b) -> a.step(p, rngA) to b.step(p.copy(sensing = false), rngB) },
-    panels = { (a, b), n -> trails(a, b, n) }
+    panels = { (a, b), n -> trails(a, b, n) },
 )
 ```
 
@@ -1021,13 +1127,15 @@ it is not simply reading the bounded support.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/dla.png" wait="8.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// Diffusion-limited aggregation: a seed, then particles released far away that random-walk until
-// they touch and stick. Nothing in the rule mentions branches.
-//
-// This is the one system here with a quantitative number to hit, so it gets the sharpest evidence:
-// the mass-radius dimension. An Eden cluster (same neighbourhood, growth site chosen uniformly
-// instead of by a diffusing walker) and a uniform sprinkle both have dimension 2, so those two
-// controls show the estimator is reading the diffusion-limited part and not merely "growth".
+/*
+Diffusion-limited aggregation: a seed, then particles released far away that random-walk until
+they touch and stick. Nothing in the rule mentions branches.
+
+This is the one system here with a quantitative number to hit, so it gets the sharpest evidence:
+the mass-radius dimension. An Eden cluster (same neighbourhood, growth site chosen uniformly
+instead of by a diffusing walker) and a uniform sprinkle both have dimension 2, so those two
+controls show the estimator is reading the diffusion-limited part and not merely "growth".
+*/
 val side = 300
 val dla = dlaCluster(side, side, particles = 6000, seed = 2L)
 val fit = dla.fractalDimension(rMin = 5.0, rMaxFraction = 0.75)
@@ -1038,8 +1146,13 @@ val eden = edenCluster(side, side, particles = dla.points.size, seed = 2L)
 val edenFit = eden.fractalDimension(rMin = 5.0, rMaxFraction = 0.75)
 println("CONTROL Eden dimension " + "%.3f".format(edenFit.dimension))
 val sprinkle = sprinkleCluster(side, side, dla.points.size, dla.maxRadius, seed = 2L)
-val sprinkleFit = massRadiusDimension(sprinkle.points, sprinkle.center,
-    rMin = 5.0, rMax = sprinkle.maxRadius * 0.75, minCount = 60)
+val sprinkleFit = massRadiusDimension(
+    sprinkle.points,
+    sprinkle.center,
+    rMin = 5.0,
+    rMax = sprinkle.maxRadius * 0.75,
+    minCount = 60,
+)
 println("CONTROL uniform sprinkle dimension " + "%.3f".format(sprinkleFit.dimension) + " (exactly 2 by construction)")
 
 :::fold draw all three clusters, the first two coloured by arrival order
@@ -1048,10 +1161,11 @@ showImg(
         [
             "DLA: D = " + "%.2f".format(fit.dimension) to dla.arrivalOrderImg().colormap("turbo"),
             "Eden: D = " + "%.2f".format(edenFit.dimension) to eden.arrivalOrderImg().colormap("turbo"),
-            "sprinkle: D = " + "%.2f".format(sprinkleFit.dimension) to sprinkle.mask
+            "sprinkle: D = " + "%.2f".format(sprinkleFit.dimension) to sprinkle.mask,
         ],
-        columns = 3, cellSide = 280
-    )
+        columns = 3,
+        cellSide = 280,
+    ),
 )
 :::endfold
 ```
@@ -1097,33 +1211,49 @@ arrival process rather than by the rule.
 val dla = dlaCluster(300, 300, particles = 6000, seed = 2L)
 
 :::fold crop once to the finished cluster's bounding box, and colour by arrival order on its full scale
-// The crop is the colour-range discipline in geometry: taken ONCE, from the finished cluster, never
-// from the frame -- a crop that tracked the growing prefix would zoom out as the cluster grew and
-// the screening this clip is about would be the one thing you could not see.
-//
-// Per AXIS rather than a square around maxRadius: a DLA cluster is anisotropic, and maxRadius is set
-// by its single longest arm, so a square crop leaves a third of the panel permanently empty.
+/*
+The crop is the colour-range discipline in geometry: taken ONCE, from the finished cluster, never
+from the frame -- a crop that tracked the growing prefix would zoom out as the cluster grew and
+the screening this clip is about would be the one thing you could not see.
+
+Per AXIS rather than a square around maxRadius: a DLA cluster is anisotropic, and maxRadius is set
+by its single longest arm, so a square crop leaves a third of the panel permanently empty.
+*/
 val pad = 2
 val x0 = (dla.points.minOf { it.x }.toInt() - pad).coerceAtLeast(0)
 val y0 = (dla.points.minOf { it.y }.toInt() - pad).coerceAtLeast(0)
 val cw = (dla.points.maxOf { it.x }.toInt() + pad + 1 - x0).coerceAtMost(300 - x0)
 val ch = (dla.points.maxOf { it.y }.toInt() + pad + 1 - y0).coerceAtMost(300 - y0)
 
-// `arrivalPrefixImg` fixes the colour ramp to the FULL cluster's particle count, so a branch keeps
-// the colour it arrived with; `arrivalOrderImg` normalises by its own count and would re-map the
-// newest particle to the top of turbo on every frame.
-fun cluster(dla: Aggregate, n: Int) =
-    ["particles " + n + " of " + dla.points.size to
-        dla.arrivalPrefixImg(n).crop(x0, y0, cw, ch).colormap("turbo", 0f, 1f).upscaleNearest(3)]
+/*
+`arrivalPrefixImg` fixes the colour ramp to the FULL cluster's particle count, so a branch keeps
+the colour it arrived with; `arrivalOrderImg` normalises by its own count and would re-map the
+newest particle to the top of turbo on every frame.
+*/
+fun cluster(dla: Aggregate, n: Int) = [
+    "particles " + n + " of " + dla.points.size to
+        dla.arrivalPrefixImg(n).crop(x0, y0, cw, ch).colormap("turbo", 0f, 1f).upscaleNearest(3),
+]
+
 :::endfold
 
-// Why the crop: a cluster is a fixed amount of ink, and how legible its growth is depends entirely on
-// how much of the frame that ink occupies. Note the particle count in the first line -- `particles`
-// is a ceiling, not a promise, and this cluster stopped well short of the 6000 asked for.
+/*
+Why the crop: a cluster is a fixed amount of ink, and how legible its growth is depends entirely on
+how much of the frame that ink occupies. Note the particle count in the first line -- `particles`
+is a ceiling, not a promise, and this cluster stopped well short of the 6000 asked for.
+*/
 println(dla)
-println("cropped to " + cw + " x " + ch + " of 300 x 300, so " +
-    "%.1f".format(100.0 * dla.points.size / (cw * ch)) + "% of the panel is ever lit, against " +
-    "%.1f".format(100.0 * dla.points.size / 90000.0) + "% uncropped")
+println(
+    "cropped to " +
+        cw +
+        " x " +
+        ch +
+        " of 300 x 300, so " +
+        "%.1f".format(100.0 * dla.points.size / (cw * ch)) +
+        "% of the panel is ever lit, against " +
+        "%.1f".format(100.0 * dla.points.size / 90000.0) +
+        "% uncropped",
+)
 
 animateEvolution(
     Unit,
@@ -1131,7 +1261,7 @@ animateEvolution(
     seconds = 7.0,
     cellSide = 660,
     step = { it },
-    panels = { _, n -> cluster(dla, n) }
+    panels = { _, n -> cluster(dla, n) },
 )
 ```
 
@@ -1165,29 +1295,45 @@ same tree.
 // L-systems are the one generative system in this family whose output can be checked exactly and
 // combinatorially rather than statistically -- so they carry the sharpest evidence here.
 println("algae derivation lengths (Fibonacci): " + LSYSTEM_ALGAE.derivations(9).map { it.length })
-println("Koch snowflake forward symbols (3 * 4^n): " +
-    (0..5).map { gen -> LSYSTEM_KOCH_SNOWFLAKE.derive(gen).count { it == 'F' } })
+println(
+    "Koch snowflake forward symbols (3 * 4^n): " +
+        (0..5).map { gen -> LSYSTEM_KOCH_SNOWFLAKE.derive(gen).count { it == 'F' } },
+)
 
-// And the turtle: the path CLOSES, its drawn length quadruples exactly at constant step size, and
-// its enclosed area matches the closed form 9^n * A0 * (1 + 3/5(1 - (4/9)^n)). FLine stores
-// single-precision coordinates, so "exact" here means to float precision.
+/*
+And the turtle: the path CLOSES, its drawn length quadruples exactly at constant step size, and
+its enclosed area matches the closed form 9^n * A0 * (1 + 3/5(1 - (4/9)^n)). FLine stores
+single-precision coordinates, so "exact" here means to float precision.
+*/
 val step = 1.0
 val tp = TurtleParams(angle = Math.PI / 3.0, step = step)
 val gens = (0..5).map { drawLSystem(LSYSTEM_KOCH_SNOWFLAKE, it, tp) }
 println("worst closure residual: " + gens.map { turtleClosureError(it, step) }.max() + " of a step")
 val lens = gens.map { flineTotalLength(it.lines) }
 println("length ratio per generation: " + (1..5).map { "%.6f".format(lens[it] / lens[it - 1]) })
-println("area, relative error against the closed form: " + (0..5).map { gen ->
-    val a0 = Math.sqrt(3.0) / 4.0 * step * step
-    val predicted = Math.pow(9.0, gen.toDouble()) * a0 * (1.0 + 0.6 * (1.0 - Math.pow(4.0 / 9.0, gen.toDouble())))
-    "%.1e".format(Math.abs(Math.abs(flineSignedArea(gens[gen].lines)) - predicted) / predicted)
-})
+println(
+    "area, relative error against the closed form: " +
+        (0..5).map { gen ->
+            val a0 = Math.sqrt(3.0) / 4.0 * step * step
+            val predicted =
+                Math.pow(9.0, gen.toDouble()) * a0 * (1.0 + 0.6 * (1.0 - Math.pow(4.0 / 9.0, gen.toDouble())))
+            "%.1e".format(Math.abs(Math.abs(flineSignedArea(gens[gen].lines)) - predicted) / predicted)
+        },
+)
 // Control: one wrong turn and none of that holds.
-println("CONTROL, turn angle perturbed by 0.01 rad: open by " +
-    "%.1f".format(turtleClosureError(drawLSystem(LSYSTEM_KOCH_SNOWFLAKE, 4, tp.copy(angle = Math.PI / 3.0 + 0.01)), step)) + " steps")
+println(
+    "CONTROL, turn angle perturbed by 0.01 rad: open by " +
+        "%.1f"
+            .format(
+                turtleClosureError(drawLSystem(LSYSTEM_KOCH_SNOWFLAKE, 4, tp.copy(angle = Math.PI / 3.0 + 0.01)), step),
+            ) +
+        " steps",
+)
 
 // Stochastic productions vary the TOPOLOGY, not merely the coordinates.
-val plants = (1L..3L).map { drawLSystem(LSYSTEM_STOCHASTIC_PLANT, 5, TurtleParams(angle = Math.toRadians(24.0), step = 4.0), seed = it) }
+val plants = (1L..3L).map {
+    drawLSystem(LSYSTEM_STOCHASTIC_PLANT, 5, TurtleParams(angle = Math.toRadians(24.0), step = 4.0), seed = it)
+}
 println("three seeds of the stochastic plant give branch counts " + plants.map { it.lines.size })
 
 // The arrowhead curve draws on A and B, not F -- with the default alphabet it renders nothing.
@@ -1197,12 +1343,15 @@ println("arrowhead, generation 7: " + arrow.drawnSegments + " drawn segments (3^
 :::fold rasterize the three curves and the three plants
 showImg(
     montage(
-        ["Koch snowflake gen 4" to rasterizeFLines(gens[4].lines, 300, 300),
+        [
+            "Koch snowflake gen 4" to rasterizeFLines(gens[4].lines, 300, 300),
             "arrowhead gen 7" to rasterizeFLines(arrow.lines, 300, 300),
-            "dragon gen 12" to rasterizeFLines(drawLSystem(LSYSTEM_DRAGON, 12, TurtleParams(angle = Math.PI / 2.0)).lines, 300, 300)] +
-            plants.mapIndexed { i, pl -> "plant seed " + (i + 1) to rasterizeFLines(pl.lines, 240, 300) },
-        columns = 3, cellSide = 280
-    )
+            "dragon gen 12" to
+                rasterizeFLines(drawLSystem(LSYSTEM_DRAGON, 12, TurtleParams(angle = Math.PI / 2.0)).lines, 300, 300),
+        ] + plants.mapIndexed { i, pl -> "plant seed " + (i + 1) to rasterizeFLines(pl.lines, 240, 300) },
+        columns = 3,
+        cellSide = 280,
+    ),
 )
 :::endfold
 ```
@@ -1238,21 +1387,26 @@ back on its start to `2.3 × 10⁻¹⁴` of a step.
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/lsystem.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="900" embed=true name="alife-lsystem-video" alt="a Koch snowflake being traced as one continuous stroke beside a bracketed L-system plant drawn depth-first, the pen jumping back to remembered forks"}
 :::static
 :::fold rasterize each prefix in the finished curve's frame
-// `rasterizeFLinesFramed` takes its framing from the FINISHED curve. Plain `rasterizeFLines` fits
-// the raster to whatever it is handed, so a growing prefix rescales every frame: the curve appears
-// to stay the same size while the world shrinks around it, and the growth becomes invisible.
+/*
+`rasterizeFLinesFramed` takes its framing from the FINISHED curve. Plain `rasterizeFLines` fits
+the raster to whatever it is handed, so a growing prefix rescales every frame: the curve appears
+to stay the same size while the world shrinks around it, and the growth becomes invisible.
+*/
 fun drawn(koch: List<FLine>, plant: List<FLine>, f: Double): List<Pair<String, Img>> {
     val pct = (f * 100).toInt()
     return [
         "Koch gen 4: " + pct + "% drawn" to rasterizeFLinesFramed(flinePrefix(koch, f), koch, 420, 420),
-        "plant gen 5: " + pct + "% drawn" to rasterizeFLinesFramed(flinePrefix(plant, f), plant, 420, 420)
+        "plant gen 5: " + pct + "% drawn" to rasterizeFLinesFramed(flinePrefix(plant, f), plant, 420, 420),
     ]
 }
+
 :::endfold
 
-// Animated by DRAWING, not by cutting between derivation depths: an L-system's turtle walks in an
-// order, and `flinePrefix` truncates the emitted FLines at a fraction of their segment count in
-// exactly that order. 240 ticks over 140 displayed frames.
+/*
+Animated by DRAWING, not by cutting between derivation depths: an L-system's turtle walks in an
+order, and `flinePrefix` truncates the emitted FLines at a fraction of their segment count in
+exactly that order. 240 ticks over 140 displayed frames.
+*/
 val koch = drawLSystem(LSYSTEM_KOCH_SNOWFLAKE, 4, TurtleParams(angle = Math.PI / 3.0, step = 1.0))
 val plant = drawLSystem(LSYSTEM_STOCHASTIC_PLANT, 5, TurtleParams(angle = Math.toRadians(24.0), step = 4.0), seed = 1L)
 val ticks = 240
@@ -1263,7 +1417,7 @@ animateEvolution(
     columns = 2,
     cellSide = 420,
     step = { it },
-    panels = { _, n -> drawn(koch.lines, plant.lines, n.toDouble() / ticks) }
+    panels = { _, n -> drawn(koch.lines, plant.lines, n.toDouble() / ticks) },
 )
 ```
 
@@ -1304,34 +1458,46 @@ bridges, all into machinery that was already here:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/bridges.png" wait="16.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// What makes this family Field's rather than a generic ALife library: the bridges out into the
-// things Field already draws, meshes and exports.
-//
-// (a) A reaction-diffusion field -> iso-contour FLines, through the marching-squares extractor in
-//     `contours.kt` that was already here.
+/*
+What makes this family Field's rather than a generic ALife library: the bridges out into the
+things Field already draws, meshes and exports.
+
+(a) A reaction-diffusion field -> iso-contour FLines, through the marching-squares extractor in
+    `contours.kt` that was already here.
+*/
 val rd = grayScottSeed(96, 96, patches = 5, patchSize = 12, seed = 4L).stepTimes(GRAY_SCOTT_SPOTS, 5000)
 val contours = rd.v.isoContourFLines(0.25, cells = 96)
 println("Gray-Scott -> " + contours.size + " iso-contour FLine(s) at v = 0.25")
 
-// (b) Space colonization -> a tree of FLines. Grown into an ANNULUS, which no upward-with-noise
-//     heuristic reaches, so the branching really is following the space. isTree() checks the thing
-//     a picture cannot show: one root, n-1 edges, no cycles.
+/*
+(b) Space colonization -> a tree of FLines. Grown into an ANNULUS, which no upward-with-noise
+    heuristic reaches, so the branching really is following the space. isTree() checks the thing
+    a picture cannot show: one root, n-1 edges, no cycles.
+*/
 val ring = annulusAttractors(1400, 150.0, 140.0, 60.0, 120.0, seed = 3L)
 val tree = spaceColonization(ring, 150.0, 285.0, influenceRadius = 30.0, killRadius = 7.0, stepSize = 5.0)
 println(tree)
 println("is a tree (one root, n-1 edges, acyclic): " + tree.isTree())
 println("CONTROL, no attractors: " + spaceColonization(emptyList(), 150.0, 285.0).nodeCount + " nodes")
 
-// (c) A 3-D life-like automaton -> a TriMesh, through `mesh_sdf.kt`'s marching cubes. The claim
-//     that matters for a mesh is that it is WATERTIGHT -- a leaking mesher looks fine and produces
-//     a model that cannot be printed, booleaned or subdivided. Note an EMPTY mesh is vacuously
-//     watertight, so the triangle count is part of the claim.
-val volume = IntVolume.randomBall(48, 48, 48, density = 0.55, ballFraction = 0.70, seed = 8L)
-    .stepTimes(LIFE3D_CLOUDS, 6)
+/*
+(c) A 3-D life-like automaton -> a TriMesh, through `mesh_sdf.kt`'s marching cubes. The claim
+    that matters for a mesh is that it is WATERTIGHT -- a leaking mesher looks fine and produces
+    a model that cannot be printed, booleaned or subdivided. Note an EMPTY mesh is vacuously
+    watertight, so the triangle count is part of the claim.
+*/
+val volume =
+    IntVolume.randomBall(48, 48, 48, density = 0.55, ballFraction = 0.70, seed = 8L).stepTimes(LIFE3D_CLOUDS, 6)
 println(volume)
 val mesh = volume.toMesh(resolution = 96, smoothRadius = 1)
-println("marched: " + mesh.triangleCount + " triangles, watertight = " + mesh.isWatertight() +
-    ", Euler characteristic = " + mesh.eulerCharacteristic())
+println(
+    "marched: " +
+        mesh.triangleCount +
+        " triangles, watertight = " +
+        mesh.isWatertight() +
+        ", Euler characteristic = " +
+        mesh.eulerCharacteristic(),
+)
 
 :::fold draw the field, the contours, the tree and two views of the volume
 showImg(
@@ -1341,10 +1507,11 @@ showImg(
             "its iso-contours as FLines" to rasterizeFLines(contours, 300, 300),
             "space colonization tree" to rasterizeFLines(tree.toFLines(), 300, 300),
             "3-D CA: z slice" to volume.slice(24).toImg(2).upscaleNearest(5),
-            "3-D CA: depth projection" to volume.depthProjection().colormap("viridis").upscaleNearest(5)
+            "3-D CA: depth projection" to volume.depthProjection().colormap("viridis").upscaleNearest(5),
         ],
-        columns = 3, cellSide = 280
-    )
+        columns = 3,
+        cellSide = 280,
+    ),
 )
 :::endfold
 ```
@@ -1367,23 +1534,28 @@ level set as it moves.
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/bridges.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1000" embed=true name="alife-bridges-video" alt="a Gray-Scott spots field evolving beside its iso-contours, re-extracted every frame, with the loop count rising as spots divide"}
 :::static
 :::fold pin the contour panel's framing to the field's extent
-// The contour panel is framed by the FIELD's extent -- two invisible single-node FLines at the
-// corners of the 96x96 sample grid, in the contour extractor's own pixel coordinates. Framed by
-// the contours' own bounds instead, the early frames (two loops in one corner) would be drawn
-// zoomed right in and the whole figure would zoom out as the pattern spread.
+/*
+The contour panel is framed by the FIELD's extent -- two invisible single-node FLines at the
+corners of the 96x96 sample grid, in the contour extractor's own pixel coordinates. Framed by
+the contours' own bounds instead, the early frames (two loops in one corner) would be drawn
+zoomed right in and the whole figure would zoom out as the pattern spread.
+*/
 val fieldFrame = [FLine().moveTo(0, 0), FLine().moveTo(95, 95)]
 fun bridge(s: GrayScottState, n: Int): List<Pair<String, Img>> {
     val loops = s.v.isoContourFLines(0.25, cells = 96)
     return [
         "v field, step " + n to s.v.colormap("magma", 0f, 0.5f).upscaleNearest(4),
-        "iso v=0.25: " + loops.size + " loops" to rasterizeFLinesFramed(loops, fieldFrame, 384, 384)
+        "iso v=0.25: " + loops.size + " loops" to rasterizeFLinesFramed(loops, fieldFrame, 384, 384),
     ]
 }
+
 :::endfold
 
-// A reaction-diffusion field and its iso-contour FLines, re-extracted afresh every frame -- so the
-// geometry tracks the field instead of being a snapshot of it. 5000 steps over 140 displayed
-// frames: 36 reaction-diffusion steps AND one marching-squares pass per frame.
+/*
+A reaction-diffusion field and its iso-contour FLines, re-extracted afresh every frame -- so the
+geometry tracks the field instead of being a snapshot of it. 5000 steps over 140 displayed
+frames: 36 reaction-diffusion steps AND one marching-squares pass per frame.
+*/
 animateEvolution(
     grayScottSeed(96, 96, patches = 5, patchSize = 12, seed = 4L),
     totalSteps = 5000,
@@ -1391,7 +1563,7 @@ animateEvolution(
     columns = 2,
     cellSide = 384,
     step = { it.step(GRAY_SCOTT_SPOTS) },
-    panels = { s, n -> bridge(s, n) }
+    panels = { s, n -> bridge(s, n) },
 )
 ```
 
@@ -1441,14 +1613,25 @@ val budget = 220
 // The control arm: the same distribution evolve mutates within, same budget, same seed.
 val control = PopulationSearch.random(ops, objective, budget, seed = 13L, label = "random")
 val evolved = PopulationSearch.evolve(
-    ops, objective, budget, seed = 13L,
-    mu = 6, lambda = 12, crossoverRate = 0.3, immigrantRate = 0.08, label = "evolve"
+    ops,
+    objective,
+    budget,
+    seed = 13L,
+    mu = 6,
+    lambda = 12,
+    crossoverRate = 0.3,
+    immigrantRate = 0.08,
+    label = "evolve",
 )
 println(control.summary())
 println(evolved.summary())
-println("margin %.4f  (%.1f%% above the control)".format(
-    evolved.bestFitness - control.bestFitness,
-    100.0 * (evolved.bestFitness / control.bestFitness - 1.0)))
+println(
+    "margin %.4f  (%.1f%% above the control)"
+        .format(
+            evolved.bestFitness - control.bestFitness,
+            100.0 * (evolved.bestFitness / control.bestFitness - 1.0),
+        ),
+)
 
 val best = evolved.best!!.genome
 println("evolved rule: mu=%.4f sigma=%.4f".format(best.mu, best.sigma))
@@ -1457,21 +1640,28 @@ println("  " + leniaRun(leniaSeed(48, 48, best, seed = 5L), best, steps = 90, sa
 :::fold the control's best, then each successive record holder
 val panels = mutableListOf<Pair<String, Img>>()
 val cRule = control.best!!.genome
-panels += "rnd %.2f".format(control.bestFitness) to
-    leniaRun(leniaSeed(48, 48, cRule, seed = 5L), cRule, steps = 90, sampleEvery = 8).field.upscaleNearest(3)
-val picks = evolved.improvements.indices.toList().let { idx ->
-    if (idx.size <= 5) idx else (1..5).map { (it * idx.size / 5) - 1 }
-}
+panels +=
+    "rnd %.2f".format(control.bestFitness) to
+        leniaRun(leniaSeed(48, 48, cRule, seed = 5L), cRule, steps = 90, sampleEvery = 8).field.upscaleNearest(3)
+// Keep the full measured history; display at most five roughly evenly spaced record holders.
+val picks =
+    evolved.improvements.indices.toList().let { idx ->
+        if (idx.size <= 5) idx else (1..5).map { (it * idx.size / 5) - 1 }
+    }
 for (i in picks) {
     val imp = evolved.improvements[i]
-    panels += "g%d %.2f".format(imp.generation, imp.fitness) to
-        leniaRun(leniaSeed(48, 48, imp.genome, seed = 5L), imp.genome, steps = 90, sampleEvery = 8)
-            .field.upscaleNearest(3)
+    panels +=
+        "g%d %.2f".format(imp.generation, imp.fitness) to
+            leniaRun(leniaSeed(48, 48, imp.genome, seed = 5L), imp.genome, steps = 90, sampleEvery = 8)
+                .field
+                .upscaleNearest(3)
 }
 // A FIXED 0..1 range, for the reason section "Evaluating one of these in a box" gives: a saturated
 // Lenia field is constant at 1, and an auto-ranged colour map draws a constant field BLACK.
-showImg(montage(panels, columns = 3, cellSide = 200, displayRange = 0f..1f),
-    caption = "left to right: the random control's best, then each successive record holder")
+showImg(
+    montage(panels, columns = 3, cellSide = 200, displayRange = 0f..1f),
+    caption = "left to right: the random control's best, then each successive record holder",
+)
 :::endfold
 ```
 
@@ -1502,51 +1692,68 @@ what an average hides, and lexicase never averages.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/evolve-ca.png" wait="40.0" timeout="240" capture="box" open-outputs="true" padding="20"}
 :::static
-// The same engine, a completely different genome.
-//
-// A life-like rule is a TABLE: which neighbour counts cause a birth, which cause survival. At a
-// radius-2 neighbourhood that is 24 birth bits and 25 survival bits, a fixed-length bit string, and
-// therefore a genome two parents can be recombined across. LifeRuleGenome.crossover is uniform
-// crossover over the rule table: real recombination, not a graft.
-//
-// Radius 2 rather than the classic Moore 8 is a deliberate choice and it is the most useful thing
-// in this box. At radius 1 the space is 2^17 rules, and a few hundred INDEPENDENT draws land close
-// to the optimum on their own, and evolution beats them by only about 3%. A control arm that nearly wins is telling you the problem is easy, not
-// that the search is good. At radius 2 the space is 2^49 and the margin is 27%.
+/*
+The same engine, a completely different genome.
+
+A life-like rule is a TABLE: which neighbour counts cause a birth, which cause survival. At a
+radius-2 neighbourhood that is 24 birth bits and 25 survival bits, a fixed-length bit string, and
+therefore a genome two parents can be recombined across. LifeRuleGenome.crossover is uniform
+crossover over the rule table: real recombination, not a graft.
+
+Radius 2 rather than the classic Moore 8 is a deliberate choice and it is the most useful thing
+in this box. At radius 1 the space is 2^17 rules, and a few hundred INDEPENDENT draws land close
+to the optimum on their own, and evolution beats them by only about 3%. A control arm that nearly wins is telling you
+the problem is easy, not
+that the search is good. At radius 2 the space is 2^49 and the margin is 27%.
+*/
 
 val ops = LifeRuleGenome(radius = 2)
 val soups = [
     randomSoup(48, 48, density = 0.35, seed = 101L),
-    randomSoup(48, 48, density = 0.12, seed = 202L)
+    randomSoup(48, 48, density = 0.12, seed = 202L),
 ]
 
-// "Alive but not saturated, and still changing" -- activity times a Gaussian band on density.
-// Each factor alone is trivially gamed. A rule that fills the grid and stays filled scores 1 on
-// density and 0 on activity; a rule that flickers every cell scores ~1 on activity and ~0 on the
-// band; an extinct rule scores the floor. Only the product is large for a rule that keeps a
-// moderate population AND keeps rearranging it, which is what everybody means by an interesting
-// rule and what nobody can state by looking.
+/*
+"Alive but not saturated, and still changing" -- activity times a Gaussian band on density.
+Each factor alone is trivially gamed. A rule that fills the grid and stays filled scores 1 on
+density and 0 on activity; a rule that flickers every cell scores ~1 on activity and ~0 on the
+band; an extinct rule scores the floor. Only the product is large for a rule that keeps a
+moderate population AND keeps rearranging it, which is what everybody means by an interesting
+rule and what nobody can state by looking.
+*/
 val objective = caEdgeOfChaosObjective(soups, warmup = 20, scored = 30)
 val budget = 400
 
 val control = PopulationSearch.random(ops, objective, budget, seed = 7L, label = "random")
 
-// LEXICASE, because this objective genuinely has a case structure: one case per soup. A rule that
-// holds together on one initial condition and collapses on the other is exactly what a
-// tournament's average hides, and lexicase never averages.
+/*
+LEXICASE, because this objective genuinely has a case structure: one case per soup. A rule that
+holds together on one initial condition and collapses on the other is exactly what a
+tournament's average hides, and lexicase never averages.
+*/
 val evolved = PopulationSearch.evolve(
-    ops, objective, budget, seed = 7L,
-    mu = 8, lambda = 16, selection = Selection.LEXICASE,
-    crossoverRate = 0.3, immigrantRate = 0.1, label = "evolve"
+    ops,
+    objective,
+    budget,
+    seed = 7L,
+    mu = 8,
+    lambda = 16,
+    selection = Selection.LEXICASE,
+    crossoverRate = 0.3,
+    immigrantRate = 0.1,
+    label = "evolve",
 )
 
 println(control.summary())
 println(evolved.summary())
 println()
-println("margin %.4f  (%.1f%% above the control)".format(
-    evolved.bestFitness - control.bestFitness,
-    100.0 * (evolved.bestFitness / control.bestFitness - 1.0)
-))
+println(
+    "margin %.4f  (%.1f%% above the control)"
+        .format(
+            evolved.bestFitness - control.bestFitness,
+            100.0 * (evolved.bestFitness / control.bestFitness - 1.0),
+        ),
+)
 println("recombined ${evolved.recombined} children by uniform crossover over the rule table")
 println()
 println("evolved rule ${lifeRuleSignature(evolved.best!!.genome)}")
@@ -1560,19 +1767,24 @@ println("and watch the margin collapse -- that is the easy problem, and it is wo
 
 :::fold the control's best, then each successive record holder, on the same soup
 val panels = mutableListOf<Pair<String, Img>>()
-panels += "rnd %.3f".format(control.bestFitness) to
-    caRun(soups[0], control.best!!.genome, 20, 30).finalGrid.toImg(2).upscaleNearest(3)
-val picks = evolved.improvements.indices.toList().let { idx ->
-    if (idx.size <= 5) idx else (1..5).map { (it * idx.size / 5) - 1 }
-}
+panels +=
+    "rnd %.3f".format(control.bestFitness) to
+        caRun(soups[0], control.best!!.genome, 20, 30).finalGrid.toImg(2).upscaleNearest(3)
+// Keep the full measured history; display at most five roughly evenly spaced record holders.
+val picks =
+    evolved.improvements.indices.toList().let { idx ->
+        if (idx.size <= 5) idx else (1..5).map { (it * idx.size / 5) - 1 }
+    }
 for (i in picks) {
     val imp = evolved.improvements[i]
-    panels += "g%d %.3f".format(imp.generation, imp.fitness) to
-        caRun(soups[0], imp.genome, 20, 30).finalGrid.toImg(2).upscaleNearest(3)
+    panels +=
+        "g%d %.3f".format(imp.generation, imp.fitness) to
+            caRun(soups[0], imp.genome, 20, 30).finalGrid.toImg(2).upscaleNearest(3)
 }
 showImg(
     montage(panels, columns = 3, cellSide = 200),
-    caption = "the control's best, then each successive record holder, all on the same soup -- the\n        early ones score BELOW the control, which is what overtaking looks like"
+    caption =
+        "the control's best, then each successive record holder, all on the same soup -- the\n        early ones score BELOW the control, which is what overtaking looks like",
 )
 :::endfold
 ```
@@ -1605,15 +1817,17 @@ but a map of "the best rule that behaves like this".
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/evolve-mapelites.png" wait="60.0" timeout="300" capture="box" open-outputs="true" padding="20"}
 :::static
-// Illuminate the rule space instead of optimising it.
-//
-// MAP-Elites keeps the best rule found in each cell of a grid over the BEHAVIOUR space -- here
-// (density, activity), the same two numbers caEdgeOfChaosObjective already reports as its
-// Evaluation.behaviour. What comes out is not one answer but a map of "the best rule that behaves
-// like THIS", which is the contact sheet below.
-//
-// This is the figure worth looking at. Top left is sparse and nearly dead; bottom right is dense
-// and noisy; and somewhere in the middle band are the rules that hold structure while still moving.
+/*
+Illuminate the rule space instead of optimising it.
+
+MAP-Elites keeps the best rule found in each cell of a grid over the BEHAVIOUR space -- here
+(density, activity), the same two numbers caEdgeOfChaosObjective already reports as its
+Evaluation.behaviour. What comes out is not one answer but a map of "the best rule that behaves
+like THIS", which is the contact sheet below.
+
+This is the figure worth looking at. Top left is sparse and nearly dead; bottom right is dense
+and noisy; and somewhere in the middle band are the rules that hold structure while still moving.
+*/
 
 val ops = LifeRuleGenome(radius = 2)
 val soups = [randomSoup(48, 48, density = 0.35, seed = 303L)]
@@ -1627,17 +1841,21 @@ println(archive)
 println("off-grid (clamped to an edge cell): ${archive.offGridCandidates} of $budget")
 println()
 
-// The control arm for a quality-diversity claim is the same budget of independent draws, binned
-// identically and reduced to the best genome per cell. Comparing against a single best random rule
-// would be the wrong control, because MAP-Elites is not trying to find one good rule.
+/*
+The control arm for a quality-diversity claim is the same budget of independent draws, binned
+identically and reduced to the best genome per cell. Comparing against a single best random rule
+would be the wrong control, because MAP-Elites is not trying to find one good rule.
+*/
 val controlCells = HashMap<List<Int>, Double>()
 val rng = kotlin.random.Random(31L)
 repeat(budget) {
     val e = objective.evaluate(ops.random(rng))
-    val cell = axes.indices.map { d ->
-        (((e.behaviour[d] - axes[d].start) / (axes[d].endInclusive - axes[d].start)) * bins[d])
-            .toInt().coerceIn(0, bins[d] - 1)
-    }
+    val cell =
+        axes.indices.map { d ->
+            (((e.behaviour[d] - axes[d].start) / (axes[d].endInclusive - axes[d].start)) * bins[d])
+                .toInt()
+                .coerceIn(0, bins[d] - 1)
+        }
     val incumbent = controlCells[cell]
     if (incumbent == null || e.fitness > incumbent) controlCells[cell] = e.fitness
 }
@@ -1651,15 +1869,14 @@ println("mutation moves a descriptor across a bin boundary. What illumination bu
 println("held in each cell it does occupy.")
 
 :::fold one panel per occupied cell, labelled (density bin)(activity bin) and score
-val panels = archive.elites.entries
-    .sortedWith(compareBy({ it.key[0] }, { it.key[1] }))
-    .map { (cell, elite) ->
+val panels =
+    archive.elites.entries.sortedWith(compareBy({ it.key[0] }, { it.key[1] })).map { (cell, elite) ->
         "%d%d %.2f".format(cell[0], cell[1], elite.fitness) to
             caRun(soups[0], elite.genome, 20, 25).finalGrid.toImg(2).upscaleNearest(3)
     }
 showImg(
     montage(panels, columns = 6, cellSide = 150),
-    caption = "one panel per occupied cell; the label is (density bin)(activity bin) and the score"
+    caption = "one panel per occupied cell; the label is (density bin)(activity bin) and the score",
 )
 :::endfold
 ```
@@ -1682,21 +1899,23 @@ acceptedMutations=12  evaluations=961
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/evolve-shared-core.png" wait="30.0" timeout="180" capture="box" open-outputs="true" padding="20"}
 :::static
-// The engine is SHARED, and that is the point of the whole exercise.
-//
-// FunctionEvolve.evolve, over Fn graphs, does not contain a search of its own. Its body is
-// PopulationSearch.evolve(mu = 1, lambda = lambda, crossoverRate = 0, immigrantRate = 0) over an
-// FnGenomeOps -- the same engine the three ALife boxes run on. The core
-// skips the parent draw when the population holds one
-// individual and skips the crossover and immigrant draws when their rates are exactly zero. Each
-// of those is right on its own terms; together they make mu=1 a plain (1+lambda) climb.
-//
-// The FIELD_TEST functions.evolve.worked-example pins this search's numbers:
-//
-//     initialScore=-0.8420503456220446   bestScore=-0.15676727177844857
-//     acceptedMutations=12  evaluations=961
-//
-// Below is that same search, running here.
+/*
+The engine is SHARED, and that is the point of the whole exercise.
+
+FunctionEvolve.evolve, over Fn graphs, does not contain a search of its own. Its body is
+PopulationSearch.evolve(mu = 1, lambda = lambda, crossoverRate = 0, immigrantRate = 0) over an
+FnGenomeOps -- the same engine the three ALife boxes run on. The core
+skips the parent draw when the population holds one
+individual and skips the crossover and immigrant draws when their rates are exactly zero. Each
+of those is right on its own terms; together they make mu=1 a plain (1+lambda) climb.
+
+The FIELD_TEST functions.evolve.worked-example pins this search's numbers:
+
+    initialScore=-0.8420503456220446   bestScore=-0.15676727177844857
+    acceptedMutations=12  evaluations=961
+
+Below is that same search, running here.
+*/
 
 val target = with(Functions) { sin(frequency = 1.0, amplitude = 0.5) }
 val seed = with(Functions) { cos(frequency = 1.0, amplitude = 1.0) }
@@ -1706,7 +1925,7 @@ val run = evolve(
     iterations = 120,
     lambda = 8,
     rngSeed = 3L,
-    fitness = matchFitness(target, samples = 160, complexityWeight = 0.01)
+    fitness = matchFitness(target, samples = 160, complexityWeight = 0.01),
 )
 
 println("initialScore=${run.initialScore}")
@@ -1727,7 +1946,7 @@ val xs = (0..255).map { -1.0 + 2.0 * it / 255.0 }
 showSignals(
     "target" to xs.map { target.evalSafe(it, outside = 0.0) },
     "seed" to xs.map { seed.evalSafe(it, outside = 0.0) },
-    "evolved" to xs.map { run.best.evalSafe(it, outside = 0.0) }
+    "evolved" to xs.map { run.best.evalSafe(it, outside = 0.0) },
 )
 :::endfold
 ```
@@ -1766,12 +1985,17 @@ val w = ScriptWorld(width = 200.0, height = 200.0, seed = 1L, wrap = false)
 w.spawn(100.0, 40.0, maxSpeed = 45.0, radius = 1.5) {
     val centre = point(100.0, 100.0)
     forever {
-        phase("orbit")   { moveFor(4.0) { orbit(centre, distance = 42.0) } }
-        phase("close in"){ moveFor(2.0) { arrive(centre, slowRadius = 20.0) } }
-        phase("scatter") { moveFor(3.0) { wander(turn = 40.0); avoidEdges(margin = 18.0) } }
+        phase("orbit") { moveFor(4.0) { orbit(centre, distance = 42.0) } }
+        phase("close in") { moveFor(2.0) { arrive(centre, slowRadius = 20.0) } }
+        phase("scatter") {
+            moveFor(3.0) {
+                wander(turn = 40.0)
+                avoidEdges(margin = 18.0)
+            }
+        }
     }
 }
-w.run(1080)                                   // 18 s at 60 Hz
+w.run(1080) // 18 s at 60 Hz
 println("ticks %d   path %.0f units".format(w.tick, w.totalPathLength()))
 println("phases entered, in order:")
 w.events.filter { it.kind == "phase" }.take(6).forEach { println("  tick %5d  %s".format(it.tick, it.detail)) }
@@ -1812,9 +2036,19 @@ w.addWall(120.0, 30.0, 120.0, 170.0, name = "barrier")
 
 [WallResponse.SLIDE, WallResponse.BOUNCE, WallResponse.STOP].forEachIndexed { i, r ->
     w.spawn(
-        25.0, 60.0 + i * 25.0, maxSpeed = 90.0, radius = 2.0, steerResponse = 1.0,
-        vx = 90.0, vy = 16.0, wallResponse = r, restitution = 0.9, tag = r.name
-    ) { moveFor(8.0) { keepVelocity() } }
+        25.0,
+        60.0 + i * 25.0,
+        maxSpeed = 90.0,
+        radius = 2.0,
+        steerResponse = 1.0,
+        vx = 90.0,
+        vy = 16.0,
+        wallResponse = r,
+        restitution = 0.9,
+        tag = r.name,
+    ) {
+        moveFor(8.0) { keepVelocity() }
+    }
 }
 w.run(420)
 w.actors.forEach {
@@ -1826,7 +2060,13 @@ w.actors.forEach {
 // are three identical grey trails and the figure cannot show what the table says.
 val cols = [vec(0.45, 0.78, 1.0, 1.0), vec(1.0, 0.62, 0.28, 1.0), vec(0.55, 0.9, 0.55, 1.0)]
 val trails = w.trailFLines().mapIndexed { i, f -> f.also { it.color = cols[i % cols.size] } }
-lines(*(w.obstacleFLines() + trails).toTypedArray(), channel = "walls", w = 620.0, h = 620.0, fitToSize = true)
+lines(
+    *(w.obstacleFLines() + trails).toTypedArray(),
+    channel = "walls",
+    w = 620.0,
+    h = 620.0,
+    fitToSize = true,
+)
 :::endfold
 ```
 
@@ -1856,29 +2096,36 @@ nothing.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/walls-routing.png" wait="40.0" timeout="300" capture="box" open-outputs="true" padding="20"}
 :::static
-val GOAL_X = 175.0; val GOAL_Y = 100.0
-val STEPS = 1800                              // 30 s at 60 Hz
-val SEEDS = [1L, 2L, 3L, 4L]; val PER_SEED = 8
+val GOAL_X = 175.0
+val GOAL_Y = 100.0
+val STEPS = 1800 // 30 s at 60 Hz
+val SEEDS = [1L, 2L, 3L, 4L]
+val PER_SEED = 8
 
-fun maze(seed: Long, routed: Boolean) = ScriptWorld(width = 200.0, height = 200.0, seed = seed, wrap = false).also { w ->
-    w.addWall(70.0, 45.0, 70.0, 200.0, name = "open at the bottom")
-    w.addWall(130.0, 0.0, 130.0, 155.0, name = "open at the top")
-    val jitter = kotlin.random.Random(seed)   // same jitter in both arms: identical start positions
-    repeat(PER_SEED) {
-        w.spawn(
-            18.0 + jitter.nextDouble(-8.0, 8.0), 100.0 + jitter.nextDouble(-28.0, 28.0),
-            maxSpeed = 35.0, radius = 1.2, steerResponse = 0.3, tag = if (routed) "routed" else "direct"
-        ) {
-            val goal = point(GOAL_X, GOAL_Y)
-            moveUntil(maxSeconds = STEPS / 60.0, speed = 35.0, until = { near(goal, 6.0) }) {
-                if (routed) route(goal, clearance = 3.5) else seek(goal)
-                avoidWalls(clearance = 3.0, weight = 0.6)
-                separate(range = 4.0, weight = 0.4)
+fun maze(seed: Long, routed: Boolean) =
+    ScriptWorld(width = 200.0, height = 200.0, seed = seed, wrap = false).also { w ->
+        w.addWall(70.0, 45.0, 70.0, 200.0, name = "open at the bottom")
+        w.addWall(130.0, 0.0, 130.0, 155.0, name = "open at the top")
+        val jitter = kotlin.random.Random(seed) // same jitter in both arms: identical start positions
+        repeat(PER_SEED) {
+            w.spawn(
+                18.0 + jitter.nextDouble(-8.0, 8.0),
+                100.0 + jitter.nextDouble(-28.0, 28.0),
+                maxSpeed = 35.0,
+                radius = 1.2,
+                steerResponse = 0.3,
+                tag = if (routed) "routed" else "direct",
+            ) {
+                val goal = point(GOAL_X, GOAL_Y)
+                moveUntil(maxSeconds = STEPS / 60.0, speed = 35.0, until = { near(goal, 6.0) }) {
+                    if (routed) route(goal, clearance = 3.5) else seek(goal)
+                    avoidWalls(clearance = 3.0, weight = 0.6)
+                    separate(range = 4.0, weight = 0.4)
+                }
+                rest(2.0)
             }
-            rest(2.0)
         }
     }
-}
 
 // Stepped in lockstep across seeds rather than run() per seed, so the arrival fraction can be
 // sampled every tick and the two arms share one time base.
@@ -1889,18 +2136,31 @@ for (routed in [true, false]) {
     val total = worlds.sumOf { it.actors.size }
     repeat(STEPS) {
         worlds.forEach { it.step() }
-        arrivals[name]!! += worlds.sumOf { w ->
-            w.actors.count { it.distanceTo(GOAL_X, GOAL_Y) <= 6.0 }
-        }.toDouble() / total
+        arrivals[name]!! +=
+            worlds
+                .sumOf { w ->
+                    w.actors.count { it.distanceTo(GOAL_X, GOAL_Y) <= 6.0 }
+                }
+                .toDouble() / total
     }
-    println("%-7s arrived %.3f of %d   mean travel %.1f".format(
-        name, arrivals[name]!!.last(), total, worlds.sumOf { it.totalPathLength() } / total))
+    println(
+        "%-7s arrived %.3f of %d   mean travel %.1f"
+            .format(
+                name,
+                arrivals[name]!!.last(),
+                total,
+                worlds.sumOf { it.totalPathLength() } / total,
+            ),
+    )
 }
 
 :::fold arrivals over time, both arms
 showSignals(
-    "routed" to arrivals["routed"]!!, "direct" to arrivals["direct"]!!,
-    channel = "arrivals", title = "fraction arrived, ${SEEDS.size} seeds x $PER_SEED agents per arm", yTitle = "of 1"
+    "routed" to arrivals["routed"]!!,
+    "direct" to arrivals["direct"]!!,
+    channel = "arrivals",
+    title = "fraction arrived, ${SEEDS.size} seeds x $PER_SEED agents per arm",
+    yTitle = "of 1",
 )
 :::endfold
 ```
@@ -1945,24 +2205,27 @@ colour, where `Img`'s auto-normalising thumbnail would turn its numerical dust i
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/inline-view.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// IntGrid, GrayScottState and LeniaRun implement ToHTML, so evaluating one draws it. The scales are
-// fixed by MEANING (0..1 for a reagent or a Lenia field, the observed state count for a lattice) and
-// named in every caption -- never taken from the frame, because a saturated Lenia field is constant
-// at 1 and an auto-ranged colour map renders it BLACK, identical to a dead one.
+/*
+IntGrid, GrayScottState and LeniaRun implement ToHTML, so evaluating one draws it. The scales are
+fixed by MEANING (0..1 for a reagent or a Lenia field, the observed state count for a lattice) and
+named in every caption -- never taken from the frame, because a saturated Lenia field is constant
+at 1 and an auto-ranged colour map renders it BLACK, identical to a dead one.
+*/
 display("a. a Life board", LifePatterns.glider.centeredOn(16, 16).h)
 
 // More than two states: the cyclic palette, with the repeat disclosed in the caption.
 display("b. an 8-state soup", IntGrid.random(28, 28, states = 8, seed = 3L).h)
 
 // Gray-Scott: both reagents, both on a FIXED 0..1 scale.
-val seeded = grayScottSeed(64, 64, patches = 4, patchSize = 10, seed = 11L)
-    .stepTimes(GRAY_SCOTT_SPOTS, 2000)
+val seeded = grayScottSeed(64, 64, patches = 4, patchSize = 10, seed = 11L).stepTimes(GRAY_SCOTT_SPOTS, 2000)
 display("c. Gray-Scott, seeded", seeded.h)
 
 // The control arm, and the reason the scale is fixed: v = 0 is a fixed point, so this field is empty.
 // On a fixed scale it is black. Auto-ranged, its numerical dust would become a rich texture.
-display("d. Gray-Scott, unseeded (v = 0)", grayScottSeed(64, 64, patches = 0, seed = 11L)
-    .stepTimes(GRAY_SCOTT_WORMS, 200).h)
+display(
+    "d. Gray-Scott, unseeded (v = 0)",
+    grayScottSeed(64, 64, patches = 0, seed = 11L).stepTimes(GRAY_SCOTT_WORMS, 200).h,
+)
 
 // The two Lenia phases that an auto-ranged scale makes indistinguishable.
 val death = LeniaPresets.ring(0.14, sigma = 0.017, radius = 8, dt = 0.12)

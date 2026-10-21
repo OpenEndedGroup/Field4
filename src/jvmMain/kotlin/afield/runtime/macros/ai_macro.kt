@@ -56,6 +56,17 @@ import kotlin.script.experimental.api.ScriptDiagnostic
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * The `ai("...")` macro, which asks a language model to write the body of the function it is called
+ * in and caches the result in the box's attic.
+ *
+ * The containing function must declare its parameter types and return type; the signature and the
+ * prompt go to the model through [AiMacroBridge], and the generated function is stored between
+ * `// @ai-gen:` and `// @ai-gen-end:` comment lines so it is reused rather than regenerated
+ * ([parseAtticBlock], [appendAtticBlock], [removeAtticBlock]). [resolvePatternRewriteAi] serves the
+ * `ai(...)` side contributions of [PatternRewrite] rules through the same cache.
+ */
+
 // -- Metadata format for AI-generated blocks in attic --
 //
 // // @ai-gen: __foo | sig: (a: Double, v: Vec3): FLine | prompt: a random wiggly FLine...

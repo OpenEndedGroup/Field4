@@ -53,6 +53,15 @@ import java.io.File
 import java.util.concurrent.Executors
 
 /**
+ * StackSL as a main language for a box's children: compile on run, draw in the window above, and check
+ * each run in as a study revision.
+ *
+ * [StackSLPrograms] is the entry point; [StackSLLive] follows a running program's edits in its window,
+ * and [StackSLExecution] is the box execution that runs it. [installStackSLLanguage] registers the
+ * language.
+ */
+
+/**
  * StackSL as one of Field's main languages, and the home of every StackSL program's study.
  *
  * Mark a box "Set Main Language: StackSL" and its children are StackSL programs: each edits its

@@ -1,6 +1,4 @@
 import afield.simulation.physics.ShaderBoids
-import afield.graphics.vulkan.util.GpuNeighbourGrid
-import afield.math.linalg.Vector2f
 
 prop<afield.simulation.physics.ShaderBoids>(written)
 

@@ -61,17 +61,19 @@ import java.nio.ByteBuffer
  *   `VkImage` whose row pitch is the surface's own.
  * - [Path.HOST_BUFFER_COPY]: the pages are imported as a buffer and copied into an image on the GPU,
  *   once per new frame; used when the driver will not lay a linear image over them.
- * - [Path.CPU_COPY]: the old route, kept as the fallback: a blit into a staging buffer, a swizzle on
+ * - [Path.CPU_COPY]: the fallback: a blit into a staging buffer, a swizzle on
  *   the CPU, and an upload. Also what `texture(zeroCopy = false)` asks for.
  *
  * The texture is `B8G8R8A8_SRGB` on the zero-copy paths and `R8G8B8A8_SRGB` on the copy path; either
  * way the shader sees RGBA, top row first (v = 0 is the top of the sender's picture). When the sender
  * changes size Syphon replaces the IOSurface, and the texture re-imports the new one; the old one is
  * released only after the frame that last sampled it has completed. (The copy path keeps the first
- * frame's size, as before, and skips frames of another.) Like every Syphon client, the zero-copy paths
+ * frame's size and skips frames of another.) Like every Syphon client, the zero-copy paths
  * read the sender's surface while it may be drawing the next frame into it; Syphon has no cross-process
  * fence to wait on.
  */
+
+/** A sampled texture that tracks a [SyphonClient]'s latest frame; see the file overview for its paths. */
 class SyphonTexture internal constructor(
     val client: SyphonClient,
     private val renderer: Renderer,

@@ -1,21 +1,25 @@
 #version 450
 #extension GL_EXT_buffer_reference : require
 
-layout(std430, buffer_reference) buffer State { vec4 a[]; };
-layout(std430, buffer_reference) buffer Heat  { vec4 a[]; };
+layout(std430, buffer_reference) buffer State {
+    vec4 a[];
+};
+layout(std430, buffer_reference) buffer Heat {
+    vec4 a[];
+};
 
 layout(location = 0) out vec2 tc;
 layout(location = 1) out float warmth;
 
 layout(push_constant) uniform push {
     State state;
-    Heat  heat;
+    Heat heat;
     float aspectRatio;
 } pc;
 
 const vec3[6] corner = vec3[6](
-    vec3(0,0,0), vec3(1,0,0), vec3(1,1,0),
-    vec3(0,0,0), vec3(1,1,0), vec3(0,1,0)
+vec3(0,0,0), vec3(1,0,0), vec3(1,1,0),
+vec3(0,0,0), vec3(1,1,0), vec3(0,1,0)
 );
 
 void main() {

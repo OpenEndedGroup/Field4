@@ -4,6 +4,15 @@ import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.targets.RenderToTexture
 import afield.graphics.texture.HasImageView
 
+/**
+ * The shared contract for dense optical flow in Field: the [OpticalFlowOperation] interface, the
+ * [OpticalFlowBackend] choice, and the [opticalFlow] factory that picks a backend for a renderer.
+ *
+ * Both backends, [HardwareOpticalFlow] and [PyramidOpticalFlow], take two images of one renderer and
+ * write the same RGBA32F flow texture, so code that samples [OpticalFlowOperation.output] does not
+ * depend on which one ran.
+ */
+
 /** Which implementation computes a [OpticalFlowOperation]. */
 enum class OpticalFlowBackend {
     /** [HARDWARE] when the device has VK_NV_optical_flow enabled, [PYRAMID] everywhere else. */

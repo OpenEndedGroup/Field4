@@ -1,0 +1,17 @@
+{
+  "baseline": "9b0b6e368",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/gpu_state.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 1,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/docs_capture/gpu_state_flat_fbm.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 1,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

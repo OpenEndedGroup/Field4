@@ -1,6 +1,6 @@
 # SolidCraft: edit the design, then see the part
 
-[SolidCraft](https://github.com/bherbruck/solidcraft) is a parametric CAD engine. Field's optional
+[SolidCraft](https://github.com/tangency-labs/solidcraft) is a parametric CAD engine. Field's optional
 `afield.geometry.solid.solidcraft` binding opens a saved design, changes a named parameter, evaluates its feature
 tree, and returns B-rep measurements or a triangle mesh for display. It can also export STEP, binary
 STL, and the edited SolidCraft design. This is a small first binding across SolidCraft's geometry,
@@ -43,8 +43,6 @@ operating system and architecture you use.
 ```diffstatic {data-lang=kotlin}
 import afield.geometry.solid.solidcraft.SolidCraftDesign
 import afield.geometry.solid.solidcraft.SolidCraftLibrary
-import afield.geometry.mesh.showMesh
-import afield.geometry.mesh.weld
 
 if (SolidCraftLibrary.isAvailable) {
     SolidCraftDesign.openBundledExample().use { part ->
@@ -66,6 +64,6 @@ float mesh format; call `.weld()` when you want Field's index-based watertightne
 Close a design with `use { }` when done. An invalid parameter edit leaves the preceding design and
 evaluation intact.
 
-This first slice reads and edits existing feature trees. It does not yet create sketches or features
-from Kotlin, and its calls run in the calling thread. The [starting point](offline.html?file=assets/agent_transcripts/solidcraft_intro/metadata.edn)
+To build a design from sketches and features in code instead, see
+[SolidCraft: build a part from code](solidcraft_building.md). Calls run in the calling thread. The [starting point](offline.html?file=assets/agent_transcripts/solidcraft_intro/metadata.edn)
 is a small place to test which parts of that API are worth extending.

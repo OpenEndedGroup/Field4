@@ -33,6 +33,16 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
+/**
+ * Drive the browser build of the Patchy editor from box code: [Box.patchyWeb] shows Patchy in an
+ * output channel and returns a [PatchyWebSession].
+ *
+ * The session's suspend methods ([PatchyWebSession.state], [PatchyWebSession.script],
+ * [PatchyWebSession.newDocument], [PatchyWebSession.addLayer], [PatchyWebSession.fillRect],
+ * [PatchyWebSession.undo], [PatchyWebSession.redo]) send tool calls to the Patchy page and wait
+ * for its replies, so call them inside `go { ... }`.
+ */
+
 /** Show the Field build of Patchy, with its visible canvas controlled by this box's Kotlin. */
 fun Box.patchyWeb(
     channel: String = "patchy", width: Int = 1200, height: Int = 800,

@@ -6,6 +6,16 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 /**
+ * Releases Vulkan handles when the Kotlin object that owned them is garbage collected.
+ *
+ * A resource calls [AutoDisposer.register] with a cleanup lambda and keeps the returned
+ * [AutoDisposer.Token]. When the object has been collected, the renderer's frame loop calls
+ * [AutoDisposer.drain] and queues the cleanup on its retirement queue. Explicit cleanup calls
+ * [AutoDisposer.Token.disable] first, so a resource is released at most once whichever path gets
+ * there first. Tests are in `AutoDisposerTest`.
+ */
+
+/**
  * GC-driven disposal, with optional device ownership for deterministic shutdown.
  * Cleanup actions must capture handles, not the registered object itself.
  *
@@ -52,6 +62,7 @@ object AutoDisposer {
     private val ready = ConcurrentHashMap<PhantomReference<Any>, Token>()
     private val nextOrder = AtomicLong()
 
+    /** Track [target]; [cleanup] runs once after it is collected, or when [owner] shuts down. */
     fun register(
         target: Any,
         name: String = target.javaClass.simpleName.ifEmpty { "unnamed" },

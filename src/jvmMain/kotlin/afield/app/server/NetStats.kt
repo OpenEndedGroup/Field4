@@ -26,6 +26,10 @@ import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.thread
 
 /**
+ * Per-second counters of WebSocket traffic between the backend and the browser, shown on the pinned "net" console row.
+ */
+
+/**
  * Time-windowed WebSocket traffic stats for the front-end `/ws` channel, surfaced on the pinned "net"
  * console row: `↑` = backend → front end, `↓` = front end → backend. Counters are bumped at the send
  * choke point ([sendWithOutputBackPressure]) and the inbound frame loop; a 1s reporter emits per-second

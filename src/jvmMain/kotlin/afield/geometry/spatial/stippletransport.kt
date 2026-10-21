@@ -58,6 +58,19 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
+ * Runs a learned stipple transport on the CPU: a small SiLU network, trained by the optional
+ * PyTorch tool in `optional/transport-flow`, that moves points from a uniform source rectangle
+ * toward an image's density.
+ *
+ * [loadStippleTransport] reads the exported JSON model. [StippleTransport.transport] and
+ * [StippleTransport.flowMap] integrate points through the learned velocity field (Euler or
+ * midpoint steps), [StippleTransport.pathsFrom] returns each point's path as an [FLine], and
+ * [StippleTransport.sourceParticles] draws the source points. A temporal model also takes a movie
+ * time, so you can draw source points once and re-transport the same list for each frame.
+ * `StippleTransportTest` covers loading and integration.
+ */
+
+/**
  * Loads the optional PyTorch stipple trainer's portable `field.transport-flow.v1` model.
  *
  * Coordinates and velocities are normalized image coordinates with y pointing down. Transport time

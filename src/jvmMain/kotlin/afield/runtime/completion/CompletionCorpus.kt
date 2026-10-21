@@ -44,6 +44,14 @@ import java.io.File
 import java.security.MessageDigest
 
 /**
+ * A reproducible corpus of real boxes for measuring Kotlin completion, harvested with their macros
+ * already expanded so each box sees the preamble it has at run time.
+ *
+ * [CompletionCorpus] reads the bundled starting points and templates, expands each box's macros without
+ * evaluating its code, and checks the result in as fixtures that the completion probes measure against.
+ */
+
+/**
  * The completion corpus: real boxes, with the preamble they have AT RUNTIME.
  *
  * Completion resolves a box against its *inherited preamble*, and in Field a large part of that preamble

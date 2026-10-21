@@ -1,5 +1,4 @@
 import afield.graphics.vulkan.util.Options
-import afield.graphics.vulkan.targets.OpenXRHmdTarget
 
 prop<Window>(window)
 prop<Renderer>(renderer)

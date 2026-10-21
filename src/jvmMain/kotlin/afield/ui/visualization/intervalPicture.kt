@@ -34,6 +34,12 @@ import afield.math.functions.certifiedRange
 import java.util.Locale
 
 /**
+ * Pictures of what interval arithmetic proved about a function: [Functions.Fn.intervalPicture]
+ * draws the search enclosures and certified bounds behind a sampled curve, and [Box.showIntervals]
+ * displays one in a box's output.
+ */
+
+/**
  * A picture of what interval arithmetic proved about a function, and where it had to work to prove
  * it.
  *

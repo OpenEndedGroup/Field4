@@ -7,9 +7,8 @@ layout(push_constant) uniform matrices {
     vec4 finalColor;
 } pc;
 
-
 void main()
 {
     // uFragColor = pc.finalColor;
-   uFragColor = vec4(int(gl_FragCoord.x/32) % 2,int(gl_FragCoord.y/32) % 2,0,1);
+    uFragColor = vec4(int(gl_FragCoord.x/32) % 2,int(gl_FragCoord.y/32) % 2,0,1);
 }

@@ -267,19 +267,26 @@ val live = afield.app.settings.UserKeybindingsManager.resolved
 val ids = ["new-box", "open-command-palette", "show-cheatsheet", "execute-fragment", "connect"]
 // A command with no binding yet is the interesting row, so it says so in a role rather than
 // looking like any other cell.
-val bound = Table(["command", "bound to"])
-    .rows(ids.map { id ->
-        [id, (live.effective[id] ?: live.bindings[id])?.joinToString(" or ") ?: "not registered yet"]
-    })
-    .roleBy("bound to") { if (it == "not registered yet") CellRole.WARN else null }
+val bound =
+    Table(["command", "bound to"])
+        .rows(
+            ids.map { id ->
+                [id, (live.effective[id] ?: live.bindings[id])?.joinToString(" or ") ?: "not registered yet"]
+            },
+        )
+        .roleBy("bound to") { if (it == "not registered yet") CellRole.WARN else null }
 
-markdown("main", """
+markdown(
+    "main",
+    """
     {muted:${live.path.md}}
 
     {muted:${live.problems.size} problem(s) in it}
 
     ${bound.h}
-""", width = 560)
+""",
+    width = 560,
+)
 ```
 
 `effective` is the answer for every command Field has seen this run, override or default

@@ -5,6 +5,13 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
+ * Encodes and decodes the OSC 1.0 messages that OSCQuery sends in WebSocket binary frames.
+ *
+ * [OscQueryCodec] works on byte arrays with no socket, which is what the WebSocket side of
+ * [OscQueryServer] and [OscQueryRemote] needs; UDP traffic goes through JavaOSC instead.
+ */
+
+/**
  * The OSC 1.0 message encoding OSCQuery puts in WebSocket binary frames: an address, a type-tag
  * string and big-endian arguments, each padded to four bytes. Handles `i f s d h T F N`, which is
  * every type an OSCQuery parameter here can have; a bundle or an unknown tag decodes to `null`.

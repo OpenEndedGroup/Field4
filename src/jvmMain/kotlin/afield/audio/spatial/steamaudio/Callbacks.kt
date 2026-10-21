@@ -1,5 +1,11 @@
 package afield.audio.spatial.steamaudio
 
+/**
+ * Callback interfaces for Steam Audio: [PathingVisualizationCallback] and [ProgressCallback] for
+ * watching pathing and baking, and [CustomSceneCallbacks] with [HitResult] for supplying your own
+ * ray tracer in place of Steam Audio's scene.
+ */
+
 import afield.audio.spatial.steamaudio.raw.IPLAnyHitCallback
 import afield.audio.spatial.steamaudio.raw.IPLBatchedAnyHitCallback
 import afield.audio.spatial.steamaudio.raw.IPLBatchedClosestHitCallback

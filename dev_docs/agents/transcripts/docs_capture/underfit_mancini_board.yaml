@@ -7,17 +7,14 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 420.0, h: 70.0 }
       properties:
         code: |
-          import afield.audio.ai.*
-          import afield.ui.visualization.AudioVisualizer
-          import afield.ui.visualization.AudioVisualizerOptions
-          import afield.ui.visualization.AudioVisualizerSource
-          import kotlinx.serialization.json.jsonObject
           import java.io.File
           import java.util.Base64
-          
+          import kotlinx.serialization.json.jsonObject
+
           val folder = File("public/docs/assets/audio_ai_underfit_mancini")
           val json = FieldAudioClient.json
-          fun embedded(name: String, type: String) = "data:$type;base64," + Base64.getEncoder().encodeToString(File(folder, name).readBytes())
+          fun embedded(name: String, type: String) =
+              "data:$type;base64," + Base64.getEncoder().encodeToString(File(folder, name).readBytes())
           fun waveformUrl(label: String): String {
               val envelope = json.parseToJsonElement(File(folder, "$label-waveform.json").readText()).jsonObject
               val id = envelope.getValue("representation_id").toString().trim('"')
@@ -27,21 +24,28 @@ operations:
               val proof = json.parseToJsonElement(File(folder, "$label-proof.json").readText()).jsonObject
               val original = json.decodeFromString<CandidateSet>(proof.getValue("candidate_set").toString())
               // The archive contains the genuine candidate and source separately, but not the old splice.
-              val set = original.copy(candidates = original.candidates.map {
-                  it.copy(splicePreviewRepresentation = null, splicePreviewRepresentationId = null)
-              })
+              val set = original.copy(
+                  candidates = original.candidates.map {
+                      it.copy(splicePreviewRepresentation = null, splicePreviewRepresentationId = null)
+                  },
+              )
               val proxy = requireNotNull(set.candidates.single().proxyRepresentation)
               return candidateBoardHtml(set, "__UNDERFIT_EXPORT__")
                   .replace("__UNDERFIT_EXPORT__${proxy.binaryUrl}", embedded("$label.opus", "audio/ogg"))
                   .replace(AudioVisualizer.fieldAudioWaveformUrl(proxy.id, "__UNDERFIT_EXPORT__"), waveformUrl(label))
           }
           val source = AudioVisualizer.renderHtml(
-              AudioVisualizerSource(audioUrl = embedded("source.opus", "audio/ogg"),
+              AudioVisualizerSource(
+                  audioUrl = embedded("source.opus", "audio/ogg"),
                   waveformUrl = waveformUrl("source"),
-                  durationSeconds = 12.0, label = "MJQ · Skating · source excerpt · 12 seconds"),
+                  durationSeconds = 12.0,
+                  label = "MJQ · Skating · source excerpt · 12 seconds",
+              ),
               AudioVisualizerOptions(width = 1040, waveformHeight = 110),
           )
-          display("comparison", """
+          display(
+              "comparison",
+              """
           <section style="width:1080px;background:#151a20;color:#dbe3e9;padding:18px;box-sizing:border-box;font:13px/1.5 system-ui">
           <style>.fa-judgement{display:none}.fa-card>.field-audio-visualizer{width:100%!important;max-width:100%}</style>
           <h2 style="margin:0 0 8px">Underfit · actual source, baseline and LoRA take</h2>
@@ -51,6 +55,8 @@ operations:
           <h3>Mancini checkpoint · strength 0.85</h3>${archivedBoard("candidate")}
           <p>Archived model outputs. Native 44.1 kHz stereo → 48 kHz audition proxy → Opus for this page.</p>
           </section>
-          """.trimIndent())
+          """
+                  .trimIndent(),
+          )
           println("Underfit archive: original seed-1962 take and matched baseline")
   - execute: { box: underfit_mancini_board }

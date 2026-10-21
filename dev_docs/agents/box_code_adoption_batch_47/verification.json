@@ -1,0 +1,17 @@
+{
+  "baseline": "a637751ae",
+  "sources": [
+    {
+      "path": "public/docs/python_cv.md",
+      "kotlinBodies": 2,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fieldcv_webcam.yaml",
+      "kotlinBodies": 1,
+      "collectionConversions": 1,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

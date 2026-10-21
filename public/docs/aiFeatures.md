@@ -6,7 +6,7 @@ between features is what you are asking for. `ctrl/command-4` starts a
 conversation about a box, `ctrl/command-3` asks for an edit at one place in the
 editor, `ctrl-space` mixes AI candidates into ordinary completion, and
 `ai("...")` fills in a function body from its signature. None of it works until Field has a provider
-to talk to, so configure OpenAI, OpenRouter or Anthropic from
+to talk to, so configure OpenAI, OpenRouter, Anthropic or a [local model server](local_ai.md) from
 [`/welcome`](history_overview.md) or from the environment first.
 
 ## Chat about one box
@@ -92,21 +92,26 @@ it. These are provider-specific histories, not complete document forks.
 A document can expose an existing history without adopting a new persistence format:
 
 ```diffstatic {data-lang=kotlin}
-
 import afield.ai.completion.*
 import afield.ai.diagnostics.*
 import afield.ai.models.*
 
 // Connect these callbacks to your existing saved-state store.
-stateTree("design", "Design", read = {
-    StateTreeSnapshot(
-        nodes = [StateTreeNode("saved-1", title = "Initial design")],
-        current = "saved-1",
-        note = "Saved authored states")
-}, inspect = { id ->
-    require(id == "saved-1")
-    "Width: 6000 mm"
-})
+stateTree(
+    "design",
+    "Design",
+    read = {
+        StateTreeSnapshot(
+            nodes = [StateTreeNode("saved-1", title = "Initial design")],
+            current = "saved-1",
+            note = "Saved authored states",
+        )
+    },
+    inspect = { id ->
+        require(id == "saved-1")
+        "Width: 6000 mm"
+    },
+)
 ```
 
 The callbacks must only read saved data: no compilation, restoration or builds.
@@ -274,21 +279,18 @@ expect:
 -->
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.ai.tools.AgentToolExtensions
-import afield.ai.tools.SummarisesForToolLog
-import afield.ai.tools.ToolExecutionContext
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
-// The request class IS the schema. Its name is the tool's name, and these two
-// annotations are the only prompt this tool gets — write them for a reader who
-// cannot see the code.
+/*
+The request class IS the schema. Its name is the tool's name, and these two
+annotations are the only prompt this tool gets — write them for a reader who
+cannot see the code.
+*/
 @JsonClassDescription("Measure a rectangular room and say whether it meets a minimum floor area.")
 data class MeasureRoom(
-    @JsonPropertyDescription("The room's width in metres.")
-    val width: Double,
-    @JsonPropertyDescription("The room's depth in metres.")
-    val depth: Double,
+    @JsonPropertyDescription("The room's width in metres.") val width: Double,
+    @JsonPropertyDescription("The room's depth in metres.") val depth: Double,
     @JsonPropertyDescription("The smallest floor area, in square metres, that counts as acceptable.")
     val minimumArea: Double = 11.0,
 )
@@ -308,9 +310,12 @@ AgentToolExtensions.register(MeasureRoom::class.java) { _, request ->
 val ctx = ToolExecutionContext()
 println(AgentToolExtensions.describe(ctx).single { "MeasureRoom" in it })
 
-val answer = AgentToolExtensions.execute(
-    ctx, "MeasureRoom", """{"width": 4.2, "depth": 3.1}"""
-) as MeasureRoomResult
+val answer =
+    AgentToolExtensions.execute(
+        ctx,
+        "MeasureRoom",
+        """{"width": 4.2, "depth": 3.1}""",
+    ) as MeasureRoomResult
 println(answer.toolLogSummary())
 ```
 
@@ -351,7 +356,9 @@ each turn:
 AgentToolExtensions.register(
     MeasureRoom::class.java,
     available = { thereIsAPlanOpen() },
-) { _, request -> /* … */ }
+) { _, request ->
+    /* … */
+}
 ```
 
 A closed gate removes the tool from the list the model is shown, rather than
@@ -447,9 +454,11 @@ chat, which keeps a copy with every turn:
 
 ```diffstatic {data-lang=kotlin}
 agentExtension("studio") {
-    branchState("canvas",
+    branchState(
+        "canvas",
         save = { file -> canvas.saveState(file.path) },
-        restore = { file -> canvas = file?.let { PaintCanvas.load(it.path) } ?: PaintCanvas() })
+        restore = { file -> canvas = file?.let { PaintCanvas.load(it.path) } ?: PaintCanvas() },
+    )
 }
 ```
 
@@ -558,11 +567,6 @@ expect:
 -->
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.ai.tools.AgentToolExtensions
-import afield.ai.tools.CarriesToolImages
-import afield.ai.tools.SummarisesForToolLog
-import afield.ai.tools.ToolExecutionContext
-import afield.graphics.render.InspectGeometryFileResult
 import java.io.File
 
 val root = File(System.getProperty("java.io.tmpdir"), "field-ai-tool-docs").also { it.mkdirs() }
@@ -575,15 +579,20 @@ GeometryAgentTools.register()
 val ctx = ToolExecutionContext()
 println(AgentToolExtensions.availableToolNames(ctx))
 
-val report = AgentToolExtensions.execute(
-    ctx, "InspectGeometryFile", """{"path": "knot.obj", "yawDegrees": 34.0}"""
-) as InspectGeometryFileResult
+val report =
+    AgentToolExtensions.execute(
+        ctx,
+        "InspectGeometryFile",
+        """{"path": "knot.obj", "yawDegrees": 34.0}""",
+    ) as InspectGeometryFileResult
 
 println((report as SummarisesForToolLog).toolLogSummary())
 
-// The picture is NOT in the JSON the model reads — see the note above. It comes
-// back on the CarriesToolImages channel, which is what the bridge turns into a
-// real image message. Here it is in the box output instead:
+/*
+The picture is NOT in the JSON the model reads — see the note above. It comes
+back on the CarriesToolImages channel, which is what the bridge turns into a
+real image message. Here it is in the box output instead:
+*/
 val image = (report as CarriesToolImages).toolImages.single()
 display("<img src='" + image.dataUrl + "' style='width:100%'/>")
 ```

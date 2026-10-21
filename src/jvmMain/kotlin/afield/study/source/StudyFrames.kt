@@ -35,6 +35,14 @@ import afield.math.linalg.i
 import afield.lang.stacksl.cpu.CpuRaster
 
 /**
+ * The renderer interface every study draws through: a program and a list of times in, one
+ * [CpuRaster] per time out.
+ *
+ * [StudyFrames] is implemented by StackSL's and RectSL's rasterizers and by [studyFrames] for a
+ * document's own drawing function; [renderAll] collects its frames into a list.
+ */
+
+/**
  * Where a study's frames come from: [P] — a program, a compiled scene — drawn at a size and a list of
  * times, each frame handed back as a [CpuRaster] of the program's raw output.
  *

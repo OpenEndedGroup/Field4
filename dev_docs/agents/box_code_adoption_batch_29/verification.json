@@ -1,0 +1,23 @@
+{
+  "baseline": "ea92696cf",
+  "sources": [
+    {
+      "path": "dev_docs/agents/demos/flow_grain/resources.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/flow_grain/advect.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/flow_grain.yaml",
+      "kotlinBodies": 14,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

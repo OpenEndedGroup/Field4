@@ -33,7 +33,7 @@ start(renderer::run)
 <!-- field-box id="ps_net" index="1" -->
 
 ```edn [field-box id="ps_net" role="properties"]
-{"id" "ps_net" "index" 1 "name" "the net" "parents" ["root" "ps_renderer"] "children" ["ps_sparks"] "properties" {"children" #{#afield/box "ps_sparks"} "parents" #{#afield/box "root" #afield/box "ps_renderer"} "name" "the net" "_tombstone" false "frame" #afield/rect [260.0 40.0 240.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_net_code_.kt" "lines" 41 "characters" 1123 "sha256" "045e4225f3efa5e8084a29937fbf2b906750a35959f35531ac3d8366aee6cbf3"}]}
+{"id" "ps_net" "index" 1 "name" "the net" "parents" ["root" "ps_renderer"] "children" ["ps_sparks"] "properties" {"children" #{#afield/box "ps_sparks"} "parents" #{#afield/box "root" #afield/box "ps_renderer"} "name" "the net" "_tombstone" false "frame" #afield/rect [260.0 40.0 240.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_net_code_.kt" "lines" 44 "characters" 1142 "sha256" "2ad02a1bbe83ed376587c5d6105ed61d0d397007b5c61a10a9e39d708abe1605"}]}
 ```
 
 ```kotlin [field-property box="ps_net" name="code" path="ps_net_code_.kt"]
@@ -45,7 +45,9 @@ import afield.simulation.petri.petri
 prop<PetriNet>(sparkNet)
 prop<PetriRun>(sparkRun)
 
-sparkNet = petri("""
+sparkNet =
+    petri(
+        """
     #petri
     !grid 1/8
 
@@ -73,7 +75,8 @@ sparkNet = petri("""
     // four kicks fill charge, and emptying it is a clap
     charge : 0 ^4
     4*charge -[ clap : cp ]->
-""")
+""",
+    )
 
 // One run, shared: a run remembers the steps it has taken, so every query below reuses them.
 sparkRun = sparkNet.run()
@@ -85,7 +88,7 @@ println("net ready: ${sparkNet.places.size} places, ${sparkNet.transitions.size}
 <!-- field-box id="ps_sparks" index="2" -->
 
 ```edn [field-box id="ps_sparks" role="properties"]
-{"id" "ps_sparks" "index" 2 "name" "firings into sparks" "parents" ["root" "ps_net"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ps_net"} "name" "firings into sparks" "_tombstone" false "frame" #afield/rect [260.0 120.0 240.0 50.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "ps_sparks_vertex_.glsl" "lines" 107 "characters" 3767 "sha256" "6d70ab79446a0d88f31021762f85dc1641471719bd910965f9a7718593317993"} {"name" "fragment" "language" "glsl" "path" "ps_sparks_fragment_.glsl" "lines" 12 "characters" 343 "sha256" "32533ff454fe2a8e91c1c79fafaf0425966187df654994df6c08e0618b7299ca"} {"name" "code" "language" "kotlin" "path" "ps_sparks_code_.kt" "lines" 94 "characters" 3501 "sha256" "7a6a8459b19276355492914b0016d4e86d56da18e56c4e9a4e48576cb8814c4c"}]}
+{"id" "ps_sparks" "index" 2 "name" "firings into sparks" "parents" ["root" "ps_net"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ps_net"} "name" "firings into sparks" "_tombstone" false "frame" #afield/rect [260.0 120.0 240.0 50.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "ps_sparks_vertex_.glsl" "lines" 115 "characters" 3788 "sha256" "9426d325c7c81a66df1a0704fab09e68b61e222d49f81b33bba4ba5b21dbbd37"} {"name" "fragment" "language" "glsl" "path" "ps_sparks_fragment_.glsl" "lines" 12 "characters" 343 "sha256" "32533ff454fe2a8e91c1c79fafaf0425966187df654994df6c08e0618b7299ca"} {"name" "code" "language" "kotlin" "path" "ps_sparks_code_.kt" "lines" 94 "characters" 3623 "sha256" "1407202835294999c9cf8e728e29fe264acdeae8c29c5db6431f7822292cfe47"}]}
 ```
 
 ```glsl [field-property box="ps_sparks" name="vertex" path="ps_sparks_vertex_.glsl"]
@@ -130,12 +133,19 @@ const vec3[5] tint = {
 };
 
 // snare ring, kick ring, hat ring, from the centre out
-const float[3] ringRadius = { 0.36, 0.56, 0.76 };
-const vec3[3] ringTint = { vec3(0.30, 0.78, 1.00), vec3(1.00, 0.52, 0.18), vec3(1.00, 0.86, 0.40) };
+const float[3] ringRadius = {
+    0.36, 0.56, 0.76
+};
+const vec3[3] ringTint = {
+    vec3(0.30, 0.78, 1.00), vec3(1.00, 0.52, 0.18), vec3(1.00, 0.86, 0.40)
+};
+
 
 float hash(uint x) {
-    x ^= x >> 16; x *= 0x7feb352du;
-    x ^= x >> 15; x *= 0x846ca68bu;
+    x ^= x >> 16;
+    x *= 0x7feb352du;
+    x ^= x >> 15;
+    x *= 0x846ca68bu;
     x ^= x >> 16;
     return float(x) / 4294967295.0;
 }
@@ -176,7 +186,8 @@ void main() {
         float fade = 1.0 - age / lifetime;
         float twinkle = 0.55 + 0.45 * sin(age * 47.0 + hash(seed + 3u) * 6.2831853);
         colour = mix(vec3(1.0), tint[kind], clamp(age * 3.0, 0.0, 1.0)) * fade * fade * twinkle * 0.9;
-    } else {
+    }
+    else {
         uint q = p - SLOTS * PER;
         uint ring = min(q / DUST, 2u);
         uint j = q % DUST;
@@ -214,19 +225,20 @@ void main() {
 ```
 
 ```kotlin [field-property box="ps_sparks" name="code" path="ps_sparks_code_.kt"]
-import afield.audio.synth.PatArc
-import afield.audio.synth.PatQ
 import org.lwjgl.vulkan.VK10.*
 
-val cps = 0.5     // cycles a second; the net's grid is an eighth of a cycle
-val life = 1.6    // seconds a spark lives, LIFE in the vertex shader
-val slots = 24    // SLOTS in the vertex shader: firings drawn at once
-val particles = slots * 1400 + 3 * 2400
+val cps = 0.5 // cycles a second; the net's grid is an eighth of a cycle
+val life = 1.6 // seconds a spark lives, LIFE in the vertex shader
+val slots = 24 // SLOTS in the vertex shader: firings drawn at once
+val perBurst = 1400 // PER in the vertex shader: particles per firing.
+val perRing = 2400 // DUST in the vertex shader: particles per dust ring.
+// Change slots/perBurst/perRing together with SLOTS/PER/DUST, then relaunch this box.
+val particles = slots * perBurst + 3 * perRing
 
 // The rings as the shader draws them, centre out, and where each sounding transition
 // launches from: (colour, ring, place). The clap launches from the centre.
-val rings = listOf(listOf("s0", "s1", "s2"), listOf("k0", "k1", "k2", "k3"), listOf("h0", "h1", "h2", "h3", "h4"))
-val radius = listOf(0.36, 0.56, 0.76)
+val rings = [["s0", "s1", "s2"], ["k0", "k1", "k2", "k3"], ["h0", "h1", "h2", "h3", "h4"]]
+val radius = [0.36, 0.56, 0.76]
 val launches = mapOf(
     "kick" to Triple(0, 1, 0),
     "snare" to Triple(1, 0, 0),
@@ -255,7 +267,8 @@ renderer += "petri-sparks" to module
 var bursts = defaultBuffer {
     perFrame = true
     size = slots.vec4s
-}.buffer
+}
+    .buffer
 
 var charge = 0.0
 val tokens = DoubleArray(3)
@@ -278,9 +291,7 @@ loop {
 
     // Everything that fired in the last `life` seconds, newest last.
     val since = PatQ.fromDouble(maxOf(0.0, now - life * cps))
-    val recent = sparkRun.firingsOver(PatArc(since, at))
-        .filter { it.transition in launches }
-        .takeLast(slots)
+    val recent = sparkRun.firingsOver(PatArc(since, at)).filter { it.transition in launches }.takeLast(slots)
 
     bursts.write {
         for (s in 0 until slots) {

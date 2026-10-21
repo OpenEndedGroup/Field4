@@ -18,7 +18,7 @@ Run it. 600 points scattered in a disc and 600 on a ring around it. matchPoints 
 every disc point a ring point of its own, keeping the total squared travel small.
 
 ```edn [field-box id="match_hello" role="properties"]
-{"id" "match_hello" "index" 0 "name" "matchPoints — a disc onto a ring" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "matchPoints — a disc onto a ring" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "match_hello_code_.kt" "lines" 21 "characters" 1052 "sha256" "a4c5ab43e86e1d4f1e592a6961882ad579c767568bd9353860cd9f789ca6871a"}]}
+{"id" "match_hello" "index" 0 "name" "matchPoints — a disc onto a ring" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "matchPoints — a disc onto a ring" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "match_hello_code_.kt" "lines" 28 "characters" 1069 "sha256" "f4d756c57b66278d5c14b53453bc4d079d25b576f5ac66dd14ffedb427773055"}]}
 ```
 
 ```kotlin [field-property box="match_hello" name="code" path="match_hello_code_.kt"]
@@ -26,10 +26,14 @@ every disc point a ring point of its own, keeping the total squared travel small
 // every disc point a ring point of its own, keeping the total squared travel small.
 val rnd = java.util.Random(4)
 val disc = List(600) {
-    val r = 150 * sqrt(rnd.nextDouble()); val a = 2 * PI * rnd.nextDouble()
+    val r = 150 * sqrt(rnd.nextDouble())
+    val a = 2 * PI * rnd.nextDouble()
     vec(r * cos(a), r * sin(a))
 }
-val ring = List(600) { val a = 2 * PI * it / 600; vec(300 * cos(a), 300 * sin(a)) }
+val ring = List(600) {
+    val a = 2 * PI * it / 600
+    vec(300 * cos(a), 300 * sin(a))
+}
 
 val partner = matchPoints(disc, ring).reorder(ring)
 
@@ -39,9 +43,12 @@ fun chord(from: Vec2, to: Vec2, dx: Double) = FLine().moveTo(from.x + dx, from.y
     it.thickness = 0.8
     it.color = okhsl(atan2(to.y.toDouble(), to.x.toDouble()) * 180 / PI + 360, 0.85, 0.65, 0.8)
 }
-lines(disc.indices.map { chord(disc[it], partner[it], -340.0) } +
-      disc.indices.map { chord(disc[it], ring[it], 340.0) },
-      w = 1000.0, h = 500.0, fitToSize = true)
+lines(
+    disc.indices.map { chord(disc[it], partner[it], -340.0) } + disc.indices.map { chord(disc[it], ring[it], 340.0) },
+    w = 1000.0,
+    h = 500.0,
+    fitToSize = true,
+)
 displayOpen("lines")
 ```
 
@@ -58,19 +65,22 @@ each point heads for the partner matchPoints gave it; on the right, for the hear
 point that shares its list index.
 
 ```edn [field-box id="square_to_heart" role="properties"]
-{"id" "square_to_heart" "index" 1 "name" "a morph, matched and unmatched" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a morph, matched and unmatched" "_tombstone" false "frame" #afield/rect [80.0 760.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "square_to_heart_code_.kt" "lines" 40 "characters" 1857 "sha256" "3e604990cd419d6a104a30c3d91c4788ab2f4d4ed26f12b6b02b373569e32ecb"}]}
+{"id" "square_to_heart" "index" 1 "name" "a morph, matched and unmatched" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a morph, matched and unmatched" "_tombstone" false "frame" #afield/rect [80.0 760.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "square_to_heart_code_.kt" "lines" 44 "characters" 1856 "sha256" "94e292d1e78f48f52ee1382be5ebc79c119869976b43161a8939166cfc51c987"}]}
 ```
 
 ```kotlin [field-property box="square_to_heart" name="code" path="square_to_heart_code_.kt"]
-// Launch it (Alt-R). 4000 points flow from a square into a heart and back. On the left
-// each point heads for the partner matchPoints gave it; on the right, for the heart
-// point that shares its list index.
+/*
+Launch it (Alt-R). 4000 points flow from a square into a heart and back. On the left
+each point heads for the partner matchPoints gave it; on the right, for the heart
+point that shares its list index.
+*/
 val rnd = java.util.Random(1)
 val n = 4000
 val square = List(n) { vec(rnd.nextDouble() * 2 - 1, rnd.nextDouble() * 2 - 1) }
 val heart = mutableListOf<Vec2>()
 while (heart.size < n) {
-    val x = rnd.nextDouble() * 2.6 - 1.3; val y = rnd.nextDouble() * 2.6 - 1.3
+    val x = rnd.nextDouble() * 2.6 - 1.3
+    val y = rnd.nextDouble() * 2.6 - 1.3
     val a = x * x + y * y - 1
     if (a * a * a - x * x * y * y * y <= 0) heart += vec(x, 0.1 - y) // image y runs down
 }
@@ -82,12 +92,13 @@ val colour = IntArray(n) {
     (255 shl 24) or ((c.x * 255).toInt() shl 16) or ((c.y * 255).toInt() shl 8) or (c.z * 255).toInt()
 }
 
-val imageWidth = 900; val imageHeight = 440
+val imageWidth = 900
+val imageHeight = 440
 fun splat(px: IntArray, centre: Int, a: Vec2, b: Vec2, t: Double, c: Int) {
     val x = centre + ((a.x + (b.x - a.x) * t) * 160).toInt()
     val y = imageHeight / 2 + ((a.y + (b.y - a.y) * t) * 160).toInt()
-    for (dy in 0..1) for (dx in 0..1)
-        if (x + dx in 0 until imageWidth && y + dy in 0 until imageHeight) px[(y + dy) * imageWidth + x + dx] = c
+    for (dy in 0..1) for (dx in 0..1) if (x + dx in 0 until imageWidth && y + dy in 0 until imageHeight)
+        px[(y + dy) * imageWidth + x + dx] = c
 }
 
 displayOpen("morph")
@@ -118,14 +129,16 @@ to its area. Each pixel gets a target of its own, and is painted with that targe
 place in its disc: hue for the angle, lightness for the distance from the centre.
 
 ```edn [field-box id="million_pixels" role="properties"]
-{"id" "million_pixels" "index" 2 "name" "a million pixels, a million targets" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a million pixels, a million targets" "_tombstone" false "frame" #afield/rect [80.0 1440.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "million_pixels_code_.kt" "lines" 37 "characters" 1827 "sha256" "b0c5c855e250ff86e7731bdeff3f51780ec632e335330867fd27d1db69078934"}]}
+{"id" "million_pixels" "index" 2 "name" "a million pixels, a million targets" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a million pixels, a million targets" "_tombstone" false "frame" #afield/rect [80.0 1440.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "million_pixels_code_.kt" "lines" 47 "characters" 1880 "sha256" "becb2b2114222da73791e41a9c6ffc43434021cbda12151bc0b616092907d101"}]}
 ```
 
 ```kotlin [field-property box="million_pixels" name="code" path="million_pixels_code_.kt"]
-// Run it; a few seconds. Every pixel of a 1024 x 1024 square is a source point, and a
-// million targets are scattered through three discs, each holding a share proportional
-// to its area. Each pixel gets a target of its own, and is painted with that target's
-// place in its disc: hue for the angle, lightness for the distance from the centre.
+/*
+Run it; a few seconds. Every pixel of a 1024 x 1024 square is a source point, and a
+million targets are scattered through three discs, each holding a share proportional
+to its area. Each pixel gets a target of its own, and is painted with that target's
+place in its disc: hue for the angle, lightness for the distance from the centre.
+*/
 val side = 1024
 val n = side * side
 val ax = FloatArray(n) { it % side + 0.5f }
@@ -135,27 +148,35 @@ val discs = listOf(Triple(330.0, 400.0, 250.0), Triple(740.0, 300.0, 160.0), Tri
 val area = discs.sumOf { it.third * it.third }
 val rnd = java.util.Random(9)
 val home = IntArray(n)
-val bx = FloatArray(n); val by = FloatArray(n)
+val bx = FloatArray(n)
+val by = FloatArray(n)
 for (j in 0 until n) {
     var pick = rnd.nextDouble() * area
     var d = 0
-    while (pick > discs[d].third * discs[d].third) { pick -= discs[d].third * discs[d].third; d++ }
-    val r = discs[d].third * sqrt(rnd.nextDouble()); val a = 2 * PI * rnd.nextDouble()
+    while (pick > discs[d].third * discs[d].third) {
+        pick -= discs[d].third * discs[d].third
+        d++
+    }
+    val r = discs[d].third * sqrt(rnd.nextDouble())
+    val a = 2 * PI * rnd.nextDouble()
     home[j] = d
-    bx[j] = (discs[d].first + r * cos(a)).toFloat(); by[j] = (discs[d].second + r * sin(a)).toFloat()
+    bx[j] = (discs[d].first + r * cos(a)).toFloat()
+    by[j] = (discs[d].second + r * sin(a)).toFloat()
 }
 
 val start = System.nanoTime()
 val match = BspOt2D.match(ax, ay, bx, by, BspOt2D.Options(trees = 8))
 val seconds = (System.nanoTime() - start) / 1e9
 
-val px = IntArray(n) { i ->
-    val j = match.targetOfSource[i]
-    val (cx, cy, radius) = discs[home[j]]
-    val dx = bx[j] - cx; val dy = by[j] - cy
-    val c = okhsl(atan2(dy, dx) * 180 / PI + 360, 0.85, 0.25 + 0.6 * sqrt(dx * dx + dy * dy) / radius)
-    (255 shl 24) or ((c.x * 255).toInt() shl 16) or ((c.y * 255).toInt() shl 8) or (c.z * 255).toInt()
-}
+val px =
+    IntArray(n) { i ->
+        val j = match.targetOfSource[i]
+        val (cx, cy, radius) = discs[home[j]]
+        val dx = bx[j] - cx
+        val dy = by[j] - cy
+        val c = okhsl(atan2(dy, dx) * 180 / PI + 360, 0.85, 0.25 + 0.6 * sqrt(dx * dx + dy * dy) / radius)
+        (255 shl 24) or ((c.x * 255).toInt() shl 16) or ((c.y * 255).toInt() shl 8) or (c.z * 255).toInt()
+    }
 display("main", afield.media.image.util.PngEncoder.encode(px, side, side))
 displayOpen("main")
 println("matched %,d to %,d in %.1f s, rms travel %.1f px".format(n, n, seconds, sqrt(match.meanSquaredDistance)))

@@ -20,6 +20,18 @@ class InventoryTest(unittest.TestCase):
         result.run()
         return result
 
+    def test_recorded_function_identity_is_retained_but_starter_is_editable(self):
+        files = {
+            "dev_docs/agents/demos/function_conversation_example/function_source_code_.kt": "println(1)",
+            "dev_docs/agents/demos/function_conversation_example/studies/function_source/r9-82456e1e48ac.kt": "println(1)",
+            "dev_docs/agents/demos/other/studies/source/r2-deadbeef.kt": "println(2)",
+            "dev_docs/agents/demos/function_conversation/function_source_code_.kt": "println(3)",
+        }
+        result = self.census(files)
+        self.assertEqual([r["path"] for r in result.rows],
+                         ["dev_docs/agents/demos/function_conversation/function_source_code_.kt"])
+        self.assertEqual({r["path"] for r in result.excluded}, set(files) - {result.rows[0]["path"]})
+
     def test_inline_only_code_is_an_editable_source(self):
         metadata = '{"boxes" [{"id" "a" "properties" {"code" #afield/file-inline {"path" "a_code_.kt" "inline" "println(1)"}}}]}'
         result = self.census({"public/docs/assets/example/metadata.edn": metadata})

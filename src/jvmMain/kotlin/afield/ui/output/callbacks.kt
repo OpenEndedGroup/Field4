@@ -24,6 +24,12 @@ import afield.runtime.execution.KotlinExecution
 import afield.document.properties.Delegation
 import kotlinx.coroutines.CancellationException
 
+/**
+ * Per-box callback tables that run when a box's frame, viewport, name or children change.
+ *
+ * Box code adds a named entry to `onFrameChange`, `onViewportChange`, `onNameChange` or `onTopologyChange`. A frame or name callback receives the current and incoming value and returns the value to keep. A callback that throws is reported as an error on the box, and the remaining callbacks for that change are skipped.
+ */
+
 private fun reportCallbackException(box: Box, throwable: Throwable, context: String) {
     val originSession = runCatching { thisSession.get() }.getOrNull()
     KotlinExecution.reportEvalException(

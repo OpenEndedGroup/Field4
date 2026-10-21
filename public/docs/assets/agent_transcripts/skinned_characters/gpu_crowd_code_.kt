@@ -6,6 +6,7 @@ every pose, which costs 2.8 ms for a 50,000-vertex character and cannot be done 
 EDIT `count` AND RE-RUN. The per-frame CPU cost is `count x bones` matrices, so 2 here.
 */
 val count = 64
+require(count > 0) { "count must be positive; use 1 for a single character" }
 
 /*
 `renderer` and `window` come from box 0, which publishes them with `prop<Renderer>(renderer)`.
@@ -74,7 +75,8 @@ loop {
                 (t + i * 0.09f) % 2f,
                 "curl",
                 (t * 0.7f + i * 0.05f) % 2f,
-                mix = i / (count - 1f),
+                // One character uses the first clip; there is no blend span to divide by.
+                mix = if (count == 1) 0f else i / (count - 1f),
             )
         },
     )

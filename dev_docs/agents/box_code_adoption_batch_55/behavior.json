@@ -1,0 +1,26 @@
+{
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/physics_manifold_path_trace.yaml",
+      "actualNativeSceneGeometryAndMaterialsIdentical": true,
+      "allObservedRootAndPartsClosedBeforeRendering": true,
+      "injectedFailureClosesObservedSolids": true,
+      "proof": "9bd4ace462e79a948cac28a9ffdc73c74042724242cef2fd66e1272ca2ddf23a"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/polytope_manifold_path_trace.yaml",
+      "actualNativeSceneGeometryAndMaterialsIdentical": true,
+      "allObservedRootAndPartsClosedBeforeRendering": true,
+      "injectedFailureClosesObservedSolids": true,
+      "proof": "55014f960c976f1b40a67c935c8b9789a5f9205fa405c87cff77fcc6a7de81dc"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/life3d_manifold_path_trace.yaml",
+      "actualNativeSceneGeometryAndMaterialsIdentical": true,
+      "allObservedRootAndPartsClosedBeforeRendering": true,
+      "injectedFailureClosesObservedSolids": true,
+      "proof": "63f79c97f3097229a886416478a86b5a992430ca6e92a69c5561c82f7522ea4f"
+    }
+  ],
+  "limits": "Real full authored CPU/native geometry and scene import, plus controlled failure; stops before environment loading, camera and Vulkan renderer creation. No GPU rendering or new public capture."
+}

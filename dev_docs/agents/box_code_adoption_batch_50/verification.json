@@ -1,0 +1,11 @@
+{
+  "baseline": "5d3e9766a",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/statistics_examples.yaml",
+      "kotlinBodies": 5,
+      "collectionConversions": 5,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

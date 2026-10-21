@@ -13,17 +13,17 @@ operations:
       properties:
         code: |
           import afield.graphics.vulkan.util.Options
-          
+
           prop<Window>(window)
           prop<Renderer>(renderer)
-          
+
           Options.enableHDR = false
-          
+
           once.renderer {
               window = Window("RectSL playground")
               Renderer(window)
           }
-          
+
           println("recstl renderer ready")
           start(renderer::run)
   # 2. playground box — compiles the snippet, draws it live, and publishes the
@@ -34,31 +34,34 @@ operations:
       frame: { x: 300.0, y: 140.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // RectSL playground.
-          //
-          // Edit the `rectsl` program below and re-run this box to change it live.
-          // The transport controls in this box's output area drive the clock:
-          //   play  — advance time every frame and loop the animation
-          //   loop  — wrap at the end (off = run once and hold on the last frame)
-          //   speed — playback rate multiplier
-          //   time  — scrub to a frame (while paused); moving it freezes the clock there
-          //
-          // See the "RectSL examples" docs page / rectsl_cheatsheet.md for the language.
+          /*
+          RectSL playground.
+
+          Edit the `rectsl` program below and re-run this box to change it live.
+          The transport controls in this box's output area drive the clock:
+            play  — advance time every frame and loop the animation
+            loop  — wrap at the end (off = run once and hold on the last frame)
+            speed — playback rate multiplier
+            time  — scrub to a frame (while paused); moving it freezes the clock there
+
+          See the "RectSL examples" docs page / rectsl_cheatsheet.md for the language.
+          */
+          import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
           import afield.lang.rectsl.RectAnimationOracle
           import afield.lang.rectsl.rectMaterialShaderCode
           import afield.lang.rectsl.writeFrameToMesh
-          import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
-          
-          val rectsl = """
+
+          val rectsl =
+              """
           #rectsl
           ->wall 16 9 meters
           ->duration 6
           ->fps 30
-          
+
           material spectrum '(
             uv 3.0 * time 0.5 * + fbm palette
           )
-          
+
           "bar" rect
             0 0 ->xy
             0.9 1 ->wh
@@ -66,28 +69,32 @@ operations:
             0xffffff solid ->fill
             spectrum ->material
           ;
-          
+
           16 '(
             "bar" ->select clone
               i 7.5 - 1.2 * 0 ->xy
               i 0.14 * ->delay-all-time
           ) repeat
           """
-          
+
           val program = RectAnimationOracle.compile(rectsl).program!!
-          val shader  = rectMaterialShaderCode(program)
-          
-          // Seed this box's shader-source properties before `moduleHere {}` runs.
-          // moduleHere builds its module from the box's `vertex`/`fragment` properties
-          // (not from assignments in the lambda); `once.vertex`/`once.fragment` set them
-          // once. Fragments separated by `//%-` run one at a time, each expanded only after the
-          // previous one ran, so this fragment executes first and the moduleHere fragment then
-          // prepares its shaders from what was set here.
+          val shader = rectMaterialShaderCode(program)
+
+          /*
+          Set this box's shader sources before `moduleHere {}` runs.
+          Refresh the generated fragment on every run so material edits become visible.
+          moduleHere builds its module from the box's `vertex`/`fragment` properties
+          (not from assignments in the lambda). The constant vertex shader is seeded once;
+          the generated fragment changes with the RectSL program. Fragments separated by
+          `//%-` run one at a time, each expanded only after the
+          previous one ran, so this fragment executes first and the moduleHere fragment then
+          prepares its shaders from what was set here.
+          */
           once.vertex { RECT_ANIMATION_VERTEX_SHADER }
-          once.fragment { shader.exampleFragmentShader!! }
-          
+          fragment = shader.exampleFragmentShader!!
+
           //%-
-          
+
           val module = moduleHere {
               blend = true
               depthTest = false
@@ -96,20 +103,20 @@ operations:
           val m = Mesh()
           module += "scene" to m
           renderer += "rectsl" to module
-          
+
           val ww = program.wall.width.toFloat()
           val wh = program.wall.height.toFloat()
           m.push["worldToClip"] = afield.math.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
           m.push["wallWidth"] = ww
           m.push["wallHeight"] = wh
-          
+
           // --- transport state, driven by the controls below ---
           val duration = program.duration.toDouble()
           var playing = true
           var looping = true
           var speed = 1.0
           var t = 0.0
-          
+
           controlGroup("transport") {
               checkbox("play", initialValue = playing) { playing = it }
               checkbox("loop", initialValue = looping) { looping = it }
@@ -119,7 +126,7 @@ operations:
                   if (!playing) t = it
               }
           }
-          
+
           loop {
               if (playing) {
                   t += (1.0 / 60.0) * speed

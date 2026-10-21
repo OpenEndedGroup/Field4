@@ -28,8 +28,10 @@ clamping disabled so its transmitted lighting and caustics are preserved.
 ```diffstatic {data-lang=kotlin}
 import afield.graphics.scene.fabricated.*
 
-val tracer = PathTraceDemo.install(renderer,
-    "public/docs/assets/fabricate_demo/venice_sunset_1k.exr")
+val tracer = PathTraceDemo.install(
+    renderer,
+    "public/docs/assets/fabricate_demo/venice_sunset_1k.exr",
+)
 tracer.samplesPerFrame = 1
 tracer.maxBounces = 5
 tracer.indirectClamp = 10f // optional: reduces indirect fireflies, with some bias
@@ -43,8 +45,12 @@ OperationTranscript.
 For an explicit backend comparison, pass `backend` to the demo installer:
 
 ```diffstatic {data-lang=kotlin}
-val tracer = PathTraceDemo.install(renderer, width=1280, height=720,
-    backend=PathTracingRenderer.Backend.RAY_QUERY)
+val tracer = PathTraceDemo.install(
+    renderer,
+    width = 1280,
+    height = 720,
+    backend = PathTracingRenderer.Backend.RAY_QUERY,
+)
 tracer.blitToScreen()
 println(tracer.backend)
 ```
@@ -63,24 +69,34 @@ reflection/refraction mode at zero roughness.
 ```diffstatic {data-lang=kotlin}
 import afield.graphics.scene.fabricated.*
 import afield.graphics.vulkan.util.Camera
-import afield.math.linalg.Vector3f
 
 val scene = PathTraceScene()
 val paint = scene.material(PathTraceMaterial.plastic(0.7f, 0.08f, 0.02f))
 val gold = scene.material(PathTraceMaterial.metal(0.95f, 0.7f, 0.3f, 0.15f))
 scene.sphere(Vector3f(-1f, 1f, 0f), 1f, paint)
 scene.sphere(Vector3f(1f, 1f, 0f), 1f, gold)
-// scene.mesh(positions, triangleIndices, paint, optionalVertexNormals)
-// scene.triangle(a, b, c, paint)
-// scene.quad(a, b, c, d, paint)
+
+/*
+scene.mesh(positions, triangleIndices, paint, optionalVertexNormals)
+scene.triangle(a, b, c, paint)
+scene.quad(a, b, c, d, paint)
+*/
 
 val env = PathTraceEnvironment.fromFile("/absolute/path/studio.exr")
 val camera = Camera(renderer).also {
     it.at.set(0f, 2f, 7f)
     it.target.set(0f, 1f, 0f)
 }
-val tracer = PathTracingRenderer(renderer, scene, env,
-    width = 1280, height = 720, camera = camera).install()
+val tracer =
+    PathTracingRenderer(
+            renderer,
+            scene,
+            env,
+            width = 1280,
+            height = 720,
+            camera = camera,
+        )
+        .install()
 ```
 
 `PathTraceEnvironment` accepts OpenEXR, Radiance HDR, STB-supported ordinary image
@@ -99,8 +115,6 @@ keyboard controls. The tracer uses perspective projection and its own output asp
 ratio; `SuperProjection` orthographic blending and principal-point offsets are not used.
 
 ```diffstatic {data-lang=kotlin}
-import afield.graphics.vulkan.util.keyCamera
-
 val camera = tracer.camera
 camera.at.set(0f, 2.6f, 8f)
 camera.target.set(0f, 0.65f, 0f)
@@ -129,6 +143,7 @@ tracer.focusDistance = null // follow the target
 ```diffstatic {data-lang=kotlin}
 tracer.focusDistance = 5f // focus plane five world units along camera.forward
 tracer.apertureRadius = 0.08f // a smaller opening gives subtler blur
+
 // tracer.apertureRadius = 0f // pinhole view again
 ```
 
@@ -175,12 +190,11 @@ To add a model alongside other geometry, use `scene.importGltf`. Its result
 provides world-space bounds, a name-to-material-ID map and import warnings:
 
 ```diffstatic {data-lang=kotlin}
-import afield.math.linalg.Matrix4f
-import afield.math.linalg.Vector3f
-
 val scene = PathTraceScene()
-val model = scene.importGltf("/absolute/path/model.gltf",
-    transform = Matrix4f().translate(0f, 1f, 0f).scale(2f))
+val model = scene.importGltf(
+    "/absolute/path/model.gltf",
+    transform = Matrix4f().translate(0f, 1f, 0f).scale(2f),
+)
 val center = Vector3f(model.boundsMin).add(model.boundsMax).mul(0.5f)
 val radius = model.boundsMin.distance(model.boundsMax) * 0.5f
 camera.target.set(center)
@@ -206,13 +220,21 @@ You can amend materials during import, and then edit them through the same
 `shadeMaterial` hook as a hand-built scene:
 
 ```diffstatic {data-lang=kotlin}
-val model = scene.importGltf("/absolute/path/model.glb",
+val model = scene.importGltf(
+    "/absolute/path/model.glb",
     material = { name, imported ->
-        if (name == "Glass") imported.copy(
-            transmission = true, metallic = 0f, thinWalled = false,
-            roughness = 0.08f, ior = 1.5f)
+        if (name == "Glass")
+            imported.copy(
+                transmission = true,
+                metallic = 0f,
+                thinWalled = false,
+                roughness = 0.08f,
+                ior = 1.5f,
+            )
         else imported
-    })
+    },
+)
+
 // model.materialIds["Glass"] selects that material in surface.materialId.
 ```
 
@@ -290,8 +312,6 @@ medium](#a-participating-medium) below, and the table there compares the two dir
 `fogDensity` remains the cheaper choice when you only need distance haze.
 
 ```diffstatic {data-lang=kotlin}
-import afield.math.linalg.Vector3f
-
 tracer.fogColor = Vector3f(0.25f, 0.35f, 0.5f)
 tracer.fogDensity = 0.1f
 tracer.fogStartDistance = 5f
@@ -301,22 +321,32 @@ tracer.fogBackground = true
 ```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/fog.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="fog study converged" embed=true hidden=true timeout="180" name="path-tracing-fog" alt="A row of PBR spheres and a checkerboard floor fading into blue-grey depth fog with increasing distance"}
 import afield.graphics.scene.fabricated.*
 import afield.graphics.vulkan.util.Camera
-import afield.math.linalg.Vector3f
 
 val scene = PathTraceScene()
 val grey = scene.material(PathTraceMaterial.diffuse(0.3f, 0.3f, 0.3f))
 val light = scene.material(PathTraceMaterial.diffuse(0.65f, 0.65f, 0.65f))
 for (z in -20..8) for (x in -6..6) {
-    scene.quad(Vector3f(x.toFloat(),0f,z.toFloat()), Vector3f(x.toFloat(),0f,z+1f),
-        Vector3f(x+1f,0f,z+1f), Vector3f(x+1f,0f,z.toFloat()),
-        if ((x+z) and 1 == 0) grey else light)
+    scene.quad(
+        Vector3f(x.toFloat(), 0f, z.toFloat()),
+        Vector3f(x.toFloat(), 0f, z + 1f),
+        Vector3f(x + 1f, 0f, z + 1f),
+        Vector3f(x + 1f, 0f, z.toFloat()),
+        if ((x + z) and 1 == 0) grey else light,
+    )
 }
 val red = scene.material(PathTraceMaterial.plastic(0.65f, 0.035f, 0.015f, 0.25f))
 val gold = scene.material(PathTraceMaterial.metal(0.95f, 0.7f, 0.3f, 0.18f))
-for (i in 0..5) scene.sphere(Vector3f(if (i%2 == 0) -1.2f else 1.2f, 0.8f, 4f-i*3.5f),
-    0.8f, if (i%2 == 0) red else gold, 32, 16)
+for (i in 0..5) scene.sphere(
+    Vector3f(if (i % 2 == 0) -1.2f else 1.2f, 0.8f, 4f - i * 3.5f),
+    0.8f,
+    if (i % 2 == 0) red else gold,
+    32,
+    16,
+)
 val camera = Camera(renderer).also {
-    it.at.set(6f,3.5f,10f); it.target.set(0f,0.65f,-3f); it.p.fov=0.65
+    it.at.set(6f, 3.5f, 10f)
+    it.target.set(0f, 0.65f, -3f)
+    it.p.fov = 0.65
 }
 val env = PathTraceEnvironment.fromFile("public/docs/assets/fabricate_demo/venice_sunset_1k.exr")
 val tracer = PathTracingRenderer(renderer, scene, env, 1280, 720, camera).install()
@@ -327,7 +357,9 @@ tracer.fogDensity = 0.1f
 tracer.fogStartDistance = 5f
 tracer.blitToScreen()
 frames {
-    while (tracer.samples < 512) { frame() }
+    while (tracer.samples < 512) {
+        frame()
+    }
     tracer.paused = true
     println("fog study converged")
 }
@@ -398,14 +430,16 @@ floor in both; the difference is in the air, which the medium lights unevenly an
     relative test allows for float32 accumulation over 100 000 pixels.
 
 ```diffstatic {data-lang=kotlin}
-// The room is the medium's extent. Bounds are not decoration: an unbounded medium has
-// zero transmittance to infinity, so an environment map becomes unreachable and an
-// environment-lit scene renders black.
+/*
+The room is the medium's extent. Bounds are not decoration: an unbounded medium has
+zero transmittance to infinity, so an environment map becomes unreachable and an
+environment-lit scene renders black.
+*/
 tracer.mediumBounds = Vector3f(-6f, 0f, -3.9f) to Vector3f(6f, 5.2f, 3.9f)
-tracer.mediumDensity = 0.16f                           // extinction per world unit
-tracer.mediumAlbedo = Vector3f(0.96f, 0.95f, 0.93f)    // how much of that scatters
-tracer.mediumAnisotropy = 0.4f                         // forward-scattering, in (-1, 1)
-tracer.maxBounces = 8                                  // a collision spends one of these
+tracer.mediumDensity = 0.16f // extinction per world unit
+tracer.mediumAlbedo = Vector3f(0.96f, 0.95f, 0.93f) // how much of that scatters
+tracer.mediumAnisotropy = 0.4f // forward-scattering, in (-1, 1)
+tracer.maxBounces = 8 // a collision spends one of these
 ```
 
 <div data-code-lang="kotlin" markdown>
@@ -455,14 +489,19 @@ two-term Henyey–Greenstein: a forward lobe plus a weaker backward one, as in a
 and cloud media, which single-term HG cannot express at any `g`:
 
 ```diffstatic {data-lang=kotlin}
-val twoLobe = tracer.integratorSource()
-    .replace("""
+val twoLobe =
+    tracer
+        .integratorSource()
+        .replace(
+            """
         float phase(float mu,float g) {
             if (abs(g)<1e-4) return 1.0/(4.0*PI);
             float d=1.0+g*g-2.0*g*clamp(mu,-1.0,1.0);
             return (1.0-g*g)/(4.0*PI*max(d,1e-12)*sqrt(max(d,1e-12)));
         }
-    """.trimIndent(), """
+    """
+                .trimIndent(),
+            """
         const float BACK_G=-0.55;   // the backward lobe
         const float BACK_W=0.3;     // its share of the mixture
         float hg(float mu,float g) {
@@ -475,8 +514,12 @@ val twoLobe = tracer.integratorSource()
         float phase(float mu,float g) {
             return (1.0-BACK_W)*hg(mu,g)+BACK_W*hg(mu,BACK_G);
         }
-    """.trimIndent())
-    .replace("float mu;\n    if (abs(g)<1e-4) mu=1.0-2.0*xi.y;", """
+    """
+                .trimIndent(),
+        )
+        .replace(
+            "float mu;\n    if (abs(g)<1e-4) mu=1.0-2.0*xi.y;",
+            """
         float mu;
         // Pick a lobe with xi.x, then remap it back to uniform for phi — conditional on
         // each branch the remapped value is exactly uniform, the same argument
@@ -486,9 +529,11 @@ val twoLobe = tracer.integratorSource()
         else             { xi.x=(xi.x-BACK_W)/(1.0-BACK_W); }
         g=g2;
         if (abs(g)<1e-4) mu=1.0-2.0*xi.y;
-    """.trimIndent())
+    """
+                .trimIndent(),
+        )
 
-println(tracer.reloadIntegrator(twoLobe))   // RELOADED; accumulation restarts
+println(tracer.reloadIntegrator(twoLobe)) // RELOADED; accumulation restarts
 ```
 
 After editing a phase function, run the white-furnace arm of `PathTraceMediumGpuSmoke`,
@@ -551,12 +596,12 @@ the box again:
 
 ```diffstatic {data-lang=glsl}
 struct Material {
-    vec4 base;          // rgb: linear base colour; w: metallic
-    vec4 emission;      // rgb: linear emitted radiance; w: roughness
-    vec4 optical;       // x: transmission (0/1); y: IOR; z: thin sheet (0/1); w: reserved
-    vec4 absorption;    // rgb: solid absorption coefficient OR thin-sheet tint; w: reserved
-    ivec4 maps;         // texture offsets: base colour, metallic/roughness, emission, normal
-    vec4 coverage;     // x: alpha; y: cutoff; z: mode (0 opaque, 1 mask, 2 blend); w: double-sided (0/1)
+    vec4 base; // rgb: linear base colour; w: metallic
+    vec4 emission; // rgb: linear emitted radiance; w: roughness
+    vec4 optical; // x: transmission (0/1); y: IOR; z: thin sheet (0/1); w: reserved
+    vec4 absorption; // rgb: solid absorption coefficient OR thin-sheet tint; w: reserved
+    ivec4 maps; // texture offsets: base colour, metallic/roughness, emission, normal
+    vec4 coverage; // x: alpha; y: cutoff; z: mode (0 opaque, 1 mask, 2 blend); w: double-sided (0/1)
     vec4 textureParams; // x: normal-map scale; yzw: reserved
 };
 ```
@@ -589,13 +634,15 @@ zero and give it a procedural stripe with an explicit metallic value and roughne
 
 ```diffstatic {data-lang=glsl}
 {{ pathTracing.preamble }}
-layout(push_constant) uniform Paint { float stripeScale; } paint;
+layout(push_constant) uniform Paint {
+    float stripeScale;
+} paint;
 
 Material shadeMaterial(Material material, PathTraceSurface surface) {
     if (surface.materialId == 0) {
         float stripe = step(0.5, fract(surface.position.x * paint.stripeScale));
         material.base.rgb = mix(vec3(0.08), vec3(0.8, 0.12, 0.03), stripe);
-        material.base.w = 0.0;     // dielectric, rather than metal
+        material.base.w = 0.0; // dielectric, rather than metal
         material.emission.w = 0.3; // moderately smooth
     }
     return material;
@@ -631,12 +678,19 @@ and still illuminate another surface.
 
 ```diffstatic {data-lang=kotlin}
 val clear = scene.material(PathTraceMaterial.glass(ior = 1.5f))
-val green = scene.material(PathTraceMaterial.glass(
-    attenuationColor = Vector3f(0.45f, 0.9f, 0.65f),
-    attenuationDistance = 1f))
+val green = scene.material(
+    PathTraceMaterial.glass(
+        attenuationColor = Vector3f(0.45f, 0.9f, 0.65f),
+        attenuationDistance = 1f,
+    ),
+)
 val frosted = scene.material(PathTraceMaterial.glass(roughness = 0.32f))
-val pane = scene.material(PathTraceMaterial.thinGlass(
-    ior = 1.5f, tint = Vector3f(0.65f, 0.85f, 1f)))
+val pane = scene.material(
+    PathTraceMaterial.thinGlass(
+        ior = 1.5f,
+        tint = Vector3f(0.65f, 0.85f, 1f),
+    ),
+)
 ```
 
 Solid glass uses exact dielectric Fresnel reflection, Snell refraction and total
@@ -1040,10 +1094,10 @@ already rendering:
 
 ```diffstatic {data-lang=kotlin}
 // The packaged integrator, with this device's HARDWARE_QUERY define already applied.
-val directOnly = tracer.integratorSource()
-    .replace("return vec4(radiance+indirect,1);", "return vec4(radiance,1);")
+val directOnly = tracer.integratorSource().replace("return vec4(radiance+indirect,1);", "return vec4(radiance,1);")
 
 println(tracer.reloadIntegrator(directOnly))
+
 // integrator reloaded (30326 chars); accumulation restarts, camera and scene preserved
 ```
 

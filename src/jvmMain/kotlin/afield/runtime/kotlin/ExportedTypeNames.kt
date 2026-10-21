@@ -31,39 +31,38 @@ import kotlin.reflect.KVariance
 import kotlin.reflect.KVisibility
 
 /**
- * Renders the source-level type name that `@exported` writes into a *consuming* box's preamble.
+ * Renders the source-level type name that `@exported` writes into a consuming box's preamble.
  *
- * `@exported` shares a value between boxes by two separate channels: the value itself crosses at
- * runtime (`Box.setPropertyRaw`), while its *type* crosses as text — a generated
- * `val Box._x by InheritanceFromContext<T>()` line spliced into the other box's preamble and
- * recompiled by that box's own engine. This object computes the `T`.
+ * `@exported` shares a value between boxes by two channels: the value itself crosses at runtime,
+ * while its type crosses as text, a generated `val Box._x by InheritanceFromContext<T>()` line
+ * spliced into the other box's preamble and recompiled by that box's own engine. This object
+ * computes the `T`.
  *
- * Because each box has its own [KotlinInterface2] with its own REPL history and snippet
- * classloader chain (see `makeKI`), "can the consuming box name this type?" is really two
- * questions, and both have to be yes:
+ * Each box has its own [KotlinInterface2] with its own REPL history and snippet classloader chain,
+ * so a type is usable in the consuming box only if two things hold:
  *
- *  - **Resolvable at compile time.** Every engine's compile classpath is derived from the *shared*
- *    base classloader, so a type is nameable iff that loader can reach it. Library types, `afield.`
- *    types and `@DependsOn` jars all qualify; a class declared in another box's snippet does not,
- *    since it only exists in that box's snippet loader.
- *  - **The same class at run time.** Snippet loaders are children of the shared loader, so a name
- *    that resolves there resolves to one `Class` for everybody. We check identity rather than mere
- *    resolvability so a shadowed name can never produce a declaration that compiles and then throws
- *    `ClassCastException` at the point of use.
+ * - **It resolves at compile time.** Every engine's compile classpath is derived from the shared
+ *   base classloader, so a type is nameable when that loader can reach it. Library types, `afield.`
+ *   types and `@DependsOn` jars qualify; a class declared in another box's snippet does not, since
+ *   it exists only in that box's snippet loader.
+ * - **It is the same class at run time.** Snippet loaders are children of the shared loader, so a
+ *   name that resolves there resolves to one `Class` for every box. The check is on class identity,
+ *   so a shadowed name cannot produce a declaration that compiles and then throws
+ *   `ClassCastException` where it is used.
  *
- * Anything failing either test degrades to [OPAQUE] rather than being emitted hopefully. That
- * direction matters: a preamble line that does not compile poisons every later compile in the
- * consuming box, so a lost type is always cheaper than a wrong one.
+ * A type that fails either test renders as [ExportedTypeNames.OPAQUE] (`Any?`). A preamble line that
+ * does not compile breaks every later compile in the consuming box, so a lost type costs less than
+ * a wrong one.
  *
- * Type arguments are walked recursively and erased *individually* to `*`, which is the part the
- * previous string-prefix implementation got wrong — it accepted any name starting with `kotlin.`
- * and returned it whole, so `List<SomeBoxLocalClass>` was emitted verbatim and broke the receiving
- * preamble. Erasing only the unnameable argument keeps `List<Double>` sharp and makes
- * `List<SomeBoxLocalClass>` land as `kotlin.collections.List<*>`.
+ * Type arguments are walked recursively and each unnameable argument is erased on its own to `*`.
+ * `List<Double>` stays `List<Double>`, and a list of a box-local class becomes
+ * `kotlin.collections.List<*>`. [ExportedTypeNamesSmokeTest] covers these cases.
  *
- * Declaring user types that pass these tests — rather than only consuming library ones — needs a
- * shared compilation unit on the base classloader, which is a separate piece of work.
+ * User types declared in one box cannot pass these tests; sharing them needs a compilation unit on
+ * the base classloader, which [SharedTypes] is about.
  */
+
+/** Type-name rendering for `@exported`; [render] is the entry point. */
 object ExportedTypeNames {
 
     /** The fallback when a type cannot be named in another box. Always valid, always useless. */

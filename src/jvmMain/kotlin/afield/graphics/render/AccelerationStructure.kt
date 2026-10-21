@@ -19,6 +19,17 @@ import org.lwjgl.vulkan.VK13.*
 import org.lwjgl.vulkan.*
 import kotlin.math.max
 
+/**
+ * Vulkan ray-tracing acceleration structures: [AccelerationStructure] builds a bottom-level structure
+ * from triangles or AABBs, or a top-level one from [RayTracingInstance]s, on the [Renderer] found
+ * from context.
+ *
+ * Geometry is described by [AccelerationStructureTriangles] and [AccelerationStructureAabbs];
+ * [identityTransform3x4] is the default instance transform. After a build,
+ * [accelerationStructureBuildBarrier] makes it visible to later commands that read it, and
+ * [rayTracingMemoryBarrier] orders ray-tracing shader writes before later shader reads.
+ */
+
 /** A BLAS device address usable in a TLAS instance, including NV cluster BLAS without a Vk handle. */
 interface AccelerationStructureAddress { fun deviceAddress(): Long }
 interface HasAccelerationStructure : AccelerationStructureAddress {

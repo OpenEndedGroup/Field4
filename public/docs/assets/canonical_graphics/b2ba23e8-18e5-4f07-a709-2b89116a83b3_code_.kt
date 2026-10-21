@@ -6,32 +6,31 @@ module += "mainMesh" to m
 renderer += "boo" to module
 
 val camera = Camera()
-camera.at = vec(-10,2,0)
+camera.at = vec(-10, 2, 0)
 
 m.p = camera.p
 m.m = camera.m
 
 var tick = 0.0
 loop {
-    camera.at = vec(-10*Math.sin(tick),0,10*Math.cos(tick))
-    if (tick<3) {
-        for(n in 1 .. 100) {
-            camera.at = vec(-10*Math.sin(tick),0,10*Math.cos(tick))
+    camera.at = vec(-10 * Math.sin(tick), 0, 10 * Math.cos(tick))
+    if (tick < 3) {
+        for (n in 1..100) {
+            camera.at = vec(-10 * Math.sin(tick), 0, 10 * Math.cos(tick))
             tick += 0.01
-            m.set(3*n, 1*n) {
+            m.set(3 * n, 1 * n) {
                 n {
                     val z = 0.0 + it
-                    pos.add(0,0,-1+z, 1.0,0.1,z, 1,1,z)
+                    pos.add(0, 0, -1 + z, 1.0, 0.1, z, 1, 1, z)
                     3 {
-                        col.add(0,it/3.0,1-it/3.0,1)
+                        col.add(0, it / 3.0, 1 - it / 3.0, 1)
                     }
-                    tri.add(0+3*it,1+3*it,2+3*it)
+                    tri.add(0 + 3 * it, 1 + 3 * it, 2 + 3 * it)
                 }
             }
             frame()
         }
-    }
-    else {
+    } else {
         tick += 0.01
         frame()
     }

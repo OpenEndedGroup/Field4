@@ -1,4 +1,5 @@
-markdown("""
+markdown(
+    """
     # Streaming diffusion
 
     Run **2 · renderer**, then **3 · spinning curves**.
@@ -12,4 +13,6 @@ markdown("""
     Set `FIELD_STREAMDIFFUSION_ROOT` before starting Field after completing the setup.
 
     [Setup and RTT integration](https://openendedgroup.com/Field4/streaming_diffusion/)
-""".trimIndent())
+"""
+        .trimIndent(),
+)

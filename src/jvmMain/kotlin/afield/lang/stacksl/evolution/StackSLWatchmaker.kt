@@ -79,6 +79,14 @@ import java.util.Base64
 import kotlin.math.roundToInt
 
 /**
+ * A language model as a StackSL mutation operator: [StackSLWatchmaker] shows a model the target
+ * and the leaders' renders and turns its reply into candidate programs.
+ *
+ * The prompt is built by [StackSLWatchmakerPrompt], replies are parsed and checked by
+ * [StackSLProposals], and [StackSLModelUsage] sums model calls, tokens and prompt-cache reads.
+ */
+
+/**
  * The watchmaker: a language model inside a StackSL search, proposing edits to the leaders.
  *
  * Genetic programming mutates blind. A point mutation that swaps `sin` for `fbm` knows nothing

@@ -22,20 +22,19 @@ not a corrupt key, and a list that files both under one red heading is a permane
 A permanent false alarm teaches you to stop reading the alarm.
 
 ```edn [field-box id="kf_junk_vs_damage" role="properties"]
-{"id" "kf_junk_vs_damage" "index" 0 "name" "2 - Junk is not damage" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Junk is not damage" "_tombstone" false "frame" #afield/rect [700.0 60.0 381.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_junk_vs_damage_code_.kt" "lines" 46 "characters" 2338 "sha256" "eb0a8dc6ea66b064bc7f2ab6052ac2d06119c7feacc7bab658df61e26c33019c"}]}
+{"id" "kf_junk_vs_damage" "index" 0 "name" "2 - Junk is not damage" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Junk is not damage" "_tombstone" false "frame" #afield/rect [700.0 60.0 381.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_junk_vs_damage_code_.kt" "lines" 49 "characters" 2180 "sha256" "219f593e0560fcf6f71b432561d2df971ab3cd7a2682900e6f7902d10e4727b8"}]}
 ```
 
 ```kotlin [field-property box="kf_junk_vs_damage" name="code" path="kf_junk_vs_damage_code_.kt"]
-// Two files fail to decode. Only one of them is your problem.
-//
-// This directory holds four good keys, two files that were never keys, and one key that Field wrote
-// and that is now truncated. A `.DS_Store` — a file the operating system wrote without asking — is
-// not a corrupt key, and a list that files both under one red heading is a permanent false alarm.
-// A permanent false alarm teaches you to stop reading the alarm.
+/*
+Two files fail to decode. Only one of them is your problem.
 
-import afield.animation.keyframes.KeyframeCollection
-import afield.animation.keyframes.KeyframeScope
-import afield.animation.keyframes.everyKeyGlob
+This directory holds four good keys, two files that were never keys, and one key that Field wrote
+and that is now truncated. A `.DS_Store` — a file the operating system wrote without asking — is
+not a corrupt key, and a list that files both under one red heading is a permanent false alarm.
+A permanent false alarm teaches you to stop reading the alarm.
+*/
+
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("keyframe-junk-vs-damage")
@@ -62,13 +61,17 @@ println("problems: " + c.problems)
 println("ignored:  " + c.skipped.filter { it.kind.name == "NotAKey" }.map { it.relative })
 println("notice:   " + c.skipSummary())
 println()
-// The ownership test, spelled out. `e` is not valid JSON any more, so a content-only ladder would
-// have filed it as "not JSON, not a key": a damaged key reported as junk, which is the
-// misclassification that loses work. What proves Field wrote it
-// is the `.versions` directory still sitting beside it, which is also exactly what you now want.
-println("e is unparseable, and e.versions still holds " +
+/*
+The ownership test, spelled out. `e` is not valid JSON any more, so a content-only ladder would
+have filed it as "not JSON, not a key": a damaged key reported as junk, which is the
+misclassification that loses work. What proves Field wrote it
+is the `.versions` directory still sitting beside it, which is also exactly what you now want.
+*/
+println(
+    "e is unparseable, and e.versions still holds " +
         (dir.resolve("e.versions").toFile().list()?.count { it.endsWith(".json") } ?: 0) +
-        " file(s) — so the damage is recoverable, and the row says to open the version rail")
+        " file(s) — so the damage is recoverable, and the row says to open the version rail",
+)
 
 // One red row, two grey ones. Hover the notice to read the per-file reasons.
 keyframeBrowser(dir, channel = "junk is not damage", scope = kfs, height = 380)
@@ -93,24 +96,22 @@ the scope loads fine — the extra names simply have nowhere to go on apply."
 So a rename half-done looks exactly like a working slot, and Apply quietly drops it.
 
 ```edn [field-box id="kf_orphaned_slots" role="properties"]
-{"id" "kf_orphaned_slots" "index" 1 "name" "3 - A saved slot that applies to nowhere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A saved slot that applies to nowhere" "_tombstone" false "frame" #afield/rect [60.0 226.0 592.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_orphaned_slots_code_.kt" "lines" 64 "characters" 2995 "sha256" "69d329f5b17980511c795e41cd7d8c3b0bdd9f50cbdac903a0408fa346e291e2"}]}
+{"id" "kf_orphaned_slots" "index" 1 "name" "3 - A saved slot that applies to nowhere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A saved slot that applies to nowhere" "_tombstone" false "frame" #afield/rect [60.0 226.0 592.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_orphaned_slots_code_.kt" "lines" 64 "characters" 2777 "sha256" "949e36fd4c6fb142368508749988a1cd1adbbb1bf2f0a277a869065aa08c1396"}]}
 ```
 
 ```kotlin [field-property box="kf_orphaned_slots" name="code" path="kf_orphaned_slots_code_.kt"]
-// A saved slot that applies to nowhere.
-//
-// The browser has always drawn one half of this: a slot the scope watches that no key holds — the
-// "you have never saved this" row. The other half was silent. A slot a *key* holds that the scope no
-// longer watches renders as an ordinary row, with its real saved range across every key, and
-// `KeyframeScope.loadKey` is explicit about what happens next: "a file whose values have since left
-// the scope loads fine — the extra names simply have nowhere to go on apply."
-//
-// So a rename half-done looks exactly like a working slot, and Apply quietly drops it.
+/*
+A saved slot that applies to nowhere.
 
-import afield.animation.keyframes.KeyframeCollection
-import afield.animation.keyframes.KeyframeScope
-import afield.animation.keyframes.everyKeyGlob
-import afield.graphics.vulkan.buffers.Structure
+The browser has always drawn one half of this: a slot the scope watches that no key holds — the
+"you have never saved this" row. The other half was silent. A slot a *key* holds that the scope no
+longer watches renders as an ordinary row, with its real saved range across every key, and
+`KeyframeScope.loadKey` is explicit about what happens next: "a file whose values have since left
+the scope loads fine — the extra names simply have nowhere to go on apply."
+
+So a rename half-done looks exactly like a working slot, and Apply quietly drops it.
+*/
+
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("keyframe-orphaned-slots")
@@ -151,9 +152,11 @@ c.slots().forEach { s ->
     println("  ${s.name.padEnd(14)} ${tag}")
 }
 println()
-// The flag is not just "scopeSlots is empty". A read-only browse cannot know which slots are live,
-// and must not accuse every row; an attached scope watching nothing must accuse every row. Both
-// leave scopeSlots empty, so `scopeAttached` is what tells them apart.
+/*
+The flag is not just "scopeSlots is empty". A read-only browse cannot know which slots are live,
+and must not accuse every row; an attached scope watching nothing must accuse every row. Both
+leave scopeSlots empty, so `scopeAttached` is what tells them apart.
+*/
 val readOnly = KeyframeCollection.load(dir, everyKeyGlob, scope = null)
 println("read-only browse: scopeAttached=${readOnly.scopeAttached}, orphaned=${readOnly.orphanedSlots}")
 println("  (no scope, so no accusation — this is why scopeAttached exists as its own flag)")
@@ -180,22 +183,20 @@ because `saveKey` writes the path it is handed and appends nothing.
 Run this box. Two browsers appear. The top one is what you used to get.
 
 ```edn [field-box id="kf_before_after" role="properties"]
-{"id" "kf_before_after" "index" 2 "name" "1 - Six keys, and the pattern that showed two" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Six keys, and the pattern that showed two" "_tombstone" false "frame" #afield/rect [60.0 60.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_before_after_code_.kt" "lines" 69 "characters" 3542 "sha256" "a4b80974ea58b2333cafec8c6a17f6dfc80a7d832b97968819a38b2dc3063fa3"}]}
+{"id" "kf_before_after" "index" 2 "name" "1 - Six keys, and the pattern that showed two" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Six keys, and the pattern that showed two" "_tombstone" false "frame" #afield/rect [60.0 60.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_before_after_code_.kt" "lines" 74 "characters" 3336 "sha256" "da38d3d073f504bdbd98473ce0b16ea7b0754cc623779fe3f020f29d869e6ec8"}]}
 ```
 
 ```kotlin [field-property box="kf_before_after" name="code" path="kf_before_after_code_.kt"]
-// Six saved keys, and whether the browser can show them to you.
-//
-// The names are not invented. They are copied from a live session: `a`, `b`, `c`, `d`, `d2`, `d3`,
-// saved with `kfs.capture().save("d3".path)` — which writes a file called `d3`, with no extension,
-// because `saveKey` writes the path it is handed and appends nothing.
-//
-// Run this box. Two browsers appear. The top one is what you used to get.
+/*
+Six saved keys, and whether the browser can show them to you.
 
-import afield.animation.keyframes.KeyframeCollection
-import afield.animation.keyframes.KeyframeScope
-import afield.animation.keyframes.everyKeyGlob
-import afield.graphics.vulkan.buffers.Structure
+The names are not invented. They are copied from a live session: `a`, `b`, `c`, `d`, `d2`, `d3`,
+saved with `kfs.capture().save("d3".path)` — which writes a file called `d3`, with no extension,
+because `saveKey` writes the path it is handed and appends nothing.
+
+Run this box. Two browsers appear. The top one is what you used to get.
+*/
+
 import java.nio.file.Files
 
 // A temp directory, so this demo writes nothing into your document.
@@ -221,30 +222,37 @@ listOf(1f, 3f, 6f, 10f, 15f, 21f).forEachIndexed { i, r ->
 // And the file macOS leaves in any folder a Finder window has opened. Nobody asked for it.
 Files.writeString(dir.resolve(".DS_Store"), "Bud1 (this is not a key)")
 
-// ---------------------------------------------------------------------------------------------
-// The numbers, before the pictures.
-// ---------------------------------------------------------------------------------------------
+/*
+---------------------------------------------------------------------------------------------
+The numbers, before the pictures.
+---------------------------------------------------------------------------------------------
+*/
 
 val old = KeyframeCollection.load(dir, "**/*.json")
 val narrow = KeyframeCollection.load(dir, "??")
 val now = KeyframeCollection.load(dir, everyKeyGlob)
 
-println("keys on disk: " + dir.toFile().list()!!
-    .filter { !it.endsWith(".versions") && !it.startsWith(".") }.sorted())
+println(
+    "keys on disk: " + dir.toFile().list()!!.filter { !it.endsWith(".versions") && !it.startsWith(".") }.sorted(),
+)
 println("plus, uninvited: " + dir.toFile().list()!!.filter { it.startsWith(".") }.sorted())
 println()
 println("the old default, '**/*.json':  ${old.files.size} keys  <- 'No key files matched'")
 println("the last pattern tried, '??':  ${narrow.files.size} keys  (${narrow.skipSummary()})")
-println("brace alternation, '{?,??}':   ${KeyframeCollection.load(dir, "{?,??}").files.size} keys" +
-        "  <- this always worked, and nothing said so")
+println(
+    "brace alternation, '{?,??}':   ${KeyframeCollection.load(dir, "{?,??}").files.size} keys" +
+        "  <- this always worked, and nothing said so",
+)
 println("the default now, '$everyKeyGlob':          ${now.files.size} keys  (${now.skipSummary()})")
 println()
 println("what '??' hid: " + narrow.skipped.filter { it.kind.name == "Hidden" }.map { it.relative })
 println("problems, either way: ${now.problems.size}  <- .DS_Store is ignored, not an error")
 
-// ---------------------------------------------------------------------------------------------
-// The two browsers. Compare the headers.
-// ---------------------------------------------------------------------------------------------
+/*
+---------------------------------------------------------------------------------------------
+The two browsers. Compare the headers.
+---------------------------------------------------------------------------------------------
+*/
 
 // BEFORE: the pattern the session ended on. Two keys of six, and — this is the fix — a line under
 // the header saying so, with a button that widens it in one click.

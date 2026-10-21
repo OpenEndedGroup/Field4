@@ -4,7 +4,7 @@
                        :frame #afield/rect [40.0 40.0 420.0 260.0]
                        :children #{#afield/box "fieldml-macromod-root"}
                        :parents #{#afield/box "root"}
-                       :code "// Scaffolding, and there is now exactly ONE reason it is Kotlin.\n//\n// `Renderer.run` is a `suspend` member: on the JVM it is `run(Continuation)`, and\n// FieldML can *satisfy* a suspend function type but still cannot *call into* one --\n// it has no continuation to pass and nowhere to resume. That is the whole of it.\n//\n// `prop` and `once` used to be the other reason, and they are not any more: they are\n// source macros, mechanism A of dev_docs/FIELDML_HOST_BRIDGE.md, and reachable from\n// FieldML since 2026-08-20. They are still written in Kotlin here only because this\n// box has to exist anyway.\nprop<Window>(window)\nprop<Renderer>(renderer)\nonce.renderer {\n    window = Window(\"FieldML - a scene built by moduleHere\")\n    Renderer(window)\n}\nprintln(\"renderer ready - now run the scene box\")\nstart(renderer::run)"}}
+                       :code "// This Kotlin scaffold runs the suspend Renderer.run loop on the JVM.\n// Its FieldML child builds the scene through moduleHere and the shared renderer property.\nprop<Window>(window)\nprop<Renderer>(renderer)\nonce.renderer {\n    window = Window(\"FieldML - a scene built by moduleHere\")\n    Renderer(window)\n}\nprintln(\"renderer ready - now run the scene box\")\nstart(renderer::run)\n"}}
 
          {:id "fieldml-macromod-root"
           :properties {:name "FieldML — a scene built by a source macro"

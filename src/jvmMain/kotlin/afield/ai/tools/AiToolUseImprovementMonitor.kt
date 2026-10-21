@@ -46,6 +46,13 @@ import kotlin.io.path.absolutePathString
 import kotlin.io.path.fileSize
 import kotlin.io.path.getLastModifiedTime
 
+/**
+ * The runner behind the AI tool-use improvement task, which summarises the AI4 tool input/output logs and starts the Gradle task that proposes fixes, optionally in a generated worktree.
+ *
+ * Logs are read from `~/.afield/logs/ai4_tool_io` (or `AFIELD_AI4_TOOL_IO_LOG_PATH`); the report,
+ * dry-run patch and transcript are written under this checkout's `build/`.
+ */
+
 object AiToolUseImprovementMonitor {
     private const val MAX_LOG_CHARS = 180_000
     private const val MAX_ARTIFACT_CHARS = 220_000

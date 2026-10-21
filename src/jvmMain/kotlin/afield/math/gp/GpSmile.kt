@@ -1,6 +1,15 @@
 @file:afield.runtime.completion.CompletionCategory("Math")
 package afield.math.gp
 
+/**
+ * Bridges from the Smile library into Field's Gaussian processes: a Smile kernel as a [GpKernel], and
+ * Smile's bounded L-BFGS optimizer for fitting hyperparameters.
+ *
+ * `fitGpHyperparametersWithSmile` searches log-parameter space between fixed bounds, rebuilding the
+ * process through a caller-supplied `build` function, and returns the best process found together
+ * with the projected gradient at the end. `GaussianProcessSmileTest` covers both bridges.
+ */
+
 import smile.math.kernel.MercerKernel
 
 /**

@@ -59,6 +59,18 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
+ * The box-facing API for the drawing layer: [notation] reads the document's Excalidraw scene as [Mark]s,
+ * writes marks owned by the box through a `notation { }` block ([NotationBuilder]), changes existing ones
+ * with [Notation.edit], and runs callbacks when a person draws.
+ *
+ * Marks a box writes are replaced when that box re-runs, so a re-run redraws rather than accumulates.
+ * Reactions such as `notation.onStroke { }` fire only for changes made by hand in a client, not for marks
+ * written from code. Coverage is in `NotationTest` and `NotationIntersectionTest`; the full API is in
+ * `dev_docs/NOTATION.md`.
+ */
+
+
+/**
  * The document's drawing, as seen from this box — read it, write to it, and react to it.
  *
  * ```

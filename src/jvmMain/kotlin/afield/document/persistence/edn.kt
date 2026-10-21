@@ -24,6 +24,14 @@ import afield.ui.notation.custom
 import java.math.BigDecimal
 import kotlin.reflect.KClass
 
+/**
+ * An EDN reader and printer, the text format of a document's `metadata.edn`.
+ *
+ * [Edn.read] and [Edn.write] convert between EDN text and plain Kotlin values (maps, lists, strings,
+ * numbers), and [EdnValue] is the parsed tree in between. Tagged values such as `#afield/rect` are
+ * handled by registering a type with [Edn.CustomTypes].
+ */
+
 // EDN AST
 sealed class EdnValue {
     object Nil : EdnValue()

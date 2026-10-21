@@ -7,6 +7,14 @@ import org.lwjgl.openxr.XR10.*
 import org.lwjgl.openxr.XrSpaceLocation
 
 /**
+ * Plain state holders for OpenXR eye tracking: the combined gaze of `XR_EXT_eye_gaze_interaction` and
+ * the per-eye gaze, pupil and geometry streams of `XR_HTC_eye_tracker`.
+ *
+ * Each holder is filled in place on the renderer's queue thread and carries its own validity flags,
+ * so read [EyeGazeState.poseValid] or the per-stream flags of [HtcEyeState] before using a value.
+ */
+
+/**
  * Combined gaze from `XR_EXT_eye_gaze_interaction`, in the target's LOCAL reference space
  * (metres, +Y up, -Z forward). Updated in place on the renderer's queue thread.
  * Numeric pose values retain the last valid observation; check [poseValid] before using them.

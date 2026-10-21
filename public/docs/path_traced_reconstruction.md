@@ -19,8 +19,14 @@ Choose **Raw**, **Progressive** or **RR** without restarting. **Move camera** te
 Create your scene and an **uninstalled** `PathTracingRenderer`, then give it to `PathTracedReconstruction`. The adapter owns dispatch order and closes that tracer when it closes.
 
 ```diffstatic {data-lang=kotlin}
-val tracer = PathTracingRenderer(renderer, scene, environment,
-    1920, 1080, camera)
+val tracer = PathTracingRenderer(
+    renderer,
+    scene,
+    environment,
+    1920,
+    1080,
+    camera,
+)
 val lab = PathTracedReconstruction(tracer).install()
 lab.view = PathTracedReconstruction.View.RECONSTRUCTED
 // On a camera cut or an appearance change:
@@ -48,8 +54,14 @@ The primary visibility sample uses the adapter's Halton jitter. UI and display t
 The scene above starts with Kotlin material values. To edit their appearance in GLSL, replace its `PathTracingRenderer(...)` construction and `lab = ...` assignment with the following. `pathTracingHere()` seeds the box's **compute** property with the material hook and connects it to Field's normal shader reload actions.
 
 ```diffstatic {data-lang=kotlin}
-val tracer = pathTracingHere(scene, PathTraceEnvironment.constant(.08f, .1f, .15f),
-    width = 1920, height = 1080, camera = camera, name = "rr-materials")
+val tracer = pathTracingHere(
+    scene,
+    PathTraceEnvironment.constant(.08f, .1f, .15f),
+    width = 1920,
+    height = 1080,
+    camera = camera,
+    name = "rr-materials",
+)
 // install() takes over the standalone passes pathTracingHere scheduled.
 lab = PathTracedReconstruction(tracer).install()
 ```
@@ -62,9 +74,9 @@ Now open **compute** and replace the identity material hook with this shader. Th
 Material shadeMaterial(Material material, PathTraceSurface surface) {
     if (surface.materialId == 0) {
         float stripe = smoothstep(.35, .65,
-            .5 + .5 * sin(surface.position.x * 8.0));
+        .5 + .5 * sin(surface.position.x * 8.0));
         material.base.rgb = mix(vec3(.06, .12, .3), vec3(.8, .18, .04), stripe);
-        material.base.w = 0.0;     // metallic
+        material.base.w = 0.0; // metallic
         material.emission.w = .3; // roughness
     }
     return material;

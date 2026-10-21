@@ -1,17 +1,12 @@
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.solid.manifold.toSolid
 import afield.graphics.scene.fabricated.PathTraceEnvironment
 import afield.graphics.scene.fabricated.PathTraceMaterial
 import afield.graphics.scene.fabricated.PathTraceScene
 import afield.graphics.scene.fabricated.PathTracingRenderer
 import afield.graphics.scene.fabricated.importTriMesh
 import afield.graphics.vulkan.util.Camera
-import afield.geometry.solid.manifold.ManifoldLibrary
-import afield.geometry.solid.manifold.Solid
-import afield.geometry.solid.manifold.toSolid
-import afield.geometry.mesh.genus
-import afield.geometry.mesh.isWatertight
-import afield.math.linalg.Vector3f
-import afield.geometry.mesh.signedVolume
-import afield.geometry.mesh.weld
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)
@@ -23,52 +18,72 @@ require(ManifoldLibrary.isAvailable) {
 }
 
 // ---- one parameter -------------------------------------------------------------
-val thickness = 0.09   // wall thickness, in the polytope's own units (it spans about 2)
+val thickness = 0.09 // wall thickness, in the polytope's own units (it spans about 2)
 // --------------------------------------------------------------------------------
 
 // ---- stage one: topology to a mesh ---------------------------------------------
 val chain = canonicalConway("bD")
 val geometry = chain.polyhedron.triangulate(normals = NormalPolicy.Flat)
-// The triangulator cuts each polygon on its own, so a corner shared by three faces comes
-// out as three vertices. Weld before handing it over: a manifold is an index property, and
-// 360 unwelded vertices describe the same surface without sharing an edge anywhere.
+/*
+The triangulator cuts each polygon on its own, so a corner shared by three faces comes
+out as three vertices. Weld before handing it over: a manifold is an index property, and
+360 unwelded vertices describe the same surface without sharing an edge anywhere.
+*/
 val plain = geometry.mesh.weld(1e-6)
-println("bD: ${geometry.triangleCount} triangles, " +
-    "${geometry.mesh.vertexCount} vertices unwelded, ${plain.vertexCount} welded")
+println(
+    "bD: ${geometry.triangleCount} triangles, " +
+        "${geometry.mesh.vertexCount} vertices unwelded, ${plain.vertexCount} welded",
+)
 println("   watertight ${plain.isWatertight()}, genus ${plain.genus()}")
 
 // ---- stage two: the Booleans ---------------------------------------------------
-val cut = Solid.scope {
+// The native shell stays scoped; only its copied triangle mesh escapes.
+val shaded = Solid.scope {
     val solid = plain.toSolid()
-    println("Manifold: status ${solid.status}, genus ${solid.genus}, " +
-        "volume ${"%.4f".format(solid.volume)}, area ${"%.4f".format(solid.surfaceArea)}")
-    println("   Field says volume ${"%.4f".format(plain.signedVolume())}, " +
-        "differing by ${"%.2e".format(kotlin.math.abs(plain.signedVolume() - solid.volume))}")
+    println(
+        "Manifold: status ${solid.status}, genus ${solid.genus}, " +
+            "volume ${"%.4f".format(solid.volume)}, area ${"%.4f".format(solid.surfaceArea)}",
+    )
+    println(
+        "   Field says volume ${"%.4f".format(plain.signedVolume())}, " +
+            "differing by ${"%.2e".format(kotlin.math.abs(plain.signedVolume() - solid.volume))}",
+    )
 
-    // Erode by a ball, then subtract: the wall left behind is the set of points within
-    // `thickness` of the surface, so its thickness is the same everywhere. Scaling the
-    // solid down instead would give a wall that is thicker at the vertices than at the
-    // face centres, which looks similar and is not the same shape.
+    /*
+    Erode by a ball, then subtract: the wall left behind is the set of points within
+    `thickness` of the surface, so its thickness is the same everywhere. Scaling the
+    solid down instead would give a wall that is thicker at the vertices than at the
+    face centres, which looks similar and is not the same shape.
+    */
     val ball = Solid.sphere(thickness, segments = 24)
     val inner = solid.minkowskiDifference(ball)
     val wall = solid - inner
-    println("shell: volume ${"%.4f".format(wall.volume)}, genus ${wall.genus}, " +
-        "${wall.triangleCount} triangles")
+    println(
+        "shell: volume ${"%.4f".format(wall.volume)}, genus ${wall.genus}, " + "${wall.triangleCount} triangles",
+    )
     // A constant-thickness wall over a convex body has volume area*t minus a curvature
     // term, so the ratio lands a little under one and says how much the corners take back.
-    println("   area * thickness = ${"%.4f".format(solid.surfaceArea * thickness)}, " +
-        "ratio ${"%.3f".format(wall.volume / (solid.surfaceArea * thickness))}")
+    println(
+        "   area * thickness = ${"%.4f".format(solid.surfaceArea * thickness)}, " +
+            "ratio ${"%.3f".format(wall.volume / (solid.surfaceArea * thickness))}",
+    )
 
-    // Open it up. trimByPlane keeps the side the normal points toward, so this keeps the
-    // lower half and the camera looks down into it. A rim seen across rather than
-    // end-on is what makes the wall's thickness a thing you can see.
-    wall.trimByPlane(0.0, -1.0, 0.0, 0.0).checked("cut shell")
+    /*
+    Open it up. trimByPlane keeps the side the normal points toward, so this keeps the
+    lower half and the camera looks down into it. A rim seen across rather than
+    end-on is what makes the wall's thickness a thing you can see.
+    */
+    val cut = wall.trimByPlane(0.0, -1.0, 0.0, 0.0).checked("cut shell")
+    // A 20-degree crease rather than the default 60: this surface is all facets, and at 60 the
+    // shallow ones average together and the polytope stops reading as one.
+    val shaded = cut.toTriMesh(normals = true, minSharpAngle = 20.0)
+    println(
+        "cut: genus ${cut.genus}, volume ${"%.4f".format(cut.volume)}, " +
+            "${shaded.triangleCount} triangles for the render",
+    )
+
+    shaded
 }
-// A 20-degree crease rather than the default 60: this surface is all facets, and at 60 the
-// shallow ones average together and the polytope stops reading as one.
-val shaded = cut.toTriMesh(normals = true, minSharpAngle = 20.0)
-println("cut: genus ${cut.genus}, volume ${"%.4f".format(cut.volume)}, " +
-    "${shaded.triangleCount} triangles for the render")
 
 // ---- stage three: the render ---------------------------------------------------
 val scene = PathTraceScene()
@@ -80,8 +95,10 @@ println("scene: ${added.triangleCount} triangles appended, ${added.degenerateCou
 val low = added.boundsMin.y - 0.02f
 val reach = 6f
 scene.quad(
-    Vector3f(-reach, low, -reach), Vector3f(reach, low, -reach),
-    Vector3f(reach, low, reach), Vector3f(-reach, low, reach),
+    Vector3f(-reach, low, -reach),
+    Vector3f(reach, low, -reach),
+    Vector3f(reach, low, reach),
+    Vector3f(-reach, low, reach),
     floor,
 )
 
@@ -101,8 +118,9 @@ tracer.environmentRotation = 2.1f
 tracer.indirectClamp = 10f
 tracer.blitToScreen()
 println("${tracer.backend}: ${tracer.triangleCount} triangles")
-cut.close()
 frames {
-    while (tracer.samples < 900) { frame() }
+    while (tracer.samples < 900) {
+        frame()
+    }
     println("shell study converged: ${tracer.samples} samples")
 }

@@ -11,18 +11,19 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="petri_demo_tokens" index="0" -->
 
 ```edn [field-box id="petri_demo_tokens" role="properties"]
-{"id" "petri_demo_tokens" "index" 0 "name" "4 — tokens that are rhythms" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — tokens that are rhythms" "_tombstone" false "frame" #afield/rect [60.0 510.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_tokens_code_.kt" "lines" 24 "characters" 1043 "sha256" "671f0a60836edcd39f2faa3cd27681aeedf10fa56b3db826bff5e40e71b68a02"}]}
+{"id" "petri_demo_tokens" "index" 0 "name" "4 — tokens that are rhythms" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — tokens that are rhythms" "_tombstone" false "frame" #afield/rect [60.0 510.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_tokens_code_.kt" "lines" 29 "characters" 1046 "sha256" "c2ccb83fdadea6e448e77f7826d29480b7123eca2dce10b72b67ec9f61720172"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_tokens" name="code" path="petri_demo_tokens_code_.kt"]
 import afield.simulation.petri.*
-import afield.audio.synth.*
 
-// A token's colour can be anything, including a whole PatPattern. So a place is a
-// *section*, one circulating token is "which section is sounding", and the net enforces
-// that exactly one of them is — no scheduler required.
+/*
+A token's colour can be anything, including a whole PatPattern. So a place is a
+*section*, one circulating token is "which section is sounding", and the net enforces
+that exactly one of them is — no scheduler required.
+*/
 val song = petriSong(
-    "verse"  to (pat("bd ~ sd ~") to 4),
+    "verse" to (pat("bd ~ sd ~") to 4),
     "chorus" to (pat("bd*4 hh*8") to 4),
 )
 
@@ -32,8 +33,12 @@ showPetriNet(song, w = 660.0, h = 340.0)
 // the slow net schedules the fast one, and both are the same mechanism.
 val notes = song.pattern().unfold<String>()
 
-fun bar(c: Long) = notes.events(PatArc(PatQ.of(c), PatQ.of(c + 1)))
-    .filter { it.hasOnset }.sortedBy { it.arc.start }.joinToString(" ") { it.value }
+fun bar(c: Long) =
+    notes
+        .events(PatArc(PatQ.of(c), PatQ.of(c + 1)))
+        .filter { it.hasOnset }
+        .sortedBy { it.arc.start }
+        .joinToString(" ") { it.value }
 for (c in 0L..7L) println("cycle %d   %s".format(c, bar(c)))
 
 // Eight cycles: four bars of verse, four of chorus, and audibly round again.
@@ -46,16 +51,20 @@ displayOpen("sound")
 <!-- field-box id="petri_demo_structure" index="1" -->
 
 ```edn [field-box id="petri_demo_structure" role="properties"]
-{"id" "petri_demo_structure" "index" 1 "name" "3 — song structure" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — song structure" "_tombstone" false "frame" #afield/rect [60.0 360.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_structure_code_.kt" "lines" 27 "characters" 938 "sha256" "75d68f85d7e3f4e3e1137787f64306caac8ad9c56e5ae1ccca5fbb81c5adaa0a"}]}
+{"id" "petri_demo_structure" "index" 1 "name" "3 — song structure" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — song structure" "_tombstone" false "frame" #afield/rect [60.0 360.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_structure_code_.kt" "lines" 32 "characters" 954 "sha256" "67fb80384477223b3aa446eef94c669bce18c947ef5353c44ebced4df025bca6"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_structure" name="code" path="petri_demo_structure_code_.kt"]
 import afield.simulation.petri.*
 
-// Two nets in one. The fast ring plays the bar; the slow ring is the arrangement, one
-// token walking verse -> verse -> chorus and back. Same mechanism at both timescales,
-// which is the argument for using a net rather than a sequencer and a separate song mode.
-val net = petri("""
+/*
+Two nets in one. The fast ring plays the bar; the slow ring is the arrangement, one
+token walking verse -> verse -> chorus and back. Same mechanism at both timescales,
+which is the argument for using a net rather than a sequencer and a separate song mode.
+*/
+val net =
+    petri(
+        """
     #petri
     !grid 1/4
 
@@ -69,7 +78,8 @@ val net = petri("""
     &verse.b + beat -[ vbeat2 @1/4 : bd ]-> beat2
     &chorus + beat  -[ cbeat @1/4 : sd ]-> beat2
     beat2 -[ off @1/4 : hh ]-> beat
-""")
+""",
+    )
 
 showPetriNet(net, w = 760.0, h = 420.0)
 
@@ -84,21 +94,26 @@ displayOpen("sound")
 <!-- field-box id="petri_demo_live" index="2" -->
 
 ```edn [field-box id="petri_demo_live" role="properties"]
-{"id" "petri_demo_live" "index" 2 "name" "7 — play it live" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — play it live" "_tombstone" false "frame" #afield/rect [60.0 960.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_live_code_.kt" "lines" 39 "characters" 1402 "sha256" "60e250d6e198b73d1f333d3a0f6876fca021f18098cd081d69f303a9dc2b37cc"}]}
+{"id" "petri_demo_live" "index" 2 "name" "7 — play it live" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — play it live" "_tombstone" false "frame" #afield/rect [60.0 960.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_live_code_.kt" "lines" 47 "characters" 1395 "sha256" "804384b830f2ea48dc916f106337a76cbcf8729d0a085b7d598adb35d3784f45"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_live" name="code" path="petri_demo_live_code_.kt"]
 import afield.simulation.petri.*
-import afield.audio.synth.*
 
-// Boxes 1-6 render *offline* — they mix a wav and hand you a player, which needs no
-// audio device and so works in a docs build and in CI. This is the other path: the real
-// polyphonic Dirt player, driven by the transport, tempo-synced and interruptible.
+/*
+Boxes 1-6 render *offline* — they mix a wav and hand you a player, which needs no
+audio device and so works in a docs build and in CI. This is the other path: the real
+polyphonic Dirt player, driven by the transport, tempo-synced and interruptible.
+*/
 val root = DirtRender.dirtSampleRoot()
-println(root?.let { "samples: $it" }
-    ?: "no Dirt-Samples found — set ${DirtRender.ENV_VAR}, or install the SuperCollider quark")
+println(
+    root?.let { "samples: $it" }
+        ?: "no Dirt-Samples found — set ${DirtRender.ENV_VAR}, or install the SuperCollider quark",
+)
 
-val net = petri("""
+val net =
+    petri(
+        """
     #petri
     !grid 1/8
     !conflict priority
@@ -110,13 +125,16 @@ val net = petri("""
     mid    -[ b @1/8 pri=9 : hh ]-> pulse
     &mid   -[ build @1/8 pri=3      ]-> fill
     3*fill -[ crash @1/8 pri=1 : sd ]->
-""")
+""",
+    )
 showPetriNet(net, w = 700.0, h = 360.0)
 
-// Flip to true to hear it. It is false by default because `audio { }` opens a real
-// output device, and this transcript is replayed end to end in CI on machines that have
-// none — everything below still compiles either way, which is the point of the flag
-// rather than a comment.
+/*
+Flip to true to hear it. It is false by default because `audio { }` opens a real
+output device, and this transcript is replayed end to end in CI on machines that have
+none — everything below still compiles either way, which is the point of the flag
+rather than a comment.
+*/
 val live = false
 
 if (live && root != null) {
@@ -134,18 +152,22 @@ if (live && root != null) {
 <!-- field-box id="petri_demo_playground" index="3" -->
 
 ```edn [field-box id="petri_demo_playground" role="properties"]
-{"id" "petri_demo_playground" "index" 3 "name" "6 — playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — playground" "_tombstone" false "frame" #afield/rect [60.0 810.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_playground_code_.kt" "lines" 32 "characters" 1161 "sha256" "07ea8a6cf927427f5e4b1da49534cda8622015e90025b6376313c1e2831f0a77"}]}
+{"id" "petri_demo_playground" "index" 3 "name" "6 — playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — playground" "_tombstone" false "frame" #afield/rect [60.0 810.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_playground_code_.kt" "lines" 45 "characters" 1280 "sha256" "ba07baa3a8a84d411bcba7cdeae1f34d42b1951af78e518c14c7be0b5f7cac67"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_playground" name="code" path="petri_demo_playground_code_.kt"]
 import afield.simulation.petri.*
 
-// A groove with a bit of everything: a read arc, a weighted arc, a capacity and
-// priorities. `bd hh` goes round fast; meanwhile `build` watches `mid` without
-// consuming it, and every third time it has counted, the weighted arc drains all
-// three at once and you get a snare — `crash` has no output side, so it is a drain and
-// the net stays bounded and periodic. Change a number and run the box again.
-val net = petri("""
+/*
+A groove with a bit of everything: a read arc, a weighted arc, a capacity and
+priorities. `bd hh` goes round fast; meanwhile `build` watches `mid` without
+consuming it, and every third time it has counted, the weighted arc drains all
+three at once and you get a snare — `crash` has no output side, so it is a drain and
+the net stays bounded and periodic. Change a number and run the box again.
+*/
+val net =
+    petri(
+        """
     #petri
     !grid 1/8
     !conflict priority
@@ -158,14 +180,23 @@ val net = petri("""
 
     &mid   -[ build @1/8 pri=3      ]-> fill
     3*fill -[ crash @1/8 pri=1 : sd ]->
-""")
+""",
+    )
 
 showPetriNet(net, w = 760.0, h = 400.0)
 
 println("period: ${net.period()}   deadlocks: ${net.willDeadlock()}")
-for (c in 0L..3L) println("cycle %d   %s".format(c, net.emits()
-    .events(PatArc(PatQ.of(c), PatQ.of(c + 1)))
-    .filter { it.hasOnset }.sortedBy { it.arc.start }.joinToString(" ") { it.value }))
+for (c in 0L..3L) println(
+    "cycle %d   %s"
+        .format(
+            c,
+            net.emits()
+                .events(PatArc(PatQ.of(c), PatQ.of(c + 1)))
+                .filter { it.hasOnset }
+                .sortedBy { it.arc.start }
+                .joinToString(" ") { it.value },
+        ),
+)
 println(net.report())
 
 println(showDirtAudio(net.emits(), cycles = 8, cps = 1.5, channel = "sound").describe())
@@ -177,15 +208,17 @@ displayOpen("sound")
 <!-- field-box id="petri_demo_philosophers" index="4" -->
 
 ```edn [field-box id="petri_demo_philosophers" role="properties"]
-{"id" "petri_demo_philosophers" "index" 4 "name" "5 — dining philosophers (silent)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — dining philosophers (silent)" "_tombstone" false "frame" #afield/rect [60.0 660.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_philosophers_code_.kt" "lines" 34 "characters" 1536 "sha256" "8e5a2577b494b674cdad6e8f7180a3242baec9ce01c0885b6f730a999b492636"}]}
+{"id" "petri_demo_philosophers" "index" 4 "name" "5 — dining philosophers (silent)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — dining philosophers (silent)" "_tombstone" false "frame" #afield/rect [60.0 660.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_philosophers_code_.kt" "lines" 54 "characters" 1750 "sha256" "59a7186e6bea9cbf6304bb513841f7787d6ef2c76e77d6ab204f2d041af72173"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_philosophers" name="code" path="petri_demo_philosophers_code_.kt"]
 import afield.simulation.petri.*
 
-// Nothing in the model knows what a note is. Here is the same engine as a concurrency
-// checker: five philosophers, five forks, and the shape of the net computed in a loop —
-// which is the one thing the `#petri` notation cannot do.
+/*
+Nothing in the model knows what a note is. Here is the same engine as a concurrency
+checker: five philosophers, five forks, and the shape of the net computed in a loop —
+which is the one thing the `#petri` notation cannot do.
+*/
 fun table(reverseLast: Boolean, fairly: Boolean) = petri {
     conflict = if (fairly) PetriConflict.ROUND_ROBIN else PetriConflict.ORDER
     grid = cyc(1, 4)
@@ -194,23 +227,41 @@ fun table(reverseLast: Boolean, fairly: Boolean) = petri {
         val left = i
         val right = (i + 1) % 5
         val reversed = reverseLast && i == 4
-        t("grab.$i") { from("fork.${if (reversed) right else left}"); to("holding.$i") }
-        t("eat.$i") { from("holding.$i"); from("fork.${if (reversed) left else right}"); to("eating.$i") }
-        t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+        t("grab.$i") {
+            from("fork.${if (reversed) right else left}")
+            to("holding.$i")
+        }
+        t("eat.$i") {
+            from("holding.$i")
+            from("fork.${if (reversed) left else right}")
+            to("eating.$i")
+        }
+        t("done.$i") {
+            from("eating.$i")
+            to("fork.$left")
+            to("fork.$right")
+        }
     }
 }
 
 val naive = table(reverseLast = false, fairly = false)
 showPetriNet(naive, w = 760.0, h = 460.0)
 
-for ((label, net) in listOf(
-    "all left-handed" to naive,
-    "one reaches right first" to table(reverseLast = true, fairly = false),
-    "…and round-robin conflict" to table(reverseLast = true, fairly = true),
-)) {
+for ((label, net) in
+    listOf(
+        "all left-handed" to naive,
+        "one reaches right first" to table(reverseLast = true, fairly = false),
+        "…and round-robin conflict" to table(reverseLast = true, fairly = true),
+    )) {
     val stuck = net.deadTransitions()
-    println("%-26s deadlocks=%-5s never fires: %s".format(
-        label, net.willDeadlock(), stuck.ifEmpty { listOf("—") }.joinToString(", ")))
+    println(
+        "%-26s deadlocks=%-5s never fires: %s"
+            .format(
+                label,
+                net.willDeadlock(),
+                stuck.ifEmpty { listOf("—") }.joinToString(", "),
+            ),
+    )
 }
 
 // The middle line is where breaking the symmetry removes the deadlock and leaves a
@@ -222,7 +273,7 @@ for ((label, net) in listOf(
 <!-- field-box id="petri_demo_polyrhythm" index="5" -->
 
 ```edn [field-box id="petri_demo_polyrhythm" role="properties"]
-{"id" "petri_demo_polyrhythm" "index" 5 "name" "2 — five against three" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — five against three" "_tombstone" false "frame" #afield/rect [60.0 210.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_polyrhythm_code_.kt" "lines" 30 "characters" 920 "sha256" "00b7c503e54a5c23b10caad84fcd8deb7e06a52752147d0f14fdaf5bfd1eca42"}]}
+{"id" "petri_demo_polyrhythm" "index" 5 "name" "2 — five against three" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — five against three" "_tombstone" false "frame" #afield/rect [60.0 210.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_polyrhythm_code_.kt" "lines" 33 "characters" 939 "sha256" "b7b3ab36d02fa203282f5603f3d4a0f2cb2d44b09052936089fb00285111d0c6"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_polyrhythm" name="code" path="petri_demo_polyrhythm_code_.kt"]
@@ -230,7 +281,9 @@ import afield.simulation.petri.*
 
 // Two independent rings, one five long and one three long, sharing a clock. Nothing in
 // this source says "fifteen" — that is a property of the net, and the net can tell you.
-val net = petri("""
+val net =
+    petri(
+        """
     #petri
     !grid 1/15
 
@@ -245,7 +298,8 @@ val net = petri("""
     b0 -[ b0.go : hh ]-> b1
     b1 -[ b1.go      ]-> b2
     b2 -[ b2.go : hh ]-> b0
-""")
+""",
+    )
 
 showPetriNet(net, w = 700.0, h = 340.0)
 
@@ -263,16 +317,20 @@ displayOpen("sound")
 <!-- field-box id="petri_demo_loop" index="6" -->
 
 ```edn [field-box id="petri_demo_loop" role="properties"]
-{"id" "petri_demo_loop" "index" 6 "name" "1 — the smallest loop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — the smallest loop" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_loop_code_.kt" "lines" 27 "characters" 930 "sha256" "0c61dfabd587051148e1dfa0b345d28e8bfe36461e0ced475dd119336614fe1a"}]}
+{"id" "petri_demo_loop" "index" 6 "name" "1 — the smallest loop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — the smallest loop" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_loop_code_.kt" "lines" 38 "characters" 1008 "sha256" "9c56cf6be95a56f12ce306924f5360f439d169168d729225b2633bacc233e7d3"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_loop" name="code" path="petri_demo_loop_code_.kt"]
 import afield.simulation.petri.*
 
-// A place holds tokens; a transition fires when all its inputs have one. Give a
-// transition a sound after the `:` and firing it plays that sound. That is the whole
-// idea — everything else is more of it.
-val net = petri("""
+/*
+A place holds tokens; a transition fires when all its inputs have one. Give a
+transition a sound after the `:` and firing it plays that sound. That is the whole
+idea — everything else is more of it.
+*/
+val net =
+    petri(
+        """
     #petri
     !timing step
     !grid 1/8
@@ -281,7 +339,8 @@ val net = petri("""
     kick : 1
     kick -[ hit  @1/8 : bd ]-> hats
     hats -[ back @1/8 : sd ]-> kick
-""")
+""",
+    )
 
 showPetriNet(net, w = 640.0, h = 300.0)
 
@@ -289,8 +348,14 @@ showPetriNet(net, w = 640.0, h = 300.0)
 // combinator applies, and so does the pattern-language's own audio renderer.
 println(showDirtAudio(net.emits(), cycles = 4, cps = 1.0, channel = "sound").describe())
 
-println("plays: " + net.emits().events(PatArc(PatQ.ZERO, PatQ.ONE))
-    .filter { it.hasOnset }.sortedBy { it.arc.start }.joinToString(" ") { it.value })
+println(
+    "plays: " +
+        net.emits()
+            .events(PatArc(PatQ.ZERO, PatQ.ONE))
+            .filter { it.hasOnset }
+            .sortedBy { it.arc.start }
+            .joinToString(" ") { it.value },
+)
 println("period: ${net.period()} cycles")
 
 displayOpen("sound")

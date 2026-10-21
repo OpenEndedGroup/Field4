@@ -43,6 +43,13 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
+/**
+ * Script access to the iframe inside a box's output area as the Electron tab shows it:
+ * [outputIframe] resolves a box and channel to a [LiveOutputIframe], whose calls (JavaScript
+ * evaluation, raw CDP, navigation) return futures so the runloop is not blocked while the tab answers.
+ */
+
+
 /** A resolved box/output pair in the current document; the actual DOM iframe is found per call. */
 data class OutputIframeTarget(val boxUid: String, val channel: String)
 

@@ -22,6 +22,15 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
+/**
+ * An MQTT 3.1.1 client over plain TCP, [MqttClient], with the message, subscription and connection
+ * event types it hands back.
+ *
+ * The client reconnects with backoff, re-subscribes after a reconnect and re-sends unacknowledged
+ * QoS 1 publishes. Box code normally reaches it through `mqtt`, which routes callbacks onto the main
+ * Runloop.
+ */
+
 /** One received message. [text], [number] and [json] read the payload. */
 class MqttMessage(
     val topic: String,

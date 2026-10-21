@@ -17,6 +17,11 @@ import afield.media.video.*
 import java.util.concurrent.atomic.AtomicLong
 
 /**
+ * [SimulationReset], a way for UI or agent threads to ask a running simulation to reset at its next
+ * frame boundary, with several requests before that boundary coalesced into one reset.
+ */
+
+/**
  * Coalesced reset requests, consumed explicitly at an application's frame boundary.
  * This is not a launcher: create it in normal box setup and consume it inside the
  * existing frames/loop coroutine. Requests can arrive from UI/agent threads.

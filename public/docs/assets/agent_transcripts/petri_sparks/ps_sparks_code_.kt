@@ -1,16 +1,17 @@
-import afield.audio.synth.PatArc
-import afield.audio.synth.PatQ
 import org.lwjgl.vulkan.VK10.*
 
-val cps = 0.5     // cycles a second; the net's grid is an eighth of a cycle
-val life = 1.6    // seconds a spark lives, LIFE in the vertex shader
-val slots = 24    // SLOTS in the vertex shader: firings drawn at once
-val particles = slots * 1400 + 3 * 2400
+val cps = 0.5 // cycles a second; the net's grid is an eighth of a cycle
+val life = 1.6 // seconds a spark lives, LIFE in the vertex shader
+val slots = 24 // SLOTS in the vertex shader: firings drawn at once
+val perBurst = 1400 // PER in the vertex shader: particles per firing.
+val perRing = 2400 // DUST in the vertex shader: particles per dust ring.
+// Change slots/perBurst/perRing together with SLOTS/PER/DUST, then relaunch this box.
+val particles = slots * perBurst + 3 * perRing
 
 // The rings as the shader draws them, centre out, and where each sounding transition
 // launches from: (colour, ring, place). The clap launches from the centre.
-val rings = listOf(listOf("s0", "s1", "s2"), listOf("k0", "k1", "k2", "k3"), listOf("h0", "h1", "h2", "h3", "h4"))
-val radius = listOf(0.36, 0.56, 0.76)
+val rings = [["s0", "s1", "s2"], ["k0", "k1", "k2", "k3"], ["h0", "h1", "h2", "h3", "h4"]]
+val radius = [0.36, 0.56, 0.76]
 val launches = mapOf(
     "kick" to Triple(0, 1, 0),
     "snare" to Triple(1, 0, 0),
@@ -39,7 +40,8 @@ renderer += "petri-sparks" to module
 var bursts = defaultBuffer {
     perFrame = true
     size = slots.vec4s
-}.buffer
+}
+    .buffer
 
 var charge = 0.0
 val tokens = DoubleArray(3)
@@ -62,9 +64,7 @@ loop {
 
     // Everything that fired in the last `life` seconds, newest last.
     val since = PatQ.fromDouble(maxOf(0.0, now - life * cps))
-    val recent = sparkRun.firingsOver(PatArc(since, at))
-        .filter { it.transition in launches }
-        .takeLast(slots)
+    val recent = sparkRun.firingsOver(PatArc(since, at)).filter { it.transition in launches }.takeLast(slots)
 
     bursts.write {
         for (s in 0 until slots) {

@@ -23,7 +23,13 @@ import java.util.concurrent.TimeUnit
  * draws when something reaches it (usually the renderer's `preTargets`). Walking the windows' passes,
  * everything their `others` and `preTargets` reach, and the headset target finds every place that draws
  * the module, compared by identity. A target drawn by some other path is not found.
+ *
+ * [ModuleDestinations.capture] reads one of those places back as PNG bytes, and
+ * [ModuleDestinations.renderDisposable] draws a module alone into a temporary render target and returns
+ * that picture. StackSL's auto-study uses both to show what a module drew.
  */
+
+/** Finds where a module draws, and captures it there. */
 object ModuleDestinations {
     /** A place that draws a module. */
     sealed class Destination {

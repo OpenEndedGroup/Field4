@@ -13,6 +13,16 @@ import java.security.MessageDigest
 import java.time.Instant
 import java.util.UUID
 
+/**
+ * The tool pool: a local library, shared across projects, of tools written in box Kotlin, with their tests and the evidence those tests produced.
+ *
+ * [BoxToolTest] attaches an executable example to a [Box.aiTool] definition, and [ToolDiagnostics]
+ * keeps bounded per-call evidence ([ToolCallEvidence]) and suite results ([ToolTestEvidence]) keyed
+ * by source hash, so an edited tool does not inherit an old pass. [ToolPool] stores immutable
+ * [ToolPoolEntry] snapshots under `~/.afield/tool-pool`; loading an entry returns its source and
+ * never runs it.
+ */
+
 /** An executable example attached to an ordinary [Box.aiTool] definition. */
 class BoxToolTest(val name: String, val arguments: String, internal val verify: (Any) -> Unit) {
     internal var failureContains: String? = null
@@ -87,9 +97,9 @@ class ToolDiagnostics internal constructor(private val tool: BoxTool) {
             retain(ToolCallEvidence(tool=tool.name, sourceHash=tool.sourceHash, caller=caller,
                 arguments=bounded(arguments), success=succeeded(result), result=summary(result), elapsedMs=(System.nanoTime()-started)/1_000_000))
             return result
-        } catch (e: Exception) {
-            retain(ToolCallEvidence(tool=tool.name, sourceHash=tool.sourceHash, caller=caller,
-                arguments=bounded(arguments), success=false, result=bounded(e.message ?: e.javaClass.simpleName), elapsedMs=(System.nanoTime()-started)/1_000_000))
+        } catch (e: Throwable) {
+            if (e !is VirtualMachineError || e is StackOverflowError) retain(ToolCallEvidence(tool=tool.name, sourceHash=tool.sourceHash, caller=caller,
+                arguments=bounded(arguments), success=false, result=bounded(afield.ai.conversation.aiToolFailureMessage(e)), elapsedMs=(System.nanoTime()-started)/1_000_000))
             throw e
         }
     }

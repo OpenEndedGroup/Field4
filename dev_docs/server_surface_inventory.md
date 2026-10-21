@@ -27,7 +27,8 @@ out:
 
 - **state-changing HTTP routes** — 56 of them, 43 with a named verb and 13 that name no verb
   at all — belong to `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned`, which
-  has pinned them since 2026-08-12 and counts the unguarded remainder (**49 of 56**). This
+  has pinned them since 2026-08-12 and counts the routes without their own guard (**48 of 56**). The
+  Local AI model-discovery probe has a same-site check and permits trusted remote Field clients. This
   page does not duplicate that table, but it does count the thirteen verbless routes below,
   because a door that answers every method has to appear in an inventory of doors;
 - **the CORS block and the three WebSocket channels** belong to the same file's other tests.
@@ -117,6 +118,7 @@ mutation; it is a different one.
 | `GET /api/refactor-pass` | `refactorPass.kt` | loopback + same-site |
 | `GET /api/terminal` | `terminal.kt` | loopback + same-site |
 | `GET /api/vulkan-status` | `Server.kt` | loopback + same-site |
+| `GET /api/native-geometry-status` | `Server.kt` | loopback + same-site |
 | `GET /api/welcome-changelog` | `Server.kt` | none |
 | `GET /api/welcome-docs` | `Server.kt` | none |
 | `GET /api/welcome-docs/stream` | `Server.kt` | none |

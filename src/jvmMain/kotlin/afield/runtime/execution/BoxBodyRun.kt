@@ -1,5 +1,12 @@
 package afield.runtime.execution
 
+/**
+ * Which boxes are executing their body right now, as distinct from a frame loop or callback the body
+ * started: [BoxBodyRun] counts each box's nested body runs, and a source-backed block reads it to
+ * refuse re-entering its own box.
+ */
+
+
 import afield.document.graph.Box
 
 /**

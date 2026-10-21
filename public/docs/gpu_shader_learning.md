@@ -23,7 +23,9 @@ The shader being learned is called the teacher. Here is its complete **fragment*
 ```diffstatic {data-lang=glsl}
 :::fold Fragment interface
 #version 460
-layout(push_constant) uniform P { vec4 state; } p;
+layout(push_constant) uniform P {
+    vec4 state;
+} p;
 layout(location = 0) out vec4 color;
 :::endfold
 
@@ -32,13 +34,13 @@ void main() {
     float t = p.state.z;
 
     vec3 rgb = .5 + .22 * cos(
-        vec3(xy.x * 2 + t, xy.y * 2 - t * .7, xy.x + xy.y + t * .5)
-        + vec3(0, 2, 4));
+    vec3(xy.x * 2 + t, xy.y * 2 - t * .7, xy.x + xy.y + t * .5)
+    + vec3(0, 2, 4));
     for (int k = 1; k <= 96; k++) {
         float a = float(k) * .61803399;
         rgb += .028 / float(k) * sin(
-            vec3(xy.x * cos(a) + xy.y * sin(a)) * 3
-            + t + vec3(0, 2, 4) + a);
+        vec3(xy.x * cos(a) + xy.y * sin(a)) * 3
+        + t + vec3(0, 2, 4) + a);
     }
     // Two hard edges: a deliberately discontinuous target for the small network.
     float stripe = step(-.12, xy.x) * (1 - step(.12, xy.x));
@@ -54,16 +56,21 @@ The teacher is an ordinary module attached to one linear RGBA16F or RGBA32F `Ren
 
 ```diffstatic {data-lang=kotlin}
 val source = RenderToTexture(renderer) {
-    width=1920; height=1080; useDepth=false
-    format=VK_FORMAT_R32G32B32A32_SFLOAT
+    width = 1920
+    height = 1080
+    useDepth = false
+    format = VK_FORMAT_R32G32B32A32_SFLOAT
 }
 val teacher = moduleHere { source.apply() }
 source += "teacher" to teacher
+
 // Add your existing meshes and bind their uniforms as usual.
 
-val lab = GpuShaderLearningView(renderer, source) { normalizedTime ->
-    mesh.push["state"] = vec(source.width, source.height, normalizedTime, 0)
-}.install()
+val lab =
+    GpuShaderLearningView(renderer, source) { normalizedTime ->
+            mesh.push["state"] = vec(source.width, source.height, normalizedTime, 0)
+        }
+        .install()
 lab.parameter = .25f
 lab.iterationsPerFrame = 8
 ```
@@ -77,13 +84,19 @@ This is still a learned **(screen x, screen y, one parameter) → RGB** function
 **Save frozen weights** writes a new directory under `build/shader-learning/`. Between frames, Field converts the driver-specific training matrices into the portable row-major layout the offline learner also uses, reads back the small model once, and writes `weights.f16` and a checksummed `weights.json`. Training and evaluation themselves have no CPU image or weight readback.
 
 ```diffstatic {data-lang=kotlin}
-lab.model.save(File("build/my-fit-001"),
+lab.model.save(
+    File("build/my-fit-001"),
     ShaderTraining.sourceDigest(source),
-    "Fixed camera and texture; normalized time is the only changing input")
+    "Fixed camera and texture; normalized time is the only changing input",
+)
 
-val frozen = LearnedShader(renderer, 1920, 1080,
-    weightsFile=File("build/my-fit-001/weights.f16"),
-    manifestFile=File("build/my-fit-001/weights.json"))
+val frozen = LearnedShader(
+    renderer,
+    1920,
+    1080,
+    weightsFile = File("build/my-fit-001/weights.f16"),
+    manifestFile = File("build/my-fit-001/weights.json"),
+)
 ```
 
 The saved model works through cooperative-vector inference or `cooperative=false` ordinary shader arithmetic. You can continue extending its [host shader](learned_shader.md#keep-learning-finished-keep-the-material-editable): sampling coordinates, compositing, texture lookups and effects around the learned function remain yours. The saved manifest records training steps, seed, domain and source identity; saving alone makes no quality claim.

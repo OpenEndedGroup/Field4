@@ -3,6 +3,15 @@ package afield.graphics.vulkan.targets
 import kotlin.math.cos
 import kotlin.math.sin
 
+/**
+ * Per-item motion for 2D items drawn by stable identity, for passes that need each item's previous
+ * pose.
+ *
+ * [MotionItems] keeps this frame's and last frame's [MotionPose] for each key and writes the
+ * difference, falling back to no motion when the item is new, changed revision or was cleared.
+ * `MotionItemsTest` covers it.
+ */
+
 /** Mutable 2D affine pose. Angles are radians; scale is positive and uniform. */
 class MotionPose(
     var x: Float = 0f, var y: Float = 0f, var angle: Float = 0f,

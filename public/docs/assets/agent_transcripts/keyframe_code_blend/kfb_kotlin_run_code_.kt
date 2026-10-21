@@ -1,15 +1,12 @@
-// The same plan, rebuilt here — building one is pure, so it costs an alignment and
-// nothing else. Then the blended expression is handed to a SourceBackedBlock whose box is
-// kfb_kotlin, so it compiles and runs *there* while this box is the one evaluating.
-import afield.animation.keyframes.CodeBlendMode
-import afield.animation.keyframes.CodeBlendOptions
-import afield.study.source.SourceBackedBlock
-import afield.animation.keyframes.planKotlinCodeBlend
-
+/*
+The same plan, rebuilt here — building one is pure, so it costs an alignment and
+nothing else. Then the blended expression is handed to a SourceBackedBlock whose box is
+kfb_kotlin, so it compiles and runs *there* while this box is the one evaluating.
+*/
 val plan = planKotlinCodeBlend(
     "2.0f * 3.0f + 1.0f",
     "8.0f * 3.0f + 5.0f",
-    CodeBlendOptions(mode = CodeBlendMode.RUNTIME)
+    CodeBlendOptions(mode = CodeBlendMode.RUNTIME),
 )
 val block = SourceBackedBlock<Any?>("kfb_kotlin", plan.runtimeSource)
 println(plan.runtimeSource)

@@ -1,3 +1,10 @@
+/**
+ * Traces how the points of a changing drawing move from frame to frame, as one trajectory line per point.
+ *
+ * [FLineSideways.update] takes each frame's line(s) and matches their anchor points to the previous
+ * frame's; [FLineSideways.trajectories] and [FLineSideways.trajectoryMap] return the tracks drawn so far.
+ */
+
 package afield.geometry.path
 
 import afield.geometry.spatial.HungarianAssignment

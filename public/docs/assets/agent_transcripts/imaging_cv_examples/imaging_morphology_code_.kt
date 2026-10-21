@@ -1,8 +1,9 @@
 // Three disjoint discs of known radius, then noise on top of them.
 val discs = listOf(Triple(550.0, 600.0, 280.0), Triple(1500.0, 550.0, 200.0), Triple(1100.0, 1350.0, 140.0))
-val clean = Img.generate(2200, 1800) { x, y ->
-    if (discs.any { (cx, cy, r) -> hypot(x - cx, y - cy) <= r }) 0.85f else 0.15f
-}
+val clean =
+    Img.generate(2200, 1800) { x, y ->
+        if (discs.any { (cx, cy, r) -> hypot(x - cx, y - cy) <= r }) 0.85f else 0.15f
+    }
 val rng = kotlin.random.Random(3)
 val noisy = clean.copy()
 repeat((noisy.pixelCount * 0.03).toInt()) {
@@ -25,10 +26,14 @@ showImgGrid(
     cellSide = 250,
 )
 println("${cc.count} components after cleaning (planted ${discs.size} discs):")
-cc.components.sortedByDescending { it.area }.forEach {
-    println("  area=${it.area} centroid=(${"%.1f".format(it.centroidX)}, ${"%.1f".format(it.centroidY)}) " +
-        "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${"%.2f".format(it.fillRatio)}")
-}
+cc.components
+    .sortedByDescending { it.area }
+    .forEach {
+        println(
+            "  area=${it.area} centroid=(${"%.1f".format(it.centroidX)}, ${"%.1f".format(it.centroidY)}) " +
+                "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${"%.2f".format(it.fillRatio)}",
+        )
+    }
 println("distance-transform peak ${"%.1f".format(dt.max())} (largest planted radius ${discs.maxOf { it.third }})")
 
 // Connected components are blobs; blobs have outlines. Same story as Canny — the raster

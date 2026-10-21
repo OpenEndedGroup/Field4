@@ -11,21 +11,27 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rig_measure" index="0" -->
 
 ```edn [field-box id="rig_measure" role="properties"]
-{"id" "rig_measure" "index" 0 "name" "3. Measure: round trip and aliasing (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Measure: round trip and aliasing (run)" "_tombstone" false "frame" #afield/rect [60.0 560.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rig_measure_code_.kt" "lines" 11 "characters" 669 "sha256" "0afa0491c1fb9e7fa446942daeff7eb881ded4219b7870c3be02aee248dbf013"}]}
+{"id" "rig_measure" "index" 0 "name" "3. Measure: round trip and aliasing (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Measure: round trip and aliasing (run)" "_tombstone" false "frame" #afield/rect [60.0 560.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rig_measure_code_.kt" "lines" 17 "characters" 680 "sha256" "ed7915efa26d60778636dc236081ae79ae2db6c5479c6fcc954f4fe2c297aa1f"}]}
 ```
 
 ```kotlin [field-property box="rig_measure" name="code" path="rig_measure_code_.kt"]
 import afield.io.dmx.*
 
-// The page's measurements, on this machine: nine frames sent and received back on a free port the
-// system picks (so this can run beside boxes 1 and 2), and a thin line swept across the rig,
-// sampled two ways.
+/*
+The page's measurements, on this machine: nine frames sent and received back on a free port the
+system picks (so this can run beside boxes 1 and 2), and a thin line swept across the rig,
+sampled two ways.
+*/
 val trip = SceneOnARig.roundTrip()
 println(trip)
 
 val (point, area) = SceneOnARig.aliasing()
-println("point samples: dark in ${point.darkFrames} of ${point.total.size} frames, light on the rig ${"%.2f".format(point.min)}..${"%.2f".format(point.max)}")
-println("area average:  dark in ${area.darkFrames} frames, light on the rig ${"%.3f".format(area.min)}..${"%.3f".format(area.max)} (the line is worth ${SceneOnARig.LINE_TRUTH})")
+println(
+    "point samples: dark in ${point.darkFrames} of ${point.total.size} frames, light on the rig ${"%.2f".format(point.min)}..${"%.2f".format(point.max)}",
+)
+println(
+    "area average:  dark in ${area.darkFrames} frames, light on the rig ${"%.3f".format(area.min)}..${"%.3f".format(area.max)} (the line is worth ${SceneOnARig.LINE_TRUTH})",
+)
 ```
 
 ## 2. 2. Receiver: the rig lit by what arrived (launch)
@@ -33,15 +39,17 @@ println("area average:  dark in ${area.darkFrames} frames, light on the rig ${"%
 <!-- field-box id="rig_receiver" index="1" -->
 
 ```edn [field-box id="rig_receiver" role="properties"]
-{"id" "rig_receiver" "index" 1 "name" "2. Receiver: the rig lit by what arrived (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2. Receiver: the rig lit by what arrived (launch)" "_tombstone" false "frame" #afield/rect [1120.0 60.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rig_receiver_code_.kt" "lines" 15 "characters" 637 "sha256" "281d4e933ef5c8b0138bca07d1c1c968be636e1d88c282a5e312f593a0ddd414"}]}
+{"id" "rig_receiver" "index" 1 "name" "2. Receiver: the rig lit by what arrived (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2. Receiver: the rig lit by what arrived (launch)" "_tombstone" false "frame" #afield/rect [1120.0 60.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rig_receiver_code_.kt" "lines" 17 "characters" 634 "sha256" "623d494ad195fe89a698671c4a66e0904897d02ea33cd48e75da319b85e525e1"}]}
 ```
 
 ```kotlin [field-property box="rig_receiver" name="code" path="rig_receiver_code_.kt"]
 import afield.io.dmx.*
 
-// Field as an sACN node on the sender's port (35690, fixed so the two boxes agree; change both
-// together). It knows where the fixtures are (the same layout),
-// and nothing else: every colour drawn here was decoded from the universes that arrived.
+/*
+Field as an sACN node on the sender's port (35690, fixed so the two boxes agree; change both
+together). It knows where the fixtures are (the same layout),
+and nothing else: every colour drawn here was decoded from the universes that arrived.
+*/
 val node = sacnIn(port = 35690)
 val layout = SceneOnARig.Rig()
 
@@ -59,7 +67,7 @@ loop {
 <!-- field-box id="scene_sender" index="2" -->
 
 ```edn [field-box id="scene_sender" role="properties"]
-{"id" "scene_sender" "index" 2 "name" "1. Scene on the rig: RectSL to sACN (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Scene on the rig: RectSL to sACN (launch)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "scene_sender_code_.kt" "lines" 52 "characters" 1543 "sha256" "71b7fcf637995fced9b8529d9a25b8fd8b0ea76a2988383807e002bc8062aeca"}]}
+{"id" "scene_sender" "index" 2 "name" "1. Scene on the rig: RectSL to sACN (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Scene on the rig: RectSL to sACN (launch)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "scene_sender_code_.kt" "lines" 57 "characters" 1559 "sha256" "a551e672dfaa99177feb1bbff8290d178f299875a2d3300ac0671885739d1ba7"}]}
 ```
 
 ```kotlin [field-property box="scene_sender" name="code" path="scene_sender_code_.kt"]
@@ -68,7 +76,9 @@ import afield.lang.rectsl.*
 
 // A RectSL scene, drawn on the CPU, on a light rig. Edit the scene and launch again: the receiver
 // box shows what arrives. (Try the line's width, 0.25 ->wh below, or area = false further down.)
-val scene = RectSLImager("""
+val scene =
+    RectSLImager(
+        """
 #rectsl
 ->wall 16 8 abstract
 ->background 0x0c1024
@@ -94,7 +104,8 @@ val scene = RectSLImager("""
   0xffffff solid ->fill
   '( 0=-8  4=8 ) linear ->x
 ;
-""")
+""",
+    )
 
 // 16 x 8 RGB pixels in universe 1 and four RGBWA washes in universe 2: one fixture per wall unit.
 val rig = SceneOnARig.Rig()
@@ -103,9 +114,11 @@ val rig = SceneOnARig.Rig()
 // the same number without the two boxes having to find each other; change both if it is taken.
 val out = sacnOut("127.0.0.1", port = 35690)
 
-// On the sender's own 44 Hz clock: draw the scene at t, shrink it to one pixel per fixture
-// (area averaging), colour the fixtures, send. area = false samples the full frame at each
-// fixture instead, and the thin line flickers as it crosses the rig.
+/*
+On the sender's own 44 Hz clock: draw the scene at t, shrink it to one pixel per fixture
+(area averaging), colour the fixtures, send. area = false samples the full frame at each
+fixture instead, and the thin line flickers as it crosses the rig.
+*/
 rig.patch.animate(out) { t ->
     rig.show(scene.frame(t % scene.duration, 256, 128), area = true)
 }

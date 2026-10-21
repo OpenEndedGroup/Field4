@@ -42,18 +42,19 @@ expect:
  *
  * The assertions cover the whole arc the feature exists for:
  *
- *  - [testPublishProducesLoadableClasses] — publish compiles and lands on the shared loader.
- *  - [testPublishedTypeIsExportable] — the payoff for `@exported`. A published type passes
+ *  - `testPublishProducesLoadableClasses` — publish compiles and lands on the shared loader.
+ *  - `testPublishedTypeIsExportable` — the payoff for `@exported`. A published type passes
  *    [ExportedTypeNames], so it crosses between boxes with its real type where a box-declared class
  *    can only ever cross as `Any?`. This is the join between the two halves of the work.
- *  - [testFreshEngineGetsFullFidelity] — named arguments, `copy`, destructuring and the data-class
+ *  - `testFreshEngineGetsFullFidelity` — named arguments, `copy`, destructuring and the data-class
  *    `toString` all survive, which only happens because these are real compiled classes.
  *
- * [measureRepublish] is a measurement rather than an assertion, in the style of
+ * `measureRepublish` is a measurement rather than an assertion, in the style of
  * `SharedTypesClasspathSpike`: it reports whether a *second* publish of the same class name actually
  * takes effect. It may well not — `gen-1` was added to the classloader before `gen-2`, and URL
  * search order is first-wins — and if so that is a real constraint on the feature, not a test bug.
  */
+
 object SharedTypesSmokeTest {
 
     private const val SOURCE_V1 = """

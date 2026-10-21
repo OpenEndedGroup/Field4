@@ -25,8 +25,10 @@ it with a paint brush, and asks the Studio to show the result:
 
 ```diffstatic {data-lang=kotlin}
 aiTool("scribble") {
-    describe("Scribble inside a region: rows of looping, wandering line that fill the outline the way a quick hand " +
-        "does. Dense scribbles read as tone, loose ones as texture; layer colours for depth.")
+    describe(
+        "Scribble inside a region: rows of looping, wandering line that fill the outline the way a quick hand " +
+            "does. Dense scribbles read as tone, loose ones as texture; layer colours for depth.",
+    )
     effects(ToolEffect.CONTROL_RUNTIME)
     val outline by param<List<Double>>("the region, [x0, y0, x1, y1, ...] in canvas units")
     val color by param<String>("#rrggbb, or a tube name")

@@ -18,8 +18,8 @@ import kotlin.math.roundToInt
  *
  * [Depth Anything V2](https://depth-anything-v2.github.io) Small is the least demanding useful vision
  * model there is: one image in, one single-channel map out, no anchors, no non-maximum suppression,
- * no decode step and no state between frames. That makes it the right first ONNX capability — what it
- * exercises is the *plumbing*, and the plumbing is reusable for everything harder.
+ * no decode step and no state between frames, so what it exercises is the ONNX plumbing that harder
+ * models reuse.
  *
  * ```kotlin
  * val depth = DepthAnything(width = 266, height = 266)
@@ -29,22 +29,23 @@ import kotlin.math.roundToInt
  *
  * ## The output is inverse relative depth, in arbitrary units
  *
- * This is the part that surprises people, so it is worth stating flatly. `predicted_depth` is not
+ * `predicted_depth` is not
  * metres and not normalised. On the synthetic frame [OnnxSmokeTest] uses, the raw range at 518x518 is
  * `[1.0353, 2.8187]` and at 266x266 it is `[1.2826, 1.9854]` — both asserted there against a Python
- * `onnxruntime` reference, so these are checked figures rather than remembered ones. The range moves
+ * `onnxruntime` reference. The range moves
  * with the *content and the resolution*, and **larger means nearer**.
  *
  * So a usable texture needs a normalisation window, and choosing it per-frame from that frame's own
- * min and max makes the image flicker — a hand entering shot rescales the entire background. This
- * class instead tracks the window with an exponential moving average ([adaptation]) and normalises
+ * min and max makes the image flicker: a hand entering shot rescales the entire background.
+ * [DepthAnything] instead tracks the window with an exponential moving average
+ * ([DepthAnything.adaptation]) and normalises
  * against the smoothed window, which is the cheap version of the one-euro filter that anything
  * body-tracked eventually needs. [DepthStats] reports both the raw and the smoothed window so a box
  * can watch that decision rather than guess at it.
  *
- * ## Buffer identity is deliberate
+ * ## Buffers keep their identity
  *
- * [depthFp16] and [depthRaw] are allocated once and refilled in place. That is not just to avoid
+ * [DepthAnything.depthFp16] and [DepthAnything.depthRaw] are allocated once and refilled in place. That is not just to avoid
  * garbage: `afield.graphics.texture.StreamingTexture` captures its source buffer at *construction* and
  * re-reads it every frame, so the buffer has to keep the same identity for the texture to keep
  * working. Uploading to Vulkan is then:
@@ -63,9 +64,13 @@ import kotlin.math.roundToInt
  *
  * Inference is **not** frame-rate on a CPU execution provider: ≈388ms at 518x518 and ≈101ms at
  * 266x266 on a 10-core Apple Silicon machine, and see [OnnxRuntime] for why CoreML does not fix that.
- * Cost is roughly quadratic in resolution, which makes [width]/[height] the only lever that really
- * matters. Anything interactive should drive this through [DepthAnythingWorker] rather than calling
- * [infer] on the render thread.
+ * Cost is roughly quadratic in resolution, which makes [DepthAnything.width] and [DepthAnything.height]
+ * the main lever. Anything interactive should drive this through [DepthAnythingWorker] rather than calling
+ * [DepthAnything.infer] on the render thread.
+ */
+
+/**
+ * Monocular depth estimation with Depth Anything V2 Small, normalised into a reusable fp16 buffer.
  *
  * @param width model input width; forced to a multiple of 14 by [sizeFor] since the backbone is
  *   ViT-S/14 and the output is `14*floor(width/14)` wide

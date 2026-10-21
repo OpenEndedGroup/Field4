@@ -20,6 +20,10 @@ import afield.math.linalg.vec
 import java.awt.Font
 
 /**
+ * Reads Pd patch text into a graph of objects and connections without running Pd, and draws it into a box with [showPdPatch].
+ */
+
+/**
  * A Pd patch read as a graph: its objects, where they sit, and what is wired to what.
  *
  * Pd's file format is one statement per `;`, and an object's identity is its *position* in the

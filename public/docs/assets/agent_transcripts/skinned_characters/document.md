@@ -57,7 +57,7 @@ every pose, which costs 2.8 ms for a 50,000-vertex character and cannot be done 
 EDIT `count` AND RE-RUN. The per-frame CPU cost is `count x bones` matrices, so 2 here.
 
 ```edn [field-box id="gpu_crowd" role="properties"]
-{"id" "gpu_crowd" "index" 1 "name" "6 - skinning in the vertex shader, and a crowd of 64" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "6 - skinning in the vertex shader, and a crowd of 64" "_tombstone" false "frame" #afield/rect [40.0 520.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_crowd_code_.kt" "lines" 86 "characters" 3178 "sha256" "3216279dd47879c683235dd5d81ada3cdb424c627f3971f3e44f25790d97dd7e"}]}
+{"id" "gpu_crowd" "index" 1 "name" "6 - skinning in the vertex shader, and a crowd of 64" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "6 - skinning in the vertex shader, and a crowd of 64" "_tombstone" false "frame" #afield/rect [40.0 520.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_crowd_code_.kt" "lines" 88 "characters" 3371 "sha256" "bcefde44996a9ed099352d857dea66e6439cdf7c06158316955bb2bfde18c904"}]}
 ```
 
 ```kotlin [field-property box="gpu_crowd" name="code" path="gpu_crowd_code_.kt"]
@@ -69,6 +69,7 @@ every pose, which costs 2.8 ms for a 50,000-vertex character and cannot be done 
 EDIT `count` AND RE-RUN. The per-frame CPU cost is `count x bones` matrices, so 2 here.
 */
 val count = 64
+require(count > 0) { "count must be positive; use 1 for a single character" }
 
 /*
 `renderer` and `window` come from box 0, which publishes them with `prop<Renderer>(renderer)`.
@@ -137,7 +138,8 @@ loop {
                 (t + i * 0.09f) % 2f,
                 "curl",
                 (t * 0.7f + i * 0.05f) % 2f,
-                mix = i / (count - 1f),
+                // One character uses the first clip; there is no blend span to divide by.
+                mix = if (count == 1) 0f else i / (count - 1f),
             )
         },
     )
@@ -421,7 +423,7 @@ x = -1.982. The line it prints is the tip's x and the mesh's top y, so the pose 
 well as a picture.
 
 ```edn [field-box id="gpu_skin" role="properties"]
-{"id" "gpu_skin" "index" 5 "name" "4 - the same deformation on the GPU, no shader change" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "4 - the same deformation on the GPU, no shader change" "_tombstone" false "frame" #afield/rect [40.0 360.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_skin_code_.kt" "lines" 66 "characters" 2845 "sha256" "0f9b58a35047315e49cefdd6329d9a390d6fb3b7d4eac4b81c237b24b92dd3cd"} {"name" "fragment" "language" "glsl" "path" "gpu_skin_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "gpu_skin_vertex_.glsl" "lines" 77 "characters" 1922 "sha256" "9ec6b8384f13067b5354df4bc2c1ade603caa8da41e193672baac442f469e7de"}]}
+{"id" "gpu_skin" "index" 5 "name" "4 - the same deformation on the GPU, no shader change" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "4 - the same deformation on the GPU, no shader change" "_tombstone" false "frame" #afield/rect [40.0 360.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_skin_code_.kt" "lines" 68 "characters" 2867 "sha256" "f381ffed9c7e67194e49fd897cc764aa12e74a78b45bec5ba9fee65276b237b5"} {"name" "fragment" "language" "glsl" "path" "gpu_skin_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "gpu_skin_vertex_.glsl" "lines" 77 "characters" 1922 "sha256" "9ec6b8384f13067b5354df4bc2c1ade603caa8da41e193672baac442f469e7de"}]}
 ```
 
 ```kotlin [field-property box="gpu_skin" name="code" path="gpu_skin_code_.kt"]
@@ -465,32 +467,34 @@ val minX = (0 until out.vertexCount).minOf { out.position[it * 3] }
 val maxY = (0 until out.vertexCount).maxOf { out.position[it * 3 + 1] }
 println("gpu skinned at t = %.2f -> tip x %.4f, top y %.4f".format(poseTime, minX, maxY))
 
-loop { frame() }
+loop {
+    frame()
+}
 
 /*
-----------------------------------------------------------------------------------------------
-Why this poses ONCE rather than animating, and what was measured
+ ----------------------------------------------------------------------------------------------
+ Why this poses ONCE rather than animating, and what was measured
 
-An animating version is three lines:
+ An animating version is three lines:
 
-    var n = 0
-    loop { skinner.pose("bend", (n % 120) / 60f)
-           inst.applyToMesh(m, camera, Matrix4f(), reuseBuffers = true); n++; frame() }
+     var n = 0
+     loop { skinner.pose("bend", (n % 120) / 60f)
+            inst.applyToMesh(m, camera, Matrix4f(), reuseBuffers = true); n++; frame() }
 
-and it runs. What it does NOT survive is the agent screenshot path: `native-screenshot` times
-out after 15 s against it, so no agent can photograph the result, and a demo nobody has looked
-at is a claim. Bisected on 2026-09-19, one variable at a time, against the same scene:
+ and it runs. What it does NOT survive is the agent screenshot path: `native-screenshot` times
+ out after 15 s against it, so no agent can photograph the result, and a demo nobody has looked
+ at is a claim. Bisected on 2026-09-19, one variable at a time, against the same scene:
 
-  nothing in the loop                                        capture OK
-  skinner.pose() every frame, 118 fps, no upload             capture OK
-  getPropertyRaw() every frame                               capture TIMES OUT
-  inst.applyToMesh() every frame, reuseBuffers = true        capture TIMES OUT
+   nothing in the loop                                        capture OK
+   skinner.pose() every frame, 118 fps, no upload             capture OK
+   getPropertyRaw() every frame                               capture TIMES OUT
+   inst.applyToMesh() every frame, reuseBuffers = true        capture TIMES OUT
 
-So the deformation is innocent -- posing 60 vertices every frame costs nothing and photographs
-fine. It is the per-frame re-upload (and, separately, a per-frame box-property read) that the
-direct window capture cannot get past. Left as a named finding rather than a fix, because
-diagnosing the renderer's capture path is a different job from skinning.
-*/
+ So the deformation is innocent -- posing 60 vertices every frame costs nothing and photographs
+ fine. It is the per-frame re-upload (and, separately, a per-frame box-property read) that the
+ direct window capture cannot get past. Left as a named finding rather than a fix, because
+ diagnosing the renderer's capture path is a different job from skinning.
+ */
 ```
 
 ```glsl [field-property box="gpu_skin" name="fragment" path="gpu_skin_fragment_.glsl"]

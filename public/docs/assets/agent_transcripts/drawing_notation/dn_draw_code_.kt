@@ -5,5 +5,5 @@ notation {
     stroke = "#1971c2"
     text("drawn by ${name}", frame.x, frame.y - 34)
     ellipse(frame.x - 20, frame.y - 20, frame.w + 40, frame.h + 40)
-    arrow(from = thisBox, to = listener, label = "tells")   // drag either box: the arrow follows
+    arrow(from = thisBox, to = listener, label = "tells") // drag either box: the arrow follows
 }

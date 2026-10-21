@@ -30,6 +30,14 @@ import java.net.URLClassLoader
 import java.util.IdentityHashMap
 
 /**
+ * Loads the gitignored `src/personal` jar in its own classloader between core Field and the REPL,
+ * so box code can use personal classes and the layer can be replaced without restarting.
+ *
+ * [PersonalLayer] owns the loader; `PersonalReload.kt` handles the objects an old layer leaves
+ * behind after a reload.
+ */
+
+/**
  * The classloader layer that holds `src/personal`.
  *
  * `src/personal` is gitignored, local-only code. It compiles as its own JVM compilation (see the

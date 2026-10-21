@@ -1,37 +1,35 @@
-import afield.graphics.scene.DualQuaternionSkinning
 import afield.graphics.scene.GltfSkinning.SkinningMethod
 import afield.graphics.scene.GltfSkinning.SkinningOptions
-import afield.graphics.scene.GltfSkinning
-import afield.graphics.scene.GltfSupport
-import afield.graphics.scene.GpuSkinner
-import afield.graphics.scene.GpuSkinning
-import afield.graphics.scene.RiggedFixture
-import afield.math.linalg.Matrix4f
 
-// Box 5 is the candy wrapper on the CPU. This is the same twist on the GPU, both methods in ONE
-// draw call: the left cylinder is linear blend skinning and pinches to a point at 180 degrees, the
-// right one is dual quaternion skinning and keeps its radius. Same mesh, same palette, same shader;
-// the only difference between them is one word per instance saying which blend to run.
-//
-// RUN BOX 0 FIRST, and stop box 6 if it is running -- both draw into box 0's window.
-//
-// EDIT `methods` AND RE-RUN: make both LINEAR_BLEND and both pinch; make both DUAL_QUATERNION and
-// neither does.
+/*
+Box 5 is the candy wrapper on the CPU. This is the same twist on the GPU, both methods in ONE
+draw call: the left cylinder is linear blend skinning and pinches to a point at 180 degrees, the
+right one is dual quaternion skinning and keeps its radius. Same mesh, same palette, same shader;
+the only difference between them is one word per instance saying which blend to run.
+
+RUN BOX 0 FIRST, and stop box 6 if it is running -- both draw into box 0's window.
+
+EDIT `methods` AND RE-RUN: make both LINEAR_BLEND and both pinch; make both DUAL_QUATERNION and
+neither does.
+*/
 val methods = listOf(SkinningMethod.LINEAR_BLEND, SkinningMethod.DUAL_QUATERNION)
 
 val model = GltfSupport.loadGltfBasic(
-    RiggedFixture.locate(), GltfSupport.GltfLoadConfig(loadTextures = false)
+    RiggedFixture.locate(),
+    GltfSupport.GltfLoadConfig(loadTextures = false),
 )
 val inst = model.meshes.first { it.skin != null }
 
-val module = Module(
-    Parameters(
-        renderer = renderer,
-        vertex = GpuSkinning.skinnedVertexShader,
-        fragment = GpuSkinning.skinnedFragmentShader,
-        name = "gpu twist, lbs vs dqs"
-    )
-).pointer()
+val module =
+    Module(
+            Parameters(
+                renderer = renderer,
+                vertex = GpuSkinning.skinnedVertexShader,
+                fragment = GpuSkinning.skinnedFragmentShader,
+                name = "gpu twist, lbs vs dqs",
+            ),
+        )
+        .pointer()
 
 val m = Mesh(renderer, module)
 module += "twist" to m
@@ -69,11 +67,16 @@ loop {
     skinner.updateCamera(m, camera)
     if (n % 45 == 0) {
         val rest = sk.palette(twist, seconds)
-        println("t = %.2f s   waist, %% of rest radius:   %s %.1f%%   |   %s %.1f%%".format(
-            seconds,
-            methods[0], 100 * waist(methods[0], rest) / restRadius,
-            methods[1], 100 * waist(methods[1], rest) / restRadius,
-        ))
+        println(
+            "t = %.2f s   waist, %% of rest radius:   %s %.1f%%   |   %s %.1f%%"
+                .format(
+                    seconds,
+                    methods[0],
+                    100 * waist(methods[0], rest) / restRadius,
+                    methods[1],
+                    100 * waist(methods[1], rest) / restRadius,
+                ),
+        )
     }
     n++
     frame()

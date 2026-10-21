@@ -2,6 +2,20 @@
 
 package afield.document.properties
 
+/**
+ * Binds a property or one-argument function to a source of values with the `<` operator:
+ * `::speed < { mouseX }` or `::speed < sequenceOf(1.0, 2.0, 3.0)`.
+ *
+ * The callable reference must be bound to a receiver implementing [BoundContext]; the binding is
+ * stored there under the callable's name, replacing any earlier one. Each [BoundContext.bindNow]
+ * pulls the next value from every source, type-checks it against the property or parameter type,
+ * and applies it only when it differs from the last value applied. A sequence that runs out removes
+ * its binding; `clear()` on the reference removes it by hand.
+ *
+ * Nothing in `src/` implements [BoundContext] or calls `bindNow` yet, so this is the mechanism
+ * without a host.
+ */
+
 import afield.data.collections.get
 import afield.data.collections.times
 import afield.document.graph.minusAssign

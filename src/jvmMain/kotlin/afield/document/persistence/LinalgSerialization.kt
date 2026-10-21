@@ -34,6 +34,14 @@ import afield.math.linalg.Vector2f
 import afield.math.linalg.Vector3f
 import afield.math.linalg.Vector4f
 
+/**
+ * JSON serializers for Field's vector and quaternion types, and the [FieldJson] instance that uses them.
+ *
+ * Each serializer writes its value as a flat JSON array of floats (two, three or four for the vectors,
+ * four for [Quaternionf], eight for [DualQuaternionf]) and rejects an array of the wrong length on the
+ * way back. [FieldSerializersModule] registers them as contextual serializers.
+ */
+
 object Vector2fSerializer : KSerializer<Vector2f> {
     override val descriptor: SerialDescriptor = FloatArraySerializer().descriptor
 

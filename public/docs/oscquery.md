@@ -48,7 +48,7 @@ import java.net.URI
 import java.net.http.*
 
 val q = oscQuery("My piece", httpPort = 0)
-q.float("/synth/cutoff", 20.0..20000.0, 1000.0, "filter cutoff in Hz") { }
+q.float("/synth/cutoff", 20.0..20000.0, 1000.0, "filter cutoff in Hz") {}
 
 val http = HttpClient.newHttpClient()
 val req = HttpRequest.newBuilder(URI("http://127.0.0.1:${q.httpPort}/synth/cutoff")).build()
@@ -122,7 +122,7 @@ TouchDesigner shows next to its OSCQuery server:
 
 ```diffstatic {data-lang=kotlin}
 val td = oscQueryRemote("127.0.0.1", 9000)
-td["/project1/level"].set(0.5)                 // sent as OSC, as the type the server declares
+td["/project1/level"].set(0.5) // sent as OSC, as the type the server declares
 td["/project1/level"].listen { v -> markdown("level: $v") }
 
 markdown(td.params.joinToString("\n") { "- `${it.path}` ${it.type} ${it.range}" })
@@ -140,9 +140,9 @@ Pointed at Field's own service, a remote lists what the publishing box above dec
 import afield.io.osc.query.*
 
 val q = oscQuery("My piece", httpPort = 0)
-q.float("/synth/cutoff", 20.0..20000.0, 1000.0, "filter cutoff in Hz") { }
-q.bool("/synth/on", true) { }
-q.menu("/scene", ["dawn", "dusk", "night"]) { }
+q.float("/synth/cutoff", 20.0..20000.0, 1000.0, "filter cutoff in Hz") {}
+q.bool("/synth/on", true) {}
+q.menu("/scene", ["dawn", "dusk", "night"]) {}
 
 val self = oscQueryRemote("127.0.0.1", q.httpPort)
 markdown(self.params.joinToString("\n") { "- `${it.path}` ${it.type} ${it.range}" })
@@ -162,10 +162,10 @@ oscQueryMirror(td, "td") { it.path.startsWith("/project1/") }
 and a half:
 
 ```diffstatic {data-lang=kotlin}
-for (s in oscQueryDiscover())
-    markdown("- **${s.instance}** at `${s.address}:${s.port}`")
+val services = oscQueryDiscover()
+markdown(services.joinToString("\n") { s -> "- **${s.instance}** at `${s.address}:${s.port}`" })
 
-val chataigne = OscQueryRemote.find("Chataigne")   // the first one whose name matches, or null
+val chataigne = OscQueryRemote.find("Chataigne") // the first one whose name matches, or null
 ```
 
 Field announces its own service the same way, as `_oscjson._tcp` with an `_osc._udp` entry

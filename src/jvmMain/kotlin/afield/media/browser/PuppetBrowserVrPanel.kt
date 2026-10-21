@@ -16,6 +16,10 @@ import org.lwjgl.vulkan.VK10.VK_FORMAT_B8G8R8A8_SRGB
 import kotlin.math.abs
 
 /**
+ * Shows a puppet browser page as a clickable, scrollable quad in VR or in the desktop stereo stand-in.
+ */
+
+/**
  * Presents a [PuppetBrowser] as an aspect-correct, interactive world-space quad.
  *
  * [SideBySideStereoTarget] supplies either real OpenXR poses/controllers or its mouse-driven desktop

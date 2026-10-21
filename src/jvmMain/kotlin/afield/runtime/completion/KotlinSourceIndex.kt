@@ -19,6 +19,18 @@ import kotlin.concurrent.thread
 import kotlin.io.path.isRegularFile
 import kotlin.jvm.java
 
+/**
+ * An on-disk index of the Kotlin definitions (top-level, nested and extension) under Field's source
+ * roots, with each one's KDoc and completion category, which completion looks up by symbol name.
+ *
+ * [KotlinSourceIndex.startBackgroundSync] scans `src/jvmMain/kotlin`, `src/personal/kotlin` and
+ * `src/generatedLinalg/kotlin` on a low-priority daemon thread and writes `kotlin_source_index.json`
+ * under [afield.ai.knowledge.FilestoreDir]. Lookups go through [KotlinSourceIndex.getKDocForSymbol] and
+ * [KotlinSourceIndex.getCompletionCategoryForSymbol]; [KotlinSourceIndex.scanDefinitions] is the scan
+ * alone, with no cache or network.
+ */
+
+/** One scanned source file: its path, content hash and size. */
 data class KotlinSourceFileRecord(
     val path: String,
     val contentHash: String,

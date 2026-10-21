@@ -27,6 +27,10 @@ import afield.media.video.*
 import java.util.concurrent.TimeUnit
 
 /**
+ * Saves pending document edits when Field shuts down, so a Ctrl-C does not lose the last few seconds of work.
+ */
+
+/**
  * Saves, on the way out, the document edits the autosave loop has not reached yet.
  *
  * The autosave loop in `Server.server()` visits documents every ~5 s, so an edit made in the last

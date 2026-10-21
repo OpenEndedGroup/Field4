@@ -61,14 +61,14 @@ All three profiles share a small **lifecycle** surface (from `RemoteLifecycleKot
 ```diffstatic {data-lang=kotlin}
 :::static
 onStart { /* runs once when a Launch reaches the head */ }
-onFrame { frame ->            // runs on the head's own render clock
-    frame.time                // seconds since start (Double)
-    frame.deltaTime           // seconds since previous frame
-    frame.frameNumber         // Int
+onFrame { frame -> // runs on the head's own render clock
+    frame.time // seconds since start (Double)
+    frame.deltaTime // seconds since previous frame
+    frame.frameNumber // Int
     frame.predictedDisplayTime // Double? — set on Vision Pro, null in a browser
 }
 onStop { /* runs exactly once on relaunch / Stop / error */ }
-keepAlive()                   // ask the head to keep ticking frames
+keepAlive() // ask the head to keep ticking frames
 ```
 
 `onStart`/`onFrame`/`onStop`/`keepAlive` are inert during a plain Execute; they come alive on
@@ -84,12 +84,13 @@ The smallest box that shows the whole idea. This one is `remoteAR`, and it decla
 // {{ remoteAR }}
 data class V(val x: Double, val y: Double) {
     operator fun plus(o: V) = V(x + o.x, y + o.y)
+
     operator fun times(k: Double) = V(x * k, y * k)
 }
 
 val a = V(1.0, 2.0)
 val b = V(10.0, 20.0)
-log("sum = ${a + b}")      // sum = V(x=11.0, y=22.0)
+log("sum = ${a + b}") // sum = V(x=11.0, y=22.0)
 log("scaled = ${a * 3.0}") // scaled = V(x=3.0, y=6.0)
 ```
 
@@ -154,13 +155,14 @@ box builds a ring of little boxes and spins each one on the head's frame clock:
 // {{ remoteAR }}
 clearAll()
 val n = 12
-val ring = (0 until n).map { i ->
-    val theta = i.toDouble() / n * 2.0 * kotlin.math.PI
-    val here = vec(kotlin.math.cos(theta) * 2.0, kotlin.math.sin(theta) * 2.0, 0.0)
-    val box = addBox("ring-$i", 0.25).mesh
-    box.position.set(here.x, here.y, here.z)
-    box
-}
+val ring =
+    (0 until n).map { i ->
+        val theta = i.toDouble() / n * 2.0 * kotlin.math.PI
+        val here = vec(kotlin.math.cos(theta) * 2.0, kotlin.math.sin(theta) * 2.0, 0.0)
+        val box = addBox("ring-$i", 0.25).mesh
+        box.position.set(here.x, here.y, here.z)
+        box
+    }
 onFrame { frame ->
     ring.forEachIndexed { i, box ->
         box.rotation.y = frame.time + i.toDouble() * 0.2
@@ -179,8 +181,8 @@ The overloads reach THREE's own vector types too, so this compiles and runs:
 :::static
 // {{ remoteAR }}
 val origin = THREE.Vector3(1.0, 2.0, 3.0)
-val shifted = origin + THREE.Vector3(10.0, 0.0, 0.0)  // operator fun plus
-val doubled = shifted * 2.0                            // operator fun times
+val shifted = origin + THREE.Vector3(10.0, 0.0, 0.0) // operator fun plus
+val doubled = shifted * 2.0 // operator fun times
 log("$shifted then $doubled")
 ```
 
@@ -204,10 +206,13 @@ onStart {
     transport.bpm.value = 96.0
 
     var step = 0
-    val loop = transport.scheduleRepeat({ time ->
-        synth.triggerAttackRelease(notes[step % notes.size], "8n", time)
-        step += 1
-    }, "8n")
+    val loop = transport.scheduleRepeat(
+        { time ->
+            synth.triggerAttackRelease(notes[step % notes.size], "8n", time)
+            step += 1
+        },
+        "8n",
+    )
 
     Tone.start()
     transport.start()
@@ -245,7 +250,7 @@ onStart {
         cube(0.18, cx = 0.45, cz = -1.2, tintFaces = true)
     }
     uniform("amount", 0.025)
-    uniform("tint", 0.1, 0.8, 1.0, 0.35)   // a vec4 uniform
+    uniform("tint", 0.1, 0.8, 1.0, 0.35) // a vec4 uniform
     onFrame { frame ->
         uniform("phase", frame.time * 3.0)
         log("frame ${frame.predictedDisplayTime}")

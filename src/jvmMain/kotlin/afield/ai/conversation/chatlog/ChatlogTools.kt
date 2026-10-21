@@ -16,7 +16,7 @@ import java.util.Base64
  *
  * A box hands its document's AI4 agents a chat archive by running, once:
  * ```kotlin
- * registerChatlogTools(File("/Users/marc/house-machine/workspace"))
+ * registerChatlogTools(File("/path/to/workspace"))
  * ```
  * Agents then see `chatlog.list`, `chatlog.outline`, `chatlog.read`, `chatlog.search`, `chatlog.images` and
  * `lens.write`, `lens.read`, `lens.list`. The archive is only read (see [ChatArchive]); the chats can live in
@@ -24,7 +24,7 @@ import java.util.Base64
  *
  * A **lens** is a shorter chat written over a longer one: the same `<<you>>`/`<<ai>>` markup, so the chat panel
  * renders it, with a `<<source:a..b>>` line at the top of each block saying which stretch of the chat it
- * stands for. Lenses are saved in [lensDir], by default this document's `lenses/` folder, as
+ * stands for. Lenses are saved in `lensDir`, by default this document's `lenses/` folder, as
  * `<chat>/<name>.md` beside a `<name>.json` record of the brief that made it.
  *
  * Chats are named `<document>` when the document has one chat, otherwise `<document>/<box name or id>`. A lens is
@@ -36,6 +36,8 @@ import java.util.Base64
  * that have none. A series is outlined, read and cited like a chat (its addresses are its chats' own), so a lens
  * over a series (`series:house-machine-*@storyline#arc`) tells the story across them.
  */
+
+/** The description every chat-reading tool gives its `chat` parameter. */
 private const val CHAT_PARAM = "chat name from chatlog.list; <chat>#<lens> for a lens; series:<glob> for several chats end to end " +
     "(series:house-machine-*), or series:<glob>@<lens> for each one's lens of that name"
 

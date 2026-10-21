@@ -7,8 +7,8 @@ layout (location = 2) out vec4 weights;
 
 // Push constants or a tiny UBO
 layout(push_constant) uniform BlurParams {
-    float radius;   // e.g., 5–8
-    float sigma;    // e.g., radius * 0.5–0.7
+    float radius; // e.g., 5–8
+    float sigma; // e.g., radius * 0.5–0.7
 } blur;
 
 float gauss(float x, float sigma) {
@@ -19,15 +19,15 @@ float gauss(float x, float sigma) {
 void main()
 {
     const vec2 positions[4] = vec2[](
-        vec2(-1.0, -1.0),
-        vec2( 1.0, -1.0),
-        vec2(-1.0,  1.0),
-        vec2( 1.0,  1.0)
+    vec2(-1.0, -1.0),
+    vec2(1.0, -1.0),
+    vec2(-1.0, 1.0),
+    vec2(1.0, 1.0)
     );
 
-    float r1 = blur.radius * 0.275;   // near
-    float r2 = blur.radius * 0.65;    // mid
-    float r3 = blur.radius * 0.95;    // far
+    float r1 = blur.radius * 0.275; // near
+    float r2 = blur.radius * 0.65; // mid
+    float r3 = blur.radius * 0.95; // far
 
     float w0 = gauss(0.0, blur.sigma);
     float w1 = gauss(r1, blur.sigma);

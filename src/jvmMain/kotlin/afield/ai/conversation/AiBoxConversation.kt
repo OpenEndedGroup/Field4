@@ -2,6 +2,14 @@ package afield.ai.conversation
 
 import afield.document.graph.Box
 
+/**
+ * Where an AI4 chat transcript is stored: on the box for a box's chat, and in a file beside the document for the document chat.
+ *
+ * [AiBoxConversation] reads and writes the `ai4_chat_history` property and the turn's running flag;
+ * the provider's own thread is only a cache that can be reseeded from that transcript.
+ * [DocumentChatStore] keeps the document-level chat in `<document>/ai4_document_chat.md`.
+ */
+
 /** The document owns the transcript; provider threads are only disposable continuation caches. */
 object AiBoxConversation {
     const val PROPERTY = "ai4_chat_history"

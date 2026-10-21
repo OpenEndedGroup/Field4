@@ -1,3 +1,13 @@
+/**
+ * DLSS super resolution, DLAA and Ray Reconstruction through NVIDIA NGX, as a pass recorded into a Vulkan command buffer.
+ *
+ * [DlssReconstruction] takes render-resolution color, depth and motion ([ReconstructionInputs]), plus
+ * [RayReconstructionGuides] when ray reconstruction is on, and writes an output-resolution texture.
+ * Each frame is described by a [ReconstructionFrame]: its index, the [ReconstructionJitter] the scene
+ * was sampled with (`ReconstructionJitter.halton` gives a sequence sized to the upscale ratio),
+ * frame time and pre-exposure. Call `reset` on camera cuts and live edits so history is discarded.
+ */
+
 package afield.media.reconstruction
 
 import afield.graphics.vulkan.Renderer

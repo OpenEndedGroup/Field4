@@ -53,6 +53,15 @@ import java.io.File
 import java.util.concurrent.CancellationException
 
 /**
+ * The parts of a live study's variant search that do not depend on what the study draws.
+ *
+ * [StudyVariants] holds the candidates a study has tried, on disk under `speculations/`, until one is
+ * adopted, and picks the newest unadopted batch back up after a restart. [StudyCompare] does the
+ * picture side of *Compare* and *Sweep*: before | after | difference tiles with a check that nothing
+ * changed outside the allowed region, and a sweep that draws 2 to 9 values of one parameter.
+ */
+
+/**
  * The candidates a study has tried and is holding — checked, drawn, unpublished — until a person (in
  * the study's card) or a model adopts one: the half of *TryVariants* / *AdoptVariant* that does not
  * depend on what the study draws.

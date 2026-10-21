@@ -100,6 +100,15 @@ def regenerate(repo: Path, changed: set[str]) -> tuple[int, set[str]]:
         print("merge_regen: guard_corpora.py --write failed; the merge is left uncommitted", file=sys.stderr)
         return 1, set()
     _git(repo, "add", "--", "dev_docs/GUARD_CORPORA.md")
+    # The recorded-conversation pages copy demo files and study-tools Kotlin verbatim, so an edit to
+    # either leaves a page stale. Their --check is seconds and needs no Gradle, so run it every time.
+    from conversation_packagers import repackage_stale  # noqa: PLC0415
+    code, written = repackage_stale(repo)
+    if code != 0:
+        print("merge_regen: a conversation packager failed; the merge is left uncommitted", file=sys.stderr)
+        return code, set()
+    if written:
+        _git(repo, "add", "-A", "--", *written)
     if not selected:
         print("merge_regen: no Gradle-generated artifact is affected")
     # A pure drift check ("does the committed artifact equal what the generator writes?") is true by

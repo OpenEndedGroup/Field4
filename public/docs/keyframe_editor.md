@@ -238,10 +238,14 @@ Here is a four-second curve with a key every 60th of a second, standing in for a
 ```diffstatic {data-lang=kotlin}
 // Four seconds of a wobbling hand, a key every 60th of a second.
 val rnd = java.util.Random(4)
-val take = keyframes(name = "take", keys = (0..240).map { i ->
-    val t = i / 60.0
-    Keyframe(t, 0.5 + 0.35 * sin(t * 2.1) + 0.1 * sin(t * 7) + 0.04 * (rnd.nextDouble() - 0.5), "linear")
-})
+val take = keyframes(
+    name = "take",
+    keys =
+        (0..240).map { i ->
+            val t = i / 60.0
+            Keyframe(t, 0.5 + 0.35 * sin(t * 2.1) + 0.1 * sin(t * 7) + 0.04 * (rnd.nextDouble() - 0.5), "linear")
+        },
+)
 
 val start = System.nanoTime()
 loop {
@@ -323,8 +327,8 @@ ui.pause(1500)
 From code, `simplify(tolerance)` and `smooth(width)` do the same to the whole curve. `tolerance` is how far the curve may move, in its own units, and `width` is the stretch of time each key is averaged over, the standard deviation of a Gaussian:
 
 ```diffstatic {data-lang=kotlin}
-take.smooth(0.05)      // over about a twentieth of a second
-take.simplify(0.01)    // within 0.01 of the smoothed curve, everywhere
+take.smooth(0.05) // over about a twentieth of a second
+take.simplify(0.01) // within 0.01 of the smoothed curve, everywhere
 ```
 
 A take from a gesture pad bakes into two lanes whose keys share their times. The Simplify slider thins them together: moved in one lane, it also simplifies every lane in the same group that has keys at the same times, and they keep the same key times, since a time stays if any of them needs it. The readout then counts the lanes, as in `241 → 17 keys, 2 lanes`. From code, `KeyframeEvaluator.simplifyTogether(listOf(sx, sy), 0.01)` does the same.
@@ -349,14 +353,17 @@ To start a curve with keys of particular types, pass `keys` instead of `defaults
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframe_editor/types.png" capture="box" open-outputs="true" wait="2.0" timeout="120" w="700" embed=true name="keyframe-types" alt="A curve through six keys. From time 0 a straight line climbs to 0.8 at time 1; from there the value holds flat to time 2 and drops on a dashed line to 0.3; it then eases smoothly up to a rounded peak of 0.9 at time 3 and down through 0.5 at time 4, before a straight line to 0.2 at time 5. Bezier keys show their handles"}
 :::static
-val shape = keyframes(name = "shape", keys = [
-    Keyframe(0.0, 0.1, "linear"),
-    Keyframe(1.0, 0.8, "hold"),
-    Keyframe(2.0, 0.3, "bezierFlat"),
-    Keyframe(3.0, 0.9, "bezierContinuous"),
-    Keyframe(4.0, 0.5, "bezierFree"),
-    Keyframe(5.0, 0.2, "linear"),
-])
+val shape = keyframes(
+    name = "shape",
+    keys = [
+        Keyframe(0.0, 0.1, "linear"),
+        Keyframe(1.0, 0.8, "hold"),
+        Keyframe(2.0, 0.3, "bezierFlat"),
+        Keyframe(3.0, 0.9, "bezierContinuous"),
+        Keyframe(4.0, 0.5, "bezierFree"),
+        Keyframe(5.0, 0.2, "linear"),
+    ],
+)
 ```
 
 A bezier key given without handles gets the handles the editor would give it, worked out from its neighbours.
@@ -432,12 +439,15 @@ interpolant("chaos") {
     lerp(u) + 0.25 * sin(PI * u) * (x - 0.5)
 }
 
-val custom = keyframes(name = "custom", keys = [
-    Keyframe(0.0, 0.1, "overshoot"),
-    Keyframe(1.5, 0.8, "wobble"),
-    Keyframe(3.0, 0.3, "chaos"),
-    Keyframe(4.5, 0.6, "linear"),
-])
+val custom = keyframes(
+    name = "custom",
+    keys = [
+        Keyframe(0.0, 0.1, "overshoot"),
+        Keyframe(1.5, 0.8, "wobble"),
+        Keyframe(3.0, 0.3, "chaos"),
+        Keyframe(4.5, 0.6, "linear"),
+    ],
+)
 ```
 
 Drag a key and the shapes either side of it follow, worked out in Kotlin as you move:
@@ -499,11 +509,11 @@ A key type is saved with the box, as its source, so a curve keeps its shape even
 `evaluateValueAt(t)` is the value at time `t`, and the one call most boxes need. Before the first key it is the first key's value, and after the last key it is the last key's value, so a curve holds still outside the range you drew. To loop it, wrap the time, as the first example does with `% 4.0`. The rest of the evaluator describes the curve:
 
 ```diffstatic {data-lang=kotlin}
-brightness.evaluateValueAt(1.5)        // the value at time 1.5
-brightness.evaluateDerivativeAt(1.5)   // how fast it is changing there, per unit of time (exact)
-brightness.getTimeRange()              // (first key time, last key time)
-brightness.getKeyframes()              // the keys: time, value, type, handles
-brightness.setTime(1.5)                // where the editor draws its playhead
+brightness.evaluateValueAt(1.5) // the value at time 1.5
+brightness.evaluateDerivativeAt(1.5) // how fast it is changing there, per unit of time (exact)
+brightness.getTimeRange() // (first key time, last key time)
+brightness.getKeyframes() // the keys: time, value, type, handles
+brightness.setTime(1.5) // where the editor draws its playhead
 ```
 
 
@@ -526,9 +536,16 @@ An overlay is a second curve drawn on the graph for reference, that you cannot e
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframe_editor/overlay.png" capture="box" open-outputs="true" wait="2.5" timeout="120" w="700" embed=true name="keyframe-overlay" alt="A jagged curve of five keys zig-zagging between 0.1 and 0.9 over two seconds, drawn dimmed, with a dashed orange overlay running smoothly through the middle of the zig-zag"}
 :::static
-val wobble = keyframes(name = "wobble", defaults = [
-    vec(0.0, 0.2), vec(0.5, 0.9), vec(1.0, 0.1), vec(1.5, 0.8), vec(2.0, 0.3)
-])
+val wobble = keyframes(
+    name = "wobble",
+    defaults = [
+        vec(0.0, 0.2),
+        vec(0.5, 0.9),
+        vec(1.0, 0.1),
+        vec(1.5, 0.8),
+        vec(2.0, 0.3),
+    ],
+)
 
 val smooth = { keys: List<Keyframe> -> with(Functions) { gaussianSmooth(fromKeyframeEditor(keys), sigma = 0.15) } }
 wobble.setOverlay(smooth(wobble.getKeyframes()))
@@ -546,7 +563,7 @@ val x = keyframes(name = "x", defaults = [vec(0.0, -0.6), vec(1.0, 0.6), vec(2.0
 val y = keyframes(name = "y", defaults = [vec(0.0, -0.4), vec(1.5, 0.7), vec(3.0, -0.4)])
 
 lateinit var spot: ControlValueHandle<Vector2f>
-controlGroup("spot") { spot = vec2Control("spot") { } }
+controlGroup("spot") { spot = vec2Control("spot") {} }
 displayOpen("spot")
 
 val start = System.nanoTime()
@@ -673,12 +690,12 @@ A [gesture pad](visualizers.md#recording-a-gesture) records a movement as you pe
 
 ```diffstatic {data-lang=kotlin}
 lateinit var pad: GestureHandle
-controlGroup("gesture") { pad = gesture("take") { } }   // shift-drag on the pad to record
+controlGroup("gesture") { pad = gesture("take") {} } // shift-drag on the pad to record
 
-val (x, y) = bakeGesture(pad, tolerance = 0.02)   // the take, as editable x and y lanes
-println(pad.fit(x, y))                            // GestureFit(keys=28 of 240 samples, max=0.0185, ...)
+val (x, y) = bakeGesture(pad, tolerance = 0.02) // the take, as editable x and y lanes
+println(pad.fit(x, y)) // GestureFit(keys=28 of 240 samples, max=0.0185, ...)
 
-pad.setTake(x, y)                                 // later: the edited lanes, replayed through the pad
+pad.setTake(x, y) // later: the edited lanes, replayed through the pad
 ```
 
 A recorded take has hundreds of samples, far too many keys to edit. `bakeGesture` keeps only the samples it needs so that neither lane is ever more than `tolerance` (in pad units) from what you performed, at any moment. The keys are `linear`, and both lanes have keys at the same times, so ctrl/command-dragging across a moment selects it in both. The lanes run from 0 to the end of the take, so they loop as the take did. Baking replaces whatever keys the lanes held. The lanes are `x` and `y` unless you name them with `xName` and `yName`, and `channel` groups them as it does for `keyframes(...)`.
@@ -705,11 +722,11 @@ The tolerance keeps what you performed, tremor and all. The same figure eight dr
 
 ```diffstatic {data-lang=kotlin}
 fun smoothTake() {
-    val (sx, sy) = bakeGesture(pad, tolerance = 0.0, channel = "lanes")   // every sample, as keys
-    sx.smooth(0.04)                                                       // over 40 ms
+    val (sx, sy) = bakeGesture(pad, tolerance = 0.0, channel = "lanes") // every sample, as keys
+    sx.smooth(0.04) // over 40 ms
     sy.smooth(0.04)
-    pad.setTake(sx, sy)                                                   // the smoothed take, on the pad
-    bakeGesture(pad, tolerance = 0.02, channel = "lanes")                 // and back, as a few keys
+    pad.setTake(sx, sy) // the smoothed take, on the pad
+    bakeGesture(pad, tolerance = 0.02, channel = "lanes") // and back, as a few keys
 }
 
 controlGroup("gesture") {

@@ -1,5 +1,3 @@
-import afield.document.context.fromContextWithNameOrNull
-
 // Dependencies are explicit graph exports; resources stay in their parent box.
 val flowA = fromContextWithNameOrNull<FrameBufferGroup>("flowA")!!
 val flowB = fromContextWithNameOrNull<FrameBufferGroup>("flowB")!!

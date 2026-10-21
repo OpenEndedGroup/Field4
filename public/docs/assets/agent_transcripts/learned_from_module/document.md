@@ -38,84 +38,97 @@ start(renderer::run)
 <!-- field-box id="learned_from_module" index="1" -->
 
 ```edn [field-box id="learned_from_module" role="properties"]
-{"id" "learned_from_module" "index" 1 "name" "learn from this module" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "learn from this module" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_from_module_code_.kt" "lines" 74 "characters" 3307 "sha256" "4e41fc58572321d90616d734b05464aa3cda2f80ad75f9de96e0f746f0986103"} {"name" "vertex" "language" "glsl" "path" "learned_from_module_vertex_.glsl" "lines" 5 "characters" 119 "sha256" "f5f928935456f7b96462d2257491aa9db6746aea0bb37e84df323e8399a26dc9"} {"name" "fragment" "language" "glsl" "path" "learned_from_module_fragment_.glsl" "lines" 16 "characters" 687 "sha256" "a0e56c4a78f4ac918a03ff4647fec40d26360c47d3b31a881190e1305d02d860"}]}
+{"id" "learned_from_module" "index" 1 "name" "learn from this module" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "learn from this module" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_from_module_code_.kt" "lines" 87 "characters" 3426 "sha256" "9e035588d821653dc19457bcad080491506888f02a0195a27d254facec93cdce"} {"name" "vertex" "language" "glsl" "path" "learned_from_module_vertex_.glsl" "lines" 5 "characters" 119 "sha256" "f5f928935456f7b96462d2257491aa9db6746aea0bb37e84df323e8399a26dc9"} {"name" "fragment" "language" "glsl" "path" "learned_from_module_fragment_.glsl" "lines" 18 "characters" 690 "sha256" "cb2424db2082218243876ffaa2f8d764aceb600141e527320ee3fbb1afefba4d"}]}
 ```
 
 ```kotlin [field-property box="learned_from_module" name="code" path="learned_from_module_code_.kt"]
-import afield.ui.output.controlGroup
-import afield.ui.output.displayOpen
 import afield.graphics.shader.learning.*
-import afield.document.context.fromContextWithNameOrNull
-import org.lwjgl.vulkan.VK13.*
 import java.io.File
+import org.lwjgl.vulkan.VK13.*
 
 prop<ShaderLearningView>(lab)
 fromContextWithNameOrNull<ShaderLearningView>("lab")?.close()
 val source = RenderToTexture(renderer) {
-    width=1920; height=1080; useDepth=false
-    format=VK_FORMAT_R32G32B32A32_SFLOAT
+    width = 1920
+    height = 1080
+    useDepth = false
+    format = VK_FORMAT_R32G32B32A32_SFLOAT
 }
-val teacher = moduleHere { source.apply(); depthTest=false; depthWrite=false; blend=false }
+val teacher = moduleHere {
+    source.apply()
+    depthTest = false
+    depthWrite = false
+    blend = false
+}
 val mesh = Mesh(renderer, teacher)
-mesh.resize(3,0,teacher)
+mesh.resize(3, 0, teacher)
 mesh.push.setMembers(teacher.current.fi.pushConstants.single().members)
 teacher += "fullscreen" to mesh
 source += "teacher" to teacher
-val setTime: (Float)->Unit = { t -> mesh.push["state"]=vec(source.width,source.height,t,0) }
-lab = ShaderLearningView(renderer,source,setSourceParameter=setTime)
-var capture=false
-var requestedView=0
-var animate=true
-var trainingJob: ShaderTrainingJob?=null
-var reported=false
-var steps=12000
+val setTime: (Float) -> Unit = { t -> mesh.push["state"] = vec(source.width, source.height, t, 0) }
+lab = ShaderLearningView(renderer, source, setSourceParameter = setTime)
+var capture = false
+var requestedView = 0
+var animate = true
+var trainingJob: ShaderTrainingJob? = null
+var reported = false
+var steps = 12000
 controlGroup("learn this module") {
-    button("Capture shader and train") { if(it)capture=true }
-    slider("Training steps",min=1000.0,max=30000.0,step=1000.0,initialValue=12000.0) { steps=it.toInt() }
-    slider("0: Source · 1: Learned · 2: Compare",min=0.0,max=2.0,step=1.0,initialValue=0.0) { requestedView=it.toInt() }
-    checkbox("Animate parameter",initialValue=true) { animate=it }
+    button("Capture shader and train") { if (it) capture = true }
+    slider("Training steps", min = 1000.0, max = 30000.0, step = 1000.0, initialValue = 12000.0) { steps = it.toInt() }
+    slider("0: Source · 1: Learned · 2: Compare", min = 0.0, max = 2.0, step = 1.0, initialValue = 0.0) {
+        requestedView = it.toInt()
+    }
+    checkbox("Animate parameter", initialValue = true) { animate = it }
 }
 displayOpen("learn this module")
-println("Edit this box's fragment shader, run the box, then Capture shader and train. The source stays visible while training.")
-val owner=renderer // Retain ownership even if the parent renderer box stops first.
+println(
+    "Edit this box's fragment shader, run the box, then Capture shader and train. The source stays visible while training.",
+)
+val owner = renderer // Retain ownership even if the parent renderer box stops first.
 frames {
-    var phase=0.0
-    while(true) {
-        if(capture) {
-            capture=false
-            if(trainingJob?.result?.isDone!=false) {
+    var phase = 0.0
+    while (true) {
+        if (capture) {
+            capture = false
+            if (trainingJob?.result?.isDone != false) {
                 runCatching {
-                    val run=File("build/shader-learning/module-${System.currentTimeMillis()}")
-                    val dataset=ShaderTraining.capture(renderer,source,File(run,"dataset"),setParameter=setTime)
-                    trainingJob=ShaderTraining.trainAsync(dataset,File(run,"model"),steps)
-                    reported=false
+                    val run = File("build/shader-learning/module-${System.currentTimeMillis()}")
+                    val dataset = ShaderTraining.capture(renderer, source, File(run, "dataset"), setParameter = setTime)
+                    trainingJob = ShaderTraining.trainAsync(dataset, File(run, "model"), steps)
+                    reported = false
                     println("Captured actual GPU RGB. Training log: ${trainingJob!!.log}")
-                }.onFailure { println("Capture failed: ${it.message}") }
+                }
+                    .onFailure { println("Capture failed: ${it.message}") }
             }
         }
-        val activeJob=trainingJob
-        if(activeJob!=null && activeJob.result.isDone && !reported) {
-            reported=true
+        val activeJob = trainingJob
+        if (activeJob != null && activeJob.result.isDone && !reported) {
+            reported = true
             runCatching {
-                val model=activeJob.result.join()
+                val model = activeJob.result.join()
                 lab.load(model)
                 println("LEARNED MODULE READY: $model — choose view 1 or 2; weights.json records held-out error.")
                 File("build/shader-learning/latest-model.txt").writeText(model.absolutePath)
-            }.onFailure { println("Keeping the working view: ${it.message}") }
+            }
+                .onFailure { println("Keeping the working view: ${it.message}") }
         }
-        lab.view=requestedView
-        if(animate)phase+=.01
-        lab.parameter=kotlin.math.sin(phase).toFloat()
+        lab.view = requestedView
+        if (animate) phase += .01
+        lab.parameter = kotlin.math.sin(phase).toFloat()
         frame()
     }
-}.end {
-    trainingJob?.close(); lab.close()
-    owner.cleanup+=Runnable {
-        teacher.current.cleanup()
-        source.imageViewArray.forEach { it.imageView.cleanup() }
-        source.colorImageRefs.forEach { it?.cleanup() }; source.defaultSampler?.cleanup()
-    }
 }
+    .end {
+        trainingJob?.close()
+        lab.close()
+        owner.cleanup += Runnable {
+            teacher.current.cleanup()
+            source.imageViewArray.forEach { it.imageView.cleanup() }
+            source.colorImageRefs.forEach { it?.cleanup() }
+            source.defaultSampler?.cleanup()
+        }
+    }
 ```
 
 ```glsl [field-property box="learned_from_module" name="vertex" path="learned_from_module_vertex_.glsl"]
@@ -128,7 +141,9 @@ void main() {
 
 ```glsl [field-property box="learned_from_module" name="fragment" path="learned_from_module_fragment_.glsl"]
 #version 460
-layout(push_constant) uniform P { vec4 state; } p;
+layout(push_constant) uniform P {
+    vec4 state;
+} p;
 layout(location=0) out vec4 color;
 void main() {
     // This is the teacher. Edit it here; there is no Python version to keep in sync.

@@ -5,7 +5,10 @@ served by Field itself, and its textbox waits for the agent to type into the sam
 in the Electron app.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/ai4_live_iframe/hello.png" alt="A Field box with a dark webpage in its page output: a heading A textbox for AI4, an empty Message textbox, and a line saying Nothing typed yet" capture="box" open-outputs="true" wait-output=true wait-output-kind=display wait-output-channel="page" wait="2" timeout="180" embed=true name="ai4-iframe-hello" w="800" h="470" padding="18"}
-display("page", """<iframe src="/iframe-ai4-demo.html" style="border:0;width:640px;height:380px;display:block"></iframe>""")
+display(
+    "page",
+    """<iframe src="/iframe-ai4-demo.html" style="border:0;width:640px;height:380px;display:block"></iframe>""",
+)
 exposeOutputIframeTools("page", "hello")
 Unit
 ```

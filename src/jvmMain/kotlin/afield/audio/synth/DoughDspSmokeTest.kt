@@ -19,6 +19,10 @@ expect:
     - "DoughDsp smoke tests passed"
 */
 /**
+ * Smoke test for the dough DSP ports: approximations, filter, phaser, reverb and envelope, checked by behaviour rather than by exact samples.
+ */
+
+/**
  * Numeric checks on the dough DSP ports in DoughDsp.kt.
  *
  * These assert *behaviour* rather than exact sample values: that the

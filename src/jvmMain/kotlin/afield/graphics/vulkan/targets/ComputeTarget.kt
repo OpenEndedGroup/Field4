@@ -12,6 +12,14 @@ import afield.graphics.render.pointer
 import afield.math.linalg.Rectanglef
 import org.lwjgl.system.MemoryStack
 
+/**
+ * A [Target] that records compute and ray-tracing modules into a frame without drawing to a window.
+ *
+ * Modules and plain command-recording functions are added with `+=` on a [ComputeTarget] and run each
+ * frame: compute modules first, then ray-tracing modules, then the other targets.
+ */
+
+/** Records named compute modules, ray-tracing modules and other [Target]s into the frame's command buffer. */
 class ComputeTarget(val renderer: Renderer) : Target {
 
     var modules = mutableMapOf<String, ComputeModulePointer>()

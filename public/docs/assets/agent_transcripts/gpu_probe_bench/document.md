@@ -11,18 +11,20 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="probe_renderer" index="0" -->
 
 ```edn [field-box id="probe_renderer" role="properties"]
-{"id" "probe_renderer" "index" 0 "name" "1 - a window, because there is no headless mode" "parents" ["root"] "children" ["probe_hello" "probe_chain" "probe_caught"] "properties" {"children" #{#afield/box "probe_hello" #afield/box "probe_chain" #afield/box "probe_caught"} "parents" #{#afield/box "root"} "name" "1 - a window, because there is no headless mode" "_tombstone" false "frame" #afield/rect [40.0 40.0 360.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_renderer_code_.kt" "lines" 16 "characters" 578 "sha256" "98388d6abbaf3c713990ce2ebd6d49ca48e28068ac97392d03accc1d278838a5"}]}
+{"id" "probe_renderer" "index" 0 "name" "1 - a window, because there is no headless mode" "parents" ["root"] "children" ["probe_hello" "probe_chain" "probe_caught"] "properties" {"children" #{#afield/box "probe_hello" #afield/box "probe_chain" #afield/box "probe_caught"} "parents" #{#afield/box "root"} "name" "1 - a window, because there is no headless mode" "_tombstone" false "frame" #afield/rect [40.0 40.0 360.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_renderer_code_.kt" "lines" 18 "characters" 567 "sha256" "6b52dc039f385846e3553b02ea4f8e6c255b4417ea44b88a715d640de587bba7"}]}
 ```
 
 ```kotlin [field-property box="probe_renderer" name="code" path="probe_renderer_code_.kt"]
 import afield.graphics.vulkan.util.Options
 
-// Field 4 has no headless mode: a compute-only dispatch still needs a Window for
-// the device to exist, and it needs an awake display. So every box below is a child of
-// this one and resolves `renderer` from it.
-//
-// RUN THIS BOX FIRST. Before it has run there is no Renderer anywhere and the others
-// fail with a context error rather than a GPU one.
+/*
+Field 4 has no headless mode: a compute-only dispatch still needs a Window for
+the device to exist, and it needs an awake display. So every box below is a child of
+this one and resolves `renderer` from it.
+
+RUN THIS BOX FIRST. Before it has run there is no Renderer anywhere and the others
+fail with a context error rather than a GPU one.
+*/
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -37,32 +39,46 @@ start(renderer::run)
 
 <!-- field-box id="probe_chain" index="1" -->
 
+### Narrative
+
+From `code`
+
+The chain the workspace document actually runs, at a size that fits in a box.
+
+A MAC (staggered) grid: u on the left x-face of each cell, v on the bottom y-face,
+both in the x and y of one vec4. Divergence is a forward difference and the pressure
+gradient is a backward difference, so the two are exact adjoints and div.grad is
+precisely the 5-point Laplacian the Jacobi sweeps invert.
+
 ```edn [field-box id="probe_chain" role="properties"]
-{"id" "probe_chain" "index" 1 "name" "3 - divergence, 12 Jacobi sweeps, project" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "3 - divergence, 12 Jacobi sweeps, project" "_tombstone" false "frame" #afield/rect [520.0 200.0 460.0 160.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_chain_code_.kt" "lines" 194 "characters" 8165 "sha256" "73dc993cf306be7f79cbba6535290d49a9ff73f53ab9af92b6b138a1933ccf01"}]}
+{"id" "probe_chain" "index" 1 "name" "3 - divergence, 12 Jacobi sweeps, project" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "3 - divergence, 12 Jacobi sweeps, project" "_tombstone" false "frame" #afield/rect [520.0 200.0 460.0 160.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_chain_code_.kt" "lines" 230 "characters" 8461 "sha256" "4121c1e379b6ba0b811414d90d0a9de2cd5e940557a5a3673be2eb3e76780c50"}]}
 ```
 
 ```kotlin [field-property box="probe_chain" name="code" path="probe_chain_code_.kt"]
-import afield.graphics.vulkan.util.GpuProbe
+/*
+The chain the workspace document actually runs, at a size that fits in a box.
 
-// The chain the workspace document actually runs, at a size that fits in a box.
-//
-// A MAC (staggered) grid: u on the left x-face of each cell, v on the bottom y-face,
-// both in the x and y of one vec4. Divergence is a forward difference and the pressure
-// gradient is a backward difference, so the two are exact adjoints and div.grad is
-// precisely the 5-point Laplacian the Jacobi sweeps invert.
+A MAC (staggered) grid: u on the left x-face of each cell, v on the bottom y-face,
+both in the x and y of one vec4. Divergence is a forward difference and the pressure
+gradient is a backward difference, so the two are exact adjoints and div.grad is
+precisely the 5-point Laplacian the Jacobi sweeps invert.
+*/
 val N = 32
 val CELLS = N * N
 val FLOATS = CELLS * 4
 val GROUPS = CELLS / 64
 val SWEEPS = 12
 
-val head = """#version 450
+val head =
+    """#version 450
 #extension GL_EXT_buffer_reference : require
 layout(std430, buffer_reference) buffer Field { vec4 v[]; };
 layout(local_size_x = 64) in;
 """
 
-val divergenceGlsl = head + """
+val divergenceGlsl =
+    head +
+        """
 layout(push_constant) uniform Push { Field velocity; Field divergence; uint side; } pc;
 void main() {
     uint id = gl_GlobalInvocationID.x;
@@ -77,7 +93,9 @@ void main() {
 }
 """
 
-val jacobiGlsl = head + """
+val jacobiGlsl =
+    head +
+        """
 layout(push_constant) uniform Push { Field pressureIn; Field pressureOut; Field divergence; uint side; } pc;
 void main() {
     uint id = gl_GlobalInvocationID.x;
@@ -92,7 +110,9 @@ void main() {
 }
 """
 
-val projectGlsl = head + """
+val projectGlsl =
+    head +
+        """
 layout(push_constant) uniform Push { Field velocity; Field pressure; Field velocityOut; uint side; } pc;
 void main() {
     uint id = gl_GlobalInvocationID.x;
@@ -115,18 +135,24 @@ val divergence = probe.fixture("divergence", FLOATS)
 val pressureA = probe.fixture("pressureA", FLOATS)
 val pressureB = probe.fixture("pressureB", FLOATS)
 
-// A multi-scale divergent field. Jacobi kills high-frequency error in a handful of
-// sweeps and low frequency in hundreds, so a single-scale field would report either a
-// spectacular reduction or a negligible one and neither would say anything.
+/*
+A multi-scale divergent field. Jacobi kills high-frequency error in a handful of
+sweeps and low frequency in hundreds, so a single-scale field would report either a
+spectacular reduction or a negligible one and neither would say anything.
+*/
 val seeded = FloatArray(FLOATS)
 for (j in 0 until N) for (i in 0 until N) {
     val x = (i + 0.5) / N
     val y = (j + 0.5) / N
     val o = (j * N + i) * 4
-    seeded[o] = (kotlin.math.sin(2 * Math.PI * x * 3) * kotlin.math.cos(2 * Math.PI * y * 2) +
-        0.5 * kotlin.math.sin(2 * Math.PI * x * 9)).toFloat()
-    seeded[o + 1] = (kotlin.math.cos(2 * Math.PI * x * 2) * kotlin.math.sin(2 * Math.PI * y * 3) +
-        0.5 * kotlin.math.sin(2 * Math.PI * y * 7)).toFloat()
+    seeded[o] =
+        (kotlin.math.sin(2 * Math.PI * x * 3) * kotlin.math.cos(2 * Math.PI * y * 2) +
+                0.5 * kotlin.math.sin(2 * Math.PI * x * 9))
+            .toFloat()
+    seeded[o + 1] =
+        (kotlin.math.cos(2 * Math.PI * x * 2) * kotlin.math.sin(2 * Math.PI * y * 3) +
+                0.5 * kotlin.math.sin(2 * Math.PI * y * 7))
+            .toFloat()
 }
 probe.upload(velocity, seeded)
 probe.fill(pressureA, 0f)
@@ -153,10 +179,12 @@ fun maxAbs(a: FloatArray): Float {
     return m
 }
 
-// Three stages. Note there is ONE `stage` call for all twelve Jacobi sweeps: a Stage is
-// one shader and one compile, and each `dispatch` adds a workgroup launch plus its own
-// barrier, so sweep k reads what sweep k-1 wrote. Twelve compiles would have been the
-// obvious mistake. SWEEPS is even, so the answer lands back in pressureA.
+/*
+Three stages. Note there is ONE `stage` call for all twelve Jacobi sweeps: a Stage is
+one shader and one compile, and each `dispatch` adds a workgroup launch plus its own
+barrier, so sweep k reads what sweep k-1 wrote. Twelve compiles would have been the
+obvious mistake. SWEEPS is even, so the answer lands back in pressureA.
+*/
 probe.stage("divergence", divergenceGlsl).dispatch(groups = GROUPS) {
     bind("velocity") { velocity }
     bind("divergence") { divergence }
@@ -184,9 +212,15 @@ frames {
     try {
         probe.arm(velocityOut, divergence)
         while (probe.stillWaiting()) frame()
-        println("chain: " + probe.stageList.size + " stages, " +
-            probe.stageList.sumOf { it.dispatchCount } + " dispatches, landed after " +
-            probe.framesToLand + " frame(s)")
+        println(
+            "chain: " +
+                probe.stageList.size +
+                " stages, " +
+                probe.stageList.sumOf { it.dispatchCount } +
+                " dispatches, landed after " +
+                probe.framesToLand +
+                " frame(s)",
+        )
 
         // Claim 1: the divergence pass against the closed form, at every cell.
         val gpuDiv = probe.read(divergence)
@@ -195,14 +229,24 @@ frames {
         var worstAt = -1
         for (id in 0 until CELLS) {
             val e = kotlin.math.abs(gpuDiv[id * 4] - cpuDiv[id])
-            if (e > worstErr) { worstErr = e; worstAt = id }
+            if (e > worstErr) {
+                worstErr = e
+                worstAt = id
+            }
         }
         val before = maxAbs(cpuDiv)
-        probe.atMost("divergence pass vs closed form", worstErr, 1e-6f,
-            buffer = "divergence", index = worstAt)
-        // Measured 2.546231 on this fixture, which is deterministic CPU arithmetic.
-        // A floor of 2.2 fails if somebody edits the seed into something flat, which
-        // is the only way the rest of this box could pass while meaning nothing.
+        probe.atMost(
+            "divergence pass vs closed form",
+            worstErr,
+            1e-6f,
+            buffer = "divergence",
+            index = worstAt,
+        )
+        /*
+        Measured 2.546231 on this fixture, which is deterministic CPU arithmetic.
+        A floor of 2.2 fails if somebody edits the seed into something flat, which
+        is the only way the rest of this box could pass while meaning nothing.
+        */
         probe.atLeast("input field max |div|", before, 2.2f, buffer = "velocity")
 
         // Claim 2: the sweep. Pressure re-zeroed each sample, so frames x SWEEPS is
@@ -217,17 +261,22 @@ frames {
             probe.arm(velocityOut)
             while (probe.stillWaiting()) frame()
             var pumped = probe.framesToLand
-            while (pumped < f) { frame(); pumped++ }
+            while (pumped < f) {
+                frame()
+                pumped++
+            }
             probe.idle()
             val after = maxAbs(divergenceOf(probe.read(velocityOut)))
             if (first == 0f) first = after
             last = after
             println("  %6d  %6d   %15.5f   %7.1fx".format(pumped, pumped * SWEEPS, after, before / after))
         }
-        // Measured 2584.5x at 96 sweeps and 262.4x between the ends of the sweep.
-        // These floors sit just under the measurements on purpose: `>= 30` against
-        // 2584 is not a test, and a floor that cannot fail is this project's
-        // recurring weakness. A chain that lost a barrier reports single digits.
+        /*
+        Measured 2584.5x at 96 sweeps and 262.4x between the ends of the sweep.
+        These floors sit just under the measurements on purpose: `>= 30` against
+        2584 is not a test, and a floor that cannot fail is this project's
+        recurring weakness. A chain that lost a barrier reports single digits.
+        */
         probe.atLeast("reduction, best sample", before / last, 1500f, buffer = "velocityOut")
         probe.atLeast("extra sweeps helped", first / last, 150f)
         probe.allFinite("projected field", probe.read(velocityOut), buffer = "velocityOut")
@@ -242,22 +291,33 @@ frames {
 
 <!-- field-box id="probe_caught" index="2" -->
 
+### Narrative
+
+From `code`
+
+The same shader as box 2, told to write half as many cells on purpose. This is the
+box that says whether the sentinel is load-bearing: a hand-rolled probe that waits
+`repeat(4) { frame() }` and then reads would report whatever was in the buffer, and
+the half that never ran looks exactly like agreement.
+
 ```edn [field-box id="probe_caught" role="properties"]
-{"id" "probe_caught" "index" 2 "name" "4 - half a grid, so the sentinel fires" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "4 - half a grid, so the sentinel fires" "_tombstone" false "frame" #afield/rect [40.0 420.0 420.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_caught_code_.kt" "lines" 41 "characters" 1537 "sha256" "8022768e9e5219dee14b8519b4d9478a806e89240c7535829eca1dbdaae05561"}]}
+{"id" "probe_caught" "index" 2 "name" "4 - half a grid, so the sentinel fires" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "4 - half a grid, so the sentinel fires" "_tombstone" false "frame" #afield/rect [40.0 420.0 420.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_caught_code_.kt" "lines" 45 "characters" 1476 "sha256" "fdad39b0b41ed97cb0282140103b3bdfa6bf7451a41c514364044701255591fb"}]}
 ```
 
 ```kotlin [field-property box="probe_caught" name="code" path="probe_caught_code_.kt"]
-import afield.graphics.vulkan.util.GpuProbe
-import afield.graphics.vulkan.util.GpuProbeNeverLanded
-
-// The same shader as box 2, told to write half as many cells on purpose. This is the
-// box that says whether the sentinel is load-bearing: a hand-rolled probe that waits
-// `repeat(4) { frame() }` and then reads would report whatever was in the buffer, and
-// the half that never ran looks exactly like agreement.
+/*
+The same shader as box 2, told to write half as many cells on purpose. This is the
+box that says whether the sentinel is load-bearing: a hand-rolled probe that waits
+`repeat(4) { frame() }` and then reads would report whatever was in the buffer, and
+the half that never ran looks exactly like agreement.
+*/
 val probe = GpuProbe(renderer, "caught")
 val out = probe.fixture("out", 256)
 
-probe.stage("fives", """#version 450
+probe
+    .stage(
+        "fives",
+        """#version 450
 #extension GL_EXT_buffer_reference : require
 layout(std430, buffer_reference) buffer Field { vec4 v[]; };
 layout(local_size_x = 64) in;
@@ -267,10 +327,12 @@ void main() {
     if (id >= pc.count) return;
     pc.target.v[id] = vec4(5.0, float(id), 0.0, 0.0);
 }
-""").dispatch(groups = 1) {
-    bind("target") { out }
-    bind("count") { 32 }
-}
+""",
+    )
+    .dispatch(groups = 1) {
+        bind("target") { out }
+        bind("count") { 32 }
+    }
 
 frames {
     try {
@@ -294,22 +356,35 @@ frames {
 
 <!-- field-box id="probe_hello" index="3" -->
 
+### Narrative
+
+From `code`
+
+A fixture, a shader, a dispatch, a wait, a readback, three claims. What matters is
+what is NOT here: no `defaultBuffer` whose access pattern you have to remember
+(`fixture` insists on streamReads(), because a host read out of write-combined
+memory is pathological); no `computeMemoryBarrier` task to append by hand; no frame
+count guessed by feel; and no `finally { renderer.computeList.modules.remove(key) }`.
+
 ```edn [field-box id="probe_hello" role="properties"]
-{"id" "probe_hello" "index" 3 "name" "2 - the whole idiom, on one screen" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "2 - the whole idiom, on one screen" "_tombstone" false "frame" #afield/rect [40.0 200.0 420.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_hello_code_.kt" "lines" 50 "characters" 2386 "sha256" "b1b6e1b332d9d89b78d8e79ba499221dbbb14fcd3d1f617a609684575d7aceac"}]}
+{"id" "probe_hello" "index" 3 "name" "2 - the whole idiom, on one screen" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "2 - the whole idiom, on one screen" "_tombstone" false "frame" #afield/rect [40.0 200.0 420.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_hello_code_.kt" "lines" 59 "characters" 2405 "sha256" "3951c09bc26270fae5832d37ddf398fe607549a4ea14b2776bb1868caeaf64a6"}]}
 ```
 
 ```kotlin [field-property box="probe_hello" name="code" path="probe_hello_code_.kt"]
-import afield.graphics.vulkan.util.GpuProbe
-
-// A fixture, a shader, a dispatch, a wait, a readback, three claims. What matters is
-// what is NOT here: no `defaultBuffer` whose access pattern you have to remember
-// (`fixture` insists on streamReads(), because a host read out of write-combined
-// memory is pathological); no `computeMemoryBarrier` task to append by hand; no frame
-// count guessed by feel; and no `finally { renderer.computeList.modules.remove(key) }`.
+/*
+A fixture, a shader, a dispatch, a wait, a readback, three claims. What matters is
+what is NOT here: no `defaultBuffer` whose access pattern you have to remember
+(`fixture` insists on streamReads(), because a host read out of write-combined
+memory is pathological); no `computeMemoryBarrier` task to append by hand; no frame
+count guessed by feel; and no `finally { renderer.computeList.modules.remove(key) }`.
+*/
 val probe = GpuProbe(renderer, "hello")
 val out = probe.fixture("out", 256)
 
-probe.stage("fives", """#version 450
+probe
+    .stage(
+        "fives",
+        """#version 450
 #extension GL_EXT_buffer_reference : require
 layout(std430, buffer_reference) buffer Field { vec4 v[]; };
 layout(local_size_x = 64) in;
@@ -319,19 +394,23 @@ void main() {
     if (id >= pc.count) return;
     pc.target.v[id] = vec4(5.0, float(id), 0.0, 0.0);
 }
-""").dispatch(groups = 1) {
-    // Misspell `target` here and this line throws, listing the slots the shader does
-    // have. `Structure.bind` on its own would have accepted the typo and bound nothing.
-    bind("target") { out }
-    bind("count") { 64 }
-}
+""",
+    )
+    .dispatch(groups = 1) {
+        // Misspell `target` here and this line throws, listing the slots the shader does
+        // have. `Structure.bind` on its own would have accepted the typo and bound nothing.
+        bind("target") { out }
+        bind("count") { 64 }
+    }
 
 frames {
     try {
-        // `arm` prefills the output with a sentinel and `stillWaiting` is a CONDITION,
-        // so this loop ends when the GPU has demonstrably written every slot. A shader
-        // compiles asynchronously and a module whose shader is not ready dispatches as
-        // a SILENT no-op, which is why `repeat(4) { frame() }` is a hope and not a wait.
+        /*
+        `arm` prefills the output with a sentinel and `stillWaiting` is a CONDITION,
+        so this loop ends when the GPU has demonstrably written every slot. A shader
+        compiles asynchronously and a module whose shader is not ready dispatches as
+        a SILENT no-op, which is why `repeat(4) { frame() }` is a hope and not a wait.
+        */
         probe.arm(out)
         while (probe.stillWaiting()) frame()
 
@@ -340,10 +419,12 @@ frames {
         probe.exactly("cell 0 value", got[0], 5f, buffer = "out", index = 0)
         probe.exactly("cell 63 id tag", got[63 * 4 + 1], 63f, buffer = "out", index = 253)
         probe.allFinite("out", got, buffer = "out")
-        // `{ println(it) }` rather than the default, and this is not cosmetic:
-        // box `println` is rewritten by the K2 REPL into `_printlnHere`, which posts
-        // to THIS box's output. A `println` inside the library is an ordinary one and
-        // goes to the server's stdout, where nobody looking at this box can see it.
+        /*
+        `{ println(it) }` rather than the default, and this is not cosmetic:
+        box `println` is rewritten by the K2 REPL into `_printlnHere`, which posts
+        to THIS box's output. A `println` inside the library is an ordinary one and
+        goes to the server's stdout, where nobody looking at this box can see it.
+        */
         probe.verdict("hello") { println(it) }
     } finally {
         probe.close()

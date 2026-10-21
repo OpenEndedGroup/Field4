@@ -5,6 +5,17 @@ package afield.math.gp
 
 import kotlin.math.*
 
+/**
+ * Exact Gaussian-process regression: fit scalar observations (values and, optionally, slopes) and query the posterior mean, variance and joint covariance.
+ *
+ * [GaussianProcess] factors the training covariance once and reuses that Cholesky factor for every
+ * prediction. [GpPrediction] is a single mean and variance with an [interval][GpPrediction.interval];
+ * [GpFunctional] names a value or a derivative to query jointly; [GpDerivativeObservation] trains on a
+ * measured slope. [GpNumerics] holds the jitter and size limits, and the jitter actually used is
+ * reported back as `jitterUsed`. `logMarginalLikelihood` is the evidence that the fitters in
+ * `GpFit.kt` maximise.
+ */
+
 /** Numerical regularisation is separate from observation noise, and its actual value is reported. */
 data class GpNumerics(
     val relativeJitter: Double = 1e-12,

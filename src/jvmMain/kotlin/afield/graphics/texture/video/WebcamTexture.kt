@@ -1,3 +1,10 @@
+/**
+ * Exposes a webcam as an RGBA Vulkan texture, captured through OpenCV.
+ *
+ * The first frame is uploaded on open so [WebcamTexture.imageView] is valid immediately; later
+ * frames are grabbed on a background thread and uploaded from the render thread.
+ */
+
 package afield.graphics.texture.video
 
 import afield.graphics.vulkan.device.vkLayout

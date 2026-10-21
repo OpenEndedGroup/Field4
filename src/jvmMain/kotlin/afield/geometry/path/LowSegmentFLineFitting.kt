@@ -1,3 +1,11 @@
+/**
+ * Fits a point sequence with as few line and arc segments as its error budget allows.
+ *
+ * [fitLowSegmentFLine] returns the fitted [FLine], and [fitLowSegmentFLineResult] also reports the
+ * error in a [LowSegmentFLineFitResult]; [LowSegmentFLineFitConfig] sets the segment limit and the
+ * improvement a split must earn. Tests: `LowSegmentFLineFittingTest`.
+ */
+
 package afield.geometry.path
 
 import afield.lang.remotejs.JsFun

@@ -1,5 +1,4 @@
 import afield.simulation.physics.*
-import afield.math.linalg.vec
 
 /*
 A cloth, and something for it to land on.

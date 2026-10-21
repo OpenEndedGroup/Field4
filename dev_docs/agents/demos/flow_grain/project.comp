@@ -7,7 +7,7 @@ void main() {
     if (i >= CELLS) return;
     ivec2 c = worldCell(i);
     vec2 gradient = vec2(readCell(pc.auxiliary, c + ivec2(1,0)).x - readCell(pc.auxiliary, c - ivec2(1,0)).x,
-                         readCell(pc.auxiliary, c + ivec2(0,1)).x - readCell(pc.auxiliary, c - ivec2(0,1)).x) / (2. * H);
+    readCell(pc.auxiliary, c + ivec2(0,1)).x - readCell(pc.auxiliary, c - ivec2(0,1)).x) / (2. * H);
     vec2 velocity = readCell(pc.source, c).xy - gradient;
     if (rock(worldPosition(i))) velocity = vec2(0);
     // Enforce no-through-flow against the grid stencil. Drawing uses the exact mask below.

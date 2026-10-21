@@ -193,40 +193,56 @@ completion server calls once per candidate on every keystroke.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/popup-decides-prior-table.png" capture="box" w="700" h="190" wait="1.2" timeout="120" embed=true hidden=true name="popup-decides-prior-table" alt="A Field box output panel labelled main. A heading reads: @CommonMembers on afield.geometry.path.FLine — 8 members, first scores 40, less 2 per position. Below it a three-column table headed position, member, prior score, with eight rows: 1 moveTo 40, 2 lineTo 38, 3 cubicTo 36, 4 close 34, 5 here 32, 6 rot 30, 7 scale 28, 8 copy 26."}
 :::static
-// Ask Field what prior the completion popup has, instead of trusting a number typed into a
-// page. `CommonMemberPrior` is the object the completion server itself calls, once per
-// candidate, on every keystroke — so this table is the popup's own arithmetic rather than a
-// description of it. Change `receiver` to any qualified type name to ask about your own class.
+/*
+Ask Field what prior the completion popup has, instead of trusting a number typed into a
+page. `CommonMemberPrior` is the object the completion server itself calls, once per
+candidate, on every keystroke — so this table is the popup's own arithmetic rather than a
+description of it. Change `receiver` to any qualified type name to ask about your own class.
+*/
 val receiver = "afield.geometry.path.FLine"
 val ranks = afield.runtime.completion.CommonMemberPrior.ranksFor(receiver)
 
 // Sorted by position rather than trusting the map's iteration order, so the figure is the same
 // every time it is captured.
-val prior = Table(["position", "member", "prior score"])
-    .rows(ranks.entries.sortedBy { it.value }.map { (member, position) ->
-        [position, member, afield.runtime.completion.CommonMemberPrior.scoreOf(position)]
-    })
-    .role("member", CellRole.ACCENT)
+val prior =
+    Table(["position", "member", "prior score"])
+        .rows(
+            ranks.entries
+                .sortedBy { it.value }
+                .map { (member, position) ->
+                    [position, member, afield.runtime.completion.CommonMemberPrior.scoreOf(position)]
+                },
+        )
+        .role("member", CellRole.ACCENT)
 
 // The arithmetic the heading claims, checked rather than described.
-check(ranks.all { (_, position) ->
-    afield.runtime.completion.CommonMemberPrior.scoreOf(position) ==
-        afield.runtime.completion.CommonMemberPrior.BASE - afield.runtime.completion.CommonMemberPrior.STEP * (position - 1)
-}) { "the prior is no longer BASE less STEP per position" }
+check(
+    ranks.all { (_, position) ->
+        afield.runtime.completion.CommonMemberPrior.scoreOf(position) ==
+            afield.runtime.completion.CommonMemberPrior.BASE -
+                afield.runtime.completion.CommonMemberPrior.STEP * (position - 1)
+    },
+) {
+    "the prior is no longer BASE less STEP per position"
+}
 
-markdown("main", """
+markdown(
+    "main",
+    """
     {muted:@CommonMembers on ${receiver.md} — ${ranks.size} members, first scores ${afield.runtime.completion.CommonMemberPrior.BASE}, less ${afield.runtime.completion.CommonMemberPrior.STEP} per position}
 
     ${prior.h}
-""")
+""",
+)
 ```
 
 The two calls that table is built from are the whole public surface, and you can point them at your
 own class:
 
 ```diffstatic {data-lang=kotlin}
-val ranks = afield.runtime.completion.CommonMemberPrior.ranksFor("afield.geometry.path.FLine")  // name -> 1-based position
-val score = afield.runtime.completion.CommonMemberPrior.scoreOf(ranks["moveTo"] ?: 0)      // position -> points
+val ranks =
+    afield.runtime.completion.CommonMemberPrior.ranksFor("afield.geometry.path.FLine") // name -> 1-based position
+val score = afield.runtime.completion.CommonMemberPrior.scoreOf(ranks["moveTo"] ?: 0) // position -> points
 ```
 
 The same box ships as a replayable transcript (`popup_prior_inspect` on the

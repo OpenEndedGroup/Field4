@@ -6,6 +6,13 @@ import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 
 /**
+ * Packet encoding and decoding for RTP-MIDI (RFC 6295) and the AppleMIDI session commands around it.
+ *
+ * `RtpMidiLoopbackTest` covers running status, long headers, segmented SysEx, real-time bytes inside
+ * running status, skipped recovery journals and session-packet round trips.
+ */
+
+/**
  * Wire formats for RTP-MIDI (RFC 6295) and the AppleMIDI session protocol that macOS, iOS,
  * rtpMIDI on Windows and most network-MIDI hardware use around it.
  *

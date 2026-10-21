@@ -1,5 +1,3 @@
-import afield.document.context.fromContextWithNameOrNull
-
 // Dependencies are explicit graph exports; resources stay in their parent box.
 val flowLook = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowLook")!!
 val force = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("force")!!

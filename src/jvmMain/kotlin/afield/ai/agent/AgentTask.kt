@@ -20,6 +20,14 @@ import kotlinx.serialization.json.put
 import java.util.UUID
 
 /**
+ * Headless agent tasks: a goal, a document and a set of checks, run through AI4's own turn and judged from what the document's boxes did.
+ *
+ * [AgentTaskRequest] describes the task and its [AgentCheck]s, [AgentTaskRunner] runs it, and
+ * [AgentTaskResult] carries the verdict, each check's [AgentCheckOutcome] and the tool calls the agent
+ * made ([AgentToolCallRecord]).
+ */
+
+/**
  * A whole task handed to Field's own agent: a goal, a document, a tool-round budget, and checks that
  * decide — from the document and what its boxes said, not from the agent's final text — whether the
  * goal was met.

@@ -51,6 +51,12 @@ def digest(code):
 
 
 def historical(path):
+    # The function walkthrough packages these exact bytes under recorded revision/hash IDs.
+    # Its live starter is separate; the recorded example is provenance, not editable box source.
+    if path.startswith("dev_docs/agents/demos/function_conversation_example/"):
+        return True
+    if "/studies/" in path and re.match(r"r\d+-[0-9a-f]+\.", Path(path).name):
+        return True
     return any(p in {"backups", "backup", ".backups"} for p in Path(path).parts) or "/ai4_chat_archive/chats/" in path or Path(path).name in {"operations.yaml", "versions.edn"}
 
 

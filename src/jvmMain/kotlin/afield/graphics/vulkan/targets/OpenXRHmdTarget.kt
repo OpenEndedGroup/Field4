@@ -98,6 +98,15 @@ import org.lwjgl.vulkan.*
 import kotlin.math.tan
 
 /**
+ * The OpenXR headset as a render target: [OpenXRHmdTarget] acquires each eye's swapchain image,
+ * renders registered modules into it, and submits the frame with a projection layer.
+ *
+ * It uses the OpenXR session that the Vulkan instance creates when VR is enabled, and also reports
+ * head and controller poses. Instead of rendering per eye, it can copy a side-by-side texture (from
+ * [SideBySideStereoTarget] or a wide [RenderToTexture]) into the two eyes.
+ */
+
+/**
  * WiVRn's serial for its body trackers: `wivrn-<n>`, n being 1-based
  * (`server/driver/wivrn_generic_tracker.cpp`). The index is the joint-whitelist position.
  */

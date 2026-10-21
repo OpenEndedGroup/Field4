@@ -2,6 +2,16 @@ package afield.simulation.petri
 
 import java.io.File
 
+/**
+ * Serves the `#petri` editor extension, which highlights, checks, documents and completes Petri
+ * net regions embedded in box code.
+ *
+ * The extension itself is `src/commonMain/resources/petri.js`, loaded in the browser as the AMD
+ * module `bithero/petri`. [petriEditorExtensionJavascript] returns that same file's text and
+ * [petriEditorExtensionHtml] wraps it in a self-installing panel for a box output.
+ */
+
+/** The `#petri` editor extension's id and source. */
 object PetriEditorExtension {
     const val id: String = "petri"
 

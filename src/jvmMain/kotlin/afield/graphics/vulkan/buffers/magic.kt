@@ -9,6 +9,20 @@ import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK12.*
 import org.lwjgl.vulkan.VkBufferDeviceAddressInfo
 
+/**
+ * The buffer DSL: [buffer] and [defaultBuffer] build a [BufferParameters] that says how a Vulkan buffer is sized, placed in memory and used.
+ *
+ * [defaultBuffer] starts from host-visible, storage and device-addressable memory, which suits
+ * hardware with resizable BAR or unified memory; [buffer] starts from nothing. Size helpers such as
+ * `10.floats` or `4.vec4s` count std430 bytes (a vec3 takes 16). [linkBuffer] looks for an existing
+ * [BufferParameters] of the same name in the box context and merges new settings into it, so boxes
+ * can share one buffer.
+ */
+
+/**
+ * Builds a [BufferParameters] named [name], optionally sized from shader reflection [from], and
+ * applies [parameters] to it.
+ */
 fun buffer(
     from: Introspected.UBO? = null,
     name: String = from?.name ?: "unnamed",

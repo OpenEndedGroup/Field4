@@ -36,6 +36,14 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /**
+ * Builds the JSON answer to "why did this value resolve here?" for the backdoor, MCP and AI tools.
+ *
+ * [ContextWhy.explain] takes a box and a name or a type. The answer names the supplying box, the path of
+ * parents to it, whether the value was a property or a live variable, and what it shadows. For a
+ * name declared in the box's preamble it also names that preamble line and the box it came from.
+ */
+
+/**
  * "Why did this value resolve here?" — [ContextResolution.explain], the answer as JSON, shared by the
  * backdoor's `why` command, the MCP tool `field_why` and the in-app AI tool `WhyDoesThisResolve`.
  *

@@ -108,6 +108,16 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 /**
+ * A document's version history on disk: listing, diffing, searching, naming and restoring the
+ * saved versions under its `backups/` folder, plus the RPC handlers behind the history browser.
+ *
+ * [HistoryManager] owns the version list and every operation on it; [installHistoryHandlers]
+ * registers the messages `history.html` sends (`list-history-versions`,
+ * `diff-history-version`, `restore-history-version` and the rest). Per-version activity and
+ * screenshot records live alongside in [HistoryMetrics].
+ */
+
+/**
  * Reads, compares, searches, and restores the saved versions of one document directory.
  *
  * A version list is the lexically sorted `backups/metadata_backup_*.edn` files followed by
@@ -116,7 +126,7 @@ import java.util.concurrent.ConcurrentHashMap
  * entry's box IDs come from the attached session. `versions.edn` is a separate index of user names
  * and full-restore transitions.
  *
- * Full restore is deliberately non-destructive: target properties are restored, boxes absent or
+ * Full restore is non-destructive: target properties are restored, boxes absent or
  * tombstoned in the target remain as tombstoned objects, the transition is recorded, and the result
  * is saved through [SavingContext] before clients are resynchronized. Cherry-pick, diff, search,
  * line-history, screenshot, and naming operations are installed as RPC handlers by

@@ -13,8 +13,9 @@ import java.util.concurrent.TimeUnit
 /**
  * # A box that extends the agent, live
  *
- * `aiTool { }` lets a box give the AI one tool. `agentExtension { }` lets it give the agent a piece of its
- * nervous system: tools, context it should know before every turn, a look at — or a veto over — every
+ * `aiTool { }` lets a box give the AI one tool. `agentExtension { }` lets it extend its document's AI
+ * agent more broadly:
+ * tools, context it should know before every turn, a look at — or a veto over — every
  * tool call, and slash commands in the chat. Pi (earendil-works/pi) has extensions with this shape; what
  * Field adds is that they are live-coded. Every part is an ownership in the [afield.runtime.lifecycle.LifecycleLedger], owned
  * by the run that registered it, so re-running the box replaces its whole extension at once, a run that
@@ -42,6 +43,8 @@ import java.util.concurrent.TimeUnit
  *
  * Extensions are per document: they apply to AI conversations about that document only.
  */
+
+/** Registers this box's agent extension [id], replacing whatever the box's previous run registered under it. */
 fun Box.agentExtension(id: String = "default", build: AgentExtensionBuilder.() -> Unit) {
     AgentExtensionBuilder(this, id).apply(build)
 }

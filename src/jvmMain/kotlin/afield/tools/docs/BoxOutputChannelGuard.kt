@@ -17,52 +17,57 @@ import kotlin.system.exitProcess
  * The rule: **two figures in one box means two channels.** This guard reports any box that emits to
  * one channel twice.
  *
- * ## What counts as emitting
+ * #### What counts as emitting
  *
  * `display(…)` itself, plus every `fun Box.<name>(… channel: String = "…" …)` helper found in
  * `src/jvmMain/kotlin` — the table is read from the source rather than hardcoded, so a new `show*`
  * helper is covered the day it is written. A helper whose overloads disagree about the default is
  * skipped rather than guessed at (`logs`, `inspect`).
  *
- * ## Why only top-level calls
+ * #### Why only top-level calls
  *
  * Only calls at brace depth 0 of the box's code are counted. Replacing a channel repeatedly is the
  * *correct* way to animate — `Box.showImg`'s KDoc calls one `display` per frame "the path an
  * animation wants" — so an `animate { }` body, a `for` loop or any other nested emitter is
- * deliberate refresh, not loss.
+ * treated as refresh, not loss.
  *
  * Two emitters at depth 0 are a loss **only when that channel is not animated at all**. The
- * establish-animate-settle shape writes the same channel three times on purpose: once before the
+ * establish-animate-settle shape writes the same channel three times: once before the
  * loop to put the first state on screen, once per iteration inside it, and once after it so the
  * settled state is not up to one iteration stale. Its two depth-0 writes are the ends of one
  * animation, not two figures, and the first one's pixels very much do reach a screen — in
  * `confluence_grid` there is a `Thread.sleep(300)` immediately after it for exactly that reason.
  * So a channel that also receives a *nested* emission in the same box is treated as animated and
- * its depth-0 writes are not reported. (This guard reported that demo as a loss until 2026-09-19;
- * the rule above is what it was missing, not the depth-0 premise itself.)
+ * its depth-0 writes are not reported.
  *
  * The cost of that narrowness is a known blind spot: `for (…) { showImg(…) }` followed by a
  * top-level `showMeshGrid(…)` on the same channel is a real collision this will not report, because
- * depth 0 sees only one emitter — and the animated-channel rule above deliberately widens that same
- * quiet spot rather than guessing which loops terminate. Both are the same trade: this guard reports
+ * depth 0 sees only one emitter. The animated-channel rule widens that same blind spot rather than
+ * guessing which loops terminate. Both are the same trade: this guard reports
  * a channel only when nothing in the box could have been refreshing it.
  *
- * ## Populations
+ * #### Populations
  *
  * Three: the `.yaml` box code under `dev_docs/agents/transcripts`, the `_code_.kt` box code under
  * `dev_docs/agents/demos`, and the library helpers themselves — a collision inside a `fun Box.…` is
  * worse than one in a transcript, since it ships to every caller.
  *
- * (Globs are spelled out in prose here on purpose: a `/` followed by a `*` inside a KDoc comment
- * opens a nested block comment, and Kotlin's nest, so one would swallow the rest of this file.)
- *
  * Run with `./gradlew checkBoxOutputChannels` (also part of `check` and `docsGates`).
  */
+
+/** Reports boxes whose code emits two figures to one output channel at the top level. */
 object BoxOutputChannelGuard {
     private const val TRANSCRIPTS_REL = "dev_docs/agents/transcripts"
     private const val DEMOS_REL = "dev_docs/agents/demos"
     private const val LIBRARY_REL = "src/jvmMain/kotlin"
     private val CREATE_VERBS = setOf("create", "new-box", "box")
+
+    /**
+     * Python's `slider`/`checkbox` queue a spec instead of displaying, and `PythonInterface` renders
+     * every queued spec of one channel into a single `controlGroup`, so two of them on one channel
+     * are one panel, not a lost figure.
+     */
+    private val PYTHON_GROUPED_CONTROLS = setOf("slider", "checkbox")
 
     private val CALL_AT = Regex("""([A-Za-z_]\w*)\s*\(""")
     private val BOX_FUN = Regex("""\bfun\s+Box\.(\w+)\s*\(""")
@@ -117,9 +122,11 @@ object BoxOutputChannelGuard {
 
         var boxes = 0
         var emissions = 0
+        val pythonSources = mutableSetOf<String>()
         fun check(source: String, code: String, forwardedChannelName: String? = null) {
             boxes++
-            val found = topLevelEmissions(code, helpers, channelFirst, forwardedChannelName)
+            val boxHelpers = if (source in pythonSources) helpers - PYTHON_GROUPED_CONTROLS else helpers
+            val found = topLevelEmissions(code, boxHelpers, channelFirst, forwardedChannelName)
             emissions += found.topLevel.size
             found.topLevel.groupBy { it.channel }
                 .filterValues { it.size > 1 }
@@ -134,7 +141,7 @@ object BoxOutputChannelGuard {
                 }
         }
 
-        for ((source, code) in transcriptBoxCode(File(repo, TRANSCRIPTS_REL), problems)) check(source, code)
+        for ((source, code) in transcriptBoxCode(File(repo, TRANSCRIPTS_REL), problems, pythonSources)) check(source, code)
         for ((source, code) in demoBoxCode(File(repo, DEMOS_REL))) check(source, code)
         for ((source, code, param) in libraryHelperBodies(File(repo, LIBRARY_REL))) check(source, code, param)
 
@@ -334,7 +341,11 @@ object BoxOutputChannelGuard {
 
     // ---- populations ------------------------------------------------------------------------------
 
-    private fun transcriptBoxCode(dir: File, problems: MutableList<String>): List<Pair<String, String>> {
+    private fun transcriptBoxCode(
+        dir: File,
+        problems: MutableList<String>,
+        pythonSources: MutableSet<String>,
+    ): List<Pair<String, String>> {
         if (!dir.isDirectory) {
             problems.add("no transcript corpus at ${dir.absolutePath}")
             return emptyList()
@@ -362,6 +373,8 @@ object BoxOutputChannelGuard {
                     // scanned, but its comments start with `--`, which maskCommentsAndStrings does
                     // not know: `-- lines(...) draws them` read as a second lines() call.
                     val lua = properties["code_language"]?.toString()?.trim()?.equals("lua", ignoreCase = true) == true
+                    val python = properties["code_language"]?.toString()?.trim()?.equals("python", ignoreCase = true) == true
+                    if (python) pythonSources.add("${file.name}#$box")
                     result.add("${file.name}#$box" to if (lua) blankLuaLineComments(raw) else raw)
                 }
             }

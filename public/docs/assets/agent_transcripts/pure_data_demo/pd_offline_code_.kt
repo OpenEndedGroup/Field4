@@ -1,5 +1,6 @@
 // No audio device: render one second, measure it, read back what Pd recorded.
-val text = """
+val text =
+    """
 #N canvas 0 0 400 260 12;
 #X obj 20 20 osc~ 440;
 #X obj 20 60 *~ 0.25;

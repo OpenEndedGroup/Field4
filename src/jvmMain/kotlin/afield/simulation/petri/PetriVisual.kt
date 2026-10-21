@@ -42,45 +42,44 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
-/*
- Looking at a net, and poking it.
-
- A Petri net is one of the few computational models with a *standard picture*, and the picture is
- good: circles hold tokens, bars move them, arrows say where. Drawing it properly is not decoration
- — a net you can see is a net you can debug, and the two things you most need to see are which
- transitions are ready to go and where the tokens actually are.
-
- So the drawing says four things the plain graph does not:
-
- - a **place** is a circle with its tokens as dots inside it, and a token carrying a `PatPattern`
-   gets a ring rather than a dot, because a place holding a rhythm is a different kind of thing
-   from a place holding a count;
- - a **transition** is a bar, drawn dim when it cannot fire, bright when it is enabled, and filled
-   when it is firing at the instant being drawn;
- - an **inhibitor arc** ends in a small circle and a **read arc** in no head at all, which is the
-   standard notation and is exactly the distinction that is invisible in a token count;
- - **arc weights** above one are written on the arc.
-
- Interaction goes through `FLine.onClick`, so it only does anything in the interactive outputs —
- which is where you want it. Click a place to drop a token in, click a transition to make it fire.
- Both need somewhere for the change to go, so both are wired to a [PetriLive]; a [PetriRun] is an
- immutable trajectory and clicking one only tells you about it.
-
-     val live = net.live()
-     box.showPetriNet(live)          // click the picture; the net changes under your hands
-
- Layout
- ------
-
- [PetriLayout.RING] draws a cycle as a cycle, which is what most drum nets are, and is chosen
- automatically when the net is one. Otherwise [PetriLayout.FORCE] relaxes a spring model.
- [PetriLayout.TALA] hands the net to d2's diagram layout engine instead, if you have built the
- optional helper for it; it falls back to [PetriLayout.FORCE] if you have not.
- [PetriDrawing.at] pins anything you would rather place yourself.
-*/
+/**
+ * Draws a Petri net as an `FLine` picture, and lets you click it to add tokens and fire transitions.
+ *
+ * A Petri net has a standard picture: circles hold tokens, bars move them, arrows say where. The two
+ * things you most need to see while debugging a net are which transitions are ready to go and where
+ * the tokens are, so the drawing shows four things the plain graph does not:
+ *
+ * - a **place** is a circle with its tokens as dots inside it, and a token carrying a `PatPattern`
+ *   gets a ring rather than a dot, because a place holding a rhythm is a different kind of thing
+ *   from a place holding a count;
+ * - a **transition** is a bar, drawn dim when it cannot fire, bright when it is enabled, and filled
+ *   when it is firing at the instant being drawn;
+ * - an **inhibitor arc** ends in a small circle and a **read arc** in no head at all, the standard
+ *   notation for a distinction a token count cannot show;
+ * - **arc weights** above one are written on the arc.
+ *
+ * Interaction goes through `FLine.onClick`, so it only works in the interactive outputs. Click a
+ * place to drop a token in, click a transition to make it fire. Both need somewhere for the change to
+ * go, so both are wired to a [PetriLive]; a [PetriRun] is an immutable trajectory, and clicking one
+ * only reports on it.
+ *
+ * ```
+ * val live = net.live()
+ * box.showPetriNet(live)          // click the picture; the net changes under your hands
+ * ```
+ *
+ * #### Layout
+ *
+ * [PetriLayout.RING] draws a cycle as a cycle, which is what most drum nets are, and is chosen
+ * automatically when the net is one. Otherwise [PetriLayout.FORCE] relaxes a spring model.
+ * [PetriLayout.TALA] hands the net to d2's diagram layout engine instead, if you have built the
+ * optional helper for it; it falls back to [PetriLayout.FORCE] if you have not.
+ * [PetriDrawing.at] pins anything you would rather place yourself.
+ */
 
 // ── layout ─────────────────────────────────────────────────────────────────────────────────
 
+/** How [frame] and [Box.showPetriNet] arrange places and transitions on the page. */
 enum class PetriLayout {
     /** Detects a single cycle and draws it as a circle; falls back to [FORCE]. The default. */
     AUTO,

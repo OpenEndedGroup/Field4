@@ -162,7 +162,8 @@ They are intercepted before the compiler sees them. Most have a bare declaration
 ```diffstatic {data-lang=kotlin}
 fun <T> Box.prop(name: String) {
     throw MacroRegistry.MacroNotExpandedException(
-        "prop should not be callable directly, but should be expanded as a macro")
+        "prop should not be callable directly, but should be expanded as a macro",
+    )
 }
 ```
 
@@ -186,8 +187,8 @@ compiled again later, so the code still works when the box that wrote it has not
 
 ```diffstatic {data-lang=kotlin}
 val answer = sourceBlock { 6 * 7 }
-println(answer())          // 42
-println(answer.source)     // 6 * 7
+println(answer()) // 42
+println(answer.source) // 6 * 7
 ```
 
 The keyframer and code blends save blocks this way. A block loaded back from a saved file has no
@@ -253,7 +254,7 @@ window and renderer to its children:
 prop<Window>(window)
 prop<Renderer>(renderer)
 
-once.renderer {                       // runs on the first run only
+once.renderer { // runs on the first run only
     window = Window("My sketch")
     Renderer(window)
 }
@@ -357,8 +358,8 @@ Two things have to be true for a child to use a parent's value:
 1. **The typed accessor must exist in the child's compilation scope.** Accessors travel through the preamble. When a box is about to run, its *effective* preamble is regathered from its own preamble plus, from each ancestor, the `import` lines and any line ending in the ` /**/` marker:
 
     ```diffstatic {data-lang=kotlin}
-    // in the child's gathered preamble, pulled down from the parent:
-    var Box.savemarker by Inheritance<Int>() /**/
+// in the child's gathered preamble, pulled down from the parent:
+var Box.savemarker by Inheritance<Int>() /**/
     ```
 
     That ` /**/` suffix is exactly why `prop` (and `@exported`) tag their generated lines with it: it is the "inherit me into descendants" marker.
@@ -421,7 +422,7 @@ That makes `@rootExported`/`@metarootExported` the tidy way to define a helper o
 
 ## Generated GLSL accessors: `moduleHere { }`
 
-A shader box's GLSL is also the **contract that shapes the box's Kotlin API**. `moduleHere { }` is a macro: at expansion it introspects the box's vertex/fragment (or compute) shaders and generates typed Kotlin accessors into the preamble, then rewrites itself to the real runtime builder. (The [Field 4 Graphics](afield_four_graphics.md) page covers using these from a user's point of view; here we show what is actually generated.)
+A shader box's GLSL also decides what Kotlin you can write against it. `moduleHere { }` is a macro: at expansion it reads the box's vertex and fragment (or compute) shaders, writes typed Kotlin accessors into the preamble, then replaces itself with the real runtime builder. (The [Field 4 Graphics](afield_four_graphics.md) page covers using these from a user's point of view; here we show what is actually generated.)
 
 For a vertex shader with `layout(location = 0) in vec3 pos;` and a push-constant block, expansion generates lines like:
 
@@ -434,6 +435,7 @@ val Mesh.pos by FromInput()
 
 // per push-constant / UBO member — typed, two ways to reach it:
 var Mesh.worldToClip by Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>()
+
 // ...or the untyped map form, which needs no generated accessor:
 //   m.push["worldToClip"] = ...
 ```
@@ -441,9 +443,10 @@ var Mesh.worldToClip by Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>()
 A GLSL `struct` (or a `buffer_reference` buffer) becomes a generated Kotlin class mirroring its layout, with nested structs emitted recursively:
 
 ```diffstatic {data-lang=kotlin}
-class Params(/* layout members */) : Structure(/* ... */) {
+class Params(/* layout members */ ) : Structure(/* ... */ ) {
     var resolution_time_samples by Structure.FromStructure<afield.math.linalg.Vector4f>()
-    val P: Params get() = childStructure("P") { m, b, p, r -> Params(m, b, p, r) }   // nested
+    val P: Params
+        get() = childStructure("P") { m, b, p, r -> Params(m, b, p, r) } // nested
 }
 fun ParamsByteSize(): Long = 464L
 fun HasBuffer.asParams(): Params = asStructure(Params(), ParamsLayoutMembers())

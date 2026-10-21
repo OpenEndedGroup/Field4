@@ -33,10 +33,28 @@ import afield.app.commands.actions
 import afield.math.linalg.vec
 import kotlin.math.*
 
-// =====================================================================================
-// Existing API (yours) — kept as-is (plus: intraDistribution honored + tiny-shift guard)
-// =====================================================================================
+/**
+ * Geometric tidying of box frames on the canvas: aligning, snapping and connection-guided
+ * routing over a list of [Rect]s, plus the palette actions that apply them to a selection.
+ *
+ * Three entry points, each taking rectangles and returning new ones in the same order:
+ *
+ * - [alignAndDistribute] lines the rectangles up in bands, vertically or horizontally
+ *   ([Orientation]), spaced by [LayoutParams].
+ * - [snapAndTidyLocal] snaps near-equal sizes and edges together, snaps positions, then pushes
+ *   overlapping rectangles apart.
+ * - [routeAndTidyLocal] also takes the connections between rectangles as [EdgeId]s. It snaps
+ *   sizes and edges, arranges the rectangles in layers along those edges ([RouteParams]), then
+ *   runs the tidy pass and an optional final columnizing pass.
+ *
+ * [snapAndTidyLocal] and [routeAndTidyLocal] can translate their result back so the group's
+ * centroid ([CentroidMode]) does not move: `preserve` for the first, `preserveCentroid` in
+ * [RouteParams] for the second. [installAlignment] runs on each new root and adds the `align`,
+ * `snap_tidy` and `route` actions, which call these with fixed parameters and write the results
+ * to the selected boxes' `frame`s; `align` also restores the centroid.
+ */
 
+/** The axis boxes are lined up along. */
 enum class Orientation { VERTICAL, HORIZONTAL }
 enum class IntraDistribution { EQUAL_GAPS, PACK_MIN_MOVE }
 

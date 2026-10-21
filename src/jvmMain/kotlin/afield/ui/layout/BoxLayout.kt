@@ -21,6 +21,8 @@ import afield.app.server.thisSessionInfo
  * Unlike [afield.simulation.petri.PetriLayout.TALA] there is no fallback: Field has no second box-layout
  * engine to drop to, so an absent helper is reported to the user rather than absorbed.
  */
+
+/** Arranges a selection of boxes with a d2 layout engine, recording every move for a single undo. */
 object BoxLayout {
 
     /** Boxes below this are not worth rearranging, and one box has no arrangement. */

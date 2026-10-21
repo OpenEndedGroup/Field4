@@ -157,6 +157,7 @@ import afield.document.properties.PropertyDependencies
 import afield.document.workspace.AgentWorktreeActionRequest
 import afield.document.workspace.AgentWorktreeActionResponse
 import afield.document.workspace.AiProviderModelSettings
+import afield.document.workspace.LocalAiConnectionRequest
 import afield.document.workspace.AiSettingsStatus
 import afield.document.workspace.AiSettingsUpdateRequest
 import afield.document.workspace.AiSettingsUpdateResponse
@@ -269,6 +270,9 @@ import afield.ai.completion.AI4_AUTO_NAME_PROPERTY
 import afield.ai.completion.AI4_AUTO_NAME_SIGNATURE_PROPERTY
 import afield.ai.models.AiSettingsSaveRequest
 import afield.ai.models.aiProviderStatus
+import afield.ai.models.checkLocalAiConnection
+import afield.ai.models.aiSettingsEnvironmentOverrides
+import afield.ai.models.readLocalAiCredential
 import afield.ai.models.configuredAiBaseUrl
 import afield.ai.models.configuredAiModelSettings
 import afield.ai.models.saveAiSettings
@@ -363,6 +367,18 @@ import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+
+/**
+ * The Field server: the Ktor HTTPS and WebSocket application that holds open documents, runs box
+ * code and answers the browser's RPC messages.
+ *
+ * [Server] starts the HTTPS listener (and the loopback HTTP mirror), mounts the `/ws` socket and
+ * the static and iframe routes such as `/browse`, `/inspect` and `/logs`, and installs the message
+ * handlers. Each connected browser has a [SessionInformation] for the document it shows;
+ * [sessions] maps sockets to those, and [documents] maps document names to them.
+ * [OutputBackPressure] limits how much box output is in flight to a client at once. Command-line
+ * options such as `--workspace` and `--document` are read here as [home] and [documentArgument].
+ */
 
 
 /***
@@ -1133,13 +1149,17 @@ private fun currentAiSettingsStatus(): AiSettingsStatus {
         openRouterConfigPath = status.openRouterConfigPath,
         baseUrl = status.baseUrl,
         openRouterBaseUrl = configuredAiBaseUrl("openrouter"),
+        localBaseUrl = configuredAiBaseUrl("local"),
+        hasLocalApiKey = readLocalAiCredential() != null,
+        environmentOverrides = aiSettingsEnvironmentOverrides(),
         flagshipModel = status.modelSettings.flagshipModel,
         fastModel = status.modelSettings.fastModel,
         fallbackModel = status.modelSettings.fallbackModel,
         modelsByProvider = mapOf(
             "openai" to models("openai"),
             "openrouter" to models("openrouter"),
-            "anthropic" to models("anthropic")
+            "anthropic" to models("anthropic"),
+            "local" to models("local")
         )
     )
 }
@@ -4626,6 +4646,23 @@ class Server {
                             }
                         }
 
+                        post("/api/ai-local-connection") {
+                            if (!isSameSiteRequest(call.request.header("Sec-Fetch-Site"),
+                                    call.request.header("Origin"), call.request.header("Host"))) {
+                                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Open local AI settings from Field's welcome page."))
+                                return@post
+                            }
+                            try {
+                                val request = call.receive<LocalAiConnectionRequest>()
+                                call.respond(withContext(Dispatchers.IO) { checkLocalAiConnection(request) })
+                            } catch (e: Exception) {
+                                call.respond(HttpStatusCode.BadRequest, mapOf("error" to when (e) {
+                                    is IllegalArgumentException -> (e.message ?: "Invalid local endpoint.")
+                                    else -> "Could not reach the model server from Field. Check its address, port, firewall and whether it is running."
+                                }))
+                            }
+                        }
+
                         post("/api/ai-settings") {
                             try {
                                 val request = call.receive<AiSettingsUpdateRequest>()
@@ -4637,7 +4674,9 @@ class Server {
                                         openRouterBaseUrl = request.openRouterBaseUrl,
                                         flagshipModel = request.flagshipModel,
                                         fastModel = request.fastModel,
-                                        fallbackModel = request.fallbackModel
+                                        fallbackModel = request.fallbackModel,
+                                        localBaseUrl = request.localBaseUrl,
+                                        localApiKey = request.localApiKey
                                     )
                                 )
                                 call.respond(
@@ -4652,7 +4691,11 @@ class Server {
                                         flagshipModel = status.modelSettings.flagshipModel,
                                         fastModel = status.modelSettings.fastModel,
                                         fallbackModel = status.modelSettings.fallbackModel,
-                                        message = "AI settings saved; the next AI request will use ${status.provider}."
+                                        message = if (aiSettingsEnvironmentOverrides().isEmpty()) "AI settings saved; the next AI request will use ${status.provider}."
+                                            else "Saved. Environment overrides are active; remove them and restart Field to use these settings.",
+                                        localBaseUrl = configuredAiBaseUrl("local"),
+                                        hasLocalApiKey = readLocalAiCredential() != null,
+                                        environmentOverrides = aiSettingsEnvironmentOverrides()
                                     )
                                 )
                             } catch (e: IllegalArgumentException) {
@@ -4681,6 +4724,14 @@ class Server {
                             if (call.refuseUnlessSameSiteDocsClient(afield.app.server.docsAccessPolicy)) return@get
                             val refresh = call.request.queryParameters["refresh"] == "1"
                             call.respond(withContext(Dispatchers.IO) { afield.graphics.vulkan.util.VulkanProbe.status(refresh) })
+                        }
+
+                        // The optional native geometry libraries (Morse–Smale, principal curves,
+                        // polyvector): present or not, and how to install each, for the welcome page.
+                        // Library objects only look for files, so this loads no native code.
+                        get("/api/native-geometry-status") {
+                            if (call.refuseUnlessSameSiteDocsClient(afield.app.server.docsAccessPolicy)) return@get
+                            call.respond(withContext(Dispatchers.IO) { afield.geometry.network.NativeGeometry.status() })
                         }
 
                         // Field's own agent, headless: POST an AgentTaskRequest, get an AgentTaskResult.
