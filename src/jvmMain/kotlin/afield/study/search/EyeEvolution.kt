@@ -191,11 +191,11 @@ class EyeEvolution<G> internal constructor(
         return buildString {
             append("<div class=\"eye-evolution\" id=\"$id\"><style>")
             append(CSS.replace("#ID", "#$id").replace("COLUMNS", "$columns"))
-            append("</style><div class=\"bar\"><span class=\"title\">").append(escape(title)).append("</span><span class=\"sep\">|</span>")
+            append("</style><div class=\"ee-bar\"><span class=\"ee-title\">").append(escape(title)).append("</span><span class=\"ee-sep\">|</span>")
             append("<button data-act=\"reroll\">Reroll</button>")
             if (freshParent != null) append("<button data-act=\"fresh\">Fresh Parents</button>")
             append("<button data-act=\"restart\" title=\"back to the parents in the code\">Start over</button>")
-            if (settings.isNotEmpty()) append("<span class=\"sep\">|</span>")
+            if (settings.isNotEmpty()) append("<span class=\"ee-sep\">|</span>")
             for (s in settings) {
                 append("<label>").append(escape(s.label)).append(' ')
                 if (s.choices.isNotEmpty()) {
@@ -207,24 +207,24 @@ class EyeEvolution<G> internal constructor(
                 }
                 append("</label>")
             }
-            append("<span class=\"status\">").append(escape(status)).append("</span></div><div class=\"grid\">")
+            append("<span class=\"ee-status\">").append(escape(status)).append("</span></div><div class=\"ee-grid\">")
             shown.forEachIndexed { i, s ->
                 val t = s.tile
-                append("<article class=\"tile${if (t.isParent) " parent" else ""}\" data-index=\"$i\">")
-                append("<div class=\"head\"><span class=\"badge\">${if (t.isParent) "seed" else "mut"}</span>")
-                append("<span class=\"name\">").append(escape("${t.label}  ${t.note}")).append("</span>")
-                append("<span class=\"meta\">").append(escape(meta(t.genome))).append("</span></div>")
-                append("<div class=\"pic\">")
+                append("<article class=\"ee-tile${if (t.isParent) " ee-parent" else ""}\" data-index=\"$i\">")
+                append("<div class=\"ee-head\"><span class=\"ee-badge\">${if (t.isParent) "seed" else "mut"}</span>")
+                append("<span class=\"ee-name\">").append(escape("${t.label}  ${t.note}")).append("</span>")
+                append("<span class=\"ee-meta\">").append(escape(meta(t.genome))).append("</span></div>")
+                append("<div class=\"ee-pic\">")
                 if (s.src.isNotEmpty()) append("<img src=\"${s.src}\" alt=\"").append(escape(text(t.genome))).append("\">")
-                append("<span class=\"overlay\">${if (t.isParent) "seed" else if (s.cached) "cached" else "done"}</span></div>")
-                append("<div class=\"code\">").append(escape(clip(text(t.genome).replace('\n', ' '), 108))).append("</div></article>")
+                append("<span class=\"ee-overlay\">${if (t.isParent) "seed" else if (s.cached) "cached" else "done"}</span></div>")
+                append("<div class=\"ee-code\">").append(escape(clip(text(t.genome).replace('\n', ' '), 108))).append("</div></article>")
             }
-            append("</div><div class=\"parents\">")
+            append("</div><div class=\"ee-parents\">")
             synchronized(lock) { parents }.forEachIndexed { i, p ->
-                append("<div><span class=\"label\">${if (parents.size == 2) "parent ${"ab"[i]}" else "parent ${i + 1}"}</span><pre>")
+                append("<div><span class=\"ee-label\">${if (parents.size == 2) "parent ${"ab"[i]}" else "parent ${i + 1}"}</span><pre>")
                 append(escape(text(p))).append("</pre></div>")
             }
-            append("</div><div class=\"log\">").append(escape(log)).append(" · generation $generation</div>")
+            append("</div><div class=\"ee-log\">").append(escape(log)).append(" · generation $generation</div>")
             append("<script>(function(){const C={id:\"$id\",action:\"$actionId\",pick:$pick};").append(SCRIPT).append("})();</script></div>")
         }
     }
@@ -236,44 +236,44 @@ class EyeEvolution<G> internal constructor(
         /** The madp GA page's look: near-black ground, Iosevka, blue parents, amber selection. */
         val CSS = """
             #ID{background:#0a0a0a;color:#b8b8b8;font-family:'Iosevka Web','Iosevka',monospace;font-size:12px;padding:0 0 2px;width:max-content}
-            #ID .bar{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#111;border-bottom:1px solid #1e1e1e;flex-wrap:wrap}
-            #ID .title{color:#4a4a4a;letter-spacing:2px;text-transform:uppercase;font-size:11px}
-            #ID .sep{color:#2a2a2a}
+            #ID .ee-bar{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#111;border-bottom:1px solid #1e1e1e;flex-wrap:wrap}
+            #ID .ee-title{color:#4a4a4a;letter-spacing:2px;text-transform:uppercase;font-size:11px}
+            #ID .ee-sep{color:#2a2a2a}
             #ID button,#ID input,#ID select{background:#171717;color:#909090;border:1px solid #272727;padding:3px 8px;font:inherit;font-size:12px}
             #ID button{cursor:pointer}#ID button:hover{color:#d8d8d8;border-color:#3a3a3a;background:#1b1b1b}
             #ID input,#ID select{width:64px;text-align:center}
             #ID label{display:inline-flex;align-items:center;gap:4px;color:#7a7a7a}
-            #ID .status{margin-left:auto;font-size:11px;color:#555}
-            #ID .grid{display:grid;grid-template-columns:repeat(COLUMNS,200px);gap:10px;padding:10px}
-            #ID .tile{background:rgba(12,12,12,.9);border:1px solid #1e1e1e;display:flex;flex-direction:column;overflow:hidden;cursor:pointer;transition:border-color .12s,transform .12s}
-            #ID .tile:hover{border-color:#353535;transform:translateY(-1px)}
-            #ID .tile.parent{border-color:#244154}
-            #ID .tile.pending{border-color:#66502a;box-shadow:0 0 0 1px rgba(255,211,124,.22) inset}
-            #ID .tile.pending .badge{color:#ffdf96;border-color:#5c4c26}
-            #ID .head{display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid #1e1e1e;background:rgba(16,16,16,.94);font-size:11px}
-            #ID .badge{color:#7396a8;border:1px solid #253c49;padding:1px 5px;text-transform:uppercase;letter-spacing:.08em;flex-shrink:0}
-            #ID .name{color:#8a8a8a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-            #ID .meta{margin-left:auto;color:#434343;flex-shrink:0}
-            #ID .pic{position:relative;background:#050505;width:200px;height:200px}
-            #ID .pic img{width:200px;height:200px;display:block}
-            #ID .overlay{position:absolute;right:8px;bottom:8px;background:rgba(8,8,8,.74);border:1px solid rgba(255,255,255,.06);color:#5d5d5d;padding:3px 6px;font-size:11px}
-            #ID .code{padding:6px 8px 8px;color:#585858;font-size:11px;line-height:1.45;white-space:pre-wrap;word-break:break-word;min-height:56px;border-top:1px solid #1e1e1e;background:rgba(14,14,14,.84)}
-            #ID .parents{display:flex;gap:10px;padding:0 10px 8px}
-            #ID .parents div{flex:1;min-width:0;background:#0d0d0d;border:1px solid #1e1e1e;padding:6px 8px}
-            #ID .parents .label{color:#7396a8;font-size:11px;text-transform:uppercase;letter-spacing:.08em}
-            #ID .parents pre{margin:4px 0 0;color:#9a9a9a;font:inherit;white-space:pre-wrap;user-select:text}
-            #ID .log{padding:4px 10px;color:#484848;font-size:11px;border-top:1px solid #1e1e1e;background:#0e0e0e}
+            #ID .ee-status{margin-left:auto;font-size:11px;color:#555}
+            #ID .ee-grid{display:grid;grid-template-columns:repeat(COLUMNS,200px);gap:10px;padding:10px}
+            #ID .ee-tile{background:rgba(12,12,12,.9);border:1px solid #1e1e1e;display:flex;flex-direction:column;overflow:hidden;cursor:pointer;transition:border-color .12s,transform .12s}
+            #ID .ee-tile:hover{border-color:#353535;transform:translateY(-1px)}
+            #ID .ee-tile.ee-parent{border-color:#244154}
+            #ID .ee-tile.ee-pending{border-color:#66502a;box-shadow:0 0 0 1px rgba(255,211,124,.22) inset}
+            #ID .ee-tile.ee-pending .ee-badge{color:#ffdf96;border-color:#5c4c26}
+            #ID .ee-head{display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid #1e1e1e;background:rgba(16,16,16,.94);font-size:11px}
+            #ID .ee-badge{color:#7396a8;border:1px solid #253c49;padding:1px 5px;text-transform:uppercase;letter-spacing:.08em;flex-shrink:0}
+            #ID .ee-name{color:#8a8a8a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+            #ID .ee-meta{margin-left:auto;color:#434343;flex-shrink:0}
+            #ID .ee-pic{position:relative;background:#050505;width:200px;height:200px}
+            #ID .ee-pic img{width:200px;height:200px;display:block}
+            #ID .ee-overlay{position:absolute;right:8px;bottom:8px;background:rgba(8,8,8,.74);border:1px solid rgba(255,255,255,.06);color:#5d5d5d;padding:3px 6px;font-size:11px}
+            #ID .ee-code{padding:6px 8px 8px;color:#585858;font-size:11px;line-height:1.45;white-space:pre-wrap;word-break:break-word;min-height:56px;border-top:1px solid #1e1e1e;background:rgba(14,14,14,.84)}
+            #ID .ee-parents{display:flex;gap:10px;padding:0 10px 8px}
+            #ID .ee-parents div{flex:1;min-width:0;background:#0d0d0d;border:1px solid #1e1e1e;padding:6px 8px}
+            #ID .ee-parents .ee-label{color:#7396a8;font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+            #ID .ee-parents pre{margin:4px 0 0;color:#9a9a9a;font:inherit;white-space:pre-wrap;user-select:text}
+            #ID .ee-log{padding:4px 10px;color:#484848;font-size:11px;border-top:1px solid #1e1e1e;background:#0e0e0e}
         """.trimIndent().replace("\n", "")
 
         /** The grid's browser half: tiles toggle until [pick] are chosen, then the choice goes to the box. */
         val SCRIPT = """
             const root=document.getElementById(C.id); if(!root) return;
             const send=(o)=>{ if(window.handleStringInput) window.handleStringInput({id:C.action,value:JSON.stringify(o)}); };
-            const log=root.querySelector('.log'); let chosen=[];
-            root.querySelectorAll('.tile').forEach(t=>t.addEventListener('click',()=>{
+            const log=root.querySelector('.ee-log'); let chosen=[];
+            root.querySelectorAll('.ee-tile').forEach(t=>t.addEventListener('click',()=>{
               const i=+t.dataset.index, at=chosen.indexOf(i);
-              if(at>=0){ chosen.splice(at,1); t.classList.remove('pending'); }
-              else { chosen.push(i); t.classList.add('pending'); }
+              if(at>=0){ chosen.splice(at,1); t.classList.remove('ee-pending'); }
+              else { chosen.push(i); t.classList.add('ee-pending'); }
               if(chosen.length>=C.pick){ log.textContent='breeding from tiles '+chosen.join(' and ')+' …'; send({act:'pick',tiles:chosen}); chosen=[]; }
               else log.textContent=chosen.length?('pick '+(C.pick-chosen.length)+' more'):('pick '+C.pick+' tiles to breed the next generation');
             }));

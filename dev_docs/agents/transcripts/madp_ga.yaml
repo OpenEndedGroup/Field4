@@ -54,7 +54,7 @@ operations:
   - create:
       box: madp_ga_noise
       name: noise mask × rings
-      frame: { x: 800.0, y: 40.0, w: 300.0, h: 100.0 }
+      frame: { x: 860.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // Two of the demo's example programs as parents: a perlin mask blended with its own
@@ -66,7 +66,7 @@ operations:
   - create:
       box: madp_ga_fbm
       name: fbm bands × noise hues
-      frame: { x: 40.0, y: 1240.0, w: 300.0, h: 100.0 }
+      frame: { x: 40.0, y: 1320.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // Layered noise along a diagonal, and two noises in x and y added into a hue.
@@ -77,7 +77,7 @@ operations:
   - create:
       box: madp_ga_numbers
       name: only the numbers mutate
-      frame: { x: 800.0, y: 1240.0, w: 300.0, h: 100.0 }
+      frame: { x: 860.0, y: 1320.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           /*

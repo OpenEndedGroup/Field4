@@ -39,8 +39,8 @@ class EyeEvolutionTest {
         assertEquals(listOf(10, 20), e.tiles.take(2).map { it.genome })
         assertTrue(e.tiles.drop(2).all { it.genome in 30..32 && it.note == "sum" })
         val html = panel(box, "evolve")
-        assertEquals(9, Regex("<article class=\"tile").findAll(html).count())
-        assertEquals(2, Regex("<article class=\"tile parent\"").findAll(html).count())
+        assertEquals(9, Regex("<article class=\"ee-tile").findAll(html).count())
+        assertEquals(2, Regex("<article class=\"ee-tile ee-parent\"").findAll(html).count())
     }
 
     @Test

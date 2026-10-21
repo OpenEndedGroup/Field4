@@ -92,7 +92,7 @@ From `code`
 Layered noise along a diagonal, and two noises in x and y added into a hue.
 
 ```edn [field-box id="madp_ga_fbm" role="properties"]
-{"id" "madp_ga_fbm" "index" 1 "name" "fbm bands × noise hues" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "fbm bands × noise hues" "_tombstone" false "frame" #afield/rect [40.0 1240.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_ga_fbm_code_.kt" "lines" 5 "characters" 193 "sha256" "ce1e5ab23141a60b5d1b762b679ea836b58373a407542a7d1206fb90c8a16452"}]}
+{"id" "madp_ga_fbm" "index" 1 "name" "fbm bands × noise hues" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "fbm bands × noise hues" "_tombstone" false "frame" #afield/rect [40.0 1320.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_ga_fbm_code_.kt" "lines" 5 "characters" 193 "sha256" "ce1e5ab23141a60b5d1b762b679ea836b58373a407542a7d1206fb90c8a16452"}]}
 ```
 
 ```kotlin [field-property box="madp_ga_fbm" name="code" path="madp_ga_fbm_code_.kt"]
@@ -118,7 +118,7 @@ parent, and nudgeLength = false stops the length being topped up with random wor
 child keeps its parent's shape: the same rings and bands at different frequencies.
 
 ```edn [field-box id="madp_ga_numbers" role="properties"]
-{"id" "madp_ga_numbers" "index" 2 "name" "only the numbers mutate" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "only the numbers mutate" "_tombstone" false "frame" #afield/rect [800.0 1240.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_ga_numbers_code_.kt" "lines" 17 "characters" 703 "sha256" "dda71e2a653cbcd7182f9f1527978011daae496bf950d563fdba853fccc71e37"}]}
+{"id" "madp_ga_numbers" "index" 2 "name" "only the numbers mutate" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "only the numbers mutate" "_tombstone" false "frame" #afield/rect [860.0 1320.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_ga_numbers_code_.kt" "lines" 17 "characters" 703 "sha256" "dda71e2a653cbcd7182f9f1527978011daae496bf950d563fdba853fccc71e37"}]}
 ```
 
 ```kotlin [field-property box="madp_ga_numbers" name="code" path="madp_ga_numbers_code_.kt"]
@@ -153,7 +153,7 @@ Two of the demo's example programs as parents: a perlin mask blended with its ow
 inverse, and rings crossed with spokes.
 
 ```edn [field-box id="madp_ga_noise" role="properties"]
-{"id" "madp_ga_noise" "index" 3 "name" "noise mask × rings" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "noise mask × rings" "_tombstone" false "frame" #afield/rect [800.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_ga_noise_code_.kt" "lines" 6 "characters" 232 "sha256" "e7593388c234bf0af6aaf8558542c5e06a3868876006753e39e554c2d678384e"}]}
+{"id" "madp_ga_noise" "index" 3 "name" "noise mask × rings" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "noise mask × rings" "_tombstone" false "frame" #afield/rect [860.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_ga_noise_code_.kt" "lines" 6 "characters" 232 "sha256" "e7593388c234bf0af6aaf8558542c5e06a3868876006753e39e554c2d678384e"}]}
 ```
 
 ```kotlin [field-property box="madp_ga_noise" name="code" path="madp_ga_noise_code_.kt"]
