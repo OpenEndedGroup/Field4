@@ -434,6 +434,7 @@ nav:
       - Math: reference/math.md
       - Data: reference/data.md
       - Graphics: reference/graphics.md
+      - Output: reference/output.md
       - Renderers: reference/renderers.md
       - Polytopes: reference/polytopes.md
       - Solvers: reference/solvers.md
