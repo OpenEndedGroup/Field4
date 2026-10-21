@@ -161,7 +161,7 @@ This one is a cruising school: flocking, a noise flow and a speed floor keep it 
 The world settings below are the demo's init().
 
 ```edn [field-box id="particles_boids" role="properties"]
-{"id" "particles_boids" "index" 2 "name" "boids ribbon" "parents" ["root" "particles_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "particles_renderer"} "name" "boids ribbon" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "particles_boids_notes_.md" "lines" 85 "characters" 4920 "sha256" "e29664ac5b65f36d93656bf6a17f7d762037d6d1412e070c5198dd1baf0f5d8b"} {"name" "code" "language" "kotlin" "path" "particles_boids_code_.kt" "lines" 38 "characters" 1442 "sha256" "40aa111df0971e7c6735207103b18530596a11067f04d72abe8907852f345bc5"} {"name" "compute" "language" "glsl" "path" "particles_boids_compute_.glsl" "lines" 55 "characters" 1700 "sha256" "7fc2a3ee44febe54a8ca0373483c808fe23c42af67fb11799b617e36dc161eaf"}]}
+{"id" "particles_boids" "index" 2 "name" "boids ribbon" "parents" ["root" "particles_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "particles_renderer"} "name" "boids ribbon" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "particles_boids_notes_.md" "lines" 85 "characters" 4943 "sha256" "186387f0bfe81dfaecb6c9334334d56e11a8392848a1fbc46ef525fc6f8af5b5"} {"name" "code" "language" "kotlin" "path" "particles_boids_code_.kt" "lines" 38 "characters" 1442 "sha256" "40aa111df0971e7c6735207103b18530596a11067f04d72abe8907852f345bc5"} {"name" "compute" "language" "glsl" "path" "particles_boids_compute_.glsl" "lines" 55 "characters" 1700 "sha256" "7fc2a3ee44febe54a8ca0373483c808fe23c42af67fb11799b617e36dc161eaf"}]}
 ```
 
 ````markdown [field-property box="particles_boids" name="notes" path="particles_boids_notes_.md"]
@@ -179,7 +179,7 @@ long the motion blur lasts, and **pause** holds everything still while you paint
 
 ## The four hooks
 
-```glsl
+```diffstatic {data-lang=glsl}
 void spawn(vec2 at)                       // a particle is painted at `at`: set up p
 void eachPair(Particle other, Pair pair)  // p and one neighbour within pairRadius
 void update()                             // p's own behaviour, once a frame

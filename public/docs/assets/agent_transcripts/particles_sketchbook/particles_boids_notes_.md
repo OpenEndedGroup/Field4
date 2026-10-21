@@ -12,7 +12,7 @@ long the motion blur lasts, and **pause** holds everything still while you paint
 
 ## The four hooks
 
-```glsl
+```diffstatic {data-lang=glsl}
 void spawn(vec2 at)                       // a particle is painted at `at`: set up p
 void eachPair(Particle other, Pair pair)  // p and one neighbour within pairRadius
 void update()                             // p's own behaviour, once a frame
