@@ -643,7 +643,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**33618 public symbols across 1514 source files**, 17141 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**33622 public symbols across 1514 source files**, 17145 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -657,7 +657,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Math](math.md) | 47 | 2156 | 1522 (70%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 23 | 976 | 417 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 312 | 7698 | 3971 (51%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
-| [Renderers](renderers.md) | 46 | 793 | 422 (53%) | Turning a scene into pixels on a Vulkan device. |
+| [Renderers](renderers.md) | 46 | 797 | 426 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
 | [Simulation](simulation.md) | 46 | 1287 | 653 (50%) | Making a shape behave. |
@@ -1976,8 +1976,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [SplatRaster.kt](graphics.md#splatraster-kt) | Graphics | 16 | 16 | A CPU rasterizer for Gaussian splat clouds, so a splat can be rendered to pixels, tested and captured without a GPU. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [SplatRasterTest.kt](graphics.md#splatrastertest-kt) | Graphics | 3 | 1 | Tests `SplatRaster` at the level of pixels. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [SplatSequence.kt](renderers.md#splatsequence-kt) | Renderers | 28 | 22 | Playing a splat capture over time: the frame reader, the play head, and the box controls that drive it. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [SplatSet.kt](renderers.md#splatset-kt) | Renderers | 8 | 8 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [SplatShader.kt](renderers.md#splatshader-kt) | Renderers | 28 | 26 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [SplatSet.kt](renderers.md#splatset-kt) | Renderers | 9 | 9 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [SplatShader.kt](renderers.md#splatshader-kt) | Renderers | 31 | 29 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [SplatShaderSortSmoke.kt](renderers.md#splatshadersortsmoke-kt) | Renderers | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [SplatTools.kt](graphics.md#splattools-kt) | Graphics | 6 | 5 | A command line over the CPU splat toolchain, for looking at a capture without opening Field. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>table/<wbr></small> [spreadsheet.kt](data.md#spreadsheet-kt) | Data | 145 | 0 | A spreadsheet that lives in a box property, shown in the box's output area, whose formulas are Kotlin expressions. |  |

@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17141 of 33618 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17145 of 33622 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2238 undocumented entry points** (types, top-level functions and values) and 13535 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -899,7 +899,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [GpuSkinningEvidence.kt](../src/jvmMain/kotlin/afield/graphics/scene/GpuSkinningEvidence.kt) | Graphics | — | 0 | 2 | 33% |
 | [SkinnedMeshFromDisk.kt](../src/jvmMain/kotlin/afield/graphics/scene/SkinnedMeshFromDisk.kt) | Graphics | — | 0 | 2 | 81% |
 | [PathTraceTemporalGpuSmoke.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceTemporalGpuSmoke.kt) | Renderers | — | 0 | 2 | 33% |
-| [SplatShader.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/SplatShader.kt) | Renderers | — | 0 | 2 | 92% |
+| [SplatShader.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/SplatShader.kt) | Renderers | — | 0 | 2 | 93% |
 | [SlugPath.kt](../src/jvmMain/kotlin/afield/graphics/text/slug/SlugPath.kt) | Graphics | — | 0 | 2 | 50% |
 | [ThreeWire.kt](../src/jvmMain/kotlin/afield/graphics/three/ThreeWire.kt) | Graphics | — | 0 | 2 | 71% |
 | [Semaphore.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/device/Semaphore.kt) | Graphics | — | 0 | 2 | 66% |
