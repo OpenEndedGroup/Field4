@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17508 of 34056 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17587 of 34161 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2238 undocumented entry points** (types, top-level functions and values) and 13596 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2238 undocumented entry points** (types, top-level functions and values) and 13622 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -614,6 +614,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [MqttClient.kt](../src/jvmMain/kotlin/afield/io/mqtt/MqttClient.kt) | Networking | — | 0 | 22 | 52% |
 | [AmbisonicsEffects.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/AmbisonicsEffects.kt) | Audio | — | 0 | 21 | 63% |
 | [HeadlessPuppetBrowser.kt](../src/jvmMain/kotlin/afield/media/browser/HeadlessPuppetBrowser.kt) | Imaging | — | 0 | 21 | 19% |
+| [BoidSketch.kt](../src/jvmMain/kotlin/afield/simulation/particles/BoidSketch.kt) | Simulation | — | 0 | 21 | 77% |
 | [OpenXREyeTracking.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/targets/OpenXREyeTracking.kt) | Graphics | — | 0 | 20 | 33% |
 | [DatalogEngine.kt](../src/jvmMain/kotlin/afield/data/query/datalog/DatalogEngine.kt) | Languages | — | 0 | 19 | 43% |
 | [VBuffer.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/buffers/VBuffer.kt) | Graphics | — | 0 | 19 | 4% |
@@ -816,6 +817,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [LinuxDmaBufExport.kt](../src/jvmMain/kotlin/afield/graphics/texture/LinuxDmaBufExport.kt) | Graphics | — | 0 | 4 | 63% |
 | [FrameSetBarrier.kt](../src/jvmMain/kotlin/afield/graphics/texture/video/FrameSetBarrier.kt) | Graphics | — | 0 | 4 | 42% |
 | [ImGuiPanel.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/imgui/ImGuiPanel.kt) | Graphics | — | 0 | 4 | 63% |
+| [WindowPointer.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/WindowPointer.kt) | Graphics | — | 0 | 4 | 63% |
 | [ArtNet.kt](../src/jvmMain/kotlin/afield/io/dmx/ArtNet.kt) | Lighting | — | 0 | 4 | 84% |
 | [SyphonGpu.kt](../src/jvmMain/kotlin/afield/io/syphon/SyphonGpu.kt) | Graphics | — | 0 | 4 | 44% |
 | [MorphoCircuit.kt](../src/jvmMain/kotlin/afield/lang/morpho/MorphoCircuit.kt) | Languages | — | 0 | 4 | 73% |
@@ -1004,6 +1006,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [RectslBoxToolsSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/ai/RectslBoxToolsSmokeTest.kt) | Examples | — | 0 | 1 | 50% |
 | [PhotoToSolidChain.kt](../src/jvmMain/kotlin/afield/examples/chain/PhotoToSolidChain.kt) | Examples | — | 0 | 1 | 88% |
 | [AlifeShaderSystemsSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/AlifeShaderSystemsSmoke.kt) | Examples | — | 0 | 1 | 50% |
+| [BoidSketchSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/BoidSketchSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [FabricatePassChainDemo.kt](../src/jvmMain/kotlin/afield/examples/four/FabricatePassChainDemo.kt) | Examples | — | 0 | 1 | 50% |
 | [FabricateQuadtreeChainDemo.kt](../src/jvmMain/kotlin/afield/examples/four/FabricateQuadtreeChainDemo.kt) | Examples | — | 0 | 1 | 50% |
 | [FabricateReprojectionDemo.kt](../src/jvmMain/kotlin/afield/examples/four/FabricateReprojectionDemo.kt) | Examples | — | 0 | 1 | 50% |
