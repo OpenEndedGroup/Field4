@@ -630,7 +630,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - [film](visualization.md#canvasflight-kt)
 - [layout](visualization.md#boxlayout-kt)
 - [notation](visualization.md#darkthemecolour-kt)
-- *output* — [Graphics](graphics.md#shadertransitionnotes-kt) · [Internal](internal.md#prettystrings-kt) · [Visualization](visualization.md#liveoutputiframe-kt) · [Workspace](workspace.md#lastrunnotes-kt)
+- *output* — [Graphics](graphics.md#shadertransitionnotes-kt) · [Internal](internal.md#prettystrings-kt) · [Visualization](visualization.md#chargrid-kt) · [Workspace](workspace.md#lastrunnotes-kt)
     - [templates](visualization.md#replacements-kt)
 - [slides](visualization.md#slideshow-kt)
 - *visualization* — [Graphics](graphics.md#flineinspect-kt) · [Visualization](visualization.md#audiovisualizer-kt) · [Workspace](workspace.md#geometryreviewsurface-kt)
@@ -643,7 +643,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**33567 public symbols across 1510 source files**, 17092 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**33688 public symbols across 1515 source files**, 17211 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -657,7 +657,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Math](math.md) | 47 | 2156 | 1522 (70%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 23 | 976 | 417 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 312 | 7698 | 3971 (51%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
-| [Renderers](renderers.md) | 42 | 742 | 373 (50%) | Turning a scene into pixels on a Vulkan device. |
+| [Renderers](renderers.md) | 46 | 793 | 422 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
 | [Simulation](simulation.md) | 46 | 1287 | 653 (50%) | Making a shape behave. |
@@ -665,7 +665,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [ALife](alife.md) | 14 | 774 | 571 (73%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 611 | 405 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 5 | 349 | 199 (57%) | Optimisation over a space you can only sample. |
-| [Visualization](visualization.md) | 52 | 1484 | 1024 (69%) | Turning a value into something you can look at, without leaving the box. |
+| [Visualization](visualization.md) | 53 | 1554 | 1094 (70%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 43 | 1529 | 758 (49%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 40 | 1316 | 721 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 77 | 2092 | 1013 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
@@ -855,6 +855,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>ceres/<wbr></small> [CeresRealizerCacheCost.kt](examples.md#ceresrealizercachecost-kt) | Examples | 1 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>ceres/<wbr></small> [CeresRealizerDiagnostic.kt](examples.md#ceresrealizerdiagnostic-kt) | Examples | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>ceres/<wbr></small> [CeresSolverOptionsSmoke.kt](examples.md#ceressolveroptionssmoke-kt) | Examples | 1 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [CharGrid.kt](visualization.md#chargrid-kt) | Visualization | 70 | 70 | A grid of glyphs that box code writes into, cell by cell, shown in an output panel: generative text art in the spirit of 10 PRINT, ported from the madp charGrid demo. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>visualization/<wbr></small> [ChartGallery.kt](examples.md#chartgallery-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [charts.kt](visualization.md#charts-kt) | Visualization | 94 | 86 | Plots — the structure, the scales, and the one renderer for them. | [Charts as FLines](../chart.md), [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [chat.kt](workspace.md#chat-kt) | Workspace · internal | 1 | 1 |  |  |
@@ -1173,7 +1174,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>functions/<wbr></small> [FunctionStudy.kt](function.md#functionstudy-kt) | Function | 27 | 14 | A function study: a set of `Functions.Fn` channels written as Kotlin in a box, kept as checked revisions an AI conversation can inspect, edit, observe and export. | [Talking a function into existence](../function_conversation.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>functions/<wbr></small> [FunctionStudyTools.kt](function.md#functionstudytools-kt) | Function | 39 | 16 | The tools an AI4 conversation gets when it is opened on a function study's `code`. | [Talking a function into existence](../function_conversation.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>gp/<wbr></small> [GaussianProcess.kt](math.md#gaussianprocess-kt) | Math | 46 | 24 | Exact Gaussian-process regression: fit scalar observations (values and, optionally, slopes) and query the posterior mean, variance and joint covariance. | [Drawing with Gaussian processes](../gaussian_processes.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [GaussianSplatRenderer.kt](renderers.md#gaussiansplatrenderer-kt) | Renderers | 27 | 15 | Rendering a Gaussian splat capture: PLY reading, packing, depth sorting and the built-in splat shaders. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [GaussianSplatRenderer.kt](renderers.md#gaussiansplatrenderer-kt) | Renderers | 29 | 18 | Rendering a Gaussian splat capture: PLY reading, packing, depth sorting and the built-in splat shaders. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [GeneratedLinalgSmokeTest.kt](examples.md#generatedlinalgsmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Geometry.kt](audio.md#geometry-kt) | Audio | 42 | 14 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>linalg/<wbr></small> [Geometry.kt](math.md#geometry-kt) | Math | 19 | 10 | Closest-point, containment and intersection tests for segments, triangles, boxes, spheres and rays. | [Linear algebra in Field](../linear_algebra.md) |
@@ -1720,6 +1721,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>curves/<wbr>principal/<wbr></small> [PrincipalCurves.kt](graphics.md#principalcurves-kt) | Graphics | 58 | 29 |  | [Principal curves: smooth curves through point clouds](../principal_curves.md), [Chaining the geometry extensions](../geometry_chains.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>curves/<wbr>principal/<wbr></small> [PrincipalCurvesNative.kt](graphics.md#principalcurvesnative-kt) | Graphics | 12 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Probes.kt](audio.md#probes-kt) | Audio | 31 | 27 | Probe points placed through a scene, and the batches that hold their baked data. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [ProceduralSplats.kt](renderers.md#proceduralsplats-kt) | Renderers | 11 | 11 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [ProfilingPanelWorkout.kt](examples.md#profilingpanelworkout-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [Projection.kt](graphics.md#projection-kt) | Graphics | 31 | 8 | Projection matrices for the Vulkan renderer: a plain perspective `Projection` and a `SuperProjection` that blends perspective into orthographic. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>properties/<wbr></small> [PropertyBag.kt](workspace.md#propertybag-kt) | Workspace | 16 | 4 | The thread-safe, insertion-ordered map that holds every `Box`'s properties. |  |
@@ -1975,6 +1977,9 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [SplatRaster.kt](graphics.md#splatraster-kt) | Graphics | 16 | 16 | A CPU rasterizer for Gaussian splat clouds, so a splat can be rendered to pixels, tested and captured without a GPU. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [SplatRasterTest.kt](graphics.md#splatrastertest-kt) | Graphics | 3 | 1 | Tests `SplatRaster` at the level of pixels. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [SplatSequence.kt](renderers.md#splatsequence-kt) | Renderers | 28 | 22 | Playing a splat capture over time: the frame reader, the play head, and the box controls that drive it. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [SplatSet.kt](renderers.md#splatset-kt) | Renderers | 8 | 8 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [SplatShader.kt](renderers.md#splatshader-kt) | Renderers | 28 | 26 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [SplatShaderSortSmoke.kt](renderers.md#splatshadersortsmoke-kt) | Renderers | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [SplatTools.kt](graphics.md#splattools-kt) | Graphics | 6 | 5 | A command line over the CPU splat toolchain, for looking at a capture without opening Field. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>table/<wbr></small> [spreadsheet.kt](data.md#spreadsheet-kt) | Data | 145 | 0 | A spreadsheet that lives in a box property, shown in the box's output area, whose formulas are Kotlin expressions. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [SpreadsheetFormulaSmoke.kt](examples.md#spreadsheetformulasmoke-kt) | Examples | 0 | 0 |  |  |

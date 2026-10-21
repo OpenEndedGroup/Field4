@@ -1,0 +1,303 @@
+name: splat_shader
+description: >
+  Splat shader, the madp classroom demo, on Field's Vulkan Gaussian-splat renderer: a few lines of
+  GLSL run once per splat per frame and rewrite its centre, radii, colour and rotation, and the
+  renderer sorts and draws the splats where those lines left them. Eight boxes: a renderer, a
+  passthrough on the icosphere shell (the lead box, which lists what the lines can touch), and six
+  of the demo's example inserts, one on each of its six procedural clouds — pulse rings on the
+  phyllotaxis bloom, dissolve on the icosphere shell, gravity well on the torus braid, fern veins
+  on the fern plume, lichen tangle on the coral branches, xray shell on the nautilus shell. Each
+  box's compute tab is the insert between `#include "splat/insert"` and `#include "splat/end"`;
+  its code hands that module and a cloud to `SplatShader`, with the demo's turn, size and splat
+  size sliders. Launching a box replaces the cloud showing. Requires a GPU/Vulkan window; capture
+  it with `native-screenshot <path> --uid splat_renderer`.
+operations:
+  - create:
+      box: splat_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          // once: re-running this box keeps the existing window and renderer
+          once.renderer {
+              window = Window("Splat shader", initialDimensions = Rect(80.0, 80.0, 900.0, 900.0))
+              Renderer(window)
+          }
+          // the frame loop runs as this box's coroutine; stopping the box stops rendering
+          start(renderer::run)
+  - create:
+      box: splat_passthrough
+      name: passthrough
+      frame: { x: 40.0, y: 200.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.scene.fabricated.ProceduralSplats
+          import afield.graphics.scene.fabricated.SplatSet
+          import afield.graphics.scene.fabricated.SplatShader
+          import afield.graphics.scene.fabricated.showControls
+
+          /*
+          A splat shader. Every frame, the lines in this box's compute tab run once for each of
+          the cloud's splats, on the GPU, and may change it: move it, recolour it, stretch it,
+          fade it. The renderer then sorts the splats by depth and draws them where your lines
+          left them. This one changes nothing, so you see the cloud as it was built.
+
+          The other boxes are the demo's examples, each on a different cloud. Launch one and it
+          replaces this. Try another cloud here too: ProceduralSplats.fernPlume(), nautilusShell(),
+          coralBranches(), phyllotaxisBloom(), torusBraid(); or your own capture,
+          SplatSet.fromPly("/path/to/splats.ply"), or a mesh as one disc per vertex,
+          SplatSet.fromGltf("/path/to/model.glb").
+          */
+          var module = computeModuleHere {}
+
+          val splats = SplatShader(module, ProceduralSplats.icosphereShell())
+          showControls(splats)
+        compute: |
+          #version 450
+          #include "splat/insert"
+
+          /*
+            Change these:
+              pos     vec3   the splat's centre
+              scales  vec3   its radii
+              rgba    vec4   its colour and opacity
+              quat    vec4   its rotation, a quaternion
+
+            Read these:
+              index   float  which splat, 0, 1, 2, ...
+              t       float  seconds since the box ran
+              pi
+
+            Helpers: sat(x), rot2(a), hash31(p), noise31(p)
+
+            Afterwards rgba is clamped to 0..1 and every scale kept above 0.0001.
+            This is a passthrough. Copy lines from the other boxes, or write your own.
+          */
+
+          #include "splat/end"
+  - create:
+      box: splat_pulse_rings
+      name: pulse rings
+      frame: { x: 40.0, y: 660.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.scene.fabricated.ProceduralSplats
+          import afield.graphics.scene.fabricated.SplatShader
+          import afield.graphics.scene.fabricated.showControls
+
+          /*
+          Pulse rings. A wave travels out from the cloud's axis: each splat rides up and down on
+          it, swings round a little, and lights up from cyan to ember as a crest passes.
+          */
+          var module = computeModuleHere {}
+
+          val splats = SplatShader(module, ProceduralSplats.phyllotaxisBloom())
+          showControls(splats)
+        compute: |
+          #version 450
+          #include "splat/insert"
+
+          float r = length(pos.xz);
+          float wave = sin(r * 18.0 - t * 3.5);
+          float ring = smoothstep(0.92, 1.0, wave);
+
+          pos.y += wave * 0.045;
+          pos.xz *= rot2(0.12 * sin(t + r * 4.0));
+
+          vec3 cyan = vec3(0.08, 0.85, 1.0);
+          vec3 ember = vec3(1.0, 0.54, 0.16);
+          rgba.rgb = mix(rgba.rgb, mix(cyan, ember, sat(pos.y * 0.55 + 0.5)), 0.55 + ring * 0.35);
+          rgba.a *= 0.52 + ring * 0.48;
+          scales *= 0.82 + ring * 1.45;
+
+          #include "splat/end"
+  - create:
+      box: splat_dissolve
+      name: dissolve
+      frame: { x: 640.0, y: 660.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.scene.fabricated.ProceduralSplats
+          import afield.graphics.scene.fabricated.SplatShader
+          import afield.graphics.scene.fabricated.showControls
+
+          /*
+          Dissolve. A threshold sweeps through a noise field. Where the noise falls below it,
+          splats let go: they drift outward, shrink, burn orange and fade. Every few seconds the
+          sweep starts again and the cloud comes back. The splats really do move, so the renderer
+          sorts them where they drift to.
+          */
+          var module = computeModuleHere {}
+
+          val splats = SplatShader(module, ProceduralSplats.icosphereShell())
+          showControls(splats)
+        compute: |
+          #version 450
+          #include "splat/insert"
+
+          float n = noise31(pos * 3.2 + vec3(0.0, t * 0.22, 0.0));
+          float sweep = fract(t * 0.12);
+          float keep = smoothstep(sweep - 0.08, sweep + 0.12, n);
+
+          vec3 drift = normalize(pos + hash31(pos) * 0.4);
+          pos += drift * (1.0 - keep) * (0.45 + 0.25 * sin(t + index * 0.01));
+          rgba.rgb = mix(vec3(1.0, 0.35, 0.12), rgba.rgb, keep);
+          rgba.a *= keep;
+          scales *= mix(0.18, 1.0, keep);
+
+          #include "splat/end"
+  - create:
+      box: splat_gravity_well
+      name: gravity well
+      frame: { x: 1240.0, y: 660.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.scene.fabricated.ProceduralSplats
+          import afield.graphics.scene.fabricated.SplatShader
+          import afield.graphics.scene.fabricated.showControls
+
+          /*
+          Gravity well. Splats near the vertical axis are pulled harder: they spin faster round
+          it, bob, swell and glow violet, while those far out stay faint.
+          */
+          var module = computeModuleHere {}
+
+          val splats = SplatShader(module, ProceduralSplats.torusBraid())
+          showControls(splats)
+        compute: |
+          #version 450
+          #include "splat/insert"
+
+          float r = length(pos.xz) + 0.001;
+          float pull = 0.22 / (0.22 + r * r);
+          float spin = t * 0.8 + pull * 3.0;
+
+          pos.xz *= rot2(spin);
+          pos.y -= pull * 0.45 * sin(t * 1.2 + r * 8.0);
+          rgba.rgb = mix(rgba.rgb, vec3(0.88, 0.68, 1.0), pull);
+          rgba.a *= 0.35 + sat(r * 1.4);
+          scales *= 0.65 + pull * 2.4;
+
+          #include "splat/end"
+  - create:
+      box: splat_fern_veins
+      name: fern veins
+      frame: { x: 40.0, y: 1120.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.scene.fabricated.ProceduralSplats
+          import afield.graphics.scene.fabricated.SplatShader
+          import afield.graphics.scene.fabricated.showControls
+
+          /*
+          Fern veins. The splats along the frond's midrib glow green and sway; away from it they
+          darken and thin, so the frond reads as veins in the dark.
+          */
+          var module = computeModuleHere {}
+
+          val splats = SplatShader(module, ProceduralSplats.fernPlume())
+          showControls(splats)
+        compute: |
+          #version 450
+          #include "splat/insert"
+
+          float rib = exp(-7.5 * abs(pos.x));
+          float leaf = sat(1.0 - abs(pos.y) * 0.62);
+          float flutter = sin(pos.y * 8.0 + pos.z * 5.0 + t * 1.1);
+
+          pos.x += 0.18 * rib * sin(pos.y * 6.5 + t * 0.9);
+          pos.z += 0.06 * flutter * leaf;
+          rgba.rgb = mix(vec3(0.02, 0.07, 0.03), vec3(0.46, 1.0, 0.38), rib * leaf);
+          rgba.a *= 0.16 + 0.84 * rib * leaf;
+          scales.xy *= mix(0.48, 1.95, rib * leaf);
+
+          #include "splat/end"
+  - create:
+      box: splat_lichen_tangle
+      name: lichen tangle
+      frame: { x: 640.0, y: 1120.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.scene.fabricated.ProceduralSplats
+          import afield.graphics.scene.fabricated.SplatShader
+          import afield.graphics.scene.fabricated.showControls
+
+          /*
+          Lichen tangle. Five octaves of folded noise grow a canopy over the coral: splats under
+          it swell and turn pale green and are pushed a little outward, the rest sink into the
+          dark.
+          */
+          var module = computeModuleHere {}
+
+          val splats = SplatShader(module, ProceduralSplats.coralBranches())
+          showControls(splats)
+        compute: |
+          #version 450
+          #include "splat/insert"
+
+          vec3 p = pos;
+          float branch = 0.0;
+          float amp = 0.58;
+          for (int i = 0; i < 5; i++) {
+            branch += amp * abs(noise31(p * 4.2) - 0.5);
+            p = p.yzx * 1.73 + vec3(0.19, -0.07, 0.11);
+            amp *= 0.6;
+          }
+
+          float canopy = sat(1.0 - branch * 1.7);
+          vec3 dir = normalize(hash31(floor(pos * 9.0)) - 0.5 + vec3(0.0, 0.35, 0.0));
+          pos += dir * canopy * 0.12;
+          rgba.rgb = mix(vec3(0.04, 0.03, 0.02), vec3(0.78, 0.96, 0.52), canopy);
+          rgba.a *= 0.08 + 0.92 * canopy;
+          scales *= mix(0.16, 1.85, canopy);
+
+          #include "splat/end"
+  - create:
+      box: splat_xray_shell
+      name: xray shell
+      frame: { x: 1240.0, y: 1120.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.scene.fabricated.ProceduralSplats
+          import afield.graphics.scene.fabricated.SplatShader
+          import afield.graphics.scene.fabricated.showControls
+
+          /*
+          Xray shell. Colour by distance from the centre: the core goes dark, the outer shell
+          pale blue, and a shimmer runs outward through it, nudging the splats as it passes.
+          */
+          var module = computeModuleHere {}
+
+          val splats = SplatShader(module, ProceduralSplats.nautilusShell())
+          showControls(splats)
+        compute: |
+          #version 450
+          #include "splat/insert"
+
+          float radius = length(pos);
+          float edge = smoothstep(0.2, 1.2, radius);
+          float shimmer = 0.5 + 0.5 * sin(radius * 24.0 - t * 4.0);
+
+          pos += normalize(pos + vec3(0.001)) * shimmer * 0.035;
+          rgba.rgb = mix(vec3(0.04, 0.08, 0.1), vec3(0.75, 0.96, 1.0), edge);
+          rgba.a *= 0.16 + edge * shimmer * 0.84;
+          scales *= vec3(0.55, 0.55, 1.8);
+
+          #include "splat/end"
+  - connect: { parent: splat_renderer, child: splat_passthrough }
+  - connect: { parent: splat_renderer, child: splat_pulse_rings }
+  - connect: { parent: splat_renderer, child: splat_dissolve }
+  - connect: { parent: splat_renderer, child: splat_gravity_well }
+  - connect: { parent: splat_renderer, child: splat_fern_veins }
+  - connect: { parent: splat_renderer, child: splat_lichen_tangle }
+  - connect: { parent: splat_renderer, child: splat_xray_shell }
+  - launch: { box: splat_renderer, property: code, strand: renderer }  # renderer first — it owns the loop
+  - await: {}
+  - launch: { box: splat_passthrough, property: code }
+  - await: {}
