@@ -268,11 +268,6 @@ class DocumentedApiEvaluationTest {
                 "Interpolant override sampled by the reconstruction jitter path. The documents that " +
                 "teach it are reconstruction documents, and those transcripts need a supporting " +
                 "device.",
-        "modelView" to
-            "afield_four_graphics.md and three reconstruction pages; this is the scene-local view " +
-                "matrix a caller passes in, not a Field entry point — the same shape as modelWorld " +
-                "above. The lexical census sees the name; the containing graphics transcripts are " +
-                "COMPILE_ONLY.",
         "computeBarrier" to
             "agent_transcripts.md; a Vulkan compute barrier task. Its compiled graphics " +
                 "transcripts need a live device to submit and observe the dependency.",
