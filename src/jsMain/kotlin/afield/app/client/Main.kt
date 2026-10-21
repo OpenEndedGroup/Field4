@@ -1423,20 +1423,22 @@ private fun collectOutputScreenshotRects(box: HTMLElement): List<Rect> {
     return listOf(domRectToRect(outputArea.getBoundingClientRect()))
 }
 
-/**
- * The rendered Markdown pane the editor shows in place of Monaco for a box's `notes` (or `contents`)
- * in preview mode, when it is on screen. A capture of that property is a capture of this pane: Monaco
- * is hidden behind it, so waiting for Monaco to be visible would wait forever.
- */
-private fun visibleNotesPreview(property: String?): HTMLElement? {
-    if (property != "notes" && property != "contents") return null
-    val preview = document.querySelector(".monaco-editor-container .afield-notes-preview") as? HTMLElement ?: return null
-    return if (isOverlayVisible(preview) && preview.innerText.isNotBlank()) preview else null
-}
-
 private fun visibleMonacoContainer(): HTMLElement? {
     val container = document.querySelector(".monaco-editor-container") as? HTMLElement ?: return null
     return if (isOverlayVisible(container)) container else null
+}
+
+/**
+ * The rendered Markdown preview a `notes` (or Markdown `contents`) property shows in place of
+ * Monaco (`bootstrapMonaco.js`, `syncNotesMarkdownPreview`), when that is what the editor pane is
+ * showing; null otherwise. Monaco is hidden then, so a check for a visible `.monaco-editor` alone
+ * can never pass for notes.
+ */
+private fun visibleNotesPreview(): HTMLElement? {
+    val container = visibleMonacoContainer() ?: return null
+    if (!container.classList.contains("afield-notes-preview-active")) return null
+    val preview = container.querySelector(".afield-notes-preview") as? HTMLElement ?: return null
+    return if (isOverlayVisible(preview)) preview else null
 }
 
 private fun currentViewportRect() = Rect(
@@ -3137,13 +3139,12 @@ private fun prepareWindowScreenshot(req: WindowScreenshotRequest): WindowScreens
         )
     }
 
-    // `notes` in preview mode shows rendered Markdown instead of Monaco, and that is what to capture.
-    val notesPreview = if (req.showEditor) visibleNotesPreview(req.property) else null
+    val notesPreview = if (req.showEditor) visibleNotesPreview() else null
     if (req.showEditor && notesPreview == null && !isOverlayVisible(visibleMonacoContainer()?.querySelector(".monaco-editor"))) {
         return WindowScreenshotResponse(uid = req.uid, success = false, message = "editor not visible yet")
     }
 
-    if (req.showEditor && box != null && notesPreview == null && !editorHasRenderableContentFor(box, req.property)) {
+    if (req.showEditor && box != null && !editorHasRenderableContentFor(box, req.property)) {
         return WindowScreenshotResponse(
             uid = req.uid,
             success = false,
@@ -3155,7 +3156,8 @@ private fun prepareWindowScreenshot(req: WindowScreenshotRequest): WindowScreens
     if (req.editorOnly) {
         val editor = visibleMonacoContainer()
             ?: return WindowScreenshotResponse(uid = req.uid, success = false, message = "editor not visible yet")
-        fitEditorPaneToContentAndNote(editor)
+        // a notes preview is laid out by the page, not Monaco: clip to the pane it fills
+        if (notesPreview == null) fitEditorPaneToContentAndNote(editor)
         val clip = (if (notesPreview != null) clipForVisibleElement(editor, req.padding) else clipForRenderedEditorContent(req.padding))
             ?: return WindowScreenshotResponse(uid = req.uid, success = false, message = "invalid editor clip")
         return WindowScreenshotResponse(

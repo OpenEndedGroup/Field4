@@ -1,0 +1,10 @@
+# RGBA are independent memories; the alpha vector gives each channel a different rate.
+uv 4.0 * 0.06t + fbm
+dup 0.17 +
+dup 0.41 +
+dup 0.73 +
+vec4
+prev
+0.015_0.18
+ema
+saturate

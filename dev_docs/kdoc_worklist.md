@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17103 of 33578 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17263 of 33748 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2238 undocumented entry points** (types, top-level functions and values) and 13533 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2238 undocumented entry points** (types, top-level functions and values) and 13542 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -377,7 +377,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [MeshMesh.kt](../src/jvmMain/kotlin/afield/graphics/render/MeshMesh.kt) | Graphics | — | 3 | 11 | 0% |
 | [SlangCompiler.kt](../src/jvmMain/kotlin/afield/graphics/shader/SlangCompiler.kt) | Graphics | — | 3 | 10 | 0% |
 | [AiToolUseImprovementCli.kt](../src/jvmMain/kotlin/afield/ai/tools/tooluse/AiToolUseImprovementCli.kt) | Machine learning | — | 3 | 9 | 7% |
-| [GaussianSplatRenderer.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/GaussianSplatRenderer.kt) | Renderers | — | 3 | 9 | 55% |
+| [GaussianSplatRenderer.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/GaussianSplatRenderer.kt) | Renderers | — | 3 | 8 | 62% |
 | [templating.kt](../src/jvmMain/kotlin/afield/app/server/templating.kt) | Workspace | — | 3 | 4 | 12% |
 | [ShaderAbi.kt](../src/jvmMain/kotlin/afield/graphics/shader/ShaderAbi.kt) | Graphics | — | 3 | 2 | 0% |
 | [fileproxy.kt](../src/jvmMain/kotlin/afield/app/server/fileproxy.kt) | Workspace | — | 3 | 0 | 40% |
@@ -738,6 +738,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [GpuShaderTraining.kt](../src/jvmMain/kotlin/afield/graphics/shader/learning/GpuShaderTraining.kt) | Graphics | — | 0 | 7 | 41% |
 | [Queue.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/device/Queue.kt) | Graphics | — | 0 | 7 | 12% |
 | [Sacn.kt](../src/jvmMain/kotlin/afield/io/dmx/Sacn.kt) | Lighting | — | 0 | 7 | 80% |
+| [StackSLFeedback.kt](../src/jvmMain/kotlin/afield/lang/stacksl/StackSLFeedback.kt) | Graphics | — | 0 | 7 | 82% |
 | [GpPreference.kt](../src/jvmMain/kotlin/afield/math/gp/GpPreference.kt) | Math | — | 0 | 7 | 61% |
 | [CopiedExternalBrowserSurface.kt](../src/jvmMain/kotlin/afield/media/browser/CopiedExternalBrowserSurface.kt) | Imaging | — | 0 | 7 | 12% |
 | [TileAtlasLayout.kt](../src/jvmMain/kotlin/afield/simulation/flow/TileAtlasLayout.kt) | Simulation | — | 0 | 7 | 12% |
@@ -899,6 +900,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [GpuSkinningEvidence.kt](../src/jvmMain/kotlin/afield/graphics/scene/GpuSkinningEvidence.kt) | Graphics | — | 0 | 2 | 33% |
 | [SkinnedMeshFromDisk.kt](../src/jvmMain/kotlin/afield/graphics/scene/SkinnedMeshFromDisk.kt) | Graphics | — | 0 | 2 | 81% |
 | [PathTraceTemporalGpuSmoke.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceTemporalGpuSmoke.kt) | Renderers | — | 0 | 2 | 33% |
+| [SplatShader.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/SplatShader.kt) | Renderers | — | 0 | 2 | 93% |
 | [SlugPath.kt](../src/jvmMain/kotlin/afield/graphics/text/slug/SlugPath.kt) | Graphics | — | 0 | 2 | 50% |
 | [ThreeWire.kt](../src/jvmMain/kotlin/afield/graphics/three/ThreeWire.kt) | Graphics | — | 0 | 2 | 71% |
 | [Semaphore.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/device/Semaphore.kt) | Graphics | — | 0 | 2 | 66% |
@@ -1056,6 +1058,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PathTraceGltfGpuSmoke.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceGltfGpuSmoke.kt) | Renderers | — | 0 | 1 | 50% |
 | [PathTraceTestMain.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceTestMain.kt) | Renderers | — | 0 | 1 | 50% |
 | [RayTracingGpuAudit.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/RayTracingGpuAudit.kt) | Renderers | — | 0 | 1 | 66% |
+| [SplatShaderSortSmoke.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/SplatShaderSortSmoke.kt) | Renderers | — | 0 | 1 | 50% |
 | [StackSLGalleryHarness.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/StackSLGalleryHarness.kt) | Renderers | — | 0 | 1 | 87% |
 | [ShaderLearningChecks.kt](../src/jvmMain/kotlin/afield/graphics/shader/learning/ShaderLearningChecks.kt) | Graphics | — | 0 | 1 | 66% |
 | [AudioPlayer.kt](../src/jvmMain/kotlin/afield/graphics/texture/video/AudioPlayer.kt) | Graphics | — | 0 | 1 | 93% |
