@@ -113,10 +113,13 @@ class PolicyTests(unittest.TestCase):
     def test_regenerable_matching_reaches_into_caches_with_their_own_gitignore(self) -> None:
         for entry in ("build/", "public/.cache/1002625795874814453", ".pytest_cache/v/",
                       ".nightly-tmp/build.log", "native/field-slug/build/", "tools/linalg-generator/build/",
-                      "src/__pycache__/", "java_pid123.hprof", "public/docs-runner-failures/editor.png.log"):
+                      "src/__pycache__/", "java_pid123.hprof", "public/docs-runner-failures/editor.png.log",
+                      ".nightly-tmp-docs.log", ".afield-local/last-workspace.txt", ".afield-local/docs8.log"):
             self.assertTrue(reaper.is_regenerable(entry), entry)
         for entry in ("src/personal/", "src/personal/Foo.kt", "dev_docs/agents/demos/x/transcript.edn",
-                      "NIGHTLY_WORKLOG.md", ".ci-check85/check.log", "MORNING.md"):
+                      "NIGHTLY_WORKLOG.md", ".ci-check85/check.log", "MORNING.md",
+                      # .afield-local as a whole is not regenerable: kept renders live there.
+                      ".afield-local/", ".afield-local/eagle-sheet1.png"):
             self.assertFalse(reaper.is_regenerable(entry), entry)
 
 
@@ -405,7 +408,7 @@ class GitBackedTests(unittest.TestCase):
 class WorkGuardTests(unittest.TestCase):
     """The guards added on 2026-10-03: ignored work, scratch, detached HEADs, submodules, archiving."""
 
-    IGNORES = "build/\npublic/.cache/\nsrc/personal/\nNIGHTLY_WORKLOG.md\n"
+    IGNORES = "build/\npublic/.cache/\nsrc/personal/\nNIGHTLY_WORKLOG.md\n.afield-local/\n.claude/\n"
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -439,6 +442,29 @@ class WorkGuardTests(unittest.TestCase):
         (path / "public/.cache/1002625795874814453").write_text("x")
         verdict = self.fx.classify(path, now=self.now)
         self.assertTrue(verdict.removable, verdict.text)
+
+    def test_an_ignored_folder_is_judged_file_by_file(self) -> None:
+        """2026-10-21: 13 merged trees refused for `.afield-local/`, which held only a 4 KB pointer.
+        git reports the folder as one entry, so the guard has to look inside it."""
+        path = self.tree("local-state")
+        (path / ".afield-local").mkdir()
+        (path / ".afield-local/last-workspace.txt").write_text("/Users/marc/house-machine/workspace\n")
+        (path / ".afield-local/docs8.log").write_text("build log\n")
+        self.assertIn(".afield-local/", reaper.ignored_paths(path), "fixture: git reports the folder whole")
+        self.assertTrue(self.fx.classify(path, now=self.now).removable)
+        # One kept render inside it, and the tree is refused, naming that file.
+        (path / ".afield-local/eagle-sheet1.png").write_bytes(b"\x89PNG")
+        verdict = self.fx.classify(path, now=self.now)
+        self.assertEqual(verdict.reason, "ignored-work")
+        self.assertIn(".afield-local/eagle-sheet1.png", verdict.text)
+
+    def test_a_preview_launch_config_is_archived_not_refused(self) -> None:
+        path = self.tree("previewed")
+        (path / ".claude").mkdir()
+        (path / ".claude/launch.json").write_text('{"configurations": []}\n')
+        self.assertTrue(self.fx.classify(path, now=self.now).removable)
+        copies = reaper.archive_precious(path, Path(self._tmp.name) / "archive")
+        self.assertEqual([c.name for c in copies], ["previewed-launch.json"])
 
     def test_a_worklog_does_not_refuse_and_is_archived_first(self) -> None:
         path = self.tree("logged")
