@@ -192,6 +192,12 @@ every box in the document does.
     with the mouse, and four GLSL hooks decide what they do. Seven sketches, from flocking to
     springs to collisions, show how far a handful of force helpers go.
 
+-   ![Several hundred small arrows on near-black in drifting flocks, each flock one colour because colour follows heading, mostly violet, blue and pink with one green flock heading the other way](assets/agent_transcripts_gallery/madp_boids_murmuration.png)
+
+    **[Boids](agent_transcripts.md#madp_boids).** A flock is written as a spec: kinds of boid,
+    each with a field of view and a list of steering rules such as separate, align, chase and
+    flee. Seven flocks, from a murmuration to hawks and a bait ball, come from changing the list.
+
 -   ![A sphere of about a thousand small glowing splats on black, coloured by longitude from cyan through chartreuse to red and orange](assets/agent_transcripts_gallery/splat_shader_passthrough.png)
 
     **[Splat Shader](agent_transcripts.md#splat_shader).** A few lines of GLSL run once per
