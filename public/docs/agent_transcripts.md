@@ -3189,7 +3189,7 @@ Each flock box's code is the spec and its compute tab says how the boids look; t
 the page's fps, steps, trail and fade, with pause, reset, a metrics card and an inspector that
 shows what one boid sees. Launch another flock box to switch to it.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_boids_murmuration.png" capture="native-window" native-wait-frames="90" trim-native=true wait="8.0" embed=true hidden=true timeout="300" name="gallery-madp-boids" alt="Murmuration in the native window: several hundred small arrows on near-black, gathered into drifting flocks, each flock one colour because colour follows heading, from blue and violet through pink to orange and green, with short fading trails behind them" macro-file="../../dev_docs/agents/transcripts/madp_boids.yaml" capture-box="boids_renderer"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_boids_murmuration.png" capture="native-window" native-wait-frames="90" trim-native=true wait="8.0" embed=true hidden=true timeout="300" name="gallery-madp-boids" alt="Murmuration in the native window: several hundred small arrows on near-black, gathered into drifting flocks, each flock one colour because colour follows heading, mostly violet, blue and pink with one green flock heading the other way, with short fading trails behind them" macro-file="../../dev_docs/agents/transcripts/madp_boids.yaml" capture-box="boids_renderer"}
 // The transcript builds every box and launches the renderer and murmuration.
 ```
 
