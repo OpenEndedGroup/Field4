@@ -622,7 +622,7 @@ void fieldStep(uint i) {
 void fieldFrame() {
     // a click from last frame picks the nearest boid to inspect
     uint bid = flock.pick.v[0];
-    if (bid != 0xffffffffu) flock.pick.v[1] = bid & 8191u;
+    if (bid != 0xffffffffu && (bid & 8191u) < uint(world.boidCount)) flock.pick.v[1] = bid & 8191u;
     flock.pick.v[0] = 0xffffffffu;
     flock.strokes.count = 0u;
     for (int s = 0; s < 16; s++) flock.stats.v[s] = 0;
@@ -662,7 +662,8 @@ void main() {
         flock.src.b[index] = b;
         flock.dst.b[index] = b;
         flock.eaten.v[index] = 0u;
-        if (index == 0u) { flock.pick.v[2] = 0u; flock.pick.v[1] = 0u; }
+        // a fresh buffer holds whatever the memory held: no bid, boid 0 inspected, nothing caught
+        if (index == 0u) { flock.pick.v[0] = 0xffffffffu; flock.pick.v[1] = 0u; flock.pick.v[2] = 0u; }
     } else if (flock.phase == 2u) {
         fieldStep(index);
     } else {
