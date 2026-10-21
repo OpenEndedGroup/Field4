@@ -835,7 +835,7 @@ object DemoTranscriptExecSmokeTest {
         // stacksl_examples.md's gallery draws into a native window.
         "stacksl_gallery",
         // ShaderTrinket: shadertoyHere boxes drawing into a shadertoyCanvas the renderer window shows,
-        // one of them reading the camera. ShadertoyChannelsTest compiles the image preamble and the
+        // one reading the camera, two publishing and receiving over WebRTC (Electron only). ShadertoyChannelsTest compiles the image preamble and the
         // channel passes; the orientation and colour were checked by native capture.
         "shadertrinket",
         // The madp StackTrinket port: StackSL feedback programs on a native Window + Renderer, so
