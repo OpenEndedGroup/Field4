@@ -1036,7 +1036,7 @@ object CreatureEvolution {
             val bestFull = simulate(bestFast.genome, config.simulation)
             val previous = champion
             val improved = previous == null || bestFull.fitness > previous.fitness
-            val currentChampion = if (improved) bestFull else previous!!
+            val currentChampion = if (improved) bestFull else previous
             champion = currentChampion
             if (improved) {
                 generationsSinceImprovement = 0
@@ -2170,10 +2170,9 @@ private class CreatureRuntime(
     )
 
     private val sim = SimdVerlet(state, null)
-    private lateinit var masses: FloatArray
+    private val masses = pointMasses(genome.points, edgeRests, genome.massPerLength, genome.basePointMass)
 
     init {
-        masses = pointMasses(genome.points, edgeRests, genome.massPerLength, genome.basePointMass)
         config.contact.place(genome.points).forEachIndexed { index, point ->
             val invMass = 1f / max(0.05f, masses[index])
             sim.addParticle(
