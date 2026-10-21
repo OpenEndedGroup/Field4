@@ -156,6 +156,12 @@ every box in the document does.
     ShaderTrinket, and draws it in the renderer window. Read a classmate's picture into your own
     shader and the room becomes one patch.
 
+-   ![A rippled pale-cyan terrain of triangles floating over a dark studio ground, casting a soft shadow onto it](assets/agent_transcripts_gallery/madp_geometry_terrain.png)
+
+    **[Geometry](agent_transcripts.md#madp_geometry).** A model is a recipe of triangles emitted
+    through a transform stack with a current colour and material, drawn in a studio-lit view you
+    can orbit and export as GLB. The presets run from a rippled terrain to a Menger sponge.
+
 -   ![The Barnsley fern: a tall green frond of fine glowing dust on black, its leaflets built of smaller leaflets](assets/agent_transcripts_gallery/fern_iterated_systems_barnsley.png)
 
     **[Fern](agent_transcripts.md#fern_iterated_systems).** Hundreds of thousands of particles
@@ -179,6 +185,18 @@ every box in the document does.
     **[StackTrinket](agent_transcripts.md#stacktrinket_feedback).** Programs in a stack-based
     shader language that read their own previous frame, so a few words leave trails, fog and
     bloom. Each box shows how deep its stack ends and the GLSL its program becomes.
+
+-   ![A 40 by 25 grid of block and box-drawing glyphs, tilted at many angles, in hues running from green through blue to magenta](assets/agent_transcripts_gallery/madp_chargrid_plasma.png)
+
+    **[charGrid](agent_transcripts.md#madp_chargrid).** A picture as a 40 × 25 grid of glyph
+    numbers, rewritten once a tick. Reading the last tick is all Conway's Life needs, and a glyph
+    can also be a note, so an arpeggio draws and plays at once.
+
+-   ![A three-by-three grid of colour tiles: two rainbow parents, stripes and spokes, above seven mutated children, each with its program written under it](assets/agent_transcripts_gallery/madp_ga_lead.png)
+
+    **[GA](agent_transcripts.md#madp_ga).** Interactive evolution after Karl Sims: each tile is a
+    short colour program run once per pixel, and you are the fitness function. Click two tiles
+    and they become the parents of the next generation.
 
 -   ![Photographs of a cat, a dog, a tiger and a red car above a tetrahedron whose edges are labelled with the distances between them](assets/agent_transcripts_gallery/madp_tetra.png)
 
