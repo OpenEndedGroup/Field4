@@ -524,6 +524,10 @@ object DemoTranscriptExecSmokeTest {
         // window — so running it here is also the cheapest check that the two entry points
         // public/docs/completion_ranking.md names still exist with the signatures it claims.
         "popup_prior_inspect",
+        // The madp GA demo: four boxes that each render nine ColorRpn programs on the CPU into an
+        // EyeEvolution grid. No window, no GPU; ColorRpnTest pins the language to the demo's own
+        // interpreter and EyeEvolutionTest drives the click path.
+        "madp_ga",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
