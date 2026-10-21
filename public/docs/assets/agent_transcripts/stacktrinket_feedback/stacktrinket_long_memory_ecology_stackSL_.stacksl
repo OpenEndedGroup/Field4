@@ -1,0 +1,20 @@
+# Nearby reads move through previous RGBA; the result is stored as four slow memories.
+prev
+dup xy 0.012 * sample
+swap zw 0.009 * sample
++ 0.5 *
+p ]wr9 0.006 * 0.004c0.17 +
+p ]wa7 0.006 * 0.004s0.11 +
+vec2 sample
+0.65 * +
+uv 5.0 * prev 0.4 * + 0.02t + fbm
+dup 0.23 + dup 0.37 + dup 0.61 + vec4
+0.08 * +
+prev
+0.006_0.09
+ema
+dup average
+0.015pulse0.23d0.09
++ +
+mirror
+saturate

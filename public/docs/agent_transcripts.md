@@ -1104,13 +1104,19 @@ turntable. Change the direction or the seed and run it again.
 
 The madp geometry toolbox as a starting point. A model is a recipe of triangles: `geometry { }`
 runs the block, which emits triangles through a transform stack with a current colour and a current
-material (`mat`, `color`, `tri`, `quad`, `surface`, `revolve`, `tube`, `box`, `push`/`pop`), and
-draws the result in a `three { }` view lit like a studio, with soft shadows on a dark ground. The
-first box is the starter, a rippled terrain; the others are the toolbox's presets: a crystal bloom
-of single triangles, a lathe-turned vessel with a metal rim, a tube along a knot, a fungal tree of
-recursive tubes, a Menger sponge of boxes, and a breathing sheet that `animateGeometry { }` rebuilds
-thirty times a second. Launch that one to play it. Edit any recipe and run it again; the view keeps
-your orbit. The viewer's **Export GLB** saves the model.
+material (`mat`, `color`, `tri`, `quad`, `surface`, `revolve`, `tube`, `box`, `push`/`pop`). It
+draws the result in a `three { }` view lit like a studio, with soft shadows and ambient occlusion on
+a dark ground. The first box is the starter, a rippled terrain. The other ten are the toolbox's
+presets: a crystal bloom of single triangles, a lathe-turned vessel with a metal rim, a tube along a
+knot, a fungal tree of recursive tubes, phyllotaxis fronds, a Menger sponge and a city of boxes, a
+lesson in triangle winding, and two animations, a breathing sheet and a torn signal, that
+`animateGeometry { }` rebuilds thirty times a second. Launch those two to play them. Edit any recipe
+and run it again; the view keeps your orbit.
+
+The starter also calls `geometryAgent()`, which gives the document's AI4 chat the language and a
+`geometry.look` tool. The tool returns a picture of any view here as it is on screen, so you can ask
+the chat for a model and it can check its own work. The viewer's **Export GLB** saves a model, and
+compresses it when gltfpack is installed.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_geometry_terrain.png" capture="box" open-outputs="true" wait="4.0" embed=true hidden=true timeout="180" padding="12" name="gallery-madp-geometry-terrain" alt="A rippled blue-green terrain of flat-shaded triangles floating over a dark ground, casting a soft shadow onto it" macro-file="../../dev_docs/agents/transcripts/madp_geometry.yaml" capture-box="ripple_terrain"}
 // The transcript builds and runs every box; this is the starter, ripple_terrain.
@@ -2408,6 +2414,20 @@ under the grids shows what Kotlin heard and changed. Launch the box, then type i
 
 [Open ↗](offline.html?file=assets/agent_transcripts/orca_duet/metadata.edn)
 
+### madp_chargrid
+
+**A picture as a grid of glyph indices.** A box's program writes numbers into a 40 × 25 grid with
+`SET(x, y, g, color, style)`, a charset string turns each number into a character, and each cell can
+carry a CSS colour and a rotation. `charGrid { }` runs the program once a tick and lets it read the
+last tick with `PREV`, which is all Conway's Life needs; `charStream { }` runs one long program in
+which every `SET` waits a tick, so 10 PRINT's maze types itself out. Every glyph can be a dough sound:
+the Glass box's charset is eight bars, A minor from E2 to E4, and its arpeggios draw and play at
+once. The lead box is the demo's plasma; the others are 10 PRINT, Life, matrix rain, Glass, spinners
+(one `CSSVAR` spins the whole field) and a C64 typewriter. A port of the madp charGrid demo; the
+design notes are in `dev_docs/madp/chargrid.md`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_chargrid/metadata.edn)
+
 ### madp_score
 
 **The canvas as a score.** Run the first box and an orange playhead sweeps the canvas from left to
@@ -2790,6 +2810,27 @@ absent, rather than shipping somebody's capture as a fixture.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/splat_sequence_streaming/metadata.edn)
 
+### splat_shader
+
+The madp splat-shader demo: a few lines of GLSL run once per Gaussian splat per frame and may
+rewrite its centre, radii, colour and rotation (`pos`, `scales`, `rgba`, `quat`, with `index` and
+`t` to read). Each box's compute tab is just those lines between `#include "splat/insert"` and
+`#include "splat/end"`, and its code hands the module and a cloud to `SplatShader`. A passthrough on
+the icosphere shell leads; six of the demo's inserts follow, one on each of its procedural clouds
+(pulse rings, dissolve, gravity well, fern veins, lichen tangle, xray shell), and a last box runs
+scanlines over the ToyCar model, read with `SplatSet.fromGltf` as one disc per vertex. Each launches
+into the same window with the demo's turn, size and trail controls; the gravity well starts with
+its trail on, each frame laid over a fading copy of the last. The insert runs in a compute pass
+ahead of the depth sort, so a dissolve that throws splats outward is sorted where they went:
+measured on the GPU, editing the splat vertex shader instead draws half of all neighbouring pairs
+in the wrong order.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/splat_shader_passthrough.png" capture="native-window" native-wait-frames="90" trim-native=true wait="3.0" embed=true hidden=true timeout="300" name="gallery-splat-shader" alt="The icosphere shell in the native window: a sphere of about a thousand small glowing splats on black, coloured by longitude from cyan on the left through chartreuse at the front to red and orange on the right, with the far side's violet splats showing between the near ones" macro-file="../../dev_docs/agents/transcripts/splat_shader.yaml" capture-box="splat_renderer"}
+// The transcript builds every box and launches the renderer and the passthrough.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/splat_shader/metadata.edn)
+
 ### mega_texture_wall
 
 A directory of images as one wall, behind a virtual texture the **GPU**
@@ -3077,6 +3118,10 @@ follow the pointer). Each sketch box's `compute` tab holds the demo's hooks as G
 the demo's helpers by the same names (`flock`, `clump`, `spring`, `collide`, `link`, `springTo`,
 `oscillate`, `bounce`, `wrap`, `ring`, ...); its code holds the demo's `init()` world settings and
 shows a trail slider, pause and reset. Launch another sketch box to switch to it.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/particles_sketchbook_boids.png" capture="native-window" native-wait-frames="90" trim-native=true wait="8.0" embed=true hidden=true timeout="300" name="gallery-particles-sketchbook" alt="Boids ribbon in the native window: a few hundred small glowing dots on near-black, gathered into loose schools in cyan, green, yellow and pink, with faint threads between close neighbours of the same school" macro-file="../../dev_docs/agents/transcripts/particles_sketchbook.yaml" capture-box="particles_renderer"}
+// The transcript builds every box and launches the renderer and boids ribbon.
+```
 
 [Open ↗](offline.html?file=assets/agent_transcripts/particles_sketchbook/metadata.edn)
 
@@ -3759,6 +3804,22 @@ binds the camera to `iChannel0` with `textures("iChannel0" to webcam())`. A port
 ShaderTrinket demo; the design notes are in `dev_docs/madp/shadertrinket.md`.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/shadertrinket/metadata.edn)
+
+### stacktrinket_feedback
+
+StackTrinket, the classroom StackSL editor, in Field: StackSL programs that read their own previous
+frame. A renderer box, then seven programs beneath it: the pulse ring, feedback fog, persistent
+bloom, store channels, subroutine cse, four memory bands and long memory ecology. Each box keeps its
+program in the `stackSL` tab and calls `stackFeedback()`, which draws it every frame with the last
+frame bound as `state` and follows edits live. The box's lowering panel shows how deep its stack
+ends and any error at its line and column, and its glsl panel the GLSL the program becomes.
+Launching a box replaces the program in the window.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/stacktrinket_feedback_pulse_ring.png" capture="native-window" native-wait-frames="90" trim-native=true wait="3.0" embed=true hidden=true timeout="300" name="gallery-stacktrinket-feedback" alt="The pulse ring in the native window: a soft white ring on black, centred, its radius half the window's width, fading smoothly to black on both sides" macro-file="../../dev_docs/agents/transcripts/stacktrinket_feedback.yaml" capture-box="stacktrinket_renderer"}
+// The transcript builds every box and launches the renderer and the pulse ring.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/stacktrinket_feedback/metadata.edn)
 
 ## Graphics building blocks
 

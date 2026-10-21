@@ -5578,6 +5578,22 @@ class Server {
                                 }
                             }
                         }
+                        route("/three-gltfpack") {
+                            post {
+                                // The three viewer's Export GLB, compressed by Field's optional gltfpack
+                                // (afield.geometry.mesh.Gltfpack). 404 when none is installed: the viewer
+                                // then keeps its uncompressed GLB.
+                                if (call.refuseUnlessSameSiteDocsClient(DocsAccessPolicy())) return@post
+                                if (!afield.geometry.mesh.Gltfpack.available) { call.respond(HttpStatusCode.NotFound, "gltfpack is not installed"); return@post }
+                                val glb = call.receive<ByteArray>()
+                                if (glb.size > 512 * 1024 * 1024) { call.respond(HttpStatusCode.PayloadTooLarge); return@post }
+                                val packed = withContext(Dispatchers.IO) { runCatching { afield.geometry.mesh.Gltfpack.compress(glb) } }
+                                packed.fold(
+                                    { call.respondBytes(it, ContentType.parse("model/gltf-binary")) },
+                                    { call.respond(HttpStatusCode.UnprocessableEntity, it.message ?: "gltfpack failed") },
+                                )
+                            }
+                        }
                         route("/three-review") {
                             get {
                                 if (call.refuseUnlessSameSiteDocsClient(DocsAccessPolicy())) return@get

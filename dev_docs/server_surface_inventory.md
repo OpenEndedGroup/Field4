@@ -682,6 +682,10 @@ Demonstrated rather than asserted:
 
 `POST /three-review-note?uid=<view>` explicitly resolves/reopens one note or appends an attributed reply. It requires the same loopback/same-site guard, JSON content, a matching note version and the current geometry revision. Updates run on Field’s main thread and retain an audit history.
 
+`POST /three-gltfpack` takes a GLB body (at most 512 MB) and returns it compressed by Field's optional gltfpack (`afield.geometry.mesh.Gltfpack`, `-cc -kn -km`), for the three viewer's **Export GLB**. It is 404 when no gltfpack is installed and 422 when gltfpack fails; it requires the same loopback/same-site guard, writes nothing outside a temporary directory it deletes, and runs gltfpack with an argument vector, not a shell.
+
+`three-snapshot` is the viewer's answer, on the `__threejs__` channel, to a `three/snapshot-request` that `ThreeGeometryViewState.snapshot()` sent it: a PNG data URL of the view as drawn. It only completes a request the server made, by its random id; an unrequested or stale id is dropped.
+
 `replay-output-areas` returns the current document's retained output panels and
 control values to the requesting WebSocket session after its DOM is ready. It
 uses the existing document WebSocket access boundary, accepts no file path or

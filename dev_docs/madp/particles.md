@@ -106,7 +106,7 @@ web it shows in a throttled browser tab is its first second.
 ## The pointer
 
 Painting reads the GLFW cursor and button once a frame on the window's poll and hands them to
-`PaintBrush` (madp's mousedown/mousemove/mouseup rule, unit tested). `mouse` is in window points,
+`SpawnBrush` (madp's mousedown/mousemove/mouseup rule, unit tested). `mouse` is in window points,
 and `mouseInside` is GLFW's `HOVERED`, madp's "over the canvas". A real drag could not be posted in
 a test here (no Accessibility grant), so the rule is tested and the GLFW reads are not. Along the
 way, `MouseEvents.windowSize` was in framebuffer pixels while `pos` is in points, so `uv` stopped at
