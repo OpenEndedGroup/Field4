@@ -7818,6 +7818,7 @@ suspend fun main() {
         registerBuiltinCommands()
         initializeBookmarkSystem()
         afield.app.canvas.CanvasFlightClient.install()
+        afield.app.canvas.StrokeLayer.install()
         initializeDrawingLayer()
         initializeDependencyLayer()
         registerCanvasZoomActions()

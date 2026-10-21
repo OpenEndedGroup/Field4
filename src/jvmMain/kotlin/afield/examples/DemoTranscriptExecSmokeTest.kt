@@ -545,6 +545,10 @@ object DemoTranscriptExecSmokeTest {
         // dough through the audio device. ScoreTest steps the runner frame by frame and DoughLiveTest
         // measures the sound helper's levels, both headless.
         "madp_score",
+        // Living strokes: the lead takes the drawing layer's pen and its strokes animate and play dough
+        // until cleared, which needs a page to draw on and strokes drawn by hand. StrokeVerbsTest pins
+        // the verbs and the frame the page draws, DoughLiveTest the pattern player.
+        "madp_line",
         // charGrid: both builders return animations that run until stopped, and their glyphs play dough
         // through the audio device. CharGridTest checks the cells, the panel's diffs and the sound
         // grouping headless.
