@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17416 of 33954 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17501 of 34049 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2238 undocumented entry points** (types, top-level functions and values) and 13590 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2238 undocumented entry points** (types, top-level functions and values) and 13596 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -13,7 +13,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | File | Category | Used by examples | Undocumented entry points | Undocumented members | Coverage |
 | --- | --- | --- | --- | --- | --- |
 | [RectSL.kt](../src/jvmMain/kotlin/afield/lang/rectsl/RectSL.kt) | Languages | rectsl_inverse_animation, rectsl_examples, rectsl_cheatsheet | 104 | 409 | 8% |
-| [FLineGeometry.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt) | Graphics | fline_examples, polyvector, functions_examples | 58 | 41 | 42% |
+| [FLineGeometry.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt) | Graphics | fline_examples, polyvector, functions_examples | 58 | 41 | 43% |
 | [synth.kt](../src/jvmMain/kotlin/afield/audio/synth/synth.kt) | Synthesis | pure_data, sound_paths | 52 | 0 | 25% |
 | [TidalPatterns.kt](../src/jvmMain/kotlin/afield/audio/synth/TidalPatterns.kt) | Patterns | pattern_language, marf, petri_nets | 43 | 78 | 21% |
 | [Visualizers.kt](../src/jvmMain/kotlin/afield/audio/synth/Visualizers.kt) | Synthesis | visualizers | 37 | 11 | 5% |
@@ -776,6 +776,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [StackSLGpu.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackSLGpu.kt) | Languages | — | 0 | 6 | 50% |
 | [FieldEncodeProcess.kt](../src/jvmMain/kotlin/afield/media/stream/FieldEncodeProcess.kt) | Imaging | — | 0 | 6 | 57% |
 | [KDocExtractor.kt](../src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt) | Workspace | — | 0 | 6 | 33% |
+| [StrokeSketch.kt](../src/jvmMain/kotlin/afield/ui/notation/StrokeSketch.kt) | Visualization | — | 0 | 6 | 76% |
 | [LineNoteTools.kt](../src/jvmMain/kotlin/afield/ui/output/LineNoteTools.kt) | Workspace | — | 0 | 6 | 45% |
 | [IdeChatHelpers.kt](../src/jvmMain/kotlin/afield/ai/conversation/IdeChatHelpers.kt) | Machine learning | — | 0 | 5 | 28% |
 | [ScriptedLlmBridge.kt](../src/jvmMain/kotlin/afield/ai/models/ScriptedLlmBridge.kt) | Machine learning | — | 0 | 5 | 37% |
@@ -870,7 +871,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [BooleanNetworkSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/BooleanNetworkSoundDocs.kt) | Audio | — | 0 | 2 | 85% |
 | [CaSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/CaSoundDocs.kt) | Patterns | — | 0 | 2 | 85% |
 | [DoughDspSmokeTest.kt](../src/jvmMain/kotlin/afield/audio/synth/DoughDspSmokeTest.kt) | Audio | — | 0 | 2 | 33% |
-| [DoughLive.kt](../src/jvmMain/kotlin/afield/audio/synth/DoughLive.kt) | Synthesis | — | 0 | 2 | 90% |
+| [DoughLive.kt](../src/jvmMain/kotlin/afield/audio/synth/DoughLive.kt) | Synthesis | — | 0 | 2 | 92% |
 | [FaustPolySmokeTest.kt](../src/jvmMain/kotlin/afield/audio/synth/FaustPolySmokeTest.kt) | Audio | — | 0 | 2 | 33% |
 | [LambdaSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/LambdaSoundDocs.kt) | Patterns | — | 0 | 2 | 93% |
 | [PatClock.kt](../src/jvmMain/kotlin/afield/audio/synth/PatClock.kt) | Patterns | — | 0 | 2 | 78% |
