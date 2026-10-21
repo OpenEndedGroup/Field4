@@ -28,6 +28,9 @@ operations:
 
           println("ShaderTrinket window ready")
           start(renderer::run)
+        notes: |
+          The renderer and its 960 by 540 window. Every ShaderTrinket box sits beneath it, and the window
+          shows their shared canvas, letterboxed if you resize it. Launch this first.
   - create:
       box: shadertrinket_lead
       name: Flat Rings (start here)
@@ -70,6 +73,27 @@ operations:
 
             fragColor = vec4(col, 1.0);
           }
+        notes: |
+          ShaderTrinket, in Field. Launch the renderer above, then this box: the window shows Flat Rings,
+          ShaderTrinket's default program.
+
+          The program is this box's fragment property, a ShaderToy Image pass: you write
+          void mainImage(out vec4 fragColor, in vec2 fragCoord), where fragCoord is the pixel (y up, as in
+          ShaderToy) and fragColor the colour you want seen there. The ShaderToy uniforms are all bound:
+          iResolution (the canvas size), iTime, iTimeDelta, iFrame, iFrameRate, iDate, iMouse (the window
+          cursor in canvas pixels, zw the click while the button is down) and iChannel0..3 with
+          iChannelResolution. The {{ shadertoy.image }} line at the top brings them in; leave it there.
+
+          Edit the fragment and press alt-R to recompile. A mistake is marked on its own line and the last
+          good program keeps running. ShaderToy code pasted from the web works as is.
+
+          Every shader box here draws into one canvas, shadertoyCanvas(), so launching a box replaces the
+          picture, the way ShaderTrinket's preset menu does; launch this one again to come back. To read a
+          texture, add textures("iChannel0" to t) inside the shadertoyHere block: the camera (see the
+          Camera Input Demo), another canvas (shadertoyCanvas(name = "...", inWindow = false).rtt), or any
+          Field texture. Channels come out the right way up and in ShaderToy's colours.
+
+          Ported from aaaframe's madp/shadertrinket.html; dev_docs/madp/shadertrinket.md has the mapping.
   - create:
       box: shadertrinket_classic_plasma
       name: Classic Plasma
@@ -99,6 +123,9 @@ operations:
             col += pow(max(0.0, 1.0 - length(uv - 0.5) * 1.35), 4.0) * vec3(0.35, 0.48, 0.65);
             fragColor = vec4(col, 1.0);
           }
+        notes: |
+          Classic Plasma: four sine waves summed and pushed through a cosine palette. The palette line,
+          0.5 + 0.5 * cos(vec3(0.0, 1.7, 3.4) + v + t), is the one to play with.
   - create:
       box: shadertrinket_star_tunnel
       name: Star Tunnel
@@ -144,6 +171,9 @@ operations:
             col *= 1.0 - smoothstep(1.15, 1.75, r);
             fragColor = vec4(col, 1.0);
           }
+        notes: |
+          Star Tunnel: 48 stars in a loop, each placed by its index and the time, so a for loop draws many
+          things at once. Try changing 48, or the 0.071 that spaces them in depth.
   - create:
       box: shadertrinket_mandelbrot_glow
       name: Mandelbrot Glow
@@ -182,6 +212,9 @@ operations:
             col += exp(-trap * 45.0) * vec3(0.25, 0.9, 1.15);
             fragColor = vec4(col, 1.0);
           }
+        notes: |
+          Mandelbrot Glow: z = z*z + c iterated 96 times, coloured by how fast it escapes, plus an orbit
+          trap (the closest z came to the axes) for the glow. The zoom and centre drift with iTime.
   - create:
       box: shadertrinket_sdf_sphere_trace
       name: SDF Sphere Trace
@@ -247,6 +280,10 @@ operations:
             col += glow * vec3(0.03, 0.22, 0.45);
             fragColor = vec4(col, 1.0);
           }
+        notes: |
+          SDF Sphere Trace: ray marching. mapScene returns the distance to the nearest surface, the loop
+          steps along each ray by that distance, and calcNormal reads the surface's slope from it. Change
+          mapScene to change the shape.
   - create:
       box: shadertrinket_camera
       name: Camera Input Demo
@@ -285,6 +322,10 @@ operations:
             color *= 0.78 + 0.55 * luma;
             fragColor = vec4(color, 1.0);
           }
+        notes: |
+          Camera Input Demo: iChannel0 is the camera, bound by textures("iChannel0" to webcam()) in this
+          box's code. webcam() opens the camera once and keeps it open across runs. The first time, macOS asks
+          for camera permission; with no camera, the channel is black and the box prints why.
   - connect: { parent: shadertrinket_renderer, child: shadertrinket_lead }
   - connect: { parent: shadertrinket_renderer, child: shadertrinket_classic_plasma }
   - connect: { parent: shadertrinket_renderer, child: shadertrinket_star_tunnel }

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="shadertrinket_renderer" index="0" -->
 
 ```edn [field-box id="shadertrinket_renderer" role="properties"]
-{"id" "shadertrinket_renderer" "index" 0 "name" "ShaderTrinket window + renderer" "parents" ["root"] "children" ["shadertrinket_lead" "shadertrinket_classic_plasma" "shadertrinket_star_tunnel" "shadertrinket_mandelbrot_glow" "shadertrinket_sdf_sphere_trace" "shadertrinket_camera"] "properties" {"children" #{#afield/box "shadertrinket_lead" #afield/box "shadertrinket_classic_plasma" #afield/box "shadertrinket_star_tunnel" #afield/box "shadertrinket_mandelbrot_glow" #afield/box "shadertrinket_sdf_sphere_trace" #afield/box "shadertrinket_camera"} "parents" #{#afield/box "root"} "name" "ShaderTrinket window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shadertrinket_renderer_code_.kt" "lines" 15 "characters" 331 "sha256" "6aa61fa323b4b1ecf3374d2b23b7bab8eb123c23549923b75d130270573e5288"}]}
+{"id" "shadertrinket_renderer" "index" 0 "name" "ShaderTrinket window + renderer" "parents" ["root"] "children" ["shadertrinket_lead" "shadertrinket_classic_plasma" "shadertrinket_star_tunnel" "shadertrinket_mandelbrot_glow" "shadertrinket_sdf_sphere_trace" "shadertrinket_camera"] "properties" {"children" #{#afield/box "shadertrinket_lead" #afield/box "shadertrinket_classic_plasma" #afield/box "shadertrinket_star_tunnel" #afield/box "shadertrinket_mandelbrot_glow" #afield/box "shadertrinket_sdf_sphere_trace" #afield/box "shadertrinket_camera"} "parents" #{#afield/box "root"} "name" "ShaderTrinket window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shadertrinket_renderer_code_.kt" "lines" 15 "characters" 331 "sha256" "6aa61fa323b4b1ecf3374d2b23b7bab8eb123c23549923b75d130270573e5288"} {"name" "notes" "language" "markdown" "path" "shadertrinket_renderer_notes_.md" "lines" 2 "characters" 172 "sha256" "58788c81852288d75a14cd1fa34c6880f64f814403d32699b40091d6e290502e"}]}
 ```
 
 ```kotlin [field-property box="shadertrinket_renderer" name="code" path="shadertrinket_renderer_code_.kt"]
@@ -32,6 +32,11 @@ println("ShaderTrinket window ready")
 start(renderer::run)
 ```
 
+```markdown [field-property box="shadertrinket_renderer" name="notes" path="shadertrinket_renderer_notes_.md"]
+The renderer and its 960 by 540 window. Every ShaderTrinket box sits beneath it, and the window
+shows their shared canvas, letterboxed if you resize it. Launch this first.
+```
+
 ## 2. Star Tunnel
 
 <!-- field-box id="shadertrinket_star_tunnel" index="1" -->
@@ -43,7 +48,7 @@ From `code`
 Star Tunnel: launch to show it in the window. mainImage is in this box's `fragment`.
 
 ```edn [field-box id="shadertrinket_star_tunnel" role="properties"]
-{"id" "shadertrinket_star_tunnel" "index" 1 "name" "Star Tunnel" "parents" ["root" "shadertrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "shadertrinket_renderer"} "name" "Star Tunnel" "_tombstone" false "frame" #afield/rect [380.0 360.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shadertrinket_star_tunnel_code_.kt" "lines" 5 "characters" 163 "sha256" "780300bb197f8396544f9a8eac0169bc6313e77c030628388e96c177e8d2877e"} {"name" "fragment" "language" "glsl" "path" "shadertrinket_star_tunnel_fragment_.glsl" "lines" 33 "characters" 1107 "sha256" "853ed8e7932984ce87e569c82cc5eeee58e0a30d7902e277bfd9807aed183c08"}]}
+{"id" "shadertrinket_star_tunnel" "index" 1 "name" "Star Tunnel" "parents" ["root" "shadertrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "shadertrinket_renderer"} "name" "Star Tunnel" "_tombstone" false "frame" #afield/rect [380.0 360.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shadertrinket_star_tunnel_code_.kt" "lines" 5 "characters" 163 "sha256" "780300bb197f8396544f9a8eac0169bc6313e77c030628388e96c177e8d2877e"} {"name" "fragment" "language" "glsl" "path" "shadertrinket_star_tunnel_fragment_.glsl" "lines" 33 "characters" 1107 "sha256" "853ed8e7932984ce87e569c82cc5eeee58e0a30d7902e277bfd9807aed183c08"} {"name" "notes" "language" "markdown" "path" "shadertrinket_star_tunnel_notes_.md" "lines" 2 "characters" 170 "sha256" "d682e8e1be03fe82931c6a357d8979001c7ee78983ed98eca542027995d132df"}]}
 ```
 
 ```kotlin [field-property box="shadertrinket_star_tunnel" name="code" path="shadertrinket_star_tunnel_code_.kt"]
@@ -90,6 +95,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 }
 ```
 
+```markdown [field-property box="shadertrinket_star_tunnel" name="notes" path="shadertrinket_star_tunnel_notes_.md"]
+Star Tunnel: 48 stars in a loop, each placed by its index and the time, so a for loop draws many
+things at once. Try changing 48, or the 0.071 that spaces them in depth.
+```
+
 ## 3. Mandelbrot Glow
 
 <!-- field-box id="shadertrinket_mandelbrot_glow" index="2" -->
@@ -101,7 +111,7 @@ From `code`
 Mandelbrot Glow: launch to show it in the window. mainImage is in this box's `fragment`.
 
 ```edn [field-box id="shadertrinket_mandelbrot_glow" role="properties"]
-{"id" "shadertrinket_mandelbrot_glow" "index" 2 "name" "Mandelbrot Glow" "parents" ["root" "shadertrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "shadertrinket_renderer"} "name" "Mandelbrot Glow" "_tombstone" false "frame" #afield/rect [720.0 360.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shadertrinket_mandelbrot_glow_code_.kt" "lines" 5 "characters" 167 "sha256" "36bddb093c204ab8fa5bf96a3cc63949a00986cd5fa30f4029eb56ae9d565c4e"} {"name" "fragment" "language" "glsl" "path" "shadertrinket_mandelbrot_glow_fragment_.glsl" "lines" 26 "characters" 785 "sha256" "eb67657d01d59c56a5c16249dfc7f890f4a99fc65e574ccf51f4a15ea50eb860"}]}
+{"id" "shadertrinket_mandelbrot_glow" "index" 2 "name" "Mandelbrot Glow" "parents" ["root" "shadertrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "shadertrinket_renderer"} "name" "Mandelbrot Glow" "_tombstone" false "frame" #afield/rect [720.0 360.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shadertrinket_mandelbrot_glow_code_.kt" "lines" 5 "characters" 167 "sha256" "36bddb093c204ab8fa5bf96a3cc63949a00986cd5fa30f4029eb56ae9d565c4e"} {"name" "fragment" "language" "glsl" "path" "shadertrinket_mandelbrot_glow_fragment_.glsl" "lines" 26 "characters" 785 "sha256" "eb67657d01d59c56a5c16249dfc7f890f4a99fc65e574ccf51f4a15ea50eb860"} {"name" "notes" "language" "markdown" "path" "shadertrinket_mandelbrot_glow_notes_.md" "lines" 2 "characters" 185 "sha256" "1cceaf8eab26b61ee40bccbd53a3cab8a68b4324bf344eaaa8e20087ae7e4b26"}]}
 ```
 
 ```kotlin [field-property box="shadertrinket_mandelbrot_glow" name="code" path="shadertrinket_mandelbrot_glow_code_.kt"]
@@ -141,6 +151,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 }
 ```
 
+```markdown [field-property box="shadertrinket_mandelbrot_glow" name="notes" path="shadertrinket_mandelbrot_glow_notes_.md"]
+Mandelbrot Glow: z = z*z + c iterated 96 times, coloured by how fast it escapes, plus an orbit
+trap (the closest z came to the axes) for the glow. The zoom and centre drift with iTime.
+```
+
 ## 4. SDF Sphere Trace
 
 <!-- field-box id="shadertrinket_sdf_sphere_trace" index="3" -->
@@ -152,7 +167,7 @@ From `code`
 SDF Sphere Trace: launch to show it in the window. mainImage is in this box's `fragment`.
 
 ```edn [field-box id="shadertrinket_sdf_sphere_trace" role="properties"]
-{"id" "shadertrinket_sdf_sphere_trace" "index" 3 "name" "SDF Sphere Trace" "parents" ["root" "shadertrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "shadertrinket_renderer"} "name" "SDF Sphere Trace" "_tombstone" false "frame" #afield/rect [1060.0 360.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shadertrinket_sdf_sphere_trace_code_.kt" "lines" 5 "characters" 168 "sha256" "f06b142cb8f827a442d07eb2c89a2412d20faa8600944cd487a2749fb3e02533"} {"name" "fragment" "language" "glsl" "path" "shadertrinket_sdf_sphere_trace_fragment_.glsl" "lines" 53 "characters" 1467 "sha256" "1f64765df6608ae5171b6221d244a64c19e70b39ec53205ca52c918f48969d4d"}]}
+{"id" "shadertrinket_sdf_sphere_trace" "index" 3 "name" "SDF Sphere Trace" "parents" ["root" "shadertrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "shadertrinket_renderer"} "name" "SDF Sphere Trace" "_tombstone" false "frame" #afield/rect [1060.0 360.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shadertrinket_sdf_sphere_trace_code_.kt" "lines" 5 "characters" 168 "sha256" "f06b142cb8f827a442d07eb2c89a2412d20faa8600944cd487a2749fb3e02533"} {"name" "fragment" "language" "glsl" "path" "shadertrinket_sdf_sphere_trace_fragment_.glsl" "lines" 53 "characters" 1467 "sha256" "1f64765df6608ae5171b6221d244a64c19e70b39ec53205ca52c918f48969d4d"} {"name" "notes" "language" "markdown" "path" "shadertrinket_sdf_sphere_trace_notes_.md" "lines" 3 "characters" 221 "sha256" "50c8febd207c3a404c834af83765e91ac972c58f7e16c304ef4f99db8dda7b19"}]}
 ```
 
 ```kotlin [field-property box="shadertrinket_sdf_sphere_trace" name="code" path="shadertrinket_sdf_sphere_trace_code_.kt"]
@@ -219,6 +234,12 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 }
 ```
 
+```markdown [field-property box="shadertrinket_sdf_sphere_trace" name="notes" path="shadertrinket_sdf_sphere_trace_notes_.md"]
+SDF Sphere Trace: ray marching. mapScene returns the distance to the nearest surface, the loop
+steps along each ray by that distance, and calcNormal reads the surface's slope from it. Change
+mapScene to change the shape.
+```
+
 ## 5. Classic Plasma
 
 <!-- field-box id="shadertrinket_classic_plasma" index="4" -->
@@ -230,7 +251,7 @@ From `code`
 Classic Plasma: launch to show it in the window. mainImage is in this box's `fragment`.
 
 ```edn [field-box id="shadertrinket_classic_plasma" role="properties"]
-{"id" "shadertrinket_classic_plasma" "index" 4 "name" "Classic Plasma" "parents" ["root" "shadertrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "shadertrinket_renderer"} "name" "Classic Plasma" "_tombstone" false "frame" #afield/rect [40.0 360.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shadertrinket_classic_plasma_code_.kt" "lines" 5 "characters" 166 "sha256" "2b8a6feba7e8b877d05c669152d16eedaf66063524370e459034a8516e6d42ad"} {"name" "fragment" "language" "glsl" "path" "shadertrinket_classic_plasma_fragment_.glsl" "lines" 17 "characters" 624 "sha256" "1aac0fbe32904b28ac252d04f3522b8c1dc8bafd15d7824b25ae907b3f78de0e"}]}
+{"id" "shadertrinket_classic_plasma" "index" 4 "name" "Classic Plasma" "parents" ["root" "shadertrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "shadertrinket_renderer"} "name" "Classic Plasma" "_tombstone" false "frame" #afield/rect [40.0 360.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shadertrinket_classic_plasma_code_.kt" "lines" 5 "characters" 166 "sha256" "2b8a6feba7e8b877d05c669152d16eedaf66063524370e459034a8516e6d42ad"} {"name" "fragment" "language" "glsl" "path" "shadertrinket_classic_plasma_fragment_.glsl" "lines" 17 "characters" 624 "sha256" "1aac0fbe32904b28ac252d04f3522b8c1dc8bafd15d7824b25ae907b3f78de0e"} {"name" "notes" "language" "markdown" "path" "shadertrinket_classic_plasma_notes_.md" "lines" 2 "characters" 165 "sha256" "788e9737fd1a9d00782f70cb7c76115f42e9915f756d71a0b858ad85f0c4df74"}]}
 ```
 
 ```kotlin [field-property box="shadertrinket_classic_plasma" name="code" path="shadertrinket_classic_plasma_code_.kt"]
@@ -261,6 +282,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 }
 ```
 
+```markdown [field-property box="shadertrinket_classic_plasma" name="notes" path="shadertrinket_classic_plasma_notes_.md"]
+Classic Plasma: four sine waves summed and pushed through a cosine palette. The palette line,
+0.5 + 0.5 * cos(vec3(0.0, 1.7, 3.4) + v + t), is the one to play with.
+```
+
 ## 6. Flat Rings (start here)
 
 <!-- field-box id="shadertrinket_lead" index="5" -->
@@ -277,7 +303,7 @@ Every shader box below draws into the same canvas, so launching one replaces the
 way choosing a preset does. Launch this box again to come back to Flat Rings.
 
 ```edn [field-box id="shadertrinket_lead" role="properties"]
-{"id" "shadertrinket_lead" "index" 5 "name" "Flat Rings (start here)" "parents" ["root" "shadertrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "shadertrinket_renderer"} "name" "Flat Rings (start here)" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shadertrinket_lead_code_.kt" "lines" 8 "characters" 538 "sha256" "f1924b6a2e49076f2c26fd80ab3ea900c274253dcd87b4eea2cd65345b7d7499"} {"name" "fragment" "language" "glsl" "path" "shadertrinket_lead_fragment_.glsl" "lines" 27 "characters" 922 "sha256" "10c84486b43d83fe18324b653bf1b06524125d61e478b2af74430dab247d46d8"}]}
+{"id" "shadertrinket_lead" "index" 5 "name" "Flat Rings (start here)" "parents" ["root" "shadertrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "shadertrinket_renderer"} "name" "Flat Rings (start here)" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shadertrinket_lead_code_.kt" "lines" 8 "characters" 538 "sha256" "f1924b6a2e49076f2c26fd80ab3ea900c274253dcd87b4eea2cd65345b7d7499"} {"name" "fragment" "language" "glsl" "path" "shadertrinket_lead_fragment_.glsl" "lines" 27 "characters" 922 "sha256" "10c84486b43d83fe18324b653bf1b06524125d61e478b2af74430dab247d46d8"} {"name" "notes" "language" "markdown" "path" "shadertrinket_lead_notes_.md" "lines" 20 "characters" 1409 "sha256" "b783dc259d96f0c44d6a6da70da0c0102cb06c7932c49d30e44ef06fd20ee3f3"}]}
 ```
 
 ```kotlin [field-property box="shadertrinket_lead" name="code" path="shadertrinket_lead_code_.kt"]
@@ -321,6 +347,29 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 }
 ```
 
+```markdown [field-property box="shadertrinket_lead" name="notes" path="shadertrinket_lead_notes_.md"]
+ShaderTrinket, in Field. Launch the renderer above, then this box: the window shows Flat Rings,
+ShaderTrinket's default program.
+
+The program is this box's fragment property, a ShaderToy Image pass: you write
+void mainImage(out vec4 fragColor, in vec2 fragCoord), where fragCoord is the pixel (y up, as in
+ShaderToy) and fragColor the colour you want seen there. The ShaderToy uniforms are all bound:
+iResolution (the canvas size), iTime, iTimeDelta, iFrame, iFrameRate, iDate, iMouse (the window
+cursor in canvas pixels, zw the click while the button is down) and iChannel0..3 with
+iChannelResolution. The {{ shadertoy.image }} line at the top brings them in; leave it there.
+
+Edit the fragment and press alt-R to recompile. A mistake is marked on its own line and the last
+good program keeps running. ShaderToy code pasted from the web works as is.
+
+Every shader box here draws into one canvas, shadertoyCanvas(), so launching a box replaces the
+picture, the way ShaderTrinket's preset menu does; launch this one again to come back. To read a
+texture, add textures("iChannel0" to t) inside the shadertoyHere block: the camera (see the
+Camera Input Demo), another canvas (shadertoyCanvas(name = "...", inWindow = false).rtt), or any
+Field texture. Channels come out the right way up and in ShaderToy's colours.
+
+Ported from aaaframe's madp/shadertrinket.html; dev_docs/madp/shadertrinket.md has the mapping.
+```
+
 ## 7. Camera Input Demo
 
 <!-- field-box id="shadertrinket_camera" index="6" -->
@@ -332,7 +381,7 @@ From `code`
 Camera Input Demo: launch to show it in the window. mainImage is in this box's `fragment`.
 
 ```edn [field-box id="shadertrinket_camera" role="properties"]
-{"id" "shadertrinket_camera" "index" 6 "name" "Camera Input Demo" "parents" ["root" "shadertrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "shadertrinket_renderer"} "name" "Camera Input Demo" "_tombstone" false "frame" #afield/rect [40.0 520.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shadertrinket_camera_code_.kt" "lines" 6 "characters" 207 "sha256" "051b81079a5fcec105de568de0f6d103979aa4c7bc515be1b9326acacf4fe293"} {"name" "fragment" "language" "glsl" "path" "shadertrinket_camera_fragment_.glsl" "lines" 25 "characters" 1108 "sha256" "ecc1c2414e9dcfadae522eb91175800ec3d64158cf54102e84f686e21cefda09"}]}
+{"id" "shadertrinket_camera" "index" 6 "name" "Camera Input Demo" "parents" ["root" "shadertrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "shadertrinket_renderer"} "name" "Camera Input Demo" "_tombstone" false "frame" #afield/rect [40.0 520.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shadertrinket_camera_code_.kt" "lines" 6 "characters" 207 "sha256" "051b81079a5fcec105de568de0f6d103979aa4c7bc515be1b9326acacf4fe293"} {"name" "fragment" "language" "glsl" "path" "shadertrinket_camera_fragment_.glsl" "lines" 25 "characters" 1108 "sha256" "ecc1c2414e9dcfadae522eb91175800ec3d64158cf54102e84f686e21cefda09"} {"name" "notes" "language" "markdown" "path" "shadertrinket_camera_notes_.md" "lines" 3 "characters" 280 "sha256" "e5a40fcb8c486ff0a1b45871e294a488d923ecef0d72634f0ba0e925c39a2f0b"}]}
 ```
 
 ```kotlin [field-property box="shadertrinket_camera" name="code" path="shadertrinket_camera_code_.kt"]
@@ -370,5 +419,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   color *= 0.78 + 0.55 * luma;
   fragColor = vec4(color, 1.0);
 }
+```
+
+```markdown [field-property box="shadertrinket_camera" name="notes" path="shadertrinket_camera_notes_.md"]
+Camera Input Demo: iChannel0 is the camera, bound by textures("iChannel0" to webcam()) in this
+box's code. webcam() opens the camera once and keeps it open across runs. The first time, macOS asks
+for camera permission; with no camera, the channel is black and the box prints why.
 ```
 
