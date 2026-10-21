@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17263 of 33748 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17294 of 33789 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2238 undocumented entry points** (types, top-level functions and values) and 13542 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2238 undocumented entry points** (types, top-level functions and values) and 13551 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -216,6 +216,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ClusterGeometry.kt](../src/jvmMain/kotlin/afield/graphics/render/ClusterGeometry.kt) | Graphics | computed_ray_geometry | 0 | 7 | 41% |
 | [typography_field.kt](../src/jvmMain/kotlin/afield/graphics/text/typography_field.kt) | Graphics | typography_examples | 0 | 7 | 77% |
 | [particletracker.kt](../src/jvmMain/kotlin/afield/media/video/particletracker.kt) | Video | particle_video | 0 | 7 | 50% |
+| [WebRTC.kt](../src/jvmMain/kotlin/afield/media/webrtc/WebRTC.kt) | Imaging | webrtc | 0 | 7 | 79% |
 | [booleannetworks.kt](../src/jvmMain/kotlin/afield/simulation/automata/booleannetworks.kt) | Data | boolean_networks_examples, boolean_network_music_examples | 0 | 7 | 78% |
 | [wfc_field.kt](../src/jvmMain/kotlin/afield/simulation/automata/wfc_field.kt) | Data | wfc_examples | 0 | 7 | 78% |
 | [LorisVisualizer.kt](../src/jvmMain/kotlin/afield/audio/analysis/loris/LorisVisualizer.kt) | Visualization | loris | 0 | 6 | 45% |
@@ -913,6 +914,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FfmCeresBackend.kt](../src/jvmMain/kotlin/afield/math/optimization/ceres/FfmCeresBackend.kt) | Internal | — | 0 | 2 | 66% |
 | [LinuxExternalBrowserSurface.kt](../src/jvmMain/kotlin/afield/media/browser/LinuxExternalBrowserSurface.kt) | Imaging | — | 0 | 2 | 33% |
 | [WindowsExternalBrowserSurface.kt](../src/jvmMain/kotlin/afield/media/browser/WindowsExternalBrowserSurface.kt) | Imaging | — | 0 | 2 | 33% |
+| [WebRTCSignaling.kt](../src/jvmMain/kotlin/afield/media/webrtc/WebRTCSignaling.kt) | Imaging | — | 0 | 2 | 50% |
 | [CompletionCorpus.kt](../src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt) | Workspace | — | 0 | 2 | 87% |
 | [CompiledSnippetTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/CompiledSnippetTest.kt) | Workspace | — | 0 | 2 | 33% |
 | [DataFramePluginSpike.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/DataFramePluginSpike.kt) | Workspace | — | 0 | 2 | 33% |

@@ -116,6 +116,7 @@ mutation; it is a different one.
 | `GET /api/source` | `Server.kt` | none |
 | `GET /api/refactor-pass` | `refactorPass.kt` | loopback + same-site |
 | `GET /api/terminal` | `terminal.kt` | loopback + same-site |
+| `GET /api/webrtc-config` | `WebRTCRoutes.kt` | none |
 | `GET /api/vulkan-status` | `Server.kt` | loopback + same-site |
 | `GET /api/native-geometry-status` | `Server.kt` | loopback + same-site |
 | `GET /api/welcome-changelog` | `Server.kt` | none |
@@ -300,6 +301,7 @@ the file, and the reach is described per file below in prose that a human checke
 | `NotationServer.kt` | 3 |
 | `templating.kt` | 3 |
 | `ElectronRTTView.kt` | 2 |
+| `WebRTC.kt` | 4 |
 | `UserKeybindingsManager.kt` | 2 |
 | `VoiceTranscriber.kt` | 2 |
 | `chat.kt` | 2 |
@@ -326,6 +328,7 @@ What each of those reaches, checked against the code rather than inferred from t
 | `templating.kt` | template read and write, under the templates directory |
 | `chat.kt` | proxies to the configured chat server |
 | `ElectronRTTView.kt` | an RTT view that box code has already created: `subscribe` points that view's frame-ready pushes at the caller's socket and starts receiving the view's IOSurface ring from its per-view Mach service (local processes only), and `release` frees a ring slot. Both name a view by an unguessable id (pid + nanoTime) and do nothing for an unknown one. The worst a frame can do is redirect or stall one view's frames |
+| `WebRTC.kt` | WebRTC sources and sinks (`dev_docs/WEBRTC_SOURCES_SINKS.md`), all on objects box code has already created: `webrtc-sink-status` records a sink's status line, `webrtc-publishers-subscribe` points a publisher list's pushes at the caller's socket and `webrtc-publishers-pick` calls that list's pick callbacks, which run box code the box itself registered. `webrtc-aaaframe-signed-in` takes an aaaframe session cookie from Field's sign-in window and writes it to the user's `~/.afield/webrtc/aaaframe-sign-ins.json` (0600); it accepts only a network box code has already registered, so a hostile frame can at worst replace that one server's login with a bad one (the next 4401 prompts a fresh sign-in). No guard beyond the `/ws` boundary, decided 2026-10-21 |
 | `UserKeybindingsManager.kt` | reload the user keybindings file; report the command inventory |
 | `VoiceTranscriber.kt` | AI4 push-to-talk: starts (once) and feeds a local Python Whisper worker, `python/fieldvoice/whisper_worker.py`, under the interpreter Field's Python boxes resolved or `FIELD_VOICE_PYTHON`. Each clip is written to a temp file, transcribed and deleted; the reply is text. No document or box state. No guard beyond the `/ws` boundary, decided 2026-10-04: the client supplies only audio bytes and prompt text, never a path, executable or code, so the worst a hostile frame can do is spend GPU time or start the worker |
 | `OutputRequests.kt` | a live box-registered JSON callback addressed by a run-specific random binding ID. Bounded messages and a 64-request queue; execution is serialized with the owner box/document context. Re-run, stop or deletion revokes the binding; read-only documents refuse requests. The callback may run arbitrary trusted box code. The binding ID is a capability, not separate user authentication; transport uses the existing `/ws` boundary |
@@ -421,6 +424,10 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `document-guide` | `documentGuides.kt` |
 | `electron-rtt-release` | `ElectronRTTView.kt` |
 | `electron-rtt-subscribe` | `ElectronRTTView.kt` |
+| `webrtc-aaaframe-signed-in` | `WebRTC.kt` |
+| `webrtc-publishers-pick` | `WebRTC.kt` |
+| `webrtc-publishers-subscribe` | `WebRTC.kt` |
+| `webrtc-sink-status` | `WebRTC.kt` |
 | `execute-all` | `executing.kt` |
 | `execute-fragment` | `executing.kt` |
 | `execute-symbol` | `executing.kt` |

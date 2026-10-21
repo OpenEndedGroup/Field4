@@ -295,6 +295,7 @@ import afield.app.server.installFieldAudioProxyRoutes
 import afield.app.server.installSignalViewerRoutes
 import afield.app.server.installDocsAnnotationRoutes
 import afield.app.server.installTerminalRoutes
+import afield.media.webrtc.installWebRTCSignalingRoutes
 import afield.app.server.docsAccessPolicy
 import afield.app.server.SEC_FETCH_SITE_HEADER
 import afield.app.server.DocsAccessPolicy
@@ -5374,6 +5375,9 @@ class Server {
                         // /terminal.html's pty sessions (terminal.kt); here, beside the other WebSockets, because
                         // the docs-route test apps install no WebSockets plugin.
                         installTerminalRoutes(docsAccessPolicy)
+
+                        // WebRTC sources and sinks: the pages' signalling relay and aaaframe bridge.
+                        installWebRTCSignalingRoutes()
 
                         webSocket("/welcome-events") {
                             welcomeEventSessions.add(this)

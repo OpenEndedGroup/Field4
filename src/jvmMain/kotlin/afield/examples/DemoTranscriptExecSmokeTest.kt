@@ -743,6 +743,10 @@ object DemoTranscriptExecSmokeTest {
         // Product-facing puppet-browser scene: a YouTube watch page on an aspect-correct world quad.
         // It opens Electron and a native Vulkan stereo window, so CI compiles without launching it.
         "youtube_vr_browser",
+        // Publishes a shader over WebRTC from an Electron output-area view and samples a stream
+        // through a hidden Electron page; both need the Field Electron app and a peer, so CI
+        // compiles the graph. The live checks are in dev_docs/WEBRTC_SOURCES_SINKS.md.
+        "webrtc_shader_jam",
         // Exercises IOSurface/Mach-port import, a Vulkan copy, and a graphics-fence callback on
         // macOS. CI still compiles both boxes everywhere; the tracked backdoor replay runs it live.
         "external_browser_surface_macos_smoke",

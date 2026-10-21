@@ -567,6 +567,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - [video](video.md#sharedgpuslot-kt)
     - [diffusion](video.md#sharedgpuslot-kt)
 - [vision](imaging.md#hardwareopticalflow-kt)
+- [webrtc](imaging.md#webrtc-kt)
 
 </div>
 
@@ -643,7 +644,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**33748 public symbols across 1517 source files**, 17263 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**33789 public symbols across 1520 source files**, 17294 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -661,7 +662,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
 | [Simulation](simulation.md) | 46 | 1287 | 653 (50%) | Making a shape behave. |
-| [Imaging](imaging.md) | 47 | 753 | 340 (45%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
+| [Imaging](imaging.md) | 50 | 794 | 371 (46%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 14 | 774 | 571 (73%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 611 | 405 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 5 | 349 | 199 (57%) | Optimisation over a space you can only sample. |
@@ -2188,6 +2189,9 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [WaylandReconstructionSmoke.kt](imaging.md#waylandreconstructionsmoke-kt) | Imaging | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>onnx/<wbr></small> [WebcamPerceptionDemo.kt](examples.md#webcamperceptiondemo-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>video/<wbr></small> [WebcamTexture.kt](graphics.md#webcamtexture-kt) | Graphics | 14 | 4 | Exposes a webcam as an RGBA Vulkan texture, captured through OpenCV. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>webrtc/<wbr></small> [WebRTC.kt](imaging.md#webrtc-kt) | Imaging | 34 | 27 | WebRTC video for Field 4 graphics: publish a render target to a classroom, and sample anyone's published stream as a texture. | [WebRTC Streams](../webrtc.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>webrtc/<wbr></small> [WebRTCRoutes.kt](imaging.md#webrtcroutes-kt) | Imaging | 1 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>webrtc/<wbr></small> [WebRTCSignaling.kt](imaging.md#webrtcsignaling-kt) | Imaging | 6 | 3 | WebRTC signalling for Field's sources and sinks: the networks a page can join, the relay on Field's own server, and the bridge to an aaaframe classroom. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>automata/<wbr></small> [wfc.kt](data.md#wfc-kt) | Data | 118 | 36 | Single-file, dependency-free Wave Function Collapse for Kotlin/JVM. | [Wave Function Collapse examples](../wfc_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>automata/<wbr></small> [wfc_field.kt](data.md#wfc-field-kt) | Data | 37 | 29 | The bridge from Wave Function Collapse into the things Field already displays. | [Wave Function Collapse examples](../wfc_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [WfcGallery.kt](examples.md#wfcgallery-kt) | Examples | 41 | 28 |  |  |
