@@ -66,7 +66,7 @@ open class StrokeVerbs {
     /** [v] clamped to 0..1. */
     fun clamp01(v: Double): Double = v.coerceIn(0.0, 1.0)
 
-    /** A triangle wave of period 1 in -1..1: 1 at whole numbers, -1 half way between. */
+    /** A triangle wave of period 1 in -1..1: -1 at whole numbers, 1 half way between. */
     fun triWave(x: Double): Double = 1 - 4 * abs(x - floor(x) - 0.5)
 
     /** [triWave] in 0..1. */

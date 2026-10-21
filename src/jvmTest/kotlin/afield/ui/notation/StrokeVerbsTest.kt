@@ -110,8 +110,8 @@ class StrokeVerbsTest {
         assertEquals(v.heldNoise(1.0, 0.21, 4.0), v.heldNoise(1.0, 0.24, 4.0))
         assertNotEquals(v.heldNoise(1.0, 0.24, 4.0), v.heldNoise(1.0, 0.26, 4.0))
         assertNotEquals(v.driftNoise(1.0, 0.21, 4.0), v.driftNoise(1.0, 0.24, 4.0))
-        assertEquals(1.0, v.triWave(0.0), 1e-12)
-        assertEquals(-1.0, v.triWave(0.5), 1e-12)
+        assertEquals(-1.0, v.triWave(0.0), 1e-12)
+        assertEquals(1.0, v.triWave(0.5), 1e-12)
         assertEquals(0.0, v.perlin2D(3.0, 4.0), 1e-12, "Perlin noise is zero on the lattice")
     }
 
@@ -121,8 +121,8 @@ class StrokeVerbsTest {
         assertEquals(1f, red.x, 1e-6f); assertEquals(0f, red.y, 1e-6f); assertEquals(0.5f, red.w, 1e-6f)
         val green = cssHsla(480, 1, 0.25)   // 480 wraps to 120
         assertEquals(0f, green.x, 1e-6f); assertEquals(0.5f, green.y, 1e-6f); assertEquals(0f, green.z, 1e-6f)
-        val sky = cssHsla(205, 0.96, 0.68)  // hsl(205, 96%, 68%) is rgb(97, 185, 251)
-        assertEquals(97, Math.round(sky.x * 255)); assertEquals(185, Math.round(sky.y * 255)); assertEquals(251, Math.round(sky.z * 255))
+        val sky = cssHsla(205, 0.96, 0.68)  // hsl(205, 96%, 68%) is rgb(95, 186, 252)
+        assertEquals(95, Math.round(sky.x * 255)); assertEquals(186, Math.round(sky.y * 255)); assertEquals(252, Math.round(sky.z * 255))
     }
 
     @Test

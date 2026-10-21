@@ -113,8 +113,8 @@ object StrokeLayer {
         lastCamera = camera
         val z = CanvasCamera.zoom
         ctx.asDynamic().setTransform(dpr * z, 0, 0, dpr * z, dpr * pane.tx, dpr * pane.ty)
-        ctx.lineCap = org.w3c.dom.ROUND
-        ctx.lineJoin = org.w3c.dom.ROUND
+        ctx.asDynamic().lineCap = "round"
+        ctx.asDynamic().lineJoin = "round"
         val list = frame.items
         val n = (list.length as Int)
         for (i in 0 until n) drawItem(ctx, list[i])
