@@ -17,11 +17,26 @@ private fun escapeHtml(text: String): String {
         .replace("'", "&#39;")
 }
 
+/**
+ * Code spans, emphasis, images and links. A code span is literal: the `*` in `` `sin(r * 3.6)` `` is
+ * multiplication, so emphasis and links are only looked for between code spans, never inside or across one.
+ */
 private fun inlineFormat(text: String): String {
+    val out = StringBuilder(text.length + 16)
+    var index = 0
+    for (span in Regex("`([^`]+)`").findAll(text)) {
+        out.append(formatProse(text.substring(index, span.range.first)))
+        out.append("<code>").append(span.groupValues[1]).append("</code>")
+        index = span.range.last + 1
+    }
+    out.append(formatProse(text.substring(index)))
+    return out.toString()
+}
+
+private fun formatProse(text: String): String {
     var out = text
-    out = out.replace(Regex("`([^`]+)`"), "<code>$1</code>")
     out = out.replace(Regex("\\*\\*([^*]+)\\*\\*"), "<strong>$1</strong>")
-    out = out.replace(Regex("\\*([^*]+)\\*"), "<em>$1</em>")
+    out = out.replace(Regex("\\*([^*\\s][^*]*)\\*"), "<em>$1</em>")
     out = replaceImages(out)
     out = replaceLinks(out)
     return out
@@ -111,10 +126,19 @@ private fun replaceLinks(text: String): String {
     return sb.toString()
 }
 
+private val BULLET = Regex("^[-*]\\s+")
+private val NUMBERED = Regex("^(\\d{1,9})[.)]\\s+")
+
+/**
+ * Paragraphs, headings, tables and lists. A list is bulleted (`-`, `*`) or numbered (`1.`, `1)`, starting
+ * where its first number says); a line that follows an item without a blank line or a new marker continues
+ * that item, so an item can wrap over several source lines as it does in any Markdown file.
+ */
 private fun renderTextBlock(text: String): String {
     val lines = text.split("\n")
     val html = StringBuilder()
-    var inList = false
+    var listTag: String? = null
+    val item = mutableListOf<String>()
     val paragraph = mutableListOf<String>()
 
     fun flushParagraph() {
@@ -125,11 +149,25 @@ private fun renderTextBlock(text: String): String {
         paragraph.clear()
     }
 
+    fun flushItem() {
+        if (item.isEmpty()) return
+        html.append("<li>").append(inlineFormat(item.joinToString(" "))).append("</li>")
+        item.clear()
+    }
+
     fun closeList() {
-        if (inList) {
-            html.append("</ul>")
-            inList = false
-        }
+        flushItem()
+        listTag?.let { html.append("</").append(it).append(">") }
+        listTag = null
+    }
+
+    fun openList(tag: String, start: Int = 1) {
+        if (listTag == tag) return
+        closeList()
+        html.append("<").append(tag)
+        if (tag == "ol" && start != 1) html.append(" start=\"").append(start).append("\"")
+        html.append(">")
+        listTag = tag
     }
 
     var lineIndex = 0
@@ -174,25 +212,31 @@ private fun renderTextBlock(text: String): String {
             continue
         }
 
-        if (Regex("^[-*]\\s+").containsMatchIn(line)) {
+        if (BULLET.containsMatchIn(line)) {
             flushParagraph()
-            if (!inList) {
-                html.append("<ul>")
-                inList = true
-            }
-            html.append("<li>")
-            html.append(inlineFormat(line.replaceFirst(Regex("^[-*]\\s+"), "")))
-            html.append("</li>")
+            openList("ul")
+            flushItem()
+            item.add(line.replaceFirst(BULLET, ""))
             lineIndex++
             continue
         }
 
-        paragraph.add(line)
+        val numbered = NUMBERED.find(line)
+        if (numbered != null) {
+            flushParagraph()
+            openList("ol", numbered.groupValues[1].toInt())
+            flushItem()
+            item.add(line.substring(numbered.range.last + 1))
+            lineIndex++
+            continue
+        }
+
+        if (listTag != null) item.add(line) else paragraph.add(line)
         lineIndex++
     }
 
     flushParagraph()
-    if (inList) html.append("</ul>")
+    closeList()
     return html.toString()
 }
 
