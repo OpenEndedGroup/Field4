@@ -207,6 +207,7 @@ class ParticleSketch(
             synchronized(kept) { kept.getOrPut(renderer) { HashMap() }[shape] = it }
         }
         if (resources.owner != null && resources.owner !== module) resources.reset()
+        resources.activate()
         resources.owner = module
         resources.settings = settings
 
@@ -341,8 +342,6 @@ class ParticleSketch(
 
         init {
             buildDrawing()
-            renderer.renderList.preTargets["${shape.name}-sketch"] = this
-            display()
         }
 
         /** Particles alive; 0 as soon as [reset] is asked for, though the frame applies it. */
@@ -412,7 +411,19 @@ class ParticleSketch(
             return mesh
         }
 
-        private fun display(): ModulePointer {
+        private val displayModule: ModulePointer by lazy { buildDisplay() }
+
+        /**
+         * Make this the sketch running under its name: its frame and its display. Resources kept
+         * for a re-run are activated again, because another shape of sketch under the same name
+         * may have taken both in between.
+         */
+        fun activate() {
+            renderer.renderList.preTargets["${shape.name}-sketch"] = this
+            renderer.renderList += "${shape.name}-display" to displayModule
+        }
+
+        private fun buildDisplay(): ModulePointer {
             val name = "${shape.name}-display"
             val m = Module(
                 parameters(renderer) {
@@ -430,7 +441,6 @@ class ParticleSketch(
             m += "$name-quad" to fullscreenTriangle(m).apply {
                 push.bind("background") { settings.background }
             }
-            renderer.renderList += name to m
             return m
         }
 

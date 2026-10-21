@@ -9,6 +9,7 @@ import afield.graphics.render.ComputeMesh
 import afield.graphics.render.ComputeModulePointer
 import afield.graphics.render.Mesh
 import afield.graphics.render.Module
+import afield.graphics.render.ModulePointer
 import afield.graphics.render.Parameters
 import afield.graphics.render.computeMemoryBarrier
 import afield.graphics.render.fullscreenTriangle
@@ -377,6 +378,7 @@ class BoidSketch(
             synchronized(kept) { kept.getOrPut(renderer) { HashMap() }[shape] = it }
         }
         resources.flock = this
+        resources.activate()
 
         val mesh = ComputeMesh(renderer, module)
         mesh.push.bind("src") { resources.boids[resources.current] }
@@ -496,8 +498,6 @@ class BoidSketch(
             trailLayer("${shape.name}-trails")
             bodyLayer("${shape.name}-bodies")
             strokeLayer("${shape.name}-inspector", 1f)
-            renderer.renderList.preTargets["${shape.name}-flock"] = this
-            display()
         }
 
         fun install(module: ComputeModulePointer, mesh: ComputeMesh) {
@@ -565,7 +565,19 @@ class BoidSketch(
             }
         }
 
-        private fun display() {
+        private val displayModule: ModulePointer by lazy { buildDisplay() }
+
+        /**
+         * Make this the flock running under its name: its frame and its display. Resources kept
+         * for a re-run are activated again, because another shape of flock under the same name
+         * may have taken both in between.
+         */
+        fun activate() {
+            renderer.renderList.preTargets["${shape.name}-flock"] = this
+            renderer.renderList += "${shape.name}-display" to displayModule
+        }
+
+        private fun buildDisplay(): ModulePointer {
             val name = "${shape.name}-display"
             val m = Module(
                 parameters(renderer) {
@@ -583,7 +595,7 @@ class BoidSketch(
             m += "$name-quad" to fullscreenTriangle(m).apply {
                 push.bind("background") { settings.background }
             }
-            renderer.renderList += name to m
+            return m
         }
 
         fun metrics(): BoidMetrics {
