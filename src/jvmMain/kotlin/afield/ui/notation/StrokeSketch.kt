@@ -95,6 +95,7 @@ class Stroke internal constructor(
     val index: Int,
     /** The stroke's physics points, where the hand went, about 2 units apart. */
     val points: List<StrokePoint>,
+    internal val born: Double,
 ) : StrokeVerbs() {
     /** The box that held the pen when this stroke was drawn. */
     val box: Box get() = pen.box
@@ -103,7 +104,6 @@ class Stroke internal constructor(
     var t: Double = 0.0
         internal set
 
-    internal val born = AnimationClock.nowSeconds()
     internal var drawer: ((Double) -> List<FLine>)? = null
     internal var output: List<FLine> = emptyList()
     internal var indexed: FloatArray = FloatArray(0)
@@ -323,7 +323,7 @@ class StrokeSketch internal constructor(val info: SessionInformation) {
             }
             if (pts.size >= 2) {
                 if (!keepMarks) pen.box.notation.delete(mark)
-                val stroke = Stroke(this, pen, strokes.size, pts)
+                val stroke = Stroke(this, pen, strokes.size, pts, born = now)
                 runUser(stroke) { stroke.(pen.body)() }
                 strokes += stroke
             }
@@ -349,32 +349,37 @@ class StrokeSketch internal constructor(val info: SessionInformation) {
         if (running) return
         running = true
         inMain {
-            var last = AnimationClock.nowSeconds()
-            var owed = 0.0
-            while (true) {
-                while (true) (incoming.poll() ?: break).invoke()
-                val now = AnimationClock.nowSeconds()
-                owed = min(2 * STEP, owed + max(0.0, now - last))
-                last = now
-                var stepped = false
-                while (owed >= STEP) {
-                    step()
-                    owed -= STEP
-                    stepped = true
-                }
-                if (stepped) publish()
-                if (strokes.isEmpty() && pen == null && incoming.isEmpty()) {
-                    synchronized(this@StrokeSketch) { running = false }
-                    publish()
-                    return@inMain
-                }
-                delay(4)
-            }
+            while (tick(AnimationClock.nowSeconds())) delay(4)
+            synchronized(this@StrokeSketch) { running = false }
+            publish()
         }
     }
 
+    private var now = Double.NaN
+    private var owed = 0.0
+
+    /**
+     * One turn of the sketch's loop at time [at] (seconds): bring new strokes to life, take the 1/60 s
+     * steps owed since the last turn (two at most), and send the frame. False once there is nothing
+     * left to run: no strokes, no pen.
+     */
+    internal fun tick(at: Double): Boolean {
+        val last = now
+        now = at
+        while (true) (incoming.poll() ?: break).invoke()
+        if (!last.isNaN()) owed = min(2 * STEP, owed + max(0.0, at - last))
+        var stepped = false
+        // A turn exactly 1/60 s after the last can come out a hair short in floating point.
+        while (owed >= STEP - 1e-9) {
+            step()
+            owed = max(0.0, owed - STEP)
+            stepped = true
+        }
+        if (stepped) publish()
+        return !(strokes.isEmpty() && pen == null && incoming.isEmpty())
+    }
+
     private fun step() {
-        val now = AnimationClock.nowSeconds()
         val all = strokes.toList()
         for (s in all) for (p in s.points) {
             p.ax = 0.0

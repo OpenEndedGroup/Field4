@@ -311,6 +311,7 @@ the file, and the reach is described per file below in prose that a human checke
 | `documentGuides.kt` | 1 |
 | `fileproxy.kt` | 1 |
 | `visualizers.kt` | 1 |
+| `StrokeSketch.kt` | 1 |
 
 What each of those reaches, checked against the code rather than inferred from the name:
 
@@ -323,6 +324,7 @@ What each of those reaches, checked against the code rather than inferred from t
 | `Ai4Installer.kt` | AI chat sessions and tool use; reads or clears the attached document’s per-box saved chat, reports the last turn’s context metadata (`ai-chat-context`, no text), rewinds or switches a chat’s branches, and — when asked — undoes a rewound turn’s recorded edits and created boxes (`ai-chat-rewind-world`), reads the attached document’s saved state trees and bounded state details (`ai-state-tree`, including read/inspect callbacks registered by box code; no restore or fork), runs a document’s agent-extension chat commands (`ai-chat-command`, box code), and reads the saved document chat (`chat_history`, `<document>/ai4_document_chat.md`, which `chat_input` appends to), behind the existing `/ws` boundary |
 | `importing.kt` | notebook and EDN import — parses foreign documents into boxes |
 | `NotationServer.kt` | the attached document's drawing (the root box's `drawing` property): merges a client's scene into it, records the drawing-layer selection (memory only), anchors marks to boxes. No reach beyond what `set-string` on `root.drawing` already had; it runs box code only as the `onNotation` reactions that box code itself registered |
+| `StrokeSketch.kt` | `stroke-layer-ack`: a window says it has drawn the last stroke-layer frame, which only lets the next frame be sent to it. Reads nothing, writes nothing, runs no code |
 | `templating.kt` | template read and write, under the templates directory |
 | `chat.kt` | proxies to the configured chat server |
 | `ElectronRTTView.kt` | an RTT view that box code has already created: `subscribe` points that view's frame-ready pushes at the caller's socket and starts receiving the view's IOSurface ring from its per-view Mach service (local processes only), and `release` frees a ring slot. Both name a view by an unguessable id (pid + nanoTime) and do nothing for an unknown one. The worst a frame can do is redirect or stall one view's frames |
