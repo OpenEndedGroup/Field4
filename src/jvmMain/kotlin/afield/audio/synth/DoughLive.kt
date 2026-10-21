@@ -9,8 +9,11 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.WeakHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.exp
+import kotlin.math.max
+import kotlin.math.roundToLong
 import kotlin.math.sqrt
 
 /**
@@ -105,6 +108,75 @@ class DoughLive internal constructor(
 
     private val meter = DoughVoiceMeter(sampleRate, levelTimeConstant)
     private val pending = ConcurrentLinkedQueue<Map<String, Any?>>()
+    private val patterns = CopyOnWriteArrayList<PatternVoice>()
+
+    /** Frames the render thread has rendered (or, with no device draining it, dropped) since it started. */
+    @Volatile
+    var framesRendered: Long = 0L
+        private set
+
+    /** The frame that is being heard now: [framesRendered] less what is still waiting in the ring. */
+    val heardFrame: Long get() = max(0L, framesRendered - ring.fill)
+
+    /**
+     * A pattern [play] is playing. [stop] ends it after the block in progress; notes already started
+     * finish their own envelopes.
+     */
+    class PatternVoice internal constructor(
+        private val live: DoughLive,
+        val pattern: PatPattern<String>,
+        /** Cycles per second. */
+        val cps: Double,
+        /** The frame on [DoughLive.framesRendered]'s clock at which cycle 0 begins. */
+        val originFrame: Long,
+        /** The dough `group` its events carry, or null for none. */
+        val group: Int?,
+    ) {
+        @Volatile
+        var stopped = false
+            private set
+
+        /** The last exception a query of [pattern] threw (a `signal { }` that failed, say), or null. */
+        @Volatile
+        var lastError: Throwable? = null
+            internal set
+
+        /** Where this pattern is, in cycles, as heard now. */
+        val cycle: Double get() = max(0.0, (live.heardFrame - originFrame).toDouble() / live.sampleRate * cps)
+
+        fun stop() {
+            stopped = true
+            live.patterns.remove(this)
+        }
+
+        private val cpsQ = PatQ.of((cps * 1_000_000).roundToLong(), 1_000_000L)
+
+        internal fun eventsInBlock(firstFrame: Long, frames: Int): List<Map<String, Any?>> {
+            val a = firstFrame - originFrame
+            val b = a + frames
+            if (b <= 0) return emptyList()
+            val arc = PatArc(PatQ.of(max(0L, a), live.sampleRate.toLong()) * cpsQ, PatQ.of(b, live.sampleRate.toLong()) * cpsQ)
+            // A continuous pattern (no `whole`) has no notes to strike, so only events with a start play.
+            return pattern.events(arc).filter { it.whole != null && it.hasOnset }.map { event ->
+                val e = doughPatternEvent(event, cps)
+                if (group == null || "group" in e) e else e + ("group" to group)
+            }
+        }
+    }
+
+    /**
+     * Play [pattern] at [cps] cycles per second until [PatternVoice.stop], from cycle 0 at [originFrame]
+     * (now, by default; pass another voice's `originFrame` to play in step with it).
+     *
+     * The pattern is queried on the render thread one 128-frame block at a time, so onsets land on a
+     * block (2.7 ms at 48 kHz) and a continuous parameter, `gain(sig { level })` for instance, is read
+     * as each event is scheduled. Each event becomes a dough event by [doughPatternEvent]. A query
+     * that throws is recorded in [PatternVoice.lastError] and that block of the pattern is skipped.
+     */
+    fun play(pattern: PatPattern<String>, cps: Double = 0.5, group: Int? = null, originFrame: Long = framesRendered): PatternVoice {
+        require(cps > 0.0) { "cps must be > 0, got $cps" }
+        return PatternVoice(this, pattern, cps, originFrame, group).also { patterns.add(it) }
+    }
     @Volatile
     private var stopped = false
     private var thread: Thread? = null
@@ -151,7 +223,9 @@ class DoughLive internal constructor(
             while (!stopped) {
                 drain(engine)
                 if (ring.fill < targetFillFrames && ring.room >= DoughEngine.BLOCK_SIZE) {
+                    schedulePatterns(engine)
                     engine.renderBlock(l, r)
+                    framesRendered += DoughEngine.BLOCK_SIZE
                     meter.afterBlock(engine)
                     ring.write(l, r, DoughEngine.BLOCK_SIZE)
                     lastProgress = System.nanoTime()
@@ -164,7 +238,9 @@ class DoughLive internal constructor(
                     // Nobody is draining the ring. Keep the engine's clock and the meters moving at
                     // the pace a device would have, and drop what it renders.
                     while (stallClock < stalledFor - 0.25) {
+                        schedulePatterns(engine)
                         engine.renderBlock(l, r)
+                        framesRendered += DoughEngine.BLOCK_SIZE
                         meter.afterBlock(engine)
                         droppedBlocks++
                         stallClock += blockSeconds
@@ -179,6 +255,26 @@ class DoughLive internal constructor(
         } finally {
             ready = false
             engine.close()
+        }
+    }
+
+    private fun schedulePatterns(engine: DoughEngine) {
+        for (voice in patterns) {
+            if (voice.stopped) continue
+            val events = try {
+                voice.eventsInBlock(framesRendered, DoughEngine.BLOCK_SIZE)
+            } catch (t: Throwable) {
+                voice.lastError = t
+                continue
+            }
+            for (event in events) {
+                try {
+                    engine.evaluate(event)
+                } catch (t: Throwable) {
+                    lastError = t
+                    lprintln("warning,audio", "dough refused $event: $t")
+                }
+            }
         }
     }
 
@@ -279,6 +375,39 @@ fun doughPathEvent(path: String): Map<String, String> {
     while (i < chunks.size) {
         out[chunks[i].trim()] = chunks[i + 1].trim()
         i += 2
+    }
+    return out
+}
+
+/**
+ * A pattern event as the dough event that plays it, for patterns written the Tidal/Strudel way:
+ * the event's value names a note or a sound, and its annotations are dough parameters.
+ *
+ * A value that reads as a note ([patNoteNumber]: `60`, `c5`, `ef4`) becomes `note`, played on the
+ * event's `s` (or `sound`), triangle by default as in Strudel; any other word is the sound itself, so
+ * `pat("bd hh cp")` plays dough's own drums. `note`/`n` annotations win over the value and may be
+ * note names too. `duration` is the event's length in seconds at [cps], times `sustain` if given.
+ * Every other annotation (`gain`, `pan` from 0 left to 1 right, `lpf`, `room`, `speed`, ...) goes to
+ * dough verbatim.
+ */
+fun doughPatternEvent(event: PatEvent<String>, cps: Double): Map<String, Any?> {
+    val ann = event.annotations
+    val out = linkedMapOf<String, Any?>("dough" to "play")
+    val atom = event.value.trim()
+    val atomNote = patNoteNumber(atom)
+    if (atomNote != null) {
+        out["s"] = ann["s"] ?: ann["sound"] ?: "triangle"
+        out["note"] = atomNote.toString()
+    } else {
+        out["s"] = atom.ifEmpty { ann["s"] ?: ann["sound"] ?: "triangle" }
+    }
+    (ann["note"] ?: ann["n"])?.let { v -> out["note"] = patNoteNumber(v)?.toString() ?: v }
+    val whole = event.extent
+    val seconds = (whole.end - whole.start).toDouble() / cps
+    out["duration"] = patFormatNumber(seconds * (ann["sustain"]?.toDoubleOrNull() ?: 1.0))
+    for ((k, v) in ann) {
+        if (k in out || k == "sound" || k == "n" || k == "sustain") continue
+        out[k] = v
     }
     return out
 }

@@ -4702,3 +4702,175 @@ fun FLine.byOneDollarFiltering(
     return blended.toFLine()
 }
 
+
+// ==================== SKETCH VERBS: CENTRIPETAL SPLINES, WIGGLE, ATOMIZE, TRANSFORM-TO ====================
+
+/**
+ * A smooth curve through every point of [points]: a centripetal Catmull-Rom spline, as cubic segments.
+ *
+ * [catmullRomToBezier] is the *uniform* spline, which overshoots and can loop where neighbouring
+ * points are unevenly spaced, as they are in anything drawn by hand. The centripetal parameterisation
+ * ([alpha] = 0.5, the default; 0 is uniform and 1 chordal) weights each tangent by the distance to the
+ * neighbours, so the curve stays close to the hand's path and never forms a cusp or a self-loop within
+ * a segment. The ends are clamped: the first and last points stand in for their missing neighbours.
+ *
+ * ```
+ * val curve = catmullRomCentripetal(listOf(vec(0, 0), vec(40, 10), vec(60, 60), vec(140, 70)))
+ * ```
+ *
+ * Fewer than three points give a polyline (one point gives a single `moveTo`).
+ */
+fun catmullRomCentripetal(points: List<Vec2>, alpha: Double = 0.5): FLine {
+    val out = FLine()
+    if (points.isEmpty()) return out
+    out.moveTo(points[0].x, points[0].y)
+    if (points.size < 3) {
+        for (i in 1 until points.size) out.lineTo(points[i].x, points[i].y)
+        return out
+    }
+    fun d(a: Vec2, b: Vec2): Double {
+        val dx = (b.x - a.x).toDouble()
+        val dy = (b.y - a.y).toDouble()
+        val v = (dx * dx + dy * dy).pow(alpha * 0.5)
+        return if (v < 1e-6) 1.0 else v
+    }
+    val n = points.size
+    for (j in 0 until n - 1) {
+        val p0 = points[max(0, j - 1)]
+        val p1 = points[j]
+        val p2 = points[min(n - 1, j + 1)]
+        val p3 = points[min(n - 1, j + 2)]
+        val d1 = d(p0, p1)
+        val d2 = d(p1, p2)
+        val d3 = d(p2, p3)
+        val b1x = (d1 * d1 * p2.x - d2 * d2 * p0.x + (2 * d1 * d1 + 3 * d1 * d2 + d2 * d2) * p1.x) / (3 * d1 * (d1 + d2))
+        val b1y = (d1 * d1 * p2.y - d2 * d2 * p0.y + (2 * d1 * d1 + 3 * d1 * d2 + d2 * d2) * p1.y) / (3 * d1 * (d1 + d2))
+        val b2x = (d3 * d3 * p1.x - d2 * d2 * p3.x + (2 * d3 * d3 + 3 * d3 * d2 + d2 * d2) * p2.x) / (3 * d3 * (d3 + d2))
+        val b2y = (d3 * d3 * p1.y - d2 * d2 * p3.y + (2 * d3 * d3 + 3 * d3 * d2 + d2 * d2) * p2.y) / (3 * d3 * (d3 + d2))
+        out.cubicTo(b1x, b1y, 0, b2x, b2y, 0, p2.x, p2.y, 0)
+    }
+    return out
+}
+
+/**
+ * Classic 2D Perlin noise with a fixed permutation table, in about -1..1, zero at integer lattice
+ * points.
+ *
+ * The table is the one the madp sketch demos shuffle (`(i * 16807 + 37) % (i + 1)`), so a noise
+ * field ported from them, and [byWiggling], moves exactly as it did there.
+ */
+object ClassicPerlin2D {
+    private val perm: IntArray = run {
+        val p = IntArray(256) { it }
+        for (i in 255 downTo 1) {
+            val j = (i * 16807 + 37) % (i + 1)
+            val tmp = p[i]; p[i] = p[j]; p[j] = tmp
+        }
+        IntArray(512) { p[it and 255] }
+    }
+
+    private fun fade(t: Double) = t * t * t * (t * (t * 6 - 15) + 10)
+    private fun lerp(a: Double, b: Double, t: Double) = a + t * (b - a)
+    private fun grad(hash: Int, x: Double, y: Double): Double {
+        val h = hash and 3
+        val u = if (h < 2) x else y
+        val v = if (h < 2) y else x
+        return (if (h and 1 != 0) -u else u) + (if (h and 2 != 0) -v else v)
+    }
+
+    /** The noise at ([x], [y]). */
+    fun noise(x: Double, y: Double): Double {
+        val fx = floor(x)
+        val fy = floor(y)
+        val xi = fx.toInt() and 255
+        val yi = fy.toInt() and 255
+        val xf = x - fx
+        val yf = y - fy
+        val u = fade(xf)
+        val v = fade(yf)
+        val aa = perm[perm[xi] + yi]
+        val ab = perm[perm[xi] + yi + 1]
+        val ba = perm[perm[xi + 1] + yi]
+        val bb = perm[perm[xi + 1] + yi + 1]
+        return lerp(
+            lerp(grad(aa, xf, yf), grad(ba, xf - 1, yf), u),
+            lerp(grad(ab, xf, yf - 1), grad(bb, xf - 1, yf - 1), u),
+            v,
+        )
+    }
+}
+
+/**
+ * Every node of this line (and every cubic's control points) pushed about by 2D Perlin noise
+ * ([ClassicPerlin2D]): [amplitude] in the line's own units, [frequency] in noise cycles per unit, and
+ * [phase] sliding the noise field, so `phase = t` makes the wiggle move.
+ *
+ * The x displacement is read first and the y displacement is read at the already-moved x, as the madp
+ * line demo's `wiggle` does. Node properties (colour, point size, overshoot) are kept.
+ */
+fun FLine.byWiggling(amplitude: Double = 10.0, frequency: Double = 0.05, phase: Double = 0.0): FLine {
+    val a = amplitude
+    val f = frequency
+    return transform { p ->
+        val x = p.x + ClassicPerlin2D.noise(p.x * f + phase, p.y * f + phase + 100) * a
+        val y = p.y + ClassicPerlin2D.noise(x * f + phase + 200, p.y * f + phase + 300) * a
+        vec(x, y, p.z)
+    }
+}
+
+/**
+ * This line broken into separate segments: every drawn piece of it becomes its own `moveTo`/`lineTo`
+ * subpath, between the same end points (a cubic is replaced by its chord). Each segment carries the
+ * properties of the node that ended it.
+ *
+ * A line of separate pieces draws the same until something treats subpaths one by one: per-subpath
+ * overshoot, [byWiggling] (which then moves the two ends of a join apart), or a dot at each end.
+ */
+fun FLine.byAtomizing(): FLine {
+    val out = FLine()
+    out.properties.putAll(properties)
+    var at: Vec3? = null
+    for (node in nodes) {
+        when (node) {
+            is FLine.MoveTo -> at = Vec3(node.to)
+            is FLine.Close -> at = null
+            else -> {
+                val from = at
+                val to = Vec3(node.to)
+                if (from != null) {
+                    out.moveTo(from)
+                    out.lineTo(to)
+                    out.here.properties.putAll(node.properties)
+                }
+                at = to
+            }
+        }
+    }
+    return out
+}
+
+/**
+ * This line rotated, scaled and moved as one rigid shape so that its first node lands on [start] and
+ * its last on [end]. A line whose two ends coincide is returned unchanged, since no rotation would be
+ * defined.
+ */
+fun FLine.byTransformingTo(start: Vec2, end: Vec2): FLine {
+    if (nodes.isEmpty()) return copy()
+    val a = endPointOf(0)
+    val b = endPointOf(nodes.size - 1)
+    val sdx = (b.x - a.x).toDouble()
+    val sdy = (b.y - a.y).toDouble()
+    val sLen = hypot(sdx, sdy)
+    if (sLen < 1e-6) return copy()
+    val tdx = (end.x - start.x).toDouble()
+    val tdy = (end.y - start.y).toDouble()
+    val scale = hypot(tdx, tdy) / sLen
+    val rot = atan2(tdy, tdx) - atan2(sdy, sdx)
+    val c = cos(rot)
+    val s = sin(rot)
+    return transform { p ->
+        val dx = (p.x - a.x).toDouble()
+        val dy = (p.y - a.y).toDouble()
+        vec(start.x + (dx * c - dy * s) * scale, start.y + (dx * s + dy * c) * scale, p.z)
+    }
+}
