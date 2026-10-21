@@ -215,3 +215,11 @@ operations:
                   nudgeLength = false,
               ),
           )
+  - execute:
+      box: madp_ga_lead
+  - execute:
+      box: madp_ga_noise
+  - execute:
+      box: madp_ga_fbm
+  - execute:
+      box: madp_ga_numbers
