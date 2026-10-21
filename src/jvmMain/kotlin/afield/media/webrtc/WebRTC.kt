@@ -12,6 +12,7 @@ import afield.graphics.texture.ImageView
 import afield.graphics.texture.PreparesSampledImages
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.Target
+import afield.graphics.vulkan.targets.HasRenderToTexture
 import afield.graphics.vulkan.device.CommandBuffer
 import afield.media.browser.FieldUiBrowserTexture
 import afield.media.stream.ElectronRTTView
@@ -63,9 +64,9 @@ private fun jsString(value: String): String = JsonPrimitive(value).toString()
  *
  * ```
  * val sink = webrtcSink("orbit")
- * val module = moduleHere { sink.rtt.apply() }
+ * val module = moduleHere { +sink }
  * module += "quad" to quad
- * sink.rtt += "content" to module
+ * sink += "content" to module
  * display("main", sink.html())
  * ```
  *
@@ -80,18 +81,24 @@ class WebRTCSink(
     val network: WebRTCNetwork = WebRTCNetwork.default,
     /** The frame rate asked of `canvas.captureStream`; Chromium encodes at most this many a second. */
     val framesPerSecond: Int = 30,
-) {
-    /** Render into this. */
-    val rtt get() = view.rtt
+) : HasRenderToTexture {
+    /** Render into this; `+sink` inside `moduleHere { }` and `sink += "name" to module` use it. */
+    override val rtt get() = view.rtt
 
     /** The name viewers watch, once the network has confirmed it (`login/name`); null until then. */
-    @Volatile var publishedAs: String? = null; internal set
+    @Volatile
+    var publishedAs: String? = null
+        internal set
 
     /** The page's last status line: "publishing @…", "publishing @… to 2 viewer(s)", or an error. */
-    @Volatile var status: String = "not shown yet"; internal set
+    @Volatile
+    var status: String = "not shown yet"
+        internal set
 
     /** How many peers are receiving the stream now. */
-    @Volatile var viewers: Int = 0; internal set
+    @Volatile
+    var viewers: Int = 0
+        internal set
 
     init {
         installHandlers()
@@ -211,10 +218,14 @@ class WebRTCSource internal constructor(
     measure: Boolean,
 ) : HasImageView, PreparesSampledImages, AutoCloseable {
     /** The publisher shown, as normalised by the network (`alice/left`). */
-    @Volatile var target: String = normalizePublishName(target); private set
+    @Volatile
+    var target: String = normalizePublishName(target)
+        private set
 
     /** The page's last status: "requesting @…", "waiting for @… to publish", "receiving @…", or an error. */
-    @Volatile var status: String = "starting"; private set
+    @Volatile
+    var status: String = "starting"
+        private set
 
     /** The hidden page's browser, for anything else you want to ask it (it is a full `PuppetBrowser`). */
     val browser = FieldUiBrowserTexture(
@@ -461,8 +472,10 @@ class WebRTCPublishers internal constructor(val network: WebRTCNetwork) {
                 val base = p["network"]?.jsonPrimitive?.contentOrNull
                 val session = p["session"]?.jsonPrimitive?.contentOrNull
                 val login = p["login"]?.jsonPrimitive?.contentOrNull
-                if (base != null && !session.isNullOrBlank() && login != null) {
-                    val network = WebRTCNetwork.aaaframe(base)
+                // Only a network box code has registered: a client on /ws cannot make Field remember
+                // a server of its choosing.
+                val network = WebRTCNetwork.lookup(base)?.takeIf { base != null && !it.isLocal }
+                if (network != null && !session.isNullOrBlank() && login != null) {
                     network.signedIn(session, login)
                     PublisherLobby.existing(network)?.signedIn()
                     lprintln("info,webrtc", "signed in to $base as @$login")

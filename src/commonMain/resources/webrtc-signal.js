@@ -13,7 +13,7 @@ export async function webrtcConfig(network) {
   return response.json();
 }
 
-// One signalling socket. `on(type, fn)` listens; `send(message)` queues until open.
+// One signalling socket. `on(type, fn)` listens; `post(message)` queues until open.
 export class FieldSignal {
   constructor(network, onStatus = () => {}) {
     this.network = network || "";
@@ -73,7 +73,7 @@ export class FieldSignal {
     this.listeners.get(type).push(fn);
   }
 
-  send(message) {
+  post(message) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(message));
     else this.queue.push(message);
   }
@@ -103,7 +103,7 @@ const peerKey = (connectionId, requestId) => connectionId + ":" + requestId;
 function makePeer(signal, iceServers, toConnectionId, requestId) {
   const pc = new RTCPeerConnection({ iceServers });
   pc.onicecandidate = (event) => {
-    if (event.candidate) signal.send({ type: "candidate", toConnectionId, requestId, candidate: event.candidate });
+    if (event.candidate) signal.post({ type: "candidate", toConnectionId, requestId, candidate: event.candidate });
   };
   return pc;
 }
@@ -117,7 +117,7 @@ export async function publish({ network, stream, suffix, onStatus = () => {} }) 
   const signal = new FieldSignal(config.network, onStatus);
   const peers = new Map();
   let name = "";
-  const start = () => signal.send({ type: "publish-start", suffix: suffix || "" });
+  const start = () => signal.post({ type: "publish-start", suffix: suffix || "" });
 
   signal.on("publish-ready", (m) => { name = String(m.username || ""); onStatus("publishing @" + name, name); });
   signal.on("reconnected", start);
@@ -134,7 +134,7 @@ export async function publish({ network, stream, suffix, onStatus = () => {} }) 
     };
     for (const track of stream.getTracks()) pc.addTrack(track, stream);
     await pc.setLocalDescription(await pc.createOffer());
-    signal.send({ type: "offer", toConnectionId: to, requestId, sdp: pc.localDescription });
+    signal.post({ type: "offer", toConnectionId: to, requestId, sdp: pc.localDescription });
   });
   signal.on("answer", async (m) => {
     const pc = peers.get(peerKey(String(m.fromConnectionId || ""), String(m.requestId || "")));
@@ -158,7 +158,7 @@ export async function publish({ network, stream, suffix, onStatus = () => {} }) 
     get viewers() { return [...peers.values()].filter((p) => p.connectionState === "connected").length; },
     stats() { return Promise.all([...peers.values()].map(videoStats)); },
     stop() {
-      signal.send({ type: "publish-stop" });
+      signal.post({ type: "publish-stop" });
       for (const pc of peers.values()) pc.close();
       peers.clear();
       setTimeout(() => signal.close(), 50);
@@ -186,7 +186,7 @@ export async function watch({ network, target, onStream, onStatus = () => {} }) 
     hangup();
     if (!current) { onStatus("no publisher chosen"); return; }
     requestId = Date.now().toString(36) + Math.random().toString(36).slice(2);
-    signal.send({ type: "watch", target: current, requestId });
+    signal.post({ type: "watch", target: current, requestId });
     onStatus("requesting @" + current);
   };
 
@@ -215,7 +215,7 @@ export async function watch({ network, target, onStream, onStatus = () => {} }) 
     };
     await pc.setRemoteDescription(m.sdp);
     await pc.setLocalDescription(await pc.createAnswer());
-    signal.send({ type: "answer", toConnectionId: from, requestId, sdp: pc.localDescription });
+    signal.post({ type: "answer", toConnectionId: from, requestId, sdp: pc.localDescription });
   });
   signal.on("candidate", async (m) => {
     if (pc && String(m.requestId || "") === requestId && m.candidate) await pc.addIceCandidate(m.candidate).catch(() => {});

@@ -23,10 +23,10 @@ import afield.media.webrtc.webrtcSink
 
 @exported val sink = webrtcSink("field-shader", 640, 360)
 
-val module = moduleHere { sink.rtt.apply() }
+val module = moduleHere { +sink }
 val quad = Mesh()
 module += "quad" to quad
-sink.rtt += "content" to module
+sink += "content" to module
 
 quad.clock = { vec(System.nanoTime() / 1e9, 0.0, 0.0, 0.0) }
 quad.set(4, 2) {
@@ -41,9 +41,10 @@ quad.set(4, 2) {
 display("main", sink.html())
 ```
 
-`sink.rtt` is an ordinary `RenderToTexture`: attach modules to it as you would to any texture
-you render into. `sink.html()` shows the frames in the output panel and publishes them. The line
-under the view names the stream and counts its viewers:
+`+sink` points the module at the sink's render target, an ordinary `RenderToTexture`, and
+`sink +=` attaches modules to it as it would to any texture you render into. `sink.html()` shows
+the frames in the output panel and publishes them. The line under the view names the stream and
+counts its viewers:
 
 ![The publishing box's output panel: a 640 by 360 view of green and blue petals on black, the line "44.0 fps · fence→canvas 1.70 ms avg" under it, and below that "WebRTC: publishing @fieldbox/field-shader to 1 viewer(s)"](assets/webrtc/publish-box.png)
 

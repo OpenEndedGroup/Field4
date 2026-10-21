@@ -1,21 +1,6 @@
 package afield.media.webrtc
 
 import afield.app.diagnostics.logging.lprintln
-import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.response.respond
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.get
-import io.ktor.server.websocket.webSocket
-import io.ktor.websocket.CloseReason
-import io.ktor.websocket.Frame
-import io.ktor.websocket.close
-import io.ktor.websocket.readText
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -67,7 +52,8 @@ class WebRTCNetwork private constructor(
     val isLocal: Boolean get() = baseUrl == null
 
     /** The value of aaaframe's `session` cookie; null for the local relay or before signing in. */
-    @Volatile internal var session: String? = session
+    @Volatile
+    internal var session: String? = session
         set(value) {
             field = value
             WebRTCConfig.forget(this)
@@ -492,7 +478,8 @@ internal class PublisherLobby private constructor(val network: WebRTCNetwork) {
     private var generation = 0
 
     /** Opens a fresh upstream socket, unless one newer than [after] already replaced the old one. */
-    @Synchronized private fun connectUpstream(after: Int = generation) {
+    @Synchronized
+    private fun connectUpstream(after: Int = generation) {
         if (after != generation) return
         val mine = ++generation
         upstream?.close()
@@ -536,62 +523,13 @@ internal class PublisherLobby private constructor(val network: WebRTCNetwork) {
     }
 }
 
-/**
- * `/ws/webrtc-signaling?network=<id>` and `/api/webrtc-config?network=<id>`: what the sink and
- * source pages talk to. Installed beside Field's other WebSockets.
- */
-fun Route.installWebRTCSignalingRoutes() {
-    get("/api/webrtc-config") {
-        val network = WebRTCNetwork.lookup(call.request.queryParameters["network"])
-            ?: return@get call.respond(HttpStatusCode.NotFound, "unknown WebRTC network; register it with WebRTCNetwork.aaaframe(...)")
-        val config = runCatching { withContext(Dispatchers.IO) { WebRTCConfig.forNetwork(network) } }.getOrElse { error ->
-            buildJsonObject {
-                put("network", network.id)
-                put("error", "could not reach ${network.baseUrl}: ${error.message}")
-                put("iceServers", defaultIceServers)
-            }
-        }
-        call.respondText(config.toString(), ContentType.Application.Json)
-    }
-
-    webSocket("/ws/webrtc-signaling") {
-        val network = WebRTCNetwork.lookup(call.request.queryParameters["network"])
-        if (network == null) {
-            close(CloseReason(CloseReason.Codes.CANNOT_ACCEPT, "unknown WebRTC network"))
-            return@webSocket
-        }
-        // Outgoing frames go through one channel so neither the relay nor the upstream listener
-        // ever suspends or blocks on this socket.
-        val outgoing = Channel<String>(Channel.UNLIMITED)
-        val writer = launch { for (text in outgoing) send(Frame.Text(text)) }
-        val peer = object : SignalingPeer { override fun deliver(text: String) { outgoing.trySend(text) } }
-        if (network.isLocal) {
-            val relay = LocalSignalingRelay.shared
-            val id = relay.connect(peer)
-            try {
-                for (frame in incoming) if (frame is Frame.Text) relay.receive(id, frame.readText())
-            } finally {
-                relay.disconnect(id)
-                outgoing.close()
-                writer.cancel()
-            }
-        } else {
-            val closed = kotlinx.coroutines.CompletableDeferred<String>()
-            val upstream = UpstreamSignaling(network, onText = peer::deliver, onClose = { closed.complete(it) })
-            val reader = launch {
-                for (frame in incoming) if (frame is Frame.Text) upstream.send(frame.readText())
-                closed.complete("page closed")
-            }
-            val reason = closed.await()
-            if (reason != "page closed") {
-                lprintln("info,webrtc", "aaaframe signalling for ${network.baseUrl} ended: $reason")
-                outgoing.trySend(buildJsonObject { put("type", "field-error"); put("error", reason) }.toString())
-            }
-            upstream.close()
-            outgoing.close()
-            writer.join()
-            reader.cancel()
-            close(CloseReason(CloseReason.Codes.NORMAL, reason.take(100)))
-        }
-    }
+/** The config a page gets when Field cannot reach the network's server at all. */
+internal fun unreachableConfig(network: WebRTCNetwork, error: Throwable): JsonObject = buildJsonObject {
+    put("network", network.id)
+    put("error", "could not reach ${network.baseUrl}: ${error.message}")
+    put("iceServers", defaultIceServers)
 }
+
+/** The message a page is sent when Field's upstream socket to aaaframe ends for a reason of its own. */
+internal fun fieldErrorMessage(reason: String): String =
+    buildJsonObject { put("type", "field-error"); put("error", reason) }.toString()

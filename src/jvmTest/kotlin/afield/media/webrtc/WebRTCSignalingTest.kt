@@ -68,6 +68,22 @@ class WebRTCSignalingTest {
     }
 
     @Test
+    fun thePublisherListFollowsTheLocalRelay() {
+        val list = webrtcPublishers(WebRTCNetwork.local)
+        val seen = LinkedBlockingQueue<List<String>>()
+        list.onChange { seen += it }
+        val peer = Peer()
+        val id = LocalSignalingRelay.shared.connect(peer)
+        LocalSignalingRelay.shared.receive(id, """{"type":"publish-start","suffix":"list-test"}""")
+        val name = peer.next("publish-ready").str("username")
+        while (name !in assertNotNull(seen.poll(5, TimeUnit.SECONDS), "the list never showed $name")) Unit
+        assertTrue(name in list.names)
+        LocalSignalingRelay.shared.disconnect(id)
+        while (name in assertNotNull(seen.poll(5, TimeUnit.SECONDS), "the list never dropped $name")) Unit
+        list.close()
+    }
+
+    @Test
     fun joiningAClassRemembersItAsTheDefault() {
         val previous = WebRTCNetwork.default
         try {

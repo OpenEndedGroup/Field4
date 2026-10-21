@@ -187,6 +187,12 @@ class DocumentedApiEvaluationTest {
      * and "no cheap evaluator exists" are different sentences.
      */
     private val COMPILE_ONLY_REMAINDER: Map<String, String> = mapOf(
+        // webrtc.md (2026-10-21): the sink publishes from an ElectronRTTView in the Field Electron
+        // app's output area, and the source is a hidden Electron page sampled as a Vulkan texture;
+        // CI has neither. WebRTCSignalingTest runs the relay, the aaaframe bridge and webrtcPublishers
+        // underneath; the live runs are recorded in dev_docs/WEBRTC_SOURCES_SINKS.md.
+        "webrtcSink" to "webrtc.md; needs the Field Electron app (an ElectronRTTView canvas) and a renderer; verified live, dev_docs/WEBRTC_SOURCES_SINKS.md",
+        "webrtcSource" to "webrtc.md; needs Electron's offscreen page and a Vulkan renderer; verified live, dev_docs/WEBRTC_SOURCES_SINKS.md",
         // temporal_memory.md (2026-10-20): the temporal_memory transcript is COMPILE_ONLY because its
         // dance boxes start a Timestral worker that needs a downloaded checkpoint; they run only as
         // docs captures. This row is a TODO: trimStill is cheap to cover in a jvmTest.
