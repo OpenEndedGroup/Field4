@@ -539,7 +539,23 @@ window.FieldViewer = Object.freeze({renderStats: () => renderScheduler.stats(), 
             render.visible && render.frames > 0, error:captureState.error || tools.error};
     }});
 let glbExporting = false;
-async function exportGLB({download=true} = {}) {
+const formatGlbSize = n => n < 1048576 ? Math.ceil(n / 1024) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
+/**
+ * The GLB through Field's gltfpack, when it is installed (`./gradlew prepareGltfpack`) and makes it smaller;
+ * otherwise `null`, and the export stays uncompressed. A downloaded export only: what `exportGLB` returns to
+ * code is the plain GLB, which any loader reads.
+ */
+async function gltfpackGLB(data) {
+    try {
+        const ws = new URL(buildWsUrl());
+        const origin = `${ws.protocol === 'wss:' ? 'https:' : 'http:'}//${ws.host}`;
+        const response = await fetch(`${origin}/three-gltfpack`, {method: 'POST', headers: {'Content-Type': 'model/gltf-binary'}, body: data});
+        if (!response.ok) return null;
+        const packed = await response.arrayBuffer();
+        return packed.byteLength > 0 && packed.byteLength < data.byteLength ? packed : null;
+    } catch (_) { return null; }
+}
+async function exportGLB({download=true, compress=download} = {}) {
     if (glbExporting) throw new Error('An export is already in progress.');
     glbExporting = true;
     const button = document.getElementById('export-glb'), status = document.getElementById('glb-status');
@@ -557,15 +573,17 @@ async function exportGLB({download=true} = {}) {
             metadata:{viewId:urlParams.get('uid'), revision:featureIdentity(), explodeAmount:state.explode,
                 assemblyStep:state.assemblyStep, tools:state.tools, sectionEnabled:state.sectionEnabled,
                 renderOrigin:state.renderOrigin, renderUpAxis:state.renderUpAxis}});
+        const packed = compress ? await gltfpackGLB(data) : null;
         if (download) {
-            const url = URL.createObjectURL(new Blob([data], {type:'model/gltf-binary'}));
+            const url = URL.createObjectURL(new Blob([packed || data], {type:'model/gltf-binary'}));
             const link = document.createElement('a');
             link.href = url; link.download = (urlParams.get('uid') || 'field-view').replace(/[^a-zA-Z0-9_-]/g, '_') + (state.xray ? '-xray' : '') + '.glb';
             document.body.appendChild(link); link.click(); link.remove();
             setTimeout(() => URL.revokeObjectURL(url), 30000);
         }
-        status.textContent = 'GLB ready · ' + (data.byteLength < 1048576
-            ? Math.ceil(data.byteLength / 1024) + ' KB' : (data.byteLength / 1048576).toFixed(1) + ' MB');
+        status.textContent = packed
+            ? `GLB ready · gltfpack ${formatGlbSize(data.byteLength)} → ${formatGlbSize(packed.byteLength)}`
+            : 'GLB ready · ' + formatGlbSize(data.byteLength);
         return data;
     } catch (error) {
         status.classList.add('is-error'); status.textContent = 'Export failed: ' + error.message;
@@ -796,6 +814,8 @@ function applyStudio(spec, bounds) {
         // Shadow support is compiled into each program, so a switch has to recompile them.
         scene.traverse(o => { if (o.material && !Array.isArray(o.material)) o.material.needsUpdate = true; });
     }
+    studioAo.wanted = on && spec.ambientOcclusion !== false;
+    if (studioAo.wanted) loadStudioAo();
     if (!on) return;
     const min = bounds?.min || [-1, -1, -1], max = bounds?.max || [1, 1, 1];
     const cx = (min[0] + max[0]) / 2, cz = (min[2] + max[2]) / 2;
@@ -822,6 +842,44 @@ function applyStudio(spec, bounds) {
     baseGeometryRoot.traverse(o => {
         if (o.isMesh && o.material?.isMeshStandardMaterial) { o.castShadow = shadows; o.receiveShadow = shadows; }
     });
+}
+// Ambient occlusion, as the toolbox has it: RenderPass → SSAOPass → OutputPass (tone mapping and sRGB),
+// loaded from the vendored add-ons the first time a studio asks for it, so other views never fetch them.
+// One view only: a contact sheet's panels and X-ray draw directly, as before.
+const studioAo = {wanted: false, composer: null, pass: null, loading: null};
+function loadStudioAo() {
+    if (studioAo.loading) return studioAo.loading;
+    studioAo.loading = Promise.all([
+        import('three/addons/postprocessing/EffectComposer.js'),
+        import('three/addons/postprocessing/RenderPass.js'),
+        import('three/addons/postprocessing/SSAOPass.js'),
+        import('three/addons/postprocessing/OutputPass.js'),
+    ]).then(([{EffectComposer}, {RenderPass}, {SSAOPass}, {OutputPass}]) => {
+        const w = Math.max(1, container.clientWidth), h = Math.max(1, container.clientHeight);
+        const composer = new EffectComposer(renderer);
+        composer.setPixelRatio(getDpr());
+        composer.setSize(w, h);
+        const pass = new SSAOPass(scene, camera, w, h);
+        pass.kernelRadius = 12;
+        composer.addPass(new RenderPass(scene, camera));
+        composer.addPass(pass);
+        composer.addPass(new OutputPass());
+        studioAo.composer = composer; studioAo.pass = pass;
+        requestRender();
+    }).catch(error => console.warn('three viewer: ambient occlusion is unavailable', error));
+    return studioAo.loading;
+}
+function studioAoActive() {
+    return studioAo.wanted && !!studioAo.composer && studioRoot.visible && panelState.cameras.length <= 1 && !xrayState.enabled;
+}
+function renderStudioAo() {
+    // SSAO compares depths as fractions of far - near. The toolbox's thresholds (0.001, 0.075) were set
+    // for its camera, near = d / 100 and far = d * 100 at distance d, so they are rescaled to this one.
+    const d = camera.position.distanceTo(controls.target);
+    const scale = (d * 100 - d / 100) / Math.max(1e-9, camera.far - camera.near);
+    studioAo.pass.minDistance = 0.001 * scale;
+    studioAo.pass.maxDistance = Math.min(1, 0.075 * scale);
+    studioAo.composer.render();
 }
 // [viewer-region studio] END
 
@@ -6212,6 +6270,8 @@ function applyGeometry(payload) {
         shot.configure(payload.shot); shotDistance = 1; shotAppliedDistance = 1;
         applyCameraLinkRequest(payload.cameraLink);
         inspectorRefresh();
+        // A capture waits for the occlusion pass a studio asked for, so it is never taken without it.
+        if (studioAo.wanted) await loadStudioAo();
         requestRender();
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         if (payloadState === payload || (settleKey !== null && captureState.settleKey === settleKey)) captureState.ready = true;
@@ -6246,6 +6306,27 @@ function sendMessage(payload) {
     wsState.ws.send(JSON.stringify(message));
 }
 
+/**
+ * Field asks what this view looks like (`ThreeGeometryViewState.snapshot`, an agent's `geometry.look`):
+ * draw one frame and read the canvas in the same task, before the drawing buffer is presented and cleared.
+ * The camera is wherever the person left it; the HUD is HTML and not in the picture.
+ */
+function answerSnapshot(id) {
+    try {
+        render();
+        // Flattened onto the view's background (the canvas itself is transparent) and at most 1600 px.
+        const canvas = renderer.domElement, scale = Math.min(1, 1600 / Math.max(canvas.width, canvas.height));
+        const flat = document.createElement('canvas');
+        flat.width = Math.round(canvas.width * scale); flat.height = Math.round(canvas.height * scale);
+        const ctx = flat.getContext('2d');
+        ctx.fillStyle = getComputedStyle(container).backgroundColor || '#000';
+        ctx.fillRect(0, 0, flat.width, flat.height);
+        ctx.drawImage(canvas, 0, 0, flat.width, flat.height);
+        const dataUrl = flat.toDataURL('image/png');
+        sendMessage({type: 'three-snapshot', id, dataUrl});
+    } catch (error) { console.warn('three viewer: snapshot failed', error); }
+}
+
 function connectWs() {
     const ws = new WebSocket(buildWsUrl());
     wsState.ws = ws;
@@ -6255,6 +6336,7 @@ function connectWs() {
         let message = null;
         try { message = JSON.parse(event.data); } catch (_) { return; }
         if(message.type==='three-review-ack'){featureSaving=false; featureHud(); featureMessage(message.message,!message.ok);return;}
+        if (message.type === 'three/snapshot-request') { answerSnapshot(message.id); return; }
         wireReceive(message);
     });
     ws.addEventListener('close', () => {
@@ -6902,6 +6984,7 @@ function onResize() {
     const height = container.clientHeight;
     renderer.setPixelRatio(getDpr());
     renderer.setSize(width, height);
+    if (studioAo.composer) { studioAo.composer.setPixelRatio(getDpr()); studioAo.composer.setSize(width, height); }
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     // A genuine viewport resize may refit an untouched initial view. Geometry refreshes and
@@ -7003,6 +7086,7 @@ function render() {
     if (editorState.mode === 'camera') renderer.domElement.style.cursor = interactivePointer ? 'pointer' : '';
 
     if (panelState.cameras.length > 1) renderPanels();
+    else if (studioAoActive()) renderStudioAo();
     else {
         renderer.setViewport(0, 0, container.clientWidth, container.clientHeight);
         renderGeometry(camera);

@@ -826,6 +826,10 @@ object DemoTranscriptExecSmokeTest {
         // one of them reading the camera. ShadertoyChannelsTest compiles the image preamble and the
         // channel passes; the orientation and colour were checked by native capture.
         "shadertrinket",
+        // The madp StackTrinket port: StackSL feedback programs on a native Window + Renderer, so
+        // compile-only here. StackSLFeedbackTest compiles every preset and its fragment shader to
+        // SPIR-V without a GPU.
+        "stacktrinket_feedback",
         // Continuing a gesture (2026-10-19): boxes 5 and 6 start a Timestral worker, which needs a
         // downloaded checkpoint no CI machine has, and boxes 3 and 4 are live frames loops. The oracle
         // and mocap code runs in VariableMarkovOracleTest, SeveralTakesTest and BvhTest, and the dance

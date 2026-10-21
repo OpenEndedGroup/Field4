@@ -50,6 +50,7 @@ internal val extrasCatalog = listOf(
     Extra("morse-smale", "Morse-Smale complexes", "Native libraries", "public/docs/morse_smale.md", setOf("python3", "cmake", "compiler"), "buildMorseSmaleNative", advice = "Builds Field's own Morse-Smale library (no downloads, no other dependencies) and runs its native test. Check with NativeGeometry.describe() in a box."),
     Extra("principal-curves", "Principal curves and trees", "Native libraries", "public/docs/principal_curves.md", setOf("python3", "cmake", "compiler"), "buildPrincipalCurvesNative", advice = "Builds Field's elastic principal graph library (an ElPiGraph port; no downloads, no other dependencies) and runs its native test."),
     Extra("polyvector", "Line-drawing vectorization (polyvector)", "Native libraries", "public/docs/polyvector.md", setOf("python3", "cmake", "compiler"), "buildPolyvectorNative", setOf("linux", "mac"), "Needs OpenCV, Boost and Eigen development packages (setup installs them with Homebrew, apt, dnf or pacman). Downloads the authors' pinned, MIT-licensed implementation on first build. Windows is not yet supported by the build."),
+    Extra("gltfpack", "gltfpack GLB compression", "Graphics", "public/docs/three_output.md", setOf("python3"), "prepareGltfpack", advice = "Fetches Field's pinned, checksummed gltfpack (meshoptimizer, MIT). Exported GLBs (the three viewer's Export GLB, GeometryScene.writeGlb) are then compressed with it; without it they are written uncompressed. Linux builds are x86-64 only."),
 )
 
 internal fun platformId(os: String): String = when {
@@ -130,6 +131,7 @@ internal fun artifactCandidates(root: File, id: String, platform: String, enviro
         "syphon" -> "AFIELD_SYPHON_LIBRARY" to listOf("build/field-syphon/libfield_syphon.dylib")
         "shaders" -> "" to listOf("build/lighting/learned-shader/learned-scalar.spv")
         "slang" -> "AFIELD_SLANGC" to listOf("build/lighting/slangc.path")
+        "gltfpack" -> "AFIELD_GLTFPACK" to listOf("build/gltfpack.path")
         "morse-smale" -> "AFIELD_MORSE_SMALE_LIBRARY" to listOf("build/field-morse-smale/build/${library("field_morse_smale")}", "build/field-morse-smale/build/Release/${library("field_morse_smale")}")
         "principal-curves" -> "AFIELD_PRINCIPAL_CURVES_LIBRARY" to listOf("build/field-principal-curves/build/${library("field_principal_curves")}", "build/field-principal-curves/build/Release/${library("field_principal_curves")}")
         "polyvector" -> "AFIELD_POLYVECTOR_LIBRARY" to listOf("build/field-polyvector/build/${library("field_polyvector")}")

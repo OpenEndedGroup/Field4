@@ -53,7 +53,7 @@ class SplatShaderTest {
             val compute = (create["properties"] as? Map<*, *>)?.get("compute") as? String ?: return@mapNotNull null
             create["box"] as String to compute
         }
-        assertEquals(7, computes.size, "a passthrough and six presets: ${computes.map { it.first }}")
+        assertEquals(8, computes.size, "a passthrough, six presets and a model: ${computes.map { it.first }}")
         computes.forEach { (box, source) ->
             assertTrue(source.contains("#include \"splat/insert\"") && source.contains("#include \"splat/end\""),
                 "$box should bracket its insert with the two includes")
@@ -165,6 +165,29 @@ class SplatShaderTest {
             assertTrue(f[o + 10] < f[o + 8], "splat $i is a disc: thinner in z than across")
             assertEquals(f[o + 8], f[o + 9], "splat $i is round")
         }
+    }
+
+    @Test
+    fun aFittedSetIsCentredAndAUnitAcross() {
+        val set = SplatSet()
+        for (i in 0 until 50) {
+            val a = i * 2 * Math.PI / 50
+            set.push(0.03 * Math.cos(a) + 7.0, 0.03 * Math.sin(a), 2.0, 0.001, 0.002, 0.003, 0.0, 0.0, 0.0, 1.0, 1.0, 0.5, 0.5, 0.5)
+        }
+        val fitted = set.fitted()
+        val fit = fitted.fit()
+        assertEquals(1f, fit.radius90, 1e-3f)
+        assertTrue(fit.centre.length() < 0.05f, "centre ${fit.centre}")
+        // radii scale with the positions, so the cloud looks the same, only bigger
+        assertEquals(0.001f / 0.03f, fitted.floats[8], 2e-3f)
+        assertEquals(set.count, fitted.count)
+    }
+
+    @Test
+    fun aGltfMeshFilterKeepsOnlyTheNamedMeshes() {
+        val glb = File("dev_docs/agents/fixtures/path_tracing/quad.glb")
+        assertEquals(0, SplatSet.fromGltf(glb.path, meshes = { false }).count)
+        assertEquals(SplatSet.fromGltf(glb.path).count, SplatSet.fromGltf(glb.path, meshes = { true }).count)
     }
 
     private fun rotate(q: DoubleArray, v: DoubleArray): DoubleArray {

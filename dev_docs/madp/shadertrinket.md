@@ -82,3 +82,20 @@ box's `fragment` and reloading (alt-R) is the recompile-as-you-type loop.
 - Live recompile on every keystroke: Field recompiles on alt-R / alt-shift-enter, which keeps a bad
   edit from blanking the window.
 - `iSampleRate`, `iChannel` cube maps and 3D textures: ShaderTrinket's presets use none.
+
+## Verified (2026-10-20, M-series Mac, KosmicKrisp)
+
+Native window captures through the backdoor (`native-screenshot`), compared with the browser demo
+at `:9982` captured in Chromium at the same canvas size (960×540):
+
+- **Orientation.** Before: a `uv.y < 0.5` red quadrant drew top-left. After: bottom-left, and a
+  canvas bound as another shader's `iChannel0` reads back the same way up.
+- **Colour.** A 0.5 grey displays as 0x80, as in WebGL. Flat Rings' teal, amber and blue and SDF
+  Sphere Trace's glow match the browser's by eye; the remaining differences are animation phase.
+- **`iChannelResolution`** reports the bound canvas's 320×180.
+- **Error lines.** A bad identifier on line 5 of a `fragment` is reported as `fragment.glsl:5`, on
+  the student's own line, with no fix needed: the template's `#line` handling already maps it.
+- **No camera.** `webcam()` prints why and binds black; the box still runs.
+
+`ShadertoyChannelsTest` compiles the image preamble with every program the starting point ships,
+and the flip and canvas passes.
