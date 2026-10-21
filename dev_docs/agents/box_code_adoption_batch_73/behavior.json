@@ -1,0 +1,7 @@
+{
+  "realQualifiedProposalApprovedAndApplied": true,
+  "stoppedApprovalWaiterDoesNotApply": true,
+  "realSeededCorpusCompletes": true,
+  "corpusStopBeforeFirstVariantExercised": true,
+  "limits": "Private scratch fixture only; approval buttons authorize its own replayed loot outcome. No agent/provider calls or public captures. Stop fixture adds a deterministic IO delay before unchanged real corpus work."
+}

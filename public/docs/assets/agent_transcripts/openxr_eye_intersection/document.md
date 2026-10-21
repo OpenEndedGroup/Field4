@@ -40,7 +40,7 @@ start(renderer::run)
 <!-- field-box id="eye_ray_scene" index="1" -->
 
 ```edn [field-box id="eye_ray_scene" role="properties"]
-{"id" "eye_ray_scene" "index" 1 "name" "2 · eye rays + world marker" "parents" ["root" "eye_ray_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "eye_ray_renderer"} "name" "2 · eye rays + world marker" "_tombstone" false "frame" #afield/rect [340.0 150.0 390.0 120.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "eye_ray_scene_vertex_.glsl" "lines" 13 "characters" 316 "sha256" "3ed65e56090d366813d8ebf73081fd80067692f4086282c4263593eee1af03c6"} {"name" "fragment" "language" "glsl" "path" "eye_ray_scene_fragment_.glsl" "lines" 6 "characters" 121 "sha256" "09f2d517b9f20511becdbad44a079ab2444e197c15df7f90141a8a45c10d42de"} {"name" "code" "language" "kotlin" "path" "eye_ray_scene_code_.kt" "lines" 205 "characters" 8832 "sha256" "8fb821eaacec414548cdbd08c5c443f0b670f2a4c062e7d2d5ccfcdfe4160b03"}]}
+{"id" "eye_ray_scene" "index" 1 "name" "2 · eye rays + world marker" "parents" ["root" "eye_ray_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "eye_ray_renderer"} "name" "2 · eye rays + world marker" "_tombstone" false "frame" #afield/rect [340.0 150.0 390.0 120.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "eye_ray_scene_vertex_.glsl" "lines" 13 "characters" 316 "sha256" "3ed65e56090d366813d8ebf73081fd80067692f4086282c4263593eee1af03c6"} {"name" "fragment" "language" "glsl" "path" "eye_ray_scene_fragment_.glsl" "lines" 6 "characters" 121 "sha256" "09f2d517b9f20511becdbad44a079ab2444e197c15df7f90141a8a45c10d42de"} {"name" "code" "language" "kotlin" "path" "eye_ray_scene_code_.kt" "lines" 205 "characters" 8784 "sha256" "6b12961b58eaadc67849a25d774964da809ba6f419268e4457cfe6af71695fdd"}]}
 ```
 
 ```glsl [field-property box="eye_ray_scene" name="vertex" path="eye_ray_scene_vertex_.glsl"]
@@ -81,7 +81,7 @@ val xrFormats =
     if (xr == null) emptyList<Int>()
     else
         renderer.runOnQueueThread {
-            listOf(xr.sideBySideRTTParameters().format)
+            [xr.sideBySideRTTParameters().format]
         }
 
 // Change this and re-launch this box to exercise a different world origin.
@@ -138,7 +138,7 @@ fun cubeLines(radius: Float): List<Vec3> {
             )
         }
     val result = mutableListOf<Vec3>()
-    for (i in 0..7) for (bit in listOf(1, 2, 4)) if (i and bit == 0) {
+    for (i in 0..7) for (bit in [1, 2, 4]) if (i and bit == 0) {
         result.add(corners[i])
         result.add(corners[i or bit])
     }
@@ -158,14 +158,14 @@ for (i in 0..10) {
 }
 lineMesh("world grid", grid, vec(0.25, 0.25, 0.25, 1)) { Matrix4f() }
 for ((name, end, color) in
-    listOf(
+    [
         Triple("world +X", vec(0.5, 0, 0), vec(1, 0.3, 0.3, 1)),
         Triple("world +Y", vec(0, 0.5, 0), vec(0.3, 1, 0.3, 1)),
         Triple("world -Z", vec(0, 0, -0.5), vec(0.3, 0.5, 1, 1)),
-    )) {
-    lineMesh(name, listOf(Vec3(), end), color) { Matrix4f() }
+    ]) {
+    lineMesh(name, [Vec3(), end], color) { Matrix4f() }
 }
-for (distance in listOf(1f, 2f, 4f)) {
+for (distance in [1f, 2f, 4f]) {
     lineMesh("reference at $distance m", cubeLines(0.08f), vec(0.45, 0.45, 0.45, 1)) {
         Matrix4f().translate(0f, 0f, -distance)
     }
@@ -175,12 +175,12 @@ val leftModel = Matrix4f()
 val rightModel = Matrix4f()
 val combinedModel = Matrix4f()
 val gapModel = Matrix4f()
-val unitRay = listOf(Vec3(), Vec3(0f, 0f, -1f))
+val unitRay = [Vec3(), Vec3(0f, 0f, -1f)]
 val leftRay = lineMesh("HTC left ray", unitRay, vec(0.3, 0.85, 1, 1)) { leftModel }
 val rightRay = lineMesh("HTC right ray", unitRay, vec(1, 0.55, 0.2, 1)) { rightModel }
-val dashes = (0..19).flatMap { i -> listOf(Vec3(0f, 0f, -i / 20f), Vec3(0f, 0f, -(i + 0.5f) / 20f)) }
+val dashes = (0..19).flatMap { i -> [Vec3(0f, 0f, -i / 20f), Vec3(0f, 0f, -(i + 0.5f) / 20f)] }
 val combinedRay = lineMesh("EXT combined ray (no depth)", dashes, vec(0.6, 0.6, 0.6, 1)) { combinedModel }
-val gap = lineMesh("closest-point gap", listOf(Vec3(), Vec3(1f, 1f, 1f)), vec(1, 0.2, 0.5, 1)) { gapModel }
+val gap = lineMesh("closest-point gap", [Vec3(), Vec3(1f, 1f, 1f)], vec(1, 0.2, 0.5, 1)) { gapModel }
 val marker = lineMesh("binocular world marker", cubeLines(0.025f), vec(1, 1, 1, 1)) {
     Matrix4f().translate(markerWorld)
 }

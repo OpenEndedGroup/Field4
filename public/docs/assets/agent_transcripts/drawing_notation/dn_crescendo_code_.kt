@@ -16,7 +16,7 @@ notation("hairpin") {
     stroke(hairpin, name = "hairpin", stroke = "#e03131")
 }
 val dynamics = notation.space("dynamics", x = 0.0..8.0, y = 0.0..1.0)
-val markings = listOf("niente", "pp", "p", "mp", "mf", "f", "ff")
+val markings = ["niente", "pp", "p", "mp", "mf", "f", "ff"]
 fun read() =
     (0..7).forEach { beat ->
         val ys = dynamics.vertical(beat.toDouble()).filter { !it.isSpan }.map { it.value }

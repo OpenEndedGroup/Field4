@@ -101,6 +101,12 @@ object DemoTranscriptExecSmokeTest {
         // ai4_chat_archive.md's demo: reads the example chat under public/docs/assets by checkout path.
         "ai4_chat_archive",
         "particle_video_reader",
+        // contour_trees.md's starting point: contour trees of a computed field and the leaf print, plain Kotlin.
+        "contour_trees_explorer",
+        // vector_field_topology.md's starting point: the topology of a computed flow and of a photograph's gradient.
+        "vector_field_explorer",
+        // mapper.md's starting point: Mapper graphs of generated point clouds.
+        "mapper_explorer",
         // The staged-project starting place: a level edited through guarded tools, three study-build
         // stages behind a gate, a qualified loot rule and a corpus of variants. CPU only; Manifold is used
         // when installed and the blockout says so when it is not.
@@ -109,6 +115,11 @@ object DemoTranscriptExecSmokeTest {
         // code, read it back, register a stroke reaction, and read two graphic scores by cutting
         // them. No client is needed — the scene is server-side data — so every box executes headless.
         "drawing_notation",
+        // drawing_and_notation.md's full tour: every mark kind, a score, the API audit, stroke/arrow/text
+        // reactions. CPU only; headless, `hand`'s page script goes to no browser but the box completes.
+        "notation_elements",
+        // automating_field.md's Macro Recorder starting point: saves a macro, replays it as offset copies and by steps.
+        "macro_recorder_stamp",
         // interactive_guides.md's starting point: a four-step slideshow over two CPU boxes. Headless the
         // notes and selections go to no browser, but every box (the guide included) runs to completion.
         "slideshow_guide",
@@ -153,6 +164,11 @@ object DemoTranscriptExecSmokeTest {
         // buys is that `inertialTo`, `MovementState` and the control-group callbacks are exercised
         // through the real box path, which no unit test covers.
         "inertial_movement",
+        // The creature GA: two launched loops that evolve on their own thread under a box-written
+        // ContactModel (a water surface; a floor under gravity). CreatureEvolutionTest covers the
+        // library; running it here covers the box path — a ContactModel and fitness written in a box
+        // and handed to the library, and the .end { } that stops the evolution thread.
+        "evolving_water_bugs",
         // The keyframe editor: a launched loop playing a curve into a meter, and three executed boxes
         // (typed keys; an onChange overlay; key types of its own with interpolant(...)). Pure CPU — the editor is an iframe in `display` — so what
         // running it buys is keyframes(...), KeyframeEvaluator and the Keyframe-seeded overload
@@ -309,11 +325,15 @@ object DemoTranscriptExecSmokeTest {
         // closed contours and reports the numbers, all through showPlaneGrid.
         "close_node_demo",
         // lp_curves.md's companion: LP methods as curve generators over LpPolygon, drawn through
-        // showPlaneGrid / showPlane. The second box ends in `animate { }` and is launched. CPU only.
+        // showPlaneGrid / showPlane. The second box ends in `animate { }` and is launched; the third
+        // draws the fan map in an editable threeLines viewer. CPU only.
         "lp_curves",
         // lp_curves.md's 3-D section companion: the same methods over LpPolytope, drawn through `three { }`
         // (a Three.js payload sent to display), so no Window and no Renderer. Both boxes execute.
         "lp_curves_3d",
+        // The madp geometry toolbox: GeometryBuilder recipes drawn through `three { }`, so no Window and
+        // no Renderer. breathing_sheet ends in animateGeometry, a Frames, so executing it draws t = 0.
+        "madp_geometry",
         // Six independent pure-CPU dynamic-graph boxes. Four print and draw through showPlaneGrid /
         // showSignals; the other two build a Frames through animateEvolution, so executing them is a
         // compile check and the animation only runs when the box is launched. No Window, no Renderer.
@@ -517,6 +537,10 @@ object DemoTranscriptExecSmokeTest {
         "orca_duet",
         // ORCA with AI4 on the board: the same reasons as orca_hello. Its tools run in the orca-io regression.
         "orca_jam",
+        // The canvas as a score: the lead box returns a loop that runs until stopped and its boxes play
+        // dough through the audio device. ScoreTest steps the runner frame by frame and DoughLiveTest
+        // measures the sound helper's levels, both headless.
+        "madp_score",
         // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
         // measuring box whose numbers SceneOnARigTest already pins.
         "chain_scene_to_light",
@@ -538,6 +562,10 @@ object DemoTranscriptExecSmokeTest {
         "kratos_structural_playground",
         // Optional native field_morse_smale (./gradlew buildMorseSmaleNative); the live box loops forever.
         "morse_smale_explorer",
+        // Optional native field_morse_smale; the live box loops forever.
+        "tracking_explorer",
+        // vector_field_topology.md's footage starting point: decodes its clip with FFmpeg, and the movie box renders 306 frames.
+        "eagle_flow_explorer",
         // Optional native field_principal_curves (./gradlew buildPrincipalCurvesNative); the live box loops forever.
         "principal_curves_explorer",
         // Optional native field_polyvector (OpenCV, Boost, Eigen; ./gradlew buildPolyvectorNative).
@@ -610,6 +638,10 @@ object DemoTranscriptExecSmokeTest {
         // Streams a splat sequence into a native window, and wants a directory of .compressed.ply
         // frames that is deliberately not committed -- so compiled here and no further.
         "splat_sequence_streaming",
+        // The madp splat-shader port: per-splat GLSL inserts on a native Window + Renderer, so
+        // compile-only here. SplatShaderTest compiles every box's compute tab against the
+        // splat/insert + splat/end pair, and four.splat-shader.smoke measures the sort on a GPU.
+        "splat_shader",
         // A native window plus a directory of images that is nobody's to commit.
         //
         // Its GLSL is *not* checked here, and the comment that used to say so was wrong in a way
@@ -687,6 +719,12 @@ object DemoTranscriptExecSmokeTest {
         // a native Window + Renderer, so compile-only here. IteratedSystemShaderTest compiles every
         // system's compute tab against the points/system harness without a GPU.
         "fern_iterated_systems",
+        // The madp Particles port: madp's hooks as compute shaders over a GPU neighbour grid, drawn
+        // into a PointAccumulation on a native Window + Renderer, so compile-only here.
+        // ParticleSketchShaderTest compiles every sketch's compute tab against the
+        // particles/sketch harness without a GPU, and four.particle-sketch.smoke grades the verbs
+        // against a transcription of madp's JavaScript on one.
+        "particles_sketchbook",
         "imgui_vr_panel",
         // A hidden Electron window renders Field itself into Chromium shared textures; the live
         // macOS replay crosses IOSurface Mach rights and samples them in Vulkan. CI compiles the
@@ -780,6 +818,15 @@ object DemoTranscriptExecSmokeTest {
         "fieldml_mesh_demo",
         // stacksl_examples.md's gallery draws into a native window.
         "stacksl_gallery",
+        // ShaderTrinket: shadertoyHere boxes drawing into a shadertoyCanvas the renderer window shows,
+        // one of them reading the camera. ShadertoyChannelsTest compiles the image preamble and the
+        // channel passes; the orientation and colour were checked by native capture.
+        "shadertrinket",
+        // Continuing a gesture (2026-10-19): boxes 5 and 6 start a Timestral worker, which needs a
+        // downloaded checkpoint no CI machine has, and boxes 3 and 4 are live frames loops. The oracle
+        // and mocap code runs in VariableMarkovOracleTest, SeveralTakesTest and BvhTest, and the dance
+        // boxes run as docs captures; TimestralSessionTest runs the worker when opted in.
+        "temporal_memory",
     )
 
     /**

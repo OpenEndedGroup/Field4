@@ -1,5 +1,8 @@
 import kotlin.random.Random
 
+prop<() -> PaintCanvas>(studioCanvas)
+prop<() -> Unit>(refreshStudio)
+
 // A brush the painter does not have yet: a scribble, painted on the Studio's easel.
 val studio = thisBox.inside.boxes.values.single { it.name == "Studio" }
 
@@ -30,7 +33,7 @@ aiTool("scribble") {
         require(rowsPer100.isFinite() && rowsPer100 in 1.0..8.0) {
             "density must be between 1 and 8 rows of loops per 100 units"
         }
-        val canvas = studio.properties["studio.canvas"] as PaintCanvas
+        val canvas = studio.studioCanvas()
         val ring = outline().chunked(2)
         val rnd = Random(color().hashCode() + outline().hashCode())
         val loop = 50.0 / rowsPer100
@@ -63,7 +66,7 @@ aiTool("scribble") {
             row += loop * 1.1
             dir = -dir
         }
-        (studio.properties["studio.refresh"] as () -> Unit)()
+        studio.refreshStudio()
         "scribbled ${color()} over the region at density ${density()}"
     }
 }

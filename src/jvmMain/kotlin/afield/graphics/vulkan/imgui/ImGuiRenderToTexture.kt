@@ -1010,7 +1010,6 @@ class ImGuiRenderToTexture(
                     height = window.height * overSample
                     mipLevels = 4
                     generateColorMipmaps = true
-                    clearFirst = true
                 },
                 fontSupersample = fontSuperSample,
                 displayScale = 1f // overSample.f

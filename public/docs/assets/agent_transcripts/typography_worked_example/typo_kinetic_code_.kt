@@ -26,12 +26,17 @@ val window = run {
 }
 
 val started = AnimationClock.nowSeconds()
+val displayFps = 20.0
+var nextDisplay = 0.0
 
 // The line you would change: elapsed seconds in, a travelling wave out.
 fun waveAt(elapsed: Double, i: Int): Double = 1.7 * elapsed + i * 0.7
 
 animate {
     val elapsed = AnimationClock.nowSeconds() - started
+    // Keep motion tied to elapsed time; cap the expensive raster and output work.
+    if (elapsed < nextDisplay) return@animate
+    nextDisplay = elapsed + 1.0 / displayFps
     layout.eachGlyph { i ->
         val w = waveAt(elapsed, i)
         rotation = 0.42 * kotlin.math.sin(w)

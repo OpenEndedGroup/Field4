@@ -19,7 +19,7 @@ frame loop. Note the modifier's frequency: unchanged between the two, so it come
 as `3` rather than `3.0`. A site is atomic — one moving component rewrites the whole
 token — and keeping an untouched number's spelling is what stops that showing.
 */
-listOf(0.0, 0.5, 1.0).forEach { t ->
+[0.0, 0.5, 1.0].forEach { t ->
     println("t=" + t + "   " + plan.bake(t))
 }
 

@@ -177,6 +177,7 @@ object CompletionImports {
         "afield.tools.automation.*",
         "afield.tools.docs.*",
         "afield.ui.controls.*",
+        "afield.ui.film.*",
         "afield.ui.layout.*",
         "afield.ui.notation.*",
         "afield.ui.output.*",

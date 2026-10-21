@@ -1,5 +1,4 @@
 import afield.math.matrixprofile.*
-import kotlin.math.*
 
 // Four channels of noise. A 40-sample gesture appears in channels 1 and 3, at two times.
 val rnd = java.util.Random(13)
@@ -16,5 +15,8 @@ showSignals(
     *Array(4) { k -> "${k + 1} channel(s)" to mmp.profile(k + 1) },
     regions = motif.indices.map { SignalRegion("motif", it, it + mmp.m, "#8fff9a") },
     title = "two-channel motif at ${motif.indices}, channels ${motif.channels.sorted()}",
-    channel = "main", width = 1000, height = 420, floatingLegend = true,
+    channel = "main",
+    width = 1000,
+    height = 420,
+    floatingLegend = true,
 )

@@ -19,7 +19,7 @@ Conway prefix notation, read right to left, over the seeds T C O I D and the
 operators d a k t g j n z o e s m b. Try "gD", "ktC", "bD", "sD", "dkD", "tI", "eC".
 
 ```edn [field-box id="polytope_canonical_gallery" role="properties"]
-{"id" "polytope_canonical_gallery" "index" 0 "name" "Polytope — Conway expression gallery, canonicalized" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — Conway expression gallery, canonicalized" "_tombstone" false "frame" #afield/rect [80.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_canonical_gallery_code_.kt" "lines" 90 "characters" 3700 "sha256" "8d0c72790b39a5c367d5567e532ed4344c5579230060a049b33264e526bd133a"}]}
+{"id" "polytope_canonical_gallery" "index" 0 "name" "Polytope — Conway expression gallery, canonicalized" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — Conway expression gallery, canonicalized" "_tombstone" false "frame" #afield/rect [80.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_canonical_gallery_code_.kt" "lines" 90 "characters" 3694 "sha256" "72558d9aac724aaf351bb10ac020e2f3be2a8c9d2c17147416482724ae2f8d6d"}]}
 ```
 
 ```kotlin [field-property box="polytope_canonical_gallery" name="code" path="polytope_canonical_gallery_code_.kt"]
@@ -112,6 +112,6 @@ threeLines(
 )
 displayOpen("polytope")
 
-viz("diagnostics", listOf(run.initialDiagnostics, run.finalDiagnostics, orbits))
+viz("diagnostics", [run.initialDiagnostics, run.finalDiagnostics, orbits])
 ```
 

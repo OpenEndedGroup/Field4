@@ -81,11 +81,11 @@ animateEvolution(
         s
     },
     panels = { s, step ->
-        listOf(
+        [
             "breathing, t=%.2fs, %d edges".format(s.warped.time, s.warpedEdges.values().size) to
                 dynamicGraphPanel(s.warped.points, s.warpedEdges.values(), window, 460, 460, ceiling, "magma"),
             "frozen, step %d, %d edges".format(step, s.plainEdges.values().size) to
                 dynamicGraphPanel(s.plain.points, s.plainEdges.values(), window, 460, 460, ceiling, "magma"),
-        )
+        ]
     },
 )

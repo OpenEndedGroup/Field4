@@ -5,14 +5,13 @@ propDown<RenderToTexture>(paintHalf) = RenderToTexture {
     height = (paintSource.height / 2).coerceAtLeast(1)
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
-    clearFirst = true
     clearColor = vec(0, 0, 0, 0)
     debugName = "paintHalf"
 }
 paintHalf.setDefaultSampler(anisotropyEnable = false)
 var module = moduleHere {
     textures("paintSource" to paintSource)
-    paintHalf.apply()
+    +paintHalf
     blend = false
     depthTest = false
     depthWrite = false

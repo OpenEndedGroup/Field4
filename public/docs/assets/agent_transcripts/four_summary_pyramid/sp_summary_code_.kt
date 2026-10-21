@@ -75,7 +75,7 @@ without reallocating anything — which is why there is no `once` here. Wrapping
 declaration in one would mean a `resolution` you edited never took effect.
 */
 summary = bundle.addPassChain(
-    listOf(
+    [
         FabricatePassSpec(
             name = "field",
             fragment = fieldFragment,
@@ -95,7 +95,7 @@ summary = bundle.addPassChain(
             size = FabricatePassSize.Absolute(512, 512),
             source = "field",
         ),
-    ) +
+    ] +
         FabricatePassLibrary.summaryPyramid(
             // Nine levels per plane, three planes: the leaf is 256² and the root is one cell
             // holding the statistics of the whole field.

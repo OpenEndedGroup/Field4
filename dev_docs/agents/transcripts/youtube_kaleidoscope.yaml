@@ -6,6 +6,9 @@ description: >
   page inside every triangle. The box accepts the EU consent page and starts playback through the
   puppet JavaScript bridge. This is not a WebGL effect inside the page: the whole cross-origin tab,
   including its DOM and player chrome, is sampled after Chromium has composited it.
+docs:
+  - page: puppet_browser.md
+    why: "Explains driving a browser page from Field."
 operations:
   - create:
       box: youtube_kaleidoscope_renderer

@@ -6,6 +6,9 @@ description: >
   running and adds a reading every half second; open "readings" and watch it grow without a re-run.
   Box 4 is logs(...) filtered to one channel, with a block whose id contains parentheses.
   Run each box; box 3 needs Launch (it loops). See dev_docs/INSPECTOR_EMBEDS.md.
+docs:
+  - page: visualizers.md#trees-and-columns
+    why: "Explains tree(...) and column(...) inspector embeds like the ones in these boxes."
 operations:
   - create:
       box: tree_box
@@ -51,7 +54,7 @@ operations:
           data class Layer(val name: String, val visible: Boolean, val points: IntArray)
 
           val document = linkedMapOf(
-              "layers" to listOf(Layer("dots", true, intArrayOf(2, 4, 8, 16)), Layer("lines", false, intArrayOf())),
+              "layers" to [Layer("dots", true, intArrayOf(2, 4, 8, 16)), Layer("lines", false, intArrayOf())],
               "camera" to mapOf("x" to 10, "y" to 20, "zoom" to 1.5),
               "title" to "a document\nwith two lines",
           )

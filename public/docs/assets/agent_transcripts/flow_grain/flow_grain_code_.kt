@@ -1,7 +1,7 @@
 // Dependencies are explicit graph exports; resources stay in their parent box.
 
 var module = moduleHere {
-    flowSurface.apply()
+    +flowSurface
     primitiveType = triangles
     blend = false // Correspondence is a coordinate, never alpha-blended.
     depthTest = false

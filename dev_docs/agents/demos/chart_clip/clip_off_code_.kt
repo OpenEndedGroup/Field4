@@ -1,11 +1,11 @@
 // One word different from box 1, and it is the behaviour that shipped sharp_edge.png.
-val outline = listOf(
+val outline = [
     -1.0 to -1.5,
     1.0 to -1.5,
     1.0 to 1.5,
     -1.0 to 1.5,
     -1.0 to -1.5,
-)
+]
 
 val c =
     Chart(title = "the same corner, unclipped", xLabel = "x", yLabel = "y")

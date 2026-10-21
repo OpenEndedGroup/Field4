@@ -24,13 +24,9 @@ import afield.app.client.showMonaco
 import afield.app.client.updateActions
 import afield.app.editor.Keybindings
 import afield.app.notifications.notify
-import afield.app.protocol.Message
-import afield.app.protocol.Set_string
-import afield.app.protocol.payload
 import afield.app.protocol.send
 import kotlinx.browser.document
 import kotlinx.browser.window
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.asList
@@ -61,66 +57,27 @@ private fun bookmarkDebug(message: String) {
  * User-facing reference: public/docs/moving_around_the_canvas.md (its Bookmarks section).
  */
 
-@Serializable
-data class Bookmark(
-    val id: String,
-    val name: String,
-    val timestamp: Double,
-    val scrollPosition: ScrollPosition? = null,
-    val selectedBox: String? = null,
-    val editedProperty: String? = null,
-    val cursorLine: Int? = null,
-    val cursorColumn: Int? = null,
-    val nestingState: Map<String, NestingInfo>? = null,
-    /** box uid -> output channel -> open. Channels absent here are left alone on restore. */
-    val outputAreaState: Map<String, Map<String, Boolean>>? = null,
-    /** box uid -> output channel -> size, for the panels that were open. */
-    val outputAreaSizes: Map<String, Map<String, PanelSize>>? = null,
-    /** Restore the canvas pan. */
-    val restoreView: Boolean = true,
-    /** Restore the selected box, the property open in Monaco and the cursor. */
-    val restoreSelection: Boolean = true,
-    /** Also close every output panel the bookmark did not record (not just recorded-closed ones). */
-    val closeUnrecordedOutputs: Boolean = false
-)
-
-@Serializable
-data class ScrollPosition(
-    val x: Double,
-    val y: Double,
-    /** Canvas zoom; absent in bookmarks saved before zoom was recorded, which keep the current zoom. */
-    val zoom: Double? = null,
-    /**
-     * The canvas split (the root `panes` JSON, empty for none) and each pane column's and row's
-     * translation; absent in bookmarks saved before split panes, which keep the current split.
-     */
-    val panes: String? = null,
-    val paneX: List<Double>? = null,
-    val paneY: List<Double>? = null,
-    /** Unlinked panes' own translations, keyed "col,row"; absent for bookmarks that predate unlinking. */
-    val paneOwnX: Map<String, Double>? = null,
-    val paneOwnY: Map<String, Double>? = null
-)
-
-@Serializable
-data class PanelSize(
-    val width: Double,
-    val height: Double
-)
-
-@Serializable
-data class NestingInfo(
-    val open: Boolean
-)
-
-@Serializable
-data class BookmarkData(
-    val version: Int = 1,
-    val bookmarks: List<Bookmark>
-)
+// Bookmark, ScrollPosition, PanelSize, NestingInfo and BookmarkData are shared with the server:
+// src/commonMain/kotlin/afield/app/canvas/bookmarkData.kt.
 
 private val json = Json { ignoreUnknownKeys = true }
 private var cachedBookmarksJson: String? = null
+
+/**
+ * The bookmark JSON this client has written, latest last. The root box can show one of the earlier
+ * ones for a moment, when the server's echo of an older write lands after a newer one; that is not
+ * news, and reading it back would undo the newer write (a rename lost to the next slot's save). A
+ * value this client never wrote is a change from elsewhere and wins.
+ */
+private val recentlyWrittenBookmarks = ArrayDeque<String>()
+
+/** The root's bookmark JSON, unless it is a stale echo of this client's own earlier write. */
+private fun rootBookmarksJson(): String? {
+    val rootValue = findBoxByUid("root")?.asDynamic()?.bookmarks as? String
+    val latest = recentlyWrittenBookmarks.lastOrNull()
+    if (rootValue != null && rootValue != latest && rootValue in recentlyWrittenBookmarks) return latest
+    return rootValue ?: cachedBookmarksJson
+}
 
 private fun findBoxByUid(uid: String): HTMLElement? {
     val boxes = document.body?.getElementsByClassName("box")?.asList() ?: return null
@@ -139,7 +96,11 @@ fun captureScrollPosition(): ScrollPosition {
         paneX = CanvasCamera.columnTranslations(),
         paneY = CanvasCamera.rowTranslations(),
         paneOwnX = CanvasCamera.ownTranslationsX().takeIf { it.isNotEmpty() },
-        paneOwnY = CanvasCamera.ownTranslationsY().takeIf { it.isNotEmpty() }
+        paneOwnY = CanvasCamera.ownTranslationsY().takeIf { it.isNotEmpty() },
+        viewX = CanvasCamera.main.rect.x,
+        viewY = CanvasCamera.main.rect.y,
+        viewW = CanvasCamera.main.rect.w,
+        viewH = CanvasCamera.main.rect.h
     )
 }
 
@@ -509,8 +470,7 @@ fun restoreBookmark(bookmark: Bookmark) {
  */
 fun loadBookmarks(): BookmarkData {
     return try {
-        val rootBox = findBoxByUid("root")
-        val bookmarksJson = (rootBox?.asDynamic()?.bookmarks as? String) ?: cachedBookmarksJson
+        val bookmarksJson = rootBookmarksJson()
 
         if (bookmarksJson != null && bookmarksJson.isNotEmpty()) {
             json.decodeFromString<BookmarkData>(bookmarksJson)
@@ -531,6 +491,8 @@ fun saveBookmarks(bookmarkData: BookmarkData) {
         val bookmarksJson = json.encodeToString(BookmarkData.serializer(), bookmarkData)
 
         cachedBookmarksJson = bookmarksJson
+        recentlyWrittenBookmarks.addLast(bookmarksJson)
+        while (recentlyWrittenBookmarks.size > 32) recentlyWrittenBookmarks.removeFirst()
 
         // Keep the DOM copy in sync so subsequent loads see the freshly saved value
         val rootBox = findBoxByUid("root")
@@ -538,11 +500,14 @@ fun saveBookmarks(bookmarkData: BookmarkData) {
 
 
 
-        send(
-            Message("set-string").payload(
-                Set_string("root", "bookmarks", bookmarksJson)
-            )
-        )
+        // Marked (clientId and sequence), so this client drops the server's echo of an older write.
+        // Unmarked, saving a slot right after renaming another could read that stale echo back from
+        // the root box and write it over the rename.
+        val payload: dynamic = js("({})")
+        payload.uid = "root"
+        payload.property = "bookmarks"
+        payload.value = bookmarksJson
+        send("set-string", payload)
     } catch (e: dynamic) {
         console.warn("Error saving bookmarks:", e)
         notify("Error saving bookmarks", "error")
@@ -609,6 +574,13 @@ fun restoreBookmarkSlot(bookmarkNumber: Int) {
         console.warn("Error restoring bookmark slot:", e)
         notify("Error restoring bookmark", "error")
     }
+}
+
+/** Renames bookmark slot [bookmarkNumber] (1-9), as the bookmarks panel's name field does; blank restores "Bookmark N". */
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun nameBookmarkSlot(bookmarkNumber: Int, name: String) {
+    updateBookmark(bookmarkNumber) { it.copy(name = name.trim().ifEmpty { "Bookmark $bookmarkNumber" }) }
 }
 
 /**
@@ -741,10 +713,7 @@ fun toggleBookmarksPanel() {
     bookmarksPanelTimer = window.setInterval({ refreshBookmarksPanel() }, 1000)
 }
 
-private fun currentBookmarksJson(): String =
-    (document.body?.getElementsByClassName("box")?.asList()
-        ?.firstOrNull { it.asDynamic().uid == "root" }?.asDynamic()?.bookmarks as? String)
-        ?: cachedBookmarksJson ?: ""
+private fun currentBookmarksJson(): String = rootBookmarksJson() ?: ""
 
 fun refreshBookmarksPanel(force: Boolean = false) {
     val panel = bookmarksPanel ?: return
@@ -800,10 +769,7 @@ private fun bookmarkCard(slot: Int, bookmark: Bookmark?): HTMLElement {
         name.type = "text"
         name.value = bookmark.name
         name.title = "Rename this bookmark"
-        name.addEventListener("change", {
-            val next = name.value.trim().ifEmpty { "Bookmark $slot" }
-            updateBookmark(slot) { it.copy(name = next) }
-        })
+        name.addEventListener("change", { nameBookmarkSlot(slot, name.value) })
         name.addEventListener("keydown", { event -> if (event.asDynamic().key == "Enter") name.blur() })
         head.appendChild(name)
         head.appendChild(el("span", "field-panel-meta", savedAgo(bookmark.timestamp)))

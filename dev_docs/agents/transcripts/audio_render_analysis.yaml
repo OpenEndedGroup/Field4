@@ -5,6 +5,9 @@ description: >
   content hash, submit beat plus mono/polyphonic pitch jobs, stream status into the box, await the
   durable results, and display source waveform and analyses on one synchronized timeline. No job is
   submitted behind the transcript: each box contains the complete render-to-result program.
+docs:
+  - page: audio_render_analysis.md
+    why: "Explains rendering Field music to WAV and sending it for analysis."
 operations:
   - create:
       box: render_analysis_guide

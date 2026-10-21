@@ -40,7 +40,7 @@ class OpenDlssNrStudy(
     }
     private val imageProvider = image?.let { texture ->
         object : HasImageViewArray, PreparesSampledImages {
-            override val imageViewArray = listOf(texture)
+            override val imageViewArray = [texture]
 
             override fun prepareSampledImagesFor(command: CommandBuffer) = texture.prepareSampledImagesFor(command)
         }
@@ -50,7 +50,7 @@ class OpenDlssNrStudy(
         Module(
             parameters(renderer) {
                 this.name = "$name-source"
-                source.apply()
+                +source
                 depthTest = geometry
                 depthWrite = geometry
                 blend = false
@@ -62,17 +62,17 @@ class OpenDlssNrStudy(
                     if (image == null) fragment
                     else
                         """
-            #version 460
-            layout(location=0) in vec2 uv;
-            layout(location=0) out vec4 color;
-            layout(binding=0) uniform sampler2D image;
-            layout(push_constant) uniform Study { vec4 frame; } pc;
-            void main() {
-                vec3 c=texture(image,uv).rgb;
-                c=mix(c/12.92,pow((c+.055)/1.055,vec3(2.4)),step(vec3(.04045),c));
-                color=vec4(c+pc.frame.w,1);
-            }
-        """
+                        #version 460
+                        layout(location=0) in vec2 uv;
+                        layout(location=0) out vec4 color;
+                        layout(binding=0) uniform sampler2D image;
+                        layout(push_constant) uniform Study { vec4 frame; } pc;
+                        void main() {
+                            vec3 c=texture(image,uv).rgb;
+                            c=mix(c/12.92,pow((c+.055)/1.055,vec3(2.4)),step(vec3(.04045),c));
+                            color=vec4(c+pc.frame.w,1);
+                        }
+                        """
                             .trimIndent()
             },
         )
@@ -89,7 +89,7 @@ class OpenDlssNrStudy(
     private val compareModule = Module(
         parameters(renderer) {
             this.name = "$name-comparison"
-            output.apply()
+            +output
             depthTest = false
             depthWrite = false
             blend = false
@@ -204,7 +204,7 @@ class OpenDlssNrStudy(
             screen?.current?.cleanup()
             sourceModule.cleanup()
             compareModule.cleanup()
-            for (target in listOf(source, output)) {
+            for (target in [source, output]) {
                 target.imageViewArray.forEach { it.imageView.cleanup() }
                 target.colorImageRefs.forEach { it?.cleanup() }
                 target.depthImageView?.cleanup()

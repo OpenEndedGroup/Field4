@@ -10,6 +10,9 @@ description: >
   drawn as FLines. Both boxes need Manifold, which is not vendored — `brew install manifold` puts it
   where they look. Without it they say so, and the first draws the same part built with Field's own
   marching cubes instead so the comparison is visible rather than described.
+docs:
+  - page: manifold.md
+    why: "Explains mesh Booleans with the Manifold binding."
 operations:
   - create:
       box: manifold_bracket

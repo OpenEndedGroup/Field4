@@ -1627,14 +1627,14 @@ open class RenderToTexture(
             "RenderToTexture expects ${colorImageHandles.size} color attachments, but module '${module.parameters.name}' declares ${moduleColorCount}"
         }
         require(moduleFormats == colorFormats) {
-            "RenderToTexture color format mismatch for module '${module.parameters.name}': module=$moduleFormats target=$colorFormats. Call target.apply() inside module parameters."
+            "RenderToTexture color format mismatch for module '${module.parameters.name}': module=$moduleFormats target=$colorFormats. Add +target inside the module's parameters."
         }
         require(module.parameters.viewMask == parameters.multiviewViewMask) {
-            "RenderToTexture viewMask mismatch for module '${module.parameters.name}': module=0x${module.parameters.viewMask.toString(16)} target=0x${parameters.multiviewViewMask.toString(16)}. Call target.apply() inside module parameters."
+            "RenderToTexture viewMask mismatch for module '${module.parameters.name}': module=0x${module.parameters.viewMask.toString(16)} target=0x${parameters.multiviewViewMask.toString(16)}. Add +target inside the module's parameters."
         }
         val expectedViewportCount = parameters.viewports.size.coerceAtLeast(1)
         require(module.parameters.viewportCount >= expectedViewportCount) {
-            "RenderToTexture viewport count mismatch for module '${module.parameters.name}': module=${module.parameters.viewportCount} target=$expectedViewportCount. Call target.apply() inside module parameters."
+            "RenderToTexture viewport count mismatch for module '${module.parameters.name}': module=${module.parameters.viewportCount} target=$expectedViewportCount. Add +target inside the module's parameters."
         }
     }
 

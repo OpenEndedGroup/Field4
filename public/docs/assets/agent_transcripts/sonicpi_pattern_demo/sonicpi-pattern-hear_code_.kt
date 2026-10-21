@@ -22,13 +22,13 @@ sonicPiPattern(
     sonicPiLayer(
         "hats",
         pat("[hh hh hh hh]").degradeBy(0.35, salt = 4) with gain(0.35),
-        fx = listOf(sonicPiFx("echo", "phase" to 0.125, "decay" to 2, "mix" to 0.3)),
+        fx = [sonicPiFx("echo", "phase" to 0.125, "decay" to 2, "mix" to 0.3)],
     ),
     sonicPiLayer(
         "bass",
         pat("<e3 g3> ~ e4 ~").every(4) { it.rev() } with cutoff(700.0),
         synth = "tb303",
-        fx = listOf(sonicPiFx("reverb", "room" to 0.7, "mix" to 0.4)),
+        fx = [sonicPiFx("reverb", "room" to 0.7, "mix" to 0.4)],
     ),
     cps = 0.5,
     cycles = 4,

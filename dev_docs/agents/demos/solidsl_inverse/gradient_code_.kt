@@ -55,12 +55,12 @@ itself between h and h/2 — at a sphere's own centre, on a polygon's outline, w
 any kink. A census that did not count those would pass while checking nothing.
 */
 println("---- analytic vs central differences, right now ----")
-val probes = listOf(
+val probes = [
     Triple(0.9, 0.0, 0.0),
     Triple(0.0, 0.0, 1.2),
     Triple(0.31, -0.44, 0.62),
     Triple(0.0, 0.0, 0.0), // the ball's own centre
-)
+]
 probes.forEach { (x, y, z) ->
     val c = template.checkGradient(x, y, z)
     println("  dParam (%5.2f, %5.2f, %5.2f)  %s".format(x, y, z, c))

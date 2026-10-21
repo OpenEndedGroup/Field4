@@ -30,7 +30,7 @@ operations:
       properties:
         code: |
           // The colours the curve below is drawn with.
-          val ramp = listOf(Vec4(0.96, 0.62, 0.26, 1.0), Vec4(0.30, 0.62, 0.90, 1.0))
+          val ramp = [Vec4(0.96, 0.62, 0.26, 1.0), Vec4(0.30, 0.62, 0.90, 1.0)]
   - create:
       box: spatial_nav_center
       name: curve

@@ -76,10 +76,10 @@ val glyphOld = oldByReversing(glyph)
 val glyphNew = glyph.byReversing()
 
 showPlaneGrid(
-    "closed square, old reversal\n${coverage(square, squareOld)}" to listOf(ghost(square), cyan(squareOld)),
-    "closed square, byReversing today\n${coverage(square, squareNew)}" to listOf(ghost(square), cyan(squareNew)),
-    "two contours, old reversal\n${coverage(glyph, glyphOld)}" to listOf(ghost(glyph), cyan(glyphOld)),
-    "two contours, byReversing today\n${coverage(glyph, glyphNew)}" to listOf(ghost(glyph), cyan(glyphNew)),
+    "closed square, old reversal\n${coverage(square, squareOld)}" to [ghost(square), cyan(squareOld)],
+    "closed square, byReversing today\n${coverage(square, squareNew)}" to [ghost(square), cyan(squareNew)],
+    "two contours, old reversal\n${coverage(glyph, glyphOld)}" to [ghost(glyph), cyan(glyphOld)],
+    "two contours, byReversing today\n${coverage(glyph, glyphNew)}" to [ghost(glyph), cyan(glyphNew)],
     columns = 2,
     cellWidth = 420,
     cellHeight = 230,
@@ -93,9 +93,9 @@ val roundTrip = { l: FLine ->
     if (same) "identical" else "DIFFERENT: ${back.nodes.map { it::class.simpleName }}"
 }
 
-listOf(
+[
         "grey = the original, cyan = its reversal",
         "square   reverse-twice: ${roundTrip(square)}",
         "glyph    reverse-twice: ${roundTrip(glyph)}",
-    )
+    ]
     .joinToString("\n")

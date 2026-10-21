@@ -14,7 +14,7 @@ println()
 
 // One block, five values of t. The first invocation compiles the generated text through
 // K2; the rest reuse the lambda, and only the registry slot changes.
-listOf(0.0, 0.25, 0.5, 0.75, 1.0).forEach { t ->
+[0.0, 0.25, 0.5, 0.75, 1.0].forEach { t ->
     plan.drive(t)
     val got = block() as Float
     val want = (2.0f + 6.0f * t.toFloat()) * 3.0f + (1.0f + 4.0f * t.toFloat())

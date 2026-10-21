@@ -84,6 +84,13 @@ data class ThreeDrawStyle(
      */
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val solidOpacity: Float? = null,
+    /**
+     * A physically based material for a surface: base colour, roughness, metalness and emission.
+     * `null`, the default, is the viewer's fixed `roughness 0.6 / metalness 0.1` white, which every
+     * figure drawn before this existed still gets. [afield.geometry.mesh.GeometryBuilder.mat] sets it.
+     */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val material: ThreeSurfaceMaterial? = null,
 ) {
     override fun toString(): String = prettySummary(
         "ThreeDrawStyle",
@@ -335,6 +342,18 @@ data class ThreeCameraSpec(
      * default `1.06` leaves a little air. The rasterizer ignores it.
      */
     val padding: Double = 1.06,
+    /**
+     * Which world axis is up. [ThreeUpAxis.Z] keeps the viewer's grid, which lies in the x–y plane, as the
+     * floor: yaw turns about `+z`, pitch lifts toward `+z`, and yaw 0 looks along `+y`. The yaw/pitch
+     * mapping is the y-up one, rotated rigidly, so [ThreeCameraPresetParityTest] still covers it.
+     */
+    val upAxis: ThreeUpAxis = ThreeUpAxis.Y,
+    /**
+     * Track the geometry: on every update the camera moves by however far the centre of the bounds
+     * moved, keeping whatever orbit and zoom the viewer has, and the grid shifts by whole cells so the
+     * floor reads as fixed while the subject crosses it.
+     */
+    val follow: Boolean = false,
 )
 
 /**
@@ -360,6 +379,52 @@ data class ThreeTurntableSpec(
     val degreesPerSecond: Double = 6.0,
     /** How long the turn stays paused after the last interaction. */
     val resumeAfterSeconds: Double = 2.0,
+)
+
+/**
+ * A surface's `MeshStandardMaterial` settings, sent with a [ThreeDrawStyle].
+ *
+ * Colours are **linear-light** RGB in `0..1`, the space three.js shades in; the vertex colours of the
+ * mesh multiply [color], as `vertexColors: true` always does.
+ */
+@Serializable
+data class ThreeSurfaceMaterial(
+    val color: FloatArray = floatArrayOf(1f, 1f, 1f),
+    val roughness: Float = 0.68f,
+    val metalness: Float = 0.04f,
+    val emissive: FloatArray = floatArrayOf(0f, 0f, 0f),
+    val emissiveIntensity: Float = 0f,
+) {
+    override fun equals(other: Any?): Boolean = other is ThreeSurfaceMaterial &&
+        color.contentEquals(other.color) && roughness == other.roughness && metalness == other.metalness &&
+        emissive.contentEquals(other.emissive) && emissiveIntensity == other.emissiveIntensity
+
+    override fun hashCode(): Int =
+        listOf(color.contentHashCode(), roughness, metalness, emissive.contentHashCode(), emissiveIntensity).hashCode()
+}
+
+/**
+ * The studio look: tone mapping, soft shadows, a dark ground and a faint grid, for a scene that is a
+ * sculpture on a plinth rather than a technical figure. See [ThreeSceneBuilder.studio].
+ *
+ * The lighting is a fixed rig — a sky/ground hemisphere, a shadow-casting key from above and in front,
+ * a cool rim from behind — placed relative to the scene's bounds, so a model a hundred units across is
+ * lit like one a metre across.
+ */
+@Serializable
+data class ThreeStudioSpec(
+    /** Draw a ground plane that receives the shadows. */
+    val ground: Boolean = true,
+    /** Draw a faint grid on the ground. */
+    val grid: Boolean = true,
+    /** Height of the ground, or `null` for a little below the scene's lowest point. */
+    val groundY: Double? = null,
+    /** The ground's colour as a CSS colour. */
+    val groundColor: String = "#08090a",
+    /** Cast soft shadows from the key light onto the ground and the model itself. */
+    val shadows: Boolean = true,
+    /** ACES filmic tone mapping exposure. */
+    val exposure: Double = 1.0,
 )
 
 /**

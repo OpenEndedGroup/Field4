@@ -1,0 +1,9 @@
+{
+  "branch": "codex/repl-variable-rebinding",
+  "state": "Implementation and targeted verification complete; delivery proceeds through the landing queue.",
+  "runtimeVerification": "runtime-verification.json",
+  "audit": "audit-review.json",
+  "privatePort": 9741,
+  "welcomeCapture": "build/repl-variable-rebinding/welcome-capture.log",
+  "next": "Use tools/land.py mine for this branch and wait for its outcome; repair any bounce through tools/land.py."
+}

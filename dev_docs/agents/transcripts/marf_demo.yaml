@@ -36,6 +36,9 @@ description: |
   with `MarfFieldClock.STAGES`, and the reader's `.value(t)`, `.stagesIn(PatArc(...))` and
   `.signal()`. Two of the four boxes pass a multi-step alternation as a `STAGES` field pattern,
   which is the idiom to check first if this file ever stops compiling.
+docs:
+  - page: marf.md
+    why: "Explains MARF banks of stages and reading them several ways."
 operations:
   - create:
       box: marf_readers

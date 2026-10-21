@@ -117,7 +117,7 @@ A docked DevTools window is not required to get at the useful machinery undernea
 available directly:
 
 ```diffstatic {data-lang=kotlin}
-browserControl.addEventListener { event ->
+browserControl.addEventListener("console diagnostics") { event ->
     if (event.name == "console" || event.name == "javascript-exception") println("${event.name}: ${event.payload}")
 }
 
@@ -127,6 +127,9 @@ browserControl.cdp("Performance.getMetrics").thenAccept { println(it) }
 
 browserControl.forwardCdpEvents(true)
 ```
+
+The named listener replaces its predecessor on this browser; Stop or rerun of the registering
+box removes it.
 
 The normal event stream already includes state changes, navigation, load failures, page titles,
 console messages, cursor changes, context menus, audio state, pop-up attempts, permission requests,
@@ -149,6 +152,7 @@ val removeBridge =
             buildJsonObject { put("accepted", true) },
         )
     }
+requireNotNull(RunScope.current()).own { removeBridge() }
 ```
 
 ```diffstatic {data-lang=javascript}

@@ -1,5 +1,8 @@
 name: path_tracing_hidden_environment
 description: Progressive compute path tracer with an OpenEXR environment, three PBR materials, and optional KHR ray queries.
+docs:
+  - page: path_tracing.md#environment-lighting-without-a-visible-sky
+    why: "Explains environment lighting with the sky hidden from camera."
 operations:
   - create:
       box: path_trace_renderer

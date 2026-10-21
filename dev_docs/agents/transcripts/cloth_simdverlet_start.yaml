@@ -21,6 +21,9 @@ description: >
   scene at dt = 1/60: 60 x 16 settles at 11 % peak strain, and 150 x 16 diverges to NaN.
 
   Replayed end to end in CI: launch, run 90 real runloop frames, stop.
+docs:
+  - page: physics.md
+    why: "Explains the solver, constraints, Cloth and the debug view used here."
 operations:
   - create:
       box: cloth_start

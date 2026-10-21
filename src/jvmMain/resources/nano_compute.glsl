@@ -12,7 +12,7 @@
  * │  Buffer bindings                                                        │
  * │  ─────────────────                                                      │
  * │  0  readonly  NanoMapping[]  dispatch-id → (ramBase, codeBase,          │
- * │                              outputBase, maxSteps)                      │
+ * │                              outputBase, maxSteps, outputCapacity)                      │
  * │  1            uint[]         RAM bytes, packed 4 per uint  (r/w).       │
  * │  2  readonly  uint[]         code bytes, packed 4 per uint.             │
  * │  3            uint[]         OUT-instruction results, packed 4/uint.    │
@@ -89,6 +89,7 @@ struct NanoMapping {
     uint codeBase; // byte offset into codeWords for this instance's program
     uint outputBase; // byte offset into outWords  for this instance's OUT stream
     uint maxSteps; // per-instance step cap (0 → use push-constant default)
+    uint outputCapacity; // maximum OUT bytes; an overflowing OUT halts this VM
 };
 
 layout(std430, binding = 0) readonly buffer MappingBuffer {
@@ -175,7 +176,9 @@ void outStore(uint base, uint off, uint val) {
     uint byteOffset = base + off;
     uint word = byteOffset >> 2u;
     uint shift = (byteOffset & 3u) << 3u;
-    outWords[word] = (outWords[word] & ~(0xFFu << shift)) | ((val & 0xFFu) << shift);
+    // Adjacent odd-sized slices can share a word; preserve their other byte lanes.
+    atomicAnd(outWords[word], ~(0xFFu << shift));
+    atomicOr(outWords[word], (val & 0xFFu) << shift);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -325,6 +328,10 @@ void main() {
         // ── 0x18–0x1B  OUT rX ────────────────────────────────────────────────
         else if (op >= 0x18u && op <= 0x1Bu) {
             uint r = op - 0x18u;
+            // Halt before writing past this VM's slice, retaining its completed output prefix.
+            // Also reject malformed mappings outside the bound storage buffer or uint range.
+            if (outOff >= m.outputCapacity || outBase > 0xFFFFFFFFu - outOff) break;
+            if (((outBase + outOff) >> 2u) >= uint(outWords.length())) break;
             outStore(outBase, outOff, reg[r]);
             outOff++;
             vPC += 1u;

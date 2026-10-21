@@ -1,4 +1,5 @@
-prop<LoadedTexture>(bbc) = LoadedTexture("/Users/marc/Desktop/bbc.jpg")
+// Bundled textures make this lesson runnable; change these paths to try your own images.
+prop<LoadedTexture>(bbc) = LoadedTexture("public/docs/assets/afield_four_graphics/docs-checker-texture.png")
 bbc.transferNow()
 
 var module = moduleHere {}

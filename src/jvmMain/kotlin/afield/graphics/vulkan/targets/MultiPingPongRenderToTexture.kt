@@ -565,7 +565,7 @@ class MultiPingPongRenderToTexture(
         val expectedFormat = if (parameters.colorFormats.isNotEmpty()) parameters.colorFormats.first() else parameters.format
         if (module.parameters.colorFormats.isNotEmpty()) {
             require(module.parameters.colorFormats.first() == expectedFormat) {
-                "MultiPingPongRenderToTexture color format mismatch for module '${module.parameters.name}': module=${module.parameters.colorFormats.first()} target=$expectedFormat. Call jfa.apply() inside module parameters."
+                "MultiPingPongRenderToTexture color format mismatch for module '${module.parameters.name}': module=${module.parameters.colorFormats.first()} target=$expectedFormat. Add +jfa inside the module's parameters."
             }
         }
     }

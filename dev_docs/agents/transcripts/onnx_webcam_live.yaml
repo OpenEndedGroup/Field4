@@ -3,6 +3,9 @@ description: >
   One box: grab a webcam frame, run Depth Anything V2 and CLIP on it, and show the frame
   beside its depth map with a zero-shot ranking over four text prompts.
   Press the run key again for a new frame.
+docs:
+  - page: onnx.md
+    why: "Covers loading and running ONNX models on live frames in a box."
 operations:
   - create:
       box: onnx_webcam
@@ -112,8 +115,8 @@ operations:
               // `bar(max = 1.0)` so the bars read as "of the whole", not "of the best one this
               // frame" — a top-1 at 12% should look like 12%, not like a full bar.
               val top =
-                  Table(listOf("label", "confidence"))
-                      .rows(ranked.map { (label, p) -> listOf(label, p) })
+                  Table(["label", "confidence"])
+                      .rows(ranked.map { (label, p) -> [label, p] })
                       .role("confidence", CellRole.ACCENT)
                       .bar("confidence", max = 1.0, width = 180)
                       .format("confidence") { "%.1f%%".format((it as Number).toDouble() * 100) }

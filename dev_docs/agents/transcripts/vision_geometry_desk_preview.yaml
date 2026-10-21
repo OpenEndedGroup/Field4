@@ -6,6 +6,9 @@ description: >
   output. The second box is the same mesh with its quads wound the other way round, which is what an
   inside-out mesh looks like and how the preview tells you. Runs entirely on your Mac; no Vision Pro,
   no Metal toolchain. The shader is a stand-in — this previews geometry, not MSL.
+docs:
+  - page: vision_geometry.md
+    why: "Explains sending geometry to Vision Pro."
 operations:
   - create:
       box: agent_vision_geometry_desk_preview

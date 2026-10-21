@@ -18,7 +18,7 @@ order to disagree with the net, and the readback is compared to it with `alphaEq
 
 println()
 println("term                                       normal form                   steps  fans  agents")
-listOf(
+[
         "\\x. x",
         "(\\x y z. x z (y z)) (\\x y. x) (\\x y. x)",
         "(\\n f x. f (n f x)) (\\f x. f (f x))",
@@ -27,7 +27,7 @@ listOf(
         "(\\n f x. n (\\g h. h (g f)) (\\u. x) (\\u. u)) (\\f x. f (f (f x)))",
         "(\\x. x x) (\\y. ((\\x. x) (\\x. x)) y)",
         "(\\x y. x) (\\x. x) ((\\m n f. m (n f)) (\\f x. f (f x)) (\\f x. f (f (f x))))",
-    )
+    ]
     .forEach { source ->
         val each = LambdaTerms.normalise(source)
         val ok = LambdaTerms.alphaEquivalent(each.result, LambdaTerms.referenceNormalOrder(each.term))
@@ -54,10 +54,12 @@ println()
 println("what the compiler builds, for `\\f. \\y. f (f y)`:")
 val compiled = LambdaTerms.compile(LambdaTerms.parse("\\f. \\y. f (f y)"))
 println("  " + compiled.net.nodes.groupingBy { it.type.name }.eachCount().toSortedMap())
-println("  ${compiled.fans} fan(s) for the variable used twice, ${compiled.erasers} eraser(s) for unused binders")
+println(
+    "  ${compiled.fans} fan(s) for the variable used twice, ${compiled.erasers} eraser(s) for unused binders",
+)
 
 /*
-Try it: put a term of your own in the list. `\x. x x` applied to itself diverges, and the net will
-too — `normalise` takes a `maxSteps` and `run.finished` is false when it ran out, which is all
-a reducer can report about a term that has no normal form.
-*/
+ Try it: put a term of your own in the list. `\x. x x` applied to itself diverges, and the net will
+ too — `normalise` takes a `maxSteps` and `run.finished` is false when it ran out, which is all
+ a reducer can report about a term that has no normal form.
+ */

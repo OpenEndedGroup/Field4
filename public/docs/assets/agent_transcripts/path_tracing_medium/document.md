@@ -32,7 +32,7 @@ start(renderer::run)
 <!-- field-box id="pt_medium" index="1" -->
 
 ```edn [field-box id="pt_medium" role="properties"]
-{"id" "pt_medium" "index" 1 "name" "shafts of light through haze" "parents" ["root" "pt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "shafts of light through haze" "_tombstone" false "frame" #afield/rect [320.0 180.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_medium_code_.kt" "lines" 101 "characters" 3970 "sha256" "fb682be4d275565fba10bfe89a0abc4b3e80f94796efc9dfc20c431c03ebeaa6"}]}
+{"id" "pt_medium" "index" 1 "name" "shafts of light through haze" "parents" ["root" "pt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "shafts of light through haze" "_tombstone" false "frame" #afield/rect [320.0 180.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_medium_code_.kt" "lines" 101 "characters" 3958 "sha256" "e13f203a2a15f1641903f348b35e6bac53ea1091a11136c6adc39336b2b275ff"}]}
 ```
 
 ```kotlin [field-property box="pt_medium" name="code" path="pt_medium_code_.kt"]
@@ -64,7 +64,7 @@ val scene = PathTraceScene().apply {
         Vector3f(-0.16f, 4.9f, 3.6f),
         lamp,
     )
-    for (x in listOf(-1.75f, -0.62f, 0.62f, 1.75f)) {
+    for (x in [-1.75f, -0.62f, 0.62f, 1.75f]) {
         quad(
             Vector3f(x - 0.26f, 3.5f, -3.6f),
             Vector3f(x + 0.26f, 3.5f, -3.6f),
@@ -127,7 +127,7 @@ Comment out the frames block to hold one setting.
 */
 frames {
     while (true) {
-        for (density in listOf(0.0f, 0.08f, 0.16f, 0.40f)) {
+        for (density in [0.0f, 0.08f, 0.16f, 0.40f]) {
             tracer.mediumDensity = density
             println("mediumDensity = $density")
             // Changing it resets accumulation, but not until the next frame is recorded,

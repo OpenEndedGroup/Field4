@@ -1,0 +1,29 @@
+{
+  "baseline": "6da129f4fb4fe52d21d5fbc480f29490f680cbd1",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/audio_ai_muscriptor.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/audio_ai_muscriptor.md",
+      "kotlinBodies": 3,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/audio_ai_speech_embeddings.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 1,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/audio_ai_speech_embeddings.md",
+      "kotlinBodies": 2,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

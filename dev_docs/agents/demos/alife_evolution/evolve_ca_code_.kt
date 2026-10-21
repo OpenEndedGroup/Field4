@@ -15,10 +15,10 @@ that the search is good. At radius 2 the space is 2^49 and the margin is 27%.
 */
 
 val ops = LifeRuleGenome(radius = 2)
-val soups = listOf(
+val soups = [
     randomSoup(48, 48, density = 0.35, seed = 101L),
     randomSoup(48, 48, density = 0.12, seed = 202L),
-)
+]
 
 /*
 "Alive but not saturated, and still changing" -- activity times a Gaussian band on density.

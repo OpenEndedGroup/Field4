@@ -2,7 +2,7 @@ import afield.lang.rectsl.*
 import java.util.Base64
 
 val duration = 4.0
-fun clock(): Track<Double> = LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(duration, duration)))
+fun clock(): Track<Double> = LinearScalarTrack([TcbKey(0.0, 0.0), TcbKey(duration, duration)])
 fun wave(rate: Double, amplitude: Double): Track<Double> = BinaryDoubleTrack(
     MappedDoubleTrack(
         BinaryDoubleTrack(clock(), constantTrack(rate), TrackOp2.MUL),
@@ -33,7 +33,7 @@ val halfTurns = strobe.count {
 }
 
 val png = RectSLFitFigure.render(
-    bands = listOf(
+    bands = [
         RectSLFitFigure.Band(
             "sampler",
             x,
@@ -58,7 +58,7 @@ val png = RectSLFitFigure.render(
             note = "$halfTurns half turns",
             rotation = quadrantLess,
         ),
-    ),
+    ],
     markers = emptyList(),
     wall = WallSpec(19.0, 7.0, UnitKind.Meters),
     rectSize = Vec2d(1.35, 0.4),

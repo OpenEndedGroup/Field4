@@ -7,7 +7,7 @@ Launch (Alt-R). Drag controls in the output or on /controllers.
 Install once: uv sync --project optional/kratos --frozen
 SI units: metres, W/(m K), W/m³, kelvin. Stop closes the worker.
 */
-val settings = AtomicReference(listOf(.71, 2.0, 100.0, 293.15))
+val settings = AtomicReference([.71, 2.0, 100.0, 293.15])
 val action = AtomicReference("")
 fun change(index: Int, value: Double) {
     settings.updateAndGet { old -> old.mapIndexed { i, v -> if (i == index) value else v } }
@@ -134,6 +134,8 @@ frames {
             }
             frame()
         }
+    } catch (cancelled: java.util.concurrent.CancellationException) {
+        throw cancelled
     } catch (failure: Exception) {
         status(
             "Worker unavailable: ${safe(failure.cause?.message ?: failure.message)}<br>" +

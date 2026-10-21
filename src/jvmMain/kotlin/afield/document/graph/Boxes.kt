@@ -433,6 +433,22 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     }
 
     var frame by Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onFrameChange)
+
+    /**
+     * A colour the canvas lays over this box, to show some state of it at a glance: a CSS colour
+     * such as `"hsla(28, 80%, 56%, 0.2)"` or `"rgba(255, 184, 108, 0.15)"`, or `""` for none.
+     *
+     * The colour, at its own alpha, washes the box, over the running stripes and under its title;
+     * the same colour made nearly opaque edges it and glows faintly. Change it as often as you
+     * like: it is sent to the canvas like `frame`, but never saved, so a reopened document starts
+     * untinted. `playScore` tints the boxes its playhead is over this way.
+     *
+     * ```
+     * tint = "hsla(140, 70%, 50%, 0.18)" // lit
+     * tint = ""                          // back to normal
+     * ```
+     */
+    var tint by Delegation<String>(defaultValue = { "" })
     private val viewportDelegation = Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onViewportChange)
 
     /**
@@ -545,6 +561,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                     needsResync.add(to to counterName)
 
                 (if (::inside.isInitialized) inside else thisSessionInfo.get()).topologyGeneration++
+                // The edge sets are mutated in place, so setPropertyRaw never sees this change.
+                notePersistentChange(property)
+                if (counterName != null) to.notePersistentChange(counterName)
 
                 if (property == "children") {
                     onTopologyChange(this, true, to)
@@ -574,6 +593,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 needsResync.add(to to counterName)
 
             (if (::inside.isInitialized) inside else thisSessionInfo.get()).topologyGeneration++
+            notePersistentChange(property)
+            if (counterName != null) to.notePersistentChange(counterName)
             if (property == "children") {
                 onTopologyChange(this, false, to)
             }
@@ -638,6 +659,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "compute",
             "compute_s",
             "customization",
+            // Box.tint: a transient canvas colour; resynced like frame, deliberately not persisted.
+            "tint",
             "_tombstone",
             // Set by reloadPersonal when a box's Kotlin environment is dropped out from under it.
             // Has to reach the client or the mark is invisible and the box looks fine while holding
@@ -862,6 +885,28 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             Regex(""".*_editorState""")
         )
 
+        /** The pattern entries of [ioPersistentProperties], rebuilt when that set changes size. */
+        @Volatile
+        private var persistentPatterns: Pair<Int, List<Regex>> = -1 to emptyList()
+
+        /**
+         * True when [name] is written to `metadata.edn` by every document: listed in
+         * [ioPersistentProperties] (names or patterns) and not [isNeverPersisted]. A document's own
+         * header additions are not consulted; this is the cheap check [Box.notePersistentChange]
+         * makes on every property write.
+         */
+        fun isPersistentName(name: String): Boolean {
+            if (isNeverPersisted(name)) return false
+            val names = ioPersistentProperties
+            if (name in names) return true
+            var cached = persistentPatterns
+            if (cached.first != names.size) {
+                cached = names.size to names.filter { p -> p.any { it in ".*[(+?|" } }.map { it.toRegex() }
+                persistentPatterns = cached
+            }
+            return cached.second.any { it.matches(name) }
+        }
+
         /** True when [name] must not be serialised to disk. See [ioNeverPersistedProperties]. */
         fun isNeverPersisted(name: String): Boolean =
             ioNeverPersistedProperties.any { it.matches(name) }
@@ -898,7 +943,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 val a = boxes[0]
                 var names = ""
                 boxes.drop(1).forEach {
+                    val already = it in a.children
                     a.connect(it)
+                    if (!already) afield.tools.automation.OperationTranscript.recordConnect(a, it, connected = true)
                     names += it.name + ", "
                 }
                 notify("Connected ${a.name} -> ${names.trim(' ', ',')}")
@@ -917,7 +964,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 val a = boxes[0]
                 var names = ""
                 boxes.drop(1).forEach {
+                    val was = it in a.children
                     a.disconnect(it)
+                    if (was) afield.tools.automation.OperationTranscript.recordConnect(a, it, connected = false)
                     names += it.name + ", "
                 }
                 notify("Disconnected ${a.name} from ${names.trim(' ', ',')}")
@@ -1005,6 +1054,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                     notify("Deleted 0 boxes")
                 } else {
                     val root = thisSessionInfo.get().root
+                    targets.forEach { target -> afield.tools.automation.OperationTranscript.recordDelete(target) }
                     targets.forEach { target ->
                         // Ensure live parents don't retain stale nested links to deleted boxes.
                         if (target.nestedIn != null) {
@@ -1067,6 +1117,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             properties[name] = incoming
         }
 
+        if (oldValue != incoming) notePersistentChange(name)
         FlightRecorder.recordTrackedPropertyChange(this, name, oldValue, incoming)
         // A raw write to a property declared `propDown` reruns its readers, exactly as assigning it does.
         afield.runtime.lifecycle.ReactiveRuns.noteRawWrite(this, name, oldValue, incoming)
@@ -1084,7 +1135,29 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         if (doResync && uiResyncProperties.any { it.matches(name) }) {
             if (oldValue != null) needsResync.add(this to name)
         }
+        if (oldValue != null) notePersistentChange(name)
         FlightRecorder.recordTrackedPropertyChange(this, name, oldValue, null)
+    }
+
+    /**
+     * Tells this box's document that [name], a property written to `metadata.edn`, changed, so the
+     * autosave loop and the shutdown flush save it.
+     *
+     * Both used to save only when a *sidecar* property (`code`, shaders, ...) was pending, through
+     * explicit `markSidecarPending` calls at a handful of handlers. Every other persistent change —
+     * a new box with no code, a move, a rename, a delete (`_tombstone`), a connection, `autorun` —
+     * marked nothing, so it reached disk only if some sidecar edit happened to follow it, and was
+     * lost if Field stopped first. Measured 2026-10-20 (`dev_docs/SIGINT_SHUTDOWN.md`, "Which edits
+     * reached disk"). This is the one place all of those pass through. Nothing is marked while the
+     * document loads, for a scratch or read-only document, or for a property that is never written.
+     */
+    internal fun notePersistentChange(name: String) {
+        if (!::inside.isInitialized) return
+        val info = inside
+        if (info.loading || !info.writesToDisk) return
+        if (info.boxes[id] !== this && info.root !== this) return
+        if (!isPersistentName(name)) return
+        info.markSidecarPending(id, name)
     }
 
     override fun toString(): String {
@@ -1735,7 +1808,11 @@ fun box(
     u: String,
     createIfMissing: Boolean = true,
     initIfCreated: Boolean = true,
-    root: SessionInformation = thisSessionInfo.get()
+    root: SessionInformation = thisSessionInfo.get(),
+    // Called with the box when this call is the one that made it. Message handlers run
+    // concurrently, so "was it there before I looked?" is only answered race-free here: the canvas
+    // sends a new box's name, frame and code at once, and the macro recorder must see one create.
+    onCreated: ((Box) -> Unit)? = null,
 ): Box {
     if (u == METAROOT_ID) return metaroot
     if (u == "root") return root.root
@@ -1756,6 +1833,8 @@ fun box(
         // cleaned up with no boxes to retire, and the new box's engine outlived its document and
         // ran its bootstrap. Visible, the box is retired, and [Box.disposeKi] disposes the engine
         // the build returns.
+        // Before the engine: building it can take a second, and other handlers already see the box.
+        if (created === b) onCreated?.invoke(b)
         if (initIfCreated && created === b) b.ki
         return b
     } else return root.boxes[u]!!
@@ -1870,6 +1949,7 @@ import afield.study.ui.*
 import afield.tools.automation.*
 import afield.tools.docs.*
 import afield.ui.controls.*
+import afield.ui.film.*
 import afield.ui.layout.*
 import afield.ui.notation.*
 import afield.ui.output.*

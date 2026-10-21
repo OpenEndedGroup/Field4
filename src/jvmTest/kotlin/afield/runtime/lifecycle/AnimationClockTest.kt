@@ -12,6 +12,8 @@ import afield.runtime.execution.plus
 
 import afield.tools.docs.VideoOutputCaptureState
 import afield.tools.docs.videoFrameCount
+import afield.tools.docs.relaunchedVideoTargetReady
+import afield.document.graph.RunningState
 import afield.tools.docs.videoOutputCaptureProblem
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -33,6 +35,21 @@ class AnimationClockTest {
             AnimationClock.endFrameIndexed(token)
         }
         assertFalse(AnimationClock.isFrameIndexed())
+    }
+
+    @Test
+    fun relaunchedVideoTargetIsReadyWhenRunningOrWhenAnExecutedBoxFinished() {
+        // Not yet relaunched: nothing moved past the stop.
+        assertFalse(relaunchedVideoTargetReady(stoppedGeneration = 0, runGeneration = 0, state = null, jobs = 0))
+        // Launching is not yet a first frame.
+        assertFalse(relaunchedVideoTargetReady(0, 1, RunningState(1, "launching"), jobs = 1))
+        // A launched loop past its launch phase.
+        assertTrue(relaunchedVideoTargetReady(0, 1, RunningState(1, "running"), jobs = 1))
+        // An executed box (three { turntable() }) that ran to completion: the trace of the timeout
+        // this fixes was launching at generation 1, then no state at generation 2.
+        assertTrue(relaunchedVideoTargetReady(0, 2, state = null, jobs = 0))
+        // Still holding jobs without a state is not finished.
+        assertFalse(relaunchedVideoTargetReady(0, 2, state = null, jobs = 1))
     }
 
     @Test

@@ -91,11 +91,16 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   Flip the vector box's `reuse` flag and
   relaunch the workloads to compare allocation with Field's in-place linalg operations.
 
+- `macro_recorder_stamp.yaml`: the Macro Recorder's replay options from box code: `stamp` saves a
+  macro (two `create`s and a `connect`, as the recorder writes them), `copies` replays it with
+  `MacroReplayOptions(asCopy = true, offsetY = ...)` three times, `steps` replays it one operation
+  at a time. Open the Macro Recorder afterwards to run, rename or delete it from the panel.
 - `hello_display.yaml`: smallest useful blank-canvas transcript; creates one box, displays HTML, and can be undone.
 - `ai4_iframe_hello.yaml`: one Field-served webpage in an output iframe, with a textbox and opt-in AI4 tools for inspecting and driving that live page. Run the host box after opening its starting point.
 - `orca_hello.yaml`: ORCA in a box output (`orca()`), playing through a returned `PatSynthBank`, with `exposeTools()` so AI4 can read and write the grid. Compiled only: running it opens an audio device, and ORCA plays only in a browser; `run_ui_regressions.py --id orca-io` is its live check.
 - `orca_jam.yaml`: one ORCA with four voiced channels and `exposeTools(about = ...)`: AI4 plays it with `orca_write`/`orca_look` while it runs, and its board and tempo follow the chat (`branchState`). Compiled only, like `orca_hello`.
 - `orca_duet.yaml`: two ORCAs in one box, `lead` and `echo`, with a `frames { }` loop that copies lead's notes into echo's track and nudges lead's tune from echo's; ends with `synth + frames { }`, so launch it. Compiled only, like `orca_hello`; `OrcaHeadlessTest` runs the same exchange headless and fails if the transcript drifts from `OrcaSoundDocs`.
+- `madp_score.yaml`: the canvas as a score (`playScore` / `score { }` in `afield/animation/motion/Score.kt`): a playhead box sweeps the canvas, each box it crosses draws into the lead box's canvas panel and plays dough through `Box.sound`, with `thisRMS` measured per box (`DoughLive.kt`). Ported from the madp score demo (`dev_docs/madp/score.md`). Compiled only: the lead returns a loop that runs until stopped and opens the audio device; `ScoreTest` and `DoughLiveTest` are its headless checks.
 - `hello_display_capture.yaml`: same as `hello_display.yaml` but paired with the backdoor capture-command chain (`wait-output` / `output` / `screenshot-box`) documented under "Capturing output and screenshots" — the worked example of capturing a macro's output and a cropped screenshot.
 - `polytope_conway_demo.yaml`: one deliberately compact **polytope review box**. It marks two opposite cube faces with different height attributes, selects and applies `kis` only to those faces, converts the authoritative polygon faces to separate `FLine`s, and ends in the on-canvas `threeLines(...)` viewer. Orbit and hover the result; clicking a face reports its output id, transform role, source elements, and resolved height. Its inspection output also exercises the registered data-class visualizers for the transform and its polygon-to-triangle provenance.
 - `polytope_conway_gallery.yaml`: the same algebra as **four small boxes, one question each** — the demo set `dev_docs/POLYTOPE_ALGEBRA.md` §6 asks for, and the loadable companion to `public/docs/polytope_examples.md`. (1) an editable Conway-expression contact sheet whose captions are read off the topology, so retyping the expression list rebuilds everything; (2) a topology-only dual whose missing coordinates are shown by two *real* caught exceptions before a realization policy is applied; (3) a selective **and** non-uniform `kis` whose deployed scalar is painted onto pickable output faces; (4) a realization before/after leaving the solver's own diagnostics as the box's final value. Each box names the one line to change. Pure CPU.
@@ -131,11 +136,15 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `Img` into 6000 evenly spaced dots in two statements; `stipple_relaxing` is a launched `loop { }`
   that shows the weighted random start beside one Lloyd step a frame, with `showSignals` plotting how
   far the dots moved.
+- `evolving_water_bugs.yaml`: the creature genetic algorithm (`afield.simulation.creatures`) as two launched
+  boxes. `water_bug` writes the water-surface `ContactModel` and the fitness in the box and draws the
+  champion with its foot score; `ground_crawler` is the same evolution with a floor and gravity.
 - `inertial_movement.yaml`: three pure-CPU `loop { }` boxes on interrupted motion, shortest first —
 - `staged_project.yaml` — the staged-project starting place (`public/docs/staged_projects.md`): a level on a
   grid behind `level.inspect`/`level.edit`, blockout, traversal and placement stages with a "reachable loot"
   gate, the loot rule as a qualified source, and a corpus box that builds seeded variants with the same stages.
 - `matrix_profile.yaml` — the matrix profile page's four boxes (`public/docs/matrix_profile.md`): motifs in a random walk, a malformed beat as a discord, `multiMatrixProfile` finding a gesture and its two channels out of four, and `contrastProfile` finding the shape only the positive examples share.
+- `temporal_memory.yaml` — continuing a gesture (`public/docs/temporal_memory.md`): a lab notebook box, CMU modern dance remembered by the oracle (pose strip, signals by take, a live dancing figure), a slider takeover of two oscillators, a Timestral quantile fan, and the dance played five ways with Timestral judging. Boxes 5–6 need the Timestral worker installed.
 - `keyframe_editor.yaml` — the keyframe editor page's four boxes: a curve played into a meter, one key of each type, an `onChange` overlay, and key types of its own written with `interpolant(...)`.
 - `gesture_to_keyframes.yaml` — a gesture pad's take baked into linked x/y keyframe lanes with `bakeGesture`, and edited lanes sent back to the pad with `setTake`.
 - `gesture_paint_replay.yaml` — a pen gesture pad's take (pressure and tilt kept) baked into x/y/pressure lanes and painted from them with `PaintCanvas.gesture(x, y, pressureLane = ...)`; a second box paints one take four ways to show what the recording drops.
@@ -158,6 +167,7 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `youtube_kaleidoscope.yaml`: the deliberately excessive native-compositing proof. It accepts the EU consent page and starts a real YouTube video through the puppet JavaScript bridge, then samples the fully composited Chromium tab across 224 independently animated Vulkan triangles. The vertex stage opens moving cracks; the fragment stage folds, mirrors and chromatically separates a different region of the browser texture in every shard. Its public walkthrough and live docs capture are in `public/docs/puppet_browser.md`.
 - `youtube_vr_browser.yaml`: the product-facing puppet-browser starting point. It opens a full YouTube watch page at 1280x720, maps it without distortion onto a 1.6m × 0.9m quad 1.7m ahead, and renders the scene once per eye. The OpenXR controller ray handles the EU consent screen and player controls, its thumbstick/trackpad scrolls, physical keyboard events remain available, and Electron keeps Chromium audio live. Without a headset, the same scene is mirrored side by side and the mouse stands in for the controller.
 - `splat_sequence_streaming.yaml`: plays a directory of PlayCanvas `.compressed.ply` frames as 4D video — fifteen sources a frame in a ring around the viewer, decoded straight into one GPU buffer, with a scrubbable play head. Needs a graphics parent, so run `graphics_renderer_launch.yaml` first; needs your own frames, and says how to make them if the directory is missing.
+- `splat_shader.yaml`: the madp splat-shader demo on Field's Gaussian-splat renderer — a renderer, a passthrough on the icosphere shell and six of the demo's per-splat GLSL inserts, one on each of its six procedural clouds. Each box's compute tab is the insert between `#include "splat/insert"` and `#include "splat/end"`, handed to `SplatShader` (`afield/graphics/scene/fabricated/`), which runs it in a compute pass ahead of the depth sort so the sort sees the moved splats. Builds its own `Window` + `Renderer`; launching a box replaces the cloud showing. Capture with `native-screenshot <path> --uid splat_renderer`.
 - `mega_texture_wall.yaml`: a directory of images as one instanced wall, behind a *real* virtual texture — the fragment shader measures its own screen footprint from the UV derivatives, asks for that resolution through a feedback buffer, and the CPU decodes, caches and evicts to serve it. The CPU is told nothing about the scene; fly in and the 15×7 base pages are replaced by full 1920×798 source frames ahead of you, fly out and they are evicted. Each arrival fades in over the page it replaces, or over the image's mean colour if it had none (`config.crossfadeFrames`). Worth reading for the *shape* as much as the subject: the wall's geometry is arithmetic on `gl_InstanceIndex` with no vertex buffer at all, the shaders are box properties with `{{ mega.all }}` interpolated into them, and the Kotlin is five lines plus a camera. Needs a graphics parent, so run `graphics_renderer_launch.yaml` first, and point the `folder(...)` line at your own images. Flip `showResidentLevel` in the fragment shader and reload (alt-r) to watch residency directly. The library is `afield/four/texture/mega/`.
 - `afield_four_traditional_triangle.yaml`: creates a graphics child box for the stable backdoor graphics parent `agent_graphics_context` and draws a native Vulkan triangle.
 - `keyframe_autosweep.yaml`: a self-contained overnight sweep of a keyframe space — a renderer, a rig whose live state is ten `KeyframeScope` lanes, the sweep itself (twelve renders at ~8,300/hour, each a random blend of two or three saved keys, sometimes extrapolated past the hull), and a morning box that reads the archive back with no renderer at all. Every render leaves a directory holding a still, a short mp4, the blended key as ordinary key JSON, and a manifest of which keys went in at what weight. Builds its own `Window` + `Renderer`, so run it on its own rather than under `graphics_renderer_launch.yaml`. Companion page `public/docs/keyframe_autosweep.md`; the same layer with assertions on the pixels is `tools/run_field_tests.py --id keyframe.sweep.smoke`.
@@ -189,6 +199,7 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `spin_glass.yaml`: a five-box **2D Edwards-Anderson spin glass**, Vulkan-compute accelerated, on a blank canvas — a renderer box, a "metropolis update" compute box (checkerboard / red-black Monte Carlo over Ising spins with random `+/-J` or Gaussian bonds and cosine simulated annealing, updating in-place `buffer_reference` buffers it publishes as props), a "measure" compute box (probes `vec2(spin, energy)` for every site via `{% property "fieldProbe" %}`, so the stats card's x-mean is the magnetization and its y-mean the energy per spin), and a "lattice view" draw box (a fullscreen triangle whose fragment shader reads the shared spins buffer and colours each cell). Requires a GPU/Vulkan window. Demonstrates a red-black compute update split into two half-sweeps per frame with `computeBarrier()` between them and `computeBarrier(graphics = true)` publishing the finished sweep, per-frame simulation state advanced from a leading `computeTask` "tick", and a `renderer -> update -> measure -> view` publish/read chain. Produces no image artifact itself — capture its native window with a follow-on `native-screenshot <path>` backdoor command (`--with-playwright`).
 - `lattice_boltzmann_cylinder.yaml`: a three-box **lattice Boltzmann wind tunnel** (renderer, `ShaderLatticeBoltzmannSystem` published as `lbm`, and a cylinder box drawing a solid disc, walls and dye/inlet stripes into the fluid's control texture). Sheds a von Kármán street within a minute or so. Requires a GPU/Vulkan window; capture it with `native-screenshot <path> --uid lbm_renderer`. Lessons 10/10b of `canonical_graphics` are the same two boxes.
 - `fern_iterated_systems.yaml`: the madp **Fern** demo — a renderer and four iterated systems (Barnsley fern, launched; Lorenz attractor; flame-style IFS; Sierpinski triangle), each an `IteratedSystem` whose `compute` tab defines `initParticle` / `step` / `project` / `shouldDraw` / `color` / `pointSize` on top of `#include "points/system"`, plotted into a `PointAccumulation` (additive points, per-frame fade, tone map). Launching a system box replaces the one showing. Requires a GPU/Vulkan window; capture with `native-screenshot <path> --uid fern_renderer`. Design: `dev_docs/madp/fern.md`.
+- `particles_sketchbook.yaml`: the madp **Particles** demo — a renderer and seven sketches (boids ribbon, launched; spring mesh; predator wake; bounce house; sine garden; pendulum bloom; vortex brush), each a `ParticleSketch` whose `compute` tab defines madp's hooks `spawn` / `eachPair` / `update` / `draw` on top of `#include "particles/sketch"` (forces, flocking, springs, collisions, links and overlays over a GPU neighbour grid), drawn into a `PointAccumulation` with a `1 - trail` fade. Drag in the renderer window to paint particles in. Launching a sketch box replaces the one showing. Requires a GPU/Vulkan window; capture with `native-screenshot <path> --uid particles_renderer`. Design: `dev_docs/madp/particles.md`.
 - `forest_fire.yaml`: a three-box **GPU forest fire** (renderer with a square window, `ShaderForestFireSystem` published as `fire`, and a fire-starter box keeping a red and a green ignition point lit). Two trains of ragged rings fill the forest and interleave within about a minute. Requires a GPU/Vulkan window; capture with `native-screenshot <path> --uid fire_renderer`. Lessons 11/11b of `canonical_graphics` are the same two boxes.
 
 - `alife_script.yaml`: **a per-agent behaviour layer for ALife** — sequencing, waiting on simulation
@@ -238,10 +249,16 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   under transport-time, movie-time and step sliders. Pure CPU.
 - `lp_curves.yaml`: **linear programs as curves** — the companion to `lp_curves.md`. Every LP route
   over one pentagon (central path, fan, primal-dual, PDHG, ellipsoid, simplex, cutting planes), and a
-  launched box that turns the objective while the polygon breathes. Pure CPU.
+  launched box that turns the objective while the polygon breathes, and `lp_fan_map`, the fan as a map
+  `x(θ, log μ)` drawn as a grid in an editable `threeLines` viewer: drag a corner and the grid is
+  recomputed when the drag ends. Pure CPU.
 - `lp_curves_3d.yaml`: **linear programs in three dimensions** — the companion to the "In three dimensions" section of `lp_curves.md`.
   A point cloud's hull as an `LpPolytope` with four routes to one vertex (central path, primal-dual,
   simplex along edges, PDHG), and a turning fan of central paths, both in `three { }`. Pure CPU.
+- `madp_geometry.yaml`: **the madp geometry toolbox** — `3d.html` as a starting point. Models as
+  recipes of triangles in `geometry { }` (`GeometryBuilder`), drawn in a studio-lit `three { }` view:
+  ripple terrain, crystal bloom, lathe vessel, knot tube, an animated breathing sheet
+  (`animateGeometry`), a fungal tree and a Menger sponge. Pure CPU.
 - `frames_lifecycle.yaml`: **a frame loop, from start to cleanup** — the companion to
   `animation_time_model.md`. Runs until stopped, stops itself with `end()`, re-run replaces, and a
   fourth box the reader drives to see which of `.end { }` and `finally` each way of stopping reaches.
@@ -279,6 +296,7 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   parameters, and the failure mode that presents as a converged optimisation: a child swallowed under a
   hard `Union` is dead, because a pointwise `min` hands the whole derivative to whichever child is
   nearest.
+- `shadertrinket.yaml`: ShaderTrinket (madp) as a starting point: `shadertoyHere` boxes whose `fragment` is `{{ shadertoy.image }}` plus a ShaderToy `mainImage`, drawing into a `shadertoyCanvas()` the window shows (`afield/graphics/shader/ShadertoyChannels.kt`); a Flat Rings lead, four presets, and a camera box (`webcam()` as `iChannel0`). Compiled only: it opens a window and a camera.
 - `solidsl_gallery.yaml`, `mesh_repair_demo.yaml`, `mqtt_demo.yaml`, `oscquery_demo.yaml`,
   `sonicpi_pattern_demo.yaml`, `dmx_lighting_demo.yaml`, the seven `fieldml_*_demo.yaml`,
   `stacksl_gallery.yaml`, `stacksl_fit_demo.yaml`: generated by `DocumentToTranscript` from the demo
@@ -392,6 +410,24 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json \
 The FIELD_TEST `examples.agent-transcripts.materialize` re-materializes to a temp dir and **fails if
 the committed bundle is out of date** — or absent entirely — so a transcript edit without a regenerate
 is caught in CI. `./gradlew checkAgentTranscripts` is the same guard inside `check`.
+
+### Documentation pages for a starting point
+
+A top-level `docs:` list names the one or two documentation pages someone with the document open
+should read next. Each item is a page relative to `public/docs/`, optionally with a heading anchor,
+plus an optional one-sentence `why`:
+
+```yaml
+docs:
+  - page: drawing_and_notation.md#reading-a-region
+    why: "How box code reads the marks inside a region."
+```
+
+The materializer writes each item as a docs-redirect guide, `guides/<page>.md`, titled by the page's
+H1 (and the section's heading when there is an anchor). The document's Guides panel lists it under
+**Documentation** and opens it in the docs pane (`dev_docs/frontend/DOCUMENT_GUIDES.md`). A page or
+anchor that does not exist fails materialization, so renaming a page means updating the transcripts
+that point at it. Leave `docs:` out rather than listing a page that only mentions the topic.
 
 A transcript that is *not* a self-contained scene makes a broken starting point, so it is listed in
 `AgentTranscriptMaterializer.EXCLUDE` and no document is generated for it. Its index entry then must

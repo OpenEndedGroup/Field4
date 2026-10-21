@@ -61,7 +61,7 @@ object SlugRenderSmoke {
             renderer.renderList.preTargets["slug"] = target
             val module = Module(parameters(renderer) {
                 vertex = SlugShaders.vertex; fragment = SlugShaders.fragment
-                target.apply(); depthTest = false; depthWrite = false
+                +target; depthTest = false; depthWrite = false
                 srcAlpha = VK_BLEND_FACTOR_ONE
             }).pointer()
             check(module.current.valid)

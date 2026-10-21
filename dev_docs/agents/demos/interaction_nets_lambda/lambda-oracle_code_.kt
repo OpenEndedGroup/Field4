@@ -5,12 +5,12 @@ capture-avoiding normal-order evaluator, for every named term, printed rather th
 */
 
 val corpus = LambdaTerms.corpus()
-val orders = listOf(
+val orders = [
     ActivationOrder.FIRST_FOUND,
     ActivationOrder.LEFTMOST_BY_ID,
     ActivationOrder.RIGHTMOST_BY_ID,
     ActivationOrder.HIGHEST_PAIR_ENERGY,
-)
+]
 println("${corpus.size} named closed terms, ${orders.size} schedulers")
 println()
 
@@ -67,7 +67,7 @@ println(
 )
 
 /*
-Try it: add a term to `LambdaTerms.corpus()` in `src/jvmMain/kotlin/afield/stdlib/lambdaterms.kt`.
-`stdlib.lambda-terms.smoke` asserts the corpus by the SET OF ITS NAMES, so a new entry fails that
-test until you name it there too — which is the point. A corpus that can shrink is not a corpus.
-*/
+ Try it: add a term to `LambdaTerms.corpus()` in `src/jvmMain/kotlin/afield/stdlib/lambdaterms.kt`.
+ `stdlib.lambda-terms.smoke` asserts the corpus by the SET OF ITS NAMES, so a new entry fails that
+ test until you name it there too — which is the point. A corpus that can shrink is not a corpus.
+ */

@@ -1,0 +1,80 @@
+name: macro_recorder_stamp
+description: >
+  The Macro Recorder's replay, from box code. `stamp` saves a macro, written the way the recorder
+  writes one: two boxes made by `create`, then a `connect` between them. `copies` replays it three
+  times as a copy, each one lower down the canvas, so every run makes a new pair. `steps` replays it one
+  operation at a time, as the panel's Step button does, building the original pair off to the
+  right.
+
+  Run `stamp`, then `copies` and `steps`. Then open the Macro Recorder from the command palette:
+  `stamp` is listed under document macros with Run, Rename and Delete; tick "as a copy", give an
+  offset and press Run to stamp another pair, or press Record, make a few boxes and connect them
+  with `g`, and Save to see your own recording as YAML. Companion to public/docs/automating_field.md.
+  Pure CPU.
+docs:
+  - page: automating_field.md
+    why: "Explains the Macro Recorder panel whose replay options these boxes call."
+operations:
+  - create:
+      box: mr_stamp
+      name: stamp
+      frame: { x: 80.0, y: 80.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // A macro is YAML. This one is what the recorder writes when you make a box with code,
+          // make another, and connect them with `g`.
+          val stamp = """
+              name: stamp
+              operations:
+                - create:
+                    box: stamp_source
+                    name: Source
+                    frame: { x: 520.0, y: 80.0, w: 300.0, h: 100.0 }
+                    properties:
+                      code: |
+                        println("source")
+                - create:
+                    box: stamp_sink
+                    name: Sink
+                    frame: { x: 880.0, y: 80.0, w: 300.0, h: 100.0 }
+                - connect:
+                    parent: stamp_source
+                    child: stamp_sink
+          """.trimIndent()
+          val saved = OperationTranscript.writeMacro(thisBox.inside.filename, "stamp", stamp)
+          println("${saved.message} ${saved.operationCount} operations")
+  - create:
+      box: mr_copies
+      name: copies
+      frame: { x: 80.0, y: 360.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // Replay "stamp" as a copy three times, each 140 lower: the boxes it creates get new
+          // identities on every run, so each run makes another connected pair.
+          val document = thisBox.inside.filename
+          (1..3).forEach { i ->
+              val run = OperationTranscript.runMacro(
+                  document, "stamp",
+                  replay = OperationTranscript.MacroReplayOptions(asCopy = true, offsetY = 140.0 * i)
+              )
+              println(run.message + run.errors.joinToString("") { " " + it })
+          }
+          val sources = thisBox.inside.boxes.values.filter { it.name == "Source" }
+          println("${sources.size} Source boxes; Sinks wired to each: ${sources.map { s -> s.children.count { it.name == "Sink" } }}")
+  - create:
+      box: mr_steps
+      name: steps
+      frame: { x: 80.0, y: 640.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // Step through "stamp" one operation at a time, as the panel's Step button does.
+          val document = thisBox.inside.filename
+          (0 until 3).forEach { step ->
+              val run = OperationTranscript.runMacro(
+                  document, "stamp",
+                  replay = OperationTranscript.MacroReplayOptions(step = step)
+              )
+              println("step ${step + 1}: ${run.message}" + run.errors.joinToString("") { " " + it })
+          }
+          println("the original pair is wired: ${thisBox.inside.boxes["stamp_source"]?.children?.map { it.name }}")
+  - execute: { box: mr_stamp }
