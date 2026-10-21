@@ -20,6 +20,9 @@ description: |
 
   Needs a GPU and a window. `dev_docs/PATH_TRACING_MEASUREMENTS.md` is the write-up, and the saved
   document at `dev_docs/agents/demos/path_tracer_instrument/` is this same scene.
+docs:
+  - page: path_tracing.md#reading-a-running-tracer
+    why: "Covers instrumenting a running tracer, convergence curves and swapping the integrator."
 operations:
   - create:
       box: pt_renderer

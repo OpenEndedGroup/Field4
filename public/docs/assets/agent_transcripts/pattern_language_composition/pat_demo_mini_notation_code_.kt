@@ -6,11 +6,11 @@ so you can check by eye as well as by assertion.
 showPatRoll("mini-notation")
 displayOpen("main")
 
-val pairs = listOf(
+val pairs = [
     "bd sd . hh hh hh" to "[bd sd] [hh hh hh]", // `.` groups
     "bd _ _ sd" to "bd@3 sd", // `_` extends
     "bd ! ! sd" to "bd!3 sd", // bare `!` repeats
-)
+]
 for ((shorthand, bracketed) in pairs) {
     val a = pat(shorthand).events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
     val b = pat(bracketed).events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }

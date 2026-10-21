@@ -16,7 +16,7 @@ parks in a corner and the trail says nothing.
 w.addPolygon(12.0, 12.0, 188.0, 12.0, 188.0, 188.0, 12.0, 188.0, name = "room")
 w.addWall(120.0, 30.0, 120.0, 170.0, name = "barrier")
 
-listOf(WallResponse.SLIDE, WallResponse.BOUNCE, WallResponse.STOP).forEachIndexed { i, r ->
+[WallResponse.SLIDE, WallResponse.BOUNCE, WallResponse.STOP].forEachIndexed { i, r ->
     w.spawn(
         25.0,
         60.0 + i * 25.0,
@@ -59,7 +59,7 @@ lines(
 )
 
 /*
-Try this: set `restitution = 0.3` on the BOUNCE agent and it loses most of its speed at the
-wall. Set it to 1.0 and the trail is a billiard. SLIDE is the default because it is the only
-one of the three that lets an agent still get somewhere while touching something.
-*/
+ Try this: set `restitution = 0.3` on the BOUNCE agent and it loses most of its speed at the
+ wall. Set it to 1.0 and the trail is a billiard. SLIDE is the default because it is the only
+ one of the three that lets an agent still get somewhere while touching something.
+ */

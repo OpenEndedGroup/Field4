@@ -148,7 +148,7 @@ private fun referencingLargeSidecars(properties: Map<String, Any?>): Map<String,
     else properties.mapValuesTo(LinkedHashMap()) { (name, value) ->
         if (value is FileInline && referencesSidecar(name, value.inline)) FileRef(value.path) else value
     }
-private data class FileInline(val path: String, val inline: String)
+internal data class FileInline(val path: String, val inline: String)
 
 class SavingContext {
 
@@ -654,7 +654,8 @@ class SavingContext {
                     if (altered) {
                         // Notify history manager about the new version
                         val savedAt = System.currentTimeMillis()
-                        val boxIds = snapshot.transfers.map { it.id }.toSet()
+                        // Root is excluded, as HistoryManager.extractBoxIds does when it reads a version from disk.
+                        val boxIds = snapshot.transfers.map { it.id }.filterNot { it == "root" }.toSet()
                         val historyStartedAt = System.nanoTime()
                         HistoryManager.onVersionSaved(fn, boxIds, savedAt)
                         historyMs = SaveReloadLog.elapsedMillis(historyStartedAt)

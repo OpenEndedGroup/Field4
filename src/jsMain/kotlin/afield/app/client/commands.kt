@@ -116,6 +116,9 @@ private fun sendWindowVideo(request: AgentWindowVideo) {
 }
 
 private var macroPanelElement: HTMLElement? = null
+private var macroFieldPanel: FieldPanel? = null
+/** The next operation Step replays, 0-based, in the macro loaded in the editor. */
+private var macroStepCursor = 0
 private var macroPanelLastState: MacroTranscriptCommandResponse? = null
 private var macroPanelRefreshTimer: Int? = null
 private var macroPanelContentDirty = false
@@ -181,6 +184,10 @@ private fun macroYamlUnquote(text: String): String {
     return trimmed
 }
 
+/** `|`, `|-`, `|+`, `>`, `>-`: a YAML block scalar follows (the recorder writes `|-`). */
+private fun isYamlBlockMarker(raw: String): Boolean =
+    raw.trim().let { it.isNotEmpty() && (it[0] == '|' || it[0] == '>') && it.drop(1).all { c -> c == '-' || c == '+' || c.isDigit() } }
+
 private fun parseMacroPreview(content: String): List<MacroPreviewOperation> {
     val operations = mutableListOf<MacroPreviewOperation>()
     var verb: String? = null
@@ -218,7 +225,13 @@ private fun parseMacroPreview(content: String): List<MacroPreviewOperation> {
             if (nestedMatch != null) {
                 val key = nestedMatch.groupValues[1]
                 val raw = nestedMatch.groupValues.getOrNull(2).orEmpty()
-                fields["$activeNested.$key"] = macroYamlUnquote(raw)
+                if (isYamlBlockMarker(raw)) {
+                    fields["$activeNested.$key"] = ""
+                    blockKey = "$activeNested.$key"
+                    blockIndent = leading + 2
+                } else {
+                    fields["$activeNested.$key"] = macroYamlUnquote(raw)
+                }
             }
             return@forEach
         } else {
@@ -238,7 +251,7 @@ private fun parseMacroPreview(content: String): List<MacroPreviewOperation> {
             val fieldMatch = fieldRegex.matchEntire(line) ?: return@forEach
             val key = fieldMatch.groupValues[1]
             val raw = fieldMatch.groupValues.getOrNull(2).orEmpty()
-            if (raw.trim() == "|") {
+            if (isYamlBlockMarker(raw)) {
                 fields[key] = ""
                 blockKey = key
                 blockIndent = leading + 2
@@ -346,8 +359,11 @@ private fun macroTranscriptSummaryHtml(entry: TranscriptEntry): String {
             if (box.isNotBlank()) append(" ").append(macroTemplateHtml("of")).append(" ").append(box)
         }
         "stop", "stop-all", "stop-box" -> if (box.isBlank()) macroTemplateHtml("stop") else "${macroTemplateHtml("stop")} $box"
-        "connect" -> if (box.isBlank()) macroTemplateHtml("connect") else "${macroTemplateHtml("connect")} $box"
-        "disconnect" -> if (box.isBlank()) macroTemplateHtml("disconnect") else "${macroTemplateHtml("disconnect")} $box"
+        "connect", "disconnect" ->
+            if (entry.from.isBlank() || entry.to.isBlank()) macroTemplateHtml(entry.verb.lowercase())
+            else "${macroTemplateHtml(entry.verb.lowercase())} ${macroBoxLinkHtml(entry.from)} ${macroNotationHtml("->")} ${macroBoxLinkHtml(entry.to)}"
+        "create", "new-box", "box" -> if (box.isBlank()) macroTemplateHtml("create") else "${macroTemplateHtml("create")} $box"
+        "delete", "tombstone" -> if (box.isBlank()) macroTemplateHtml("delete") else "${macroTemplateHtml("delete")} $box"
         "wait" -> {
             val frames = entry.frame.ifBlank { entry.summary.substringAfter("wait", "").substringBefore("frame").trim() }.ifBlank { "?" }
             "${macroTemplateHtml("wait")} ${macroNumberHtml(frames)} ${macroTemplateHtml(macroPlural(frames, "frame"))}"
@@ -373,6 +389,24 @@ private fun macroOperationSummary(index: Int, op: MacroPreviewOperation): String
         val prop = macroPropertyHtml(property).let { if (it.isBlank()) "" else " $it" }
         val type = op.fields["type"].orEmpty().let { if (it.isBlank() || it == "launch" || it == property) "" else " ${macroVariableHtml(it)}" }
         return "${macroNumberHtml((index + 1).toString())}${macroNotationHtml(".")} ${macroTemplateHtml(op.verb.substringBefore("-"))}$type$prop$target"
+    }
+    val n = "${macroNumberHtml((index + 1).toString())}${macroNotationHtml(".")}"
+    if (op.verb.lowercase() in setOf("create", "new-box", "box")) {
+        // The box may not exist yet (that is what this step makes), so label it by the name it gets.
+        val label = op.fields["name"].orEmpty().ifBlank { macroBoxDisplayName(uid) }
+        val made = "<span class=\"macro-recorder-box-symbol\">□</span><span class=\"macro-recorder-box-name\">${htmlEscape(label)}</span>"
+        val at = rectFromFields(op.fields, "frame")?.let { " ${macroTemplateHtml("at")} ${rectCompactHtml(it)}" }.orEmpty()
+        val props = op.fields.keys.filter { it.startsWith("properties.") }.map { it.removePrefix("properties.") }
+        val with = if (props.isEmpty()) "" else " ${macroTemplateHtml("with")} " + props.joinToString(" ") { macroVariableHtml(it) }
+        return "$n ${macroTemplateHtml("create")} $made$at$with"
+    }
+    if (op.verb.lowercase() in setOf("delete", "tombstone")) {
+        return "$n ${macroTemplateHtml("delete")} $box"
+    }
+    if (op.verb.lowercase() in setOf("connect", "disconnect")) {
+        val parent = macroBoxLinkHtml(op.fields["parent"] ?: op.fields["from"] ?: "")
+        val child = macroBoxLinkHtml(op.fields["child"] ?: op.fields["to"] ?: "")
+        return "$n ${macroTemplateHtml(op.verb.lowercase())} $parent ${macroNotationHtml("->")} $child"
     }
     if (op.verb.lowercase() in setOf("stop", "stop-all", "stop-box")) {
         val target = if (box.isBlank()) "" else " $box"
@@ -438,6 +472,7 @@ private fun macroPanelSetFeedback(text: String, kind: String = "ok") {
 }
 
 private fun renderMacroPreview(content: String) {
+    macroPanelUpdateStepStatus()
     val preview = macroPanelQuery("[data-role='preview']") ?: return
     val operations = parseMacroPreview(content)
     if (operations.isEmpty()) {
@@ -447,15 +482,21 @@ private fun renderMacroPreview(content: String) {
     preview.innerHTML = operations.mapIndexed { index, op ->
         val priority = listOf("from", "to", "value", "text", "frame")
         val hiddenKeys = setOf("box", "uid", "target", "property", "prop") +
-            if (op.verb == "move") setOf("from", "to", "from.x", "from.y", "from.w", "from.h", "to.x", "to.y", "to.w", "to.h") else emptySet()
-        val detailKeys = (priority + op.fields.keys.filterNot { it in priority || it in hiddenKeys })
+            when (op.verb) {
+                "move" -> setOf("from", "to", "from.x", "from.y", "from.w", "from.h", "to.x", "to.y", "to.w", "to.h")
+                "create" -> setOf("name", "frame", "frame.x", "frame.y", "frame.w", "frame.h", "properties")
+                "connect", "disconnect" -> setOf("parent", "child")
+                "delete" -> setOf("name")
+                else -> emptySet()
+            }
+        val detailKeys = (priority + op.fields.keys.filterNot { it in priority })
             .distinct()
-            .filter { op.fields.containsKey(it) }
+            .filter { op.fields.containsKey(it) && it !in hiddenKeys }
         val details = detailKeys.joinToString("") { key ->
             macroDetailsHtml(key, op.fields[key].orEmpty(), open = key == "to")
         }
         """
-        <div class="macro-recorder-op">
+        <div class="macro-recorder-op${if (index < macroStepCursor) " is-stepped" else if (index == macroStepCursor) " is-next" else ""}">
             <div class="macro-recorder-op-head">${macroOperationSummary(index, op)}</div>
             <div class="macro-recorder-op-details">$details</div>
         </div>
@@ -742,6 +783,12 @@ private fun macroPanelSyncControls() {
         if (nameSaved) "" else "Load or save a macro before running it."
     )
     macroPanelSetControlEnabled(
+        "step", nameSaved && !recording,
+        if (nameSaved) "Replay the next operation of this macro" else "Load or save a macro before stepping through it."
+    )
+    macroPanelSetControlEnabled("step-reset", nameSaved && macroStepCursor > 0)
+    macroPanelQuery("[data-action='start']")?.textContent = if (recording) "Recording" else "Record"
+    macroPanelSetControlEnabled(
         "copy-link", nameSaved,
         if (nameSaved) "Copy a Markdown link that runs this saved macro" else "Load or save a macro before linking to it."
     )
@@ -830,10 +877,14 @@ private fun macroPanelRequest(
     limit: Int = MACRO_TRANSCRIPT_PAGE_SIZE,
     indices: List<Int> = emptyList(),
     mode: String = "",
+    newName: String = "",
+    replay: Boolean = false,
+    step: Int = -1,
+    scopeOverride: String = "",
     announce: Boolean = true,
     after: ((MacroTranscriptCommandResponse) -> Unit)? = null
 ) {
-    val scope = macroPanelScope()
+    val scope = scopeOverride.ifBlank { macroPanelScope() }
     sendMacroTranscriptCommand(
         MacroTranscriptCommandRequest(
             command = command,
@@ -846,11 +897,56 @@ private fun macroPanelRequest(
             offset = offset,
             limit = limit,
             indices = indices,
-            mode = mode
+            mode = mode,
+            newName = newName,
+            asCopy = replay && macroPanelAsCopy(),
+            offsetX = if (replay) macroPanelOffset("[data-role='offset-x']") else 0.0,
+            offsetY = if (replay) macroPanelOffset("[data-role='offset-y']") else 0.0,
+            step = step
         ),
         announce = announce,
         after = after
     )
+}
+
+private fun macroPanelAsCopy(): Boolean =
+    macroPanelElement?.querySelector("[data-role='as-copy']").asDynamic()?.checked as? Boolean ?: false
+
+private fun macroPanelOffset(selector: String): Double =
+    macroPanelValue(selector).trim().toDoubleOrNull() ?: 0.0
+
+private fun macroPanelOperationCount(): Int =
+    parseMacroPreview(macroPanelValue("[data-role='content']")).size
+
+private fun macroPanelUpdateStepStatus() {
+    val total = macroPanelOperationCount()
+    macroPanelQuery("[data-role='step-status']")?.textContent =
+        if (total == 0) "no operations" else if (macroStepCursor >= total) "stepped all $total" else "next: step ${macroStepCursor + 1} of $total"
+}
+
+/**
+ * Replay the operation at [macroStepCursor] of the loaded macro, and only that one, then move the
+ * cursor on. The preview marks what has been stepped and what is next, so a recording can be
+ * watched rebuilding the document one operation at a time.
+ */
+private fun macroPanelStep() {
+    val name = macroPanelName()
+    if (name.isBlank()) {
+        notify("Choose a macro to step through", "error")
+        return
+    }
+    val total = macroPanelOperationCount()
+    if (macroStepCursor >= total) {
+        macroPanelSetFeedback("All $total operations stepped; Reset to start again.")
+        return
+    }
+    val index = macroStepCursor
+    macroPanelRequest("step", name = name, replay = true, step = index, announce = false) { response ->
+        if (response.success) macroStepCursor = index + 1
+        macroPanelShowRunFeedback(response.copy(message = "step ${index + 1} of $total: ${response.message}"))
+        renderMacroPreview(macroPanelValue("[data-role='content']"))
+        macroPanelRefresh()
+    }
 }
 
 private fun macroPaletteList(): Promise<dynamic> =
@@ -903,64 +999,57 @@ private fun macroPaletteRun(name: String, scope: String, projectName: String = "
         }
     }
 
+/**
+ * The Macro Recorder, built on [FieldPanel] like the bookmarks and layers panels: the shell (title,
+ * status, close, Escape, keys kept off the canvas) is FieldPanel's, and `.macro-recorder-*` CSS
+ * only lays out the body. Top to bottom: the record bar (name, scope, Record, Save, Run), how a
+ * run replays (as a copy, at an offset, one step at a time), the saved macros of every scope with
+ * run / rename / delete on each, the transcript of everything recorded, and the macro's YAML,
+ * editable in place.
+ */
 private fun ensureMacroPanel(): HTMLElement {
     macroPanelElement?.let { return it }
-    val panel = document.createElement("div") as HTMLElement
-    panel.id = "macro-recorder-panel"
-    panel.className = "macro-recorder-panel"
-    panel.innerHTML = """
-        <div class="macro-recorder-head">
-            <div>
-                <div class="macro-recorder-title">Macro Recorder</div>
-                <div class="macro-recorder-status" data-role="status">idle</div>
-            </div>
-            <button type="button" class="macro-recorder-icon" data-action="close" title="Close">×</button>
-        </div>
+    val shell = FieldPanel("macro-recorder-panel", "Macro Recorder", onHide = { macroPanelStopAutoRefresh() })
+    macroFieldPanel = shell
+    val panel = shell.root
+    panel.classList.add("macro-recorder-panel")
+    shell.status.setAttribute("data-role", "status")
+    shell.status.classList.add("macro-recorder-status")
+    shell.status.textContent = "idle"
+    (panel.querySelector(".field-panel-head .field-panel-icon") as? HTMLElement)?.setAttribute("data-action", "close")
+    shell.body.classList.add("macro-recorder-body")
+    shell.body.innerHTML = """
         <div class="macro-recorder-controls">
-            <input data-role="name" autocomplete="off" placeholder="macro name">
-            <select data-role="scope" title="Macro scope">
+            <input type="text" data-role="name" autocomplete="off" placeholder="macro name">
+            <select data-role="scope" title="Where the macro is saved">
                 <option value="document">document</option>
                 <option value="project">project</option>
                 <option value="workspace">workspace</option>
             </select>
-            <button type="button" data-action="start">Start</button>
-            <button type="button" data-action="save">Save</button>
-            <button type="button" data-action="run">Run</button>
+            <button type="button" data-action="start" title="Record what you do on the canvas from now on">Record</button>
+            <button type="button" data-action="save" title="Stop recording and save it under this name (or save the edited YAML)">Save</button>
+            <button type="button" data-action="run" title="Replay this macro">Run</button>
             <button type="button" data-action="copy-link">Copy link</button>
             <button type="button" data-action="promote" title="Copy this macro to the project (or workspace) so other documents can use it">Promote</button>
             <button type="button" data-action="reveal"></button>
         </div>
+        <div class="macro-recorder-replay">
+            <span class="macro-recorder-list-title">replay</span>
+            <label class="field-panel-toggle" title="Give the boxes the macro creates new uids, so every run makes a new set">
+                <input type="checkbox" data-role="as-copy"><span>as a copy</span>
+            </label>
+            <label class="macro-recorder-offset" title="Shift the boxes the macro creates">
+                <span>offset</span>
+                <input type="text" data-role="offset-x" inputmode="decimal" value="0">
+                <input type="text" data-role="offset-y" inputmode="decimal" value="0">
+            </label>
+            <span class="macro-recorder-notation">·</span>
+            <button type="button" data-action="step" title="Replay the next operation of this macro">Step</button>
+            <button type="button" data-action="step-reset" title="Start stepping from the first operation again">Reset</button>
+            <span class="macro-recorder-meta" data-role="step-status">step 0 of 0</span>
+        </div>
         <div class="macro-recorder-meta" data-role="meta"></div>
         <div class="macro-recorder-feedback" data-role="feedback"></div>
-        <div class="macro-recorder-transcript-head">
-            <div>
-                <div class="macro-recorder-list-title">transcript</div>
-                <div class="macro-recorder-transcript-meta-line">
-                    <span class="macro-recorder-meta" data-role="transcript-page">entries 0-0 of 0</span>
-                    <span class="macro-recorder-notation">·</span>
-                    <span class="macro-recorder-meta" data-role="transcript-selection">nothing selected</span>
-                </div>
-            </div>
-            <div class="macro-recorder-transcript-actions">
-                <label class="macro-recorder-transcript-toggle">
-                    <input type="checkbox" data-role="hide-waits">
-                    <span>hide wait</span>
-                </label>
-                <button type="button" data-action="transcript-newer">Newer</button>
-                <button type="button" data-action="transcript-older">Older</button>
-                <button type="button" data-action="save-selected">Save selected</button>
-                <button type="button" data-action="undo-selected">Undo selected</button>
-                <button type="button" data-action="ai-undo-selected">AI Undo</button>
-            </div>
-        </div>
-        <div class="macro-recorder-transcript" data-role="transcript-list"></div>
-        <details class="macro-recorder-editor" data-role="macro-editor">
-            <summary>macro yaml</summary>
-            <div class="macro-recorder-editor-body">
-                <textarea data-role="content" spellcheck="false"></textarea>
-                <div class="macro-recorder-preview" data-role="preview"></div>
-            </div>
-        </details>
         <div class="macro-recorder-browser">
             <div>
                 <div class="macro-recorder-list-title">document</div>
@@ -975,15 +1064,39 @@ private fun ensureMacroPanel(): HTMLElement {
                 <div class="macro-recorder-list" data-role="workspace-list"></div>
             </div>
         </div>
+        <details class="macro-recorder-editor" data-role="macro-editor">
+            <summary>macro yaml</summary>
+            <div class="macro-recorder-editor-body">
+                <textarea data-role="content" spellcheck="false"></textarea>
+                <div class="macro-recorder-preview" data-role="preview"></div>
+            </div>
+        </details>
+        <div class="macro-recorder-transcript-head">
+            <div>
+                <div class="macro-recorder-list-title">transcript</div>
+                <div class="macro-recorder-transcript-meta-line">
+                    <span class="macro-recorder-meta" data-role="transcript-page">entries 0-0 of 0</span>
+                    <span class="macro-recorder-notation">·</span>
+                    <span class="macro-recorder-meta" data-role="transcript-selection">nothing selected</span>
+                </div>
+            </div>
+            <div class="macro-recorder-transcript-actions">
+                <label class="field-panel-toggle">
+                    <input type="checkbox" data-role="hide-waits">
+                    <span>hide wait</span>
+                </label>
+                <button type="button" data-action="transcript-newer">Newer</button>
+                <button type="button" data-action="transcript-older">Older</button>
+                <button type="button" data-action="save-selected">Save selected</button>
+                <button type="button" data-action="undo-selected">Undo selected</button>
+                <button type="button" data-action="ai-undo-selected">AI Undo</button>
+            </div>
+        </div>
+        <div class="macro-recorder-transcript" data-role="transcript-list"></div>
     """.trimIndent()
-    document.body!!.appendChild(panel)
     macroPanelElement = panel
     panel.querySelector("[data-action='reveal']")?.textContent = macroRevealLabel()
 
-    panel.querySelector("[data-action='close']")?.addEventListener("click", {
-        panel.classList.remove("is-visible")
-        macroPanelStopAutoRefresh()
-    })
     panel.addEventListener("dragover", { event ->
         event.preventDefault()
         panel.classList.add("is-dragging-file")
@@ -1000,6 +1113,14 @@ private fun ensureMacroPanel(): HTMLElement {
         (0 until length).forEach { index ->
             macroPanelImportYamlFile(files[index])
         }
+    })
+    panel.querySelector("[data-action='step']")?.addEventListener("click", {
+        macroPanelStep()
+    })
+    panel.querySelector("[data-action='step-reset']")?.addEventListener("click", {
+        macroStepCursor = 0
+        renderMacroPreview(macroPanelValue("[data-role='content']"))
+        macroPanelSetFeedback("Stepping starts again at the first operation.")
     })
     panel.querySelector("[data-role='transcript-list']")?.addEventListener("scroll", { event ->
         val list = event.target as? HTMLElement ?: return@addEventListener
@@ -1117,7 +1238,7 @@ private fun ensureMacroPanel(): HTMLElement {
             notify("Choose a macro to run", "error")
             return@addEventListener
         }
-        macroPanelRequest("run", name = name) { response ->
+        macroPanelRequest("run", name = name, replay = true) { response ->
             macroPanelShowRunFeedback(response)
             macroPanelRefresh()
         }
@@ -1158,39 +1279,121 @@ private fun ensureMacroPanel(): HTMLElement {
     return panel
 }
 
+/**
+ * One scope's saved macros: a row per macro, its name (click to load it into the editor) and its
+ * own Run, Rename and Delete. Rename edits the name in place (Enter keeps it, Escape drops it);
+ * Delete moves the file into the scope's `.deleted/` folder, so it is never lost outright.
+ */
 private fun renderMacroList(selector: String, names: List<String>, scope: String) {
     val list = macroPanelQuery(selector) ?: return
+    // A rename in progress survives the 1.25 s auto refresh.
+    if (list.querySelector("input[data-role='rename']") != null) return
     if (names.isEmpty()) {
         list.innerHTML = "<span class=\"macro-recorder-empty\">none</span>"
         return
     }
+    val loaded = macroPanelName()
+    val loadedScope = macroPanelScope()
     list.innerHTML = names.joinToString("") { name ->
-        "<button type=\"button\" data-macro-scope=\"${htmlEscape(scope)}\" data-macro-name=\"${htmlEscape(name)}\">${htmlEscape(name)}</button>"
+        val n = htmlEscape(name)
+        val sc = htmlEscape(scope)
+        val active = if (name == loaded && scope == loadedScope) " is-active" else ""
+        "<div class=\"macro-recorder-item$active\" data-macro-row=\"$n\" data-macro-row-scope=\"$sc\">" +
+            "<button type=\"button\" class=\"macro-recorder-item-name\" data-macro-scope=\"$sc\" data-macro-name=\"$n\" title=\"Load $n\">$n</button>" +
+            "<button type=\"button\" data-row-action=\"run\" title=\"Run $n\">Run</button>" +
+            "<button type=\"button\" data-row-action=\"rename\" title=\"Rename $n\">Rename</button>" +
+            "<button type=\"button\" data-row-action=\"delete\" title=\"Delete $n (kept under .deleted/)\">Delete</button>" +
+            "</div>"
     }
-    list.querySelectorAll("button").asList().forEach { item ->
-        val button = item as? HTMLElement ?: return@forEach
-        button.addEventListener("click", {
-            val name = button.getAttribute("data-macro-name").orEmpty()
-            val selectedScope = button.getAttribute("data-macro-scope").orEmpty().ifBlank { "document" }
-            macroPanelSetValue("[data-role='name']", name)
-            macroPanelSetValue("[data-role='scope']", selectedScope)
-            macroPanelRequest("read", name = name, announce = false) { response ->
-                if (response.success) {
-                    macroPanelSetContent(response.content, dirty = false)
-                    macroPanelOpenEditor()
-                    macroPanelLastState = response.copy(
-                        documentMacros = macroPanelLastState?.documentMacros.orEmpty(),
-                        projectMacros = macroPanelLastState?.projectMacros.orEmpty(),
-                        workspaceMacros = macroPanelLastState?.workspaceMacros.orEmpty(),
-                        projectName = macroPanelLastState?.projectName.orEmpty()
-                    )
-                    macroPanelQuery("[data-role='status']")?.textContent = "loaded ${response.name}"
-                    macroPanelSyncControls()
-                } else {
-                    notify(response.message, "error")
-                }
+    list.querySelectorAll(".macro-recorder-item").asList().forEach { item ->
+        val row = item as? HTMLElement ?: return@forEach
+        val name = row.getAttribute("data-macro-row").orEmpty()
+        val rowScope = row.getAttribute("data-macro-row-scope").orEmpty().ifBlank { "document" }
+        (row.querySelector(".macro-recorder-item-name") as? HTMLElement)?.addEventListener("click", {
+            macroPanelLoadMacro(name, rowScope)
+        })
+        (row.querySelector("[data-row-action='run']") as? HTMLElement)?.addEventListener("click", {
+            macroPanelRequest("run", name = name, replay = true, scopeOverride = rowScope) { response ->
+                macroPanelShowRunFeedback(response)
+                macroPanelRefresh()
             }
         })
+        (row.querySelector("[data-row-action='delete']") as? HTMLElement)?.addEventListener("click", {
+            macroPanelRequest("delete", name = name, scopeOverride = rowScope, announce = false) { response ->
+                macroPanelSetFeedback(response.message, if (response.success) "ok" else "error")
+                if (response.success && macroPanelName() == name) {
+                    macroPanelSetValue("[data-role='name']", "")
+                    macroPanelSetContent("", dirty = false)
+                }
+                macroPanelRefresh()
+            }
+        })
+        (row.querySelector("[data-row-action='rename']") as? HTMLElement)?.addEventListener("click", {
+            macroPanelBeginRename(row, name, rowScope)
+        })
+    }
+}
+
+private fun macroPanelBeginRename(row: HTMLElement, name: String, scope: String) {
+    val label = row.querySelector(".macro-recorder-item-name") as? HTMLElement ?: return
+    val input = document.createElement("input") as HTMLElement
+    input.setAttribute("type", "text")
+    input.setAttribute("data-role", "rename")
+    input.className = "macro-recorder-rename"
+    input.asDynamic().value = name
+    row.replaceChild(input, label)
+    input.focus()
+    input.asDynamic().select()
+    var finished = false
+    fun finish(commit: Boolean) {
+        if (finished) return
+        finished = true
+        val next = (input.asDynamic().value as? String).orEmpty().trim()
+        if (!commit || next.isBlank() || next == name) {
+            row.replaceChild(label, input)
+            return
+        }
+        macroPanelRequest("rename", name = name, newName = next, scopeOverride = scope, announce = false) { response ->
+            macroPanelSetFeedback(response.message, if (response.success) "ok" else "error")
+            if (response.success && macroPanelName() == name) {
+                macroPanelSetValue("[data-role='name']", response.name)
+                macroPanelSetContent(response.content, dirty = false)
+            }
+            input.remove()
+            macroPanelRefresh()
+        }
+    }
+    input.addEventListener("keydown", { event ->
+        // Escape here cancels the rename; it must not reach FieldPanel, which would close the panel.
+        event.stopPropagation()
+        when (event.asDynamic().key as? String) {
+            "Enter" -> finish(commit = true)
+            "Escape" -> finish(commit = false)
+        }
+    })
+    input.addEventListener("blur", { finish(commit = true) })
+}
+
+private fun macroPanelLoadMacro(name: String, scope: String) {
+    macroPanelSetValue("[data-role='name']", name)
+    macroPanelSetValue("[data-role='scope']", scope)
+    macroStepCursor = 0
+    macroPanelRequest("read", name = name, announce = false) { response ->
+        if (response.success) {
+            macroPanelSetContent(response.content, dirty = false)
+            macroPanelOpenEditor()
+            macroPanelLastState = response.copy(
+                documentMacros = macroPanelLastState?.documentMacros.orEmpty(),
+                projectMacros = macroPanelLastState?.projectMacros.orEmpty(),
+                workspaceMacros = macroPanelLastState?.workspaceMacros.orEmpty(),
+                projectName = macroPanelLastState?.projectName.orEmpty()
+            )
+            macroPanelQuery("[data-role='status']")?.textContent = "loaded ${response.name}"
+            macroPanelQuery("[data-macro-row='${response.name}']")?.classList?.add("is-active")
+            macroPanelSyncControls()
+        } else {
+            notify(response.message, "error")
+        }
     }
 }
 

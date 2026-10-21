@@ -28,7 +28,7 @@ val loot = qualifiedSource(
     "loot",
     rule,
     label = "Loot rule",
-    frozen = listOf(FrozenRegion.after("// Checks: everything below this line stays as it is.")),
+    frozen = [FrozenRegion.after("// Checks: everything below this line stays as it is.")],
     control = QualifiedControl("shallow", "L1 4.0 0, L2 6.5 1", "no loot point is epic"),
     fixtures = mapOf(
         "keep" to

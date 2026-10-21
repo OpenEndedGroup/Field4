@@ -7,6 +7,9 @@ description: >
   third is a pencil drawing: a sketched vase, its shadow side hatched, a ruled chalk line. The
   library is optional — `./gradlew buildPaintNative` builds it — and without it every box says so
   and stops.
+docs:
+  - page: paint_canvas.md
+    why: "Explains the paint canvas and its brush calls."
 operations:
   - create:
       box: paint_first_strokes

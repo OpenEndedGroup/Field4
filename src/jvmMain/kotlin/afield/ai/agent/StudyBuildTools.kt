@@ -40,7 +40,7 @@ import com.fasterxml.jackson.module.kotlin.convertValue
 @AgentToolMeta("builds", ToolExposure.DIRECT, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
 data class ListStudyBuildsRequest(val unused: Int = 0)
 
-@JsonClassDescription("Inspect a document build runner's stages and paged durable attempt history, or one jobId. Returns each stage with its fingerprint and currency, what a waiting stage waits for (inputHelp, such as a closed gate's measurement), the attempts with their requests, structured failure suggestions and retained artifact identities. Running, succeeded and current are different: an old success can be stale after edits. Use it before StartStudyBuildRequest, which needs the stage fingerprint from here. This does not start or retry work. An unknown boxId/name fails with success=false and says to list runners. e.g. boxId = `a1b2`, name = `mesh`, limit = 5.")
+@JsonClassDescription("Inspect a document build runner's stages and paged durable attempt history, or one jobId. Returns each stage with its fingerprint and currency, what a waiting stage waits for (inputHelp, such as a closed gate's measurement), the attempts with their requests, structured failure suggestions and retained artifact identities. A stage's resultNotes explain its current result; its failureNotes explain a latest attempt that failed against the current inputs, which is never current. Running, succeeded and current are different: an old success can be stale after edits. Use it before StartStudyBuildRequest, which needs the stage fingerprint from here. This does not start or retry work. An unknown boxId/name fails with success=false and says to list runners. e.g. boxId = `a1b2`, name = `mesh`, limit = 5.")
 @AgentToolMeta("builds", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
 data class InspectStudyBuildsRequest(val boxId: String, val name: String, val jobId: String = "", val offset: Int = 0, val limit: Int = 10)
 
@@ -312,7 +312,7 @@ internal class StudyBuildTools(private val info: SessionInformation, private val
     private fun stageSummary(stage: StudyStageState): Map<String, Any?> = mapOf("id" to stage.id, "label" to stage.label,
         "fingerprint" to stage.fingerprint, "current" to stage.current?.let { jobSummary(it, stage) },
         "latest" to stage.latest?.let { jobSummary(it, stage) }, "reason" to stage.reason, "blockedBy" to stage.blockedBy,
-        "inputHelp" to stage.inputHelp, "resultNotes" to stage.resultNotes)
+        "inputHelp" to stage.inputHelp, "resultNotes" to stage.resultNotes, "failureNotes" to stage.failureNotes)
 }
 
 /** [StartStudyBuildRequest.request]: blank is no request, otherwise a JSON object whose values reach the worker as JSON types. */

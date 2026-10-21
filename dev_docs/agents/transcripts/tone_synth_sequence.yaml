@@ -9,6 +9,9 @@ description: >
   to the connected head, where `Tone` is the global. To hear audio, click once inside the head (a
   user gesture is required to resume the browser AudioContext). Replaying this transcript compiles the
   `// {{ tone }}` box Kotlin -> JS through the real KotlinToJsCompiler.
+docs:
+  - page: kotlin_in_the_head.md#bells-with-tonejs
+    why: "Shows Tone.js synths scheduled from a Kotlin/JS box."
 operations:
   # 1. Embedded RemoteAR head (a normal Field/Kotlin box). Opening it loads Tone.js
   #    (vendor/tone/15.1.22, pulled in by index.html) and connects to Field, ready to receive the

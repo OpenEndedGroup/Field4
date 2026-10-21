@@ -17,7 +17,8 @@ val first =
 """
 Box.ioPersistentProperties.add("level")
 Box.ioSeparateProperties["level"] = "json"
-if (getPropertyRaw("level") == null) setPropertyRaw("level", json.writeValueAsString(json.readTree(first)))
+prop<String?>(level)
+if (level == null) level = json.writeValueAsString(json.readTree(first))
 
 // Every check a level must pass. Edits that break one are refused and change nothing.
 fun problems(level: Map<String, Any?>): List<String> {
@@ -55,7 +56,7 @@ fun problems(level: Map<String, Any?>): List<String> {
 val plan = SourceStudy(
     java.io.File(BoxStudies.directory(thisBox), "level"),
     "json",
-    { getPropertyRaw("level", "").toString() },
+    { level.orEmpty() },
     BoxStudies.replacer(thisBox, "level"),
     admit = { source, _ ->
         val found = problems(json.readValue(source))

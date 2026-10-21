@@ -1,0 +1,39 @@
+name: notation_listen_setup
+description: >
+  Setup for the hand-drawn stroke capture on drawing_and_notation.md: a `listen` box that answers
+  each finished stroke by drawing a copy of it offset to one side, and a `tell` box that draws an
+  arrow to `listen`, both run once. The capture=ui drive then switches the drawing layer on and
+  draws a stroke with the mouse, so the box reacts to a real pen stroke. The two boxes' code is
+  the code shown on the page; change them together.
+operations:
+  - create:
+      box: notation_listen
+      name: listen
+      frame: { x: 60, y: 90, w: 180, h: 50 }
+      properties:
+        code: |
+          notation.onStroke { s ->
+              val line = s.toFLine()
+              notation("echo") {
+                  stroke = "#2f9e44"
+                  stroke(line.byOffsetting(36f))
+              }
+              markdown("heard", "a stroke of ${s.points.size} points, ${s.length.toInt()} long")
+          }
+  - create:
+      box: notation_tell
+      name: tell
+      frame: { x: 520, y: 90, w: 180, h: 50 }
+      properties:
+        code: |
+          val listen = thisBox.named("listen")
+          notation {
+              stroke = "#1971c2"
+              arrow(from = thisBox, to = listen, label = "tells")
+          }
+  - wait:
+      millis: 500
+  - execute: { box: notation_listen, property: code }
+  - await: {}
+  - execute: { box: notation_tell, property: code }
+  - await: {}

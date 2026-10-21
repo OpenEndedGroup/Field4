@@ -28,7 +28,7 @@ LogDispatcher.withSink(probe) {
 
 display(
     "main",
-    Table(listOf("channel", "tags", "message"), title = "what one sink saw")
-        .rows(seen.map { listOf(it.channel, it.channel.split(",").size, it.message) })
+    Table(["channel", "tags", "message"], title = "what one sink saw")
+        .rows(seen.map { [it.channel, it.channel.split(",").size, it.message] })
         .role("channel", CellRole.ACCENT),
 )

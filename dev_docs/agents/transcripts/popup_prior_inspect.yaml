@@ -16,6 +16,9 @@ description: >
   Backs the computed figure on public/docs/completion_ranking.md, and is worth replaying on its own
   whenever a member you expect near the top of `ctrl-space` is not there. Change `receiver` to any
   qualified type name to ask about your own class.
+docs:
+  - page: completion_ranking.md
+    why: "Explains how the completion popup ranks members, the prior inspected here."
 operations:
   - create:
       box: agent_popup_prior_inspect
@@ -44,12 +47,12 @@ operations:
           // Sorted by position rather than trusting the map's iteration order, so the figure is the
           // same every time it is drawn.
           val prior =
-              Table(listOf("position", "member", "prior score"))
+              Table(["position", "member", "prior score"])
                   .rows(
                       ranks.entries
                           .sortedBy { it.value }
                           .map { (member, position) ->
-                              listOf(position, member, afield.runtime.completion.CommonMemberPrior.scoreOf(position))
+                              [position, member, afield.runtime.completion.CommonMemberPrior.scoreOf(position)]
                           },
                   )
                   .role("member", CellRole.ACCENT)

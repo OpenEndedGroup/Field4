@@ -7,6 +7,9 @@ description: >
   drawn in an emissive tube that lights the rest. The stubborn-set reduced graph of the same net
   stands beside it as a second, sparser sculpture with its own deadlock route lit. Needs a live
   renderer parent.
+docs:
+  - page: chain_petri_sculpture.md
+    why: "Walks through this state-space-to-sculpture chain."
 operations:
   - create:
       box: chain_renderer

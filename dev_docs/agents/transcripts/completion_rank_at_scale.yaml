@@ -16,6 +16,9 @@ description: |
   version, with the full sweep and the falsification behind it, is
   `dev_docs/completion_rank_at_scale.md`, and the saved document at
   `dev_docs/agents/demos/completion_rank_at_scale/` is this same scene.
+docs:
+  - page: completion_ranking.md
+    why: "Explains how completions are ranked, which these boxes measure on the corpus."
 operations:
   - create:
       box: corpus

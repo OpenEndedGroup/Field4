@@ -16,16 +16,15 @@ This box draws a moving, colour-shifting square into a 640×360 view and shows i
 `main` output. It sits under a renderer box, like any other Field 4 box, and its `vertex` and
 `fragment` properties hold the two shaders.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/four_in_output_areas/rtt-view.png" alt="a box's main output panel holding a black 640 by 360 view with a square a little left of centre, shaded from soft green at its lower left to rose at its upper right, and under the view a line of small grey text giving the frame rate, about 85 frames a second, and the time from the GPU finishing a frame to the panel showing it, under 3 milliseconds on average" capture="box" capture-profile="macos-electron" graphics-context=true wait="3" timeout="60" embed=true name="four-rtt-view" source-box="assets/four_in_output_areas/rtt-view" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/four_in_output_areas/rtt-view.png" alt="a box's main output panel holding a black 640 by 360 view with a square near its centre, shaded corner to corner in colours that drift as it moves, and under the view a line of small grey text giving the frame rate, over 100 frames a second, and the time from the GPU finishing a frame to the panel showing it, under 3 milliseconds on average" capture="box" capture-profile="macos-electron" graphics-context=true wait="3" timeout="60" embed=true name="four-rtt-view" source-box="assets/four_in_output_areas/rtt-view" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 import afield.media.stream.ElectronRTTView
 
 val view = ElectronRTTView(640, 360)
 
-val module = moduleHere { view.rtt.apply() }
+val module = moduleHere { +view }
 val m = Mesh()
 module += "mainMesh" to m
-view.rtt += "content" to module
-view.rtt.parameters.clearFirst = true
+view += "content" to module
 
 val camera = Camera()
 m.p = camera.p
@@ -48,8 +47,9 @@ m.set(4, 2) {
 display("main", view.html())
 ```
 
-`view.rtt` is an ordinary `RenderToTexture`, so anything that renders into one renders into the
-view: attach modules to it with `+=` exactly as you would for a texture you meant to sample.
+The view stands in for the `RenderToTexture` it draws through, `view.rtt`: `+view` inside
+`moduleHere { }` points the module at it, and `view += ...` attaches modules exactly as you would to
+a texture you meant to sample.
 `view.html()` is the panel itself, a canvas plus a line of live timings, and `display` puts it in
 whichever output you name.
 

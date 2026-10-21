@@ -62,7 +62,7 @@ repeat(1200) {
 }
 
 println("phase means over the last second of each 5 s phase:")
-listOf("flock" to 0, "scatter" to 1, "flock" to 2, "scatter" to 3).forEach { (name, k) ->
+["flock" to 0, "scatter" to 1, "flock" to 2, "scatter" to 3].forEach { (name, k) ->
     println("  %-8s %.3f".format(name, order.subList(k * 300 + 240, k * 300 + 300).average()))
 }
 
@@ -76,11 +76,11 @@ showSignals(
     "polarization" to order,
     channel = "order",
     title = "alignment: flock, scatter, flock, scatter — 5 s each",
-    marks = listOf("scatter" to 300.0, "scatter" to 900.0),
+    marks = ["scatter" to 300.0, "scatter" to 900.0],
 )
 
 /*
-Try this: drop `turn = 40.0` to 6.0 and watch the scatter phases stop working — polarization
-stays high, because a gentle random walk does not decorrelate a heading inside five seconds.
-That was a real bug in this demo's first version, and the plot is what caught it.
-*/
+ Try this: drop `turn = 40.0` to 6.0 and watch the scatter phases stop working — polarization
+ stays high, because a gentle random walk does not decorrelate a heading inside five seconds.
+ That was a real bug in this demo's first version, and the plot is what caught it.
+ */

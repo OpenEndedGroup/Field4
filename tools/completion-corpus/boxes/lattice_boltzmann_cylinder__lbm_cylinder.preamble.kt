@@ -14,11 +14,11 @@ import afield.graphics.vulkan.buffers.*
 /*graphics-pc-binding:center*/ var Mesh.center by Mesh.BoundFromStructure<afield.math.linalg.Vector2f>()
 /*graphics-pc-binding-group:center*/ var MeshGroup.center by MeshGroup.BoundFromStructure<afield.math.linalg.Vector2f>()
 /*graphics-pc-structure:radius*/ var Structure.radius by Structure.FromStructure<Any>()
-/*graphics-pc-binding:radius*/ var Mesh.radius by Mesh.BoundFromStructure<Float>()
-/*graphics-pc-binding-group:radius*/ var MeshGroup.radius by MeshGroup.BoundFromStructure<Float>()
+/*graphics-pc-binding:radius*/ var Mesh.radius by Mesh.BoundFromStructure<Number>()
+/*graphics-pc-binding-group:radius*/ var MeshGroup.radius by MeshGroup.BoundFromStructure<Number>()
 /*graphics-pc-structure:height*/ var Structure.height by Structure.FromStructure<Any>()
-/*graphics-pc-binding:height*/ var Mesh.height by Mesh.BoundFromStructure<Float>()
-/*graphics-pc-binding-group:height*/ var MeshGroup.height by MeshGroup.BoundFromStructure<Float>()
+/*graphics-pc-binding:height*/ var Mesh.height by Mesh.BoundFromStructure<Number>()
+/*graphics-pc-binding-group:height*/ var MeshGroup.height by MeshGroup.BoundFromStructure<Number>()
 var Box.lbm by Inheritance<ShaderLatticeBoltzmannSystem>() /*from:lbm_fluid*/ /**/
 val Once.lbm by Onceing<ShaderLatticeBoltzmannSystem>() /*from:lbm_fluid*/ /**/
 val Why.lbm by Whying() /*from:lbm_fluid*/ /**/

@@ -2305,6 +2305,12 @@ private fun builtInShaderInclude(inside: Box, includePath: String): String? {
         // a resources box has executed. An explicit include-root registration still wins.
         else -> if (includePath.startsWith("flow/") && !shaderIncludeRoots.containsKey("flow"))
             afield.simulation.flow.FlowShaders.source(includePath.removePrefix("flow/"))
+        else if (includePath.startsWith("points/") && !shaderIncludeRoots.containsKey("points") &&
+            afield.graphics.vulkan.targets.PointShaders.has(includePath.removePrefix("points/")))
+            afield.graphics.vulkan.targets.PointShaders.source(includePath.removePrefix("points/"))
+        else if (includePath.startsWith("particles/") && !shaderIncludeRoots.containsKey("particles") &&
+            afield.simulation.particles.ParticleShaders.has(includePath.removePrefix("particles/")))
+            afield.simulation.particles.ParticleShaders.source(includePath.removePrefix("particles/"))
         else null
     }
 }
@@ -3990,9 +3996,14 @@ private fun kotlinBindingTypeName(member: Introspected.Member): String =
 
 // Kotlin has no Int | UInt type. Only scalar uint push suppliers use Any; Structure validates
 // their evaluated values. Uniform/attribute types keep their existing UInt declarations.
-private fun kotlinPushBindingTypeName(member: Introspected.Member): String =
-    if (!member.physicalPointer && member.type.fold({ it == PrimitiveType.uint }, { false })) "Any"
-    else kotlinBindingTypeName(member)
+// A scalar float supplier is `() -> Number`, so `time = { now - started }` binds a Double as it
+// stands: Structure's write narrows it to the member's precision (`StructureTypeCheck.coerce`).
+private fun kotlinPushBindingTypeName(member: Introspected.Member): String = when {
+    member.physicalPointer -> kotlinBindingTypeName(member)
+    member.type.fold({ it == PrimitiveType.uint }, { false }) -> "Any"
+    member.arrayStride == 0 && member.type.fold({ it == PrimitiveType.float || it == PrimitiveType.float16_t }, { false }) -> "Number"
+    else -> kotlinBindingTypeName(member)
+}
 
 /**
  * The `// …` note the shader source carried at the end of a member's declaration line, formatted to
@@ -4637,12 +4648,13 @@ val defaultFragmentShader = """
 
 private const val SHADERTOY_VERTEX_TEMPLATE_KEY = "shadertoy.vertexPreamble"
 private const val SHADERTOY_FRAGMENT_TEMPLATE_KEY = "shadertoy.fragmentPreamble"
+private const val SHADERTOY_IMAGE_TEMPLATE_KEY = "shadertoy.image"
 
 private val shadertoyVertexPreamble = """
     #version 450
 """.trimIndent()
 
-private val shadertoyFragmentPreamble = """
+internal val shadertoyFragmentPreamble = """
     #version 450
 
     layout(location = 0) out vec4 uFragColor;
@@ -4681,9 +4693,36 @@ private val shadertoyFragmentPreamble = """
     #define iChannelResolution vec3[4](st.iChannelResolution0, st.iChannelResolution1, st.iChannelResolution2, st.iChannelResolution3)
 """.trimIndent()
 
+/**
+ * `{{ shadertoy.image }}`: the fragment preamble plus the `main` that calls the student's
+ * `mainImage`, so a ShaderToy Image pass pastes in under one line.
+ *
+ * That `main` does the two things that make ShaderToy code look the same here as in a browser.
+ * `fragCoord` is y-up: Vulkan's `gl_FragCoord` starts at the top left, so it is flipped against
+ * `iResolution.y`. And `fragColor` is a display value, as a WebGL canvas takes it, so it is decoded
+ * from sRGB before it reaches Field's sRGB (or linear HDR) target, which would otherwise encode it a
+ * second time and wash it out. Alpha is written as 1, as ShaderToy's canvas ignores it.
+ */
+internal val shadertoyImagePreamble = shadertoyFragmentPreamble + "\n" + """
+
+    void mainImage(out vec4 fragColor, in vec2 fragCoord);
+
+    vec3 shadertoyDisplayToLinear(vec3 c) {
+        c = clamp(c, 0.0, 1.0);
+        return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
+    }
+
+    void main() {
+        vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
+        mainImage(color, vec2(gl_FragCoord.x, iResolution.y - gl_FragCoord.y));
+        uFragColor = vec4(shadertoyDisplayToLinear(color.rgb), 1.0);
+    }
+""".trimIndent()
+
 private fun Box.ensureShadertoyTemplates() {
     shaderTemplate.putIfAbsent(SHADERTOY_VERTEX_TEMPLATE_KEY, shadertoyVertexPreamble)
     shaderTemplate.putIfAbsent(SHADERTOY_FRAGMENT_TEMPLATE_KEY, shadertoyFragmentPreamble)
+    shaderTemplate.putIfAbsent(SHADERTOY_IMAGE_TEMPLATE_KEY, shadertoyImagePreamble)
 }
 
 /**
@@ -4704,24 +4743,18 @@ val shadertoyVertexShader = """
 """.trimIndent()
 
 /**
- * The fragment shader `shadertoyHere` seeds: the `{{ shadertoy.fragmentPreamble }}` slot (which brings
- * in the `iResolution`/`iTime`/`iMouse`/… uniform block and the `#define`s that make them look like
- * shadertoy globals), a `main` that calls `mainImage`, and a placeholder `mainImage` drawing a uv
- * gradient that pulses with `iTime`.
+ * The fragment shader `shadertoyHere` seeds: the `{{ shadertoy.image }}` slot, which brings in the
+ * `iResolution`/`iTime`/`iMouse`/… uniform block, the `#define`s that make them look like shadertoy
+ * globals and the `main` that calls `mainImage`, then a placeholder `mainImage` drawing a uv gradient
+ * that pulses with `iTime`.
  *
- * Replace the `mainImage` body and leave the rest alone. As with [shadertoyVertexShader], the template
- * slot only resolves on a box whose [Box.shaderTemplate] carries the shadertoy preambles.
+ * Replace the `mainImage` body (or paste a ShaderToy Image pass over everything below the slot). As
+ * with [shadertoyVertexShader], the slot only resolves on a box whose [Box.shaderTemplate] carries
+ * the shadertoy preambles. A box that writes its own `main` uses `{{ shadertoy.fragmentPreamble }}`
+ * instead, which is the uniforms and channels alone.
  */
 val shadertoyFragmentShader = """
-    {{ shadertoy.fragmentPreamble }}
-
-    void mainImage(out vec4 fragColor, in vec2 fragCoord);
-
-    void main() {
-        vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
-        mainImage(color, gl_FragCoord.xy);
-        uFragColor = color;
-    }
+    {{ shadertoy.image }}
 
     void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         vec2 uv = fragCoord / max(iResolution.xy, vec2(1.0));
@@ -4733,42 +4766,80 @@ private data class ShadertoyTimeState(
     val startedAtNs: Long = System.nanoTime(),
     var lastFrameSampleNs: Long = startedAtNs,
     var lastDeltaSeconds: Float = 1f / 60f,
-    var clickOrigin: Vector2Like? = null
+    var frames: Int = 0,
+    var lastFrameNs: Long = 0L,
+    var clickOrigin: Vector2Like? = null,
+    var lastPointer: Vector2Like? = null
 )
 
 private data class Vector2Like(val x: Float, val y: Float)
 
+/**
+ * What a shadertoy module draws onto, for its `iResolution` and `iMouse`: [size] in pixels, and
+ * [pointer], the cursor in those pixels with y up (`null` when there is no cursor over it) plus
+ * whether the left button is down.
+ */
+class ShadertoySurface(
+    val size: () -> Pair<Int, Int>,
+    val pointer: () -> Pair<Pair<Float, Float>, Boolean>?
+) {
+    companion object {
+        /** The renderer window: its framebuffer size, and the cursor scaled from window points. */
+        fun window(renderer: Renderer): ShadertoySurface {
+            val window = renderer.window
+            return ShadertoySurface(
+                size = { window.width to window.height },
+                pointer = {
+                    val points = window.size()
+                    val c = window.cursor
+                    val x = (c.x / points.w.coerceAtLeast(1.0) * window.width).toFloat()
+                    val y = ((1.0 - c.y / points.h.coerceAtLeast(1.0)) * window.height).toFloat()
+                    (x to y) to window.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_LEFT)
+                }
+            )
+        }
+    }
+}
+
+/** The 1×1 black textures an unbound `iChannel` samples, as an unbound sampler does in WebGL. */
 private object ShadertoyTextures {
     private val cache = java.util.WeakHashMap<Renderer, Map<String, LoadedTexture>>()
-    private val colors = listOf(
-        "iChannel0" to byteArrayOf(255.toByte(), 255.toByte(), 255.toByte(), 255.toByte()),
-        "iChannel1" to byteArrayOf(255.toByte(), 0, 0, 255.toByte()),
-        "iChannel2" to byteArrayOf(0, 255.toByte(), 0, 255.toByte()),
-        "iChannel3" to byteArrayOf(0, 0, 255.toByte(), 255.toByte())
-    )
 
     fun forRenderer(renderer: Renderer): Map<String, LoadedTexture> = cache.getOrPut(renderer) {
-        colors.associate { (name, rgba) ->
+        (0..3).associate { index ->
+            val name = "iChannel$index"
             val data = MemoryUtil.memAlloc(4)
-            data.put(rgba)
+            data.put(byteArrayOf(0, 0, 0, 255.toByte()))
             data.flip()
             name to LoadedTexture.fromRawRGBA(name, 1, 1, data, renderer, VK_FORMAT_R8G8B8A8_SRGB)
         }
     }
 }
 
-private fun bindShadertoyUniforms(module: ModulePointer, renderer: Renderer) {
+/** The channels each shadertoy module bound, for whoever re-binds its uniforms ([ShadertoyCanvas]). */
+internal val shadertoyChannelsByModule = java.util.WeakHashMap<ModulePointer, Array<ShadertoyChannel?>>()
+
+/** `0..3` for `iChannel0`..`iChannel3`, else null. */
+internal fun shadertoyChannelIndex(name: String): Int? =
+    name.removePrefix("iChannel").takeIf { name.startsWith("iChannel") && it.length == 1 }?.toIntOrNull()?.takeIf { it in 0..3 }
+
+/**
+ * Bind the shadertoy uniform block of [module] to live values: time and frame counters, the date,
+ * [surface]'s size and pointer for `iResolution` and `iMouse`, and the sizes of [channels] for
+ * `iChannelResolution`. Binding again (a [ShadertoyCanvas] does, to swap the window for itself)
+ * replaces the earlier bindings and restarts the clock.
+ */
+internal fun bindShadertoyUniforms(
+    module: ModulePointer,
+    surface: ShadertoySurface,
+    channels: Array<ShadertoyChannel?> = arrayOfNulls(4)
+) {
     val uniforms = module.current.liveUniformStructures["ShadertoyUniforms"] ?: return
     val timeState = ShadertoyTimeState()
-    val window = renderer.window
-
-    fun cursorNow(): Vector2Like {
-        val c = window.cursor
-        return Vector2Like(c.x, c.y)
-    }
 
     uniforms.bind("iResolution") {
-        Vector3f(window.width.toFloat(), window.height.toFloat(), 1f)
+        val (w, h) = surface.size()
+        Vector3f(w.toFloat(), h.toFloat(), 1f)
     }
     uniforms.bind("iTime") {
         ((System.nanoTime() - timeState.startedAtNs) / 1_000_000_000.0).toFloat()
@@ -4784,24 +4855,33 @@ private fun bindShadertoyUniforms(module: ModulePointer, renderer: Renderer) {
         (1f / timeState.lastDeltaSeconds.coerceAtLeast(1f / 1000f))
     }
     uniforms.bind("iFrame") {
-        ((System.nanoTime() - timeState.startedAtNs) / 16_666_667L).toInt()
+        // Counted once per drawn frame: uniforms are read once a frame, but not only once.
+        val now = System.nanoTime()
+        if (now - timeState.lastFrameNs > 2_000_000L) {
+            if (timeState.lastFrameNs != 0L) timeState.frames++
+            timeState.lastFrameNs = now
+        }
+        timeState.frames
     }
     uniforms.bind("iMouse") {
-        val leftDown = window.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_LEFT)
-        val cursor = cursorNow()
-        if (leftDown && timeState.clickOrigin == null) {
-            timeState.clickOrigin = cursor
-        } else if (!leftDown) {
-            timeState.clickOrigin = null
+        // ShaderToy's convention: xy is the cursor while the button is down (and stays where it
+        // was released), zw the click position, negated once the button is up.
+        val pointer = surface.pointer()
+        val leftDown = pointer?.second == true
+        val cursor = pointer?.first?.let { Vector2Like(it.first, it.second) }
+        if (leftDown && cursor != null) {
+            if (timeState.clickOrigin == null) timeState.clickOrigin = cursor
+            timeState.lastPointer = cursor
         }
-        val origin = timeState.clickOrigin ?: cursor
-        val shaderY = window.height.toFloat() - cursor.y
-        val originShaderY = window.height.toFloat() - origin.y
+        val origin = timeState.clickOrigin
+        val at = timeState.lastPointer ?: Vector2Like(0f, 0f)
+        if (!leftDown) timeState.clickOrigin = null
+        val click = origin ?: timeState.lastPointer ?: Vector2Like(0f, 0f)
         Vector4f(
-            cursor.x,
-            shaderY,
-            if (leftDown) origin.x else -origin.x,
-            if (leftDown) originShaderY else -originShaderY
+            at.x,
+            at.y,
+            if (leftDown) click.x else -click.x,
+            if (leftDown) click.y else -click.y
         )
     }
     uniforms.bind("iDate") {
@@ -4811,7 +4891,10 @@ private fun bindShadertoyUniforms(module: ModulePointer, renderer: Renderer) {
         Vector4f(now.year.toFloat(), now.monthValue.toFloat(), now.dayOfMonth.toFloat(), seconds)
     }
     for (index in 0..3) {
-        uniforms.bind("iChannelResolution$index") { Vector3f(1f, 1f, 1f) }
+        uniforms.bind("iChannelResolution$index") {
+            val channel = channels[index]
+            if (channel == null) Vector3f(1f, 1f, 1f) else Vector3f(channel.width.toFloat(), channel.height.toFloat(), 1f)
+        }
         uniforms.bind("iChannelTime$index") {
             ((System.nanoTime() - timeState.startedAtNs) / 1_000_000_000.0).toFloat()
         }
@@ -5204,30 +5287,48 @@ fun Box._shadertoyHere(p: Parameters.() -> Unit): ModulePointer {
 }
 
 /**
- * Build a shadertoy-shaped module: an ordinary [Box._moduleHere] with depth testing off, four 1×1 dummy
- * `iChannel` textures, the shadertoy uniform block bound to live values, and a 3-vertex mesh named
+ * Build a shadertoy-shaped module: an ordinary [Box._moduleHere] with depth testing off, the shadertoy
+ * uniform block bound to live values, the four `iChannel`s bound, and a 3-vertex mesh named
  * `"shadertoy"` already attached so the box draws without you building any geometry.
  *
- * The dummy channels are white/red/green/blue single pixels, cached per renderer, and they are consulted
- * *before* the normal by-name texture search — so `iChannel0` resolves to the dummy even if the box has a
- * property of that name. Two quirks in the uniform bindings are worth knowing: `iFrame` is derived from
- * wall-clock time divided by 16.667 ms rather than from a real frame counter, and `iChannelResolution*`
- * is hard-coded to `(1,1,1)` whatever is actually bound.
+ * An `iChannelN` is whatever `textures("iChannelN" to t)` in the block gives it, else anything named
+ * `iChannelN` that Field's by-name search finds on the box or its parents, else a 1×1 black texture.
+ * A bound texture is sampled the way ShaderToy samples one: through a [ShadertoyChannel], a copy of
+ * it turned bottom-up and holding display (sRGB-encoded) values, so `texture(iChannel0, fragCoord /
+ * iResolution.xy)` is the right way up. `iChannelResolution` reports its size.
+ *
+ * `iResolution` and `iMouse` come from the renderer window (in framebuffer pixels, y up); a
+ * [ShadertoyCanvas] the module is added to replaces them with its own. `iFrame` counts drawn frames,
+ * and `iTime` starts when the module is built, so re-running the box restarts the clock.
  */
 fun Box._shadertoyHere(p: Parameters = parameters {}): ModulePointer {
     val renderer: Renderer = p.renderer
     val dummyTextures = ShadertoyTextures.forRenderer(renderer)
-    val previousResolver = p.textureResolver
+    val requested = p.textureResolver
+    val channels = arrayOfNulls<ShadertoyChannel>(4)
+    val box = this
 
     p.depthTest = false
     p.textureResolver = { textureSpec ->
-        dummyTextures[textureSpec.name]?.let { tex -> fromViews(listOf(tex), textureSpec.name) } ?: previousResolver(
-            textureSpec
-        )
+        val index = shadertoyChannelIndex(textureSpec.name)
+        if (index == null) requested(textureSpec)
+        else {
+            Box.context.set(box)
+            val found = requested(textureSpec) ?: box.findTextureByNameOrNull(textureSpec.name)
+            if (found == null) {
+                channels[index] = null
+                fromViews(listOf(dummyTextures.getValue(textureSpec.name)), textureSpec.name)
+            } else {
+                val channel = ShadertoyChannel.of(renderer, found)
+                channels[index] = channel
+                fromViews(listOf(channel.target), textureSpec.name, channel.sampler)
+            }
+        }
     }
 
     val module = _moduleHere(p)
-    bindShadertoyUniforms(module, renderer)
+    bindShadertoyUniforms(module, ShadertoySurface.window(renderer), channels)
+    synchronized(shadertoyChannelsByModule) { shadertoyChannelsByModule[module] = channels }
     installShadertoyMesh(module, renderer)
     return module
 }
@@ -5344,36 +5445,38 @@ private fun Box.textureResolverFor(previousResolver: (Introspected.Texture) -> P
         Box.context.set(this) // todo, should be a 'with'
 
         val cached: Pair<HasImageViewArray, TextureSampler>? = previousResolver.invoke(textureSpec)
-        if (cached != null) cached else {
-            lprintln("debug,graphics", "searching for texture ${textureSpec.name}")
-            val name = textureSpec.name
-
-            val c = customTextureResolver
-            var found : Pair<HasImageViewArray, TextureSampler>? = null
-
-            if (c != null) {
-                val r = c(this, name)
-                if (r != null) {
-                    found = fromViews(r, name)
-                }
-            }
-
-            val r = found ?:
-                findWithNameOrNull<HasImageViewArray>(this, name)?.let { provider -> fromViews(provider, name) }
-                    ?: findWithNameOrNull<HasImageView>(this, name)?.let { hv -> fromViews(listOf(hv), name) }
-                    ?: findWithNameOrNull<ImageView>(this, name)?.let { view -> fromViews(listOf(view), name) }
-                    ?: findWithNameOrNull<Array<HasImageView>>(this, name)?.let { arr -> fromViews(arr.toList(), name) }
-                    ?: findWithNameOrNull<Array<ImageView>>(
-                        this,
-                        name
-                    )?.let { arr -> fromViews(arr.map { it as HasImageView }, name) }
-                    ?: findWithNameOrNull<LoadedTexture>(this, name)?.let { tex -> fromViews(listOf(tex), name) }
-                    ?: findWithNameOrNull<RenderToTexture>(this, name)?.let { rtt -> fromViews(listOf(rtt), name) }
-                    ?: throw Exception(" can't find anything to build a texture out of from this box to ${textureSpec.name}")
-            lprintln("debug,graphics", "found $r")
-            r
-        }
+        cached ?: findTextureByNameOrNull(textureSpec.name)
+            ?: throw Exception(" can't find anything to build a texture out of from this box to ${textureSpec.name}")
     }
+
+/**
+ * Field's by-name search for a shader sampler: this box's [customTextureResolver], then anything
+ * named [name] in the box, its properties and its parents that can be sampled
+ * (`HasImageViewArray`, `HasImageView`, `ImageView`, arrays of those, `LoadedTexture`,
+ * `RenderToTexture`, in that order). `null` when nothing matches.
+ */
+internal fun Box.findTextureByNameOrNull(name: String): Pair<HasImageViewArray, TextureSampler>? {
+    lprintln("debug,graphics", "searching for texture $name")
+
+    val c = customTextureResolver
+    if (c != null) {
+        val r = c(this, name)
+        if (r != null) return fromViews(r, name)
+    }
+
+    val r = findWithNameOrNull<HasImageViewArray>(this, name)?.let { provider -> fromViews(provider, name) }
+        ?: findWithNameOrNull<HasImageView>(this, name)?.let { hv -> fromViews(listOf(hv), name) }
+        ?: findWithNameOrNull<ImageView>(this, name)?.let { view -> fromViews(listOf(view), name) }
+        ?: findWithNameOrNull<Array<HasImageView>>(this, name)?.let { arr -> fromViews(arr.toList(), name) }
+        ?: findWithNameOrNull<Array<ImageView>>(
+            this,
+            name
+        )?.let { arr -> fromViews(arr.map { it as HasImageView }, name) }
+        ?: findWithNameOrNull<LoadedTexture>(this, name)?.let { tex -> fromViews(listOf(tex), name) }
+        ?: findWithNameOrNull<RenderToTexture>(this, name)?.let { rtt -> fromViews(listOf(rtt), name) }
+    lprintln("debug,graphics", "found $r")
+    return r
+}
 
 // ------------------------------
 // Compute macro + module creation

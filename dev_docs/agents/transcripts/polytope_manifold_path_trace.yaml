@@ -6,6 +6,9 @@ description: >
   `genus` against Manifold's `status` and `genus`, and the shell's volume against surface area times
   thickness, which is what a constant-thickness wall has to satisfy. Needs a live renderer parent
   and Manifold (`brew install manifold`); without Manifold the box says so and stops.
+docs:
+  - page: chain_polytope_render.md
+    why: "Walks through this polytope-to-render chain."
 operations:
   - create:
       box: chain_renderer

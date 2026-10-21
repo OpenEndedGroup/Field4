@@ -25,7 +25,7 @@ public/docs/sonic_pi.md — "Field patterns as a Sonic Pi sequencer"
 Nothing here needs Sonic Pi installed. It is a text transformation.
 
 ```edn [field-box id="sonicpi-pattern-lower" role="properties"]
-{"id" "sonicpi-pattern-lower" "index" 0 "name" "1 — A pattern, lowered to Sonic Pi" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — A pattern, lowered to Sonic Pi" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sonicpi-pattern-lower_code_.kt" "lines" 32 "characters" 1400 "sha256" "dca6a559263ab7d1628c624853b34a2114f5847e80399f607d1dfeb0d332f69d"}]}
+{"id" "sonicpi-pattern-lower" "index" 0 "name" "1 — A pattern, lowered to Sonic Pi" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — A pattern, lowered to Sonic Pi" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sonicpi-pattern-lower_code_.kt" "lines" 32 "characters" 1394 "sha256" "a08326fea7c23c640646670edaa2a4bde143e8e2f1e46f447377e6ae0d735c87"}]}
 ```
 
 ```kotlin [field-property box="sonicpi-pattern-lower" name="code" path="sonicpi-pattern-lower_code_.kt"]
@@ -58,7 +58,7 @@ println(groove.sonicPiSource(cps = 0.5, cycles = 1, name = "groove"))
 println()
 println(SonicPiVocabulary)
 val kit = SonicPiInstruments()
-listOf("bd", "hh", "bd_tek", "tb303", "c4", "60", "nonesuch").forEach {
+["bd", "hh", "bd_tek", "tb303", "c4", "60", "nonesuch"].forEach {
     println("  %-10s -> %s".format(it, kit.resolve(it) ?: "NOTHING — this atom would be silent"))
 }
 ```
@@ -80,7 +80,7 @@ runs, and the stop button stops it.
 Turn your volume down before you run this.
 
 ```edn [field-box id="sonicpi-pattern-hear" role="properties"]
-{"id" "sonicpi-pattern-hear" "index" 1 "name" "2 — Hear it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — Hear it" "_tombstone" false "frame" #afield/rect [760.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sonicpi-pattern-hear_code_.kt" "lines" 35 "characters" 1367 "sha256" "e1d77c8190c07e0ebbc61699c524817a44f63d9a2ceb0b6d1325abd7dd7ec1ab"}]}
+{"id" "sonicpi-pattern-hear" "index" 1 "name" "2 — Hear it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — Hear it" "_tombstone" false "frame" #afield/rect [760.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sonicpi-pattern-hear_code_.kt" "lines" 35 "characters" 1355 "sha256" "ac72778012f02645866658d33b960def3a10803ee3f6632ced2ac2ff5567f0ff"}]}
 ```
 
 ```kotlin [field-property box="sonicpi-pattern-hear" name="code" path="sonicpi-pattern-hear_code_.kt"]
@@ -108,13 +108,13 @@ sonicPiPattern(
     sonicPiLayer(
         "hats",
         pat("[hh hh hh hh]").degradeBy(0.35, salt = 4) with gain(0.35),
-        fx = listOf(sonicPiFx("echo", "phase" to 0.125, "decay" to 2, "mix" to 0.3)),
+        fx = [sonicPiFx("echo", "phase" to 0.125, "decay" to 2, "mix" to 0.3)],
     ),
     sonicPiLayer(
         "bass",
         pat("<e3 g3> ~ e4 ~").every(4) { it.rev() } with cutoff(700.0),
         synth = "tb303",
-        fx = listOf(sonicPiFx("reverb", "room" to 0.7, "mix" to 0.4)),
+        fx = [sonicPiFx("reverb", "room" to 0.7, "mix" to 0.4)],
     ),
     cps = 0.5,
     cycles = 4,

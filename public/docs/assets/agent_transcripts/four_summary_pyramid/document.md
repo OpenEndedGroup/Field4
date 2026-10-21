@@ -80,7 +80,7 @@ println("bundle ready: ${bundle.postStack.names()}")
 <!-- field-box id="sp_summary" index="2" -->
 
 ```edn [field-box id="sp_summary" role="properties"]
-{"id" "sp_summary" "index" 2 "name" "summary pyramid" "parents" ["root" "sp_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sp_bundle"} "name" "summary pyramid" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_summary_code_.kt" "lines" 161 "characters" 6922 "sha256" "cd214a65a9ab3f79daea7ca33d97476d582f95e3411088b6dc6997d32445501b"}]}
+{"id" "sp_summary" "index" 2 "name" "summary pyramid" "parents" ["root" "sp_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sp_bundle"} "name" "summary pyramid" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_summary_code_.kt" "lines" 161 "characters" 6916 "sha256" "0d5ebd03b3e9224134263f158bc6738f47fbadc717ffe4be3873ec033ab83a05"}]}
 ```
 
 ```kotlin [field-property box="sp_summary" name="code" path="sp_summary_code_.kt"]
@@ -161,7 +161,7 @@ without reallocating anything — which is why there is no `once` here. Wrapping
 declaration in one would mean a `resolution` you edited never took effect.
 */
 summary = bundle.addPassChain(
-    listOf(
+    [
         FabricatePassSpec(
             name = "field",
             fragment = fieldFragment,
@@ -181,7 +181,7 @@ summary = bundle.addPassChain(
             size = FabricatePassSize.Absolute(512, 512),
             source = "field",
         ),
-    ) +
+    ] +
         FabricatePassLibrary.summaryPyramid(
             // Nine levels per plane, three planes: the leaf is 256² and the root is one cell
             // holding the statistics of the whole field.

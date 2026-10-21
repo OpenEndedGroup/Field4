@@ -11,13 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="generate_and_rank" index="0" -->
 
 ```edn [field-box id="generate_and_rank" role="properties"]
-{"id" "generate_and_rank" "index" 0 "name" "2 · generate and rank" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · generate and rank" "_tombstone" false "frame" #afield/rect [480.0 40.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "generate_and_rank_code_.kt" "lines" 30 "characters" 1181 "sha256" "f69d8545c8f4a614aad88db5b1948600baec6cb1c2d1f6abc360b3beea596696"}]}
+{"id" "generate_and_rank" "index" 0 "name" "2 · generate and rank" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · generate and rank" "_tombstone" false "frame" #afield/rect [480.0 40.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "generate_and_rank_code_.kt" "lines" 45 "characters" 1827 "sha256" "19763bf17dcaf2fe47ff726f62ccf18e13480b96e6b522f95215574760ef2d51"}]}
 ```
 
 ```kotlin [field-property box="generate_and_rank" name="code" path="generate_and_rank_code_.kt"]
-val client = FieldAudioClient()
-val source = client.assetByFilename("*Nancy*").get()
-val region = AssetRegion(source.id, startSeconds = 18.0, durationSeconds = 4.5)
+val client = cached { FieldAudioClient() }
 val sketch = gestureBoard(18.0, "uneasy nocturnal orchestra, old optical-film texture") {
     prompt(0.0, 5.0, "almost motionless low strings")
     prompt(5.0, 8.0, "woodwind fragments begin to circle")
@@ -40,10 +38,27 @@ val sketch = gestureBoard(18.0, "uneasy nocturnal orchestra, old optical-film te
 }
 
 display("gesture", gestureBoardHtml(sketch))
-client.submit(gestureCandidates(region, sketch, seeds = 0L until 8L)).thenCompose(client::awaitCandidates).thenAccept {
-    result ->
-    display("ranked gesture", gestureBoardHtml(sketch, candidates = result))
-    display("audition", candidateBoardHtml(result))
+runAsync(
+    onResult = { result: CandidateSet ->
+        display("ranked gesture", gestureBoardHtml(sketch, candidates = result))
+        display("audition", candidateBoardHtml(result))
+    },
+    onError = { failure ->
+        markdown("generation error", "Generation failed: ${(failure.message ?: failure.toString()).md}")
+    },
+) {
+    val lookup = client.assetByFilename("*Nancy*")
+    onCancel { lookup.cancel(false) }
+    lookup.thenCompose { source ->
+        if (future.isDone) throw java.util.concurrent.CancellationException("run ended")
+        val region = AssetRegion(source.id, startSeconds = 18.0, durationSeconds = 4.5)
+        val submitted = client.submit(gestureCandidates(region, sketch, seeds = 0L until 8L))
+        onCancel { submitted.cancel(false) }
+        submitted.thenCompose { accepted ->
+            if (future.isDone) throw java.util.concurrent.CancellationException("run ended")
+            client.awaitCandidates(accepted).also { polling -> onCancel { polling.cancel(false) } }
+        }
+    }
 }
 ```
 

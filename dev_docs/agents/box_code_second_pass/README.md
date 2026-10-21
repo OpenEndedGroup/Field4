@@ -128,10 +128,40 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Use the projected camera for cube lighting and explain shader spaces](../box_code_adoption_batch_63/README.md) | 2 findings resolved; see the batch for actual evidence and limits. |
 
-[Machine checkpoint](checkpoint.json): **354 of 405 findings addressed**; 51 remain open. These counts do not claim
+| [Bound Nano GPU output slices and preserve adjacent packed lanes](../box_code_adoption_batch_65/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
+
+| [Keep Kratos cancellation, result snapshots and graph restoration safe](../box_code_adoption_batch_66/README.md) | 6 findings resolved; see the batch for actual evidence and limits. |
+
+| [Bound live raster cadence and retain the final WFC result](../box_code_adoption_batch_67/README.md) | 2 findings resolved; see the batch for actual evidence and limits. |
+
+| [Use bundled texture inputs and explain the Underfit source WAV](../box_code_adoption_batch_68/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
+
+| [Adopt fullscreen teacher meshes and reflected push suppliers](../box_code_adoption_batch_64/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
+
+| [Use captured interaction stages and make render controls easy to find](../box_code_adoption_batch_70/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
+
+| [Publish typed paint callbacks and clarify guides and remote shader lessons](../box_code_adoption_batch_71/README.md) | 4 findings resolved; see the batch for actual evidence and limits. |
+
+| [Own candidate generation callbacks and verify every motion capture save](../box_code_adoption_batch_72/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
+
+| [Cancel qualified-source waits and staged corpus work with the box run](../box_code_adoption_batch_73/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
+
+| [Teach run-owned Loris workflows with cancellable native awaits](../box_code_adoption_batch_74/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
+
+| [Own MuScriptor and speech pipelines and retain usable result handles](../box_code_adoption_batch_75/README.md) | 6 findings resolved; see the batch for actual evidence and limits. |
+
+| [Own exact graphics views and preserve replacements and edited shaders](../box_code_adoption_batch_76/README.md) | 11 findings resolved; see the batch for actual evidence and limits. |
+
+| [Own native interop and splat playback resources across setup and Stop](../box_code_adoption_batch_77/README.md) | 4 findings resolved; see the batch for actual evidence and limits. |
+
+| [Own named tutorial listeners and depth worker threads by their box runs](../box_code_adoption_batch_78/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
+
+[Machine checkpoint](checkpoint.json): **405 of 405 findings addressed**; 0 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 
 Every batch includes code smells/idioms, useful comments, Kotlin/GLSL layout, import/ktfmt handling,
 explicit collection-literal audit, fragment/reset preservation, and the smallest meaningful runtime
 checks. Save concrete verification limits when a device or service is unavailable.
+
+Final mechanical closure: [collection literals and guide screenshots](../box_code_adoption_batch_79/README.md). All 405 frozen findings are addressed; final landing outcomes are tracked separately.

@@ -22,6 +22,8 @@ three(name = "routes", width = 760, height = 470) {
     )
     camera(yaw = 20.0, pitch = 20.0)
     title("${polytope.vertices.size} hull vertices, ${polytope.constraintCount} faces")
-    caption("orange: central path · green: primal-dual, ${pd.samples.size - 1} steps · blue: simplex, ${walk.samples.size - 1} pivots · pink: PDHG")
+    caption(
+        "orange: central path · green: primal-dual, ${pd.samples.size - 1} steps · blue: simplex, ${walk.samples.size - 1} pivots · pink: PDHG",
+    )
 }
-"every route ends at %s".format(polytope.optimalVertex(c))
+"every route ends at ${polytope.optimalVertex(c)}"

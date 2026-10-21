@@ -1,0 +1,179 @@
+{
+  "method": "Normal regenerateAgentTranscriptStartingPoints task; each selected generated sidecar matches its authoritative YAML code",
+  "checks": [
+    {
+      "source": "dev_docs/agents/transcripts/mapper_explorer.yaml",
+      "box": "mapper_ring",
+      "sidecar": "public/docs/assets/agent_transcripts/mapper_explorer/mapper_ring_code_.kt",
+      "sha256": "4d0fb65ba6e53a7595735c151a3c3a3f31667c8339bd9ee848852f1c7f390520"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/mapper_explorer.yaml",
+      "box": "mapper_letters",
+      "sidecar": "public/docs/assets/agent_transcripts/mapper_explorer/mapper_letters_code_.kt",
+      "sha256": "83efb4d1094ecad9cd4586fcbd2eb79a7040ca7be8b41bd625e1f51ba322c39e"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/principal_curves_explorer.yaml",
+      "box": "pc_strands",
+      "sidecar": "public/docs/assets/agent_transcripts/principal_curves_explorer/pc_strands_code_.kt",
+      "sha256": "54590ce4a11b918e70ef897ce52ee17c6fc16aa0249fe27bc933fcb7a40a19ff"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/principal_curves_explorer.yaml",
+      "box": "pc_leaf",
+      "sidecar": "public/docs/assets/agent_transcripts/principal_curves_explorer/pc_leaf_code_.kt",
+      "sha256": "8d75098c4e1adb10636d4ea05122610141d2f10a0ef450b7244aeba07b7c3e99"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/principal_curves_explorer.yaml",
+      "box": "pc_live",
+      "sidecar": "public/docs/assets/agent_transcripts/principal_curves_explorer/pc_live_code_.kt",
+      "sha256": "ebb729adacd97ee1be9e9cadebad639370892460b5baefb7d0836891e7f1f2a1"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/contour_trees_explorer.yaml",
+      "box": "contour_tree_landscape",
+      "sidecar": "public/docs/assets/agent_transcripts/contour_trees_explorer/contour_tree_landscape_code_.kt",
+      "sha256": "7344d2f52616f36885eda189e774eae23d0032d712f00d9a3bf4472a534f0d0d"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/contour_trees_explorer.yaml",
+      "box": "contour_tree_photo",
+      "sidecar": "public/docs/assets/agent_transcripts/contour_trees_explorer/contour_tree_photo_code_.kt",
+      "sha256": "b05561d670aab0eac3817dc18c2f6ddfb43fde4252041b6f5488a512313787d4"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/polyvector_explorer.yaml",
+      "box": "pv_sketch",
+      "sidecar": "public/docs/assets/agent_transcripts/polyvector_explorer/pv_sketch_code_.kt",
+      "sha256": "9a6de317fe5c9f037d40dab4d82fba99277c3fc7e8deb1aab53d6d9c7b6b706d"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/polyvector_explorer.yaml",
+      "box": "pv_photograph",
+      "sidecar": "public/docs/assets/agent_transcripts/polyvector_explorer/pv_photograph_code_.kt",
+      "sha256": "63be2ee5560a70831069d6ff9c935c0adfe9c1bd4bc398e3ce15b8656e100170"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/polyvector_explorer.yaml",
+      "box": "pv_geometry",
+      "sidecar": "public/docs/assets/agent_transcripts/polyvector_explorer/pv_geometry_code_.kt",
+      "sha256": "2d732888e53bef479d228c87fc062eefba1f28b7a4a53f805812b31ac8144d2d"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/morse_smale_explorer.yaml",
+      "box": "ms_photo_slider",
+      "sidecar": "public/docs/assets/agent_transcripts/morse_smale_explorer/ms_photo_slider_code_.kt",
+      "sha256": "2280e452a7ef12dc1a86ff0e9f75a06cf1e82fa3ffa06948b80be88de2080ff4"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/morse_smale_explorer.yaml",
+      "box": "ms_live_hills",
+      "sidecar": "public/docs/assets/agent_transcripts/morse_smale_explorer/ms_live_hills_code_.kt",
+      "sha256": "be6d248e240503856454fdb1b1468b3dae27e210693ca97f96531bdb592acf61"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/morse_smale_explorer.yaml",
+      "box": "ms_network_table",
+      "sidecar": "public/docs/assets/agent_transcripts/morse_smale_explorer/ms_network_table_code_.kt",
+      "sha256": "ddf077eef7699594fb3923f470a289222f4ef9201397f5a9f972bc63172aee7f"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/matrix_profile.yaml",
+      "box": "mp_motifs",
+      "sidecar": "public/docs/assets/agent_transcripts/matrix_profile/mp_motifs_code_.kt",
+      "sha256": "d532d4c8e038c62894d816ef7707c7703000366e5c0e7f580870919299e9ba20"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/matrix_profile.yaml",
+      "box": "mp_discords",
+      "sidecar": "public/docs/assets/agent_transcripts/matrix_profile/mp_discords_code_.kt",
+      "sha256": "40c703f578863a472beb6f1e8314b6b7615f50c286928c65fa39a603f426cda0"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/matrix_profile.yaml",
+      "box": "mp_multidimensional",
+      "sidecar": "public/docs/assets/agent_transcripts/matrix_profile/mp_multidimensional_code_.kt",
+      "sha256": "6bdac742c04e2e51ef6601af745918a36fdb61d12500d3143342747f6f6635cd"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/matrix_profile.yaml",
+      "box": "mp_contrast",
+      "sidecar": "public/docs/assets/agent_transcripts/matrix_profile/mp_contrast_code_.kt",
+      "sha256": "2a2997464dbce2efc50ad9e9281a1a88aeaa1fc4ac6b50366173d4935ea4abcb"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/lp_curves.yaml",
+      "box": "lp_routes",
+      "sidecar": "public/docs/assets/agent_transcripts/lp_curves/lp_routes_code_.kt",
+      "sha256": "4fb0947e8d9be5ee5985b7a3f076da25d04b964bdbdee8fd55531aa074bebd01"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/lp_curves.yaml",
+      "box": "lp_turning",
+      "sidecar": "public/docs/assets/agent_transcripts/lp_curves/lp_turning_code_.kt",
+      "sha256": "5cff722b025dd2e89e5427511012a76d3eab5144d9d7c35ec8c1d23ae64774a5"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/lp_curves.yaml",
+      "box": "lp_fan_map",
+      "sidecar": "public/docs/assets/agent_transcripts/lp_curves/lp_fan_map_code_.kt",
+      "sha256": "e3cf55bf1d4c143abb7b10a06afac0970021cbe868a000c557751e6eed613324"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/lp_curves_3d.yaml",
+      "box": "lp3_routes",
+      "sidecar": "public/docs/assets/agent_transcripts/lp_curves_3d/lp3_routes_code_.kt",
+      "sha256": "4f7c26ee93f921d2311d185e838220b5ac2fa550755579761292b71c544f1641"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/lp_curves_3d.yaml",
+      "box": "lp3_fan",
+      "sidecar": "public/docs/assets/agent_transcripts/lp_curves_3d/lp3_fan_code_.kt",
+      "sha256": "c77b0dd2996214b48dc8a1b06610ab9b437e9e600544eb82f934670f35f76dea"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/evolving_water_bugs.yaml",
+      "box": "water_bug",
+      "sidecar": "public/docs/assets/agent_transcripts/evolving_water_bugs/water_bug_code_.kt",
+      "sha256": "a0922b2cab974892b5e975d4b173e76614b425bd6e9d4bc7f91123b08d303f56"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/evolving_water_bugs.yaml",
+      "box": "ground_crawler",
+      "sidecar": "public/docs/assets/agent_transcripts/evolving_water_bugs/ground_crawler_code_.kt",
+      "sha256": "29aafb8e7e930f8979ebcfb5f545ef16381963796e8c478d19bf7222758d0a5f"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/notation_elements.yaml",
+      "box": "ne_elements",
+      "sidecar": "public/docs/assets/agent_transcripts/notation_elements/ne_elements_code_.kt",
+      "sha256": "b37f2694aab8ef13e9833ae87f4ee273a1d5fba5ce405873a50bf429d65b72be"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/notation_elements.yaml",
+      "box": "ne_score",
+      "sidecar": "public/docs/assets/agent_transcripts/notation_elements/ne_score_code_.kt",
+      "sha256": "ce54d4bca5e0757a382085aa760a420bed2988e1bcfbd0ace96391f6cfddf089"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/notation_elements.yaml",
+      "box": "ne_audit",
+      "sidecar": "public/docs/assets/agent_transcripts/notation_elements/ne_audit_code_.kt",
+      "sha256": "f0dfe76f40f229d62f35a429422760b2201a58428b382a36680d43a8a3b70175"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/notation_elements.yaml",
+      "box": "ne_listen",
+      "sidecar": "public/docs/assets/agent_transcripts/notation_elements/ne_listen_code_.kt",
+      "sha256": "b904110619c2d13f8bd847a7e99e88647552cee0b1c95567d9c1c3a83283b2cb"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/notation_elements.yaml",
+      "box": "ne_hand",
+      "sidecar": "public/docs/assets/agent_transcripts/notation_elements/ne_hand_code_.kt",
+      "sha256": "49a854d6a8c3cdee49f723c488307a792d9966c7dded3a5efca333083b27bc81"
+    }
+  ]
+}

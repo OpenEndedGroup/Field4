@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="kratos_thermal" index="0" -->
 
 ```edn [field-box id="kratos_thermal" role="properties"]
-{"id" "kratos_thermal" "index" 0 "name" "Kratos thermal playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos thermal playground" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_thermal_code_.kt" "lines" 146 "characters" 8051 "sha256" "8a8f87f3ed08927ea5fa251529333d0e94e894cca81af54a32cb23362573adac"}]}
+{"id" "kratos_thermal" "index" 0 "name" "Kratos thermal playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos thermal playground" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_thermal_code_.kt" "lines" 148 "characters" 8139 "sha256" "7c8626e9b6ba859b36cfdde8c0048274a39c0b0c124fa038721f2734b97809c4"}]}
 ```
 
 ```kotlin [field-property box="kratos_thermal" name="code" path="kratos_thermal_code_.kt"]
@@ -24,7 +24,7 @@ Launch (Alt-R). Drag controls in the output or on /controllers.
 Install once: uv sync --project optional/kratos --frozen
 SI units: metres, W/(m K), W/m³, kelvin. Stop closes the worker.
 */
-val settings = AtomicReference(listOf(.71, 2.0, 100.0, 293.15))
+val settings = AtomicReference([.71, 2.0, 100.0, 293.15])
 val action = AtomicReference("")
 fun change(index: Int, value: Double) {
     settings.updateAndGet { old -> old.mapIndexed { i, v -> if (i == index) value else v } }
@@ -151,6 +151,8 @@ frames {
             }
             frame()
         }
+    } catch (cancelled: java.util.concurrent.CancellationException) {
+        throw cancelled
     } catch (failure: Exception) {
         status(
             "Worker unavailable: ${safe(failure.cause?.message ?: failure.message)}<br>" +

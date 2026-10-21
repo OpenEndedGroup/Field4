@@ -9,6 +9,9 @@ description: >
   computed rather than described. Box 3 chains every named composite off one ambo — cube().ambo().bevel()
   and its seven siblings, which did not compile before today. Companion to
   dev_docs/agents/transcripts/polytope_conway_gallery.yaml and to dev_docs/POLYTOPE_ALGEBRA.md.
+docs:
+  - page: polytope_examples.md
+    why: "Explains faces with holes and chaining Conway operators."
 operations:
   - create:
       box: polytope_face_with_a_hole

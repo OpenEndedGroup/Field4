@@ -17,7 +17,7 @@ val part =
     (cuboid(4.0, 2.6, 0.7) + cylinder(1.4, 0.8, segments = quality)) -
         cylinder(3.0, 0.42, segments = quality) -
         unionOf(
-            listOf(-1.45, 1.45).map { cylinder(3.0, boreRadius, segments = quality).at(it, 0.0, 0.0) },
+            [-1.45, 1.45].map { cylinder(3.0, boreRadius, segments = quality).at(it, 0.0, 0.0) },
         ) -
         Profile.rect(2.9, slotWidth).offset(0.22, segments = quality).extruded(3.0).at(0.0, 1.05, -1.5)
 

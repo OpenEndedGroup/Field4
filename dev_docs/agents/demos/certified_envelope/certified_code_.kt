@@ -6,7 +6,7 @@ lies inside, whether or not a sample landed on it. Nothing here is sampled more 
 val signal = with(Functions) {
     sin(1.0 / 40.0, amplitude = 0.2, offset = 0.45) + gaussian(1234.57, 0.002, 0.5, Functions.Domain.ALL)
 }
-val viewer = SignalViewer(listOf(certifiedSignalChannel("x", signal)), 0.0, 3600.0)
+val viewer = SignalViewer([certifiedSignalChannel("x", signal)], 0.0, 3600.0)
 displaySignal(
     viewer,
     "main",
@@ -18,7 +18,7 @@ val band = signal.certifiedEnvelope(0.0, 3600.0, 1000)
 val bin = (1234.57 / 3.6).toInt()
 display(
     "numbers",
-    Table(listOf("what", "value"), title = "the certified band, as numbers")
+    Table(["what", "value"], title = "the certified band, as numbers")
         .row("f(1234.57), the glitch's peak", signal(1234.57))
         .row("certified max, bin $bin", band.high[bin])
         .row("certified min, bin $bin", band.low[bin])

@@ -2,6 +2,9 @@ name: loris_partial_explorer
 description: >
   Real offline Loris analysis, irregular partial trajectories, synchronized source/reconstruction
   audition, programmable selection and resynthesis, and independent time/frequency-resolution passes.
+docs:
+  - page: loris.md
+    why: "Explains Loris analysis, partial tracks and resynthesis."
 operations:
   - create:
       box: loris_source_and_partials

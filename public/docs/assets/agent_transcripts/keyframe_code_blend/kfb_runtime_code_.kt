@@ -28,7 +28,7 @@ val template =
         vec4 stackInput = vec4(fragUV, 0.0, 0.0);
         outColor = vec4(clamp(program(stackInput).rgb, 0.0, 1.0), 1.0);
     }
-"""
+    """
         .trimIndent()
 
 val warm = "uv 3.0 * fbm 0.15 + [1.0,0.55,0.2] *"
@@ -41,7 +41,7 @@ val expanded = StackSLCpu.expandStackAuto(template, blended)
 
 val strip = StringBuilder("<div style='display:flex;gap:8px;align-items:flex-start'>")
 val rasters = mutableMapOf<Double, FloatArray>()
-for (t in listOf(0.0, 0.25, 0.5, 0.75, 1.0)) {
+for (t in [0.0, 0.25, 0.5, 0.75, 1.0]) {
     val v = keyframeBlendVector(t)
     val raster = StackSLCpu.renderFragment(
         expanded,
@@ -68,7 +68,7 @@ display("blend-strip", strip.toString())
 
 // The endpoints, drawn from the endpoint programs themselves.
 val ends =
-    listOf(0.0 to warm, 1.0 to cool).map { (t, program) ->
+    [0.0 to warm, 1.0 to cool].map { (t, program) ->
         val v = keyframeBlendVector(t)
         val raster = StackSLCpu.renderFragment(
             StackSLCpu.expandStackAuto(template, program),

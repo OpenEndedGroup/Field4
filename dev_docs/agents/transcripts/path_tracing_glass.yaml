@@ -1,5 +1,8 @@
 name: path_tracing_glass
 description: Progressive compute path tracer with an OpenEXR environment, clear, tinted, frosted and thin glass, and optional KHR ray queries.
+docs:
+  - page: path_tracing.md#clear-tinted-thin-and-frosted-glass
+    why: "Covers the glass materials shown in this scene."
 operations:
   - create:
       box: path_trace_renderer

@@ -1,0 +1,41 @@
+{
+  "baseline": "074997c8b",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/interaction_nets_lambda.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/interaction_nets_lambda/lambda-reduction_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/polytope_path_trace_lineage.yaml",
+      "kotlinBodies": 2,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/assets/opendlssnr/example.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/interaction_nets_lambda/metadata.edn",
+      "kotlinBodies": 0,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/interaction_nets_lambda/document.md",
+      "kotlinBodies": 3,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

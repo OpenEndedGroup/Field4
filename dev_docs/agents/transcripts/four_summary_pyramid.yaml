@@ -66,6 +66,9 @@ description: |
   every level, so the pyramid is compared against arithmetic rather than against a previous render.
   [four_morton_quadtree](#four_morton_quadtree) is the same three planes produced from a point set
   instead of a raster, by a completely different pipeline.
+docs:
+  - page: reference/renderers.md
+    why: "Reference for the pass-chain API used to build this pyramid."
 operations:
   # 1. the renderer: owns the Window and pumps the loop. Run this one first.
   - create:
@@ -207,7 +210,7 @@ operations:
           declaration in one would mean a `resolution` you edited never took effect.
           */
           summary = bundle.addPassChain(
-              listOf(
+              [
                   FabricatePassSpec(
                       name = "field",
                       fragment = fieldFragment,
@@ -227,7 +230,7 @@ operations:
                       size = FabricatePassSize.Absolute(512, 512),
                       source = "field",
                   ),
-              ) +
+              ] +
                   FabricatePassLibrary.summaryPyramid(
                       // Nine levels per plane, three planes: the leaf is 256² and the root is one cell
                       // holding the statistics of the whole field.

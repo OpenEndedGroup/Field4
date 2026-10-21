@@ -4,12 +4,12 @@ The [Tour](funFeatures.md) this page ends is an arc under *Start Here*, meant to
 
 ## Chains across subsystems
 
-Each of these follows one object through several parts of Field. They are the quickest way to see how the sections below fit together before you pick one to learn.
+The [Long Way Round](chains.md) pages each follow one object through several parts of Field. They are the quickest way to see how the sections below fit together before you pick one to learn.
 
 - [A Polytope, Cut Open and Traced](chain_polytope_render.md) is the one to read first: a polytope built with Conway operators, cut with an exact Boolean, then path-traced.
 - [A Cellular Automaton You Can Hear](chain_ca_sound.md) goes the other way, from a Wolfram rule to the shortest pattern notation that plays it, rendered to a `.wav`.
 
-The rest of the section crosses physics, patterns, RectSL, photographs, λ-terms and lighting; open it for the full set.
+The rest cross physics, patterns, RectSL, photographs, λ-terms and lighting; [the overview](chains.md) lists the full set.
 
 ## Working in a document
 
@@ -18,7 +18,7 @@ The document itself: moving around it, finding things in it, and getting back wh
 - [Moving Around the Canvas](moving_around_the_canvas.md) is the one to read first: panning and zooming, `Cmd Cmd`-and-hold to see every box an arrow key can reach, and the function keys that jump to saved views.
 - [File Management](files_and_paths.md) is short and saves a lot of time: `"data.csv".file` resolves inside the document folder first and the workspace project second, so a path keeps working after the document is moved or handed to somebody else.
 - [Your History with Field](history_overview.md) says which of Field's kinds of history holds what, and which tool opens each. [Document History](document_history.md) is whole-document recovery from saved versions; [Code History](history_lens.md) shows what *this line* said a few saves ago, without leaving the editor.
-- [Snapping](snapping.md) is a toggle rather than a mode, for a moment of layout cleanup.
+- [Snapping](snapping.md) is a toggle rather than a mode, for a moment of layout cleanup. The drawing layer over the canvas is on the Tour, in [Drawing and Notation](drawing_and_notation.md).
 - [The Semantic Index](semantic_index.md) is the second of the two searches that `/welcome` runs over your workspace as you type.
 - [Profiling](profiling_timeline.md) is the page to open when a piece stops keeping up. It covers the panel that records what each box cost, what its numbers mean, and [simulation time](profiling_timeline.md#simulation-time), which runs coroutine code against a clock you advance yourself instead of the wall clock.
 
@@ -28,7 +28,7 @@ What happens when a box ends on a value, which is most of what working in Field 
 
 - [Visualizers & Controls](visualizers.md) is the one to read first: `.h`, the output panel, sliders and the value visualizer that draws anything you hand it.
 - [Interactive Guides](interactive_guides.md) shows how boxes can walk a reader through a document with slide notes, selections, callbacks, templated values, per-slide chat and callout lines.
-- [Charts as FLines](chart.md) and [DataFrames in a Box](dataframe.md) cover the two shapes tabular data usually arrives in.
+- [Charts as FLines](chart.md) and [DataFrames in a Box](dataframe.md) cover the two shapes tabular data usually arrives in, and take over where the Tour's [Looking at Data](tour_data.md) stops.
 
 ## Drawing from data
 
@@ -58,6 +58,8 @@ The geometry, sound and audio-AI groups in that section are larger than this lis
 The section ends with pages about making your own. [Rewriting Your Own Syntax](pattern_rewrite.md) is the lightest: a `rewrite { … }` block in a box matches a *shape* in your source and rewrites it before the compiler sees it. [Bridging Another Language](morpho_examples.md) brings a language in from outside. [Language Extensions](language_extensions.md) is how any of them earns highlighting, diagnostics and a context lens inside the editor.
 
 ## Graphics, GPU and headsets
+
+The Tour's [Graphics on the GPU](tour_gpu_graphics.md) stop gets a shader drawing in a window. These pages go further.
 
 - [Field 4 Graphics](afield_four_graphics.md) exercises the lower-level renderer path, through the transcript-driven renderer parent described at the foot of this page.
 - [Fabricate Renderer](fabricate_renderer.md) covers the `StandardRenderer` bundle: scene graph, render planning, frame graph, post stack, glTF import, material response, shadows and ambient occlusion.

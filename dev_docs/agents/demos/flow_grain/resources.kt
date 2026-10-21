@@ -81,7 +81,6 @@ flowSurface = RenderToTexture {
     colorFormats =
         [org.lwjgl.vulkan.VK10.VK_FORMAT_R16G16B16A16_SFLOAT, org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT]
     useDepth = false
-    clearFirst = true
     clearColor = vec(0, 0, 0, 0)
     debugName = "flow-correspondence"
 }

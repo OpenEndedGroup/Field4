@@ -44,7 +44,7 @@ operations:
       frame: { x: 80.0, y: 420.0, w: 300.0, h: 60.0 }
       properties:
         code: |
-          val values = listOf(20, 40, 60, 80, 100)
+          val values = [20, 40, 60, 80, 100]
           val bars =
               values.joinToString("") { v ->
                   "<div style='display:inline-block; vertical-align:bottom; width:20px; margin:3px; background:#1f77b4; height:${v}%'></div>"
@@ -62,7 +62,7 @@ operations:
                   "The box Swatch displays a coloured rectangle. Make a box named Answer that prints just the name " +
                       "of the colour the rectangle is shown in, as a person looking at it would say it (one of: red, green, " +
                       "blue, purple, orange), and run Answer.",
-              checks = listOf("last-run-ok:Answer", "output-contains:Answer:blue", "property-lacks:Answer:code:red"),
+              checks = ["last-run-ok:Answer", "output-contains:Answer:blue", "property-lacks:Answer:code:red"],
               mode = "scripted",
               script = fieldAgentEvalScript("swatch-colour"),
           )
@@ -78,7 +78,7 @@ operations:
                   "The box Swatch displays a coloured rectangle. Make a box named Colour that prints just the name " +
                       "of the colour the rectangle is shown in, as a person looking at it would say it (one of: red, green, " +
                       "blue, purple, orange), and run Colour. Say how you know.",
-              checks = listOf("last-run-ok:Colour", "output-contains:Colour:blue", "property-lacks:Colour:code:red"),
+              checks = ["last-run-ok:Colour", "output-contains:Colour:blue", "property-lacks:Colour:code:red"],
               mode = "live",
           )
   - create:
@@ -94,7 +94,7 @@ operations:
                   "The box Bars is meant to show five blue bars, 20, 40, 60, 80 and 100 pixels tall, but nobody can see " +
                       "them. Look at what it shows, fix Bars so that the five bars are visible at those heights, run it, and " +
                       "look again to check.",
-              checks = listOf("last-run-ok:Bars", "output-picture:Bars", "output-colour:Bars:#1f77b4:0.02"),
+              checks = ["last-run-ok:Bars", "output-picture:Bars", "output-colour:Bars:#1f77b4:0.02"],
               mode = "live",
           )
   - create:
@@ -103,7 +103,7 @@ operations:
       frame: { x: 80.0, y: 760.0, w: 300.0, h: 60.0 }
       properties:
         code: |
-          val values = listOf(20, 30, 40, 50, 60)
+          val values = [20, 30, 40, 50, 60]
           val bars =
               values.joinToString("") { v ->
                   "<div style='display:inline-block; vertical-align:bottom; width:28px; margin:3px; background:#1f77b4; height:${v}px'></div>"
@@ -121,6 +121,6 @@ operations:
                   "The box Row shows five blue bars. Add five more after them, 70, 80, 90, 100 and 110 pixels tall, " +
                       "keeping every bar 28 pixels wide, so that all ten stand side by side in a single row rising left to " +
                       "right. Run it and check what it shows; keep going until it looks right.",
-              checks = listOf("last-run-ok:Row", "output-rising:Row:#1f77b4:10"),
+              checks = ["last-run-ok:Row", "output-rising:Row:#1f77b4:10"],
               mode = "live",
           )

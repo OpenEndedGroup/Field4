@@ -17,8 +17,13 @@ val canvas = Img(420, 270, 3, FloatArray(420 * 270 * 3) { 0.06f })
 
 fun show(mu: Double) {
     val forest = PrincipalCurves.fit(points, curves = 3, nodes = 45, parameters = ElasticParameters(mu = mu))
-    showImgGrid("mu = $mu" to canvas.drawFLines([forest.pointsFLine(2.0)] + forest.widthFLines() + forest.toFLines(), scale = 2.0),
-        channel = "fit", columns = 1, cellSide = 520)
+    showImgGrid(
+        "mu = $mu" to
+            canvas.drawFLines([forest.pointsFLine(2.0)] + forest.widthFLines() + forest.toFLines(), scale = 2.0),
+        channel = "fit",
+        columns = 1,
+        cellSide = 520,
+    )
     forest.close()
 }
 

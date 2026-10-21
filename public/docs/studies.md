@@ -116,10 +116,8 @@ The revision is named `r1-` and the first twelve hex digits of its source's hash
 always gets the same name. The sheet is the picture a model receives from Observe, as an image
 rather than as text; the numbers beside it (mean luma, clipping, detail, palette, motion between
 frames) come back in the report's facts. The study keeps its revisions in the document, under
-`studies/<box id>/rings`, and the sheet is saved there too.
-
-`sourceFramesStudy("rings", …)` registers `rings` as a saved property, so the box's text is written
-to the document along with the study's revisions under `studies/`.
+`studies/<box id>/rings`, and the sheet is saved there too. `sourceFramesStudy("rings", …)` also
+registers `rings` as a saved property, so the box's text is written to the document with them.
 
 ## Changing it
 
@@ -421,11 +419,29 @@ design, and perform no build work.
 A note can also name a picture of the result: `StudyBuildNotice(message, view = StudyBuildView(box, caption) { draw() })`.
 `box` is the box (uid or name) that shows it, and `draw` displays the result there; nothing runs while
 the notes are read. An [AI4 chat that waited for the build](ai4_long_builds.md) is shown the
-picture when it resumes: Field runs `draw`, captures the box's output and attaches it to the message. It also works over existing attempt history. A formatter
-failure shows a review notice and keeps the result. Notes only explain: they do not change
+picture when it resumes: Field runs `draw`, captures the box's output and attaches it to the
+message. Notes also work over existing attempt history. A formatter failure shows a review notice and keeps the result. Notes only explain: they do not change
 fingerprints, acceptance, or whether downstream stages can use the result. A requirement a result
 must meet belongs in the recipe or in a [gate](#wait-until-a-measurement-passes). A stale result
 drops its notes from the current-result view; inspecting that attempt still shows them.
+
+`resultNotes` explains successes only. To explain a failure as well, give the stage a `failureNotes`
+adapter: it takes the failed `StudyBuildRecord`, usually reads its `problem.details`, and returns
+notes under the same rules. A route stage that fails because some routes were held can name a view
+of them, so a chat that waited for the build resumes with a close-up of the held routes:
+
+```diffstatic {data-lang=kotlin}
+failureNotes = { failed ->
+    val held = failed.problem?.details?.get("held") as? List<*>
+    if (held.isNullOrEmpty()) emptyList()
+    else [StudyBuildNotice("${held.size} routes were held.", StudyBuildNoticeKind.ERROR,
+        StudyBuildView("Held routes", "each held route, close up") { showHeld(held) })]
+}
+```
+
+The card shows these notes under the failure, agent inspection and the completion stream carry
+them, and a resumed chat gets their pictures, as it would a success's. A failed attempt is never
+current: its notes are not the current result's, and they leave the card once the inputs change.
 
 An edit during a build leaves the old attempt available for inspection, marked **obsolete**.
 It cannot become the current result. Changing a dependency result or `recipeVersion` also
@@ -865,5 +881,6 @@ in order.
 ??? aside "Agents: tests and design notes"
     `study.document.registrar` (`src/jvmMain/kotlin/afield/examples/ai/DocumentStudySmokeTest.kt`)
     drives all ten verbs on a document's study through the same tool registry an agent calls, with
-    no model. The design notes are in `dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`, under "Studies: one
+    no model. The design notes are in
+    [`dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/ai/AGENT_TOOL_EXTENSIONS.md), under "Studies: one
     registrar for the standard verbs".

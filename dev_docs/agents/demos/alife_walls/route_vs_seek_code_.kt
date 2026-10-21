@@ -13,7 +13,7 @@ routing against the best local steering available, not routing against nothing.
 val GOAL_X = 175.0
 val GOAL_Y = 100.0
 val STEPS = 1800 // 30 s at 60 Hz
-val SEEDS = listOf(1L, 2L, 3L, 4L)
+val SEEDS = [1L, 2L, 3L, 4L]
 val PER_SEED = 8
 
 fun maze(seed: Long, routed: Boolean): ScriptWorld {
@@ -44,7 +44,7 @@ fun maze(seed: Long, routed: Boolean): ScriptWorld {
 
 val curves = LinkedHashMap<String, List<Double>>()
 val shown = LinkedHashMap<String, ScriptWorld>()
-for (routed in listOf(true, false)) {
+for (routed in [true, false]) {
     val name = if (routed) "routed" else "direct"
     val cumulative = MutableList(STEPS) { 0.0 }
     var population = 0
@@ -85,8 +85,8 @@ showSignals(
 )
 
 /*
-Try this: change `route(goal, clearance = 3.5)` to `clearance = 0.5`. The route still gets
-there, but it plans 1.7 units from every corner — inside the reach of the avoidWalls term the
-same agent is running — and the two terms then disagree all the way round each corner. The
-arrival curve sags. Plan outside your own avoidance range.
-*/
+ Try this: change `route(goal, clearance = 3.5)` to `clearance = 0.5`. The route still gets
+ there, but it plans 1.7 units from every corner — inside the reach of the avoidWalls term the
+ same agent is running — and the two terms then disagree all the way round each corner. The
+ arrival curve sags. Plan outside your own avoidance range.
+ */

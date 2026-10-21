@@ -4,6 +4,9 @@ description: >
   Five boxes: the beat as a piano roll, the same beat through the synth stand-in and through the
   Dirt samples (play box 1 and box 2 back to back), the per-event fallback, and where Field looked
   for the sample library.
+docs:
+  - page: sound.md
+    why: "Covers rendering sound offline and the paths it takes."
 operations:
   - create:
       box: sound_path_roll

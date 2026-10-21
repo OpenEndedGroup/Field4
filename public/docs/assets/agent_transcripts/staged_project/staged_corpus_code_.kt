@@ -1,7 +1,9 @@
-// Seeded variants of the level, built by the same stages and shown side by side.
-// Nothing here asks a model: it is the machine run many times. Run this box to build them.
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import kotlinx.coroutines.*
+
+// Seeded variants of the level, built by the same stages and shown side by side.
+// Nothing here asks a model: it is the machine run many times. Run this box to build them.
 
 val json = jacksonObjectMapper()
 val seeds = 0..5
@@ -45,13 +47,13 @@ fun variant(source: String, seed: Int): String {
         val (nx, ny) = if (d[2] == "e") x to y + shift else x + shift to y
         val na = roomAt(nx, ny)
         val nb = if (d[2] == "e") roomAt(nx + 1, ny) else roomAt(nx, ny + 1)
-        if (na == a && nb == b) doors[id] = listOf(nx, ny, d[2])
+        if (na == a && nb == b) doors[id] = [nx, ny, d[2]]
     }
     if (loot.isEmpty()) return source
     return json.writeValueAsString(level + mapOf("rooms" to rooms, "doors" to doors, "loot" to loot))
 }
 
-fun runCorpus() {
+fun runCorpus(checkActive: () -> Unit) {
     val stages = thisBox.named("Builds").properties["levelStages"] as List<StudyBuildStage>
     val gates = thisBox.named("Builds").properties["levelGates"] as List<StudyBuildGate>
     val draw =
@@ -59,6 +61,7 @@ fun runCorpus() {
     val level = thisBox.named("Level").getPropertyRaw("level") as String
     val rule = thisBox.named("Loot rule").getPropertyRaw("lootRule") as String
     val tiles = seeds.map { seed ->
+        checkActive()
         BoxStudies.show(
             thisBox,
             "gallery",
@@ -68,6 +71,7 @@ fun runCorpus() {
         val builds =
             studyBuilds("variant$seed", stages, workers = 1, gates = gates) { mapOf("level" to source, "rule" to rule) }
         fun build(stage: String): StudyBuildRecord? {
+            checkActive()
             val state = builds.stages().first { it.id == stage }
             return state.current ?: state.fingerprint?.let { builds.await(builds.start(stage, it).id) }
         }
@@ -87,7 +91,7 @@ fun runCorpus() {
                     (m["relaxed"] as? Number)?.toDouble()?.div((m["steps"] as Number).toDouble().coerceAtLeast(1.0))
                 }
                 .maxOrNull()
-        val caption = listOf(
+        val caption = [
             if (seed == 0) "the level as it is"
             else "seed $seed · ${(json.readValue<Map<String, Any?>>(source)["rooms"] as Map<*, *>).size} rooms",
             "within budget ${measures.values.count { it["withinBudget"] == true }} of ${measures.size} · sightlines ${walk?.facts?.get("sightlines") ?: "–"}",
@@ -103,7 +107,7 @@ fun runCorpus() {
                             "Waiting for reachable loot: ",
                         )
             },
-        )
+        ]
         "<div style='width:220px'>" +
             drawToSVG(draw(source, paths, 12.0), 220.0, 120.0) +
             caption.joinToString("") {
@@ -111,6 +115,7 @@ fun runCorpus() {
             } +
             "</div>"
     }
+    checkActive()
     BoxStudies.show(
         thisBox,
         "gallery",
@@ -120,11 +125,18 @@ fun runCorpus() {
     )
 }
 
-// Running this box builds every variant; the stages run on their own threads, so Field stays responsive.
-kotlin.concurrent.thread {
+// Stop interrupts the current wait and prevents later variants from being installed.
+val ownerRun = RunScope.current()
+go {
+    val activeContext = currentCoroutineContext()
     try {
-        runCorpus()
+        runInterruptible(Dispatchers.IO) {
+            RunScope.withCurrent(ownerRun) { runCorpus { activeContext.ensureActive() } }
+        }
+    } catch (cancelled: CancellationException) {
+        throw cancelled
     } catch (e: Exception) {
+        ensureActive()
         BoxStudies.show(
             thisBox,
             "gallery",

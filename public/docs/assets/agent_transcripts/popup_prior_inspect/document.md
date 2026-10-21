@@ -25,7 +25,7 @@ of where a row appears on screen. That answer belongs to KotlinCompletionSupport
 a `category=` beside every visible row. See public/docs/completion_ranking.md.
 
 ```edn [field-box id="agent_popup_prior_inspect" role="properties"]
-{"id" "agent_popup_prior_inspect" "index" 0 "name" "What prior does the popup have" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What prior does the popup have" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_popup_prior_inspect_code_.kt" "lines" 46 "characters" 1986 "sha256" "102b23a946a14a4ac3b399839a8762971bcbba843a7324f44e77e2770d05269e"}]}
+{"id" "agent_popup_prior_inspect" "index" 0 "name" "What prior does the popup have" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What prior does the popup have" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_popup_prior_inspect_code_.kt" "lines" 46 "characters" 1974 "sha256" "5adce880f13166d39f44ac8f5d8c2aa2c4a384afd5171c2a72b911b6664883ed"}]}
 ```
 
 ```kotlin [field-property box="agent_popup_prior_inspect" name="code" path="agent_popup_prior_inspect_code_.kt"]
@@ -46,12 +46,12 @@ val ranks = afield.runtime.completion.CommonMemberPrior.ranksFor(receiver)
 // Sorted by position rather than trusting the map's iteration order, so the figure is the
 // same every time it is drawn.
 val prior =
-    Table(listOf("position", "member", "prior score"))
+    Table(["position", "member", "prior score"])
         .rows(
             ranks.entries
                 .sortedBy { it.value }
                 .map { (member, position) ->
-                    listOf(position, member, afield.runtime.completion.CommonMemberPrior.scoreOf(position))
+                    [position, member, afield.runtime.completion.CommonMemberPrior.scoreOf(position)]
                 },
         )
         .role("member", CellRole.ACCENT)

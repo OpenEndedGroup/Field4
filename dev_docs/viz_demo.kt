@@ -26,7 +26,7 @@ val m = mat4()
 viz("matrix", m)
 
 // Lists
-viz("list", listOf(1, 2, 3, 4, 5))
+viz("list", [1, 2, 3, 4, 5])
 
 // Large list with numbers - shows summary stats
 val largeList = (1..100).map { it * 0.1 }
@@ -50,7 +50,7 @@ val nested = mapOf(
     "position" to vec(10.0, 20.0, 30.0),
     "rotation" to quat(0.0, vec(0, 1, 0)),
     "scale" to vec(1.0, 1.0, 1.0),
-    "children" to listOf("child1", "child2", "child3"),
+    "children" to ["child1", "child2", "child3"],
 )
 viz("nested", nested)
 
@@ -63,7 +63,7 @@ registerValuePrinter<Point3D> { point ->
 }
 
 viz("custom type", Point3D(1.0, 2.0, 3.0))
-viz("custom list", listOf(Point3D(1.0, 0.0, 0.0), Point3D(0.0, 1.0, 0.0), Point3D(0.0, 0.0, 1.0)))
+viz("custom list", [Point3D(1.0, 0.0, 0.0), Point3D(0.0, 1.0, 0.0), Point3D(0.0, 0.0, 1.0)])
 
 // ToHTML interface example
 data class ComplexData(val name: String, val values: List<Double>) : ToHTML {

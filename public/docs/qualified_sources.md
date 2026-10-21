@@ -219,6 +219,8 @@ expect:
     - "Approve the new outcome of crypt"
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/qualified_sources/proposal.png" alt="Two output channels. The loot card shows candidate 'Epic loot from three doors in' with the amber status Outcomes changed, needs a person: crypt changed, ossuary rare to epic; keep and mill the same; the control shallow failed, as it must. Below it the loot-approval channel, titled New outcomes for Loot rule, says that every other fixture kept its outcome, lists crypt with a row ossuary, recorded rare, proposed epic, and shows a blue button, Approve the new outcome of crypt." wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="loot-approval" wait-output-contains="Approve the new outcome of crypt" capture="box" embed=true timeout="180" name="qualified-sources-proposal" w="760" h="120"}
+import kotlinx.coroutines.*
+
 :::static
 :::fold the loot rule and its fixtures, as above
 val rule =
@@ -280,8 +282,9 @@ val second = loot.candidate(
     [QualifiedEdit("doors >= 4", "doors >= 3")],
 )
 val job = loot.test(second.id)
-kotlin.concurrent.thread {
-    loot.replays.await(job.id)
+go {
+    runInterruptible(Dispatchers.IO) { loot.replays.await(job.id) }
+    ensureActive()
     loot.proposeRebaseline(job.id)
 }
 ```
@@ -301,14 +304,18 @@ The candidate was made with the old outcome, so it is now out of date. The agent
 against the new fixtures, replays that, and applies it. In box code those three steps are:
 
 ```diffstatic {data-lang=kotlin}
-val third = loot.candidate(
-    loot.rule.currentId(),
-    SourceStudy.hash(loot.rule.liveSource()),
-    second.description,
-    fromCandidate = second.id,
-)
-loot.replays.await(loot.test(third.id).id)
-loot.apply(third.id, third.baseRevision, third.baseSourceHash)
+go {
+    val third = loot.candidate(
+        loot.rule.currentId(),
+        SourceStudy.hash(loot.rule.liveSource()),
+        second.description,
+        fromCandidate = second.id,
+    )
+    val replay = loot.test(third.id)
+    runInterruptible(Dispatchers.IO) { loot.replays.await(replay.id) }
+    ensureActive()
+    loot.apply(third.id, third.baseRevision, third.baseSourceHash)
+}
 ```
 
 The agent makes the same three calls as tools: `loot.candidate` with `fromCandidateId`, then
