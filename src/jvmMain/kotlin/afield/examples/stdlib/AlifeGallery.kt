@@ -57,6 +57,8 @@ import afield.geometry.mesh.isWatertight
 import afield.media.image.isoContourFLines
 import afield.simulation.agents.leniaFromLifeRule
 import afield.simulation.agents.leniaRun
+import afield.simulation.agents.leniaRuleFromCatalogue
+import afield.simulation.agents.fieldCentroid
 import afield.simulation.agents.leniaSeed
 import afield.simulation.agents.leniaTimes
 import afield.simulation.automata.lifeRule
@@ -1478,14 +1480,84 @@ object AlifeGallery {
             "lenia: the bounded cells hold ${bounded.joinToString(", ") { "${it.second.blobCount}" }} " +
                 "localised feature(s) at mean field ${bounded.joinToString(", ") { f(it.second.finalMass, 2) }} " +
                 "— neither empty nor a filled field. NOTE these are fine-grained self-maintaining " +
-                "textures, not the named solitons of the Lenia literature; this family does not ship a " +
-                "published initial pattern and so does not claim one"
+                "textures, not a lifeform; the named creature is Orbium, checked below from its published cells"
         )
         val dead = runs.filter { it.second.phase == LeniaPhase.DEATH }
         check(
             dead.isNotEmpty() && dead.all { it.second.finalMass < 0.005 },
             "lenia CONTROL: the death cells (mu = ${dead.joinToString(", ") { "${it.first}" }}) end at " +
                 "mass < 0.005 from the identical seed — the bounded cells are a property of mu"
+        )
+
+        // --- Orbium: the published creature, its shuffled-cells control, and its band of mu ---
+        val orbium = LeniaPresets.orbium()
+        check(orbium.cells.width == 20 && orbium.cells.height == 20, "lenia: Orbium's catalogue array is 20x20")
+        val start = orbium.seed(64, 64)
+        val glide = leniaRun(start, orbium.rule, steps = 300)
+        println("[alife-gallery]     orbium -> $glide")
+        check(
+            glide.phase == LeniaPhase.BOUNDED && glide.blobCount == 1 &&
+                abs(glide.finalMass / start.mean() - 1.0) < 0.05,
+            "lenia: Orbium under its own rule keeps one piece and its mass (start ${f(start.mean().toDouble(), 4)}, " +
+                "300 steps ${f(glide.finalMass, 4)}, ${glide.blobCount} blob(s))"
+        )
+        // Speed from a TOROIDAL centroid (the circular mean of each axis), because a plain centroid of a
+        // creature straddling the seam lands in the middle of the board and jumps.
+        fun torusCentroid(img: Img): Pair<Double, Double> {
+            var sx = 0.0; var cx = 0.0; var sy = 0.0; var cy = 0.0
+            for (y in 0 until img.height) for (x in 0 until img.width) {
+                val v = img.data[y * img.width + x].toDouble()
+                val ax = 2 * Math.PI * x / img.width
+                val ay = 2 * Math.PI * y / img.height
+                sx += v * kotlin.math.sin(ax); cx += v * kotlin.math.cos(ax)
+                sy += v * kotlin.math.sin(ay); cy += v * kotlin.math.cos(ay)
+            }
+            return kotlin.math.atan2(sx, cx) * img.width / (2 * Math.PI) to kotlin.math.atan2(sy, cy) * img.height / (2 * Math.PI)
+        }
+        fun speedAt(every: Int): Double {
+            var moving = start
+            var c0 = torusCentroid(moving)
+            var travelled = 0.0
+            repeat(300 / every) {
+                moving = moving.leniaTimes(orbium.rule, every)
+                val c1 = torusCentroid(moving)
+                fun wd(a: Double, b: Double) = (b - a + 32.0).mod(64.0) - 32.0
+                travelled += kotlin.math.hypot(wd(c0.first, c1.first), wd(c0.second, c1.second))
+                c0 = c1
+            }
+            return travelled / 300.0
+        }
+        val speed = speedAt(5)
+        val speedFine = speedAt(1)
+        println("[alife-gallery]     orbium speed ${f(speed, 4)} cells per step sampled every 5 steps, ${f(speedFine, 4)} every step")
+        check(
+            speed in 0.58..0.66 && abs(speedFine - speed) < 0.02,
+            "lenia: Orbium glides at the 0.62 cells per step the page quotes, the same whether its toroidal " +
+                "centroid is sampled every step or every five (${f(speedFine, 3)}, ${f(speed, 3)})"
+        )
+        val shuffledDeaths = (1L..6L).count { s ->
+            leniaRun(orbium.shuffled(s).seed(64, 64), orbium.rule, steps = 300).phase == LeniaPhase.DEATH
+        }
+        check(
+            shuffledDeaths == 6,
+            "lenia CONTROL: the same 400 cell values shuffled into a random arrangement die under the " +
+                "same rule ($shuffledDeaths of 6 shuffles died)"
+        )
+        fun atMu(mu: Double) = leniaRun(start, leniaRuleFromCatalogue(radius = 13, t = 10.0, mu = mu, sigma = 0.015), steps = 300)
+        val band = [0.13, 0.16].map { atMu(it) }
+        val burst = [0.11, 0.12].map { atMu(it) }
+        val dies = [0.17, 0.18].map { atMu(it) }
+        (band + burst + dies).zip(listOf(0.13, 0.16, 0.11, 0.12, 0.17, 0.18)).forEach { (r, mu) ->
+            println("[alife-gallery]     orbium cells at mu=$mu -> $r")
+        }
+        check(
+            // A lone creature is ~0.018 of a 64x64 field; blobCount is not toroidal, so a creature on the
+            // seam counts twice and the band is checked by mass instead.
+            band.all { it.phase == LeniaPhase.BOUNDED && it.finalMass < 0.03 } &&
+                burst.all { it.blobCount >= 20 && it.finalMass > 0.1 } &&
+                dies.all { it.phase == LeniaPhase.DEATH },
+            "lenia: Orbium lives for mu 0.13..0.16, bursts into fragments at 0.12 and below " +
+                "(${burst.joinToString { "${it.blobCount}" }} blobs) and dies at 0.17 and above"
         )
 
         val panels = ArrayList<Pair<String, Img>>()
