@@ -2456,7 +2456,7 @@ hand? **draw for me** sends three strokes the way the drawing layer does. The le
 through the demo and how this version maps onto it. A port of the madp line demo; the design notes
 are in `dev_docs/madp/line.md`.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_line.png" capture="window" clip="20,20,1260,780" wait="5.0" embed=true hidden=true timeout="180" name="gallery-madp-line" alt="The madp line boxes in a column on the left of the dark canvas; to their right three hand-drawn strokes have come alive as softly waving neon ribbons in pink, orange and violet, each strung with small coloured beads" macro-file="../../dev_docs/agents/transcripts/madp_line.yaml"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_line.png" capture="window" open-outputs="false" clip="20,20,1260,840" wait="5.0" embed=true hidden=true timeout="180" name="gallery-madp-line" alt="The madp line boxes in a column on the left of the dark canvas, with draw for me beside the first; to their right three drawn strokes have come alive as softly waving cyan ribbons, a long arc, a loop and a low wave, strung with small green, yellow and orange beads" macro-file="../../dev_docs/agents/transcripts/madp_line.yaml"}
 // The transcript builds every box, runs the prism choir to take the pen, then runs draw for me,
 // whose three strokes arrive over the drawing layer's own message and come alive.
 ```
