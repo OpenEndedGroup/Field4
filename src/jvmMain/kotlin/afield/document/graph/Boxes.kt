@@ -1538,8 +1538,12 @@ internal fun Box.publishGoJobs() {
     send(Message("go-jobs").payload(GoJobs(id, live.size, live.values.distinct())))
 }
 
+// Concurrent writers can remove the last entry after size was observed. Map.toMap()'s
+// singleton shortcut assumes that entry still exists; HashMap copies through the iterator.
+internal fun snapshotRunningStates(states: Map<String, RunningState>): Map<String, RunningState> = HashMap(states)
+
 internal fun Box.clearRunningStates() {
-    val states = currentRunningStates.toMap()
+    val states = snapshotRunningStates(currentRunningStates)
     currentRunningStates.clear()
     if (!isInsideInitialized()) return
     states.forEach { (strand, state) ->
@@ -1704,7 +1708,7 @@ fun syncExecutionStatus() {
             if (box.properties.get("_tombstone").isTrue()) return@forEach
 
             box.syncJobRunningState()
-            val activeStates = box.currentRunningStates.toMap()
+            val activeStates = snapshotRunningStates(box.currentRunningStates)
             activeStates.forEach { (strand, state) ->
                 val message = Message("is-running").payload(
                     IsRunning(
