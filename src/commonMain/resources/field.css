@@ -3932,6 +3932,16 @@ body::-webkit-scrollbar {
     pointer-events: none;
 }
 
+/* Box.tint, set from code to show state (the score playhead's "this box is playing"): the colour at its
+   own alpha washes the box (an inset shadow sits over the running stripes and under the title), and the
+   same colour made nearly opaque edges it and glows. Never saved; a blank tint removes the class. */
+.box.tinted {
+    box-shadow: inset 0 0 0 100vmax var(--box-tint),
+        0 0 0 1.5px rgb(from var(--box-tint) r g b / 0.95),
+        0 0 18px rgb(from var(--box-tint) r g b / 0.4);
+    transition: box-shadow 0.08s linear;
+}
+
 .box.provisional {
     position: relative;
 }

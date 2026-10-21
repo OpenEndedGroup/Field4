@@ -711,6 +711,16 @@ object DemoTranscriptExecSmokeTest {
         // `four-lattice-boltzmann` and `four-forest-fire` docs captures in afield_four_graphics.md.
         "lattice_boltzmann_cylinder",
         "forest_fire",
+        // The madp Fern port: compute-shader iterated systems plotted into a PointAccumulation on
+        // a native Window + Renderer, so compile-only here. IteratedSystemShaderTest compiles every
+        // system's compute tab against the points/system harness without a GPU.
+        "fern_iterated_systems",
+        // The madp Particles port: madp's hooks as compute shaders over a GPU neighbour grid, drawn
+        // into a PointAccumulation on a native Window + Renderer, so compile-only here.
+        // ParticleSketchShaderTest compiles every sketch's compute tab against the
+        // particles/sketch harness without a GPU, and four.particle-sketch.smoke grades the verbs
+        // against a transcription of madp's JavaScript on one.
+        "particles_sketchbook",
         "imgui_vr_panel",
         // A hidden Electron window renders Field itself into Chromium shared textures; the live
         // macOS replay crosses IOSurface Mach rights and samples them in Vulkan. CI compiles the
@@ -804,6 +814,10 @@ object DemoTranscriptExecSmokeTest {
         "fieldml_mesh_demo",
         // stacksl_examples.md's gallery draws into a native window.
         "stacksl_gallery",
+        // ShaderTrinket: shadertoyHere boxes drawing into a shadertoyCanvas the renderer window shows,
+        // one of them reading the camera. ShadertoyChannelsTest compiles the image preamble and the
+        // channel passes; the orientation and colour were checked by native capture.
+        "shadertrinket",
         // Continuing a gesture (2026-10-19): boxes 5 and 6 start a Timestral worker, which needs a
         // downloaded checkpoint no CI machine has, and boxes 3 and 4 are live frames loops. The oracle
         // and mocap code runs in VariableMarkovOracleTest, SeveralTakesTest and BvhTest, and the dance

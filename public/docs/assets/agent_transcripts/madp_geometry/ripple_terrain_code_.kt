@@ -7,6 +7,11 @@
 //   surface(...)         a grid of triangles
 //   revolve, tube, box   more triangles
 //   push() / pop() with translate, rotateX/Y/Z, scale
+//
+// geometryAgent() teaches this document's AI4 chat the language and lets it look at every view here:
+// open the AI panel and ask for "a coral reef of tubes", or "make the terrain stormier".
+geometryAgent()
+
 geometry {
     view(background = "#05080a", ground = true, grid = true)
 

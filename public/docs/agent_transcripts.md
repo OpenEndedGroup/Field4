@@ -3047,6 +3047,39 @@ trains meet they interleave. Red recovers faster, so its rings come more often. 
 
 [Open ↗](offline.html?file=assets/agent_transcripts/forest_fire/metadata.edn)
 
+### fern_iterated_systems
+
+**Fern**, the classroom demo of iterated systems, on the GPU. Each system is tens or hundreds of
+thousands of particles, each stepped by one rule every frame and plotted after every step into a
+picture that fades a little each frame, so their visits pile up into fine glowing dust. A renderer
+box, then four systems beneath it: the **Barnsley fern** (four affine maps chosen at random, the
+chaos game, launched when the scene opens), the **Lorenz attractor** (a continuous chaotic flow,
+projected from 3D and coloured by height), a **flame-style IFS** (each map followed by a swirl,
+handkerchief or spherical variation, shown as log density), and the **Sierpinski triangle** (the
+smallest chaos game). Each system box's `compute` tab holds the rule as six GLSL functions,
+`initParticle`, `step`, `project`, `shouldDraw`, `color` and `pointSize`; its code sets the
+viewport, the background, the particle count and the fade, and shows sliders for fps, steps,
+fade and exposure. Launch another system box to switch to it.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fern_iterated_systems/metadata.edn)
+
+### particles_sketchbook
+
+**Particles**, the classroom particle sketchbook, on the GPU. The world starts empty: drag in the
+renderer window and particles are painted in along the stroke, and four hooks decide what they
+do. A renderer box, then seven sketches beneath it: **boids ribbon** (three schools flocking along
+a noise flow, launched when the scene opens), **spring mesh** (neighbours knit into a web of
+springs), **predator wake** (a hunter only `draw()` shows cuts through a flock), **bounce house**
+(gravity, walls and ball collisions), **sine garden** (orbits, clumping and sinusoidal forcing),
+**pendulum bloom** (particles tethered to where they were painted) and **vortex brush** (rings that
+follow the pointer). Each sketch box's `compute` tab holds the demo's hooks as GLSL, `spawn`,
+`eachPair`, `update` and `draw`, run once for every particle each frame over a neighbour grid, with
+the demo's helpers by the same names (`flock`, `clump`, `spring`, `collide`, `link`, `springTo`,
+`oscillate`, `bounce`, `wrap`, `ring`, ...); its code holds the demo's `init()` world settings and
+shows a trail slider, pause and reset. Launch another sketch box to switch to it.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/particles_sketchbook/metadata.edn)
+
 ### recstl_playground
 
 A one-stop [RectSL](rectsl_examples.md) playground: a Window + Renderer, a
@@ -3692,6 +3725,19 @@ The gallery from [StackSL examples](stacksl_examples.md): one renderer box and a
 shader. Launch the renderer, then launch any example; each one replaces the last in the window.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/stacksl_gallery/metadata.edn)
+
+### shadertrinket
+
+**ShaderTrinket in Field.** A ShaderToy Image pass, `void mainImage(out vec4 fragColor, in vec2
+fragCoord)`, lives in each box's `fragment` property, under one `{{ shadertoy.image }}` line, and
+draws into a canvas the renderer window shows. Launch the renderer, then the lead box (Flat Rings,
+ShaderTrinket's default program); each preset box (Classic Plasma, Star Tunnel, Mandelbrot Glow,
+SDF Sphere Trace) replaces the picture when you launch it, the way choosing a preset does. Edit a
+`fragment` and press alt-R to recompile; an error is marked on its own line. The Camera Input Demo
+binds the camera to `iChannel0` with `textures("iChannel0" to webcam())`. A port of the madp
+ShaderTrinket demo; the design notes are in `dev_docs/madp/shadertrinket.md`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/shadertrinket/metadata.edn)
 
 ## Graphics building blocks
 
