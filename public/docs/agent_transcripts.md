@@ -2014,6 +2014,22 @@ and Delete.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/macro_recorder_stamp/metadata.edn)
 
+### madp_ga
+
+**Interactive evolution, after Karl Sims**, ported from the madp GA demo. Each tile is a short
+reverse-Polish colour program (`x 9 * sin 0.18 + y 0.55 + 0.62 hsl`) run once per pixel, and you
+are the fitness function: each box shows two parents and seven children in a 3×3 grid, and
+clicking two tiles makes them the parents of the next generation. The lead box starts from the
+demo's two starters, two more from its example programs, and the last changes the breeding rules
+so that only numbers mutate. The language is `ColorRpn` and the grid is `evolveByEye`, which takes
+any genome with a picture; design notes in `dev_docs/madp/ga.md`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_ga_lead.png" capture="box" open-outputs="true" wait="2.0" embed=true hidden=true timeout="180" padding="12" name="gallery-madp-ga-lead" alt="The GA grid on a near-black ground: a toolbar with Reroll, Fresh Parents and Start over and the mut, len and res settings, then nine tiles in three rows, the two parents (rainbow vertical stripes and rainbow spokes) outlined in blue and seven mutated children below them, each with its program written under it" macro-file="../../dev_docs/agents/transcripts/madp_ga.yaml" capture-box="madp_ga_lead"}
+// The transcript builds and runs every box; this is the lead box, starting from the demo's starters.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_ga/metadata.edn)
+
 ## Service-backed composition scenes
 
 <!-- transcript-index: verified-by = execute -->
@@ -2426,6 +2442,10 @@ once. The lead box is the demo's plasma; the others are 10 PRINT, Life, matrix r
 (one `CSSVAR` spins the whole field) and a C64 typewriter. A port of the madp charGrid demo; the
 design notes are in `dev_docs/madp/chargrid.md`.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_chargrid_plasma.png" capture="box" open-outputs="true" wait="4.0" embed=true hidden=true timeout="180" padding="12" name="gallery-madp-chargrid-plasma" alt="A 40 by 25 grid of block and box-drawing glyphs in rotating rainbow hues, a plasma of two sine waves, on a near-black panel" macro-file="../../dev_docs/agents/transcripts/madp_chargrid.yaml" capture-box="madp_chargrid_plasma"}
+// The transcript builds and runs every box; this is the lead, the plasma.
+```
+
 [Open ↗](offline.html?file=assets/agent_transcripts/madp_chargrid/metadata.edn)
 
 ### madp_score
@@ -2440,7 +2460,45 @@ shapes swell with the notes. Drag a box to move it in time, stretch it to make i
 run it again after an edit. A port of the madp score demo; the design notes are in
 `dev_docs/madp/score.md`.
 
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" hide-toasts=true viewport="1900x660" clip="0,0,1900,660" screenshot="assets/agent_transcripts_gallery/madp_score.png" macro-file="../../dev_docs/agents/transcripts/madp_score.yaml" padding="0" wait="0" timeout="300" embed=true hidden=true name="gallery-madp-score" alt="Field's canvas as a score: seven dark boxes spread left to right and an orange playhead line crossing the two Glass phase boxes, which are lit red and olive; under the first box, a dark panel shows what they draw, a row of thin orange bars above a row of blue ones"}
+// The transcript builds the score and runs its first box. Wait until the playhead is about seven
+// seconds in, where the two Glass phase boxes overlap, then take the picture.
+var at = ""
+for (i in 0 until 240) {
+    ui.pause(250)
+    at = ui.eval("""
+        const f = document.querySelector("iframe[src*='score_view']")
+        const s = f && f.contentDocument && f.contentDocument.getElementById("status")
+        return s ? s.textContent : "no score view yet"
+    """.trimIndent()).toString()
+    val t = Regex("score · ([0-9.]+)s").find(at)?.groupValues?.get(1)?.toDouble()
+    if (t != null && t in 6.9..7.5) break
+}
+check(Regex("score · ([0-9.]+)s").containsMatchIn(at)) { "the score never started: " + at }
+```
+
 [Open ↗](offline.html?file=assets/agent_transcripts/madp_score/metadata.edn)
+
+### madp_line
+
+**Strokes that come alive.** Run the first box, press Alt+D, choose the pencil and draw on the
+empty canvas beside the boxes. Each stroke turns into a moving, sounding object: its shape sets up a
+small synth choir, and the louder the choir plays, the wider the stroke's ribbon swings. Every
+stroke keeps the code it was drawn with, so edit the box and run it again, and only the strokes you
+draw next change. Run another box to give it the pen: a filled ribbon, comet dust with long trails,
+curve maths that splits a stroke into four related curves, strokes that pull each other into a web,
+and a stroke snapped onto a twelve-step sequencer whose cursor marks the note you hear. The block
+in `eachStroke { }` runs once per stroke and its `draw { t -> }` sixty times a second. No pen to
+hand? **draw for me** sends three strokes the way the drawing layer does. The lead box's notes walk
+through the demo and how this version maps onto it. A port of the madp line demo; the design notes
+are in `dev_docs/madp/line.md`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_line.png" capture="window" open-outputs="false" clip="20,20,1260,840" wait="5.0" embed=true hidden=true timeout="180" name="gallery-madp-line" alt="The madp line boxes in a column on the left of the dark canvas, with draw for me beside the first; to their right three drawn strokes have come alive as softly waving cyan ribbons, a long arc, a loop and a low wave, strung with small green, yellow and orange beads" macro-file="../../dev_docs/agents/transcripts/madp_line.yaml"}
+// The transcript builds every box, runs the prism choir to take the pen, then runs draw for me,
+// whose three strokes arrive over the drawing layer's own message and come alive.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_line/metadata.edn)
 
 ### madp_tetra
 
@@ -3832,6 +3890,10 @@ SDF Sphere Trace) replaces the picture when you launch it, the way choosing a pr
 `fragment` and press alt-R to recompile; an error is marked on its own line. The Camera Input Demo
 binds the camera to `iChannel0` with `textures("iChannel0" to webcam())`. A port of the madp
 ShaderTrinket demo; the design notes are in `dev_docs/madp/shadertrinket.md`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/shadertrinket_flat_rings.png" capture="native-window" native-wait-frames="90" trim-native=true wait="6.0" embed=true hidden=true timeout="300" name="gallery-shadertrinket" alt="Flat Rings in the native window: eight thick rings in teal, amber and blue, each with a pale dot at its centre, drifting and overlapping over a faint dark checkerboard" macro-file="../../dev_docs/agents/transcripts/shadertrinket.yaml" capture-box="shadertrinket_renderer"}
+// The transcript builds every box and launches the renderer and the lead box, Flat Rings.
+```
 
 [Open ↗](offline.html?file=assets/agent_transcripts/shadertrinket/metadata.edn)
 

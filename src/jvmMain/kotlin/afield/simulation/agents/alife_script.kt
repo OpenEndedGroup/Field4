@@ -85,6 +85,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.startCoroutine
 import kotlin.coroutines.suspendCoroutine
+import afield.media.image.Img
 import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -2104,4 +2105,72 @@ class BehaviourSteering internal constructor(private val scope: BehaviourScope) 
 
     /** The centroid of the live agents satisfying [accept]. See [BehaviourScope.centroid]. */
     fun centroid(accept: (ScriptActor) -> Boolean = { true }): ScriptTarget = scope.centroid(accept)
+}
+
+/**
+ * The world as an RGB raster: walls, every agent's trail so far, the agents themselves, and any
+ * [marks] (goals, waypoints) as rings — the frame a [Box.animateEvolution] clip of a scripted
+ * population draws, in the way [BoidFlock.toImg] is the frame of a flock.
+ *
+ * Drawn at [scale] pixels per world unit with the world's own origin, so `x` and `y` read the same as
+ * in the script. Walls are grey, trails a dim blue, agents a warm white disc no smaller than
+ * [minDot] pixels (an agent of radius 1 at scale 2 would otherwise be invisible), and marks green.
+ * A trail that wraps across a torus seam is broken there rather than drawn across the frame.
+ *
+ * @param trail brightness of the trails, `0` to leave them out
+ * @param marks ring centres as `x, y` pairs in world units
+ * @param markRadius ring radius in world units
+ */
+fun ScriptWorld.toImg(
+    scale: Double = 2.0,
+    trail: Float = 0.45f,
+    minDot: Double = 2.5,
+    marks: List<Pair<Double, Double>> = emptyList(),
+    markRadius: Double = 6.0
+): Img {
+    require(scale > 0.0) { "scale must be > 0, got $scale" }
+    val w = max(8, ceil(width * scale).toInt())
+    val h = max(8, ceil(height * scale).toInt())
+    val out = Img.zeros(w, h, 3)
+    fun put(px: Double, py: Double, r: Float, g: Float, b: Float, rad: Double) {
+        val ri = ceil(rad).toInt()
+        val cx = kotlin.math.floor(px).toInt()
+        val cy = kotlin.math.floor(py).toInt()
+        for (dy in -ri..ri) for (dx in -ri..ri) {
+            val xx = cx + dx
+            val yy = cy + dy
+            if (xx !in 0 until w || yy !in 0 until h) continue
+            if (hypot(xx + 0.5 - px, yy + 0.5 - py) > rad + 0.5) continue
+            val i = (yy * w + xx) * 3
+            out.data[i] = max(out.data[i], r)
+            out.data[i + 1] = max(out.data[i + 1], g)
+            out.data[i + 2] = max(out.data[i + 2], b)
+        }
+    }
+    fun seg(x0: Double, y0: Double, x1: Double, y1: Double, r: Float, g: Float, b: Float, rad: Double) {
+        val n = max(1, ceil(2.0 * hypot(x1 - x0, y1 - y0) * scale).toInt())
+        for (k in 0..n) {
+            val t = k.toDouble() / n
+            put((x0 + (x1 - x0) * t) * scale, (y0 + (y1 - y0) * t) * scale, r, g, b, rad)
+        }
+    }
+    if (trail > 0f) for (a in actors) {
+        for (i in 1 until a.trailX.size) {
+            val x0 = a.trailX[i - 1]; val y0 = a.trailY[i - 1]
+            val x1 = a.trailX[i]; val y1 = a.trailY[i]
+            if (kotlin.math.abs(x1 - x0) > width * 0.5 || kotlin.math.abs(y1 - y0) > height * 0.5) continue
+            seg(x0, y0, x1, y1, 0.35f * trail, 0.6f * trail, trail, 0.5)
+        }
+    }
+    val s = wallField.segments()
+    for (i in 0 until s.size / 4) seg(s[4 * i], s[4 * i + 1], s[4 * i + 2], s[4 * i + 3], 0.62f, 0.62f, 0.62f, 1.0)
+    for ((mx, my) in marks) {
+        val n = max(16, ceil(2.0 * Math.PI * markRadius * scale).toInt())
+        for (k in 0 until n) {
+            val th = 2.0 * Math.PI * k / n
+            put((mx + markRadius * cos(th)) * scale, (my + markRadius * sin(th)) * scale, 0.35f, 0.9f, 0.45f, 0.9)
+        }
+    }
+    for (a in actors) if (a.alive) put(a.x * scale, a.y * scale, 1f, 0.82f, 0.55f, max(minDot, a.radius * scale))
+    return out
 }

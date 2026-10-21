@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 8 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 9 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. renderer
@@ -17,7 +17,7 @@ From `notes`
 Renderer
 
 ```edn [field-box id="stacktrinket_renderer" role="properties"]
-{"id" "stacktrinket_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["stacktrinket_pulse_ring" "stacktrinket_feedback_fog" "stacktrinket_persistent_bloom" "stacktrinket_store_channels" "stacktrinket_subroutine_cse" "stacktrinket_four_memory_bands" "stacktrinket_long_memory_ecology"] "properties" {"children" #{#afield/box "stacktrinket_pulse_ring" #afield/box "stacktrinket_feedback_fog" #afield/box "stacktrinket_persistent_bloom" #afield/box "stacktrinket_store_channels" #afield/box "stacktrinket_subroutine_cse" #afield/box "stacktrinket_four_memory_bands" #afield/box "stacktrinket_long_memory_ecology"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "stacktrinket_renderer_notes_.md" "lines" 5 "characters" 213 "sha256" "beba2e9a27eca000f267e867d1d97359f3de73d1b6808f6598749d77731f5fc3"} {"name" "code" "language" "kotlin" "path" "stacktrinket_renderer_code_.kt" "lines" 12 "characters" 413 "sha256" "736875f16bf7e075d4ed1438dc31191cda020964164ebd9146d84fc79ccc8560"}]}
+{"id" "stacktrinket_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["stacktrinket_pulse_ring" "stacktrinket_feedback_fog" "stacktrinket_persistent_bloom" "stacktrinket_store_channels" "stacktrinket_subroutine_cse" "stacktrinket_four_memory_bands" "stacktrinket_long_memory_ecology" "stacktrinket_jam"] "properties" {"children" #{#afield/box "stacktrinket_pulse_ring" #afield/box "stacktrinket_feedback_fog" #afield/box "stacktrinket_persistent_bloom" #afield/box "stacktrinket_store_channels" #afield/box "stacktrinket_subroutine_cse" #afield/box "stacktrinket_four_memory_bands" #afield/box "stacktrinket_long_memory_ecology" #afield/box "stacktrinket_jam"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "stacktrinket_renderer_notes_.md" "lines" 5 "characters" 213 "sha256" "beba2e9a27eca000f267e867d1d97359f3de73d1b6808f6598749d77731f5fc3"} {"name" "code" "language" "kotlin" "path" "stacktrinket_renderer_code_.kt" "lines" 12 "characters" 413 "sha256" "736875f16bf7e075d4ed1438dc31191cda020964164ebd9146d84fc79ccc8560"}]}
 ```
 
 ```markdown [field-property box="stacktrinket_renderer" name="notes" path="stacktrinket_renderer_notes_.md"]
@@ -254,9 +254,77 @@ palette
 saturate
 ```
 
-## 5. store channels
+## 5. jam with a classmate
 
-<!-- field-box id="stacktrinket_store_channels" index="4" -->
+<!-- field-box id="stacktrinket_jam" index="4" -->
+
+### Narrative
+
+From `notes`
+
+Jam with a classmate
+
+```edn [field-box id="stacktrinket_jam" role="properties"]
+{"id" "stacktrinket_jam" "index" 4 "name" "jam with a classmate" "parents" ["root" "stacktrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "stacktrinket_renderer"} "name" "jam with a classmate" "_tombstone" false "frame" #afield/rect [640.0 1280.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "stacktrinket_jam_notes_.md" "lines" 23 "characters" 1127 "sha256" "88bc4d2d350378b72add6455ab4507746e0f3ac0bb5fd1ddae9f97e8e956d6c0"} {"name" "code" "language" "kotlin" "path" "stacktrinket_jam_code_.kt" "lines" 17 "characters" 688 "sha256" "ec5d621f621ddce5613c3f23886d86dfefc1d6d4e6dc35a4e85361a8b3ace5b3"} {"name" "stackSL" "language" "stacksl" "path" "stacktrinket_jam_stackSL_.stacksl" "lines" 5 "characters" 111 "sha256" "f60eed061112a670a484ac3e023165db2abfb4f31796f8d7936ea6b4a5a3df70"}]}
+```
+
+```markdown [field-property box="stacktrinket_jam" name="notes" path="stacktrinket_jam_notes_.md"]
+# Jam with a classmate
+
+The classroom shader jam, in StackSL. This box lists everyone publishing on the class's
+network (the same one browser ShaderTrinkets use) and hands the stream you pick to the
+program as a second picture beside `state`.
+
+In the program, `0 sample1` reads the stream at this pixel, the way `prev` reads the last
+frame; `0.01 0 vec2 sample1` reads it a little to the side. The starting program keeps a
+slow grey memory of the stream: 97% of the last frame, drifting a little, plus 5% of the
+stream's brightness (`luma`), so movement leaves soft trails.
+
+## Joining a class
+
+Run `WebRTCNetwork.join("https://<your aaaframe>")` once, in any box. The first time,
+Field opens aaaframe's sign-in in a small window and remembers the class and your login.
+Before you join, the list shows publishers on Field's own relay.
+
+Click a name under `publishers` to switch stream. Until a stream arrives, the picture
+shows the receiver's status line ("waiting for @… to publish"), so you can see what it is
+waiting for.
+
+Needs Electron installed for the hidden page that receives the stream
+(`./gradlew electronInstall`).
+```
+
+```kotlin [field-property box="stacktrinket_jam" name="code" path="stacktrinket_jam_code_.kt"]
+import afield.media.webrtc.webrtcPublishers
+import afield.media.webrtc.webrtcSource
+
+/*
+A classmate's WebRTC stream as a second picture beside `state`: `0 sample1` reads it
+at this pixel. Pick whose stream from the publishers list. The program is in the
+[[property stackSL]] tab; see this box's notes.
+*/
+val publishers = webrtcPublishers()
+val stream = webrtcSource(publishers.names.firstOrNull() ?: "nobody", 640, 360)
+publishers.onChange { names ->
+    if (stream.target == "nobody" && names.isNotEmpty()) stream.watch(names.first())
+}
+publishers.onPick { name -> stream.watch(name) }
+display("publishers", publishers.html { stream.target })
+
+stackFeedback { input("remote", stream) }
+```
+
+```stacksl [field-property box="stacktrinket_jam" name="stackSL" path="stacktrinket_jam_stackSL_.stacksl"]
+# a slow grey memory of a classmate's stream
+0.0006 0.0010 vec2 sample 0.97 *
+0 sample1 luma 0.05 *
++
+saturate
+```
+
+## 6. store channels
+
+<!-- field-box id="stacktrinket_store_channels" index="5" -->
 
 ### Narrative
 
@@ -274,7 +342,7 @@ slow memory; green and blue are fixed fractions of it, so the colour is a warm o
 The program is in the [[property stackSL]] tab.
 
 ```edn [field-box id="stacktrinket_store_channels" role="properties"]
-{"id" "stacktrinket_store_channels" "index" 4 "name" "store channels" "parents" ["root" "stacktrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "stacktrinket_renderer"} "name" "store channels" "_tombstone" false "frame" #afield/rect [640.0 560.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "stacktrinket_store_channels_notes_.md" "lines" 6 "characters" 324 "sha256" "24af5ca8467fac3352277771b2edd1c67de983c5db065426a0e7326d735d7808"} {"name" "code" "language" "kotlin" "path" "stacktrinket_store_channels_code_.kt" "lines" 9 "characters" 415 "sha256" "7a9085d20ecebbaad639af087de92569b25c3748a8fc4aa4369c40ae5379cbed"} {"name" "stackSL" "language" "stacksl" "path" "stacktrinket_store_channels_stackSL_.stacksl" "lines" 9 "characters" 166 "sha256" "a80074ca3213a4a44b6cdeb5874b7bc1784c4bd21f2a021b9e52c931d3612ee8"}]}
+{"id" "stacktrinket_store_channels" "index" 5 "name" "store channels" "parents" ["root" "stacktrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "stacktrinket_renderer"} "name" "store channels" "_tombstone" false "frame" #afield/rect [640.0 560.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "stacktrinket_store_channels_notes_.md" "lines" 6 "characters" 324 "sha256" "24af5ca8467fac3352277771b2edd1c67de983c5db065426a0e7326d735d7808"} {"name" "code" "language" "kotlin" "path" "stacktrinket_store_channels_code_.kt" "lines" 9 "characters" 415 "sha256" "7a9085d20ecebbaad639af087de92569b25c3748a8fc4aa4369c40ae5379cbed"} {"name" "stackSL" "language" "stacksl" "path" "stacktrinket_store_channels_stackSL_.stacksl" "lines" 9 "characters" 166 "sha256" "a80074ca3213a4a44b6cdeb5874b7bc1784c4bd21f2a021b9e52c931d3612ee8"}]}
 ```
 
 ```markdown [field-property box="stacktrinket_store_channels" name="notes" path="stacktrinket_store_channels_notes_.md"]
@@ -310,9 +378,9 @@ dup 0.35 * ->2
 saturate
 ```
 
-## 6. pulse ring
+## 7. pulse ring
 
-<!-- field-box id="stacktrinket_pulse_ring" index="5" -->
+<!-- field-box id="stacktrinket_pulse_ring" index="6" -->
 
 ### Narrative
 
@@ -338,7 +406,7 @@ shows how deep the stack ends (here 2: the input is still under the ring) and an
 error at its line and column; open the glsl panel for the GLSL the program becomes.
 
 ```edn [field-box id="stacktrinket_pulse_ring" role="properties"]
-{"id" "stacktrinket_pulse_ring" "index" 5 "name" "pulse ring" "parents" ["root" "stacktrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "stacktrinket_renderer"} "name" "pulse ring" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "stacktrinket_pulse_ring_notes_.md" "lines" 65 "characters" 3744 "sha256" "c6cdd8848640aa59461921e56d06ca2c97872d7866f0b3c4a0038f2053d4b201"} {"name" "code" "language" "kotlin" "path" "stacktrinket_pulse_ring_code_.kt" "lines" 17 "characters" 958 "sha256" "d79f5a29191f4358db9dc2de60b55b2f4c8bcfac343119de10ff370fa488ada5"} {"name" "stackSL" "language" "stacksl" "path" "stacktrinket_pulse_ring_stackSL_.stacksl" "lines" 4 "characters" 32 "sha256" "ece101b5c6da5aefb58631bf5cd9d5f70462a232c1d543bbc8fc965a6a699165"}]}
+{"id" "stacktrinket_pulse_ring" "index" 6 "name" "pulse ring" "parents" ["root" "stacktrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "stacktrinket_renderer"} "name" "pulse ring" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "stacktrinket_pulse_ring_notes_.md" "lines" 65 "characters" 3744 "sha256" "c6cdd8848640aa59461921e56d06ca2c97872d7866f0b3c4a0038f2053d4b201"} {"name" "code" "language" "kotlin" "path" "stacktrinket_pulse_ring_code_.kt" "lines" 17 "characters" 958 "sha256" "d79f5a29191f4358db9dc2de60b55b2f4c8bcfac343119de10ff370fa488ada5"} {"name" "stackSL" "language" "stacksl" "path" "stacktrinket_pulse_ring_stackSL_.stacksl" "lines" 4 "characters" 32 "sha256" "ece101b5c6da5aefb58631bf5cd9d5f70462a232c1d543bbc8fc965a6a699165"}]}
 ```
 
 ```markdown [field-property box="stacktrinket_pulse_ring" name="notes" path="stacktrinket_pulse_ring_notes_.md"]
@@ -436,9 +504,9 @@ length
 white *
 ```
 
-## 7. feedback fog
+## 8. feedback fog
 
-<!-- field-box id="stacktrinket_feedback_fog" index="6" -->
+<!-- field-box id="stacktrinket_feedback_fog" index="7" -->
 
 ### Narrative
 
@@ -456,7 +524,7 @@ bright. Try `prev 0.9 *` for a thinner fog that follows the noise more closely.
 The program is in the [[property stackSL]] tab.
 
 ```edn [field-box id="stacktrinket_feedback_fog" role="properties"]
-{"id" "stacktrinket_feedback_fog" "index" 6 "name" "feedback fog" "parents" ["root" "stacktrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "stacktrinket_renderer"} "name" "feedback fog" "_tombstone" false "frame" #afield/rect [640.0 200.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "stacktrinket_feedback_fog_notes_.md" "lines" 6 "characters" 313 "sha256" "a0fb802b1d8a564e06f2be941c72813124e2f219b61faff44a35cb64cf6386d2"} {"name" "code" "language" "kotlin" "path" "stacktrinket_feedback_fog_code_.kt" "lines" 9 "characters" 398 "sha256" "a97a1b0a1788d92d535c74325b2993bc27ac2970a3ff020d2ed97a300db43a22"} {"name" "stackSL" "language" "stacksl" "path" "stacktrinket_feedback_fog_stackSL_.stacksl" "lines" 4 "characters" 51 "sha256" "706f77d72f209fbeb6647c870b1271c665930968baf2e8adb46ef6be77816a35"}]}
+{"id" "stacktrinket_feedback_fog" "index" 7 "name" "feedback fog" "parents" ["root" "stacktrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "stacktrinket_renderer"} "name" "feedback fog" "_tombstone" false "frame" #afield/rect [640.0 200.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "stacktrinket_feedback_fog_notes_.md" "lines" 6 "characters" 313 "sha256" "a0fb802b1d8a564e06f2be941c72813124e2f219b61faff44a35cb64cf6386d2"} {"name" "code" "language" "kotlin" "path" "stacktrinket_feedback_fog_code_.kt" "lines" 9 "characters" 398 "sha256" "a97a1b0a1788d92d535c74325b2993bc27ac2970a3ff020d2ed97a300db43a22"} {"name" "stackSL" "language" "stacksl" "path" "stacktrinket_feedback_fog_stackSL_.stacksl" "lines" 4 "characters" 51 "sha256" "706f77d72f209fbeb6647c870b1271c665930968baf2e8adb46ef6be77816a35"}]}
 ```
 
 ```markdown [field-property box="stacktrinket_feedback_fog" name="notes" path="stacktrinket_feedback_fog_notes_.md"]
@@ -487,9 +555,9 @@ palette 0.08 *
 +
 ```
 
-## 8. persistent bloom
+## 9. persistent bloom
 
-<!-- field-box id="stacktrinket_persistent_bloom" index="7" -->
+<!-- field-box id="stacktrinket_persistent_bloom" index="8" -->
 
 ### Narrative
 
@@ -506,7 +574,7 @@ every colour it has been, so it slowly burns towards white.
 The program is in the [[property stackSL]] tab.
 
 ```edn [field-box id="stacktrinket_persistent_bloom" role="properties"]
-{"id" "stacktrinket_persistent_bloom" "index" 7 "name" "persistent bloom" "parents" ["root" "stacktrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "stacktrinket_renderer"} "name" "persistent bloom" "_tombstone" false "frame" #afield/rect [40.0 560.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "stacktrinket_persistent_bloom_notes_.md" "lines" 4 "characters" 202 "sha256" "3d561ca0ce3d5e760a33282edf72a2fdaddc7d593e65ec781440f64cd8f38bfa"} {"name" "code" "language" "kotlin" "path" "stacktrinket_persistent_bloom_code_.kt" "lines" 8 "characters" 292 "sha256" "e08672d54148280a1d68eb4edcf7b14c7a0959d3bea2ab08f78f15ef5d50da32"} {"name" "stackSL" "language" "stacksl" "path" "stacktrinket_persistent_bloom_stackSL_.stacksl" "lines" 5 "characters" 56 "sha256" "94bf231f4254836dc2f2a59910cdfcda510402455c5a91e5993cc8a04a4c3c98"}]}
+{"id" "stacktrinket_persistent_bloom" "index" 8 "name" "persistent bloom" "parents" ["root" "stacktrinket_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "stacktrinket_renderer"} "name" "persistent bloom" "_tombstone" false "frame" #afield/rect [40.0 560.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "stacktrinket_persistent_bloom_notes_.md" "lines" 4 "characters" 202 "sha256" "3d561ca0ce3d5e760a33282edf72a2fdaddc7d593e65ec781440f64cd8f38bfa"} {"name" "code" "language" "kotlin" "path" "stacktrinket_persistent_bloom_code_.kt" "lines" 8 "characters" 292 "sha256" "e08672d54148280a1d68eb4edcf7b14c7a0959d3bea2ab08f78f15ef5d50da32"} {"name" "stackSL" "language" "stacksl" "path" "stacktrinket_persistent_bloom_stackSL_.stacksl" "lines" 5 "characters" 56 "sha256" "94bf231f4254836dc2f2a59910cdfcda510402455c5a91e5993cc8a04a4c3c98"}]}
 ```
 
 ```markdown [field-property box="stacktrinket_persistent_bloom" name="notes" path="stacktrinket_persistent_bloom_notes_.md"]

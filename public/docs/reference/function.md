@@ -568,7 +568,7 @@ loop, and both are deterministic: traversal is stable and every draw comes from 
 
 `src/jvmMain/kotlin/afield/math/functions/FunctionEvolve.kt` — [read the source](source/jvmMain/afield/math/functions/FunctionEvolve/)
 
-**Used in:** [Functions to FLine examples (Field graphics)](../functions_examples.md), [Spatial artificial life](../alife_examples.md)
+**Used in:** [Functions to FLine examples (Field graphics)](../functions_examples.md)
 
 ### Top-level functions { #functionevolve-kt-functions }
 

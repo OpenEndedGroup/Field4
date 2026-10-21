@@ -321,7 +321,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L873) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L881) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -2569,13 +2569,13 @@ Draws the figure that settles the argument this branch is about, on the CPU, wit
 
 ### AlifeEvolveGallery { #alifeevolvegallery-kt-alifeevolvegallery }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">AlifeEvolveGallery</span></code>](source/jvmMain/afield/examples/stdlib/AlifeEvolveGallery/#L88)
+[<code class="highlight"><span class="k">object</span> <span class="nc">AlifeEvolveGallery</span></code>](source/jvmMain/afield/examples/stdlib/AlifeEvolveGallery/#L89)
 
 Renders — and *verifies* — the claim that evolution beats chance on ALife rule spaces.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="alifeevolvegallery-kt--alifeevolvegallery--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/stdlib/AlifeEvolveGallery/#L656) |  |
+| <a id="alifeevolvegallery-kt--alifeevolvegallery--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/stdlib/AlifeEvolveGallery/#L666) |  |
 
 ## AlifeGallery.kt { #alifegallery-kt }
 
@@ -2583,13 +2583,13 @@ Renders — and *verifies* — the claim that evolution beats chance on ALife ru
 
 ### AlifeGallery { #alifegallery-kt-alifegallery }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">AlifeGallery</span></code>](source/jvmMain/afield/examples/stdlib/AlifeGallery/#L182)
+[<code class="highlight"><span class="k">object</span> <span class="nc">AlifeGallery</span></code>](source/jvmMain/afield/examples/stdlib/AlifeGallery/#L184)
 
 Renders — and *verifies* — the figures behind `public/docs/alife_examples.md`.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="alifegallery-kt--alifegallery--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/stdlib/AlifeGallery/#L2305) |  |
+| <a id="alifegallery-kt--alifegallery--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/stdlib/AlifeGallery/#L2377) |  |
 
 ## AlifeScriptGallery.kt { #alifescriptgallery-kt }
 

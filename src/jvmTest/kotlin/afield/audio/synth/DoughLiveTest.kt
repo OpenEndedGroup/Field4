@@ -108,4 +108,51 @@ class DoughLiveTest {
             assertEquals(0.0, live.level(4))
         }
     }
+
+    @Test
+    fun aPatternEventBecomesTheDoughEventThatPlaysIt() {
+        val cps = 0.5
+        val notes = (pat("c5 e5") with paramOf("s", pure("sawtooth")) with gain(0.2) with param("lpf", 900))
+            .events(PatArc(PatQ.ZERO, PatQ.ONE))
+        val first = doughPatternEvent(notes.first { it.value == "c5" }, cps)
+        assertEquals("play", first["dough"])
+        assertEquals("60", first["note"], "c5 is middle C, the pattern language's octave")
+        assertEquals("sawtooth", first["s"])
+        assertEquals("0.2", first["gain"])
+        assertEquals("900", first["lpf"])
+        assertEquals("1", first["duration"], "half a cycle at 0.5 cycles a second is a second")
+
+        val drum = doughPatternEvent(pat("bd").events(PatArc(PatQ.ZERO, PatQ.ONE)).single(), cps)
+        assertEquals("bd", drum["s"], "a word that is not a note is a sound")
+        assertTrue("note" !in drum)
+    }
+
+    @Test
+    fun aPlayingPatternStrikesEachOnsetOnceAndReadsItsSignalAtThatMoment() {
+        DoughLive(wasm, 48_000).use { live ->
+            live.start()
+            val deadline = System.nanoTime() + 20_000_000_000L
+            while (!live.ready && System.nanoTime() < deadline) Thread.sleep(10)
+            assertTrue(live.ready, "booted: ${live.lastError}")
+            var level = 0.0
+            var reads = 0
+            // Eight notes a cycle at 4 cycles a second: 32 onsets a second.
+            val voice = live.play(pat("c5*8") with gain(sig { reads++; level }), cps = 4.0, group = 9)
+            Thread.sleep(400)
+            assertTrue(reads > 0, "the signal was read as events were scheduled")
+            assertEquals(0.0, live.level(9), 0.01, "gain 0: silent")
+            level = 0.5
+            var peak = 0.0
+            val until = System.nanoTime() + 800_000_000L
+            while (System.nanoTime() < until) {
+                peak = maxOf(peak, live.level(9))
+                Thread.sleep(10)
+            }
+            assertTrue(peak > 0.2, "raising the signal is heard on the next notes: $peak")
+            val cycleBefore = voice.cycle
+            voice.stop()
+            assertTrue(cycleBefore > 2.0, "the clock ran: $cycleBefore cycles")
+            assertEquals(null, voice.lastError)
+        }
+    }
 }

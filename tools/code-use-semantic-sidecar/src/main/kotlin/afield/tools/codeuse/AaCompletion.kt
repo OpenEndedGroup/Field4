@@ -145,6 +145,7 @@ object CompletionImports {
         "afield.lang.nano.*",
         "afield.lang.python.*",
         "afield.lang.remotejs.*",
+        "afield.lang.rpn.*",
         "afield.lang.stacksl.*",
         "afield.lang.stacksl.evolution.*",
         "afield.math.autodiff.*",

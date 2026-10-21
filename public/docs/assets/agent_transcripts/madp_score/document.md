@@ -12,12 +12,22 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 ### Narrative
 
+From `notes`
+
+Glass phase · 67
+
 From `code`
 
 The same as the box above, a fifth higher and a little narrower.
 
 ```edn [field-box id="madp_score_glass_b" role="properties"]
-{"id" "madp_score_glass_b" "index" 0 "name" "Glass phase · 67" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Glass phase · 67" "_tombstone" false "frame" #afield/rect [1140.0 450.0 260.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_score_glass_b_code_.kt" "lines" 9 "characters" 489 "sha256" "a89c3a2ace4680a2f4fc6f7a5d94b159cf5a8bfe62aa874210d60d52f5241a54"}]}
+{"id" "madp_score_glass_b" "index" 0 "name" "Glass phase · 67" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Glass phase · 67" "_tombstone" false "frame" #afield/rect [1140.0 450.0 260.0 110.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_glass_b_notes_.md" "lines" 3 "characters" 120 "sha256" "ebabcef57329a3cffb1f1e41caba72629638c360b2c4cfeab2799b468d0df338"} {"name" "code" "language" "kotlin" "path" "madp_score_glass_b_code_.kt" "lines" 9 "characters" 489 "sha256" "a89c3a2ace4680a2f4fc6f7a5d94b159cf5a8bfe62aa874210d60d52f5241a54"}]}
+```
+
+```markdown [field-property box="madp_score_glass_b" name="notes" path="madp_score_glass_b_notes_.md"]
+# Glass phase · 67
+
+The partner of **Glass phase · 60**: the same code a fifth higher, panned right, in a narrower box.
 ```
 
 ```kotlin [field-property box="madp_score_glass_b" name="code" path="madp_score_glass_b_code_.kt"]
@@ -38,6 +48,10 @@ score {
 
 ### Narrative
 
+From `notes`
+
+jump cut
+
 From `code`
 
 A box that cuts itself to somewhere else in the score: on the way in, and five times on the
@@ -45,7 +59,16 @@ way across, it jumps near the playhead and leaves a fading ghost of where it was
 really moves on the canvas; its frame is part of the instrument.
 
 ```edn [field-box id="madp_score_jump" role="properties"]
-{"id" "madp_score_jump" "index" 1 "name" "jump cut" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "jump cut" "_tombstone" false "frame" #afield/rect [1430.0 110.0 160.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_score_jump_code_.kt" "lines" 49 "characters" 2237 "sha256" "9c2bd7e67a3ea25a5bf42b581079bbbf2f9f997ebbb0a8d4dc678e4b38026e45"}]}
+{"id" "madp_score_jump" "index" 1 "name" "jump cut" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "jump cut" "_tombstone" false "frame" #afield/rect [1430.0 110.0 160.0 120.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_jump_notes_.md" "lines" 6 "characters" 326 "sha256" "748bc1c009322a10b90a84ee5bb952ecadd66baf8654d2ff39e54e0e13a78962"} {"name" "code" "language" "kotlin" "path" "madp_score_jump_code_.kt" "lines" 49 "characters" 2237 "sha256" "9c2bd7e67a3ea25a5bf42b581079bbbf2f9f997ebbb0a8d4dc678e4b38026e45"}]}
+```
+
+```markdown [field-property box="madp_score_jump" name="notes" path="madp_score_jump_notes_.md"]
+# jump cut
+
+A box that edits the score while it plays. On the way in and five times on the way across, it picks a
+new size and a place near the playhead and moves there with `box.set`, leaving a fading ghost of where
+it was. It really moves on the canvas, so the score is different every pass. Drag it back whenever you
+like.
 ```
 
 ```kotlin [field-property box="madp_score_jump" name="code" path="madp_score_jump_code_.kt"]
@@ -106,6 +129,10 @@ score {
 
 ### Narrative
 
+From `notes`
+
+Glass phase · 60
+
 From `code`
 
 Philip Glass's phasing, done with box widths: this box and the one below run the same code,
@@ -113,7 +140,16 @@ six pulses a pass each, but a wider box takes longer to cross, so the two pulses
 Stretch either box and listen to the phase move.
 
 ```edn [field-box id="madp_score_glass_a" role="properties"]
-{"id" "madp_score_glass_a" "index" 2 "name" "Glass phase · 60" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Glass phase · 60" "_tombstone" false "frame" #afield/rect [1070.0 300.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_score_glass_a_code_.kt" "lines" 11 "characters" 665 "sha256" "d86cc42aeaf5e529c58f47ed5781d1155df0ea2b10176c0d2099b33f8341fa01"}]}
+{"id" "madp_score_glass_a" "index" 2 "name" "Glass phase · 60" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Glass phase · 60" "_tombstone" false "frame" #afield/rect [1070.0 300.0 320.0 110.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_glass_a_notes_.md" "lines" 6 "characters" 351 "sha256" "4d7f3e76aca499b045f1cb9446750a0601682d66a40aee2de6a771262d06b3ee"} {"name" "code" "language" "kotlin" "path" "madp_score_glass_a_code_.kt" "lines" 11 "characters" 665 "sha256" "d86cc42aeaf5e529c58f47ed5781d1155df0ea2b10176c0d2099b33f8341fa01"}]}
+```
+
+```markdown [field-property box="madp_score_glass_a" name="notes" path="madp_score_glass_a_notes_.md"]
+# Glass phase · 60
+
+After Philip Glass. This box and **Glass phase · 67** run the same code: eight bars and six pulses per
+pass. They differ in width, so the playhead takes longer to cross this one and its pulses come further
+apart, and where the two overlap the two pulses drift against each other. Stretch either box and
+listen to the phase change.
 ```
 
 ```kotlin [field-property box="madp_score_glass_a" name="code" path="madp_score_glass_a_code_.kt"]
@@ -136,6 +172,10 @@ score {
 
 ### Narrative
 
+From `notes`
+
+Score: the canvas as a timeline
+
 From `code`
 
 The canvas is the score. Run this box: the orange playhead sweeps from here to the right once
@@ -148,7 +188,69 @@ the box), localT (seconds into it), justEntered, onSubdivision(n), boxPoint(u, v
 sound(path), thisRMS (how loud this box's own sound is right now) and box.move/set.
 
 ```edn [field-box id="madp_score_lead" role="properties"]
-{"id" "madp_score_lead" "index" 3 "name" "score · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "score · run me" "_tombstone" false "frame" #afield/rect [64.0 60.0 200.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_score_lead_code_.kt" "lines" 22 "characters" 1201 "sha256" "4c043dd5b0948b054c40c1c01d2a3321a6b6dd72c8d3f1adfe8dc46de9378907"}]}
+{"id" "madp_score_lead" "index" 3 "name" "score · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "score · run me" "_tombstone" false "frame" #afield/rect [64.0 60.0 200.0 140.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_lead_notes_.md" "lines" 59 "characters" 3409 "sha256" "393a45531cc3d574d34e65c1a056bb473295dc652badc8978fb0994ea2d47ad9"} {"name" "code" "language" "kotlin" "path" "madp_score_lead_code_.kt" "lines" 22 "characters" 1201 "sha256" "4c043dd5b0948b054c40c1c01d2a3321a6b6dd72c8d3f1adfe8dc46de9378907"}]}
+```
+
+```markdown [field-property box="madp_score_lead" name="notes" path="madp_score_lead_notes_.md"]
+# Score: the canvas as a timeline
+
+This document is Field's version of **Score**, the madp page `score.html`. There, rectangles sit on a
+looping timeline, an orange playhead sweeps across them every few seconds, and each rectangle owns a
+little program, `score(t, bounds)`, that runs every frame while the playhead is over it. The programs
+draw into a dark output canvas and make sounds, so a rectangle's position is *when* it happens, its
+width is *how long*, and its height and place on the page are *where* its drawing lands.
+
+## What it teaches
+
+Time as something you can see and edit. Moving a box moves an event in time; stretching it makes it
+last longer; two boxes that overlap play together. The presets come from the animators and composers
+who worked this way: Norman McLaren's scratched, flickering film, Oskar Fischinger's rhythmic
+geometry, and Philip Glass's pulses that drift in and out of phase. Each one is a few lines of drawing
+and one or two sounds, tied together by when the playhead reaches them.
+
+## How to play
+
+1. **Run this box.** The orange `playhead` starts sweeping from here to the right once every eleven
+   seconds, and every box in the score is armed.
+2. **Watch the panel below.** It is the output canvas. Each box draws there, at the place it sits in
+   the score, only while the playhead crosses it, and the box lights up on the canvas in a colour of
+   its own while it plays.
+3. **Edit a box and run it again** to change what it does, live. Stop a box to silence it. Drag it to
+   move it in time, stretch it to make it last longer.
+
+Inside `score { }` you have:
+
+- `localProgress`, 0 to 1 across the box, and `localT`, seconds since the playhead reached it;
+- `justEntered` on the first frame, and `onSubdivision(n)`, true `n` times on the way across, for
+  pulses;
+- `boxPoint(u, v)`, a point inside the box in output pixels (0, 0 its top left), and
+  `draw.line/circle/ring/rect/polyline`, with colours as CSS strings;
+- `sound(path)`, which plays a dough path (`/dough/play/note/60/s/sine/gain/0.2/...`, the same strings
+  as the browser demo), at most once per `minInterval` for the same `key`;
+- `thisRMS`, how loud this box's own sounds are right now, measured from its voices, so a shape can
+  swell with its note;
+- `box.get/set/move/resize`, which move the box itself on the canvas: the instrument can rewrite its
+  own place in the score (see **jump cut** and **duck**).
+
+Anything declared above `score { }` lasts between frames, which is where state goes.
+
+## From score.html to Field
+
+| score.html | here |
+| --- | --- |
+| the score pane | Field's canvas: the boxes are the rectangles |
+| the orange playhead | the `playhead` box, moved by `playScore` |
+| `function score(t, bounds)` in the selected rectangle | `score { }` in each box |
+| the output pane | the `score` panel under this box |
+| the Loop field | `playScore(loop = 11.0, ...)` |
+| `thisRMS` (estimated from the path) | `thisRMS` (measured from the box's dough voices) |
+| the lit active rectangle | `Box.tint`, which any box can set |
+| `state` | a `val` or `var` above `score { }` |
+
+The demo's shared rooms (`?room=`, Yjs), its in-page AI helpers and its local saves are not here:
+Field has its own documents, history and AI4 chat. The implementation is `playScore` and `score { }`
+in `afield.animation.motion` and `sound`/`thisRMS` in `afield.audio.synth`, and their KDoc has the
+details.
 ```
 
 ```kotlin [field-property box="madp_score_lead" name="code" path="madp_score_lead_code_.kt"]
@@ -182,13 +284,25 @@ playScore(loop = 11.0, x = 40.0..1880.0, y = 40.0..600.0, width = 520, height = 
 
 ### Narrative
 
+From `notes`
+
+playhead
+
 From `code`
 
 The score box moves this line across the canvas; nothing to run here. Its look is the
 `customization` the score box gives it, the same trick as Field's time slider.
 
 ```edn [field-box id="madp_score_playhead" role="properties"]
-{"id" "madp_score_playhead" "index" 4 "name" "playhead" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "playhead" "_tombstone" false "frame" #afield/rect [40.0 40.0 12.0 560.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_score_playhead_code_.kt" "lines" 2 "characters" 171 "sha256" "4f8fd77b205708e1db799586ecebdb2b161868896163db57192edeb22de91359"}]}
+{"id" "madp_score_playhead" "index" 4 "name" "playhead" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "playhead" "_tombstone" false "frame" #afield/rect [40.0 40.0 12.0 560.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_playhead_notes_.md" "lines" 5 "characters" 286 "sha256" "8b7d00edc170e77f458ce507891b5f13faac8a85d8ac5a00d221afacba48c1c4"} {"name" "code" "language" "kotlin" "path" "madp_score_playhead_code_.kt" "lines" 2 "characters" 171 "sha256" "4f8fd77b205708e1db799586ecebdb2b161868896163db57192edeb22de91359"}]}
+```
+
+```markdown [field-property box="madp_score_playhead" name="notes" path="madp_score_playhead_notes_.md"]
+# playhead
+
+The line the score's clock moves. `playScore` in the **score · run me** box styles it as an orange line
+and slides it across the canvas every frame; a box is played while this line is over it. Nothing to
+run here. Delete it and the score still plays, just without the line.
 ```
 
 ```kotlin [field-property box="madp_score_playhead" name="code" path="madp_score_playhead_code_.kt"]
@@ -202,13 +316,25 @@ The score box moves this line across the canvas; nothing to run here. Its look i
 
 ### Narrative
 
+From `notes`
+
+McLaren scratches
+
 From `code`
 
 Norman McLaren scratched straight onto film: nine lines that twitch every frame, a grain of
 noise seven times on the way across, and a click on the way in.
 
 ```edn [field-box id="madp_score_scratches" role="properties"]
-{"id" "madp_score_scratches" "index" 5 "name" "McLaren scratches" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "McLaren scratches" "_tombstone" false "frame" #afield/rect [620.0 330.0 180.0 160.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_score_scratches_code_.kt" "lines" 15 "characters" 862 "sha256" "18aabb0ee57fdb7f4fe143a41a391e91651bbbe28f202f8be6f71a18f6afcd4d"}]}
+{"id" "madp_score_scratches" "index" 5 "name" "McLaren scratches" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "McLaren scratches" "_tombstone" false "frame" #afield/rect [620.0 330.0 180.0 160.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_scratches_notes_.md" "lines" 5 "characters" 317 "sha256" "0932e2a14d24b1dbe8deeba75069645d4aaf5ef1760e2dfdb352493d20474e98"} {"name" "code" "language" "kotlin" "path" "madp_score_scratches_code_.kt" "lines" 15 "characters" 862 "sha256" "18aabb0ee57fdb7f4fe143a41a391e91651bbbe28f202f8be6f71a18f6afcd4d"}]}
+```
+
+```markdown [field-property box="madp_score_scratches" name="notes" path="madp_score_scratches_notes_.md"]
+# McLaren scratches
+
+After Norman McLaren, who drew and scratched straight onto film. Nine lines twitch every frame, a red
+mark darts across, and `onSubdivision(7)` plays a grain of white noise seven times on the way across,
+with a short click on entry. Try a wider box: the same seven grains, spread over more time.
 ```
 
 ```kotlin [field-property box="madp_score_scratches" name="code" path="madp_score_scratches_code_.kt"]
@@ -235,13 +361,24 @@ score {
 
 ### Narrative
 
+From `notes`
+
+duck
+
 From `code`
 
 A silly one, done rigorously: a duck that bobs, drifts a little across the score each pass
 (box.move), and quacks twice.
 
 ```edn [field-box id="madp_score_duck" role="properties"]
-{"id" "madp_score_duck" "index" 6 "name" "duck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "duck" "_tombstone" false "frame" #afield/rect [1640.0 300.0 200.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_score_duck_code_.kt" "lines" 21 "characters" 1068 "sha256" "0b89aea66b2713c627685e14aa7841a7580b288603af0682b4db801aeae32162"}]}
+{"id" "madp_score_duck" "index" 6 "name" "duck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "duck" "_tombstone" false "frame" #afield/rect [1640.0 300.0 200.0 150.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_duck_notes_.md" "lines" 4 "characters" 186 "sha256" "e4d9586405e697ab05a3cdf26e60d2e878e5b839508dc8426b00e95fd9eb1276"} {"name" "code" "language" "kotlin" "path" "madp_score_duck_code_.kt" "lines" 21 "characters" 1068 "sha256" "0b89aea66b2713c627685e14aa7841a7580b288603af0682b4db801aeae32162"}]}
+```
+
+```markdown [field-property box="madp_score_duck" name="notes" path="madp_score_duck_notes_.md"]
+# duck
+
+A silly one, done carefully: a duck that bobs, drifts a little across the score with `box.move`, and
+quacks on entry and twice on the way across. `draw.polyline` makes its beak.
 ```
 
 ```kotlin [field-property box="madp_score_duck" name="code" path="madp_score_duck_code_.kt"]
@@ -274,12 +411,23 @@ score {
 
 ### Narrative
 
+From `notes`
+
+Fischinger orbits
+
 From `code`
 
 Oskar Fischinger's geometry: a planet on a ring, and a bell three times a pass.
 
 ```edn [field-box id="madp_score_orbits" role="properties"]
-{"id" "madp_score_orbits" "index" 7 "name" "Fischinger orbits" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Fischinger orbits" "_tombstone" false "frame" #afield/rect [840.0 70.0 200.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_score_orbits_code_.kt" "lines" 10 "characters" 612 "sha256" "d234c05b0cb26efd96812ad7cc26d12adaa2413c477daa4259b118d6f68de802"}]}
+{"id" "madp_score_orbits" "index" 7 "name" "Fischinger orbits" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Fischinger orbits" "_tombstone" false "frame" #afield/rect [840.0 70.0 200.0 150.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_orbits_notes_.md" "lines" 4 "characters" 207 "sha256" "09db3a7b6b4e0931d52327de1816574a2d7807dc8eb1507e40db441e24f8e6bb"} {"name" "code" "language" "kotlin" "path" "madp_score_orbits_code_.kt" "lines" 10 "characters" 612 "sha256" "d234c05b0cb26efd96812ad7cc26d12adaa2413c477daa4259b118d6f68de802"}]}
+```
+
+```markdown [field-property box="madp_score_orbits" name="notes" path="madp_score_orbits_notes_.md"]
+# Fischinger orbits
+
+After Oskar Fischinger's rhythmic geometry. A planet circles a ring, and a bell rings three times a
+pass (`onSubdivision(3)`). The planet grows with `thisRMS`, so you can see each bell.
 ```
 
 ```kotlin [field-property box="madp_score_orbits" name="code" path="madp_score_orbits_code_.kt"]

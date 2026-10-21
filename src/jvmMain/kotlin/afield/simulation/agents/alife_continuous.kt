@@ -74,6 +74,9 @@ import afield.simulation.automata.LifeRule
 import afield.simulation.automata.history
 import afield.ui.output.h
 import kotlin.math.PI
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.math.exp
 import kotlin.math.hypot
 import kotlin.math.max
@@ -673,12 +676,33 @@ fun leniaFromLifeRule(rule: LifeRule): LeniaRule {
 }
 
 /**
- * Named continuous-Lenia parameter sets. These are labelled by the behaviour this codebase
- * **measures** ([leniaPhase]), not by a creature name from the literature: the family does
- * not claim to reproduce a named Lenia lifeform, because reproducing one requires its exact
- * published initial pattern and this file does not ship one.
+ * Named continuous-Lenia parameter sets, and the one published lifeform this family ships.
+ *
+ * [ring] and [threeShell] are labelled by the behaviour this codebase **measures** ([leniaRun]), not
+ * by a creature name: a named creature needs its exact published initial cells as well as its rule.
+ * [orbium] is the exception, because it carries those cells, read from Bert Chan's own catalogue.
  */
 object LeniaPresets {
+
+    /**
+     * *Orbium unicaudatus*, the best-known Lenia lifeform: a single crescent-shaped creature, about
+     * twenty cells across, that glides in a straight line and keeps its shape. Rule `R = 13`, `T = 10`,
+     * `mu = 0.15`, `sigma = 0.015`, with the polynomial kernel and growth mapping its catalogue entry
+     * names.
+     *
+     * Read from `afield/alife/lenia_animals.json`, an unchanged excerpt of `animals.json` from
+     * [github.com/Chakazul/Lenia](https://github.com/Chakazul/Lenia) (MIT; see `LENIA_LICENSE.txt` beside
+     * it). The cells are the published array, not a reconstruction. To load any other creature from
+     * the full catalogue, pass that file's text to [leniaCreatures].
+     */
+    fun orbium(): LeniaCreature = bundledCreature("Orbium unicaudatus")
+
+    private fun bundledCreature(name: String): LeniaCreature {
+        val text = checkNotNull(LeniaPresets::class.java.getResourceAsStream("/afield/alife/lenia_animals.json")) {
+            "afield/alife/lenia_animals.json is missing from the classpath"
+        }.use { it.readBytes().decodeToString() }
+        return leniaCreatures(text).first { it.name == name }
+    }
 
     /** The reference rule shape — one ring, `R = 12`, `T = 10` — with `mu` left for a sweep. */
     fun ring(mu: Double, sigma: Double = 0.017, radius: Int = 12, dt: Double = 0.1): LeniaRule =
@@ -690,6 +714,178 @@ object LeniaPresets {
             radius = radius, dt = dt, mu = mu, sigma = sigma,
             shellPeaks = doubleArrayOf(0.5, 1.0, 0.667)
         )
+}
+
+/**
+ * A named Lenia lifeform: its [rule] and the initial [cells] that make it, as published.
+ *
+ * @property code the catalogue's short code (`O2u` for Orbium)
+ * @property name the catalogue's name
+ * @property cells the creature's own array, values in `0..1`, at the size the rule's radius expects
+ */
+class LeniaCreature(val code: String, val name: String, val rule: LeniaRule, val cells: Img) {
+    /** [cells] placed with its centre at ([cx], [cy]) on an otherwise empty [width] × [height] field. */
+    fun seed(width: Int, height: Int, cx: Int = width / 2, cy: Int = height / 2): Img {
+        require(width >= cells.width && height >= cells.height) {
+            "a ${width}x$height field is smaller than $name (${cells.width}x${cells.height})"
+        }
+        val ox = cx - cells.width / 2
+        val oy = cy - cells.height / 2
+        val out = Img.zeros(width, height, 1)
+        for (y in 0 until cells.height) for (x in 0 until cells.width) {
+            out.data[Math.floorMod(oy + y, height) * width + Math.floorMod(ox + x, width)] = cells.data[y * cells.width + x]
+        }
+        return out
+    }
+
+    /**
+     * The same cell values in a random arrangement, under the same rule: the control for "the shape is
+     * the creature". It has the creature's mass and its histogram of values, and nothing else.
+     */
+    fun shuffled(seed: Long = 1L): LeniaCreature = LeniaCreature(
+        code,
+        "$name, shuffled",
+        rule,
+        Img(cells.width, cells.height, 1, cells.data.copyOf().also { it.shuffle(kotlin.random.Random(seed)) })
+    )
+
+    override fun toString(): String = "LeniaCreature($code $name, ${cells.width}x${cells.height} cells, $rule)"
+}
+
+/**
+ * Every 2-D creature in a Lenia catalogue in the format of `animals.json` from
+ * [github.com/Chakazul/Lenia](https://github.com/Chakazul/Lenia): a JSON array of entries with `code`,
+ * `name`, `params` and `cells`. Entries without `params` (the catalogue's section headings) are skipped.
+ */
+fun leniaCreatures(json: String): List<LeniaCreature> =
+    kotlinx.serialization.json.Json.parseToJsonElement(json).jsonArray.mapNotNull { e ->
+        val o = e.jsonObject
+        val p = o["params"]?.jsonObject ?: return@mapNotNull null
+        val cells = o["cells"]?.jsonPrimitive?.content ?: return@mapNotNull null
+        fun num(k: String) = p.getValue(k).jsonPrimitive.content.toDouble()
+        val rule = leniaRuleFromCatalogue(
+            radius = num("R").toInt(),
+            t = num("T"),
+            shellPeaks = p.getValue("b").jsonPrimitive.content.split(',').map { f ->
+                val parts = f.trim().split('/')
+                if (parts.size == 2) parts[0].toDouble() / parts[1].toDouble() else parts[0].toDouble()
+            }.toDoubleArray(),
+            mu = num("m"),
+            sigma = num("s"),
+            kernelCore = p["kn"]?.jsonPrimitive?.content?.toInt() ?: 1,
+            growthKind = p["gn"]?.jsonPrimitive?.content?.toInt() ?: 1
+        )
+        LeniaCreature(
+            o["code"]?.jsonPrimitive?.content ?: "",
+            o["name"]?.jsonPrimitive?.content ?: "",
+            rule,
+            leniaCellsFromRle(cells)
+        )
+    }
+
+/**
+ * A [LeniaRule] with the kernel and growth mapping of Chan's reference implementation, as named by a
+ * catalogue entry's `kn` and `gn`.
+ *
+ * The kernel is `shellPeaks.size` concentric shells over `0 <= r < 1` (`r` is distance over [radius]),
+ * each shaped by the kernel core: `kn = 1` polynomial `(4r(1-r))^4`, `2` exponential
+ * `exp(4 - 1/(r(1-r)))`, `3` a step on `1/4..3/4`, `4` the step plus a half-height centre. The growth
+ * mapping is `gn = 1` polynomial `2·max(0, 1-(u-mu)²/(9σ²))^4 - 1`, `2` Gaussian, `3` a step of width `σ`.
+ * These differ from [LeniaRule]'s own Gaussian ring and bell, and a creature only lives in the exact
+ * rule it was found in.
+ */
+fun leniaRuleFromCatalogue(
+    radius: Int,
+    t: Double,
+    mu: Double,
+    sigma: Double,
+    shellPeaks: DoubleArray = doubleArrayOf(1.0),
+    kernelCore: Int = 1,
+    growthKind: Int = 1
+): LeniaRule {
+    require(kernelCore in 1..4) { "kernel core kn must be 1..4, got $kernelCore" }
+    require(growthKind in 1..3) { "growth mapping gn must be 1..3, got $growthKind" }
+    require(shellPeaks.isNotEmpty()) { "shellPeaks needs at least one shell" }
+    fun core(r: Double): Double = when (kernelCore) {
+        1 -> (4.0 * r * (1.0 - r)).let { it * it * it * it }
+        2 -> if (r <= 0.0 || r >= 1.0) 0.0 else exp(4.0 - 1.0 / (r * (1.0 - r)))
+        3 -> if (r >= 0.25 && r <= 0.75) 1.0 else 0.0
+        else -> if (r >= 0.25 && r <= 0.75) 1.0 else if (r < 0.25) 0.5 else 0.0
+    }
+    val b = shellPeaks.size
+    val dx = ArrayList<Int>()
+    val dy = ArrayList<Int>()
+    val raw = ArrayList<Double>()
+    for (j in -radius..radius) for (i in -radius..radius) {
+        val r = hypot(i.toDouble(), j.toDouble()) / radius
+        if (r >= 1.0) continue
+        val br = b * r
+        val v = core(min(br % 1.0, 1.0)) * shellPeaks[min(br.toInt(), b - 1)]
+        if (v <= 0.0) continue
+        dx.add(i); dy.add(j); raw.add(v)
+    }
+    val total = raw.sum()
+    require(total > 0.0) { "the catalogue kernel is empty" }
+    val taps = LeniaTaps(dx.toIntArray(), dy.toIntArray(), FloatArray(raw.size) { (raw[it] / total).toFloat() })
+    return LeniaRule(
+        radius = radius,
+        dt = 1.0 / t,
+        mu = mu,
+        sigma = sigma,
+        shellPeaks = shellPeaks,
+        growth = { u ->
+            val d = u - mu
+            when (growthKind) {
+                1 -> (max(0.0, 1.0 - d * d / (9.0 * sigma * sigma)).let { it * it * it * it } * 2.0 - 1.0).toFloat()
+                2 -> (2.0 * exp(-d * d / (2.0 * sigma * sigma)) - 1.0).toFloat()
+                else -> if (kotlin.math.abs(d) <= sigma) 1f else -1f
+            }
+        },
+        kernelTaps = taps
+    )
+}
+
+/**
+ * Decode a 2-D Lenia catalogue cell string into an [Img]: Chan's run-length encoding, in which `.` is
+ * 0, `A`..`X` are 1..24, two-letter `pA`..`yO` are 25..255, both scaled by `1/255`, a leading count
+ * repeats the next value, `$` ends a row (a count before it adds empty rows) and `!` ends the pattern.
+ * Short rows are padded with zeros.
+ */
+fun leniaCellsFromRle(rle: String): Img {
+    val rows = ArrayList<FloatArray>()
+    var row = ArrayList<Float>()
+    var count = ""
+    var prefix = ""
+    fun value(token: String): Int = when {
+        token == "." || token == "b" -> 0
+        token == "o" -> 255
+        token.length == 1 -> token[0] - 'A' + 1
+        else -> (token[0] - 'p') * 24 + (token[1] - 'A' + 25)
+    }
+    for (ch in rle.trimEnd('!') + "$") {
+        when {
+            ch.isDigit() -> count += ch
+            ch in "pqrstuvwxy" -> prefix = ch.toString()
+            ch == '$' -> {
+                rows.add(row.toFloatArray())
+                repeat((count.toIntOrNull() ?: 1) - 1) { rows.add(FloatArray(0)) }
+                row = ArrayList()
+                count = ""; prefix = ""
+            }
+            ch.isWhitespace() -> {}
+            else -> {
+                val v = value(prefix + ch) / 255f
+                repeat(count.toIntOrNull() ?: 1) { row.add(v) }
+                count = ""; prefix = ""
+            }
+        }
+    }
+    while (rows.isNotEmpty() && rows.last().isEmpty()) rows.removeAt(rows.size - 1)
+    require(rows.isNotEmpty()) { "empty Lenia cell string" }
+    val w = rows.maxOf { it.size }
+    val out = Img.zeros(w, rows.size, 1)
+    for ((y, r) in rows.withIndex()) for (x in r.indices) out.data[y * w + x] = r[x]
+    return out
 }
 
 /** Which of the three things a Lenia run can do. */

@@ -524,6 +524,10 @@ object DemoTranscriptExecSmokeTest {
         // window — so running it here is also the cheapest check that the two entry points
         // public/docs/completion_ranking.md names still exist with the signatures it claims.
         "popup_prior_inspect",
+        // The madp GA demo: four boxes that each render nine ColorRpn programs on the CPU into an
+        // EyeEvolution grid. No window, no GPU; ColorRpnTest pins the language to the demo's own
+        // interpreter and EyeEvolutionTest drives the click path.
+        "madp_ga",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
@@ -541,6 +545,10 @@ object DemoTranscriptExecSmokeTest {
         // dough through the audio device. ScoreTest steps the runner frame by frame and DoughLiveTest
         // measures the sound helper's levels, both headless.
         "madp_score",
+        // Living strokes: the lead takes the drawing layer's pen and its strokes animate and play dough
+        // until cleared, which needs a page to draw on and strokes drawn by hand. StrokeVerbsTest pins
+        // the verbs and the frame the page draws, DoughLiveTest the pattern player.
+        "madp_line",
         // charGrid: both builders return animations that run until stopped, and their glyphs play dough
         // through the audio device. CharGridTest checks the cells, the panel's diffs and the sound
         // grouping headless.
