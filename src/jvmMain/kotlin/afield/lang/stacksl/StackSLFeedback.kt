@@ -320,7 +320,9 @@ class StackSLFeedback internal constructor(
                 depthWrite = false
                 textureResolver = { tex -> if (tex.name == "source") fromViews(live, tex.name, sampler) else null }
             }).pointer()
-            copy += "${settings.name}-input-$name-fullscreen" to fullscreenTriangle(copy)
+            copy += "${settings.name}-input-$name-fullscreen" to fullscreenTriangle(copy).apply {
+                push.bind("encode") { if (settings.inputs[name]?.let(::isSrgb) == true) 1f else 0f }
+            }
             target += "copy" to copy
         }
     }
@@ -366,16 +368,27 @@ object StackSLFeedbackShader {
 
     /**
      * Copies an input texture into an image stored like the state: drawn with [VERTEX], it reads
-     * `source` with v flipped, because Field's textures keep their top row first.
+     * `source` with v flipped, because Field's textures keep their top row first. With `encode` set
+     * (an sRGB source, such as a WebRTC stream's browser paints) it re-encodes what sampling decoded,
+     * so the program reads the numbers the picture holds — the values a browser ShaderTrinket's
+     * `iChannel` gives, and the space `state` is in. Without it a stream reads darker, by the gamma.
      */
     val COPY_FRAGMENT: String = """
         #version 450
         layout(location = 0) in vec2 fragUV;
         layout(location = 0) out vec4 outColor;
         layout(set = 0, binding = 0) uniform sampler2D source;
+        layout(push_constant) uniform Push { float encode; } pc;
+
+        vec3 srgbEncode(vec3 c) {
+            c = clamp(c, 0.0, 1.0);
+            return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), c));
+        }
 
         void main() {
-            outColor = texture(source, vec2(fragUV.x, 1.0 - fragUV.y));
+            vec4 c = texture(source, vec2(fragUV.x, 1.0 - fragUV.y));
+            if (pc.encode > 0.5) c.rgb = srgbEncode(c.rgb);
+            outColor = c;
         }
     """.trimIndent()
 
@@ -492,6 +505,16 @@ class StackSLLowering(
 
     private fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;")
 }
+
+private val SRGB_FORMATS = setOf(
+    org.lwjgl.vulkan.VK10.VK_FORMAT_B8G8R8A8_SRGB,
+    org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_SRGB,
+    org.lwjgl.vulkan.VK10.VK_FORMAT_A8B8G8R8_SRGB_PACK32,
+)
+
+/** Whether sampling [texture] decodes sRGB, by its view's format. */
+private fun isSrgb(texture: HasImageView): Boolean =
+    runCatching { texture.imageView.imageViewData.format in SRGB_FORMATS }.getOrDefault(false)
 
 /** The output channel [Box.stackFeedback] shows its [StackSLLowering] in. */
 const val STACKSL_LOWERING_CHANNEL = "lowering"
