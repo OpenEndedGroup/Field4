@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 8 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 9 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. renderer
@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="splat_renderer" index="0" -->
 
 ```edn [field-box id="splat_renderer" role="properties"]
-{"id" "splat_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["splat_passthrough" "splat_pulse_rings" "splat_dissolve" "splat_gravity_well" "splat_fern_veins" "splat_lichen_tangle" "splat_xray_shell"] "properties" {"children" #{#afield/box "splat_passthrough" #afield/box "splat_pulse_rings" #afield/box "splat_dissolve" #afield/box "splat_gravity_well" #afield/box "splat_fern_veins" #afield/box "splat_lichen_tangle" #afield/box "splat_xray_shell"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_renderer_code_.kt" "lines" 13 "characters" 439 "sha256" "5ec1e50d2c42076d2e020f1ffd64c062192c7c22d8aa270c7c0fa0c9793fedc3"}]}
+{"id" "splat_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["splat_passthrough" "splat_pulse_rings" "splat_dissolve" "splat_gravity_well" "splat_fern_veins" "splat_lichen_tangle" "splat_xray_shell" "splat_toy_car"] "properties" {"children" #{#afield/box "splat_passthrough" #afield/box "splat_pulse_rings" #afield/box "splat_dissolve" #afield/box "splat_gravity_well" #afield/box "splat_fern_veins" #afield/box "splat_lichen_tangle" #afield/box "splat_xray_shell" #afield/box "splat_toy_car"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_renderer_code_.kt" "lines" 13 "characters" 439 "sha256" "5ec1e50d2c42076d2e020f1ffd64c062192c7c22d8aa270c7c0fa0c9793fedc3"}]}
 ```
 
 ```kotlin [field-property box="splat_renderer" name="code" path="splat_renderer_code_.kt"]
@@ -35,7 +35,7 @@ start(renderer::run)
 <!-- field-box id="splat_fern_veins" index="1" -->
 
 ```edn [field-box id="splat_fern_veins" role="properties"]
-{"id" "splat_fern_veins" "index" 1 "name" "fern veins" "parents" ["root" "splat_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "splat_renderer"} "name" "fern veins" "_tombstone" false "frame" #afield/rect [40.0 1120.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_fern_veins_code_.kt" "lines" 12 "characters" 433 "sha256" "31e7a088395d2336dcb0beed7d0a8c45f5cb4e8ad07eab8640ab0d6e933f3a49"} {"name" "compute" "language" "glsl" "path" "splat_fern_veins_compute_.glsl" "lines" 14 "characters" 433 "sha256" "29d25a380e5487e891bd5327a48dd08dd6eacf04bada704ff84e476ec10ec4e6"}]}
+{"id" "splat_fern_veins" "index" 1 "name" "fern veins" "parents" ["root" "splat_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "splat_renderer"} "name" "fern veins" "_tombstone" false "frame" #afield/rect [40.0 1240.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_fern_veins_code_.kt" "lines" 12 "characters" 433 "sha256" "31e7a088395d2336dcb0beed7d0a8c45f5cb4e8ad07eab8640ab0d6e933f3a49"} {"name" "compute" "language" "glsl" "path" "splat_fern_veins_compute_.glsl" "lines" 14 "characters" 433 "sha256" "29d25a380e5487e891bd5327a48dd08dd6eacf04bada704ff84e476ec10ec4e6"}]}
 ```
 
 ```kotlin [field-property box="splat_fern_veins" name="code" path="splat_fern_veins_code_.kt"]
@@ -75,7 +75,7 @@ scales.xy *= mix(0.48, 1.95, rib * leaf);
 <!-- field-box id="splat_pulse_rings" index="2" -->
 
 ```edn [field-box id="splat_pulse_rings" role="properties"]
-{"id" "splat_pulse_rings" "index" 2 "name" "pulse rings" "parents" ["root" "splat_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "splat_renderer"} "name" "pulse rings" "_tombstone" false "frame" #afield/rect [40.0 660.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_pulse_rings_code_.kt" "lines" 12 "characters" 461 "sha256" "1852c032dc391ca07bd69fdd2a8e55076508096aba217dab9f4ac05a55464f91"} {"name" "compute" "language" "glsl" "path" "splat_pulse_rings_compute_.glsl" "lines" 17 "characters" 452 "sha256" "efa652df6e3e4ee1326ffc5f9f5d6a3af904e3f7e2dc7f80c69a3713aef59988"}]}
+{"id" "splat_pulse_rings" "index" 2 "name" "pulse rings" "parents" ["root" "splat_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "splat_renderer"} "name" "pulse rings" "_tombstone" false "frame" #afield/rect [40.0 720.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_pulse_rings_code_.kt" "lines" 12 "characters" 461 "sha256" "1852c032dc391ca07bd69fdd2a8e55076508096aba217dab9f4ac05a55464f91"} {"name" "compute" "language" "glsl" "path" "splat_pulse_rings_compute_.glsl" "lines" 17 "characters" 452 "sha256" "efa652df6e3e4ee1326ffc5f9f5d6a3af904e3f7e2dc7f80c69a3713aef59988"}]}
 ```
 
 ```kotlin [field-property box="splat_pulse_rings" name="code" path="splat_pulse_rings_code_.kt"]
@@ -118,7 +118,7 @@ scales *= 0.82 + ring * 1.45;
 <!-- field-box id="splat_xray_shell" index="3" -->
 
 ```edn [field-box id="splat_xray_shell" role="properties"]
-{"id" "splat_xray_shell" "index" 3 "name" "xray shell" "parents" ["root" "splat_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "splat_renderer"} "name" "xray shell" "_tombstone" false "frame" #afield/rect [1240.0 1120.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_xray_shell_code_.kt" "lines" 12 "characters" 459 "sha256" "6086b4240464a87e942171e488a3231a3073323e38147c893c6bde6e980e94b7"} {"name" "compute" "language" "glsl" "path" "splat_xray_shell_compute_.glsl" "lines" 13 "characters" 386 "sha256" "1e9b757b35e20151bc50e34a071ee7f5cf05fe81fa8e21042d5842baa782ee2a"}]}
+{"id" "splat_xray_shell" "index" 3 "name" "xray shell" "parents" ["root" "splat_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "splat_renderer"} "name" "xray shell" "_tombstone" false "frame" #afield/rect [1240.0 1240.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_xray_shell_code_.kt" "lines" 12 "characters" 459 "sha256" "6086b4240464a87e942171e488a3231a3073323e38147c893c6bde6e980e94b7"} {"name" "compute" "language" "glsl" "path" "splat_xray_shell_compute_.glsl" "lines" 13 "characters" 386 "sha256" "1e9b757b35e20151bc50e34a071ee7f5cf05fe81fa8e21042d5842baa782ee2a"}]}
 ```
 
 ```kotlin [field-property box="splat_xray_shell" name="code" path="splat_xray_shell_code_.kt"]
@@ -214,7 +214,7 @@ showControls(splats)
 <!-- field-box id="splat_dissolve" index="5" -->
 
 ```edn [field-box id="splat_dissolve" role="properties"]
-{"id" "splat_dissolve" "index" 5 "name" "dissolve" "parents" ["root" "splat_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "splat_renderer"} "name" "dissolve" "_tombstone" false "frame" #afield/rect [640.0 660.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_dissolve_code_.kt" "lines" 14 "characters" 584 "sha256" "915b087b839a258bd256d6bd1104a50b9a16b1f5e2d6a66f2691f3ff47a318d2"} {"name" "compute" "language" "glsl" "path" "splat_dissolve_compute_.glsl" "lines" 14 "characters" 426 "sha256" "ed4c69f3f194f5b3996c4ec92972f2ef3e5834776c0025939082ee5492ea52c3"}]}
+{"id" "splat_dissolve" "index" 5 "name" "dissolve" "parents" ["root" "splat_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "splat_renderer"} "name" "dissolve" "_tombstone" false "frame" #afield/rect [640.0 720.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_dissolve_code_.kt" "lines" 14 "characters" 584 "sha256" "915b087b839a258bd256d6bd1104a50b9a16b1f5e2d6a66f2691f3ff47a318d2"} {"name" "compute" "language" "glsl" "path" "splat_dissolve_compute_.glsl" "lines" 14 "characters" 426 "sha256" "ed4c69f3f194f5b3996c4ec92972f2ef3e5834776c0025939082ee5492ea52c3"}]}
 ```
 
 ```kotlin [field-property box="splat_dissolve" name="code" path="splat_dissolve_code_.kt"]
@@ -256,7 +256,7 @@ scales *= mix(0.18, 1.0, keep);
 <!-- field-box id="splat_lichen_tangle" index="6" -->
 
 ```edn [field-box id="splat_lichen_tangle" role="properties"]
-{"id" "splat_lichen_tangle" "index" 6 "name" "lichen tangle" "parents" ["root" "splat_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "splat_renderer"} "name" "lichen tangle" "_tombstone" false "frame" #afield/rect [640.0 1120.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_lichen_tangle_code_.kt" "lines" 13 "characters" 470 "sha256" "e78147b11b559293eea69a9e277e389bf48a4afac4f604ac2f1e51d04ac47d66"} {"name" "compute" "language" "glsl" "path" "splat_lichen_tangle_compute_.glsl" "lines" 20 "characters" 536 "sha256" "ef90ae20f4f11e796d616e9a7ca67864caf9eb9782c32aefdf6d4ec9439a8299"}]}
+{"id" "splat_lichen_tangle" "index" 6 "name" "lichen tangle" "parents" ["root" "splat_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "splat_renderer"} "name" "lichen tangle" "_tombstone" false "frame" #afield/rect [640.0 1240.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_lichen_tangle_code_.kt" "lines" 13 "characters" 470 "sha256" "e78147b11b559293eea69a9e277e389bf48a4afac4f604ac2f1e51d04ac47d66"} {"name" "compute" "language" "glsl" "path" "splat_lichen_tangle_compute_.glsl" "lines" 20 "characters" 536 "sha256" "ef90ae20f4f11e796d616e9a7ca67864caf9eb9782c32aefdf6d4ec9439a8299"}]}
 ```
 
 ```kotlin [field-property box="splat_lichen_tangle" name="code" path="splat_lichen_tangle_code_.kt"]
@@ -303,7 +303,7 @@ scales *= mix(0.16, 1.85, canopy);
 <!-- field-box id="splat_gravity_well" index="7" -->
 
 ```edn [field-box id="splat_gravity_well" role="properties"]
-{"id" "splat_gravity_well" "index" 7 "name" "gravity well" "parents" ["root" "splat_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "splat_renderer"} "name" "gravity well" "_tombstone" false "frame" #afield/rect [1240.0 660.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_gravity_well_code_.kt" "lines" 12 "characters" 439 "sha256" "2d4ebdada47bbdac36805fc478a1446133aa1d4d1458dff1993515ab2ec0f7a8"} {"name" "compute" "language" "glsl" "path" "splat_gravity_well_compute_.glsl" "lines" 14 "characters" 350 "sha256" "78211dd1bd349e0d4fa8366ff5abed8830a7c7c723c55541ab050ee0bb4eb340"}]}
+{"id" "splat_gravity_well" "index" 7 "name" "gravity well" "parents" ["root" "splat_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "splat_renderer"} "name" "gravity well" "_tombstone" false "frame" #afield/rect [1240.0 720.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_gravity_well_code_.kt" "lines" 16 "characters" 560 "sha256" "2455a97e949faf042f556f1c9c03205ecc98ee451272d96f562fc7696a1c16bf"} {"name" "compute" "language" "glsl" "path" "splat_gravity_well_compute_.glsl" "lines" 14 "characters" 350 "sha256" "78211dd1bd349e0d4fa8366ff5abed8830a7c7c723c55541ab050ee0bb4eb340"}]}
 ```
 
 ```kotlin [field-property box="splat_gravity_well" name="code" path="splat_gravity_well_code_.kt"]
@@ -317,7 +317,11 @@ it, bob, swell and glow violet, while those far out stay faint.
 */
 var module = computeModuleHere {}
 
-val splats = SplatShader(module, ProceduralSplats.torusBraid())
+// trail: each frame lands on a fading copy of the last, so the spin leaves streaks
+val splats = SplatShader(module, ProceduralSplats.torusBraid()) {
+    trail = true
+    fade = 0.12
+}
 showControls(splats)
 ```
 
@@ -334,6 +338,60 @@ pos.y -= pull * 0.45 * sin(t * 1.2 + r * 8.0);
 rgba.rgb = mix(rgba.rgb, vec3(0.88, 0.68, 1.0), pull);
 rgba.a *= 0.35 + sat(r * 1.4);
 scales *= 0.65 + pull * 2.4;
+
+#include "splat/end"
+```
+
+## 9. scanlines on a model
+
+<!-- field-box id="splat_toy_car" index="8" -->
+
+```edn [field-box id="splat_toy_car" role="properties"]
+{"id" "splat_toy_car" "index" 8 "name" "scanlines on a model" "parents" ["root" "splat_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "splat_renderer"} "name" "scanlines on a model" "_tombstone" false "frame" #afield/rect [40.0 1760.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_toy_car_code_.kt" "lines" 28 "characters" 1351 "sha256" "897ed3930ddb1d5c157e3e667025e9c1b448513f7090a040d97c133f4db54f7b"} {"name" "compute" "language" "glsl" "path" "splat_toy_car_compute_.glsl" "lines" 12 "characters" 320 "sha256" "ab4146ae7edd8d5a2c75cb0c0a92af93bcba6def3ad8ae7ac099dcb9b270ac6b"}]}
+```
+
+```kotlin [field-property box="splat_toy_car" name="code" path="splat_toy_car_code_.kt"]
+import afield.graphics.scene.fabricated.SplatSet
+import afield.graphics.scene.fabricated.SplatShader
+import afield.graphics.scene.fabricated.showControls
+
+/*
+Scanlines, on a mesh instead of a cloud. SplatSet.fromGltf reads a .glb through Field's
+glTF loader and puts one flat disc on every vertex, facing along its normal and sized
+from how densely the vertices cover the surface. Then bright bands sweep up through it.
+
+The model is the Khronos ToyCar sample committed in this repository; the path is
+relative to the repository root, so point it at a .glb of your own if Field was started
+elsewhere. Textures are not sampled, so the discs start in the material colours.
+*/
+var module = computeModuleHere {}
+
+val path = "public/docs/assets/fabricate_demo/ToyCar.glb"
+if (!java.io.File(path).isFile) {
+    println("no model at ${java.io.File(path).absolutePath}: point `path` at a .glb of your own")
+} else {
+    // fitted(): centred and about a unit across, the size the insert's stripes are written for
+    // the ToyCar sample sits on a draped cloth, its "Fabric" mesh; leave that out
+    val car = SplatSet.fromGltf(path, meshes = { it != "Fabric" })
+    // the wheels and chassis pack most of the vertices near the middle, so frame it larger
+    val splats = SplatShader(module, car.fitted()) {
+        size = 1.8
+    }
+    showControls(splats)
+}
+```
+
+```glsl [field-property box="splat_toy_car" name="compute" path="splat_toy_car_compute_.glsl"]
+#version 450
+#include "splat/insert"
+
+float stripe = sin((pos.y + t * 0.28) * 38.0);
+float gate = smoothstep(0.35, 0.9, stripe);
+
+pos.x += sin(pos.y * 9.0 + t * 2.0) * 0.025;
+rgba.rgb = mix(rgba.rgb * 0.18, vec3(0.2, 1.0, 0.58), gate);
+rgba.a *= 0.18 + gate * 0.82;
+scales.xy *= 0.55 + gate * 1.7;
 
 #include "splat/end"
 ```
