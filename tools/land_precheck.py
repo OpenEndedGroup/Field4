@@ -328,6 +328,11 @@ def _tracked_edits() -> list[str]:
 
 
 def run(args: argparse.Namespace) -> int:
+    # The checkout it is run in, which is normally the one it lives in. Not always: replaying an old
+    # bounced commit runs this copy of the script against a checkout of that commit.
+    global REPO
+    REPO = Path(subprocess.run(["git", "rev-parse", "--show-toplevel"], check=True, stdout=subprocess.PIPE,
+                               text=True).stdout.strip())
     base = args.base
     branch = _git("rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
     if branch == base:
