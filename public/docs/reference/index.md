@@ -643,7 +643,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**33703 public symbols across 1516 source files**, 17226 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**33748 public symbols across 1517 source files**, 17263 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -656,7 +656,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 134 | 50 (37%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 47 | 2156 | 1522 (70%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 23 | 976 | 417 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 313 | 7709 | 3982 (51%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 314 | 7754 | 4019 (51%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 797 | 426 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
@@ -1998,6 +1998,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>evolution/<wbr></small> [StackSLEvolve.kt](search.md#stackslevolve-kt) | Search | 110 | 81 | Genetic programming over StackSL **token sequences**, scored by rendering the program and comparing it to a target image. | [Evolving a Shader Toward a Picture](../stacksl_evolve.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stacksl/<wbr></small> [StackSLEvolveGallery.kt](examples.md#stackslevolvegallery-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>evolution/<wbr></small> [StackSLEvolveStudio.kt](search.md#stackslevolvestudio-kt) | Search | 2 | 2 | The AI4 chat surface for a `StackSLEvolution`: `stackSLEvolveStudio` registers the `evolve_*` tools on a box and ties the population to the conversation's branches. | [Evolving a Shader Toward a Picture](../stacksl_evolve.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr></small> [StackSLFeedback.kt](graphics.md#stackslfeedback-kt) | Graphics | 45 | 37 | StackSL with its own previous frame: `Box.stackFeedback` draws a box's `stackSL` program fullscreen every frame into a float ping-pong target, with the last frame bound as `sampler2D state`, so `prev`, `sample`, `gather` and the store words (`0->` … `3->`) read what the program drew a frame ago. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>cpu/<wbr></small> [StackSLFit.kt](languages.md#stackslfit-kt) | Languages | 29 | 26 | Gradient descent on a StackSL program's own literals: fit a shader to a picture, then write the fitted numbers back into the program. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [StackSLGalleryHarness.kt](renderers.md#stackslgalleryharness-kt) | Renderers · internal | 8 | 7 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>study/<wbr></small> [StackSLGpu.kt](languages.md#stackslgpu-kt) | Languages | 12 | 6 | Where a StackSL study's frames come from: the GPU when a window is running, the CPU reference otherwise. |  |
