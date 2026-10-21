@@ -26,26 +26,32 @@ class WindowPointer(
     var onPoll: (WindowPointer) -> Unit = {},
 ) {
     /** The window's width in points; its framebuffer width until the first poll. */
-    @Volatile var width: Float = window.width.toFloat()
+    @Volatile
+    var width: Float = window.width.toFloat()
         private set
 
     /** The window's height in points; its framebuffer height until the first poll. */
-    @Volatile var height: Float = window.height.toFloat()
+    @Volatile
+    var height: Float = window.height.toFloat()
         private set
 
     /** The pointer, in points from the window's top-left corner. */
-    @Volatile var x: Float = 0f
+    @Volatile
+    var x: Float = 0f
         private set
 
-    @Volatile var y: Float = 0f
+    @Volatile
+    var y: Float = 0f
         private set
 
     /** The window is under the pointer and the pointer is within it. */
-    @Volatile var inside: Boolean = false
+    @Volatile
+    var inside: Boolean = false
         private set
 
     /** The left button is held. */
-    @Volatile var down: Boolean = false
+    @Volatile
+    var down: Boolean = false
         private set
 
     /**
@@ -53,7 +59,8 @@ class WindowPointer(
      * framebuffer's pixels, twice the points on a Retina display, so a sketch that places things
      * by the window's size waits for this.
      */
-    @Volatile var polled: Boolean = false
+    @Volatile
+    var polled: Boolean = false
         private set
 
     init {
