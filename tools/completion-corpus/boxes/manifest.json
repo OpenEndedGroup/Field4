@@ -387,6 +387,7 @@
   {"doc": "madp_geometry", "box": "triangle_lesson", "codeSha256": "1e2722ad4cba74eb", "codeLines": 27, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "madp_line", "box": "madp_line_comet_dust", "codeSha256": "f637d643fb529714", "codeLines": 20, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "madp_line", "box": "madp_line_curve_choir", "codeSha256": "38fe4da2e26d99f4", "codeLines": 31, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "madp_line", "box": "madp_line_draw_for_me", "codeSha256": "a927408b63003c95", "codeLines": 19, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "madp_line", "box": "madp_line_magnet_mesh", "codeSha256": "d42acaf9d6b35f71", "codeLines": 33, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "madp_line", "box": "madp_line_prism_choir", "codeSha256": "79e8ee44af0e2c86", "codeLines": 59, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "madp_line", "box": "madp_line_ribbon_bloom", "codeSha256": "856fff4b9a1fa91d", "codeLines": 32, "receivers": ["afield.document.graph.Box"], "preamble": ""},
