@@ -338,3 +338,6 @@ operations:
                   waitFrame()
               }
           }
+  - launch:
+      box: madp_chargrid_plasma
+      property: code
