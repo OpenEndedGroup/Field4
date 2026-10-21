@@ -3128,6 +3128,10 @@ smallest chaos game). Each system box's `compute` tab holds the rule as six GLSL
 viewport, the background, the particle count and the fade, and shows sliders for fps, steps,
 fade and exposure. Launch another system box to switch to it.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/fern_iterated_systems_barnsley.png" capture="native-window" native-wait-frames="120" trim-native=true wait="30.0" embed=true hidden=true timeout="400" name="gallery-fern-iterated-systems" alt="The Barnsley fern in the native window: a tall green frond of fine glowing dust on black, its leaflets built of smaller leaflets, the lowest left one turning yellow-green" macro-file="../../dev_docs/agents/transcripts/fern_iterated_systems.yaml" capture-box="fern_renderer"}
+// The transcript builds every box and launches the renderer and the Barnsley fern.
+```
+
 [Open ↗](offline.html?file=assets/agent_transcripts/fern_iterated_systems/metadata.edn)
 
 ### particles_sketchbook
