@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-212 source file(s), 679 public symbol(s), 298 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+213 source file(s), 681 public symbol(s), 299 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -321,7 +321,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L839) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L853) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -1832,6 +1832,20 @@ The renderer goes away while an [`OpenDlssNrStudy`](graphics.md#opendlssnrstudy-
 | Declaration | Summary |
 | --- | --- |
 | <a id="opendlssnrteardownsmoke-kt--opendlssnrteardownsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/OpenDlssNrTeardownSmoke/#L43) |  |
+
+## ParticleSketchSmoke.kt { #particlesketchsmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/ParticleSketchSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/ParticleSketchSmoke/)
+
+### ParticleSketchSmoke { #particlesketchsmoke-kt-particlesketchsmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">ParticleSketchSmoke</span></code>](source/jvmMain/afield/examples/four/ParticleSketchSmoke/#L73)
+
+That a [`ParticleSketch`](simulation.md#particlesketch-kt-particlesketch) step on the GPU does what madp's JavaScript does, per particle.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="particlesketchsmoke-kt--particlesketchsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ParticleSketchSmoke/#L145) |  |
 
 ## PlyLoaderTest.kt { #plyloadertest-kt }
 

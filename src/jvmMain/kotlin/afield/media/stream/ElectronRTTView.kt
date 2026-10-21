@@ -261,11 +261,13 @@ class ElectronRTTView(
 
     private fun retire(old: List<Slot>) {
         if (old.isEmpty()) return
-        // Not from a recording context, so wait out a few frames rather than a specific fence.
-        Thread({
-            Thread.sleep(500)
-            old.forEach { it.host?.close(); if (it.ref != 0L) MetalIOSurface.release(it.ref) }
-        }, "electron-rtt-retire-$name").apply { isDaemon = true }.start()
+        // The renderer's deferred cleanup runs once the frames in flight retire, and on shutdown it
+        // drains before the device is destroyed. A detached sleeping thread raced that teardown and
+        // called vkDestroyBuffer on a dead device. Once the device is gone its buffers went with it.
+        fun release(destroyHost: Boolean) =
+            old.forEach { if (destroyHost) it.host?.close(); if (it.ref != 0L) MetalIOSurface.release(it.ref) }
+        if (renderer.isClosed) release(destroyHost = false)
+        else renderer.cleanup += Runnable { release(destroyHost = true) }
     }
 
     private fun released(slot: Int, gen: Int, sample: Sample) {
