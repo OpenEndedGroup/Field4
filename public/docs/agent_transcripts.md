@@ -3726,6 +3726,19 @@ shader. Launch the renderer, then launch any example; each one replaces the last
 
 [Open ↗](offline.html?file=assets/agent_transcripts/stacksl_gallery/metadata.edn)
 
+### shadertrinket
+
+**ShaderTrinket in Field.** A ShaderToy Image pass, `void mainImage(out vec4 fragColor, in vec2
+fragCoord)`, lives in each box's `fragment` property, under one `{{ shadertoy.image }}` line, and
+draws into a canvas the renderer window shows. Launch the renderer, then the lead box (Flat Rings,
+ShaderTrinket's default program); each preset box (Classic Plasma, Star Tunnel, Mandelbrot Glow,
+SDF Sphere Trace) replaces the picture when you launch it, the way choosing a preset does. Edit a
+`fragment` and press alt-R to recompile; an error is marked on its own line. The Camera Input Demo
+binds the camera to `iChannel0` with `textures("iChannel0" to webcam())`. A port of the madp
+ShaderTrinket demo; the design notes are in `dev_docs/madp/shadertrinket.md`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/shadertrinket/metadata.edn)
+
 ## Graphics building blocks
 
 <!-- transcript-index: verified-by = compile -->

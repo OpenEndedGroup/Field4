@@ -433,6 +433,22 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     }
 
     var frame by Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onFrameChange)
+
+    /**
+     * A colour the canvas lays over this box, to show some state of it at a glance: a CSS colour
+     * such as `"hsla(28, 80%, 56%, 0.2)"` or `"rgba(255, 184, 108, 0.15)"`, or `""` for none.
+     *
+     * The colour, at its own alpha, washes the box, over the running stripes and under its title;
+     * the same colour made nearly opaque edges it and glows faintly. Change it as often as you
+     * like: it is sent to the canvas like `frame`, but never saved, so a reopened document starts
+     * untinted. `playScore` tints the boxes its playhead is over this way.
+     *
+     * ```
+     * tint = "hsla(140, 70%, 50%, 0.18)" // lit
+     * tint = ""                          // back to normal
+     * ```
+     */
+    var tint by Delegation<String>(defaultValue = { "" })
     private val viewportDelegation = Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onViewportChange)
 
     /**
@@ -643,6 +659,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "compute",
             "compute_s",
             "customization",
+            // Box.tint: a transient canvas colour; resynced like frame, deliberately not persisted.
+            "tint",
             "_tombstone",
             // Set by reloadPersonal when a box's Kotlin environment is dropped out from under it.
             // Has to reach the client or the mark is invisible and the box looks fine while holding
