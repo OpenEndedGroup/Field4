@@ -136,3 +136,90 @@ These chains end in something you could print, mount, hang or light.
     with their pressure, drag a simulated oil brush across a canvas of wet paint.
 
 </div>
+
+## MADP Practice Core
+
+The MADP tools are single-page browser sketchbooks for a studio class: code on the left, art on
+the right, and a program short enough to read in one sitting. Each card below is one of those
+tools rebuilt in Field. The program the student writes keeps its shape and its names, but it
+lives in boxes, so it can run beside other boxes, take their output and hand on its own. Each is
+a starting point you can open from the welcome screen as an editable copy: change a line and
+run it again. The card links to its entry in the [gallery](agent_transcripts.md), which says what
+every box in the document does.
+
+<div class="grid cards" markdown>
+
+-   ![A three-lobed flower of blue-violet petals ringed by teal and green bands, streamed into Field's renderer window](assets/agent_transcripts_gallery/webrtc_shader_jam.png)
+
+    **[The Classroom Shader Jam](agent_transcripts.md#webrtc_shader_jam).** One box publishes
+    its shader as a live stream, and another picks anyone's stream, from Field or from a browser
+    ShaderTrinket, and draws it in the renderer window. Read a classmate's picture into your own
+    shader and the room becomes one patch.
+
+-   ![Eight thick rings in teal, amber and blue, each with a pale dot at its centre, overlapping on a dark ground](assets/agent_transcripts_gallery/shadertrinket_flat_rings.png)
+
+    **[ShaderTrinket](agent_transcripts.md#shadertrinket).** A ShaderToy `mainImage` in a box,
+    recompiled on alt-R with any error marked on its own line. Each preset is a box you launch,
+    and the camera is one line away as `iChannel0`.
+
+-   ![A rippled pale-cyan terrain of triangles floating over a dark studio ground, casting a soft shadow onto it](assets/agent_transcripts_gallery/madp_geometry_terrain.png)
+
+    **[Geometry](agent_transcripts.md#madp_geometry).** A model is a recipe of triangles emitted
+    through a transform stack with a current colour and material, drawn in a studio-lit view you
+    can orbit and export as GLB. The presets run from a rippled terrain to a Menger sponge.
+
+-   ![Field's canvas as a score: boxes spread left to right, an orange playhead crossing two lit boxes, and a dark panel under the first box showing rows of thin orange and blue bars](assets/agent_transcripts_gallery/madp_score.png)
+
+    **[Score](agent_transcripts.md#madp_score).** The canvas is the score: a playhead sweeps the
+    boxes, and each one draws and plays sound while the playhead is over it. Drag a box to move
+    it in time, or stretch it to make it last longer.
+
+-   ![A column of boxes on the left of the dark canvas, and to their right three drawn strokes as cyan lines strung with small coloured beads](assets/agent_transcripts_gallery/madp_line.png)
+
+    **[Line](agent_transcripts.md#madp_line).** Draw on the canvas and each stroke turns into a
+    moving, sounding object whose shape sets up a small synth choir. Every stroke keeps the code
+    it was drawn with, so an edit changes only the strokes you draw next.
+
+-   ![The Barnsley fern: a tall green frond of fine glowing dust on black, its leaflets built of smaller leaflets](assets/agent_transcripts_gallery/fern_iterated_systems_barnsley.png)
+
+    **[Fern](agent_transcripts.md#fern_iterated_systems).** Hundreds of thousands of particles
+    each follow one rule and leave a fading trace, so a fern, the Lorenz attractor and a flame
+    build up out of glowing dust. The rule is six short GLSL functions.
+
+-   ![A few hundred small glowing dots in loose schools of cyan, green, yellow and pink, with faint threads between close neighbours](assets/agent_transcripts_gallery/particles_sketchbook_boids.png)
+
+    **[Particles](agent_transcripts.md#particles_sketchbook).** Paint particles into the window
+    with the mouse, and four GLSL hooks decide what they do. Seven sketches, from flocking to
+    springs to collisions, show how far a handful of force helpers go.
+
+-   ![A sphere of about a thousand small glowing splats on black, coloured by longitude from cyan through chartreuse to red and orange](assets/agent_transcripts_gallery/splat_shader_passthrough.png)
+
+    **[Splat Shader](agent_transcripts.md#splat_shader).** A few lines of GLSL run once per
+    Gaussian splat each frame and may move, resize, recolour or turn it. The edit runs before the
+    depth sort, so splats thrown outward still draw in the right order.
+
+-   ![A soft white ring on black, centred, fading smoothly to black on both sides](assets/agent_transcripts_gallery/stacktrinket_feedback_pulse_ring.png)
+
+    **[StackTrinket](agent_transcripts.md#stacktrinket_feedback).** Programs in a stack-based
+    shader language that read their own previous frame, so a few words leave trails, fog and
+    bloom. Each box shows how deep its stack ends and the GLSL its program becomes.
+
+-   ![A 40 by 25 grid of block and box-drawing glyphs, tilted at many angles, in hues running from green through blue to magenta](assets/agent_transcripts_gallery/madp_chargrid_plasma.png)
+
+    **[charGrid](agent_transcripts.md#madp_chargrid).** A picture as a 40 × 25 grid of glyph
+    numbers, rewritten once a tick. Reading the last tick is all Conway's Life needs, and a glyph
+    can also be a note, so an arpeggio draws and plays at once.
+
+-   ![A three-by-three grid of colour tiles: two rainbow parents, stripes and spokes, above seven mutated children, each with its program written under it](assets/agent_transcripts_gallery/madp_ga_lead.png)
+
+    **[GA](agent_transcripts.md#madp_ga).** Interactive evolution after Karl Sims: each tile is a
+    short colour program run once per pixel, and you are the fitness function. Click two tiles
+    and they become the parents of the next generation.
+
+-   ![Photographs of a cat, a dog, a tiger and a red car above a tetrahedron whose edges are labelled with the distances between them](assets/agent_transcripts_gallery/madp_tetra.png)
+
+    **[Tetra](agent_transcripts.md#madp_tetra).** CLIP turns four pictures into four points, and
+    the six distances between them become the edges of a tetrahedron. Any four such points fit
+    in three dimensions, so the shape keeps all six distances exactly. Drop in your own pictures.
+
+</div>

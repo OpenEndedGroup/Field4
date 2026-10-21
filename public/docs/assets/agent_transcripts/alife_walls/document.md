@@ -133,7 +133,7 @@ lines(
 // corners of the arena, and the shadow behind the block.
 ```
 
-## 2. A wall, and three answers to hitting it
+## 2. Hitting a wall: SLIDE, BOUNCE and STOP
 
 <!-- field-box id="hit_a_wall" index="1" -->
 
@@ -149,7 +149,7 @@ first moment of contact along the step, not for where the step happened to land.
 Three agents, one wall, three answers to "what now".
 
 ```edn [field-box id="hit_a_wall" role="properties"]
-{"id" "hit_a_wall" "index" 1 "name" "A wall, and three answers to hitting it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A wall, and three answers to hitting it" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "hit_a_wall_code_.kt" "lines" 65 "characters" 2201 "sha256" "5a6b08b3c7f28a9ea18f515f592498a5b75bf5f7155de8ec7d6d8a94957a2d28"}]}
+{"id" "hit_a_wall" "index" 1 "name" "Hitting a wall: SLIDE, BOUNCE and STOP" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Hitting a wall: SLIDE, BOUNCE and STOP" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "hit_a_wall_code_.kt" "lines" 65 "characters" 2201 "sha256" "5a6b08b3c7f28a9ea18f515f592498a5b75bf5f7155de8ec7d6d8a94957a2d28"}]}
 ```
 
 ```kotlin [field-property box="hit_a_wall" name="code" path="hit_a_wall_code_.kt"]

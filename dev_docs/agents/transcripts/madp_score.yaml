@@ -10,6 +10,12 @@ operations:
       name: playhead
       frame: { x: 40.0, y: 40.0, w: 12.0, h: 560.0 }
       properties:
+        notes: |
+          # playhead
+
+          The line the score's clock moves. `playScore` in the **score · run me** box styles it as an orange line
+          and slides it across the canvas every frame; a box is played while this line is over it. Nothing to
+          run here. Delete it and the score still plays, just without the line.
         code: |
           // The score box moves this line across the canvas; nothing to run here. Its look is the
           // `customization` the score box gives it, the same trick as Field's time slider.
@@ -18,6 +24,66 @@ operations:
       name: score · run me
       frame: { x: 64.0, y: 60.0, w: 200.0, h: 140.0 }
       properties:
+        notes: |
+          # Score: the canvas as a timeline
+
+          This document is Field's version of **Score**, the madp page `score.html`. There, rectangles sit on a
+          looping timeline, an orange playhead sweeps across them every few seconds, and each rectangle owns a
+          little program, `score(t, bounds)`, that runs every frame while the playhead is over it. The programs
+          draw into a dark output canvas and make sounds, so a rectangle's position is *when* it happens, its
+          width is *how long*, and its height and place on the page are *where* its drawing lands.
+
+          ## What it teaches
+
+          Time as something you can see and edit. Moving a box moves an event in time; stretching it makes it
+          last longer; two boxes that overlap play together. The presets come from the animators and composers
+          who worked this way: Norman McLaren's scratched, flickering film, Oskar Fischinger's rhythmic
+          geometry, and Philip Glass's pulses that drift in and out of phase. Each one is a few lines of drawing
+          and one or two sounds, tied together by when the playhead reaches them.
+
+          ## How to play
+
+          1. **Run this box.** The orange `playhead` starts sweeping from here to the right once every eleven
+             seconds, and every box in the score is armed.
+          2. **Watch the panel below.** It is the output canvas. Each box draws there, at the place it sits in
+             the score, only while the playhead crosses it, and the box lights up on the canvas in a colour of
+             its own while it plays.
+          3. **Edit a box and run it again** to change what it does, live. Stop a box to silence it. Drag it to
+             move it in time, stretch it to make it last longer.
+
+          Inside `score { }` you have:
+
+          - `localProgress`, 0 to 1 across the box, and `localT`, seconds since the playhead reached it;
+          - `justEntered` on the first frame, and `onSubdivision(n)`, true `n` times on the way across, for
+            pulses;
+          - `boxPoint(u, v)`, a point inside the box in output pixels (0, 0 its top left), and
+            `draw.line/circle/ring/rect/polyline`, with colours as CSS strings;
+          - `sound(path)`, which plays a dough path (`/dough/play/note/60/s/sine/gain/0.2/...`, the same strings
+            as the browser demo), at most once per `minInterval` for the same `key`;
+          - `thisRMS`, how loud this box's own sounds are right now, measured from its voices, so a shape can
+            swell with its note;
+          - `box.get/set/move/resize`, which move the box itself on the canvas: the instrument can rewrite its
+            own place in the score (see **jump cut** and **duck**).
+
+          Anything declared above `score { }` lasts between frames, which is where state goes.
+
+          ## From score.html to Field
+
+          | score.html | here |
+          | --- | --- |
+          | the score pane | Field's canvas: the boxes are the rectangles |
+          | the orange playhead | the `playhead` box, moved by `playScore` |
+          | `function score(t, bounds)` in the selected rectangle | `score { }` in each box |
+          | the output pane | the `score` panel under this box |
+          | the Loop field | `playScore(loop = 11.0, ...)` |
+          | `thisRMS` (estimated from the path) | `thisRMS` (measured from the box's dough voices) |
+          | the lit active rectangle | `Box.tint`, which any box can set |
+          | `state` | a `val` or `var` above `score { }` |
+
+          The demo's shared rooms (`?room=`, Yjs), its in-page AI helpers and its local saves are not here:
+          Field has its own documents, history and AI4 chat. The implementation is `playScore` and `score { }`
+          in `afield.animation.motion` and `sound`/`thisRMS` in `afield.audio.synth`, and their KDoc has the
+          details.
         code: |
           /*
           The canvas is the score. Run this box: the orange playhead sweeps from here to the right once
@@ -46,6 +112,12 @@ operations:
       name: McLaren scratches
       frame: { x: 620.0, y: 330.0, w: 180.0, h: 160.0 }
       properties:
+        notes: |
+          # McLaren scratches
+
+          After Norman McLaren, who drew and scratched straight onto film. Nine lines twitch every frame, a red
+          mark darts across, and `onSubdivision(7)` plays a grain of white noise seven times on the way across,
+          with a short click on entry. Try a wider box: the same seven grains, spread over more time.
         code: |
           // Norman McLaren scratched straight onto film: nine lines that twitch every frame, a grain of
           // noise seven times on the way across, and a click on the way in.
@@ -67,6 +139,11 @@ operations:
       name: Fischinger orbits
       frame: { x: 840.0, y: 70.0, w: 200.0, h: 150.0 }
       properties:
+        notes: |
+          # Fischinger orbits
+
+          After Oskar Fischinger's rhythmic geometry. A planet circles a ring, and a bell rings three times a
+          pass (`onSubdivision(3)`). The planet grows with `thisRMS`, so you can see each bell.
         code: |
           // Oskar Fischinger's geometry: a planet on a ring, and a bell three times a pass.
           score {
@@ -83,6 +160,13 @@ operations:
       name: Glass phase · 60
       frame: { x: 1070.0, y: 300.0, w: 320.0, h: 110.0 }
       properties:
+        notes: |
+          # Glass phase · 60
+
+          After Philip Glass. This box and **Glass phase · 67** run the same code: eight bars and six pulses per
+          pass. They differ in width, so the playhead takes longer to cross this one and its pulses come further
+          apart, and where the two overlap the two pulses drift against each other. Stretch either box and
+          listen to the phase change.
         code: |
           // Philip Glass's phasing, done with box widths: this box and the one below run the same code,
           // six pulses a pass each, but a wider box takes longer to cross, so the two pulses drift apart.
@@ -100,6 +184,10 @@ operations:
       name: Glass phase · 67
       frame: { x: 1140.0, y: 450.0, w: 260.0, h: 110.0 }
       properties:
+        notes: |
+          # Glass phase · 67
+
+          The partner of **Glass phase · 60**: the same code a fifth higher, panned right, in a narrower box.
         code: |
           // The same as the box above, a fifth higher and a little narrower.
           score {
@@ -115,6 +203,13 @@ operations:
       name: jump cut
       frame: { x: 1430.0, y: 110.0, w: 160.0, h: 120.0 }
       properties:
+        notes: |
+          # jump cut
+
+          A box that edits the score while it plays. On the way in and five times on the way across, it picks a
+          new size and a place near the playhead and moves there with `box.set`, leaving a fading ghost of where
+          it was. It really moves on the canvas, so the score is different every pass. Drag it back whenever you
+          like.
         code: |
           // A box that cuts itself to somewhere else in the score: on the way in, and five times on the
           // way across, it jumps near the playhead and leaves a fading ghost of where it was. The box
@@ -170,6 +265,11 @@ operations:
       name: duck
       frame: { x: 1640.0, y: 300.0, w: 200.0, h: 150.0 }
       properties:
+        notes: |
+          # duck
+
+          A silly one, done carefully: a duck that bobs, drifts a little across the score with `box.move`, and
+          quacks on entry and twice on the way across. `draw.polyline` makes its beak.
         code: |
           // A silly one, done rigorously: a duck that bobs, drifts a little across the score each pass
           // (box.move), and quacks twice.
@@ -192,3 +292,4 @@ operations:
               if (justEntered) sound("/dough/play/note/64/duration/0.08/s/pulse/pw/0.42/gain/0.16/lpf/1500/release/0.05")
               if (onSubdivision(2, "quack")) sound("/dough/play/note/69/duration/0.06/s/pulse/pw/0.28/gain/0.16/lpf/1300/release/0.05", minInterval = 0.08)
           }
+  - launch: { box: madp_score_lead, property: code }
