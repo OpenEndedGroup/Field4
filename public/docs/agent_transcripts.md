@@ -2420,6 +2420,10 @@ once. The lead box is the demo's plasma; the others are 10 PRINT, Life, matrix r
 (one `CSSVAR` spins the whole field) and a C64 typewriter. A port of the madp charGrid demo; the
 design notes are in `dev_docs/madp/chargrid.md`.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_chargrid_plasma.png" capture="box" open-outputs="true" wait="4.0" embed=true hidden=true timeout="180" padding="12" name="gallery-madp-chargrid-plasma" alt="A 40 by 25 grid of block and box-drawing glyphs in rotating rainbow hues, a plasma of two sine waves, on a near-black panel" macro-file="../../dev_docs/agents/transcripts/madp_chargrid.yaml" capture-box="madp_chargrid_plasma"}
+// The transcript builds and runs every box; this is the lead, the plasma.
+```
+
 [Open ↗](offline.html?file=assets/agent_transcripts/madp_chargrid/metadata.edn)
 
 ### madp_score
