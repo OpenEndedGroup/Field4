@@ -108,6 +108,14 @@ class ParticleSketchSettings {
     /** Whether dragging in the renderer window paints particles. */
     var paintWithMouse: Boolean = true
 
+    /**
+     * Steps per second; 0 steps on every frame the renderer draws. madp runs at the browser's 60,
+     * and its per-frame constants assume it: `drag(0.02)`, [damping] and the trail are all "per
+     * frame", so at the thousands of frames a second an unthrottled window can draw they would
+     * stop everything dead. Between steps the picture holds still.
+     */
+    var fps: Double = 60.0
+
     /** Holds the simulation still; the picture keeps drawing, and painting still adds particles. */
     var paused: Boolean = false
 
@@ -174,10 +182,10 @@ class ParticleSketch(
     val grid: GpuNeighbourGrid get() = resources.grid
 
     /** How many particles are alive. */
-    val count: Int get() = min(resources.spawned, capacity.toLong()).toInt()
+    val count: Int get() = resources.count()
 
     /** True when there are no particles and none waiting to be added, as on a fresh start or after [reset]. */
-    val isEmpty: Boolean get() = resources.spawned == 0L && synchronized(resources.queue) { resources.queue.isEmpty() }
+    val isEmpty: Boolean get() = resources.count() == 0 && synchronized(resources.queue) { resources.queue.isEmpty() }
 
     /** Seconds the sketch has run, madp's `t`; it stops while paused. */
     val time: Double get() = resources.time
@@ -313,7 +321,7 @@ class ParticleSketch(
         var phase = 0
         private var frame = 0
         private var lastNanos = 0L
-        private var resetPending = false
+        @Volatile private var resetPending = false
 
         val queue = ArrayDeque<Float>()
 
@@ -337,7 +345,8 @@ class ParticleSketch(
             installPointer()
         }
 
-        fun count(): Int = min(spawned, shape.capacity.toLong()).toInt()
+        /** Particles alive; 0 as soon as [reset] is asked for, though the frame applies it. */
+        fun count(): Int = if (resetPending) 0 else min(spawned, shape.capacity.toLong()).toInt()
 
         fun install(module: ComputeModulePointer, mesh: ComputeMesh) {
             this.module = module
@@ -357,24 +366,13 @@ class ParticleSketch(
             }
         }
 
-        fun paintAlong(x0: Double, y0: Double, x1: Double, y1: Double) {
-            val dx = x1 - x0
-            val dy = y1 - y0
-            val dist = sqrt(dx * dx + dy * dy)
-            if (dist < 1e-4) return enqueue(x1, y1)
-            val steps = max(1, floor(dist / settings.paintSpacing.coerceAtLeast(0.5)).toInt())
-            for (i in 1..steps) {
-                val f = i.toDouble() / steps
-                enqueue(x0 + dx * f, y0 + dy * f)
-            }
-        }
+        fun paintAlong(x0: Double, y0: Double, x1: Double, y1: Double) =
+            PaintBrush.along(x0, y0, x1, y1, settings.paintSpacing, ::enqueue)
 
         /** Reads the pointer and the window's size in points where GLFW allows it: on the poll. */
         private fun installPointer() {
             val window = renderer.window
-            var wasDown = false
-            var lastX = 0.0
-            var lastY = 0.0
+            val brush = PaintBrush()
             window.onPoll["${shape.name}-pointer"] = sequence {
                 while (true) {
                     val size = window.size()
@@ -385,17 +383,15 @@ class ParticleSketch(
                     val y = cursor.y.toDouble()
                     mouseX = x.toFloat()
                     mouseY = y.toFloat()
-                    val inside = x >= 0 && y >= 0 && x <= size.w && y <= size.h
+                    // madp's mouse.inside is "over the canvas": the window has to be under the
+                    // pointer, not merely around where the pointer happens to be
+                    val hovered = GLFW.glfwGetWindowAttrib(window.windowHandle, GLFW.GLFW_HOVERED) == GLFW.GLFW_TRUE
+                    val inside = hovered && x >= 0 && y >= 0 && x <= size.w && y <= size.h
                     mouseInside = inside
                     val down = window.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_LEFT)
                     mouseDown = down
-                    if (settings.paintWithMouse) {
-                        if (down && !wasDown && inside) enqueue(x, y)
-                        else if (down && wasDown && (x != lastX || y != lastY)) paintAlong(lastX, lastY, x, y)
-                    }
-                    wasDown = down && (inside || wasDown)
-                    lastX = x
-                    lastY = y
+                    brush.spacing = settings.paintSpacing
+                    brush.step(x, y, down && settings.paintWithMouse, inside, ::enqueue)
                     yield(true)
                 }
             }
@@ -478,12 +474,14 @@ class ParticleSketch(
             val s = settings
 
             if (resetPending) {
-                resetPending = false
                 spawned = 0L
                 time = 0.0
+                resetPending = false
             }
 
             val now = System.nanoTime()
+            // Between steps nothing is recorded at all: the picture, and so the window, hold still.
+            if (s.fps > 0 && lastNanos != 0L && now - lastNanos < (1e9 / s.fps).toLong()) return
             val frameSeconds = if (lastNanos == 0L) 1.0 / 60.0 else ((now - lastNanos) / 1e9).coerceIn(0.0, 1.0)
             val dt = frameSeconds.coerceAtMost(MAX_DT)
             lastNanos = now
@@ -556,10 +554,9 @@ class ParticleSketch(
             graphicsMemoryBarrier(command)
 
             // 4. draw: fade, links, dots, overlays
-            // madp fades by 1 - trail once per frame at 60 frames a second; scaled to this frame's
-            // length so the trail is as long in seconds at any frame rate (a window the display does
-            // not throttle can run at thousands of frames a second). Wall-clock time, so a paused
-            // picture fades as madp's does.
+            // madp fades by 1 - trail once per frame at 60 frames a second; scaled to this step's
+            // length so the trail is as long in seconds whatever fps is. Wall-clock time, so a
+            // paused picture fades as madp's does.
             val keep = s.trail.coerceIn(0.0, 1.0).pow(frameSeconds * 60.0)
             accumulation.settings.fade = (1.0 - keep).coerceIn(0.0, 1.0)
             accumulation.render(command, index)
@@ -576,6 +573,53 @@ class ParticleSketch(
                     .dstAccessMask(VK_ACCESS_2_SHADER_READ_BIT or VK_ACCESS_2_SHADER_WRITE_BIT)
                 val dep = VkDependencyInfo.calloc(stack).sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO).pMemoryBarriers(m)
                 vkCmdPipelineBarrier2(command.vkCommandBuffer, dep)
+            }
+        }
+    }
+}
+
+/**
+ * Turns the pointer, read once a frame, into paint, as madp's canvas does with mouse events: a
+ * press inside the window lays one particle, and moving with the button held lays one every
+ * [spacing] pixels along the way (at least one per move). A drag that starts inside keeps painting
+ * when it leaves the window; one that starts outside paints nothing.
+ */
+class PaintBrush(var spacing: Double = 8.0) {
+    private var painting = false
+    private var wasDown = false
+    private var lastX = 0.0
+    private var lastY = 0.0
+
+    /** One frame's pointer: where it is, whether the button is held, whether it is over the window. */
+    fun step(x: Double, y: Double, down: Boolean, inside: Boolean, paint: (Double, Double) -> Unit) {
+        val pressed = down && !wasDown
+        if (pressed && inside) {
+            painting = true
+            paint(x, y)
+        } else if (down && painting && (x != lastX || y != lastY)) {
+            along(lastX, lastY, x, y, spacing, paint)
+        } else if (!down) {
+            painting = false
+        }
+        wasDown = down
+        lastX = x
+        lastY = y
+    }
+
+    companion object {
+        /**
+         * madp's paintAlong: particles every [spacing] pixels from just past ([x0], [y0]) to
+         * ([x1], [y1]), at least one; a move shorter than 1e-4 pixels lays one at the end.
+         */
+        fun along(x0: Double, y0: Double, x1: Double, y1: Double, spacing: Double, paint: (Double, Double) -> Unit) {
+            val dx = x1 - x0
+            val dy = y1 - y0
+            val dist = sqrt(dx * dx + dy * dy)
+            if (dist < 1e-4) return paint(x1, y1)
+            val steps = max(1, floor(dist / spacing.coerceAtLeast(0.5)).toInt())
+            for (i in 1..steps) {
+                val f = i.toDouble() / steps
+                paint(x0 + dx * f, y0 + dy * f)
             }
         }
     }

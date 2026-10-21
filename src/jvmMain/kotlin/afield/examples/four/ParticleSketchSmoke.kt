@@ -312,6 +312,7 @@ object ParticleSketchSmoke {
             maxSpeed = 160.0
             pairRadius = 40.0
             paintWithMouse = false
+            fps = 0.0 // every rendered frame is a step, so one render is exactly one step
         }
         // a dense patch, so neighbourhoods are tens strong and the 150-pixel clump reaches past
         // the 3x3 block of 72-pixel cells
@@ -408,6 +409,7 @@ object ParticleSketchSmoke {
             damping = 1.0
             pairRadius = 20.0
             paintWithMouse = false
+            fps = 0.0 // every rendered frame is a step, so one render is exactly one step
         }
         // pairs 9 pixels apart, every pair 60 pixels from the next, so each ball touches at most
         // its partner and madp's sequential pass and the GPU's simultaneous one must agree
@@ -453,6 +455,7 @@ object ParticleSketchSmoke {
             name = "smoke-ring"
             capacity = 64
             paintWithMouse = false
+            fps = 0.0 // every rendered frame is a step, so one render is exactly one step
         }
         val state = paintPaused(renderer, window, sketch, List(100) { (100.0 + it * 3) to 200.0 })
         val ids = (0 until 64).map { java.lang.Float.floatToRawIntBits(state[it * F + 17]) }.toSet()
