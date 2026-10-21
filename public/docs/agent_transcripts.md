@@ -2440,6 +2440,23 @@ shapes swell with the notes. Drag a box to move it in time, stretch it to make i
 run it again after an edit. A port of the madp score demo; the design notes are in
 `dev_docs/madp/score.md`.
 
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" hide-toasts=true viewport="1900x660" clip="0,0,1900,660" screenshot="assets/agent_transcripts_gallery/madp_score.png" macro-file="../../dev_docs/agents/transcripts/madp_score.yaml" padding="0" wait="0" timeout="300" embed=true hidden=true name="gallery-madp-score" alt="Field's canvas as a score: seven dark boxes spread left to right and an orange playhead line crossing the two Glass phase boxes, which are lit red and olive; under the first box, a dark panel shows what they draw, a row of thin orange bars above a row of blue ones"}
+// The transcript builds the score and runs its first box. Wait until the playhead is about seven
+// seconds in, where the two Glass phase boxes overlap, then take the picture.
+var at = ""
+for (i in 0 until 240) {
+    ui.pause(250)
+    at = ui.eval("""
+        const f = document.querySelector("iframe[src*='score_view']")
+        const s = f && f.contentDocument && f.contentDocument.getElementById("status")
+        return s ? s.textContent : "no score view yet"
+    """.trimIndent()).toString()
+    val t = Regex("score · ([0-9.]+)s").find(at)?.groupValues?.get(1)?.toDouble()
+    if (t != null && t in 6.9..7.5) break
+}
+check(Regex("score · ([0-9.]+)s").containsMatchIn(at)) { "the score never started: " + at }
+```
+
 [Open ↗](offline.html?file=assets/agent_transcripts/madp_score/metadata.edn)
 
 ### madp_tetra
