@@ -595,7 +595,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - [creatures](simulation.md#creatures-kt)
 - [flow](simulation.md#flowshaders-kt)
 - [kratos](simulation.md#kratosdemo-kt)
-- *particles* — [Machine learning](machine-learning.md#neuralparticles-kt) · [Simulation](simulation.md#iteratedsystem-kt)
+- *particles* — [Machine learning](machine-learning.md#neuralparticles-kt) · [Simulation](simulation.md#boidsketch-kt)
 - *petri* — [Audio](audio.md#petrimusic-kt) · [Simulation](simulation.md#petrieditorextension-kt) · [Visualization](visualization.md#petrianalysis-kt)
 - [physics](simulation.md#csvreader-kt)
     - [pressure](simulation.md#fastmechanics-kt)
@@ -645,24 +645,24 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**33945 public symbols across 1527 source files**, 17408 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34050 public symbols across 1530 source files**, 17481 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Examples](examples.md) | 213 | 681 | 299 (43%) | Runnable examples, galleries and verification programs. |
+| [Examples](examples.md) | 214 | 683 | 300 (43%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 16 | 156 | 55 (35%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 203 | 156 (76%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 134 | 50 (37%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 47 | 2156 | 1522 (70%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 24 | 1001 | 429 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 315 | 7781 | 4046 (51%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 316 | 7792 | 4047 (51%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 797 | 426 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
-| [Simulation](simulation.md) | 46 | 1287 | 653 (50%) | Making a shape behave. |
+| [Simulation](simulation.md) | 47 | 1379 | 724 (52%) | Making a shape behave. |
 | [Imaging](imaging.md) | 50 | 794 | 371 (46%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 14 | 774 | 571 (73%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 611 | 405 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
@@ -800,6 +800,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>properties/<wbr></small> [binding.kt](internal.md#binding-kt) | Internal · internal | 25 | 1 | Binds a property or one-argument function to a source of values with the `<` operator: `::speed < { mouseX }` or `::speed < sequenceOf(1.0, 2.0, 3.0)`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [BinocularGazeIntersection.kt](graphics.md#binoculargazeintersection-kt) | Graphics | 21 | 2 | Estimates where the two eyes converge from a pair of per-eye gaze rays. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [BitmapBrowserSurface.kt](imaging.md#bitmapbrowsersurface-kt) | Imaging | 4 | 1 | A browser-frame receiver that uploads CPU pixels to the GPU, as a fallback where Chromium's shared-texture export delivers an empty frame. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>particles/<wbr></small> [BoidSketch.kt](simulation.md#boidsketch-kt) | Simulation | 92 | 71 | Boids as a declarative spec: kinds of boid, each with a count, speed limits, a field of view, a look and a list of Reynolds steering rules, all stepped together on the GPU over a neighbour grid and drawn with tapered trails. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [BoidSketchSmoke.kt](examples.md#boidsketchsmoke-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [BooleanNetworkExplorer.kt](examples.md#booleannetworkexplorer-kt) | Examples | 8 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [BooleanNetworkMusicSmokeTest.kt](examples.md#booleannetworkmusicsmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>automata/<wbr></small> [booleannetworks.kt](data.md#booleannetworks-kt) | Data | 32 | 25 | Synchronous Boolean networks and the pictures you draw of them. | [Boolean networks to FLine examples](../boolean_networks_examples.md), [Boolean network music examples](../boolean_network_music_examples.md) |
@@ -2209,6 +2211,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>context/<wbr></small> [WhyAnswer.kt](workspace.md#whyanswer-kt) | Workspace | 16 | 14 | The value a box gets back when it asks where one of its inputs comes from. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [Window.kt](graphics.md#window-kt) | Graphics | 33 | 3 | The GLFW window a Vulkan renderer draws into, with its input listeners and a framebuffer-to-PNG capture. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr></small> [WindowCaptureQueue.kt](graphics.md#windowcapturequeue-kt) | Graphics | 0 | 0 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [WindowPointer.kt](graphics.md#windowpointer-kt) | Graphics | 11 | 1 | The pointer over a renderer window and the window's size, in window points, read once a frame. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [WindowsExternalBrowserSurface.kt](imaging.md#windowsexternalbrowsersurface-kt) | Imaging | 3 | 1 | Windows import path for Electron browser frames: wraps a D3D11 shared texture, passed as an NT handle, in a Vulkan image that Field can copy from. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [WitherSmokeTest.kt](workspace.md#withersmoketest-kt) | Workspace · internal | 3 | 0 | Smoke for the experiment that wires the Wither compiler plugin (kyay10/wither) into the K2 REPL (`KotlinInterface2`). |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [WorkspaceLastDocument.kt](workspace.md#workspacelastdocument-kt) | Workspace | 0 | 0 |  |  |
