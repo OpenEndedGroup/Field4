@@ -227,12 +227,6 @@ class DocumentedApiEvaluationTest {
             "streaming_diffusion.md; StreamDiffusionSupport.configuredRoot reads where the optional worker " +
                 "is installed, and the page only calls it on the way to a Linux/NVIDIA backend; the " +
                 "streaming_diffusion transcript compiles the Kotlin only.",
-        "objectPoint" to
-            "open_dlss_nr.md; a GLSL function in the cubes scene's vertex shader, run only inside a " +
-                "live renderer. The open_dlss_nr_cubes transcript compiles the Kotlin only.",
-        "cameraPosition" to
-            "open_dlss_nr.md; a GLSL function in the cubes scene's vertex shader, run only inside a " +
-                "live renderer. The open_dlss_nr_cubes transcript compiles the Kotlin only.",
         "saveFrame" to
             "open_dlss_nr.md; the study's saveFrame writes a frame read back from live GPU targets, " +
                 "so it needs a renderer; the page's transcripts compile the call.",
@@ -240,9 +234,6 @@ class DocumentedApiEvaluationTest {
             "gpu_shader_learning.md; ShaderTraining.sourceDigest names the source a saved fit came from. " +
                 "It is taught beside GPU training, which needs NVIDIA cooperative vectors; the page's " +
                 "transcript compiles the Kotlin only.",
-        "uintBitsToFloat" to
-            "computed_ray_geometry.md; a GLSL builtin in the page's invalid-input compute shader. That " +
-                "shader feeds Mega Geometry cluster builds, which need an NVIDIA device; the transcript compiles only.",
         "enableRtxdi" to
             "direct_lighting.md; DirectLighting.enableRtxdi installs NVIDIA's RTXDI resampling. " +
                 "It needs an NVIDIA device exposing that path; MoltenVK does not, and the page's " +
@@ -271,12 +262,6 @@ class DocumentedApiEvaluationTest {
         "computeBarrier" to
             "agent_transcripts.md; a Vulkan compute barrier task. Its compiled graphics " +
                 "transcripts need a live device to submit and observe the dependency.",
-        "flowSmoothVelocity" to
-            "flow_grain.md; a GLSL helper evaluated in the native flow_grain capture. " +
-                "Headless transcript verification compiles the Kotlin, not the shader execution.",
-        "flowStrokeClip" to
-            "flow_grain.md; a GLSL stroke projection helper used by the native drawing pass. " +
-                "The transcript is COMPILE_ONLY; no registered evaluator reaches this shader.",
         "takeFocus" to
             "puppet_browser.md; PuppetBrowserKeyboard needs a native Window and browser producer. " +
                 "youtube_vr_browser compiles this focus handoff but does not execute it in CI.",
@@ -288,25 +273,11 @@ class DocumentedApiEvaluationTest {
             "openxr_eye_intersection.md; this is the scene-local matrix callback parameter of " +
                 "lineMesh, not a global Field API. The lexical census includes its invocation; " +
                 "the containing OpenXR transcript is COMPILE_ONLY and needs a live headset.",
-        // The madp Fern port (2026-10-20): GLSL functions a student writes in an IteratedSystem's
-        // compute tab, called by the points/system harness's main(), never by Kotlin, so no
-        // Kotlin evaluator can count them. IteratedSystemShaderTest compiles every system in
-        // fern_iterated_systems against the harness; running them needs a Vulkan device.
-        "initParticle" to
-            "agent_transcripts.md (fern_iterated_systems); a GLSL function in a system's compute " +
-                "tab, called by the points/system harness. Compiled by IteratedSystemShaderTest.",
-        "shouldDraw" to
-            "agent_transcripts.md (fern_iterated_systems); a GLSL function in a system's compute " +
-                "tab, called by the points/system harness. Compiled by IteratedSystemShaderTest.",
-        "pointSize" to
-            "agent_transcripts.md (fern_iterated_systems); a GLSL function in a system's compute " +
-                "tab, called by the points/system harness. Compiled by IteratedSystemShaderTest.",
-        "flowMask" to
-            "flow_grain.md; this is an editable GLSL obstacle callback. The native flow_grain " +
-                "capture evaluates it on a GPU; headless CI compiles the document's Kotlin only.",
-        "flowVelocity" to
-            "flow_grain.md; this is an editable GLSL velocity callback over live fluid buffers. " +
-                "The native flow_grain capture evaluates it outside headless CI.",
+        // Eleven rows were GLSL functions read out of shader tabs (initParticle, objectPoint, flowMask,
+        // the probe write `fieldProbe(...)`, ...) until 2026-10-21, when [withoutForeignSource] stopped
+        // the census reading those tabs as Kotlin. The Kotlin side of the probe, fieldProbeHere, is
+        // evaluated; src/jvmMain/kotlin/afield/examples/four/FieldProbeSmokeTest.kt still has no
+        // FIELD_TEST block or Gradle task, so the GPU path it exercises runs nowhere in CI.
         // The five the path-tracer instrument teaches. They became visible to this guard when
         // `path_tracer_instrument` was promoted out of `dev_docs/agents/demos/` into the corpus:
         // the scene was always documented, and until then nothing in CI compiled it either.
@@ -352,15 +323,6 @@ class DocumentedApiEvaluationTest {
         // no native producer process". HeadlessPuppetBrowserTest now spawns one — no GPU, no network,
         // a committed file:// fixture — and asserts on both. The backward direction of this ledger is
         // what noticed; the rows are deleted rather than reworded.
-        // The one row here that is not a good reason, and the only one a person should act on.
-        // `src/jvmMain/kotlin/afield/examples/four/FieldProbeSmokeTest.kt` exists, opens a Window and
-        // exercises ShaderFieldProbe — and carries no FIELD_TEST block and no Gradle task, so nothing
-        // runs it. Two published pages teach the API. See dev_docs/field_probes.md for why the
-        // headless docs runner cannot drive GPU-compute fences either.
-        "fieldProbe" to
-            "afield_four_graphics.md, field_probes.md; only threebox/spin_glass (COMPILE_ONLY). " +
-                "FieldProbeSmokeTest.kt is an unregistered `main` — no FIELD_TEST id, no Gradle task " +
-                "— so nothing in CI runs it. This row is a TODO, not a justification.",
         // The audio_render_analysis family. Its transcript is COMPILE_ONLY because four of its boxes
         // reach an external analysis worker or a real-time Sonic Pi recorder, which is a sound reason
         // and also means the *rendering* entry points on the page have no CI evaluation at all. The
@@ -406,8 +368,67 @@ class DocumentedApiEvaluationTest {
     private fun transcriptCalls(): Map<String, Set<String>> =
         (transcriptsDir().listFiles { f -> f.isFile && f.extension == "yaml" } ?: emptyArray())
             .associate { f ->
-                f.nameWithoutExtension to CALL.findAll(f.readText()).map { it.groupValues[1] }.toSet()
+                f.nameWithoutExtension to CALL.findAll(withoutForeignSource(f.readText())).map { it.groupValues[1] }.toSet()
             }
+
+    /**
+     * [yaml] with the block scalars of non-Kotlin properties blanked: a box's `compute:`, `fragment:`,
+     * `msl:`, `stackSL:` tab is shader or language source that no Kotlin evaluator can ever call.
+     *
+     * Before this the census read a GLSL `State initParticle(uint index, uint count) {` as a Kotlin
+     * call, and a branch that taught a compute-tab contract on a published page bounced until it
+     * ledgered three GLSL functions as "compiled, never run" (madp Fern, 2026-10-20). Eleven rows
+     * had gone into [COMPILE_ONLY_REMAINDER] that way. Which properties are not Kotlin is read from
+     * [afield.document.graph.Box.ioSeparateProperties], the map that gives each its sidecar extension,
+     * so a new shader stage is excluded here the day it gets a file type.
+     */
+    private fun withoutForeignSource(yaml: String): String {
+        val out = StringBuilder()
+        var blockKeyColumn = -1
+        for (line in yaml.lines()) {
+            if (blockKeyColumn >= 0) {
+                if (line.isBlank() || line.length - line.trimStart().length > blockKeyColumn) {
+                    out.append('\n')
+                    continue
+                }
+                blockKeyColumn = -1
+            }
+            BLOCK_KEY.matchEntire(line)?.let { m ->
+                if (m.groupValues[2] in FOREIGN_SOURCE_PROPERTIES) blockKeyColumn = m.groups[2]!!.range.first
+            }
+            out.append(line).append('\n')
+        }
+        return out.toString()
+    }
+
+    private val FOREIGN_SOURCE_PROPERTIES: Set<String> =
+        afield.document.graph.Box.ioSeparateProperties.filterValues { it != "kt" }.keys
+
+    private val BLOCK_KEY = Regex("""^(\s*(?:-\s+)?)([A-Za-z_][A-Za-z0-9_]*):\s*[|>][-+0-9]*\s*$""")
+
+    @Test
+    fun shaderTabsInTranscriptsAreNotKotlinCalls() {
+        val yaml = """
+            operations:
+              - op: new-box
+                properties:
+                  code: |
+                    val system = iteratedSystem()
+                  compute: |
+                    State initParticle(uint index) {
+
+                      return State(0);
+                    }
+                  vertex: >-
+                    vec4 cameraPosition() { }
+              - op: run
+                value: kotlinAfter()
+        """.trimIndent()
+        val calls = CALL.findAll(withoutForeignSource(yaml)).map { it.groupValues[1] }.toSet()
+        assertEquals(setOf("iteratedSystem", "kotlinAfter"), calls)
+        assertEquals(yaml.lines().size, withoutForeignSource(yaml).lines().size - 1, "line count changed")
+        assertTrue("compute" in FOREIGN_SOURCE_PROPERTIES && "code" !in FOREIGN_SOURCE_PROPERTIES)
+    }
 
     /**
      * Published pages that name [api] as a call.
