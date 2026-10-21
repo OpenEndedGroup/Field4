@@ -12,6 +12,9 @@ description: |
   Comment out the `frames { }` loop at the bottom to hold one of them.
   
   The saved document at `dev_docs/agents/demos/path_tracing_emitters/` is this same scene.
+docs:
+  - page: path_tracing.md#sampling-the-lamps-directly
+    why: "Explains emitter sampling, the switch this document toggles."
 operations:
   - create:
       box: pt_renderer

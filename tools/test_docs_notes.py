@@ -21,6 +21,10 @@ from tempfile import TemporaryDirectory
 from unittest import mock
 
 from tools import docs_notes as dn
+from tools.git_isolation import scrub_process_env  # noqa: E402
+
+# This module builds scratch git repositories; an inherited GIT_DIR would redirect them.
+scrub_process_env()
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PAGE = "https://openendedgroup.com/field4/guide/"

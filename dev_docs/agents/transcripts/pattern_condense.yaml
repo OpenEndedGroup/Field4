@@ -17,6 +17,9 @@ description: >
 
   The saved document at `dev_docs/agents/demos/pattern_condense/` is this same scene. See `dev_docs/PAT_CONDENSE.md` and the section on
   `public/docs/pattern_language.md`.
+docs:
+  - page: pattern_language.md#the-shortest-way-to-write-a-rhythm-down
+    why: "Explains rhythm condensation, which this document draws and checks."
 operations:
   - create:
       box: condense_basics
@@ -37,12 +40,12 @@ operations:
           a named figure - x(p,s) for Euclidean, x(kN) / x(gN) for Kolakoski - or spelled out, and
           which one you get is decided by character count and nothing else.
           */
-          val rhythms = listOf(
+          val rhythms = [
               "x ~ ~ x ~ x ~ ~",
               "x ~ ~ x x ~ x ~ ~ x ~ ~ x x ~ x",
               "bd [hh hh] sd [cp cp]",
               "a b c d e c a d",
-          )
+          ]
 
           val found = showPatCondense(*rhythms.toTypedArray(), channel = "roll")
 

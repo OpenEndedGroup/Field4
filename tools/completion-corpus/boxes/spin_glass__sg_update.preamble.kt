@@ -102,11 +102,11 @@ fun BufferParameters.asBonds(): Bonds =
 /*compute-pc-binding:mode*/ var ComputeMesh.mode by ComputeMesh.BoundFromStructure<Any>()
 /*compute-pc-binding-group:mode*/ var ComputeMeshGroup.mode by ComputeMeshGroup.BoundFromStructure<Any>()
 /*compute-pc-structure:temperature*/ var Structure.temperature by Structure.FromStructure<Any>()
-/*compute-pc-binding:temperature*/ var ComputeMesh.temperature by ComputeMesh.BoundFromStructure<Float>()
-/*compute-pc-binding-group:temperature*/ var ComputeMeshGroup.temperature by ComputeMeshGroup.BoundFromStructure<Float>()
+/*compute-pc-binding:temperature*/ var ComputeMesh.temperature by ComputeMesh.BoundFromStructure<Number>()
+/*compute-pc-binding-group:temperature*/ var ComputeMeshGroup.temperature by ComputeMeshGroup.BoundFromStructure<Number>()
 /*compute-pc-structure:field*/ var Structure.field by Structure.FromStructure<Any>()
-/*compute-pc-binding:field*/ var ComputeMesh.field by ComputeMesh.BoundFromStructure<Float>()
-/*compute-pc-binding-group:field*/ var ComputeMeshGroup.field by ComputeMeshGroup.BoundFromStructure<Float>()
+/*compute-pc-binding:field*/ var ComputeMesh.field by ComputeMesh.BoundFromStructure<Number>()
+/*compute-pc-binding-group:field*/ var ComputeMeshGroup.field by ComputeMeshGroup.BoundFromStructure<Number>()
 var Box.window by Inheritance<Window>() /*from:sg_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:sg_renderer*/ /**/
 val Why.window by Whying() /*from:sg_renderer*/ /**/

@@ -25,7 +25,7 @@ val o =
     .:12C
 """,
     )
-o.onNote {
+o.onNote("sound") {
     synth.play(it)
     markdown("heard", "`${it.note}${it.octave}` on channel ${it.channel}, MIDI ${it.midi}")
 }
@@ -78,8 +78,12 @@ voice under it, and pick a new melody each time the bass plays:
 ```diffstatic {data-lang=kotlin}
 o.bpm = 140
 o.write(0, 9, "D4\n.:03C")
-o.onNote { if (it.channel == 1) o.write(5, 3, ["CDEGAGED", "EGBDBGEB"].random()) }
+o.onNote("choose melody") { if (it.channel == 1) o.write(5, 3, ["CDEGAGED", "EGBDBGEB"].random()) }
 ```
+
+Named callbacks replace the previous callback with the same name on that ORCA. Stop or rerun
+of the registering box removes them. Give independent parts different names. Unnamed callbacks
+remain registered for the lifetime of their ORCA.
 
 A change reaches ORCA at its next frame. Inside a coroutine, `o.sync()` waits until ORCA has applied everything sent so far and
 reported back, so `o.grid` shows the result.
@@ -94,7 +98,7 @@ melody note at `(4, 4)` and the bass's note sits at `(4, 7)`, so one line makes 
 harmony:
 
 ```diffstatic {data-lang=kotlin}
-o.onCell(4, 4) { note -> o[4, 7] = if (note == 'G' || note == 'A') 'F' else 'C' }
+o.onCell(4, 4, "bass harmony") { note -> o[4, 7] = if (note == 'G' || note == 'A') 'F' else 'C' }
 ```
 
 `variable(name, value)` holds an ORCA variable every frame, so a `V` on the grid reads it as if
@@ -186,14 +190,14 @@ val heard = ArrayDeque("CCCCCCCC".toList())
 var echoes = 0
 var nudged = "none yet"
 
-lead.onNote {
+lead.onNote("remember lead") {
     if (it.channel == 0) {
         heard.addLast(it.note[0])
         heard.removeFirst()
     }
     synth.play(it, pan = 0.35, wave = if (it.channel == 1) PatWave.SINE else PatWave.TRIANGLE)
 }
-echo.onNote {
+echo.onNote("voice echo") {
     echoes++
     synth.play(it, pan = 0.7, wave = PatWave.SQUARE, gain = 0.35, cutoffHz = 2400.0)
 }

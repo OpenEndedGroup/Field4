@@ -1,5 +1,8 @@
 # Generated from mqtt_demo/metadata.edn by afield.examples.DocumentToTranscript.
 name: "mqtt_demo"
+docs:
+  - page: mqtt.md
+    why: "Explains MQTT brokers, topics and devices in Field."
 operations:
   - create:
       box: "mqtt-sensors"

@@ -2,13 +2,13 @@
 // onChange redraws it after every edit.
 val wobble = keyframes(
     name = "wobble",
-    defaults = listOf(
+    defaults = [
         vec(0.0, 0.2),
         vec(0.5, 0.9),
         vec(1.0, 0.1),
         vec(1.5, 0.8),
         vec(2.0, 0.3),
-    ),
+    ],
 )
 
 val smooth = { keys: List<Keyframe> -> with(Functions) { gaussianSmooth(fromKeyframeEditor(keys), sigma = 0.15) } }

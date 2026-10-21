@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="onnx_webcam" index="0" -->
 
 ```edn [field-box id="onnx_webcam" role="properties"]
-{"id" "onnx_webcam" "index" 0 "name" "Webcam perception" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Webcam perception" "_tombstone" false "frame" #afield/rect [80.0 80.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "onnx_webcam_code_.kt" "lines" 121 "characters" 5399 "sha256" "3b41af2fcb145c31fb0ec01033ba1b2a6a23d397eacd1aa558106526ce568633"}]}
+{"id" "onnx_webcam" "index" 0 "name" "Webcam perception" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Webcam perception" "_tombstone" false "frame" #afield/rect [80.0 80.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "onnx_webcam_code_.kt" "lines" 121 "characters" 5387 "sha256" "5fd26bdc0a49a7e30a14c58bbd31ac219d58b630c3d322143d240e80a69609dc"}]}
 ```
 
 ```kotlin [field-property box="onnx_webcam" name="code" path="onnx_webcam_code_.kt"]
@@ -113,8 +113,8 @@ try {
     // `bar(max = 1.0)` so the bars read as "of the whole", not "of the best one this
     // frame" — a top-1 at 12% should look like 12%, not like a full bar.
     val top =
-        Table(listOf("label", "confidence"))
-            .rows(ranked.map { (label, p) -> listOf(label, p) })
+        Table(["label", "confidence"])
+            .rows(ranked.map { (label, p) -> [label, p] })
             .role("confidence", CellRole.ACCENT)
             .bar("confidence", max = 1.0, width = 180)
             .format("confidence") { "%.1f%%".format((it as Number).toDouble() * 100) }

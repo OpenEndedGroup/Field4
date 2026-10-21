@@ -5,9 +5,9 @@ with no readback and no encode. macOS (KosmicKrisp) and Linux native Wayland (ve
 
 ```kotlin
 val view = ElectronRTTView(640, 360)
-val module = moduleHere { view.rtt.apply() }
+val module = moduleHere { +view }
 module += "mesh" to m
-view.rtt += "content" to module
+view += "content" to module
 display("main", view.html())
 ```
 

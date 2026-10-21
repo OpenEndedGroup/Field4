@@ -12,6 +12,11 @@ description: >
   to watch the field follow. Requires a GPU/Vulkan window. Replay this file into a
   fresh Field with the agent backdoor (field_run_transcript) to get both boxes
   with no other setup.
+docs:
+  - page: rectsl_examples.md
+    why: "Shows RectSL scenes, including SDF lowering."
+  - page: rectsl_cheatsheet.md
+    why: "Lists the RectSL vocabulary used in the scene."
 operations:
   # 1. renderer box — owns the on-screen Window + Renderer and pumps the loop.
   - create:

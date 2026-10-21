@@ -61,8 +61,7 @@ lambda maps a full state to what your sensor would report; here it exposes only
 `state[0]`, so the filter estimates the other coordinates purely from the dynamics.
 
 Two constraints come straight from `pf.kt`: the **state dimension must be 1–3** and
-the **measurement dimension must be 1–3**. Both the state and the measurement can
-have their own dimension.
+the **measurement dimension must be 1–3**. The two do not have to match.
 
 ### The `UKFOptions` knobs
 

@@ -11,6 +11,9 @@ description: |
       `(context "palette")` the Kotlin variable the root defines.
 
   Run the root first: the Clojure boxes read what it defines.
+docs:
+  - page: clojure.md
+    why: "Explains Clojure boxes: errors, controls and values from parents."
 operations:
   - create:
       box: cparity_root

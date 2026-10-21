@@ -12,6 +12,9 @@ description: >
   Box 2 needs the pinned Dirt-Samples subset (`./gradlew fetchDocsDirtSamples`, ~6 MB, checksummed) and
   stops with that command in its error when it is missing; there is no synth fallback. Its first run pays
   13-22s of Faust/Truffle warm-up. Both boxes are executed by this transcript.
+docs:
+  - page: sound_paths.md
+    why: "Explains the sound path map this document draws."
 operations:
   - create:
       box: sound_map_paths

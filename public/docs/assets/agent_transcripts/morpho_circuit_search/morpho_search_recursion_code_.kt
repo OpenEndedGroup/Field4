@@ -9,10 +9,10 @@ SPLIT, which means every correct answer is divide-and-conquer by construction.
 val problem = MorphoProblems.orReduce()
 println(problem)
 
-val runs = listOf(
+val runs = [
     MorphoSearch.random(problem.spec, problem.generator, 6000, seed = 2),
     MorphoSearch.evolve(problem.spec, problem.generator, 6000, seed = 2, mu = 24, lambda = 40),
-)
+]
 runs.forEach { println(it.summary()) }
 
 // Cheapest correct design across both runs; if a seed happens not to solve it, fall back
@@ -30,8 +30,8 @@ whose two halves differ, and it will happily return a design that is silently wr
 5, 7 and 9. Re-compiled here at widths nothing was selected on: same source text, new
 signature, nothing to translate and nothing to get wrong.
 */
-listOf(7, 9, 16, 32, 48).forEach { w ->
-    val f = MorphoSearch.generalization(best.genome, problem.spec, listOf(w))
+[7, 9, 16, 32, 48].forEach { w ->
+    val f = MorphoSearch.generalization(best.genome, problem.spec, [w])
     println("  at %2d bits: %s".format(w, f))
 }
 
@@ -58,7 +58,7 @@ conceit and it now applies to a design nobody wrote.
 */
 val source = best.genome.render()
 val panels =
-    listOf(4, 8, 16).map { w ->
+    [4, 8, 16].map { w ->
         val c = morphoCircuit(MorphoProblems.ROOT, w, source = source)
         c.growFully(relaxSteps = 220)
         "evolved or-reduce at %d bits — %d gates, depth %d".format(w, c.netlist.gateCount, c.depth.toInt()) to

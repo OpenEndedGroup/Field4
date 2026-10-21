@@ -25,7 +25,7 @@ run {
         1.0 1.0 1.0 1 vec4
         0.0 0.33 0.67 1 vec4
         palette
-    """
+        """
             .trimIndent()
 
     val targetProgram =
@@ -36,7 +36,7 @@ run {
         1.0 1.0 1.0 1 vec4
         0.12 0.55 0.88 1 vec4
         palette
-    """
+        """
             .trimIndent()
 
     val template = StackSLCpu.stillTemplate()
@@ -77,7 +77,7 @@ run {
     val gutter = 6
     val width = 2 * panel + gutter
     val strip = IntArray(width * panel) { 0xFF14161A.toInt() }
-    listOf(viaWires, viaSource).forEachIndexed { index, raster ->
+    [viaWires, viaSource].forEachIndexed { index, raster ->
         val argb = raster.toArgb()
         val x0 = index * (panel + gutter)
         for (y in 0 until panel) for (x in 0 until panel) {

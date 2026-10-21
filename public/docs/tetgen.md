@@ -44,7 +44,7 @@ shows both.
 
 A tetrahedral mesh is awkward to look at, which is a real obstacle to trusting one. Render it
 naively and you see the boundary — the surface you already had — while everything the mesher
-actually did stays hidden. `afield.geometry.mesh.tetgen` has three answers, and the figure below is all three:
+actually did stays hidden. The `afield.geometry.mesh.tetgen` package has three answers, and the figure below is all three:
 `boundary()` for the skin, `filtered()` with a half-space test for a cutaway, and
 `toTriMesh(shrink = …)` for the view where each element stands slightly apart from its neighbours.
 
@@ -135,7 +135,7 @@ changes nothing, and `tetrahedralize` logs a warning saying so.
 
 Finer requests work as expected. Cost grows roughly in proportion to the element count, about
 11–14 µs per element, so a 36,000-element mesh takes about half a second: fast enough to re-mesh on
-every geometry edit. `afield.geometry.mesh.tetgen` has no way to update a mesh in place, so re-meshing is how you
+every geometry edit. The `afield.geometry.mesh.tetgen` package has no way to update a mesh in place, so re-meshing is how you
 follow an edit. The measured sweep is under [Measurements](#measurements).
 
 ## Into Kratos

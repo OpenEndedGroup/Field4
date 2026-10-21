@@ -1,6 +1,6 @@
 # Notation: Field's Kotlin ↔ Excalidraw interface
 
-Status (2026-09-29): parts 1 (scene API, reactions, anchoring, selection) and 1b (reading by
+Status (2026-10-19): renewed — see "Parity, 2026-10-19" at the end. Earlier (2026-09-29): parts 1 (scene API, reactions, anchoring, selection) and 1b (reading by
 intersection) are implemented and tested; live Kotlin/JS scripts (part 3) are not yet built. The drawing
 layer itself (Alt+D, camera, persistence) is described in `DRAWING_LAYER_HANDOFF.md`; this page is
 about making that drawing *mean* something to code, in both directions.
@@ -13,7 +13,7 @@ written from three places that run at three different speeds:
 | Layer | Runs | Direction | For |
 | --- | --- | --- | --- |
 | **Scene API** (`afield.ui.notation.notation`) | JVM, in box code | read + write | querying what was drawn, drawing from code, relating marks to boxes |
-| **Reactions** (`onNotation`, `onStroke`) | JVM, when the scene changes | drawing → code | treating a gesture, an arrow, a scribble as input |
+| **Reactions** (`onChange`, `onStroke`) | JVM, when the scene changes | drawing → code | treating a gesture, an arrow, a scribble as input |
 | **Live scripts** (`// {{ notation }}` Kotlin/JS) | in the page, every frame | both, locally | animation, hit-testing, custom tools — anything that must not round-trip |
 
 And one structural service underneath all three:
@@ -180,3 +180,30 @@ write and a hand edit arriving together both survive. Server writes bump version
 4. Selection sync (client → server, not persisted).
 5. Live scripts: page runtime + notation profile + transport.
 6. Demo document, docs, handoff.
+
+## Parity, 2026-10-19
+
+Every API on this page was run live through the backdoor (port 9561, headless Playwright page
+attached) by the `audit` box of `dev_docs/agents/transcripts/notation_elements.yaml`; reactions
+were driven by its `hand` box, which sends a scene over the page's real `notation-scene` message.
+
+| API | State | Note |
+| --- | --- | --- |
+| `marks` `strokes` `arrows` `lines` `texts` `shapes` `frames` `mine` | works | |
+| `notation["id"]`, `named`, `over(box)`, `arrowsFrom/To`, `fromBox/toBox`, `selected` | works | |
+| `mark.kind/bounds/points/pressures/stroke/owner`, `toFLine`, `yAt`, `xAt` | works | |
+| `vertical` `horizontal` `intersect(a, b)` (world) | works | |
+| `space(name / box / rect)`, `space.vertical/events/between/sounding` | works | |
+| `space.marks` excluding the defining mark | **was broken** (N0929-4), fixed | matched by bounds: a note with the frame's bounds was dropped, the frame read as a note. Now by id. `NotationIntersectionTest.aSpaceExcludesItsDefiningMarkByIdNotByBounds`, red before |
+| `space(mark)` | **added** | |
+| `notation { }` builders: rect ellipse diamond text line stroke arrow frame | works | |
+| `frame(...) { }` contents (frameId), `group { }` (groupIds), `fillStyle`, `opacity` per shape | **added** | `mark.groups`, `notation.grouped(m)`; tests in `NotationTest` |
+| `edit` (incl. new `roughness` `strokeStyle` `dashed` `fillStyle`), `delete`, `anchor`, `unanchor`, `clear(key)` | works | |
+| `mark.anchorTo(box)` | **was missing** (documented above, never written), added | |
+| `onStroke` `onArrow` `onText` `onChange` | works | fire only for client (human) scenes, never for code writes — by design |
+| `onNotation` (named in the table at the top) | **missing** | the API is `onChange`; the name above is stale |
+| Part 3, live `// {{ notation }}` Kotlin/JS scripts | **missing** | still unbuilt |
+
+Open finding: in the live page a solid-filled rectangle exactly the size of a frame, drawn first
+inside it, hid the notes drawn after it (they were present in the scene and read correctly).
+Not diagnosed; possibly Excalidraw's frame-clip rendering order. The demo no longer draws one.

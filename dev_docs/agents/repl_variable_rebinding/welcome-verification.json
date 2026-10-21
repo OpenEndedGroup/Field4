@@ -1,0 +1,27 @@
+{
+  "page": "public/docs/first_steps.md",
+  "asset": "public/docs/assets/first_steps/first-look.mp4",
+  "sha256": "1843bb7f3885ca8d9c5649d191ea52bb41476d0b23e9e9034f89754b0c703837",
+  "bytes": 8031535,
+  "durationSec": 18.1,
+  "normalDocsRunner": "Passed: three real UI captures, zero failures",
+  "runtime": "Matching native Field paint library",
+  "inspectedFrames": [
+    {
+      "second": 3,
+      "observed": "Five-petal running drawing; var petals = 5 on line 2"
+    },
+    {
+      "second": 9,
+      "observed": "Eight-petal drawing after Alt-Enter on var petals = 8, before relaunch"
+    },
+    {
+      "second": 16,
+      "observed": "Relaunched eight-petal drawing with real inline output 8"
+    }
+  ],
+  "pageSha256": "f7b979b2ab4d903ac4cb5909ebf7c3fd5492f9664d86b65c6fbd2555f16f14f4",
+  "macroSha256": "078bb663c937762ebcaa72fb28ab2542855350094fddaffd0a6b4c1e885bbd21",
+  "retainedProfile": "linux-nvidia triangle capture retained on macOS",
+  "optionalRerecord": "A later pointer-placement polish was not run after AC disconnected (battery 58%). That driver-only edit was reverted; the successful recording and its exact driver remain authoritative."
+}

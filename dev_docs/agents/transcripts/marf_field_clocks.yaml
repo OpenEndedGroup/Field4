@@ -6,6 +6,9 @@ description: >
   one person actually tried across thirty-eight edit-and-run cycles in four minutes on the night
   Marf.kt landed, every one of which used to be read in silence. Pure CPU: no Window, no Renderer,
   no audio device. Replay into a fresh Field and execute each box.
+docs:
+  - page: marf.md#which-clock-the-fields-are-read-in
+    why: "Explains which clock MARF fields are read in."
 operations:
 
   # ── 1 ── the refusal, watched firing ────────────────────────────────────────────────────

@@ -6,13 +6,13 @@ Launch **frame history renderer**, **lit scene**, **reprojected accumulation**, 
 
 ## Change a value
 
-The reset assignments at the top of the accumulation box are deliberate: change an assignment and Alt-Enter it. Redeclaring a variable would leave the old loop reading its previous variable.
+Change a `var` declaration at the top of the accumulation box and Alt-Enter it. Field resets older mutable bindings of the same name and type, so the running loop picks up the new value.
 
 - `historyBlend` is the history weight: `0f` uses the current frame, `0.92f` gives roughly twelve frames of history, and `0.98f` makes correspondence errors easier to see. Keep it below `1f`.
 - `motionGain` controls the debug view's display gain. Large gains clip its red/green channels.
 - Yaw, dolly, bob and drift each have an amplitude and speed. Angles are radians and distances are world units. Motion time advances by one sixtieth per Field frame; speeds use these simulation seconds.
 
-The blend and display gain are bound to their variables, so assignment edits reach the shader. The motion loop reads its controls each frame. The native bundle is kept by `once`, while relaunching the accumulation box replaces the named passes and resets motion/history deliberately.
+The blend and display gain are bound to their variables, so declaration edits reach the shader. The motion loop reads its controls each frame. The native bundle is kept by `once`, while relaunching the accumulation box replaces the named passes and resets motion/history deliberately.
 
 ## Read the modes
 

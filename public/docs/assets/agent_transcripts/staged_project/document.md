@@ -18,7 +18,7 @@ The rule that places loot. It changes only after a replay on real placements: se
 "Change a rule without breaking what already works" in the Field docs.
 
 ```edn [field-box id="staged_rule" role="properties"]
-{"id" "staged_rule" "index" 0 "name" "Loot rule" "parents" ["root"] "children" ["staged_builds"] "properties" {"children" #{#afield/box "staged_builds"} "parents" #{#afield/box "root"} "name" "Loot rule" "_tombstone" false "frame" #afield/rect [1440.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_rule_code_.kt" "lines" 53 "characters" 2147 "sha256" "50cc538d4ffc809b484a7f36d4f064d15d5c8345b36bf52f9aea5c2a9b91c292"}]}
+{"id" "staged_rule" "index" 0 "name" "Loot rule" "parents" ["root"] "children" ["staged_builds"] "properties" {"children" #{#afield/box "staged_builds"} "parents" #{#afield/box "root"} "name" "Loot rule" "_tombstone" false "frame" #afield/rect [1440.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_rule_code_.kt" "lines" 53 "characters" 2141 "sha256" "4255793dfe6f832fbc2d9829e1fc4d5a77dc4b644d090cab0b096be23082c6d9"}]}
 ```
 
 ```kotlin [field-property box="staged_rule" name="code" path="staged_rule_code_.kt"]
@@ -52,7 +52,7 @@ val loot = qualifiedSource(
     "loot",
     rule,
     label = "Loot rule",
-    frozen = listOf(FrozenRegion.after("// Checks: everything below this line stays as it is.")),
+    frozen = [FrozenRegion.after("// Checks: everything below this line stays as it is.")],
     control = QualifiedControl("shallow", "L1 4.0 0, L2 6.5 1", "no loot point is epic"),
     fixtures = mapOf(
         "keep" to
@@ -90,7 +90,7 @@ A room is [x, y, w, h] in cells. A door is [x, y, side]: an opening from cell (x
 to its neighbour on side "e" (east) or "s" (south). Loot is [x, y, path budget].
 
 ```edn [field-box id="staged_level" role="properties"]
-{"id" "staged_level" "index" 1 "name" "Level" "parents" ["root"] "children" ["staged_builds"] "properties" {"children" #{#afield/box "staged_builds"} "parents" #{#afield/box "root"} "name" "Level" "_tombstone" false "frame" #afield/rect [40.0 700.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_level_code_.kt" "lines" 199 "characters" 8586 "sha256" "2142282f175a1af726826cc82d82abac9c28ec97613f6f615313ceb46d28c470"}]}
+{"id" "staged_level" "index" 1 "name" "Level" "parents" ["root"] "children" ["staged_builds"] "properties" {"children" #{#afield/box "staged_builds"} "parents" #{#afield/box "root"} "name" "Level" "_tombstone" false "frame" #afield/rect [40.0 700.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_level_code_.kt" "lines" 200 "characters" 8549 "sha256" "a8e8532b18efa678dd097755c6198360f2a5754e91f161b6b6ea9b1382fb593c"}]}
 ```
 
 ```kotlin [field-property box="staged_level" name="code" path="staged_level_code_.kt"]
@@ -113,7 +113,8 @@ val first =
 """
 Box.ioPersistentProperties.add("level")
 Box.ioSeparateProperties["level"] = "json"
-if (getPropertyRaw("level") == null) setPropertyRaw("level", json.writeValueAsString(json.readTree(first)))
+prop<String?>(level)
+if (level == null) level = json.writeValueAsString(json.readTree(first))
 
 // Every check a level must pass. Edits that break one are refused and change nothing.
 fun problems(level: Map<String, Any?>): List<String> {
@@ -151,7 +152,7 @@ fun problems(level: Map<String, Any?>): List<String> {
 val plan = SourceStudy(
     java.io.File(BoxStudies.directory(thisBox), "level"),
     "json",
-    { getPropertyRaw("level", "").toString() },
+    { level.orEmpty() },
     BoxStudies.replacer(thisBox, "level"),
     admit = { source, _ ->
         val found = problems(json.readValue(source))
@@ -307,7 +308,7 @@ Three stages derived from the level: blockout, traversal and placement.
 Each reads the level as it was when its build started, and reports what it measured.
 
 ```edn [field-box id="staged_builds" role="properties"]
-{"id" "staged_builds" "index" 2 "name" "Builds" "parents" ["root" "staged_level" "staged_rule"] "children" ["staged_corpus"] "properties" {"children" #{#afield/box "staged_corpus"} "parents" #{#afield/box "root" #afield/box "staged_level" #afield/box "staged_rule"} "name" "Builds" "_tombstone" false "frame" #afield/rect [640.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_builds_code_.kt" "lines" 314 "characters" 14118 "sha256" "f782280edb6c8089a303fbb671fa0a763f3de3061ba3bbbbd4fd160e12a39fbe"}]}
+{"id" "staged_builds" "index" 2 "name" "Builds" "parents" ["root" "staged_level" "staged_rule"] "children" ["staged_corpus"] "properties" {"children" #{#afield/box "staged_corpus"} "parents" #{#afield/box "root" #afield/box "staged_level" #afield/box "staged_rule"} "name" "Builds" "_tombstone" false "frame" #afield/rect [640.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_builds_code_.kt" "lines" 315 "characters" 13996 "sha256" "195ca113e9f9f2bf3ae4b1d926d03df7d796f225d204610f986a5c535cc97ce3"}]}
 ```
 
 ```kotlin [field-property box="staged_builds" name="code" path="staged_builds_code_.kt"]
@@ -348,26 +349,27 @@ val blockout = StudyBuildStage(
     "Blockout",
     "blockout-v1",
     setOf("level"),
-    resultNotes = { r -> listOf(StudyBuildNotice(r.facts["summary"].toString(), StudyBuildNoticeKind.INFO)) },
+    resultNotes = { r -> [StudyBuildNotice(r.facts["summary"].toString(), StudyBuildNoticeKind.INFO)] },
 ) { c ->
         val g = Grid(c.inputs.getValue("level"))
         // A floor slab per room, and a wall piece on every cell edge between two rooms, or a room and outside, that is
         // not a door.
         val pieces = mutableListOf<List<Double>>()
         for ((_, r) in g.rooms) pieces +=
-            listOf(r[0].toDouble(), r[1].toDouble(), -0.1, r[2].toDouble(), r[3].toDouble(), 0.1)
+            [r[0].toDouble(), r[1].toDouble(), -0.1, r[2].toDouble(), r[3].toDouble(), 0.1]
         val walls = mutableSetOf<Pair<Cell, Cell>>()
         for ((a, _) in g.room) for (b in
-            listOf(
+            [
                 a.first + 1 to a.second,
                 a.first to a.second + 1,
                 a.first - 1 to a.second,
                 a.first to a.second - 1,
-            )) if (g.room[b] != g.room[a] && (a to b) !in g.doors)
-            walls += listOf(a, b).sortedWith(compareBy({ it.first }, { it.second })).let { it[0] to it[1] }
-        for ((a, b) in walls) pieces +=
-            if (a.second == b.second) listOf(b.first - 0.05, a.second.toDouble(), 0.0, 0.1, 1.0, 1.5)
-            else listOf(a.first.toDouble(), b.second - 0.05, 0.0, 1.0, 0.1, 1.5)
+            ]) if (g.room[b] != g.room[a] && (a to b) !in g.doors)
+            walls += [a, b].sortedWith(compareBy({ it.first }, { it.second })).let { it[0] to it[1] }
+        for ((a, b) in walls) pieces.add(
+            if (a.second == b.second) [b.first - 0.05, a.second.toDouble(), 0.0, 0.1, 1.0, 1.5]
+            else [a.first.toDouble(), b.second - 0.05, 0.0, 1.0, 0.1, 1.5],
+        )
         val mesh =
             pieces
                 .map { p -> boxMesh(p[3], p[4], p[5]).translated(p[0] + p[3] / 2, p[1] + p[4] / 2, p[2] + p[5] / 2) }
@@ -391,7 +393,7 @@ val blockout = StudyBuildStage(
                 (solid?.let { ", joined into one solid of volume ${"%.1f".format(it["volume"])} (${it["status"]})" }
                     ?: "; install Manifold to check it as one solid")
         StudyBuildProduct(
-            listOf("blockout.obj"),
+            ["blockout.obj"],
             mapOf(
                 "rooms" to g.rooms.size,
                 "floorCells" to area,
@@ -405,17 +407,17 @@ val blockout = StudyBuildStage(
 // The shortest walk on the grid from one cell to another, or null.
 fun rough(g: Grid, from: Cell, to: Cell): List<Cell>? {
     val back = mutableMapOf(from to from)
-    val queue = ArrayDeque(listOf(from))
+    val queue = ArrayDeque([from])
     while (queue.isNotEmpty()) {
         val a = queue.removeFirst()
         if (a == to) return generateSequence(to) { if (it == from) null else back.getValue(it) }.toList().reversed()
         for (b in
-            listOf(
+            [
                 a.first + 1 to a.second,
                 a.first to a.second + 1,
                 a.first - 1 to a.second,
                 a.first to a.second - 1,
-            )) if (b !in back && g.step(a, b)) {
+            ]) if (b !in back && g.step(a, b)) {
             back[b] = a
             queue.add(b)
         }
@@ -517,8 +519,8 @@ val traversal = StudyBuildStage(
                 "shape" to shape,
             )
             paths[id] = mapOf(
-                "rough" to walk.map { listOf(it.first, it.second) },
-                "relaxed" to tight.map { listOf(it.first, it.second) },
+                "rough" to walk.map { [it.first, it.second] },
+                "relaxed" to tight.map { [it.first, it.second] },
             )
         }
         val outOfReach =
@@ -529,7 +531,7 @@ val traversal = StudyBuildStage(
                 }
         c.file("traversal.json").writeText(json.writeValueAsString(mapOf("loot" to measures, "paths" to paths)))
         StudyBuildProduct(
-            listOf("traversal.json"),
+            ["traversal.json"],
             mapOf(
                 "loot" to measures,
                 "outOfReach" to outOfReach,
@@ -540,7 +542,7 @@ val traversal = StudyBuildStage(
 
 // Placement waits until every loot point can be reached within its path budget.
 val reachable =
-    StudyBuildGate("reachable loot", dependencies = listOf("traversal")) { evidence ->
+    StudyBuildGate("reachable loot", dependencies = ["traversal"]) { evidence ->
         val far = evidence.facts("traversal")["outOfReach"] as List<*>
         if (far.isEmpty()) null else "Out of reach within its path budget: ${far.joinToString()}."
     }
@@ -553,16 +555,16 @@ val placement = StudyBuildStage(
     "Placement",
     "placement-v1",
     setOf("reachable loot", "rule"),
-    listOf("traversal"),
+    ["traversal"],
     inputHelp = StudyBuildInputHelp("Needs the loot rule", "Run the Loot rule box; placement follows its rule."),
     resultNotes = { r ->
-        listOf(
+        [
             StudyBuildNotice(
                 (r.facts["placed"] as Map<*, *>).entries.joinToString { "${it.key} ${it.value}" } +
                     "; ${r.facts["encounters"]} guarded.",
                 StudyBuildNoticeKind.INFO,
             ),
-        )
+        ]
     },
 ) { c ->
         val measured =
@@ -577,13 +579,13 @@ val placement = StudyBuildStage(
         c.file("rule-input.txt").writeText(input)
         c.file("placement.json").writeText(json.writeValueAsString(placed))
         StudyBuildProduct(
-            listOf("rule-input.txt", "placement.json"),
+            ["rule-input.txt", "placement.json"],
             mapOf("placed" to placed, "encounters" to placed.values.count { "guarded" in it }),
         )
     }
 
-val stages = listOf(blockout, traversal, placement)
-val gates = listOf(reachable)
+val stages = [blockout, traversal, placement]
+val gates = [reachable]
 thisBox.properties["levelStages"] = stages
 thisBox.properties["levelGates"] = gates
 
@@ -601,7 +603,7 @@ showStudyBuilds("stages")
 
 // Draw the current traversal's relaxed paths over the plan, with the Level box's drawing, whenever it changes.
 // The watcher stops when this runner closes, which happens when the box runs again or is stopped.
-kotlin.concurrent.thread(isDaemon = true) {
+go {
     var shown: String? = null
     while (true) {
         val current = runCatching { builds.stages().first { it.id == "traversal" }.current }.getOrElse { break }
@@ -622,7 +624,7 @@ kotlin.concurrent.thread(isDaemon = true) {
                 shown = current.id
             }
         }
-        Thread.sleep(500)
+        kotlinx.coroutines.delay(500)
     }
 }
 ```
@@ -631,22 +633,17 @@ kotlin.concurrent.thread(isDaemon = true) {
 
 <!-- field-box id="staged_corpus" index="3" -->
 
-### Narrative
-
-From `code`
-
-Seeded variants of the level, built by the same stages and shown side by side.
-Nothing here asks a model: it is the machine run many times. Run this box to build them.
-
 ```edn [field-box id="staged_corpus" role="properties"]
-{"id" "staged_corpus" "index" 3 "name" "Corpus" "parents" ["root" "staged_builds"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "staged_builds"} "name" "Corpus" "_tombstone" false "frame" #afield/rect [1440.0 520.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_corpus_code_.kt" "lines" 134 "characters" 6379 "sha256" "0b4c62d2e2667508a9d37753be100073d2f2f8d8a8ccb8bb4e88308a9ee63b40"}]}
+{"id" "staged_corpus" "index" 3 "name" "Corpus" "parents" ["root" "staged_builds"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "staged_builds"} "name" "Corpus" "_tombstone" false "frame" #afield/rect [1440.0 520.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_corpus_code_.kt" "lines" 146 "characters" 6746 "sha256" "53946ca56e5fc4622f3a47f2f0a1d00d258bb8e569548e976267cb175df76775"}]}
 ```
 
 ```kotlin [field-property box="staged_corpus" name="code" path="staged_corpus_code_.kt"]
-// Seeded variants of the level, built by the same stages and shown side by side.
-// Nothing here asks a model: it is the machine run many times. Run this box to build them.
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import kotlinx.coroutines.*
+
+// Seeded variants of the level, built by the same stages and shown side by side.
+// Nothing here asks a model: it is the machine run many times. Run this box to build them.
 
 val json = jacksonObjectMapper()
 val seeds = 0..5
@@ -690,13 +687,13 @@ fun variant(source: String, seed: Int): String {
         val (nx, ny) = if (d[2] == "e") x to y + shift else x + shift to y
         val na = roomAt(nx, ny)
         val nb = if (d[2] == "e") roomAt(nx + 1, ny) else roomAt(nx, ny + 1)
-        if (na == a && nb == b) doors[id] = listOf(nx, ny, d[2])
+        if (na == a && nb == b) doors[id] = [nx, ny, d[2]]
     }
     if (loot.isEmpty()) return source
     return json.writeValueAsString(level + mapOf("rooms" to rooms, "doors" to doors, "loot" to loot))
 }
 
-fun runCorpus() {
+fun runCorpus(checkActive: () -> Unit) {
     val stages = thisBox.named("Builds").properties["levelStages"] as List<StudyBuildStage>
     val gates = thisBox.named("Builds").properties["levelGates"] as List<StudyBuildGate>
     val draw =
@@ -704,6 +701,7 @@ fun runCorpus() {
     val level = thisBox.named("Level").getPropertyRaw("level") as String
     val rule = thisBox.named("Loot rule").getPropertyRaw("lootRule") as String
     val tiles = seeds.map { seed ->
+        checkActive()
         BoxStudies.show(
             thisBox,
             "gallery",
@@ -713,6 +711,7 @@ fun runCorpus() {
         val builds =
             studyBuilds("variant$seed", stages, workers = 1, gates = gates) { mapOf("level" to source, "rule" to rule) }
         fun build(stage: String): StudyBuildRecord? {
+            checkActive()
             val state = builds.stages().first { it.id == stage }
             return state.current ?: state.fingerprint?.let { builds.await(builds.start(stage, it).id) }
         }
@@ -732,7 +731,7 @@ fun runCorpus() {
                     (m["relaxed"] as? Number)?.toDouble()?.div((m["steps"] as Number).toDouble().coerceAtLeast(1.0))
                 }
                 .maxOrNull()
-        val caption = listOf(
+        val caption = [
             if (seed == 0) "the level as it is"
             else "seed $seed · ${(json.readValue<Map<String, Any?>>(source)["rooms"] as Map<*, *>).size} rooms",
             "within budget ${measures.values.count { it["withinBudget"] == true }} of ${measures.size} · sightlines ${walk?.facts?.get("sightlines") ?: "–"}",
@@ -748,7 +747,7 @@ fun runCorpus() {
                             "Waiting for reachable loot: ",
                         )
             },
-        )
+        ]
         "<div style='width:220px'>" +
             drawToSVG(draw(source, paths, 12.0), 220.0, 120.0) +
             caption.joinToString("") {
@@ -756,6 +755,7 @@ fun runCorpus() {
             } +
             "</div>"
     }
+    checkActive()
     BoxStudies.show(
         thisBox,
         "gallery",
@@ -765,11 +765,18 @@ fun runCorpus() {
     )
 }
 
-// Running this box builds every variant; the stages run on their own threads, so Field stays responsive.
-kotlin.concurrent.thread {
+// Stop interrupts the current wait and prevents later variants from being installed.
+val ownerRun = RunScope.current()
+go {
+    val activeContext = currentCoroutineContext()
     try {
-        runCorpus()
+        runInterruptible(Dispatchers.IO) {
+            RunScope.withCurrent(ownerRun) { runCorpus { activeContext.ensureActive() } }
+        }
+    } catch (cancelled: CancellationException) {
+        throw cancelled
     } catch (e: Exception) {
+        ensureActive()
         BoxStudies.show(
             thisBox,
             "gallery",
@@ -791,7 +798,7 @@ The brief, for you and for the agent. It is also kept as guides/start-here.md, w
 read.
 
 ```edn [field-box id="staged_start" role="properties"]
-{"id" "staged_start" "index" 4 "name" "Start here" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Start here" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_start_code_.kt" "lines" 35 "characters" 1849 "sha256" "b2456589fdef6d3dad33c322c95ab38b44b9abcea21cefb5486dec387a472d62"}]}
+{"id" "staged_start" "index" 4 "name" "Start here" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Start here" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_start_code_.kt" "lines" 35 "characters" 1925 "sha256" "044d1f33557b68d79f0dcfec680dfb616e02a9422723fac660b697e93b2c33b5"}]}
 ```
 
 ```kotlin [field-property box="staged_start" name="code" path="staged_start_code_.kt"]
@@ -799,29 +806,29 @@ read.
 // read.
 val brief =
     """
-# A staged level
+    # A staged level
 
-This document holds one level of a puzzle shooter-looter as rooms and doors on a grid (the **Level** box), and a
-machine that builds from it (the **Builds** box): a blockout, the paths from the spawn to every loot point, and the
-loot placement, which follows a rule kept in the **Loot rule** box. The **Corpus** box runs the same machine on
-seeded variants of the level and shows them side by side.
+    This document holds one level of a puzzle shooter-looter as rooms and doors on a grid (the **Level** box), and a
+    machine that builds from it (the **Builds** box): a blockout, the paths from the spawn to every loot point, and the
+    loot placement, which follows a rule kept in the **Loot rule** box. The **Corpus** box runs the same machine on
+    seeded variants of the level and shows them side by side.
 
-How to work here:
+    How to work here:
 
-- The level changes only through `level.inspect` and `level.edit`, which quotes the revision it read. An edit made
-  against an older revision is refused.
-- Everything else is a build with recorded inputs, so a result is either current or visibly stale. After an edit,
-  rebuild the stages in the Builds box.
-- Every build reports what it measured in its notes: path lengths against their budgets, how much a relaxed path
-  turns against its rough walk, doors on the way, sightlines.
-- Placement waits behind a gate until every loot point can be reached within its path budget.
-- The loot rule changes only through `loot.candidate`, `loot.test` and `loot.apply`, after a replay on its fixtures
-  and a control that must fail. Only the person approves a change to a fixture's recorded outcome.
-- Run the corpus before you call a rule change done: a change that suits this level can break a variant.
+    - The level changes only through `level.inspect` and `level.edit`, which quotes the revision it read. An edit made
+      against an older revision is refused.
+    - Everything else is a build with recorded inputs, so a result is either current or visibly stale. After an edit,
+      rebuild the stages in the Builds box.
+    - Every build reports what it measured in its notes: path lengths against their budgets, how much a relaxed path
+      turns against its rough walk, doors on the way, sightlines.
+    - Placement waits behind a gate until every loot point can be reached within its path budget.
+    - The loot rule changes only through `loot.candidate`, `loot.test` and `loot.apply`, after a replay on its fixtures
+      and a control that must fail. Only the person approves a change to a fixture's recorded outcome.
+    - Run the corpus before you call a rule change done: a change that suits this level can break a variant.
 
-Evaluate the results, not only the checks. Look at the paths and the placement, and say what you see. The checks
-only cover what someone thought to measure.
-"""
+    Evaluate the results, not only the checks. Look at the paths and the placement, and say what you see. The checks
+    only cover what someone thought to measure.
+    """
         .trimIndent()
 
 val guide = "%document/guides/start-here.md".file

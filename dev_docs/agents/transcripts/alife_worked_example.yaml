@@ -17,6 +17,9 @@ description: >
   runs, so executing one of them is a compile check and nothing more. Every one of them steps the
   real system on the real clock and burns its step counter into the frame; none of the twenty opens a
   Window or a Renderer.
+docs:
+  - page: alife_examples.md
+    why: "The page these twenty boxes come from, section by section."
 operations:
   - create:
       box: alife_life

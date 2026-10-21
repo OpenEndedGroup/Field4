@@ -15,15 +15,15 @@ val held = with(Functions) {
         smoothStep(185.0, 285.0, Functions.Domain.ALL) * (one - smoothStep(315.0, 415.0, Functions.Domain.ALL))
     one - (one - background) * (one - envelope)
 }
-val checks = listOf(
+val checks = [
     held.certifiedEquals(1.0, 285.0, 315.0),
     held.certifiedEquals(1.0, 284.0, 315.0),
     held.certifiedNeverExceeds(1.0, 0.0, 3600.0, slack = 1e-12),
-)
+]
 display(
     "limits",
-    Table(listOf("question", "answer"), title = "refusals and exact holds")
+    Table(["question", "answer"], title = "refusals and exact holds")
         .row("enclose the lambda channel", "certified = ${refused.certified}: ${refused.refusal}")
-        .rows(checks.map { listOf(it.claim, it.kind.name + (it.witness?.let { w -> " at x = $w" } ?: "")) })
+        .rows(checks.map { [it.claim, it.kind.name + (it.witness?.let { w -> " at x = $w" } ?: "")] })
         .role("answer", CellRole.ACCENT),
 )

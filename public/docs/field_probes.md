@@ -389,10 +389,9 @@ consumerBox.useFieldStats(stats) // include "fieldStats" now resolves as a reade
 
 If you do want the numbers in Kotlin (for logging, tests, or a custom readout),
 the read-back is a few numbers per channel, not an array of samples.
-This box runs a compute step under `fieldStats` and shows channel 0 as a table:
-
-Install this exact shader in that box's **compute** property before running its Kotlin.
-It uses its own position/velocity layout and records velocity magnitude in world units per second:
+The box below runs a compute step under `fieldStats` and shows channel 0 as a table.
+Put this shader in the box's **compute** property before running its Kotlin. It uses its
+own position and velocity buffers, and records each particle's speed in world units per second:
 
 ```diffstatic {data-lang=glsl}
 #version 450

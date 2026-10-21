@@ -11,6 +11,9 @@ description: >
   simplifier deleting forty bores that symbolic bounds prove can never touch the part. Together they
   are the argument for the whole package — a `(Vec3) -> Float` can only be sampled, but an
   expression tree can be measured, simplified, refused, and translated.
+docs:
+  - page: solid_notation.md
+    why: "Explains writing a solid as a SolidSL value."
 operations:
   - create:
       box: solidsl_part

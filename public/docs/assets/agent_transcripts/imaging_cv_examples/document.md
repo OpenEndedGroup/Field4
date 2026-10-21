@@ -139,7 +139,7 @@ From `code`
 A square whose corners are at exactly known coordinates.
 
 ```edn [field-box id="imaging_features" role="properties"]
-{"id" "imaging_features" "index" 2 "name" "features — Harris / FAST corners and Hough lines" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "features — Harris / FAST corners and Hough lines" "_tombstone" false "frame" #afield/rect [80.0 1340.0 430.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_features_code_.kt" "lines" 54 "characters" 2545 "sha256" "09dd8cfbd2fe2b79ce38e735a1aa388a67f3d19865021429489b1655afe96997"}]}
+{"id" "imaging_features" "index" 2 "name" "features — Harris / FAST corners and Hough lines" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "features — Harris / FAST corners and Hough lines" "_tombstone" false "frame" #afield/rect [80.0 1340.0 430.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_features_code_.kt" "lines" 54 "characters" 2539 "sha256" "5d2ab1a01d1668cd9904d31fd58ed328dfce809b1cf2250978b10bd85d7868c1"}]}
 ```
 
 ```kotlin [field-property box="imaging_features" name="code" path="imaging_features_code_.kt"]
@@ -148,7 +148,7 @@ val square = Img.generate(2000, 2000) { x, y -> if (x in 500..1499 && y in 500..
 val harris = square.harrisCorners(threshold = 0.05, minDistance = 120, maxCount = 20)
 val fast = square.fastCorners(threshold = 0.2, minDistance = 120, maxCount = 20)
 
-val truth = listOf(500.0 to 500.0, 1499.0 to 500.0, 500.0 to 1499.0, 1499.0 to 1499.0)
+val truth = [500.0 to 500.0, 1499.0 to 500.0, 500.0 to 1499.0, 1499.0 to 1499.0]
 val worst = truth.maxOf { (ex, ey) -> harris.minOf { hypot(it.x - ex, it.y - ey) } }
 
 // Three lines at exactly known (rho, theta), plus a decoy ring Hough must not fit.
@@ -210,12 +210,12 @@ From `code`
 Three disjoint discs of known radius, then noise on top of them.
 
 ```edn [field-box id="imaging_morphology" role="properties"]
-{"id" "imaging_morphology" "index" 3 "name" "morphology, connected components, distance transform" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "morphology, connected components, distance transform" "_tombstone" false "frame" #afield/rect [80.0 1760.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_morphology_code_.kt" "lines" 41 "characters" 1798 "sha256" "52e7d94c4fca083cf27bf86d84a75d090621eb8ebb4122e48d0b29a8d9b37ed0"}]}
+{"id" "imaging_morphology" "index" 3 "name" "morphology, connected components, distance transform" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "morphology, connected components, distance transform" "_tombstone" false "frame" #afield/rect [80.0 1760.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_morphology_code_.kt" "lines" 41 "characters" 1792 "sha256" "60541dda8014dd4815584a93d479329c88c9ab6f31da00ed094cf0228cb4793e"}]}
 ```
 
 ```kotlin [field-property box="imaging_morphology" name="code" path="imaging_morphology_code_.kt"]
 // Three disjoint discs of known radius, then noise on top of them.
-val discs = listOf(Triple(550.0, 600.0, 280.0), Triple(1500.0, 550.0, 200.0), Triple(1100.0, 1350.0, 140.0))
+val discs = [Triple(550.0, 600.0, 280.0), Triple(1500.0, 550.0, 200.0), Triple(1100.0, 1350.0, 140.0)]
 val clean =
     Img.generate(2200, 1800) { x, y ->
         if (discs.any { (cx, cy, r) -> hypot(x - cx, y - cy) <= r }) 0.85f else 0.15f

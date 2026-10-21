@@ -1,0 +1,7 @@
+{
+  "authoredSupplyAsyncBlockExecutedVerbatim": true,
+  "blockingFieldRetrievalOffBoxThread": true,
+  "threeFramesAdvanceWhileDependencyBlocks": true,
+  "resultOnlyDeliveredAfterRelease": true,
+  "limits": "Controlled latch-based dependency verifies scheduling of the actual authored future block. It does not emulate Kratos numerics or generate a capture."
+}

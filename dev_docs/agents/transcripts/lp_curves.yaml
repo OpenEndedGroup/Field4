@@ -14,6 +14,13 @@ description: >
        recomputed for every picture (twenty a second), the central path warm-started from the last
        picture's through an LpContinuation. Watch the routes swing from vertex to vertex.
        Change `tau`, the weights or the period and run it again; re-running replaces the loop.
+    3. lp_fan_map — the central-path fan as a map x(θ, log μ) (LpFanMap), drawn as its coordinate
+       grid in an editable threeLines viewer. Choose the pencil tool and drag a corner of the
+       white outline: when the drag ends, onEditCommitted takes the convex hull of the edited
+       outline and redraws the grid for it.
+docs:
+  - page: lp_curves.md
+    why: "The page these LpPolygon boxes accompany."
 operations:
   - create:
       box: lp_routes
@@ -38,17 +45,23 @@ operations:
           val dots = { t: LpTrajectory -> pointCloudFLine(t.positions, vec(1.0, 1.0, 1.0, 0.9), 1.0) }
 
           showPlaneGrid(
-              "centralPath\nμ %.0e → %.0e, ${central.samples.size} samples".format(central.samples.first().scale, central.last.scale) to
-                  [outline, central.toFLine(), answer],
+              "centralPath\nμ %.0e → %.0e, ${central.samples.size} samples"
+                  .format(central.samples.first().scale, central.last.scale) to [outline, central.toFLine(), answer],
               "centralFan\n${fan.size} directions" to [outline] + fan.toFLines(),
-              "primalDual\n${pd.samples.size - 1} Newton steps" to [outline, pd.toFLine(vec(0.55, 0.9, 0.6, 0.95)), dots(pd), answer],
+              "primalDual\n${pd.samples.size - 1} Newton steps" to
+                  [outline, pd.toFLine(vec(0.55, 0.9, 0.6, 0.95)), dots(pd), answer],
               "pdhg, tau = sigma = 0.3\n${spiral.trajectory.samples.count { it.violation > 0.0 }} of ${spiral.trajectory.samples.size} iterates outside" to
                   [outline, spiral.trajectory.toFLine(vec(1.0, 0.55, 0.85, 0.85), 1.0), answer],
-              "ellipsoid\n${ellipsoid.ellipses.size} ellipses, each %.2f of the last's area".format(kotlin.math.sqrt(ellipsoid.ellipses[1].determinant / ellipsoid.ellipses[0].determinant)) to
-                  [outline] + ellipsoid.ellipses.take(16).map { it.toFLine() } + ellipsoid.trajectory.toFLine(vec(1.0, 1.0, 1.0, 0.6), 0.8),
-              "simplexWalk\n${walk.samples.size - 1} pivots" to [outline, walk.toFLine(vec(0.6, 0.75, 1.0, 0.95), 2.4), dots(walk), answer],
-              "cuttingPlanes (analytic centres)\narea %.2f → %.1e".format(cuts.trajectory.samples.first().scale, cuts.trajectory.last.scale) to
-                  [outline] + cuts.regions.map { r -> polylineFrom(r, closed = true).also { it.color = vec(0.6, 0.8, 1.0, 0.4) } } +
+              "ellipsoid\n${ellipsoid.ellipses.size} ellipses, each ${(kotlin.math.sqrt(ellipsoid.ellipses[1].determinant / ellipsoid.ellipses[0].determinant)).f2} of the last's area" to
+                  [outline] +
+                      ellipsoid.ellipses.take(16).map { it.toFLine() } +
+                      ellipsoid.trajectory.toFLine(vec(1.0, 1.0, 1.0, 0.6), 0.8),
+              "simplexWalk\n${walk.samples.size - 1} pivots" to
+                  [outline, walk.toFLine(vec(0.6, 0.75, 1.0, 0.95), 2.4), dots(walk), answer],
+              "cuttingPlanes (analytic centres)\narea %.2f → %.1e"
+                  .format(cuts.trajectory.samples.first().scale, cuts.trajectory.last.scale) to
+                  [outline] +
+                      cuts.regions.map { r -> polylineFrom(r, closed = true).also { it.color = vec(0.6, 0.8, 1.0, 0.4) } } +
                       cuts.trajectory.toFLine(),
               columns = 4,
               yUp = true,
@@ -56,15 +69,13 @@ operations:
               cellHeight = 230,
           )
 
-          "every route ends at %s".format(polygon.optimalVertex(c))
+          "every route ends at ${polygon.optimalVertex(c)}"
   - create:
       box: lp_turning
       name: a turning objective (launch me)
       frame: { x: 80.0, y: 560.0, w: 420.0, h: 120.0 }
       properties:
         code: |
-          import kotlin.math.*
-
           // The objective turns once every `period` seconds while the hexagon breathes. Every route is
           // recomputed for each picture; they are cheap.
           val period = 12.0
@@ -74,11 +85,13 @@ operations:
 
           // Each vertex's radius wanders between 1.9 and 2.9, which keeps the hexagon convex.
           val shape = { t: Double ->
-              LpPolygon((0 until 6).map { k ->
-                  val a = 2.0 * PI * k / 6 + 0.25
-                  val r = 2.4 + 0.5 * sin(t * 0.9 + k * 1.7)
-                  vec(r * cos(a), r * sin(a))
-              })
+              LpPolygon(
+                  (0 until 6).map { k ->
+                      val a = 2.0 * PI * k / 6 + 0.25
+                      val r = 2.4 + 0.5 * sin(t * 0.9 + k * 1.7)
+                      vec(r * cos(a), r * sin(a))
+                  },
+              )
           }
 
           // Each frame's central path starts Newton from the previous frame's: same path, fewer steps.
@@ -125,8 +138,36 @@ operations:
                   nextDraw = t + 1.0 / 20.0
               }
           }
+  - create:
+      box: lp_fan_map
+      name: drag the polygon, redraw the fan map
+      frame: { x: 560.0, y: 80.0, w: 420.0, h: 120.0 }
+      properties:
+        code: |
+          // Choose the pencil tool and drag a corner of the white outline. When the drag ends the
+          // grid is recomputed for the convex hull of the edited outline.
+          fun redraw(polygon: LpPolygon) {
+              val grid = polygon.fanMap().grid(thetas = 72, logMus = 30)
+              val outline = polylineFrom(polygon.vertices, closed = true).also {
+                  it.color = vec(1.0, 1.0, 1.0, 0.95)
+                  it.thickness = 2.0
+              }
+              threeLines(
+                  [outline] + grid.thetaLines(every = 2, alpha = 0.7) + grid.muLines(every = 3),
+                  channel = "main",
+                  name = "fan-map",
+                  height = 520,
+                  width = 620,
+                  editable = true,
+                  onEditCommitted = { edited -> redraw(LpPolygon.hullOf(edited[0])) },
+              )
+          }
+
+          redraw(LpPolygon([vec(-2.0, -1.0), vec(1.5, -1.5), vec(3.0, 1.0), vec(0.5, 2.5), vec(-2.5, 1.5)]))
   - execute:
       box: lp_routes
+  - execute:
+      box: lp_fan_map
   - launch:
       box: lp_turning
       property: code

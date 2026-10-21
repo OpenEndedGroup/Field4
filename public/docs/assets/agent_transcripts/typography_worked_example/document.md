@@ -101,7 +101,7 @@ letter about itself. These handles are the API rather than an afterthought: this
 is one layout, computed once, and a function of elapsed seconds written into it.
 
 ```edn [field-box id="typo_kinetic" role="properties"]
-{"id" "typo_kinetic" "index" 1 "name" "5 — the handles, animated (LAUNCH this one)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — the handles, animated (LAUNCH this one)" "_tombstone" false "frame" #afield/rect [60.0 780.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_kinetic_code_.kt" "lines" 47 "characters" 1636 "sha256" "687c7bad6b182d7d10d027d7d2777ffeac03f142fde80ae8a7db553fe8e04e9e"}]}
+{"id" "typo_kinetic" "index" 1 "name" "5 — the handles, animated (LAUNCH this one)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — the handles, animated (LAUNCH this one)" "_tombstone" false "frame" #afield/rect [60.0 780.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_kinetic_code_.kt" "lines" 52 "characters" 1854 "sha256" "0a557dfb51bf0e22ea334b8d5e4ba322d9d00d9ee0c0a2ddb1feb4c9c6d3e60a"}]}
 ```
 
 ```kotlin [field-property box="typo_kinetic" name="code" path="typo_kinetic_code_.kt"]
@@ -133,12 +133,17 @@ val window = run {
 }
 
 val started = AnimationClock.nowSeconds()
+val displayFps = 20.0
+var nextDisplay = 0.0
 
 // The line you would change: elapsed seconds in, a travelling wave out.
 fun waveAt(elapsed: Double, i: Int): Double = 1.7 * elapsed + i * 0.7
 
 animate {
     val elapsed = AnimationClock.nowSeconds() - started
+    // Keep motion tied to elapsed time; cap the expensive raster and output work.
+    if (elapsed < nextDisplay) return@animate
+    nextDisplay = elapsed + 1.0 / displayFps
     layout.eachGlyph { i ->
         val w = waveAt(elapsed, i)
         rotation = 0.42 * kotlin.math.sin(w)

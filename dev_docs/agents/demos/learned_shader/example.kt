@@ -1,13 +1,15 @@
 import afield.graphics.shader.learning.*
 
 prop<LearnedShader>(lab)
-fromContextWithNameOrNull<LearnedShader>("lab")?.close()
+val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
 var cooperative = renderer.device.supportsCooperativeVector
 var active = cooperative
 var requestedView = 2
 var animate = true
 var reload = false
-lab = LearnedShader(renderer, cooperative = cooperative)
+var ownedLab = LearnedShader(renderer, cooperative = cooperative)
+lab = ownedLab
+runScope.own { ownedLab.close() }
 controlGroup("learned shader") {
     checkbox("Cooperative vectors", initialValue = cooperative) { cooperative = it }
     slider("0: Original · 1: Learned · 2: Compare", min = 0.0, max = 2.0, step = 1.0, initialValue = 2.0) {
@@ -24,8 +26,16 @@ frames {
         if (cooperative != active || reload) {
             runCatching {
                 val next = LearnedShader(renderer, cooperative = cooperative, attach = false)
-                lab.close()
-                lab = next.attach()
+                try {
+                    next.attach()
+                } catch (failure: Throwable) {
+                    next.close()
+                    throw failure
+                }
+                val previous = ownedLab
+                ownedLab = next
+                lab = next
+                previous.close()
                 active = cooperative
             }
                 .onFailure {
@@ -34,10 +44,10 @@ frames {
                 }
             reload = false
         }
-        lab.view = requestedView
+        ownedLab.view = requestedView
         if (animate) time += .01
-        lab.time = kotlin.math.sin(time).toFloat()
+        ownedLab.time = kotlin.math.sin(time).toFloat()
         frame()
     }
 }
-    .end { lab.close() }
+    .end { ownedLab.close() }

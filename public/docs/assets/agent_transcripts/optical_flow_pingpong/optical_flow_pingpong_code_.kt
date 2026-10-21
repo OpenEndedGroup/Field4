@@ -15,7 +15,7 @@ propDown<PingPongRenderToTexture>(history) = PingPongRenderToTexture(renderer) {
     format = VK_FORMAT_R16G16B16A16_SFLOAT
 }
 val scene = moduleHere {
-    history.apply()
+    +history
     depthTest = false
     depthWrite = false
     blend = false

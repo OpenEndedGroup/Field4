@@ -16,6 +16,9 @@ description: >
   Every box carries its own control arm -- PopulationSearch.random at the SAME budget under the
   SAME seed -- because a generator good enough to stumble onto a decent rule occasionally looks
   exactly like a successful search. None of the four opens a Window or a Renderer.
+docs:
+  - page: alife_examples.md
+    why: "Describes the ALife rule spaces these evolution boxes search over."
 operations:
   - create:
       box: evolve_lenia
@@ -141,10 +144,10 @@ operations:
           */
 
           val ops = LifeRuleGenome(radius = 2)
-          val soups = listOf(
+          val soups = [
               randomSoup(48, 48, density = 0.35, seed = 101L),
               randomSoup(48, 48, density = 0.12, seed = 202L),
-          )
+          ]
 
           /*
           "Alive but not saturated, and still changing" -- activity times a Gaussian band on density.
@@ -240,10 +243,10 @@ operations:
           */
 
           val ops = LifeRuleGenome(radius = 2)
-          val soups = listOf(randomSoup(48, 48, density = 0.35, seed = 303L))
+          val soups = [randomSoup(48, 48, density = 0.35, seed = 303L)]
           val objective = caEdgeOfChaosObjective(soups, warmup = 20, scored = 25)
-          val bins = listOf(6, 6)
-          val axes = listOf(0.0..1.0, 0.0..0.6)
+          val bins = [6, 6]
+          val axes = [0.0..1.0, 0.0..0.6]
           val budget = 600
 
           val archive = PopulationSearch.mapElites(ops, objective, budget, axes, bins, seed = 31L, initial = 40)

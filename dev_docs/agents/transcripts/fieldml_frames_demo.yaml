@@ -1,5 +1,8 @@
 # Generated from fieldml_frames_demo/metadata.edn by afield.examples.DocumentToTranscript.
 name: "fieldml_frames_demo"
+docs:
+  - page: fieldml_host_bridge.md#every-frame
+    why: "Explains running FieldML code every frame."
 operations:
   - create:
       box: "fieldml-frames-renderer"

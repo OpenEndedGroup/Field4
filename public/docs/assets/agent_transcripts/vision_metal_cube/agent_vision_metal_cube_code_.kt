@@ -6,7 +6,7 @@ for the built-in cube by name.
 visionMetal(
         shader = visionMetalExampleShader,
         script = visionMetalExampleScript,
-        uniforms = listOf("phase", "amount", "tint"),
+        uniforms = ["phase", "amount", "tint"],
         geometry = VisionMetalGeometryOrigin.BUILTIN,
     )
     .onStatus {

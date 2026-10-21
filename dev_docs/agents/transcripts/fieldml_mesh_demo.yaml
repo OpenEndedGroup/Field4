@@ -1,5 +1,10 @@
 # Generated from fieldml_mesh_demo/metadata.edn by afield.examples.DocumentToTranscript.
 name: "fieldml_mesh_demo"
+docs:
+  - page: fieldml_host_bridge.md
+    why: "Explains the JVM bridge FieldML uses to build meshes."
+  - page: mesh_examples.md
+    why: "Reference for the mesh types the bridge hands back."
 operations:
   - create:
       box: "fieldml-mesh-renderer"

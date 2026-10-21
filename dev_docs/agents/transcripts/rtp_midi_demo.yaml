@@ -4,6 +4,9 @@ description: >
   RTP-MIDI (AppleMIDI) in three boxes: open a network MIDI session called "Field", have a second
   session join it, and play notes and a controller into it. Run box 1, then launch boxes 2 and 3; nothing else needs
   to be on the network. Docs page: public/docs/rtp_midi.md.
+docs:
+  - page: rtp_midi.md
+    why: "Explains RTP-MIDI sessions, joining and sending notes."
 operations:
   - create:
       box: "rtpm-session"

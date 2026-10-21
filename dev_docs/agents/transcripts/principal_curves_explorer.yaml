@@ -5,6 +5,9 @@ description: >
   pixels fitted as a branching tree. And live data: points that drift every frame, followed by one
   forest that is refined a few iterations per frame instead of refitted. Needs the optional native
   library: ./gradlew buildPrincipalCurvesNative.
+docs:
+  - page: principal_curves.md
+    why: "Explains fitting principal curves to noisy points."
 operations:
   - create:
       box: pc_strands
@@ -31,8 +34,13 @@ operations:
 
           fun show(mu: Double) {
               val forest = PrincipalCurves.fit(points, curves = 3, nodes = 45, parameters = ElasticParameters(mu = mu))
-              showImgGrid("mu = $mu" to canvas.drawFLines([forest.pointsFLine(2.0)] + forest.widthFLines() + forest.toFLines(), scale = 2.0),
-                  channel = "fit", columns = 1, cellSide = 520)
+              showImgGrid(
+                  "mu = $mu" to
+                      canvas.drawFLines([forest.pointsFLine(2.0)] + forest.widthFLines() + forest.toFLines(), scale = 2.0),
+                  channel = "fit",
+                  columns = 1,
+                  cellSide = 520,
+              )
               forest.close()
           }
 
@@ -52,12 +60,20 @@ operations:
           val weights = ArrayList<Double>()
           for (y in 0 until print.height) for (x in 0 until print.width) {
               val green = print.at(x, y, 1) - maxOf(print.at(x, y, 0), print.at(x, y, 2))
-              if (green > 0.04) { points.add(x.toDouble()); points.add(y.toDouble()); weights.add(green.toDouble()) }
+              if (green > 0.04) {
+                  points.add(x.toDouble())
+                  points.add(y.toDouble())
+                  weights.add(green.toDouble())
+              }
           }
-          val forest = PrincipalCurves.fit(points.toDoubleArray(), weights = weights.toDoubleArray(), nodes = 40, allowBranching = true)
+          val forest =
+              PrincipalCurves.fit(points.toDoubleArray(), weights = weights.toDoubleArray(), nodes = 40, allowBranching = true)
           val dark = Img(print.width, print.height, 3, FloatArray(print.width * print.height * 3))
-          showImgGrid("as a tree" to print.overlay(dark, 0.6).drawFLines(forest.widthFLines(1.0) + forest.toFLines(thickness = 2.5)),
-              columns = 1, cellSide = 320)
+          showImgGrid(
+              "as a tree" to print.overlay(dark, 0.6).drawFLines(forest.widthFLines(1.0) + forest.toFLines(thickness = 2.5)),
+              columns = 1,
+              cellSide = 320,
+          )
   - create:
       box: pc_live
       name: 3 - Following points that move
@@ -66,25 +82,32 @@ operations:
         code: |
           import afield.geometry.curves.principal.*
 
-          // Launch this one (Alt-R). 2000 points scatter around a wave that travels and bends; one
-          // forest follows them, refined five iterations a frame. The graph is never regrown, so its
-          // nodes keep their identities from frame to frame.
+          /*
+          Launch this one (Alt+Up). 2000 points scatter around a wave that travels and bends; one
+          forest follows them, refined five iterations a frame. The graph is never regrown, so its
+          nodes keep their identities from frame to frame.
+          */
           val random = java.util.Random(3)
           val offsets = DoubleArray(2000) { random.nextGaussian() * 4 }
           val along = DoubleArray(2000) { random.nextDouble() }
-          fun points(time: Double) = DoubleArray(4000).also { p ->
-              for (i in 0 until 2000) {
-                  val t = along[i]
-                  p[2 * i] = 20 + 360 * t
-                  p[2 * i + 1] = 110 + 50 * sin(5 * t + time) * cos(time * 0.3) + offsets[i] * (1 + t)
+          fun points(time: Double) =
+              DoubleArray(4000).also { p ->
+                  for (i in 0 until 2000) {
+                      val t = along[i]
+                      p[2 * i] = 20 + 360 * t
+                      p[2 * i + 1] = 110 + 50 * sin(5 * t + time) * cos(time * 0.3) + offsets[i] * (1 + t)
+                  }
               }
-          }
           val forest = PrincipalCurves.fit(points(0.0), nodes = 24)
           val canvas = Img(400, 220, 3, FloatArray(400 * 220 * 3) { 0.06f })
 
           loop {
               forest.setPoints(points(frameNumber / 30.0))
               forest.refine(5)
-              showImgGrid("frame $frameNumber" to canvas.drawFLines([forest.pointsFLine(1.5)] + forest.widthFLines() + forest.toFLines(), scale = 2.0),
-                  columns = 1, cellSide = 600)
+              showImgGrid(
+                  "frame $frameNumber" to
+                      canvas.drawFLines([forest.pointsFLine(1.5)] + forest.widthFLines() + forest.toFLines(), scale = 2.0),
+                  columns = 1,
+                  cellSide = 600,
+              )
           }

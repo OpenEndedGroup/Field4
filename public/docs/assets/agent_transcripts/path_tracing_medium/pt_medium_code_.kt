@@ -26,7 +26,7 @@ val scene = PathTraceScene().apply {
         Vector3f(-0.16f, 4.9f, 3.6f),
         lamp,
     )
-    for (x in listOf(-1.75f, -0.62f, 0.62f, 1.75f)) {
+    for (x in [-1.75f, -0.62f, 0.62f, 1.75f]) {
         quad(
             Vector3f(x - 0.26f, 3.5f, -3.6f),
             Vector3f(x + 0.26f, 3.5f, -3.6f),
@@ -89,7 +89,7 @@ Comment out the frames block to hold one setting.
 */
 frames {
     while (true) {
-        for (density in listOf(0.0f, 0.08f, 0.16f, 0.40f)) {
+        for (density in [0.0f, 0.08f, 0.16f, 0.40f]) {
             tracer.mediumDensity = density
             println("mediumDensity = $density")
             // Changing it resets accumulation, but not until the next frame is recorded,

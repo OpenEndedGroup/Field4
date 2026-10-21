@@ -28,5 +28,5 @@ def main():
  subprocess.run(['git','diff','--check'],cwd=R,check=True)
  subprocess.run(['git','add','--']+[x for x in paths if not x.endswith('.tar.gz')],cwd=R,check=True);subprocess.run(['git','add','-f','--',*[x for x in paths if x.endswith('.tar.gz')]],cwd=R,check=True)
  subprocess.run(['git','commit','--only','-m',a.title,'--']+paths,cwd=R,check=True)
- subprocess.run(['uv','run','python','tools/land.py','enqueue'],cwd=R,check=True)
+ subprocess.run(['uv','run','python','tools/land.py','enqueue',branch],cwd=R,check=True)
 if __name__=='__main__':main()

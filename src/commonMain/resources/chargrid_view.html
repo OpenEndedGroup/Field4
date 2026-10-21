@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>charGrid</title>
+  <!-- The output view of a Field char grid (afield.ui.output.charGrid / charStream): it asks the box
+       for the cells that changed since it last asked and applies them to a CSS grid of spans, as the
+       madp charGrid demo draws. Nothing a student writes runs here. -->
+  <style>
+    html, body { margin: 0; padding: 0; background: #0d0d0d; overflow: hidden; width: 100%; height: 100%; }
+    #pane { position: absolute; inset: 0 0 20px 0; overflow: hidden; }
+    #grid {
+      position: absolute; left: 0; top: 0;
+      display: grid;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 16px;
+      line-height: 1.2em;
+      background: #080808;
+      border: 1px solid #1a1a1a;
+      padding: 4px;
+      color: #a0a0a0;
+      transform-origin: 0 0;
+    }
+    #grid .cell { display: inline-block; width: 1ch; height: 1.2em; text-align: center; white-space: pre; }
+    #status { position: absolute; left: 10px; bottom: 4px; font: 11px "Iosevka Web", Iosevka, monospace;
+      color: #3a3a3a; letter-spacing: 1px; text-transform: uppercase; pointer-events: none; white-space: nowrap; }
+  </style>
+  <style id="cssvars"></style>
+</head>
+<body>
+  <div id="pane"><div id="grid"></div></div>
+  <div id="status">charGrid</div>
+  <script type="module">
+    import { outputRequests } from "/output_requests.js";
+    const params = new URLSearchParams(location.search);
+    const requests = outputRequests(params.get("binding"));
+    const stretch = params.get("stretch") === "0" ? 1 : 1.7;
+    const gridEl = document.getElementById("grid");
+    const pane = document.getElementById("pane");
+    const status = document.getElementById("status");
+    const cssvars = document.getElementById("cssvars");
+
+    let epoch = -1, version = -1, cols = 0, rows = 0;
+    let glyphs = [" "], colors = [""], styles = [""], cells = [];
+
+    function build(c, r) {
+      cols = c; rows = r;
+      gridEl.textContent = "";
+      gridEl.style.gridTemplateColumns = "repeat(" + c + ", 1ch)";
+      gridEl.style.gridTemplateRows = "repeat(" + r + ", 1.2em)";
+      cells = new Array(c * r);
+      const frag = document.createDocumentFragment();
+      for (let i = 0; i < c * r; i++) {
+        const span = document.createElement("span");
+        span.className = "cell";
+        span.textContent = " ";
+        frag.appendChild(span);
+        cells[i] = span;
+      }
+      gridEl.appendChild(frag);
+      fit();
+    }
+
+    // Scale the grid (with charGrid's 1.7x horizontal stretch, unless charGrid 2) to fit the panel, centred.
+    function fit() {
+      const w = gridEl.offsetWidth, h = gridEl.offsetHeight;
+      if (!w || !h) return;
+      const pw = pane.clientWidth, ph = pane.clientHeight;
+      const s = Math.min((pw - 16) / (w * stretch), (ph - 16) / h);
+      const x = (pw - w * stretch * s) / 2, y = (ph - h * s) / 2;
+      gridEl.style.transform = "translate(" + x + "px," + y + "px) scale(" + (s * stretch) + "," + s + ")";
+    }
+    new ResizeObserver(fit).observe(pane);
+
+    function apply(u) {
+      if (u.full) {
+        if (u.cols !== cols || u.rows !== rows) build(u.cols, u.rows);
+        glyphs = u.glyphs; colors = [""]; styles = [""];
+      }
+      for (let k = 0; k < u.c.length; k++) colors[u.c0 + k] = u.c[k];
+      for (let k = 0; k < u.s.length; k++) styles[u.s0 + k] = u.s[k];
+      if (u.css !== undefined) cssvars.textContent = u.css ? ".cell{" + u.css + "}" : "";
+      const d = u.d;
+      for (let k = 0; k < d.length; k += 4) {
+        const cell = cells[d[k]];
+        if (!cell) continue;
+        const g = d[k + 1], c = colors[d[k + 2]], s = styles[d[k + 3]];
+        cell.textContent = g < 0 ? " " : glyphs[g];
+        cell.style.cssText = (c ? "color:" + c + ";" : "") + (s || "");
+      }
+      epoch = u.e; version = u.v;
+      status.textContent = "charGrid · " + cols + "×" + rows + " · f:" + u.frame + (d.length ? " · " + d.length / 4 + " cells" : "");
+    }
+
+    // One request in flight at a time: a slow panel skips frames rather than queueing them. A binding
+    // the box has closed (it was stopped or run again, which renders a new iframe) fails every retry.
+    let failures = 0;
+    async function pump() {
+      try {
+        apply(JSON.parse(await requests.request({ e: epoch, v: version, nc: colors.length, ns: styles.length })));
+        failures = 0;
+        status.style.color = "";
+        requestAnimationFrame(pump);
+      } catch (e) {
+        failures++;
+        status.textContent = (failures > 5 ? "stopped — run the box again · " : "reconnecting · ") + (e && e.message || e);
+        status.style.color = "#7a4a2a";
+        setTimeout(pump, Math.min(4000, 250 * failures));
+      }
+    }
+    pump();
+  </script>
+</body>
+</html>

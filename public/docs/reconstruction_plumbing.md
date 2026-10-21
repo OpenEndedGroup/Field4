@@ -52,7 +52,7 @@ val source = RenderToTexture(renderer) {
     ]
 }
 val sceneModule = moduleHere {
-    source.apply()
+    +source
     depthTest = true
     depthWrite = true
     blend = false
@@ -62,7 +62,7 @@ source += "scene" to sceneModule
 // Add your meshes to sceneModule as usual.
 ```
 
-`renderer` is inherited from the parent renderer box. `source.apply()` configures the module's attachments and render pass. The corresponding fragment outputs are:
+`renderer` is inherited from the parent renderer box. `+source` configures the module's attachments and render pass. The corresponding fragment outputs are:
 
 ```diffstatic {data-lang=glsl}
 layout(location=0) out vec4 color;

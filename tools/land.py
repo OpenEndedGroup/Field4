@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """The landing queue: agents enqueue a branch and stop; one lander puts it on `main`.
 
+    uv run python tools/land.py precheck [--plan]                 # first: the guards this diff can trip
     uv run python tools/land.py enqueue [branch] [--note "..."]   # agents: this, then stop
     uv run python tools/land.py status [id] [--watch]             # what is queued, landed, bounced
     uv run python tools/land.py wait <id>                         # block until it lands or bounces
@@ -689,6 +690,9 @@ class _Style:
             "push": "\uf062" if nerd else "^", "pull": "\uf063" if nerd else "v",
             "fix": "\uf0ad" if nerd else "%",
         }
+        if nerd:
+            # Nerd Font icons draw wider than the one cell the terminal gives them; pad so they don't touch the text.
+            self.g = {k: v + " " for k, v in self.g.items()}
 
     def c(self, code: str, text: str) -> str:
         return f"\033[{code}m{text}\033[0m" if self.color else text
@@ -1325,9 +1329,11 @@ def _is_pull(item: dict) -> bool:
 def _collect_failures(wt: Path, since: float, log: Path) -> str | None:
     """Gradle prints a failing test as "AssertionError at Foo.kt:769"; the message itself is only in
     the JUnit XML inside the lander's worktree, which the next round overwrites. Copy every failure
-    written during this round next to the log, and return a one-line summary of the first."""
+    written during this round next to the log, and return a one-line summary of the first.
+    `checkPythonTools` writes the same XML (build/test-results/pythonTools), message = exception
+    line, body = traceback; both are kept."""
     import xml.etree.ElementTree as ET
-    found: list[tuple[str, str]] = []
+    found: list[tuple[str, str, str]] = []
     for xml in sorted((wt / "build" / "test-results").glob("*/TEST-*.xml")):
         if xml.stat().st_mtime < since:
             continue
@@ -1338,12 +1344,15 @@ def _collect_failures(wt: Path, since: float, log: Path) -> str | None:
         for case in root.iter("testcase"):
             for failure in list(case.findall("failure")) + list(case.findall("error")):
                 name = f"{case.get('classname', '').rsplit('.', 1)[-1]}.{case.get('name')}"
-                found.append((name, (failure.get("message") or failure.text or "").strip()))
+                message = (failure.get("message") or "").strip()
+                body = (failure.text or "").strip()
+                found.append((name, message or body, body if body != message else ""))
     if not found:
         return None
     path = log.with_suffix(".failures.txt")
-    path.write_text("".join(f"## {name}\n{message}\n\n" for name, message in found))
-    first_name, first_message = found[0]
+    path.write_text("".join(f"## {name}\n{message}\n" + (f"{body}\n" if body else "") + "\n"
+                            for name, message, body in found))
+    first_name, first_message, _ = found[0]
     first_line = next((line.strip() for line in first_message.splitlines() if line.strip()), "")
     more = f" (+{len(found) - 1} more)" if len(found) > 1 else ""
     return f"{first_name}: {first_line[:220]}{more}; full messages: {path}"
@@ -1845,9 +1854,22 @@ def cmd_run(args: argparse.Namespace) -> int:
         lock_file.close()
 
 
+def cmd_precheck(argv: list[str]) -> int:
+    # Imported here: it pulls in the guard selection, which the queue commands never need (and which a
+    # copy of this script used on its own, as tools/test_docs_notes.py makes, does not have).
+    import land_precheck  # noqa: PLC0415
+
+    return land_precheck.main(argv)
+
+
 def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["precheck"]:
+        return cmd_precheck(argv[1:])
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
+    # Dispatched above, before parsing; listed here so `land.py --help` names it.
+    sub.add_parser("precheck", help="before enqueue: merge main, run only the guards this diff can trip (minutes)")
     p = sub.add_parser("enqueue", help="queue a branch for landing, then stop")
     p.add_argument("branch", nargs="?", help="default: the current branch")
     p.add_argument("--note", help="one line for the landing commit, e.g. what to look at if it bounces")

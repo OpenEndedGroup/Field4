@@ -2963,6 +2963,126 @@ try {
 }
 """
 
+MACRO_RECORDER_ROUNDTRIP_JS = r"""
+// Record through the Macro Recorder panel, save, and replay the recording as a copy: the copy
+// must be the recorded boxes again (names, code, sizes, connection), shifted by the offset.
+// Then Step replays one operation alone. Real canvas paths: newBox(), set-string, -connect, set-rect.
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const errors = [];
+const onError = (event) => errors.push(String(event.error && (event.error.stack || event.error.message) || event.message || event));
+window.addEventListener("error", onError);
+const waitFor = async (predicate, timeoutMs = 12000) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const value = predicate();
+    if (value) return value;
+    await delay(100);
+  }
+  return predicate();
+};
+try {
+  const m = await import("/afield.mjs");
+  const liveBoxes = () => [...document.querySelectorAll(".box")].filter((b) => b.uid && b.uid !== "root");
+  const uids = () => new Set(liveBoxes().map((b) => b.uid));
+  // A box is placed by a translate transform; its frame is kept on the element as data_x/y/w/h.
+  const frameOf = (b) => ({ x: Math.round(b.data_x), y: Math.round(b.data_y), w: Math.round(b.data_w), h: Math.round(b.data_h) });
+  window.macroTranscriptPanel();
+  const panel = await waitFor(() => {
+    const node = document.querySelector("#macro-recorder-panel.field-panel.is-visible");
+    return node && getComputedStyle(node).display !== "none" ? node : null;
+  }, 5000);
+  if (!panel) return { ok: false, reason: "panel did not open as a FieldPanel", errors };
+  panel.querySelector("[data-action='start']").click();
+  await waitFor(() => panel.querySelector("[data-role='status']").classList.contains("is-recording"), 5000);
+
+  const before = uids();
+  m.newBox({ name: "RoundTripSource", frame: { x: 140, y: 140, w: 180, h: 80 }, code: "println(\"source\")" });
+  const a = await waitFor(() => [...uids()].find((u) => !before.has(u)), 5000);
+  const afterA = uids();
+  m.newBox({ name: "RoundTripSink", frame: { x: 380, y: 140, w: 180, h: 80 } });
+  const b = await waitFor(() => [...uids()].find((u) => !afterA.has(u)), 5000);
+  if (!a || !b) return { ok: false, reason: "boxes were not created", errors };
+  await delay(300);
+  m.send("set-string", { uid: b, property: "code", value: "println(\"sink\")" });
+  await delay(300);
+  m.send("perform-action", { uid_currentSelection: [a, b], uid_action: "-connect", uid_property: "code" });
+  await delay(300);
+  m.send("set-rect", { uid: b, property: "frame", value: { x: 400, y: 220, w: 180, h: 80 } });
+  await delay(800);
+
+  const name = panel.querySelector("[data-role='name']");
+  name.value = "ui-roundtrip";
+  name.dispatchEvent(new Event("input", { bubbles: true }));
+  panel.querySelector("[data-action='save']").click();
+  const yaml = await waitFor(() => {
+    const text = panel.querySelector("[data-role='content']").value || "";
+    return text.includes("ui-roundtrip") && text.includes("operations:") ? text : "";
+  }, 8000);
+  const verbs = [...String(yaml).matchAll(/^  - ([a-z-]+):/gm)].map((match) => match[1]).filter((v) => v !== "wait");
+  const row = await waitFor(() => panel.querySelector("[data-role='document-list'] .macro-recorder-item[data-macro-row='ui-roundtrip']"), 8000);
+  const previewText = panel.querySelector("[data-role='preview']").textContent || "";
+
+  // Replay as a copy, 300 below.
+  panel.querySelector("[data-role='as-copy']").checked = true;
+  panel.querySelector("[data-role='offset-y']").value = "300";
+  const beforeCopy = uids();
+  panel.querySelector("[data-action='run']").click();
+  const copyFeedback = await waitFor(() => {
+    const text = panel.querySelector("[data-role='feedback']").textContent || "";
+    return text.includes("Ran macro 'ui-roundtrip'") ? text : "";
+  }, 12000);
+  await waitFor(() => [...uids()].filter((u) => !beforeCopy.has(u)).length >= 2, 5000);
+  await delay(600);
+  const byUid = new Map(liveBoxes().map((box) => [box.uid, box]));
+  const copies = [...uids()].filter((u) => !beforeCopy.has(u)).map((u) => byUid.get(u));
+  const title = (box) => String(box.name || "").trim();
+  const matchCopy = (uid) => {
+    const original = byUid.get(uid);
+    const f = frameOf(original);
+    const copy = copies.find((c) => title(c) === title(original));
+    if (!copy) return { found: false };
+    const g = frameOf(copy);
+    return { found: true, sameSize: g.w === f.w && g.h === f.h, dx: g.x - f.x, dy: g.y - f.y };
+  };
+  const sourceCopy = matchCopy(a);
+  const sinkCopy = matchCopy(b);
+
+  // Step: one operation replays alone (as a copy: one more box).
+  const beforeStep = uids().size;
+  panel.querySelector("[data-action='step-reset']").click();
+  await delay(100);
+  panel.querySelector("[data-action='step']").click();
+  const stepFeedback = await waitFor(() => {
+    const text = panel.querySelector("[data-role='feedback']").textContent || "";
+    return text.includes("step 1 of") ? text : "";
+  }, 8000);
+  await waitFor(() => uids().size === beforeStep + 1, 4000);
+  const afterStep = uids().size;
+  const stepStatus = panel.querySelector("[data-role='step-status']").textContent || "";
+
+  const result = {
+    a, b, verbs, previewText: previewText.slice(0, 300),
+    rowHasActions: !!(row && row.querySelector("[data-row-action='run']") && row.querySelector("[data-row-action='rename']") && row.querySelector("[data-row-action='delete']")),
+    copyFeedback, sourceCopy, sinkCopy, stepFeedback, beforeStep, afterStep, stepStatus, errors,
+  };
+  // The sink's move lands after the connect, or folds into the sink's create when the server
+  // handles it first; either way the recording ends as the same document.
+  const verbsOk = JSON.stringify(verbs) === JSON.stringify(["create", "create", "connect"]) ||
+    JSON.stringify(verbs) === JSON.stringify(["create", "create", "connect", "move"]);
+  result.ok = verbsOk &&
+    result.previewText.includes("create") &&
+    result.rowHasActions &&
+    !!copyFeedback && copyFeedback.includes("errors=0") &&
+    sourceCopy.found && sourceCopy.sameSize && sourceCopy.dx === 0 && sourceCopy.dy === 300 &&
+    sinkCopy.found && sinkCopy.sameSize && sinkCopy.dx === 0 && sinkCopy.dy === 300 &&
+    !!stepFeedback && afterStep === beforeStep + 1 && stepStatus.includes("step 2") &&
+    errors.length === 0;
+  return result;
+} finally {
+  window.removeEventListener("error", onError);
+}
+"""
+
 INLINE_VISUALIZERS_JS = r"""
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const errors = [];
@@ -3812,6 +3932,7 @@ def prepare_generated_files() -> dict[str, Path]:
         "history_panel_close_js": write_generated_file("history-panel-close.js", HISTORY_PANEL_CLOSE_JS),
         "visionos_shared_history_panel_js": write_generated_file("visionos-shared-history-panel.js", VISIONOS_SHARED_HISTORY_PANEL_JS),
         "macro_transcript_panel_js": write_generated_file("macro-transcript-panel.js", MACRO_TRANSCRIPT_PANEL_JS),
+        "macro_recorder_roundtrip_js": write_generated_file("macro-recorder-roundtrip.js", MACRO_RECORDER_ROUNDTRIP_JS),
         "inline_visualizers_js": write_generated_file("inline-visualizers.js", INLINE_VISUALIZERS_JS),
         "focus_keyboard_contract_js": write_generated_file("focus-keyboard-contract.js", FOCUS_KEYBOARD_CONTRACT_JS),
         "focus_keyboard_setup_js": write_generated_file("focus-keyboard-setup.js", FOCUS_KEYBOARD_SETUP_JS),
@@ -4490,6 +4611,29 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="canvas-flight",
+            description="A filmed canvas flight through three bookmarks has one frame per 1/fps, reaches each bookmark exactly where restoring it does, turns the three.js sheet at 8 degrees a second, and gives the sheet its camera back.",
+            document=f"ui-regression-canvas-flight-{int(time.time())}",
+            commands=[
+                "viewport 1280x720",
+                "new-box --name FlightTitle --x 60 --y 60",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-flight-title.kt")]),
+                "new-box --name FlightPlan --x 1000 --y 120",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-flight-plan.kt")]),
+                "new-box --name FlightModel --x 360 --y 760",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-flight-model.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-flight-setup.js"), "--timeout", pw_timeout]),
+                shell_join([
+                    "canvas-flight", "overview", "plan", "close-ups", "--leg", "1.5", "--hold", "0.5", "--fps", "10",
+                    "--size", "640x360", "--pixel-ratio", "0.5", "--expect-frames", "45",
+                    "--record", str(BUILD_ROOT / "scratch" / "canvas-flight.mp4"),
+                ]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-flight-check.js"), "--timeout", pw_timeout]),
+                "viewport default",
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="slideshow-annotation-zoom",
             description="A slideshow annotation starts on its note and ends on its target editor line after a pan and at canvas zoom 0.5 and 2.",
             document=f"ui-regression-slideshow-zoom-{int(time.time())}",
@@ -4625,6 +4769,15 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 "editor-open @last --property code",
                 "sleep 1.0",
                 shell_join(["page-eval", "--body", "--file", str(files["macro_transcript_panel_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="macro-recorder-roundtrip",
+            description="Macro Recorder (a FieldPanel) records canvas actions as create/connect/move, saves them, replays them as an offset copy that matches the originals, and steps one operation.",
+            document=f"ui-regression-macro-roundtrip-{int(time.time())}",
+            commands=[
+                shell_join(["page-eval", "--body", "--file", str(files["macro_recorder_roundtrip_js"]), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),

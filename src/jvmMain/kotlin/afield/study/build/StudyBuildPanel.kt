@@ -234,12 +234,14 @@ internal fun studyBuildStageHtml(state: StudyStageState, stages: List<StudyStage
         "<p class=\"study-build-muted\">One build at a time: this can start when ${studyBuildEscape(busyWith)} finishes.</p>" else ""
     val progress = if (running) """<progress max="1" value="${latest!!.progress}" aria-label="${studyBuildEscape(state.label)} progress"></progress><p class="study-build-elapsed">${studyBuildElapsedText(latest)}</p>""" else ""
     val prior = if (failure != null && state.current != null) "<p>Previous checked result is still current.</p>" else ""
+    // A failed attempt's notes sit with its failure; the current result's, if any, follow under their own heading.
+    val failureNotes = if (failure != null) studyBuildResultNotesHtml(state.failureNotes) else ""
     val resultNotes = studyBuildResultNotesHtml(state.resultNotes,
         state.current != null && latest?.id != state.current.id)
     val reviewLinks = studyBuildFindingsHtml(state, findings)
     val hasReview = !earlier && findings.any { it.runId == latest?.id }
     val diagnostic = latest?.takeIf { it.problem != null }?.let { studyBuildDiagnosticHtml(it, hasReview, currentInputs = !earlier) }.orEmpty()
-    return """<section data-stage="${state.id}"><div class="study-build-title"><span>${studyBuildEscape(state.label)}</span><span class="study-build-state">$label</span>$action</div>$progress<p class="${if (failure != null) "study-build-error" else ""}">${studyBuildEscape(message)}</p>$request$turn${if (advice.isNotEmpty()) "<p class=\"study-build-error\">${studyBuildEscape(advice)}</p>" else ""}$geometry$prior$resultNotes$reviewLinks$diagnostic</section>"""
+    return """<section data-stage="${state.id}"><div class="study-build-title"><span>${studyBuildEscape(state.label)}</span><span class="study-build-state">$label</span>$action</div>$progress<p class="${if (failure != null) "study-build-error" else ""}">${studyBuildEscape(message)}</p>$request$turn${if (advice.isNotEmpty()) "<p class=\"study-build-error\">${studyBuildEscape(advice)}</p>" else ""}$geometry$failureNotes$prior$resultNotes$reviewLinks$diagnostic</section>"""
 }
 
 /**
