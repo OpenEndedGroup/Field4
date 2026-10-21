@@ -231,17 +231,15 @@ def clear_repository_env(environ=os.environ) -> list[str]:
     """Drop the variables that tell git which repository it is in. Returns the names it dropped.
 
     This runner is started from inside merges (`merge_regen.py`, the lander), and git exports
-    `GIT_DIR` and friends to what a merge runs. Several suites build throwaway repositories with
-    plain `git init` / `git -C <tmp> ...`, which honour those variables over `-C`. On 2026-10-21 one
-    run with `GIT_DIR` set re-initialised the real repository as bare (`core.bare = true` in the
-    shared .git/config), and every worktree and the lander stopped working until it was put back.
-    The list is git's own (`git rev-parse --local-env-vars`, what it clears for a submodule).
+    `GIT_DIR` and friends to what a merge runs. Suites build throwaway repositories, and on
+    2026-10-21 one did so under an inherited `GIT_DIR` and made the real repository bare; see
+    tools/git_isolation.py. The suites that build repositories also scrub at import, so they are
+    safe run on their own; this covers whatever else a suite starts.
     """
-    listed = subprocess.run(["git", "rev-parse", "--local-env-vars"], stdout=subprocess.PIPE,
-                            stderr=subprocess.DEVNULL, text=True, check=False).stdout.split()
-    names = listed or ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY",
-                       "GIT_COMMON_DIR", "GIT_PREFIX", "GIT_CONFIG", "GIT_CONFIG_PARAMETERS"]
-    return [name for name in names if environ.pop(name, None) is not None]
+    sys.path.insert(0, str(TOOLS_ROOT))
+    from git_isolation import scrub_process_env  # noqa: PLC0415
+
+    return scrub_process_env(environ)
 
 
 def main() -> int:

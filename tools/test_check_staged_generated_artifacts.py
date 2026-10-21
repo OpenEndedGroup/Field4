@@ -19,6 +19,10 @@ from tools.check_staged_generated_artifacts import (
     conflicting_unstaged_paths,
     guards_for_paths,
 )
+from tools.git_isolation import scrub_process_env  # noqa: E402
+
+# This module builds scratch git repositories; an inherited GIT_DIR would redirect them.
+scrub_process_env()
 
 REPO = Path(__file__).resolve().parents[1]
 

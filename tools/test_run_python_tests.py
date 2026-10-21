@@ -19,6 +19,10 @@ from pathlib import Path
 from unittest import mock
 
 from tools import land, run_python_tests
+from tools.git_isolation import scrub_process_env  # noqa: E402
+
+# This module builds scratch git repositories; an inherited GIT_DIR would redirect them.
+scrub_process_env()
 
 
 def _reds() -> type[unittest.TestCase]:

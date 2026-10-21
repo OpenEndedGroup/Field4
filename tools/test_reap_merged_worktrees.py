@@ -27,6 +27,10 @@ from tools.reap_merged_worktrees import (
     print_policy,
     retention_families,
 )
+from tools.git_isolation import scrub_process_env  # noqa: E402
+
+# This module builds scratch git repositories; an inherited GIT_DIR would redirect them.
+scrub_process_env()
 
 TOOL = Path(__file__).resolve().parent / "reap_merged_worktrees.py"
 REPO_ROOT = TOOL.parent.parent

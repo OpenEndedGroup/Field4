@@ -22,6 +22,7 @@ from tools.refactoring.core import (EXCLUDED, PROPERTIES, KotlinEngine, Refactor
 from tools.refactoring.containers import ContainerError, extract
 from tools.refactoring.diffs import unified_text, compact_changes
 from tools.field_agent import configured_agent, find_executable
+from tools.git_isolation import scrubbed_env
 from tools.refactoring import session
 
 BATCHES = {
@@ -37,7 +38,8 @@ DECISIONS = {'patch', 'preserve', 'adapter', 'question', 'open'}
 
 
 def git(root, *args):
-    return subprocess.check_output(['git', '-C', str(root), *args], text=True).strip()
+    # scrubbed_env: an inherited GIT_DIR (a hook, a merge) would win over -C and act on another repository.
+    return subprocess.check_output(['git', '-C', str(root), *args], text=True, env=scrubbed_env()).strip()
 
 
 def pointer(repo):
@@ -156,7 +158,8 @@ def create(repo, plan_dir, home=None):
     branch = 'codex/refactor-pass-' + stamp
     worktree = directory / 'repository'
     base = git(source, 'rev-parse', 'HEAD')
-    subprocess.run(['git', '-C', str(repo), 'worktree', 'add', '-b', branch, str(worktree), base], check=True, stdout=sys.stderr)
+    subprocess.run(['git', '-C', str(repo), 'worktree', 'add', '-b', branch, str(worktree), base], check=True,
+                   stdout=sys.stderr, env=scrubbed_env())
     roots = []
     for root in plan['roots']:
         target = worktree
