@@ -126,7 +126,8 @@ class Stroke internal constructor(
      * Play [pattern] while this stroke lives, on the sketch's clock (0.5 cycles a second, shared by
      * every stroke, so patterns stay in step). The pattern language's own atoms and params, with the
      * Strudel names [s], [lpf] and [signal]: `pat("c4 e4 g4") with s("sawtooth") with gain(signal { level })`.
-     * Note names are Tidal's, so `c5` is middle C.
+     * Note names are Tidal's, so `c5` is middle C. Gains are Strudel's: the pattern plays at a quarter
+     * of dough's level, as quiet as the same gain is in the demo.
      */
     fun sound(pattern: PatPattern<String>) {
         voice?.stop()
@@ -269,6 +270,14 @@ class StrokeSketch internal constructor(val info: SessionInformation) {
         internal const val DAMPING = 0.98
         internal const val CPS = 0.5
 
+        /**
+         * The level stroke patterns play at, relative to dough at the same `gain`: Strudel's synths
+         * are that much quieter than dough's, so the demo's gains sound as loud here as there, and its
+         * `rms()`-driven drawing moves as much. Measured on the prism choir with the same three
+         * strokes: the demo's `rms()` read 0.046 in Chrome, this sketch's 0.19 at gain 1.
+         */
+        internal const val STRUDEL_LEVEL = 0.25
+
         internal fun existing(info: SessionInformation): StrokeSketch? = sketches[info]
     }
 
@@ -301,7 +310,7 @@ class StrokeSketch internal constructor(val info: SessionInformation) {
     internal fun play(stroke: Stroke, pattern: PatPattern<String>): DoughLive.PatternVoice {
         val live = DoughLive.shared()
         val origin = originFrame ?: live.framesRendered.also { originFrame = it }
-        return live.play(pattern, CPS, DoughLive.groupOf(stroke.box), origin)
+        return live.play(pattern, CPS, DoughLive.groupOf(stroke.box), origin, gain = STRUDEL_LEVEL)
     }
 
     internal fun take(pen: StrokePen, mark: Mark, keepMarks: Boolean) {

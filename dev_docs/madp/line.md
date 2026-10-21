@@ -77,6 +77,11 @@ and they sound at the same pitch. **Synthesis**: Strudel's WebAudio synths are r
 `lpf`, `room`, `pan` and `gain` are the same parameters, and dough synthesises `bd`, `hh` and `cp`
 itself, so the drum preset needs no sample library.
 
+**Level**: Strudel's synths are quieter than dough's at the same `gain`. Measured with the same
+three strokes on the prism choir, the demo's `rms()` read 0.046 in Chrome and dough's read 0.19, so
+stroke patterns play at a quarter of dough's level (`STRUDEL_LEVEL`). The demo's gains then sound as
+loud as they did, and the drawing that `rms()` drives moves as much.
+
 The patterns run on the shared `DoughLive` engine (built for the Score port). A new
 `DoughLive.play(pattern, cps)` queries the pattern on the render thread, one 128-frame block at a
 time, so onsets are block-accurate (2.7 ms) and each `signal { }` is read at its event's scheduling
@@ -117,6 +122,26 @@ the pen, press Alt+D, choose the pencil, draw.
   out because they repeat a mechanism already shown here.
 - `.analyze(1)`: `rms()` is measured from dough's voices.
 
+## Compared with the demo
+
+Each box was run in Field with real strokes. The strokes were driven through the drawing layer's
+own freedraw tool by pointer events, so they went to `notation.onStroke` by the same path a hand
+takes. The same strokes, by mouse events, went into the demo in Chrome. What came out:
+
+- **prism choir, ribbon bloom, comet dust, curve choir**: the same shapes and motion. The curve
+  choir's small knot at the centre is the demo's own arithmetic: `subtract(base, wind)` cancels
+  the stroke's shape.
+- **step lattice** snaps a stroke to the same melody as the demo. The demo never draws its snapped
+  melody line, because `connected: snappedLine.length === 0` starts a new segment at every point
+  after the first. The port draws the line that code meant.
+- **magnet mesh**: strokes pull together and knit, as the demo's equations say. In Chrome the
+  demo's strokes tangled far more within 6 s. A replica of its update rule for the same number of
+  steps moves no point more than 89 px (speed caps at 11.8 px/s), so that tangle does not follow
+  from the demo's own physics. It is not reproduced here.
+- **Frame rate**: the demo steps its physics once per `requestAnimationFrame` with dt 1/60, so on
+  a 120 Hz display (Chrome measured 120 fps) its strokes move twice as fast as on a 60 Hz one. The
+  port steps at 60 per second on every machine, the rate the constants were written for.
+
 ## Gaps
 
 - Strokes are runtime state, as in the demo: they are not saved with the document.
@@ -124,3 +149,5 @@ the pen, press Alt+D, choose the pencil, draw.
   it.
 - Panning or zooming clears the trails (a trail is a screen-space fade).
 - `rms()` excludes dough's reverb tail, which is mixed after the voices.
+- Nothing here was drawn by a real hand: the strokes came from pointer events in a headless page.
+  Excalidraw's freedraw records about twice as many points as the demo's mouse handler.

@@ -97,7 +97,10 @@ operations:
                       lower += vec(p.x - n.x * spread * 0.8, p.y - n.y * spread * 0.8)
                   }
                   val hue = t * 50
-                  val outline = smooth(upper + lower.reversed())
+                  // Up one side and back down the other. (`+` on two point lists adds them point by point.)
+                  val around = ArrayList(upper)
+                  around.addAll(lower.asReversed())
+                  val outline = smooth(around)
                   val fill = outline.copy()
                   fill.filled = true
                   fill.stroked = false

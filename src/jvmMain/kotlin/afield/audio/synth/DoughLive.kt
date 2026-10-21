@@ -131,6 +131,8 @@ class DoughLive internal constructor(
         val originFrame: Long,
         /** The dough `group` its events carry, or null for none. */
         val group: Int?,
+        /** What every event's `gain` (1 where it has none) is multiplied by. */
+        val gain: Double = 1.0,
     ) {
         @Volatile
         var stopped = false
@@ -158,8 +160,10 @@ class DoughLive internal constructor(
             val arc = PatArc(PatQ.of(max(0L, a), live.sampleRate.toLong()) * cpsQ, PatQ.of(b, live.sampleRate.toLong()) * cpsQ)
             // A continuous pattern (no `whole`) has no notes to strike, so only events with a start play.
             return pattern.events(arc).filter { it.whole != null && it.hasOnset }.map { event ->
-                val e = doughPatternEvent(event, cps)
-                if (group == null || "group" in e) e else e + ("group" to group)
+                val e = doughPatternEvent(event, cps).toMutableMap()
+                if (gain != 1.0) e["gain"] = patFormatNumber(((e["gain"] as? String)?.toDoubleOrNull() ?: 1.0) * gain)
+                if (group != null && "group" !in e) e["group"] = group
+                e
             }
         }
     }
@@ -172,10 +176,12 @@ class DoughLive internal constructor(
      * block (2.7 ms at 48 kHz) and a continuous parameter, `gain(sig { level })` for instance, is read
      * as each event is scheduled. Each event becomes a dough event by [doughPatternEvent]. A query
      * that throws is recorded in [PatternVoice.lastError] and that block of the pattern is skipped.
+     * [gain] scales every event's own `gain`, to set the level of a whole pattern written for another
+     * synthesiser.
      */
-    fun play(pattern: PatPattern<String>, cps: Double = 0.5, group: Int? = null, originFrame: Long = framesRendered): PatternVoice {
+    fun play(pattern: PatPattern<String>, cps: Double = 0.5, group: Int? = null, originFrame: Long = framesRendered, gain: Double = 1.0): PatternVoice {
         require(cps > 0.0) { "cps must be > 0, got $cps" }
-        return PatternVoice(this, pattern, cps, originFrame, group).also { patterns.add(it) }
+        return PatternVoice(this, pattern, cps, originFrame, group, gain).also { patterns.add(it) }
     }
     @Volatile
     private var stopped = false
