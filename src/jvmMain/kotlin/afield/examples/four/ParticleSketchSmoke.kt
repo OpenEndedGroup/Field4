@@ -123,6 +123,24 @@ object ParticleSketchSmoke {
         }
     """.trimIndent()
 
+    private val PILE = """
+        #version 450
+        #include "particles/sketch"
+        void spawn(vec2 at) {
+            p.pos = at;
+            p.vel = vec2(0.0);
+            p.radius = 5.0;
+            p.mass = 1.0;
+        }
+        void eachPair(Particle other, Pair pair) {
+            collide(other, pair, 0.9);
+        }
+        void update() {
+        }
+        void draw() {
+        }
+    """.trimIndent()
+
     @JvmStatic
     fun main(args: Array<String>) {
         Options.enableVR = false
@@ -132,6 +150,7 @@ object ParticleSketchSmoke {
             var failures = 0
             failures += checkForces(renderer, window)
             failures += checkCollisions(renderer, window)
+            failures += checkPileSymmetry(renderer, window)
             failures += checkCapacityAndReset(renderer, window)
             if (failures > 0) {
                 println("particle sketch tests FAILED ($failures)")
@@ -445,6 +464,53 @@ object ParticleSketchSmoke {
         var failures = 0
         if (worst > 5e-3) { println("  FAIL: collision response differs from madp's"); failures++ }
         if (touching < count / 4) { println("  FAIL: too few pairs touch to test collide"); failures++ }
+        if (failures == 0) println("  ok")
+        return if (failures > 0) 1 else 0
+    }
+
+    /**
+     * A pile of identical overlapping balls, mirror-symmetric left to right and top to bottom,
+     * has to stay symmetric through a step. The neighbour walk visits cells left to right and
+     * bottom to top; when collide() moved p as it went, the pairs visited later saw p already
+     * pushed away from the earlier ones, and a pile in bounce house drifted into one corner.
+     */
+    private fun checkPileSymmetry(renderer: Renderer, window: Window): Int {
+        println("--- a mirror-symmetric pile stays symmetric through a step")
+        val sketch = ParticleSketch(module(renderer, "sketch-pile", PILE), renderer) {
+            name = "smoke-pile"
+            capacity = 1024
+            damping = 1.0
+            pairRadius = 20.0
+            paintWithMouse = false
+            fps = 0.0
+        }
+        val cx = 450.0
+        val cy = 350.0
+        // a quarter of a jittered lattice 7 pixels apart (the balls are 10 across), mirrored four ways
+        val random = kotlin.random.Random(3)
+        val quarter = (0 until 8).flatMap { i -> (0 until 8).map { j -> (3.5 + i * 7 + random.nextDouble() * 2) to (3.5 + j * 7 + random.nextDouble() * 2) } }
+        val points = quarter.flatMap { (dx, dy) -> listOf((cx + dx) to (cy + dy), (cx - dx) to (cy + dy), (cx + dx) to (cy - dy), (cx - dx) to (cy - dy)) }
+        paintPaused(renderer, window, sketch, points)
+        sketch.settings.paused = false
+        run(renderer, window, 1)
+        sketch.settings.paused = true
+        val after = read(sketch)
+        val count = sketch.count
+        val byId = (0 until count).associateBy { java.lang.Float.floatToRawIntBits(after[it * F + 17]) }
+        var worst = 0.0
+        var moved = 0.0
+        for (k in quarter.indices) {
+            val at = (0..3).map { m -> byId.getValue(k * 4 + m + 1).let { i -> after[i * F].toDouble() to after[i * F + 1].toDouble() } }
+            val (a, b, c, d) = at
+            worst = maxOf(worst, abs((a.first - cx) + (b.first - cx)), abs((a.second - cy) - (b.second - cy)))
+            worst = maxOf(worst, abs((a.first - cx) - (c.first - cx)), abs((a.second - cy) + (c.second - cy)))
+            worst = maxOf(worst, abs((a.first - cx) + (d.first - cx)), abs((a.second - cy) + (d.second - cy)))
+            moved = maxOf(moved, hypot(a.first - cx - quarter[k].first, a.second - cy - quarter[k].second))
+        }
+        println("  $count balls; largest push ${"%.3g".format(moved)} px; worst asymmetry ${"%.3g".format(worst)} px")
+        var failures = 0
+        if (moved < 0.5) { println("  FAIL: the pile hardly moved, so this tests nothing"); failures++ }
+        if (worst > 1e-3) { println("  FAIL: the step broke the pile's mirror symmetry"); failures++ }
         if (failures == 0) println("  ok")
         return if (failures > 0) 1 else 0
     }

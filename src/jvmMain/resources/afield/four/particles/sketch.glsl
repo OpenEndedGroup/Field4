@@ -26,7 +26,8 @@
 //
 // Every other particle is read as it was at the top of the frame (a snapshot): only p changes.
 // eachPair therefore sees each pair twice, once from each side, and each side applies its own
-// half -- spring() and collide() are written that way, so the totals are madp's.
+// half -- spring() and collide() are written that way, so the totals are madp's. collide()'s
+// pushes and bounces land after the last pair, so every pair sees p as the frame began.
 
 #extension GL_EXT_buffer_reference : require
 layout(local_size_x = 64) in;
@@ -437,6 +438,10 @@ int flock(float radius, float separation, float alignment, float cohesion, float
 
 // ---- pairs: call these from eachPair(other, pair) ----
 
+// What collide() has done to p's position and velocity this frame, applied after the last pair.
+vec2 fieldPairShift;
+vec2 fieldPairKick;
+
 // A damped spring between p and other, wanting to be restLength long. Applies p's half; other
 // applies the opposite half when its own eachPair sees p.
 void spring(Particle other, Pair pair, float restLength, float stiffness, float damping) {
@@ -456,11 +461,14 @@ void collide(Particle other, Pair pair, float restitution, float padding) {
     vec2 n = pair.d / dist;
     float overlap = minDist - dist;
     float total = p.mass + other.mass;
-    p.pos -= n * overlap * (other.mass / total);
+    // Collected, and applied once every pair has been seen: moving p now would let the pairs
+    // the walk visits later see a p already pushed away from the earlier ones, and the walk
+    // goes left to right, bottom to top, so the pile would drift that way.
+    fieldPairShift -= n * overlap * (other.mass / total);
     float sepVel = dot(other.vel - p.vel, n);
     if (sepVel > 0.0) return;
     float j = -(1.0 + restitution) * sepVel / (1.0 / p.mass + 1.0 / other.mass);
-    p.vel -= j * n / p.mass;
+    fieldPairKick -= j * n / p.mass;
 }
 
 void collide(Particle other, Pair pair, float restitution) {
@@ -539,6 +547,8 @@ void fieldStepPhase(uint index) {
     p = sketch.src.p[index];
     p.acc = world.gravity;
 
+    fieldPairShift = vec2(0.0);
+    fieldPairKick = vec2(0.0);
     if (world.pairRadius > 0.0) {
         float r2 = world.pairRadius * world.pairRadius;
         ivec2 home = fieldCellOf(p.pos);
@@ -557,6 +567,9 @@ void fieldStepPhase(uint index) {
             }
         }
     }
+
+    p.pos += fieldPairShift;
+    p.vel += fieldPairKick;
 
     update();
 
