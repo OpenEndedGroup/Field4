@@ -1,0 +1,1 @@
+**triangle lesson**: a grammar of triangles. Alternate faces swap two corners (winding), each face blends three colours, and a small box stands on each one at a point found with `mix`. Set `side = GeometrySide.FRONT` to see which faces are wound the other way.

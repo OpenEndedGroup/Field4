@@ -1,0 +1,1 @@
+**signal tear** (animated): a scanline grid torn along random rows as `t` moves, with a faint emissive glow. Launch the box (alt+up) to play it and stop it with alt+down; running it draws the first frame. `tear.pow(8)` sets how rarely a row breaks.

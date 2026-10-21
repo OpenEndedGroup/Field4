@@ -17,11 +17,26 @@ private fun escapeHtml(text: String): String {
         .replace("'", "&#39;")
 }
 
+/**
+ * Code spans, emphasis, images and links. A code span is literal: the `*` in `` `sin(r * 3.6)` `` is
+ * multiplication, so emphasis and links are only looked for between code spans, never inside or across one.
+ */
 private fun inlineFormat(text: String): String {
+    val out = StringBuilder(text.length + 16)
+    var index = 0
+    for (span in Regex("`([^`]+)`").findAll(text)) {
+        out.append(formatProse(text.substring(index, span.range.first)))
+        out.append("<code>").append(span.groupValues[1]).append("</code>")
+        index = span.range.last + 1
+    }
+    out.append(formatProse(text.substring(index)))
+    return out.toString()
+}
+
+private fun formatProse(text: String): String {
     var out = text
-    out = out.replace(Regex("`([^`]+)`"), "<code>$1</code>")
     out = out.replace(Regex("\\*\\*([^*]+)\\*\\*"), "<strong>$1</strong>")
-    out = out.replace(Regex("\\*([^*]+)\\*"), "<em>$1</em>")
+    out = out.replace(Regex("\\*([^*\\s][^*]*)\\*"), "<em>$1</em>")
     out = replaceImages(out)
     out = replaceLinks(out)
     return out

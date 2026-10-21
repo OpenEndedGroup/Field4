@@ -1,4 +1,4 @@
-// Another animation: the same grid every frame, torn along random rows as t moves. Launch it.
+// Another animation: the same grid every frame, torn along random rows as t moves. Launch it (alt+up).
 animateGeometry {
     view(background = "#050608", ground = true, grid = false)
 
