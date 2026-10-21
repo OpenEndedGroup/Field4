@@ -638,6 +638,10 @@ object DemoTranscriptExecSmokeTest {
         // Streams a splat sequence into a native window, and wants a directory of .compressed.ply
         // frames that is deliberately not committed -- so compiled here and no further.
         "splat_sequence_streaming",
+        // The madp splat-shader port: per-splat GLSL inserts on a native Window + Renderer, so
+        // compile-only here. SplatShaderTest compiles every box's compute tab against the
+        // splat/insert + splat/end pair, and four.splat-shader.smoke measures the sort on a GPU.
+        "splat_shader",
         // A native window plus a directory of images that is nobody's to commit.
         //
         // Its GLSL is *not* checked here, and the comment that used to say so was wrong in a way

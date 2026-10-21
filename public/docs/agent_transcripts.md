@@ -2790,6 +2790,21 @@ absent, rather than shipping somebody's capture as a fixture.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/splat_sequence_streaming/metadata.edn)
 
+### splat_shader
+
+The madp splat-shader demo: a few lines of GLSL run once per Gaussian splat per frame and may
+rewrite its centre, radii, colour and rotation (`pos`, `scales`, `rgba`, `quat`, with `index` and
+`t` to read). Each box's compute tab is just those lines between `#include "splat/insert"` and
+`#include "splat/end"`, and its code hands the module and a cloud to `SplatShader`. A passthrough on
+the icosphere shell leads; six of the demo's inserts follow, one on each of its procedural clouds
+(pulse rings, dissolve, gravity well, fern veins, lichen tangle, xray shell), each launching into
+the same window with the demo's turn and size sliders. The insert runs in a compute pass ahead of
+the depth sort, so a dissolve that throws splats outward is sorted where they went: measured on the
+GPU, editing the splat vertex shader instead draws half of all neighbouring pairs in the wrong order.
+`SplatSet.fromPly` and `SplatSet.fromGltf` load your own splats, or a mesh as one disc per vertex.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/splat_shader/metadata.edn)
+
 ### mega_texture_wall
 
 A directory of images as one wall, behind a virtual texture the **GPU**
