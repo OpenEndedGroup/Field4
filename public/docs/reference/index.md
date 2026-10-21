@@ -630,7 +630,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - [film](visualization.md#canvasflight-kt)
 - [layout](visualization.md#boxlayout-kt)
 - [notation](visualization.md#darkthemecolour-kt)
-- *output* — [Graphics](graphics.md#shadertransitionnotes-kt) · [Internal](internal.md#prettystrings-kt) · [Visualization](visualization.md#liveoutputiframe-kt) · [Workspace](workspace.md#lastrunnotes-kt)
+- *output* — [Graphics](graphics.md#shadertransitionnotes-kt) · [Internal](internal.md#prettystrings-kt) · [Visualization](visualization.md#chargrid-kt) · [Workspace](workspace.md#lastrunnotes-kt)
     - [templates](visualization.md#replacements-kt)
 - [slides](visualization.md#slideshow-kt)
 - *visualization* — [Graphics](graphics.md#flineinspect-kt) · [Visualization](visualization.md#audiovisualizer-kt) · [Workspace](workspace.md#geometryreviewsurface-kt)
@@ -643,7 +643,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**33633 public symbols across 1515 source files**, 17156 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**33703 public symbols across 1516 source files**, 17226 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -665,7 +665,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [ALife](alife.md) | 14 | 774 | 571 (73%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 611 | 405 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 5 | 349 | 199 (57%) | Optimisation over a space you can only sample. |
-| [Visualization](visualization.md) | 52 | 1484 | 1024 (69%) | Turning a value into something you can look at, without leaving the box. |
+| [Visualization](visualization.md) | 53 | 1554 | 1094 (70%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 43 | 1529 | 758 (49%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 40 | 1316 | 721 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 77 | 2092 | 1013 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
@@ -855,6 +855,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>ceres/<wbr></small> [CeresRealizerCacheCost.kt](examples.md#ceresrealizercachecost-kt) | Examples | 1 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>ceres/<wbr></small> [CeresRealizerDiagnostic.kt](examples.md#ceresrealizerdiagnostic-kt) | Examples | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>ceres/<wbr></small> [CeresSolverOptionsSmoke.kt](examples.md#ceressolveroptionssmoke-kt) | Examples | 1 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [CharGrid.kt](visualization.md#chargrid-kt) | Visualization | 70 | 70 | A grid of glyphs that box code writes into, cell by cell, shown in an output panel: generative text art in the spirit of 10 PRINT, ported from the madp charGrid demo. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>visualization/<wbr></small> [ChartGallery.kt](examples.md#chartgallery-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [charts.kt](visualization.md#charts-kt) | Visualization | 94 | 86 | Plots — the structure, the scales, and the one renderer for them. | [Charts as FLines](../chart.md), [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [chat.kt](workspace.md#chat-kt) | Workspace · internal | 1 | 1 |  |  |
