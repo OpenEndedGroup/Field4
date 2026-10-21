@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="webrtc_renderer" index="0" -->
 
 ```edn [field-box id="webrtc_renderer" role="properties"]
-{"id" "webrtc_renderer" "index" 0 "name" "WebRTC window + renderer" "parents" ["root"] "children" ["webrtc_publish_shader" "webrtc_receive_stream"] "properties" {"children" #{#afield/box "webrtc_publish_shader" #afield/box "webrtc_receive_stream"} "parents" #{#afield/box "root"} "name" "WebRTC window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "webrtc_renderer_code_.kt" "lines" 15 "characters" 330 "sha256" "e729b6b924dc409b9f468545e0dd172e82d9ac9797adc03cbbfa38dd0be53675"}]}
+{"id" "webrtc_renderer" "index" 0 "name" "WebRTC window + renderer" "parents" ["root"] "children" ["webrtc_publish_shader" "webrtc_receive_stream"] "properties" {"children" #{#afield/box "webrtc_publish_shader" #afield/box "webrtc_receive_stream"} "parents" #{#afield/box "root"} "name" "WebRTC window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "webrtc_renderer_code_.kt" "lines" 15 "characters" 330 "sha256" "e729b6b924dc409b9f468545e0dd172e82d9ac9797adc03cbbfa38dd0be53675"} {"name" "notes" "language" "markdown" "path" "webrtc_renderer_notes_.md" "lines" 1 "characters" 65 "sha256" "c1af8a32c1535d11a73374e682a11d94d78a7b05c90ba0462a38515d3d983d2a"}]}
 ```
 
 ```kotlin [field-property box="webrtc_renderer" name="code" path="webrtc_renderer_code_.kt"]
@@ -32,12 +32,22 @@ println("WebRTC renderer ready")
 start(renderer::run)
 ```
 
+```markdown [field-property box="webrtc_renderer" name="notes" path="webrtc_renderer_notes_.md"]
+The renderer and its window. The other two boxes sit beneath it.
+```
+
 ## 2. publish a shader
 
 <!-- field-box id="webrtc_publish_shader" index="1" -->
 
+### Narrative
+
+From `notes`
+
+WebRTC shader jam
+
 ```edn [field-box id="webrtc_publish_shader" role="properties"]
-{"id" "webrtc_publish_shader" "index" 1 "name" "publish a shader" "parents" ["root" "webrtc_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "webrtc_renderer"} "name" "publish a shader" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "webrtc_publish_shader_code_.kt" "lines" 23 "characters" 708 "sha256" "d86fd6fe7825042629ad63c3f8b54c76cb834062650d752bbc20ed7e5f271e51"} {"name" "vertex" "language" "glsl" "path" "webrtc_publish_shader_vertex_.glsl" "lines" 6 "characters" 106 "sha256" "7270a97f3cbaae098ffd43be2431591d87417f94d449cd9a01207a1c60fc2eb6"} {"name" "fragment" "language" "glsl" "path" "webrtc_publish_shader_fragment_.glsl" "lines" 16 "characters" 489 "sha256" "74159cc699e630c09c9c75ba30480e36684adb01e78c9034d655d3cc0c640d7b"}]}
+{"id" "webrtc_publish_shader" "index" 1 "name" "publish a shader" "parents" ["root" "webrtc_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "webrtc_renderer"} "name" "publish a shader" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "webrtc_publish_shader_code_.kt" "lines" 23 "characters" 708 "sha256" "d86fd6fe7825042629ad63c3f8b54c76cb834062650d752bbc20ed7e5f271e51"} {"name" "notes" "language" "markdown" "path" "webrtc_publish_shader_notes_.md" "lines" 43 "characters" 1724 "sha256" "6ca4b010b3471511bf7b30eee877ff5faf81368a6a1f80f73fbce9cc58e76d02"} {"name" "vertex" "language" "glsl" "path" "webrtc_publish_shader_vertex_.glsl" "lines" 6 "characters" 106 "sha256" "7270a97f3cbaae098ffd43be2431591d87417f94d449cd9a01207a1c60fc2eb6"} {"name" "fragment" "language" "glsl" "path" "webrtc_publish_shader_fragment_.glsl" "lines" 16 "characters" 489 "sha256" "74159cc699e630c09c9c75ba30480e36684adb01e78c9034d655d3cc0c640d7b"}]}
 ```
 
 ```kotlin [field-property box="webrtc_publish_shader" name="code" path="webrtc_publish_shader_code_.kt"]
@@ -65,6 +75,52 @@ quad.set(4, 2) {
 
 display("main", sink.html())
 ```
+
+````markdown [field-property box="webrtc_publish_shader" name="notes" path="webrtc_publish_shader_notes_.md"]
+# WebRTC shader jam
+
+The classroom shader jam, from Field. This box draws a fragment shader (its `fragment`
+tab) into a 640×360 view and publishes the view as a live video stream named
+`@you/field-shader`. The box beside it lists everyone who is publishing and shows the
+one you pick, as a texture, in the renderer's window.
+
+## Joining a class
+
+Run this once, in any box, with your class's aaaframe address:
+
+```kotlin
+WebRTCNetwork.join("https://aaaframe.example.edu")
+```
+
+The first time, a small Field window opens on aaaframe's GitHub sign-in. Sign in as you
+would in the browser; the window closes by itself and the panels connect as `@you`.
+Field remembers the class and your login (in `~/.afield/webrtc/aaaframe-sign-ins.json`,
+readable only by you), so later sessions need nothing. When the login expires, the
+window opens again.
+
+Then, in a browser ShaderTrinket, type `you/field-shader` into Receive to pull this
+stream into an `iChannel`; and pick any classmate's name in the receiving box's list
+to sample their Publish in Field.
+
+Before you join a class, both boxes use Field's own relay, and the receiving box shows
+this box's stream.
+
+## On the aaaframe side
+
+Nothing new: an aaaframe server with ShaderTrinket's signalling, as the class already
+runs. A server in local mode (`AAAFRAME_LOCAL_AUTH=1`) needs no sign-in at all.
+
+## Known gaps
+
+- Field's Electron app only, for publishing and for signing in.
+- Video only; no sound.
+- No TURN server: two machines on networks that both block direct connections cannot
+  see each other.
+- A ShaderTrinket whose shader does not animate publishes no frames.
+- On Linux the received stream is copied through the CPU.
+
+More: the WebRTC Streams page in Field's docs.
+````
 
 ```glsl [field-property box="webrtc_publish_shader" name="vertex" path="webrtc_publish_shader_vertex_.glsl"]
 #version 450
@@ -99,7 +155,7 @@ void main() {
 <!-- field-box id="webrtc_receive_stream" index="2" -->
 
 ```edn [field-box id="webrtc_receive_stream" role="properties"]
-{"id" "webrtc_receive_stream" "index" 2 "name" "receive a stream as a texture" "parents" ["root" "webrtc_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "webrtc_renderer"} "name" "receive a stream as a texture" "_tombstone" false "frame" #afield/rect [640.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "webrtc_receive_stream_code_.kt" "lines" 34 "characters" 1043 "sha256" "c9acbc12123dddb1984b233adbf10c91975de46ef0e5c3d61f709dec791cfa30"} {"name" "vertex" "language" "glsl" "path" "webrtc_receive_stream_vertex_.glsl" "lines" 9 "characters" 180 "sha256" "ba17dfa14020b0511f5632daad6bb904ff815014cb1504734d7c12283faa537d"} {"name" "fragment" "language" "glsl" "path" "webrtc_receive_stream_fragment_.glsl" "lines" 8 "characters" 226 "sha256" "96ff1ce71f270dc3ca242ecd7e93c902db2f0d18057971a3cadc81bfe9c3d5f7"}]}
+{"id" "webrtc_receive_stream" "index" 2 "name" "receive a stream as a texture" "parents" ["root" "webrtc_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "webrtc_renderer"} "name" "receive a stream as a texture" "_tombstone" false "frame" #afield/rect [640.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "webrtc_receive_stream_code_.kt" "lines" 34 "characters" 1043 "sha256" "c9acbc12123dddb1984b233adbf10c91975de46ef0e5c3d61f709dec791cfa30"} {"name" "notes" "language" "markdown" "path" "webrtc_receive_stream_notes_.md" "lines" 4 "characters" 314 "sha256" "664693a8c6a8d5e48dd8c94d441ccb898734764349192e183c5c9aa9d17cb0a2"} {"name" "vertex" "language" "glsl" "path" "webrtc_receive_stream_vertex_.glsl" "lines" 9 "characters" 180 "sha256" "ba17dfa14020b0511f5632daad6bb904ff815014cb1504734d7c12283faa537d"} {"name" "fragment" "language" "glsl" "path" "webrtc_receive_stream_fragment_.glsl" "lines" 8 "characters" 226 "sha256" "96ff1ce71f270dc3ca242ecd7e93c902db2f0d18057971a3cadc81bfe9c3d5f7"}]}
 ```
 
 ```kotlin [field-property box="webrtc_receive_stream" name="code" path="webrtc_receive_stream_code_.kt"]
@@ -137,6 +193,13 @@ loop {
     said = line
     frame()
 }
+```
+
+```markdown [field-property box="webrtc_receive_stream" name="notes" path="webrtc_receive_stream_notes_.md"]
+Lists who is publishing (buttons under `publishers`) and draws the stream you click on
+a quad in the renderer's window. Until you pick, it shows the first publisher it sees.
+In the shader the stream is `uniform sampler2D remote`. Re-running keeps the stream
+connected; `source.status` says what it is waiting for.
 ```
 
 ```glsl [field-property box="webrtc_receive_stream" name="vertex" path="webrtc_receive_stream_vertex_.glsl"]
