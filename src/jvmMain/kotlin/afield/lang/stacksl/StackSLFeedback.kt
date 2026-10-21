@@ -35,6 +35,7 @@ import afield.ui.output.displayOpen
 import afield.ui.visualization.ToHTML
 import org.lwjgl.vulkan.VK10.VK_FILTER_LINEAR
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R16G16B16A16_SFLOAT
+import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_UNORM
 import org.lwjgl.vulkan.VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT
 import java.util.WeakHashMap
 
@@ -168,6 +169,17 @@ class StackSLFeedback internal constructor(
     private var module: ModulePointer? = null
     // One upright copy per input, made the first time the input is used, and kept: nothing frees a target.
     private val copies = linkedMapOf<String, InputCopy>()
+    private var pictureCopy: PictureCopy? = null
+
+    /**
+     * The picture as Field's other textures keep one: top row first, 8-bit display values (what the
+     * window shows, before its display gamma). Hand it to anything that samples a texture —
+     * `webrtcPublish(feedback.picture, "stacktrinket")` publishes the program to the class. The state
+     * itself is stored bottom row first and in float, which suits `prev` but nothing else. Made the
+     * first time it is asked for, and updated on every step after that.
+     */
+    val picture: HasImageView
+        get() = (pictureCopy ?: PictureCopy().also { pictureCopy = it }).target
     private var tried: String? = null
     private var building = false
 
@@ -211,6 +223,7 @@ class StackSLFeedback internal constructor(
         pushedFrame = if (blackFrames > 0) -1 else frame
         settings.inputs.keys.forEach { copies[it]?.target?.render(command, index) }
         target.render(command, index)
+        pictureCopy?.target?.render(command, index)
         if (blackFrames > 0) {
             blackFrames--
         } else {
@@ -327,6 +340,37 @@ class StackSLFeedback internal constructor(
         }
     }
 
+    /** [picture]: the newest state, copied top row first into 8-bit display values. */
+    private inner class PictureCopy {
+        val target = RenderToTexture(renderer) {
+            width = this@StackSLFeedback.width
+            height = this@StackSLFeedback.height
+            format = VK_FORMAT_R8G8B8A8_UNORM
+            colorFormats = listOf(VK_FORMAT_R8G8B8A8_UNORM)
+            useDepth = false
+            generateColorMipmaps = false
+            debugName = "StackSLFeedback ${settings.name} picture"
+        }
+
+        init {
+            val copy = Module(parameters(renderer) {
+                +target
+                this.name = "${settings.name}-picture"
+                // The usual fullscreen triangle puts uv.y = 1 in row 0: top row first.
+                vertex = StackSLFeedbackShader.PICTURE_VERTEX
+                fragment = StackSLFeedbackShader.PICTURE_FRAGMENT
+                blend = false
+                depthTest = false
+                depthWrite = false
+                textureResolver = { tex ->
+                    if (tex.name == StackSLFeedbackShader.STATE) fromViews(listOf(this@StackSLFeedback.target.latestImageView), tex.name, sampler) else null
+                }
+            }).pointer()
+            copy += "${settings.name}-picture-fullscreen" to fullscreenTriangle(copy)
+            target += "copy" to copy
+        }
+    }
+
     private fun publish(l: StackSLLowering) {
         lowering = l
         onCompiled(l)
@@ -365,6 +409,30 @@ object StackSLFeedbackShader {
         declareSamplers = false,
         externalizeConstants = true,
     )
+
+    /** The fullscreen triangle as Field draws one elsewhere: `fragUV.y = 1` lands in row 0. */
+    val PICTURE_VERTEX: String = """
+        #version 450
+        layout(location = 0) out vec2 fragUV;
+
+        void main() {
+            vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+            gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+            fragUV = pos;
+        }
+    """.trimIndent()
+
+    /** Reads the state at `fragUV`; drawn with [PICTURE_VERTEX] it comes out top row first. */
+    val PICTURE_FRAGMENT: String = """
+        #version 450
+        layout(location = 0) in vec2 fragUV;
+        layout(location = 0) out vec4 outColor;
+        layout(set = 0, binding = 0) uniform sampler2D $STATE;
+
+        void main() {
+            outColor = vec4(clamp(texture($STATE, fragUV).rgb, 0.0, 1.0), 1.0);
+        }
+    """.trimIndent()
 
     /**
      * Copies an input texture into an image stored like the state: drawn with [VERTEX], it reads

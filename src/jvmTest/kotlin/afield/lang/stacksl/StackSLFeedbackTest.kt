@@ -128,6 +128,7 @@ class StackSLFeedbackTest {
             val withInput = StackSLCompiler.compile("prev 0.9 * 0 sample1 0.1 * +", StackSLFeedbackShader.compileOptions(listOf("remote")))
             validate("with_input", StackSLFeedbackShader.fragment(withInput.glsl, listOf("remote"))).let { (ok, out) -> if (!ok) failures += "--- with input ---\n$out" }
             validate("copy", StackSLFeedbackShader.COPY_FRAGMENT).let { (ok, out) -> if (!ok) failures += "--- copy ---\n$out" }
+            validate("picture", StackSLFeedbackShader.PICTURE_FRAGMENT).let { (ok, out) -> if (!ok) failures += "--- picture ---\n$out" }
             assertTrue(failures.isEmpty(), failures.joinToString("\n"))
         } finally {
             dir.deleteRecursively()
