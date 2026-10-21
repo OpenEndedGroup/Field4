@@ -47,9 +47,10 @@ RESULTS_DIR = REPO_ROOT / "build" / "test-results" / "pythonTools"
 # inside six landing merges at once, and all the log said was its last line of output: nobody could
 # tell which lock it was in, and every branch behind it waited. A module past its budget now dumps
 # every thread's Python stack into the log, kills the processes it started, and fails by name.
-# The slowest module measured on 2026-10-21 took about 90 s (see the summary's per-module times),
-# so ten minutes is room for a loaded landing host, not a target.
-MODULE_BUDGET_SECONDS = float(os.environ.get("FIELD_PYTHON_TEST_MODULE_BUDGET", "600"))
+# Measured 2026-10-21 on an otherwise idle machine (the summary prints each module's time): the
+# slowest were test_docs_voice_detectors 190 s, test_land 118 s, test_reap_merged_worktrees 79 s; the
+# whole run 10 min. Fifteen minutes is ~5x the slowest, room for a landing host running six merges.
+MODULE_BUDGET_SECONDS = float(os.environ.get("FIELD_PYTHON_TEST_MODULE_BUDGET", "900"))
 # After the stacks are dumped and the children killed, how long the module gets to unwind on its own
 # (a test blocked on a child's pipe usually does) before the runner gives up on the process.
 UNWIND_GRACE_SECONDS = 30.0
