@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-315 source file(s), 7781 public symbol(s), 4046 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+316 source file(s), 7782 public symbol(s), 4047 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -10325,6 +10325,16 @@ The picture a document's shadertoy boxes draw into, like ShaderTrinket's canvas:
 | <a id="shadertoychannels-kt--shadertoycanvas--surface"></a>[<code class="highlight"><span class="k">val</span> <span class="n">surface</span></code>](source/jvmMain/afield/graphics/shader/ShadertoyChannels/#L219) | `iResolution` and `iMouse` for modules drawn into this canvas. |
 | <a id="shadertoychannels-kt--shadertoycanvas--inwindow"></a>[<code class="highlight"><span class="k">var</span> <span class="n">inWindow</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/graphics/shader/ShadertoyChannels/#L257) | Whether the window shows this canvas. Turn it off for a canvas that is only another shader's channel. |
 | <a id="shadertoychannels-kt--shadertoycanvas--plusassign"></a>[<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">plusAssign</span><span class="p">(</span><span class="n">module</span><span class="p">:</span> <span class="nc">ModulePointer</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/shader/ShadertoyChannels/#L262) | Draw `module` (a `shadertoyHere` module built with `+canvas.rtt`) as this canvas's picture. |
+
+## ShadertoyPublish.kt { #shadertoypublish-kt }
+
+`src/jvmMain/kotlin/afield/graphics/shader/ShadertoyPublish.kt` — [read the source](source/jvmMain/afield/graphics/shader/ShadertoyPublish/)
+
+### Top-level functions { #shadertoypublish-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="shadertoypublish-kt--publishshadertoycanvas"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">publishShadertoyCanvas</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;field-shader&quot;</span><span class="p">,</span> <span class="n">canvas</span><span class="p">:</span> <span class="nc">ShadertoyCanvas</span> <span class="o">=</span> <span class="nf">shadertoyCanvas</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">network</span><span class="p">:</span> <span class="nc">WebRTCNetwork</span> <span class="o">=</span> <span class="nc">WebRTCNetwork</span><span class="p">.</span><span class="n">default</span><span class="p">)</span><span class="p">:</span> <span class="nc">WebRTCSink</span></code>](source/jvmMain/afield/graphics/shader/ShadertoyPublish/#L16) | ShaderTrinket's **Publish**: stream `canvas` to the class as `login/name`, with the stream's preview and status in this box's output. |
 
 ## SlangCompiler.kt { #slangcompiler-kt }
 

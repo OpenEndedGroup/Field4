@@ -645,7 +645,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**33945 public symbols across 1527 source files**, 17408 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**33947 public symbols across 1529 source files**, 17410 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -658,12 +658,12 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 134 | 50 (37%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 47 | 2156 | 1522 (70%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 24 | 1001 | 429 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 315 | 7781 | 4046 (51%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 316 | 7782 | 4047 (52%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 797 | 426 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
 | [Simulation](simulation.md) | 46 | 1287 | 653 (50%) | Making a shape behave. |
-| [Imaging](imaging.md) | 50 | 794 | 371 (46%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
+| [Imaging](imaging.md) | 51 | 795 | 372 (46%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 14 | 774 | 571 (73%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 611 | 405 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 9 | 426 | 255 (59%) | Optimisation over a space you can only sample. |
@@ -1885,6 +1885,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>shader/<wbr></small> [shaders.kt](graphics.md#shaders-kt) | Graphics | 185 | 183 | The bridge between a box's text and a live Vulkan pipeline: shader source lives in box properties, and this file turns it into modules and keeps them hot-reloading. | [Field 4 Graphics](../afield_four_graphics.md), [A learned shader function](../learned_shader.md), [Editing a document from outside Field](../editing_from_outside.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>shader/<wbr></small> [ShaderSPIRVUtils.kt](graphics.md#shaderspirvutils-kt) | Graphics | 25 | 0 | GLSL to SPIR-V compilation through shaderc, with `#include` resolution and line-numbered error reports. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>shader/<wbr></small> [ShadertoyChannels.kt](graphics.md#shadertoychannels-kt) | Graphics | 18 | 13 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>shader/<wbr></small> [ShadertoyPublish.kt](graphics.md#shadertoypublish-kt) | Graphics | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>shader/<wbr>learning/<wbr></small> [ShaderTraining.kt](graphics.md#shadertraining-kt) | Graphics | 7 | 4 | Offline distillation of a Field render target into a small learned shader: capture samples, then train them in Python. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [ShaderTransitionNotes.kt](graphics.md#shadertransitionnotes-kt) | Graphics | 4 | 4 | Notes and markers that report how a shader reload changed a box's uniforms, buffers and push constants. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [ShaderTypedStructurePreambleSmokeTest.kt](examples.md#shadertypedstructurepreamblesmoketest-kt) | Examples · internal | 1 | 0 |  |  |
@@ -2199,6 +2200,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>onnx/<wbr></small> [WebcamPerceptionDemo.kt](examples.md#webcamperceptiondemo-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>video/<wbr></small> [WebcamTexture.kt](graphics.md#webcamtexture-kt) | Graphics | 14 | 4 | Exposes a webcam as an RGBA Vulkan texture, captured through OpenCV. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>webrtc/<wbr></small> [WebRTC.kt](imaging.md#webrtc-kt) | Imaging | 34 | 27 | WebRTC video for Field 4 graphics: publish a render target to a classroom, and sample anyone's published stream as a texture. | [WebRTC Streams](../webrtc.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>webrtc/<wbr></small> [WebRTCPublish.kt](imaging.md#webrtcpublish-kt) | Imaging | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>webrtc/<wbr></small> [WebRTCRoutes.kt](imaging.md#webrtcroutes-kt) | Imaging | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>webrtc/<wbr></small> [WebRTCSignaling.kt](imaging.md#webrtcsignaling-kt) | Imaging | 6 | 3 | WebRTC signalling for Field's sources and sinks: the networks a page can join, the relay on Field's own server, and the bridge to an aaaframe classroom. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>automata/<wbr></small> [wfc.kt](data.md#wfc-kt) | Data | 118 | 36 | Single-file, dependency-free Wave Function Collapse for Kotlin/JVM. | [Wave Function Collapse examples](../wfc_examples.md) |
