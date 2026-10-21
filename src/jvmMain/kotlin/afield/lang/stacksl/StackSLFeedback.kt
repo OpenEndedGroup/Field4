@@ -20,11 +20,15 @@ import afield.graphics.render.fullscreenTriangle
 import afield.graphics.render.parameters
 import afield.graphics.render.pointer
 import afield.graphics.shader.fromViews
+import afield.graphics.texture.HasImageView
+import afield.graphics.texture.HasImageViewArray
+import afield.graphics.texture.PreparesSampledImages
 import afield.graphics.texture.TextureSampler
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.Target
 import afield.graphics.vulkan.device.CommandBuffer
 import afield.graphics.vulkan.targets.PingPongRenderToTexture
+import afield.graphics.vulkan.targets.RenderToTexture
 import afield.math.linalg.vec
 import afield.runtime.lifecycle.inMain
 import afield.ui.output.displayOpen
@@ -72,6 +76,24 @@ class StackSLFeedbackSettings {
 
     /** Where in the window the picture goes; null fills it. */
     var viewport: Rect? = null
+
+    /**
+     * More pictures the program can read beside `state`, in order: the first is `sample1` /
+     * `gather1` / `texelSize1`, the second `sample2`, up to three. Any texture will do — a
+     * classmate's WebRTC stream (`webrtcSource`), a camera, another render target. Each is copied,
+     * the right way up and at the state's size, once per step, so `0 sample1` reads it at this
+     * pixel with y up, exactly as `prev` reads the last frame. See [input].
+     */
+    val inputs: MutableMap<String, HasImageView> = linkedMapOf()
+
+    /** Add [texture] as the next input, read by `sample1`, `sample2`, …; [name] is its GLSL sampler name. */
+    fun input(name: String, texture: HasImageView) {
+        require(Regex("[A-Za-z_][A-Za-z0-9_]*").matches(name) && name != StackSLFeedbackShader.STATE) {
+            "an input needs a GLSL name other than '${StackSLFeedbackShader.STATE}', got '$name'"
+        }
+        require(name in inputs || inputs.size < 3) { "at most three inputs: sample1, sample2 and sample3" }
+        inputs[name] = texture
+    }
 }
 
 /**
@@ -144,6 +166,8 @@ class StackSLFeedback internal constructor(
     private var lastNanos = 0L
     private var sinceStep = 0.0
     private var module: ModulePointer? = null
+    // One upright copy per input, made the first time the input is used, and kept: nothing frees a target.
+    private val copies = linkedMapOf<String, InputCopy>()
     private var tried: String? = null
     private var building = false
 
@@ -185,6 +209,7 @@ class StackSLFeedback internal constructor(
         val stepDt = if (interval > 0) interval else dt
         sinceStep = if (interval > 0) (sinceStep - interval).coerceIn(0.0, interval) else 0.0
         pushedFrame = if (blackFrames > 0) -1 else frame
+        settings.inputs.keys.forEach { copies[it]?.target?.render(command, index) }
         target.render(command, index)
         if (blackFrames > 0) {
             blackFrames--
@@ -199,12 +224,15 @@ class StackSLFeedback internal constructor(
 
     /** Compile a new program off the frame, on the main loop; the old one draws until it is ready. */
     private fun follow() {
-        val wanted = source()
+        val program = source()
+        val names = settings.inputs.keys.toList()
+        // A new set of inputs is a new shader too: its samplers are part of the compiled program.
+        val wanted = program + "\u0000" + names.joinToString(",")
         if (wanted == tried || building) return
         building = true
         inMain {
             try {
-                rebuild(wanted)
+                rebuild(program, names)
             } finally {
                 tried = wanted
                 building = false
@@ -212,8 +240,8 @@ class StackSLFeedback internal constructor(
         }
     }
 
-    private fun rebuild(program: String) {
-        val compiled = StackSLCompiler.compile(program, StackSLFeedbackShader.compileOptions)
+    private fun rebuild(program: String, inputs: List<String>) {
+        val compiled = StackSLCompiler.compile(program, StackSLFeedbackShader.compileOptions(inputs))
         if (!compiled.ok) {
             publish(StackSLLowering(program, compiled, glslError = null, running = running != null))
             return
@@ -223,13 +251,17 @@ class StackSLFeedback internal constructor(
             +target
             name = "${settings.name}-program"
             vertex = StackSLFeedbackShader.VERTEX
-            fragment = StackSLFeedbackShader.fragment(compiled.glsl)
+            fragment = StackSLFeedbackShader.fragment(compiled.glsl, inputs)
             blend = false
             depthTest = false
             depthWrite = false
             errorHandler = { message, _ -> error = message }
             textureResolver = { tex ->
-                if (tex.name == StackSLFeedbackShader.STATE) fromViews(listOf(target.otherImageView), tex.name, sampler) else null
+                when (tex.name) {
+                    StackSLFeedbackShader.STATE -> fromViews(listOf(target.otherImageView), tex.name, sampler)
+                    in inputs -> fromViews(listOf(copyOf(tex.name).target), tex.name, sampler)
+                    else -> null
+                }
             }
         }).pointer()
         if (!fresh.current.valid) {
@@ -247,6 +279,50 @@ class StackSLFeedback internal constructor(
         // A frame in flight may still be using the old pipeline: retire it once those frames finish.
         previous?.let { old -> renderer.cleanup.add(Runnable { dispose(old) }) }
         publish(StackSLLowering(program, compiled, glslError = null, running = true))
+    }
+
+    /** The upright copy of input [name], made on first use. */
+    private fun copyOf(name: String): InputCopy = copies.getOrPut(name) { InputCopy(name) }
+
+    /**
+     * Input [name] copied into a float image the size of the state, stored the way the state is (row 0
+     * is `uv.y = 0`). Field's textures — a stream, a camera, a render target — keep their top row
+     * first, so sampled as they are at `uv` they would read upside down next to `state`.
+     */
+    private inner class InputCopy(val name: String) {
+        val target = RenderToTexture(renderer) {
+            width = this@StackSLFeedback.width
+            height = this@StackSLFeedback.height
+            format = VK_FORMAT_R16G16B16A16_SFLOAT
+            colorFormats = listOf(VK_FORMAT_R16G16B16A16_SFLOAT)
+            useDepth = false
+            generateColorMipmaps = false
+            debugName = "StackSLFeedback ${settings.name} input $name"
+        }
+        // Reads whatever settings.inputs holds under this name now, so a re-run can swap the texture.
+        private val live = object : HasImageViewArray, PreparesSampledImages {
+            override val imageViewArray: List<HasImageView>
+                get() = listOfNotNull(settings.inputs[name])
+
+            override fun prepareSampledImagesFor(command: CommandBuffer) {
+                (settings.inputs[name] as? PreparesSampledImages)?.prepareSampledImagesFor(command)
+            }
+        }
+
+        init {
+            val copy = Module(parameters(renderer) {
+                +target
+                this.name = "${settings.name}-input-$name"
+                vertex = StackSLFeedbackShader.VERTEX
+                fragment = StackSLFeedbackShader.COPY_FRAGMENT
+                blend = false
+                depthTest = false
+                depthWrite = false
+                textureResolver = { tex -> if (tex.name == "source") fromViews(live, tex.name, sampler) else null }
+            }).pointer()
+            copy += "${settings.name}-input-$name-fullscreen" to fullscreenTriangle(copy)
+            target += "copy" to copy
+        }
     }
 
     private fun publish(l: StackSLLowering) {
@@ -278,12 +354,30 @@ object StackSLFeedbackShader {
     const val PREFIX = "program"
 
     /** How a feedback program is compiled: sampling [STATE], with its numbers as dangling wires. */
-    val compileOptions = StackSLCompileOptions(
+    val compileOptions: StackSLCompileOptions = compileOptions(emptyList())
+
+    /** [compileOptions] with [inputs] as the textures `sample1`, `sample2`, … read. */
+    fun compileOptions(inputs: List<String>) = StackSLCompileOptions(
         prefix = PREFIX,
-        sampleTextures = listOf(STATE),
+        sampleTextures = listOf(STATE) + inputs,
         declareSamplers = false,
         externalizeConstants = true,
     )
+
+    /**
+     * Copies an input texture into an image stored like the state: drawn with [VERTEX], it reads
+     * `source` with v flipped, because Field's textures keep their top row first.
+     */
+    val COPY_FRAGMENT: String = """
+        #version 450
+        layout(location = 0) in vec2 fragUV;
+        layout(location = 0) out vec4 outColor;
+        layout(set = 0, binding = 0) uniform sampler2D source;
+
+        void main() {
+            outColor = texture(source, vec2(fragUV.x, 1.0 - fragUV.y));
+        }
+    """.trimIndent()
 
     /**
      * The fullscreen-triangle vertex shader: `fragUV` runs 0..1 with y up, and the image is written
@@ -308,12 +402,13 @@ object StackSLFeedbackShader {
      * `(seconds, frame, width, height)`; a negative frame draws black, which is how the state is
      * cleared. The hash is StackTrinket's, so a program's grain looks as it does there.
      */
-    fun fragment(lowered: String): String = """
+    fun fragment(lowered: String, inputs: List<String> = emptyList()): String = """
         |#version 450
         |layout(location = 0) in vec2 fragUV;
         |layout(location = 0) out vec4 outColor;
         |
         |layout(set = 0, binding = 0) uniform sampler2D $STATE;
+        |${inputs.mapIndexed { i, name -> "layout(set = 0, binding = ${i + 1}) uniform sampler2D $name;" }.joinToString("\n|")}
         |layout(push_constant) uniform Push { vec4 params; } pc;
         |
         |${lowered.trim()}
@@ -448,6 +543,8 @@ fun Box.stackFeedback(
             existing.settings.name == settings.name
         if (reusable) {
             existing!!.apply {
+                this.settings.inputs.clear()
+                this.settings.inputs.putAll(settings.inputs)
                 this.settings.fps = settings.fps
                 this.settings.timeScale = settings.timeScale
                 this.settings.paused = settings.paused
