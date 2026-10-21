@@ -2,6 +2,9 @@ name: simulation_clock
 description: Ordinary frames launch/stop owns two simulation-time coroutines. Inspect
   explicit frame budgets, named scopes and child lanes in one real capture. Replay
   records and stops; launch the first box to play.
+docs:
+  - page: profiling_timeline.md
+    why: "Explains the simulation clock shown on the timeline."
 operations:
 - create:
     box: simulation_owner

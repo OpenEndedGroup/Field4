@@ -37,22 +37,30 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/matrix_profile/motifs.png" alt="two traces over 3000 samples: a wandering random walk, and the matrix profile, which dips close to zero at the three shaded motif bands; the title names where the motif starts" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" open-outputs="true" padding="0" name="mp-motifs"}
 :::static
 import afield.math.matrixprofile.*
-import kotlin.math.*
 
 // A slow random walk with the same wiggle hidden in it three times.
 val rnd = java.util.Random(4)
 var level = 0.0
-val series = 3000 { level += rnd.nextGaussian() * 0.1; level }.toMutableList()
+val series = 3000 {
+    level += rnd.nextGaussian() * 0.1
+    level
+}
+    .toMutableList()
 for (at in [500, 1400, 2500]) for (k in 0 until 60) series[at + k] += 2 * sin(2 * PI * k / 60)
 
 val mp = matrixProfile(series, m = 60)
 val motif = mp.motifs(1).first()
 
 showSignals(
-    "series" to series, "matrix profile" to mp.profile,
+    "series" to series,
+    "matrix profile" to mp.profile,
     regions = motif.indices.map { SignalRegion("motif", it, it + mp.m, "#8fff9a") },
-    title = "motif at ${motif.indices}, pair distance ${"%.2f".format(motif.pairDistance)}",
-    channel = "main", normalize = true, width = 1000, height = 420, floatingLegend = true,
+    title = "motif at ${motif.indices}, pair distance ${motif.pairDistance.f2}",
+    channel = "main",
+    normalize = true,
+    width = 1000,
+    height = 420,
+    floatingLegend = true,
 )
 ```
 
@@ -83,7 +91,6 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/matrix_profile/discords.png" alt="a regular train of pulses with one beat whose pulse is doubled, and below it the matrix profile, low and flat everywhere except a single tall peak over the shaded discord band" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" open-outputs="true" padding="0" name="mp-discords"}
 :::static
 import afield.math.matrixprofile.*
-import kotlin.math.*
 
 // 40 beats of 80 samples. Beat 21 has a doubled, late pulse.
 val rnd = java.util.Random(15)
@@ -98,10 +105,15 @@ val mp = matrixProfile(beats, m = 80)
 val discord = mp.discords(1).first()
 
 showSignals(
-    "beats" to beats, "matrix profile" to mp.profile,
+    "beats" to beats,
+    "matrix profile" to mp.profile,
     regions = [SignalRegion("discord", discord.index, discord.index + mp.m, "#ff7a9e")],
-    title = "discord at ${discord.index} (beat ${discord.index / 80}), distance ${"%.2f".format(discord.distance)}",
-    channel = "main", normalize = true, width = 1000, height = 420, floatingLegend = true,
+    title = "discord at ${discord.index} (beat ${discord.index / 80}), distance ${discord.distance.f2}",
+    channel = "main",
+    normalize = true,
+    width = 1000,
+    height = 420,
+    floatingLegend = true,
 )
 ```
 
@@ -190,7 +202,6 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/matrix_profile/multidimensional.png" alt="four profiles over the same 1500 samples: the one- and two-channel profiles dip sharply at two places, the three- and four-channel profiles much less; the two shaded motif bands are in channels 1 and 3, as the title says" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" open-outputs="true" padding="0" name="mp-multidimensional"}
 :::static
 import afield.math.matrixprofile.*
-import kotlin.math.*
 
 // Four channels of noise. A 40-sample gesture appears in channels 1 and 3, at two times.
 val rnd = java.util.Random(13)
@@ -207,7 +218,10 @@ showSignals(
     *Array(4) { k -> "${k + 1} channel(s)" to mmp.profile(k + 1) },
     regions = motif.indices.map { SignalRegion("motif", it, it + mmp.m, "#8fff9a") },
     title = "two-channel motif at ${motif.indices}, channels ${motif.channels.sorted()}",
-    channel = "main", width = 1000, height = 420, floatingLegend = true,
+    channel = "main",
+    width = 1000,
+    height = 420,
+    floatingLegend = true,
 )
 ```
 
@@ -249,7 +263,6 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/matrix_profile/contrast.png" alt="the two positive examples laid end to end, and under them the contrast profile, which is near zero at the shared sine shape and peaks at the square step that only the positives contain, shaded as the two platos" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" open-outputs="true" padding="0" name="mp-contrast"}
 :::static
 import afield.math.matrixprofile.*
-import kotlin.math.*
 
 // Every example has a sine bump at 100. Only the positive ones have a step at 400.
 val rnd = java.util.Random(14)
@@ -257,17 +270,23 @@ fun example(withStep: Boolean) = 600 { i ->
     rnd.nextGaussian() * 0.3 +
         (if (i in 100 until 140) 3 * sin(2 * PI * (i - 100) / 40) else 0.0) +
         (if (withStep && i in 400 until 440) (if (i < 420) 3.0 else -3.0) else 0.0)
-}.toDoubleArray()
+}
+    .toDoubleArray()
 
 val cp = contrastProfile([example(true), example(true)], [example(false), example(false)], m = 40)
 val platos = cp.platos(2)
 val plato = platos.first()
 
 showSignals(
-    "positives" to cp.positive.toList(), "contrast" to cp.profile,
+    "positives" to cp.positive.toList(),
+    "contrast" to cp.profile,
     regions = platos.map { SignalRegion("plato", it.index, it.index + cp.m, "#ffe066") },
-    title = "plato in example ${plato.example} at ${plato.offset}, contrast ${"%.2f".format(plato.contrast)}",
-    channel = "main", normalize = true, width = 1000, height = 420, floatingLegend = true,
+    title = "plato in example ${plato.example} at ${plato.offset}, contrast ${plato.contrast.f2}",
+    channel = "main",
+    normalize = true,
+    width = 1000,
+    height = 420,
+    floatingLegend = true,
 )
 ```
 

@@ -68,6 +68,11 @@ contextBridge.exposeInMainWorld("fieldElectron", {
   microphoneAccess() {
     return ipcRenderer.invoke("field4-microphone-access");
   },
+  // Signs in to an aaaframe server in a Field-owned window and returns { ok, base, login, session }
+  // (see aaaframe-sign-in.js). `force` discards a remembered login first.
+  aaaframeSignIn(url, force = false) {
+    return ipcRenderer.invoke("field4-aaaframe-sign-in", { url, force });
+  },
   diagnostic(event, details = {}) {
     ipcRenderer.send("field4-renderer-diagnostic", { event, details });
   },

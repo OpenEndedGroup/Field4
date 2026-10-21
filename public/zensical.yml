@@ -20,18 +20,47 @@ nav:
     # that nobody reads in sequence, which makes it the cheapest thing to pass on the way in.
     - Keyboard Shortcuts: keybindings.md
     # A read-in-order arc, not a category: one faculty per page, and the order is the point.
-    # Autocomplete is the editor you meet while typing your first code, so it comes straight after
-    # "What Field Is" rather than being filed as an advanced topic (running_code.md used to sit
-    # between them, and moved to Working in a Document as mechanism rather than a faculty); and
-    # the last two hand the whole running document to something that is not you — a
-    # phone first, then an agent. Every entry also stands alone. A page appears once in this nav
-    # (Zensical resolves prev/next from position), so these are moved here rather than aliased, and
-    # their former sections were rebalanced to suit.
+    # Things that move and draw come first (the loop, then FLines, then drawing by hand), because
+    # they are what a first-time reader came for; the editor's documentation browser and
+    # connecting boxes follow, once there is code worth browsing and boxes worth connecting, and
+    # just before the GPU stop that needs a parent renderer. The last two hand the whole running
+    # document to something that is not you — a phone first, then an agent. Every entry also
+    # stands alone. A page appears once in this nav (Zensical resolves prev/next from position), so
+    # these are moved here rather than aliased, and their former sections were rebalanced to suit.
     - A Tour:
       - What Field Is: funFeatures.md
-      - The Documentation Browser: completion_doc_browser.md
-      - Drawing with FLines: fline_examples.md
       - Frames and the Animation Loop: animation_time_model.md
+      - Drawing with FLines: fline_examples.md
+      # Straight after FLines, because a stroke read from the drawing is an FLine: the box that
+      # listens turns each pen stroke into one and draws an answer back. The drawing layer (Alt+D)
+      # and the notation API are Field's own, and before this stop the Tour gave them one paragraph.
+      # Moved rather than written: the page already led with toggling, drawing and reading, and
+      # its intersection examples and reference come after that. Its filename stays, so the chain
+      # pages and the starting point that link to it keep working.
+      - Drawing and Notation: drawing_and_notation.md
+      - The Documentation Browser: completion_doc_browser.md
+      # Straight before the GPU stop, which leans on it most: a box beneath the renderer simply has
+      # `renderer`. Nothing else in the arc teaches parent and child boxes. A short first-contact
+      # page written for the Tour; why.md and reactive_properties.md stay in Working in a Document
+      # as the mechanism it hands off to.
+      - Connecting Boxes: tour_connecting_boxes.md
+      # After connecting boxes, and after the animation loop, because the GPU stop leans on both:
+      # the renderer is a parent box, the shader's clock is the same AnimationClock, and a re-run
+      # replacing what it drew is the same rule. Vulkan is
+      # what the "4" in Field·4 names, and before this stop the Tour only mentioned it in passing.
+      # A new short page rather than a move: afield_four_graphics.md is the whole curriculum and
+      # four_in_output_areas.md needs the Electron app, so both stay under the graphics section
+      # and this page hands off to them.
+      - Graphics on the GPU: tour_gpu_graphics.md
+      # After the GPU stop and before Sound, because Field calls itself an environment for
+      # graphics and exploratory data visualization and until this stop no Tour page showed data.
+      # A new page rather than a move: the tools it shows are spread over visualizers.md (.h, .h2,
+      # the inline histogram and stats markers), the Plotly helpers and field_probes.md, each in
+      # reference depth. This stop takes one real dataset (java.time's zones) through them in the
+      # order you reach for them, ends on a live fieldProbe card, and hands off to those pages,
+      # chart.md and dataframe.md. Rebuilt after Marc found the first cut, a DataFrame-and-Chart
+      # page, too narrow to stand for Field's data tools.
+      - Looking at Data: tour_data.md
       # Quoted: the title has its own colon, and an unquoted one breaks the YAML scanner.
       - "Sound: the Pattern → Audio Path": sound.md
       # Before automating_field and after sound, because by this point in the arc there is a living
@@ -75,8 +104,10 @@ nav:
     # slots, i.e. how you get around a document before you do anything in it. It absorbed the old
     # Spatial Navigation page (spatial_navigation.md), which was judged not worth a page of its own.
     - Moving Around the Canvas: moving_around_the_canvas.md
+    # Beside moving_around_the_canvas.md: a canvas flight is a camera move through its bookmarks,
+    # filmed to MP4.
+    - Filming the Canvas: filming_the_canvas.md
     - Snapping: snapping.md
-    - Drawing and Notation: drawing_and_notation.md
     - File Management: files_and_paths.md
     # Beside files_and_paths.md: both are about the document folder on disk, this one from the
     # side of an editor or script writing into it while Field has it open.
@@ -113,7 +144,6 @@ nav:
     # are removed. Everything else in Seeing Values is something you put in one of those panels.
     - Box Output: box_output.md
     - Visualizers & Controls: visualizers.md
-    - Klecks Painting in a Box: klecks.md
     - Patchy from Kotlin: patchy.md
     - Field's 3D Output: three_output.md
     - Point to geometry and leave notes: geometry_review.md
@@ -157,6 +187,9 @@ nav:
       - Signal Examples: spectral_examples.md
       # After the signal toolkit: the matrix profile asks what in a signal repeats and what is unique.
       - "Motifs & Discords: the Matrix Profile": matrix_profile.md
+      # After finding what repeats: continuing a recording, by recombining it (oracle) or by
+      # forecasting it (Timestral).
+      - "Continuing a Gesture": temporal_memory.md
     # Two pages whose input is an unordered set of points rather than a series or a function, and
     # which were each a one-page group of their own ("Distances & Projections", "Clouds &
     # Deformations") until they were put together here. Not under "Time & Signals": the input to a
@@ -183,9 +216,12 @@ nav:
       - Meshes & 3D Geometry: mesh_examples.md
       - Solids & Booleans (Manifold): manifold.md
       - Parametric CAD (SolidCraft): solidcraft.md
-      - "SolidCraft: build from code": solidcraft_building.md
       - Tetrahedral Meshing (TetGen): tetgen.md
       - Morse–Smale Complexes: morse_smale.md
+      - Tracking Features (Time & Scale): topology_tracking.md
+      - Merge Trees & Contour Trees: contour_trees.md
+      - Vector Field Topology: vector_field_topology.md
+      - Mapper Graphs of Point Clouds: mapper.md
       - Principal Curves: principal_curves.md
       - Vectorizing Drawings (Polyvector): polyvector.md
       - Chaining Geometry Extensions: geometry_chains.md
@@ -244,6 +280,7 @@ nav:
     - Boolean Network Music Examples: boolean_network_music_examples.md
     - Wave Function Collapse Examples: wfc_examples.md
     - Spatial Artificial Life: alife_examples.md
+    - Evolving Creatures: evolving_creatures.md
     - Neighbors & Graphs Examples: graph_connectivity_examples.md
     - Graphs That Change While You Watch: dynamic_graph_systems_examples.md
   - Small Languages:
@@ -253,20 +290,24 @@ nav:
     # a pattern cannot answer, because they follow a relation rather than a path.
     - Querying Object Graphs: graph_query.md
     - Datalog in a Box: datalog.md
-    - FieldML Cheatsheet: fieldml_cheatsheet.md
-    - FieldML Examples: fieldml_examples.md
-    - FieldML JVM Bridge: fieldml_host_bridge.md
-    - FieldML Stage by Stage: fieldml_stages.md
-    - StackSL Cheatsheet: stacksl_cheatsheet.md
-    - StackSL Examples: stacksl_examples.md
-    - Proving What a Shader Draws: stacksl_intervals.md
-    - Evolving a Shader: stacksl_evolve.md
-    - RectSL Cheatsheet: rectsl_cheatsheet.md
-    - RectSL Examples: rectsl_examples.md
-    - RectSL Inverse Animation: rectsl_inverse_animation.md
+    - FieldML:
+      - FieldML Cheatsheet: fieldml_cheatsheet.md
+      - FieldML Examples: fieldml_examples.md
+      - FieldML JVM Bridge: fieldml_host_bridge.md
+      - FieldML Stage by Stage: fieldml_stages.md
+    - StackSL:
+      - StackSL Cheatsheet: stacksl_cheatsheet.md
+      - StackSL Examples: stacksl_examples.md
+      - Proving What a Shader Draws: stacksl_intervals.md
+      - Evolving a Shader: stacksl_evolve.md
+    - RectSL:
+      - RectSL Cheatsheet: rectsl_cheatsheet.md
+      - RectSL Examples: rectsl_examples.md
+      - RectSL Inverse Animation: rectsl_inverse_animation.md
     - ForthField Examples: forth_examples.md
-    - Python in a Box: python.md
-    - Computer Vision in Python: python_cv.md
+    - Python:
+      - Python in a Box: python.md
+      - Computer Vision in Python: python_cv.md
     # Beside python.md rather than further down: the two pages answer the same question about two
     # guest languages that are hosted the same way — in Field's own process, sharing one namespace,
     # with the host's objects reachable directly — and a reader who has read one wants the contrast.
@@ -277,8 +318,9 @@ nav:
     # page is a user page since 2026-10-11; the circuit-search study that used to fill its second
     # half is the page after it, and the how-to for hosting a foreign runtime moved to
     # dev_docs/MORPHO_LANGUAGE_BRIDGE.md.
-    - MorphoHDL in Field: morpho_examples.md
-    - Searching for MorphoHDL Circuits: morpho_search.md
+    - MorphoHDL:
+      - MorphoHDL in Field: morpho_examples.md
+      - Searching for MorphoHDL Circuits: morpho_search.md
     # The tail of this section is the two "make your own" pages, in ascending order of how much
     # machinery they ask for, after the gallery that already uses them: `rewrite { … }` is a
     # syntax of your own with no language at all behind it — a preprocessor in a box — and
@@ -299,6 +341,7 @@ nav:
       # Straight after the graphics contract: a render target from that page, drawn into a box's
       # output area instead of a window. Electron-only, which the page says up front.
       - Graphics in an Output Area: four_in_output_areas.md
+      - WebRTC Streams: webrtc.md
       - GPU Schemas: gpu_schema.md
       - Slug Filled Paths: slug_paths.md
       # Directly after the graphics contract and before the probes page, because it is the sequel
@@ -397,6 +440,7 @@ nav:
       - Math: reference/math.md
       - Data: reference/data.md
       - Graphics: reference/graphics.md
+      - Output: reference/output.md
       - Renderers: reference/renderers.md
       - Polytopes: reference/polytopes.md
       - Solvers: reference/solvers.md
@@ -415,6 +459,7 @@ nav:
       - Execution: reference/execution.md
       - Machine learning: reference/machine-learning.md
       - Networking: reference/networking.md
+      - IO: reference/io.md
       - Video: reference/video.md
       - Lighting: reference/lighting.md
       - Examples: reference/examples.md

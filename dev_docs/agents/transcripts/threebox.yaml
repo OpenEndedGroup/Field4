@@ -1,5 +1,10 @@
 name: threebox
 description: Self-contained renderer + compute + draw particle system.
+docs:
+  - page: afield_four_graphics.md
+    why: "Explains the renderer and producer/consumer boxes this builds."
+  - page: field_probes.md
+    why: "Shows probing values in this scene."
 operations:
   # 1. renderer box (owns Window + Renderer, pumps the loop)
   - create:

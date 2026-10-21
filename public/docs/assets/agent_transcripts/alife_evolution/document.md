@@ -25,7 +25,7 @@ This is the figure worth looking at. Top left is sparse and nearly dead; bottom 
 and noisy; and somewhere in the middle band are the rules that hold structure while still moving.
 
 ```edn [field-box id="map_elites" role="properties"]
-{"id" "map_elites" "index" 0 "name" "3 — MAP-Elites: illuminate, do not optimise" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — MAP-Elites: illuminate, do not optimise" "_tombstone" false "frame" #afield/rect [60.0 360.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "map_elites_code_.kt" "lines" 60 "characters" 2877 "sha256" "43d165a2713cfd2e527911f01ee0501bebfe739a4424959052d72316e2b09c2c"}]}
+{"id" "map_elites" "index" 0 "name" "3 — MAP-Elites: illuminate, do not optimise" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — MAP-Elites: illuminate, do not optimise" "_tombstone" false "frame" #afield/rect [60.0 360.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "map_elites_code_.kt" "lines" 60 "characters" 2859 "sha256" "8e57fc431e5b820d4f52a879470b4768eebf9c21929ceea839c931a624831ad4"}]}
 ```
 
 ```kotlin [field-property box="map_elites" name="code" path="map_elites_code_.kt"]
@@ -42,10 +42,10 @@ and noisy; and somewhere in the middle band are the rules that hold structure wh
 */
 
 val ops = LifeRuleGenome(radius = 2)
-val soups = listOf(randomSoup(48, 48, density = 0.35, seed = 303L))
+val soups = [randomSoup(48, 48, density = 0.35, seed = 303L)]
 val objective = caEdgeOfChaosObjective(soups, warmup = 20, scored = 25)
-val bins = listOf(6, 6)
-val axes = listOf(0.0..1.0, 0.0..0.6)
+val bins = [6, 6]
+val axes = [0.0..1.0, 0.0..0.6]
 val budget = 600
 
 val archive = PopulationSearch.mapElites(ops, objective, budget, axes, bins, seed = 31L, initial = 40)
@@ -201,7 +201,7 @@ for exactly that reason. A control arm that nearly wins is telling you the probl
 that the search is good. At radius 2 the space is 2^49 and the margin is 27%.
 
 ```edn [field-box id="evolve_ca" role="properties"]
-{"id" "evolve_ca" "index" 2 "name" "2 — The same engine, a life-like rule table" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — The same engine, a life-like rule table" "_tombstone" false "frame" #afield/rect [60.0 210.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "evolve_ca_code_.kt" "lines" 93 "characters" 4033 "sha256" "4b72f9e6bcb76c289209ba2e374ed43eac5a95f432d69071356117226238f3ab"}]}
+{"id" "evolve_ca" "index" 2 "name" "2 — The same engine, a life-like rule table" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — The same engine, a life-like rule table" "_tombstone" false "frame" #afield/rect [60.0 210.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "evolve_ca_code_.kt" "lines" 93 "characters" 4027 "sha256" "b452af9f10df5b7996b822c7df6aa11e3f3166e7037c04e39db21475a9a0dd9f"}]}
 ```
 
 ```kotlin [field-property box="evolve_ca" name="code" path="evolve_ca_code_.kt"]
@@ -222,10 +222,10 @@ that the search is good. At radius 2 the space is 2^49 and the margin is 27%.
 */
 
 val ops = LifeRuleGenome(radius = 2)
-val soups = listOf(
+val soups = [
     randomSoup(48, 48, density = 0.35, seed = 101L),
     randomSoup(48, 48, density = 0.12, seed = 202L),
-)
+]
 
 /*
 "Alive but not saturated, and still changing" -- activity times a Gaussian band on density.

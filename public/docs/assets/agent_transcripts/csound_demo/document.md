@@ -49,7 +49,7 @@ From `code`
 A wavetable computed in Kotlin, copied into ftable 1, played by poscil, and read back.
 
 ```edn [field-box id="cs_table" role="properties"]
-{"id" "cs_table" "index" 1 "name" "a table from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a table from Kotlin" "_tombstone" false "frame" #afield/rect [610.0 180.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_table_code_.kt" "lines" 31 "characters" 1087 "sha256" "84db6c767bec8178534252dc7111635b8a5f6bcce72f17693db3ae8525e82a0b"}]}
+{"id" "cs_table" "index" 1 "name" "a table from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a table from Kotlin" "_tombstone" false "frame" #afield/rect [610.0 180.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_table_code_.kt" "lines" 31 "characters" 1081 "sha256" "16428e75533c28a03f2fde3f24dd6cdd72c1c76b6b6304a5cff89660e72f54f0"}]}
 ```
 
 ```kotlin [field-property box="cs_table" name="code" path="cs_table_code_.kt"]
@@ -65,7 +65,7 @@ endin
 """,
         "i \"Play\" 0 0.1",
     )
-val partials = listOf(1.0, 0.0, 0.33, 0.0, 0.2, 0.0, 0.14) // odd harmonics: a square-ish wave
+val partials = [1.0, 0.0, 0.33, 0.0, 0.2, 0.0, 0.14] // odd harmonics: a square-ish wave
 val wave =
     DoubleArray(cs.tableLength(1)) { i ->
         val ph = 2 * PI * i / 4096

@@ -24,7 +24,7 @@ val patch =
     )
 
 // tabosc4~ wants 2^n + 3 points: one guard point before, two after.
-val partials = listOf(1.0, 0.5, 0.33, 0.25, 0.2, 0.16)
+val partials = [1.0, 0.5, 0.33, 0.25, 0.2, 0.16]
 val wave =
     FloatArray(2051) { i ->
         val phase = 2 * PI * (i - 1) / 2048

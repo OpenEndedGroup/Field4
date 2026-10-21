@@ -110,6 +110,8 @@ class LanguagesCategoryTest {
             "src/jvmMain/kotlin/afield/lang/remotejs/stdlib_remotejs.kt" to "Workspace",
             "src/jvmMain/kotlin/afield/lang/stacksl/StackSLBox.kt" to "Graphics",
             "src/jvmMain/kotlin/afield/lang/stacksl/stackAutoNumbers.kt" to "Graphics",
+            // Added in place, not moved: the StackTrinket feedback host (2026-10-20).
+            "src/jvmMain/kotlin/afield/lang/stacksl/StackSLFeedback.kt" to "Graphics",
             "src/jvmMain/kotlin/afield/lang/stacksl/evolution/StackSLWatchmaker.kt" to "Search",
             "src/jvmMain/kotlin/afield/lang/stacksl/evolution/StackSLEvolution.kt" to "Search",
             "src/jvmMain/kotlin/afield/lang/stacksl/evolution/StackSLEvolveStudio.kt" to "Search",

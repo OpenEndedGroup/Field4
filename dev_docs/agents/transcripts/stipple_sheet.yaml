@@ -5,6 +5,9 @@ description: >
   at runtime) and deforms a particle sheet and a coordinate lattice with it. Sliders give
   transport time, movie time and integration steps independently. The code is
   public/docs/assets/stipple_transport/stipple_sheet.kt verbatim.
+docs:
+  - page: stipple_transport.md
+    why: "Explains the stippling and transport behind this sheet."
 operations:
   - create:
       box: stipple_sheet

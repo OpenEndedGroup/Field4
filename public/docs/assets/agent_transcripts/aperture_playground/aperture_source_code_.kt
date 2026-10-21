@@ -11,7 +11,6 @@ paintSource = RenderToTexture {
     height = window.height
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
-    clearFirst = true
     clearColor = vec(0, 0, 0, 0)
     debugName = "paint-source"
 }
@@ -22,7 +21,7 @@ apertureControl = vec(1.5, 0, 0, 0)
 println("paint source RTT ready: ${paintSource.width}x${paintSource.height}")
 
 var module = moduleHere {
-    paintSource.apply()
+    +paintSource
     blend = false
     depthTest = false
     depthWrite = false

@@ -10,6 +10,10 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from tools.git_isolation import scrub_process_env  # noqa: E402
+
+# This module builds scratch git repositories; an inherited GIT_DIR would redirect them.
+scrub_process_env()
 
 LAND = Path(__file__).resolve().parent / "land.py"
 

@@ -579,7 +579,7 @@ object StandardRenderer {
 			}
 			val texturedModule = Module(parameters(renderer) {
 				this.name = "prefab-gbuffer-textured-$name"
-				gBuffer.apply()
+				+gBuffer
 				blend = false
 				vertex = gBufferTexturedVertex
 				fragment = gBufferTexturedFragment
@@ -754,7 +754,7 @@ object StandardRenderer {
 			val viewSampler = if (extraViews.isEmpty() && sourceView == null) null else TextureSampler(renderer, 1, false)
 			val moduleParameters = parameters(renderer) {
 				this.name = "prefab-post-$name"
-				target.apply()
+				+target
 				blend = false
 				vertex = fullscreenVertex
 				this.fragment = fragment
@@ -1098,7 +1098,7 @@ object StandardRenderer {
 
 		val gBufferModule = Module(parameters {
 			name = "prefab-gbuffer"
-			gBuffer.apply()
+			+gBuffer
 			blend = false
 			vertex = gBufferVertex
 			fragment = gBufferFragment
@@ -1107,7 +1107,7 @@ object StandardRenderer {
 
 		val shadowModule = Module(parameters {
 			name = "prefab-shadow"
-			shadow.apply()
+			+shadow
 			blend = false
 			vertex = shadowVertex
 			fragment = shadowFragment
@@ -1125,7 +1125,7 @@ object StandardRenderer {
 
 		val aoModule = Module(parameters {
 			name = "prefab-ao"
-			ao.apply()
+			+ao
 			blend = false
 			vertex = fullscreenVertex
 			fragment = aoFragment
@@ -1145,7 +1145,7 @@ object StandardRenderer {
 
 		val lightingModule = Module(parameters {
 			name = "prefab-lighting"
-			lighting.apply()
+			+lighting
 			blend = false
 			vertex = fullscreenVertex
 			fragment = lightingFragment
@@ -1192,7 +1192,7 @@ object StandardRenderer {
 
 				val transparentCopyModule = Module(parameters {
 					name = "prefab-transparent-copy"
-					transparentComposite.apply()
+					+transparentComposite
 					blend = false
 					vertex = fullscreenVertex
 					fragment = copyFragment
@@ -1210,7 +1210,7 @@ object StandardRenderer {
 
 				val transparentModule = Module(parameters {
 					name = "prefab-transparent"
-					transparentComposite.apply()
+					+transparentComposite
 					blend = true
 					srcColor = VK_BLEND_FACTOR_SRC_ALPHA
 					dstColor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
@@ -1232,7 +1232,7 @@ object StandardRenderer {
 
 				val motionBlurModule = Module(parameters {
 					name = "prefab-motion-blur"
-					motionBlur.apply()
+					+motionBlur
 					blend = false
 					vertex = fullscreenVertex
 					fragment = motionBlurFragment
@@ -1253,7 +1253,7 @@ object StandardRenderer {
 
 				val antiAliasModule = Module(parameters {
 					name = "prefab-anti-alias"
-					antiAlias.apply()
+					+antiAlias
 					blend = false
 					vertex = fullscreenVertex
 				fragment = fxaaFragment

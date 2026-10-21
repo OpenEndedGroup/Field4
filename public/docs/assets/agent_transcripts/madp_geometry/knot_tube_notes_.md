@@ -1,0 +1,1 @@
+**knot tube**: `tube` sweeps a ring of 10 corners along a parametric curve sampled 260 times; the closed tube joins its last ring to its first. Edit the curve in `section(vec(…))`, or the radius beside it.

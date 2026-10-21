@@ -26,7 +26,7 @@ object GpuShaderTrainingSmoke {
         try {Box.withBoxContextNow(box) {
             fun pump(n: Int=1){val end=renderer.frameCounter+n;while(renderer.frameCounter<end){window.pollEvents();renderer.render()}}
             val source=RenderToTexture(renderer){width=1920;height=1080;useDepth=false;format=VK_FORMAT_R32G32B32A32_SFLOAT}
-            val teacher=Module(parameters(renderer){name="editable-teacher";source.apply();depthTest=false;depthWrite=false;blend=false
+            val teacher=Module(parameters(renderer){name="editable-teacher";+source;depthTest=false;depthWrite=false;blend=false
                 vertex="""#version 460
                     void main(){vec2 p=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);gl_Position=vec4(p*2-1,0,1);}
                 """

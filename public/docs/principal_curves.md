@@ -32,9 +32,13 @@ val forest = PrincipalCurves.fit(points, curves = 3, nodes = 45)
 
 val canvas = Img(420, 270, 3, FloatArray(420 * 270 * 3) { 0.06f })
 showImgGrid(
-    "points, fitted curves and their widths" to canvas.drawFLines(
-        [forest.pointsFLine(pointSize = 2.0)] + forest.widthFLines() + forest.toFLines(), scale = 2.0),
-    columns = 1, cellSide = 840,
+    "points, fitted curves and their widths" to
+        canvas.drawFLines(
+            [forest.pointsFLine(pointSize = 2.0)] + forest.widthFLines() + forest.toFLines(),
+            scale = 2.0,
+        ),
+    columns = 1,
+    cellSide = 840,
 )
 ```
 
@@ -80,22 +84,32 @@ val points = (broad + thin).toDoubleArray()
 
 // Ten nodes on each curve, started from two strokes, fitted without growing.
 val forest = PrincipalCurves.create(points)
-forest.initFromFLines([FLine().moveTo(30, 60).lineTo(370, 60), FLine().moveTo(30, 150).lineTo(370, 150)], nodesPerCurve = 10)
+forest.initFromFLines(
+    [FLine().moveTo(30, 60).lineTo(370, 60), FLine().moveTo(30, 150).lineTo(370, 150)],
+    nodesPerCurve = 10,
+)
 forest.fit()
 val stats = forest.nodeStatistics()
-val rows = forest.network.curves.joinToString("\n") { c ->
-    val i = c.samples.getValue("graphNode")[c.vertexCount / 2].toInt()
-    "| y ≈ %.0f | %.0f | %.0f | %.2f | %.3f |".format(c.vertex(c.vertexCount / 2).y, stats.support[i], stats.nEff[i], stats.width[i], stats.standardError[i])
-}
+val rows =
+    forest.network.curves.joinToString("\n") { c ->
+        val i = c.samples.getValue("graphNode")[c.vertexCount / 2].toInt()
+        "| y ≈ ${c.vertex(c.vertexCount / 2).y.f0} | ${stats.support[i].f0} | ${stats.nEff[i].f0} | ${stats.width[i].f2} | ${stats.standardError[i].f3} |"
+    }
 
 val canvas = Img(400, 200, 3, FloatArray(400 * 200 * 3) { 0.06f })
-showImgGrid("" to canvas.drawFLines([forest.pointsFLine(1.5)] + forest.widthFLines() + forest.toFLines(), scale = 2.0),
-    columns = 1, cellSide = 800)
-markdown("table", """
+showImgGrid(
+    "" to canvas.drawFLines([forest.pointsFLine(1.5)] + forest.widthFLines() + forest.toFLines(), scale = 2.0),
+    columns = 1,
+    cellSide = 800,
+)
+markdown(
+    "table",
+    """
 | curve | support | nEff | width | standard error |
 | --- | ---: | ---: | ---: | ---: |
 $rows
-""")
+""",
+)
 ```
 
 In 3D, a node has a 2 × 2 covariance in the plane across the curve instead of a single variance, so
@@ -118,19 +132,28 @@ val points = ArrayList<Double>()
 val weights = ArrayList<Double>()
 for (y in 0 until print.height) for (x in 0 until print.width) {
     val green = print.at(x, y, 1) - maxOf(print.at(x, y, 0), print.at(x, y, 2))
-    if (green > 0.04) { points.add(x.toDouble()); points.add(y.toDouble()); weights.add(green.toDouble()) }
+    if (green > 0.04) {
+        points.add(x.toDouble())
+        points.add(y.toDouble())
+        weights.add(green.toDouble())
+    }
 }
 
-val forest = PrincipalCurves.fit(points.toDoubleArray(), weights = weights.toDoubleArray(), nodes = 40, allowBranching = true)
+val forest =
+    PrincipalCurves.fit(points.toDoubleArray(), weights = weights.toDoubleArray(), nodes = 40, allowBranching = true)
 val junctions = forest.network.nodesFLine().also {
-    it.properties["pointed"] = true; it.properties["pointSize"] = 7.0; it.properties["color"] = Vec4(1f, 1f, 1f, 1f)
+    it.pointed = true
+    it.pointSize = 7.0
+    it.color = Vec4(1f, 1f, 1f, 1f)
 }
 
 val dark = Img(print.width, print.height, 3, FloatArray(print.width * print.height * 3))
 showImgGrid(
     "photograph" to print,
-    "as a tree" to print.overlay(dark, 0.6).drawFLines(forest.widthFLines(1.0) + forest.toFLines(thickness = 2.5) + junctions),
-    columns = 2, cellSide = 320,
+    "as a tree" to
+        print.overlay(dark, 0.6).drawFLines(forest.widthFLines(1.0) + forest.toFLines(thickness = 2.5) + junctions),
+    columns = 2,
+    cellSide = 320,
 )
 ```
 
@@ -164,12 +187,21 @@ val strokes = [FLine().moveTo(20, 20).lineTo(200, 200), FLine().moveTo(20, 200).
 val drawn = PrincipalCurves.fit(points, nodes = 30, from = strokes)
 
 val canvas = Img(220, 220, 3, FloatArray(220 * 220 * 3) { 0.06f })
-fun picture(f: PrincipalForest) = canvas.drawFLines([f.pointsFLine(1.5)] + f.toFLines(smooth = false) +
-    f.network.nodesFLine().also { it.properties["pointed"] = true; it.properties["pointSize"] = 9.0; it.properties["color"] = Vec4(1f, 1f, 1f, 1f) }, scale = 2.0)
+fun picture(f: PrincipalForest) = canvas.drawFLines(
+    [f.pointsFLine(1.5)] +
+        f.toFLines(smooth = false) +
+        f.network.nodesFLine().also {
+            it.pointed = true
+            it.pointSize = 9.0
+            it.color = Vec4(1f, 1f, 1f, 1f)
+        },
+    scale = 2.0,
+)
 showImgGrid(
     "grown as a tree: ${grown.network.curves.size} curves" to picture(grown),
     "started from two strokes: ${drawn.network.curves.size} curves" to picture(drawn),
-    columns = 2, cellSide = 440,
+    columns = 2,
+    cellSide = 440,
 )
 ```
 
@@ -202,8 +234,13 @@ val canvas = Img(420, 270, 3, FloatArray(420 * 270 * 3) { 0.06f })
 
 fun show(mu: Double) {
     val forest = PrincipalCurves.fit(points, curves = 3, nodes = 45, parameters = ElasticParameters(mu = mu))
-    showImgGrid("mu = $mu" to canvas.drawFLines([forest.pointsFLine(2.0)] + forest.widthFLines() + forest.toFLines(), scale = 2.0),
-        channel = "fit", columns = 1, cellSide = 520)
+    showImgGrid(
+        "mu = $mu" to
+            canvas.drawFLines([forest.pointsFLine(2.0)] + forest.widthFLines() + forest.toFLines(), scale = 2.0),
+        channel = "fit",
+        columns = 1,
+        cellSide = 520,
+    )
     forest.close()
 }
 

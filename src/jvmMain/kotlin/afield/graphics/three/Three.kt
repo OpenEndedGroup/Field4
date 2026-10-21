@@ -18,6 +18,7 @@ import afield.ui.visualization.lines
 import afield.document.graph.Box
 import afield.geometry.mesh.MeshView
 import afield.geometry.mesh.TriMesh
+import afield.math.linalg.Vec3
 import afield.math.linalg.Vec4
 import afield.geometry.mesh.boundsArray
 import afield.geometry.mesh.surfaceTopology
@@ -73,6 +74,12 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     internal var cameraLink: ThreeCameraLinkSpec? = null
     internal var turntable: ThreeTurntableSpec? = null
     internal var shot: ThreeShotSpec? = null
+    internal var studio: ThreeStudioSpec? = null
+    internal val labels = ArrayList<ThreeLabel>()
+    internal val overlays = ArrayList<ThreeOverlay>()
+    internal var dimmed: Boolean = false
+    internal var note: String? = null
+    internal var hud: Boolean = true
     private var helpersExplicit: Boolean? = null
 
     /**
@@ -125,6 +132,8 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      * diagonals that triangulate a flat face ([outlineEdges]). They are what keeps a solid, flat-shaded model
      * legible, and they move with [explode]. Unlike [wireframe], which draws every triangle edge.
      * @param edgeColor the outline's colour (its alpha is not used); `null` is a near-black.
+     * @param material base colour, roughness, metalness and emission ([ThreeSurfaceMaterial]); `null` is the
+     * viewer's usual plain white.
      */
     fun mesh(
         mesh: TriMesh,
@@ -145,6 +154,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         solidOpacity: Double? = null,
         edges: Boolean = false,
         edgeColor: Vec4? = null,
+        material: ThreeSurfaceMaterial? = null,
     ) {
         require(solidOpacity == null || (solidOpacity.isFinite() && solidOpacity in 0.0..1.0)) {
             "solidOpacity must be between 0 and 1, got $solidOpacity"
@@ -158,7 +168,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
                 flatShading = flatShading,
                 opacity = opacity.toFloat(),
                 unlit = unlit,
-            ).copy(depthWrite = depthWrite, solidOpacity = solidOpacity?.toFloat()),
+            ).copy(depthWrite = depthWrite, solidOpacity = solidOpacity?.toFloat(), material = material),
             explode = explode,
             label = label,
             panel = panel,
@@ -203,8 +213,10 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         distance: Double = 2.7,
         fieldOfView: Double = 40.0,
         padding: Double = 1.06,
+        upAxis: ThreeUpAxis = ThreeUpAxis.Y,
+        follow: Boolean = false,
     ) {
-        camera = ThreeCameraSpec(yaw, pitch, distance, fieldOfView, padding)
+        camera = ThreeCameraSpec(yaw, pitch, distance, fieldOfView, padding, upAxis, follow)
         autoFrame = false
     }
 
@@ -212,6 +224,102 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     fun camera(view: MeshView, padding: Double = 1.06) {
         camera = view.toThreeCameraSpec(padding)
         autoFrame = false
+    }
+
+    /**
+     * Light the scene like a studio: ACES tone mapping, a shadow-casting key light with a hemisphere
+     * fill and a cool rim, ambient occlusion, and a dark ground plane (with a faint grid) that catches
+     * the shadows.
+     *
+     * For a model looked at as an object — the look of [afield.geometry.mesh.GeometryBuilder]'s scenes —
+     * rather than a technical figure, so it is off unless asked for. The reference grid and axis tripod
+     * ([helpers]) are left off under it; the studio grid lies on the ground instead.
+     *
+     * ```kotlin
+     * three { mesh(vase, wireframe = false); studio(groundY = -1.25); background("#060807") }
+     * ```
+     *
+     * @param groundY the height of the ground; `null` puts it a little below the scene's lowest point.
+     * @param ambientOcclusion darken creases and contact points (screen-space ambient occlusion, three.js's
+     * `SSAOPass`). Drawn in a single view; a contact sheet ([columns]) and X-ray draw without it.
+     */
+    fun studio(
+        ground: Boolean = true,
+        grid: Boolean = true,
+        groundY: Double? = null,
+        groundColor: String = "#08090a",
+        shadows: Boolean = true,
+        exposure: Double = 1.0,
+        ambientOcclusion: Boolean = true,
+    ) {
+        require(exposure.isFinite() && exposure > 0) { "exposure must be positive, got $exposure" }
+        studio = ThreeStudioSpec(ground, grid, groundY, groundColor, shadows, exposure, ambientOcclusion)
+        if (helpersExplicit == null) helpersExplicit = false
+    }
+
+    /**
+     * Pin a piece of text to [at]: it follows the point as the view turns, and is page text over the
+     * canvas rather than a texture, so it stays sharp. It is kept inside the view, sliding along an
+     * edge rather than leaving by it, and is hidden behind the camera.
+     *
+     * ```kotlin
+     * three {
+     *     mesh(ball, wireframe = false)
+     *     label(vec(0, 1.2, 0), "north pole", style = "chip")
+     *     label(vec(1.2, 0, 0), style = "diamond", color = "#50fa7b", title = "closest")
+     * }
+     * ```
+     *
+     * Labels are drawn in a single view; a contact sheet ([panel], [columns]) does not show them.
+     *
+     * @param style `"chip"` (a boxed name), `"tag"` (small dim text) or `"diamond"` (a coloured marker).
+     * @param color the text colour, or a diamond's fill, as a CSS colour.
+     */
+    fun label(
+        at: Vec3,
+        text: String = "",
+        style: String = "tag",
+        color: String? = null,
+        background: String? = null,
+        border: String? = null,
+        title: String? = null,
+    ) {
+        require(style in LABEL_STYLES) { "label style must be one of $LABEL_STYLES, got \"$style\"" }
+        labels += ThreeLabel(listOf(at.x.toDouble(), at.y.toDouble(), at.z.toDouble()), text, style, color, background, border, title)
+    }
+
+    /**
+     * Fix an HTML block to a corner of the view — a legend, a table, a key. It does not move with the
+     * camera and does not take the pointer, so the view still orbits underneath it. The HTML is
+     * inserted as written, as `display(...)` output is.
+     *
+     * @param corner `"top-right"`, `"top-left"`, `"bottom-right"` or `"bottom-left"`.
+     */
+    fun overlay(html: String, corner: String = "top-right") {
+        require(corner in OVERLAY_CORNERS) { "overlay corner must be one of $OVERLAY_CORNERS, got \"$corner\"" }
+        overlays += ThreeOverlay(html, corner)
+    }
+
+    /**
+     * Grey the scene and its labels out: the picture is older than what it shows, and a newer one is
+     * on its way. Corner [overlay]s and the [note] stay as they are.
+     */
+    fun dimmed(on: Boolean = true) {
+        dimmed = on
+    }
+
+    /** A short line of text in the bottom-left corner of the view: what state the picture is in. */
+    fun note(text: String) {
+        note = text
+    }
+
+    /**
+     * Show or hide the viewer's own controls — X-ray, Export GLB, Pick, the parts list, the triangle
+     * count. Off for a view that is a picture to look at, whose corners are its own ([overlay], [note]).
+     * Orbiting, zooming and the [turntable] work either way.
+     */
+    fun hud(on: Boolean) {
+        hud = on
     }
 
     /** Scene background as a CSS colour. */
@@ -431,7 +539,18 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             cameraLink = cameraLink,
             turntable = turntable,
             shot = shot,
+            studio = studio,
+            labels = labels.toList(),
+            overlays = overlays.toList(),
+            dimmed = dimmed,
+            note = note,
+            hud = hud,
         )
+    }
+
+    private companion object {
+        val LABEL_STYLES = setOf("chip", "tag", "diamond")
+        val OVERLAY_CORNERS = setOf("top-right", "top-left", "bottom-right", "bottom-left")
     }
 }
 

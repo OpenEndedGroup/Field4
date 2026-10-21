@@ -176,7 +176,6 @@ class ShaderBmlSystem(
         format = VK_FORMAT_R8G8B8A8_UNORM
         colorFormats = listOf(VK_FORMAT_R8G8B8A8_UNORM)
         clearColor = vec(0, 0, 0, 1)
-        clearFirst = true
         colorStoreOp = VK_ATTACHMENT_STORE_OP_STORE
         colorSampled = true
         useDepth = false
@@ -199,7 +198,7 @@ class ShaderBmlSystem(
 
         stepModule = Module(
             parameters(renderer) {
-                this@ShaderBmlSystem.simulation.apply()
+                +this@ShaderBmlSystem.simulation
                 name = "${settings.name}-step"
                 depthTest = false
                 blend = false

@@ -142,9 +142,12 @@ landings finish first, then the lander refreshes `public/field4/` in the checkou
 using existing captures, before later landings proceed. Use the printed `status`/`wait` id to see
 whether that build finished; a doc failure reports its own error and does not undo a landing.
 Never `git pull` or push `main` by hand.
-The hooks only report which guards a commit affects, so commits take seconds; do not use
-`--no-verify`, and do not run or track guards as "owed" before landing. Bring `main` into your
-branch with `tools/merge_regen.py main`, which regenerates rather than hand-merging generated files.
+Before `enqueue`, run `uv run python tools/land.py precheck`: it names any conflict with `main`,
+merges `main` in uncommitted, runs only the guards your diff can trip (`CHECKS` in
+`tools/land_precheck.py` maps each to the bounce it catches), and undoes the merge; minutes, not the
+full guard, which only the lander runs. The hooks only report; do not use `--no-verify`. Bring
+`main` into your branch with `tools/merge_regen.py main`, which regenerates rather than
+hand-merging generated files.
 
 ### Gradle hygiene
 
@@ -409,8 +412,8 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
 
 Floating panels over the canvas are built on `FieldPanel` (`src/jsMain/kotlin/afield/fieldPanel.kt`,
 `.field-panel` in `field.css`): title, status line, close, Escape, and keys/mouse-downs kept off the
-canvas. The bookmarks panel (`alt+b`, `bookmarks.kt`) and the layers panel (`alt+l`,
-`layersPanel.kt`) use it; build the next one on it rather than copying the macro recorder's CSS.
+canvas. The bookmarks panel (`alt+b`, `bookmarks.kt`), the layers panel (`alt+l`, `layersPanel.kt`) and
+the Macro Recorder (`commands.kt`) use it; build the next one on it.
 
 ### FLine
 

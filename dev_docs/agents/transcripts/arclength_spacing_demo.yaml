@@ -28,6 +28,9 @@ description: >
   control point towards the middle of the chord and re-run — the two columns converge, because a
   uniformly parameterised cubic never had a problem. Each `execute` op omits inline code, so it runs
   the box's stored `code` property. Executed end-to-end by examples.demo-transcript.exec.
+docs:
+  - page: fline_examples.md#measuring-along-a-line
+    why: "Covers measuring and placing points by distance along an FLine."
 operations:
   - create:
       box: arclength_dashes

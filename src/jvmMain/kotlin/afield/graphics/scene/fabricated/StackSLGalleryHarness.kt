@@ -437,7 +437,7 @@ object StackSLGalleryHarness {
             this.fragment = fragment
             blend = false
             depthTest = false
-            rtt.apply()
+            +rtt
             if (source != null) {
                 val userResolver = textureResolver
                 textureResolver = { tex -> if (tex.name == "source") source else userResolver(tex) }

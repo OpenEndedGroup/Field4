@@ -95,10 +95,11 @@ val experiment = ReconstructionDemo(
 experiment.abstractScene = true
 experiment.reset("material edit")
 
-// experiment.close() when replacing it
+// The constructing box run owns this view; Stop or rerun closes it.
 ```
 
-`renderer` comes from the parent renderer box. `mode = null` selects Source. The example contains the
+`ReconstructionDemo` registers with the constructing box run immediately. Stop or rerun
+detaches its exact view and releases its resources. `renderer` comes from the parent renderer box. `mode = null` selects Source. The example contains the
 controls and shader properties needed to keep editing, rather than requiring a separate launch script.
 
 For Ultra Performance in your own experiment:

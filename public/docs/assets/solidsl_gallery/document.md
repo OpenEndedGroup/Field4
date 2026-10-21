@@ -269,7 +269,7 @@ Solid.scope {
 <!-- field-box id="glsl_backend" index="3" -->
 
 ```edn [field-box id="glsl_backend" role="properties"]
-{"id" "glsl_backend" "index" 3 "name" "Solid notation — the same source as a GLSL raymarcher" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — the same source as a GLSL raymarcher" "_tombstone" false "frame" #afield/rect [80.0 180.0 380.0 50.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "glsl_backend_code_.kt" "lines" 62 "characters" 2707 "sha256" "2ad7079b2ad2e092033f6062853b3580567fba525b337a8dc3d141e180d73870"}]}
+{"id" "glsl_backend" "index" 3 "name" "Solid notation — the same source as a GLSL raymarcher" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — the same source as a GLSL raymarcher" "_tombstone" false "frame" #afield/rect [80.0 180.0 380.0 50.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "glsl_backend_code_.kt" "lines" 62 "characters" 2701 "sha256" "55fbd4d0850acfd4710ce4bdae0501b31cb2648f74cbb37c3f8390a0cecd3e4a"}]}
 ```
 
 ```kotlin [field-property box="glsl_backend" name="code" path="glsl_backend_code_.kt"]
@@ -316,7 +316,7 @@ println()
 // The simplifier, which only exists because the shape is a value.
 println("---- what the simplifier can do ----")
 val wasteful = differenceOf(
-    listOf(scene) + (0 until 40).map { cylinder(3.0, 0.12, segments = 32).at(-8.0 + it * 0.42, 0.0, 0.0) },
+    [scene] + (0 until 40).map { cylinder(3.0, 0.12, segments = 32).at(-8.0 + it * 0.42, 0.0, 0.0) },
 )
 println("40 extra bores, most of them nowhere near the part:")
 println("  ${wasteful.simplificationReport()}")

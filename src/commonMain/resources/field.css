@@ -1766,6 +1766,18 @@ body {
     pointer-events: none;
 }
 
+/* Living strokes (eachStroke): a world-space 2D canvas above the background and below the boxes,
+   drawn by strokeLayer.kt. */
+.field-stroke-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    display: block;
+    pointer-events: none;
+}
+
 .connection-spline-layer {
     position: absolute;
     inset: 0;
@@ -3177,40 +3189,27 @@ body.field-pane-resizing-h * {
     background: var(--field-surface);
 }
 
-.macro-recorder-panel {
+/* The Macro Recorder is a FieldPanel (`.field-panel`): shell, buttons, text inputs and toggles
+   come from there. These rules only place it (bottom-left, wide) and lay out its body. */
+.field-panel.macro-recorder-panel {
+    top: auto;
+    right: auto;
     left: 10px;
     bottom: 10px;
     width: min(960px, calc(100vw - 20px));
-    height: min(520px, calc(100vh - 20px));
+    height: min(560px, calc(100vh - 20px));
     min-width: min(760px, calc(100vw - 20px));
     min-height: 300px;
-    position: fixed;
-    border: 5px solid var(--field-border);
-    border-radius: 5px;
-    background: #000000;
-    color: #d8d8d8;
-    z-index: 12060;
-    display: none;
-    flex-direction: column;
-    gap: 6px;
-    padding: 8px;
-    box-sizing: border-box;
-    font-family: var(--field-font);
-    overflow: hidden;
 }
 
-.macro-recorder-panel *:focus,
-.macro-recorder-panel *:focus-visible {
-    outline: none !important;
-}
-
-.macro-recorder-panel.is-visible {
-    display: flex;
-}
-
-.macro-recorder-panel.is-dragging-file {
+.field-panel.macro-recorder-panel.is-dragging-file {
     border-color: #555555;
     background: #050505;
+}
+
+.macro-recorder-body {
+    flex: 1 1 auto;
+    gap: 6px;
 }
 
 .macro-recorder-panel textarea,
@@ -3231,31 +3230,15 @@ body.field-pane-resizing-h * {
     height: 0;
 }
 
-.macro-recorder-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    min-height: 28px;
-}
-
-.macro-recorder-title {
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0;
-    line-height: 1;
-}
-
-.macro-recorder-status,
 .macro-recorder-meta,
 .macro-recorder-list-title,
 .macro-recorder-empty,
 .macro-recorder-feedback {
-    color: #8a8a8a;
+    color: var(--fp-muted);
     font-size: 10.2px;
 }
 
-.macro-recorder-status.is-recording {
+.field-panel-status.macro-recorder-status.is-recording {
     color: rgb(var(--field-accent-rgb));
 }
 
@@ -3266,12 +3249,37 @@ body.field-pane-resizing-h * {
 
 .macro-recorder-controls {
     display: grid;
-    grid-template-columns: minmax(160px, 1fr) 120px repeat(5, auto);
+    grid-template-columns: minmax(160px, 1fr) 120px repeat(6, auto);
     gap: 6px;
     align-items: center;
 }
 
-.macro-recorder-controls input,
+.macro-recorder-replay {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.macro-recorder-replay .macro-recorder-list-title {
+    margin-bottom: 0;
+}
+
+.macro-recorder-offset {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--fp-muted);
+}
+
+.field-panel .macro-recorder-offset input[type="text"] {
+    width: 54px;
+}
+
+.field-panel.macro-recorder-panel input[type="text"] {
+    border-color: #2b2b2b;
+}
+
 .macro-recorder-controls select,
 .macro-recorder-panel textarea {
     border: 1px solid #2b2b2b;
@@ -3284,58 +3292,51 @@ body.field-pane-resizing-h * {
     box-shadow: none;
 }
 
-.macro-recorder-controls input,
 .macro-recorder-controls select {
     height: 28px;
     padding: 0 7px;
 }
 
-.macro-recorder-controls input:focus,
 .macro-recorder-controls select:focus,
 .macro-recorder-panel textarea:focus {
     border-color: #464646;
 }
 
-.macro-recorder-controls button,
-.macro-recorder-transcript-actions button,
-.macro-recorder-list button,
-.macro-recorder-icon {
-    border: 1px solid #2b2b2b;
-    background: #050505;
-    color: #8a8a8a;
-    border-radius: 6px;
-    font-family: var(--field-font);
-    font-size: 10.2px;
-    min-height: 28px;
-    padding: 0 8px;
-    cursor: pointer;
-    box-shadow: none;
+.macro-recorder-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    gap: 3px;
+    align-items: center;
 }
 
-.macro-recorder-controls button:hover:not(:disabled),
-.macro-recorder-transcript-actions button:hover:not(:disabled),
-.macro-recorder-list button:hover,
-.macro-recorder-icon:hover {
-    border-color: #464646;
-    background: #101010;
-    color: #f0f0f0;
+.field-panel .macro-recorder-item button {
+    min-height: 24px;
+    padding: 0 6px;
 }
 
-.macro-recorder-controls button:disabled,
-.macro-recorder-transcript-actions button:disabled {
-    opacity: 0.38;
-    cursor: default;
-    color: #6a6a6a;
-    border-color: #1c1c1c;
+.field-panel .macro-recorder-item .macro-recorder-item-name {
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.macro-recorder-icon {
-    width: 26px;
-    height: 26px;
-    min-height: 26px;
-    padding: 0;
-    font-size: 17px;
-    line-height: 1;
+.field-panel .macro-recorder-item.is-active .macro-recorder-item-name {
+    color: rgb(var(--field-accent-rgb));
+    border-color: rgba(var(--field-accent-rgb), 0.45);
+}
+
+.field-panel input[type="text"].macro-recorder-rename {
+    min-width: 0;
+    height: 24px;
+}
+
+.macro-recorder-op.is-stepped {
+    opacity: 0.45;
+}
+
+.macro-recorder-op.is-next {
+    box-shadow: inset 2px 0 0 rgb(var(--field-accent-rgb));
 }
 
 .macro-recorder-panel textarea {
@@ -3478,22 +3479,6 @@ body.field-pane-resizing-h * {
     justify-content: flex-end;
     gap: 5px;
     flex-wrap: wrap;
-}
-
-.macro-recorder-transcript-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: #8a8a8a;
-    font-size: 10.2px;
-    white-space: nowrap;
-}
-
-.macro-recorder-transcript-toggle input {
-    width: 11px;
-    height: 11px;
-    margin: 0;
-    accent-color: rgb(var(--field-accent-rgb));
 }
 
 .macro-recorder-transcript-actions button {
@@ -3759,17 +3744,16 @@ body.field-pane-resizing-h * {
     gap: 8px;
     flex: 0 0 auto;
     min-height: 0;
-    max-height: 82px;
+    max-height: 132px;
     overflow: hidden;
 }
 
 .macro-recorder-list {
     display: flex;
-    flex-wrap: wrap;
-    align-content: flex-start;
-    gap: 5px;
-    min-height: 31px;
-    max-height: 54px;
+    flex-direction: column;
+    gap: 3px;
+    min-height: 27px;
+    max-height: 112px;
     overflow: auto;
     padding-top: 4px;
 }
@@ -3781,16 +3765,16 @@ body.field-pane-resizing-h * {
         max-width: none;
     }
 
-    .macro-recorder-panel {
+    .field-panel.macro-recorder-panel {
         min-width: 0;
         width: calc(100vw - 20px);
     }
 
     .macro-recorder-controls {
-        grid-template-columns: minmax(0, 1fr) 108px repeat(4, auto);
+        grid-template-columns: minmax(0, 1fr) 108px repeat(3, auto);
     }
 
-    .macro-recorder-controls button:nth-of-type(n + 5) {
+    .macro-recorder-controls button:nth-of-type(n + 4) {
         display: none;
     }
 }
@@ -3958,6 +3942,16 @@ body::-webkit-scrollbar {
     font-size: 10px;
     line-height: 1.2;
     pointer-events: none;
+}
+
+/* Box.tint, set from code to show state (the score playhead's "this box is playing"): the colour at its
+   own alpha washes the box (an inset shadow sits over the running stripes and under the title), and the
+   same colour made nearly opaque edges it and glows. Never saved; a blank tint removes the class. */
+.box.tinted {
+    box-shadow: inset 0 0 0 100vmax var(--box-tint),
+        0 0 0 1.5px rgb(from var(--box-tint) r g b / 0.95),
+        0 0 18px rgb(from var(--box-tint) r g b / 0.4);
+    transition: box-shadow 0.08s linear;
 }
 
 .box.provisional {
@@ -4856,6 +4850,24 @@ kbd {
     opacity: 0;
     transform: translateY(8px);
     transition: opacity 180ms ease-out, transform 180ms ease-out, border-color 180ms ease-out;
+}
+
+/* While a canvas flight is filmed (CanvasFlightClient), frames show the flight and nothing else that
+   moves: no toasts, no CSS animation or transition finishing between captures, no blinking caret. */
+body.canvas-flight-recording .bubble.field-toast,
+body.canvas-flight-recording .field-toast {
+    visibility: hidden !important;
+}
+
+body.canvas-flight-recording *,
+body.canvas-flight-recording *::before,
+body.canvas-flight-recording *::after {
+    animation: none !important;
+    transition: none !important;
+}
+
+body.canvas-flight-recording .monaco-editor .cursor {
+    visibility: hidden !important;
 }
 
 .bubble.field-toast-visible,

@@ -26,7 +26,7 @@ The number underneath is "how many of the six sites had somebody on them", avera
 step. Six agents spread over six sites scores 6; twenty-four agents in a heap scores 1.
 
 ```edn [field-box id="patrol" role="properties"]
-{"id" "patrol" "index" 0 "name" "A division of labour one global rule does not buy" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A division of labour one global rule does not buy" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "patrol_code_.kt" "lines" 85 "characters" 3414 "sha256" "23fe1ed9efdfa721342ad1bc435bbbed610901eb2ddf0c8c73a0a86eedc23363"}]}
+{"id" "patrol" "index" 0 "name" "A division of labour one global rule does not buy" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A division of labour one global rule does not buy" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "patrol_code_.kt" "lines" 85 "characters" 3408 "sha256" "3c741ab95dfdde704c2e05f09a8e6deffc4cb8f1acbddfc86321f6dcae8c8753"}]}
 ```
 
 ```kotlin [field-property box="patrol" name="code" path="patrol_code_.kt"]
@@ -82,7 +82,7 @@ fun world(scripted: Boolean) =
         }
     }
 
-val arms = listOf("scripted" to world(true), "one global rule" to world(false))
+val arms = ["scripted" to world(true), "one global rule" to world(false)]
 val breadth = arms.map { mutableListOf<Double>() }
 repeat(steps) {
     arms.forEachIndexed { i, (_, w) ->
@@ -135,7 +135,7 @@ Measured with alife.kt's own polarization, through asBoidFlock(): 1 is everybody
 way, 0 is no agreement. Nothing here asserts the phases worked — the plot shows whether they did.
 
 ```edn [field-box id="regime" role="properties"]
-{"id" "regime" "index" 1 "name" "Phases: flock, scatter, flock, scatter" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Phases: flock, scatter, flock, scatter" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "regime_code_.kt" "lines" 86 "characters" 3458 "sha256" "2f1e89433e42b65b6ac0fa8f4fe827186e3f5ff3bb5b8a0dbef69fe226c697c0"}]}
+{"id" "regime" "index" 1 "name" "Phases: flock, scatter, flock, scatter" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Phases: flock, scatter, flock, scatter" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "regime_code_.kt" "lines" 86 "characters" 3450 "sha256" "8a39aebb9eddfc259a2e80082353fadc3a49166b3a055ef3dcc93af176f21fad"}]}
 ```
 
 ```kotlin [field-property box="regime" name="code" path="regime_code_.kt"]
@@ -203,7 +203,7 @@ repeat(1200) {
 }
 
 println("phase means over the last second of each 5 s phase:")
-listOf("flock" to 0, "scatter" to 1, "flock" to 2, "scatter" to 3).forEach { (name, k) ->
+["flock" to 0, "scatter" to 1, "flock" to 2, "scatter" to 3].forEach { (name, k) ->
     println("  %-8s %.3f".format(name, order.subList(k * 300 + 240, k * 300 + 300).average()))
 }
 
@@ -217,14 +217,14 @@ showSignals(
     "polarization" to order,
     channel = "order",
     title = "alignment: flock, scatter, flock, scatter — 5 s each",
-    marks = listOf("scatter" to 300.0, "scatter" to 900.0),
+    marks = ["scatter" to 300.0, "scatter" to 900.0],
 )
 
 /*
-Try this: drop `turn = 40.0` to 6.0 and watch the scatter phases stop working — polarization
-stays high, because a gentle random walk does not decorrelate a heading inside five seconds.
-That was a real bug in this demo's first version, and the plot is what caught it.
-*/
+ Try this: drop `turn = 40.0` to 6.0 and watch the scatter phases stop working — polarization
+ stays high, because a gentle random walk does not decorrelate a heading inside five seconds.
+ That was a real bug in this demo's first version, and the plot is what caught it.
+ */
 ```
 
 ## 3. One agent, one program

@@ -4,6 +4,9 @@ description: >
   that window's mouse and keyboard. Pointer motion, buttons, wheel, modifiers, key up/down and text
   input travel through the puppet-browser protocol into Chromium; no headset or controller is used.
   The EU consent page, search field and player controls are all ordinary interactive page UI.
+docs:
+  - page: puppet_browser.md
+    why: "Explains driving a browser with mouse and keyboard from Field."
 operations:
   - create:
       box: youtube_desktop_renderer

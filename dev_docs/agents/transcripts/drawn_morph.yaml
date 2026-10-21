@@ -13,6 +13,11 @@ description: >
   `shapes`.
 
   Companion to public/docs/chain_drawn_morph.md. Pure CPU; no Window, no Renderer, no audio device.
+docs:
+  - page: chain_drawn_morph.md
+    why: "Walks through drawing two strokes, morphing them and hearing the morph."
+  - page: drawing_and_notation.md
+    why: "Reference for reading strokes off the drawing layer."
 operations:
   - create:
       box: dm_shapes

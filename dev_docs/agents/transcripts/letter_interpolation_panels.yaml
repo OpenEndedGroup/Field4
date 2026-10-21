@@ -19,6 +19,9 @@ description: |
 
   Three fields at once is also just a reasonable thing to want: the weight buffer is per-system,
   so one trained pair can drive any number of panels with no extra training and no extra shaders.
+docs:
+  - page: neural_particles.md
+    why: "Explains the C-to-S weight-space interpolations shown in these panels."
 operations:
   - create:
       box: li_renderer

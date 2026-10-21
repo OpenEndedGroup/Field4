@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_graphics_context" index="0" -->
 
 ```edn [field-box id="agent_graphics_context" role="properties"]
-{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["learned_from_module"] "properties" {"children" #{#afield/box "learned_from_module"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 16 "characters" 300 "sha256" "ed9c90e9909e15814bcf04d30e27c778e23b8bdb27e200771a092e766fb4a29b"}]}
+{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["learned_from_module"] "properties" {"children" #{#afield/box "learned_from_module"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 16 "characters" 299 "sha256" "db2fbe76f4bfbd4a9afe212fe7ab2ca48a7e6d35fea5cf93ca547a065409ecb3"}]}
 ```
 
 ```kotlin [field-property box="agent_graphics_context" name="code" path="agent_graphics_context_code_.kt"]
@@ -38,7 +38,7 @@ start(renderer::run)
 <!-- field-box id="learned_from_module" index="1" -->
 
 ```edn [field-box id="learned_from_module" role="properties"]
-{"id" "learned_from_module" "index" 1 "name" "learn from this module" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "learn from this module" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_from_module_code_.kt" "lines" 87 "characters" 3426 "sha256" "9e035588d821653dc19457bcad080491506888f02a0195a27d254facec93cdce"} {"name" "vertex" "language" "glsl" "path" "learned_from_module_vertex_.glsl" "lines" 5 "characters" 119 "sha256" "f5f928935456f7b96462d2257491aa9db6746aea0bb37e84df323e8399a26dc9"} {"name" "fragment" "language" "glsl" "path" "learned_from_module_fragment_.glsl" "lines" 18 "characters" 690 "sha256" "cb2424db2082218243876ffaa2f8d764aceb600141e527320ee3fbb1afefba4d"}]}
+{"id" "learned_from_module" "index" 1 "name" "learn from this module" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "learn from this module" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_from_module_code_.kt" "lines" 86 "characters" 3406 "sha256" "7662a1dd1452201b02ea79b00750c33c8f248db5cdf2b67b2013437682cbbf4b"} {"name" "vertex" "language" "glsl" "path" "learned_from_module_vertex_.glsl" "lines" 5 "characters" 118 "sha256" "2c4898fc058df3cf38956a49514876c2d2a6f58ae15647ab35962039df25c828"} {"name" "fragment" "language" "glsl" "path" "learned_from_module_fragment_.glsl" "lines" 18 "characters" 690 "sha256" "cb2424db2082218243876ffaa2f8d764aceb600141e527320ee3fbb1afefba4d"}]}
 ```
 
 ```kotlin [field-property box="learned_from_module" name="code" path="learned_from_module_code_.kt"]
@@ -47,7 +47,7 @@ import java.io.File
 import org.lwjgl.vulkan.VK13.*
 
 prop<ShaderLearningView>(lab)
-fromContextWithNameOrNull<ShaderLearningView>("lab")?.close()
+val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
 val source = RenderToTexture(renderer) {
     width = 1920
     height = 1080
@@ -55,18 +55,17 @@ val source = RenderToTexture(renderer) {
     format = VK_FORMAT_R32G32B32A32_SFLOAT
 }
 val teacher = moduleHere {
-    source.apply()
+    +source
     depthTest = false
     depthWrite = false
     blend = false
 }
-val mesh = Mesh(renderer, teacher)
-mesh.resize(3, 0, teacher)
-mesh.push.setMembers(teacher.current.fi.pushConstants.single().members)
+val mesh = fullscreenTriangle(teacher)
 teacher += "fullscreen" to mesh
 source += "teacher" to teacher
-val setTime: (Float) -> Unit = { t -> mesh.push["state"] = vec(source.width, source.height, t, 0) }
-lab = ShaderLearningView(renderer, source, setSourceParameter = setTime)
+val setTime: (Float) -> Unit = { t -> mesh.state = { vec(source.width, source.height, t, 0) } }
+val ownedLab = runScope.own(ShaderLearningView(renderer, source, setSourceParameter = setTime))
+lab = ownedLab
 var capture = false
 var requestedView = 0
 var animate = true
@@ -107,21 +106,21 @@ frames {
             reported = true
             runCatching {
                 val model = activeJob.result.join()
-                lab.load(model)
+                ownedLab.load(model)
                 println("LEARNED MODULE READY: $model — choose view 1 or 2; weights.json records held-out error.")
                 File("build/shader-learning/latest-model.txt").writeText(model.absolutePath)
             }
                 .onFailure { println("Keeping the working view: ${it.message}") }
         }
-        lab.view = requestedView
+        ownedLab.view = requestedView
         if (animate) phase += .01
-        lab.parameter = kotlin.math.sin(phase).toFloat()
+        ownedLab.parameter = kotlin.math.sin(phase).toFloat()
         frame()
     }
 }
     .end {
         trainingJob?.close()
-        lab.close()
+        ownedLab.close()
         owner.cleanup += Runnable {
             teacher.current.cleanup()
             source.imageViewArray.forEach { it.imageView.cleanup() }

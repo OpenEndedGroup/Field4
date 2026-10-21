@@ -1,0 +1,23 @@
+{
+  "baseline": "d1d55b55a",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/audio_ai_gesture_board.yaml",
+      "kotlinBodies": 2,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/field_audio_ai.md",
+      "kotlinBodies": 2,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "optional/streamdiffusion/examples/capture-motion.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

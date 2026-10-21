@@ -8,7 +8,7 @@ val signal = with(Functions) {
 }
 
 // The sampled envelope, drawn the way the function workbench draws it: min and max per bin.
-val viewer = SignalViewer(listOf(SignalChannel("x", signal::eval)), 0.0, 3600.0)
+val viewer = SignalViewer([SignalChannel("x", signal::eval)], 0.0, 3600.0)
 displaySignal(
     viewer,
     "main",
@@ -20,7 +20,7 @@ val bins = viewer.window(0.0, 3600.0, 1000).lanes[0].current
 val bin = (1234.57 / 3.6).toInt()
 display(
     "numbers",
-    Table(listOf("what", "value"), title = "what the sampled plot can see")
+    Table(["what", "value"], title = "what the sampled plot can see")
         .row("f(1234.57), the glitch's peak", signal(1234.57))
         .row("sampled max, bin $bin", bins.high[bin])
         .row("sampled max, whole hour", bins.high.max())

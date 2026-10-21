@@ -88,7 +88,7 @@ run {
     // A NEUTRAL grey canvas: these panels are thresholded to pure black and white, so a dark gutter
     // is invisible against them and the four panels read as one banded image.
     val strip = IntArray(width * panel) { 0xFF7A7F87.toInt() }
-    listOf(target, seedRaster, offRaster, onRaster).forEachIndexed { index, raster ->
+    [target, seedRaster, offRaster, onRaster].forEachIndexed { index, raster ->
         val argb = raster.toArgb()
         val x0 = index * (panel + gutter)
         for (y in 0 until panel) for (x in 0 until panel) {

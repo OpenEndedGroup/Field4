@@ -2,6 +2,7 @@
 #include "dense.hpp"
 #include <memory>
 #include <cerrno>
+#include <csignal>
 #include <chrono>
 #include <filesystem>
 #include <iostream>

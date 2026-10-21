@@ -1,0 +1,8 @@
+{
+  "actualBoxMissingEnvironmentDiagnostic": true,
+  "actualBoxMissingFileDiagnostic": true,
+  "realProvidedWavImported": "sha256:4224747ac61c7c551230c3001b64dfa24fd351ec409f1a8c0f2e5387c4f0aebd",
+  "actualRegionSeconds": 12,
+  "privateApiProject": "build/box-code-revision/adoption-43/field-audio-project",
+  "limits": "A generated test WAV is real input, not a fabricated model output. No Underfit inference or private LoRA checkpoint is run; existing checkpoint/model/seed/request settings are preserved."
+}

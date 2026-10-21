@@ -72,7 +72,7 @@ println("bundle ready: ${bundle.postStack.names()}")
 <!-- field-box id="mq_tree" index="2" -->
 
 ```edn [field-box id="mq_tree" role="properties"]
-{"id" "mq_tree" "index" 2 "name" "morton quadtree" "parents" ["root" "mq_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "mq_bundle"} "name" "morton quadtree" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_tree_code_.kt" "lines" 162 "characters" 6636 "sha256" "4ee0eb94348a596d0ab4704dad96919b0aa9f1824a2865e9a098d78d67ef84b6"}]}
+{"id" "mq_tree" "index" 2 "name" "morton quadtree" "parents" ["root" "mq_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "mq_bundle"} "name" "morton quadtree" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_tree_code_.kt" "lines" 162 "characters" 6630 "sha256" "9589ac5ef428bfca5ec606ac35ba61c2719648bc1d0f899f2fe4f14c4c78223e"}]}
 ```
 
 ```kotlin [field-property box="mq_tree" name="code" path="mq_tree_code_.kt"]
@@ -165,7 +165,7 @@ val splatFragment =
 // Declared every run, like its companion: `addPassChain` replaces by name, and nothing in
 // this chain is persistent, so the whole tree simply rebuilds on the next frame.
 tree = bundle.addPassChain(
-    listOf(
+    [
         FabricatePassSpec(
             name = "points",
             fragment = pointsFragment,
@@ -186,7 +186,7 @@ tree = bundle.addPassChain(
             format = VK_FORMAT_R32G32B32A32_SFLOAT,
             source = "points",
         ),
-    ) +
+    ] +
         FabricatePassLibrary.mortonPointQuadtree(
             prefix = "quadtree",
             points = "points",

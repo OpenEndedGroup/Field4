@@ -18,6 +18,9 @@ description: |
   The clock is a fixed step and the world is seeded, so a run is reproducible — the same document run
   twice is the same run, including across JVMs. The saved document at
   `dev_docs/agents/demos/alife_script/` is this same scene, and the write-up is `dev_docs/ALIFE.md`.
+docs:
+  - page: alife_examples.md
+    why: "Introduces the spatial ALife engine that per-agent scripts extend."
 operations:
   - create:
       box: one_agent
@@ -109,7 +112,7 @@ operations:
                   }
               }
 
-          val arms = listOf("scripted" to world(true), "one global rule" to world(false))
+          val arms = ["scripted" to world(true), "one global rule" to world(false)]
           val breadth = arms.map { mutableListOf<Double>() }
           repeat(steps) {
               arms.forEachIndexed { i, (_, w) ->
@@ -212,7 +215,7 @@ operations:
           }
 
           println("phase means over the last second of each 5 s phase:")
-          listOf("flock" to 0, "scatter" to 1, "flock" to 2, "scatter" to 3).forEach { (name, k) ->
+          ["flock" to 0, "scatter" to 1, "flock" to 2, "scatter" to 3].forEach { (name, k) ->
               println("  %-8s %.3f".format(name, order.subList(k * 300 + 240, k * 300 + 300).average()))
           }
 
@@ -226,14 +229,14 @@ operations:
               "polarization" to order,
               channel = "order",
               title = "alignment: flock, scatter, flock, scatter — 5 s each",
-              marks = listOf("scatter" to 300.0, "scatter" to 900.0),
+              marks = ["scatter" to 300.0, "scatter" to 900.0],
           )
 
           /*
-          Try this: drop `turn = 40.0` to 6.0 and watch the scatter phases stop working — polarization
-          stays high, because a gentle random walk does not decorrelate a heading inside five seconds.
-          That was a real bug in this demo's first version, and the plot is what caught it.
-          */
+           Try this: drop `turn = 40.0` to 6.0 and watch the scatter phases stop working — polarization
+           stays high, because a gentle random walk does not decorrelate a heading inside five seconds.
+           That was a real bug in this demo's first version, and the plot is what caught it.
+           */
   - execute: { box: one_agent, property: code }
   - await: {}
   - execute: { box: patrol, property: code }

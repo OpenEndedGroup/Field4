@@ -193,7 +193,7 @@ A 200-point disc, each point wobbling by up to 0.012 a frame: about a fifth of r
 cross the threshold without rearranging the neighbourhood.
 
 ```edn [field-box id="dgs_hysteresis" role="properties"]
-{"id" "dgs_hysteresis" "index" 2 "name" "3 — hysteresis, against a memoryless control" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — hysteresis, against a memoryless control" "_tombstone" false "frame" #afield/rect [1000.0 60.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_hysteresis_code_.kt" "lines" 92 "characters" 3545 "sha256" "b3c608bc6e463e7de8496f4b8d2b0c04f0dd689c479183d94bf5e1d5e2366bd1"}]}
+{"id" "dgs_hysteresis" "index" 2 "name" "3 — hysteresis, against a memoryless control" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — hysteresis, against a memoryless control" "_tombstone" false "frame" #afield/rect [1000.0 60.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_hysteresis_code_.kt" "lines" 92 "characters" 3539 "sha256" "a3aadac6055449786ad8115f563205ecb13fd208450df8c8e4a0423a2d510336"}]}
 ```
 
 ```kotlin [field-property box="dgs_hysteresis" name="code" path="dgs_hysteresis_code_.kt"]
@@ -285,7 +285,7 @@ fun walk(rExit: Double): Pair<Boolean, Boolean> {
     return formedWhileClose to (edges.get(0, 1) != null)
 }
 
-for (rExit in listOf(0.16, 0.10)) {
+for (rExit in [0.16, 0.10]) {
     val (formed, survives) = walk(rExit)
     println("rExit $rExit: formed at d=0.05 = $formed, survives d=0.13 = $survives")
 }
@@ -307,7 +307,7 @@ smooth, jitter. The right-hand panel is the same pipeline with ONE stage removed
 growth -- so the difference between the panels is that stage and nothing else.
 
 ```edn [field-box id="dgs_morphogenesis" role="properties"]
-{"id" "dgs_morphogenesis" "index" 3 "name" "6 — LAUNCH ME: morphogenesis, and its tip-growth-off twin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — LAUNCH ME: morphogenesis, and its tip-growth-off twin" "_tombstone" false "frame" #afield/rect [1000.0 300.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_morphogenesis_code_.kt" "lines" 110 "characters" 4096 "sha256" "5e2ea27fce1177746f642ec8adabd0f6b865e1007dc29253bccea4594e773241"}]}
+{"id" "dgs_morphogenesis" "index" 3 "name" "6 — LAUNCH ME: morphogenesis, and its tip-growth-off twin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — LAUNCH ME: morphogenesis, and its tip-growth-off twin" "_tombstone" false "frame" #afield/rect [1000.0 300.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_morphogenesis_code_.kt" "lines" 110 "characters" 4084 "sha256" "830b3b61932b21b3f5b8acc2a5d5145d0e6dea71e34ae2b0da9d5446e2d9f5f7"}]}
 ```
 
 ```kotlin [field-property box="dgs_morphogenesis" name="code" path="dgs_morphogenesis_code_.kt"]
@@ -391,7 +391,7 @@ animateEvolution(
     // seven eighths of the clip on the aftermath. ramp = 25 puts the mid-point at step 93.
     ramp = 25.0,
     step = { (grown, flat) ->
-        for (m in listOf(grown, flat)) {
+        for (m in [grown, flat]) {
             stepDynamicGraphWithExponentialDecay(
                 1f / 60f,
                 m.state,
@@ -405,7 +405,7 @@ animateEvolution(
         grown to flat
     },
     panels = { (grown, flat), step ->
-        listOf(
+        [
             "grow ON  s%d  %dpts %de"
                 .format(
                     step,
@@ -418,7 +418,7 @@ animateEvolution(
                     flat.state.pointCount,
                     flat.edges.values().size,
                 ) to dynamicGraphPanel(flat.state.points, flat.edges.values(), window, 490, 490, ceiling, "magma"),
-        )
+        ]
     },
 )
 ```
@@ -437,7 +437,7 @@ pairs only in passing. The minWeight cut has to tell those apart using nothing b
 accumulated weight -- and it recovers the groups exactly.
 
 ```edn [field-box id="dgs_threshold" role="properties"]
-{"id" "dgs_threshold" "index" 4 "name" "4 — the weight threshold recovers the co-moving groups" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — the weight threshold recovers the co-moving groups" "_tombstone" false "frame" #afield/rect [60.0 300.0 470.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_threshold_code_.kt" "lines" 98 "characters" 3619 "sha256" "e660ee67b32b90dbd48dfecde4b9afd10e5569b0949a5083038dd948636874d0"}]}
+{"id" "dgs_threshold" "index" 4 "name" "4 — the weight threshold recovers the co-moving groups" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — the weight threshold recovers the co-moving groups" "_tombstone" false "frame" #afield/rect [60.0 300.0 470.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_threshold_code_.kt" "lines" 98 "characters" 3601 "sha256" "80f090928a245b0157fbe3782dbec96879197743c7dbdbd60a31413f7f2ccfb2"}]}
 ```
 
 ```kotlin [field-property box="dgs_threshold" name="code" path="dgs_threshold_code_.kt"]
@@ -459,8 +459,8 @@ val perCluster = 22
 val n = nBg + 3 * perCluster
 val background = disc(nBg, 0.50)
 val blobs = List(3) { disc(perCluster, 0.070) }
-val starts = listOf(Vec3(-0.44f, -0.20f, 0f), Vec3(-0.30f, 0.40f, 0f), Vec3(0.34f, -0.44f, 0f))
-val velocities = listOf(Vec3(0.20f, 0.07f, 0f), Vec3(0.16f, -0.19f, 0f), Vec3(-0.12f, 0.20f, 0f))
+val starts = [Vec3(-0.44f, -0.20f, 0f), Vec3(-0.30f, 0.40f, 0f), Vec3(0.34f, -0.44f, 0f)]
+val velocities = [Vec3(0.20f, 0.07f, 0f), Vec3(0.16f, -0.19f, 0f), Vec3(-0.12f, 0.20f, 0f)]
 // Used ONLY to check the answer, never to build the graph.
 val group = IntArray(n) { if (it < nBg) -1 else (it - nBg) / perCluster }
 
@@ -515,7 +515,7 @@ fun componentSizes(graph: PointGraph): List<Int> {
 val window = doubleArrayOf(-0.60, -0.60, 0.60, 0.60)
 println("points outside that window: ${dynamicGraphOutsideWindow(state.points, window)}")
 val panels =
-    listOf(0.0, 0.5, 1.2, 2.0).map { cut ->
+    [0.0, 0.5, 1.2, 2.0].map { cut ->
         val graph = edges.toPointGraph(minWeight = cut)
         val groups = componentSizes(graph).filter { it > 1 }
         val cross = graph.edges.count { group[it.i] != group[it.j] }
@@ -558,7 +558,7 @@ breathing -- an axis that rotates with the clock and a stretch along it between 
 pinned at zero, so it holds exactly 590 edges for all 420 steps.
 
 ```edn [field-box id="dgs_breathing" role="properties"]
-{"id" "dgs_breathing" "index" 5 "name" "5 — LAUNCH ME: the graph rewiring while nothing moves" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — LAUNCH ME: the graph rewiring while nothing moves" "_tombstone" false "frame" #afield/rect [530.0 300.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_breathing_code_.kt" "lines" 91 "characters" 2743 "sha256" "9f630431e2d0fc7c5c956976519fcf1f0bf90df7676b80c947187c61f536e7cb"}]}
+{"id" "dgs_breathing" "index" 5 "name" "5 — LAUNCH ME: the graph rewiring while nothing moves" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — LAUNCH ME: the graph rewiring while nothing moves" "_tombstone" false "frame" #afield/rect [530.0 300.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_breathing_code_.kt" "lines" 91 "characters" 2737 "sha256" "4a4511c6f590cc9df070f99132b54315bee903ef64ac39ddf4eb9c77eb0c086e"}]}
 ```
 
 ```kotlin [field-property box="dgs_breathing" name="code" path="dgs_breathing_code_.kt"]
@@ -645,12 +645,12 @@ animateEvolution(
         s
     },
     panels = { s, step ->
-        listOf(
+        [
             "breathing, t=%.2fs, %d edges".format(s.warped.time, s.warpedEdges.values().size) to
                 dynamicGraphPanel(s.warped.points, s.warpedEdges.values(), window, 460, 460, ceiling, "magma"),
             "frozen, step %d, %d edges".format(step, s.plainEdges.values().size) to
                 dynamicGraphPanel(s.plain.points, s.plainEdges.values(), window, 460, 460, ceiling, "magma"),
-        )
+        ]
     },
 )
 ```

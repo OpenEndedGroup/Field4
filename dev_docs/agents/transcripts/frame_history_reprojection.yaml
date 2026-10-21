@@ -5,8 +5,11 @@ description: |
   and drifts independently; camera Z translation and bounded yaw expose depth-dependent
   correspondence. Modes show beauty, backward motion, previous UV and history availability.
   The accumulation box resets a stable eye/target pose on launch and retains explicit
-  Alt-Enter reset assignments for its live controls. Repeated chain declarations retain the
+  Alt-Enter declarations for its live controls. Repeated chain declarations retain the
   upstream scene input and compatible persistent targets.
+docs:
+  - page: path_traced_reconstruction.md
+    why: "Covers temporal reprojection and accumulation for the renderer."
 operations:
   - create:
       box: rp_renderer
@@ -94,29 +97,19 @@ operations:
 
           prop<FabricateBuiltChain>(chain)
 
-          // Change a reset assignment with Alt-Enter; declarations belong to a full launch.
-          var historyBlend = 0.92f
-          historyBlend = 0.92f // History weight, from 0 (current frame only) to just below 1.
-          var motionGain = 20f
-          motionGain = 20f // Debug display gain; large gains clip the red/green motion channels.
+          // Edit these declarations with Alt-Enter while the scene runs.
+          var historyBlend = 0.92f // History weight, from 0 (current frame only) to just below 1.
+          var motionGain = 20f // Debug display gain; large gains clip the red/green motion channels.
 
           // Angles are radians, distances are world units, speeds are radians per simulation second.
           var yawAmplitude = 0.10
-          yawAmplitude = 0.10
           var yawSpeed = 0.45
-          yawSpeed = 0.45
           var dollyAmplitude = 1.7
-          dollyAmplitude = 1.7
           var dollySpeed = 0.6
-          dollySpeed = 0.6
           var bobAmplitude = 0.45
-          bobAmplitude = 0.45
           var bobSpeed = 1.7
-          bobSpeed = 1.7
           var driftAmplitude = 0.18
-          driftAmplitude = 0.18
           var driftSpeed = 0.8
-          driftSpeed = 0.8
 
           // Persistent pixels plus frame history let accumulation follow the moving scene.
           // Resolution must match the bundle's 1024x1024 input. Per-pixel motion includes the balls.
@@ -153,7 +146,6 @@ operations:
           camera.target.set(initialTarget)
           camera.up.set(0f, 1f, 0f)
           var time = 0.0
-          time = 0.0
           bundle.invalidateFrameHistory() // Relaunching is an intentional camera/object cut.
 
           frames {

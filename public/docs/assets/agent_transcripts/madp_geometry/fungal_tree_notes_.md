@@ -1,0 +1,1 @@
+**fungal tree**: a recursive `branch` function grows open tubes, each one thinner, and caps the tips with revolved mushrooms placed by `push`, `translate`, `scale` and `pop`. The depth in each part's `mesh` name is visible in the view's **Parts** list.

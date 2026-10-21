@@ -448,4 +448,40 @@ class ReactivePropsTest {
         ReactiveRuns.forgetDown(a)
         assertFalse(ReactiveRuns.remembers(a))
     }
+
+    /** Closing a document (its session cleanup) leaves no reactive state or dependency record behind. */
+    @Test
+    fun closingADocumentForgetsItsReactiveState() {
+        val s = session("close")
+        val h = boxIn(s, "h")
+        val r = boxIn(s, "r")
+        PropertyDependencies.recordNamedRead(r, h, "gain")
+        ReactiveRuns.declaredDown(h, "gain")
+        ReactiveRuns.runStarted(r, "run")
+        ReactiveRuns.runFinished(r, ok = true, mode = "run")
+        assertTrue(ReactiveRuns.remembers(r))
+        assertTrue(PropertyDependencies.holds(s.filename))
+        assertTrue(ReactiveRuns.recordCountFor(s.filename) > 0)
+        s.cleanup()
+        assertFalse(ReactiveRuns.remembers(r), "run record survived the close")
+        assertEquals(0, ReactiveRuns.recordCountFor(s.filename))
+        assertFalse(PropertyDependencies.holds(s.filename), "dependency record survived the close")
+    }
+
+    /** Comment stripping must not be fooled by raw strings or char literals holding quotes or comment markers. */
+    @Test
+    fun commentStrippingRespectsRawStringsAndCharLiterals() {
+        val q = "\"\"\""
+        // A raw string holding `/*` on its own line used to open a comment that swallowed real code.
+        val raw = "val s = ${q}\n  path/*glob\n${q}\npropDown<Double>(gain, 1.0)"
+        assertTrue("propDown<Double>(gain" in ReactiveRuns.withoutComments(raw), ReactiveRuns.withoutComments(raw))
+        // A raw string with a quote inside used to flip the string parity.
+        val quoted = "val t = ${q}say \"hi\" ${q}\npropDown<Double>(level, 1.0)"
+        assertTrue("propDown<Double>(level" in ReactiveRuns.withoutComments(quoted))
+        // `'"'` used to open a string, so the following comment was not stripped.
+        val ch = "val c = '\"' // propDown<Double>(gone, 1.0)"
+        assertFalse("propDown" in ReactiveRuns.withoutComments(ch), ReactiveRuns.withoutComments(ch))
+        // Plain comments still go, and `//` inside a raw string stays.
+        assertEquals("val u = ${q}http://x${q} ", ReactiveRuns.withoutComments("val u = ${q}http://x${q} // c").trimEnd() + " ")
+    }
 }

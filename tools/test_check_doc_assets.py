@@ -40,6 +40,10 @@ from tools.check_doc_assets import (
     png_header,
     stale_placeholder_exceptions,
 )
+from tools.git_isolation import scrub_process_env  # noqa: E402
+
+# This module builds scratch git repositories; an inherited GIT_DIR would redirect them.
+scrub_process_env()
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CHECKER = REPO_ROOT / "tools" / "check_doc_assets.py"

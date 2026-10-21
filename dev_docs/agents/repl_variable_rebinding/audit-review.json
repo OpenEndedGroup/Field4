@@ -1,0 +1,96 @@
+{
+  "coverage": {
+    "source": 1377,
+    "inline-fallback": 279,
+    "generated": 2534,
+    "history": 1,
+    "docs-fence": 1777,
+    "document-mirror": 100,
+    "capture-driver": 81,
+    "generated-reference": 98
+  },
+  "initialCandidatesByRole": {
+    "inline-fallback": 14,
+    "generated": 39,
+    "source": 40,
+    "document-mirror": 12,
+    "docs-fence": 4,
+    "capture-driver": 4
+  },
+  "redundantAdjacentPairs": 39,
+  "authoredFiles": 7,
+  "retainedAuthoredAssignments": [
+    {
+      "path": "dev_docs/agents/transcripts/mesh_repair_demo.yaml",
+      "locator": "yaml/operations/0/create/properties/code",
+      "role": "source",
+      "name": "broken",
+      "declarationLine": 10,
+      "assignmentLine": 21,
+      "initializer": "base.filterTriangles { it >= holeFaces }",
+      "assignment": "TriMesh(pos, idx)",
+      "decision": "retain",
+      "reason": "Mesh construction deliberately replaces the intermediate damaged mesh"
+    },
+    {
+      "path": "public/docs/assets/mesh_repair_demo/mesh-repair-fix_code_.kt",
+      "locator": "source",
+      "role": "source",
+      "name": "broken",
+      "declarationLine": 10,
+      "assignmentLine": 21,
+      "initializer": "base.filterTriangles { it >= holeFaces }",
+      "assignment": "TriMesh(pos, idx)",
+      "decision": "retain",
+      "reason": "Mesh construction deliberately replaces the intermediate damaged mesh"
+    },
+    {
+      "path": "public/docs/geometry_from_disk.md",
+      "locator": "fence:548",
+      "role": "docs-fence",
+      "name": "broken",
+      "declarationLine": 5,
+      "assignmentLine": 18,
+      "initializer": "base.filterTriangles { it >= 4 }",
+      "assignment": "TriMesh(pos, idx)",
+      "decision": "retain",
+      "reason": "Mesh construction deliberately replaces the intermediate damaged mesh"
+    },
+    {
+      "path": "public/docs/graph_query.md",
+      "locator": "fence:154",
+      "role": "docs-fence",
+      "name": "reads",
+      "declarationLine": 2,
+      "assignmentLine": 33,
+      "initializer": "0",
+      "assignment": "0",
+      "decision": "retain",
+      "reason": "A second counter reset separates two measurements"
+    },
+    {
+      "path": "public/docs/graph_query.md",
+      "locator": "fence:154",
+      "role": "docs-fence",
+      "name": "reads",
+      "declarationLine": 2,
+      "assignmentLine": 37,
+      "initializer": "0",
+      "assignment": "0",
+      "decision": "retain",
+      "reason": "A second counter reset separates two measurements"
+    }
+  ],
+  "generatedCopies": "Regenerate from source; never hand-edit generated examples.",
+  "inlineAndMirrorCopies": "Two saved documents refreshed using Field codec; one matching document mirror refreshed.",
+  "finalCandidatesByRole": {
+    "generated": 3,
+    "inline-fallback": 1,
+    "source": 2,
+    "document-mirror": 1,
+    "docs-fence": 3,
+    "capture-driver": 4
+  },
+  "finalAdjacentRedundantPairs": 0,
+  "formatting": "Actual import/ktfmt passed on all six edited transcript/sidecar files and the edited Markdown Kotlin body; no further changes needed."
+}

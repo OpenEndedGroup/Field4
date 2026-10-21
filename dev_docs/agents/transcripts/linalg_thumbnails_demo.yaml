@@ -5,6 +5,9 @@ description: >
   execute, its output display shows the terse text head PLUS a small SVG thumbnail —
   an auto-scaled arrow for vectors (isometric for vec3), a diverging heatmap grid for
   matrices. Open/replay this into a fresh Field4 and look at each box's output.
+docs:
+  - page: visualizers.md#vectors-matrices-and-quaternions
+    why: "Explains the thumbnails drawn under vectors and matrices."
 operations:
   - create:
       box: linalg_vec2

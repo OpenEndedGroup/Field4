@@ -25,6 +25,10 @@ export function classifyGuideLink(href, currentPath = "README.md") {
                 !["document", "project", "workspace"].includes(scope) || (project && scope !== "project")) return {kind:"invalid"};
             return {kind:"macro", name, scope, project};
         }
+        if (/^field-docs:/i.test(raw)) {
+            const page = raw.slice('field-docs:'.length).replace(/^\/+/, "");
+            return page && !/[\x00-\x20\\]|(^|\/)\.\.?(\/|#|$)/.test(page) ? { kind: "docs", page } : { kind: "invalid" };
+        }
         if (/^(https?:|mailto:)/i.test(raw)) return { kind: "external", href: raw };
         if (/^[a-z][a-z\d+.-]*:/i.test(raw) || raw.startsWith("/") || raw.includes("\\")) return { kind: "invalid" };
         const [location, hash = ""] = raw.split("#", 2);
@@ -66,6 +70,20 @@ export function noteFilePath(name) {
         .replace(/\s+/g, "-").replace(/^[.\-_]+/, "").slice(0, 80)
         .replace(/_+$/, ""); // `name_.md` is the sidecar convention, and the server rejects it.
     return `${directory}${slug || "note"}.md`;
+}
+
+/** `/field-docs/` serves this checkout's built docs, or proxies openendedgroup.com/field4 when there are none. */
+export function docsPageUrl(page) {
+    const raw = String(page || "").replace(/^\/+/, "");
+    const [path, hash = ""] = raw.split("#", 2);
+    const page_ = path && !/\/$|\.html$/.test(path) ? path.replace(/\.md$/i, "") + "/" : path;
+    return `/field-docs/${page_}${hash ? "#" + hash : ""}`;
+}
+
+/** Leading YAML front matter is metadata for the viewer, not prose. */
+export function stripFrontMatter(text) {
+    const match = /^\uFEFF?---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(\r?\n|$)/.exec(String(text));
+    return match ? String(text).slice(match[0].length) : String(text);
 }
 
 export function guideAssetUrl(documentKey, path) {

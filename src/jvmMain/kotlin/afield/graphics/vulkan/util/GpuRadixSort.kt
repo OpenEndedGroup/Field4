@@ -188,6 +188,17 @@ class GpuRadixSort(
         }
     }
 
+    /**
+     * Allocates scratch for sorting up to [count] keys now, rather than on the first [sort] that
+     * needs it. A sort whose count grows a little every frame (particles being painted in) would
+     * otherwise reallocate its scratch on every one of those frames, and the old scratch is only
+     * freed with the renderer.
+     */
+    fun reserve(count: Int, withValues: Boolean = true) {
+        require(count >= 0) { "count must be >= 0" }
+        ensureScratch(count.coerceAtLeast(2), withValues)
+    }
+
     fun cleanup() {
         cachedPlan?.cleanupNow()
         scratchKeys?.result?.buffers?.forEach { it.cleanup() }

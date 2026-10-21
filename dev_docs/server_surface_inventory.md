@@ -116,6 +116,7 @@ mutation; it is a different one.
 | `GET /api/source` | `Server.kt` | none |
 | `GET /api/refactor-pass` | `refactorPass.kt` | loopback + same-site |
 | `GET /api/terminal` | `terminal.kt` | loopback + same-site |
+| `GET /api/webrtc-config` | `WebRTCRoutes.kt` | none |
 | `GET /api/vulkan-status` | `Server.kt` | loopback + same-site |
 | `GET /api/native-geometry-status` | `Server.kt` | loopback + same-site |
 | `GET /api/welcome-changelog` | `Server.kt` | none |
@@ -275,7 +276,7 @@ Ktor's containment check applies to it as it does to the five above.
 
 ## The `/ws` command surface
 
-131 command names, in the `handlers` table. This is the real command API, it is roughly twice
+133 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -292,7 +293,7 @@ the file, and the reach is described per file below in prose that a human checke
 | declaring file | commands |
 | --- | --- |
 | `Server.kt` | 53 |
-| `agent_backdoor.kt` | 24 |
+| `agent_backdoor.kt` | 26 |
 | `history.kt` | 13 |
 | `executing.kt` | 9 |
 | `Ai4Installer.kt` | 10 |
@@ -300,6 +301,7 @@ the file, and the reach is described per file below in prose that a human checke
 | `NotationServer.kt` | 3 |
 | `templating.kt` | 3 |
 | `ElectronRTTView.kt` | 2 |
+| `WebRTC.kt` | 4 |
 | `UserKeybindingsManager.kt` | 2 |
 | `VoiceTranscriber.kt` | 2 |
 | `chat.kt` | 2 |
@@ -311,6 +313,7 @@ the file, and the reach is described per file below in prose that a human checke
 | `documentGuides.kt` | 1 |
 | `fileproxy.kt` | 1 |
 | `visualizers.kt` | 1 |
+| `StrokeSketch.kt` | 1 |
 
 What each of those reaches, checked against the code rather than inferred from the name:
 
@@ -323,9 +326,11 @@ What each of those reaches, checked against the code rather than inferred from t
 | `Ai4Installer.kt` | AI chat sessions and tool use; reads or clears the attached document’s per-box saved chat, reports the last turn’s context metadata (`ai-chat-context`, no text), rewinds or switches a chat’s branches, and — when asked — undoes a rewound turn’s recorded edits and created boxes (`ai-chat-rewind-world`), reads the attached document’s saved state trees and bounded state details (`ai-state-tree`, including read/inspect callbacks registered by box code; no restore or fork), runs a document’s agent-extension chat commands (`ai-chat-command`, box code), and reads the saved document chat (`chat_history`, `<document>/ai4_document_chat.md`, which `chat_input` appends to), behind the existing `/ws` boundary |
 | `importing.kt` | notebook and EDN import — parses foreign documents into boxes |
 | `NotationServer.kt` | the attached document's drawing (the root box's `drawing` property): merges a client's scene into it, records the drawing-layer selection (memory only), anchors marks to boxes. No reach beyond what `set-string` on `root.drawing` already had; it runs box code only as the `onNotation` reactions that box code itself registered |
+| `StrokeSketch.kt` | `stroke-layer-ack`: a window says it has drawn the last stroke-layer frame, which only lets the next frame be sent to it. Reads nothing, writes nothing, runs no code |
 | `templating.kt` | template read and write, under the templates directory |
 | `chat.kt` | proxies to the configured chat server |
 | `ElectronRTTView.kt` | an RTT view that box code has already created: `subscribe` points that view's frame-ready pushes at the caller's socket and starts receiving the view's IOSurface ring from its per-view Mach service (local processes only), and `release` frees a ring slot. Both name a view by an unguessable id (pid + nanoTime) and do nothing for an unknown one. The worst a frame can do is redirect or stall one view's frames |
+| `WebRTC.kt` | WebRTC sources and sinks (`dev_docs/WEBRTC_SOURCES_SINKS.md`), all on objects box code has already created: `webrtc-sink-status` records a sink's status line, `webrtc-publishers-subscribe` points a publisher list's pushes at the caller's socket and `webrtc-publishers-pick` calls that list's pick callbacks, which run box code the box itself registered. `webrtc-aaaframe-signed-in` takes an aaaframe session cookie from Field's sign-in window and writes it to the user's `~/.afield/webrtc/aaaframe-sign-ins.json` (0600); it accepts only a network box code has already registered, so a hostile frame can at worst replace that one server's login with a bad one (the next 4401 prompts a fresh sign-in). No guard beyond the `/ws` boundary, decided 2026-10-21 |
 | `UserKeybindingsManager.kt` | reload the user keybindings file; report the command inventory |
 | `VoiceTranscriber.kt` | AI4 push-to-talk: starts (once) and feeds a local Python Whisper worker, `python/fieldvoice/whisper_worker.py`, under the interpreter Field's Python boxes resolved or `FIELD_VOICE_PYTHON`. Each clip is written to a temp file, transcribed and deleted; the reply is text. No document or box state. No guard beyond the `/ws` boundary, decided 2026-10-04: the client supplies only audio bytes and prompt text, never a path, executable or code, so the worst a hostile frame can do is spend GPU time or start the worker |
 | `OutputRequests.kt` | a live box-registered JSON callback addressed by a run-specific random binding ID. Bounded messages and a 64-request queue; execution is serialized with the owner box/document context. Re-run, stop or deletion revokes the binding; read-only documents refuse requests. The callback may run arbitrary trusted box code. The binding ID is a capability, not separate user authentication; transport uses the existing `/ws` boundary |
@@ -350,16 +355,26 @@ docs-annotation opt-ins do not loosen. The census pins both as
 curl, the backdoor and `field_mcp` on this machine, whose user is already the boundary, and the
 in-route same-site check stops a web page.
 
+`agent-canvas-flight` and `agent-film-page` (2026-10-19) are the filming commands, and get no guard
+beyond the `/ws` boundary, decided 2026-10-19. Each writes an MP4 to a path the client names, as
+`agent-window-video` already does. `agent-canvas-flight` otherwise only flies the attached document's
+canvas through its own bookmarks. `agent-film-page` loads a URL the client names (`file://` included)
+into a capture context of its own in the server's Chromium and runs the client's setup and frame
+scripts in that page, so a frame can film any page or local file the machine can open. That adds no
+reach to a client that `agent-eval` and `launch-all` already let run arbitrary code in Field's JVM.
+
 | command | declared in |
 | --- | --- |
 | `agent-ai-tool-call` | `agent_backdoor.kt` |
 | `agent-ai-tools-list` | `agent_backdoor.kt` |
 | `agent-box-screenshot` | `agent_backdoor.kt` |
 | `agent-box-video` | `agent_backdoor.kt` |
+| `agent-canvas-flight` | `agent_backdoor.kt` |
 | `agent-create-box` | `agent_backdoor.kt` |
 | `agent-dispose-graphics-context` | `agent_backdoor.kt` |
 | `agent-ensure-graphics-context` | `agent_backdoor.kt` |
 | `agent-eval` | `agent_backdoor.kt` |
+| `agent-film-page` | `agent_backdoor.kt` |
 | `agent-get-property` | `agent_backdoor.kt` |
 | `agent-lifecycle-census` | `agent_backdoor.kt` |
 | `agent-native-window-screenshot` | `agent_backdoor.kt` |
@@ -411,6 +426,10 @@ in-route same-site check stops a web page.
 | `document-guide` | `documentGuides.kt` |
 | `electron-rtt-release` | `ElectronRTTView.kt` |
 | `electron-rtt-subscribe` | `ElectronRTTView.kt` |
+| `webrtc-aaaframe-signed-in` | `WebRTC.kt` |
+| `webrtc-publishers-pick` | `WebRTC.kt` |
+| `webrtc-publishers-subscribe` | `WebRTC.kt` |
+| `webrtc-sink-status` | `WebRTC.kt` |
 | `execute-all` | `executing.kt` |
 | `execute-fragment` | `executing.kt` |
 | `execute-symbol` | `executing.kt` |
@@ -484,6 +503,7 @@ in-route same-site check stops a web page.
 | `stop-box` | `executing.kt` |
 | `store-history-screenshot` | `history.kt` |
 | `string-update` | `Server.kt` |
+| `stroke-layer-ack` | `StrokeSketch.kt` |
 | `symbol-context` | `Server.kt` |
 | `transcript-line-activity` | `history.kt` |
 | `vec2-update` | `Server.kt` |
@@ -664,6 +684,10 @@ Demonstrated rather than asserted:
 `GET /three-review-image?uid=<view>&sha256=<hash>` serves bounded PNG sidecars only when the view’s retained notes reference that hash, under the same access policy.
 
 `POST /three-review-note?uid=<view>` explicitly resolves/reopens one note or appends an attributed reply. It requires the same loopback/same-site guard, JSON content, a matching note version and the current geometry revision. Updates run on Field’s main thread and retain an audit history.
+
+`POST /three-gltfpack` takes a GLB body (at most 512 MB) and returns it compressed by Field's optional gltfpack (`afield.geometry.mesh.Gltfpack`, `-cc -kn -km`), for the three viewer's **Export GLB**. It is 404 when no gltfpack is installed and 422 when gltfpack fails; it requires the same loopback/same-site guard, writes nothing outside a temporary directory it deletes, and runs gltfpack with an argument vector, not a shell.
+
+`three-snapshot` is the viewer's answer, on the `__threejs__` channel, to a `three/snapshot-request` that `ThreeGeometryViewState.snapshot()` sent it: a PNG data URL of the view as drawn. It only completes a request the server made, by its random id; an unrequested or stale id is dropped.
 
 `replay-output-areas` returns the current document's retained output panels and
 control values to the requesting WebSocket session after its DOM is ready. It

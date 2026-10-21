@@ -247,6 +247,32 @@ the receiving viewer. Inspector units `mm`, `cm`, `m`, `in` and `ft` convert to 
 An unspecified or other unit label leaves coordinates unchanged, with the label retained
 in the scene metadata.
 
+With gltfpack installed, **Export GLB** compresses the file before it downloads, and the status
+line shows both sizes. gltfpack quantizes the buffers and meshopt-compresses them, keeping node and
+material names. It is optional: pick **gltfpack** in `./field.sh --setup`, or run
+`./gradlew prepareGltfpack`, which fetches a pinned, checksummed build. Without it the export stays
+uncompressed. Box code can use the same tool through `Gltfpack.compress(bytes)`. A compressed file
+uses `EXT_meshopt_compression`, which three.js, Blender 4.2 and later, and most web viewers read.
+
+### A studio look
+
+`studio()` lights a scene for a model you look at, rather than for a technical figure. It adds ACES
+tone mapping, a key light that casts soft shadows, a sky fill and a cool rim, ambient occlusion in
+creases, and a dark ground with a faint grid. Give a mesh a material to go with it:
+
+```diffstatic {data-lang=kotlin}
+three {
+    mesh(vase, wireframe = false, cullBackFaces = false,
+        material = ThreeSurfaceMaterial(roughness = 0.4f, metalness = 0.6f))
+    studio(groundY = -1.25)
+    background("#060807")
+}
+```
+
+`studio()` switches off the reference grid and axis tripod. Ambient occlusion draws in a single
+view. A contact sheet and X-ray draw without it, and `studio(ambientOcclusion = false)` turns it off.
+`geometry { }` uses this look for its models; see the `madp_geometry` starting point.
+
 ### One scene, two kinds of thing
 
 A gyroid marched inside a finite box is an **open** surface: it runs out of the sampling window

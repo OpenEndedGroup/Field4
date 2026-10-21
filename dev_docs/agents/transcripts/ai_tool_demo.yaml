@@ -4,6 +4,9 @@ description: >
   Two boxes from public/docs/aiFeatures.md: the smallest agent tool (a function, a schema and a
   call through AgentToolExtensions.execute, no model involved), and a geometry tool that hands the
   model a rendered picture of a mesh. Needs no API key. Docs page: public/docs/aiFeatures.md.
+docs:
+  - page: aiFeatures.md
+    why: "Explains agent tools: the function, its schema, and how the chat calls it."
 operations:
   - create:
       box: "ai-tool-demo-minimal"

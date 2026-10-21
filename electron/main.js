@@ -1660,6 +1660,7 @@ app.whenReady().then(() => {
   installAppMenu();
   require("./presentation").install();
   require("./rtt-view-host").install();
+  require("./aaaframe-sign-in").install();
   createMainWindow();
   if (process.env.FIELD_PRESENTATION_PROJECT) {
     require("./presentation").openPresentation(process.env.FIELD_PRESENTATION_PROJECT)

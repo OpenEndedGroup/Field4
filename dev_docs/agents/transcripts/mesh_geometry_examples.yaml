@@ -29,6 +29,9 @@ description: >
   on screen, then change a resolution, a smoothing parameter or an SDF expression and re-run a box
   to watch it update live. Each `execute` op omits inline code, so it runs the box's stored `code`
   property. Executed end-to-end by examples.demo-transcript.exec.
+docs:
+  - page: mesh_examples.md
+    why: "Covers the CPU mesh functions these boxes call."
 operations:
   - create:
       box: mesh_primitives

@@ -38,14 +38,14 @@ start(renderer::run)
 <!-- field-box id="neural_reconstruction" index="1" -->
 
 ```edn [field-box id="neural_reconstruction" role="properties"]
-{"id" "neural_reconstruction" "index" 1 "name" "neural reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "neural_reconstruction_code_.kt" "lines" 90 "characters" 3390 "sha256" "5964ecc783d50ee6dd50e2318f8a7964fe8c5410e9a73001f788ea67b4d81834"} {"name" "vertex" "language" "glsl" "path" "neural_reconstruction_vertex_.glsl" "lines" 74 "characters" 3104 "sha256" "f8a0170eee872ff2345d1a7b997aca7e64e59ec99b10417924f8c539d938fb15"} {"name" "fragment" "language" "glsl" "path" "neural_reconstruction_fragment_.glsl" "lines" 51 "characters" 2264 "sha256" "68b3587e130c556bd773908cf0e4efaefc4e3738b7fda72d8afc5007ecc2dbc4"}]}
+{"id" "neural_reconstruction" "index" 1 "name" "neural reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "neural_reconstruction_code_.kt" "lines" 119 "characters" 4380 "sha256" "7fc0713bf9fe613db03b45580b91c3f785a4fb3b715638b91815a633c1e31962"} {"name" "vertex" "language" "glsl" "path" "neural_reconstruction_vertex_.glsl" "lines" 74 "characters" 3104 "sha256" "f8a0170eee872ff2345d1a7b997aca7e64e59ec99b10417924f8c539d938fb15"} {"name" "fragment" "language" "glsl" "path" "neural_reconstruction_fragment_.glsl" "lines" 51 "characters" 2264 "sha256" "68b3587e130c556bd773908cf0e4efaefc4e3738b7fda72d8afc5007ecc2dbc4"}]}
 ```
 
 ```kotlin [field-property box="neural_reconstruction" name="code" path="neural_reconstruction_code_.kt"]
 import afield.media.reconstruction.*
 
 prop<ReconstructionDemo>(lab)
-fromContextWithNameOrNull<ReconstructionDemo>("lab")?.close()
+val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
 val available = NgxSupport.availability(renderer.device)
 available.onFailure { println("Neural reconstruction unavailable: ${it.message}; showing the source.") }
 val modes = [
@@ -71,7 +71,29 @@ var animate = true
 var camera = true
 var cut = false
 var reload = false
-lab = ReconstructionDemo(renderer, modes[active])
+fun createView(mode: ReconstructionMode?): ReconstructionDemo {
+    val next = ReconstructionDemo(renderer, mode, attach = false)
+    try {
+        // Each mode starts from the edited properties, including after a successful reload.
+        val vertexSource = vertex
+        val fragmentSource = fragment
+        if (vertexSource != null || fragmentSource != null) {
+            next
+                .reload(
+                    requireNotNull(vertexSource) { "Missing vertex shader" },
+                    requireNotNull(fragmentSource) { "Missing fragment shader" },
+                )
+                .getOrThrow()
+        }
+        return next.attach()
+    } catch (failure: Throwable) {
+        next.close()
+        throw failure
+    }
+}
+var ownedLab = createView(modes[active])
+lab = ownedLab
+runScope.own { ownedLab.close() }
 controlGroup("reconstruction") {
     if (available.isSuccess) {
         slider(
@@ -100,38 +122,45 @@ frames {
     while (true) {
         if (requested != active) {
             runCatching {
-                val next = ReconstructionDemo(renderer, modes[requested], attach = false)
-                next.time = lab.time
-                lab.close()
-                lab = next.attach()
+                val next = createView(modes[requested])
+                next.time = ownedLab.time
+                val previous = ownedLab
+                ownedLab = next
+                lab = next
+                previous.close()
                 active = requested
-                println("${modes[active] ?: "Source"}: ${lab.inputSize.width} × ${lab.inputSize.height} → 1920 × 1080")
+                println(
+                    "${modes[active] ?: "Source"}: ${ownedLab.inputSize.width} × ${ownedLab.inputSize.height} → 1920 × 1080",
+                )
             }
                 .onFailure {
                     println("Keeping current view: ${it.message}")
                     requested = active
                 }
         }
-        if (previousAbstract != abstractScene || previousCamera != camera) lab.reset("scene controls")
+        if (previousAbstract != abstractScene || previousCamera != camera) ownedLab.reset("scene controls")
         previousAbstract = abstractScene
         previousCamera = camera
-        lab.abstractScene = abstractScene
-        lab.animate = animate
-        lab.cameraMotion = camera
+        ownedLab.abstractScene = abstractScene
+        ownedLab.animate = animate
+        ownedLab.cameraMotion = camera
         if (cut) {
-            lab.time += 4f
-            lab.reset("camera cut")
+            ownedLab.time += 4f
+            ownedLab.reset("camera cut")
             cut = false
         }
         if (reload) {
             val vertexSource = requireNotNull(vertex) { "Missing vertex shader on this box or its parents" }
             val fragmentSource = requireNotNull(fragment) { "Missing fragment shader on this box or its parents" }
-            lab.reload(vertexSource, fragmentSource).onFailure { println("Keeping working shaders: ${it.message}") }
+            ownedLab.reload(vertexSource, fragmentSource).onFailure {
+                println("Keeping working shaders: ${it.message}")
+            }
             reload = false
         }
         frame()
     }
 }
+    .end { ownedLab.close() }
 ```
 
 ```glsl [field-property box="neural_reconstruction" name="vertex" path="neural_reconstruction_vertex_.glsl"]

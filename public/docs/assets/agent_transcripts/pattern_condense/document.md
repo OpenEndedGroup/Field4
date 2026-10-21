@@ -133,7 +133,7 @@ a named figure - x(p,s) for Euclidean, x(kN) / x(gN) for Kolakoski - or spelled 
 which one you get is decided by character count and nothing else.
 
 ```edn [field-box id="condense_basics" role="properties"]
-{"id" "condense_basics" "index" 1 "name" "1 - Condense a rhythm" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Condense a rhythm" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_basics_code_.kt" "lines" 48 "characters" 1910 "sha256" "ac8cd1338751f629ca1c9111ab7551b3c76f40b3b012fa0251c6893442c8b78d"}]}
+{"id" "condense_basics" "index" 1 "name" "1 - Condense a rhythm" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Condense a rhythm" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_basics_code_.kt" "lines" 48 "characters" 1904 "sha256" "73d22932936e339062790f9a93fe14fe7a823a9abbeb6e1ef3c9c087e1b8d72a"}]}
 ```
 
 ```kotlin [field-property box="condense_basics" name="code" path="condense_basics_code_.kt"]
@@ -150,12 +150,12 @@ POKE THIS: change a line in `rhythms`, or add one. A mask you invent comes back 
 a named figure - x(p,s) for Euclidean, x(kN) / x(gN) for Kolakoski - or spelled out, and
 which one you get is decided by character count and nothing else.
 */
-val rhythms = listOf(
+val rhythms = [
     "x ~ ~ x ~ x ~ ~",
     "x ~ ~ x x ~ x ~ ~ x ~ ~ x x ~ x",
     "bd [hh hh] sd [cp cp]",
     "a b c d e c a d",
-)
+]
 
 val found = showPatCondense(*rhythms.toTypedArray(), channel = "roll")
 

@@ -20,6 +20,9 @@ description: |
     - **sequencer** — Lua picks eight notes from a scale; `field.render` shows and measures them
       offline, and `play` loops them through Field's pattern voice until the box stops.
     - **line notes** (Kotlin) — prints the notes Field keeps for **hello**; run **hello** first.
+docs:
+  - page: lua.md
+    why: "Explains Lua boxes over LuaJIT and their line notes."
 operations:
   - create:
       box: lua_root

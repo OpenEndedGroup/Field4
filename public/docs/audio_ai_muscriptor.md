@@ -76,17 +76,21 @@ checkpoint overrides, and revision override variables are documented in the
 
 ## Transcribing a recording
 
-Never block Field's runloop with `.get()` while a transcription is running. Compose futures, update
-the status card from worker events, and await the durable result:
+Never block Field's runloop with `.get()` while a transcription is running. Use a box-owned coroutine and `trackAnalysis` for progress and the durable result.
+Stop or rerun cancels this run’s subscriptions and pending local futures; the durable service job remains:
 
 ```diffstatic {data-lang=kotlin}
-val client = FieldAudioClient()
+import kotlinx.coroutines.*
+import kotlinx.coroutines.future.await
+
+val client = cached { FieldAudioClient() }
 val sourcePattern = "*sonic-pi-study*" // use audio you have the rights to transcribe
 val sync = "muscriptor-example"
 
-client
-    .assetByFilename(sourcePattern)
-    .thenCompose { source ->
+prop<AnalysisResult>(transcriptionResult)
+go {
+    try {
+        val source = client.assetByFilename(sourcePattern).await()
         val audio =
             source.representations.firstOrNull { it.role == "canonical_project" }
                 ?: source.representations.first { it.mediaType in setOf("audio/wav", "audio/x-wav") }
@@ -105,64 +109,61 @@ client
                 ),
             ),
         )
-
-        client
-            .submit(
-                musicTranscriptionAnalysis(
-                    region,
-                    backend = MuscriptorBackend.SMALL,
-                    instruments = emptyList(), // or hard-constrain the expected instrument groups
-                    tempoDetection = MuscriptorTempoDetection.BEST_EFFORT,
-                    requestedBy = "field:my-document/transcription",
-                ),
-            )
-            .thenCompose { accepted ->
-        :::fold job status, progress and completion
-                display("job", fieldAudioJobStatusHtml(accepted))
-                client.watch(
-                    accepted.jobId,
-                    onEvent = { event -> display("job", fieldAudioJobStatusHtml(accepted, event)) },
-                    onError = { error -> display("stream", error.message ?: error.toString()) },
+        val result =
+            client
+                .trackAnalysis(
+                    musicTranscriptionAnalysis(
+                        region,
+                        backend = MuscriptorBackend.SMALL,
+                        instruments = emptyList(), // or hard-constrain the expected instrument groups
+                        tempoDetection = MuscriptorTempoDetection.BEST_EFFORT,
+                        requestedBy = "field:my-document/transcription",
+                    ),
+                    onAccepted = { display("job", fieldAudioJobStatusHtml(it)) },
+                    onProgress = { job, event -> display("job", fieldAudioJobStatusHtml(job, event)) },
+                    onCompleted = { display("job", fieldAudioJobStatusHtml(it)) },
+                    onError = {}, // Report failure once through the surrounding coroutine.
                 )
-                client.awaitAnalysis(accepted)
-        :::endfold
-            }
-    }
-    .thenAccept { result ->
-        display(
-            "score",
-            analysisVisualizationHtml(
-                result,
-                width = 1100,
-                height = 420,
-                syncGroup = sync,
-            ),
-        )
+                .await()
+        display("score", analysisVisualizationHtml(result, width = 1100, height = 420, syncGroup = sync))
+        transcriptionResult = result
         val performanceMidi = result.musicTranscriptionMidi()
         val quantizedMidi = result.musicTranscriptionQuantizedMidiOrNull()
         display(
             "artifacts",
             "performance MIDI: ${performanceMidi.id}; quantized: ${quantizedMidi?.id ?: "not produced"}",
         )
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (failure: Throwable) {
+        markdown("MuScriptor error", "Operation failed: ${(failure.message ?: failure.toString()).md}")
     }
-    .exceptionally { error ->
-        display("error", error.cause?.message ?: error.message ?: error.toString())
-        null
-    }
+}
 ```
 
 The waveform and piano roll share Field's general time bus. Playback moves the score cursor; hover,
 click-to-seek, wheel zoom, and drag pan work in either view and are reflected in the other. Notes are
 coloured by instrument group, and the lower lane shows active polyphony against onset count.
 
-To use the notes in code, `client.musicTranscription(result)` downloads the compact
+To use the notes in code, After the transcription finishes, run the next fragment in the same box. The typed
+`transcriptionResult` property retains its durable result; `client.musicTranscription(transcriptionResult)` downloads the compact
 MessagePack artifact and returns typed `MusicTranscriptionNote` values, so ordinary Field code can
 filter, group, transform, or feed the recovered notes into other music systems without parsing JSON:
 
 ```diffstatic {data-lang=kotlin}
-client.musicTranscription(result).thenAccept { transcription ->
-    val cello = transcription.notes.filter { it.instrument == "cello" }
-    display("cello notes", cello.joinToString("<br>"))
+import kotlinx.coroutines.*
+import kotlinx.coroutines.future.await
+
+go {
+    try {
+        val transcription = client.musicTranscription(transcriptionResult).await()
+        val cello = transcription.notes.filter { it.instrument == "cello" }
+        display("cello notes", cello.joinToString("<br>"))
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (failure: Throwable) {
+        markdown("MuScriptor error", "Operation failed: ${(failure.message ?: failure.toString()).md}")
+    }
 }
 ```
 

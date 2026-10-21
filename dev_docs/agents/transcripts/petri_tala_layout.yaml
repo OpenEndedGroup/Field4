@@ -21,6 +21,9 @@ description: >
 
   Replay into a fresh Field with the agent backdoor (field_run_transcript). Each `execute` op omits
   inline code, so it runs the box's stored `code` property. See native/field-d2-layout/README.md.
+docs:
+  - page: petri_nets.md#drawing-a-net
+    why: "Covers drawing nets, including the TALA layout compared here."
 operations:
   # 1 ── the spring model, which is what you get today.
   - create:

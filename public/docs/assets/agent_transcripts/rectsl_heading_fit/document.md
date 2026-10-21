@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rectsl_heading_solve" index="0" -->
 
 ```edn [field-box id="rectsl_heading_solve" role="properties"]
-{"id" "rectsl_heading_solve" "index" 0 "name" "solve for where it points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "solve for where it points" "_tombstone" false "frame" #afield/rect [80.0 900.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_solve_code_.kt" "lines" 37 "characters" 1470 "sha256" "751dc4b7172f91a5f134701e357059a72ae40ae05baf0b121e4d0ce71d7dc168"}]}
+{"id" "rectsl_heading_solve" "index" 0 "name" "solve for where it points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "solve for where it points" "_tombstone" false "frame" #afield/rect [80.0 900.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_solve_code_.kt" "lines" 37 "characters" 1458 "sha256" "9482eef4089f34ecbbc902e49622334b42c7ce0f34def4584035a17c5adbbe5e"}]}
 ```
 
 ```kotlin [field-property box="rectsl_heading_solve" name="code" path="rectsl_heading_solve_code_.kt"]
@@ -23,7 +23,7 @@ atan2(rise, 1), so asking for 45 degrees is asking for rise = 1 — an answer yo
 check by hand, which is the point of choosing it.
 */
 val duration = 4.0
-fun clock(): Track<Double> = LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(duration, duration)))
+fun clock(): Track<Double> = LinearScalarTrack([TcbKey(0.0, 0.0), TcbKey(duration, duration)])
 
 val rise = FreeParamTrack("rise", 0.15)
 val heading = HeadingTrack(clock(), BinaryDoubleTrack(clock(), rise, TrackOp2.MUL))
@@ -34,7 +34,7 @@ val graph = heading.toFn(Functions.Domain(0.0, duration)).orThrow()
 val slots = freeParameterSlots(graph)
 
 val fit = heading.fitParameters(
-    listOf(TrackFitTarget(1.0, PI / 4.0), TrackFitTarget(3.0, PI / 4.0)),
+    [TrackFitTarget(1.0, PI / 4.0), TrackFitTarget(3.0, PI / 4.0)],
     over = Functions.Domain(0.0, duration),
     iterations = 600,
 )
@@ -59,7 +59,7 @@ val agreement = heading.gradientAgreement(
 <!-- field-box id="rectsl_heading_lowering" index="1" -->
 
 ```edn [field-box id="rectsl_heading_lowering" role="properties"]
-{"id" "rectsl_heading_lowering" "index" 1 "name" "a heading, and the half turn it avoids" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a heading, and the half turn it avoids" "_tombstone" false "frame" #afield/rect [80.0 60.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_lowering_code_.kt" "lines" 77 "characters" 2534 "sha256" "8e84f3c00db040f5bcad236c0db50cf6527a3dc78d3ddede240081368ccd7b19"}]}
+{"id" "rectsl_heading_lowering" "index" 1 "name" "a heading, and the half turn it avoids" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a heading, and the half turn it avoids" "_tombstone" false "frame" #afield/rect [80.0 60.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_lowering_code_.kt" "lines" 77 "characters" 2522 "sha256" "46b4885640ca1bd2c49202f849e0f1b4c15cbd507a9398e9f08f6f75056daec3"}]}
 ```
 
 ```kotlin [field-property box="rectsl_heading_lowering" name="code" path="rectsl_heading_lowering_code_.kt"]
@@ -67,7 +67,7 @@ import afield.lang.rectsl.*
 import java.util.Base64
 
 val duration = 4.0
-fun clock(): Track<Double> = LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(duration, duration)))
+fun clock(): Track<Double> = LinearScalarTrack([TcbKey(0.0, 0.0), TcbKey(duration, duration)])
 fun wave(rate: Double, amplitude: Double): Track<Double> = BinaryDoubleTrack(
     MappedDoubleTrack(
         BinaryDoubleTrack(clock(), constantTrack(rate), TrackOp2.MUL),
@@ -98,7 +98,7 @@ val halfTurns = strobe.count {
 }
 
 val png = RectSLFitFigure.render(
-    bands = listOf(
+    bands = [
         RectSLFitFigure.Band(
             "sampler",
             x,
@@ -123,7 +123,7 @@ val png = RectSLFitFigure.render(
             note = "$halfTurns half turns",
             rotation = quadrantLess,
         ),
-    ),
+    ],
     markers = emptyList(),
     wall = WallSpec(19.0, 7.0, UnitKind.Meters),
     rectSize = Vec2d(1.35, 0.4),

@@ -71,7 +71,7 @@ in their state and never in what they are trying to do:
   can go round a barrier that direct `seek` presses into. On an S-maze, over 96 agents, routed
   `seek` arrives 0.990 of the time against 0.000 for direct `seek` at the same budget.
 
-Both are worked through in [section 12](#12-agents-that-run-programs-and-a-world-to-run-them-in),
+Both are worked through in [section 12](#12-agents-with-their-own-programs),
 which also says where to find them as documents you can open and edit.
 
 Limits:
@@ -83,9 +83,8 @@ Limits:
   [Biham–Middleton–Levine traffic](afield_four_graphics.md#bml-traffic), a
   [lattice Boltzmann fluid](afield_four_graphics.md#lattice-boltzmann) and a
   [forest fire](afield_four_graphics.md#forest-fire).
-- **No named Lenia lifeform.** Reproducing Orbium needs its exact published initial array, which this
-  family does not ship. What it does instead is [prove the discrete limit](#5-lenia) and report a
-  measured phase trichotomy.
+- **One named Lenia lifeform.** [Orbium](#5-lenia) ships with its published cells; the rest of Chan's
+  catalogue loads from his `animals.json` if you supply it.
 - **`O(N²)` neighbour search in the agent models.** A spatial hash is right for 50 000 agents and is a
   different piece of code; these flocks are a few hundred agents and legibility wins.
 - **Explicit Euler integration** for the continuous systems, with the stability bound stated as a
@@ -557,9 +556,13 @@ val equalD =
 println("CONTROL Du == Dv -> " + equalD.v.morphology())
 
 :::fold draw the four regimes and the two controls, all on one fixed magma range
+val controls: List<Pair<String, GrayScottState>> = [
+    "CONTROL no seed" to unseeded,
+    "CONTROL Du == Dv" to equalD,
+]
 showImg(
     montage(
-        (runs + ["CONTROL no seed" to unseeded, "CONTROL Du == Dv" to equalD]).map { (label, s) ->
+        (runs + controls).map { (label, s) ->
             label to s.v.colormap("magma", 0f, 0.5f).upscaleNearest(2)
         },
         columns = 3,
@@ -649,57 +652,128 @@ animateEvolution(
 
 ## 5. Lenia
 
-Lenia is one field `A` in `0..1`, one convolution kernel `K`, one growth mapping `G`, and
+Lenia is a cellular automaton whose cells hold any value from 0 to 1 instead of on or off. Each step,
+every cell takes a weighted average of its neighbourhood out to radius `R` (the kernel `K`), passes it
+through a growth curve `G` that is positive near one value `mu` and negative elsewhere, and moves a
+small step `dt` in that direction:
 
 ```diffstatic {data-lang=text}
 A  <-  clamp(A + dt * G(K * A), 0, 1)
 ```
 
-That is the whole system. Its interest is that with a smooth ring kernel and a smooth bell-shaped
-growth mapping it supports localised, self-maintaining, *moving* structures (solitons), which a
-lattice automaton quantises away.
+What makes Lenia worth studying is that some patterns under some rules behave like creatures: they
+keep their shape and move. The best known is *Orbium unicaudatus*, from Bert Chan's catalogue of
+Lenia lifeforms. [`LeniaPresets.orbium()`](reference/alife.md#alife-continuous-kt) loads its rule
+and its 20 × 20 array of cells from that catalogue. On the left below it glides across a 64-cell
+torus at a steady 0.62 cells per step, and its mass (the field's mean value, in the caption) stays
+level the whole way. On the right are the same cells under the same rule with one number changed:
+`mu`, the centre of the growth curve, moved from 0.15 to 0.12. The creature swells into a ring, the
+ring tears, and the pieces multiply until they cover the torus.
 
-There is a very good cross-check available on an *implementation* of it. With a uniform Moore ring
-kernel, `dt = 1`, and a **three-valued** step growth mapping (`+1`
-on the birth counts, `0` on survive-only counts, `-1` elsewhere), Lenia reduces exactly to an
-outer-totalistic `B/S` rule: `G = +1` forces a cell alive from either state, `G = 0` leaves it as it
-was, `G = -1` forces it dead. So this file's sparse float convolution and `alife_ca.kt`'s integer
-neighbour counting must agree **bit for bit**.
-[`leniaFromLifeRule`](reference/alife.md#alife-continuous-kt) builds that limit, and the worst per-cell
-difference over 20 generations of a glider is `0.0`. Moving the growth window one neighbour count
-diverges completely.
-
-Be precise about what that proves. These are not two independent implementations of Conway's Life:
-`leniaFromLifeRule` reads the very same `B3/S23` birth and survive sets that the integer stepper reads,
-so a wrong table would produce two wrong steppers in perfect agreement. What the bit-for-bit result
-cross-validates is the two **update mechanisms**: a float convolution, an additive `A + dt·G` step, the
-quantisation back to a neighbour count, the clamp to `0..1`, the toroidal border and the `Img`↔`IntGrid`
-bridges, against integer neighbour counting and a table lookup. The *rule* is pinned separately, and from
-outside this codebase, by the named-object checks above: a glider that translates by exactly `(1, 1)` in
-four generations, a block that does not move, a blinker of period 2.
-
-The limit needs `birth ⊆ survive`. If a count births a dead cell but does not sustain a live one, no
-function of the neighbour count alone can do both, so `leniaFromLifeRule` rejects the rule rather than
-producing a different automaton. Conway's `B3/S23` satisfies it.
-
-For the *continuous* regime this page reports a measured phase trichotomy rather than a named creature.
-[`leniaRun`](reference/alife.md#alife-continuous-kt) classifies an outcome as `DEATH`, `BOUNDED` or
-`SATURATION` and hands back the mass history behind the verdict, and from one seed the growth mapping's
-two parameters produce all three. The bounded cells are fine-grained self-maintaining textures (you can
-see the individual ring-shaped cells in the panels) and are *not* the published solitons of the Lenia
-literature, which need initial arrays this family does not ship.
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/lenia.png" wait="20.0" capture="box" open-outputs="true" padding="20"}
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/lenia.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1000" embed=true name="alife-lenia-video" alt="two Lenia fields on a dark torus: on the left Orbium, a bright teardrop inside a faint ring, glides across the field and wraps round its edges; on the right the same cells with mu lowered to 0.12 swell into a ring that tears into bright loops until they cover the field"}
 :::static
-/*
-Lenia is a CONTINUOUS cellular automaton: one field in 0..1, one convolution kernel, one growth
-mapping, and A <- clamp(A + dt * G(K * A)).
+val orbium = LeniaPresets.orbium()
 
-The claim worth making about an implementation of it is a cross-check. With a uniform Moore ring
-kernel, dt = 1 and a three-valued step growth mapping, Lenia reduces EXACTLY to an
-outer-totalistic B/S rule -- so this float convolution and the integer Life stepper in
-`alife_ca.kt` must agree bit for bit. `leniaFromLifeRule` builds that limit.
-*/
+:::fold draw both fields on a fixed 0..1 inferno scale, with the mean field in the caption
+fun fields(a: Img, b: Img, n: Int) = [
+    "Orbium, step %d: mass %.4f".format(n, a.mean()) to a.colormap("inferno", 0f, 1f).upscaleNearest(6),
+    "mu 0.12, step %d: mass %.4f".format(n, b.mean()) to b.colormap("inferno", 0f, 1f).upscaleNearest(6),
+]
+
+:::endfold
+
+// The same cells, with the growth curve centred at 0.12 instead of 0.15.
+val lowMu = leniaRuleFromCatalogue(radius = 13, t = 10.0, mu = 0.12, sigma = 0.015)
+
+// At Orbium's 0.62 cells per step, 200 steps is about two laps of the 64-cell torus.
+animateEvolution(
+    orbium.seed(64, 64) to orbium.seed(64, 64),
+    totalSteps = 200,
+    seconds = 7.0,
+    columns = 2,
+    cellSide = 384,
+    step = { (a, b) -> a.leniaStep(orbium.rule) to b.leniaStep(lowMu) },
+    panels = { (a, b), n -> fields(a, b, n) },
+)
+```
+
+Orbium's rule is `R = 13`, `dt = 1/10`, `mu = 0.15`, `sigma = 0.015`, with the polynomial kernel and
+growth curve its catalogue entry names. [`leniaRuleFromCatalogue`](reference/alife.md#alife-continuous-kt)
+builds any rule in that catalogue's terms, and [`leniaCreatures`](reference/alife.md#alife-continuous-kt)
+reads a whole catalogue file, so the other creatures in Chan's `animals.json` load the same way.
+
+??? aside "Why the creature is loaded from Chan's file"
+    Earlier versions of this section showed only noise seeds sorted into died, lived and filled the
+    field, and said a named creature needs its published array. Noise seeds did not find Orbium in
+    the trials made for this revision (tapered blobs and square patches under Orbium's `mu` and
+    `sigma` died; wider bells filled the field with fragments). So the array is read from Chan's
+    `animals.json` (MIT licensed, excerpted unchanged in `afield/alife/lenia_animals.json`), rather
+    than retyped from a paper or from memory.
+
+### Moving the growth window
+
+The shape is the creature: shuffle Orbium's 400 values into a random arrangement, keeping its mass
+and its histogram, and under the same rule the patch dies, in every one of the six shuffles the box
+below tries. And the creature lives in a band of rules, not at one point. Run the
+same cells with only `mu` changed:
+from 0.13 to 0.16 Orbium survives and glides. At 0.12 the growth curve rewards thinner neighbourhoods,
+and it bursts into a field of about 25 fragments that covers the torus. At 0.17 and above it needs
+a denser neighbourhood than it has, and it shrinks and dies. The rows below are 0.12, 0.15 and 0.18,
+each at steps 0, 5, 10, 20 and 250.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/lenia.png" wait="20.0" timeout="240" capture="box" open-outputs="true" padding="20"}
+:::static
+val orbium = LeniaPresets.orbium()
+for (seed in 1L..6L) {
+    println("shuffled cells, seed " + seed + ": " + leniaRun(orbium.shuffled(seed).seed(64, 64), orbium.rule, steps = 300))
+}
+for (mu in [0.11, 0.12, 0.13, 0.16, 0.17, 0.18]) {
+    val rule = leniaRuleFromCatalogue(radius = 13, t = 10.0, mu = mu, sigma = 0.015)
+    println("mu = " + mu + ": " + leniaRun(orbium.seed(64, 64), rule, steps = 300))
+}
+
+:::fold three values of mu, the same five moments of each
+val moments = [0, 5, 10, 20, 250]
+val panels = [0.12, 0.15, 0.18].flatMap { mu ->
+    val rule = leniaRuleFromCatalogue(radius = 13, t = 10.0, mu = mu, sigma = 0.015)
+    var current = orbium.seed(64, 64)
+    var done = 0
+    moments.map { step ->
+        current = current.leniaTimes(rule, step - done)
+        done = step
+        (if (step == 0) "mu " + mu else "step " + step) to current.colormap("inferno", 0f, 1f).upscaleNearest(3)
+    }
+}
+showImg(
+    montage(panels, columns = 5, cellSide = 192),
+    caption = "rows: mu = 0.12, 0.15, 0.18; columns: steps 0, 5, 10, 20 and 250",
+)
+:::endfold
+```
+
+![three rows of five dark panels: the top row's creature swells into a ring and by step 250 has become about 25 bright loops covering the field, the middle row's creature keeps its shape while moving, and the bottom row's creature shrinks over the first twenty steps and is gone by step 250](assets/alife_examples/lenia.png)
+
+### Checking the implementation against Life
+
+Lenia has a limit in which it becomes an ordinary on/off automaton, and that gives a check on the
+code. With a kernel that weights the eight neighbours equally, `dt = 1`, and a growth curve that is
+`+1` on the birth counts, `0` on survive-only counts and `-1` elsewhere, every step lands each cell
+exactly on 0 or 1 and Lenia *is* an outer-totalistic `B/S` rule. So this file's float convolution and
+`alife_ca.kt`'s integer neighbour counting must agree bit for bit.
+[`leniaFromLifeRule`](reference/alife.md#alife-continuous-kt) builds that limit, and over 20 generations
+of a glider the largest per-cell difference is `0.0`. Moving the growth window by one neighbour count
+makes them disagree completely.
+
+This checks the two update mechanisms against each other, not the rule: `leniaFromLifeRule` reads the
+same `B3/S23` tables the integer stepper reads, so a wrong table would give two wrong steppers in
+perfect agreement. The rule is checked separately, in section 1, against facts about Life from the
+literature: the glider moves `(1, 1)` every four generations, the block stays still, the blinker has
+period 2. The limit also needs `birth ⊆ survive`, because a count that births a dead cell but kills a
+live one cannot be written as a growth curve of the count alone, so `leniaFromLifeRule` rejects such
+a rule rather than building a different automaton.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/lenia-limit.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
+:::static
 val discrete = leniaFromLifeRule(LIFE)
 println("discrete-limit kernel: " + discrete.taps.size + " taps summing to " + discrete.taps.weight.sum())
 
@@ -726,94 +800,21 @@ println(
         ),
 )
 
-// The continuous regime, reported as a measured phase trichotomy rather than as a named creature:
-// this file ships no published Lenia initial pattern, so it claims none.
-val runs =
-    [0.06, 0.14].map { mu ->
-        val r = LeniaPresets.ring(mu, sigma = 0.017, radius = 8, dt = 0.12)
-        mu to leniaRun(leniaSeed(96, 96, r, blobRadii = 1.6, seed = 9L), r, steps = 240)
-    }
-for ((mu, run) in runs) println("mu = " + mu + " -> " + run)
-val wide = LeniaPresets.ring(0.60, sigma = 0.60, radius = 8, dt = 0.12)
-val sat = leniaRun(leniaSeed(96, 96, wide, blobRadii = 1.6, seed = 9L), wide, steps = 240)
-println("a growth bell positive over the whole unit interval -> " + sat)
-
-:::fold draw the discrete limit, the kernel and the three phases on a fixed inferno range
+:::fold draw both steppers' glider after 20 generations
 showImg(
     montage(
         [
-            "discrete limit == Life" to field.upscaleNearest(8),
-            "ring kernel R=8" to LeniaPresets.ring(0.15, radius = 8).kernelImg().normalized().upscaleNearest(10),
-        ] +
-            runs.map { (mu, run) ->
-                "mu=" + mu + " " + run.phase.name.lowercase() to run.field.colormap("inferno", 0f, 1f).upscaleNearest(3)
-            } +
-            ["wide sigma: saturation" to sat.field.colormap("inferno", 0f, 1f).upscaleNearest(3)],
-        columns = 3,
-        cellSide = 280,
+            "float Lenia, gen 20" to field.upscaleNearest(8),
+            "integer Life, gen 20" to grid.toImg(2).upscaleNearest(8),
+        ],
+        columns = 2,
+        cellSide = 256,
     ),
 )
 :::endfold
 ```
 
-![five panels: a glider drawn by the float Lenia stepper, the R=8 ring kernel as a bright annulus, then the two growth-window centres — one field of fine self-maintaining ring-shaped cells and one that has run down — and a uniformly bright field labelled saturation](assets/alife_examples/lenia.png)
-
-### The two `mu` values, running
-
-The discrete-limit result above stays a still: "the worst per-cell difference over 20 generations is
-`0.0`" is exact, and there is nothing about it to watch.
-
-The continuous regime is the opposite. Both panels are the same seed under the same ring kernel with only
-`mu` changed, 0.06 on the left and 0.14 on the right, 240 steps in seven seconds, with the mean field in
-each caption recomputed every frame. On a fixed `0 … 1` `inferno` scale, for the reason the note below
-this clip gives.
-
-What to watch is the **first two seconds**, which is where the two panels stop being the same picture. Both
-start as one smooth blob. Then the growth mapping's window decides everything: one `mu` has the blob break
-into a field of ring-shaped cells that maintain themselves and then keep rearranging without ever
-growing or dying, with the mean field settling into a band and staying there, while the other loses more
-than it gains and runs down to nothing. Same code, same seed, one number.
-
-??? aside "This clip is ramped like Gray–Scott's"
-    And for the same reason: the blob breaks up inside the first forty of the two hundred and forty
-    steps. `ramp = 25` puts the mid-point of the clip at step 40 instead of step 120, which gives
-    the whole of the interesting decision half the clip and the long self-maintaining phase (the
-    *claim*, but not the event) the other half. Half the change then arrives at 38 % of the clip
-    rather than 10 %. Even so, 45 % of frames show essentially nothing, and that is a floor rather
-    than a failure: one of the two panels really does die, and a dead field is *supposed* to sit
-    still.
-
-```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/lenia.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1000" embed=true name="alife-lenia-video" alt="two Lenia fields from the same seed under different growth-window centres: one breaks into self-maintaining ring cells, the other runs down to nothing"}
-:::static
-:::fold the two fields, on a fixed 0..1 inferno range
-// inferno on a fixed 0..1 scale, so the two panels share one, and the mean field recomputed
-// every frame so the phase verdict is measured while you watch.
-fun fields(x: Img, y: Img, n: Int) = [
-    "mu=0.06 " + n + " mean " + "%.3f".format(x.mean()) to x.colormap("inferno", 0f, 1f).upscaleNearest(4),
-    "mu=0.14 " + n + " mean " + "%.3f".format(y.mean()) to y.colormap("inferno", 0f, 1f).upscaleNearest(4),
-]
-
-:::endfold
-
-/*
-Same seed, same ring kernel, one number different: where the growth window is centred.
-240 Lenia steps over 140 displayed frames -- but geometrically, not two per frame: `ramp = 25`
-spends the first half of the clip on the first 40 steps, because that is where the blob decides
-what it is going to be. Everything after is maintenance.
-*/
-val a = LeniaPresets.ring(0.06, sigma = 0.017, radius = 8, dt = 0.12)
-val b = LeniaPresets.ring(0.14, sigma = 0.017, radius = 8, dt = 0.12)
-animateEvolution(
-    leniaSeed(96, 96, a, blobRadii = 1.6, seed = 9L) to leniaSeed(96, 96, b, blobRadii = 1.6, seed = 9L),
-    totalSteps = 240,
-    seconds = 7.0,
-    ramp = 25.0,
-    columns = 2,
-    cellSide = 384,
-    step = { (x, y) -> x.leniaTimes(a, 1) to y.leniaTimes(b, 1) },
-    panels = { (x, y), n -> fields(x, y, n) },
-)
-```
+![two identical black boards, each holding one white five-cell glider at the same position, labelled float Lenia and integer Life after 20 generations](assets/alife_examples/lenia-limit.png)
 
 ## 6. Boids
 
@@ -1591,10 +1592,15 @@ matters because the failure mode here is a rule that scores well by saturating t
 sitting still.
 
 Against 220 evaluations of the control at the same seed, evolution finds a rule **17.2 % better**:
-`2.09372` against `1.78636`, a margin of `0.3074`. The evolved rule is measured `BOUNDED` with one blob
-and a centroid drift of 4.82 cells, so it is a single travelling structure rather than a high score. The
-first panel of the figure below is the control's best, so the thing evolution had to beat is in the same
-picture at the same budget.
+`2.09372` against `1.78636`, a margin of `0.3074`. The first panel of the figure below is the control's
+best, so the thing evolution had to beat is in the same picture at the same budget.
+
+The search scored what it was asked to score, and that is less than a creature. At the 90 steps the
+objective runs, the evolved rule is `BOUNDED` with one blob and a centroid drift of 4.82 cells: the
+smooth ring in the last panel. Run the same rule from the same seed for 300 steps and it has broken
+into 14 blobs with a mean field of 0.32, so what evolution found is a ring on its way to filling
+the board. [Orbium](#5-lenia), by contrast, holds its mass level for as long as you run it. To search
+for creatures, score a longer run, or score how little the mass changes over its second half.
 
 ??? aside "What the panels after the first one are"
     The successive **record holders**: the leader of each generation that improved on the best so far.
@@ -1635,7 +1641,8 @@ println(
 
 val best = evolved.best!!.genome
 println("evolved rule: mu=%.4f sigma=%.4f".format(best.mu, best.sigma))
-println("  " + leniaRun(leniaSeed(48, 48, best, seed = 5L), best, steps = 90, sampleEvery = 8))
+println("  at 90 steps:  " + leniaRun(leniaSeed(48, 48, best, seed = 5L), best, steps = 90, sampleEvery = 8))
+println("  at 300 steps: " + leniaRun(leniaSeed(48, 48, best, seed = 5L), best, steps = 300, sampleEvery = 8))
 
 :::fold the control's best, then each successive record holder
 val panels = mutableListOf<Pair<String, Img>>()
@@ -1883,111 +1890,106 @@ showImg(
 
 ![a contact sheet of twenty small greyscale automaton boards laid out in a six-column grid, each labelled with its two bin indices and score: the top-left cells are near-empty, the bottom-right cells are dense static, and the middle band holds boards with visible structure](assets/alife_examples/evolve-mapelites.png)
 
-### One core, four genomes
+All three searches run on one engine, `PopulationSearch`, and each is a genome (a `GenomeOps`: how to
+make, mutate and recombine one) plus an `Objective` that scores it. Evolving the shape of a function
+for animation runs on the same engine; see [evolving and optimizing
+functions](functions_examples.md#evolving-and-optimizing-functions).
 
-All three of the above run on the same engine, and so does a fourth client with nothing else in common
-with them. `FunctionEvolve.evolve`, over `Fn` graphs, is `PopulationSearch.evolve(mu = 1,
-crossoverRate = 0, immigrantRate = 0)` on an `FnGenomeOps`, and its random stream is bit-identical to a
-hand-rolled `(1 + λ)` climb's: the core skips the parent draw when the population holds one individual,
-and skips the crossover and immigrant draws when their rates are exactly zero. The box below runs that
-search, and should print these numbers exactly:
+## 12. Agents with their own programs
 
-```diffstatic {data-lang=text}
-initialScore=-0.8420503456220446   bestScore=-0.15676727177844857
-acceptedMutations=12  evaluations=961
-```
+Every system above moves its whole population with one rule: `BoidFlock.step(p)` applies the same
+parameters to every agent on every tick. [`ScriptWorld`](reference/alife.md#alife-script-kt-scriptworld)
+gives each agent a program of its own instead, written as an ordinary Kotlin function that runs on the
+world's clock, so one agent can circle for four seconds, head for the middle and then wander off, and
+the code says so in that order. The same file adds walls, and a planner for getting round them.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/evolve-shared-core.png" wait="30.0" timeout="180" capture="box" open-outputs="true" padding="20"}
+The clip below uses both. Twelve agents start at the left of a room divided by two walls, and each has
+to reach the green ring at the right. The only way through is an S: over the top of the first wall,
+then under the second. In the left room each agent plans a path with `route(goal)`; in the right room
+each one heads straight at the goal with `seek(goal)`. Both rooms also run `avoidWalls`, so the right
+room has good local steering, and its agents still end up pressed against the first wall, which is the
+part of the room nearest the goal.
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/walls-routing.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1000" embed=true name="alife-walls-routing-video" alt="two rooms side by side, each split by two walls: on the left twelve agents climb over the first wall, drop under the second and gather in the green goal ring; on the right the same twelve agents crowd against the first wall and stay there"}
 :::static
-/*
-The engine is SHARED, and that is the point of the whole exercise.
+// Twelve agents, one goal, two walls. The way through is an S: over the first wall, under the second.
+fun maze(routed: Boolean) =
+    ScriptWorld(width = 200.0, height = 200.0, seed = 1L, wrap = false).also { w ->
+        w.addWall(70.0, 45.0, 70.0, 200.0, name = "gap above")
+        w.addWall(130.0, 0.0, 130.0, 155.0, name = "gap below")
+        val jitter = kotlin.random.Random(1L) // the same start positions in both rooms
+        repeat(12) {
+            w.spawn(
+                18.0 + jitter.nextDouble(-8.0, 8.0),
+                100.0 + jitter.nextDouble(-28.0, 28.0),
+                maxSpeed = 35.0,
+                radius = 1.2,
+                steerResponse = 0.3,
+            ) {
+                val goal = point(175.0, 100.0)
+                moveUntil(maxSeconds = 30.0, speed = 35.0, until = { near(goal, 6.0) }) {
+                    // The one line that differs between the two rooms.
+                    if (routed) route(goal, clearance = 3.5) else seek(goal)
+                    avoidWalls(clearance = 3.0, weight = 0.6)
+                    separate(range = 4.0, weight = 0.4)
+                }
+            }
+        }
+    }
 
-FunctionEvolve.evolve, over Fn graphs, does not contain a search of its own. Its body is
-PopulationSearch.evolve(mu = 1, lambda = lambda, crossoverRate = 0, immigrantRate = 0) over an
-FnGenomeOps -- the same engine the three ALife boxes run on. The core
-skips the parent draw when the population holds one
-individual and skips the crossover and immigrant draws when their rates are exactly zero. Each
-of those is right on its own terms; together they make mu=1 a plain (1+lambda) climb.
+:::fold draw both rooms, and count the agents inside the goal ring
+fun arrived(w: ScriptWorld) = w.actors.count { it.distanceTo(175.0, 100.0) <= 6.0 }
 
-The FIELD_TEST functions.evolve.worked-example pins this search's numbers:
+fun rooms(a: ScriptWorld, b: ScriptWorld) = [
+    "route %4.1f s: %d/12 in".format(a.time, arrived(a)) to a.toImg(2.0, marks = [175.0 to 100.0]),
+    "seek %4.1f s: %d/12 in".format(b.time, arrived(b)) to b.toImg(2.0, marks = [175.0 to 100.0]),
+]
 
-    initialScore=-0.8420503456220446   bestScore=-0.15676727177844857
-    acceptedMutations=12  evaluations=961
-
-Below is that same search, running here.
-*/
-
-val target = with(Functions) { sin(frequency = 1.0, amplitude = 0.5) }
-val seed = with(Functions) { cos(frequency = 1.0, amplitude = 1.0) }
-
-val run = evolve(
-    seed = seed,
-    iterations = 120,
-    lambda = 8,
-    rngSeed = 3L,
-    fitness = matchFitness(target, samples = 160, complexityWeight = 0.01),
-)
-
-println("initialScore=${run.initialScore}")
-println("bestScore=${run.bestScore}")
-println("acceptedMutations=${run.steps.size}  evaluations=${run.evaluations}")
-println()
-println("the accepted improvements, which are now read off the generic SearchRun.improvements:")
-run.steps.forEach { println("  gen %3d  %-14s %.6f".format(it.iteration, it.mutation, it.score)) }
-println()
-println("evolved: ${run.best}")
-println()
-println("One core, four genomes: an Fn graph here, and a LeniaRule, a life-like rule table and an")
-println("L-system grammar in alife_evolve.kt. A fifth costs a GenomeOps and an Objective.")
-
-:::fold the seed, the target and the evolved graph on one time base
-// The seed, the target and what the search found, on one time base.
-val xs = (0..255).map { -1.0 + 2.0 * it / 255.0 }
-showSignals(
-    "target" to xs.map { target.evalSafe(it, outside = 0.0) },
-    "seed" to xs.map { seed.evalSafe(it, outside = 0.0) },
-    "evolved" to xs.map { run.best.evalSafe(it, outside = 0.0) },
-)
 :::endfold
+
+// 30 simulated seconds (1800 ticks at 60 Hz), played in seven.
+animateEvolution(
+    maze(routed = true) to maze(routed = false),
+    totalSteps = 1800,
+    seconds = 7.0,
+    columns = 2,
+    cellSide = 400,
+    step = { (a, b) ->
+        a.step()
+        b.step()
+        a to b
+    },
+    panels = { (a, b), _ -> rooms(a, b) },
+)
 ```
 
-![a dark line plot with three labelled traces: an orange cosine seed of amplitude 1, and a green evolved curve lying exactly on top of the blue target sine of amplitude 0.5, hiding it almost completely along its whole length](assets/alife_examples/evolve-shared-core.png)
+`seek` points at the goal and keeps pushing; `avoidWalls` and `separate` only react to what is within
+a few units. Deciding to go *away* from the goal for a while, to get round a wall, needs a plan.
+[`NavGrid`](reference/alife.md#alife-walls-kt-navgrid) makes one: an A\* search on a grid where every
+wall is thickened by the agent's clearance, shortened by cutting corners wherever the straight line is
+clear, then followed waypoint by waypoint. `route(goal)` is that plan used as a steering term. Over 96
+agents per room (8 different start layouts of 12), 0.990 of the routed agents arrive within 30 seconds
+and none of the direct ones do.
 
-A fifth genome costs a `GenomeOps` and an `Objective`.
+### One agent's program
 
-## 12. Agents that run programs, and a world to run them in
+An agent's program is built from a few blocks that nest: `forever`, `phase(name)` to label a stretch
+of it, `moveFor(seconds)` to steer for a while, and `parallel` to run two things at once. Inside
+`moveFor`, steering terms such as `orbit`, `arrive`, `wander` and `avoidEdges` add together, so a
+phase can combine several. `point`, `actor` and `nearest` give them something to steer at.
 
-Every system above advances a whole population with one call and one parameter block. A flock is
-`BoidFlock.step(p: BoidParams)` — one function, one rule, applied identically to every agent on every
-tick. That is the right shape for emergence and it is the wrong shape the moment you want *this* agent
-to spend two seconds approaching, half a second feeding, and then go somewhere else.
+This agent circles the centre for four seconds, closes in on it for two, and wanders for three, over
+and over. The caption shows the phase it is in, and the small ring is the centre it is circling.
 
-The reason it is the wrong shape is that a global rule has nowhere to keep "where am I up to". You end
-up encoding each agent's position in its own program as an integer state field and a `when`, which is
-the standard way this is done and also why it is never done twice the same way.
-
-A coroutine has somewhere to keep it: the continuation. So
-[`ScriptWorld`](reference/alife.md#alife-script-kt-scriptworld) gives each agent a suspending program
-on a fixed-step clock, and the program reads as the sequence it is.
-
-### An agent with a program
-
-`forever`, `phase(name)`, `moveFor` and `parallel` compose; `point`, `actor` and `nearest` name things
-to steer at; and the steering inside a `moveFor` block is a set of weighted drives that are summed,
-not a single mode. The clock is fixed-step, so the same seed gives the same run — bit for bit, across
-processes.
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/walls-program.png" wait="20.0" timeout="240" capture="box" open-outputs="true" padding="20"}
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/walls-program.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="700" embed=true name="alife-walls-program-video" alt="one agent leaving a trail: it circles a small ring, cuts in towards it, wanders in loops, and starts circling again, with its current phase named in the caption"}
 :::static
-// One agent, one program, three phases. Nothing here is a global mode: the phases are this agent's,
-// and a second agent with a different program would run alongside it on the same clock.
 val w = ScriptWorld(width = 200.0, height = 200.0, seed = 1L, wrap = false)
 w.spawn(100.0, 40.0, maxSpeed = 45.0, radius = 1.5) {
     val centre = point(100.0, 100.0)
     forever {
         phase("orbit") { moveFor(4.0) { orbit(centre, distance = 42.0) } }
         phase("close in") { moveFor(2.0) { arrive(centre, slowRadius = 20.0) } }
-        phase("scatter") {
+        phase("wander") {
             moveFor(3.0) {
                 wander(turn = 40.0)
                 avoidEdges(margin = 18.0)
@@ -1995,186 +1997,92 @@ w.spawn(100.0, 40.0, maxSpeed = 45.0, radius = 1.5) {
         }
     }
 }
-w.run(1080) // 18 s at 60 Hz
-println("ticks %d   path %.0f units".format(w.tick, w.totalPathLength()))
-println("phases entered, in order:")
-w.events.filter { it.kind == "phase" }.take(6).forEach { println("  tick %5d  %s".format(it.tick, it.detail)) }
-println()
-println("state signature %s   — the same seed gives this same string in any process".format(w.stateSignature()))
 
-:::fold the trail
-lines(*w.trailFLines().toTypedArray(), channel = "program", w = 620.0, h = 320.0, fitToSize = true)
-:::endfold
-```
-
-![a single pale trail on black, drawn as one continuous line: a long straight run in from off-frame, a wide clean circle held for several laps, a straight chord cutting back across it to the middle, and a small tangle of loops near the centre where the wander phase runs](assets/alife_examples/walls-program.png)
-
-One trail, three behaviours, and you can see the joins: the circle is `orbit` holding station, the
-chord across it is `arrive` going more or less straight at the centre once the orbit releases, and
-the tangle is `wander`. They are one agent's program rather than three modes of a world. The trail
-is a single `FLine` in a single colour, so the phase boundaries are read from the shape rather than
-drawn; `w.events` records them exactly, and the box prints the first few.
-
-### A wall, and three answers to hitting it
-
-A wall is a line *segment*, and a segment has no thickness — so the obvious collision test, "does the
-agent's new position overlap a wall", is false for any step large enough to step over it, at any speed
-at all. [`ObstacleField.sweep`](reference/alife.md#alife-walls-kt-obstaclefield) solves instead for the
-first moment of contact along the step, which is why a fast agent stops at the wall rather than on the
-far side of it.
-
-What happens at that moment is the agent's own
-[`WallResponse`](reference/alife.md#alife-walls-kt-wallresponse), not the world's.
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/walls-response.png" wait="20.0" timeout="240" capture="box" open-outputs="true" padding="20"}
-:::static
-// Three agents, one barrier, three answers. The room matters: the arena edge is not a wall (the world
-// just clamps there), so without it the BOUNCE agent parks in a corner and the trail says nothing.
-val w = ScriptWorld(width = 200.0, height = 200.0, seed = 1L, wrap = false)
-w.addPolygon(12.0, 12.0, 188.0, 12.0, 188.0, 188.0, 12.0, 188.0, name = "room")
-w.addWall(120.0, 30.0, 120.0, 170.0, name = "barrier")
-
-[WallResponse.SLIDE, WallResponse.BOUNCE, WallResponse.STOP].forEachIndexed { i, r ->
-    w.spawn(
-        25.0,
-        60.0 + i * 25.0,
-        maxSpeed = 90.0,
-        radius = 2.0,
-        steerResponse = 1.0,
-        vx = 90.0,
-        vy = 16.0,
-        wallResponse = r,
-        restitution = 0.9,
-        tag = r.name,
-    ) {
-        moveFor(8.0) { keepVelocity() }
-    }
-}
-w.run(420)
-w.actors.forEach {
-    println("%-7s %3d contact(s), ended at %6.1f, %6.1f".format(it.tag, it.wallContacts, it.position.x, it.position.y))
-}
-
-:::fold the three trails, one colour each — SLIDE blue, BOUNCE orange, STOP green
-// FLine.color is an extension property and takes a vec(r, g, b, a); without this the three answers
-// are three identical grey trails and the figure cannot show what the table says.
-val cols = [vec(0.45, 0.78, 1.0, 1.0), vec(1.0, 0.62, 0.28, 1.0), vec(0.55, 0.9, 0.55, 1.0)]
-val trails = w.trailFLines().mapIndexed { i, f -> f.also { it.color = cols[i % cols.size] } }
-lines(
-    *(w.obstacleFLines() + trails).toTypedArray(),
-    channel = "walls",
-    w = 620.0,
-    h = 620.0,
-    fitToSize = true,
+// 18 simulated seconds, two times through the program, played in seven.
+animateEvolution(
+    w,
+    totalSteps = 1080,
+    seconds = 7.0,
+    cellSide = 400,
+    step = {
+        it.step()
+        it
+    },
+    panels = { world, _ ->
+        val agent = world.actors[0]
+        ["%4.1f s   %s".format(world.time, agent.phase) to world.toImg(2.0, marks = [100.0 to 100.0], markRadius = 3.0)]
+    },
 )
-:::endfold
 ```
 
-![three coloured trails in a square room crossing to a vertical barrier: the blue SLIDE trail runs along the barrier, the orange BOUNCE trail zig-zags back off it and off the room walls, and the green STOP trail ends dead at first contact](assets/alife_examples/walls-response.png)
+The clock is a fixed step, so a run depends only on its seed: `w.stateSignature()` after the same
+number of steps is the same string in any process, and `w.events` records the tick at which every
+phase began.
 
-### Routing around a barrier
+### Hitting a wall
 
-`avoidWalls` steers away from nearby geometry and `cling` follows it at a chosen standoff. Both are
-*local*: they read the walls within a radius and push. The decision to go the other way round a
-barrier is not local, and no weight on an avoidance term supplies it —
-[`seek`](reference/alife.md#alife-script-kt-behavioursteering) points at the goal and presses into the
-wall for as long as you let it.
+A wall is a line segment with no thickness, so checking whether an agent's new position overlaps it
+would miss any step long enough to jump over it.
+[`ObstacleField.sweep`](reference/alife.md#alife-walls-kt-obstaclefield) instead finds the first moment
+along the step at which the agent touches the wall, and stops it there. What the agent does next is
+set per agent by its [`WallResponse`](reference/alife.md#alife-walls-kt-wallresponse): `SLIDE` keeps
+the part of its velocity along the wall, `BOUNCE` reflects off it, and `STOP` halts.
 
-[`NavGrid`](reference/alife.md#alife-walls-kt-navgrid) is the part that plans: a radius-inflated A*
-through the world's obstacles, smoothed with a string-pull against the same swept test the physics
-uses, and then followed waypoint by waypoint. `route(goal)` is that, as a drive.
+The three rooms below are identical, each with one agent launched at the same speed and angle towards
+the barrier. Only `wallResponse` differs.
 
-**The maze below is an S**, open only at the bottom of the first barrier and only at the top of the
-second, so no fixed "always turn left" solves it — and **both arms run `avoidWalls` at the same
-weight**, so this is routing measured against the best local steering available rather than against
-nothing.
-
-??? aside "Why both arms are reported with a travel figure"
-    A margin over a control that never left home would mean nothing. The `mean travel` column is
-    there so you can see the direct arm genuinely crossed the room and was stopped by geometry,
-    rather than sitting still and scoring zero for free.
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/walls-routing.png" wait="40.0" timeout="300" capture="box" open-outputs="true" padding="20"}
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/walls-response.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="1000" embed=true name="alife-walls-response-video" alt="three identical square rooms with a vertical barrier, one agent in each launched at it: the SLIDE agent runs along the barrier, the BOUNCE agent ricochets around the room, the STOP agent halts at first contact"}
 :::static
-val GOAL_X = 175.0
-val GOAL_Y = 100.0
-val STEPS = 1800 // 30 s at 60 Hz
-val SEEDS = [1L, 2L, 3L, 4L]
-val PER_SEED = 8
-
-fun maze(seed: Long, routed: Boolean) =
-    ScriptWorld(width = 200.0, height = 200.0, seed = seed, wrap = false).also { w ->
-        w.addWall(70.0, 45.0, 70.0, 200.0, name = "open at the bottom")
-        w.addWall(130.0, 0.0, 130.0, 155.0, name = "open at the top")
-        val jitter = kotlin.random.Random(seed) // same jitter in both arms: identical start positions
-        repeat(PER_SEED) {
-            w.spawn(
-                18.0 + jitter.nextDouble(-8.0, 8.0),
-                100.0 + jitter.nextDouble(-28.0, 28.0),
-                maxSpeed = 35.0,
-                radius = 1.2,
-                steerResponse = 0.3,
-                tag = if (routed) "routed" else "direct",
-            ) {
-                val goal = point(GOAL_X, GOAL_Y)
-                moveUntil(maxSeconds = STEPS / 60.0, speed = 35.0, until = { near(goal, 6.0) }) {
-                    if (routed) route(goal, clearance = 3.5) else seek(goal)
-                    avoidWalls(clearance = 3.0, weight = 0.6)
-                    separate(range = 4.0, weight = 0.4)
-                }
-                rest(2.0)
-            }
+// The room's outline is a wall too. Without it the world only clamps at its edge, and the BOUNCE
+// agent would come to rest in a corner instead of bouncing.
+fun room(response: WallResponse) =
+    ScriptWorld(width = 200.0, height = 200.0, seed = 1L, wrap = false).also { w ->
+        w.addPolygon(12.0, 12.0, 188.0, 12.0, 188.0, 188.0, 12.0, 188.0, name = "room")
+        w.addWall(120.0, 30.0, 120.0, 170.0, name = "barrier")
+        w.spawn(
+            25.0,
+            85.0,
+            maxSpeed = 90.0,
+            radius = 2.0,
+            steerResponse = 1.0,
+            vx = 90.0,
+            vy = 16.0,
+            wallResponse = response,
+            restitution = 0.9,
+        ) {
+            moveFor(7.0) { keepVelocity() }
         }
     }
 
-// Stepped in lockstep across seeds rather than run() per seed, so the arrival fraction can be
-// sampled every tick and the two arms share one time base.
-val arrivals = mutableMapOf("routed" to mutableListOf<Double>(), "direct" to mutableListOf<Double>())
-for (routed in [true, false]) {
-    val name = if (routed) "routed" else "direct"
-    val worlds = SEEDS.map { maze(it, routed) }
-    val total = worlds.sumOf { it.actors.size }
-    repeat(STEPS) {
-        worlds.forEach { it.step() }
-        arrivals[name]!! +=
-            worlds
-                .sumOf { w ->
-                    w.actors.count { it.distanceTo(GOAL_X, GOAL_Y) <= 6.0 }
-                }
-                .toDouble() / total
-    }
-    println(
-        "%-7s arrived %.3f of %d   mean travel %.1f"
-            .format(
-                name,
-                arrivals[name]!!.last(),
-                total,
-                worlds.sumOf { it.totalPathLength() } / total,
-            ),
-    )
-}
+val rooms = [WallResponse.SLIDE, WallResponse.BOUNCE, WallResponse.STOP].map { it to room(it) }
 
-:::fold arrivals over time, both arms
-showSignals(
-    "routed" to arrivals["routed"]!!,
-    "direct" to arrivals["direct"]!!,
-    channel = "arrivals",
-    title = "fraction arrived, ${SEEDS.size} seeds x $PER_SEED agents per arm",
-    yTitle = "of 1",
+// 7 simulated seconds, in real time.
+animateEvolution(
+    rooms,
+    totalSteps = 420,
+    seconds = 7.0,
+    columns = 3,
+    cellSide = 300,
+    step = {
+        it.forEach { (_, w) -> w.step() }
+        it
+    },
+    panels = { rs, _ ->
+        rs.map { (r, w) -> "%s: %d contact(s)".format(r.name, w.actors[0].wallContacts) to w.toImg(1.5) }
+    },
 )
-:::endfold
 ```
 
-![a dark step plot: the blue routed trace climbs from zero at about step 900 to just under 1.0 by step 1800, while the orange direct trace stays flat on zero for the whole run](assets/alife_examples/walls-routing.png)
+`avoidWalls` steers away from walls within a given clearance, and `cling` follows a wall at a set
+distance. Both work from the walls near the agent, which is why the maze at the top of this section
+also needs `route`.
 
-At a larger budget (8 seeds of 12 agents, 96 per arm) the same comparison reads **0.990 against
-0.000**.
-
-Both files ship as starting points as well, [`alife_script`](agent_transcripts.md) and
-[`alife_walls`](agent_transcripts.md) on the welcome screen, because the point of a scripted agent is that you edit its
-program and re-run it. In the `alife_walls` document, change `route(goal, clearance = 3.5)` to `0.5`:
-the plan then runs inside the reach of the `avoidWalls(clearance = 3.0)` the same agent is running,
-the two terms fight round every corner, and the arrival fraction drops by roughly a fifth.
+Both files are also starting points on the welcome screen, [`alife_script`](agent_transcripts.md) and
+[`alife_walls`](agent_transcripts.md), because the way to learn a scripted agent is to edit its program
+and run it again. In the `alife_walls` document, try changing `route(goal, clearance = 3.5)` to `0.5`:
+the planned path then passes closer to the walls than the `avoidWalls(clearance = 3.0)` term will let
+the agent go, the two terms push against each other at every corner, and about a fifth fewer agents
+arrive.
 
 ## Evaluating one of these in a box: the inline views
 
@@ -2195,6 +2103,7 @@ per-frame and it maps to the *dark* end of the colour map and renders solid blac
 indistinguishable from a field that died. On the fixed scale a `DEATH` run is the bottom of
 `inferno` and a `SATURATION` run the top, and an unseeded `GrayScottState` renders as one flat
 colour, where `Img`'s auto-normalising thumbnail would turn its numerical dust into a texture.
+The box below shows one of each view on something that is doing something.
 
 ??? aside "How the views are checked"
     `AlifeGallery`'s `inline-view` figure decodes the base64 PNG back out of the emitted HTML and
@@ -2213,28 +2122,25 @@ at 1 and an auto-ranged colour map renders it BLACK, identical to a dead one.
 */
 display("a. a Life board", LifePatterns.glider.centeredOn(16, 16).h)
 
-// More than two states: the cyclic palette, with the repeat disclosed in the caption.
-display("b. an 8-state soup", IntGrid.random(28, 28, states = 8, seed = 3L).h)
+// More than two states: the cyclic palette, with the repeat disclosed in the caption. This is the
+// cyclic automaton from section 3, 300 generations after a random start.
+display(
+    "b. a cyclic automaton",
+    IntGrid.random(96, 96, states = CYCLIC_LABYRINTH.states, seed = 7L).stepTimes(CYCLIC_LABYRINTH, 300).h,
+)
 
 // Gray-Scott: both reagents, both on a FIXED 0..1 scale.
 val seeded = grayScottSeed(64, 64, patches = 4, patchSize = 10, seed = 11L).stepTimes(GRAY_SCOTT_SPOTS, 2000)
 display("c. Gray-Scott, seeded", seeded.h)
 
-// The control arm, and the reason the scale is fixed: v = 0 is a fixed point, so this field is empty.
-// On a fixed scale it is black. Auto-ranged, its numerical dust would become a rich texture.
-display(
-    "d. Gray-Scott, unseeded (v = 0)",
-    grayScottSeed(64, 64, patches = 0, seed = 11L).stepTimes(GRAY_SCOTT_WORMS, 200).h,
-)
-
-// The two Lenia phases that an auto-ranged scale makes indistinguishable.
-val death = LeniaPresets.ring(0.14, sigma = 0.017, radius = 8, dt = 0.12)
-display("e. Lenia, death", leniaRun(leniaSeed(64, 64, death, blobRadii = 1.6, seed = 9L), death, steps = 160).h)
-val sat = LeniaPresets.ring(0.60, sigma = 0.60, radius = 8, dt = 0.12)
-display("f. Lenia, saturation", leniaRun(leniaSeed(64, 64, sat, blobRadii = 1.6, seed = 9L), sat, steps = 160).h)
+// Lenia: Orbium's cells with mu moved down to 0.12, where they burst into fragments that fill the
+// field. The sparkline is the mean field, on the same fixed 0..1 scale.
+val orbium = LeniaPresets.orbium()
+val burst = leniaRuleFromCatalogue(radius = 13, t = 10.0, mu = 0.12, sigma = 0.015)
+display("d. Lenia, mu = 0.12", leniaRun(orbium.seed(64, 64), burst, steps = 200).h)
 ```
 
-![six inline box views stacked down the page: a glider on a Life board, an eight-state soup in the cyclic palette, a seeded Gray-Scott pair of reagent fields, the unseeded control rendering as flat black, and the death and saturation Lenia runs with their mass histories as sparklines](assets/alife_examples/inline-view.png)
+![four inline box views stacked down the page: a glider on a Life board, a cyclic automaton's labyrinth of coloured bands in the cyclic palette, a seeded Gray-Scott pair of reagent fields, and a Lenia field of small bright fragments with its mean-field history as a rising sparkline](assets/alife_examples/inline-view.png)
 
 ## Loading all of this into a live Field
 

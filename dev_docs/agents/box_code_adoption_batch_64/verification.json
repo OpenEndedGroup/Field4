@@ -1,0 +1,29 @@
+{
+  "baseline": "56759c590",
+  "sources": [
+    {
+      "path": "dev_docs/agents/demos/learned_from_module/example.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/gpu_shader_learning/example.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/learned_from_module.yaml",
+      "kotlinBodies": 4,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/gpu_shader_learning.yaml",
+      "kotlinBodies": 4,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

@@ -13,6 +13,7 @@ No committed sample: point this at your own frames. To make some, take a .ply pe
 frame and run PlayCanvas splat-transform over each:
     splat-transform frame_0001.ply frame_0001.compressed.ply
 */
+val runScope = requireNotNull(RunScope.current())
 val sequenceDir = File(System.getProperty("user.home"), "Downloads/splat-sequence")
 val slots = 15 // sources shown at once, one per direction around you
 val fps = 12.0 // source frame rate, independent of the display rate
@@ -90,6 +91,11 @@ if (!sequenceDir.isDirectory) {
         ),
         name = "splatStream",
     )
+    // Remove only this run's presentation and defer GPU destruction until in-flight work retires.
+    runScope.own {
+        renderer.renderList.modules.remove("splatStream", cloud.renderModule)
+        renderer.cleanup += Runnable { cloud.cleanup() }
+    }
     // Depth-map convention: +z forward, +y DOWN, hence up = (0, -1, 0).
     cloud.camera.at = Vector3f(0f, -cameraUp, -cameraBack)
     cloud.camera.target = Vector3f(0f, 0f, 1.2f)
@@ -115,7 +121,7 @@ if (!sequenceDir.isDirectory) {
     var decodes = 0
     var displayFrames = 0
 
-    renderer.renderList.preTargets["__splat_feed__"] = Target { _, _ ->
+    val feedTarget = Target { _, _ ->
         displayFrames++
         /*
         False on the display frames where the resolved frame did not move -- six in seven at
@@ -137,9 +143,11 @@ if (!sequenceDir.isDirectory) {
         packedMs = (System.nanoTime() - t0) / 1e6
         decodes++
     }
+    renderer.renderList.preTargets["__splat_feed__"] = feedTarget
+    runScope.own { renderer.renderList.preTargets.remove("__splat_feed__", feedTarget) }
 
     var reportedAt = System.nanoTime()
-    renderer.renderList.preTargets["__splat_report__"] = Target { _, _ ->
+    val reportTarget = Target { _, _ ->
         val now = System.nanoTime()
         if (now - reportedAt < 1_000_000_000L) return@Target
         reportedAt = now
@@ -151,6 +159,8 @@ if (!sequenceDir.isDirectory) {
         decodes = 0
         displayFrames = 0
     }
+    renderer.renderList.preTargets["__splat_report__"] = reportTarget
+    runScope.own { renderer.renderList.preTargets.remove("__splat_report__", reportTarget) }
 
     println("streaming ${sequence.frameCount} frames at $fps fps, sort=$sortEachFrame")
     println(

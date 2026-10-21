@@ -1,0 +1,1 @@
+**city blocks**: boxes on an 11 × 11 grid, skipped where `noise` is high, with a second material for a ring of copper towers. The colour state changes per block; the material state changes per district.

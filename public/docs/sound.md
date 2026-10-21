@@ -1,11 +1,13 @@
 # Sound: from a pattern to something you can hear
 
-`pat("bd ~ sd ~")` is a schedule. It says *kick, rest, snare, rest* and it says exactly
-when — but a schedule makes no sound. Something has to turn each event into samples.
+Boxes make sound too. Write `pat("bd ~ sd ~")` in one and you have a beat: kick, rest, snare,
+rest, round and round. This stop follows that one line until you can hear it — first through a
+small synthesiser built into Field, then through real drum samples — and then runs the path
+backwards, from a recording to a pattern you can play again.
 
-This page follows one pattern through the two voices that render it without an audio device: a
-small built-in synthesiser, and the Tidal drum library if you have it installed. Every audio figure
-below says which of them produced it.
+A pattern on its own is only a schedule. It says what happens and exactly when, but it makes no
+sound; something has to turn each event into samples. Nothing on this page needs an audio device:
+every figure is rendered to a file you can play right here, and each one says which voice made it.
 
 Other pages cover the other voices. A pattern can play a
 [Faust program](faust.md#a-pattern-plays-it) as a polyphonic instrument, or be placed in space with

@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-211 source file(s), 677 public symbol(s), 297 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+214 source file(s), 683 public symbol(s), 300 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -321,7 +321,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L806) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L887) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -1388,6 +1388,20 @@ Runs `ShaderLatticeBoltzmannSystem` and `ShaderForestFireSystem` on a real rende
 | --- | --- |
 | <a id="alifeshadersystemssmoke-kt--alifeshadersystemssmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/AlifeShaderSystemsSmoke/#L57) |  |
 
+## BoidSketchSmoke.kt { #boidsketchsmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/BoidSketchSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/BoidSketchSmoke/)
+
+### BoidSketchSmoke { #boidsketchsmoke-kt-boidsketchsmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">BoidSketchSmoke</span></code>](source/jvmMain/afield/examples/four/BoidSketchSmoke/#L61)
+
+That a [`BoidSketch`](simulation.md#boidsketch-kt-boidsketch) step on the GPU is the boids page's `stepWorld`, per boid.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="boidsketchsmoke-kt--boidsketchsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/BoidSketchSmoke/#L108) |  |
+
 ## DualQuaternionfSmokeTest.kt { #dualquaternionfsmoketest-kt }
 
 `src/jvmMain/kotlin/afield/examples/four/DualQuaternionfSmokeTest.kt` — [read the source](source/jvmMain/afield/examples/four/DualQuaternionfSmokeTest/)
@@ -1625,12 +1639,12 @@ Standalone, runnable end-to-end demo of "ImGui as an in-VR panel".
 | <a id="imguivrpaneldemo-kt--imguivrpaneldemo--hitactive"></a>[<code class="highlight"><span class="k">var</span> <span class="n">hitActive</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L64) |  |
 | <a id="imguivrpaneldemo-kt--imguivrpaneldemo--lasthitworld"></a>[<code class="highlight"><span class="k">var</span> <span class="n">lastHitWorld</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="o">?</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L66) |  |
 | <a id="imguivrpaneldemo-kt--imguivrpaneldemo--build"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L76) |  |
-| <a id="imguivrpaneldemo-kt--imguivrpaneldemo--aimcontrolleratpanelcentre"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">aimControllerAtPanelCentre</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L190) | Aim the mock controller straight at the panel centre (for headless/deterministic runs). |
-| <a id="imguivrpaneldemo-kt--imguivrpaneldemo--cleanup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">cleanup</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L195) | Release ImGui/Vulkan resources owned by the demo (caller still cleans renderer + window). |
-| <a id="imguivrpaneldemo-kt--imguivrpaneldemo--runinteractive"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runInteractive</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L221) | Interactive desktop loop: mouse drives the mock controller ray. |
-| <a id="imguivrpaneldemo-kt--imguivrpaneldemo--runcapture"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runCapture</span><span class="p">(</span><span class="n">outputPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L237) | Verification loop: aim the mock controller straight at the panel centre, render a warm-up of frames, then grab the *live macOS window* with `screencapture` (the same tool doc.kt uses for Field 4 window shots). We deliberately avoid the Vulkan swapchain readback here because that path is Y-flipped for our blitted content; screencapture records exactly what is on screen. |
-| <a id="imguivrpaneldemo-kt--imguivrpaneldemo--runcapturegpu"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runCaptureGpu</span><span class="p">(</span><span class="n">outputPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L270) | Headless verification capture: aim at the panel centre, render a warm-up of frames, then read the swapchain back to a PNG with [`Renderer.captureWindowToFile`](graphics.md#renderer-kt--renderer--capturewindowtofile) (a Vulkan transfer-source copy — unlike `screencapture` it needs no Screen-Recording permission and works over SSH/CI). The captured pixels are the blitted side-by-side packed image, preserving the orientation presented by the swapchain. |
-| <a id="imguivrpaneldemo-kt--imguivrpaneldemo--running"></a>[<code class="highlight"><span class="k">var</span> <span class="n">running</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L323) |  |
+| <a id="imguivrpaneldemo-kt--imguivrpaneldemo--aimcontrolleratpanelcentre"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">aimControllerAtPanelCentre</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L189) | Aim the mock controller straight at the panel centre (for headless/deterministic runs). |
+| <a id="imguivrpaneldemo-kt--imguivrpaneldemo--cleanup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">cleanup</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L194) | Release ImGui/Vulkan resources owned by the demo (caller still cleans renderer + window). |
+| <a id="imguivrpaneldemo-kt--imguivrpaneldemo--runinteractive"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runInteractive</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L220) | Interactive desktop loop: mouse drives the mock controller ray. |
+| <a id="imguivrpaneldemo-kt--imguivrpaneldemo--runcapture"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runCapture</span><span class="p">(</span><span class="n">outputPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L236) | Verification loop: aim the mock controller straight at the panel centre, render a warm-up of frames, then grab the *live macOS window* with `screencapture` (the same tool doc.kt uses for Field 4 window shots). We deliberately avoid the Vulkan swapchain readback here because that path is Y-flipped for our blitted content; screencapture records exactly what is on screen. |
+| <a id="imguivrpaneldemo-kt--imguivrpaneldemo--runcapturegpu"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runCaptureGpu</span><span class="p">(</span><span class="n">outputPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L269) | Headless verification capture: aim at the panel centre, render a warm-up of frames, then read the swapchain back to a PNG with [`Renderer.captureWindowToFile`](graphics.md#renderer-kt--renderer--capturewindowtofile) (a Vulkan transfer-source copy — unlike `screencapture` it needs no Screen-Recording permission and works over SSH/CI). The captured pixels are the blitted side-by-side packed image, preserving the orientation presented by the swapchain. |
+| <a id="imguivrpaneldemo-kt--imguivrpaneldemo--running"></a>[<code class="highlight"><span class="k">var</span> <span class="n">running</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L322) |  |
 
 ## ImGuiVrPanelSmokeTest.kt { #imguivrpanelsmoketest-kt }
 
@@ -1704,6 +1718,20 @@ The three lifetimes behind the live-frame crash in `dev_docs/renderer_teardown_o
 | Declaration | Summary |
 | --- | --- |
 | <a id="liveprofilingswitchsmoke-kt--liveprofilingswitchsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/LiveProfilingSwitchSmoke/#L31) |  |
+
+## NanoOutputBoundsSmokeTest.kt { #nanooutputboundssmoketest-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/NanoOutputBoundsSmokeTest.kt` — [read the source](source/jvmMain/afield/examples/four/NanoOutputBoundsSmokeTest/)
+
+### NanoOutputBoundsSmokeTest { #nanooutputboundssmoketest-kt-nanooutputboundssmoketest }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">NanoOutputBoundsSmokeTest</span></code>](source/jvmMain/afield/examples/four/NanoOutputBoundsSmokeTest/#L27)
+
+Runs the production shader on adjacent byte slices, including shared packed words.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="nanooutputboundssmoketest-kt--nanooutputboundssmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NanoOutputBoundsSmokeTest/#L29) |  |
 
 ## NeuralFieldParitySmoke.kt { #neuralfieldparitysmoke-kt }
 
@@ -1818,6 +1846,20 @@ The renderer goes away while an [`OpenDlssNrStudy`](graphics.md#opendlssnrstudy-
 | Declaration | Summary |
 | --- | --- |
 | <a id="opendlssnrteardownsmoke-kt--opendlssnrteardownsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/OpenDlssNrTeardownSmoke/#L43) |  |
+
+## ParticleSketchSmoke.kt { #particlesketchsmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/ParticleSketchSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/ParticleSketchSmoke/)
+
+### ParticleSketchSmoke { #particlesketchsmoke-kt-particlesketchsmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">ParticleSketchSmoke</span></code>](source/jvmMain/afield/examples/four/ParticleSketchSmoke/#L73)
+
+That a [`ParticleSketch`](simulation.md#particlesketch-kt-particlesketch) step on the GPU does what madp's JavaScript does, per particle.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="particlesketchsmoke-kt--particlesketchsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ParticleSketchSmoke/#L145) |  |
 
 ## PlyLoaderTest.kt { #plyloadertest-kt }
 
@@ -2541,13 +2583,13 @@ Draws the figure that settles the argument this branch is about, on the CPU, wit
 
 ### AlifeEvolveGallery { #alifeevolvegallery-kt-alifeevolvegallery }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">AlifeEvolveGallery</span></code>](source/jvmMain/afield/examples/stdlib/AlifeEvolveGallery/#L88)
+[<code class="highlight"><span class="k">object</span> <span class="nc">AlifeEvolveGallery</span></code>](source/jvmMain/afield/examples/stdlib/AlifeEvolveGallery/#L89)
 
 Renders — and *verifies* — the claim that evolution beats chance on ALife rule spaces.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="alifeevolvegallery-kt--alifeevolvegallery--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/stdlib/AlifeEvolveGallery/#L656) |  |
+| <a id="alifeevolvegallery-kt--alifeevolvegallery--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/stdlib/AlifeEvolveGallery/#L666) |  |
 
 ## AlifeGallery.kt { #alifegallery-kt }
 
@@ -2555,13 +2597,13 @@ Renders — and *verifies* — the claim that evolution beats chance on ALife ru
 
 ### AlifeGallery { #alifegallery-kt-alifegallery }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">AlifeGallery</span></code>](source/jvmMain/afield/examples/stdlib/AlifeGallery/#L182)
+[<code class="highlight"><span class="k">object</span> <span class="nc">AlifeGallery</span></code>](source/jvmMain/afield/examples/stdlib/AlifeGallery/#L184)
 
 Renders — and *verifies* — the figures behind `public/docs/alife_examples.md`.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="alifegallery-kt--alifegallery--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/stdlib/AlifeGallery/#L2305) |  |
+| <a id="alifegallery-kt--alifegallery--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/stdlib/AlifeGallery/#L2377) |  |
 
 ## AlifeScriptGallery.kt { #alifescriptgallery-kt }
 

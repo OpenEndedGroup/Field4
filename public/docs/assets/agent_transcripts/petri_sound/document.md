@@ -208,7 +208,7 @@ displayOpen("sound")
 <!-- field-box id="petri_demo_philosophers" index="4" -->
 
 ```edn [field-box id="petri_demo_philosophers" role="properties"]
-{"id" "petri_demo_philosophers" "index" 4 "name" "5 — dining philosophers (silent)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — dining philosophers (silent)" "_tombstone" false "frame" #afield/rect [60.0 660.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_philosophers_code_.kt" "lines" 54 "characters" 1750 "sha256" "59a7186e6bea9cbf6304bb513841f7787d6ef2c76e77d6ab204f2d041af72173"}]}
+{"id" "petri_demo_philosophers" "index" 4 "name" "5 — dining philosophers (silent)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — dining philosophers (silent)" "_tombstone" false "frame" #afield/rect [60.0 660.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_philosophers_code_.kt" "lines" 54 "characters" 1738 "sha256" "a1c14f81297f30ce250bb434350949ec49d0488c27e43e3f68a28dd103bc23a0"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_philosophers" name="code" path="petri_demo_philosophers_code_.kt"]
@@ -248,18 +248,18 @@ val naive = table(reverseLast = false, fairly = false)
 showPetriNet(naive, w = 760.0, h = 460.0)
 
 for ((label, net) in
-    listOf(
+    [
         "all left-handed" to naive,
         "one reaches right first" to table(reverseLast = true, fairly = false),
         "…and round-robin conflict" to table(reverseLast = true, fairly = true),
-    )) {
+    ]) {
     val stuck = net.deadTransitions()
     println(
         "%-26s deadlocks=%-5s never fires: %s"
             .format(
                 label,
                 net.willDeadlock(),
-                stuck.ifEmpty { listOf("—") }.joinToString(", "),
+                stuck.ifEmpty { ["—"] }.joinToString(", "),
             ),
     )
 }
