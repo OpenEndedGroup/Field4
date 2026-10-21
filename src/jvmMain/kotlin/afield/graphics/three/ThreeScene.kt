@@ -425,6 +425,42 @@ data class ThreeStudioSpec(
     val shadows: Boolean = true,
     /** ACES filmic tone mapping exposure. */
     val exposure: Double = 1.0,
+    /** Screen-space ambient occlusion: contact shadows in creases and under overhangs. Single views only. */
+    val ambientOcclusion: Boolean = true,
+)
+
+/**
+ * A piece of text pinned to a point in the scene: it follows the point as the view orbits, and is drawn
+ * over the canvas as ordinary page text, so it stays sharp at any size. See [ThreeSceneBuilder.label].
+ */
+@Serializable
+data class ThreeLabel(
+    /** The anchor, in scene coordinates: three numbers. */
+    val position: List<Double>,
+    /** What the label says; plain text. */
+    val text: String = "",
+    /**
+     * `"chip"` a boxed label (a point's name), `"tag"` small dim text (a length on an edge), or
+     * `"diamond"` a small filled marker with no text, coloured by [color].
+     */
+    val style: String = "tag",
+    /** Text colour, or for a `"diamond"` its fill, as a CSS colour; `null` keeps the style's own. */
+    val color: String? = null,
+    /** Background as a CSS colour; `null` keeps the style's own. */
+    val background: String? = null,
+    /** Border colour as a CSS colour; `null` keeps the style's own. */
+    val border: String? = null,
+    /** A tooltip; plain text. */
+    val title: String? = null,
+)
+
+/** An HTML block fixed to one corner of the view. See [ThreeSceneBuilder.overlay]. */
+@Serializable
+data class ThreeOverlay(
+    /** The block's HTML. It is inserted as is, so it is trusted as `display(...)` output is. */
+    val html: String,
+    /** `"top-right"`, `"top-left"`, `"bottom-right"` or `"bottom-left"`. */
+    val corner: String = "top-right",
 )
 
 /**

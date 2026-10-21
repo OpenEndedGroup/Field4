@@ -541,6 +541,10 @@ object DemoTranscriptExecSmokeTest {
         // dough through the audio device. ScoreTest steps the runner frame by frame and DoughLiveTest
         // measures the sound helper's levels, both headless.
         "madp_score",
+        // charGrid: both builders return animations that run until stopped, and their glyphs play dough
+        // through the audio device. CharGridTest checks the cells, the panel's diffs and the sound
+        // grouping headless.
+        "madp_chargrid",
         // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
         // measuring box whose numbers SceneOnARigTest already pins.
         "chain_scene_to_light",
@@ -638,6 +642,10 @@ object DemoTranscriptExecSmokeTest {
         // Streams a splat sequence into a native window, and wants a directory of .compressed.ply
         // frames that is deliberately not committed -- so compiled here and no further.
         "splat_sequence_streaming",
+        // The madp splat-shader port: per-splat GLSL inserts on a native Window + Renderer, so
+        // compile-only here. SplatShaderTest compiles every box's compute tab against the
+        // splat/insert + splat/end pair, and four.splat-shader.smoke measures the sort on a GPU.
+        "splat_shader",
         // A native window plus a directory of images that is nobody's to commit.
         //
         // Its GLSL is *not* checked here, and the comment that used to say so was wrong in a way
@@ -711,6 +719,16 @@ object DemoTranscriptExecSmokeTest {
         // `four-lattice-boltzmann` and `four-forest-fire` docs captures in afield_four_graphics.md.
         "lattice_boltzmann_cylinder",
         "forest_fire",
+        // The madp Fern port: compute-shader iterated systems plotted into a PointAccumulation on
+        // a native Window + Renderer, so compile-only here. IteratedSystemShaderTest compiles every
+        // system's compute tab against the points/system harness without a GPU.
+        "fern_iterated_systems",
+        // The madp Particles port: madp's hooks as compute shaders over a GPU neighbour grid, drawn
+        // into a PointAccumulation on a native Window + Renderer, so compile-only here.
+        // ParticleSketchShaderTest compiles every sketch's compute tab against the
+        // particles/sketch harness without a GPU, and four.particle-sketch.smoke grades the verbs
+        // against a transcription of madp's JavaScript on one.
+        "particles_sketchbook",
         "imgui_vr_panel",
         // A hidden Electron window renders Field itself into Chromium shared textures; the live
         // macOS replay crosses IOSurface Mach rights and samples them in Vulkan. CI compiles the
@@ -725,6 +743,10 @@ object DemoTranscriptExecSmokeTest {
         // Product-facing puppet-browser scene: a YouTube watch page on an aspect-correct world quad.
         // It opens Electron and a native Vulkan stereo window, so CI compiles without launching it.
         "youtube_vr_browser",
+        // Publishes a shader over WebRTC from an Electron output-area view and samples a stream
+        // through a hidden Electron page; both need the Field Electron app and a peer, so CI
+        // compiles the graph. The live checks are in dev_docs/WEBRTC_SOURCES_SINKS.md.
+        "webrtc_shader_jam",
         // Exercises IOSurface/Mach-port import, a Vulkan copy, and a graphics-fence callback on
         // macOS. CI still compiles both boxes everywhere; the tracked backdoor replay runs it live.
         "external_browser_surface_macos_smoke",
@@ -742,6 +764,10 @@ object DemoTranscriptExecSmokeTest {
         // hermetic: the box's `clipEncode(…)` calls and its Depth Anything session are behind lazy
         // initialisation, so nothing here fetches the ~600MB of encoders that running it would.
         "onnx_webcam_live",
+        // The madp tetra port: running a box loads both CLIP towers (~600 MB fetched on first use),
+        // which a hermetic build must not do. `onnx.clip.smoke` encodes the same photographs and checks
+        // their simplex is exact and repeatable; EmbeddingSimplexTest holds the geometry.
+        "madp_tetra",
         // Both open a native Vulkan renderer and dispatch compute. Their numbers are checked
         // elsewhere and far more sharply than a replay could: `four.neural-particles.smoke` grades
         // the GPU's trajectories against the CPU integrator per particle, and
@@ -804,6 +830,14 @@ object DemoTranscriptExecSmokeTest {
         "fieldml_mesh_demo",
         // stacksl_examples.md's gallery draws into a native window.
         "stacksl_gallery",
+        // ShaderTrinket: shadertoyHere boxes drawing into a shadertoyCanvas the renderer window shows,
+        // one of them reading the camera. ShadertoyChannelsTest compiles the image preamble and the
+        // channel passes; the orientation and colour were checked by native capture.
+        "shadertrinket",
+        // The madp StackTrinket port: StackSL feedback programs on a native Window + Renderer, so
+        // compile-only here. StackSLFeedbackTest compiles every preset and its fragment shader to
+        // SPIR-V without a GPU.
+        "stacktrinket_feedback",
         // Continuing a gesture (2026-10-19): boxes 5 and 6 start a Timestral worker, which needs a
         // downloaded checkpoint no CI machine has, and boxes 3 and 4 are live frames loops. The oracle
         // and mocap code runs in VariableMarkovOracleTest, SeveralTakesTest and BvhTest, and the dance

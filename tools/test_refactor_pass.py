@@ -12,6 +12,10 @@ from tools import refactor_pass as passes
 from tools.refactoring.core import RefactorError, make_plan, save_json, load_plan, affected_pattern
 from tools.test_refactor import RECIPE, ENGINE
 from tools.refactoring.diffs import unified_text, compact_changes
+from tools.git_isolation import scrub_process_env  # noqa: E402
+
+# This module builds scratch git repositories; an inherited GIT_DIR would redirect them.
+scrub_process_env()
 
 
 class ReviewDiffTest(unittest.TestCase):

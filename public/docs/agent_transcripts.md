@@ -1104,13 +1104,19 @@ turntable. Change the direction or the seed and run it again.
 
 The madp geometry toolbox as a starting point. A model is a recipe of triangles: `geometry { }`
 runs the block, which emits triangles through a transform stack with a current colour and a current
-material (`mat`, `color`, `tri`, `quad`, `surface`, `revolve`, `tube`, `box`, `push`/`pop`), and
-draws the result in a `three { }` view lit like a studio, with soft shadows on a dark ground. The
-first box is the starter, a rippled terrain; the others are the toolbox's presets: a crystal bloom
-of single triangles, a lathe-turned vessel with a metal rim, a tube along a knot, a fungal tree of
-recursive tubes, a Menger sponge of boxes, and a breathing sheet that `animateGeometry { }` rebuilds
-thirty times a second. Launch that one to play it. Edit any recipe and run it again; the view keeps
-your orbit. The viewer's **Export GLB** saves the model.
+material (`mat`, `color`, `tri`, `quad`, `surface`, `revolve`, `tube`, `box`, `push`/`pop`). It
+draws the result in a `three { }` view lit like a studio, with soft shadows and ambient occlusion on
+a dark ground. The first box is the starter, a rippled terrain. The other ten are the toolbox's
+presets: a crystal bloom of single triangles, a lathe-turned vessel with a metal rim, a tube along a
+knot, a fungal tree of recursive tubes, phyllotaxis fronds, a Menger sponge and a city of boxes, a
+lesson in triangle winding, and two animations, a breathing sheet and a torn signal, that
+`animateGeometry { }` rebuilds thirty times a second. Launch those two to play them. Edit any recipe
+and run it again; the view keeps your orbit.
+
+The starter also calls `geometryAgent()`, which gives the document's AI4 chat the language and a
+`geometry.look` tool. The tool returns a picture of any view here as it is on screen, so you can ask
+the chat for a model and it can check its own work. The viewer's **Export GLB** saves a model, and
+compresses it when gltfpack is installed.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_geometry_terrain.png" capture="box" open-outputs="true" wait="4.0" embed=true hidden=true timeout="180" padding="12" name="gallery-madp-geometry-terrain" alt="A rippled blue-green terrain of flat-shaded triangles floating over a dark ground, casting a soft shadow onto it" macro-file="../../dev_docs/agents/transcripts/madp_geometry.yaml" capture-box="ripple_terrain"}
 // The transcript builds and runs every box; this is the starter, ripple_terrain.
@@ -2408,6 +2414,20 @@ under the grids shows what Kotlin heard and changed. Launch the box, then type i
 
 [Open ↗](offline.html?file=assets/agent_transcripts/orca_duet/metadata.edn)
 
+### madp_chargrid
+
+**A picture as a grid of glyph indices.** A box's program writes numbers into a 40 × 25 grid with
+`SET(x, y, g, color, style)`, a charset string turns each number into a character, and each cell can
+carry a CSS colour and a rotation. `charGrid { }` runs the program once a tick and lets it read the
+last tick with `PREV`, which is all Conway's Life needs; `charStream { }` runs one long program in
+which every `SET` waits a tick, so 10 PRINT's maze types itself out. Every glyph can be a dough sound:
+the Glass box's charset is eight bars, A minor from E2 to E4, and its arpeggios draw and play at
+once. The lead box is the demo's plasma; the others are 10 PRINT, Life, matrix rain, Glass, spinners
+(one `CSSVAR` spins the whole field) and a C64 typewriter. A port of the madp charGrid demo; the
+design notes are in `dev_docs/madp/chargrid.md`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_chargrid/metadata.edn)
+
 ### madp_score
 
 **The canvas as a score.** Run the first box and an orange playhead sweeps the canvas from left to
@@ -2421,6 +2441,32 @@ run it again after an edit. A port of the madp score demo; the design notes are 
 `dev_docs/madp/score.md`.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/madp_score/metadata.edn)
+
+### madp_tetra
+
+**Four pictures as a tetrahedron.** Run the first box and CLIP turns each of four photographs (a
+cat, a dog, a tiger, a car) into a point in its 512-dimensional space. The six distances between
+them become the six edges of a tetrahedron that turns slowly in the view below the pictures, with
+each edge's length written on it and listed in the corner. Any four points of such a space sit
+exactly in three dimensions, so the picture loses nothing: here the car's three edges are the three
+longest. Drop your own pictures on the slots, or drag one up from the tray. The second box puts a
+sentence in the fourth slot. Its point sits far from all three pictures, even the one it describes,
+and the coloured diamonds rank each point's three edges, so you can still see which picture the
+sentence is nearest. The third box swaps the car for a wolf. The fourth adds a fifth picture, and
+the note under its picture gives the stress, how far the best 3D fit is from the real distances.
+A port of the madp tetra demo; the design notes are in `dev_docs/madp/tetra.md`.
+
+??? aside "Not the madp page's model"
+    The madp page embeds with jina-clip-v2 on a Python server. Field runs OpenAI's CLIP ViT-B/32
+    through ONNX in the JVM, so the distances differ from the page's. The geometry does not depend
+    on the model: four unit vectors in any dimension embed exactly in 3D. The page's `tetra2` server
+    also squared its distances twice before MDS, which this port does not repeat.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_tetra.png" capture="box" open-outputs="true" wait="10.0" embed=true hidden=true timeout="240" padding="12" name="gallery-madp-tetra" alt="Four photographs (a cat, a dog, a tiger and a red car) in coloured slots above a dark view of a tetrahedron with coloured spheres at its corners, each edge labelled with its CLIP distance, and a table of the six distances in the corner" macro-file="../../dev_docs/agents/transcripts/madp_tetra.yaml" capture-box="tetra"}
+// The transcript builds and runs every box; this is the starter, tetra.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_tetra/metadata.edn)
 
 ### mqtt_demo
 
@@ -2790,6 +2836,27 @@ absent, rather than shipping somebody's capture as a fixture.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/splat_sequence_streaming/metadata.edn)
 
+### splat_shader
+
+The madp splat-shader demo: a few lines of GLSL run once per Gaussian splat per frame and may
+rewrite its centre, radii, colour and rotation (`pos`, `scales`, `rgba`, `quat`, with `index` and
+`t` to read). Each box's compute tab is just those lines between `#include "splat/insert"` and
+`#include "splat/end"`, and its code hands the module and a cloud to `SplatShader`. A passthrough on
+the icosphere shell leads; six of the demo's inserts follow, one on each of its procedural clouds
+(pulse rings, dissolve, gravity well, fern veins, lichen tangle, xray shell), and a last box runs
+scanlines over the ToyCar model, read with `SplatSet.fromGltf` as one disc per vertex. Each launches
+into the same window with the demo's turn, size and trail controls; the gravity well starts with
+its trail on, each frame laid over a fading copy of the last. The insert runs in a compute pass
+ahead of the depth sort, so a dissolve that throws splats outward is sorted where they went:
+measured on the GPU, editing the splat vertex shader instead draws half of all neighbouring pairs
+in the wrong order.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/splat_shader_passthrough.png" capture="native-window" native-wait-frames="90" trim-native=true wait="3.0" embed=true hidden=true timeout="300" name="gallery-splat-shader" alt="The icosphere shell in the native window: a sphere of about a thousand small glowing splats on black, coloured by longitude from cyan on the left through chartreuse at the front to red and orange on the right, with the far side's violet splats showing between the near ones" macro-file="../../dev_docs/agents/transcripts/splat_shader.yaml" capture-box="splat_renderer"}
+// The transcript builds every box and launches the renderer and the passthrough.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/splat_shader/metadata.edn)
+
 ### mega_texture_wall
 
 A directory of images as one wall, behind a virtual texture the **GPU**
@@ -3047,6 +3114,47 @@ trains meet they interleave. Red recovers faster, so its rings come more often. 
 
 [Open ↗](offline.html?file=assets/agent_transcripts/forest_fire/metadata.edn)
 
+### fern_iterated_systems
+
+**Fern**, the classroom demo of iterated systems, on the GPU. Each system is tens or hundreds of
+thousands of particles, each stepped by one rule every frame and plotted after every step into a
+picture that fades a little each frame, so their visits pile up into fine glowing dust. A renderer
+box, then four systems beneath it: the **Barnsley fern** (four affine maps chosen at random, the
+chaos game, launched when the scene opens), the **Lorenz attractor** (a continuous chaotic flow,
+projected from 3D and coloured by height), a **flame-style IFS** (each map followed by a swirl,
+handkerchief or spherical variation, shown as log density), and the **Sierpinski triangle** (the
+smallest chaos game). Each system box's `compute` tab holds the rule as six GLSL functions,
+`initParticle`, `step`, `project`, `shouldDraw`, `color` and `pointSize`; its code sets the
+viewport, the background, the particle count and the fade, and shows sliders for fps, steps,
+fade and exposure. Launch another system box to switch to it.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/fern_iterated_systems_barnsley.png" capture="native-window" native-wait-frames="120" trim-native=true wait="30.0" embed=true hidden=true timeout="400" name="gallery-fern-iterated-systems" alt="The Barnsley fern in the native window: a tall green frond of fine glowing dust on black, its leaflets built of smaller leaflets, the lowest left one turning yellow-green" macro-file="../../dev_docs/agents/transcripts/fern_iterated_systems.yaml" capture-box="fern_renderer"}
+// The transcript builds every box and launches the renderer and the Barnsley fern.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fern_iterated_systems/metadata.edn)
+
+### particles_sketchbook
+
+**Particles**, the classroom particle sketchbook, on the GPU. The world starts empty: drag in the
+renderer window and particles are painted in along the stroke, and four hooks decide what they
+do. A renderer box, then seven sketches beneath it: **boids ribbon** (three schools flocking along
+a noise flow, launched when the scene opens), **spring mesh** (neighbours knit into a web of
+springs), **predator wake** (a hunter only `draw()` shows cuts through a flock), **bounce house**
+(gravity, walls and ball collisions), **sine garden** (orbits, clumping and sinusoidal forcing),
+**pendulum bloom** (particles tethered to where they were painted) and **vortex brush** (rings that
+follow the pointer). Each sketch box's `compute` tab holds the demo's hooks as GLSL, `spawn`,
+`eachPair`, `update` and `draw`, run once for every particle each frame over a neighbour grid, with
+the demo's helpers by the same names (`flock`, `clump`, `spring`, `collide`, `link`, `springTo`,
+`oscillate`, `bounce`, `wrap`, `ring`, ...); its code holds the demo's `init()` world settings and
+shows a trail slider, pause and reset. Launch another sketch box to switch to it.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/particles_sketchbook_boids.png" capture="native-window" native-wait-frames="90" trim-native=true wait="8.0" embed=true hidden=true timeout="300" name="gallery-particles-sketchbook" alt="Boids ribbon in the native window: a few hundred small glowing dots on near-black, gathered into loose schools in cyan, green, yellow and pink, with faint threads between close neighbours of the same school" macro-file="../../dev_docs/agents/transcripts/particles_sketchbook.yaml" capture-box="particles_renderer"}
+// The transcript builds every box and launches the renderer and boids ribbon.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/particles_sketchbook/metadata.edn)
+
 ### recstl_playground
 
 A one-stop [RectSL](rectsl_examples.md) playground: a Window + Renderer, a
@@ -3209,6 +3317,27 @@ shows the same side-by-side scene and its mouse supplies the controller ray.
 ![A full YouTube browser panel rendered for the left and right eyes in a side-by-side stereo Field window](assets/puppet_browser/youtube-stereo.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/youtube_vr_browser/metadata.edn)
+
+### webrtc_shader_jam
+
+The classroom shader jam from Field. One box publishes a fragment shader as a WebRTC stream
+named `login/field-shader`, and another lists who is publishing and draws the stream it picks on a
+quad in the renderer's window. After `WebRTCNetwork.join(url)` once, Field signs in to that
+aaaframe class in its own window and remembers it; a browser ShaderTrinket then receives the Field
+box like any classmate, and Field can show any student's Publish. Before joining, the receiving box
+shows its neighbour's stream through Field's own relay. Needs the Field Electron app.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/webrtc_shader_jam.png" capture="native-window" capture-profile="macos-electron" native-wait-frames="90" trim-native=true wait="25.0" embed=true hidden=true timeout="400" name="gallery-webrtc-shader-jam" alt="Field's renderer window showing the stream the publishing box sends over Field's own relay: a three-lobed flower of blue-violet petals ringed by teal and green bands with dark outlines, filling a 16 by 9 frame on black" macro-file="../../dev_docs/agents/transcripts/webrtc_shader_jam.yaml" capture-box="webrtc_renderer"}
+// The transcript builds and launches all three boxes; on Field's own relay the receiving box shows the publishing box's stream.
+```
+
+The same box receiving a browser ShaderTrinket's stream through aaaframe:
+
+![Field's renderer window showing a stream from a browser ShaderTrinket: pink and yellow petals in a tall frame centred on black](assets/webrtc/field-receives-shadertrinket.png)
+
+Walkthrough: [WebRTC Streams](webrtc.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/webrtc_shader_jam/metadata.edn)
 
 ### direct_lighting
 
@@ -3692,6 +3821,35 @@ The gallery from [StackSL examples](stacksl_examples.md): one renderer box and a
 shader. Launch the renderer, then launch any example; each one replaces the last in the window.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/stacksl_gallery/metadata.edn)
+
+### shadertrinket
+
+**ShaderTrinket in Field.** A ShaderToy Image pass, `void mainImage(out vec4 fragColor, in vec2
+fragCoord)`, lives in each box's `fragment` property, under one `{{ shadertoy.image }}` line, and
+draws into a canvas the renderer window shows. Launch the renderer, then the lead box (Flat Rings,
+ShaderTrinket's default program); each preset box (Classic Plasma, Star Tunnel, Mandelbrot Glow,
+SDF Sphere Trace) replaces the picture when you launch it, the way choosing a preset does. Edit a
+`fragment` and press alt-R to recompile; an error is marked on its own line. The Camera Input Demo
+binds the camera to `iChannel0` with `textures("iChannel0" to webcam())`. A port of the madp
+ShaderTrinket demo; the design notes are in `dev_docs/madp/shadertrinket.md`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/shadertrinket/metadata.edn)
+
+### stacktrinket_feedback
+
+StackTrinket, the classroom StackSL editor, in Field: StackSL programs that read their own previous
+frame. A renderer box, then seven programs beneath it: the pulse ring, feedback fog, persistent
+bloom, store channels, subroutine cse, four memory bands and long memory ecology. Each box keeps its
+program in the `stackSL` tab and calls `stackFeedback()`, which draws it every frame with the last
+frame bound as `state` and follows edits live. The box's lowering panel shows how deep its stack
+ends and any error at its line and column, and its glsl panel the GLSL the program becomes.
+Launching a box replaces the program in the window.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/stacktrinket_feedback_pulse_ring.png" capture="native-window" native-wait-frames="90" trim-native=true wait="3.0" embed=true hidden=true timeout="300" name="gallery-stacktrinket-feedback" alt="The pulse ring in the native window: a soft white ring on black, centred, its radius half the window's width, fading smoothly to black on both sides" macro-file="../../dev_docs/agents/transcripts/stacktrinket_feedback.yaml" capture-box="stacktrinket_renderer"}
+// The transcript builds every box and launches the renderer and the pulse ring.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/stacktrinket_feedback/metadata.edn)
 
 ## Graphics building blocks
 
