@@ -52,11 +52,12 @@ inputs.onChange { slots ->
 
 | Piece | Where | What |
 | --- | --- | --- |
+| `hud(false)` | `ThreeSceneBuilder.hud` | hides the viewer's tool buttons and counts for a view that is a picture. |
 | `clipEncodeImage(BufferedImage)`, `clipEncodeImage(File)` | `ai/inference/onnx/Clip.kt` | the vision tower from an image or a file, one shared `ClipImage`, synchronised. There was no file-to-vector path; every caller had to build an RGBA `ByteBuffer`. |
 | `EmbeddingSimplex`, `embeddingSimplex(vectors, labels)` | `math/statistics/EmbeddingSimplex.kt` | N ≤ ~8 vectors → chord and cosine matrices, edges with per-endpoint ranks (closest … furthest), classical-MDS coordinates in 3D (padded for N ≤ 3), centred and scaled so the farthest point is at a given radius, and the stress of the fit. Model-agnostic: any `FloatArray`/`DoubleArray` embedding. |
 | `Box.showSimplex(simplex, …)` | `graphics/three/SimplexView.kt` | the madp picture in `three { }`: spheres, edges, point and edge labels, rank flags, pair table, slow turntable, dimming while stale. |
 | viewer labels + corner overlay + dim | `threejs_viewer.html` `[viewer-region labels]`, `ThreeSceneBuilder.label(...)`, `overlay(...)`, `dimmed(...)` | DOM labels anchored to 3D points and re-projected each frame (crisp text, CSS styled), an HTML block in a corner, and the greyed "outdated" state. General: nothing here is tetra-specific. |
-| `Box.mediaSlots { }` | `ui/output/MediaSlots.kt` | the input widget: N coloured slots, image or text; click to pick, drop a file (or several onto the widget to fill in order), drop or pick a folder to fill a tray, drag from the tray onto a slot, type into a text slot. Images are decoded and downscaled in the browser (EXIF orientation honoured) and sent over the existing `string-update` control channel; the box sees `MediaSlot`s and an `onChange`. The slots' contents persist in a box property so a re-run keeps what was dropped. |
+| `Box.mediaSlots { }` | `ui/output/MediaSlots.kt` | the input widget: N coloured slots, image or text; click to pick, drop a file (or several onto the widget to fill in order), drop or pick a folder to fill a tray, drag from the tray onto a slot, type into a text slot. Images are decoded and downscaled in the browser (EXIF orientation honoured) and sent over the existing `string-update` control channel; the box sees `MediaSlot`s and an `onChange`. What was dropped or typed outlives a re-run (held per box and channel, cleared when that slot's code changes or on **reset**), not a restart of Field. |
 
 ## Starting point (`madp_tetra`)
 

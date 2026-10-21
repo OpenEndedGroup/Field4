@@ -2422,6 +2422,28 @@ run it again after an edit. A port of the madp score demo; the design notes are 
 
 [Open ↗](offline.html?file=assets/agent_transcripts/madp_score/metadata.edn)
 
+### madp_tetra
+
+**Four pictures as a tetrahedron.** Run the first box and CLIP turns each of four photographs (a
+cat, a dog, a tiger, a car) into a point in its 512-dimensional space. The six distances between
+them become the six edges of a tetrahedron that turns slowly in the view below the pictures, with
+each edge's length written on it and listed in the corner. Any four points of such a space sit
+exactly in three dimensions, so the picture loses nothing: here the car's three edges are the three
+longest. Drop your own pictures on the slots, or drag one up from the tray. The second box puts a
+sentence in the fourth slot. Its point sits far from all three pictures, even the one it describes,
+and the coloured diamonds rank each point's three edges, so you can still see which picture the
+sentence is nearest. The third box swaps the car for a wolf. The fourth adds a fifth picture, and
+the note under its picture gives the stress, how far the best 3D fit is from the real distances.
+A port of the madp tetra demo; the design notes are in `dev_docs/madp/tetra.md`.
+
+??? aside "Not the madp page's model"
+    The madp page embeds with jina-clip-v2 on a Python server. Field runs OpenAI's CLIP ViT-B/32
+    through ONNX in the JVM, so the distances differ from the page's. The geometry does not depend
+    on the model: four unit vectors in any dimension embed exactly in 3D. The page's `tetra2` server
+    also squared its distances twice before MDS, which this port does not repeat.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_tetra/metadata.edn)
+
 ### mqtt_demo
 
 The demo for [MQTT](mqtt.md), on Field's own broker: one box plays three pretend sensors, one
