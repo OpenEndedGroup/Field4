@@ -17,9 +17,16 @@ Run directly with:  uv run --project . --group backdoor python tools/run_python_
 
 from __future__ import annotations
 
+import faulthandler
+import os
 import re
 import shutil
+import signal
+import subprocess
 import sys
+import tempfile
+import threading
+import time
 import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -35,6 +42,17 @@ FALLBACK_PYTHON_FLOOR = (3, 12)
 # tools/land.py globs build/test-results/*/TEST-*.xml). Without it a red here reached the lander's
 # fixer as "uv exited 1": the traceback was in the log, 54,000 lines above the 200-line tail it got.
 RESULTS_DIR = REPO_ROOT / "build" / "test-results" / "pythonTools"
+
+# Per-module wall-clock budget. On 2026-10-21 `tools.test_refactor_pass` sat at 0% CPU for 1 h 53 min
+# inside six landing merges at once, and all the log said was its last line of output: nobody could
+# tell which lock it was in, and every branch behind it waited. A module past its budget now dumps
+# every thread's Python stack into the log, kills the processes it started, and fails by name.
+# The slowest module measured on 2026-10-21 took about 90 s (see the summary's per-module times),
+# so ten minutes is room for a loaded landing host, not a target.
+MODULE_BUDGET_SECONDS = float(os.environ.get("FIELD_PYTHON_TEST_MODULE_BUDGET", "600"))
+# After the stacks are dumped and the children killed, how long the module gets to unwind on its own
+# (a test blocked on a child's pipe usually does) before the runner gives up on the process.
+UNWIND_GRACE_SECONDS = 30.0
 
 
 def declared_python_floor() -> tuple[int, ...]:
@@ -109,6 +127,105 @@ def write_junit(module: str, ran: int, failures: list, errors: list, skipped: in
     ET.ElementTree(suite).write(RESULTS_DIR / f"TEST-{module}.xml", encoding="utf-8", xml_declaration=True)
 
 
+def write_timeout_junit(module: str, budget: float, dump: str) -> None:
+    """The bounce reason for a module that hung: its name, its budget, and every thread's stack."""
+    suite = ET.Element("testsuite", name=module, tests="1", failures="0", errors="1", skipped="0")
+    case = ET.SubElement(suite, "testcase", classname=module, name="module timed out")
+    message = f"{module} ran past its {budget:.0f} s budget; all threads' stacks follow"
+    ET.SubElement(case, "error", message=message).text = message + "\n\n" + dump
+    ET.ElementTree(suite).write(RESULTS_DIR / f"TEST-{module}.xml", encoding="utf-8", xml_declaration=True)
+
+
+def descendants(pid: int) -> list[int]:
+    """Every live process below *pid*, children first-found; from `ps`, so no psutil."""
+    ps = subprocess.Popen(["ps", "-Ao", "pid=,ppid="], stdout=subprocess.PIPE, text=True)
+    listing, _ = ps.communicate()
+    children: dict[int, list[int]] = {}
+    for line in listing.splitlines():
+        parts = line.split()
+        # `ps` lists itself, as a child of the caller.
+        if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit() and int(parts[0]) != ps.pid:
+            children.setdefault(int(parts[1]), []).append(int(parts[0]))
+    found, todo = [], list(children.get(pid, []))
+    while todo:
+        child = todo.pop()
+        found.append(child)
+        todo.extend(children.get(child, []))
+    return found
+
+
+def kill_descendants(pid: int) -> list[int]:
+    """TERM everything below *pid*, then KILL what is left after five seconds. Returns who was signalled."""
+    victims = descendants(pid)
+    for sig in (signal.SIGTERM, signal.SIGKILL):
+        for victim in victims:
+            try:
+                os.kill(victim, sig)
+            except (ProcessLookupError, PermissionError):
+                pass
+        if sig == signal.SIGTERM and victims:
+            deadline = time.time() + 5
+            while time.time() < deadline and any(_alive(v) for v in victims):
+                time.sleep(0.2)
+    return victims
+
+
+def _alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except (ProcessLookupError, PermissionError):
+        return False
+    return True
+
+
+class ModuleWatchdog:
+    """Fails one module that runs past *budget*: stacks to the log, children killed, JUnit by name.
+
+    A thread, because the main thread is the one that is stuck. It cannot interrupt that thread, so
+    it does the three things that do not need it to: dump (`faulthandler` reads every thread's frame
+    from C, without the GIL-holder's help), kill the children (a test waiting on a hung child usually
+    unwinds then), and record the failure. If the module has not come back after
+    UNWIND_GRACE_SECONDS, *on_abandon* runs and the process exits, since nothing after it would run.
+    """
+
+    def __init__(self, module: str, budget: float, on_abandon, grace: float = UNWIND_GRACE_SECONDS,
+                 out=None, exit=os._exit):
+        self.module, self.budget, self.grace = module, budget, grace
+        self.on_abandon, self.out, self.exit = on_abandon, out or sys.stdout, exit
+        self.done = threading.Event()
+        self.timed_out = False
+        self.dump = ""
+        self._thread = threading.Thread(target=self._watch, name=f"watchdog:{module}", daemon=True)
+
+    def __enter__(self) -> ModuleWatchdog:
+        self._thread.start()
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self.done.set()
+        self._thread.join(timeout=5)
+
+    def _watch(self) -> None:
+        if self.done.wait(self.budget):
+            return
+        self.timed_out = True
+        with tempfile.TemporaryFile("w+") as sink:
+            faulthandler.dump_traceback(file=sink, all_threads=True)
+            sink.seek(0)
+            self.dump = sink.read()
+        print(f"\n!!! {self.module} ran past its {self.budget:.0f} s budget; every thread's stack:\n"
+              f"{self.dump}", file=self.out, flush=True)
+        killed = kill_descendants(os.getpid())
+        print(f"!!! {self.module}: signalled {len(killed)} child process(es) {killed}", file=self.out, flush=True)
+        write_timeout_junit(self.module, self.budget, self.dump)
+        if self.done.wait(self.grace):
+            return
+        print(f"!!! {self.module} did not unwind {self.grace:.0f} s after its children were killed; "
+              "abandoning the remaining suites", file=self.out, flush=True)
+        self.on_abandon()
+        self.exit(1)
+
+
 def main() -> int:
     complaint = check_interpreter()
     if complaint is not None:
@@ -130,6 +247,7 @@ def main() -> int:
     loader = unittest.TestLoader()
     rows: list[tuple[str, int, int, int, int]] = []
     not_passing: list[str] = []
+    durations: dict[str, float] = {}
     failed = False
 
     for name in names:
@@ -145,13 +263,30 @@ def main() -> int:
             continue
 
         print(f"\n=== {name}", flush=True)
+        started = time.monotonic()
+
+        def abandon(name: str = name) -> None:
+            rows.append((name, 0, 0, 1, 0))
+            not_passing.append(f"ERROR {name}: ran past its {MODULE_BUDGET_SECONDS:.0f} s budget and never "
+                               "unwound (stacks above)")
+            summarize(rows, not_passing, durations, failed=True)
+
         # Everything on one stream: Gradle buffers stdout and stderr separately, so a summary
         # on stdout and unittest on stderr arrive interleaved and unreadable.
-        result = unittest.TextTestRunner(stream=sys.stdout, verbosity=1).run(suite)
+        with ModuleWatchdog(name, MODULE_BUDGET_SECONDS, abandon) as watchdog:
+            result = unittest.TextTestRunner(stream=sys.stdout, verbosity=1).run(suite)
+        durations[name] = time.monotonic() - started
         ran = result.testsRun
         fails = len(result.failures)
         errors = len(result.errors)
         skipped = len(result.skipped)
+        if watchdog.timed_out:
+            # It came back once its children were killed; what it reported is not its verdict.
+            rows.append((name, ran, fails, errors + 1, skipped))
+            not_passing.append(f"ERROR {name}: ran past its {MODULE_BUDGET_SECONDS:.0f} s budget "
+                               "(stacks above; its child processes were killed)")
+            failed = True
+            continue
         rows.append((name, ran, fails, errors, skipped))
         write_junit(name, ran, result.failures, result.errors, skipped)
         for kind, entries in (("FAIL", result.failures), ("ERROR", result.errors)):
@@ -161,13 +296,19 @@ def main() -> int:
         if fails or errors or not result.wasSuccessful():
             failed = True
 
+    return summarize(rows, not_passing, durations, failed)
+
+
+def summarize(rows: list[tuple[str, int, int, int, int]], not_passing: list[str],
+              durations: dict[str, float], failed: bool) -> int:
     width = max(len(name) for name, *_ in rows)
     print("\nPython tool test suites:", flush=True)
     for name, ran, fails, errors, skipped in rows:
         passed = ran - fails - errors - skipped
         print(f"  {name.ljust(width)}  {passed:>3} passed / {ran:>3} run"
               + (f", {fails} failed, {errors} errored" if fails or errors else "")
-              + (f", {skipped} skipped" if skipped else ""), flush=True)
+              + (f", {skipped} skipped" if skipped else "")
+              + (f"  ({durations[name]:.1f} s)" if name in durations else ""), flush=True)
     total_ran = sum(ran for _, ran, _, _, _ in rows)
     total_bad = sum(fails + errors for _, _, fails, errors, _ in rows)
     total_skipped = sum(skipped for _, _, _, _, skipped in rows)

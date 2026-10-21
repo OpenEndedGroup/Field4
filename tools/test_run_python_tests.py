@@ -8,7 +8,10 @@ failure collector reads only JUnit XML, which these suites did not write.
 from __future__ import annotations
 
 import io
+import subprocess
+import sys
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -55,6 +58,58 @@ class RedsReachTheLander(unittest.TestCase):
         self.assertIn("RuntimeError: exploded", full)
         self.assertIn("test_subtest (board='check_fences.py')", full)
         self.assertIn("Traceback (most recent call last)", full, "the traceback, not just the last line")
+
+
+
+class AHungModuleNamesItself(unittest.TestCase):
+    """The 2026-10-21 hang: a module stuck for 1 h 53 min, and a log that said nothing about where."""
+
+    def test_a_module_waiting_on_a_hung_child_is_dumped_killed_and_named(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            wt = Path(tmp)
+            results = wt / "build" / "test-results" / "pythonTools"
+            results.mkdir(parents=True)
+            started = time.time() - 1
+            out = io.StringIO()
+            abandoned = []
+            with mock.patch.object(run_python_tests, "RESULTS_DIR", results):
+                child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(600)"])
+                with run_python_tests.ModuleWatchdog("tools.test_hangs", 1.0, lambda: abandoned.append(1),
+                                                     grace=20, out=out) as watchdog:
+                    def waiting_on_the_engine_jvm():
+                        return child.wait(timeout=60)
+
+                    code = waiting_on_the_engine_jvm()
+            self.assertTrue(watchdog.timed_out)
+            self.assertNotEqual(code, 0, "the child should have been killed, not left to finish")
+            self.assertEqual(abandoned, [], "it unwound, so the run goes on")
+            self.assertIn("waiting_on_the_engine_jvm", watchdog.dump, "the stuck frame is in the dump")
+            self.assertIn(f"signalled 1 child process(es) [{child.pid}]", out.getvalue())
+            log = wt / "round.log"
+            summary = land._collect_failures(wt, started, log)
+        self.assertIn("tools.test_hangs", summary)
+        self.assertIn("ran past its 1 s budget", summary)
+
+    def test_a_module_that_never_unwinds_is_abandoned_with_a_summary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            stuck, exits, abandoned = threading.Event(), [], []
+
+            def exit_(code):
+                exits.append(code)
+                stuck.set()  # what os._exit would have ended
+
+            with mock.patch.object(run_python_tests, "RESULTS_DIR", Path(tmp)):
+                with run_python_tests.ModuleWatchdog("tools.test_stuck", 0.5, lambda: abandoned.append(1),
+                                                     grace=0.5, out=io.StringIO(), exit=exit_):
+                    stuck.wait(30)
+            self.assertEqual(exits, [1])
+            self.assertEqual(abandoned, [1])
+            self.assertTrue((Path(tmp) / "TEST-tools.test_stuck.xml").is_file())
+
+    def test_a_module_inside_its_budget_is_left_alone(self):
+        with run_python_tests.ModuleWatchdog("tools.test_quick", 30, lambda: None, out=io.StringIO()) as watchdog:
+            pass
+        self.assertFalse(watchdog.timed_out)
 
 
 if __name__ == "__main__":
