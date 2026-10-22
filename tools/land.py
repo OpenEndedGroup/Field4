@@ -1236,7 +1236,9 @@ def _run_watched(cmd: list[str], cwd: Path, env: dict, log: Path, out) -> int | 
     # Its own session, so the watchdog can stop the whole build: which also means stopping the lander
     # no longer stops it. Record it, so a SIGTERM'd lander stops it and a new lander finds an orphan.
     record = log.parent.parent / "build.json"
-    record.write_text(json.dumps({"pgid": proc.pid, "lander": os.getpid(), "started": _now(), "log": str(log)}) + "\n")
+    pending = record.with_suffix(".json.tmp")
+    pending.write_text(json.dumps({"pgid": proc.pid, "lander": os.getpid(), "started": _now(), "log": str(log)}) + "\n")
+    pending.replace(record)
     _CURRENT_BUILD["pgid"] = proc.pid
     try:
         return _watch(proc, cwd, env, log, out)
