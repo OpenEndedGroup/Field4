@@ -5925,10 +5925,11 @@ suspend fun main() {
     }
 
     handlers.put("set-visibility-animated") { message, _ ->
-        val payload = message.payload?.let { Json.decodeFromJsonElement<Map<String, Any>>(it) } ?: return@put Handled.no
-        val uid = payload["uid"] as? String ?: return@put Handled.no
-        val visible = payload["visible"] as? Boolean ?: return@put Handled.no
-        val duration = (payload["duration"] as? Double) ?: 300.0
+        // Read as a JsonObject: there is no serializer for Map<String, Any>.
+        val payload = message.payload?.jsonObject ?: return@put Handled.no
+        val uid = payload["uid"]?.jsonPrimitive?.contentOrNull ?: return@put Handled.no
+        val visible = payload["visible"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: return@put Handled.no
+        val duration = payload["duration"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull() ?: 300.0
         layerDebugLog(
             "recv set-visibility-animated",
             json(

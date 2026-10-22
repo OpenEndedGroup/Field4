@@ -3876,12 +3876,14 @@ class Server {
                 // If animated, send custom visibility change messages
                 if (update.animated) {
                     thisSessionInfo.get().boxes.values.forEach { box ->
+                        // A JsonObject, not a Map<String, Any>: kotlinx.serialization has no serializer
+                        // for Any, so the map threw here and no box faded (docs/layers.md capture).
                         val visibilityMessage = Message("set-visibility-animated").payload(
-                            mapOf(
-                                "uid" to box.id,
-                                "visible" to box.visible,
-                                "duration" to update.duration
-                            )
+                            kotlinx.serialization.json.buildJsonObject {
+                                put("uid", kotlinx.serialization.json.JsonPrimitive(box.id))
+                                put("visible", kotlinx.serialization.json.JsonPrimitive(box.visible))
+                                put("duration", kotlinx.serialization.json.JsonPrimitive(update.duration))
+                            }
                         )
                         box.inside.sessions.forEach { _send(it, visibilityMessage) }
                     }
