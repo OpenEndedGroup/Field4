@@ -21,11 +21,31 @@ SAVING = REPO / "src/jvmMain/kotlin/afield/document/persistence/saving.kt"
 PARSER = REPO / "src/commonMain/resources/edn-parser.js"
 
 
+def runnable_node() -> tuple[str | None, str]:
+    """The first `node` that starts, and why the others did not.
+
+    PATH's node can be present and still unable to start (a Homebrew node whose
+    dylib was upgraded out from under it), so try it, then any nvm install."""
+    candidates = [shutil.which("node")]
+    candidates += [str(p) for p in sorted((Path.home() / ".nvm/versions/node").glob("v*/bin/node"), reverse=True)]
+    failures = []
+    for node in dict.fromkeys(c for c in candidates if c):
+        try:
+            probe = subprocess.run([node, "--version"], capture_output=True, text=True, timeout=30)
+        except OSError as e:
+            failures.append(f"{node}: {e}")
+            continue
+        if probe.returncode == 0:
+            return node, ""
+        failures.append(f"{node}: {(probe.stderr or probe.stdout).strip().splitlines()[:1]}")
+    return None, "; ".join(failures) or "node is not installed"
+
+
 class OfflineViewerJsTest(unittest.TestCase):
     def run_node(self, script: str) -> None:
-        node = shutil.which("node")
+        node, why = runnable_node()
         if node is None:
-            self.skipTest("node is not installed")
+            self.skipTest(f"no runnable node: {why}")
         proc = subprocess.run([node, str(REPO / "tools" / script)], cwd=REPO, capture_output=True, text=True, timeout=300)
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
 
