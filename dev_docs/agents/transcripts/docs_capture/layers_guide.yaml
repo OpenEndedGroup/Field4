@@ -15,3 +15,6 @@ operations:
   - create: { box: lg_mix, name: mix, frame: { x: 420.0, y: 470.0, w: 180.0, h: 60.0 } }
   - wait:
       millis: 600
+# Found while writing layers.md (2026-10-22): animated set-visible-layers threw on a Map<String, Any>
+# payload, and the palette's "Move N boxes to active layer" was dead JS; both fixed in the same branch.
+# Open: clearing the active layer leaves boxes where they are (no pre-layer baseline is kept).
