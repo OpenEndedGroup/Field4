@@ -12,7 +12,9 @@ import afield.app.canvas.CanvasCamera
 import afield.app.canvas.CanvasPane
 import afield.app.canvas.CanvasSplitPreview
 import afield.app.canvas.Point
+import afield.app.canvas.BoxLayout
 import afield.app.canvas.boxSnappingSystem
+import afield.app.canvas.registerBoxLayoutActions
 import afield.app.canvas.drawingLayerViewportChanged
 import afield.app.canvas.initializeBookmarkSystem
 import afield.app.canvas.initializeDependencyLayer
@@ -2499,6 +2501,7 @@ private fun registerCanvasZoomActions() {
     snapping.detail = "Snap boxes to each other while dragging and resizing, as Caps Lock does"
     snapping.run = { boxSnappingSystem.toggleFromCommand() }
     builtin.push(snapping)
+    registerBoxLayoutActions(builtin)
     // Each split command's palette preview is a live thumbnail of what it will do (canvasSplitPreview.kt).
     val splitDocs = mutableMapOf<String, Pair<String, String>>()
     window.asDynamic().canvasSplitPreview = { id: String ->
@@ -4248,7 +4251,7 @@ private fun renderInitialBoxPlaceholders(frames: List<InitialBoxFrame>) {
     publishInitialPlaceholderCount(frames.size)
 }
 
-private fun applyFrameToBox(box: HTMLElement, frame: Rect) {
+internal fun applyFrameToBox(box: HTMLElement, frame: Rect) {
     box.style.transform = "translate(${frame.x}px, ${frame.y}px)"
     box.style.width = "${frame.w}px"
     box.style.height = "${frame.h}px"
@@ -5857,6 +5860,7 @@ suspend fun main() {
         } else {
             val box = found as HTMLElement
             val wasRenderable = hasRenderableFrame(box)
+            BoxLayout.noteIncomingFrame(u, set.value.y)
             applyFrameToBox(box, set.value)
             applyBoxVisibilityImmediate(box)
             if (!wasRenderable && hasRenderableFrame(box)) {
@@ -7512,9 +7516,12 @@ suspend fun main() {
         }
         selected.copy().forEach { CanvasCamera.place(it) }
         canvasGestures.requestConnectionGroupRebuild()
+        BoxLayout.dragging = false
+        BoxLayout.noteDropped(selected)
     }
 
     interactable.on("dragstart") { event ->
+        BoxLayout.dragging = true
         if (pendingShiftToggleBox != null) {
             pendingShiftToggleHadDrag = true
         }
@@ -7954,6 +7961,7 @@ fun TagConsumer<HTMLElement>.createBox(
     d1d.server_visible = true
 
     oa = d1.getElementsByClassName("outputArea").asList()[0] as HTMLElement
+    BoxLayout.watch(d1)
     applyBoxVisibilityImmediate(d1)
     if (!sendInitialSync) {
         animateOfflineBoxArrival(d1)
