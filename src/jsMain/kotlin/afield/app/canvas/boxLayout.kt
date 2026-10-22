@@ -98,11 +98,21 @@ object BoxLayout {
         val outputArea = box.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement
         if (outputArea != null && window.getComputedStyle(outputArea).visibility != "hidden" &&
             window.getComputedStyle(outputArea).display != "none") {
+            // A `.disclosure` is as wide as its group even when closed, far wider than the label it
+            // shows, so measure what is drawn: the header, its arrow and title (the arrow hangs
+            // outside the header), and the content while it is open.
             outputArea.querySelectorAll(".disclosure").asList().forEach { node ->
-                val r = (node as? HTMLElement)?.getBoundingClientRect() ?: return@forEach
-                if (r.width > 0.0 && r.height > 0.0) {
-                    outputs += Rect((r.left - origin.left) / zoom, (r.top - origin.top) / zoom, r.width / zoom, r.height / zoom)
-                }
+                val wrap = node as? HTMLElement ?: return@forEach
+                val header = wrap.querySelector(".disclosure-header") as? HTMLElement
+                val drawn = listOfNotNull(header, wrap.querySelector(".disclosure-content") as? HTMLElement) +
+                    (header?.children?.asList().orEmpty())
+                val rects = drawn.map { it.getBoundingClientRect() }.filter { it.width > 0.0 && it.height > 0.0 }
+                if (rects.isEmpty()) return@forEach
+                val left = rects.minOf { it.left }
+                val top = rects.minOf { it.top }
+                val right = rects.maxOf { it.right }
+                val bottom = rects.maxOf { it.bottom }
+                outputs += Rect((left - origin.left) / zoom, (top - origin.top) / zoom, (right - left) / zoom, (bottom - top) / zoom)
             }
         }
         return Item(box, d.uid as String, frame, listOf(Rect(0.0, 0.0, frame.w, frame.h)) + outputs, outputs)
