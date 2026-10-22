@@ -4566,7 +4566,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
         ),
         UiRegression(
             id="ai-chat-fence-renderers",
-            description="AI4 chat renders registered fences, loads Mermaid, and keeps source visible when a diagram fails.",
+            description="AI4 chat renders registered fences, loads Mermaid and KaTeX math, and keeps source visible when a diagram or equation fails.",
             document=f"ui-regression-chat-fences-{int(time.time())}",
             commands=[
                 "new-box --name FenceRenderers --x 40 --y 40",
