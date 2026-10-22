@@ -279,7 +279,7 @@ Draw two hairpins, or a diminuendo after the crescendo, and the same reading cod
 
 ## The starting point
 
-Open [drawing_notation](agent_transcripts.md#drawing_notation) from the welcome screen's starting points. It has the ideas on this page as six boxes you run and then draw against: `draw`, `read`, `listen`, `projection 1`, `fontana mix` and `crescendo`. Or [browse it in the offline viewer](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn).
+Open [drawing_notation](agent_transcripts.md#drawing_notation) from the welcome screen's starting points. It has the ideas on this page as six boxes you run and then draw against: `draw`, `read`, `listen`, `projection 1`, `fontana mix` and `crescendo`. Or [browse it in the offline viewer](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn). The offline viewer draws the drawing layer under the boxes too: [this small document](offline.html?file=assets/offline_viewer_demo/metadata.edn) has a drawing written by its `sketch` box, and notes on every box.
 
 [notation_elements](agent_transcripts.md#notation_elements) draws every kind of mark from code, reads a score, and calls each part of the API once in a box called `audit`, which prints one line per call.
 
