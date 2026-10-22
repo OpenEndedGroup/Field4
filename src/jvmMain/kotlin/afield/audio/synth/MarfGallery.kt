@@ -236,10 +236,10 @@ object MarfGallery {
                 },
                 snippet = """
                     val env = marf(
-                        value    = pat("<0 .5 .2 1>").nums(),
+                        value = pat("<0 .5 .2 1>").nums(),
                         duration = pat("<1 4 .25 2>").nums(),
-                        curve    = curves("<linear exp hold osc>"),
-                        fields   = MarfFieldClock.STAGES
+                        curve = curves("<linear exp hold osc>"),
+                        fields = MarfFieldClock.STAGES,
                     )
                 """.trimIndent()
             ),
@@ -313,8 +313,11 @@ object MarfGallery {
                 },
                 snippet = """
                     val b = marfBank(
-                        rampTo(0.1, 1.0), rampTo(0.9, 0.5), holdAt(0.4, 2.0),
-                        oscTo(0.7, 1.0, cycles = 3.0), curveTo(0.2, 0.25, amount = 4.0)
+                        rampTo(0.1, 1.0),
+                        rampTo(0.9, 0.5),
+                        holdAt(0.4, 2.0),
+                        oscTo(0.7, 1.0, cycles = 3.0),
+                        curveTo(0.2, 0.25, amount = 4.0),
                     )
 
                     val a = b.read(pat("<0 1 2 1 3 4>").nums(), fields = MarfFieldClock.STAGES)
@@ -397,9 +400,9 @@ object MarfGallery {
                 // `marfFieldSteps`, whose grid counts a rest as a step precisely so this holds.
                 snippet = """
                     val steps = MarfFieldClock.STEPS
-                    b.read(pat("0 1 2 3").nums(), duration = constant(0.25), fields = steps)                    // forward
+                    b.read(pat("0 1 2 3").nums(), duration = constant(0.25), fields = steps) // forward
                     b.read(pat("0 1 2 3").nums().every(4) { it.rev() }, duration = constant(0.25), fields = steps) // periodic reversal
-                    b.read(pat("0 1 2 3 2 1").nums(), duration = constant(1.0 / 6.0), fields = steps)           // ping-pong
+                    b.read(pat("0 1 2 3 2 1").nums(), duration = constant(1.0 / 6.0), fields = steps) // ping-pong
                     b.read(struct(euclid(5, 8), pat("0 4 2 3").nums()), duration = constant(0.125), fields = steps)
                 """.trimIndent()
             ),
@@ -548,16 +551,18 @@ object MarfGallery {
                 },
                 distinctLanes = true,
                 snippet = """
-                    val path = marfBankIn(
-                        MarfVector3f,
-                        stageTo(Vector3f(0f, 0f, 0f), 1.0),
-                        stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth),
-                        stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0)),
-                        stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0))
-                    ).read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES)
+                    val path =
+                        marfBankIn(
+                                MarfVector3f,
+                                stageTo(Vector3f(0f, 0f, 0f), 1.0),
+                                stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth),
+                                stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0)),
+                                stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0)),
+                            )
+                            .read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES)
 
-                    path.at(3.5).value               // a Vector3f
-                    path.signal { it.x.toDouble() }  // any component, as an ordinary signal
+                    path.at(3.5).value // a Vector3f
+                    path.signal { it.x.toDouble() } // any component, as an ordinary signal
                 """.trimIndent()
             ),
 

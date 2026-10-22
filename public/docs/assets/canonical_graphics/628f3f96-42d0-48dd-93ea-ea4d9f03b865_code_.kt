@@ -9,6 +9,7 @@ val path =
 path.moveTo(-0.3, -0.3).lineTo(-0.3, 0.3).lineTo(0.3, 0.3).lineTo(0.3, -0.3).close()
 val prepared = SlugPath.compile(path, "field-slug".file)
 
+// Prepare the native path above before running this GPU setup fragment.
 //%-
 val module = moduleHere {
     primitiveType = triangles
