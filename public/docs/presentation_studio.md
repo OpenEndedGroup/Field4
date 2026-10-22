@@ -6,7 +6,7 @@ Field presentations are folders you can keep in Git. A talk combines editable Mo
 
 First [install and run Field](installation.md), and have Node.js 22 or newer with npm available. From your Field checkout, create a copy of the starter:
 
-```sh
+```diffstatic {data-lang=sh}
 node tools/presentation/new-talk.mjs ~/my-talk
 cd ~/my-talk
 npm ci
@@ -17,7 +17,7 @@ git commit -m "Start my Field talk"
 
 The talk folder itself is a Field workspace. Open its included live document, then open the same folder as a presentation:
 
-```sh
+```diffstatic {data-lang=sh}
 cd /path/to/Field4
 ./field.sh --workspace ~/my-talk --document field-demo
 ```
@@ -42,7 +42,7 @@ The controller runs a cue macro only when you press its button. Both Markdown no
 
 `src/project.ts` orders Motion Canvas scenes. A scene's `beginSlide('name')` gives a cue such as `field:field`. `presentation.json` attaches live content to a cue:
 
-```json
+```diffstatic {data-lang=json}
 {
   "title": "My talk",
   "transitionMs": 450,
