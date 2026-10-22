@@ -549,7 +549,8 @@ on the active layer, and only on it. `alt-]` solos the next layer and `alt-[` th
 command palette labels include the target layer names. **Show All Layers** in the command palette
 shows every layer and opens the panel.
 
-The panel floats over the canvas, so hiding a layer never hides it. `showLayers()` in a box puts the
+The panel floats over the canvas, so hiding a layer never hides it. [Layers](layers.md) has the
+whole story, including a different layout on each layer. `showLayers()` in a box puts the
 same controls in that box's output area instead:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".layers-palette" screenshot="assets/layers-panel.png" transcript="assets/transcripts/layers_setup.yaml" padding="18" wait="0" timeout="90" embed=true hidden=true name="layers-panel"}

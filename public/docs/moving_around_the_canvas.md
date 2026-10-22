@@ -439,8 +439,8 @@ quickest way to clear a crowded document down to the part you are working on. `a
 count. Click a layer's eye to show or hide it (shift-click to show only that one), and pick the
 active layer with its radio button. **Solo** shows only that layer and makes it active, **Show all**
 brings every layer back, and **Move selection to active layer** puts the selected boxes on the
-active layer. The last visible layer cannot be hidden. See [Layers](funFeatures.md#layers) for how
-a box names its layers.
+active layer. The last visible layer cannot be hidden. [Layers](layers.md) covers how a box names
+its layers, and how each layer keeps its own layout.
 
 ## How the neighbours are chosen
 
@@ -464,5 +464,6 @@ are hidden, deleted, or drawn at zero size are not candidates.
 
 - [Keyboard Shortcuts](keybindings.md) covers rebinding, and lists both commands for all nine slots.
 - [Filming the canvas](filming_the_canvas.md) flies through the bookmarks, and films the flight.
+- [Layers](layers.md) decides which boxes are on the canvas, and where, per layer.
 - [Snapping](snapping.md) is the other half of arranging a document you intend to navigate this way.
 - [Document History](document_history.md) saves the document's content rather than your view of it.
