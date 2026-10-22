@@ -47,7 +47,9 @@ bounce. Every attempt is in `field-land-queue/fixer.jsonl`. FIELD_LAND_FIXER=off
 
 `doc` is a queue barrier: preceding landings finish before it builds `public/field4/` in the
 checkout holding `main`; later landings wait until the build finishes. It reuses committed captures
-and reports its own failure without undoing a landing. The running lander must be restarted after
+and reports its own failure without undoing a landing. It refuses to build while that checkout has
+uncommitted changes under src/ or public/docs, because the site would mix them with pages generated
+from HEAD. The running lander must be restarted after
 changes to this script are landed, because Python does not reload it while running.
 
 The queue is plain JSON files in the clone's common git dir (`field-land-queue/`), so every worktree
@@ -236,6 +238,8 @@ def cmd_doc(args: argparse.Namespace) -> int:
         item["id"] = f"{base}-{n}"
     _move(queue, item, PENDING)
     print(f"land: queued docs build {item['id']} for {holder}; {len(_items(queue, PENDING)) - 1} ahead of it.")
+    if dirty := _dirty_doc_inputs(holder):
+        print(f"land: warning: it will be refused unless this changes by its turn: {_dirty_doc_reason(holder, dirty)}", file=sys.stderr)
     print(f"Progress: uv run python tools/land.py status {item['id']}")
     print(f"Outcome: uv run python tools/land.py wait {item['id']}")
     return 0
@@ -1727,6 +1731,28 @@ def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecti
     return "green"
 
 
+# What the docs build reads from the working tree rather than from a commit: the source mirror
+# (`generateSourcePages`) walks every `.kt` under src/, tracked or not, and the site is built from
+# public/docs. The committed reference pages cite source lines as of HEAD, so a build over uncommitted
+# edits installs source pages whose line anchors no longer match those citations, and the link check
+# fails on links that are fine on main (20261022-111619-doc: 116 `#L` anchors, all into files edited
+# but not committed).
+DOC_BUILD_INPUTS = ("src", "public/docs")
+
+
+def _dirty_doc_inputs(checkout: Path) -> list[str]:
+    """Paths under DOC_BUILD_INPUTS that differ from HEAD: modified, staged, or untracked and not ignored."""
+    changed = _git(checkout, "diff", "--name-only", "HEAD", "--", *DOC_BUILD_INPUTS, check=False).splitlines()
+    untracked = _git(checkout, "ls-files", "--others", "--exclude-standard", "--", *DOC_BUILD_INPUTS, check=False).splitlines()
+    return sorted({p for p in changed + untracked if p})
+
+
+def _dirty_doc_reason(checkout: Path, dirty: list[str]) -> str:
+    shown = ", ".join(dirty[:5]) + (f" and {len(dirty) - 5} more" if len(dirty) > 5 else "")
+    return (f"{checkout} has {len(dirty)} uncommitted change(s) under {' or '.join(DOC_BUILD_INPUTS)} that the docs "
+            f"build would read ({shown}); commit or set them aside, then queue `land.py doc` again")
+
+
 def _run_doc(item: dict, primary: Path, queue: Path) -> None:
     """Build the served checkout after earlier queue items, without changing Git history."""
     checkout = Path(item["checkout"])
@@ -1741,6 +1767,12 @@ def _run_doc(item: dict, primary: Path, queue: Path) -> None:
     script = checkout / "tools" / "build_zensical_docs.py"
     if not script.is_file():
         item.update(reason=f"docs builder missing in {checkout}", finished=_now())
+        _move(queue, item, BOUNCED)
+        return
+    # Refuse rather than build a site that is neither main nor the working tree. Checked here, at the
+    # item's turn, because the tree it would build is the one on disk now, not at enqueue time.
+    if dirty := _dirty_doc_inputs(checkout):
+        item.update(reason=_dirty_doc_reason(checkout, dirty), finished=_now())
         _move(queue, item, BOUNCED)
         return
     item["built_from"] = _git(checkout, "rev-parse", "HEAD")
