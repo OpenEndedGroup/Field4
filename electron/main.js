@@ -1607,10 +1607,17 @@ function createMainWindow() {
     } catch (_) { return false; }
   };
   const presentationFieldTab = () => (isFieldTab(activeTab()) ? activeTab() : tabs.find(isFieldTab));
+  const isFieldServerTab = tab => {
+    try { return tab && new URL(contentsUrl(tab)).origin === new URL(initialUrl).origin; }
+    catch (_) { return false; }
+  };
+  const presentationServerTab = () => presentationFieldTab() ||
+    (isFieldServerTab(activeTab()) ? activeTab() : tabs.find(isFieldServerTab));
   const presentationHost = {
     getFieldContents: () => { const tab = presentationFieldTab(); return tab && liveContents(tab); },
     openDocument: name => {
-      const url = new URL(contentsUrl(presentationFieldTab()));
+      const tab = presentationServerTab();
+      const url = new URL(tab ? contentsUrl(tab) : initialUrl);
       url.pathname = '/index.html'; url.search = new URLSearchParams({file: name}).toString(); url.hash = '';
       return openTab(url.href, {activate: true});
     },
@@ -1620,7 +1627,7 @@ function createMainWindow() {
       return fieldTab ? contentsUrl(fieldTab) : null;
     },
     getFieldInfo: async () => {
-      const fieldTab = presentationFieldTab();
+      const fieldTab = presentationServerTab();
       const contents = fieldTab && liveContents(fieldTab);
       if (!contents || contents.isDestroyed()) return null;
       return contents.executeJavaScript("fetch('/api/instance-info').then(response => response.ok ? response.json() : null)");

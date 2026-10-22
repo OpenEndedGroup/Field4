@@ -567,16 +567,18 @@ class SlideShowInstance(
     }
 
     /** Execute a navigation request in order; callbacks may navigate within the same command. */
-    suspend fun command(command: String) = commandMutex.withLock {
-        when {
-            command == "next" -> if (hasNext()) next()
-            command == "previous" -> previous()
-            command == "start" || command == "home" -> home()
-            command == "stop" -> stop()
-            command == "present" -> present()
-            command == "refresh" -> if (currentStepIndex >= 0) goToStep(currentStepIndex)
-            command.startsWith("callback:") -> { executeCallback(command.substringAfter("callback:")); Unit }
-            else -> command.toIntOrNull()?.let { goToStep(it) } ?: Unit
+    suspend fun command(command: String) = Box.withBoxContext(hostBox) {
+        commandMutex.withLock {
+            when {
+                command == "next" -> if (hasNext()) next()
+                command == "previous" -> previous()
+                command == "start" || command == "home" -> home()
+                command == "stop" -> stop()
+                command == "present" -> present()
+                command == "refresh" -> if (currentStepIndex >= 0) goToStep(currentStepIndex)
+                command.startsWith("callback:") -> { executeCallback(command.substringAfter("callback:")); Unit }
+                else -> command.toIntOrNull()?.let { goToStep(it) } ?: Unit
+            }
         }
     }
 

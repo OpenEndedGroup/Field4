@@ -38,7 +38,9 @@ fun Box.presentation(
 /** Open this guide as a presentation, using note HTML for steps without an explicit audience surface. */
 fun SlideShowInstance.present() {
     if (presentationOptions == null) presentationOptions = PresentationOptions(hostBox.name.ifBlank { "Field presentation" })
-    inMain { goToStep(resumeStep.takeIf { it >= 0 }?.coerceAtMost(steps.lastIndex) ?: currentStepIndex.coerceAtLeast(0)) }
+    inMain(Box.boxContextElement(hostBox)) {
+        goToStep(resumeStep.takeIf { it >= 0 }?.coerceAtMost(steps.lastIndex) ?: currentStepIndex.coerceAtLeast(0))
+    }
 }
 
 /** Standard kotlinx.html builders; text is escaped by the library. No JavaScript build is needed. */

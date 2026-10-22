@@ -60,6 +60,23 @@ class PresentationTest {
     }
 
     @Test
+    fun presenterCommandsKeepTheHostContextAndRestoreTheCaller() = runBlocking {
+        val host = Box("talk-context")
+        val caller = Box("caller")
+        val observed = mutableListOf<Box?>()
+        val show = host.presentation {
+            step("One") { onEnter { observed += Box.context.get() }; onExit { observed += Box.context.get() } }
+            step("Two") { onEnter { observed += Box.context.get() } }
+        }
+        Box.withBoxContext(caller) {
+            show.command("start")
+            show.command("next")
+            assertEquals(caller, Box.context.get())
+        }
+        assertEquals(listOf<Box?>(host, host, host), observed)
+    }
+
+    @Test
     fun rejectInvalidExternalContentAndEmptyTalksBeforeTheyReachElectron() {
         val host = Box("validation")
         assertFailsWith<IllegalArgumentException> { host.presentation { } }
