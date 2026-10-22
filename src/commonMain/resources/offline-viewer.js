@@ -984,10 +984,26 @@ function setupDocumentPanel(data) {
     const panel = document.getElementById('document-panel');
     if (!panel) return;
     panel.replaceChildren();
+    // Collapsed by default: the controls stay one click (or a key) away
+    // instead of sitting over the canvas.
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'doc-toggle';
+    toggle.title = 'Zoom, drawing, layers and bookmarks';
+    const body = document.createElement('div');
+    body.className = 'doc-body';
+    const setOpen = (open) => {
+        panel.classList.toggle('open', open);
+        toggle.textContent = open ? 'view ▾' : 'view ▸';
+        toggle.setAttribute('aria-expanded', String(open));
+    };
+    toggle.addEventListener('click', (e) => { e.stopPropagation(); setOpen(!panel.classList.contains('open')); });
+    panel.append(toggle, body);
+    setOpen(false);
     const row = (cls) => {
         const el = document.createElement('div');
         el.className = `doc-row ${cls || ''}`;
-        panel.appendChild(el);
+        body.appendChild(el);
         return el;
     };
     const button = (parent, label, title, onClick) => {
