@@ -63,6 +63,19 @@ class StackSLFeedbackTest {
     }
 
     @Test
+    fun `an input is the texture sample1 reads, beside state`() {
+        val options = StackSLFeedbackShader.compileOptions(listOf("remote"))
+        val r = StackSLCompiler.compile("prev 0.9 * 0 sample1 0.1 * +", options)
+        assertTrue(r.ok, r.diagnostics.toString())
+        assertEquals(setOf(StackSLFeedbackShader.STATE, "remote"), r.analysis.requiredSamplers)
+        assertTrue("(remote," in r.glsl, r.glsl)
+        val fragment = StackSLFeedbackShader.fragment(r.glsl, listOf("remote"))
+        assertTrue("binding = 1) uniform sampler2D remote;" in fragment, fragment)
+        // A program that asks for an input the host was not given says so.
+        assertFalse(StackSLCompiler.compile("0 sample1", StackSLFeedbackShader.compileOptions).ok)
+    }
+
+    @Test
     fun `the panel reads the stack as StackTrinket does`() {
         val l = StackSLLowering(presets.getValue("pulse ring"), compile(presets.getValue("pulse ring")), null, running = true)
         assertTrue(l.ok)
@@ -111,7 +124,11 @@ class StackSLFeedbackTest {
             val failures = presets.mapNotNull { (name, source) ->
                 val (ok, out) = validate(name.replace(' ', '_'), StackSLFeedbackShader.fragment(compile(source).glsl))
                 if (ok) null else "--- $name ---\n$out"
-            }
+            }.toMutableList()
+            val withInput = StackSLCompiler.compile("prev 0.9 * 0 sample1 0.1 * +", StackSLFeedbackShader.compileOptions(listOf("remote")))
+            validate("with_input", StackSLFeedbackShader.fragment(withInput.glsl, listOf("remote"))).let { (ok, out) -> if (!ok) failures += "--- with input ---\n$out" }
+            validate("copy", StackSLFeedbackShader.COPY_FRAGMENT).let { (ok, out) -> if (!ok) failures += "--- copy ---\n$out" }
+            validate("picture", StackSLFeedbackShader.PICTURE_FRAGMENT).let { (ok, out) -> if (!ok) failures += "--- picture ---\n$out" }
             assertTrue(failures.isEmpty(), failures.joinToString("\n"))
         } finally {
             dir.deleteRecursively()

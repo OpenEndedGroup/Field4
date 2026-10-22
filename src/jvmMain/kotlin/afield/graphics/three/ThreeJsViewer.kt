@@ -496,6 +496,21 @@ data class ThreeGeometryPayload(
      */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val partAppearance: Map<String, ThreePartAppearance> = emptyMap(),
+    /** Text pinned to points in the scene. See [ThreeSceneBuilder.label]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val labels: List<ThreeLabel> = emptyList(),
+    /** HTML blocks in the corners of the view. See [ThreeSceneBuilder.overlay]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val overlays: List<ThreeOverlay> = emptyList(),
+    /** Grey the scene out, for a picture that is older than its inputs. See [ThreeSceneBuilder.dimmed]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val dimmed: Boolean = false,
+    /** A short line in the bottom-left corner. See [ThreeSceneBuilder.note]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val note: String? = null,
+    /** Show the viewer's tool buttons and counts; `false` for a picture. See [ThreeSceneBuilder.hud]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val hud: Boolean = true,
     /** Wire only: where a description's arrays are. See `ThreeWire.kt`. */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     internal val buffers: ThreeWireBuffers? = null,

@@ -260,10 +260,14 @@ float convolution and `alife_ca.kt`'s integer neighbour counting must agree bit 
 - It requires `birth ⊆ survive`, and that is a fact rather than a limitation: if a count births a dead
   cell but does not sustain a live one, no function of the neighbour count alone can do both.
 
-The continuous side deliberately does **not** claim a named Lenia lifeform. Reproducing Orbium needs its
-exact published 20 × 20 array, which this family does not ship; inventing one would be a fabrication.
-What it does instead is report the measured `DEATH` / `BOUNDED` / `SATURATION` trichotomy via
-`leniaRun`, with the mass history behind the verdict.
+The continuous side ships one named Lenia lifeform, Orbium, with its exact published 20 × 20 array read
+from an unchanged excerpt of Bert Chan's `animals.json` (`src/jvmMain/resources/afield/alife/`, MIT,
+licence beside it), never retyped. `leniaRuleFromCatalogue` builds the catalogue's polynomial kernel and
+growth mapping, which differ from `LeniaRule`'s Gaussian defaults, and `leniaCreatures` reads a whole
+catalogue file. `AlifeGallery` checks that Orbium keeps its mass, glides at 0.62 cells per step (from a
+toroidal centroid, because a plain centroid jumps when the creature straddles the seam), that its 400
+values shuffled die, and that it lives for `mu` 0.13 to 0.16. Noise seeds under Orbium's `mu` and `sigma`
+never found it. The `DEATH` / `BOUNDED` / `SATURATION` trichotomy via `leniaRun` is still measured.
 
 ### Boids
 
@@ -621,9 +625,6 @@ Stated as leads rather than promises, and roughly in order of value per unit of 
 - **GPU steppers.** Gray–Scott, Lenia and Physarum are all one ping-pong texture pass. The CPU versions
   here are reference implementations; a StackSL or Field 4 compute version would make them
   interactive at 512² and the CPU version becomes the oracle it is checked against.
-- **A `LeniaRule` from a published creature.** The right way to get Orbium is to load its array from a
-  file the user supplies (or from a `.lenia` JSON), not to hardcode a remembered one. That would turn
-  the phase trichotomy into "here is a soliton, and its measured velocity is `v`".
 - **Reaction–diffusion on a mesh.** `mesh_topology.kt` already has the adjacency; a Laplacian over
   triangle neighbourhoods would put Turing patterns on a surface, which is where the biology actually
   happens.

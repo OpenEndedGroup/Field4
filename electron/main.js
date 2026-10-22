@@ -1621,6 +1621,7 @@ app.whenReady().then(() => {
   installDockIcon();
   installAppMenu();
   require("./rtt-view-host").install();
+  require("./aaaframe-sign-in").install();
   createMainWindow();
   if (LOG_GPU_STATUS) {
     setTimeout(() => logGpuStatus("delayed"), 2000);

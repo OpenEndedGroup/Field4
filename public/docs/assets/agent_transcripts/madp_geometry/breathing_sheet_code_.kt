@@ -1,5 +1,5 @@
 // animateGeometry runs the recipe 30 times a second with t (seconds) moving.
-// Launch the box to play it; stop the box to stop it.
+// Launch the box (alt+up) to play it; stop it with alt+down.
 animateGeometry {
     view(background = "#05080c", ground = true, grid = false)
 

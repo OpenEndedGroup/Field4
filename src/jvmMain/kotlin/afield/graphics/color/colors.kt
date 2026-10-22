@@ -499,6 +499,32 @@ fun hsl(h: Number, s: Number, l: Number, a: Number = 1f): Vec4 {
 fun hsla(h: Number, s: Number, l: Number, a: Number = 1f): Vec4 = hsl(h, s, l, a)
 
 /**
+ * CSS's `hsla()`: the colour a browser draws for `hsla(h, s%, l%, a)`.
+ *
+ * [h] is always degrees (wrapped, so 370 is 10), and [s], [l] and [a] are 0..1 (clamped), so
+ * `cssHsla(205, 0.96, 0.68, 0.88)` is `hsla(205, 96%, 68%, 0.88)`. Unlike [hsl] there is no
+ * linear-light step and no turns-or-degrees guess: the result is the sRGB value CSS defines, which is
+ * what a colour copied from a web sketch needs in order to look the same here.
+ */
+fun cssHsla(h: Number, s: Number, l: Number, a: Number = 1f): Vec4 {
+    val hue = ((h.toDouble() % 360.0) + 360.0) % 360.0
+    val sat = s.toDouble().coerceIn(0.0, 1.0)
+    val light = l.toDouble().coerceIn(0.0, 1.0)
+    val chroma = (1 - abs(2 * light - 1)) * sat
+    val x = chroma * (1 - abs((hue / 60.0) % 2.0 - 1))
+    val m = light - chroma / 2
+    val (r, g, b) = when {
+        hue < 60 -> Triple(chroma, x, 0.0)
+        hue < 120 -> Triple(x, chroma, 0.0)
+        hue < 180 -> Triple(0.0, chroma, x)
+        hue < 240 -> Triple(0.0, x, chroma)
+        hue < 300 -> Triple(x, 0.0, chroma)
+        else -> Triple(chroma, 0.0, x)
+    }
+    return Vec4((r + m).toFloat(), (g + m).toFloat(), (b + m).toFloat(), a.toFloat().coerceIn(0f, 1f))
+}
+
+/**
  * A colour from Oklab-based hue / saturation / lightness — HSL with the perceptual kinks taken out.
  *
  * Same argument conventions as [hsl] (hue in turns or degrees, wrapped; saturation and lightness

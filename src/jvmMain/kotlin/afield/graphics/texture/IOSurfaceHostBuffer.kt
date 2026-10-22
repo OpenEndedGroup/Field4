@@ -46,6 +46,7 @@ class IOSurfaceHostBuffer(
     val height: Int = MetalIOSurface.height(ioSurfaceRef)
     val bytesPerRow: Long = MetalIOSurface.bytesPerRow(ioSurfaceRef)
     private val size: Long = MetalIOSurface.allocSize(ioSurfaceRef)
+    private val importSize: Long
     val buffer: Long
     private val memory: Long
     private var closed = false
@@ -56,16 +57,20 @@ class IOSurfaceHostBuffer(
         try {
             val base = MetalIOSurface.baseAddress(ioSurfaceRef)
             val alignment = device.minImportedHostPointerAlignment
-            check(base != 0L && alignment > 0 && base % alignment == 0L && size % alignment == 0L) {
+            check(base != 0L && alignment > 0 && base % alignment == 0L) {
                 "IOSurface ${MetalIOSurface.ioSurfaceId(ioSurfaceRef)} cannot be imported: base 0x${base.toString(16)}, " +
                     "size $size, host-pointer alignment $alignment"
             }
+            // Chromium sizes a surface exactly (640x360 BGRA is 921600 bytes, 56.25 pages of 16 KiB).
+            // Its pages are whole and it starts on one, so importing up to the next page boundary
+            // stays inside its own mapping; the copies only ever touch its rows.
+            importSize = (size + alignment - 1) / alignment * alignment
             MemoryStack.stackPush().use { stack ->
                 val vkDevice = device.vkDevice
                 val external = VkExternalMemoryBufferCreateInfo.calloc(stack).`sType$Default`()
                     .handleTypes(VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT)
                 val info = VkBufferCreateInfo.calloc(stack).`sType$Default`().pNext(external.address())
-                    .size(size)
+                    .size(importSize)
                     .usage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT or VK_BUFFER_USAGE_TRANSFER_DST_BIT)
                     .sharingMode(VK_SHARING_MODE_EXCLUSIVE)
                 val out = stack.mallocLong(1)
@@ -84,7 +89,7 @@ class IOSurfaceHostBuffer(
                     .handleType(VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT)
                     .pHostPointer(base)
                 val allocate = VkMemoryAllocateInfo.calloc(stack).`sType$Default`().pNext(import.address())
-                    .allocationSize(size)
+                    .allocationSize(importSize)
                     .memoryTypeIndex(memoryType(requirements.memoryTypeBits() and pointerProperties.memoryTypeBits()))
                 vkCheck(vkAllocateMemory(vkDevice, allocate, null, out), "vkAllocateMemory(IOSurface host import)")
                 memory = out[0]

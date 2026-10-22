@@ -4,7 +4,7 @@
 
 Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. Dependency-free CPU float math built on one value type, `Img`, with the separable-convolution core vectorized to roughly OpenCV's single-threaded speed. Every detector hands back geometry, so results go straight to `lines()`.
 
-47 source file(s), 753 public symbol(s), 340 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+51 source file(s), 795 public symbol(s), 372 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2049,5 +2049,131 @@ Portable dense optical flow: coarse-to-fine Lucas–Kanade in ordinary fragment 
 | <a id="pyramidopticalflow-kt--pyramidopticalflow--allocatedbytes"></a>[<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">allocatedBytes</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/media/vision/PyramidOpticalFlow/#L137) |  |
 | <a id="pyramidopticalflow-kt--pyramidopticalflow--evaluate"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">reset</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/media/vision/PyramidOpticalFlow/#L141) |  |
 | <a id="pyramidopticalflow-kt--pyramidopticalflow--close"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/vision/PyramidOpticalFlow/#L167) |  |
+
+## WebRTC.kt { #webrtc-kt }
+
+WebRTC video for Field 4 graphics: publish a render target to a classroom, and sample anyone's
+published stream as a texture.
+
+[`webrtcSink`](imaging.md#webrtc-kt--webrtcsink) publishes what you render into its `rtt`; [`webrtcSource`](imaging.md#webrtc-kt--webrtcsource) is a texture showing one
+publisher; [`webrtcPublishers`](imaging.md#webrtc-kt--webrtcpublishers) is the live list of who is publishing. They join aaaframe's
+ShaderTrinket network (set `WebRTCNetwork.default`, or `AFIELD_WEBRTC_SERVER`), where browser
+ShaderTrinkets see a Field sink as one more publisher, or Field's own relay for a LAN of Field
+instances. Chromium does the WebRTC; Field moves the frames on the GPU and relays signalling.
+How and why: `dev_docs/WEBRTC_SOURCES_SINKS.md`.
+
+`src/jvmMain/kotlin/afield/media/webrtc/WebRTC.kt` — [read the source](source/jvmMain/afield/media/webrtc/WebRTC/)
+
+**Used in:** [WebRTC Streams](../webrtc.md)
+
+### Top-level functions { #webrtc-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="webrtc-kt--webrtcsink"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">webrtcSink</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">640</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">360</span><span class="p">,</span> <span class="n">network</span><span class="p">:</span> <span class="nc">WebRTCNetwork</span> <span class="o">=</span> <span class="nc">WebRTCNetwork</span><span class="p">.</span><span class="n">default</span><span class="p">,</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span> <span class="o">=</span> <span class="nf">fromContext</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">WebRTCSink</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L186) | Publishes a new [`width`](imaging.md#webrtc-kt--webrtcsource--width)×[`height`](imaging.md#webrtc-kt--webrtcsource--height) render target as `login/name`; render into the sink's `rtt` and display its `html()`. See [`WebRTCSink`](imaging.md#webrtc-kt-webrtcsink). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">webrtcSink</span><span class="p">(</span><span class="n">view</span><span class="p">:</span> <span class="nc">ElectronRTTView</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">network</span><span class="p">:</span> <span class="nc">WebRTCNetwork</span> <span class="o">=</span> <span class="nc">WebRTCNetwork</span><span class="p">.</span><span class="n">default</span><span class="p">)</span><span class="p">:</span> <span class="nc">WebRTCSink</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L195) | Publishes an existing [`ElectronRTTView`](imaging.md#electronrttview-kt-electronrttview) as `login/name`. |
+| <a id="webrtc-kt--webrtcsource"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">webrtcSource</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">640</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">360</span><span class="p">,</span> <span class="n">network</span><span class="p">:</span> <span class="nc">WebRTCNetwork</span> <span class="o">=</span> <span class="nc">WebRTCNetwork</span><span class="p">.</span><span class="n">default</span><span class="p">,</span> <span class="n">fit</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;contain&quot;</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">target</span><span class="p">,</span> <span class="n">measure</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span> <span class="o">=</span> <span class="nf">fromContext</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">WebRTCSource</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L336) | [`target`](imaging.md#webrtc-kt--webrtcsource--target)'s published stream as a [`width`](imaging.md#webrtc-kt--webrtcsource--width)×[`height`](imaging.md#webrtc-kt--webrtcsource--height) texture: `textures("remote" to webrtcSource("alice"))`. `fit` is the video's CSS `object-fit` (`contain`, `cover` or `fill`). `key` tells several sources in one box apart, so a re-run reuses each one's page; it defaults to the target. With `measure`, a sink's time-code band is decoded into [`WebRTCSource.latency`](imaging.md#webrtc-kt--webrtcsource--latency). See [`WebRTCSource`](imaging.md#webrtc-kt-webrtcsource). |
+| <a id="webrtc-kt--webrtcpublishers"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">webrtcPublishers</span><span class="p">(</span><span class="n">network</span><span class="p">:</span> <span class="nc">WebRTCNetwork</span> <span class="o">=</span> <span class="nc">WebRTCNetwork</span><span class="p">.</span><span class="n">default</span><span class="p">)</span><span class="p">:</span> <span class="nc">WebRTCPublishers</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L496) | The live publisher list on `network`; see [`WebRTCPublishers`](imaging.md#webrtc-kt-webrtcpublishers). Closed with the box's run. |
+
+### WebRTCSink { #webrtc-kt-webrtcsink }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">WebRTCSink</span><span class="p">(</span><span class="k">val</span> <span class="n">view</span><span class="p">:</span> <span class="nc">ElectronRTTView</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">network</span><span class="p">:</span> <span class="nc">WebRTCNetwork</span> <span class="o">=</span> <span class="nc">WebRTCNetwork</span><span class="p">.</span><span class="n">default</span><span class="p">,</span> <span class="k">val</span> <span class="n">framesPerSecond</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">)</span> <span class="p">:</span> <span class="nc">HasRenderToTexture</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L76)
+
+A render target published as a WebRTC stream, named `login/name` on its network.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="webrtc-kt--webrtcsink--view"></a><code class="highlight"><span class="k">val</span> <span class="n">view</span><span class="p">:</span> <span class="nc">ElectronRTTView</span></code> | The output-area view the stream is captured from. |
+| <a id="webrtc-kt--webrtcsink--name"></a><code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> | The publish suffix: the stream is `login/name`, or just `login` when empty. |
+| <a id="webrtc-kt--webrtcsink--network"></a><code class="highlight"><span class="k">val</span> <span class="n">network</span><span class="p">:</span> <span class="nc">WebRTCNetwork</span></code> |  |
+| <a id="webrtc-kt--webrtcsink--framespersecond"></a><code class="highlight"><span class="k">val</span> <span class="n">framesPerSecond</span><span class="p">:</span> <span class="nc">Int</span></code> | The frame rate asked of `canvas.captureStream`; Chromium encodes at most this many a second. |
+| <a id="webrtc-kt--webrtcsink--publishedas"></a>[<code class="highlight"><span class="k">var</span> <span class="n">publishedAs</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L90) | The name viewers watch, once the network has confirmed it (`login/name`); null until then. |
+| <a id="webrtc-kt--webrtcsink--status"></a>[<code class="highlight"><span class="k">var</span> <span class="n">status</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L95) | The page's last status line: "publishing @…", "publishing @… to 2 viewer(s)", or an error. |
+| <a id="webrtc-kt--webrtcsink--viewers"></a>[<code class="highlight"><span class="k">var</span> <span class="n">viewers</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L100) | How many peers are receiving the stream now. |
+| <a id="webrtc-kt--webrtcsink--html"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L114) | The output-area widget: [`ElectronRTTView.html`](imaging.md#electronrttview-kt--electronrttview--html), plus the script that publishes its canvas and a status line naming the stream. |
+
+### WebRTCSource { #webrtc-kt-webrtcsource }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">WebRTCSource</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">network</span><span class="p">:</span> <span class="nc">WebRTCNetwork</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">fit</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">measure</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span> <span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span> <span class="nc">PreparesSampledImages</span><span class="p">,</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L211)
+
+One publisher's WebRTC stream as a Field texture: `textures("remote" to source)`.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="webrtc-kt--webrtcsource--width"></a><code class="highlight"><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <a id="webrtc-kt--webrtcsource--height"></a><code class="highlight"><span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <a id="webrtc-kt--webrtcsource--network"></a><code class="highlight"><span class="k">val</span> <span class="n">network</span><span class="p">:</span> <span class="nc">WebRTCNetwork</span></code> |  |
+| <a id="webrtc-kt--webrtcsource--target"></a>[<code class="highlight"><span class="k">var</span> <span class="n">target</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L222) | The publisher shown, as normalised by the network (`alice/left`). |
+| <a id="webrtc-kt--webrtcsource--status"></a>[<code class="highlight"><span class="k">var</span> <span class="n">status</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L227) | The page's last status: "requesting @…", "waiting for @… to publish", "receiving @…", or an error. |
+| <a id="webrtc-kt--webrtcsource--browser"></a>[<code class="highlight"><span class="k">val</span> <span class="n">browser</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L231) | The hidden page's browser, for anything else you want to ask it (it is a full `PuppetBrowser`). |
+| <a id="webrtc-kt--webrtcsource--latency"></a>[<code class="highlight"><span class="k">val</span> <span class="n">latency</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L242) | Latency samples decoded from a sink's time-code band (only with `measure = true`). |
+| <a id="webrtc-kt--webrtcsource--imageview"></a>[<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">imageView</span><span class="p">:</span> <span class="nc">ImageView</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L271) |  |
+| <a id="webrtc-kt--webrtcsource--preparesampledimagesfor"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">prepareSampledImagesFor</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nc">CommandBuffer</span><span class="p">)</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L272) |  |
+| <a id="webrtc-kt--webrtcsource--pageready"></a>[<code class="highlight"><span class="k">val</span> <span class="n">pageReady</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L275) | True once the page has painted a frame after loading (the stream itself may still be connecting). |
+| <a id="webrtc-kt--webrtcsource--watch"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">watch</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L278) | Show [`name`](imaging.md#webrtc-kt--webrtcsink--name)'s stream instead (`alice`, `@alice/left`). |
+| <a id="webrtc-kt--webrtcsource--close"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L284) |  |
+| <a id="webrtc-kt--webrtcsource--latencystats"></a>[<code class="highlight"><span class="k">class</span> <span class="nc">LatencyStats</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L294) | Percentiles of decoded time codes: sender's render to this page presenting the frame. |
+
+### WebRTCPublishers { #webrtc-kt-webrtcpublishers }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">WebRTCPublishers</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">network</span><span class="p">:</span> <span class="nc">WebRTCNetwork</span><span class="p">)</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L375)
+
+Who is publishing on a network, kept live: [`names`](imaging.md#webrtc-kt--webrtcpublishers--names) now, [`onChange`](imaging.md#webrtc-kt--webrtcpublishers--onchange) as it changes, and `html` as a panel with a button per publisher that calls [`onPick`](imaging.md#webrtc-kt--webrtcpublishers--onpick).
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="webrtc-kt--webrtcpublishers--names"></a>[<code class="highlight"><span class="k">val</span> <span class="n">names</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L382) | The publisher names now, sorted. |
+| <a id="webrtc-kt--webrtcpublishers--error"></a>[<code class="highlight"><span class="k">val</span> <span class="n">error</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L385) | Why the list is empty, if it is because the network refused or dropped the connection. |
+| <a id="webrtc-kt--webrtcpublishers--onchange"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">onChange</span><span class="p">(</span><span class="n">listener</span><span class="p">:</span> <span class="p">(</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L388) | Calls `listener` with the names now and on every change; returns the remover. |
+| <a id="webrtc-kt--webrtcpublishers--onpick"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">onPick</span><span class="p">(</span><span class="n">listener</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L391) | Calls `listener` with the name a button in `html` was clicked for. |
+| <a id="webrtc-kt--webrtcpublishers--html"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="n">highlight</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="p">{</span> <span class="kc">null</span> <span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L394) | A panel listing the publishers, live; `highlight` marks the one you are showing. |
+| <a id="webrtc-kt--webrtcpublishers--close"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/webrtc/WebRTC/#L449) | Stops listening; the panel stops updating. |
+
+## WebRTCPublish.kt { #webrtcpublish-kt }
+
+`src/jvmMain/kotlin/afield/media/webrtc/WebRTCPublish.kt` — [read the source](source/jvmMain/afield/media/webrtc/WebRTCPublish/)
+
+### Top-level functions { #webrtcpublish-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="webrtcpublish-kt--webrtcpublish"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">webrtcPublish</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nf">sampleableSize</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="mi">640</span> <span class="n">to</span> <span class="mi">360</span><span class="p">)</span><span class="p">.</span><span class="n">first</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nf">sampleableSize</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="mi">640</span> <span class="n">to</span> <span class="mi">360</span><span class="p">)</span><span class="p">.</span><span class="n">second</span><span class="p">,</span> <span class="n">network</span><span class="p">:</span> <span class="nc">WebRTCNetwork</span> <span class="o">=</span> <span class="nc">WebRTCNetwork</span><span class="p">.</span><span class="n">default</span><span class="p">,</span> <span class="n">show</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="s">&quot;main&quot;</span><span class="p">,</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span> <span class="o">=</span> <span class="nf">fromContext</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">WebRTCSink</span></code>](source/jvmMain/afield/media/webrtc/WebRTCPublish/#L40) | Publish anything Field can sample — a [`RenderToTexture`](graphics.md#rendertotexture-kt-rendertotexture), a shadertoy canvas's `rtt`, a camera, a received stream — as the WebRTC stream `login/name`, and show its preview and status in this box's `show` output channel (`null` to show nothing). |
+
+## WebRTCRoutes.kt { #webrtcroutes-kt }
+
+`src/jvmMain/kotlin/afield/media/webrtc/WebRTCRoutes.kt` — [read the source](source/jvmMain/afield/media/webrtc/WebRTCRoutes/)
+
+### Top-level functions { #webrtcroutes-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="webrtcroutes-kt--installwebrtcsignalingroutes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Route</span><span class="p">.</span><span class="nf">installWebRTCSignalingRoutes</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/webrtc/WebRTCRoutes/#L28) | `/ws/webrtc-signaling?network=<id>` and `/api/webrtc-config?network=<id>`: what the sink and source pages talk to. Installed beside Field's other WebSockets. Both answer only for networks box code has registered (`WebRTCNetwork.aaaframe`/`join`, or the local relay), so a client cannot make Field connect anywhere else; the guard decisions are in `dev_docs/server_surface_inventory.md`. |
+
+## WebRTCSignaling.kt { #webrtcsignaling-kt }
+
+WebRTC signalling for Field's sources and sinks: the networks a page can join, the relay on
+Field's own server, and the bridge to an aaaframe classroom.
+
+Pages never connect to a signalling server themselves. They open
+`/ws/webrtc-signaling?network=<id>` on Field, and Field either relays the messages itself
+(`WebRTCNetwork.local`) or copies them to and from aaaframe's `/ws/shadertrinket-signaling`
+(`WebRTCNetwork.aaaframe`), adding the student's session cookie. The messages are aaaframe's in
+both cases, so the page code is the same. The design is in `dev_docs/WEBRTC_SOURCES_SINKS.md`.
+
+`src/jvmMain/kotlin/afield/media/webrtc/WebRTCSignaling.kt` — [read the source](source/jvmMain/afield/media/webrtc/WebRTCSignaling/)
+
+### WebRTCNetwork { #webrtcsignaling-kt-webrtcnetwork }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">WebRTCNetwork</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">baseUrl</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/media/webrtc/WebRTCSignaling/#L46)
+
+A signalling network: Field's own relay, or an aaaframe server's ShaderTrinket network.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="webrtcsignaling-kt--webrtcnetwork--id"></a><code class="highlight"><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="webrtcsignaling-kt--webrtcnetwork--baseurl"></a><code class="highlight"><span class="k">val</span> <span class="n">baseUrl</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | The aaaframe base URL (`https://host` or `http://host:port`), or null for the local relay. |
+| <a id="webrtcsignaling-kt--webrtcnetwork--islocal"></a>[<code class="highlight"><span class="k">val</span> <span class="n">isLocal</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/media/webrtc/WebRTCSignaling/#L52) |  |
+| <a id="webrtcsignaling-kt--webrtcnetwork--hassession"></a>[<code class="highlight"><span class="k">val</span> <span class="n">hasSession</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/media/webrtc/WebRTCSignaling/#L63) | True when there is a session to present: from `aaaframe`'s argument, the environment, or a sign-in. |
+| <a id="webrtcsignaling-kt--webrtcnetwork--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/media/webrtc/WebRTCSignaling/#L79) |  |
 
 </div>

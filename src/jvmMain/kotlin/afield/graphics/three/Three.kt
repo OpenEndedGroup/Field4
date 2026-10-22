@@ -18,6 +18,7 @@ import afield.ui.visualization.lines
 import afield.document.graph.Box
 import afield.geometry.mesh.MeshView
 import afield.geometry.mesh.TriMesh
+import afield.math.linalg.Vec3
 import afield.math.linalg.Vec4
 import afield.geometry.mesh.boundsArray
 import afield.geometry.mesh.surfaceTopology
@@ -74,6 +75,11 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     internal var turntable: ThreeTurntableSpec? = null
     internal var shot: ThreeShotSpec? = null
     internal var studio: ThreeStudioSpec? = null
+    internal val labels = ArrayList<ThreeLabel>()
+    internal val overlays = ArrayList<ThreeOverlay>()
+    internal var dimmed: Boolean = false
+    internal var note: String? = null
+    internal var hud: Boolean = true
     private var helpersExplicit: Boolean? = null
 
     /**
@@ -249,6 +255,71 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         require(exposure.isFinite() && exposure > 0) { "exposure must be positive, got $exposure" }
         studio = ThreeStudioSpec(ground, grid, groundY, groundColor, shadows, exposure, ambientOcclusion)
         if (helpersExplicit == null) helpersExplicit = false
+    }
+
+    /**
+     * Pin a piece of text to [at]: it follows the point as the view turns, and is page text over the
+     * canvas rather than a texture, so it stays sharp. It is kept inside the view, sliding along an
+     * edge rather than leaving by it, and is hidden behind the camera.
+     *
+     * ```kotlin
+     * three {
+     *     mesh(ball, wireframe = false)
+     *     label(vec(0, 1.2, 0), "north pole", style = "chip")
+     *     label(vec(1.2, 0, 0), style = "diamond", color = "#50fa7b", title = "closest")
+     * }
+     * ```
+     *
+     * Labels are drawn in a single view; a contact sheet ([panel], [columns]) does not show them.
+     *
+     * @param style `"chip"` (a boxed name), `"tag"` (small dim text) or `"diamond"` (a coloured marker).
+     * @param color the text colour, or a diamond's fill, as a CSS colour.
+     */
+    fun label(
+        at: Vec3,
+        text: String = "",
+        style: String = "tag",
+        color: String? = null,
+        background: String? = null,
+        border: String? = null,
+        title: String? = null,
+    ) {
+        require(style in LABEL_STYLES) { "label style must be one of $LABEL_STYLES, got \"$style\"" }
+        labels += ThreeLabel(listOf(at.x.toDouble(), at.y.toDouble(), at.z.toDouble()), text, style, color, background, border, title)
+    }
+
+    /**
+     * Fix an HTML block to a corner of the view — a legend, a table, a key. It does not move with the
+     * camera and does not take the pointer, so the view still orbits underneath it. The HTML is
+     * inserted as written, as `display(...)` output is.
+     *
+     * @param corner `"top-right"`, `"top-left"`, `"bottom-right"` or `"bottom-left"`.
+     */
+    fun overlay(html: String, corner: String = "top-right") {
+        require(corner in OVERLAY_CORNERS) { "overlay corner must be one of $OVERLAY_CORNERS, got \"$corner\"" }
+        overlays += ThreeOverlay(html, corner)
+    }
+
+    /**
+     * Grey the scene and its labels out: the picture is older than what it shows, and a newer one is
+     * on its way. Corner [overlay]s and the [note] stay as they are.
+     */
+    fun dimmed(on: Boolean = true) {
+        dimmed = on
+    }
+
+    /** A short line of text in the bottom-left corner of the view: what state the picture is in. */
+    fun note(text: String) {
+        note = text
+    }
+
+    /**
+     * Show or hide the viewer's own controls — X-ray, Export GLB, Pick, the parts list, the triangle
+     * count. Off for a view that is a picture to look at, whose corners are its own ([overlay], [note]).
+     * Orbiting, zooming and the [turntable] work either way.
+     */
+    fun hud(on: Boolean) {
+        hud = on
     }
 
     /** Scene background as a CSS colour. */
@@ -469,7 +540,17 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             turntable = turntable,
             shot = shot,
             studio = studio,
+            labels = labels.toList(),
+            overlays = overlays.toList(),
+            dimmed = dimmed,
+            note = note,
+            hud = hud,
         )
+    }
+
+    private companion object {
+        val LABEL_STYLES = setOf("chip", "tag", "diamond")
+        val OVERLAY_CORNERS = setOf("top-right", "top-left", "bottom-right", "bottom-left")
     }
 }
 

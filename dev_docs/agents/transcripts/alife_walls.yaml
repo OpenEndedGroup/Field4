@@ -24,7 +24,7 @@ docs:
 operations:
   - create:
       box: hit_a_wall
-      name: "A wall, and three answers to hitting it"
+      name: "Hitting a wall: SLIDE, BOUNCE and STOP"
       frame: { x: 60.0, y: 40.0, w: 340.0, h: 100.0 }
       properties:
         code: |

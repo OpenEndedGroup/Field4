@@ -457,3 +457,43 @@ class ClipImage(
  * because nothing about a fixed prompt changes between frames.
  */
 fun clipEncode(text: String): ClipVector = ClipText.encode(text)
+
+/** The one [ClipImage] behind [clipEncodeImage]; its buffers are reused, so encodes take turns on it. */
+private val sharedClipImage by lazy { ClipImage() }
+
+/**
+ * Encode a picture to a unit-length 512-vector, in the same space as [clipEncode]'s prompts.
+ *
+ * The picture's shorter edge is scaled to 224 and the centre cropped, as [ClipImage.encode] does; alpha
+ * is ignored. One [ClipImage] is shared by every caller and encodes take turns on it, so two boxes
+ * encoding at once queue rather than corrupt each other's input. The first call loads the 335 MB vision
+ * tower, a second or two; after that an encode is about 36 ms on a CPU.
+ *
+ * ```kotlin
+ * val cat = clipEncodeImage(File("public/docs/assets/madp_tetra/tabby_cat.jpg"))
+ * cat.cosine(clipEncode("a photo of a cat"))     // low, as every image–text cosine is: see Clip
+ * ```
+ */
+fun clipEncodeImage(image: java.awt.image.BufferedImage): ClipVector {
+    val w = image.width
+    val h = image.height
+    val argb = image.getRGB(0, 0, w, h, null, 0, w)
+    val rgba = ByteBuffer.allocateDirect(w * h * 4)
+    for (p in argb) {
+        rgba.put((p shr 16 and 0xff).toByte()).put((p shr 8 and 0xff).toByte()).put((p and 0xff).toByte()).put(-1)
+    }
+    rgba.rewind()
+    val encoder = sharedClipImage
+    return synchronized(encoder) { encoder.encode(rgba, w, h) }
+}
+
+/**
+ * [clipEncodeImage] for an image file: anything `javax.imageio` reads (JPEG, PNG, BMP, GIF).
+ *
+ * EXIF orientation is not applied, so a phone photo stored sideways is encoded sideways; CLIP is
+ * mostly indifferent to that, but rotate the file if it matters.
+ */
+fun clipEncodeImage(file: java.io.File): ClipVector {
+    val image = javax.imageio.ImageIO.read(file) ?: error("clipEncodeImage: cannot read an image from $file")
+    return clipEncodeImage(image)
+}

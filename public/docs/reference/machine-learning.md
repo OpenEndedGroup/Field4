@@ -4,7 +4,7 @@
 
 Models small enough to train inside a box, in plain Kotlin, while you watch. Flow matching carries one 2D or 3D point cloud onto another and hands back the deformation between them; the multi-output regression head it trains is usable on its own. See [Flow Matching](../flow_matching.md).
 
-94 source file(s), 2209 public symbol(s), 687 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+94 source file(s), 2211 public symbol(s), 689 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2185,6 +2185,8 @@ The text tower is [`ClipText`](machine-learning.md#clip-kt-cliptext) and the vis
 | Declaration | Summary |
 | --- | --- |
 | <a id="clip-kt--clipencode"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">clipEncode</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">ClipVector</span></code>](source/jvmMain/afield/ai/inference/onnx/Clip/#L459) | Encode a prompt to a unit-length 512-vector. |
+| <a id="clip-kt--clipencodeimage"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">clipEncodeImage</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">java</span><span class="p">.</span><span class="n">awt</span><span class="p">.</span><span class="n">image</span><span class="p">.</span><span class="nc">BufferedImage</span><span class="p">)</span><span class="p">:</span> <span class="nc">ClipVector</span></code>](source/jvmMain/afield/ai/inference/onnx/Clip/#L477) | Encode a picture to a unit-length 512-vector, in the same space as [`clipEncode`](machine-learning.md#clip-kt--clipencode)'s prompts. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">clipEncodeImage</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="n">java</span><span class="p">.</span><span class="n">io</span><span class="p">.</span><span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">ClipVector</span></code>](source/jvmMain/afield/ai/inference/onnx/Clip/#L496) | [`clipEncodeImage`](machine-learning.md#clip-kt--clipencodeimage) for an image file: anything `javax.imageio` reads (JPEG, PNG, BMP, GIF). |
 
 ### Clip { #clip-kt-clip }
 

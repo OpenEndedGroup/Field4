@@ -11,7 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="fungal_tree" index="0" -->
 
 ```edn [field-box id="fungal_tree" role="properties"]
-{"id" "fungal_tree" "index" 0 "name" "fungal tree" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "fungal tree" "_tombstone" false "frame" #afield/rect [80.0 2000.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fungal_tree_code_.kt" "lines" 52 "characters" 2031 "sha256" "faa34cc2518b330d1ea725f06b9acb675d8b0d1afb47086366bcb5c9e03a1e1b"}]}
+{"id" "fungal_tree" "index" 0 "name" "fungal tree" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "fungal tree" "_tombstone" false "frame" #afield/rect [80.0 2000.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "fungal_tree_notes_.md" "lines" 1 "characters" 253 "sha256" "a5bafe6ef1ffdd94d40c681c01860c243810847743a63fc8d7f3188b5fdf8f63"} {"name" "code" "language" "kotlin" "path" "fungal_tree_code_.kt" "lines" 52 "characters" 2031 "sha256" "faa34cc2518b330d1ea725f06b9acb675d8b0d1afb47086366bcb5c9e03a1e1b"}]}
+```
+
+```markdown [field-property box="fungal_tree" name="notes" path="fungal_tree_notes_.md"]
+**fungal tree**: a recursive `branch` function grows open tubes, each one thinner, and caps the tips with revolved mushrooms placed by `push`, `translate`, `scale` and `pop`. The depth in each part's `mesh` name is visible in the view's **Parts** list.
 ```
 
 ```kotlin [field-property box="fungal_tree" name="code" path="fungal_tree_code_.kt"]
@@ -77,14 +81,18 @@ geometry {
 
 From `code`
 
-Another animation: the same grid every frame, torn along random rows as t moves. Launch it.
+Another animation: the same grid every frame, torn along random rows as t moves. Launch it (alt+up).
 
 ```edn [field-box id="signal_tear" role="properties"]
-{"id" "signal_tear" "index" 1 "name" "signal tear — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "signal tear — launch me" "_tombstone" false "frame" #afield/rect [900.0 1360.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "signal_tear_code_.kt" "lines" 19 "characters" 837 "sha256" "2e4faf06b5a3dde08b6c29f9accace98a4799f9e520214adcb2178eb2f90feae"}]}
+{"id" "signal_tear" "index" 1 "name" "signal tear — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "signal tear — launch me" "_tombstone" false "frame" #afield/rect [900.0 1360.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "signal_tear_notes_.md" "lines" 1 "characters" 249 "sha256" "4b0f01d48a7b28f794ebcd9c6606556bfb559e38da6de0f5b728033bc9cee620"} {"name" "code" "language" "kotlin" "path" "signal_tear_code_.kt" "lines" 19 "characters" 846 "sha256" "916fd89abac87b188fc8c0ceb61c23ae9f59f80f6848db3fd9f16b60064a3376"}]}
+```
+
+```markdown [field-property box="signal_tear" name="notes" path="signal_tear_notes_.md"]
+**signal tear** (animated): a scanline grid torn along random rows as `t` moves, with a faint emissive glow. Launch the box (alt+up) to play it and stop it with alt+down; running it draws the first frame. `tear.pow(8)` sets how rarely a row breaks.
 ```
 
 ```kotlin [field-property box="signal_tear" name="code" path="signal_tear_code_.kt"]
-// Another animation: the same grid every frame, torn along random rows as t moves. Launch it.
+// Another animation: the same grid every frame, torn along random rows as t moves. Launch it (alt+up).
 animateGeometry {
     view(background = "#050608", ground = true, grid = false)
 
@@ -110,7 +118,11 @@ animateGeometry {
 <!-- field-box id="knot_tube" index="2" -->
 
 ```edn [field-box id="knot_tube" role="properties"]
-{"id" "knot_tube" "index" 2 "name" "knot tube" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "knot tube" "_tombstone" false "frame" #afield/rect [900.0 720.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "knot_tube_code_.kt" "lines" 16 "characters" 483 "sha256" "9afc5cb37ce49d1cee21e673bf4bfb8459fcb16f9a02a3ee877ed15bbc8bbb89"}]}
+{"id" "knot_tube" "index" 2 "name" "knot tube" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "knot tube" "_tombstone" false "frame" #afield/rect [900.0 720.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "knot_tube_notes_.md" "lines" 1 "characters" 206 "sha256" "e3ed44278872dee3e5b4030b6f8a35437c073143d282a77eec1b10db3890086f"} {"name" "code" "language" "kotlin" "path" "knot_tube_code_.kt" "lines" 16 "characters" 483 "sha256" "9afc5cb37ce49d1cee21e673bf4bfb8459fcb16f9a02a3ee877ed15bbc8bbb89"}]}
+```
+
+```markdown [field-property box="knot_tube" name="notes" path="knot_tube_notes_.md"]
+**knot tube**: `tube` sweeps a ring of 10 corners along a parametric curve sampled 260 times; the closed tube joins its last ring to its first. Edit the curve in `section(vec(…))`, or the radius beside it.
 ```
 
 ```kotlin [field-property box="knot_tube" name="code" path="knot_tube_code_.kt"]
@@ -137,7 +149,11 @@ geometry {
 <!-- field-box id="city_blocks" index="3" -->
 
 ```edn [field-box id="city_blocks" role="properties"]
-{"id" "city_blocks" "index" 3 "name" "city blocks" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "city blocks" "_tombstone" false "frame" #afield/rect [900.0 2640.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "city_blocks_code_.kt" "lines" 23 "characters" 961 "sha256" "6cfcf2e660e3b3c9d1f2cb9c3fb4959ea29daeca230372d33a3a08fd0655e593"}]}
+{"id" "city_blocks" "index" 3 "name" "city blocks" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "city blocks" "_tombstone" false "frame" #afield/rect [900.0 2640.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "city_blocks_notes_.md" "lines" 1 "characters" 203 "sha256" "0025f15ef1842155a5533aeac4afbce5f7ada0ec4898878545130a83f3690f6a"} {"name" "code" "language" "kotlin" "path" "city_blocks_code_.kt" "lines" 23 "characters" 961 "sha256" "6cfcf2e660e3b3c9d1f2cb9c3fb4959ea29daeca230372d33a3a08fd0655e593"}]}
+```
+
+```markdown [field-property box="city_blocks" name="notes" path="city_blocks_notes_.md"]
+**city blocks**: boxes on an 11 × 11 grid, skipped where `noise` is high, with a second material for a ring of copper towers. The colour state changes per block; the material state changes per district.
 ```
 
 ```kotlin [field-property box="city_blocks" name="code" path="city_blocks_code_.kt"]
@@ -178,7 +194,11 @@ A grammar of triangles: winding (flip swaps two corners), colour interpolated ac
 and a small box standing on each one.
 
 ```edn [field-box id="triangle_lesson" role="properties"]
-{"id" "triangle_lesson" "index" 4 "name" "triangle lesson" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "triangle lesson" "_tombstone" false "frame" #afield/rect [80.0 3280.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "triangle_lesson_code_.kt" "lines" 27 "characters" 1100 "sha256" "ad5a2f862b929b8da9fed9e8c9617a1c35a781877ce6b85733b9c429232b834d"}]}
+{"id" "triangle_lesson" "index" 4 "name" "triangle lesson" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "triangle lesson" "_tombstone" false "frame" #afield/rect [80.0 3280.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "triangle_lesson_notes_.md" "lines" 1 "characters" 261 "sha256" "af2b13589c34d93ce81e6437abd73a744aacc5b61c745e4a4aba6a7d51c61601"} {"name" "code" "language" "kotlin" "path" "triangle_lesson_code_.kt" "lines" 27 "characters" 1100 "sha256" "ad5a2f862b929b8da9fed9e8c9617a1c35a781877ce6b85733b9c429232b834d"}]}
+```
+
+```markdown [field-property box="triangle_lesson" name="notes" path="triangle_lesson_notes_.md"]
+**triangle lesson**: a grammar of triangles. Alternate faces swap two corners (winding), each face blends three colours, and a small box stands on each one at a point found with `mix`. Set `side = GeometrySide.FRONT` to see which faces are wound the other way.
 ```
 
 ```kotlin [field-property box="triangle_lesson" name="code" path="triangle_lesson_code_.kt"]
@@ -216,7 +236,11 @@ geometry {
 <!-- field-box id="lathe_vessel" index="5" -->
 
 ```edn [field-box id="lathe_vessel" role="properties"]
-{"id" "lathe_vessel" "index" 5 "name" "lathe vessel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "lathe vessel" "_tombstone" false "frame" #afield/rect [80.0 720.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lathe_vessel_code_.kt" "lines" 19 "characters" 728 "sha256" "13f4da8579d02e37d8813b4be47b774c8180a4c5f7af8069dfbdecf8dd18e50a"}]}
+{"id" "lathe_vessel" "index" 5 "name" "lathe vessel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "lathe vessel" "_tombstone" false "frame" #afield/rect [80.0 720.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "lathe_vessel_notes_.md" "lines" 1 "characters" 214 "sha256" "702666a88c901bece63d32155f54210360c8d8d91484e7bd51b0f9503b69e0cc"} {"name" "code" "language" "kotlin" "path" "lathe_vessel_code_.kt" "lines" 19 "characters" 728 "sha256" "13f4da8579d02e37d8813b4be47b774c8180a4c5f7af8069dfbdecf8dd18e50a"}]}
+```
+
+```markdown [field-property box="lathe_vessel" name="notes" path="lathe_vessel_notes_.md"]
+**lathe vessel**: a profile of 36 points, radius and height, turned round the y axis by `revolve`. A second `mesh` and `mat` give the rim its own metallic material. Change `waist` or `ripple` to throw another pot.
 ```
 
 ```kotlin [field-property box="lathe_vessel" name="code" path="lathe_vessel_code_.kt"]
@@ -246,7 +270,11 @@ geometry {
 <!-- field-box id="menger_lesson" index="6" -->
 
 ```edn [field-box id="menger_lesson" role="properties"]
-{"id" "menger_lesson" "index" 6 "name" "menger lesson" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "menger lesson" "_tombstone" false "frame" #afield/rect [80.0 2640.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "menger_lesson_code_.kt" "lines" 20 "characters" 719 "sha256" "79a28735220083d152fc8a5e9f89bd6baa120491a0547c6550f41f59f6f1e68c"}]}
+{"id" "menger_lesson" "index" 6 "name" "menger lesson" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "menger lesson" "_tombstone" false "frame" #afield/rect [80.0 2640.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "menger_lesson_notes_.md" "lines" 1 "characters" 151 "sha256" "962cc51bbeac5039fc5ec668367fd97463ec47a1d877ba9c587be0c9e1b68efb"} {"name" "code" "language" "kotlin" "path" "menger_lesson_code_.kt" "lines" 20 "characters" 719 "sha256" "79a28735220083d152fc8a5e9f89bd6baa120491a0547c6550f41f59f6f1e68c"}]}
+```
+
+```markdown [field-property box="menger_lesson" name="notes" path="menger_lesson_notes_.md"]
+**menger lesson**: a recursive sponge made only of `box` calls, coloured by position. `sponge(…, 2)` is 400 boxes; depth 3 is 8000, which still draws.
 ```
 
 ```kotlin [field-property box="menger_lesson" name="code" path="menger_lesson_code_.kt"]
@@ -281,15 +309,19 @@ geometry {
 From `code`
 
 animateGeometry runs the recipe 30 times a second with t (seconds) moving.
-Launch the box to play it; stop the box to stop it.
+Launch the box (alt+up) to play it; stop it with alt+down.
 
 ```edn [field-box id="breathing_sheet" role="properties"]
-{"id" "breathing_sheet" "index" 7 "name" "breathing sheet — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "breathing sheet — launch me" "_tombstone" false "frame" #afield/rect [80.0 1360.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "breathing_sheet_code_.kt" "lines" 18 "characters" 700 "sha256" "ef507bf906f30f1640d7c8db0a56aa92942d0aae19d2c36ed0bce85f5f062a7b"}]}
+{"id" "breathing_sheet" "index" 7 "name" "breathing sheet — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "breathing sheet — launch me" "_tombstone" false "frame" #afield/rect [80.0 1360.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "breathing_sheet_notes_.md" "lines" 1 "characters" 284 "sha256" "d5ca2a5324ef72a9820892024e159a302b668c5b9820422a1584e459b2e7c6b4"} {"name" "code" "language" "kotlin" "path" "breathing_sheet_code_.kt" "lines" 18 "characters" 707 "sha256" "aa93c5991679b3525b5da06a55cad0b48cd881f0735bb7b60f18bf234b4efa8f"}]}
+```
+
+```markdown [field-property box="breathing_sheet" name="notes" path="breathing_sheet_notes_.md"]
+**breathing sheet** (animated): the same 64 × 28 grid every frame, with `t` moving the waves. Launch the box (alt+up) to play it and stop it with alt+down; running it draws the first frame. Because the topology never changes, `writeGlbAnimation` can save it as a vertex-animated GLB.
 ```
 
 ```kotlin [field-property box="breathing_sheet" name="code" path="breathing_sheet_code_.kt"]
 // animateGeometry runs the recipe 30 times a second with t (seconds) moving.
-// Launch the box to play it; stop the box to stop it.
+// Launch the box (alt+up) to play it; stop it with alt+down.
 animateGeometry {
     view(background = "#05080c", ground = true, grid = false)
 
@@ -313,7 +345,11 @@ animateGeometry {
 <!-- field-box id="spiral_fronds" index="8" -->
 
 ```edn [field-box id="spiral_fronds" role="properties"]
-{"id" "spiral_fronds" "index" 8 "name" "spiral fronds" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "spiral fronds" "_tombstone" false "frame" #afield/rect [900.0 2000.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spiral_fronds_code_.kt" "lines" 35 "characters" 1489 "sha256" "0391cce7284589099c27f9499912b0f0c057d12d3148dacfa3b64f5d0617b8f0"}]}
+{"id" "spiral_fronds" "index" 8 "name" "spiral fronds" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "spiral fronds" "_tombstone" false "frame" #afield/rect [900.0 2000.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "spiral_fronds_notes_.md" "lines" 1 "characters" 200 "sha256" "544c63b65b26de683a83d2151ad1fe1c604e54ab6a4ce16425522c1873c7f37e"} {"name" "code" "language" "kotlin" "path" "spiral_fronds_code_.kt" "lines" 35 "characters" 1489 "sha256" "0391cce7284589099c27f9499912b0f0c057d12d3148dacfa3b64f5d0617b8f0"}]}
+```
+
+```markdown [field-property box="spiral_fronds" name="notes" path="spiral_fronds_notes_.md"]
+**spiral fronds**: 190 leaves, one `quad` each, set round a spiral by the golden angle (phyllotaxis). The leaves shrink and lighten as they climb. Change `golden` to see why that angle packs so well.
 ```
 
 ```kotlin [field-property box="spiral_fronds" name="code" path="spiral_fronds_code_.kt"]
@@ -359,7 +395,11 @@ geometry {
 <!-- field-box id="crystal_bloom" index="9" -->
 
 ```edn [field-box id="crystal_bloom" role="properties"]
-{"id" "crystal_bloom" "index" 9 "name" "crystal bloom" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "crystal bloom" "_tombstone" false "frame" #afield/rect [900.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "crystal_bloom_code_.kt" "lines" 30 "characters" 1133 "sha256" "c5c483ac8d9a68d04fd86b93738b59f75e9c25d7986b4d2360aed3242b66e41e"}]}
+{"id" "crystal_bloom" "index" 9 "name" "crystal bloom" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "crystal bloom" "_tombstone" false "frame" #afield/rect [900.0 80.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "crystal_bloom_notes_.md" "lines" 1 "characters" 198 "sha256" "eb14a30910bcbdbb39b3af80c4bfaedb7a8942393edf336a03ba8a5eb3135092"} {"name" "code" "language" "kotlin" "path" "crystal_bloom_code_.kt" "lines" 30 "characters" 1133 "sha256" "c5c483ac8d9a68d04fd86b93738b59f75e9c25d7986b4d2360aed3242b66e41e"}]}
+```
+
+```markdown [field-property box="crystal_bloom" name="notes" path="crystal_bloom_notes_.md"]
+**crystal bloom**: hundreds of single triangles grown from nine seeded polar rings. Each one is a `tri` with three coloured corners. `seed(18)` fixes the random stream; change it for another bloom.
 ```
 
 ```kotlin [field-property box="crystal_bloom" name="code" path="crystal_bloom_code_.kt"]
@@ -401,6 +441,10 @@ geometry {
 
 ### Narrative
 
+From `notes`
+
+Geometry: models as recipes of triangles
+
 From `code`
 
 geometry { } is a recipe of triangles. Running the box runs the recipe and draws it.
@@ -417,7 +461,73 @@ geometryAgent() teaches this document's AI4 chat the language and lets it look a
 open the AI panel and ask for "a coral reef of tubes", or "make the terrain stormier".
 
 ```edn [field-box id="ripple_terrain" role="properties"]
-{"id" "ripple_terrain" "index" 10 "name" "ripple terrain — start here" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ripple terrain — start here" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ripple_terrain_code_.kt" "lines" 30 "characters" 1163 "sha256" "118c6ed47796f44a1b7b794dc88819af77dd56ff3b768b8b7d320e6e5ee99575"}]}
+{"id" "ripple_terrain" "index" 10 "name" "ripple terrain — start here" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ripple terrain — start here" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "ripple_terrain_notes_.md" "lines" 63 "characters" 4246 "sha256" "d9705d3e2a7b17cdb74e55fcc8616bd5f551dafb11271f4495ca65f4b65549b8"} {"name" "code" "language" "kotlin" "path" "ripple_terrain_code_.kt" "lines" 30 "characters" 1163 "sha256" "118c6ed47796f44a1b7b794dc88819af77dd56ff3b768b8b7d320e6e5ee99575"}]}
+```
+
+```markdown [field-property box="ripple_terrain" name="notes" path="ripple_terrain_notes_.md"]
+# Geometry: models as recipes of triangles
+
+This document is Field's version of **Geometry**, the madp toolbox page `3d.html`. There, a code
+editor sits beside a three.js view. You write one `build()` function, and every edit rebuilds the
+model and draws it on a dark studio ground with soft shadows. Eleven presets show what the language
+can do, from a single triangle to a recursive tree.
+
+## What it teaches
+
+- **Everything is triangles.** A surface, a lathe-turned vessel, a tube along a knot and a box are
+  all loops that emit triangles. `tri` is the one real primitive; the rest are recipes built on it.
+- **Immediate mode with state.** There is a current colour, a current material and a current
+  transform. Each call uses whatever is current, so `color(...)` before `box(...)` colours that box,
+  and `push()` / `pop()` save and restore everything.
+- **Colour per vertex.** Each corner can carry its own colour, and three.js blends it across the
+  face. With flat shading, that blend and the facets do the drawing.
+- **A fixed topology animates.** Re-run the recipe every frame with `t` moving, and as long as it
+  emits the same triangles, only the vertices move. That is what makes a vertex-animated GLB.
+
+## How to play
+
+1. **Run this box** (alt+0). The terrain appears in its output. Drag to orbit, scroll to zoom.
+2. **Change a number and run it again**: `3.6` in `sin(r * 3.6)` sets how tight the ripples are,
+   `188` in `hsl(188 + …)` the hue. The view keeps your orbit.
+3. **Run the other boxes**: each is one of the toolbox's presets, with a short note of its own.
+   *breathing sheet* and *signal tear* animate: **launch** them (alt+up) to play, and stop them with
+   alt+down. Running them (alt+0) draws one still frame.
+4. **Export GLB**, in the view's toolbar, saves the model. If gltfpack is installed
+   (`./field.sh --setup`, or `./gradlew prepareGltfpack`), the file is compressed. From code,
+   `geometryScene { … }.writeGlb(file)` saves a still and `writeGlbAnimation(file, frames = 90) { … }`
+   saves an animation as morph targets.
+5. **Ask the AI.** `geometryAgent()` at the top of this box teaches the document's AI4 chat the
+   language. It also gives the chat `geometry.look`, which returns a picture of any view here as it is
+   on screen. Open the chat (ctrl/command-4) and ask for "a coral reef of tubes", or "make the terrain
+   stormier". The chat edits a box, runs it, looks, and tries again.
+
+## From `3d.html` to Field
+
+| In the toolbox | Here |
+| --- | --- |
+| `function build() { … }` | `geometry { … }`, the box's code |
+| **Animate** | `animateGeometry { … }`, then launch the box (alt+up) |
+| `mat({ roughness: 0.8, flat: true })` | `mat(roughness = 0.8, flat = true)` |
+| `[x, y, z]` | `vec(x, y, z)` |
+| `{ pos: [x, y, z], color: hsl(…) }` | `vertex(x, y, z, hsl(…))` |
+| `surface(c, r, (u, v) => ({ pos, color }))` | `surface(c, r) { u, v -> vertex(…) }` |
+| `revolve([{ r, y, color }, …], 96)` | `revolve(listOf(profile(r, y, color), …), 96)` |
+| `tube(n, sides, t => ({ pos, radius, color }))` | `tube(n, sides) { s -> section(pos, radius, color) }` |
+| `hsl`, `seed`, `rand`, `noise` | the same names and the same numbers: `seed(18)` grows the same crystal bloom |
+| `view({ background, ground, grid })` | `view(background = …, ground = …, grid = …)` |
+| **Export GLB** (+ gltfpack) | the view's **Export GLB**, `writeGlb`, `writeGlbAnimation` |
+| **Copy Guide**, AI completion, agent chat | `geometryAgent()` and AI4; Field's own completion |
+
+## What is different
+
+- **Kotlin, not JavaScript.** Numbers are `Double`, so a loop index sometimes needs `i.toDouble()`,
+  and a local helper is a local `fun`, as in *fungal tree* and *menger lesson*.
+- **One box per preset** instead of a menu, so you can run them side by side and keep your edits.
+- **Lambda names.** A tube's parameter is `s` here, because `t` is already the animation time.
+- **The camera** frames each model a little differently from the toolbox's fit.
+- **Saving** is Field's: documents and their history, not the page's local saves.
+- **The look** is the same rig (ACES tone mapping, a shadow-casting key, hemisphere and rim lights,
+  ambient occlusion), provided by `three { studio() }`, so any `three` scene can use it.
 ```
 
 ```kotlin [field-property box="ripple_terrain" name="code" path="ripple_terrain_code_.kt"]

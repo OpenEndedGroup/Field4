@@ -2014,6 +2014,22 @@ and Delete.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/macro_recorder_stamp/metadata.edn)
 
+### madp_ga
+
+**Interactive evolution, after Karl Sims**, ported from the madp GA demo. Each tile is a short
+reverse-Polish colour program (`x 9 * sin 0.18 + y 0.55 + 0.62 hsl`) run once per pixel, and you
+are the fitness function: each box shows two parents and seven children in a 3×3 grid, and
+clicking two tiles makes them the parents of the next generation. The lead box starts from the
+demo's two starters, two more from its example programs, and the last changes the breeding rules
+so that only numbers mutate. The language is `ColorRpn` and the grid is `evolveByEye`, which takes
+any genome with a picture; design notes in `dev_docs/madp/ga.md`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_ga_lead.png" capture="box" open-outputs="true" wait="2.0" embed=true hidden=true timeout="180" padding="12" name="gallery-madp-ga-lead" alt="The GA grid on a near-black ground: a toolbar with Reroll, Fresh Parents and Start over and the mut, len and res settings, then nine tiles in three rows, the two parents (rainbow vertical stripes and rainbow spokes) outlined in blue and seven mutated children below them, each with its program written under it" macro-file="../../dev_docs/agents/transcripts/madp_ga.yaml" capture-box="madp_ga_lead"}
+// The transcript builds and runs every box; this is the lead box, starting from the demo's starters.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_ga/metadata.edn)
+
 ## Service-backed composition scenes
 
 <!-- transcript-index: verified-by = execute -->
@@ -2426,6 +2442,10 @@ once. The lead box is the demo's plasma; the others are 10 PRINT, Life, matrix r
 (one `CSSVAR` spins the whole field) and a C64 typewriter. A port of the madp charGrid demo; the
 design notes are in `dev_docs/madp/chargrid.md`.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_chargrid_plasma.png" capture="box" open-outputs="true" wait="4.0" embed=true hidden=true timeout="180" padding="12" name="gallery-madp-chargrid-plasma" alt="A 40 by 25 grid of block and box-drawing glyphs in rotating rainbow hues, a plasma of two sine waves, on a near-black panel" macro-file="../../dev_docs/agents/transcripts/madp_chargrid.yaml" capture-box="madp_chargrid_plasma"}
+// The transcript builds and runs every box; this is the lead, the plasma.
+```
+
 [Open ↗](offline.html?file=assets/agent_transcripts/madp_chargrid/metadata.edn)
 
 ### madp_score
@@ -2440,7 +2460,71 @@ shapes swell with the notes. Drag a box to move it in time, stretch it to make i
 run it again after an edit. A port of the madp score demo; the design notes are in
 `dev_docs/madp/score.md`.
 
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" hide-toasts=true viewport="1900x660" clip="0,0,1900,660" screenshot="assets/agent_transcripts_gallery/madp_score.png" macro-file="../../dev_docs/agents/transcripts/madp_score.yaml" padding="0" wait="0" timeout="300" embed=true hidden=true name="gallery-madp-score" alt="Field's canvas as a score: seven dark boxes spread left to right and an orange playhead line crossing the two Glass phase boxes, which are lit red and olive; under the first box, a dark panel shows what they draw, a row of thin orange bars above a row of blue ones"}
+// The transcript builds the score and runs its first box. Wait until the playhead is about seven
+// seconds in, where the two Glass phase boxes overlap, then take the picture.
+var at = ""
+for (i in 0 until 240) {
+    ui.pause(250)
+    at = ui.eval("""
+        const f = document.querySelector("iframe[src*='score_view']")
+        const s = f && f.contentDocument && f.contentDocument.getElementById("status")
+        return s ? s.textContent : "no score view yet"
+    """.trimIndent()).toString()
+    val t = Regex("score · ([0-9.]+)s").find(at)?.groupValues?.get(1)?.toDouble()
+    if (t != null && t in 6.9..7.5) break
+}
+check(Regex("score · ([0-9.]+)s").containsMatchIn(at)) { "the score never started: " + at }
+```
+
 [Open ↗](offline.html?file=assets/agent_transcripts/madp_score/metadata.edn)
+
+### madp_line
+
+**Strokes that come alive.** Run the first box, press Alt+D, choose the pencil and draw on the
+empty canvas beside the boxes. Each stroke turns into a moving, sounding object: its shape sets up a
+small synth choir, and the louder the choir plays, the wider the stroke's ribbon swings. Every
+stroke keeps the code it was drawn with, so edit the box and run it again, and only the strokes you
+draw next change. Run another box to give it the pen: a filled ribbon, comet dust with long trails,
+curve maths that splits a stroke into four related curves, strokes that pull each other into a web,
+and a stroke snapped onto a twelve-step sequencer whose cursor marks the note you hear. The block
+in `eachStroke { }` runs once per stroke and its `draw { t -> }` sixty times a second. No pen to
+hand? **draw for me** sends three strokes the way the drawing layer does. The lead box's notes walk
+through the demo and how this version maps onto it. A port of the madp line demo; the design notes
+are in `dev_docs/madp/line.md`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_line.png" capture="window" open-outputs="false" clip="20,20,1260,840" wait="5.0" embed=true hidden=true timeout="180" name="gallery-madp-line" alt="The madp line boxes in a column on the left of the dark canvas, with draw for me beside the first; to their right three drawn strokes have come alive as softly waving cyan ribbons, a long arc, a loop and a low wave, strung with small green, yellow and orange beads" macro-file="../../dev_docs/agents/transcripts/madp_line.yaml"}
+// The transcript builds every box, runs the prism choir to take the pen, then runs draw for me,
+// whose three strokes arrive over the drawing layer's own message and come alive.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_line/metadata.edn)
+
+### madp_tetra
+
+**Four pictures as a tetrahedron.** Run the first box and CLIP turns each of four photographs (a
+cat, a dog, a tiger, a car) into a point in its 512-dimensional space. The six distances between
+them become the six edges of a tetrahedron that turns slowly in the view below the pictures, with
+each edge's length written on it and listed in the corner. Any four points of such a space sit
+exactly in three dimensions, so the picture loses nothing: here the car's three edges are the three
+longest. Drop your own pictures on the slots, or drag one up from the tray. The second box puts a
+sentence in the fourth slot. Its point sits far from all three pictures, even the one it describes,
+and the coloured diamonds rank each point's three edges, so you can still see which picture the
+sentence is nearest. The third box swaps the car for a wolf. The fourth adds a fifth picture, and
+the note under its picture gives the stress, how far the best 3D fit is from the real distances.
+A port of the madp tetra demo; the design notes are in `dev_docs/madp/tetra.md`.
+
+??? aside "Not the madp page's model"
+    The madp page embeds with jina-clip-v2 on a Python server. Field runs OpenAI's CLIP ViT-B/32
+    through ONNX in the JVM, so the distances differ from the page's. The geometry does not depend
+    on the model: four unit vectors in any dimension embed exactly in 3D. The page's `tetra2` server
+    also squared its distances twice before MDS, which this port does not repeat.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_tetra.png" capture="box" open-outputs="true" wait="10.0" embed=true hidden=true timeout="240" padding="12" name="gallery-madp-tetra" alt="Four photographs (a cat, a dog, a tiger and a red car) in coloured slots above a dark view of a tetrahedron with coloured spheres at its corners, each edge labelled with its CLIP distance, and a table of the six distances in the corner" macro-file="../../dev_docs/agents/transcripts/madp_tetra.yaml" capture-box="tetra"}
+// The transcript builds and runs every box; this is the starter, tetra.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_tetra/metadata.edn)
 
 ### mqtt_demo
 
@@ -3102,6 +3186,10 @@ smallest chaos game). Each system box's `compute` tab holds the rule as six GLSL
 viewport, the background, the particle count and the fade, and shows sliders for fps, steps,
 fade and exposure. Launch another system box to switch to it.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/fern_iterated_systems_barnsley.png" capture="native-window" native-wait-frames="120" trim-native=true wait="30.0" embed=true hidden=true timeout="400" name="gallery-fern-iterated-systems" alt="The Barnsley fern in the native window: a tall green frond of fine glowing dust on black, its leaflets built of smaller leaflets, the lowest left one turning yellow-green" macro-file="../../dev_docs/agents/transcripts/fern_iterated_systems.yaml" capture-box="fern_renderer"}
+// The transcript builds every box and launches the renderer and the Barnsley fern.
+```
+
 [Open ↗](offline.html?file=assets/agent_transcripts/fern_iterated_systems/metadata.edn)
 
 ### particles_sketchbook
@@ -3124,6 +3212,26 @@ shows a trail slider, pause and reset. Launch another sketch box to switch to it
 ```
 
 [Open ↗](offline.html?file=assets/agent_transcripts/particles_sketchbook/metadata.edn)
+
+### madp_boids
+
+**boids**, the classroom flocking sketchbook, on the GPU. A flock is written as a spec: kinds of
+boid, each with a count, speed limits, a field of view, a look and a list of steering rules, and
+every boid's acceleration is the sum of its rules' Reynolds steering forces. A renderer box, then
+seven flocks: **murmuration** (the three classic rules, colour by heading, the pointer as a hawk,
+launched when the scene opens), **hawks** (predators that chase, eat and rest), **fireflies** (two
+swarms seeking moving points, glowing where trails cross), **ink** (a noise flow field on paper
+that keeps every stroke), **bait ball** (a mill of sardines blown open by sharks), **two tribes**
+(a mixed flock sorting itself by colour) and **conga** (one hand-written rule that makes chains).
+Each flock box's code is the spec and its compute tab says how the boids look; the controls are
+the page's fps, steps, trail and fade, with pause, reset, a metrics card and an inspector that
+shows what one boid sees. Launch another flock box to switch to it.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_boids_murmuration.png" capture="native-window" native-wait-frames="90" trim-native=true wait="8.0" embed=true hidden=true timeout="300" name="gallery-madp-boids" alt="Murmuration in the native window: several hundred small arrows on near-black, gathered into drifting flocks, each flock one colour because colour follows heading, mostly violet, blue and pink with one green flock heading the other way, with short fading trails behind them" macro-file="../../dev_docs/agents/transcripts/madp_boids.yaml" capture-box="boids_renderer"}
+// The transcript builds every box and launches the renderer and murmuration.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_boids/metadata.edn)
 
 ### recstl_playground
 
@@ -3287,6 +3395,27 @@ shows the same side-by-side scene and its mouse supplies the controller ray.
 ![A full YouTube browser panel rendered for the left and right eyes in a side-by-side stereo Field window](assets/puppet_browser/youtube-stereo.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/youtube_vr_browser/metadata.edn)
+
+### webrtc_shader_jam
+
+The classroom shader jam from Field. One box publishes a fragment shader as a WebRTC stream
+named `login/field-shader`, and another lists who is publishing and draws the stream it picks on a
+quad in the renderer's window. After `WebRTCNetwork.join(url)` once, Field signs in to that
+aaaframe class in its own window and remembers it; a browser ShaderTrinket then receives the Field
+box like any classmate, and Field can show any student's Publish. Before joining, the receiving box
+shows its neighbour's stream through Field's own relay. Needs the Field Electron app.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/webrtc_shader_jam.png" capture="native-window" capture-profile="macos-electron" native-wait-frames="90" trim-native=true wait="25.0" embed=true hidden=true timeout="400" name="gallery-webrtc-shader-jam" alt="Field's renderer window showing the stream the publishing box sends over Field's own relay: a three-lobed flower of blue-violet petals ringed by teal and green bands with dark outlines, filling a 16 by 9 frame on black" macro-file="../../dev_docs/agents/transcripts/webrtc_shader_jam.yaml" capture-box="webrtc_renderer"}
+// The transcript builds and launches all three boxes; on Field's own relay the receiving box shows the publishing box's stream.
+```
+
+The same box receiving a browser ShaderTrinket's stream through aaaframe:
+
+![Field's renderer window showing a stream from a browser ShaderTrinket: pink and yellow petals in a tall frame centred on black](assets/webrtc/field-receives-shadertrinket.png)
+
+Walkthrough: [WebRTC Streams](webrtc.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/webrtc_shader_jam/metadata.edn)
 
 ### direct_lighting
 
@@ -3779,8 +3908,15 @@ draws into a canvas the renderer window shows. Launch the renderer, then the lea
 ShaderTrinket's default program); each preset box (Classic Plasma, Star Tunnel, Mandelbrot Glow,
 SDF Sphere Trace) replaces the picture when you launch it, the way choosing a preset does. Edit a
 `fragment` and press alt-R to recompile; an error is marked on its own line. The Camera Input Demo
-binds the camera to `iChannel0` with `textures("iChannel0" to webcam())`. A port of the madp
-ShaderTrinket demo; the design notes are in `dev_docs/madp/shadertrinket.md`.
+binds the camera to `iChannel0` with `textures("iChannel0" to webcam())`. The last two boxes are
+the classroom jam, as in [WebRTC streams](webrtc.md): Publish shares the canvas as
+`@you/field-shader`, and Live Stream lists everyone publishing and samples the one you click as
+`iChannel2`, from a browser ShaderTrinket or another Field. Both need the Field Electron app. A port
+of the madp ShaderTrinket demo; the design notes are in `dev_docs/madp/shadertrinket.md`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/shadertrinket_flat_rings.png" capture="native-window" native-wait-frames="90" trim-native=true wait="6.0" embed=true hidden=true timeout="300" name="gallery-shadertrinket" alt="Flat Rings in the native window: eight thick rings in teal, amber and blue, each with a pale dot at its centre, drifting and overlapping over a faint dark checkerboard" macro-file="../../dev_docs/agents/transcripts/shadertrinket.yaml" capture-box="shadertrinket_renderer"}
+// The transcript builds every box and launches the renderer and the lead box, Flat Rings.
+```
 
 [Open ↗](offline.html?file=assets/agent_transcripts/shadertrinket/metadata.edn)
 
@@ -3792,7 +3928,10 @@ bloom, store channels, subroutine cse, four memory bands and long memory ecology
 program in the `stackSL` tab and calls `stackFeedback()`, which draws it every frame with the last
 frame bound as `state` and follows edits live. The box's lowering panel shows how deep its stack
 ends and any error at its line and column, and its glsl panel the GLSL the program becomes.
-Launching a box replaces the program in the window.
+Launching a box replaces the program in the window. The jam box joins the classroom shader jam, the
+WebRTC network browser ShaderTrinkets use. It publishes its program as `@you/stacktrinket`, lists
+who else is publishing, and hands the stream you pick to its program as a second picture, which
+`0 sample1` reads at this pixel the way `prev` reads the last frame.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/stacktrinket_feedback_pulse_ring.png" capture="native-window" native-wait-frames="90" trim-native=true wait="3.0" embed=true hidden=true timeout="300" name="gallery-stacktrinket-feedback" alt="The pulse ring in the native window: a soft white ring on black, centred, its radius half the window's width, fading smoothly to black on both sides" macro-file="../../dev_docs/agents/transcripts/stacktrinket_feedback.yaml" capture-box="stacktrinket_renderer"}
 // The transcript builds every box and launches the renderer and the pulse ring.

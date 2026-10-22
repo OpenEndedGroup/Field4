@@ -524,6 +524,10 @@ object DemoTranscriptExecSmokeTest {
         // window — so running it here is also the cheapest check that the two entry points
         // public/docs/completion_ranking.md names still exist with the signatures it claims.
         "popup_prior_inspect",
+        // The madp GA demo: four boxes that each render nine ColorRpn programs on the CPU into an
+        // EyeEvolution grid. No window, no GPU; ColorRpnTest pins the language to the demo's own
+        // interpreter and EyeEvolutionTest drives the click path.
+        "madp_ga",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
@@ -541,6 +545,10 @@ object DemoTranscriptExecSmokeTest {
         // dough through the audio device. ScoreTest steps the runner frame by frame and DoughLiveTest
         // measures the sound helper's levels, both headless.
         "madp_score",
+        // Living strokes: the lead takes the drawing layer's pen and its strokes animate and play dough
+        // until cleared, which needs a page to draw on and strokes drawn by hand. StrokeVerbsTest pins
+        // the verbs and the frame the page draws, DoughLiveTest the pattern player.
+        "madp_line",
         // charGrid: both builders return animations that run until stopped, and their glyphs play dough
         // through the audio device. CharGridTest checks the cells, the panel's diffs and the sound
         // grouping headless.
@@ -729,6 +737,12 @@ object DemoTranscriptExecSmokeTest {
         // particles/sketch harness without a GPU, and four.particle-sketch.smoke grades the verbs
         // against a transcription of madp's JavaScript on one.
         "particles_sketchbook",
+        // The boids page: a declarative flock spec stepped on the GPU over a neighbour grid and drawn
+        // into a PointAccumulation on a native Window + Renderer, so compile-only here.
+        // BoidSketchTest compiles every flock's compute tab against the boids/flock harness and
+        // checks its tables without a GPU; four.boid-sketch.smoke grades a step against the page's
+        // JavaScript on one.
+        "madp_boids",
         "imgui_vr_panel",
         // A hidden Electron window renders Field itself into Chromium shared textures; the live
         // macOS replay crosses IOSurface Mach rights and samples them in Vulkan. CI compiles the
@@ -743,6 +757,10 @@ object DemoTranscriptExecSmokeTest {
         // Product-facing puppet-browser scene: a YouTube watch page on an aspect-correct world quad.
         // It opens Electron and a native Vulkan stereo window, so CI compiles without launching it.
         "youtube_vr_browser",
+        // Publishes a shader over WebRTC from an Electron output-area view and samples a stream
+        // through a hidden Electron page; both need the Field Electron app and a peer, so CI
+        // compiles the graph. The live checks are in dev_docs/WEBRTC_SOURCES_SINKS.md.
+        "webrtc_shader_jam",
         // Exercises IOSurface/Mach-port import, a Vulkan copy, and a graphics-fence callback on
         // macOS. CI still compiles both boxes everywhere; the tracked backdoor replay runs it live.
         "external_browser_surface_macos_smoke",
@@ -760,6 +778,10 @@ object DemoTranscriptExecSmokeTest {
         // hermetic: the box's `clipEncode(…)` calls and its Depth Anything session are behind lazy
         // initialisation, so nothing here fetches the ~600MB of encoders that running it would.
         "onnx_webcam_live",
+        // The madp tetra port: running a box loads both CLIP towers (~600 MB fetched on first use),
+        // which a hermetic build must not do. `onnx.clip.smoke` encodes the same photographs and checks
+        // their simplex is exact and repeatable; EmbeddingSimplexTest holds the geometry.
+        "madp_tetra",
         // Both open a native Vulkan renderer and dispatch compute. Their numbers are checked
         // elsewhere and far more sharply than a replay could: `four.neural-particles.smoke` grades
         // the GPU's trajectories against the CPU integrator per particle, and
@@ -823,7 +845,7 @@ object DemoTranscriptExecSmokeTest {
         // stacksl_examples.md's gallery draws into a native window.
         "stacksl_gallery",
         // ShaderTrinket: shadertoyHere boxes drawing into a shadertoyCanvas the renderer window shows,
-        // one of them reading the camera. ShadertoyChannelsTest compiles the image preamble and the
+        // one reading the camera, two publishing and receiving over WebRTC (Electron only). ShadertoyChannelsTest compiles the image preamble and the
         // channel passes; the orientation and colour were checked by native capture.
         "shadertrinket",
         // The madp StackTrinket port: StackSL feedback programs on a native Window + Renderer, so

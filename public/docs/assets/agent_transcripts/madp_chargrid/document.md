@@ -12,13 +12,26 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 ### Narrative
 
+From `notes`
+
+Life
+
 From `code`
 
 Conway's Game of Life: PREV() reads the grid as the last tick left it. Only cells that change
 are SET, so the sound marks the births.
 
 ```edn [field-box id="madp_chargrid_life" role="properties"]
-{"id" "madp_chargrid_life" "index" 0 "name" "Life" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Life" "_tombstone" false "frame" #afield/rect [1240.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_chargrid_life_code_.kt" "lines" 21 "characters" 1007 "sha256" "29566b91141d87d1ccbd73577078dfb4a7a74fbc6b92bcc7dcb4ad7b603052d1"}]}
+{"id" "madp_chargrid_life" "index" 0 "name" "Life" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Life" "_tombstone" false "frame" #afield/rect [1240.0 60.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_chargrid_life_notes_.md" "lines" 6 "characters" 375 "sha256" "ccb1e5853e7323f9fcda8dca7c68b559242ca0ee21d9f9603f7cbd9a796d4f5f"} {"name" "code" "language" "kotlin" "path" "madp_chargrid_life_code_.kt" "lines" 21 "characters" 1007 "sha256" "29566b91141d87d1ccbd73577078dfb4a7a74fbc6b92bcc7dcb4ad7b603052d1"}]}
+```
+
+```markdown [field-property box="madp_chargrid_life" name="notes" path="madp_chargrid_life_notes_.md"]
+# Life
+
+Conway's Game of Life in **frame** mode. `PREV(x, y)` is the grid as the last tick left it, so the
+rule reads only the past and writes the present. Only cells that change are `SET`, so the note marks
+every birth. The first tick seeds a random 35 % and returns, so the second tick reads that seed;
+the madp original judged its seed in the same frame and drew nothing.
 ```
 
 ```kotlin [field-property box="madp_chargrid_life" name="code" path="madp_chargrid_life_code_.kt"]
@@ -51,13 +64,26 @@ charGrid(glyphs = " █", sounds = listOf("", "/dough/play/note/57/duration/0.1/
 
 ### Narrative
 
+From `notes`
+
+C64 typewriter
+
 From `code`
 
 A C64 boot screen typed out in stream mode, then 10 PRINT forever. type() is an ordinary local
 suspend function: SET waits a tick, and `delay` more waitFrame()s slow the typing down.
 
 ```edn [field-box id="madp_chargrid_typewriter" role="properties"]
-{"id" "madp_chargrid_typewriter" "index" 1 "name" "C64 typewriter" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "C64 typewriter" "_tombstone" false "frame" #afield/rect [40.0 1260.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_chargrid_typewriter_code_.kt" "lines" 29 "characters" 1004 "sha256" "3aba7e8772889f2c20b130291527fde0376c011a1e39340d7dc4d7e07d03bd08"}]}
+{"id" "madp_chargrid_typewriter" "index" 1 "name" "C64 typewriter" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "C64 typewriter" "_tombstone" false "frame" #afield/rect [40.0 1260.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_chargrid_typewriter_notes_.md" "lines" 6 "characters" 333 "sha256" "b8e3b88e9ca3d4239e781126b5934840aaef9e82efc7aba357002d3cab99313c"} {"name" "code" "language" "kotlin" "path" "madp_chargrid_typewriter_code_.kt" "lines" 29 "characters" 1004 "sha256" "3aba7e8772889f2c20b130291527fde0376c011a1e39340d7dc4d7e07d03bd08"}]}
+```
+
+```markdown [field-property box="madp_chargrid_typewriter" name="notes" path="madp_chargrid_typewriter_notes_.md"]
+# C64 typewriter
+
+A Commodore 64 boot screen typed in **stream** mode, then 10 PRINT forever. `type()` is an ordinary
+local `suspend fun`: `SET` waits a tick and `delay` more `waitFrame()`s slow it down, while
+`print` and `setText` write at once. The charset is printable ASCII (`CHARGRID_ASCII`), so
+`glyphIndex(ch)` finds any key.
 ```
 
 ```kotlin [field-property box="madp_chargrid_typewriter" name="code" path="madp_chargrid_typewriter_code_.kt"]
@@ -98,6 +124,10 @@ charStream(glyphs = CHARGRID_ASCII) {
 
 ### Narrative
 
+From `notes`
+
+Glass arpeggios
+
 From `code`
 
 Philip Glass: minimalist additive arpeggios, and here the glyphs are notes. The eight bars of the
@@ -105,7 +135,16 @@ charset are A minor from E2 to E4, so a taller bar is a higher note. Stream mode
 waits a tick and two waitFrame()s hold the note, three ticks a note.
 
 ```edn [field-box id="madp_chargrid_glass" role="properties"]
-{"id" "madp_chargrid_glass" "index" 2 "name" "Glass arpeggios" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Glass arpeggios" "_tombstone" false "frame" #afield/rect [640.0 660.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_chargrid_glass_code_.kt" "lines" 33 "characters" 1358 "sha256" "4355c439735c54223d9664dc716e3827223b2e3f9453f425c72ba557cdd5e695"}]}
+{"id" "madp_chargrid_glass" "index" 2 "name" "Glass arpeggios" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Glass arpeggios" "_tombstone" false "frame" #afield/rect [640.0 660.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_chargrid_glass_notes_.md" "lines" 6 "characters" 335 "sha256" "602e0119ba9e145803e83bff9fb6b41ccdd7f6fe43cb5f693b397ddf2d58431c"} {"name" "code" "language" "kotlin" "path" "madp_chargrid_glass_code_.kt" "lines" 33 "characters" 1358 "sha256" "4355c439735c54223d9664dc716e3827223b2e3f9453f425c72ba557cdd5e695"}]}
+```
+
+```markdown [field-property box="madp_chargrid_glass" name="notes" path="madp_chargrid_glass_notes_.md"]
+# Glass arpeggios
+
+After Philip Glass: additive arpeggios in A minor, and here **glyphs are notes**. The charset is
+eight bars, `▁▂▃▄▅▆▇█`, tuned from E2 to E4, so a taller bar is a higher note and the grid is a
+score you can read. Stream mode: each `SET` waits a tick and two `waitFrame()`s hold the note. Edit
+`patterns` to compose.
 ```
 
 ```kotlin [field-property box="madp_chargrid_glass" name="code" path="madp_chargrid_glass_code_.kt"]
@@ -150,13 +189,25 @@ charStream(glyphs = "▁▂▃▄▅▆▇█", sounds = sounds) {
 
 ### Narrative
 
+From `notes`
+
+spinners
+
 From `code`
 
 Per-cell rotation from a wave, plus one CSS variable that every cell adds to its own angle, so the
 whole field spins with a single CSSVAR call a tick.
 
 ```edn [field-box id="madp_chargrid_spinners" role="properties"]
-{"id" "madp_chargrid_spinners" "index" 3 "name" "spinners" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "spinners" "_tombstone" false "frame" #afield/rect [1240.0 660.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_chargrid_spinners_code_.kt" "lines" 17 "characters" 882 "sha256" "06887afe80d0b06165bbc8ed5316bc0ec7be388d50b7262efbab05eb65631099"}]}
+{"id" "madp_chargrid_spinners" "index" 3 "name" "spinners" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "spinners" "_tombstone" false "frame" #afield/rect [1240.0 660.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_chargrid_spinners_notes_.md" "lines" 5 "characters" 234 "sha256" "694bef82a31b3f2d1924c85dbfb5e931517ab6061e5c73c8968243c9a5cfae6e"} {"name" "code" "language" "kotlin" "path" "madp_chargrid_spinners_code_.kt" "lines" 17 "characters" 882 "sha256" "06887afe80d0b06165bbc8ed5316bc0ec7be388d50b7262efbab05eb65631099"}]}
+```
+
+```markdown [field-property box="madp_chargrid_spinners" name="notes" path="madp_chargrid_spinners_notes_.md"]
+# spinners
+
+Per-cell CSS. Every cell is rotated by a wave, and `CSSVAR("--spin", …)` sets one CSS variable that
+every cell adds to its own angle, so a single call a tick spins the whole field. Twelve glyphs, twelve
+rising sine notes.
 ```
 
 ```kotlin [field-property box="madp_chargrid_spinners" name="code" path="madp_chargrid_spinners_code_.kt"]
@@ -185,6 +236,10 @@ charGrid(glyphs = "|/-\\+×•◦○●★✶", sounds = sounds) {
 
 ### Narrative
 
+From `notes`
+
+10 PRINT
+
 From `code`
 
 10 PRINT CHR$(205.5+RND(1)); : GOTO 10
@@ -192,7 +247,16 @@ Stream mode: one long program, and every SET waits for the next tick, so the maz
 out a cell at a time and scrolls when it reaches the bottom. Each diagonal is a note.
 
 ```edn [field-box id="madp_chargrid_10print" role="properties"]
-{"id" "madp_chargrid_10print" "index" 4 "name" "10 PRINT" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "10 PRINT" "_tombstone" false "frame" #afield/rect [640.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_chargrid_10print_code_.kt" "lines" 14 "characters" 630 "sha256" "82cd0a0bfd34041654787084455bc6912d4910e5d61ae17ccc30c5e453c07654"}]}
+{"id" "madp_chargrid_10print" "index" 4 "name" "10 PRINT" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "10 PRINT" "_tombstone" false "frame" #afield/rect [640.0 60.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_chargrid_10print_notes_.md" "lines" 6 "characters" 396 "sha256" "6f11e20d19f1dbe4773e7af55b7f1db7a1ab4a0b59d56deca8733516d3c465dd"} {"name" "code" "language" "kotlin" "path" "madp_chargrid_10print_code_.kt" "lines" 14 "characters" 630 "sha256" "82cd0a0bfd34041654787084455bc6912d4910e5d61ae17ccc30c5e453c07654"}]}
+```
+
+```markdown [field-property box="madp_chargrid_10print" name="notes" path="madp_chargrid_10print_notes_.md"]
+# 10 PRINT
+
+The program the whole demo is named after: `10 PRINT CHR$(205.5+RND(1)); : GOTO 10` picks one of two
+diagonals at random, forever. In **stream** mode every `SET` waits a tick, so the maze types itself
+out one cell at a time and scrolls when it reaches the bottom. Each diagonal is its own pulse note,
+so the maze is also a random two-note melody. Try a third glyph, or `fps = 120.0`.
 ```
 
 ```kotlin [field-property box="madp_chargrid_10print" name="code" path="madp_chargrid_10print_code_.kt"]
@@ -218,13 +282,26 @@ charStream(glyphs = "╱╲", sounds = sounds) {
 
 ### Narrative
 
+From `notes`
+
+matrix rain
+
 From `code`
 
 Matrix rain. The drops are ordinary Kotlin values declared above charGrid { }, so they last as long
 as the run (the demo keeps them in `state`). Each tick clears the grid and redraws every drop.
 
 ```edn [field-box id="madp_chargrid_rain" role="properties"]
-{"id" "madp_chargrid_rain" "index" 5 "name" "matrix rain" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "matrix rain" "_tombstone" false "frame" #afield/rect [40.0 660.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_chargrid_rain_code_.kt" "lines" 41 "characters" 2381 "sha256" "9ef93c3c724aa41fe0b6ffa8907e58d9b11153acbb707d2761ac717898610f4a"}]}
+{"id" "madp_chargrid_rain" "index" 5 "name" "matrix rain" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "matrix rain" "_tombstone" false "frame" #afield/rect [40.0 660.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_chargrid_rain_notes_.md" "lines" 6 "characters" 360 "sha256" "f54de1067ac0fb861c37a637cd7069cada09d11176c8d4f8e931f25fbe46a10b"} {"name" "code" "language" "kotlin" "path" "madp_chargrid_rain_code_.kt" "lines" 41 "characters" 2381 "sha256" "9ef93c3c724aa41fe0b6ffa8907e58d9b11153acbb707d2761ac717898610f4a"}]}
+```
+
+```markdown [field-property box="madp_chargrid_rain" name="notes" path="madp_chargrid_rain_notes_.md"]
+# matrix rain
+
+Falling columns of digits and symbols. The drops are ordinary Kotlin objects declared above
+`charGrid { }`, so they last as long as the run: that is where the demo's `state` went. Every tick
+clears the grid and redraws each drop, a white head over a green tail. The sixteen digits and
+letters ring, high and bright; the nine symbols are silent.
 ```
 
 ```kotlin [field-property box="madp_chargrid_rain" name="code" path="madp_chargrid_rain_code_.kt"]
@@ -277,6 +354,10 @@ charGrid(glyphs = "0123456789ABCDEF:.*+=@#$%", sounds = sounds) {
 
 ### Narrative
 
+From `notes`
+
+charGrid
+
 From `code`
 
 charGrid: a picture as a grid of glyph indices. Run this box and the panel below plays a plasma;
@@ -294,7 +375,61 @@ charStream { } is the other time model: one long program in which every SET wait
 the 10 PRINT box). `sounds` gives each glyph index a dough path, so every SET of it plays.
 
 ```edn [field-box id="madp_chargrid_plasma" role="properties"]
-{"id" "madp_chargrid_plasma" "index" 6 "name" "charGrid · plasma" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "charGrid · plasma" "_tombstone" false "frame" #afield/rect [40.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "madp_chargrid_plasma_code_.kt" "lines" 40 "characters" 2449 "sha256" "2a42790e9eb38db8c4a44e9cca2f0ab5643d7f6a3cf173e523612bd9e9f96d5f"}]}
+{"id" "madp_chargrid_plasma" "index" 6 "name" "charGrid · plasma" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "charGrid · plasma" "_tombstone" false "frame" #afield/rect [40.0 60.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_chargrid_plasma_notes_.md" "lines" 51 "characters" 3086 "sha256" "d87f038bcf0f9811c2af8ae06a3cb938b278cb8e937877348b56394aa90fee86"} {"name" "code" "language" "kotlin" "path" "madp_chargrid_plasma_code_.kt" "lines" 40 "characters" 2449 "sha256" "2a42790e9eb38db8c4a44e9cca2f0ab5643d7f6a3cf173e523612bd9e9f96d5f"}]}
+```
+
+```markdown [field-property box="madp_chargrid_plasma" name="notes" path="madp_chargrid_plasma_notes_.md"]
+# charGrid
+
+**charGrid** is generative text art in the spirit of *10 PRINT CHR$(205.5+RND(1)); : GOTO 10*, the
+one-line Commodore 64 program that draws an endless maze out of two diagonal characters. Here a
+picture is a **grid of glyph indices**: a program writes numbers into a 40 × 25 grid, and a charset
+string turns each number into a character. A cell can also carry a CSS colour and raw per-cell CSS
+(a `transform:rotate(…)`, say), and every glyph can be a **sound**, so the picture plays.
+
+This box is the demo's default program, a plasma: two sine waves pick a glyph from the charset
+`░▒▓█╔╗╚╝║═` for every cell, a hue runs diagonally across the grid, and each cell is rotated a
+little.
+
+## How to play
+
+- **Run** this box to start the grid in the panel below; **stop** it to stop. Edit and run again.
+- Change `glyphs` to change the whole picture's texture without touching the program.
+- Change a path in `sounds`: glyph `i` plays `sounds[i]` every time it is `SET`.
+- Try `stretch = false` (charGrid 2, square cells), `cols = 80, rows = 50`, or `fps = 8.0`.
+
+## The two time models
+
+- `charGrid { }` is **frame** mode: the block runs once a tick (24 a second), and `PREV(x, y)`
+  reads the grid as the last tick left it. Neighbourhood rules such as Life need nothing else.
+- `charStream { }` is **stream** mode: one long program in which every `SET` waits for the next
+  tick, so `while (true) SET(…)` types a cell at a time (see **10 PRINT** and **C64 typewriter**).
+
+## The vocabulary
+
+| | |
+| --- | --- |
+| `SET(x, y, g, color, style)` | glyph index `g` at (x, y); colour and style optional |
+| `SET(g, color, style)` | the same at the cursor, which wraps and scrolls |
+| `GET(x, y)`, `PREV(x, y)`, `PREVC(x, y)` | this tick's glyph; last tick's glyph and colour |
+| `setText`, `print`, `newLine`, `CURSOR`, `getCursor` | text, at a place or at the cursor |
+| `glyphIndex(ch)`, `clearGrid()`, `CSSVAR(name, value)` | lookup, wipe, a CSS variable every cell can use |
+| `frame`, `COLS`, `ROWS`, `glyphs`, `rand()` | the tick, the size, the charset, a random number |
+
+## From the madp demo
+
+A port of aaaframe's `madp/chargrid.html` (and `index2.html`, charGrid 2, which is the same program
+without the 1.7× horizontal stretch). The JavaScript program becomes Kotlin in this box; the grid is
+drawn as the demo draws it, Courier New on near-black, in a panel that receives only the cells that
+changed. The demo's sound panel becomes the `sounds` list (same dough paths, same `dough.wasm`), and
+its `${expr}` paths become a `sound = { … }` lambda over `N`, `x`, `y`, `frame`. In frame mode a
+tick's SETs of one sound play together at the demo's auto-gain. The demo's `state` object is a
+`val` above the call (see **matrix rain**).
+
+Not carried over: the Yjs `?room=` collaboration and the AI ghost completion (Field's own
+completion and AI chat stand in). The demo's own Life preset draws nothing, because it seeds and then
+judges that seed against an empty `PREV` in the same frame; the **Life** box here seeds, then waits a
+tick. Design notes: `dev_docs/madp/chargrid.md`.
 ```
 
 ```kotlin [field-property box="madp_chargrid_plasma" name="code" path="madp_chargrid_plasma_code_.kt"]

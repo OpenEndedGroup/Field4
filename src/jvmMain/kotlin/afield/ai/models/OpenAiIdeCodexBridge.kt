@@ -385,7 +385,8 @@ class OpenAiIdeCodexBridge(
         // calls it left unrun and its forced final answer. Either goes ahead of this prompt.
         val continuationItems = state.suspendedRound?.outputs.orEmpty().map { functionOutput(it.callId, it.outputJson) } +
             state.cappedTurnContinuation?.let(::continuationItems).orEmpty()
-        val promptItems = continuationItems + listOfNotNull(stableItem) + buildPromptItems(inputText, imageDataUrls)
+        val currentPrompt = buildPromptItems(inputText, imageDataUrls).single()
+        val promptItems = continuationItems + listOfNotNull(stableItem) + currentPrompt
 
         val paramsBuilder = ResponseCreateParams.builder()
             .model(chatModel)
@@ -414,7 +415,7 @@ class OpenAiIdeCodexBridge(
         }
 
         info("running prompt <<spinner>>")
-        var response: Response = modelRequest("initial") { createResponse(paramsBuilder.build(), onTextDelta, onProgress, requestLedger("initial")) }
+        var response: Response = modelRequest("initial") { createResponse(state, currentPrompt, paramsBuilder.build(), onTextDelta, onProgress, requestLedger("initial")) }
         if (stableItem != null) state.stableInstructionsHash = stableHash
         state.cappedTurnContinuation = null
         state.suspendedRound = null
@@ -704,7 +705,7 @@ class OpenAiIdeCodexBridge(
                 followupBuilder.addFileSearchTool(vectorStoreIds)
             }
 
-            response = modelRequest("followup") { createResponse(followupBuilder.build(), onTextDelta, onProgress, requestLedger("followup")) }
+            response = modelRequest("followup") { createResponse(state, currentPrompt, followupBuilder.build(), onTextDelta, onProgress, requestLedger("followup")) }
             if (onTextDelta != null) {
                 info("")
             }
@@ -752,6 +753,7 @@ class OpenAiIdeCodexBridge(
             openOutputs = emptyList()
             response = modelRequest("forced_final") { createForcedFinalResponse(
                 state = state,
+                currentPrompt = currentPrompt,
                 previousResponse = response,
                 pendingCalls = pendingCalls,
                 maxOutputTokens = maxOutputTokens,
@@ -1031,60 +1033,97 @@ class OpenAiIdeCodexBridge(
     }
 
     private fun createResponse(
+        state: ThreadState,
+        currentPrompt: ResponseInputItem,
         params: ResponseCreateParams,
         onTextDelta: ((String) -> Unit)?,
         onProgress: ((ProgressUpdate) -> Unit)?,
         ledger: AiRequestLedger.Request
     ): Response {
-        val prepared = params.toBuilder().apply {
+        var prepared = params.toBuilder().apply {
             if (supportsContextManagement) contextManagement(listOf(
                 ResponseCreateParams.ContextManagement.builder().type("compaction").compactThreshold(compactThreshold).build()
             ))
         }.build()
         var emittedText = false
         var lastRetry = 0
-        return rateLimitRecovery.run(
-            onWait = { wait ->
-                if (lastRetry != wait.retry) {
-                    lastRetry = wait.retry
-                    ledger.retry(wait.retry, wait.remainingMs)
-                    log.userNotice("The AI service is busy. Retrying automatically in ${(wait.remainingMs + 999) / 1000}s; completed work is kept.", attention = true)
-                    warn("response-create temporarily limited; retry ${wait.retry} in ${wait.remainingMs}ms")
-                }
-                onProgress?.invoke(ProgressUpdate(
-                    "Provider busy · retrying in ${(wait.remainingMs + 999) / 1000}s",
-                    "Waiting automatically. Completed tool work is retained.", phase = "model"
-                ))
-            },
-            onRetry = { onProgress?.invoke(ProgressUpdate("Waiting for model", phase = "model")) }
-        ) {
-            val attempt = ledger.attempt()
+        var contextRetries = 0
+        var retainedHistory: List<ResponseInputItem>? = null
+        val originalHistory = if (runtimeConfig.provider == "local") historyForRequest(state) else emptyList()
+        val responseInput = params.input().orElse(null)
+        val pendingInput: List<ResponseInputItem>? = if (runtimeConfig.provider == "local" && responseInput?.isResponse() == true) {
+            responseInput.asResponse().takeIf { it.take(originalHistory.size) == originalHistory }?.drop(originalHistory.size)
+        } else null
+        while (true) {
             try {
-                createResponseOnce(prepared, onTextDelta?.let { sink -> { chunk -> emittedText = true; sink(chunk) } }, attempt).also { response ->
-                    attempt.response(response)
-                    validateModelResponse(response)
-                    attempt.finish()
-                    info("response provider=${runtimeConfig.provider} requestedModel=$modelName " +
-                        "responseModel=${response.model()} responseId=${response.id()} status=${response.status().orElse(null)}")
-                }
-            } catch (failure: Exception) {
-                attempt.finish(failure)
-                if (emittedText && !isAiTurnCancellation(failure)) {
-                    // A provider can send a temporary rate limit inside an already-started SSE
-                    // response. Only this unfinished model request is retried: tool dispatch and
-                    // previousResponseId advancement happen after createResponse returns. Discard
-                    // its accumulator, including any unfinished function calls, but retain the
-                    // visible partial answer with an explicit boundary before the next attempt.
-                    if (onProgress != null && temporaryRateLimitDelay(failure) != null) {
-                        onProgress(ProgressUpdate(
-                            "Answer interrupted by a temporary provider limit",
-                            "Partial text is retained. Retrying the unfinished model request; completed tool work will not run again.",
-                            phase = "interrupted"
+                val response = rateLimitRecovery.run(
+                    onWait = { wait ->
+                        if (lastRetry != wait.retry) {
+                            lastRetry = wait.retry
+                            ledger.retry(wait.retry, wait.remainingMs)
+                            log.userNotice("The AI service is busy. Retrying automatically in ${(wait.remainingMs + 999) / 1000}s; completed work is kept.", attention = true)
+                            warn("response-create temporarily limited; retry ${wait.retry} in ${wait.remainingMs}ms")
+                        }
+                        onProgress?.invoke(ProgressUpdate(
+                            "Provider busy · retrying in ${(wait.remainingMs + 999) / 1000}s",
+                            "Waiting automatically. Completed tool work is retained.", phase = "model"
                         ))
-                        emittedText = false
-                    } else throw PartialModelResponseException(failure)
+                    },
+                    onRetry = { onProgress?.invoke(ProgressUpdate("Waiting for model", phase = "model")) }
+                ) {
+                    val attempt = ledger.attempt()
+                    try {
+                        createResponseOnce(prepared, onTextDelta?.let { sink -> { chunk -> emittedText = true; sink(chunk) } }, attempt).also { response ->
+                            attempt.response(response)
+                            validateModelResponse(response)
+                            attempt.finish()
+                            info("response provider=${runtimeConfig.provider} requestedModel=$modelName " +
+                                "responseModel=${response.model()} responseId=${response.id()} status=${response.status().orElse(null)}")
+                        }
+                    } catch (failure: Exception) {
+                        attempt.finish(failure)
+                        if (emittedText && !isAiTurnCancellation(failure)) {
+                            // A provider can send a temporary rate limit inside an already-started SSE
+                            // response. Only this unfinished model request is retried: tool dispatch and
+                            // previousResponseId advancement happen after createResponse returns. Discard
+                            // its accumulator, including any unfinished function calls, but retain the
+                            // visible partial answer with an explicit boundary before the next attempt.
+                            if (onProgress != null && temporaryRateLimitDelay(failure) != null) {
+                                onProgress(ProgressUpdate(
+                                    "Answer interrupted by a temporary provider limit",
+                                    "Partial text is retained. Retrying the unfinished model request; completed tool work will not run again.",
+                                    phase = "interrupted"
+                                ))
+                                emittedText = false
+                            } else throw PartialModelResponseException(failure)
+                        }
+                        throw failure
+                    }
                 }
-                throw failure
+                retainedHistory?.let { statelessHistory[state.localThreadId] = it.toMutableList() }
+                return response
+            } catch (failure: Exception) {
+                if (runtimeConfig.provider != "local" || emittedText || !isLocalContextRecoveryFailure(failure)) throw failure
+                val problem = if (isLocalEmptyAnswer(failure)) "returned no answer" else "exceeds its context window"
+                if (contextRetries >= 2) throw IllegalStateException(
+                    "The local model still $problem after two history reductions. " +
+                        "Start a fresh conversation or reduce the current input; completed tool work is retained.", failure
+                )
+                val currentInput = pendingInput ?: throw failure
+                val shorter = shortenLocalHistory(
+                    retainedHistory ?: originalHistory, currentInput, currentPrompt, seedHistory(state).size
+                ) ?: throw failure
+                retainedHistory = shorter
+                prepared = prepared.toBuilder().input(ResponseCreateParams.Input.ofResponse(shorter + currentInput)).build()
+                contextRetries++
+                ledger.retry(contextRetries, 0)
+                val title = if (isLocalEmptyAnswer(failure)) "Local model returned no answer" else "Local model context full"
+                warn("$title; shortened history and retrying model request ($contextRetries/2)")
+                log.userNotice("$title. Shortening older history and retrying automatically; completed tool work is retained.", attention = true)
+                onProgress?.invoke(ProgressUpdate(
+                    "$title · retrying ($contextRetries/2)",
+                    "Older exchanges are omitted. The current prompt and latest tool results are retained.", phase = "model"
+                ))
             }
         }
     }
@@ -1125,6 +1164,15 @@ class OpenAiIdeCodexBridge(
             )
             "failed" -> throw ModelResponseFailure("failed", "The provider returned a failed response without error details.")
         }
+        if (runtimeConfig.provider == "local" && response.output().none { it.isFunctionCall() } &&
+            extractOutputTextWithNewlines(response).isBlank()) {
+            val refusal = response.output().mapNotNull { it.message().orElse(null) }
+                .flatMap { it.content() }.mapNotNull { it.refusal().orElse(null)?.refusal() }.joinToString("\n")
+            if (refusal.isNotBlank()) throw ModelResponseFailure("refusal", refusal)
+            throw ModelResponseFailure("local_empty_answer",
+                "The local model returned no answer or tool call. It may have exhausted its context or output budget while thinking. " +
+                    "Start a fresh conversation or reduce the input if automatic recovery cannot make room.")
+        }
     }
 
     private fun traceResponseError(stage: String, error: Throwable) {
@@ -1142,6 +1190,7 @@ class OpenAiIdeCodexBridge(
 
     private fun createForcedFinalResponse(
         state: ThreadState,
+        currentPrompt: ResponseInputItem,
         previousResponse: Response,
         pendingCalls: List<ResponseFunctionToolCall>,
         maxOutputTokens: Long,
@@ -1174,7 +1223,7 @@ class OpenAiIdeCodexBridge(
         builder.toolChoice(ToolChoiceOptions.NONE)
         // Stateless history gets nothing from this request either: its stop instruction and its reasoning
         // under that stop stay out, and the next turn adds the continuation as it does on the direct path.
-        return createResponse(builder.build(), onTextDelta, onProgress, ledger)
+        return createResponse(state, currentPrompt, builder.build(), onTextDelta, onProgress, ledger)
     }
 
     /**

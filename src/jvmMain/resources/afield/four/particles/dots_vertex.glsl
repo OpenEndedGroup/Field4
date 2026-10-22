@@ -33,6 +33,7 @@ layout(push_constant) uniform Push {
 layout(location = 0) out vec2 local;
 layout(location = 1) flat out vec4 shape;
 layout(location = 2) flat out vec4 color;
+layout(location = 3) flat out vec2 extra;
 
 const vec2 corner[6] = vec2[](
     vec2(-1.0, -1.0), vec2(1.0, -1.0), vec2(1.0, 1.0),
@@ -47,6 +48,7 @@ void main() {
         local = vec2(0.0);
         shape = vec4(0.0);
         color = vec4(0.0);
+        extra = vec2(0.0);
         return;
     }
     vec2 scale = push.targetSize / push.size;
@@ -56,5 +58,6 @@ void main() {
     local = l;
     shape = vec4(0.0, radius, 2.0, 0.0);
     color = p.color;
+    extra = vec2(0.0);
     gl_Position = vec4(pixel / push.targetSize * 2.0 - 1.0, 0.0, 1.0);
 }
