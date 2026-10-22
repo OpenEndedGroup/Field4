@@ -12,6 +12,46 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class LocalAiProviderTest {
+    @Test fun monitorAddressUsesRemoteInferenceHostAndSupportsOverride() {
+        assertEquals("http://gpu-host:8082/status", localAiMonitorUri("http://gpu-host:8081/v1").toString())
+        assertEquals("http://[::1]:8082/status", localAiMonitorUri("http://[::1]:8081/v1").toString())
+        assertEquals("https://monitor/status", localAiMonitorUri("http://gpu-host:8081/v1", "https://monitor/status").toString())
+        assertFailsWith<IllegalArgumentException> { localAiMonitorUri("http://host:65535/v1") }
+        assertFailsWith<IllegalArgumentException> { localAiMonitorUri("http://host/v1", "file:///tmp/private") }
+    }
+
+    @Test fun feedbackNeverContactsMonitorForHostedProvidersOrSendsModelCredentials() = isolated { dir ->
+        val mapper = com.fasterxml.jackson.databind.ObjectMapper()
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        var requests = 0
+        var response = """{"schemaVersion":1,"sampledAtMs":1000,"state":"ready","gpus":[]}"""
+        server.createContext("/status") { exchange ->
+            requests++
+            assertNull(exchange.requestHeaders.getFirst("Authorization"))
+            val body = response.toByteArray()
+            exchange.sendResponseHeaders(200, body.size.toLong())
+            exchange.responseBody.use { it.write(body) }
+        }
+        server.start()
+        try {
+            val monitor = "http://127.0.0.1:${server.address.port}/status"
+            for (provider in listOf("openai", "openrouter", "anthropic")) {
+                dir.resolve("ai-provider.txt").writeText("$provider\n")
+                assertFalse(mapper.readTree(localAiFeedback(monitor)).path("enabled").asBoolean())
+            }
+            assertEquals(0, requests)
+            save("http://gpu-host:8081/v1", key = "private-model-key")
+            val result = mapper.readTree(localAiFeedback(monitor))
+            assertTrue(result.path("available").asBoolean())
+            assertEquals("ready", result.path("sample").path("state").asText())
+            assertEquals(1, requests)
+            response = "{}"
+            assertFalse(mapper.readTree(localAiFeedback(monitor)).path("available").asBoolean())
+            server.stop(0)
+            assertFalse(mapper.readTree(localAiFeedback(monitor)).path("available").asBoolean())
+        } finally { server.stop(0) }
+    }
+
     private fun isolated(block: (java.io.File) -> Unit) {
         val dir = Files.createTempDirectory("field-local-ai-").toFile()
         val prior = System.getProperty("afield.ai.configDir")
