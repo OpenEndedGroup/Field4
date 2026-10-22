@@ -161,8 +161,13 @@ The image path has been tested through Field's streaming Responses bridge.
 The example limits an image to 4,096 visual tokens. Large images can be reduced to
 fit that budget; crop a detailed region when small text or fine structure matters.
 Images also consume part of the conversation's context. The 64K window covers the
-prompt, tool results, images, thinking and answer together. Start a fresh conversation
-when a long session reaches the server's context limit.
+prompt, tool results, images, thinking and answer together. If the Local server rejects
+a request for exceeding that window, or finishes with no answer or tool call,
+AI4 shows a notice, omits older exchanges and
+retries the rejected model request, up to twice. It keeps the current prompt, initial
+file context and latest tool results; it does not replay completed tool calls. The
+omitted exchanges are not a summary, so the model may need to re-read older details.
+If that input still cannot fit, start a fresh conversation or reduce the material sent.
 
 ## If it does not connect
 
