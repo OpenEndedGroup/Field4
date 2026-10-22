@@ -75,9 +75,11 @@ try {
   for (let frame = 0; frame < 500; frame++) {
     if (!(await targets()).some(target => target.id === overlay.id)) break;
     try {
-      const state = await inspectOverlay(`document.body ? ({opacity:Number(getComputedStyle(document.body).opacity),images:[...document.querySelectorAll('img,canvas')].map(image=>({hidden:image.hidden||getComputedStyle(image).display==='none'||getComputedStyle(image).visibility==='hidden',width:image.naturalWidth ?? image.width}))}) : null`);
+      const state = await inspectOverlay(`document.body ? ({background:getComputedStyle(document.body).backgroundColor,opacity:Number(getComputedStyle(document.body).opacity),images:[...document.querySelectorAll('img,canvas')].map(image=>({hidden:image.hidden||getComputedStyle(image).display==='none'||getComputedStyle(image).visibility==='hidden',width:image.naturalWidth ?? image.width}))}) : null`);
       if (!state) { await pause(30); continue; }
       assert.ok(state.images.every(image => image.hidden || image.width > 0), 'Every visible transition image must be decoded');
+      assert.ok(state.background !== 'rgb(0, 0, 0)' || state.images.some(image => !image.hidden && image.width > 0),
+        'The overlay must stay transparent until its captured pixels are visible');
       assert.ok(Number.isFinite(state.opacity) && state.opacity >= 0 && state.opacity <= 1);
       observedFrames++;
     } catch (error) {

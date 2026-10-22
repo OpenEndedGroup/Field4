@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const {pathToFileURL} = require('node:url');
 const {app, BrowserWindow, WebContentsView, dialog, ipcMain, shell} = require('electron');
 const {validRect, guestUrl, fieldActions, validateGuideState} = require('./presentation-cues');
+const {paintTransitionFrame} = require('./presentation-transition');
 
 const PRELOAD = path.join(__dirname, 'presentation-preload.js');
 const SERVER_MODULE = path.resolve(__dirname, '../tools/presentation/server.mjs');
@@ -67,34 +68,15 @@ async function prepareTransition(session) {
   // Chromium can defer image decoding for an unattached view. Attach a transparent page first;
   // its images stay hidden until both have decoded, while the outgoing live content remains below.
   session.audience.contentView.addChildView(overlay);
-  await bounded(overlay.webContents.executeJavaScript(`(async () => {
-    // Image.decode() can stay pending in an Electron view even for a fully loaded PNG.
-    // Drawing its real pixels onto a canvas forces decoding before the layer becomes visible.
-    const paint=async(canvas,source)=>{
-      canvas.hidden=!source;
-      if (!source) return;
-      const image=new Image();
-      await new Promise((resolve,reject)=>{
-        image.onload=resolve;
-        image.onerror=()=>reject(new Error('Could not load the captured audience frame'));
-        image.src=source;
-        if(image.complete && image.naturalWidth) resolve();
-      });
-      canvas.width=image.naturalWidth;
-      canvas.height=image.naturalHeight;
-      canvas.getContext('2d').drawImage(image,0,0);
-      canvas.style.visibility='visible';
-    };
-    const base=document.getElementById('base');
-    const baseSource=${JSON.stringify(background?.toDataURL() || null)};
-    if (!baseSource) document.body.style.background='#000';
-    const guest=document.getElementById('guest');
-    const guestSource=${JSON.stringify(guestImage?.toDataURL() || null)};
-    guest.style.cssText=${JSON.stringify(guestBounds
+  // Drawing captured pixels onto a canvas forces decoding even if Image.decode() is deferred
+  // for this Electron view. The view stays transparent until those pixels are ready.
+  await bounded(overlay.webContents.executeJavaScript(`(${paintTransitionFrame.toString()})(${JSON.stringify({
+    baseSource: background?.toDataURL() || null,
+    guestSource: guestImage?.toDataURL() || null,
+    guestStyle: guestBounds
       ? `left:${guestBounds.x}px;top:${guestBounds.y}px;width:${guestBounds.width}px;height:${guestBounds.height}px;border:0;outline:0`
-      : 'display:none')};
-    await Promise.all([paint(base,baseSource),paint(guest,guestSource)]);
-  })()`), 'The transition images did not decode');
+      : 'display:none',
+  })})`), 'The transition images did not decode');
   if (session.transition !== overlay || active !== session) return;
 }
 
