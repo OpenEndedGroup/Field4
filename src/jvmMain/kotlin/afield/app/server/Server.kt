@@ -3879,11 +3879,13 @@ class Server {
                         // A JsonObject, not a Map<String, Any>: kotlinx.serialization has no serializer
                         // for Any, so the map threw here and no box faded (docs/layers.md capture).
                         val visibilityMessage = Message("set-visibility-animated").payload(
-                            kotlinx.serialization.json.buildJsonObject {
-                                put("uid", kotlinx.serialization.json.JsonPrimitive(box.id))
-                                put("visible", kotlinx.serialization.json.JsonPrimitive(box.visible))
-                                put("duration", kotlinx.serialization.json.JsonPrimitive(update.duration))
-                            }
+                            kotlinx.serialization.json.JsonObject(
+                                mapOf(
+                                    "uid" to kotlinx.serialization.json.JsonPrimitive(box.id),
+                                    "visible" to kotlinx.serialization.json.JsonPrimitive(box.visible),
+                                    "duration" to kotlinx.serialization.json.JsonPrimitive(update.duration),
+                                )
+                            )
                         )
                         box.inside.sessions.forEach { _send(it, visibilityMessage) }
                     }
