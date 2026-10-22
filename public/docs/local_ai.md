@@ -129,7 +129,7 @@ llama-server \
   --image-max-tokens 4096 --jinja \
   --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0 \
   --chat-template-kwargs '{"reasoning_effort":"medium"}' \
-  --sleep-idle-seconds 600
+  --sleep-idle-seconds 600 --metrics
 ```
 
 In Field's Local settings, enter your GPU computer's address with port `8081` and
@@ -150,6 +150,39 @@ needs its memory.
 See the [model files](https://huggingface.co/bartowski/Qwen3.8-27B-GGUF) and the
 [llama.cpp server documentation](https://github.com/ggml-org/llama.cpp/blob/b11719/tools/server/README.md)
 for the model and runtime options.
+
+## Live feedback in AI4
+
+With **Local** selected, AI4 and Welcome's Local settings show live feedback from
+your inference machine when its optional monitor is running: GPU temperature,
+load and used/total VRAM, model readiness or sleep, queued requests and generation
+speed. GPU readings include other applications using that GPU. The context window
+shown is its capacity, not the amount currently used by your conversation.
+
+On the GPU machine, run the monitor from a Field checkout in a second terminal:
+
+```diffstatic {data-lang=bash}
+python3 tools/local_ai_monitor.py --host 0.0.0.0 --port 8082 \
+  --backend http://127.0.0.1:8081
+```
+
+The monitor uses Python's standard library and `nvidia-smi`. Without NVIDIA tools,
+model status still works and GPU readings are marked unavailable. Enable llama.cpp's
+`--metrics` option, as in the recipe above; if it needs an API key, give the monitor
+the same `LLAMA_API_KEY` environment variable. Polling does not wake a sleeping model.
+
+Field reaches `/status` on the model server's hostname, one port above its API
+port: an API at `http://gpu-host:8081/v1` uses `http://gpu-host:8082/status`.
+Allow that additional port through your private network or VPN. This read-only
+monitor has no authentication; keep it accessible only to your own machines.
+For a different port or reverse proxy, set `AFIELD_LOCAL_AI_MONITOR_URL` on the
+computer running Field to the monitor's full `/status` URL and restart Field.
+Model credentials are not sent to the monitor.
+
+The display refreshes about every three seconds while a panel is visible. Lost
+connections and old samples are marked unavailable or stale. Generation remains
+usable without the monitor. Hosted OpenAI, OpenRouter and Anthropic providers do
+not show this display or contact the monitor.
 
 ## Images and screenshots
 
