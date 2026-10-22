@@ -36,7 +36,7 @@ presentation(title = "A lesson about motion") {
         audience {
             h1 { +"What changes?" }
             ul {
-                for (word in listOf("Position", "Speed", "Direction")) {
+                for (word in ["Position", "Speed", "Direction"]) {
                     li { +word }
                 }
             }
