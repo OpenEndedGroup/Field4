@@ -134,14 +134,57 @@ Field edit) are now capped at the newest 10 per sidecar, the same cap as sidecar
 announced by a notice when it is made. It is not a document state, so a timeline entry would be
 a version that cannot be restored.
 
+### Edits that bypass marking (2026-10-22)
+
+The two gaps the 10-20 pass left open (N1020-6) are closed by a content check rather than by more
+marking calls:
+
+- **In place.** A persistent collection mutated rather than reassigned
+  (`box.layerFrames[layer] = rect`) never passes `setPropertyRaw`.
+- **During load.** Box code that runs before the loader clears `SessionInformation.loading` (the
+  wait for box Kotlin runtimes) writes with marking off, since loader writes and user writes cannot
+  be told apart there.
+
+`afield.document.persistence.PersistedFingerprint` hashes every property the document would write
+(the `snapshotBoxes` filter; box references as ids; null and empty collections as absent).
+`SessionInformation.savedFingerprint` records it when the loader has read the document and at
+every save. `DocumentShutdownFlush.saveIfPending`, which the 5 s loop now calls as well, saves when
+something is marked **or** the fingerprint differs, so the loop, the detach save and the shutdown
+flush share one predicate. `set-active-layer` also marks `layerFrames` explicitly.
+
+The tests turned up a third problem: a `Delegation` default (`layerFrames`, ...) materialises an
+empty collection through `setPropertyRaw` on first read, and that marked the document, so just
+reading `box.layerFrames` re-saved it. That first-read write no longer marks.
+
+`AutosaveDirtyTrackingTest` gained three cases, all red at `bf8e431dc` and green after (12/12): an
+in-place `layerFrames` write is saved by the shutdown flush; a write made while loading is saved
+once loading ends; an untouched document whose `layerFrames` were read is not saved.
+
+End to end through the backdoor (port 9611). A box materialises and assigns `layerFrames`, then a
+thread writes `layerFrames["e2e"]` in place 20 s later, and SIGINT goes to the listener a fixed
+delay after that write. The column is whether `"e2e"` was in `metadata.edn` after the JVM exited:
+
+| Build | SIGINT after the write | Trials | `"e2e"` on disk |
+|---|---|---|---|
+| base `bf8e431dc` | 150 ms | 3 | 0/3 |
+| base | 1.5 s | 1 | 0/1 |
+| fixed | 150 ms | 3 | 3/3 (none on disk before the SIGINT, so the shutdown flush wrote it) |
+| fixed | 1.5 s, 7 s | 2 | 2/2 (already on disk before the SIGINT: the 5 s loop) |
+
+A first version of this trial read `layerFrames` for the first time inside the thread, and base
+saved it 2/2: the first-read marking above masked the gap. Script:
+`.nightly-tmp/e2e_trial.sh` in the 2026-10-22 nightly worktree (not tracked).
+
 ### Still open
 
-- Edits made while a document is `loading`, including the wait for box Kotlin runtimes after the
-  metadata has been applied, are not marked, and the loop and the flush both skip a loading
-  document. Loader writes and user writes are not told apart there.
-- A persistent collection mutated in place rather than reassigned (for example a `layerFrames`
-  map) goes past `setPropertyRaw` unseen. `children`/`parents` are covered through
-  `connect`/`disconnect`.
+- Churn (N1020-7): a box that rewrites a persisted property every frame causes one full save per
+  5 s tick (snapshot, write, backup rotation capped at 10). Not measured or throttled.
+- A value of a class with an identity `hashCode` that is mutated in place is invisible to the
+  fingerprint, as it was to marking. Every persisted type today (`Rect`, strings, numbers,
+  collections of those, box refs) hashes by content.
+- A brand-new document has no fingerprint until its first save, so an unmarked edit before then is
+  caught only by the next marked one.
+- The macro-replay/`--as-copy` SIGINT smoke test (N1020-1) was not written.
 
 ## Not verified
 
