@@ -166,6 +166,37 @@ class LandQueueTest(unittest.TestCase):
         self.assertIn("docs build failed deliberately", self.land(self.primary, "status", doc_id).stdout)
         self.assertIn("Land beta", self.git(self.primary, "log", "-1", "--format=%s", "main"))
 
+    def test_doc_item_refuses_uncommitted_build_inputs_and_leaves_them_alone(self) -> None:
+        # The source mirror reads the working tree while the committed reference pages cite HEAD, so a
+        # build over uncommitted src/ edits fails the link check on links that are fine on main.
+        (self.primary / "src").mkdir()
+        (self.primary / "src/Tracked.kt").write_text("val a = 1\n")
+        self.git(self.primary, "add", "-A")
+        self.git(self.primary, "commit", "-qm", "add source")
+        (self.primary / "src/Tracked.kt").write_text("val a = 1\nval b = 2\n")
+        (self.primary / "src/Untracked.kt").write_text("val c = 3\n")
+        request = self.land(self.primary, "doc")
+        self.assertEqual(request.returncode, 0, request.stdout + request.stderr)
+        self.assertIn("src/Tracked.kt", request.stderr, "enqueue should warn about the dirty tree")
+        doc_id = request.stdout.split("queued docs build ", 1)[1].split(" ", 1)[0]
+        result = self.run_lander()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse((Path(self._tmp.name) / "DOC_RUNS").exists(), "the docs build ran over a dirty tree")
+        self.assertEqual(self.land(self.primary, "wait", doc_id).returncode, 1)
+        status = self.land(self.primary, "status", doc_id).stdout
+        self.assertIn("src/Tracked.kt", status)
+        self.assertIn("src/Untracked.kt", status)
+        self.assertEqual((self.primary / "src/Tracked.kt").read_text(), "val a = 1\nval b = 2\n")
+        self.assertTrue((self.primary / "src/Untracked.kt").exists())
+
+        # Committed, the same tree builds.
+        self.git(self.primary, "add", "-A")
+        self.git(self.primary, "commit", "-qm", "commit the edits")
+        retry = self.land(self.primary, "doc")
+        self.assertNotIn("warning", retry.stderr)
+        self.assertEqual(self.run_lander().returncode, 0)
+        self.assertTrue((Path(self._tmp.name) / "DOC_RUNS").exists())
+
     def test_doc_item_waits_for_an_earlier_blocked_landing(self) -> None:
         wt = self.branch_with("alpha", "alpha.txt")
         (wt / "seed.txt").write_text("alpha changed seed\n")
