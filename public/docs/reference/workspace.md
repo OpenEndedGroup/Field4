@@ -1129,7 +1129,7 @@ options such as `--workspace` and `--document` are read here as [`home`](workspa
 | <a id="server-kt--parselayerslist"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">parseLayersList</span><span class="p">(</span><span class="n">layersString</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/app/server/Server/#L809) |  |
 | <a id="server-kt--scheduleautorunboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SessionInformation</span><span class="p">.</span><span class="nf">scheduleAutorunBoxes</span><span class="p">(</span><span class="n">delayMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">500L</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L819) |  |
 | <a id="server-kt--autorunboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SessionInformation</span><span class="p">.</span><span class="nf">autorunBoxes</span><span class="p">(</span><span class="n">targetBoxes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">delayMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">500L</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L828) |  |
-| <a id="server-kt--languagenameforproperty"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">languageNameForProperty</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/Server/#L6097) |  |
+| <a id="server-kt--languagenameforproperty"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">languageNameForProperty</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/Server/#L6101) |  |
 
 ### Top-level values { #server-kt-values }
 
@@ -2541,7 +2541,7 @@ and `uiResyncProperties` lists what is pushed to connected clients when it chang
 
 `src/jvmMain/kotlin/afield/document/graph/Boxes.kt` — [read the source](source/jvmMain/afield/document/graph/Boxes/)
 
-**Used in:** [Keyboard shortcuts](../keybindings.md), [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md), [Boolean network music examples](../boolean_network_music_examples.md)
+**Used in:** [Keyboard shortcuts](../keybindings.md), [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md), [Layers](../layers.md)
 
 ### Top-level functions { #boxes-kt-functions }
 
