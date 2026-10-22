@@ -369,8 +369,12 @@ function arrowheadSvg(kind, tip, from, el, color) {
     }
 }
 
+// The canvas background (#141414) as stored under the dark-theme filter: a halo in this colour reads
+// as a gap, the way Excalidraw breaks an arrow around its label.
+const EXCALIDRAW_GAP_COLOUR = '#fdfdfd';
+
 /** SVG markup for one Excalidraw element, in its own world coordinates. */
-function excalidrawElementSvg(el) {
+function excalidrawElementSvg(el, byId = null) {
     const x = Number(el.x) || 0;
     const y = Number(el.y) || 0;
     const w = Number(el.width) || 0;
@@ -439,7 +443,10 @@ function excalidrawElementSvg(el) {
             const font = EXCALIDRAW_FONTS[el.fontFamily] || EXCALIDRAW_FONTS[1];
             const tspans = textLines.map((line, k) =>
                 `<tspan x="${svgNum(tx)}" y="${svgNum(top + k * lineHeight + fontSize * 0.95)}">${escapeMarkdownHtml(line) || ' '}</tspan>`).join('');
-            body = `<text font-size="${svgNum(fontSize)}" font-family='${font}' fill="${escapeMarkdownHtml(stroke)}" text-anchor="${anchor}" xml:space="preserve">${tspans}</text>`;
+            const container = byId && el.containerId ? byId.get(el.containerId) : null;
+            const halo = container && (container.type === 'arrow' || container.type === 'line')
+                ? ` stroke="${EXCALIDRAW_GAP_COLOUR}" stroke-width="${svgNum(fontSize * 0.6)}" stroke-linejoin="round" paint-order="stroke"` : '';
+            body = `<text font-size="${svgNum(fontSize)}" font-family='${font}' fill="${escapeMarkdownHtml(stroke)}" text-anchor="${anchor}"${halo} xml:space="preserve">${tspans}</text>`;
             break;
         }
         case 'image':
@@ -476,7 +483,8 @@ function excalidrawBounds(elements) {
 /** Inner SVG markup for the whole scene, in Excalidraw's z-order (array order). */
 function excalidrawSceneSvg(drawing) {
     const elements = excalidrawElements(drawing);
-    return { markup: elements.map(excalidrawElementSvg).join(''), count: elements.length, bounds: excalidrawBounds(elements) };
+    const byId = new Map(elements.map(e => [e.id, e]));
+    return { markup: elements.map(e => excalidrawElementSvg(e, byId)).join(''), count: elements.length, bounds: excalidrawBounds(elements) };
 }
 
 // Initialize the viewer when page loads
@@ -964,7 +972,9 @@ function applyUrlState(params) {
     const box = findBoxByIdOrName(params.get('select'));
     if (box) {
         const el = document.querySelector(`.box[data-box-id="${CSS.escape(box.id)}"]`);
-        if (el) selectBox(box, el, !bookmarkSlot);
+        if (el) selectBox(box, el, false);
+        // Re-frame everything into the canvas area the editor panel leaves.
+        if (!bookmarkSlot) fitCameraToContent();
     }
 }
 
@@ -1817,7 +1827,7 @@ function showError(message) {
 function showDocumentInfo(data, fileUrl, sidecarStatus = {}) {
     const banner = document.querySelector('.offline-banner');
     const fileName = fileUrl.split('/').pop();
-    const boxCount = data.boxes ? data.boxes.filter(b => !(b.properties || {})._tombstone).length : 0;
+    const boxCount = data.boxes ? data.boxes.filter(b => b.id !== 'root' && !(b.properties || {})._tombstone).length : 0;
     const version = data.version || 'unknown';
 
     const summary = document.createElement('span');
