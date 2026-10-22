@@ -3873,6 +3873,17 @@ body.field-pane-resizing-h * {
     pointer-events: none;
 }
 
+/* A hit area reaching a constant 8 screen px past the box edge at any canvas zoom (`--canvas-zoom`
+   is set by CanvasCamera.applyTransforms). It is a descendant of the .box, so a press on it reaches
+   interact.js, whose 20 px edge margin, measured against the box's own rect, then picks the resize
+   edge. z-index -1 keeps it under the box's content; the child selector outranks `.box *`. */
+.box > .box-resize-halo {
+    position: absolute;
+    inset: calc(-8px / var(--canvas-zoom, 1));
+    z-index: -1;
+    pointer-events: auto;
+}
+
 .closeBox + .hoverable {
     margin-left: 4.8px;
 }
