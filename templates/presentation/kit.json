@@ -1,0 +1,23 @@
+{
+  "schema": "field.kit.v1",
+  "name": "presentation",
+  "roleProperty": "kitRole",
+  "launchOrder": [
+    "teaching-guide"
+  ],
+  "roles": {
+    "teaching-guide": {
+      "name": "Teaching guide",
+      "properties": {
+        "code": {
+          "file": "roles/teaching-guide/code.kt",
+          "sha256": "6f6480659c72b71b6617dafc9692d88aa1a8f0e366ba28a39ebb953a1efa18d6"
+        }
+      }
+    }
+  },
+  "assets": {
+    "presentation.css": "2cb3274a3e08f523f537caec50a7083b71f15ddc7c606b6df7e9dcdb266c58e4"
+  },
+  "revision": "e1bcc476676cc04913d4dc301e7dc68f96ee8269b475377cb12f9e6cb25bf2e5"
+}

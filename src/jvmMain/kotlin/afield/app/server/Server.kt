@@ -3463,37 +3463,11 @@ class Server {
 
                 // The slideshow whose step is on screen in this document; before any step has been
                 // shown, fall back to the first box holding one (a document may hold several guides).
-                val slideShow = SlideShowInstance.activeIn(info.root)
-                    ?: info.boxes.values.firstNotNullOfOrNull { it.getPropertyRaw("slideShow") as? SlideShowInstance }
-                run {
-                    if (slideShow != null) {
-                        GlobalScope.launch {
-                            when {
-                                cmd.command == "next" -> slideShow.next()
-                                cmd.command == "previous" -> slideShow.previous()
-                                cmd.command == "start" -> slideShow.start()
-                                cmd.command == "home" -> slideShow.home()
-                                cmd.command == "stop" -> slideShow.stop()
-                                cmd.command.startsWith("callback:") -> {
-                                    // Handle custom link callbacks
-                                    val callbackName = cmd.command.substring(9) // Remove "callback:" prefix
-                                    val executed = slideShow.executeCallback(callbackName)
-                                    if (!executed) {
-                                        lprintln("warning,slideshow", "No callback registered for: $callbackName")
-                                    }
-                                }
-
-                                else -> {
-                                    // Try to parse as a step number
-                                    val stepNum = cmd.command.toIntOrNull()
-                                    if (stepNum != null) {
-                                        slideShow.goToStep(stepNum)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                val candidates = info.boxes.values.mapNotNull { it.getPropertyRaw("slideShow") as? SlideShowInstance }
+                    .filter { !cmd.guideOnly || it.presentationOptions == null }
+                val slideShow = if (cmd.slideshowId.isNotBlank()) candidates.firstOrNull { it.slideshowId == cmd.slideshowId }
+                    else SlideShowInstance.activeIn(info.root)?.takeIf { it in candidates } ?: candidates.firstOrNull()
+                if (slideShow != null) GlobalScope.launch { slideShow.command(cmd.command) }
                 Handled.yes
             })
 

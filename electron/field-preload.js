@@ -52,6 +52,9 @@ ipcRenderer.on("field4-presentation-project", (_, paths) => {
 });
 
 contextBridge.exposeInMainWorld("fieldElectron", {
+  presentGuide(state) {
+    ipcRenderer.send("field-presentation-native-state", state);
+  },
   presentationTypeScript(request) {
     return ipcRenderer.invoke("field-presentation-tsx", request);
   },

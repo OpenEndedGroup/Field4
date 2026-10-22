@@ -50,4 +50,28 @@ function fieldActions(slide) {
     project: macro.scope === 'project' && typeof macro.project === 'string' ? macro.project : ''}};
 }
 
-module.exports = {validRect, validDocumentName, fieldDocumentUrl, guestUrl, fieldActions};
+// The sender is checked by the Electron host; validate the wire data before opening any windows.
+function validateGuideState(state) {
+  // Kotlin's wire encoder omits values equal to their declared defaults.
+  state = {transitionMs: 450, ...state};
+  if (state.content) state.content = {type: 'html', html: '', ...state.content};
+  if (!state || typeof state !== 'object' || typeof state.slideshowId !== 'string' || !state.slideshowId ||
+      typeof state.hostUid !== 'string' || !state.hostUid || typeof state.title !== 'string' ||
+      !Array.isArray(state.titles) || !state.titles.length || state.titles.length > 1000 ||
+      !state.titles.every(title => typeof title === 'string' && title.length <= 4096) ||
+      !Number.isInteger(state.index) || state.index < -1 || state.index >= state.titles.length ||
+      !Number.isInteger(state.transitionMs) || state.transitionMs < 0 || state.transitionMs > 2000) {
+    throw new Error('Invalid guide presentation state');
+  }
+  if (state.index === -1) return state;
+  const content = state.content;
+  if (!content || (content.type === 'html'
+    ? typeof content.html !== 'string' || content.html.length > 1000000
+    : !guestUrl(content, 'http://127.0.0.1', 'https://localhost/index.html'))) {
+    throw new Error('Invalid guide audience content');
+  }
+  if (content.rect != null && !validRect(content.rect)) throw new Error('Invalid guide audience rect');
+  return state;
+}
+
+module.exports = {validRect, validDocumentName, fieldDocumentUrl, guestUrl, fieldActions, validateGuideState};

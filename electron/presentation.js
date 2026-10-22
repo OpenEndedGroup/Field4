@@ -2,7 +2,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const {pathToFileURL} = require('node:url');
 const {app, BrowserWindow, WebContentsView, dialog, ipcMain, shell} = require('electron');
-const {validRect, guestUrl, fieldActions} = require('./presentation-cues');
+const {validRect, guestUrl, fieldActions, validateGuideState} = require('./presentation-cues');
 
 const PRELOAD = path.join(__dirname, 'presentation-preload.js');
 const SERVER_MODULE = path.resolve(__dirname, '../tools/presentation/server.mjs');
@@ -10,6 +10,7 @@ const TYPESCRIPT_MODULE = path.resolve(__dirname, '../tools/presentation/typescr
 const ALLOWED_ACTIONS = new Set(['next', 'previous', 'first', 'last', 'goto', 'reload']);
 let active = null;
 let fieldHost = null;
+let guideUpdates = Promise.resolve();
 
 function emitError(session, error) {
   if (session?.control && !session.control.isDestroyed()) {
@@ -35,11 +36,23 @@ function clearTransition(session) {
 }
 
 async function beginTransition(session) {
+  try { await prepareTransition(session); }
+  catch (error) {
+    clearTransition(session);
+    // A covered, suspended or protected native surface may not offer a frame. Advancing the
+    // lesson must still work; in that case use a direct switch instead of stranding the cue.
+    console.warn('[presentation] Switching without an outgoing snapshot:', String(error));
+  }
+}
+
+async function prepareTransition(session) {
   clearTransition(session);
   const guestBounds = session.guest?.getBounds();
-  const background = await session.audience.webContents.capturePage();
+  // A native-content step has a plain black HTML backing. Chromium may stop painting that
+  // fully covered page, so asking it for another frame can wait forever after a document guide.
+  const background = session.native && session.guest ? null : await captureFrame(session.audience.webContents);
   const guestImage = session.guest && !session.guest.webContents.isDestroyed()
-    ? await session.guest.webContents.capturePage().catch(() => null) : null;
+    ? await captureFrame(session.guest.webContents) : null;
   if (active !== session || session.audience.isDestroyed()) return;
   const overlay = new WebContentsView({webPreferences: {
     sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false,
@@ -49,26 +62,54 @@ async function beginTransition(session) {
   overlay.setBackgroundColor('#00000000');
   const [width, height] = session.audience.getContentSize();
   overlay.setBounds({x: 0, y: 0, width, height});
-  await overlay.webContents.loadURL('data:text/html,<html><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}body{opacity:1}img{position:absolute;object-fit:fill;visibility:hidden}</style><body><img id="base" style="inset:0;width:100%;height:100%"><img id="guest"></body></html>');
+  await bounded(overlay.webContents.loadURL('data:text/html,<html><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}body{opacity:1}canvas{position:absolute;visibility:hidden}</style><body><canvas id="base" style="inset:0;width:100%;height:100%"></canvas><canvas id="guest"></canvas></body></html>'), 'The transition view did not load');
   if (session.transition !== overlay) return;
   // Chromium can defer image decoding for an unattached view. Attach a transparent page first;
   // its images stay hidden until both have decoded, while the outgoing live content remains below.
   session.audience.contentView.addChildView(overlay);
-  await overlay.webContents.executeJavaScript(`(async () => {
+  await bounded(overlay.webContents.executeJavaScript(`(async () => {
+    // Image.decode() can stay pending in an Electron view even for a fully loaded PNG.
+    // Drawing its real pixels onto a canvas forces decoding before the layer becomes visible.
+    const paint=async(canvas,source)=>{
+      canvas.hidden=!source;
+      if (!source) return;
+      const image=new Image();
+      await new Promise((resolve,reject)=>{
+        image.onload=resolve;
+        image.onerror=()=>reject(new Error('Could not load the captured audience frame'));
+        image.src=source;
+        if(image.complete && image.naturalWidth) resolve();
+      });
+      canvas.width=image.naturalWidth;
+      canvas.height=image.naturalHeight;
+      canvas.getContext('2d').drawImage(image,0,0);
+      canvas.style.visibility='visible';
+    };
     const base=document.getElementById('base');
-    base.src=${JSON.stringify(background.toDataURL())};
+    const baseSource=${JSON.stringify(background?.toDataURL() || null)};
+    if (!baseSource) document.body.style.background='#000';
     const guest=document.getElementById('guest');
     const guestSource=${JSON.stringify(guestImage?.toDataURL() || null)};
     guest.style.cssText=${JSON.stringify(guestBounds
       ? `left:${guestBounds.x}px;top:${guestBounds.y}px;width:${guestBounds.width}px;height:${guestBounds.height}px;border:0;outline:0`
       : 'display:none')};
-    guest.hidden=!guestSource;
-    if (guestSource) guest.src=guestSource;
-    await Promise.all([base.decode(), ...(guestSource ? [guest.decode()] : [])]);
-    base.style.visibility='visible';
-    if (guestSource) guest.style.visibility='visible';
-  })()`);
+    await Promise.all([paint(base,baseSource),paint(guest,guestSource)]);
+  })()`), 'The transition images did not decode');
   if (session.transition !== overlay || active !== session) return;
+}
+
+async function captureFrame(contents) {
+  return bounded(contents.capturePage(), 'The audience did not provide a transition frame');
+}
+
+async function bounded(promise, message) {
+  let timer;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(message)), 3000); }),
+    ]);
+  } finally { clearTimeout(timer); }
 }
 
 function finishTransition(session) {
@@ -158,7 +199,7 @@ async function runFieldAction(session, action) {
   const actions = fieldActions(slide);
   if (action === 'show-guide' && actions.guide) {
     return session.guest.webContents.executeJavaScript(`import('/afield.mjs').then(api=>{
-      api.send('slideshow-command', {command:'stop'}); return window.showDocumentGuide?.();
+      api.send('slideshow-command', {command:'stop', guideOnly:true}); return window.showDocumentGuide?.();
     })`);
   }
   const guideCommand = {'start-guide': 'start', 'guide-next': 'next', 'guide-previous': 'previous', 'stop-guide': 'stop'}[action];
@@ -166,7 +207,7 @@ async function runFieldAction(session, action) {
     return session.guest.webContents.executeJavaScript(
       `import('/afield.mjs').then(api=>{
         if (${JSON.stringify(guideCommand)} === 'start' && document.getElementById('document-guide')) window.closeDocumentGuide?.();
-        api.send('slideshow-command', {command:${JSON.stringify(guideCommand)}});
+        api.send('slideshow-command', {command:${JSON.stringify(guideCommand)}, guideOnly:true});
       })`);
   }
   if (action === 'run-macro' && actions.macro) {
@@ -182,6 +223,10 @@ async function runFieldAction(session, action) {
 }
 
 function sendAction(session, action, id) {
+  if (session?.native) {
+    void navigateGuide(session, action, id).catch(error => emitError(session, error));
+    return;
+  }
   if (session?.audience && !session.audience.isDestroyed()) {
     session.audience.webContents.send('field-presentation-action-to-audience', action, id);
   }
@@ -214,13 +259,142 @@ async function closePresentation() {
   active = null;
   if (!session) return;
   if (session.manifestWatcher) fs.unwatchFile(session.manifestWatcher);
-  session.typescript.dispose();
+  clearTimeout(session.navigationTimer);
+  session.typescript?.dispose();
   fieldHost?.enableTypeScript([]);
   clearTransition(session);
   clearGuest(session);
   if (!session.control.isDestroyed()) session.control.close();
   if (!session.audience.isDestroyed()) session.audience.close();
-  await session.server.close();
+  if (session.sourceClosed) session.source.removeListener('destroyed', session.sourceClosed);
+  if (session.native && !session.stopped && !session.source.isDestroyed()) {
+    await commandGuide(session, 'stop').catch(() => {});
+  }
+  await session.server?.close();
+}
+
+async function commandGuide(session, command) {
+  if (session.source.isDestroyed()) throw new Error('The Field document hosting this presentation has closed');
+  await session.source.executeJavaScript(`import('/afield.mjs').then(api=>api.send('slideshow-command',
+    ${JSON.stringify({command, slideshowId: session.slideshowId})}))`);
+}
+
+async function navigateGuide(session, action, id) {
+  if (session.navigating) return;
+  const state = session.state;
+  let command = {first: 'home', last: String(state.titles.length - 1), reload: 'refresh'}[action] || action;
+  if (action === 'goto') command = String(id);
+  if ((action === 'next' && state.index === state.titles.length - 1) ||
+      (action === 'previous' && state.index === 0) ||
+      (action === 'goto' && Number(id) === state.index)) return;
+  session.navigating = true;
+  try {
+    await beginTransition(session);
+    if (active !== session) return;
+    await commandGuide(session, command);
+    if (session.navigating) session.navigationTimer = setTimeout(() => {
+      session.navigating = false;
+      clearTransition(session);
+      emitError(session, 'The guide did not respond to navigation. Check the Presentation box for an error.');
+    }, 12000);
+  } catch (error) {
+    session.navigating = false;
+    clearTransition(session);
+    throw error;
+  }
+}
+
+async function openGuidePresentation(source, state) {
+  await closePresentation();
+  const url = new URL(source.getURL()).origin;
+  const audience = makeWindow(`${state.title} · audience`, 1280, 720);
+  const control = makeWindow(`${state.title} · controls`, 720, 460);
+  const session = {native: true, source, url, audience, control, state, slideshowId: state.slideshowId,
+    hostUid: state.hostUid, manifest: {slides: {}, transitionMs: state.transitionMs},
+    guest: null, guestUrl: null, guestRect: [0, 0, 1, 1], guestCue: null, lastCue: null};
+  active = session;
+  session.sourceClosed = () => { if (active === session) void closePresentation(); };
+  source.once('destroyed', session.sourceClosed);
+  audience.on('resize', () => {
+    layoutGuest(session);
+    if (session.transition) {
+      const [width, height] = audience.getContentSize();
+      session.transition.setBounds({x: 0, y: 0, width, height});
+    }
+  });
+  audience.on('closed', () => { if (active === session) void closePresentation(); });
+  control.on('closed', () => { if (active === session) void closePresentation(); });
+  audience.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+    const action = ['ArrowRight', 'PageDown', 'Space', 'F9'].includes(input.key) ? 'next' :
+      ['ArrowLeft', 'PageUp', 'F8'].includes(input.key) ? 'previous' : null;
+    if (action) { event.preventDefault(); sendAction(session, action); }
+  });
+  await Promise.all([audience.loadURL(`${url}/presentation-audience.html`), control.loadURL(`${url}/presentation-control.html`)]);
+  return session;
+}
+
+async function updateGuidePresentation(source, state) {
+  if (source.isDestroyed()) return;
+  state = validateGuideState(state);
+  if (state.index === -1) {
+    if (active?.native && active.source === source && active.slideshowId === state.slideshowId) {
+      active.stopped = true;
+      await closePresentation();
+    }
+    return;
+  }
+  let session = active?.native && active.source === source && active.hostUid === state.hostUid ? active : null;
+  const opening = !session;
+  if (!session) session = await openGuidePresentation(source, state);
+  else if (!session.transition && !session.navigating) await beginTransition(session);
+  if (active !== session) return;
+  session.state = state;
+  session.slideshowId = state.slideshowId;
+  session.lastCue = String(state.index);
+  session.manifest = {transitionMs: state.transitionMs, slides: {[session.lastCue]: state.content}};
+  try {
+    const document = new URL(source.getURL()).searchParams.get('file') || '';
+    const baseUrl = `${session.url}/project/${encodeURIComponent(document)}/files/`;
+    await session.audience.webContents.executeJavaScript(`window.renderPresentation(${JSON.stringify({...state, baseUrl})})`);
+    await showGuest(session, session.lastCue);
+    if (active !== session) return;
+    finishTransition(session);
+    session.control.webContents.send('field-presentation-state-to-control', {
+      index: state.index, count: state.titles.length, title: state.title,
+      currentSlideId: String(state.index), slides: state.titles.map((_, i) => String(i)), titles: state.titles,
+      field: fieldActions(state.content),
+    });
+    if (opening) {
+      session.audience.show(); session.control.show();
+      app.focus({steal: true}); session.control.focus();
+    }
+  } catch (error) {
+    clearTransition(session);
+    emitError(session, error);
+    if (opening) session.control.show();
+  } finally {
+    clearTimeout(session.navigationTimer);
+    session.navigating = false;
+  }
+}
+
+async function presentCurrentGuide() {
+  const contents = fieldHost?.getFieldContents();
+  if (!contents) return dialog.showErrorBox('No Field document', 'Open a Field document containing a guide first.');
+  await contents.executeJavaScript(`import('/afield.mjs').then(api=>api.send('slideshow-command', {command:'present'}))`);
+}
+
+async function newPresentation() {
+  try {
+    const info = await fieldHost?.getFieldInfo();
+    if (!info?.workspace) throw new Error('Open a Field workspace first.');
+    const chosen = await dialog.showSaveDialog({title: 'New presentation document',
+      buttonLabel: 'Create presentation', defaultPath: path.join(info.workspace, 'my-talk')});
+    if (chosen.canceled || !chosen.filePath) return;
+    const name = require('./presentation-starter').createPresentationDocument(info.workspace, chosen.filePath);
+    fieldHost.openDocument(name);
+  } catch (error) { dialog.showErrorBox('Could not create presentation', String(error)); }
 }
 
 async function openPresentation(directory) {
@@ -284,6 +458,15 @@ async function choosePresentation() {
 }
 
 function install() {
+  ipcMain.on('field-presentation-native-state', (event, state) => {
+    if (!fieldHost?.isFieldContents(event.sender)) return;
+    const source = event.sender;
+    guideUpdates = guideUpdates.catch(() => {}).then(() => updateGuidePresentation(source, state))
+      .catch(error => {
+        if (active) emitError(active, error);
+        else dialog.showErrorBox('Could not present guide', String(error));
+      });
+  });
   ipcMain.handle('field-presentation-begin-transition', async event => {
     if (event.sender !== active?.audience.webContents) return;
     const session = active;
@@ -293,7 +476,9 @@ function install() {
   ipcMain.handle('field-presentation-tsx', async (event, request) => {
     const fieldGuest = active?.manifest.slides[active.lastCue]?.type === 'field-document' &&
       event.sender === active?.guest?.webContents && event.sender.getURL() === active.guestUrl;
-    if (!active || (!fieldGuest && !fieldHost?.isFieldContents(event.sender))) throw new Error('No active Field presentation');
+    const allowed = fieldGuest || fieldHost?.isFieldContents(event.sender);
+    if (allowed && request?.action === 'sources' && (!active || active.native)) return [];
+    if (!active || active.native || !allowed) throw new Error('No active Field presentation');
     if (request?.action === 'sources') return sourcePaths(active);
     if (request?.action === 'diagnostics') return active.typescript.diagnostics(request);
     if (request?.action === 'completions') return active.typescript.completions(request);
@@ -312,6 +497,7 @@ function install() {
       return;
     }
     if (action === 'attach-sources') {
+      if (active.native) return;
       if (!fieldHost?.attachSources(sourcePaths(active))) {
         emitError(active, 'Open a Field document before attaching presentation source.');
       }
@@ -348,4 +534,4 @@ function registerFieldHost(window, actions) {
   window.on('closed', () => { if (fieldHost === actions) fieldHost = null; });
 }
 
-module.exports = {install, choosePresentation, openPresentation, closePresentation, registerFieldHost};
+module.exports = {install, choosePresentation, openPresentation, closePresentation, registerFieldHost, presentCurrentGuide, newPresentation};

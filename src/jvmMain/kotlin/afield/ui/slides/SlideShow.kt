@@ -1,5 +1,9 @@
 package afield.ui.slides
 
+import afield.app.protocol.AudienceContent
+import afield.app.protocol.PresentationState
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import afield.app.protocol.Execute
 import afield.app.protocol.put
 import afield.app.server.documents
@@ -112,7 +116,7 @@ fun Box.slideShow(init: SlideShowBuilder.() -> Unit): SlideShowInstance {
 /**
  * Builder for creating slideshows
  */
-class SlideShowBuilder(val hostBox: Box) {
+class SlideShowBuilder(val hostBox: Box, private val presentationOptions: PresentationOptions? = null) {
     private val steps = mutableListOf<SlideStep>()
     private var slideshowId: String? = null
 
@@ -133,7 +137,7 @@ class SlideShowBuilder(val hostBox: Box) {
     }
 
     fun build(): SlideShowInstance {
-        return SlideShowInstance(hostBox, steps, slideshowId)
+        return SlideShowInstance(hostBox, steps, slideshowId, presentationOptions)
     }
 }
 
@@ -141,6 +145,7 @@ class SlideShowBuilder(val hostBox: Box) {
  * Builder for individual slide steps
  */
 class SlideStepBuilder(val title: String, val hostBox: Box) {
+    internal var audienceContent: AudienceContent? = null
     private var noteHtml: String? = null
     private var noteAnchorBox: Box? = null
     private var targetBox: Box? = null
@@ -312,7 +317,8 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
             annotations = annotations.toList(),
             onEnter = onEnter,
             onExit = onExit,
-            linkCallbacks = linkCallbacks.toMap()
+            linkCallbacks = linkCallbacks.toMap(),
+            audience = audienceContent
         )
     }
 }
@@ -343,7 +349,8 @@ data class SlideStep(
     val annotations: List<SlideAnnotation>,
     val onEnter: (suspend () -> Unit)?,
     val onExit: (suspend () -> Unit)?,
-    val linkCallbacks: Map<String, suspend LinkCallbackContext.() -> Unit> = emptyMap()
+    val linkCallbacks: Map<String, suspend LinkCallbackContext.() -> Unit> = emptyMap(),
+    val audience: AudienceContent? = null
 )
 
 /**
@@ -396,8 +403,11 @@ object SlideMarkdown {
 class SlideShowInstance(
     val hostBox: Box,
     val steps: List<SlideStep>,
-    customId: String? = null
+    customId: String? = null,
+    var presentationOptions: PresentationOptions? = null
 ) {
+    internal var resumeStep: Int = -1
+    private val commandMutex = Mutex()
     // Generate unique slideshow ID (use custom ID if provided, otherwise generate based on host box)
     val slideshowId: String = customId ?: "slideshow_${hostBox.id}_${System.currentTimeMillis()}"
     
@@ -451,6 +461,8 @@ class SlideShowInstance(
 
         // Execute onEnter
         step.onEnter?.invoke()
+
+        publishPresentation()
 
         // Show note if present
         if (step.noteHtml != null) {
@@ -550,7 +562,36 @@ class SlideShowInstance(
         currentStep?.onExit?.invoke()
         currentStepIndex = -1
         markActive(false)
+        publishPresentation()
         sendToHostDocument(hostBox, Message("hide-slide-note").payload(HideSlideNote()))
+    }
+
+    /** Execute a navigation request in order; callbacks may navigate within the same command. */
+    suspend fun command(command: String) = commandMutex.withLock {
+        when {
+            command == "next" -> if (hasNext()) next()
+            command == "previous" -> previous()
+            command == "start" || command == "home" -> home()
+            command == "stop" -> stop()
+            command == "present" -> present()
+            command == "refresh" -> if (currentStepIndex >= 0) goToStep(currentStepIndex)
+            command.startsWith("callback:") -> { executeCallback(command.substringAfter("callback:")); Unit }
+            else -> command.toIntOrNull()?.let { goToStep(it) } ?: Unit
+        }
+    }
+
+    internal fun presentationState(): PresentationState? {
+        val options = presentationOptions ?: return null
+        val step = currentStep
+        val content = step?.audience ?: step?.noteHtml?.let { AudienceContent(html = processTemplates(it)) }
+            ?: step?.let { AudienceContent() }
+        return PresentationState(slideshowId, hostBox.id, options.title, currentStepIndex,
+            steps.map { it.title }, content, options.transitionMs)
+    }
+
+    private fun publishPresentation() {
+        val state = presentationState() ?: return
+        sendToHostDocument(hostBox, Message("presentation-state").payload(state))
     }
 
     /**

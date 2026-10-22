@@ -634,7 +634,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - [notation](visualization.md#darkthemecolour-kt)
 - *output* — [Graphics](graphics.md#shadertransitionnotes-kt) · [Internal](internal.md#prettystrings-kt) · [Output](output.md#mediaslots-kt) · [Visualization](visualization.md#chargrid-kt) · [Workspace](workspace.md#lastrunnotes-kt)
     - [templates](visualization.md#replacements-kt)
-- [slides](visualization.md#slideshow-kt)
+- [slides](visualization.md#presentation-kt)
 - *visualization* — [Graphics](graphics.md#flineinspect-kt) · [Visualization](visualization.md#audiovisualizer-kt) · [Workspace](workspace.md#geometryreviewsurface-kt)
 
 </div>
@@ -645,7 +645,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**34161 public symbols across 1535 source files**, 17587 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34173 public symbols across 1536 source files**, 17597 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -667,7 +667,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [ALife](alife.md) | 14 | 783 | 579 (73%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 611 | 405 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 9 | 426 | 255 (59%) | Optimisation over a space you can only sample. |
-| [Visualization](visualization.md) | 56 | 1635 | 1165 (71%) | Turning a value into something you can look at, without leaving the box. |
+| [Visualization](visualization.md) | 57 | 1647 | 1175 (71%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 43 | 1534 | 763 (49%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 40 | 1316 | 721 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 77 | 2092 | 1013 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
@@ -1728,6 +1728,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>study/<wbr>search/<wbr></small> [PopulationSearch.kt](search.md#populationsearch-kt) | Search | 50 | 25 | Population search over *any* genome type — the generic drivers that `alife_evolve.kt`, `FunctionEvolve.kt` and `afield.simulation.kratos.KratosStudy` all run on. | [Spatial artificial life](../alife_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>vision/<wbr></small> [PortableOpticalFlowSmoke.kt](imaging.md#portableopticalflowsmoke-kt) | Imaging | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>execution/<wbr></small> [PreambleFailureStopsExecutionTest.kt](workspace.md#preamblefailurestopsexecutiontest-kt) | Workspace | 2 | 0 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>slides/<wbr></small> [Presentation.kt](visualization.md#presentation-kt) | Visualization | 9 | 9 |  | [Presenting with Field](../presentation_studio.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [PrettyPrint.kt](audio.md#prettyprint-kt) | Audio · internal | 0 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [PrettyStrings.kt](internal.md#prettystrings-kt) | Internal · internal | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>curves/<wbr>principal/<wbr></small> [PrincipalCurves.kt](graphics.md#principalcurves-kt) | Graphics | 58 | 29 |  | [Principal curves: smooth curves through point clouds](../principal_curves.md), [Chaining the geometry extensions](../geometry_chains.md) |
@@ -1925,7 +1926,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr></small> [SkinningEvidence.kt](graphics.md#skinningevidence-kt) | Graphics | 6 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>shader/<wbr></small> [SlangCompiler.kt](graphics.md#slangcompiler-kt) | Graphics | 13 | 0 | Compiles Slang shaders by running an external `slangc`, to GLSL, SPIR-V and reflection JSON. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>tests/<wbr></small> [SliderTest.kt](examples.md#slidertest-kt) | Examples | 4 | 0 | Test file demonstrating the slider functionality. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>slides/<wbr></small> [SlideShow.kt](visualization.md#slideshow-kt) | Visualization | 60 | 32 | SlideShow - A DSL for creating guided tours through Field documents | [Interactive Guides](../interactive_guides.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>slides/<wbr></small> [SlideShow.kt](visualization.md#slideshow-kt) | Visualization | 63 | 33 | SlideShow - A DSL for creating guided tours through Field documents | [Interactive Guides](../interactive_guides.md), [Presenting with Field](../presentation_studio.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [slideshow_example.kt](examples.md#slideshow-example-kt) | Examples | 7 | 7 | Example slideshows demonstrating the slideshow DSL | [Interactive Guides](../interactive_guides.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>text/<wbr>slug/<wbr></small> [SlugBuffer.kt](graphics.md#slugbuffer-kt) | Graphics | 10 | 4 | The GPU side of Slug filled-path rendering: `SlugBuffer` holds one `SlugPath`'s atlas words in a Vulkan storage buffer that a slug shader reads. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>text/<wbr>slug/<wbr></small> [SlugPath.kt](graphics.md#slugpath-kt) | Graphics | 4 | 2 | Compiles a filled, flat `FLine` into Slughorn atlas data (`SlugPath`) by running the native `field-slug` helper, built with `./gradlew buildSlugNative`. |  |

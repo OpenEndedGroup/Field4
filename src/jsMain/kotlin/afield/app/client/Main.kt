@@ -6769,6 +6769,16 @@ suspend fun main() {
         Handled.yes
     }
 
+    // Only a Field tab in Electron can open a native audience window. Browser clients keep guides local.
+    handlers.put("presentation-state") { message, _ ->
+        val bridge = window.asDynamic().fieldElectron
+        if (bridge != null && bridge.presentGuide != null) {
+            val state = JSON.parse<dynamic>(message.payload.toString())
+            bridge.presentGuide(state)
+        }
+        Handled.yes
+    }
+
     // Slideshow handlers
     handlers.put("select-and-edit-box") { message, _ ->
         val sel = Json.decodeFromJsonElement<SelectAndEditBox>(message.payload!!)
