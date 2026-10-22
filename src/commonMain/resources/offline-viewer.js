@@ -935,6 +935,12 @@ function toggleDrawing(force) {
  */
 function jumpToBookmark(bookmark) {
     const pos = bookmark.scrollPosition || {};
+    // Select first, so the view is framed in the canvas area the editor panel leaves.
+    if (bookmark.restoreSelection !== false && bookmark.selectedBox) {
+        const box = visibleBoxes.find(b => b.id === bookmark.selectedBox);
+        const el = box && document.querySelector(`.box[data-box-id="${CSS.escape(box.id)}"]`);
+        if (box && el) selectBox(box, el, false);
+    }
     if (bookmark.restoreView !== false) {
         if (Number.isFinite(pos.viewW) && pos.viewW > 0 && Number.isFinite(pos.viewH)) {
             frameWorldRect({ x: pos.viewX, y: pos.viewY, w: pos.viewW, h: pos.viewH }, MAX_ZOOM, 0);
@@ -944,11 +950,6 @@ function jumpToBookmark(bookmark) {
             panY = Number(pos.y) || 0;
             applyPanTransform();
         }
-    }
-    if (bookmark.restoreSelection !== false && bookmark.selectedBox) {
-        const box = visibleBoxes.find(b => b.id === bookmark.selectedBox);
-        const el = box && document.querySelector(`.box[data-box-id="${CSS.escape(box.id)}"]`);
-        if (box && el) selectBox(box, el, false);
     }
 }
 

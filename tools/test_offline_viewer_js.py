@@ -11,6 +11,8 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -39,6 +41,31 @@ class OfflineViewerJsTest(unittest.TestCase):
         parser = PARSER.read_text()
         for tag in sorted(tags):
             self.assertIn(f"case '{tag}':", parser, f"edn-parser.js applyTag does not handle #{tag}")
+
+    def test_gallery_index_summarises_documents(self) -> None:
+        sys.path.insert(0, str(REPO / "tools"))
+        import sync_offline_assets  # type: ignore[import-not-found]
+
+        scene = '{\\"type\\":\\"excalidraw\\",\\"elements\\":[{\\"id\\":\\"a\\",\\"isDeleted\\":false},{\\"id\\":\\"b\\",\\"isDeleted\\":true}]}'
+        edn = (
+            '{"version" 2 "boxes" [{"id" "b1" "properties" {"name" "one" "notes" #afield/file-inline {"path" "b1_notes_.md" "inline" "# hi"}}} '
+            '{"id" "b2" "properties" {"name" "gone" "_tombstone" true}} '
+            '{"id" "root" "properties" {"drawing" "' + scene + '"}}]}'
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp)
+            (target / "assets" / "docs" / "demo" / "backups").mkdir(parents=True)
+            (target / "assets" / "docs" / "demo" / "metadata.edn").write_text(edn)
+            (target / "assets" / "docs" / "demo" / "backups" / "metadata.edn").write_text(edn)
+            (target / "assets" / "agent_transcripts_gallery").mkdir()
+            (target / "assets" / "agent_transcripts_gallery" / "demo_still.png").write_bytes(b"")
+            self.assertEqual(sync_offline_assets.write_gallery_index(target), 1)
+            import json
+            doc = json.loads((target / "offline-gallery.json").read_text())["documents"][0]
+            self.assertEqual(doc, {
+                "name": "demo", "file": "assets/docs/demo/metadata.edn", "boxes": 1, "notes": 1, "drawing": 1,
+                "image": "assets/agent_transcripts_gallery/demo_still.png",
+            })
 
 
 if __name__ == "__main__":
