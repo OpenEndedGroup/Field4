@@ -573,6 +573,9 @@ class FieldApiCorsExposureTest {
             // Nested inside `route("/vision")`, and published as `POST /stream` until
             // 2026-08-22 because path resolution returned early on a leading slash.
             "POST /vision/stream" to "none",
+            // The three viewer's Export GLB through the optional gltfpack binary (2026-10): bytes in,
+            // compressed bytes out, no document state; guarded because it runs a local process.
+            "POST /three-gltfpack" to "loopback + same-site",
             "POST /three-review-note" to "loopback + same-site",
             "PUT /api/docs-annotations/{id}/resolve" to "loopback + same-site",
             "PUT /api/document-tags" to "none",
@@ -585,6 +588,9 @@ class FieldApiCorsExposureTest {
             // Keystrokes into a pty (terminal.kt): the revision pass's boundary, hatches shut.
             "/pty/{id}" to "terminal input; loopback + same-site",
             "/welcome-events" to "server notifications; none",
+            // WebRTC signaling (WebRTCRoutes.kt): relays SDP/ICE between Field's own pages and
+            // touches no document, so the heuristic's "server notifications" is the right role.
+            "/ws/webrtc-signaling" to "server notifications; same-site",
             "/ws" to "commands; same-site",
         )
     }
