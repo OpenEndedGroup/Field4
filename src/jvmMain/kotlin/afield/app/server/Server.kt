@@ -157,6 +157,7 @@ import afield.document.properties.PropertyDependencies
 import afield.document.workspace.AgentWorktreeActionRequest
 import afield.document.workspace.AgentWorktreeActionResponse
 import afield.document.workspace.AiProviderModelSettings
+import afield.document.workspace.LocalAiConnectionRequest
 import afield.document.workspace.AiSettingsStatus
 import afield.document.workspace.AiSettingsUpdateRequest
 import afield.document.workspace.AiSettingsUpdateResponse
@@ -269,6 +270,9 @@ import afield.ai.completion.AI4_AUTO_NAME_PROPERTY
 import afield.ai.completion.AI4_AUTO_NAME_SIGNATURE_PROPERTY
 import afield.ai.models.AiSettingsSaveRequest
 import afield.ai.models.aiProviderStatus
+import afield.ai.models.checkLocalAiConnection
+import afield.ai.models.aiSettingsEnvironmentOverrides
+import afield.ai.models.readLocalAiCredential
 import afield.ai.models.configuredAiBaseUrl
 import afield.ai.models.configuredAiModelSettings
 import afield.ai.models.saveAiSettings
@@ -651,6 +655,14 @@ class SessionInformation(
 
     // Track sidecar-bearing properties that need to be written to disk on next save.
     val pendingSidecarSaves = ConcurrentHashMap.newKeySet<Pair<String, String>>()
+
+    /**
+     * [afield.document.persistence.PersistedFingerprint] of this document when it last matched disk:
+     * set when the loader has read it and at every save; null for a document never read or saved.
+     * A save is due when the current fingerprint differs, even with nothing in [pendingSidecarSaves].
+     */
+    @Volatile
+    var savedFingerprint: Long? = null
     private val pendingSidecarSaveVersions = ConcurrentHashMap<Pair<String, String>, Long>()
     private val propertySyncSequences = ConcurrentHashMap<Pair<String, String>, AtomicLong>()
     private val pendingPropertySyncOrigins = ConcurrentHashMap<Pair<String, String>, PropertySyncOrigin>()
@@ -1151,13 +1163,17 @@ private fun currentAiSettingsStatus(): AiSettingsStatus {
         openRouterConfigPath = status.openRouterConfigPath,
         baseUrl = status.baseUrl,
         openRouterBaseUrl = configuredAiBaseUrl("openrouter"),
+        localBaseUrl = configuredAiBaseUrl("local"),
+        hasLocalApiKey = readLocalAiCredential() != null,
+        environmentOverrides = aiSettingsEnvironmentOverrides(),
         flagshipModel = status.modelSettings.flagshipModel,
         fastModel = status.modelSettings.fastModel,
         fallbackModel = status.modelSettings.fallbackModel,
         modelsByProvider = mapOf(
             "openai" to models("openai"),
             "openrouter" to models("openrouter"),
-            "anthropic" to models("anthropic")
+            "anthropic" to models("anthropic"),
+            "local" to models("local")
         )
     )
 }
@@ -2523,24 +2539,8 @@ class Server {
                             refreshFileProxyBoxes(info, notifyMissing = false)
                             // Box-to-box reads recorded since the last tick, beside metadata.edn.
                             PropertyDependencies.flush(info)
-                            // Only persist when we know sidecar-bearing properties changed.
-                            if (info.pendingSidecarSaves.isNotEmpty()) {
-//                            lblock(" saving to ${info.filename}")
-                                run {
-                                    try {
-                                        // Include root box in saved boxes to persist root properties like bookmarks
-                                        val allBoxes = info.boxes.values.toMutableSet()
-                                        allBoxes.add(info.root)
-                                        val pendingSnapshot = info.pendingSidecarSnapshot()
-                                        SavingContext().save(info.filename, allBoxes, onComplete = {
-                                            info.clearSavedSidecars(pendingSnapshot)
-                                        })
-                                    } catch (ex: Exception) {
-                                        lprintln("error,server", "trouble saving")
-                                        ex.printStackTrace()
-                                    }
-                                }
-                            }
+                            // Persist marked edits, and unmarked ones the fingerprint sees (in-place mutation, writes during load).
+                            DocumentShutdownFlush.saveIfPending(info, inline = false, reason = "autosave", log = false)
                         }
                     } catch (t: Throwable) {
                         lprintln("error,server", "exception inside saving / resync loop -- will retry")
@@ -3842,11 +3842,15 @@ class Server {
                 // If animated, send custom visibility change messages
                 if (update.animated) {
                     thisSessionInfo.get().boxes.values.forEach { box ->
+                        // A JsonObject, not a Map<String, Any>: kotlinx.serialization has no serializer
+                        // for Any, so the map threw here and no box faded (docs/layers.md capture).
                         val visibilityMessage = Message("set-visibility-animated").payload(
-                            mapOf(
-                                "uid" to box.id,
-                                "visible" to box.visible,
-                                "duration" to update.duration
+                            kotlinx.serialization.json.JsonObject(
+                                mapOf(
+                                    "uid" to kotlinx.serialization.json.JsonPrimitive(box.id),
+                                    "visible" to kotlinx.serialization.json.JsonPrimitive(box.visible),
+                                    "duration" to kotlinx.serialization.json.JsonPrimitive(update.duration),
+                                )
                             )
                         )
                         box.inside.sessions.forEach { _send(it, visibilityMessage) }
@@ -3883,6 +3887,8 @@ class Server {
                             val boxLayers = parseLayersList(box.layers)
                             if (boxLayers.contains(oldActiveLayer)) {
                                 box.layerFrames[oldActiveLayer] = box.frame
+                                // An in-place write to the map: no property set, so mark it.
+                                box.notePersistentChange("layerFrames")
                                 lprintln(
                                     "debug,layers",
                                     "Saved frame for box ${box.id} in layer $oldActiveLayer: ${box.frame}"
@@ -4642,6 +4648,23 @@ class Server {
                             }
                         }
 
+                        post("/api/ai-local-connection") {
+                            if (!isSameSiteRequest(call.request.header("Sec-Fetch-Site"),
+                                    call.request.header("Origin"), call.request.header("Host"))) {
+                                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Open local AI settings from Field's welcome page."))
+                                return@post
+                            }
+                            try {
+                                val request = call.receive<LocalAiConnectionRequest>()
+                                call.respond(withContext(Dispatchers.IO) { checkLocalAiConnection(request) })
+                            } catch (e: Exception) {
+                                call.respond(HttpStatusCode.BadRequest, mapOf("error" to when (e) {
+                                    is IllegalArgumentException -> (e.message ?: "Invalid local endpoint.")
+                                    else -> "Could not reach the model server from Field. Check its address, port, firewall and whether it is running."
+                                }))
+                            }
+                        }
+
                         post("/api/ai-settings") {
                             try {
                                 val request = call.receive<AiSettingsUpdateRequest>()
@@ -4653,7 +4676,9 @@ class Server {
                                         openRouterBaseUrl = request.openRouterBaseUrl,
                                         flagshipModel = request.flagshipModel,
                                         fastModel = request.fastModel,
-                                        fallbackModel = request.fallbackModel
+                                        fallbackModel = request.fallbackModel,
+                                        localBaseUrl = request.localBaseUrl,
+                                        localApiKey = request.localApiKey
                                     )
                                 )
                                 call.respond(
@@ -4668,7 +4693,11 @@ class Server {
                                         flagshipModel = status.modelSettings.flagshipModel,
                                         fastModel = status.modelSettings.fastModel,
                                         fallbackModel = status.modelSettings.fallbackModel,
-                                        message = "AI settings saved; the next AI request will use ${status.provider}."
+                                        message = if (aiSettingsEnvironmentOverrides().isEmpty()) "AI settings saved; the next AI request will use ${status.provider}."
+                                            else "Saved. Environment overrides are active; remove them and restart Field to use these settings.",
+                                        localBaseUrl = configuredAiBaseUrl("local"),
+                                        hasLocalApiKey = readLocalAiCredential() != null,
+                                        environmentOverrides = aiSettingsEnvironmentOverrides()
                                     )
                                 )
                             } catch (e: IllegalArgumentException) {

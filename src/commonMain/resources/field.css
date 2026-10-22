@@ -844,6 +844,25 @@ pre code {
     white-space: pre-wrap;
 }
 
+/* Math (aiChatMath.js, KaTeX). KaTeX sizes itself from the surrounding font, which the fence preview
+   sets small for diagram labels. */
+.ai-math-fence {
+    font-size: 15px;
+}
+
+.ai-math-display {
+    display: block;
+    margin: 0.6em 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    text-align: center;
+}
+
+.ai-math-error {
+    color: #e9a2a2;
+    white-space: pre-wrap;
+}
+
 .ai-chat-window {
     /* Rhymes with the history panel: a black shell, an editor-grey well for
        the input, cyan for Field's own voice and orange for yours. */
@@ -3931,17 +3950,32 @@ body::-webkit-scrollbar {
 }
 
 .file-proxy-path {
+    display: flex;
     max-width: calc(100% - 10px);
     margin-top: -4px;
     padding: 0 5px 5px;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     color: var(--field-fg-dim);
     font-family: var(--field-font-code);
     font-size: 10px;
     line-height: 1.2;
     pointer-events: none;
+}
+
+.file-proxy-path-head {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* The head gives way first; the tail ellipsizes only once it alone is wider than the box. */
+.file-proxy-path-tail {
+    flex: 0 0 auto;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Box.tint, set from code to show state (the score playhead's "this box is playing"): the colour at its

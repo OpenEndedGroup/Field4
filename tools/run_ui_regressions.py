@@ -2355,10 +2355,15 @@ try {
   const selectedBefore = getComputedStyle(target, "::before");
   const beforeBorderWidthPx = Number.parseFloat(selectedBefore.borderTopWidth || selectedBefore.borderWidth || "0") || 0;
   const boxStyle = getComputedStyle(target);
+  const head = target.querySelector(".file-proxy-path-head");
+  const tail = target.querySelector(".file-proxy-path-tail");
   const result = {
     selected: target.classList.contains("selected"),
     fileProxyBox: target.classList.contains("file-proxy-box"),
     pathText,
+    tailText: tail?.textContent || "",
+    headTruncated: !!head && head.scrollWidth > head.clientWidth,
+    tailWhole: !!tail && tail.clientWidth > 0 && tail.scrollWidth <= tail.clientWidth,
     beforeBorderColor: selectedBefore.borderColor,
     beforeBorderWidth: selectedBefore.borderWidth,
     beforeBorderWidthPx,
@@ -2370,6 +2375,9 @@ try {
   result.ok = result.selected &&
     result.fileProxyBox &&
     !!result.pathText &&
+    result.tailText === "/scenes/regression.txt" &&
+    result.headTruncated &&
+    result.tailWhole &&
     result.boxIsSelectedColor &&
     !result.beforeIsSelectedColor &&
     result.beforeBorderWidthPx >= 4 &&
@@ -3955,6 +3963,14 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
     timeout_text = str(timeout)
     return [
         UiRegression(
+            id="welcome-local-ai",
+            description="Local AI settings retain drafts through refresh and provider switches, validate the model, and report an unreachable server.",
+            commands=[
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/welcome-local-ai.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="three-idle-rendering",
             description="Static geometry sleeps and redraws for visibility, lighting, section, insertion, camera and resize.",
             commands=[
@@ -4466,11 +4482,11 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
         ),
         UiRegression(
             id="selection-highlight-file-proxy",
-            description="Selected file-proxy boxes keep the visible selection ring on the box outline even with a subtitle.",
+            description="Selected file-proxy boxes keep the visible selection ring on the box outline even with a subtitle, whose long path truncates in the middle.",
             commands=[
                 "new-box --name SelectionSubtitleRegression --w 260 --h 110",
                 shell_join(["set", "@last", "file_proxy_mode", "absolute"]),
-                shell_join(["set", "@last", "file_proxy_path", "/tmp/selection-subtitle-regression.txt"]),
+                shell_join(["set", "@last", "file_proxy_path", "/private/tmp/selection-subtitle-regression/src/scenes/regression.txt"]),
                 "sleep 0.5",
                 shell_join(["page-eval", "--body", "--file", str(files["selection_subtitle_box_js"]), "--timeout", pw_timeout]),
             ],
@@ -4550,7 +4566,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
         ),
         UiRegression(
             id="ai-chat-fence-renderers",
-            description="AI4 chat renders registered fences, loads Mermaid, and keeps source visible when a diagram fails.",
+            description="AI4 chat renders registered fences, loads Mermaid and KaTeX math, and keeps source visible when a diagram or equation fails.",
             document=f"ui-regression-chat-fences-{int(time.time())}",
             commands=[
                 "new-box --name FenceRenderers --x 40 --y 40",

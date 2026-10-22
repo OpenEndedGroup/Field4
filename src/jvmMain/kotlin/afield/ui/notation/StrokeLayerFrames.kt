@@ -84,7 +84,6 @@ object StrokeLayerFrames {
             is FLine.LineTo -> op(1, node.to)
             is FLine.CubicTo -> op(2, node.c1, node.c2, node.to)
             is FLine.Close -> op(3)
-            else -> node.toOrNull?.let { op(1, it) }
         }
         out.append(']')
 

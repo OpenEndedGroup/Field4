@@ -11,6 +11,7 @@ import afield.document.graph.autorun
 import afield.document.graph.notes
 import afield.document.graph.preamble
 import afield.document.graph.syncExecutionStatus
+import afield.document.graph.snapshotRunningStates
 import afield.document.persistence.SavingContext
 import afield.document.workspace.metadata
 import afield.runtime.execution.ReturnValueRegistry
@@ -32,6 +33,7 @@ import afield.runtime.lifecycle.map
 import afield.ui.output.templates.filter
 import java.util.concurrent.BrokenBarrierException
 import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.test.AfterTest
@@ -223,6 +225,27 @@ class BoxPropertyBagConcurrencyTest {
      * dies on `LinkedHashMap$LinkedHashIterator.nextNode`, exactly as `resyncAll` did.
      */
     @Test
+    fun runningStateSnapshotToleratesLastEntryRemoval() {
+        // Model a strand finishing between a reader observing size=1 and walking entries.
+        val finishing = object : ConcurrentHashMap<String, RunningState>() {
+            override val size: Int
+                get() {
+                    val observed = super.size
+                    clear()
+                    return observed
+                }
+        }
+        finishing["default"] = RunningState(4, "launch")
+        assertTrue(snapshotRunningStates(finishing).isEmpty())
+
+        val state = RunningState(9, "launch")
+        val active = ConcurrentHashMap(mapOf("alternate" to state))
+        val snapshot = snapshotRunningStates(active)
+        active.clear()
+        assertEquals(mapOf("alternate" to state), snapshot, "a snapshot must retain observed states")
+    }
+
+    @Test
     fun executionStatusWalksDoNotRaceOnRunningStates() {
         val box = Box("running-states-race")
         stressedBoxes += box
@@ -235,7 +258,7 @@ class BoxPropertyBagConcurrencyTest {
 
         // What syncExecutionStatus (Boxes.kt) does to each box, 500ms apart, on the main runloop.
         val walker = worker("execution-status-walker", rounds, phase, failure) {
-            box.currentRunningStates.toMap().forEach { (_, state) -> state.watermark }
+            snapshotRunningStates(box.currentRunningStates).forEach { (_, state) -> state.watermark }
             walks.incrementAndGet()
         }
         var n = 0

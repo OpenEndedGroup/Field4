@@ -69,7 +69,7 @@ fun Box.askFieldAgent(
         is Box -> chatBox
         else -> FieldGraphTools(info).resolve(chatBox.toString())
     }
-    val hasKey = runCatching { aiProviderStatus().let { it.hasOpenAiPlatformKey || it.hasOpenRouterApiKey } }.getOrDefault(false)
+    val hasKey = runCatching { aiProviderStatus().let { it.hasOpenAiPlatformKey || it.hasOpenRouterApiKey || (it.provider == "local" && it.modelSettings.flagshipModel.isNotBlank()) } }.getOrDefault(false)
     val resolved = when (mode) {
         "auto" -> if (hasKey || script.isBlank()) "live" else "scripted"
         else -> mode

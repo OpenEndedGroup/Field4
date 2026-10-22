@@ -6,7 +6,7 @@ between features is what you are asking for. `ctrl/command-4` starts a
 conversation about a box, `ctrl/command-3` asks for an edit at one place in the
 editor, `ctrl-space` mixes AI candidates into ordinary completion, and
 `ai("...")` fills in a function body from its signature. None of it works until Field has a provider
-to talk to, so configure OpenAI, OpenRouter or Anthropic from
+to talk to, so configure OpenAI, OpenRouter, Anthropic or a [local model server](local_ai.md) from
 [`/welcome`](history_overview.md) or from the environment first.
 
 ## Chat about one box

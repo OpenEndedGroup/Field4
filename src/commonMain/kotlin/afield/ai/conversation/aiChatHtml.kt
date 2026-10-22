@@ -18,15 +18,40 @@ private fun escapeHtml(text: String): String {
 }
 
 /**
- * Code spans, emphasis, images and links. A code span is literal: the `*` in `` `sin(r * 3.6)` `` is
+ * A code span, or math: `$$…$$` and `\[…\]` display, `\(…\)` inline, and `$…$` inline only when the dollars
+ * hug their content and the closing one is not followed by a digit (Pandoc's rule), so "$5 and $10" stays
+ * prose. The first match wins, so a `$` inside a code span is code and a backtick inside math is TeX.
+ */
+private val literalSpan = Regex(
+    "`([^`]+)`" +
+        "|\\$\\$(.+?)\\$\\$" +
+        "|\\\\\\[(.+?)\\\\\\]" +
+        "|\\\\\\((.+?)\\\\\\)" +
+        "|(?<![\\\\$])\\$([^\\s$](?:[^$]*[^\\s\\\\$])?)\\$(?![$0-9])"
+)
+
+/**
+ * Code spans, math, emphasis, images and links. A code span is literal: the `*` in `` `sin(r * 3.6)` `` is
  * multiplication, so emphasis and links are only looked for between code spans, never inside or across one.
+ * Math is literal the same way. It leaves here as `<span class="ai-math">` holding its source, delimiters and
+ * all, with the TeX in `data-tex`; the browser typesets it (aiChatMath.js), and anywhere that does not still
+ * reads the source.
  */
 private fun inlineFormat(text: String): String {
     val out = StringBuilder(text.length + 16)
     var index = 0
-    for (span in Regex("`([^`]+)`").findAll(text)) {
+    for (span in literalSpan.findAll(text)) {
         out.append(formatProse(text.substring(index, span.range.first)))
-        out.append("<code>").append(span.groupValues[1]).append("</code>")
+        val groups = span.groupValues
+        if (groups[1].isNotEmpty()) {
+            out.append("<code>").append(groups[1]).append("</code>")
+        } else {
+            val display = groups[2].isNotEmpty() || groups[3].isNotEmpty()
+            val tex = (2..5).map { groups[it] }.first { it.isNotEmpty() }.trim()
+            val kind = if (display) "ai-math ai-math-display" else "ai-math"
+            out.append("<span class=\"").append(kind).append("\" data-tex=\"").append(tex).append("\">")
+                .append(span.value).append("</span>")
+        }
         index = span.range.last + 1
     }
     out.append(formatProse(text.substring(index)))

@@ -68,7 +68,7 @@ class CharGridRunTest {
         assertEquals(listOf(0, 1, 2, 3, 4), ticks)
         assertEquals(listOf(0, 0, 1, 0, 1), prevs, "PREV(0, 0) is what the previous tick wrote")
         assertEquals(6, grid!!.cols)
-        assertEquals("#50fa7b", grid!!.colorAt(0, 0))
+        assertEquals("#50fa7b", grid.colorAt(0, 0))
     }
 
     @Test

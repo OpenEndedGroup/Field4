@@ -15,6 +15,10 @@
             font-style: normal;
             src: url("/woff2/iosevka-semicondensedlight.woff2") format("woff2");
         }
+        #ai-settings-details [hidden] { display: none !important; }
+        #local-ai-controls input { width: 100%; box-sizing: border-box; }
+        #local-ai-controls .ai-settings-field { margin: 10px 0; }
+        #local-ai-status, #ai-environment-overrides { font-size: .85em; line-height: 1.45; overflow-wrap: anywhere; }
     </style>
     <link rel="stylesheet" href="/iosevka.css">
 
@@ -542,6 +546,8 @@
         #openai-platform-key,
         #openrouter-api-key,
         #openrouter-base-url,
+        #local-ai-base-url,
+        #local-ai-api-key,
         #ai-flagship-model,
         #ai-fast-model,
         #ai-fallback-model,
@@ -575,6 +581,8 @@
         #openai-platform-key::placeholder,
         #openrouter-api-key::placeholder,
         #openrouter-base-url::placeholder,
+        #local-ai-base-url::placeholder,
+        #local-ai-api-key::placeholder,
         #ai-flagship-model::placeholder,
         #ai-fast-model::placeholder,
         #ai-fallback-model::placeholder,
@@ -601,6 +609,8 @@
         #openai-platform-key:focus,
         #openrouter-api-key:focus,
         #openrouter-base-url:focus,
+        #local-ai-base-url:focus,
+        #local-ai-api-key:focus,
         #ai-flagship-model:focus,
         #ai-fast-model:focus,
         #ai-fallback-model:focus,
@@ -2245,25 +2255,36 @@
                             <span class="ai-settings-label">Provider</span>
                             <span id="ai-settings-state">checking</span>
                         </div>
-                        <div class="ai-settings-provider" role="group" aria-label="AI provider">
+                        <div class="ai-settings-provider" style="flex-wrap:wrap" role="group" aria-label="AI provider">
                             <button class="segmented-button ai-provider-button" type="button" data-ai-provider="openai" aria-pressed="true">OpenAI</button>
                             <button class="segmented-button ai-provider-button" type="button" data-ai-provider="openrouter" aria-pressed="false">OpenRouter</button>
                             <button class="segmented-button ai-provider-button" type="button" data-ai-provider="anthropic" aria-pressed="false">Anthropic (Claude)</button>
+                            <button class="segmented-button ai-provider-button" type="button" data-ai-provider="local" aria-pressed="false">Local</button>
                         </div>
-                        <div class="ai-settings-hint" style="opacity:0.75;font-size:0.85em;margin:4px 0;">Anthropic (Claude) authenticates with your <code>ant auth login</code> credential — no API key needed. Save to switch; run <code>ant auth login</code> first if you haven't.</div>
+                        <div id="anthropic-ai-hint" class="ai-settings-hint" style="opacity:0.75;font-size:0.85em;margin:4px 0;">Anthropic (Claude) authenticates with your <code>ant auth login</code> credential — no API key needed. Save to switch; run <code>ant auth login</code> first if you haven't.</div>
                         <div class="ai-settings-controls">
                             <input id="openai-platform-key" type="password" autocomplete="off" placeholder="OPENAI_PLATFORM_KEY">
-                            <button id="save-ai-settings" type="button">Save</button>
                         </div>
                         <div class="ai-settings-controls">
                             <input id="openrouter-api-key" type="password" autocomplete="off" placeholder="OPENROUTER_API_KEY">
                             <input id="openrouter-base-url" type="text" autocomplete="off" placeholder="https://openrouter.ai/api/v1">
+                        </div>
+                        <div id="local-ai-controls" hidden>
+                            <p class="ai-settings-hint">Run AI on this computer or another machine you own. Enter the address that the Field backend can reach. <a href="/field-docs/local_ai/" target="_blank" rel="noopener">Set up local AI</a></p>
+                            <label class="ai-settings-field" for="local-ai-base-url"><span>API base URL</span><input id="local-ai-base-url" type="url" autocomplete="off" placeholder="http://gpu-host:8081/v1"></label>
+                            <label class="ai-settings-field" for="local-ai-api-key"><span>API key (optional)</span><input id="local-ai-api-key" type="password" autocomplete="off" placeholder="Leave blank if your server needs no key"></label>
+                            <div class="ai-settings-controls"><button id="check-local-ai" type="button">Check connection</button></div>
+                            <div id="local-ai-status" role="status" aria-live="polite"></div>
+                            <datalist id="local-ai-models"></datalist>
                         </div>
                         <div class="ai-settings-models">
                             <label class="ai-settings-field" for="ai-flagship-model"><span>agent</span><input id="ai-flagship-model" type="text" autocomplete="off" placeholder="gpt-6-astra or openai/gpt-5.6-sol"></label>
                             <label class="ai-settings-field" for="ai-fast-model"><span>fast</span><input id="ai-fast-model" type="text" autocomplete="off" placeholder="gpt-6-luna or openai/gpt-6-luna"></label>
                             <label class="ai-settings-field" for="ai-fallback-model"><span>fallback</span><input id="ai-fallback-model" type="text" autocomplete="off" placeholder="gpt-5.4 or openai/gpt-5.4"></label>
                         </div>
+                        <div class="ai-settings-controls"><button id="save-ai-settings" type="button">Save</button></div>
+                        <div id="ai-settings-status" aria-live="polite"></div>
+                        <div id="ai-environment-overrides" class="ai-settings-hint" hidden></div>
                         <div class="ai-docs-panel">
                             <div class="ai-docs-header">
                                 <span class="ai-docs-label">KDoc drafts</span>
@@ -2352,7 +2373,6 @@
                             <div id="semantic-search-progress" aria-hidden="true"></div>
                             <div id="semantic-search-status" aria-live="polite"></div>
                         </div>
-                        <div id="ai-settings-status" aria-live="polite"></div>
                     </div>
                 </details>
                 <details id="preferences-details">
@@ -3156,16 +3176,33 @@
         const fallbackModel = document.getElementById("ai-fallback-model");
         const button = document.getElementById("save-ai-settings");
         const settings = state.aiSettings || {};
-        const provider = (settings.provider === "openrouter" || settings.provider === "anthropic") ? settings.provider : "openai";
+        const provider = ["openrouter", "anthropic", "local"].includes(settings.provider) ? settings.provider : "openai";
         const providerModels = settings.modelsByProvider?.[provider] || {
             flagshipModel: settings.flagshipModel || "",
             fastModel: settings.fastModel || "",
             fallbackModel: settings.fallbackModel || ""
         };
-        const configured = provider === "anthropic" ? true : provider === "openrouter" ? !!settings.hasOpenRouterApiKey : !!settings.hasOpenAiPlatformKey;
+        const configured = provider === "local" ? !!providerModels.flagshipModel : provider === "anthropic" ? true : provider === "openrouter" ? !!settings.hasOpenRouterApiKey : !!settings.hasOpenAiPlatformKey;
+        const local = provider === "local";
+        document.getElementById("local-ai-controls").hidden = !local;
+        document.getElementById("anthropic-ai-hint").hidden = provider !== "anthropic";
+        openAiInput.closest(".ai-settings-controls").hidden = provider !== "openai";
+        openRouterInput.closest(".ai-settings-controls").hidden = provider !== "openrouter";
+        const localUrl = document.getElementById("local-ai-base-url");
+        const localKey = document.getElementById("local-ai-api-key");
+        localUrl.disabled = localKey.disabled = state.savingAiSettings;
+        localKey.placeholder = settings.hasLocalApiKey ? "Key saved; leave blank to keep for this endpoint" : "Leave blank if your server needs no key";
+        document.getElementById("check-local-ai").disabled = state.savingAiSettings || !!state.testingLocalAi;
+        flagshipModel.setAttribute("list", local ? "local-ai-models" : "");
+        flagshipModel.placeholder = local ? "Model ID, e.g. qwen3.8-27b" : "gpt-6-astra or openai/gpt-5.6-sol";
+        fastModel.placeholder = local ? "Use agent model" : "gpt-6-luna or openai/gpt-6-luna";
+        fallbackModel.placeholder = local ? "Use agent model" : "gpt-5.4 or openai/gpt-5.4";
+        const overrides = document.getElementById("ai-environment-overrides");
+        overrides.hidden = !(settings.environmentOverrides || []).length;
+        overrides.textContent = `Environment overrides: ${(settings.environmentOverrides || []).join(", ")}. Remove these and restart Field to use saved settings.`;
 
-        if (summary) summary.textContent = configured ? provider : "missing key";
-        if (stateNode) stateNode.textContent = provider === "anthropic" ? "anthropic (ant auth login)" : configured ? `${provider} configured` : `missing ${provider === "openrouter" ? "OPENROUTER_API_KEY" : "OPENAI_PLATFORM_KEY"}`;
+        if (summary) summary.textContent = local && state.aiSettingsEditing ? "unsaved" : configured ? provider : (local ? "choose model" : "missing key");
+        if (stateNode) stateNode.textContent = local ? (state.aiSettingsEditing ? "local settings not saved" : configured ? "local endpoint configured" : "enter endpoint and model") : provider === "anthropic" ? "anthropic (ant auth login)" : configured ? `${provider} configured` : `missing ${provider === "openrouter" ? "OPENROUTER_API_KEY" : "OPENAI_PLATFORM_KEY"}`;
         document.querySelectorAll("[data-ai-provider]").forEach((providerButton) => {
             const active = providerButton.getAttribute("data-ai-provider") === provider;
             providerButton.setAttribute("aria-pressed", active ? "true" : "false");
@@ -3178,6 +3215,7 @@
             openRouterBaseUrl.disabled = state.savingAiSettings;
         }
         if (state._renderedAiProvider !== provider) {
+            if (local) localUrl.value = settings.localBaseUrl || "http://127.0.0.1:8081/v1";
             if (openRouterBaseUrl) openRouterBaseUrl.value = provider === "openrouter" ? (settings.openRouterBaseUrl || settings.baseUrl || "") : "";
             if (flagshipModel) flagshipModel.value = providerModels.flagshipModel || "";
             if (fastModel) fastModel.value = providerModels.fastModel || "";
@@ -5080,6 +5118,7 @@
     }
 
     async function loadWelcomeDocs() {
+        const aiSettingsRevisionAtRequest = state.aiSettingsEditRevision || 0;
         try {
             const response = await fetch("/api/welcome-docs", { cache: "no-store" });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -5094,7 +5133,10 @@
             state.allTags = Array.isArray(payload.allTags) ? payload.allTags : [];
             state.currentWorkspace = payload.currentWorkspace || state.currentWorkspace || "";
             state.defaultWorkspace = payload.defaultWorkspace || state.defaultWorkspace || "";
-            state.aiSettings = payload.aiSettings || state.aiSettings;
+            if (!state.aiSettingsEditing && !state.savingAiSettings &&
+                aiSettingsRevisionAtRequest === (state.aiSettingsEditRevision || 0)) {
+                state.aiSettings = payload.aiSettings || state.aiSettings;
+            }
             state.completionDocDrafts = payload.completionDocDrafts || state.completionDocDrafts;
             state.aiToolUseImprovement = payload.aiToolUseImprovement || state.aiToolUseImprovement;
             state.codeUse = payload.codeUse || state.codeUse;
@@ -5739,9 +5781,46 @@
         }
     }
 
+    async function checkLocalAiConnection() {
+        const status = document.getElementById("local-ai-status");
+        state.testingLocalAi = true;
+        renderAiSettings();
+        status.textContent = "Checking from the Field backend…";
+        try {
+            const response = await fetch("/api/ai-local-connection", {
+                method: "POST", headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    baseUrl: document.getElementById("local-ai-base-url").value.trim(),
+                    apiKey: document.getElementById("local-ai-api-key").value.trim(),
+                    model: document.getElementById("ai-flagship-model").value.trim()
+                })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+            if (state.aiSettings.provider !== "local") return;
+            const choices = document.getElementById("local-ai-models");
+            choices.replaceChildren(...(result.models || []).map((id) => {
+                const option = document.createElement("option"); option.value = id; return option;
+            }));
+            const model = document.getElementById("ai-flagship-model");
+            if (!model.value.trim() && result.models?.length === 1) {
+                model.value = result.models[0];
+                state.aiSettings.modelsByProvider.local = {
+                    ...(state.aiSettings.modelsByProvider.local || {}), flagshipModel: model.value
+                };
+            }
+            status.textContent = result.message + (result.models?.length ? ` Available models: ${result.models.join(", ")}.` : "");
+        } catch (error) {
+            status.textContent = error.message || "Could not reach the local server.";
+        } finally {
+            state.testingLocalAi = false;
+            renderAiSettings();
+        }
+    }
+
     async function saveAiSettings() {
         const rawProvider = state.aiSettings?.provider;
-        const provider = (rawProvider === "openrouter" || rawProvider === "anthropic") ? rawProvider : "openai";
+        const provider = ["openrouter", "anthropic", "local"].includes(rawProvider) ? rawProvider : "openai";
         const openAiInput = document.getElementById("openai-platform-key");
         const openRouterInput = document.getElementById("openrouter-api-key");
         const openRouterBaseUrl = document.getElementById("openrouter-base-url");
@@ -5750,12 +5829,16 @@
         const fallbackModel = document.getElementById("ai-fallback-model");
         const openAiKey = String(openAiInput?.value || "").trim();
         const openRouterKey = String(openRouterInput?.value || "").trim();
-        const hasSelectedKey = provider === "anthropic" ? true : provider === "openrouter" ? (openRouterKey || state.aiSettings.hasOpenRouterApiKey) : (openAiKey || state.aiSettings.hasOpenAiPlatformKey);
+        const hasSelectedKey = (provider === "anthropic" || provider === "local") ? true : provider === "openrouter" ? (openRouterKey || state.aiSettings.hasOpenRouterApiKey) : (openAiKey || state.aiSettings.hasOpenAiPlatformKey);
         if (!hasSelectedKey) {
             setAiSettingsStatus(`Enter ${provider === "openrouter" ? "an OpenRouter API key" : "an OpenAI Platform key"}.`, true);
             return;
         }
 
+        if (provider === "local" && (!document.getElementById("local-ai-base-url").value.trim() || !flagshipModel.value.trim())) {
+            setAiSettingsStatus("Enter the local API base URL and model ID.", true);
+            return;
+        }
         state.savingAiSettings = true;
         renderAiSettings();
         setAiSettingsStatus("Saving...");
@@ -5767,8 +5850,10 @@
                 cache: "no-store",
                 body: JSON.stringify({
                     provider,
-                    openAiPlatformKey: openAiKey,
-                    openRouterApiKey: openRouterKey,
+                    openAiPlatformKey: provider === "openai" ? openAiKey : "",
+                    openRouterApiKey: provider === "openrouter" ? openRouterKey : "",
+                    localBaseUrl: document.getElementById("local-ai-base-url").value.trim(),
+                    localApiKey: provider === "local" ? document.getElementById("local-ai-api-key").value.trim() : "",
                     openRouterBaseUrl: String(openRouterBaseUrl?.value || "").trim(),
                     flagshipModel: String(flagshipModel?.value || "").trim(),
                     fastModel: String(fastModel?.value || "").trim(),
@@ -5780,7 +5865,12 @@
                 throw new Error(payload.error || `HTTP ${response.status}`);
             }
 
+            state.aiSettingsEditing = false;
+            state.aiSettingsEditRevision = (state.aiSettingsEditRevision || 0) + 1;
             state.aiSettings = {
+                localBaseUrl: payload.localBaseUrl || state.aiSettings.localBaseUrl || "",
+                hasLocalApiKey: !!payload.hasLocalApiKey,
+                environmentOverrides: payload.environmentOverrides || [],
                 hasOpenAiPlatformKey: !!payload.hasOpenAiPlatformKey,
                 hasOpenRouterApiKey: !!payload.hasOpenRouterApiKey,
                 provider: payload.provider || provider,
@@ -5801,6 +5891,8 @@
                     }
                 }
             };
+            document.getElementById("local-ai-api-key").value = "";
+            state._renderedAiProvider = null;
             if (openAiInput) openAiInput.value = "";
             if (openRouterInput) openRouterInput.value = "";
             setAiSettingsStatus(payload.message || "AI settings saved.");
@@ -6553,6 +6645,18 @@
 
         aiProviderButtons.forEach((button) => {
             button.addEventListener("click", () => {
+                state.aiSettingsEditing = true;
+                state.aiSettingsEditRevision = (state.aiSettingsEditRevision || 0) + 1;
+                const previous = state.aiSettings.provider;
+                state.aiSettings.modelsByProvider = {
+                    ...(state.aiSettings.modelsByProvider || {}),
+                    [previous]: {
+                        flagshipModel: document.getElementById("ai-flagship-model").value,
+                        fastModel: document.getElementById("ai-fast-model").value,
+                        fallbackModel: document.getElementById("ai-fallback-model").value
+                    }
+                };
+                if (previous === "local") state.aiSettings.localBaseUrl = document.getElementById("local-ai-base-url").value;
                 state.aiSettings = {
                     ...(state.aiSettings || {}),
                     provider: button.getAttribute("data-ai-provider") || "openai"
@@ -6562,6 +6666,14 @@
             });
         });
 
+        document.getElementById("check-local-ai")?.addEventListener("click", checkLocalAiConnection);
+        ["openai-platform-key", "openrouter-api-key", "openrouter-base-url", "local-ai-base-url",
+            "local-ai-api-key", "ai-flagship-model", "ai-fast-model", "ai-fallback-model"].forEach((id) => {
+            document.getElementById(id)?.addEventListener("input", () => {
+                state.aiSettingsEditing = true;
+                state.aiSettingsEditRevision = (state.aiSettingsEditRevision || 0) + 1;
+            });
+        });
         saveAiSettingsButton?.addEventListener("click", saveAiSettings);
         choosePythonPathButton?.addEventListener("click", choosePythonPath);
         installPythonJepButton?.addEventListener("click", installJep);

@@ -498,7 +498,7 @@ class FieldApiCorsExposureTest {
          */
         const val ALL_METHODS = "ANY"
 
-        /** Seven route-specific guards; the application-wide switch is off by default. */
+        /** Route-specific guards; the application-wide policy is tested separately. */
         val EXPECTED_MUTATING_SURFACE = sortedMapOf(
             // Thirteen verbless routes, every one of them a page-serving `handle { }` that
             // also accepts POST, PUT and DELETE. `/lazy-value-fragment` is the one with real
@@ -529,6 +529,7 @@ class FieldApiCorsExposureTest {
             "POST /api/agent-worktrees/delete" to "none",
             "POST /api/agent-worktrees/merge" to "none",
             "POST /api/agent-worktrees/restart" to "none",
+            "POST /api/ai-local-connection" to "same-site",
             "POST /api/ai-settings" to "none",
             "POST /api/ai-tool-use-improvement" to "none",
             "POST /api/ai-tool-use-improvement/clear-reviewed" to "none",
@@ -572,6 +573,9 @@ class FieldApiCorsExposureTest {
             // Nested inside `route("/vision")`, and published as `POST /stream` until
             // 2026-08-22 because path resolution returned early on a leading slash.
             "POST /vision/stream" to "none",
+            // The three viewer's Export GLB through the optional gltfpack binary (2026-10): bytes in,
+            // compressed bytes out, no document state; guarded because it runs a local process.
+            "POST /three-gltfpack" to "loopback + same-site",
             "POST /three-review-note" to "loopback + same-site",
             "PUT /api/docs-annotations/{id}/resolve" to "loopback + same-site",
             "PUT /api/document-tags" to "none",
@@ -584,6 +588,9 @@ class FieldApiCorsExposureTest {
             // Keystrokes into a pty (terminal.kt): the revision pass's boundary, hatches shut.
             "/pty/{id}" to "terminal input; loopback + same-site",
             "/welcome-events" to "server notifications; none",
+            // WebRTC signaling (WebRTCRoutes.kt): relays SDP/ICE between Field's own pages and
+            // touches no document, so the heuristic's "server notifications" is the right role.
+            "/ws/webrtc-signaling" to "server notifications; same-site",
             "/ws" to "commands; same-site",
         )
     }

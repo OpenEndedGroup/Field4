@@ -107,6 +107,9 @@ nav:
     # Beside moving_around_the_canvas.md: a canvas flight is a camera move through its bookmarks,
     # filmed to MP4.
     - Filming the Canvas: filming_the_canvas.md
+    # Beside moving_around_the_canvas.md: which boxes are on the canvas at all, and where each one
+    # sits, per layer.
+    - Layers: layers.md
     - Snapping: snapping.md
     - File Management: files_and_paths.md
     # Beside files_and_paths.md: both are about the document folder on disk, this one from the
@@ -409,6 +412,7 @@ nav:
     # front page links it too.
     - Agent Transcript Gallery: agent_transcripts.md
     - AI Overview: aiFeatures.md
+    - Local AI: local_ai.md
     - Talking to AI4: voice_input.md
     - Let AI4 Drive a Live Webpage: ai4_live_iframe.md
     - Experimenting with AI4: ai4_experiments.md

@@ -633,7 +633,7 @@ fun Box.stackFeedback(
             (settings.height <= 0 || settings.height == existing.height) &&
             existing.settings.name == settings.name
         if (reusable) {
-            existing!!.apply {
+            existing.apply {
                 this.settings.inputs.clear()
                 this.settings.inputs.putAll(settings.inputs)
                 this.settings.fps = settings.fps

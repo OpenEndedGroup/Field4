@@ -138,7 +138,7 @@ showSignals("right hand" to height("RightHand"), "left hand" to height("LeftHand
 <!-- field-box id="tm_live" index="3" -->
 
 ```edn [field-box id="tm_live" role="properties"]
-{"id" "tm_live" "index" 3 "name" "4 - take over a channel, live" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - take over a channel, live" "_tombstone" false "frame" #afield/rect [60.0 2860.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_live_code_.kt" "lines" 43 "characters" 1937 "sha256" "a0586291a2454eab8968fe9ede95510f2edaf40557e896568a5be1ac13829c61"}]}
+{"id" "tm_live" "index" 3 "name" "4 - take over a channel, live" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - take over a channel, live" "_tombstone" false "frame" #afield/rect [60.0 2860.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_live_code_.kt" "lines" 43 "characters" 1960 "sha256" "0c6a01aa712efe0e17bc7b7878680beb5370617ebb5e69db00496c5eb7e71539"}]}
 ```
 
 ```kotlin [field-property box="tm_live" name="code" path="tm_live_code_.kt"]
@@ -157,7 +157,7 @@ val player = Improviser(VariableMarkovOracle.build(demo), seed = 3)
 
 var hold = false
 var value = 0.0
-checkbox("take over x") { hold = it }
+checkbox("take over x", channel = "take over") { hold = it }
 slider("x", min = -1.5, max = 1.5, initialValue = 0.0) { value = it }
 
 val trail = ArrayDeque<DoubleArray>()

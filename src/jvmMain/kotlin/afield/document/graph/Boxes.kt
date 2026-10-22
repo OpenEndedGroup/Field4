@@ -1117,7 +1117,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             properties[name] = incoming
         }
 
-        if (oldValue != incoming) notePersistentChange(name)
+        // A Delegation default materialising an empty collection on first read is not an edit.
+        if (oldValue != incoming && !(oldValue == null && isEmptyContainer(incoming))) notePersistentChange(name)
         FlightRecorder.recordTrackedPropertyChange(this, name, oldValue, incoming)
         // A raw write to a property declared `propDown` reruns its readers, exactly as assigning it does.
         afield.runtime.lifecycle.ReactiveRuns.noteRawWrite(this, name, oldValue, incoming)
@@ -1151,6 +1152,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
      * reached disk"). This is the one place all of those pass through. Nothing is marked while the
      * document loads, for a scratch or read-only document, or for a property that is never written.
      */
+    private fun isEmptyContainer(value: Any?): Boolean =
+        (value is Collection<*> && value.isEmpty()) || (value is Map<*, *> && value.isEmpty())
+
     internal fun notePersistentChange(name: String) {
         if (!::inside.isInitialized) return
         val info = inside
@@ -1611,8 +1615,12 @@ internal fun Box.publishGoJobs() {
     send(Message("go-jobs").payload(GoJobs(id, live.size, live.values.distinct())))
 }
 
+// Concurrent writers can remove the last entry after size was observed. Map.toMap()'s
+// singleton shortcut assumes that entry still exists; HashMap copies through the iterator.
+internal fun snapshotRunningStates(states: Map<String, RunningState>): Map<String, RunningState> = HashMap(states)
+
 internal fun Box.clearRunningStates() {
-    val states = currentRunningStates.toMap()
+    val states = snapshotRunningStates(currentRunningStates)
     currentRunningStates.clear()
     if (!isInsideInitialized()) return
     states.forEach { (strand, state) ->
@@ -1777,7 +1785,7 @@ fun syncExecutionStatus() {
             if (box.properties.get("_tombstone").isTrue()) return@forEach
 
             box.syncJobRunningState()
-            val activeStates = box.currentRunningStates.toMap()
+            val activeStates = snapshotRunningStates(box.currentRunningStates)
             activeStates.forEach { (strand, state) ->
                 val message = Message("is-running").payload(
                     IsRunning(

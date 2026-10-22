@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17597 of 34173 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17599 of 34197 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2238 undocumented entry points** (types, top-level functions and values) and 13624 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2243 undocumented entry points** (types, top-level functions and values) and 13641 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -21,7 +21,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [outputs.kt](../src/jvmMain/kotlin/afield/ui/output/outputs.kt) | Visualization | visualizers, keyframe_editor, box_output | 30 | 45 | 39% |
 | [TypedAst.kt](../src/jvmMain/kotlin/afield/lang/fieldml/type/TypedAst.kt) | Languages | fieldml_stages | 29 | 60 | 3% |
 | [Core.kt](../src/jvmMain/kotlin/afield/lang/fieldml/core/Core.kt) | Languages | fieldml_stages | 29 | 45 | 2% |
-| [Boxes.kt](../src/jvmMain/kotlin/afield/document/graph/Boxes.kt) | Workspace | keybindings, keyframer_examples, boolean_network_music_examples | 25 | 33 | 26% |
+| [Boxes.kt](../src/jvmMain/kotlin/afield/document/graph/Boxes.kt) | Workspace | keybindings, keyframer_examples, layers | 25 | 33 | 26% |
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/data/graph/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 20 | 120 | 10% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/simulation/automata/wfc.kt) | Data | wfc_examples | 20 | 59 | 30% |
 | [FabricateScene.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricateScene.kt) | Renderers | fabricate_renderer, geometry_from_disk | 19 | 102 | 5% |
@@ -274,15 +274,15 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FieldRTTStreamer.kt](../src/jvmMain/kotlin/afield/media/stream/FieldRTTStreamer.kt) | Imaging | vision | 0 | 1 | 91% |
 | [PetriMusic.kt](../src/jvmMain/kotlin/afield/simulation/petri/PetriMusic.kt) | Audio | petri_nets, petri_cheatsheet | 0 | 1 | 94% |
 | [canvasFlight.kt](../src/jvmMain/kotlin/afield/ui/film/canvasFlight.kt) | Visualization | filming_the_canvas | 0 | 1 | 84% |
-| [dir.kt](../src/jvmMain/kotlin/afield/document/workspace/dir.kt) | Workspace | — | 69 | 307 | 4% |
+| [dir.kt](../src/jvmMain/kotlin/afield/document/workspace/dir.kt) | Workspace | — | 71 | 319 | 4% |
 | [spreadsheet.kt](../src/jvmMain/kotlin/afield/data/table/spreadsheet.kt) | Data | — | 63 | 77 | 0% |
 | [AI4.kt](../src/jvmMain/kotlin/afield/ai/compat/AI4.kt) | Machine learning | — | 63 | 0 | 1% |
 | [Tools.kt](../src/jvmMain/kotlin/afield/ai/tools/Tools.kt) | Machine learning | — | 53 | 277 | 9% |
 | [PolynomialTreeFitting.kt](../src/jvmMain/kotlin/afield/geometry/path/PolynomialTreeFitting.kt) | Graphics | — | 32 | 152 | 2% |
-| [Server.kt](../src/jvmMain/kotlin/afield/app/server/Server.kt) | Workspace | — | 28 | 29 | 27% |
+| [Server.kt](../src/jvmMain/kotlin/afield/app/server/Server.kt) | Workspace | — | 28 | 29 | 28% |
+| [OpenAiCredentials.kt](../src/jvmMain/kotlin/afield/ai/models/OpenAiCredentials.kt) | Machine learning | — | 27 | 31 | 3% |
 | [AbletonSet.kt](../src/jvmMain/kotlin/afield/audio/synth/AbletonSet.kt) | Audio | — | 26 | 163 | 0% |
 | [LanguageSpecs.kt](../src/jvmMain/kotlin/afield/runtime/languages/LanguageSpecs.kt) | Workspace | — | 26 | 3 | 14% |
-| [OpenAiCredentials.kt](../src/jvmMain/kotlin/afield/ai/models/OpenAiCredentials.kt) | Machine learning | — | 24 | 28 | 3% |
 | [PatFunctions.kt](../src/jvmMain/kotlin/afield/audio/synth/PatFunctions.kt) | Patterns | — | 21 | 21 | 12% |
 | [doc.kt](../src/jvmMain/kotlin/afield/tools/docs/doc.kt) | Workspace | — | 19 | 5 | 7% |
 | [SemanticRetrievalService.kt](../src/jvmMain/kotlin/afield/ai/retrieval/SemanticRetrievalService.kt) | Machine learning | — | 18 | 164 | 1% |
@@ -882,6 +882,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DatalogSmokeTest.kt](../src/jvmMain/kotlin/afield/data/query/datalog/DatalogSmokeTest.kt) | Languages | — | 0 | 2 | 33% |
 | [GraphQuerySmokeTest.kt](../src/jvmMain/kotlin/afield/data/query/graph/GraphQuerySmokeTest.kt) | Data | — | 0 | 2 | 33% |
 | [DocumentShutdownFlush.kt](../src/jvmMain/kotlin/afield/document/persistence/DocumentShutdownFlush.kt) | Workspace | — | 0 | 2 | 60% |
+| [PersistedFingerprint.kt](../src/jvmMain/kotlin/afield/document/persistence/PersistedFingerprint.kt) | Workspace | — | 0 | 2 | 33% |
 | [BoxCodeFormat.kt](../src/jvmMain/kotlin/afield/examples/BoxCodeFormat.kt) | Examples | — | 0 | 2 | 33% |
 | [DocumentGuideWorkout.kt](../src/jvmMain/kotlin/afield/examples/DocumentGuideWorkout.kt) | Examples | — | 0 | 2 | 33% |
 | [ExportedAnnotationTest.kt](../src/jvmMain/kotlin/afield/examples/ExportedAnnotationTest.kt) | Examples | — | 0 | 2 | 33% |
@@ -1241,4 +1242,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `Mesh` | class | `src/jvmMain/kotlin/afield/graphics/render/Mesh.kt:45` |
 | `Renderable` | interface | `src/jvmMain/kotlin/afield/graphics/render/Module.kt:307` |
 
-…and **2118 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **2123 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
