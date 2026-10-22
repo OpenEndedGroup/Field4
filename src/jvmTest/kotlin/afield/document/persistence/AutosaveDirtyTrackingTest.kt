@@ -5,6 +5,7 @@ import afield.app.server.SessionInformation
 import afield.app.server.documents
 import afield.app.server.thisSessionInfo
 import afield.document.graph.Box
+import afield.document.graph.layerFrames
 import afield.document.graph.needsResync
 import java.io.File
 import java.nio.file.Files
@@ -67,7 +68,9 @@ class AutosaveDirtyTrackingTest {
         documents[info.filename] = info
         thisSessionInfo.set(info)
         opened += info
-        SavingContext().save(info.filename, (info.boxes.values + root).toSet(), inline = true)
+        // The loop's own save, so whatever it records about "what disk holds" is recorded here too.
+        info.markSidecarPending("a", "code")
+        assertTrue(DocumentShutdownFlush.saveIfPending(info, inline = true, reason = "test fixture"))
         info.pendingSidecarSaves.clear()
         return info
     }
@@ -151,6 +154,47 @@ class AutosaveDirtyTrackingTest {
         info.boxes.getValue("a").frame = Rect(1.0, 2.0, 3.0, 4.0)
         info.loading = false
         assertTrue(info.pendingSidecarSaves.isEmpty(), "pending: ${info.pendingSidecarSaves}")
+    }
+
+    /** Runs the shutdown flush, which must save although nothing was marked, and returns `metadata.edn`. */
+    private fun SessionInformation.afterUnmarkedShutdownFlush(): String {
+        assertEquals(1, DocumentShutdownFlush.flushPendingDocumentSaves(), "the shutdown flush did not save an edit that bypassed dirty marking")
+        return metadata()
+    }
+
+    @Test
+    fun anInPlaceCollectionMutationIsSaved() {
+        // N1020-6: `box.layerFrames[layer] = rect` mutates the map already stored, so no property is set.
+        val info = savedDocument("in-place")
+        val a = info.boxes.getValue("a")
+        // The map exists already, as it does for a box loaded with layer frames, and that state is saved.
+        a.layerFrames["start"] = Rect(1.0, 1.0, 10.0, 10.0)
+        DocumentShutdownFlush.flushPendingDocumentSaves()
+        info.pendingSidecarSaves.clear()
+        a.layerFrames["overview"] = Rect(901.0, 902.0, 10.0, 10.0)
+        assertTrue(info.pendingSidecarSaves.isEmpty(), "this edit is meant to bypass marking: ${info.pendingSidecarSaves}")
+        assertTrue("901" in info.afterUnmarkedShutdownFlush(), "the layer frame is not in metadata.edn")
+    }
+
+    @Test
+    fun aWriteWhileLoadingIsSavedOnceLoaded() {
+        // N1020-6: box code that runs before the loader clears `loading` writes with marking off.
+        val info = savedDocument("during-load")
+        info.loading = true
+        info.boxes.getValue("a").setPropertyRaw("autorun", true)
+        assertEquals(0, DocumentShutdownFlush.flushPendingDocumentSaves(), "nothing may be saved while loading")
+        info.loading = false
+        assertTrue("\"autorun\" true" in info.afterUnmarkedShutdownFlush())
+    }
+
+    @Test
+    fun anUntouchedDocumentIsNotSaved() {
+        val info = savedDocument("idle")
+        // A Delegation default materialises an empty map on first read, through setPropertyRaw; that is
+        // not an edit, but until 2026-10-22 it marked the document, so merely reading layerFrames saved it.
+        info.boxes.values.forEach { it.layerFrames }
+        info.boxes.getValue("a").setPropertyRaw("code_editorState", "{\"line\":9}")
+        assertEquals(0, DocumentShutdownFlush.flushPendingDocumentSaves(), "an unchanged document was saved")
     }
 
     @Test
