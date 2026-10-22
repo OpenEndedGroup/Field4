@@ -36,6 +36,11 @@ A deliberately invalid extension was then registered. Runtime preparation failed
 `compilePersonalKotlinJvm`, leaving the original JVM running, the error visible and Welcome controls
 usable. Restoring the valid source returned the library to its loaded revision without shutdown.
 
+Replacing valid runtime source exposed K2 retaining declarations from an older revision's source
+path. Kit-backed personal compilation now rebuilds that optional layer as a unit, leaving core
+compilation incremental. The same replacement then compiled successfully and restarted into an
+active runtime in the existing Electron process.
+
 An existing private project was separately registered using only a new outer descriptor. Hashes of
 its existing launcher, custom manifest, starting document and native manifest matched before and
 after registration. Its dedicated host was not launched or restarted, and its runtime was excluded

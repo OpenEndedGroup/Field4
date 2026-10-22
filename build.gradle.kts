@@ -3145,6 +3145,14 @@ val verifyKitDependencies = tasks.register("verifyKitDependencies") {
     }
 }
 tasks.matching { it.name == "compilePersonalKotlinJvm" }.configureEach { dependsOn(verifyKitDependencies) }
+if (kitValues("extensions").isNotEmpty()) {
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().matching { it.name == "compilePersonalKotlinJvm" }.configureEach {
+        // Every kit revision moves its sources to a new immutable path. K2 incremental compilation
+        // can retain the previous path's package declarations and report false conflicting overloads.
+        // Rebuild this optional extension layer as a unit; core compilation stays incremental.
+        incremental = false
+    }
+}
 
 val fieldServerOnly = providers.gradleProperty("fieldServerOnly").map(String::toBoolean).orElse(false)
 
