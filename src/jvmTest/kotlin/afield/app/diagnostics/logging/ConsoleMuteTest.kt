@@ -26,12 +26,13 @@ class ConsoleMuteTest {
     }
 
     @Test
-    fun `documented spellings require exact case-sensitive whole-channel membership`() {
+    fun `a mute selector matches when all its tags are among the channel's, case-sensitively`() {
+        // ChannelMatch (a6da0d59f): tag order and extra tags do not matter; case and missing tags do.
         val spellings = listOf("info,boxes", "boxes,info", "info,boxes,extra", "info,Boxes", "boxes")
         assertEquals(
-            listOf(true, false, false, false, false),
+            listOf(true, true, true, false, false),
             spellings.map(ConsoleMute::isMuted),
-            "muting must not reorder tags, match substrings, or fold case"
+            "muting matches tags as a set, never substrings or folded case"
         )
     }
 

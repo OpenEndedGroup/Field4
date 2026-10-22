@@ -1,5 +1,6 @@
 package afield.document.persistence
 
+import afield.app.diagnostics.logging.lprintln
 import afield.app.server.InterruptSignal
 import afield.app.server.Server
 import afield.data.table.div
@@ -82,27 +83,37 @@ object DocumentShutdownFlush {
     }
 
     /**
-     * The autosave loop's save of [info], if it has anything pending: the same predicate
-     * (`writesToDisk`, not `loading`, something pending) and the same box set. [inline] runs the
-     * write on this thread; otherwise it goes to the misc pool as the loop's does. Returns whether
-     * a save was made.
+     * The autosave loop's save of [info], if it needs one: `writesToDisk`, not `loading`, and either
+     * something marked pending or a [PersistedFingerprint] that differs from the last one matching
+     * disk. [inline] runs the write on this thread; otherwise it goes to the misc pool. [log] prints
+     * a line on stderr (the shutdown and detach saves do; the 5 s loop does not). Returns whether a
+     * save was made.
      */
-    fun saveIfPending(info: SessionInformation, inline: Boolean, reason: String): Boolean {
-        if (!info.writesToDisk || info.loading || info.pendingSidecarSaves.isEmpty()) return false
+    fun saveIfPending(info: SessionInformation, inline: Boolean, reason: String, log: Boolean = true): Boolean {
+        if (!info.writesToDisk || info.loading) return false
+        // A fingerprint that cannot be taken (a store mutated under us on the shutdown thread) counts as changed.
+        val fingerprint = runCatching { PersistedFingerprint.of(info) }.getOrNull()
+        val unmarked = info.savedFingerprint != null && fingerprint != info.savedFingerprint
+        if (info.pendingSidecarSaves.isEmpty() && !unmarked) return false
+        if (unmarked && log) System.err.println("afield: ${info.filename} changed without a marked edit; saving on $reason")
         val started = System.nanoTime()
         return try {
             val allBoxes = info.boxes.values.toMutableSet()
             allBoxes.add(info.root)
             val pendingSnapshot = info.pendingSidecarSnapshot()
+            // The snapshot below is taken on this thread before save returns, so this is what it writes.
+            info.savedFingerprint = fingerprint
             SavingContext().save(info.filename, allBoxes, inline = inline, onComplete = {
                 info.clearSavedSidecars(pendingSnapshot)
             })
-            System.err.println(
+            if (log) System.err.println(
                 "afield: saved ${info.filename} on $reason (${TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)} ms)"
             )
             true
         } catch (t: Throwable) {
-            System.err.println("afield: could not save ${info.filename} on $reason: $t")
+            info.savedFingerprint = null
+            if (log) System.err.println("afield: could not save ${info.filename} on $reason: $t")
+            else lprintln("error,server", "trouble saving ${info.filename}: $t")
             false
         }
     }

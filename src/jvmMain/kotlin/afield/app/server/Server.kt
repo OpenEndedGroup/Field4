@@ -655,6 +655,14 @@ class SessionInformation(
 
     // Track sidecar-bearing properties that need to be written to disk on next save.
     val pendingSidecarSaves = ConcurrentHashMap.newKeySet<Pair<String, String>>()
+
+    /**
+     * [afield.document.persistence.PersistedFingerprint] of this document when it last matched disk:
+     * set when the loader has read it and at every save; null for a document never read or saved.
+     * A save is due when the current fingerprint differs, even with nothing in [pendingSidecarSaves].
+     */
+    @Volatile
+    var savedFingerprint: Long? = null
     private val pendingSidecarSaveVersions = ConcurrentHashMap<Pair<String, String>, Long>()
     private val propertySyncSequences = ConcurrentHashMap<Pair<String, String>, AtomicLong>()
     private val pendingPropertySyncOrigins = ConcurrentHashMap<Pair<String, String>, PropertySyncOrigin>()
@@ -2531,24 +2539,8 @@ class Server {
                             refreshFileProxyBoxes(info, notifyMissing = false)
                             // Box-to-box reads recorded since the last tick, beside metadata.edn.
                             PropertyDependencies.flush(info)
-                            // Only persist when we know sidecar-bearing properties changed.
-                            if (info.pendingSidecarSaves.isNotEmpty()) {
-//                            lblock(" saving to ${info.filename}")
-                                run {
-                                    try {
-                                        // Include root box in saved boxes to persist root properties like bookmarks
-                                        val allBoxes = info.boxes.values.toMutableSet()
-                                        allBoxes.add(info.root)
-                                        val pendingSnapshot = info.pendingSidecarSnapshot()
-                                        SavingContext().save(info.filename, allBoxes, onComplete = {
-                                            info.clearSavedSidecars(pendingSnapshot)
-                                        })
-                                    } catch (ex: Exception) {
-                                        lprintln("error,server", "trouble saving")
-                                        ex.printStackTrace()
-                                    }
-                                }
-                            }
+                            // Persist marked edits, and unmarked ones the fingerprint sees (in-place mutation, writes during load).
+                            DocumentShutdownFlush.saveIfPending(info, inline = false, reason = "autosave", log = false)
                         }
                     } catch (t: Throwable) {
                         lprintln("error,server", "exception inside saving / resync loop -- will retry")
@@ -3917,6 +3909,8 @@ class Server {
                             val boxLayers = parseLayersList(box.layers)
                             if (boxLayers.contains(oldActiveLayer)) {
                                 box.layerFrames[oldActiveLayer] = box.frame
+                                // An in-place write to the map: no property set, so mark it.
+                                box.notePersistentChange("layerFrames")
                                 lprintln(
                                     "debug,layers",
                                     "Saved frame for box ${box.id} in layer $oldActiveLayer: ${box.frame}"
