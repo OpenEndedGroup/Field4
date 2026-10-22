@@ -1,5 +1,7 @@
 # Presenting from this document
 
+For authoring and AI4 assistance, read [Building this presentation](HANDOFF.md).
+
 The **Presentation** box contains your talk. Edit its Kotlin and run the box to present it.
 Running it again keeps your place in the talk.
 
