@@ -7956,6 +7956,8 @@ fun TagConsumer<HTMLElement>.createBox(
             div(classes = "disclosure-group") {
             }
         }
+        // Lets a press just outside the box (on its border ring) start interact.js's edge resize.
+        div(classes = "box-resize-halo") {}
     }
     d1.style.transform = "translate(${frame.x}px, ${frame.y}px)"
     d1.asDynamic().offline = true
