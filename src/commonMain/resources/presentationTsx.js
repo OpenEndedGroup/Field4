@@ -11,19 +11,6 @@ function selectedSource(editor) {
   return {path, model: editor.getModel()};
 }
 
-function completionKind(monaco, kind) {
-  const kinds = monaco.languages.CompletionItemKind;
-  if (kind === 'method') return kinds.Method;
-  if (kind === 'function') return kinds.Function;
-  if (kind === 'class') return kinds.Class;
-  if (kind === 'interface') return kinds.Interface;
-  if (kind === 'module') return kinds.Module;
-  if (kind === 'property') return kinds.Property;
-  if (kind === 'keyword') return kinds.Keyword;
-  if (kind === 'variable' || kind === 'local var') return kinds.Variable;
-  return kinds.Text;
-}
-
 export function attachPresentationTypeScript(paths) {
   sourcePaths = new Set(paths.filter(path => typeof path === 'string' && /\.tsx?$/.test(path)));
   if (installed) { refresh(); return; }
@@ -82,11 +69,13 @@ export function attachPresentationTypeScript(paths) {
     editor.onDidChangeModelContent(scheduleDiagnostics);
     scheduleDiagnostics();
 
-    monaco.languages.registerCompletionItemProvider('typescript', {
-      triggerCharacters: ['.', '<', '/', '"', "'"],
-      async provideCompletionItems(model, position) {
-        const selected = selectedSource(editor);
-        if (!selected || selected.model !== model) return {suggestions: []};
+    window.fieldPresentationTypeScriptCompletion = {
+      supports(candidateEditor, model) {
+        return candidateEditor === editor && selectedSource(editor)?.model === model;
+      },
+      async provide(candidateEditor, model, position) {
+        const selected = selectedSource(candidateEditor);
+        if (!selected || selected.model !== model) return [];
         let entries;
         try {
           entries = await bridge({
@@ -95,14 +84,14 @@ export function attachPresentationTypeScript(paths) {
           });
         } catch (error) {
           console.warn('Presentation TSX completion failed', error);
-          return {suggestions: []};
+          return [];
         }
         const word = model.getWordUntilPosition(position);
         const defaultRange = {
           startLineNumber: position.lineNumber, startColumn: word.startColumn,
           endLineNumber: position.lineNumber, endColumn: word.endColumn,
         };
-        return {suggestions: entries.filter(entry => !entry.source).map(entry => {
+        return entries.filter(entry => !entry.source).map(entry => {
           let range = defaultRange;
           if (entry.replacementSpan) {
             const start = model.getPositionAt(entry.replacementSpan.start);
@@ -113,13 +102,13 @@ export function attachPresentationTypeScript(paths) {
             };
           }
           return {
-            label: entry.name, kind: completionKind(monaco, entry.kind),
+            label: entry.name, data: {icon: entry.kind},
             insertText: entry.insertText || entry.name, sortText: entry.sortText,
             range,
           };
-        })};
+        });
       },
-    });
+    };
   };
   retry = setInterval(installWhenReady, 100);
   installWhenReady();

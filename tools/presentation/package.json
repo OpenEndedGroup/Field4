@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
+    "new-talk": "node new-talk.mjs",
     "start": "node server.mjs"
   },
   "dependencies": {

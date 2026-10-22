@@ -12,6 +12,8 @@ function showError(error: unknown) {
 let presenter: Presenter | null = null;
 let currentId: string | null = null;
 let slideIds: string[] = [];
+let currentIndex = -1;
+let slideCount = 0;
 const savedCue = sessionStorage.getItem('field-presenter-cue');
 const retriedStartup = sessionStorage.getItem('field-presenter-start-retry') === '1';
 function reloadAtCurrentCue() {
@@ -25,6 +27,8 @@ async function start(slide: string | null = null) {
   presenter.onSlidesChanged.subscribe(slides => { slideIds = slides.map(slide => slide.id); });
   presenter.onInfoChanged.subscribe(info => {
     currentId = info.currentSlideId;
+    currentIndex = info.index ?? -1;
+    slideCount = info.count;
     if (currentId) {
       sessionStorage.setItem('field-presenter-cue', currentId);
       sessionStorage.removeItem('field-presenter-start-retry');
@@ -57,17 +61,30 @@ setTimeout(() => {
   }
 }, retriedStartup ? 30000 : 15000);
 
+let navigating = false;
+async function navigate(action: string, id?: string) {
+  if (navigating) return;
+  if ((action === 'goto' && id === currentId) ||
+      (['first', 'previous'].includes(action) && currentIndex === 0) ||
+      (['last', 'next'].includes(action) && currentIndex === slideCount - 1)) return;
+  navigating = true;
+  try {
+    if (currentId) await presentation?.beginTransition();
+    if (action === 'next') presenter?.requestNextSlide();
+    else if (action === 'previous') presenter?.requestPreviousSlide();
+    else if (action === 'first') presenter?.requestFirstSlide();
+    else if (action === 'last') presenter?.requestLastSlide();
+    else if (action === 'goto' && id) presenter?.requestSlide(id);
+  } catch (error) { showError(error); }
+  finally { navigating = false; }
+}
 presentation?.onAction((action: string, id?: string) => {
-  if (action === 'next') presenter?.requestNextSlide();
-  else if (action === 'previous') presenter?.requestPreviousSlide();
-  else if (action === 'first') presenter?.requestFirstSlide();
-  else if (action === 'last') presenter?.requestLastSlide();
-  else if (action === 'goto' && id) presenter?.requestSlide(id);
-  else if (action === 'reload') reloadAtCurrentCue();
+  if (action === 'reload') reloadAtCurrentCue();
+  else void navigate(action, id);
 });
 window.addEventListener('keydown', event => {
-  if (['ArrowRight', 'PageDown', ' '].includes(event.key)) { event.preventDefault(); presenter?.requestNextSlide(); }
-  if (['ArrowLeft', 'PageUp'].includes(event.key)) { event.preventDefault(); presenter?.requestPreviousSlide(); }
+  if (['ArrowRight', 'PageDown', ' '].includes(event.key)) { event.preventDefault(); void navigate('next'); }
+  if (['ArrowLeft', 'PageUp'].includes(event.key)) { event.preventDefault(); void navigate('previous'); }
 });
 window.addEventListener('error', event => showError(event.error || event.message));
 window.addEventListener('unhandledrejection', event => showError(event.reason));

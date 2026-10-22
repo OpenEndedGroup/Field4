@@ -1598,6 +1598,16 @@ function createMainWindow() {
   };
   const presentationHost = {
     openPreview: (url) => openTab(url, { activate: true }),
+    getFieldUrl: () => {
+      const fieldTab = tabs.find(isFieldTab);
+      return fieldTab ? contentsUrl(fieldTab) : null;
+    },
+    getFieldInfo: async () => {
+      const fieldTab = tabs.find(isFieldTab);
+      const contents = fieldTab && liveContents(fieldTab);
+      if (!contents || contents.isDestroyed()) return null;
+      return contents.executeJavaScript("fetch('/api/instance-info').then(response => response.ok ? response.json() : null)");
+    },
     isFieldContents: (contents) => tabs.some(tab => isFieldTab(tab) && liveContents(tab) === contents),
     enableTypeScript: (paths) => {
       const fieldTab = tabs.find(isFieldTab);

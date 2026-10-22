@@ -1,12 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import {createRequire} from 'node:module';
 
 // Field's editor has an in-memory model for each box. Use the talk's real tsconfig and
 // node_modules for TSX diagnostics and completion instead of asking Monaco's isolated worker to
 // guess whether Motion Canvas imports exist.
 export function createPresentationTypeScriptService(projectRoot) {
   const root = fs.realpathSync(projectRoot);
+  let ts;
+  try { ts = createRequire(path.join(root, 'package.json'))('typescript'); }
+  catch { throw new Error(`Install this talk's dependencies first: run npm ci in ${root}`); }
   const configPath = ts.findConfigFile(root, ts.sys.fileExists, 'tsconfig.json');
   if (!configPath) throw new Error('Presentation needs a tsconfig.json for TSX editing');
   const config = ts.readConfigFile(configPath, ts.sys.readFile);

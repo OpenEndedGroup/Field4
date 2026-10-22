@@ -2,6 +2,7 @@ const {contextBridge, ipcRenderer} = require('electron');
 
 contextBridge.exposeInMainWorld('fieldPresentation', {
   action(action, id) { ipcRenderer.send('field-presentation-action', {action, id}); },
+  beginTransition() { return ipcRenderer.invoke('field-presentation-begin-transition'); },
   state(info) { ipcRenderer.send('field-presentation-state', info); },
   error(message) { ipcRenderer.send('field-presentation-error', String(message)); },
   onAction(callback) {
