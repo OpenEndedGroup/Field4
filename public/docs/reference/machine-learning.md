@@ -4,7 +4,7 @@
 
 Models small enough to train inside a box, in plain Kotlin, while you watch. Flow matching carries one 2D or 3D point cloud onto another and hands back the deformation between them; the multi-output regression head it trains is usable on its own. See [Flow Matching](../flow_matching.md).
 
-95 source file(s), 2211 public symbol(s), 689 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+96 source file(s), 2211 public symbol(s), 689 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -3440,6 +3440,10 @@ Adapter that presents the existing (untouched) [`OpenAiIdeCodexBridge`](machine-
 ## LocalAiContextRecovery.kt { #localaicontextrecovery-kt }
 
 `src/jvmMain/kotlin/afield/ai/models/LocalAiContextRecovery.kt` — [read the source](source/jvmMain/afield/ai/models/LocalAiContextRecovery/)
+
+## LocalAiFeedback.kt { #localaifeedback-kt }
+
+`src/jvmMain/kotlin/afield/ai/models/LocalAiFeedback.kt` — [read the source](source/jvmMain/afield/ai/models/LocalAiFeedback/)
 
 ## OpenAiCredentials.kt { #openaicredentials-kt }
 
