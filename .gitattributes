@@ -33,6 +33,7 @@ src/jvmMain/java/afield/audio/spatial/steamaudio/raw/** linguist-generated=true
 
 # Mermaid's generated bundle includes upstream template strings with significant trailing spaces.
 src/jsMain/resources/mermaid/* whitespace=-blank-at-eol linguist-generated=true
+src/jsMain/resources/katex/* linguist-generated=true
 
 # Upstream Steam Audio, verbatim. `-text` disables eol normalisation: these ship with CRLF and are
 # checksum-verified against native/steamaudio/checksums.txt, so rewriting their line endings would

@@ -844,6 +844,25 @@ pre code {
     white-space: pre-wrap;
 }
 
+/* Math (aiChatMath.js, KaTeX). KaTeX sizes itself from the surrounding font, which the fence preview
+   sets small for diagram labels. */
+.ai-math-fence {
+    font-size: 15px;
+}
+
+.ai-math-display {
+    display: block;
+    margin: 0.6em 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    text-align: center;
+}
+
+.ai-math-error {
+    color: #e9a2a2;
+    white-space: pre-wrap;
+}
+
 .ai-chat-window {
     /* Rhymes with the history panel: a black shell, an editor-grey well for
        the input, cyan for Field's own voice and orange for yours. */

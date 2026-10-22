@@ -1,6 +1,7 @@
 import { mountStateTreeBrowser } from "./stateTreeBrowser.js";
 import { aiChatMarkdownToHtml, aiChatHistoryToHtml, aiChatSetToolFamilies, send, sendWithReply } from "./afield.mjs";
 import { renderAiChatFences } from "./aiChatFenceRenderers.js";
+import { typesetAiChatMath } from "./aiChatMath.js";
 import { installAiChatFenceCatalog } from "./aiChatFenceCatalog.js";
 
 // Rebuild every open chat once, for a catalog that arrived after it first rendered.
@@ -1894,10 +1895,12 @@ function renderChatMessages(messages, markdown, options) {
         });
         decorateAfieldLinks(messages);
         applyCodeHighlight(messages);
-        let pendingFenceRenders = renderAiChatFences(messages, (event) => {
+        const onRenderLayout = (event) => {
                 if (event === "settled") pendingFenceRenders--;
                 finish();
-        });
+        };
+        let pendingFenceRenders = renderAiChatFences(messages, onRenderLayout);
+        pendingFenceRenders += typesetAiChatMath(messages, onRenderLayout);
         const images = Array.from(messages.querySelectorAll("img"));
         images.forEach(img => {
                 const size = dimensions.get(img.getAttribute("src"));

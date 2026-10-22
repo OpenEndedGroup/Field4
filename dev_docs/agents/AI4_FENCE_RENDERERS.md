@@ -44,3 +44,27 @@ The wrapper uses Mermaid's `strict` security level, disables HTML labels, caps t
 counts, and renders with a dark monochrome theme. It never loads from a CDN. The browser
 regression `ai-chat-fence-renderers` exercises registration, streaming, Mermaid rendering,
 source toggling, and syntax-error fallback in Field's real chat view.
+
+## Math
+
+The `math` catalog entry renders a fence with KaTeX, and its guidance teaches AI4 the prose
+delimiters too: `\(…\)` and `$…$` inline, `$$…$$` and `\[…\]` on their own line. The shared
+Markdown renderer (`src/commonMain/kotlin/afield/ai/conversation/aiChatHtml.kt`) treats math as literal, as
+it does code spans, and writes `<span class="ai-math" data-tex="…">` with the source as its text.
+`aiChatMath.js` typesets those spans in the chat panel and in box notes (`markdownView.js`). Once
+KaTeX has loaded it typesets synchronously, so a streamed re-render never flashes raw TeX. A
+JVM-served page that does not load it, such as `ai-chat-view.html`, shows the source. A single `$`
+pair is math only when the dollars hug their content and no digit follows the closing one, so
+"$5 and $10" stays prose. TeX that does not parse keeps its source, marked `ai-math-error`.
+
+The bundle (`src/jsMain/resources/katex/`: `field-katex.js`, `katex.min.css`, woff2 fonts) is
+built the same way as Mermaid's, with `trust: false` and bounded expansion and sizes:
+
+```bash
+cd tools/katex-bundle
+npm ci
+npm run build
+```
+
+`AiChatMarkdownMathTest` pins the delimiters, and the `ai-chat-fence-renderers` browser
+regression checks real KaTeX output.
