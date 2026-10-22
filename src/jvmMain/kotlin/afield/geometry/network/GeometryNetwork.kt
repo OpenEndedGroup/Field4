@@ -284,7 +284,7 @@ class GeometryNetwork(
                                 ))
                             }
                         }
-                        else -> if (n.toOrNull == null) closed = true else current.add(n.to)
+                        is FLine.Close -> closed = true
                     }
                 }
                 flush()
