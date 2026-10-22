@@ -116,7 +116,7 @@ private fun encodeGlb(scenes: List<GeometryScene>, fps: Double): ByteArray {
         val targets = if (!animated) emptyList() else (1 until scenes.size).map { f ->
             val later = scenes[f].parts[i].mesh
             val dp = FloatArray(m.positions.size) { later.positions[it] - m.positions[it] }
-            val dn = FloatArray(m.positions.size) { later.normals!![it] - m.normals!![it] }
+            val dn = FloatArray(m.positions.size) { later.normals!![it] - m.normals[it] }
             bin.floats(dp, "VEC3", minMax = true) to bin.floats(dn, "VEC3", minMax = false)
         }
 

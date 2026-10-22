@@ -236,7 +236,7 @@ class LpTrajectoriesTest {
         assertFailsWith<IllegalArgumentException> { pentagon.centralPath(c, doubleArrayOf(1.0, 1.0)) }
         assertFailsWith<IllegalArgumentException> { pentagon.centralPath(c, doubleArrayOf(1.0, -1.0, 1.0, 1.0, 1.0)) }
         assertTrue(LpPolygon.regular(7, 2.0).edgeCount == 7)
-        assertTrue(pentagon.ellipsoid(c, 3).ellipses[0].toFLine() is FLine)
+        assertTrue(pentagon.ellipsoid(c, 3).ellipses[0].toFLine().nodes.isNotEmpty())
     }
 
     @Test
