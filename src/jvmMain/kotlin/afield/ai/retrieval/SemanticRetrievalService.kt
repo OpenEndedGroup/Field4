@@ -1502,6 +1502,54 @@ object SemanticRetrievalService {
                         modifiedEpochMs = runCatching { Files.getLastModifiedTime(sidecar).toMillis() }.getOrDefault(0L)
                     )
                 }
+                // File-proxy boxes keep their editable text in the linked file, not in a Field
+                // sidecar. Index that same file so a presentation attached to a document joins
+                // the normal workspace semantic-search corpus and stays fresh after edits.
+                val proxyMode = transfer.properties["file_proxy_mode"] as? String
+                val proxyPath = transfer.properties["file_proxy_path"] as? String
+                if (proxyMode != null && !proxyPath.isNullOrBlank()) {
+                    val source = runCatching {
+                        val candidate = when (proxyMode) {
+                            "absolute" -> Paths.get(proxyPath)
+                            "workspace" -> root.resolve(proxyPath)
+                            "document" -> documentDir.resolve(proxyPath)
+                            else -> return@runCatching null
+                        }.toRealPath()
+                        val boundary = when (proxyMode) {
+                            "workspace" -> root.toRealPath()
+                            "document" -> documentDir.toRealPath()
+                            else -> null
+                        }
+                        if (boundary != null && !candidate.startsWith(boundary)) null else candidate
+                    }.getOrNull()
+                    if (source != null && Files.isRegularFile(source)) {
+                        val size = runCatching { Files.size(source) }.getOrDefault(0L)
+                        if (size in 1..10_000_000) {
+                            val extension = source.fileName.toString().substringAfterLast('.', "").lowercase(Locale.ROOT)
+                            val language = (transfer.properties["contents_language"] as? String)
+                                ?.lowercase(Locale.ROOT)
+                                ?: when (extension) {
+                                    "ts", "tsx" -> "typescript"
+                                    "js", "jsx", "mjs" -> "javascript"
+                                    "md" -> "markdown"
+                                    else -> extension
+                                }
+                            out += WorkspaceSidecarRecord(
+                                documentName = documentName,
+                                documentDir = documentDir,
+                                metadataMtime = metadataMtime,
+                                boxId = transfer.id,
+                                boxName = boxName,
+                                property = "contents",
+                                language = language,
+                                file = source,
+                                relativePath = if (source.startsWith(root)) root.relativize(source).toString().replace("\\", "/") else source.toString(),
+                                sizeBytes = size,
+                                modifiedEpochMs = Files.getLastModifiedTime(source).toMillis()
+                            )
+                        }
+                    }
+                }
             }
         }
         return out.sortedWith(compareBy<WorkspaceSidecarRecord> { it.documentName }.thenBy { it.boxId }.thenBy { it.property })

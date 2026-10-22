@@ -228,9 +228,9 @@ class DocumentDirectoryWriterLedgerTest {
             "src/jvmMain/kotlin/afield/tools/automation/operation_transcript.kt" to exempt(
                 14,
                 "REACHABLE. The macro/transcript command handler writes <doc>/operations.yaml and " +
-                    "<doc>/macros/*.yaml, and `reveal` mkdirs <doc>/macros/ outright; since 2026-10 the " +
-                    "Macro Recorder's rename and delete (into <doc>/macros/.deleted) add three more. " +
-                    "Wants the same treatment the three writers got, red-first."
+                    "<doc>/macros/*.yaml, `reveal` mkdirs <doc>/macros/ outright, and the Macro " +
+                    "Recorder's rename/delete writes <doc>/macros/ and its .deleted/ trash. Wants the same " +
+                    "treatment the three writers got, red-first."
             ),
             "src/jvmMain/kotlin/afield/document/workspace/FileManager.kt" to exempt(
                 5,
@@ -254,7 +254,8 @@ class DocumentDirectoryWriterLedgerTest {
             // ---- ungated, and out of scope with a reason ----
             "src/jvmMain/kotlin/afield/document/workspace/dir.kt" to exempt(
                 10,
-                "Workspace lifecycle: create/delete/duplicate/zip a document (and the kit first-open marker in a fresh copy). Explicit destructive " +
+                "Workspace lifecycle: create/delete/duplicate/zip a document (and the kit first-open " +
+                    "marker written into a fresh copy). Explicit destructive " +
                     "user actions on a different document than the one open, so a read-only policy " +
                     "for them is a separate decision, not a silent write-back."
             ),
@@ -267,10 +268,11 @@ class DocumentDirectoryWriterLedgerTest {
                 9,
                 "Paths come from Path.of(request.path) — explicit agent/tool-chosen export targets."
             ),
-            // The backdoor's canvas-flight film (2026-10): the .mp4 goes where the agent asked.
+            // Arrived with canvas filming (`5ee3d387c`). `info.filename` is only the session key in
+            // its replies; the one write creates the parent of the agent-chosen .mp4 path.
             "src/jvmMain/kotlin/afield/tools/docs/canvasFlightRecording.kt" to exempt(
                 1,
-                "The path is Path.of(request.path) — an explicit agent/tool-chosen export target, as in screenshot.kt."
+                "Paths come from Path.of(request.path) — an explicit agent/tool-chosen .mp4 export target."
             ),
             // Arrived with AI4's ViewBoxOutputRequest (`f5ccdb6a8`). `info.filename` is only the key
             // of the held-page map; the one write is a capture PNG under `captureDir`.

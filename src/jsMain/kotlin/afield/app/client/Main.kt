@@ -5440,8 +5440,25 @@ private fun applyFileProxyPresentation(box: HTMLElement) {
         titleStack.appendChild(created)
         created
     }
-    path.textContent = pathText
+    // Truncate in the middle: the head ellipsizes, the tail (the last two segments) stays visible.
+    val split = fileProxyPathTailStart(pathText)
+    val head = document.createElement("span") as HTMLElement
+    head.classList.add("file-proxy-path-head")
+    head.textContent = pathText.substring(0, split)
+    val tail = document.createElement("span") as HTMLElement
+    tail.classList.add("file-proxy-path-tail")
+    tail.textContent = pathText.substring(split)
+    path.textContent = ""
+    path.appendChild(head)
+    path.appendChild(tail)
     path.title = pathText
+}
+
+private fun fileProxyPathTailStart(path: String): Int {
+    val last = path.trimEnd('/').lastIndexOf('/')
+    if (last <= 0) return 0
+    val previous = path.lastIndexOf('/', last - 1)
+    return if (previous > 0) previous else last
 }
 
 private fun applyAi4AutoNameStyle(box: HTMLElement, generated: Boolean) {
@@ -5925,10 +5942,11 @@ suspend fun main() {
     }
 
     handlers.put("set-visibility-animated") { message, _ ->
-        val payload = message.payload?.let { Json.decodeFromJsonElement<Map<String, Any>>(it) } ?: return@put Handled.no
-        val uid = payload["uid"] as? String ?: return@put Handled.no
-        val visible = payload["visible"] as? Boolean ?: return@put Handled.no
-        val duration = (payload["duration"] as? Double) ?: 300.0
+        // Read as a JsonObject: there is no serializer for Map<String, Any>.
+        val payload = message.payload?.jsonObject ?: return@put Handled.no
+        val uid = payload["uid"]?.jsonPrimitive?.contentOrNull ?: return@put Handled.no
+        val visible = payload["visible"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: return@put Handled.no
+        val duration = payload["duration"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull() ?: 300.0
         layerDebugLog(
             "recv set-visibility-animated",
             json(

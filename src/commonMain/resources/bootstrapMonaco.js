@@ -12,6 +12,38 @@ import {
 } from "./afield.mjs"
 import { renderFieldMarkdown } from "./markdownView.js"
 import { installFieldSuggest, requestLineNote, lineNoteHtml } from "./fieldSuggest.js"
+import { attachPresentationTypeScript } from "./presentationTsx.js"
+
+window.addEventListener("field-presentation-project", (event) => {
+        if (Array.isArray(event.detail)) attachPresentationTypeScript(event.detail)
+})
+window.fieldElectron?.presentationTypeScript?.({action: "sources"})
+        .then(paths => { if (Array.isArray(paths)) attachPresentationTypeScript(paths) })
+        .catch(() => {})
+
+// The Electron presentation control can attach its ordinary source files to the current Field
+// document. These are live absolute file proxies, so Monaco edits write to the Git-backed talk.
+window.addEventListener("field-presentation-sources", async (event) => {
+        const paths = event.detail
+        if (!Array.isArray(paths)) return
+        attachPresentationTypeScript(paths)
+        for (const [index, path] of paths.entries()) {
+                if (typeof path !== "string" || !path.startsWith("/")) continue
+                const fileName = path.split("/").pop() || "source"
+                const callbackName = `presentation-file-proxy-${Date.now()}-${index}`
+                await new Promise((resolve) => {
+                        sendWithReply("create-file-proxy-box", {
+                                mode: "absolute", path, fileName,
+                                x: 80 + (index % 4) * 280,
+                                y: 80 + Math.floor(index / 4) * 130,
+                        }, callbackName, (_message, payload) => {
+                                if (!payload?.ok) console.error("presentation source attach failed", fileName, payload?.message)
+                                resolve()
+                                return "remove"
+                        })
+                })
+        }
+})
 
 if (!window.require || typeof window.require.config !== "function") {
         throw new Error("Monaco AMD loader is missing; expected /min/vs/loader.js to define window.require before bootstrapMonaco.js")

@@ -150,7 +150,8 @@ private fun panelButton(label: String, title: String, action: () -> Unit): HTMLE
         it.addEventListener("click", { action() })
     }
 
-private fun moveSelectionToLayer(layer: String) {
+/** Put every selected box on [layer], and only on it (the panel's button and the palette command). */
+fun moveSelectionToLayer(layer: String) {
     selected.forEach { box ->
         val uid = box.asDynamic().uid as? String ?: return@forEach
         send(Message("set-string").payload(Set_string(uid, "layers", layer)))

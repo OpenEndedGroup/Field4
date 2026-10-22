@@ -39,4 +39,3 @@ JPEG (quality 80); nothing else is changed.
 - Source: [File:Bicycle 02.jpg](https://commons.wikimedia.org/wiki/File:Bicycle_02.jpg)
 - Author: Shams948
 - License: CC0
-
