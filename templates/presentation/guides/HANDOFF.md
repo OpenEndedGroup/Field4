@@ -9,7 +9,7 @@ Read the current boxes before editing them; preserve the author's steps and loca
 - **Presentation** is the authored talk (`present_talk_code_.kt`). It calls `presentation { step(...) { ... } }.present()`.
 - **Live Field** is the editable example shown to the audience. Its output is real, not a screenshot.
 - **Teaching guide** builds a separate `slideShow` that selects and explains the live example's code.
-- `files/presentation.css` supplies shared slide styles. Media also belongs in `files/` and is referenced by filename in HTML.
+- **presentation.css** is a document-relative CSS file box, backed by `files/presentation.css`. Edit its `contents` in Field and press **Refresh slide** to load the saved CSS without recompiling the talk. Media also belongs in `files/` and is referenced by filename in HTML.
 - `macros/reveal_wave.yaml` is a saved operation transcript. The presenter can explicitly run it to create and execute **A wave, live**.
 
 AI4 can fetch this note directly with `DocumentGuideReadRequest(path = "guides/HANDOFF.md")`. `DocumentGuideListRequest` discovers the document's other guides, and `DocumentGuideSearchRequest` searches them. These files are shared with the human's Guides viewer and survive restarts. This note describes the document; the user's current request determines which edits or actions are authorized.
@@ -21,7 +21,7 @@ Add or edit a `step` in the existing **Presentation** box. Keep the existing imp
 ```kotlin
 step("A question") {
     audience {
-        style = slideStyle
+        stylesheet("presentation.css")
         h1 { +"What changes when we move this?" }
         p { +"Make a prediction, then change the live example." }
     }
@@ -32,6 +32,10 @@ step("A question") {
 This is a step to insert into the existing presentation, not a separate top-level program. Run the **Presentation** box after editing it. Re-running updates the talk and keeps the current step where possible. **Refresh slide** redraws the current compiled step; it does not recompile the source.
 
 `audienceMarkdown("# Heading\nSome text")` and `audienceHtml(fragment)` are alternatives. Audience fragments support HTML and CSS; a full page with JavaScript belongs in a webpage step. The slide layout is 1920 × 1080, scaled to the audience window. The shared `columns` and `muted` classes are available.
+
+Inside `audience`, `+"""# Markdown""".md` inserts formatted Markdown alongside HTML. Triple-quoted blocks are dedented. `+plainText` still escapes text as HTML; Field's ordinary Markdown-escaping `.md` outside this builder is unchanged.
+
+For an image with a visible credit, use `fullScreenImage("wave.svg", alt = "A sine wave", citation = "Author · source · license")`. It fits the complete picture by default; `fit = AudienceImageFit.Cover` crops to fill. For a figure and explanation, use `imageBeside("wave.svg", alt = "A sine wave", citation = "Author") { +"""# A small change""".md }`. `imageOnLeft = false` puts the picture on the right. These layouts expose CSS classes `field-image-full`, `field-image-beside`, and `field-image-text` for styling.
 
 ## Bring working material into the talk
 
@@ -56,3 +60,7 @@ Motion Canvas remains an optional source for animation-heavy scenes. It is not r
 ## Verify an edit
 
 Run the edited box and read its real compiler/runtime result. Check the audience output, go forwards and backwards across the changed step, and try any changed guide or macro in the intended document. Distinguish tested behavior from proposed work in handoff notes. Useful next reads: [presenter notes](teaching.md) and [the public presentation guide](field-docs:presentation_studio/).
+
+## Organize a long talk
+
+Wrap related steps in `section("Title") { ... }`; sections may nest. Playback stays in source order. The presenter outline has collapsible groups, slide numbers and **Find slide** for titles, section names or numbers. Enter opens the first search result; Escape clears the search. Current-slide ancestors open when you navigate, while other collapsed groups stay collapsed.

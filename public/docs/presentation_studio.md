@@ -14,6 +14,29 @@ There is no per-talk Node project or package installation. The presentation is a
 
 The starter is also available as **presentation** under **Templates** on the Welcome screen. In a browser, the document and its guides remain usable; the separate audience display requires the Electron app.
 
+## Organize a long talk
+
+The presenter has a scrollable outline, with collapsible sections and numbered slides. Wrap related steps in `section`; sections can nest. Next and Previous still follow source order across section boundaries. Flat talks need no changes.
+
+```diffstatic {data-lang=kotlin}
+presentation(title = "A lesson about motion") {
+    section("Opening") {
+        step("The question") { audienceMarkdown("# What makes things move?") }
+    }
+    section("Experiments") {
+        section("Waves") {
+            step("Predict") { audienceMarkdown("# What happens at twice the frequency?") }
+            step("Try it") { audienceDocument("wave-study") }
+        }
+        step("Discuss") { audienceMarkdown("# What changed?") }
+    }
+}.present()
+```
+
+**Find slide** searches slide titles, section names and slide numbers. Press Enter to open the first match; Escape clears the search. Jumping to a slide reveals its section in the outline. Collapse other sections to keep a long lecture manageable; the controls preserve those choices as you navigate.
+
+![Presenter controls with a searchable, numbered outline grouped into Opening, Pictures and ideas, and Working material.](assets/presentation_studio/outline.png)
+
 ## Write slides with Kotlin and HTML
 
 Presentation steps use Field's existing guide system. A step's `audience` block uses standard [kotlinx.html](https://github.com/Kotlin/kotlinx.html) builders, so Kotlin functions, loops and completion work inside it. Text added with `+` is escaped by the library.
@@ -46,7 +69,60 @@ presentation(title = "A lesson about motion") {
 }.present()
 ```
 
-The audience has a black background, Iosevka type and a 1920 × 1080 layout scaled to fit its window. Standard HTML tags and CSS control the layout. The starter's `files/presentation.css` supplies shared inline styles; its talk reads that file and applies it to the slide container. The `columns` and `muted` classes provide a simple starting layout. Audience fragments support HTML and CSS; use a webpage step for a full page with scripts. Use `audienceMarkdown("# Heading\nSome text")` for a Markdown slide, or `audienceHtml(fragment)` for existing HTML.
+The audience has a black background, Iosevka type and a 1920 × 1080 layout scaled to fit its window. Standard HTML tags and CSS control the layout. The `columns` and `muted` classes provide a simple starting layout. Audience fragments support HTML and CSS; use a webpage step for a full page with scripts. Use `audienceMarkdown("# Heading\nSome text")` for a Markdown slide, or `audienceHtml(fragment)` for existing HTML.
+
+![The starter audience slide beside the sine-wave illustration, with a heading and numbered Markdown list.](assets/presentation_studio/image-beside.png)
+
+### Mix Markdown, images and HTML
+
+Inside `audience`, `.md` turns a string into a rendered Markdown fragment. Unary `+` inserts that fragment; ordinary strings still become escaped HTML text. Indented triple-quoted Markdown is dedented, and headings, emphasis, lists, tables and code fences use Field's Markdown renderer.
+
+```diffstatic {data-lang=kotlin}
+audience {
+    stylesheet("presentation.css")
+    +"""
+        # A question about motion
+        Something _worth trying_ in the live document.
+
+        1. Predict what changes.
+        2. Run the experiment.
+    """.md
+}
+```
+
+`fullScreenImage` fills the audience display with a picture and its credit. It contains the entire image by default; `AudienceImageFit.Cover` crops it to fill the available space. `imageBeside` puts the picture and its credit beside HTML or Markdown content. `imageOnLeft = false` moves it to the right.
+
+```diffstatic {data-lang=kotlin}
+audience {
+    stylesheet("presentation.css")
+    fullScreenImage("wave.svg", alt = "A sine wave", citation = "Author · source · license")
+}
+
+// Use a separate step for the second layout.
+audience {
+    stylesheet("presentation.css")
+    imageBeside("wave.svg", alt = "A sine wave", citation = "Author · source · license") {
+        +"""
+            # A small change.
+            Make a prediction, then try it in Field.
+        """.md
+    }
+}
+```
+
+Keep image files in the document's `files/` directory and reference them by filename. The starter includes an editable SVG example. Credits are separate text, so they stay readable and editable.
+
+![The fullscreen image layout: a white sine-wave drawing on black, with its editable credit beneath it.](assets/presentation_studio/image-fullscreen.png)
+
+### Edit the stylesheet in Field
+
+Select the starter's **presentation.css** box to edit its CSS with Field's normal editor. It is a file box linked to `files/presentation.css`; edits write to that actual file. `stylesheet("presentation.css")` loads it into the slide. Press **Refresh slide** to fetch the saved CSS again without recompiling the talk. Re-running the **Presentation** box also reloads it.
+
+You can drag the file from the document's `files/` directory onto the canvas and choose a document-relative link to create the same kind of editor box. A stylesheet copied into the document root is referenced as `stylesheet("../presentation.css")`, since slide media paths start in `files/`. For a few declarations on one HTML container, the usual `style = "color:white"` property remains available.
+
+![The presentation.css file open in Field’s CSS editor alongside the presentation document.](assets/presentation_studio/stylesheet.png)
+
+The image layouts use `field-image-full`, `field-image-beside` and `field-image-text` classes. Override those selectors in the stylesheet to adjust spacing, image size, type or credit placement.
 
 `markdownNote`, `selectBox`, `selectBoxByName`, annotations, `onEnter`, `onExit` and link callbacks are the same guide operations used elsewhere in Field. Notes stay in the hosting document. A step without an audience surface shows its note HTML to the audience too. To present an existing guide this way, run it first, then choose **Presentation → Present Current Guide**.
 

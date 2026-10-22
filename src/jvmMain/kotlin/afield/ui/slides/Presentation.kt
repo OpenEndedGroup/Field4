@@ -4,9 +4,8 @@ import afield.app.protocol.AudienceContent
 import afield.app.protocol.AudienceMacro
 import afield.document.graph.Box
 import afield.runtime.lifecycle.inMain
-import kotlinx.html.DIV
-import kotlinx.html.div
 import kotlinx.html.stream.createHTML
+import kotlinx.html.visitAndFinalize
 import java.net.URI
 
 /** Options for showing a guide on a separate audience display. */
@@ -44,8 +43,9 @@ fun SlideShowInstance.present() {
 }
 
 /** Standard kotlinx.html builders; text is escaped by the library. No JavaScript build is needed. */
-fun SlideStepBuilder.audience(block: DIV.() -> Unit) {
-    audienceHtml(createHTML().div(classes = "field-slide", block = block))
+fun SlideStepBuilder.audience(block: AudienceBuilder.() -> Unit) {
+    val consumer = createHTML()
+    audienceHtml(AudienceBuilder(consumer).visitAndFinalize(consumer, block))
 }
 
 /** Set an HTML fragment for the audience. Use [audience] for type-safe, escaped HTML construction. */

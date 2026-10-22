@@ -27,5 +27,6 @@ data class PresentationState(
     val index: Int,
     val titles: List<String>,
     val content: AudienceContent? = null,
-    val transitionMs: Int = 450
+    val transitionMs: Int = 450,
+    val sectionPaths: List<List<String>> = emptyList()
 )

@@ -87,3 +87,17 @@ test('native starter is a portable Field document with no per-talk JS toolchain'
   assert.equal(record.directory, undefined);
   assert.equal(record.roles['teaching-guide'].name, 'Teaching guide');
 });
+
+
+test('native outline paths are optional, aligned and bounded', () => {
+  const {validateGuideState} = require('../../../electron/presentation-cues.js');
+  const state = {slideshowId: 'presentation_host', hostUid: 'host', title: 'Talk',
+    index: 0, titles: ['One', 'Two'], content: {html: '<h1>One</h1>'}};
+  const paths = [['Opening'], ['Experiments', 'Waves']];
+  assert.deepEqual(validateGuideState({...state, sectionPaths: paths}).sectionPaths, paths);
+  assert.doesNotThrow(() => validateGuideState(state));
+  for (const sectionPaths of [[['One']], [null, []], [[''], []],
+    [[42], []], [Array(17).fill('Deep'), []], 'bad']) {
+    assert.throws(() => validateGuideState({...state, sectionPaths}), /presentation sections/);
+  }
+});

@@ -55,7 +55,7 @@ try {
   assert.ok(controlTarget, 'Open the starter presentation in Electron first');
   const control = await connect(controlTarget);
   const click = id => control(`document.getElementById(${JSON.stringify(id)}).click()`);
-  const goto = cue => control(`[...document.querySelectorAll('#slides button')].find(button=>button.textContent===${JSON.stringify(cue)}).click()`);
+  const goto = cue => control(`[...document.querySelectorAll('#slides button')].find(button=>(button.dataset.slideTitle || button.textContent)===${JSON.stringify(cue)}).click()`);
   await until(() => control(`document.getElementById('status').textContent`), value => native ? /^\d+ \/ \d+ · \S/.test(value) : /· \S+:\S+/.test(value), 'presenter startup');
 
   await goto(native ? 'Field / present' : 'intro:intro');
