@@ -37,7 +37,7 @@
             position: absolute;
             width: 100vw;
             height: 100vh;
-            overflow: auto;
+            overflow: hidden;
         }
 
         #canvas {
@@ -128,21 +128,24 @@
         }
 
         .monaco-editor-container.visible {
-            display: block;
+            display: flex;
+            flex-direction: column;
             opacity: 1;
             transform: translateX(0);
         }
 
         .monaco-editor {
             width: 100%;
-            height: calc(100% - 40px);
+            flex: 1 1 auto;
+            min-height: 0;
             font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif !important;
         }
 
         .literate-view {
             display: none;
             width: 100%;
-            height: calc(100% - 40px);
+            flex: 1 1 auto;
+            min-height: 0;
             overflow: auto;
             font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif;
             padding: 4px 6px;
@@ -297,6 +300,148 @@
             z-index: 100;
             max-width: 80%;
         }
+
+        /* The drawing layer: the root box's Excalidraw scene, in world coordinates under the boxes.
+           Field shows the scene through Excalidraw's dark theme filter; so does the viewer. */
+        .drawing-layer {
+            position: absolute;
+            overflow: visible;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .drawing-theme {
+            filter: invert(93%) hue-rotate(180deg);
+        }
+
+        .box {
+            z-index: 1;
+        }
+
+        .box-notes-badge {
+            position: absolute;
+            top: 3px;
+            right: 6px;
+            font-size: 12px;
+            color: var(--field-text-soft);
+            opacity: 0.75;
+            pointer-events: none;
+        }
+
+        .panel-title {
+            align-self: center;
+            padding: 3px 10px 3px 6px;
+            color: var(--field-cyan);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .property-tabs {
+            flex: 0 0 auto;
+            flex-wrap: wrap;
+            padding-right: 70px;
+        }
+
+        /* A box's notes, as Markdown, above its code. */
+        .notes-view {
+            display: none;
+            flex: 0 1 auto;
+            max-height: 48%;
+            overflow: auto;
+            margin: 0 0 8px 0;
+            padding: 4px 14px 8px 12px;
+            border-left: 2px solid var(--field-cyan-muted);
+            color: #dbe8f5;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .monaco-editor-container.no-code .notes-view {
+            max-height: none;
+            flex: 1 1 auto;
+        }
+
+        .notes-view h1, .notes-view h2, .notes-view h3, .notes-view h4 {
+            color: var(--field-text);
+            font-weight: 400;
+            margin: 10px 0 6px 0;
+            line-height: 1.25;
+        }
+
+        .notes-view h1 { font-size: 19px; }
+        .notes-view h2 { font-size: 16px; }
+        .notes-view h3, .notes-view h4 { font-size: 14px; }
+        .notes-view p { margin: 6px 0; }
+        .notes-view a { color: var(--field-cyan); }
+        .notes-view img { max-width: 100%; border-radius: 4px; }
+        .notes-view code {
+            font-family: "Iosevka Web", monospace;
+            background: rgba(255, 255, 255, 0.07);
+            padding: 0 3px;
+            border-radius: 3px;
+            color: #f0d9a0;
+        }
+
+        .notes-view pre.md-code {
+            background: #11161c;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 6px 8px;
+            overflow-x: auto;
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .notes-view pre.md-code code { background: none; padding: 0; color: inherit; }
+        .notes-view blockquote { margin: 6px 0; padding-left: 10px; border-left: 2px solid rgba(255,255,255,0.2); opacity: 0.85; }
+        .notes-view ul, .notes-view ol { margin: 6px 0; padding-left: 22px; }
+        .notes-view table { border-collapse: collapse; margin: 8px 0; font-size: 12px; }
+        .notes-view th, .notes-view td { border: 1px solid rgba(255, 255, 255, 0.12); padding: 3px 7px; vertical-align: top; }
+        .notes-view th { color: var(--field-text); font-weight: 400; background: rgba(255,255,255,0.04); }
+        .notes-view hr { border: none; border-top: 1px solid rgba(255,255,255,0.15); }
+
+        /* Zoom, drawing, layers and bookmarks. */
+        .document-panel {
+            position: fixed;
+            top: 10px;
+            left: 150px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 20;
+            max-width: calc(30vw - 160px);
+            min-width: 260px;
+            font-size: 11px;
+            color: var(--field-text);
+        }
+
+        .doc-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 6px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--field-cyan-muted);
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .doc-row button {
+            font: inherit;
+            color: var(--field-text);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(var(--field-cyan-rgb), 0.3);
+            border-radius: 5px;
+            padding: 1px 7px;
+            cursor: pointer;
+        }
+
+        .doc-row button:hover { background: rgba(var(--field-cyan-rgb), 0.2); }
+        .doc-row button.active { background: var(--field-cyan); color: #000; }
+        .doc-row label { cursor: pointer; margin-left: 4px; }
+        .doc-label { opacity: 0.6; margin-right: 2px; }
+        #zoom-readout { min-width: 38px; text-align: center; }
     </style>
 </head>
 <body>
@@ -315,9 +460,12 @@
     <div class="monaco-editor-container" id="editor-container">
         <div class="property-tabs" id="property-tabs"></div>
         <div class="view-toggle"><button id="literate-toggle">reader</button></div>
+        <div class="notes-view" id="notes-view"></div>
         <div class="monaco-editor" id="editor"></div>
         <div class="literate-view" id="literate-view"></div>
     </div>
+
+    <div class="document-panel" id="document-panel"></div>
 
     <a class="open-local-button" id="open-local" style="display: none;">
         Open in Field·4
