@@ -31,6 +31,13 @@ if pathlib.Path("HANGS").exists():
     import time; time.sleep(600)
 if pathlib.Path("SLOW").exists():
     import time; time.sleep(1.5)
+if pathlib.Path("WAIT_FOR_CAFFEINATE").exists():
+    import time
+    awake = pathlib.Path(__file__).resolve().parents[2] / "CAFFEINATE"
+    deadline = time.monotonic() + 20
+    while not awake.exists() and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert awake.exists(), "the awake helper never started"
 if pathlib.Path("COUNT").exists() and pathlib.Path("COUNT").read_text().strip() == "wrong":
     print("merge_regen: CountTest > count matches FAILED", file=sys.stderr)
     sys.exit(1)
@@ -475,7 +482,9 @@ while kill -0 "$pid" 2>/dev/null; do sleep 0.1; done
 """)
         fake.chmod(0o755)
         self.env["FIELD_LAND_CAFFEINATE"] = str(fake)
-        self.land(self.branch_with("awake", "SLOW"), "enqueue")
+        # Let the real child report that the build is alive before ending it. A fixed sleep
+        # races process startup on a loaded machine and can kill the helper before it runs.
+        self.land(self.branch_with("awake", "WAIT_FOR_CAFFEINATE"), "enqueue")
         self.run_lander()
         self.assertEqual(self.states(), {"awake": "landed"})
         self.assertEqual(record.read_text().split(), ["-i", "-w", "alive"])

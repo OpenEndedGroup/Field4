@@ -1,0 +1,32 @@
+name: reveal_wave
+description: Create and run a small live SVG wave beside the opening box.
+operations:
+  - create:
+      box: present_wave
+      name: A wave, live
+      frame:
+        x: 80.0
+        y: 400.0
+        w: 500.0
+        h: 70.0
+      properties:
+        code: |
+          val points = (0..120).joinToString(" ") { i ->
+              val x = i * 5
+              val y = 95 - 55 * kotlin.math.sin(i * 0.17)
+              "$x,$y"
+          }
+          display("wave", """<div style="background:#050505;padding:16px"><svg viewBox="0 0 600 190" width="480" height="152"><polyline points="$points" fill="none" stroke="#f4f4f4" stroke-width="3"/></svg></div>""")
+          displayOpen("wave")
+  - execute:
+      box: present_wave
+      property: code
+      type: fragment
+      code: |
+        val points = (0..120).joinToString(" ") { i ->
+            val x = i * 5
+            val y = 95 - 55 * kotlin.math.sin(i * 0.17)
+            "$x,$y"
+        }
+        display("wave", """<div style="background:#050505;padding:16px"><svg viewBox="0 0 600 190" width="480" height="152"><polyline points="$points" fill="none" stroke="#f4f4f4" stroke-width="3"/></svg></div>""")
+        displayOpen("wave")

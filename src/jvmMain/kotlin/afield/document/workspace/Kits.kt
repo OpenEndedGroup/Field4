@@ -134,6 +134,7 @@ object Kits {
         val recorded = record(documentDir)
         val kitDirectory = kit?.let { if (it.name == "kit.json" && it.isFile) it.parentFile else it }?.absoluteFile
             ?: recorded?.directory?.let(::File)
+            ?: documentDir.takeIf { recorded != null && File(it, "kit.json").isFile }
         val current = kitDirectory?.takeIf { File(it, "kit.json").isFile }?.let(::read)
         val problems = mutableListOf<String>()
         if (recorded == null && current == null) {

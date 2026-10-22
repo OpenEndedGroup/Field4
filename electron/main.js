@@ -667,7 +667,16 @@ function installAppMenu() {
       label: "Presentation",
       submenu: [
         {
-          label: "Open Presentation…",
+          label: "New Presentation…",
+          click: () => require("./presentation").newPresentation(),
+        },
+        {
+          label: "Present Current Guide",
+          click: () => require("./presentation").presentCurrentGuide().catch(error => dialog.showErrorBox("Could not present guide", String(error))),
+        },
+        { type: "separator" },
+        {
+          label: "Open Motion Canvas Project…",
           click: () => require("./presentation").choosePresentation(),
         },
       ],
@@ -1592,25 +1601,40 @@ function createMainWindow() {
 
   const isFieldTab = (tab) => {
     try {
+      if (!tab) return false;
       const url = new URL(contentsUrl(tab));
       return url.origin === new URL(initialUrl).origin && url.pathname.endsWith('/index.html');
     } catch (_) { return false; }
   };
+  const presentationFieldTab = () => (isFieldTab(activeTab()) ? activeTab() : tabs.find(isFieldTab));
+  const isFieldServerTab = tab => {
+    try { return tab && new URL(contentsUrl(tab)).origin === new URL(initialUrl).origin; }
+    catch (_) { return false; }
+  };
+  const presentationServerTab = () => presentationFieldTab() ||
+    (isFieldServerTab(activeTab()) ? activeTab() : tabs.find(isFieldServerTab));
   const presentationHost = {
+    getFieldContents: () => { const tab = presentationFieldTab(); return tab && liveContents(tab); },
+    openDocument: name => {
+      const tab = presentationServerTab();
+      const url = new URL(tab ? contentsUrl(tab) : initialUrl);
+      url.pathname = '/index.html'; url.search = new URLSearchParams({file: name}).toString(); url.hash = '';
+      return openTab(url.href, {activate: true});
+    },
     openPreview: (url) => openTab(url, { activate: true }),
     getFieldUrl: () => {
-      const fieldTab = tabs.find(isFieldTab);
+      const fieldTab = presentationFieldTab();
       return fieldTab ? contentsUrl(fieldTab) : null;
     },
     getFieldInfo: async () => {
-      const fieldTab = tabs.find(isFieldTab);
+      const fieldTab = presentationServerTab();
       const contents = fieldTab && liveContents(fieldTab);
       if (!contents || contents.isDestroyed()) return null;
       return contents.executeJavaScript("fetch('/api/instance-info').then(response => response.ok ? response.json() : null)");
     },
     isFieldContents: (contents) => tabs.some(tab => isFieldTab(tab) && liveContents(tab) === contents),
     enableTypeScript: (paths) => {
-      const fieldTab = tabs.find(isFieldTab);
+      const fieldTab = presentationFieldTab();
       const contents = fieldTab && liveContents(fieldTab);
       if (!contents || contents.isDestroyed()) return;
       const send = () => {
@@ -1620,7 +1644,7 @@ function createMainWindow() {
       else send();
     },
     attachSources: (paths) => {
-      const fieldTab = tabs.find(isFieldTab);
+      const fieldTab = presentationFieldTab();
       const contents = fieldTab && liveContents(fieldTab);
       if (!contents || contents.isDestroyed()) return false;
       contents.send('field4-presentation-sources', paths);

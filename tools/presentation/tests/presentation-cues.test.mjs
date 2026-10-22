@@ -52,3 +52,38 @@ test('new talk contains the editable project, Field document, guide and macro', 
   fs.writeFileSync(manifest, JSON.stringify({slides: {'field:field': {type: 'field-document', document: '../escape'}}}));
   assert.throws(() => validateProject(destination), /valid webpage/);
 });
+
+test('native guide protocol accepts Kotlin defaults and rejects invalid audience states', () => {
+  const {validateGuideState} = require('../../../electron/presentation-cues.js');
+  const state = {slideshowId: 'presentation_host', hostUid: 'host', title: 'My talk',
+    index: 0, titles: ['Hello'], content: {html: '<h1>Hello</h1>'}};
+  assert.deepEqual(validateGuideState(state).content, {type: 'html', html: '<h1>Hello</h1>'});
+  assert.equal(validateGuideState(state).transitionMs, 450);
+  assert.equal(validateGuideState({...state, index: -1, content: null}).content, null);
+  for (const content of [{type: 'field-document', document: '../private'},
+    {type: 'webpage', url: 'file:///tmp/private'}, {type: 'youtube', videoId: 'invalid'},
+    {type: 'html', html: 'x'.repeat(1000001)}]) {
+    assert.throws(() => validateGuideState({...state, content}), /audience content/);
+  }
+  assert.throws(() => validateGuideState({...state, index: 1}), /presentation state/);
+});
+
+test('native starter is a portable Field document with no per-talk JS toolchain', t => {
+  const {createPresentationDocument} = require('../../../electron/presentation-starter.js');
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'field-native-talk-'));
+  t.after(() => fs.rmSync(parent, {recursive: true, force: true}));
+  const destination = path.join(parent, 'my-talk');
+  assert.equal(createPresentationDocument(parent, destination), 'my-talk');
+  for (const relative of ['metadata.edn', 'present_talk_code_.kt', 'kit.json',
+    'files/kit.json', 'files/presentation.css', 'roles/teaching-guide/code.kt', 'macros/reveal_wave.yaml']) {
+    assert.ok(fs.statSync(path.join(destination, relative)).isFile(), relative);
+  }
+  assert.equal(fs.existsSync(path.join(destination, 'package.json')), false);
+  assert.equal(fs.existsSync(path.join(destination, 'node_modules')), false);
+  assert.equal(fs.existsSync(path.join(destination, 'src/project.ts')), false);
+  assert.throws(() => createPresentationDocument(parent, destination), /already exists/);
+  assert.throws(() => createPresentationDocument(parent, path.join(os.tmpdir(), 'outside-talk')), /inside/);
+  const record = JSON.parse(fs.readFileSync(path.join(destination, 'files/kit.json'), 'utf8'));
+  assert.equal(record.directory, undefined);
+  assert.equal(record.roles['teaching-guide'].name, 'Teaching guide');
+});

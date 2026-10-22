@@ -1616,7 +1616,7 @@ data class ShowSlideNote(
 data class HideSlideNote(val dummy: Boolean = true)
 
 @Serializable
-data class SlideShowCommand(val command: String)
+data class SlideShowCommand(val command: String, val slideshowId: String = "", val guideOnly: Boolean = false)
 
 /**
  * Draw one line from the note overlay as a whole to a box or editor line. [id] is only the stable
