@@ -232,27 +232,28 @@ val metaroot: Box by lazy {
     root
 }
 
+/** Attach a document under its workspace projects, with the global metaroot above those scopes. */
 fun attachRootToMetaroot(root: Box) {
     if (root == metaroot) return
-    val meta = metaroot
-    if (!root.parents.contains(meta)) {
-        root.parents.add(meta)
-        needsResync.add(root to "parents")
+    val scopes = if (root.inside.ephemeral) emptyList() else
+        afield.document.workspace.WorkspaceProjectScopes.forDocument(java.io.File(root.inside.filename))
+    val parents = scopes.map { it.root }.ifEmpty { listOf(metaroot) }
+    val old = root.parents.filter { it === metaroot || afield.document.workspace.WorkspaceProjectScopes.isProjectRoot(it) }
+    old.filter { it !in parents }.forEach {
+        it.children.remove(root); root.parents.remove(it)
+        needsResync.add(root to "parents"); needsResync.add(it to "children")
     }
-    if (!meta.children.contains(root)) {
-        meta.children.add(root)
-        needsResync.add(meta to "children")
+    parents.forEach { parent ->
+        if (root.parents.add(parent)) needsResync.add(root to "parents")
+        if (parent.children.add(root)) needsResync.add(parent to "children")
     }
 }
 
 fun detachRootFromMetaroot(root: Box) {
     if (root == metaroot) return
-    val meta = metaroot
-    if (root.parents.remove(meta)) {
-        needsResync.add(root to "parents")
-    }
-    if (meta.children.remove(root)) {
-        needsResync.add(meta to "children")
+    root.parents.filter { it === metaroot || afield.document.workspace.WorkspaceProjectScopes.isProjectRoot(it) }.forEach { parent ->
+        if (root.parents.remove(parent)) needsResync.add(root to "parents")
+        if (parent.children.remove(root)) needsResync.add(parent to "children")
     }
 }
 

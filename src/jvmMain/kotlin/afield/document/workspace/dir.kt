@@ -1693,6 +1693,12 @@ fun openStartingPointIntoWorkspace(base: String, name: String): DuplicateDocumen
         ?: documentTemplateCandidates().firstOrNull { it.filename == cleanName }?.dir
         ?: throw IllegalArgumentException("starting point not found")
 
+    return copyKitStartingPoint(base, cleanName, sourceDir)
+}
+
+/** Copy a validated kit starting point through the ordinary document-copy path. */
+fun copyKitStartingPoint(base: String, name: String, sourceDir: File): DuplicateDocumentResponse {
+    val cleanName = validateWorkspaceDocumentName(name)
     // Pick a workspace name that does not collide (name, name-2, name-3, …).
     val baseDir = File(base).canonicalFile
     var target = cleanName

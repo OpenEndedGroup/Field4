@@ -108,11 +108,13 @@ object KotlinSourceIndex {
 
     private fun runSync() {
         val root = Paths.get(System.getProperty("user.dir")).normalize()
-        val sourceRoots = listOf(
+        val kitRoots = System.getProperty("afield.kit.sources").orEmpty().split(java.io.File.pathSeparator)
+            .filter { it.isNotBlank() }.map { Paths.get(it) }
+        val sourceRoots = (listOf(
             root.resolve("./src/jvmMain/kotlin"),
             root.resolve("./src/personal/kotlin"),
             root.resolve("./src/generatedLinalg/kotlin"),
-        ).filter { Files.exists(it) }
+        ) + kitRoots).distinct().filter { Files.exists(it) }
 
         if (sourceRoots.isEmpty()) {
             lprintln("warning,sourceindex", "no source roots found under ${root.toAbsolutePath()}")

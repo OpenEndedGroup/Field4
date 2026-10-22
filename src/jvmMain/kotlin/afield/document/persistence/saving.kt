@@ -239,8 +239,8 @@ class SavingContext {
     private fun withoutMetarootTopology(name: String, value: Any?): Any? {
         if (name != "parents" && name != "children") return value
         return when (value) {
-            is Set<*> -> value.filterNot { it is Box && it.id == METAROOT_ID }.toCollection(LinkedHashSet())
-            is List<*> -> value.filterNot { it is Box && it.id == METAROOT_ID }
+            is Set<*> -> value.filterNot { it is Box && (it.id == METAROOT_ID || afield.document.workspace.WorkspaceProjectScopes.isProjectRoot(it)) }.toCollection(LinkedHashSet())
+            is List<*> -> value.filterNot { it is Box && (it.id == METAROOT_ID || afield.document.workspace.WorkspaceProjectScopes.isProjectRoot(it)) }
             else -> value
         }
     }

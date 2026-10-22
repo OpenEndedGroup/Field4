@@ -743,6 +743,8 @@ class SessionInformation(
      * as its KDoc says. Called, this always tears down.
      */
     fun cleanup() {
+        afield.document.workspace.KitRuntime.deactivate(this)
+        if (File(filename, afield.document.workspace.KitInstances.RECORD).isFile) autorunTriggered = false
         _fileWatchManager?.stop()
         _fileWatchManager = null
         retireBoxes(boxes.values.toList(), "session-cleanup")
@@ -818,8 +820,10 @@ val documentReadyHooks = java.util.concurrent.CopyOnWriteArrayList<(SessionInfor
 
 fun SessionInformation.scheduleAutorunBoxes(delayMs: Long = 500L) {
     if (autorunTriggered) return
+    afield.document.workspace.KitRuntime.activate(this)
     autorunTriggered = true
-    autorunBoxes(boxes.values, delayMs)
+    val ordered = afield.document.workspace.KitRuntime.launchBoxes(this).orEmpty()
+    autorunBoxes(boxes.values.filterNot { it in ordered }, delayMs)
     documentReadyHooks.forEach { hook ->
         runCatching { hook(this) }.onFailure { lprintln("warning,server", "document-ready hook failed for $documentName: ${it.message}") }
     }
@@ -1400,6 +1404,33 @@ private fun relaunchWithWorkspace(workspace: String) {
         .redirectError(ProcessBuilder.Redirect.appendTo(logFile))
         .start()
     lprintln("info,server", "relaunching Field via current Java command; restart log: ${logFile.absolutePath}")
+}
+
+/** Save the current workspace and restart through its launcher so kit build inputs take effect. */
+private fun restartForKits() {
+    afield.document.workspace.KitRestarts.prepare(File(app).canonicalFile, ::restartPreparedKitHost)
+}
+
+private fun restartPreparedKitHost() {
+    val directory = File(app).canonicalFile
+    val windows = System.getProperty("os.name").startsWith("Windows")
+    val launcher = File(directory, if (windows) "field.ps1" else "field.sh")
+    require(launcher.isFile) { "This Field installation has no launcher for rebuilding kit runtimes" }
+    val log = workspaceRestartLogFile().also { it.parentFile.mkdirs() }
+    thread(name = "field-kit-restart", isDaemon = false) {
+        Thread.sleep(300)
+        afield.document.persistence.DocumentShutdownFlush.flushPendingDocumentSaves()
+        persistWorkspacePath(home)
+        runCatching { Server.ourServer.stop(500, 2000) }
+        // Keep existing Electron/browser windows: they reconnect to the same host after the build.
+        val command = if (windows) listOf("powershell.exe", "-ExecutionPolicy", "Bypass", "-File", launcher.path,
+            "--server-only", "--workspace", home) else listOf("bash", launcher.path, "--server-only", "--workspace", home)
+        val builder = ProcessBuilder(command).directory(directory).redirectOutput(ProcessBuilder.Redirect.appendTo(log))
+            .redirectError(ProcessBuilder.Redirect.appendTo(log))
+        builder.environment()["AFIELD_SKIP_BUILD"] = "1"
+        builder.start()
+        exitProcess(0)
+    }
 }
 
 private fun launchFieldDesktopFromProject(projectDir: File, reason: String) {
@@ -3954,6 +3985,7 @@ class Server {
 
             registerTemplate(home)
             persistWorkspacePath(home)
+            afield.document.workspace.KitRuntime.start()
             installKitFirstOpen()
 
             val preferredPort = System.getenv("PORT")?.trim()?.toIntOrNull() ?: 9092
@@ -4116,6 +4148,7 @@ class Server {
                         installSignalViewerRoutes()
                         installDocsAnnotationRoutes()
                         installDocumentGuideRoutes()
+                        installKitRoutes(::restartForKits)
                         installChatlogRoutes()
 
                         installControllerRoutes(::currentFieldPreferences)

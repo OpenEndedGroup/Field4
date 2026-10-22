@@ -251,6 +251,7 @@ class FieldFileManager internal constructor(private val session: SessionInformat
     private fun searchRoots(): List<FileSearchRoot> {
         return listOf(FileSearchRoot("document", documentFilesDirectory)) +
             currentProjectFileRoots(create = false) +
+            listOfNotNull(KitInstances.sharedResources(documentDirectory.toFile())?.let { FileSearchRoot("kit", it.toPath()) }) +
             FileManager.searchDirectories().map { (name, path) -> FileSearchRoot("search:$name", path) }
     }
 

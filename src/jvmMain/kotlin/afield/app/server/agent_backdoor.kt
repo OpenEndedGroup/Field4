@@ -2118,7 +2118,13 @@ fun installAgentBackdoorHandlers() {
 @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
 internal fun installKitFirstOpen() {
     documentReadyHooks += { info ->
-        val roles = afield.document.workspace.KitFirstOpen.rolesToLaunch(java.io.File(info.filename), info.boxes.values)
+        val packageMarker = java.io.File(info.filename, afield.document.workspace.KitInstances.FIRST_OPEN)
+        val roles = if (java.io.File(info.filename, afield.document.workspace.KitInstances.RECORD).isFile) {
+            val ordered = afield.document.workspace.KitRuntime.launchBoxes(info).orEmpty()
+            packageMarker.delete()
+            java.io.File(info.filename, afield.document.workspace.KitFirstOpen.MARKER).delete()
+            ordered
+        } else afield.document.workspace.KitFirstOpen.rolesToLaunch(java.io.File(info.filename), info.boxes.values)
         if (roles.isNotEmpty()) kotlinx.coroutines.GlobalScope.launch {
             // As autorun does: wait for the boxes to come online first.
             var attempts = 0

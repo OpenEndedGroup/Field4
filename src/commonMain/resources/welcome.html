@@ -1980,6 +1980,7 @@
     .welcome-source-view { margin-top: 6px; }
     .welcome-source-view-head { font-size: 10px; opacity: 0.6; margin-bottom: 2px; font-family: ui-monospace, monospace; }
     </style>
+<link rel="stylesheet" href="/kit-library.css">
 </head>
 <body class="field-webgl-page">
 <script src="/fieldWebglBackground.js"></script>
@@ -2062,6 +2063,24 @@
                 </div>
                 <div id="recent-list"></div>
                 <div id="starting-points-dock"></div>
+                <details class="starting-points-section" id="kit-library" aria-label="Kits">
+                    <summary class="starting-points-summary">
+                        <span class="starting-points-title">Kits</span>
+                        <span class="starting-points-count" data-kit-count>0</span>
+                        <span class="kit-meta" data-kit-restart-summary hidden>Restart needed</span>
+                    </summary>
+                    <div class="kit-library-body">
+                        <header><button data-kit-restart hidden>Restart Field</button></header>
+                        <p class="kit-meta">Reusable tools, runtime code and document starting points.</p>
+                        <div class="kit-add"><input data-kit-path aria-label="Kit folder" placeholder="Kit folder · contains field-kit.json"><button data-kit-browse hidden>Browse…</button><button data-kit-add>Add kit</button></div>
+                        <div data-kit-bundled></div>
+                        <input class="kit-search" data-kit-search type="search" aria-label="Find kit" placeholder="Find a kit">
+                        <p data-kit-status role="status"></p>
+                        <div data-kit-list></div>
+                        <dialog aria-label="Kit guide"><button data-kit-close>Close guide</button><iframe sandbox title="Kit guide"></iframe></dialog>
+                        <dialog data-kit-update-dialog aria-label="Kit update"><button data-kit-close>Close</button><pre></pre><button data-kit-apply>Apply update to closed document</button></dialog>
+                    </div>
+                </details>
             </section>
         </div>
 
@@ -7068,5 +7087,6 @@
     runSplashAnimation();
 </script>
 
+<script src="/kit-library.js"></script>
 </body>
 </html>
