@@ -119,6 +119,7 @@ fun Box.slideShow(init: SlideShowBuilder.() -> Unit): SlideShowInstance {
 class SlideShowBuilder(val hostBox: Box, private val presentationOptions: PresentationOptions? = null) {
     private val steps = mutableListOf<SlideStep>()
     private var slideshowId: String? = null
+    private val sectionPath = mutableListOf<String>()
 
     /**
      * Defines a step in the slideshow
@@ -126,7 +127,15 @@ class SlideShowBuilder(val hostBox: Box, private val presentationOptions: Presen
     fun step(title: String, init: SlideStepBuilder.() -> Unit) {
         val builder = SlideStepBuilder(title, hostBox)
         builder.init()
-        steps.add(builder.build())
+        steps.add(builder.build().copy(sectionPath = sectionPath.toList()))
+    }
+
+    /** Group steps in the presenter outline. Sections may nest; playback stays in source order. */
+    fun section(title: String, init: SlideShowBuilder.() -> Unit) {
+        require(title.isNotBlank() && title.length <= 4096) { "A section needs a title" }
+        require(sectionPath.size < 16) { "Sections may nest up to 16 levels" }
+        sectionPath.add(title)
+        try { init() } finally { sectionPath.removeAt(sectionPath.lastIndex) }
     }
 
     /**
@@ -350,7 +359,8 @@ data class SlideStep(
     val onEnter: (suspend () -> Unit)?,
     val onExit: (suspend () -> Unit)?,
     val linkCallbacks: Map<String, suspend LinkCallbackContext.() -> Unit> = emptyMap(),
-    val audience: AudienceContent? = null
+    val audience: AudienceContent? = null,
+    val sectionPath: List<String> = emptyList()
 )
 
 /**
@@ -588,7 +598,7 @@ class SlideShowInstance(
         val content = step?.audience ?: step?.noteHtml?.let { AudienceContent(html = processTemplates(it)) }
             ?: step?.let { AudienceContent() }
         return PresentationState(slideshowId, hostBox.id, options.title, currentStepIndex,
-            steps.map { it.title }, content, options.transitionMs)
+            steps.map { it.title }, content, options.transitionMs, steps.map { it.sectionPath })
     }
 
     private fun publishPresentation() {

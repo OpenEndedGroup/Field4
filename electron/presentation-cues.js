@@ -63,6 +63,12 @@ function validateGuideState(state) {
       !Number.isInteger(state.transitionMs) || state.transitionMs < 0 || state.transitionMs > 2000) {
     throw new Error('Invalid guide presentation state');
   }
+  if (state.sectionPaths != null && (!Array.isArray(state.sectionPaths) ||
+      (state.sectionPaths.length !== 0 && state.sectionPaths.length !== state.titles.length) ||
+      !state.sectionPaths.every(path => Array.isArray(path) && path.length <= 16 &&
+        path.every(title => typeof title === 'string' && title.trim() && title.length <= 4096)))) {
+    throw new Error('Invalid guide presentation sections');
+  }
   if (state.index === -1) return state;
   const content = state.content;
   if (!content || (content.type === 'html'
