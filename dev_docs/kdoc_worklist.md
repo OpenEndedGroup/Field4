@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17587 of 34181 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17589 of 34185 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2243 undocumented entry points** (types, top-level functions and values) and 13637 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2243 undocumented entry points** (types, top-level functions and values) and 13639 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -279,7 +279,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [AI4.kt](../src/jvmMain/kotlin/afield/ai/compat/AI4.kt) | Machine learning | — | 63 | 0 | 1% |
 | [Tools.kt](../src/jvmMain/kotlin/afield/ai/tools/Tools.kt) | Machine learning | — | 53 | 277 | 9% |
 | [PolynomialTreeFitting.kt](../src/jvmMain/kotlin/afield/geometry/path/PolynomialTreeFitting.kt) | Graphics | — | 32 | 152 | 2% |
-| [Server.kt](../src/jvmMain/kotlin/afield/app/server/Server.kt) | Workspace | — | 28 | 29 | 27% |
+| [Server.kt](../src/jvmMain/kotlin/afield/app/server/Server.kt) | Workspace | — | 28 | 29 | 28% |
 | [OpenAiCredentials.kt](../src/jvmMain/kotlin/afield/ai/models/OpenAiCredentials.kt) | Machine learning | — | 27 | 31 | 3% |
 | [AbletonSet.kt](../src/jvmMain/kotlin/afield/audio/synth/AbletonSet.kt) | Audio | — | 26 | 163 | 0% |
 | [LanguageSpecs.kt](../src/jvmMain/kotlin/afield/runtime/languages/LanguageSpecs.kt) | Workspace | — | 26 | 3 | 14% |
@@ -882,6 +882,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DatalogSmokeTest.kt](../src/jvmMain/kotlin/afield/data/query/datalog/DatalogSmokeTest.kt) | Languages | — | 0 | 2 | 33% |
 | [GraphQuerySmokeTest.kt](../src/jvmMain/kotlin/afield/data/query/graph/GraphQuerySmokeTest.kt) | Data | — | 0 | 2 | 33% |
 | [DocumentShutdownFlush.kt](../src/jvmMain/kotlin/afield/document/persistence/DocumentShutdownFlush.kt) | Workspace | — | 0 | 2 | 60% |
+| [PersistedFingerprint.kt](../src/jvmMain/kotlin/afield/document/persistence/PersistedFingerprint.kt) | Workspace | — | 0 | 2 | 33% |
 | [BoxCodeFormat.kt](../src/jvmMain/kotlin/afield/examples/BoxCodeFormat.kt) | Examples | — | 0 | 2 | 33% |
 | [DocumentGuideWorkout.kt](../src/jvmMain/kotlin/afield/examples/DocumentGuideWorkout.kt) | Examples | — | 0 | 2 | 33% |
 | [ExportedAnnotationTest.kt](../src/jvmMain/kotlin/afield/examples/ExportedAnnotationTest.kt) | Examples | — | 0 | 2 | 33% |
