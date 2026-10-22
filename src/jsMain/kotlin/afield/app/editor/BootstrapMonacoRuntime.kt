@@ -80,7 +80,14 @@ private fun modelForSelectedProperty(w: dynamic, box: dynamic, property: String,
         return existing.model
     }
 
-    val model = monaco.editor.createModel(normalized, language)
+    // Monaco's TypeScript worker chooses the JSX parser from the model's .tsx suffix. Without
+    // a URI it treats a file-proxy scene as anonymous .ts and marks every JSX tag as an error.
+    val proxyPath = if (property == "contents") box.file_proxy_path as? String else null
+    val modelUri = if (proxyPath?.lowercase()?.endsWith(".tsx") == true) {
+        monaco.Uri.parse("inmemory://field-proxy/$uid/source.tsx")
+    } else null
+    val model = if (modelUri != null) monaco.editor.createModel(normalized, language, modelUri)
+        else monaco.editor.createModel(normalized, language)
     runCatching { model.setEOL(0) }
     mainEditorModelCache[key] = MainEditorModelEntry(uid, property, model, mainEditorModelSerial)
     pruneMainEditorModelCache(model)

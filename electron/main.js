@@ -663,6 +663,15 @@ function installAppMenu() {
         { role: "front" },
       ],
     },
+    {
+      label: "Presentation",
+      submenu: [
+        {
+          label: "Open Presentation…",
+          click: () => require("./presentation").choosePresentation(),
+        },
+      ],
+    },
   ];
 
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
@@ -1581,6 +1590,45 @@ function createMainWindow() {
     ipcMain.removeListener("field4-renderer-diagnostic", onRendererDiagnostic);
   });
 
+  const isFieldTab = (tab) => {
+    try {
+      const url = new URL(contentsUrl(tab));
+      return url.origin === new URL(initialUrl).origin && url.pathname.endsWith('/index.html');
+    } catch (_) { return false; }
+  };
+  const presentationHost = {
+    openPreview: (url) => openTab(url, { activate: true }),
+    getFieldUrl: () => {
+      const fieldTab = tabs.find(isFieldTab);
+      return fieldTab ? contentsUrl(fieldTab) : null;
+    },
+    getFieldInfo: async () => {
+      const fieldTab = tabs.find(isFieldTab);
+      const contents = fieldTab && liveContents(fieldTab);
+      if (!contents || contents.isDestroyed()) return null;
+      return contents.executeJavaScript("fetch('/api/instance-info').then(response => response.ok ? response.json() : null)");
+    },
+    isFieldContents: (contents) => tabs.some(tab => isFieldTab(tab) && liveContents(tab) === contents),
+    enableTypeScript: (paths) => {
+      const fieldTab = tabs.find(isFieldTab);
+      const contents = fieldTab && liveContents(fieldTab);
+      if (!contents || contents.isDestroyed()) return;
+      const send = () => {
+        if (!contents.isDestroyed()) contents.send('field4-presentation-project', paths);
+      };
+      if (contents.isLoadingMainFrame()) contents.once('did-finish-load', send);
+      else send();
+    },
+    attachSources: (paths) => {
+      const fieldTab = tabs.find(isFieldTab);
+      const contents = fieldTab && liveContents(fieldTab);
+      if (!contents || contents.isDestroyed()) return false;
+      contents.send('field4-presentation-sources', paths);
+      activateTab(fieldTab.id);
+      return true;
+    },
+  };
+  require("./presentation").registerFieldHost(win, presentationHost);
   openTab(initialUrl, { activate: true });
   presentWindowOnStartup(win);
   return win;
@@ -1620,9 +1668,14 @@ app.whenReady().then(() => {
   }
   installDockIcon();
   installAppMenu();
+  require("./presentation").install();
   require("./rtt-view-host").install();
   require("./aaaframe-sign-in").install();
   createMainWindow();
+  if (process.env.FIELD_PRESENTATION_PROJECT) {
+    require("./presentation").openPresentation(process.env.FIELD_PRESENTATION_PROJECT)
+      .catch(error => console.error("[presentation]", error));
+  }
   if (LOG_GPU_STATUS) {
     setTimeout(() => logGpuStatus("delayed"), 2000);
   }

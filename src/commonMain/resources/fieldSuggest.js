@@ -1261,7 +1261,8 @@ class FieldSuggestController {
 
   isSupported() {
     const model = this.editor.getModel && this.editor.getModel();
-    return !!(model && this.languages.has(getLanguageId(model)));
+    return !!(model && (this.languages.has(getLanguageId(model)) ||
+      window.fieldPresentationTypeScriptCompletion?.supports(this.editor, model)));
   }
 
   isVisible() {
@@ -1414,6 +1415,12 @@ class FieldSuggestController {
   }
 
   remoteItems(model, position, target, languageId, generation) {
+    const projectProvider = window.fieldPresentationTypeScriptCompletion;
+    if (projectProvider?.supports(this.editor, model)) {
+      return Promise.resolve(projectProvider.provide(this.editor, model, position)).then(items =>
+        items.map((item, index) => normalizeLocalSuggestion(
+          this.monaco, item, index, model, position, languageId)));
+    }
     const payload = completionPayloadFor(this.editor, model, position, target);
     return requestWithReply("complete", payload, "complete-me").then(
       (completion) =>
