@@ -5440,8 +5440,25 @@ private fun applyFileProxyPresentation(box: HTMLElement) {
         titleStack.appendChild(created)
         created
     }
-    path.textContent = pathText
+    // Truncate in the middle: the head ellipsizes, the tail (the last two segments) stays visible.
+    val split = fileProxyPathTailStart(pathText)
+    val head = document.createElement("span") as HTMLElement
+    head.classList.add("file-proxy-path-head")
+    head.textContent = pathText.substring(0, split)
+    val tail = document.createElement("span") as HTMLElement
+    tail.classList.add("file-proxy-path-tail")
+    tail.textContent = pathText.substring(split)
+    path.textContent = ""
+    path.appendChild(head)
+    path.appendChild(tail)
     path.title = pathText
+}
+
+private fun fileProxyPathTailStart(path: String): Int {
+    val last = path.trimEnd('/').lastIndexOf('/')
+    if (last <= 0) return 0
+    val previous = path.lastIndexOf('/', last - 1)
+    return if (previous > 0) previous else last
 }
 
 private fun applyAi4AutoNameStyle(box: HTMLElement, generated: Boolean) {
