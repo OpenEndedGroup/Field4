@@ -478,3 +478,4 @@ exactly what a fresh `keybindings.yaml` says.
 
 - [Survival Guide](survivalGuide.md) — the shortcuts worth learning first.
 - [Feature Overview](funFeatures.md) — what the commands in that table actually do.
+- [Layers](layers.md) — the layer commands (`alt+l`, `alt+]`, `alt+[`) in use.

@@ -1,0 +1,17 @@
+name: layers_guide
+description: >
+  Boxes for the figures on `public/docs/layers.md`. `kick`, `snare` and `hats` are on two layers,
+  `draft` and `final`, so the page can arrange them differently on each and switch between the two.
+  `notes` is on `sketch` alone and `mix` names no layer, so it is on `default`.
+
+  Capture-only, so it lives under transcripts/docs_capture/: AgentTranscriptMaterializer scans the
+  transcripts/ directory itself and would expect a committed starting-point bundle for anything
+  directly inside it.
+operations:
+  - create: { box: lg_kick, name: kick, frame: { x: 120.0, y: 120.0, w: 140.0, h: 60.0 }, properties: { layers: "draft,final" } }
+  - create: { box: lg_snare, name: snare, frame: { x: 120.0, y: 220.0, w: 140.0, h: 60.0 }, properties: { layers: "draft,final" } }
+  - create: { box: lg_hats, name: hats, frame: { x: 120.0, y: 320.0, w: 140.0, h: 60.0 }, properties: { layers: "draft,final" } }
+  - create: { box: lg_notes, name: notes, frame: { x: 120.0, y: 470.0, w: 180.0, h: 60.0 }, properties: { layers: sketch } }
+  - create: { box: lg_mix, name: mix, frame: { x: 420.0, y: 470.0, w: 180.0, h: 60.0 } }
+  - wait:
+      millis: 600
