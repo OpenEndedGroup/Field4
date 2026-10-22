@@ -51,7 +51,7 @@ class ShadertoyChannelsTest {
         val yaml = File(CitationGuard.repoRoot(), "dev_docs/agents/transcripts/shadertrinket.yaml")
         @Suppress("UNCHECKED_CAST")
         val ops = (Yaml().load<Map<String, Any?>>(yaml.readText())["operations"] as List<Map<String, Any?>>)
-        val fragments = ops.mapNotNull { it["create"] as? Map<String, Any?> }.mapNotNull { create ->
+        val fragments = ops.mapNotNull { it["create"] as? Map<*, *> }.mapNotNull { create ->
             ((create["properties"] as? Map<*, *>)?.get("fragment") as? String)?.let { create["box"] as String to it }
         }
         assertTrue(fragments.size >= 6, "expected the lead and its presets, found ${fragments.map { it.first }}")

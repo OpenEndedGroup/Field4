@@ -144,7 +144,7 @@ class Stroke internal constructor(
             if (other === this) continue
             other.points.forEachIndexed { j, p ->
                 val d = hypot(x - p.x, y - p.y)
-                if (best == null || d < best!!.dist) best = StrokeHit(p.x, p.y, d, other.index, j)
+                if (best == null || d < best.dist) best = StrokeHit(p.x, p.y, d, other.index, j)
             }
         }
         return best
@@ -164,7 +164,7 @@ class Stroke internal constructor(
                 val px = a[j].toDouble()
                 val py = a[j + 1].toDouble()
                 val d = hypot(x - px, y - py)
-                if (best == null || d < best!!.dist) best = StrokeHit(px, py, d, other.index, j / 2)
+                if (best == null || d < best.dist) best = StrokeHit(px, py, d, other.index, j / 2)
                 j += 2
             }
         }
