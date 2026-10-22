@@ -645,7 +645,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**34181 public symbols across 1536 source files**, 17587 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34181 public symbols across 1537 source files**, 17587 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -674,7 +674,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio AI](audio-ai.md) | 22 | 584 | 397 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 121 | 3082 | 1397 (45%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 216 | 3022 | 1085 (35%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [Machine learning](machine-learning.md) | 94 | 2211 | 689 (31%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
+| [Machine learning](machine-learning.md) | 95 | 2211 | 689 (31%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 | [IO](io.md) | 1 | 22 | 15 (68%) |  |
 | [Output](output.md) | 1 | 25 | 17 (68%) |  |
@@ -1412,6 +1412,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>models/<wbr></small> [LlmBridge.kt](machine-learning.md#llmbridge-kt) | Machine learning | 17 | 5 | Provider-neutral seam for the IDE agent loop. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr></small> [LoadPly.kt](graphics.md#loadply-kt) | Graphics | 15 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>models/<wbr></small> [LocalAiConnection.kt](machine-learning.md#localaiconnection-kt) | Machine learning | 0 | 0 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>models/<wbr></small> [LocalAiContextRecovery.kt](machine-learning.md#localaicontextrecovery-kt) | Machine learning | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>diagnostics/<wbr>logging/<wbr></small> [logger.kt](workspace.md#logger-kt) | Workspace | 9 | 2 | The `lprintln` / `lprint` / `lblock` logging calls, which send a message to the server log on a named channel such as `"info,startup"`. | [Logging: channels, sinks and the console](../logging.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>diagnostics/<wbr></small> [Logging.kt](machine-learning.md#logging-kt) | Machine learning | 36 | 4 | The channel-tagged log events the AI tooling writes, and the sinks that receive them. | [Logging: channels, sinks and the console](../logging.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Agent transcript gallery](../agent_transcripts.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [logstream.kt](workspace.md#logstream-kt) | Workspace · internal | 14 | 1 | The log archive behind the `/logs` iframe: `LogStream` keeps recent log records (still printing them to stdout) and streams them to the page. |  |
