@@ -206,6 +206,18 @@ private fun readAiModelSettings(provider: String = configuredAiProvider()): AiMo
 
 fun configuredAiModelSettings(provider: String = configuredAiProvider()): AiModelSettings = readAiModelSettings(provider)
 
+/**
+ * The local inference server's context window in tokens: `AFIELD_LOCAL_AI_CONTEXT_TOKENS`, else
+ * `local.contextTokens` in `ai-models.properties`, else null, in which case the bridge learns it from the
+ * server's first refusal of an oversized request.
+ */
+fun configuredLocalAiContextTokens(): Int? {
+    System.getenv("AFIELD_LOCAL_AI_CONTEXT_TOKENS")?.trim()?.toIntOrNull()?.takeIf { it >= 2048 }?.let { return it }
+    val props = Properties()
+    runCatching { aiModelSettingsFile().takeIf { it.isFile }?.inputStream()?.use(props::load) }
+    return props.getProperty("local.contextTokens", "").trim().toIntOrNull()?.takeIf { it >= 2048 }
+}
+
 fun configuredAiBaseUrl(provider: String = configuredAiProvider()): String {
     System.getenv(AFIELD_AI_BASE_URL_ENV)?.trim()?.takeIf { it.isNotBlank() }?.let { return it.trimEnd('/') }
     if (provider == "local") {

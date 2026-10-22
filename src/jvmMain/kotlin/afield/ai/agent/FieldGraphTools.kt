@@ -216,13 +216,28 @@ data class BoxOutputView(
     @get:com.fasterxml.jackson.annotation.JsonIgnore
     override val toolImages: List<afield.ai.tools.ToolImage>
         get() = if (dataUrl.isBlank()) emptyList() else listOf(afield.ai.tools.ToolImage(dataUrl,
-            "Output of box '$name' (${channels.joinToString()}), ${width}x$height, captured in an independent browser" +
-                (if (note.isNotBlank()) " — looking for: $note" else "") +
-                ". Describe what you actually see, then say whether it matches what was asked for."))
+            "Output of box '$name' (${channels.joinToString()}), ${width}x$height, captured in an independent browser. " +
+                captureReadingInstruction(note)))
 
     override fun toolLogSummary(): String =
         "success=$success images=${toolImages.size} box=$name ${width}x$height ink=${"%.3f".format(inkFraction)} " +
             "colours=${dominantColours.take(3)} path=$path" + (if (!success) " message=${message.take(160)}" else "")
+}
+
+/**
+ * How a capture's caption asks to be read. The expectation comes *after* the request to describe, and is
+ * labelled as the model's own: on 2026-10-22 a local model's note said "diagonal lines", and it reported
+ * "the signature diagonal lines" of a picture whose strongest feature was a horizontal and vertical cross
+ * (its code had placed only odd numbers). Models also copy the instruction into the note, which then
+ * appeared twice; it is stripped here.
+ */
+internal fun captureReadingInstruction(note: String): String {
+    val instruction = "Describe what you actually see, then say whether it matches what was asked for."
+    val expectation = note.replace(instruction, "").trim().trimEnd('.', ' ')
+    return "First describe what the picture shows in your own words — shapes, lines and their directions, where colour falls, " +
+        "what is empty — then compare it with what was asked for" +
+        (if (expectation.isNotBlank()) " and with your own expectation, written before you saw it (\"$expectation\")" else "") +
+        ". Say plainly where they differ; a picture confirms what was drawn, not that the code computed the right thing."
 }
 
 // ---- host seam ---------------------------------------------------------------------------------

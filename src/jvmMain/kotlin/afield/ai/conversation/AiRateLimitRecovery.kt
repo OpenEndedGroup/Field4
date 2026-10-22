@@ -113,7 +113,10 @@ internal fun temporaryRateLimitDelay(failure: Throwable): Long? {
     val http = httpFailure(chain)
     if (http?.shouldRetry == false) return null
     // Anthropic's 529 overloaded_error is the Responses API's server_is_overloaded: wait it out like a rate limit.
-    val overloaded = http?.status == 529 || http?.errorType == "overloaded_error"
+    // A local inference server (llama.cpp, llama-swap) answers 503 "Loading model" while it loads weights,
+    // which takes tens of seconds; two brief transport retries gave up after ~4 s and lost a turn (2026-10-22).
+    val loading = Regex("(?i)loading model").containsMatchIn(message) && (http?.status == 503 || Regex("\\b503\\b").containsMatchIn(message))
+    val overloaded = http?.status == 529 || http?.errorType == "overloaded_error" || loading
     if (http?.status != 429 && !overloaded && !Regex("(?i)rate[ _-]?limit|\\b429\\b|slow_down|server_is_overloaded").containsMatchIn(message)) return null
     // Some TPM errors state a request larger than the whole minute's capacity: waiting cannot help.
     val limit = Regex("(?i)\\blimit\\s*:?\\s*(\\d+)").find(message)?.groupValues?.get(1)?.toLongOrNull()

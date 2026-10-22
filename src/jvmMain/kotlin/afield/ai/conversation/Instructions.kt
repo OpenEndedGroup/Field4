@@ -234,6 +234,7 @@ ${ctx.documentGuides.catalogueContext()}
         ad("tools.codeuse", "- CodeUseQueryRequest plus CodeUseSemanticAnalyzeCodeRequest / CodeUseRelatedSourceForCodeRequest / CodeUseCallersForSourceLineRequest / CodeUseReferencesForCodeRequest / CodeUseHotSymbolsRequest / CodeUseEarlyDocumentSymbolsRequest: query local code-use telemetry. Prefer semantic-analyze for Field box code when you need best-effort source resolution plus related src/ excerpts, call-site frequencies, and peer Field snippets; it falls back to related-source-for-code when the semantic sidecar is unavailable. Use failures for retained compiler/runtime errors; line callers for who uses a src/ line; hot-symbols for usage heat; early-document-symbols for open-time helpers.")
     }
     if (ctx.semanticRetrievalSearch != null) {
+        ad("tools.retrieval", "- TutorialCodeSearchRequest: find Field's worked examples of box code by what you want to make (\"draw FLines\", \"GLSL compute shader\"); each match lists its code files to read with AttachmentRequest. Look here before writing unfamiliar box code.")
         ad("tools.retrieval", "- SemanticRetrievalSearchRequest / SemanticRetrievalStatusRequest: search the native Lucene semantic retrieval index across selectable corpora: field-internals, workspace, documentation, or combinations via corpora=[...]. Use this for natural-language code/docs discovery; use CodeUseSemanticAnalyzeCodeRequest when you need compiler-backed resolution of a specific Kotlin snippet. Report capsuleBackend and embedderBackend literally.")
     }
 

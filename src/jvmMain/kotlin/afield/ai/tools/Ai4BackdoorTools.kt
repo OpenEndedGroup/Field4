@@ -112,7 +112,8 @@ internal object Ai4BackdoorTools {
                 success = result.success,
                 message = result.message,
                 status = result.status,
-                model = SemanticRetrievalService.modelInfo(),
+                // Searches leave the embedder description to SemanticRetrievalStatusRequest: it was ~1k chars per call.
+                model = null,
                 availableCorpora = SemanticRetrievalService.availableCorpora,
                 results = result.results
             )

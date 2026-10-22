@@ -109,6 +109,15 @@ class OpenAiIdeCodexBridge(
             .summary(Reasoning.Summary.DETAILED)
             .build()
     private val statelessHistory = ConcurrentHashMap<String, MutableList<ResponseInputItem>>()
+    /**
+     * The stateless provider's context window in tokens: configured ([configuredLocalAiContextTokens]), else
+     * learned from the server's first refusal ([StatelessHistory.contextOverflow]). Null = not known yet.
+     */
+    @Volatile
+    private var contextTokens: Int? = if (runtimeConfig.provider == "local") configuredLocalAiContextTokens() else null
+    /** Characters per input token, from the last response's reported usage (tool schemas included). */
+    @Volatile
+    private var charsPerToken: Double = StatelessHistory.DEFAULT_CHARS_PER_TOKEN
     private val rateLimitRecovery = AiRateLimitRecovery.fromConfig()
     // Field owns the retry deadline and visible waiting status; do not multiply attempts in the SDK.
     private val responses = client.responses().withOptions { it.maxRetries(0) }
@@ -227,7 +236,8 @@ class OpenAiIdeCodexBridge(
         // cold (~7.5k uncached tokens each), where the same text in the input let conversations share their
         // cached prefix (~4k).
         val volatileText = tc?.ephemeralText(Stability.VOLATILE)?.takeIf { it.isNotBlank() }
-        val inputText = buildString {
+        if (runtimeConfig.usesStatelessResponses) settleStatelessHistory(state)
+        fun inputTextFor(prompt: String) = buildString {
             if (fileText != null && fileText != state.lastFileText) {
                 appendLine("IDE_FILE_UPDATE:")
                 appendLine("key: ${state.fileKey}")
@@ -243,8 +253,13 @@ class OpenAiIdeCodexBridge(
                 appendLine(TOOL_ROUNDS_RESET_NOTE)
                 appendLine()
             }
-            appendLine(tc?.durablePrompt() ?: userPrompt)
+            appendLine(prompt)
         }
+        val inputText = inputTextFor(tc?.durablePrompt() ?: userPrompt)
+        // What a stateless history keeps of this prompt once the turn is over: the request and its durable
+        // context, not the instructions, which every newer prompt carries again.
+        val durableInputText = turnContext?.takeIf { runtimeConfig.usesStatelessResponses }
+            ?.let { inputTextFor(it.durablePrompt()) }?.takeIf { it.length < inputText.length }
 
         trace?.log(
             "PROMPT",
@@ -276,6 +291,8 @@ class OpenAiIdeCodexBridge(
                     "provider" to runtimeConfig.provider,
                     "reasoningEffort" to if (runtimeConfig.usesStatelessResponses) "provider-default" else reasoningEffort.toString(),
                     "conversationId" to state.conversationId,
+                    // The person's own words, apart from the instructions around them (tools/ai4_conversation_review.py).
+                    "request" to turnContext?.rest,
                     "localThreadId" to state.localThreadId,
                     "previousResponseId" to (state.previousResponseId ?: ""),
                     "continuesCappedTurn" to (state.cappedTurnContinuation != null),
@@ -393,7 +410,7 @@ class OpenAiIdeCodexBridge(
             .toolChoice(ToolChoiceOptions.AUTO)
 
         if (runtimeConfig.usesStatelessResponses) {
-            paramsBuilder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state) + promptItems))
+            paramsBuilder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state, promptItems, maxOutputTokens) + promptItems))
         } else if (imageDataUrls.isEmpty() && stableItem == null && continuationItems.isEmpty()) {
             paramsBuilder.input(inputText)
         } else {
@@ -414,7 +431,9 @@ class OpenAiIdeCodexBridge(
         }
 
         info("running prompt <<spinner>>")
-        var response: Response = modelRequest("initial") { createResponse(paramsBuilder.build(), onTextDelta, onProgress, requestLedger("initial")) }
+        var response: Response = modelRequest("initial") {
+            createFittedResponse(state, paramsBuilder, promptItems, maxOutputTokens, onTextDelta, onProgress, requestLedger("initial"))
+        }
         if (stableItem != null) state.stableInstructionsHash = stableHash
         state.cappedTurnContinuation = null
         state.suspendedRound = null
@@ -423,6 +442,12 @@ class OpenAiIdeCodexBridge(
         }
         state.previousResponseId = response.id()
         if (fileText != null) state.lastFileText = fileText
+        if (runtimeConfig.usesStatelessResponses) {
+            // Marked before it is stored, so the item cap cannot drop the turn it belongs to.
+            val prompt = promptItems.last()
+            state.currentPrompt = prompt
+            state.settleOnNextTurn = durableInputText?.let { prompt to buildPromptItems(it, imageDataUrls).single() }
+        }
         appendStatelessHistory(state, promptItems + inputItemsFromOutput(response))
         info("initial response id=${response.id()} outputItems=${response.output().size} <<spinner>>")
         toolIo(
@@ -692,7 +717,7 @@ class OpenAiIdeCodexBridge(
                 .maxOutputTokens(maxOutputTokens)
                 .toolChoice(ToolChoiceOptions.AUTO)
             if (runtimeConfig.usesStatelessResponses) {
-                followupBuilder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state) + toolOutputs))
+                followupBuilder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state, toolOutputs, maxOutputTokens) + toolOutputs))
             } else {
                 followupBuilder.previousResponseId(response.id())
                 followupBuilder.input(ResponseCreateParams.Input.ofResponse(toolOutputs))
@@ -704,7 +729,9 @@ class OpenAiIdeCodexBridge(
                 followupBuilder.addFileSearchTool(vectorStoreIds)
             }
 
-            response = modelRequest("followup") { createResponse(followupBuilder.build(), onTextDelta, onProgress, requestLedger("followup")) }
+            response = modelRequest("followup") {
+                createFittedResponse(state, followupBuilder, toolOutputs, maxOutputTokens, onTextDelta, onProgress, requestLedger("followup"))
+            }
             if (onTextDelta != null) {
                 info("")
             }
@@ -856,6 +883,12 @@ class OpenAiIdeCodexBridge(
         } catch (failure: Throwable) {
             val cancelled = isAiTurnCancellation(failure)
             if (openCalls.isNotEmpty()) runCatching { answerOpenCalls(state, openCalls, openOutputs, failure) }
+            // A stateless thread outlives a failed turn (Ai4Installer keeps it), so a request that never got an
+            // answer stays in its history: "can you try that again?" must have something to refer to.
+            if (runtimeConfig.usesStatelessResponses && state.currentPrompt == null && !cancelled) runCatching {
+                appendStatelessHistory(state, listOf(StatelessHistory.userText(
+                    (durableInputText ?: inputText).trimEnd() + "\n\n[This request failed before it was answered: ${failure.message?.take(160)}]")))
+            }
             activeToolStarted?.let { toolElapsedMs += (System.nanoTime() - it) / 1_000_000 }
             if (!terminalRecorded) {
                 terminalRecorded = true
@@ -966,6 +999,16 @@ class OpenAiIdeCodexBridge(
          */
         @Volatile
         var suspendedRound: SuspendedRound? = null
+
+        /** Stateless history: this turn's full prompt item, which nothing may drop while the turn runs. */
+        @get:JsonIgnore
+        @Volatile
+        var currentPrompt: ResponseInputItem? = null
+
+        /** Stateless history: the finished turn's full prompt and the durable item that replaces it. */
+        @get:JsonIgnore
+        @Volatile
+        var settleOnNextTurn: Pair<ResponseInputItem, ResponseInputItem>? = null
 
         /** The last turn ended at its tool-round cap; the next turn's input says the limit has reset. */
         @get:JsonIgnore
@@ -1161,7 +1204,7 @@ class OpenAiIdeCodexBridge(
             .model(chatModel)
             .maxOutputTokens(maxOutputTokens)
         if (runtimeConfig.usesStatelessResponses) {
-            builder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state) + inputItems))
+            builder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state, inputItems, maxOutputTokens) + inputItems))
         } else {
             builder.previousResponseId(previousResponse.id())
             builder.input(ResponseCreateParams.Input.ofResponse(inputItems))
@@ -1286,9 +1329,70 @@ class OpenAiIdeCodexBridge(
         return seed
     }
 
-    private fun historyForRequest(state: ThreadState): List<ResponseInputItem> {
+    /**
+     * The stored history to send ahead of [tail], first fitted to the context window when that is known:
+     * older turns go whole, and, as a last resort, this turn's own long outputs are cut. See [StatelessHistory].
+     */
+    private fun historyForRequest(state: ThreadState, tail: List<ResponseInputItem> = emptyList(), maxOutputTokens: Long = 0): List<ResponseInputItem> {
         val history = statelessHistory.computeIfAbsent(state.localThreadId) { seedHistory(state).toMutableList() }
+        val window = contextTokens ?: return history.toList()
+        val budgetChars = (StatelessHistory.inputBudget(window, maxOutputTokens) * charsPerToken).toLong()
+        val tailChars = StatelessHistory.chars(tail)
+        fun over() = StatelessHistory.chars(history) + tailChars > budgetChars
+        if (!over()) return history.toList()
+        val before = StatelessHistory.chars(history)
+        val seedCount = seedHistory(state).size
+        val protectFrom = state.currentPrompt?.let { p -> history.indexOfFirst { it === p } }?.takeIf { it >= 0 } ?: history.size
+        val removed = StatelessHistory.dropOldestTurns(history, seedCount, protectFrom, ::over)
+        if (over()) {
+            val turnStart = state.currentPrompt?.let { p -> history.indexOfFirst { it === p } }?.takeIf { it >= 0 } ?: seedCount
+            StatelessHistory.settle(history, turnStart + 1)
+        }
+        warn("stateless history fitted to ${window}-token window: $before -> ${StatelessHistory.chars(history)} chars " +
+            "($removed item(s) dropped, ${"%.2f".format(charsPerToken)} chars/token, tail $tailChars chars)" +
+            if (over()) "; still over budget" else "")
         return history.toList()
+    }
+
+    /** At a turn boundary: the finished turn's prompt becomes its durable text, and old outputs and images shrink. */
+    private fun settleStatelessHistory(state: ThreadState) {
+        val history = statelessHistory[state.localThreadId] ?: return
+        StatelessHistory.settle(history, seedHistory(state).size, replace = state.settleOnNextTurn)
+        state.settleOnNextTurn = null
+        state.currentPrompt = null
+    }
+
+    /**
+     * [createResponse] for a request built by [builder], whose input ends with [tail]. On a stateless
+     * provider a refusal for size teaches [contextTokens] and [charsPerToken], and the request is fitted and
+     * sent once more instead of failing the turn (it failed, and lost the thread, on 2026-10-22).
+     */
+    private fun createFittedResponse(
+        state: ThreadState,
+        builder: ResponseCreateParams.Builder,
+        tail: List<ResponseInputItem>,
+        maxOutputTokens: Long,
+        onTextDelta: ((String) -> Unit)?,
+        onProgress: ((ProgressUpdate) -> Unit)?,
+        ledger: AiRequestLedger.Request
+    ): Response {
+        if (!runtimeConfig.usesStatelessResponses) return createResponse(builder.build(), onTextDelta, onProgress, ledger)
+        val sentChars = StatelessHistory.chars(historyForRequest(state, tail, maxOutputTokens)) + StatelessHistory.chars(tail)
+        val response = try {
+            createResponse(builder.build(), onTextDelta, onProgress, ledger)
+        } catch (failure: Exception) {
+            val overflow = StatelessHistory.contextOverflow(failure) ?: throw failure
+            contextTokens = overflow.availableTokens
+            overflow.requestedTokens?.takeIf { it > 0 }?.let { charsPerToken = (sentChars.toDouble() / it).coerceIn(1.0, 8.0) }
+            warn("provider refused ${overflow.requestedTokens} tokens in a ${overflow.availableTokens}-token window; fitting the history and retrying")
+            onProgress?.invoke(ProgressUpdate("Conversation trimmed to fit the model's context window", phase = "model"))
+            builder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state, tail, maxOutputTokens) + tail))
+            createResponse(builder.build(), onTextDelta, onProgress, ledger)
+        }
+        runCatching { response.usage().orElse(null)?.inputTokens() }.getOrNull()?.takeIf { it > 0 }?.let { tokens ->
+            charsPerToken = (sentChars.toDouble() / tokens).coerceIn(1.0, 8.0)
+        }
+        return response
     }
 
     private fun inputItemsFromOutput(response: Response): List<ResponseInputItem> =
@@ -1307,11 +1411,9 @@ class OpenAiIdeCodexBridge(
         history += items
         val maxItems = System.getenv(if (runtimeConfig.provider == "local") "AFIELD_LOCAL_AI_HISTORY_ITEMS" else "AFIELD_OPENROUTER_HISTORY_ITEMS")?.toIntOrNull()?.coerceAtLeast(8) ?: 80
         if (history.size > maxItems) {
-            val seedCount = seedHistory(state).size
-            val removeCount = (history.size - maxItems).coerceAtMost((history.size - seedCount).coerceAtLeast(0))
-            repeat(removeCount) {
-                if (history.size > seedCount) history.removeAt(seedCount)
-            }
+            // Whole earlier turns only: cutting at an arbitrary item left function calls without their outputs.
+            val protectFrom = state.currentPrompt?.let { p -> history.indexOfFirst { it === p } }?.takeIf { it >= 0 } ?: history.size
+            StatelessHistory.dropOldestTurns(history, seedHistory(state).size, protectFrom) { history.size > maxItems }
         }
     }
 
@@ -1495,8 +1597,10 @@ class OpenAiIdeCodexBridge(
         // domain cluster's result type, which put a reference to that cluster in the AI plumbing; the
         // interface inverts it, and now any tool result gets a useful log line by implementing it.
         is SummarisesForToolLog -> truncate(toolResult.toolLogSummary(), 400)
-        is Map<*, *> ->
-            "keys=${toolResult.keys.joinToString(",") { it.toString() }}"
+        // A failure's message is what the tool disclosure should show, not the map's keys.
+        is Map<*, *> -> (toolResult["message"] as? String)?.takeIf { toolResult["error"] == true || toolResult["success"] == false }
+            ?.let { "failed: ${truncate(it, 300)}" }
+            ?: "keys=${toolResult.keys.joinToString(",") { it.toString() }}"
         else -> "type=${toolResult::class.java.simpleName}"
     }
 

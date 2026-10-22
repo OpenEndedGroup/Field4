@@ -488,7 +488,7 @@ class Ai4CodeToolProviders(
                                     onEvalException = { throwable ->
                                         diagnostics += CompileDiagnostic(
                                             severity = "ERROR",
-                                            message = throwable.message ?: throwable::class.java.name
+                                            message = evaluationFailureMessage(throwable)
                                         )
                                     }
                                 )
@@ -499,7 +499,7 @@ class Ai4CodeToolProviders(
             }.onFailure { throwable ->
                 diagnostics += CompileDiagnostic(
                     severity = "ERROR",
-                    message = throwable.message ?: throwable::class.java.name
+                    message = evaluationFailureMessage(throwable)
                 )
             }
 
@@ -580,7 +580,10 @@ class Ai4CodeToolProviders(
                     expression = expression,
                     valueKind = "error",
                     diagnostics = diagnostics,
-                    message = if (diagnostics.isEmpty()) "Expression did not produce a result." else "Expression failed."
+                    // The reason goes in the message: it is what the chat's tool disclosure shows (2026-10-22, the
+                    // disclosure said only "Expression failed." for a NoClassDefFoundError).
+                    message = if (diagnostics.isEmpty()) "Expression did not produce a result."
+                        else "Expression failed: " + diagnostics.joinToString("; ") { it.message }.take(400)
                 )
             }
         }
@@ -1529,7 +1532,7 @@ fun installAi4() {
             ListDefinitionsResult(definitions = currentDefs + otherDefs)
         }
 
-        val listFileContents = {
+        val listFileContents = listFileContents@{
             val relatedBoxes = graphNeighborBoxes(box)
             val entries = buildList {
                 addAll(contentEntriesForBox(box, "current box (${boxLabel(box)})"))
@@ -1537,8 +1540,16 @@ fun installAi4() {
                     addAll(contentEntriesForBox(related.box, related.relation))
                 }
             }
+            // An empty box is an answer, not a failure: the first thing asked of a new box is often
+            // "put it in this box", and an exception there cost a local model a round (2026-10-22).
             if (entries.isEmpty()) {
-                throw IllegalStateException("No text content available for box '${box.id}'.")
+                return@listFileContents ListContentsResult(
+                    fileRef = fileRefFor(docName, box.id, exec.property),
+                    content = "",
+                    language = languageNameForBoxProperty(box, exec.property),
+                    message = "Box '${boxLabel(box)}' (${box.id}) has no text yet, and no connected box has any. " +
+                        "Write its ${exec.property} with SetBoxPropertyRequest, then run it with RunBoxRequest."
+                )
             }
             val hints = buildList {
                 addAll(preambleHintsForBox(box, "current box (${boxLabel(box)})"))
@@ -1891,7 +1902,8 @@ fun installAi4() {
                 success = result.success,
                 message = result.message,
                 status = result.status,
-                model = SemanticRetrievalService.modelInfo(),
+                // Searches leave the embedder description to SemanticRetrievalStatusRequest: it was ~1k chars per call.
+                model = null,
                 availableCorpora = SemanticRetrievalService.availableCorpora,
                 results = result.results
             )
@@ -2379,8 +2391,13 @@ fun installAi4() {
                 // Continue from saved text next time instead of reusing that incomplete chain.
                 // That holds for an Error too: one that escaped this catch (a box tool's StackOverflowError,
                 // 2026-10-18) kept the chain, and every later turn in the chat was refused.
-                threadByKey.remove(conversationKey)
-                chatThreadByKey.remove(conversationKey)
+                // A stateless provider (local, OpenRouter) is the exception: the bridge holds its whole history and
+                // answers any open calls itself, so the thread is consistent after a failed request, and dropping it
+                // reseeded the next turn from the prose transcript without a single tool result (2026-10-22).
+                if (!(e is Exception && activeAiProviderRuntimeConfig().usesStatelessResponses)) {
+                    threadByKey.remove(conversationKey)
+                    chatThreadByKey.remove(conversationKey)
+                }
                 // An OutOfMemoryError or the like still ends the turn the way it did; invokeOnCompletion records it.
                 if (e is VirtualMachineError && e !is StackOverflowError) throw e
                 val outcome = if (isAiTurnCancellation(e)) "cancelled" else "failed"
@@ -2770,7 +2787,8 @@ fun installAi4() {
                         success = result.success,
                         message = result.message,
                         status = result.status,
-                        model = SemanticRetrievalService.modelInfo(),
+                        // Searches leave the embedder description to SemanticRetrievalStatusRequest: it was ~1k chars per call.
+                        model = null,
                         availableCorpora = SemanticRetrievalService.availableCorpora,
                         results = result.results
                     )
@@ -2873,3 +2891,16 @@ private fun formatMarkdown(text: String): String {
     return result
 }
 
+/**
+ * An evaluation failure as the model and the person should read it: the exception's type as well as its
+ * message. A NoClassDefFoundError's message is only a class name, which read as an error in the expression;
+ * it means Field's own classes were rewritten under the running JVM (a rebuild), and the JVM keeps failing
+ * that call until Field restarts.
+ */
+internal fun evaluationFailureMessage(throwable: Throwable): String {
+    val text = "${throwable::class.java.simpleName}: ${throwable.message ?: ""}".trimEnd(':', ' ')
+    return if (throwable is LinkageError)
+        "$text. Field's own classes changed on disk while it was running (a rebuild); this is not the expression's fault, " +
+            "and every evaluation will fail the same way until Field is restarted. Check values with RunBoxRequest and println instead."
+    else text
+}
