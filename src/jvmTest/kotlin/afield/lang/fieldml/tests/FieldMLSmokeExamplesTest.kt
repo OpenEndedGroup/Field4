@@ -12,6 +12,7 @@ import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class FieldMLSmokeExamplesTest {
@@ -352,10 +353,10 @@ class FieldMLSmokeExamplesTest {
             "suspend" in scaffolding && "Renderer.run" in scaffolding,
             "$demo's Kotlin box must keep naming `Renderer.run` as the reason it is Kotlin",
         )
-        assertTrue(
-            "reachable from" in scaffolding && "2026-08-20" in scaffolding,
-            "$demo's Kotlin box must keep saying that `prop`/`once` are no longer a reason — otherwise " +
-                "it reads as though mechanism A were still open",
+        assertFalse(
+            "macro" in scaffolding,
+            "$demo's Kotlin box must not give `prop`/`once` being macros as a reason it is Kotlin — " +
+                "otherwise it reads as though mechanism A were still open",
         )
     }
 

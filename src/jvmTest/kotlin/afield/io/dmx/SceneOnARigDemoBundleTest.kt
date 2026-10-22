@@ -52,7 +52,7 @@ class SceneOnARigDemoBundleTest {
     @Test
     fun `the scene in the sender box is the scene the page measures`() {
         val sender = File(demo, "scene_sender_code_.kt").readText()
-        val scene = sender.substringAfter("RectSLImager(\"\"\"\n").substringBefore("\"\"\")")
+        val scene = sender.substringAfter("RectSLImager(").substringAfter("\"\"\"").substringBefore("\"\"\"")
         assertEquals(SceneOnARig.SCENE.trim(), scene.trim())
     }
 }

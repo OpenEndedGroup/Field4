@@ -603,6 +603,11 @@ class InteriorCloseNodeTest {
             "FLineInstructionTrajectoryTrackerSmokeTest.kt" to
                 "reads .last().to / .first().to on FLineSideways.trajectories(), whose tracks are built " +
                     "only with moveTo/lineTo at FLineInstructionTrajectories.kt:263-281.",
+            "StrokeVerbsTest.kt" to
+                "asserts node kinds of catmullRomCentripetal and byAtomizing output, both built from open " +
+                    "point lists; it never reads .to across a Close.",
+            "BoxCodeHelpersTest.kt" to
+                "checks that grid() appends MoveTo/LineTo pairs; grid emits no Close.",
             "ArcLengthCostTest.kt" to
                 "a cost benchmark over locally-built cubic corpora; it constructs every line it measures " +
                     "and none of them calls close().",

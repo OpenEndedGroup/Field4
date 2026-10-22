@@ -56,14 +56,14 @@ operations:
           var echoes = 0
           var nudged = "none yet"
 
-          lead.onNote {
+          lead.onNote("remember lead") {
               if (it.channel == 0) {
                   heard.addLast(it.note[0])
                   heard.removeFirst()
               }
               synth.play(it, pan = 0.35, wave = if (it.channel == 1) PatWave.SINE else PatWave.TRIANGLE)
           }
-          echo.onNote {
+          echo.onNote("voice echo") {
               echoes++
               synth.play(it, pan = 0.7, wave = PatWave.SQUARE, gain = 0.35, cutoffHz = 2400.0)
           }
