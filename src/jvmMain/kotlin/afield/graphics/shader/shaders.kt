@@ -3460,6 +3460,7 @@ private fun runShaderReloadAction(
     var ok = 0
     var failed = 0
     boxes.forEach { selected ->
+        val start = System.nanoTime()
         val success = try {
             reload(selected)
         } catch (t: Throwable) {
@@ -3470,6 +3471,7 @@ private fun runShaderReloadAction(
             selected.error(t.message ?: "shader reload failed", "code", -1)
             false
         }
+        LatencySpans.record("shader.reload", start, box = selected.id, detail = "success=$success")
         if (success) ok++ else failed++
     }
     val summary = if (failed == 0) "$reloadedMessage ($ok)" else "$reloadedMessage ($ok ok, $failed failed)"
@@ -3487,6 +3489,7 @@ private fun runShaderUpdateAction(
     notify(reloadingMessage, "shader")
     selected.forEach { box ->
         val (key, generation) = nextShaderGeneration(box, ShaderReloadType.GRAPHICS)
+        val start = System.nanoTime()
         shaderReloadScope.launch {
             val success = try {
                 update(box, key, generation)
@@ -3502,6 +3505,7 @@ private fun runShaderUpdateAction(
                 }
                 false
             }
+            LatencySpans.record("shader.update", start, box = box.id, detail = "success=$success")
 
             if (isCurrentShaderGeneration(key, generation)) {
                 withContext(Runloop.runLoop.main) {

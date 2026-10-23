@@ -72,7 +72,7 @@ SCHEMA = 1
 class Step:
     scenario: str
     label: str
-    phase: str  # first | second | warm | edit | shader-edit | frame | probe | ...
+    phase: str  # first | second | warm | edit | shader-reload | shader-update | frame | ...
     ok: bool
     wallMs: float
     firstOutputMs: float | None = None
@@ -119,13 +119,18 @@ class Bench:
         self.drain_spans()
         start_seq = self.client.event_seq
         t0 = time.time()
+        end: float | None = None
         try:
             result = await action()
             ok = bool(result.get("ok"))
+            end = result.get("endEpoch")
             note = "" if ok else json.dumps(result.get("data"))[:400]
         except Exception as exc:  # noqa: BLE001 - a failed step is a measurement, not a crash
             ok, note = False, f"{type(exc).__name__}: {exc}"
-        t1 = time.time()
+        # An action that finishes on the server with no reply reports when it ended (`endEpoch`);
+        # the client only noticed later, by polling.
+        observed = time.time()
+        t1 = end if end is not None else observed
         if settle:
             await asyncio.sleep(settle)
         first_output = None
@@ -136,7 +141,7 @@ class Bench:
                 break
         spans: dict[str, dict[str, float]] = {}
         for span in self.drain_spans():
-            if span["startEpochMicros"] / 1e6 < t0 - 0.002 or span["startEpochMicros"] / 1e6 > t1:
+            if span["startEpochMicros"] / 1e6 < t0 - 0.002 or span["startEpochMicros"] / 1e6 > observed:
                 continue
             agg = spans.setdefault(span["name"], {"ms": 0.0, "count": 0, "maxMs": 0.0})
             ms = span["durationMicros"] / 1000
@@ -182,16 +187,30 @@ class Bench:
             client.reply_contexts.pop(reply_name, None)
         return {"ok": bool(verdict.get("success")), "data": verdict}
 
-    async def wait_span(self, name: str, timeout: float) -> dict[str, Any]:
-        """Poll the server until a span called [name] appears (for edits with no verdict)."""
+    async def wait_span(self, name: str, timeout: float, *, box: str | None = None) -> dict[str, Any]:
+        """Poll the server until a span called [name] has been recorded (for actions with no verdict).
+
+        `ok` is the span's own `success=` detail when it has one; `endEpoch` is when it ended.
+        """
         deadline = time.monotonic() + timeout
         cursor = self.span_cursor
         while time.monotonic() < deadline:
             snap = self.spans_since(cursor)
-            if any(s["name"] == name for s in snap.get("spans", [])):
-                return {"ok": True}
-            await asyncio.sleep(0.02)
+            for span in snap.get("spans", []):
+                if span["name"] == name and (box is None or span.get("box") == box):
+                    end = (span["startEpochMicros"] + span["durationMicros"]) / 1e6
+                    return {"ok": "success=false" not in (span.get("detail") or ""), "endEpoch": end,
+                            "data": {"detail": span.get("detail")}}
+            await asyncio.sleep(0.01)
         return {"ok": False, "data": {"error": f"no {name} span within {timeout}s"}}
+
+    async def edit_and_act(self, uid: str, prop: str, value: str, action_id: str, span: str) -> dict[str, Any]:
+        """What Alt+Enter (Reload Shader) or Alt+Shift+Enter (Update Shader) in a shader editor sends:
+        the edited text as `set-string`, then `perform-action`; done when the action's span ends."""
+        await self.client.send_message("set-string", {"uid": uid, "property": prop, "value": value})
+        await self.client.send_message(
+            "perform-action", {"uid_currentSelection": [uid], "uid_action": action_id, "uid_property": prop})
+        return await self.wait_span(span, self.timeout, box=uid)
 
 
 # --------------------------------------------------------------------------- #
@@ -249,24 +268,24 @@ async def scenario_first_graphics(b: Bench, reps: int) -> None:
     await b.step(name, "triangle frames", "frame",
                  lambda: b.command(f"wait-native-renderer {renderer} --frames 3"))
     await b.step(name, "triangle relaunch (same)", "second", lambda: b.command(f"launch {tri}"), box=tri)
-    # Does writing the shader alone recompile it, with no relaunch? A probe: "no" is a finding,
-    # reported as a failed step, and does not fail the run.
-    live = fragment.replace("vec4(1.0, 0.8, 0.4, 1.0)", "vec4(0.9, 0.8, 0.4, 1.0)")
 
-    async def live_edit() -> dict[str, Any]:
-        written = await b.command(f"set {tri} fragment {shlex.quote(live)}")
-        return written if not written.get("ok") else await b.wait_span("shader.compile", 5.0)
+    def tinted(i: int) -> str:
+        return fragment.replace("vec4(1.0, 0.8, 0.4, 1.0)", f"vec4(1.0, {0.5 + 0.1 * (i % 5):.1f}, 0.4, 1.0)")
 
-    await b.step(name, "fragment edit, no relaunch", "probe", live_edit)
+    # The shader loop: edit the fragment shader, Alt+Enter (Reload Shader), or Alt+Shift+Enter
+    # (Update Shader, which keeps the module when the interface is unchanged).
     for i in range(reps):
-        tint = f"vec4(1.0, {0.5 + 0.1 * (i % 5):.1f}, 0.4, 1.0)"
-        edited = fragment.replace("vec4(1.0, 0.8, 0.4, 1.0)", tint)
-
-        async def shader_edit(edited: str = edited) -> dict[str, Any]:
+        await b.step(name, f"fragment edit + Reload Shader {i + 1}", "shader-reload",
+                     lambda i=i: b.edit_and_act(tri, "fragment", tinted(i), "moduleHere_reload", "shader.reload"))
+    for i in range(reps):
+        await b.step(name, f"fragment edit + Update Shader {i + 1}", "shader-update",
+                     lambda i=i: b.edit_and_act(tri, "fragment", tinted(i + 1), "moduleHere_update", "shader.update"))
+    for i in range(reps):
+        async def shader_relaunch(edited: str = tinted(i + 2)) -> dict[str, Any]:
             written = await b.command(f"set {tri} fragment {shlex.quote(edited)}")
             return written if not written.get("ok") else await b.command(f"launch {tri}")
 
-        await b.step(name, f"fragment edit + relaunch {i + 1}", "shader-edit", shader_edit, box=tri)
+        await b.step(name, f"fragment edit + relaunch {i + 1}", "shader-relaunch", shader_relaunch, box=tri)
     for i in range(reps):
         edited = code.replace("0.5, 0.5, 0", f"0.5, {0.4 + 0.02 * (i + 1):.2f}, 0")
         await b.step(name, f"kotlin edit + relaunch {i + 1}", "edit",
@@ -393,7 +412,7 @@ def pct(values: list[float], q: float) -> float:
 
 
 # Phases measured once per scenario, summarized under their own label; the rest repeat and group by phase.
-SINGLE_PHASES = {"first", "second", "frame", "stop", "probe"}
+SINGLE_PHASES = {"first", "second", "frame", "stop"}
 
 
 def summarize(steps: list[Step]) -> dict[str, dict[str, Any]]:
@@ -501,7 +520,7 @@ async def run_bench(args: argparse.Namespace) -> int:
                                                         "freshJvmPerScenario", "boot", "summary")}) + "\n")
     print_summary(result)
     print(f"\nwrote {out_path}\nappended {ledger}")
-    return 0 if all(s.ok for s in steps if s.phase != "probe") else 1
+    return 0 if all(s.ok for s in steps) else 1
 
 
 def load(path_or_entry: Any) -> dict[str, Any]:

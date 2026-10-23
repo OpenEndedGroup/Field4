@@ -46,7 +46,7 @@ class SummarizeTest(unittest.TestCase):
         self.assertEqual((summary["n"], summary["failed"], summary["wallMs"]), (2, 1, 10.0))
 
     def test_all_failed_has_no_timings(self) -> None:
-        summary = summarize([step("probe", "live", 5000.0, ok=False)])["s"]["live"]
+        summary = summarize([step("first", "live", 5000.0, ok=False)])["s"]["live"]
         self.assertNotIn("wallMs", summary)
 
 

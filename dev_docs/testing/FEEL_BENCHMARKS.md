@@ -2,7 +2,8 @@
 
 `tools/feel_bench.py` measures the waits a person meets in their first minutes with Field: the
 first run of a box in a cold JVM, the same run again, warm reruns, editing and rerunning, the
-Alt+Enter edit of a running loop, launching a renderer, a shader edit. It drives a small set of
+Alt+Enter edit of a running loop, launching a renderer, and the shader loop: edit a fragment
+shader, Alt+Enter (Reload Shader), see it. It drives a small set of
 real starting points, and for every step it records three things:
 
 - the client's wall time, from the command being sent to its verdict or condition (what a person
@@ -27,9 +28,7 @@ It boots its own Field (`./gradlew runJvm`, first free port from 9530) on a fres
 machine was on AC power. The ledger is outside the repo on purpose: numbers compare only on one
 machine.
 
-The run exits non-zero when a step fails. Steps with phase `probe` ask a question whose answer
-may be "no" (today: does writing a fragment shader recompile it without a relaunch?) and do not
-fail the run.
+The run exits non-zero when a step fails.
 
 ## Scenarios
 
@@ -37,7 +36,13 @@ fail the run.
 | --- | --- | --- |
 | `kotlin-println` | a new box running `println("hello")` | first run, same code again, warm reruns, edit + rerun (a new literal each time) |
 | `first-steps` | `templates/first-steps`, the welcome page's "Start here" | first launch, Alt+Enter `var petals = N` while it runs (`execute-fragment`), stop, second launch, warm relaunches |
-| `first-graphics` | `templates/first-graphics`, "Next: native graphics" | renderer launch, its first frames, triangle launch, its frames, same relaunch, fragment edit without relaunch (probe), fragment edit + relaunch, Kotlin edit + relaunch |
+| `first-graphics` | `templates/first-graphics`, "Next: native graphics" | renderer launch, its first frames, triangle launch, its frames, same relaunch, fragment edit + Reload Shader, fragment edit + Update Shader, fragment edit + relaunch, Kotlin edit + relaunch |
+
+The shader steps send what the editor sends. Alt+Enter in a `fragment`/`vertex` editor (and
+alt-r) is `set-string` with the edited text and then `perform-action moduleHere_reload`;
+Alt+Shift+Enter is the same with `moduleHere_update`, which keeps the module when the shader's
+interface is unchanged. Neither replies, so the step ends when the server's `shader.reload` /
+`shader.update` span ends.
 
 Not covered yet: a compute shader (canonical lesson "3. compute shader" is the candidate, its
 output is text), Python boxes (need `FIELD_PYTHON_VENV`), opening a document, the browser's
@@ -68,6 +73,8 @@ names the source records.
 | `launch.all` | `launch-all` received to its verdict (setup complete; a `loop` keeps running) |
 | `shader.compile` | one shaderc GLSL → SPIR-V compile (`detail` kind and source name) |
 | `shader.slangc` | one external `slangc` run |
+| `shader.reload` | the Reload Shader action (Alt+Enter in a shader editor, alt-r) for one box, `detail` its success |
+| `shader.update` | the Update Shader action (Alt+Shift+Enter) for one box, `detail` its success |
 | `pipeline.create` | `vkCreateGraphicsPipelines` / `vkCreateComputePipelines` for a new module |
 | `pipeline.update` | the same, for a module rebuilding its pipeline |
 | `renderer.firstRender` | the first `render()` of a `Renderer.run` invocation |
@@ -97,9 +104,29 @@ runloop tick ~2.1 s.
 | first-graphics: fragment edit + relaunch | 438 | 473 | `shader.compile` 220, compile 173 |
 | first-graphics: Kotlin edit + relaunch | 438 | 491 | `shader.compile` 241, compile 165 |
 
-The fragment edit without a relaunch did nothing: no `shader.compile` within 5 s.
+The first cut of this page said a fragment edit needs a relaunch. It doesn't: the probe wrote
+the property and never ran Reload Shader, which is what Alt+Enter in a shader editor does. That
+loop is now measured; see below.
 
-## What the baseline says to fix first
+## Shader loop: one shaderc compiler, 2026-10-23
+
+Measured the same way, `first-graphics --reps 5`, on battery. Every `shader.compile` took
+~57 ms whatever the shader, because `ShaderSPIRVUtils.compileShader` created and released a
+shaderc compiler per call. Releasing the last one finalizes glslang, which drops its built-in
+symbol tables, so each compile rebuilt them. One compiler for the life of the JVM, never released:
+
+| Step | before | after |
+| --- | ---: | ---: |
+| fragment edit + Reload Shader (Alt+Enter) | 127 | 10 |
+| fragment edit + Update Shader (Alt+Shift+Enter) | 125 | 14 |
+| triangle relaunch (same code) | 531 | 329 |
+| fragment edit + relaunch | 497 | 269 |
+| Kotlin edit + relaunch | 507 | 262 |
+
+A compile is now ~1.5 ms; the first one in a JVM still builds the tables (~100 ms, in
+"triangle first launch").
+
+## What the baseline says to fix next
 
 1. **`execute-all` rebuilds the box's engine on every run.** `executeAllRequest` replaces the
    engine with `makeKIHere` and re-bootstraps the stdlib intro synchronously, so a one-line
@@ -107,13 +134,10 @@ The fragment edit without a relaunch did nothing: no `shader.compile` within 5 s
    already bootstrapped in the background, and defeats the rerun compile cache, which lives in
    the engine. Candidates: reuse a pre-bootstrapped spare engine, cache the compiled intro across
    engines, or keep the engine and reset only its state.
-2. **Every relaunch compiles the same two shaders twice.** Four `shader.compile`s of ~55 ms
-   each per triangle launch, unchanged source included; `pipeline.create` is then ~0.1 ms because
-   the driver cache hits. A SPIR-V cache keyed by source, kind and options, plus finding the
-   duplicate compile, takes ~220 ms off every graphics relaunch. 55 ms for a ten-line shader also
-   suggests per-call cost (`shaderc_compiler_initialize`, options) worth measuring.
+2. **A launch compiles each shader stage twice.** `shaders.kt` compiles a stage to introspect it,
+   and `Module` compiles it again when it is not handed that introspection: four `shader.compile`s
+   per triangle launch for two stages. (Reload Shader compiles each stage once, the unchanged
+   vertex shader included.) Cheap since the shared compiler, but still double.
 3. **The first engine's bootstrap in a cold JVM, ~1.2 s,** shows up as `engine.bootstrapWait`
    when a newcomer launches before it finishes. Warming one engine at server start, or the
    AOT cache training a box run (it only waits for `/health` today), would hide it.
-4. **A shader edit needs a relaunch.** Hot-reloading `fragment`/`vertex` on write would turn a
-   ~450 ms relaunch into a ~60 ms compile.
