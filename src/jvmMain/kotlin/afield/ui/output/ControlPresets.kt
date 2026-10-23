@@ -407,19 +407,24 @@ fun Box.playControl(label: String, curve: KeyframeEvaluator, time: Double, chann
 }
 
 /**
- * A record toggle for the control labelled [label]: tick it, move the control, untick it, and the take
- * lands in the keyframe curve [curveName] (opened below), ready to edit and to [playControl] back.
+ * A record button for the control labelled [label]: press it, move the control, press it again, and
+ * the take lands in the keyframe curve [curveName] (opened below), ready to edit and to [playControl]
+ * back. A button rather than a checkbox because a checkbox's state is restored when the box runs again,
+ * which would arm a recording nobody asked for.
  */
 fun ControlGroupBuilder.recordToggle(label: String, curveName: String = label, tolerance: Double = 0.005) {
     val box = ownerBox
     val channel = ownerChannel
     val key = "${box.id}\u0000$channel\u0000$label"
-    checkbox("● rec $label", initialValue = false) { on ->
-        if (on) {
-            activeRecordings.remove(key)?.stop()
+    button("● rec $label") { down ->
+        if (!down) return@button
+        val running = activeRecordings.remove(key)
+        if (running == null) {
             activeRecordings[key] = box.recordControl(label, channel, curveName, tolerance)
+            lprintln("controls", "recording '$label' — press again to stop")
         } else {
-            activeRecordings.remove(key)?.stop()
+            running.stop()
+            lprintln("controls", "recorded '$label': ${running.sampleCount} changes → ${running.keys().size} keys in '$curveName'")
         }
     }
 }
