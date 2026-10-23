@@ -7,8 +7,11 @@ tests `src/jvmTest/kotlin/afield/ui/output/ControlPresetsTest.kt`, demo transcri
 - Presets are keyframer keys. `presetBar(scope, directory)` is UI over a `KeyframeScope`
   (`afield/animation/keyframes/keyframer.kt`): store = `scope.capture().save(dir/name)` (version
   history, readable by `KeyframeCollection` / `keyframeBrowser`), recall = `scope.loadKey(...)()`,
-  morph = `scope.interpolateAlong(keys, t)`. Controls take part by being declared with the
-  `keyframe*` helpers, whose targets move the visible control (`ControlValueHandle.set`).
+  morph = `scope.interpolateAlong(keys, t)`. Controls take part by being declared as delegated
+  locals (`var size by keys.slider(...)`, `KeyframeControls.kt`; `keys.controls()` builds them) or
+  with the explicit `keyframe*` helpers the delegates call, whose targets move the visible control
+  (`ControlValueHandle.set`). A rerun restores each delegate from the control-group cache inside
+  `keys.controls()` and calls `onChange` once per control.
   Default directory: `Box.presetDirectory(channel)` = `%document/keys/<box id>/<channel>`.
   keyframer.kt additions for this: `savedKeyNames(dir)`, `interpolateAlong(keys, t)`.
 - The bar lays its name field and buttons in wrapping rows (`ControlGroupBuilder.inlineRow`,

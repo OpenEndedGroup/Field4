@@ -1,5 +1,5 @@
 name: controls_presets_morph_midi
-description: Two boxes for the controls page - keyframe controls with a preset bar over their KeyframeScope (calm and storm keys), a morph slider, a record button and MIDI learn; and a log-law cutoff slider driven by a stand-in MIDI knob.
+description: Two boxes for the controls page - delegated keyframe controls (var size by keys.slider(...)) with a preset bar over their KeyframeScope (calm and storm keys), a morph slider, a record button and MIDI learn; and a log-law cutoff slider driven by a stand-in MIDI knob.
 docs:
   - page: visualizers.md
     why: "The page's two examples, ready to open: store, recall and morph presets as keyframer keys, record the size slider into keyframes, bind a knob."
@@ -14,10 +14,12 @@ operations:
         h: 60.0
       properties:
         code: |
-          var size = 0.4
-          var tint = Vector4f(0.2f, 0.6f, 1f, 1f)
-          var ring = false
-          var offset = Vector2f(0f, 0f)
+          // Each control is a local delegated to `keys`, so a preset is a key of that scope.
+          val keys = KeyframeScope()
+          var size by keys.slider(0.4, 0.1..1.0)
+          var offset by keys.vec2(Vector2f(0f, 0f))
+          var tint by keys.color(Vector4f(0.2f, 0.6f, 1f, 1f))
+          var ring by keys.checkbox(false)
 
           fun draw() {
               val r = (20 + size * 60).toInt()
@@ -28,8 +30,8 @@ operations:
               display("main", "<svg width='220' height='180' style='background:#222'><circle cx='$cx' cy='$cy' r='$r' fill='$fill' $stroke/></svg>")
           }
 
-          // Each control is a keyframe target on `keys`, so a preset is a key of that scope.
-          val keys = KeyframeScope()
+          keys.onChange { draw() }
+
           val dir = presetDirectory("look")
 
           // Two keys to start from, written once; after that the stored ones are used.
@@ -42,10 +44,7 @@ operations:
 
           var presets: PresetBar? = null
           controlGroup("look") {
-              keyframeSlider(keys, "size", "size", get = { size }, set = { size = it; draw() })
-              keyframeVec2Control(keys, "offset", "offset", get = { offset }, set = { offset = it; draw() })
-              keyframeColorPicker(keys, "tint", "tint", get = { tint }, set = { tint = it; draw() })
-              keyframeCheckbox(keys, "ring", "ring", get = { ring }, set = { ring = it; draw() })
+              keys.controls()
               presets = presetBar(keys)
               recordToggle("size")
               midiLearnButton()

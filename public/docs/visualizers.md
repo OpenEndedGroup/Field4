@@ -1335,14 +1335,15 @@ loop {
 
 ### Presets and morphing
 
-A preset is a [keyframer](keyframer_examples.md) key. Declare the controls with the `keyframe*` helpers, which put each one in a `KeyframeScope` and keep the control and its local in step (see [One value shared by a local, a control and a key](keyframer_examples.md#one-value-shared-by-a-local-a-control-and-a-key)), then add `presetBar(keys)` to the group. The bar has a name field with **store** and **recall**, a button for each saved key, and a **preset morph** slider. Here two keys, `calm` and `storm`, are saved the first time the box runs, so there is something to morph between straight away:
+A preset is a [keyframer](keyframer_examples.md) key. Declare each value as a local delegated to a `KeyframeScope` — `var size by keys.slider(0.4, 0.1..1.0)` — and the scope holds it as a key target, named after the local. `keys.controls()` puts a control for each one in the group, `keys.onChange { }` runs whenever a hand, a preset or a morph changes one, and `presetBar(keys)` adds the bar. The bar has a name field with **store** and **recall**, a button for each saved key, and a **preset morph** slider. Here two keys, `calm` and `storm`, are saved the first time the box runs, so there is something to morph between straight away:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-preset-bar.png" capture="box" open-outputs="true" wait="2.0" w="700" embed=true name="controls-preset-bar" alt="A control group: a size slider at 0.40, an offset pad, a blue tint colour picker, a ring checkbox, then a row with a preset name field reading storm and store and recall buttons, a row of calm and storm buttons, a preset morph slider at 0, a rec size button and a MIDI learn button. Below it a dark square holding a blue circle"}
 :::static
-var size = 0.4
-var tint = Vector4f(0.2f, 0.6f, 1f, 1f)
-var ring = false
-var offset = Vector2f(0f, 0f)
+val keys = KeyframeScope()
+var size by keys.slider(0.4, 0.1..1.0)
+var offset by keys.vec2(Vector2f(0f, 0f))
+var tint by keys.color(Vector4f(0.2f, 0.6f, 1f, 1f))
+var ring by keys.checkbox(false)
 
 fun draw() {
     val r = (20 + size * 60).toInt()
@@ -1352,8 +1353,8 @@ fun draw() {
     val stroke = if (ring) "stroke='white' stroke-width='6'" else ""
     display("main", "<svg width='220' height='180' style='background:#222'><circle cx='$cx' cy='$cy' r='$r' fill='$fill' $stroke/></svg>")
 }
+keys.onChange { draw() }
 
-val keys = KeyframeScope()
 val dir = presetDirectory("look")
 
 // Two keys to start from, written once; after that the stored ones are used.
@@ -1365,10 +1366,7 @@ if (keys.savedKeyNames(dir).isEmpty()) {
 }
 
 controlGroup("look") {
-    keyframeSlider(keys, "size", "size", get = { size }, set = { size = it; draw() })
-    keyframeVec2Control(keys, "offset", "offset", get = { offset }, set = { offset = it; draw() })
-    keyframeColorPicker(keys, "tint", "tint", get = { tint }, set = { tint = it; draw() })
-    keyframeCheckbox(keys, "ring", "ring", get = { ring }, set = { ring = it; draw() })
+    keys.controls()
     presetBar(keys)
     recordToggle("size")
     midiLearnButton()
@@ -1377,7 +1375,9 @@ controlGroup("look") {
 draw()
 ```
 
-**store** captures the scope under the name in the field; **recall**, or a key's own button, applies it, which moves the controls and runs their `set`, as if you had dragged each one there. **preset morph** blends across the saved keys in name order with `KeyframeScope.interpolate`: numbers, pads and colours move smoothly, and a checkbox switches at the halfway point. With `calm` and `storm`, the morph at 0.5 gives a mid-size purple circle with the ring on.
+**store** captures the scope under the name in the field; **recall**, or a key's own button, applies it, which sets the locals, moves the controls and runs `onChange`, as if you had dragged each one there. **preset morph** blends across the saved keys in name order with `KeyframeScope.interpolate`: numbers, pads and colours move smoothly, and a checkbox switches at the halfway point. With `calm` and `storm`, the morph at 0.5 gives a mid-size purple circle with the ring on.
+
+The locals keep that value when the box runs again: `keys.controls()` restores what the panel last showed, so read them after it. The label is the local's name unless you pass `label = "..."`; `keys.slider(0.35f, ...)`, `keys.text("calm")` and the `step` and `law` of `slider(...)` work the same way. When a value has to live somewhere other than a local, the `keyframeSlider(keys, name, label, get = { ... }, set = { ... })` family takes an explicit getter and setter.
 
 The keys are ordinary key files in `presetDirectory("look")`, so every store adds to that key's history, and `keyframeBrowser(dir, scope = keys)` shows them side by side: see [Saving: every save is history](keyframer_examples.md#saving-every-save-is-history) and [Browsing saved keys](keyframer_examples.md#browsing-saved-keys). `presetBar` returns the bar, whose `store(name)`, `recall(name)` and `morph(t, between)` do the same from code.
 

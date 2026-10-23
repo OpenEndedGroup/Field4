@@ -149,40 +149,30 @@ Kotlin local. Registering those independently creates two authorities: recalling
 picture but leaves the slider behind, and rerunning the box can then restore that stale slider over
 the recalled value.
 
-The `keyframe*` control helpers make the local authoritative and the UI its writable mirror. A hand
-moving the control writes the local. A key applying a value writes the same local and moves both the
-desktop control and the remote controller. The programmatic UI update refreshes the box's live rerun
-cache but does not emit one document operation per animation frame.
+Declaring the local as a delegate of the scope makes the local authoritative and the UI its
+writable mirror. The local's name is the key name and the control's label. A hand moving the
+control writes the local. A key applying a value writes the same local and moves both the desktop
+control and the remote controller. `onChange` hears both, and assigning the local in code moves
+the control without calling it. The programmatic UI update refreshes the box's live rerun cache but
+does not emit one document operation per animation frame, and when the box runs again
+`keys.controls()` hands each local the value the control last held.
 
 ```diffstatic {data-lang=kotlin}
-var gain = 0.35f
-var projectedOnly = false
 val keys = KeyframeScope()
+var gain by keys.slider(0.35f, 0.0..4.0)
+var projectedOnly by keys.checkbox(false, label = "projected only")
+keys.onChange { name -> println("$name moved: gain $gain, projected only $projectedOnly") }
 
-thisBox.controlGroup("projected light") {
-    keyframeFloatSlider(
-        scope = keys,
-        name = "light.gain",
-        label = "gain",
-        min = 0.0,
-        max = 4.0,
-        get = { gain },
-        set = { gain = it },
-    )
-    keyframeCheckbox(
-        scope = keys,
-        name = "light.projectedOnly",
-        label = "projected only",
-        get = { projectedOnly },
-        set = { projectedOnly = it },
-    )
-}
+controlGroup("projected light") { keys.controls() }
 ```
 
-There are matching helpers for a `Double` slider, vec2 control, colour picker and text input. The
-underlying grouped controls also hand back a `ControlValueHandle<T>`; `handle.set(value)` is the
-UI-only half of that, for a custom integration that needs it. It never invokes the control callback,
-so it cannot start a feedback loop.
+`keys.slider(0.4, ...)` with a `Double` gives a `Double` local; there are also `keys.vec2`,
+`keys.color` and `keys.text`. Each is built by an explicit helper — `keyframeSlider`,
+`keyframeFloatSlider`, `keyframeCheckbox`, `keyframeVec2Control`, `keyframeColorPicker`,
+`keyframeText` — that takes a key name, a label and a `get`/`set` pair, for a value that lives in an
+object rather than a local. The underlying grouped controls also hand back a `ControlValueHandle<T>`;
+`handle.set(value)` is the UI-only half of that, for a custom integration that needs it. It never
+invokes the control callback, so it cannot start a feedback loop.
 
 ### A custom class contributes lanes instead of inventing a file format
 
