@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-214 source file(s), 683 public symbol(s), 300 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+215 source file(s), 684 public symbol(s), 301 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1205,6 +1205,16 @@ Runs `brief.js` for real, in node, against a mocked Monaco.
 | Declaration | Summary |
 | --- | --- |
 | <a id="cerescanonicalverification-kt--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/ceres/CeresCanonicalVerification/#L58) |  |
+
+## CeresCrossThreadCloseSmoke.kt { #cerescrossthreadclosesmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/ceres/CeresCrossThreadCloseSmoke.kt` — [read the source](source/jvmMain/afield/examples/ceres/CeresCrossThreadCloseSmoke/)
+
+### Top-level functions { #cerescrossthreadclosesmoke-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="cerescrossthreadclosesmoke-kt--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/ceres/CeresCrossThreadCloseSmoke/#L19) | A native session built on one thread and solved and closed on another. |
 
 ## CeresExpressionCost.kt { #ceresexpressioncost-kt }
 

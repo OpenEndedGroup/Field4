@@ -645,13 +645,13 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**34208 public symbols across 1539 source files**, 17609 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34209 public symbols across 1540 source files**, 17610 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Examples](examples.md) | 214 | 683 | 300 (43%) | Runnable examples, galleries and verification programs. |
+| [Examples](examples.md) | 215 | 684 | 301 (44%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 16 | 156 | 55 (35%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 203 | 156 (76%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
@@ -848,6 +848,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>steamaudio/<wbr></small> [CaveDemo.kt](examples.md#cavedemo-kt) | Examples | 1 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>ceres/<wbr></small> [CeresArchitecturalDslSmoke.kt](examples.md#ceresarchitecturaldslsmoke-kt) | Examples | 1 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>ceres/<wbr></small> [CeresCanonicalVerification.kt](examples.md#cerescanonicalverification-kt) | Examples | 1 | 0 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>ceres/<wbr></small> [CeresCrossThreadCloseSmoke.kt](examples.md#cerescrossthreadclosesmoke-kt) | Examples | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>optimization/<wbr>ceres/<wbr></small> [CeresExpression.kt](solvers.md#ceresexpression-kt) | Solvers | 77 | 44 | Residuals written in Kotlin, compiled to a little register machine, and differentiated exactly by Ceres. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>ceres/<wbr></small> [CeresExpressionCost.kt](examples.md#ceresexpressioncost-kt) | Examples | 1 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>ceres/<wbr></small> [CeresExpressionSmoke.kt](examples.md#ceresexpressionsmoke-kt) | Examples | 1 | 0 |  |  |

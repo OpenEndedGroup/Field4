@@ -357,32 +357,32 @@ foreign-function API (`java.lang.foreign`), with no JNI glue.
 [`FfmCeresBackend`](internal.md#ffmceresbackend-kt-ffmceresbackend) loads the library, binds its `ken_ceres_*` entry points as downcall handles and
 reports [`FfmCeresBackend.abiVersion`](internal.md#ffmceresbackend-kt--ffmceresbackend--abiversion); [`FfmCeresBackend.compile`](internal.md#ffmceresbackend-kt--ffmceresbackend--compile) turns a seed [`PointCloud`](solvers.md#ceresgeometry-kt-pointcloud) and a
 [`CeresProgram`](solvers.md#ceresgeometry-kt-ceresprogram) into a reusable compiled solver whose input, output and prior buffers are allocated
-once in a confined arena and reused across solves. [`CeresNativeLibrary`](internal.md#ffmceresbackend-kt-ceresnativelibrary) says where the library is
+once in a shared arena and reused across solves. [`CeresNativeLibrary`](internal.md#ffmceresbackend-kt-ceresnativelibrary) says where the library is
 expected and how to build it.
 
 `src/jvmMain/kotlin/afield/math/optimization/ceres/FfmCeresBackend.kt` — [read the source](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/)
 
 ### FfmCeresBackend { #ffmceresbackend-kt-ffmceresbackend }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">FfmCeresBackend</span><span class="p">(</span><span class="n">libraryPath</span><span class="p">:</span> <span class="nc">Path</span> <span class="o">=</span> <span class="nc">CeresNativeLibrary</span><span class="p">.</span><span class="n">defaultPath</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">reusableMetricCapacity</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CeresSolverBackend</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L32)
+[<code class="highlight"><span class="k">class</span> <span class="nf">FfmCeresBackend</span><span class="p">(</span><span class="n">libraryPath</span><span class="p">:</span> <span class="nc">Path</span> <span class="o">=</span> <span class="nc">CeresNativeLibrary</span><span class="p">.</span><span class="n">defaultPath</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">reusableMetricCapacity</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CeresSolverBackend</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L33)
 
 A [`CeresSolverBackend`](solvers.md#ceresgeometry-kt-ceressolverbackend) backed by the native library at `libraryPath`, by default [`CeresNativeLibrary.defaultPath`](internal.md#ffmceresbackend-kt--ceresnativelibrary--defaultpath). Construction fails with `UnsatisfiedLinkError` when an expected symbol is missing, and with `IllegalArgumentException` when the library reports an ABI version other than the one Field needs.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="ffmceresbackend-kt--ffmceresbackend--abiversion"></a>[<code class="highlight"><span class="k">val</span> <span class="n">abiVersion</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L53) | The `ken_ceres_jvm_abi_v*` string the loaded library reports. |
-| <a id="ffmceresbackend-kt--ffmceresbackend--compile"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">compile</span><span class="p">(</span><span class="n">seedPoints</span><span class="p">:</span> <span class="nc">PointCloud</span><span class="p">,</span> <span class="n">program</span><span class="p">:</span> <span class="nc">CeresProgram</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompiledCeresSolver</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L138) |  |
+| <a id="ffmceresbackend-kt--ffmceresbackend--abiversion"></a>[<code class="highlight"><span class="k">val</span> <span class="n">abiVersion</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L54) | The `ken_ceres_jvm_abi_v*` string the loaded library reports. |
+| <a id="ffmceresbackend-kt--ffmceresbackend--compile"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">compile</span><span class="p">(</span><span class="n">seedPoints</span><span class="p">:</span> <span class="nc">PointCloud</span><span class="p">,</span> <span class="n">program</span><span class="p">:</span> <span class="nc">CeresProgram</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompiledCeresSolver</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L139) |  |
 
 ### CeresNativeLibrary { #ffmceresbackend-kt-ceresnativelibrary }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">CeresNativeLibrary</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L440)
+[<code class="highlight"><span class="k">object</span> <span class="nc">CeresNativeLibrary</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L447)
 
 Where to find the native wrapper.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="ffmceresbackend-kt--ceresnativelibrary--defaultpath"></a>[<code class="highlight"><span class="k">val</span> <span class="n">defaultPath</span><span class="p">:</span> <span class="nc">Path</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L460) |  |
-| <a id="ffmceresbackend-kt--ceresnativelibrary--how-to-build"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">HOW&#95;TO&#95;BUILD</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L470) | What to tell someone whose [`defaultPath`](internal.md#ffmceresbackend-kt--ceresnativelibrary--defaultpath) is not there, in the shell they are actually in. |
+| <a id="ffmceresbackend-kt--ceresnativelibrary--defaultpath"></a>[<code class="highlight"><span class="k">val</span> <span class="n">defaultPath</span><span class="p">:</span> <span class="nc">Path</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L467) |  |
+| <a id="ffmceresbackend-kt--ceresnativelibrary--how-to-build"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">HOW&#95;TO&#95;BUILD</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L477) | What to tell someone whose [`defaultPath`](internal.md#ffmceresbackend-kt--ceresnativelibrary--defaultpath) is not there, in the shell they are actually in. |
 
 ## NgxNative.kt { #ngxnative-kt }
 
