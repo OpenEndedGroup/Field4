@@ -148,7 +148,9 @@ data class ListContentsResult(
     val content: String? = null,
     val language: String? = null,
     val contents: List<ListContentEntry> = emptyList(),
-    val preambleHints: List<PreamblePropertyHint> = emptyList()
+    val preambleHints: List<PreamblePropertyHint> = emptyList(),
+    /** Set when there is something to say about the listing itself, such as an empty box. */
+    val message: String = ""
 )
 
 data class PreamblePropertyHint(

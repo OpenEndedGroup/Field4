@@ -73,6 +73,9 @@ class AiRateLimitRecoveryTest {
         }
         assertEquals(0L, temporaryRateLimitDelay(IllegalStateException("rate_limit_exceeded")))
         assertEquals(0L, temporaryRateLimitDelay(IllegalStateException("server_is_overloaded")))
+        assertEquals(0L, temporaryRateLimitDelay(IllegalStateException("com.openai.errors.InternalServerException: 503: Loading model")),
+            "a local server loading its weights is waited out, not given up on after two brief retries")
+        assertNull(temporaryRateLimitDelay(IllegalStateException("Loading model config failed")))
     }
 
     @Test fun interruptedWaitPropagatesCancellationRatherThanTheRateError() {

@@ -131,7 +131,7 @@ fun searchWorkspaceSymbols(
             fileId = def.fileId,
             line = def.line,
             definitionLine = definitionLineText(def),
-            definitionBody = functionBody(def),
+            definitionBody = functionBody(def, maxChars = 3_000),
             relatedGuides = related.guides,
             relatedExamples = related.examples,
             kdoc = def.kdoc
@@ -140,7 +140,7 @@ fun searchWorkspaceSymbols(
 
     // Avoid reading and scoring every source file for an exact indexed symbol.
     val exact = definitions.filter { it.name == query || it.name.endsWith(".$query") }
-    if (exact.isNotEmpty()) return WorkspaceSymbolSearchResult(exact.take(limit.coerceIn(1, 100)).map(::toMatch))
+    if (exact.isNotEmpty()) return WorkspaceSymbolSearchResult(withBodyBudget(exact.take(limit.coerceIn(1, 100)).map(::toMatch)))
 
     val ranked = LinkedHashMap<String, RankedWorkspaceSymbolMatch>()
     definitions.forEachIndexed { definitionIndex, def ->
@@ -174,7 +174,7 @@ fun searchWorkspaceSymbols(
         .take(limit.coerceAtLeast(1))
         .map { toMatch(it.definition) }
 
-    return WorkspaceSymbolSearchResult(matches)
+    return WorkspaceSymbolSearchResult(withBodyBudget(matches))
 }
 
 private fun analyzeWorkspaceSymbolQuery(rawQuery: String): WorkspaceQueryAnalysis {
@@ -316,4 +316,25 @@ private fun scoreWorkspaceSymbolCandidate(
     }
 
     return bestQueryScore + tokenScore + kindScore + pathScore
+}
+
+/** All the definition bodies one search returns, together; see [withBodyBudget]. */
+internal const val SYMBOL_SEARCH_BODY_BUDGET = 6_000
+
+/**
+ * Bodies in rank order until [SYMBOL_SEARCH_BODY_BUDGET]; later matches keep their signature and KDoc.
+ * One search for "FLines" returned 17k characters, most of it a single unrelated function's body, to a
+ * local model with a 64k-token window (2026-10-22). A body left out says how to get it.
+ *
+ * The ranking itself is unchanged on purpose: plural folding, a usage prior learned from Field's tutorial
+ * box code, and type-aware bonuses were measured against 60 searches labelled by what agents then wrote
+ * (`dev_docs/ai/AI4_FIRST_LOCAL_CONVERSATION.md`), and none beat it by more than noise.
+ */
+internal fun withBodyBudget(matches: List<WorkspaceSymbolMatch>): List<WorkspaceSymbolMatch> {
+    var left = SYMBOL_SEARCH_BODY_BUDGET
+    return matches.map { match ->
+        val body = match.definitionBody ?: return@map match
+        if (body.length <= left) { left -= body.length; match }
+        else match.copy(definitionBody = "(body of ${body.length} chars omitted from this search; read it with AttachmentRequest(file=\"${match.filePath}\", find=\"${match.symbol.substringAfterLast('.')}\"))")
+    }
 }

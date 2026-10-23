@@ -53,9 +53,9 @@ data class WorkspaceSearchRequest(
     val scope: WorkspaceSearchScope,
     @param:JsonPropertyDescription("Literal single-line text, 1..256 UTF-16 units. Whitespace is preserved.")
     val query: String,
-    @param:JsonPropertyDescription("Optional relative file/directory path under the scope root, using / separators. No absolute paths, .., or symlinks.")
+    @param:JsonPropertyDescription("Optional relative file/directory path under the scope root, using / separators. FIELD_KOTLIN_SOURCE's root is src/, so jvmMain/kotlin/afield/geometry. No absolute paths, .., or symlinks.")
     val pathPrefix: String = "",
-    @param:JsonPropertyDescription("Optional file extensions without dots, e.g. [kt, glsl]. Empty searches all eligible text files; source scope always requires kt.")
+    @param:JsonPropertyDescription("Optional file extensions, e.g. [kt, glsl] (a leading dot is ignored). Empty searches all eligible text files. FIELD_KOTLIN_SOURCE searches only kt; Field's Markdown docs are in no scope (use SemanticRetrievalSearchRequest corpora=[documentation]).")
     val extensions: List<String> = emptyList(),
     val ignoreCase: Boolean = false,
     @param:JsonPropertyDescription("Global matching-line limit, 1..500. Each line is returned once; reaching the cap reports partial results.")
@@ -95,6 +95,10 @@ data class WorkspaceSearchResult(
     val message: String
 )
 
+/** Field's Markdown docs are in no search scope; these two tools reach them. */
+private const val DOCS_REDIRECT = "Field's documentation (public/docs/*.md) is not in any WorkspaceSearch scope: use " +
+    "SemanticRetrievalSearchRequest with corpora=[\"documentation\"], or AttachmentRequest(file=\"public/docs/<page>.md\", find=\"<text>\") for a known page."
+
 internal data class WorkspaceSearchRoots(val document: Path, val workspace: Path, val fieldSource: Path)
 
 /** Internal test seams, never request parameters. No caller can raise the production budgets. */
@@ -125,9 +129,14 @@ internal class WorkspaceSearch(
         if (request.query.isEmpty() || request.query.length > 256 || request.query.any { it == '\r' || it == '\n' })
             return failure("query must contain 1..256 UTF-16 units on one line; whitespace is preserved")
         if (request.maxMatches !in 1..500) return failure("maxMatches must be in 1..500")
-        if (request.extensions.size > 16 || request.extensions.any { !it.matches(Regex("[A-Za-z0-9]{1,16}")) })
-            return failure("extensions must contain at most 16 alphanumeric suffixes without dots")
-        val prefix = request.pathPrefix
+        // ".md" means "md": a leading dot is how people write a suffix, so it is not worth a failed round.
+        val extensions = request.extensions.map { it.trim().removePrefix(".") }
+        if (extensions.size > 16 || extensions.any { !it.matches(Regex("[A-Za-z0-9]{1,16}")) })
+            return failure("extensions must contain at most 16 alphanumeric suffixes, e.g. [\"kt\", \"md\"]; no globs such as *.kt")
+        if (request.scope == WorkspaceSearchScope.FIELD_KOTLIN_SOURCE && extensions.any { !it.equals("kt", ignoreCase = true) })
+            return failure("FIELD_KOTLIN_SOURCE searches only .kt files under Field's src/ directory. $DOCS_REDIRECT")
+        // The source root *is* src/, so "src/jvmMain/..." (how the repository spells it) means "jvmMain/...".
+        val prefix = if (request.scope == WorkspaceSearchScope.FIELD_KOTLIN_SOURCE) request.pathPrefix.removePrefix("src/") else request.pathPrefix
         if (prefix.length > 1024 || prefix.startsWith('/') || prefix.any { it == '\\' || it == ':' || it == '\u0000' } ||
             prefix.split('/').any { it == ".." }) return failure("pathPrefix must be a relative path without .., drive letters or backslashes")
         try {
@@ -148,8 +157,8 @@ internal class WorkspaceSearch(
                 return failure("pathPrefix escapes the root or contains a symlink")
             if (root.relativize(start).any { excluded(it.toString(), request.scope) })
                 return failure("pathPrefix is excluded by the scope's file policy")
-            if (!Files.exists(start, NOFOLLOW_LINKS)) return failure("pathPrefix does not exist")
-            return Scan(request, root).run(start)
+            if (!Files.exists(start, NOFOLLOW_LINKS)) return failure(missingPrefix(request.scope, prefix))
+            return Scan(request.copy(extensions = extensions), root).run(start)
         } catch (_: InvalidPathException) {
             return failure("Invalid pathPrefix or configured root")
         } catch (_: IOException) {
@@ -158,6 +167,17 @@ internal class WorkspaceSearch(
             return failure("Scope root or requested path is not accessible")
         }
     }
+
+    /** Name the root the prefix was resolved against, so the next call can be right. */
+    private fun missingPrefix(scope: WorkspaceSearchScope, prefix: String): String = when (scope) {
+        WorkspaceSearchScope.FIELD_KOTLIN_SOURCE ->
+            "pathPrefix '$prefix' does not exist under FIELD_KOTLIN_SOURCE, whose root is Field's src/ directory " +
+                "(prefixes look like jvmMain/kotlin/afield/geometry). " +
+                if (prefix.startsWith("public/") || prefix.startsWith("docs") || prefix.startsWith("dev_docs")) DOCS_REDIRECT else ""
+        WorkspaceSearchScope.DOCUMENT_FILES -> "pathPrefix '$prefix' does not exist in the current document's folder."
+        WorkspaceSearchScope.DOCUMENT_HISTORY -> "pathPrefix '$prefix' does not exist in the current document's backups/ folder."
+        WorkspaceSearchScope.WORKSPACE_FILES -> "pathPrefix '$prefix' does not exist in the workspace; its first segment is a document name."
+    }.trimEnd()
 
     private inner class Scan(val request: WorkspaceSearchRequest, val root: Path) {
         val started = nanoTime()

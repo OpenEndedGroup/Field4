@@ -43,7 +43,23 @@ class WorkspaceSearchTest {
         assertEquals(setOf("snapshot.edn"), paths(WorkspaceSearchScope.DOCUMENT_HISTORY))
         assertEquals(setOf("document/box_code_.kt", "other/code.kt"), paths(WorkspaceSearchScope.WORKSPACE_FILES))
         assertEquals(setOf("jvmMain/code.kt", "commonMain/shared.kt"), paths(WorkspaceSearchScope.FIELD_KOTLIN_SOURCE))
-        assertTrue(f.search(request(WorkspaceSearchScope.FIELD_KOTLIN_SOURCE).copy(extensions = listOf("md"))).matches.isEmpty())
+        assertFalse(f.search(request(WorkspaceSearchScope.FIELD_KOTLIN_SOURCE).copy(extensions = listOf("md"))).success)
+    }
+
+    /** The two calls a local model made on 2026-10-22 hunting for the FLine docs, each a wasted round. */
+    @Test
+    fun commonSpellingsAreAcceptedAndMissesNameTheRoot() = Fixture().use { f ->
+        f.file("workspace/document/notes.md", "needle")
+        f.file("app/src/jvmMain/code.kt", "needle")
+        assertEquals(listOf("notes.md"), f.search(request().copy(extensions = listOf(".md"))).matches.map { it.path })
+        assertEquals(listOf("jvmMain/code.kt"),
+            f.search(request(WorkspaceSearchScope.FIELD_KOTLIN_SOURCE).copy(pathPrefix = "src/jvmMain")).matches.map { it.path })
+        val docs = f.search(request(WorkspaceSearchScope.FIELD_KOTLIN_SOURCE).copy(extensions = listOf(".md")))
+        assertFalse(docs.success)
+        assertTrue("SemanticRetrievalSearchRequest" in docs.message, docs.message)
+        val missing = f.search(request(WorkspaceSearchScope.FIELD_KOTLIN_SOURCE).copy(pathPrefix = "public/docs"))
+        assertFalse(missing.success)
+        assertTrue("src/" in missing.message && "documentation" in missing.message, missing.message)
     }
 
     @Test fun literalWhitespaceAndLineCoordinatesArePreserved() = Fixture().use { f ->
