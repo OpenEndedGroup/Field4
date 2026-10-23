@@ -1,26 +1,25 @@
-# Kits for Many Documents
+# Kits and Starting Points
 
-When several documents are the same kind of thing, such as levels of one game or variants of one
-design, they share their working parts: the boxes that do the work, the rules those boxes follow,
-and the files they read. A kit keeps those parts in one directory. Every document made from the kit
-gets its own copy, and a newer kit reaches a document only when you migrate it. Until then the
-document goes on running the copy it has, and can tell you how it differs from the kit.
+A kit packages reusable tools and named document starting points. Add it once in Welcome, restart
+Field to prepare its runtime, then create editable documents from its starting points. A package can
+include Kotlin classes, dependencies, resources and lifecycle hooks, or just working documents such
+as the [Presentations starter](presentation_studio.md#start-a-presentation).
 
-A kit has three kinds of part:
+`field-kit.json` describes that package. Its installed snapshots stay separate from your documents;
+each managed document records the revision it received. Updates are explicit and compare your local
+changes before replacing anything.
 
-- **roles**: the boxes a document of this kind has, each with its code. A box plays a role when its
-  `kitRole` property names it.
-- **sources**: text a role's box holds in another property, such as a rule set or a recipe that an
-  agent edits.
-- **assets**: files in the document's `files/` folder that the boxes read.
-
-The kit's `kit.json` lists them with a hash of each, and its revision is the hash of the whole list.
+A starting point can also carry a smaller **role kit**, described by `kit.json`, for shared box code,
+box-held sources and assets. That model remains useful inside a package. The Welcome workflow comes
+first below; [Make a kit from a document](#make-a-kit-from-a-document) covers the finer role model and
+its command-line tools.
 
 ## Add a self-contained kit in Welcome
 
 Expand **Kits** beneath the workspace list in Welcome. Choose **Browse…**, drop a kit folder into the kit area in Electron, or
 paste its path, then press **Add kit**. A package folder contains `field-kit.json`. You can also add
-the bundled **Presentations** kit directly from this area. Kits stay outside the Field repository.
+the bundled [Presentations](presentation_studio.md#start-a-presentation) kit directly from this area.
+Your own kit folders can live outside the Field repository.
 
 Adding a kit validates it and saves an immutable snapshot. It does not run its classes or scripts.
 Press **Restart Field** to prepare the selected runtimes. Field resolves the pinned dependencies and
@@ -32,6 +31,10 @@ Each kit has a guide, its version and content revision, runtime requirements and
 points. **Create document** copies a starting point into the current workspace. **Your documents**
 shows its existing instances; **Run** opens and activates a closed instance, or reruns the declared
 launch boxes of an open one. Kits have no dedicated menu items.
+
+For Presentations, press **Add presentation starter kit**, restart, then choose **Create document**
+beside **Teaching with Field**. Its talk, live example and teaching guide are ordinary Kotlin boxes;
+there is no per-talk Node project to install.
 
 ### Package layout
 
@@ -153,7 +156,8 @@ allows four seconds for kit cleanup.
 The package revision hashes its descriptor and all the declared starting-point, runtime, guide and
 shared-resource files. Source changes do not edit an installed snapshot. **Check source for updates**
 registers a new snapshot; restart prepares that revision. Older snapshots remain available for
-existing instances and recovery.
+existing instances and recovery. Keep package source versions in Git so a recorded revision can be
+installed again on another machine.
 
 A new instance records the kit id, package revision, runtime revision, starting point, Project and
 its starting file hashes in `.field-kit-instance.json`. Its editable document files belong to it.
@@ -167,7 +171,8 @@ conflicts. **Apply update to closed document** validates the whole plan first. I
 if any file conflicts, preserves unrelated local files and edits, keeps a recovery backup, and
 records the new revision last. Changes to a document's `metadata.edn` can conflict too; they are
 reported rather than silently replacing its box graph. Running documents must be closed before an
-update.
+update. On another machine, install the instance's recorded package revision and restart before
+running it; preserve `.field-kit-instance.json` along with the document's other files.
 
 The existing `kit.json` role model below still applies inside a starting point. It provides finer
 box-property and asset comparison; `field-kit.json` packages the runtime and the set of starting
@@ -199,6 +204,17 @@ scope later is a separate, explicit change.
 
 
 ## Make a kit from a document
+
+The role-kit model describes shared parts inside a document:
+
+- **roles**: boxes and their code. A box plays a role when its `kitRole` property names it.
+- **sources**: text held in another box property, such as a rule set or a recipe that an agent edits.
+- **assets**: files in the document's `files/` folder that the boxes read.
+
+`kit.json` lists those parts with a hash of each, and its revision hashes the complete list. These
+role-kit commands do not register a runtime package in Welcome. To distribute the resulting document
+through the package library, give it a `field-kit.json` descriptor as described above, or list it as
+one of a package's starting points.
 
 This document lays out a level. Its Rules box keeps the room sizes in its `roomRules` property,
 which an agent changes through `SetBoxPropertyRequest` or a study's guarded edits. It also keeps

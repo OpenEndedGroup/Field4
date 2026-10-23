@@ -2,6 +2,24 @@
 
 This document is both a talk and its live teaching material. Its default presentation path is Kotlin plus standard `kotlinx.html`, using Field's existing guide system. It needs no per-talk Node project, TSX or Motion Canvas installation.
 
+## Install or update the presentation kit
+
+For a new managed talk, use Welcome's **Kits → Add presentation starter kit**, **Restart Field**, then
+**Presentations → Create document** beside **Teaching with Field**. The package starts **Teaching guide**,
+**Live Field** and **Presentation** in that order. Welcome's **Templates → presentation** is the
+standalone-copy route and does not register a managed package instance.
+
+An instance created through Kits has `.field-kit-instance.json`, recording its package, starting point,
+revision and file baselines. It belongs to the `kit-presentation` Project. Preserve that record and
+the author's files. To update the package, close the document, use **Check source for updates** and
+restart Field, then inspect **Your documents → Inspect update** before applying it. Conflicting local
+edits stop the update. Use **Run** to reopen and activate the updated document. On another machine,
+install the recorded package revision before running the instance.
+
+This is separate from the inner `kit.json` role kit described below. `showKit()` and AI4's
+`InspectKitRequest` inspect helper/style roles; they do not inspect or upgrade the outer package.
+Reading this guide does not authorize an update or restart: follow the user's current request.
+
 ## Find the working material
 
 Read the current boxes before editing them; preserve the author's steps and local changes.
@@ -53,7 +71,7 @@ Use saved operation transcripts for repeatable document changes. For step callba
 
 ## Keep the talk reusable
 
-The document folder, Kotlin sidecars, guides, macros and media can live together in Git. Shared files stay in `files/`; slides reference them instead of duplicating them. The starter's `kit.json` owns the teaching-guide helper and shared stylesheet. The authored talk and live example are outside those kit roles. Inspect the kit before replacing a shared helper; preserve the lecture when updating the kit.
+The document folder, Kotlin sidecars, guides, macros and media can live together in Git. Files shared by slides stay in the document's `files/` folder. Files shared across a course can instead live in the Project's `files/` folder or a package's declared `sharedResources`; `.file` checks those after document files. The starter's inner `kit.json` owns the teaching-guide helper and shared stylesheet. The authored talk and live example are outside those kit roles. Inspect the appropriate package or role update before replacing a shared helper; preserve the lecture when updating the kit.
 
 Motion Canvas remains an optional source for animation-heavy scenes. It is not required for ordinary slides, webpages, document demonstrations or guides.
 
