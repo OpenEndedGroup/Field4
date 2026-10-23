@@ -18,6 +18,22 @@ import java.nio.file.Path
 import kotlin.io.path.exists
 
 /**
+ * The bridge to `field_polyvector`, the C++ line-drawing vectorizer behind
+ * [afield.geometry.vectorize.polyvector.Polyvector]: where the shared library is, and a
+ * `java.lang.foreign` binding to its C ABI.
+ *
+ * Field runs without the library, so [PolyvectorLibrary] is what the rest of Field asks before
+ * reaching for a vectorization: the paths it tried, the line the welcome page shows, and the build
+ * advice an `UnsatisfiedLinkError` carries when it was never built. [PolyvectorLibrary.resolvedPath]
+ * is not cached, so a library built during a live session is picked up by the next box run, and
+ * the binding refuses one whose ABI version does not match the constant this file was written
+ * against.
+ *
+ * Building it needs OpenCV, Boost and Eigen alongside cmake. [PolyvectorLibrary.install] carries no
+ * Windows commands, which is how a capability says that platform is not supported yet.
+ */
+
+/**
  * Where `field_polyvector` is, and whether it is there. Field runs without it; [describe] says how
  * to build it.
  *

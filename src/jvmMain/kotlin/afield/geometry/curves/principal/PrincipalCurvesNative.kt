@@ -17,6 +17,23 @@ import java.nio.file.Path
 import kotlin.io.path.exists
 
 /**
+ * The bridge to `field_principal_curves`, the C++ solver behind
+ * [afield.geometry.curves.principal.PrincipalCurves]: where the shared library is, and a
+ * `java.lang.foreign` binding to its C ABI.
+ *
+ * Field runs without the library, so [PrincipalCurvesLibrary] is what the rest of Field asks before
+ * reaching for a curve: the paths it tried, the line the welcome page shows, and the build advice
+ * an `UnsatisfiedLinkError` carries when it was never built. [PrincipalCurvesLibrary.resolvedPath]
+ * is not cached, so a library built during a live session is picked up by the next box run, and
+ * the binding refuses one whose ABI version does not match the constant this file was written
+ * against.
+ *
+ * The C side owns the fitted graph; Kotlin holds a `MemorySegment` handle and copies node
+ * positions, edges, per-point assignments and per-node statistics out on demand.
+ * [afield.geometry.curves.principal.PrincipalForest] is the type a box actually sees.
+ */
+
+/**
  * Where `field_principal_curves` is, and whether it is there. Field runs without it; [describe] says how
  * to build it.
  *

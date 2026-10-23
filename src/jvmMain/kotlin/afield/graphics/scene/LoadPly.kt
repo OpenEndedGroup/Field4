@@ -11,6 +11,24 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 
+/**
+ * Reading a PLY file as a flat table of floats: [readPlyAsFloatTable] parses the header and returns
+ * one row per element in a [PlyFloatTable], every scalar property widened to a float.
+ *
+ * Columns are addressed by the names the file declares (`x`, `nx`, `red`, `f_dc_0`), so a caller
+ * takes the columns it wants instead of matching a fixed vertex layout. That is what a Gaussian
+ * splat PLY needs, and it is how the splat renderers read one. PlayCanvas `.compressed.ply` files
+ * are decompressed on the way through by [CompressedSplatPly], so they arrive with the columns an
+ * uncompressed file would have had. Triangle meshes go the other way, through [PlySupport].
+ *
+ * ASCII and binary PLY are both read, in either byte order. List properties are stepped over rather
+ * than stored, since a fixed-stride table has nowhere to put a variable-length row.
+ */
+
+/**
+ * One PLY element as a fixed-stride float table: [offsets] maps each scalar property to its column,
+ * and [buffer] holds [rowCount] rows of [stride] floats.
+ */
 data class PlyFloatTable(
     val offsets: Map<String, Int>,
     val stride: Int,

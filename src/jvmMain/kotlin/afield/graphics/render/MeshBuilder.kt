@@ -4,6 +4,28 @@ import afield.graphics.shader.Introspected
 
 import org.lwjgl.BufferUtils
 
+/**
+ * Filling a [Mesh]'s vertex and index buffers from Kotlin, by two routes.
+ *
+ * [MeshBuilder] is the imperative one: append vertices and triangles into growable [VertexData]
+ * buffers in any order, and they are uploaded in one pass the next time the mesh is drawn.
+ * `Mesh.builder { }` opens one.
+ *
+ * [writeSuperMap] is the generated one. It reads a vertex shader's declared inputs and returns
+ * Kotlin source for a `mesh.set(numVert, numTriangle) { }` that maps every input buffer at once and
+ * names each one. [afield.graphics.shader.insertForShader] puts that source in a shader box's
+ * preamble, so `set` knows the names a particular shader uses. [writeVertexData] generates a
+ * per-vertex `write(...)` for the same inputs; nothing in the tree calls it.
+ */
+
+/**
+ * Kotlin source for a `Mesh.set(numVert, numTriangle) { }` that maps every one of the shader's
+ * input buffers at once and binds each to a `FloatBuffer` named after its input, with the index
+ * buffer as `tri`.
+ *
+ * Returned as one line of semicolon-separated declarations, since it is spliced into a box's
+ * preamble rather than compiled on its own.
+ */
 fun writeSuperMap(v: List<Introspected.Input>): String {
 
     var body = "lateinit var tri : IntBuffer\n"
@@ -30,12 +52,16 @@ fun writeSuperMap(v: List<Introspected.Input>): String {
     """.trimIndent().replace("\n", "; ").replace(";;", ";").replace(";;", ";").trimIndent()
 }
 
-/**
- * this just didn't work out
- */
-
+// this just didn't work out
 
 // subclasses have actual accessors
+/**
+ * A growable byte buffer and the count of items written into it.
+ *
+ * [MeshBuilder] keeps one per shader input location plus one for triangle indices, which is how a
+ * recipe can append in any order without knowing the final vertex count first. [checkCapacity]
+ * grows the buffer when the next write would not fit.
+ */
 class VertexData {
     var cap = 16
     var buffer = BufferUtils.createByteBuffer(cap * 4)
@@ -63,6 +89,12 @@ class VertexData {
     }
 }
 
+/**
+ * Kotlin source for a `MeshBuilder.write(...)` taking one argument per shader input and appending a
+ * vertex to each buffer.
+ *
+ * Nothing in the tree calls this; [writeSuperMap] is the route a shader box's preamble takes.
+ */
 fun writeVertexData(n: List<Introspected.Input>): String {
     var args = mutableListOf<String>()
     n.forEach { input ->
@@ -92,6 +124,17 @@ fun writeVertexData(n: List<Introspected.Input>): String {
 }
 
 
+/**
+ * Accumulates a mesh's vertices and triangles on the CPU and writes them into [target] in one pass.
+ *
+ * [getDataAndCheckCapacity] hands out a [VertexData] per shader input location, which is what the
+ * generated `write(...)` in a shader box's preamble appends through. [tri] and [quad] index
+ * backwards from the vertices just written, so a recipe never tracks indices itself.
+ *
+ * The write happens the next time [target] is drawn, and only if a count has moved: either the
+ * vertices or the triangles differ from the mesh's current size, or the mesh has no buffers yet.
+ * Rewriting the same number of vertices with different positions therefore uploads nothing.
+ */
 class MeshBuilder(val target: Mesh) {
 
     val data = arrayOfNulls<VertexData>(16)

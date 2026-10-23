@@ -17,6 +17,24 @@ import java.nio.file.Path
 import kotlin.io.path.exists
 
 /**
+ * The bridge to `field_morse_smale`, the C++ solver behind
+ * [afield.geometry.topology.morsesmale.MorseSmale]: where the shared library is, and a
+ * `java.lang.foreign` binding to its C ABI.
+ *
+ * Field runs without the library, so [MorseSmaleLibrary] is what the rest of Field asks before
+ * reaching for a complex: the paths it tried, the line the welcome page shows, and the build
+ * advice an `UnsatisfiedLinkError` carries when it was never built. [MorseSmaleLibrary.resolvedPath]
+ * is not cached, so a library built during a live session is picked up by the next box run, and
+ * the binding refuses one whose ABI version does not match the constant this file was written
+ * against.
+ *
+ * The C side owns the computed complex; Kotlin holds a `MemorySegment` handle and copies critical
+ * points, separatrices and the persistence hierarchy out on demand. That is what lets
+ * [afield.geometry.topology.morsesmale.MorseSmaleComplex.simplify] answer at a new persistence
+ * threshold from the same handle, without recomputing the gradient.
+ */
+
+/**
  * Where `field_morse_smale` is, and whether it is there. Field runs without it; [describe] says how
  * to build it.
  *

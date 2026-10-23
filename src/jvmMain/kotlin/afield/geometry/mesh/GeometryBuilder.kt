@@ -13,6 +13,18 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
+ * The `geometry { }` recipe language and the types a recipe names: [GeometryBuilder], which emits
+ * triangles through a transform stack, and the [GeometryScene] of parts it builds.
+ *
+ * A box usually runs a recipe through [afield.graphics.three.geometry], which draws the scene in a
+ * studio-lit `three` view, or [afield.graphics.three.animateGeometry], which runs it again every
+ * frame. [geometryScene] builds the same scene with no view attached, for code that wants the
+ * [GeometryPart] list itself. [GeometryMaterial] and [GeometrySide] are what [GeometryBuilder.mat]
+ * sets, [GeometryView] what [GeometryBuilder.view] sets, and [GeometryVertex],
+ * [GeometryProfilePoint] and [GeometryTubeSection] are what the emitters take and return.
+ */
+
+/**
  * A stateful, immediate-mode triangle language: describe a model as a recipe of triangles, emitted
  * through a transform stack with a current colour and a current material, and get back a
  * [GeometryScene] of named, coloured, materialled [TriMesh] parts.
