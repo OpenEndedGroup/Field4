@@ -1,7 +1,7 @@
 name: controls_presets_morph_midi
 description: Two boxes for the controls page - a preset bar with calm and storm presets, a morph slider, a record button and MIDI learn; and a log-law cutoff slider driven by a stand-in MIDI knob.
 docs:
-  - page: controls.md
+  - page: visualizers.md
     why: "The page's two examples, ready to open: store, recall and morph presets, record the size slider into keyframes, bind a knob."
 operations:
   - create:

@@ -96,7 +96,7 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
-        // controls.md's demo: a preset bar, record button and MIDI learn; the MIDI box feeds stand-in CCs.
+        // visualizers.md's presets demo: a preset bar, record button and MIDI learn; the MIDI box feeds stand-in CCs.
         "controls_presets_morph_midi",
         // stacksl_examples.md's fitting demo: fits a StackSL program's literals on the CPU.
         "stacksl_fit_demo",

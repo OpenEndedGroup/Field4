@@ -1,6 +1,6 @@
 # Control presets, morph, record and MIDI learn — dev note
 
-User page: `public/docs/controls.md`. Source: `src/jvmMain/kotlin/afield/ui/output/ControlPresets.kt`,
+User page: `public/docs/visualizers.md` (Controls section). Source: `src/jvmMain/kotlin/afield/ui/output/ControlPresets.kt`,
 tests `src/jvmTest/kotlin/afield/ui/output/ControlPresetsTest.kt`, demo transcript
 `dev_docs/agents/transcripts/controls_presets_morph_midi.yaml`.
 
