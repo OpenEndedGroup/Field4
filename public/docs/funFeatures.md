@@ -6,9 +6,9 @@ Field aims to be full of unexpectedly fun features that help you interact with c
 
 The first page of Field is the welcome page: the first tab in our desktop app, and at `https://localhost:9092/welcome` in any web browser:
 
-![The welcome page in a fresh workspace: a document list with a search box and the Starting points and Templates lists on the left, the Changelog and a stack of collapsible panels on the right](assets/welcome/welcome-page.png)
+![The welcome page in a fresh workspace: a document list with a search box and the Starting points, Templates and Kits disclosures on the left, the Changelog and a stack of collapsible panels on the right](assets/welcome/welcome-page.png)
 
-On the left you can make new documents or find that document you just _know_ you edited last week; below the list are **Starting points** and **Templates**, curated scenes and scaffolds that open as an editable copy in your workspace. On the right is a stack of collapsible panels for the rest of Field: the changelog, projects, Maven dependencies, the workspace, the runtime, Vulkan and Python status, AI settings, preferences, and the OSC editor. The search box does full text search over the whole workspace:
+On the left you can make new documents or find that document you just _know_ you edited last week; below the list are **Starting points** and **Templates**, curated scenes and scaffolds that open as an editable copy in your workspace. **Kits** adds [reusable packages and their starting points](kits.md#add-a-self-contained-kit-in-welcome) in another disclosure. On the right is a stack of collapsible panels for the rest of Field: the changelog, projects, Maven dependencies, the workspace, the runtime, Vulkan and Python status, AI settings, preferences, and the OSC editor. The search box does full text search over the whole workspace:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/welcoming.mp4" type="video/mp4">

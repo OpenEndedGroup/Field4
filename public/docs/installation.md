@@ -161,7 +161,7 @@ The launcher then opens Field's desktop app. Press `?` for help, or consult the
 The first tab in the desktop app is the welcome page, also at `https://localhost:9092/welcome` in
 a browser:
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x1260" clip-selector="#docs-welcome-frame" screenshot="assets/welcome/welcome-page.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="welcome-page" alt="The welcome page. Across the top, Field·4 and buttons for Start here: a moving drawing, the five-minute guide, native graphics, documentation, and shutdown, then a filename box with Create. On the left, Running now, a search box and the workspace's documents, and the collapsed Starting points and Templates lists with their counts. On the right, the Changelog open on recent commits, and below it the collapsed Projects, Maven, Workspace, Runtime, Vulkan, Geometry extensions, Python, AI, Preferences and OSC panels with one-line summaries."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x1260" clip-selector="#docs-welcome-frame" screenshot="assets/welcome/welcome-page.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="welcome-page" alt="The welcome page. Across the top, Field·4 and buttons for Start here: a moving drawing, the five-minute guide, native graphics, documentation, and shutdown, then a filename box with Create. On the left, Running now, a search box and the workspace's documents, and the collapsed Starting points, Templates and Kits disclosures with their counts. On the right, the Changelog open on recent commits, and below it the collapsed Projects, Maven, Workspace, Runtime, Vulkan, Geometry extensions, Python, AI, Preferences and OSC panels with one-line summaries."}
 // The compact /welcome row and empty-workspace prompt point to Start here; /welcome is its own page, so it is loaded into a frame on the capture page at a desktop
 // window's size, against the runner's fresh checkout-local workspace: what a new user sees.
 ui.eval("""
@@ -189,6 +189,19 @@ for (i in 0 until 60) {
 }
 check(state.contains("ready")) { "the welcome page did not finish loading: " + state }
 ui.pause(1200)
+ui.eval("""
+    const f = document.getElementById("docs-welcome-frame")
+    const d = f.contentDocument
+    const kits = d.getElementById("kit-library")
+    if (kits?.tagName !== "DETAILS" || kits.open) throw new Error("Kits must be a collapsed disclosure")
+    const summary = kits.querySelector("summary")
+    const r = summary.getBoundingClientRect()
+    if (r.width <= 0 || r.top < 0 || r.bottom > f.clientHeight) throw new Error("Kits disclosure is outside the capture")
+    if (!summary.querySelector("[data-kit-count]")) throw new Error("Kits count is missing")
+    const response = await f.contentWindow.fetch("/api/kits", {cache: "no-store"})
+    if (!response.ok) throw new Error("Kit library failed to load: " + response.status)
+    return true
+""".trimIndent())
 ```
 
 The left side is your documents. Type a name into the box at the top and press **Create** to make
@@ -196,6 +209,10 @@ a new one; the search box above the list searches the text of every document in 
 well as their names. Below the list, **Starting points** and **Templates** are curated scenes and
 scaffolds; opening one gives you an editable copy in your workspace, which is the quickest way to
 see what Field does.
+
+The **Kits** disclosure below them adds reusable packages and their document starting points.
+Add a kit folder there; packages that add runtime code become available after a restart. See
+[Kits and Starting Points](kits.md#add-a-self-contained-kit-in-welcome) for installation and updates.
 
 The right side is a stack of collapsible panels, one per part of Field:
 
