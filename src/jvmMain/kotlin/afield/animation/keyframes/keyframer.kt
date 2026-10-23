@@ -1120,6 +1120,30 @@ class KeyframeScope(val schemaVersion: Int = 0) {
         schemaMissingKeys.getOrPut(schemaVersion) { mutableMapOf() }[name] = value
     }
 
+    private val delegatedControls = linkedMapOf<String, KeyframeControl<*>>()
+    private val controlChangeListeners = mutableListOf<(String) -> Unit>()
+
+    internal fun declareControl(control: KeyframeControl<*>) {
+        delegatedControls.remove(control.name)
+        delegatedControls[control.name] = control
+    }
+
+    internal fun declaredControls(): List<KeyframeControl<*>> = delegatedControls.values.toList()
+
+    internal fun fireControlChange(name: String) {
+        controlChangeListeners.toList().forEach { it(name) }
+    }
+
+    /**
+     * Call [listener] with the key name whenever a control declared with `by keys.slider(...)` (and the
+     * other [KeyframeControl] kinds) changes from outside the code: a hand on the control, a recalled
+     * or morphed key, or the panel restoring its value when the box runs again. Assigning the local in
+     * code does not call it.
+     */
+    fun onChange(listener: (name: String) -> Unit) {
+        controlChangeListeners += listener
+    }
+
     /**
      * Read every registered target *right now* into a new [Key] — the snapshot call.
      *

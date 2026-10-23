@@ -2207,6 +2207,13 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
     internal val ownerBox: Box get() = box
     /** The output channel this group is shown in. */
     internal val ownerChannel: String get() = channel
+
+    /**
+     * Add every control declared on this scope with `var size by keys.slider(...)` (and `vec2`,
+     * `color`, `checkbox`, `text`), in declaration order — see `KeyframeControl`.
+     */
+    fun afield.animation.keyframes.KeyframeScope.controls() =
+        afield.animation.keyframes.addKeyframeControls(this@ControlGroupBuilder, this)
     private val afterShown = mutableListOf<() -> Unit>()
     private val htmlParts = mutableListOf<String>()
     private val controls = mutableListOf<ControllerControl>()
