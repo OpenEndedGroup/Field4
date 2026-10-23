@@ -3,6 +3,7 @@ package afield.document.graph
 import afield.app.protocol.GoJobs
 
 import afield.app.diagnostics.BoxOutputLog
+import afield.app.diagnostics.LatencySpans
 import afield.app.diagnostics.ProfileOrigin
 import afield.app.diagnostics.logTime
 import afield.app.notifications.notify
@@ -2031,7 +2032,9 @@ fun makeKI(box: Box, reason: String = "makeKI call", superseded: () -> Boolean =
             "info,ki,startup",
             "request #$startupId async reason=$reason box=${box.kotlinStartupLabel()} caller=$requestedFrom"
         )
-        val ki = createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+        val ki = LatencySpans.time("engine.create", box = box.id, detail = "async") {
+            createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+        }
         ki.associatedBox = box  // Set the box reference for @exported support
         // Close the engine's readiness gate now (synchronously, before returning `ki`) so any
         // exec/evaluate that follows waits for the async intro below, which opens it again.
@@ -2072,9 +2075,11 @@ fun makeKI(box: Box, reason: String = "makeKI call", superseded: () -> Boolean =
                             "info,ki,startup",
                             "begin imports #$startupId box=${box.kotlinStartupLabel()} introLength=${intro.length}"
                         )
-                        ki.bootstrap(
-                            intro, implicits = listOf(box)
-                        )
+                        LatencySpans.time("engine.bootstrap", box = box.id, detail = "async") {
+                            ki.bootstrap(
+                                intro, implicits = listOf(box)
+                            )
+                        }
                         lprintln("info,ki,startup", "reset preamble cache #$startupId box=${box.kotlinStartupLabel()}")
                         box.properties.remove("_preamble")
                         lprintln(
@@ -2103,7 +2108,9 @@ suspend fun makeKIHere(box: Box, reason: String = "makeKIHere call"): KotlinScri
         "info,ki,startup",
         "request #$startupId sync reason=$reason box=${box.kotlinStartupLabel()} caller=$requestedFrom"
     )
-    val ki = createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+    val ki = LatencySpans.time("engine.create", box = box.id, detail = "sync") {
+        createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+    }
     ki.associatedBox = box  // Set the box reference for @exported support
     val si = thisSessionInfo.get()
     if (box.properties["_tombstone"].isTrue()) {
@@ -2120,9 +2127,11 @@ suspend fun makeKIHere(box: Box, reason: String = "makeKIHere call"): KotlinScri
                 "info,ki,startup",
                 "begin imports #$startupId box=${box.kotlinStartupLabel()} introLength=${intro.length}"
             )
-            ki.bootstrap(
-                intro, implicits = listOf(box)
-            )
+            LatencySpans.time("engine.bootstrap", box = box.id, detail = "sync") {
+                ki.bootstrap(
+                    intro, implicits = listOf(box)
+                )
+            }
             val preamble = box.preamble
             if (preamble.isNotBlank()) {
                 lprintln(

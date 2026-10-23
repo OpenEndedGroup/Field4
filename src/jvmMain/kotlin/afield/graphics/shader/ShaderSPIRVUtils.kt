@@ -4,6 +4,7 @@ import afield.graphics.render.main
 import afield.graphics.scene.main
 
 import afield.graphics.vulkan.util.Options
+import afield.app.diagnostics.LatencySpans
 import afield.app.diagnostics.logging.lprintln
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.system.NativeResource
@@ -145,7 +146,12 @@ object ShaderSPIRVUtils {
 
     @Volatile private var warnedPrintfWithoutLayer = false
 
-    fun compileShader(source: ShaderCompileSource, shaderKind: ShaderKind): SPIRV {
+    fun compileShader(source: ShaderCompileSource, shaderKind: ShaderKind): SPIRV =
+        LatencySpans.time("shader.compile", detail = "${shaderKind.name} ${source.sourceName}") {
+            compileShaderUntimed(source, shaderKind)
+        }
+
+    private fun compileShaderUntimed(source: ShaderCompileSource, shaderKind: ShaderKind): SPIRV {
         // debugPrintfEXT is implemented by the validation layer: with neither validation nor shader
         // printf on, the call compiles and prints nothing. Say so once rather than leave it silent.
         if (!warnedPrintfWithoutLayer && !(Options.validate || Options.shaderDebugPrintf) &&

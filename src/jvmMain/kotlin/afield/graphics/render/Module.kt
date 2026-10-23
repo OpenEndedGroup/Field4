@@ -16,6 +16,7 @@
 
 package afield.graphics.render
 
+import afield.app.diagnostics.LatencySpans
 import afield.graphics.vulkan.targets.HasRenderToTexture
 import afield.graphics.scene.main
 
@@ -1028,15 +1029,17 @@ class Module(val parameters: Parameters) : Renderable {
 
                 ds?.let { gp.pDepthStencilState(it) }
 
-                vkCheck(
-                    vkCreateGraphicsPipelines(
-                        parameters.renderer.device.vkDevice,
-                        parameters.renderer.pipelineCache.vkPipelineCache,
-                        gp,
-                        null,
-                        lp
-                    ), "Error creating graphics pipeline"
-                )
+                LatencySpans.time("pipeline.create", detail = "graphics") {
+                    vkCheck(
+                        vkCreateGraphicsPipelines(
+                            parameters.renderer.device.vkDevice,
+                            parameters.renderer.pipelineCache.vkPipelineCache,
+                            gp,
+                            null,
+                            lp
+                        ), "Error creating graphics pipeline"
+                    )
+                }
                 this.pipeline = lp[0]
                 pipelineDisposeToken.updateCleanup(snapshotPipelineCleanup())
 
@@ -1171,15 +1174,17 @@ class Module(val parameters: Parameters) : Renderable {
 
                 val lp = stack.mallocLong(1)
                 synchronized(parameters.renderer.pipelineCache) {
-                    vkCheck(
-                        vkCreateGraphicsPipelines(
-                            parameters.renderer.device.vkDevice,
-                            parameters.renderer.pipelineCache.vkPipelineCache,
-                            gp,
-                            null,
-                            lp
-                        ), "Error creating graphics pipeline update"
-                    )
+                    LatencySpans.time("pipeline.update", detail = "graphics") {
+                        vkCheck(
+                            vkCreateGraphicsPipelines(
+                                parameters.renderer.device.vkDevice,
+                                parameters.renderer.pipelineCache.vkPipelineCache,
+                                gp,
+                                null,
+                                lp
+                            ), "Error creating graphics pipeline update"
+                        )
+                    }
                 }
                 newPipeline = lp[0]
                 parameters.renderer.device.nameObject(
