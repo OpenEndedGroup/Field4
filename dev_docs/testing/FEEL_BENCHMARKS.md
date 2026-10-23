@@ -127,14 +127,33 @@ symbol tables, so each compile rebuilt them. One compiler for the life of the JV
 A compile is now ~1.5 ms; the first one in a JVM still builds the tables (~100 ms, in
 "triangle first launch").
 
+## Running a box: spare engines, 2026-10-23
+
+`execute-all` gives a box a fresh engine every run, so a run started with a ~250 ms engine
+build and stdlib bootstrap. `SpareEngines` now builds the next engine in the background after
+each run's verdict, and the next run takes it (waiting for one still being built rather than
+building a second); the run still starts from a fresh REPL. A/B with the same harness settings
+(`--think 1 --reps 5`, on battery), `AFIELD_SPARE_ENGINES=0` against the default:
+
+| println box | off | on |
+| --- | ---: | ---: |
+| same code again | 487 | 188 |
+| warm rerun | 421 | 171 |
+| edit + rerun | 334 | 131 |
+
+Launches are unchanged: `launch` never replaced the engine. The first run of a box still builds
+one on the spot (~1 s in a cold JVM). `kotlin.spare-engines.smoke` pins the behaviour: a run
+takes the spare, cannot see the previous run's declarations, disposes the previous engine; a
+retired box disposes its spare; a spare older than a classpath change is refused.
+
+The think time matters: with steps back to back (`--think 0`), the next run arrives while the
+spare is still being built and waits for most of it.
+
 ## What the baseline says to fix next
 
-1. **`execute-all` rebuilds the box's engine on every run.** `executeAllRequest` replaces the
-   engine with `makeKIHere` and re-bootstraps the stdlib intro synchronously, so a one-line
-   `println` costs ~370 ms warm, ~265 of it the reset. It also discards the engine `makeKI`
-   already bootstrapped in the background, and defeats the rerun compile cache, which lives in
-   the engine. Candidates: reuse a pre-bootstrapped spare engine, cache the compiled intro across
-   engines, or keep the engine and reset only its state.
+1. **The first run of a box builds its engine on the spot.** The engine the box made when it was
+   opened (`makeKI`, bootstrapped in the background) is thrown away by the first `execute-all`;
+   it could be adopted when it has never run anything.
 2. **A launch compiles each shader stage twice.** `shaders.kt` compiles a stage to introspect it,
    and `Module` compiles it again when it is not handed that introspection: four `shader.compile`s
    per triangle launch for two stages. (Reload Shader compiles each stage once, the unchanged

@@ -102,6 +102,9 @@ object SpareEngines {
         }
     }
 
+    /** The spare waiting for [box]'s next run, without taking it; for tests. */
+    internal fun peek(box: Box): KotlinScriptEngine? = synchronized(lock) { slots[box]?.spare?.engine }
+
     /** Drop [box]'s spare, and supersede one being built (it is disposed when its build returns). */
     fun discard(box: Box) {
         val spare = synchronized(lock) { slots.remove(box)?.spare }
