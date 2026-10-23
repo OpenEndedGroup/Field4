@@ -209,8 +209,6 @@ fun textPropertyValue(box: Box, property: String, value: String): Any {
 /** Comma-separated membership used by the frontend and server visibility intersection. */
 var Box.layers by Delegation<String>(defaultValue = { "default" })
 
-/** Persisted frame overrides keyed by layer; updated when the session leaves an active layer. */
-
 /**
  * Persisted frame overrides keyed by layer; updated when the session leaves an active layer.
  *
