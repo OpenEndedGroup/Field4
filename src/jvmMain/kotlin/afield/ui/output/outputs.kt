@@ -2114,20 +2114,46 @@ internal fun updateControllerControlValueInMemory(
 
 internal fun updateControllerControlValue(controlId: String, update: (ControllerControl) -> ControllerControl): List<ControllerControl> {
     val updated = mutableListOf<ControllerControl>()
+    val owners = mutableListOf<Box>()
     controllerControlGroups.replaceAll { groupKey, controls ->
         controls.map { control ->
             if (control.id == controlId) {
                 update(control).also {
                     updated += it
-                    controllerControlGroupBoxes[groupKey]?.updateCachedControlGroupValue(it)
+                    controllerControlGroupBoxes[groupKey]?.let { box -> box.updateCachedControlGroupValue(it); owners += box }
                 }
             } else {
                 control
             }
         }
     }
+    // Every person-made change (browser, tablet) arrives here; recorders and MIDI learn listen.
+    updated.zip(owners).forEach { (control, box) -> notifyControlGestureListeners(box, control) }
     return updated
 }
+
+/**
+ * The live controls of [box]'s [channel] group, each with its preset key — `type/label#ordinal`, the
+ * label-derived part of its cache key, so a key names the same control after a rerun.
+ */
+internal fun controlGroupControlsWithKeys(box: Box, channel: String): List<Pair<String, ControllerControl>> {
+    val live = controllerControlGroups[controllerControlGroupKey(box.id, channel)] ?: return emptyList()
+    val keyById = box.existingControlGroupCache()?.entries?.associate { it.value.id to it.key } ?: emptyMap()
+    return live.mapNotNull { control ->
+        val cacheKey = keyById[control.id] ?: return@mapNotNull null
+        val parts = cacheKey.split('\u0000')
+        if (parts.size < 4 || parts[0] != channel) return@mapNotNull null
+        "${parts[1]}/${parts[2]}#${parts[3]}" to control
+    }
+}
+
+/** The live record for [controlId], or null. */
+internal fun liveControllerControl(controlId: String): ControllerControl? = controllerControlForId(controlId)
+
+/** The box that owns the live control [controlId]. */
+internal fun ownerOfControllerControl(controlId: String): Box? =
+    controllerControlGroups.entries.firstOrNull { e -> e.value.any { it.id == controlId } }
+        ?.let { controllerControlGroupBoxes[it.key] }
 
 /** The programmatic counterpart of [updateControllerControlValue]: live cache, no operation log. */
 internal fun updateControllerControlValueProgrammatically(
@@ -2183,6 +2209,10 @@ class ControlValueHandle<T> internal constructor(
 }
 
 class ControlGroupBuilder(private val box: Box, private val channel: String) {
+    /** The box this group belongs to — for builder extensions such as `presetBar` (ControlPresets.kt). */
+    internal val ownerBox: Box get() = box
+    /** The output channel this group is shown in. */
+    internal val ownerChannel: String get() = channel
     private val afterShown = mutableListOf<() -> Unit>()
     private val htmlParts = mutableListOf<String>()
     private val controls = mutableListOf<ControllerControl>()
