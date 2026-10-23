@@ -1713,11 +1713,13 @@ internal fun getButtonCallback(controlId: String): ((Boolean) -> Unit)? = button
  * listeners that stop a pointer released elsewhere from leaving the button held down.
  */
 internal fun buildButtonHtml(controlId: String, label: String, hit: String = "hold"): String {
-    val escaped = label.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    fun esc(t: String) = t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    val escaped = esc(label)
+    val hitText = esc(hit)
     return """
         <div class="field-control field-button" data-control-id="$controlId">
-            <span class="field-label">$escaped</span>
-            <button type="button" class="field-button-hit" id="$controlId" aria-pressed="false">$hit</button>
+            ${if (escaped.isEmpty()) "" else "<span class=\"field-label\">$escaped</span>"}
+            <button type="button" class="field-button-hit" id="$controlId" aria-pressed="false">$hitText</button>
         </div>
     """.trimIndent()
 }
@@ -2127,13 +2129,13 @@ internal fun updateControllerControlValue(controlId: String, update: (Controller
             }
         }
     }
-    // Every person-made change (browser, tablet) arrives here; recorders and MIDI learn listen.
+    // Every person-made change (browser, tablet) arrives here; recordToggle and MIDI learn listen.
     updated.zip(owners).forEach { (control, box) -> notifyControlGestureListeners(box, control) }
     return updated
 }
 
 /**
- * The live controls of [box]'s [channel] group, each with its preset key — `type/label#ordinal`, the
+ * The live controls of [box]'s [channel] group, each with its control key — `type/label#ordinal`, the
  * label-derived part of its cache key, so a key names the same control after a rerun.
  */
 internal fun controlGroupControlsWithKeys(box: Box, channel: String): List<Pair<String, ControllerControl>> {
@@ -2146,14 +2148,6 @@ internal fun controlGroupControlsWithKeys(box: Box, channel: String): List<Pair<
         "${parts[1]}/${parts[2]}#${parts[3]}" to control
     }
 }
-
-/** The live record for [controlId], or null. */
-internal fun liveControllerControl(controlId: String): ControllerControl? = controllerControlForId(controlId)
-
-/** The box that owns the live control [controlId]. */
-internal fun ownerOfControllerControl(controlId: String): Box? =
-    controllerControlGroups.entries.firstOrNull { e -> e.value.any { it.id == controlId } }
-        ?.let { controllerControlGroupBoxes[it.key] }
 
 /** The programmatic counterpart of [updateControllerControlValue]: live cache, no operation log. */
 internal fun updateControllerControlValueProgrammatically(
@@ -2488,12 +2482,15 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
      * @param label text shown beside the button
      * @param onUpdate called with `true` on the way down and `false` on the way up
      */
-    fun button(label: String, onUpdate: (Boolean) -> Unit) {
+    fun button(label: String, onUpdate: (Boolean) -> Unit) = button(label, "hold", onUpdate)
+
+    /** [button] whose hit area reads [hit]; for compact strips, where the hit text is the label. */
+    internal fun button(label: String, hit: String, onUpdate: (Boolean) -> Unit) {
         // The id is still derived from the label and ordinal, so both control surfaces name the same
         // button and a rerun does not orphan the one on a tablet — only the *value* is uncached.
         val identity = controlIdentity("button", "button", label)
         registerButtonCallback(identity.id, onUpdate)
-        htmlParts += buildButtonHtml(identity.id, label)
+        htmlParts += buildButtonHtml(identity.id, if (hit == "hold") label else "", hit)
         controls += ControllerControl(
             id = identity.id,
             type = "button",
@@ -2658,6 +2655,13 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
     }
 
     internal fun runAfterShown() = afterShown.forEach { it() }
+
+    /** Lays the controls [block] declares side by side, wrapping (`.field-control-row` in field.css). */
+    internal fun inlineRow(block: ControlGroupBuilder.() -> Unit) {
+        htmlParts += """<div class="field-control-row">"""
+        block()
+        htmlParts += "</div>"
+    }
 
     /** A write-only, uncached driver for the `value` of control [controlId] — see `visualizers.kt` playheads. */
     internal fun playheadHandle(controlId: String) =

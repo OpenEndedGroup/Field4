@@ -1,10 +1,20 @@
 package afield.ui.output
 
+import afield.animation.keyframes.KeyframeCollection
+import afield.animation.keyframes.KeyframeScope
+import afield.animation.keyframes.keyframeCheckbox
+import afield.animation.keyframes.keyframeColorPicker
+import afield.animation.keyframes.keyframeSlider
+import afield.animation.keyframes.keyframeText
+import afield.animation.keyframes.keyframeVec2Control
+import afield.app.protocol.ControllerControl
 import afield.document.graph.Box
 import afield.document.persistence.Edn
 import afield.math.linalg.Vector2f
 import afield.math.linalg.Vector4f
 import afield.ui.controls.ControlLaw
+import java.nio.file.Files
+import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -14,170 +24,156 @@ import kotlin.test.assertTrue
 class ControlPresetsTest {
 
     private class Look {
-        var size = 0.0
+        var size = 1.0
         var offset = Vector2f()
         var tint = Vector4f(1f, 1f, 1f, 1f)
         var on = false
-        var title = ""
-        var morphCalls = 0
+        var title = "calm"
     }
 
     private fun newBox(): Box = Box("presets-${System.nanoTime()}").also { it.output.displayProxy = { _, _ -> } }
 
-    private fun Box.look(l: Look, bar: Boolean = false) = controlGroup("look") {
+    private fun tempKeys(): Path = Files.createTempDirectory("control-presets-test-").resolve("keys")
+
+    /** The look as preset-able controls: every one is a `keyframe*` control on [scope]. */
+    private fun Box.look(l: Look, scope: KeyframeScope, dir: Path): PresetBar {
+        var bar: PresetBar? = null
+        controlGroup("look") {
+            keyframeSlider(scope, "size", "size", 0.0, 10.0, get = { l.size }, set = { l.size = it })
+            keyframeVec2Control(scope, "offset", "offset", get = { l.offset }, set = { l.offset = Vector2f(it) })
+            keyframeColorPicker(scope, "tint", "tint", get = { l.tint }, set = { l.tint = Vector4f(it) })
+            keyframeCheckbox(scope, "on", "on", get = { l.on }, set = { l.on = it })
+            keyframeText(scope, "title", "title", get = { l.title }, set = { l.title = it })
+            bar = presetBar(scope, dir)
+        }
+        return bar!!
+    }
+
+    private fun Box.plainLook(l: Look) = controlGroup("look") {
         slider("size", 0.0, 10.0, initialValue = 1.0) { l.size = it }
         vec2Control("offset") { l.offset = it }
         colorPicker("tint") { l.tint = it }
         checkbox("on") { l.on = it }
         text("title", "calm") { l.title = it }
-        if (bar) presetBar()
     }
 
-    /** What a person moving a control does: the registry and the rerun cache, then the callback. */
-    private fun Box.gesture(label: String, value: ControlValue) {
-        val (key, control) = controlGroupControlsWithKeys(this, "look").first { it.second.label == label }
-        applyControlValues(this, "look", mapOf(key to value), durable = true)
-        check(key.isNotEmpty() && control.label == label)
+    /** What a person moving a control does: the registry (which listeners hear), then the callback. */
+    private fun Box.gesture(label: String, change: (ControllerControl) -> ControllerControl) {
+        val (_, control) = controlGroupControlsWithKeys(this, "look").first { it.second.label == label }
+        val next = updateControllerControlValue(control.id, change).single()
+        when (next.type) {
+            "slider" -> getSliderCallback(next.id)!!.invoke(next.value!!)
+            "vec2" -> getVec2Callback(next.id)!!.invoke(Vector2f(next.x!!.toFloat(), next.y!!.toFloat()))
+            "color" -> getColorCallback(next.id)!!.invoke(Vector4f(next.r!!.toFloat(), next.g!!.toFloat(), next.b!!.toFloat(), next.a!!.toFloat()))
+            "checkbox" -> getCheckboxCallback(next.id)!!.invoke(next.checked!!)
+            "string" -> getStringCallback(next.id)!!.invoke(next.text!!)
+        }
     }
+
+    private fun live(box: Box) = controllerControlsForBox(box.id).associateBy { it.label }
 
     @Test
     fun keysAreLabelDerivedAndStable() {
         val box = newBox()
-        box.look(Look())
+        box.plainLook(Look())
         val keys = controlGroupControlsWithKeys(box, "look").map { it.first }
         assertEquals(listOf("slider/size#0", "vec2/offset#0", "color/tint#0", "checkbox/on#0", "string/title#0"), keys)
-        box.look(Look())
+        box.plainLook(Look())
         assertEquals(keys, controlGroupControlsWithKeys(box, "look").map { it.first }, "a rerun names the same controls")
     }
 
     @Test
-    fun saveRecallCallsCallbacksAndMovesTheControls() {
+    fun presetsAreSavedKeysThatRecallAndMoveTheControls() {
         val box = newBox()
         val l = Look()
-        box.look(l)
-        val presets = box.controlPresets("look")
-        presets.save("calm")
+        val scope = KeyframeScope()
+        val dir = tempKeys()
+        val bar = box.look(l, scope, dir)
+        assertEquals(emptyList(), bar.names)
+        bar.store("calm")
 
-        box.gesture("size", ControlValue.Num(8.0))
-        box.gesture("offset", ControlValue.Vec(0.5, -0.5))
-        box.gesture("tint", ControlValue.Rgba(1.0, 0.0, 0.0, 1.0))
-        box.gesture("on", ControlValue.Flag(true))
-        box.gesture("title", ControlValue.Text("storm"))
-        presets.save("storm")
-        assertEquals(listOf("calm", "storm"), presets.names)
+        box.gesture("size") { it.copy(value = 8.0) }
+        box.gesture("offset") { it.copy(x = 0.5, y = -0.5) }
+        box.gesture("on") { it.copy(checked = true) }
+        box.gesture("title") { it.copy(text = "storm") }
+        bar.store("storm")
+        assertEquals(listOf("calm", "storm"), bar.names)
         assertEquals(8.0, l.size)
 
-        assertTrue(presets.recall("calm"))
+        assertTrue(bar.recall("calm"))
         assertEquals(1.0, l.size)
         assertEquals(Vector2f(0f, 0f), l.offset)
-        assertEquals(false, l.on)
+        assertFalse(l.on)
         assertEquals("calm", l.title)
-        val live = controllerControlsForBox(box.id).associateBy { it.label }
-        assertEquals(1.0, live.getValue("size").value, "the visible control follows the recall")
-        assertFalse(presets.recall("nope"))
+        assertEquals(1.0, live(box).getValue("size").value, "the visible control follows the recall")
+        assertFalse(bar.recall("nope"))
+
+        // A store is a keyframer save: history, and a folder the collection browser reads.
+        bar.store("calm", note = "again")
+        assertEquals(2, scope.keyVersions(bar.path("calm")).size)
+        assertEquals(listOf("calm", "storm"), KeyframeCollection.load(dir).files.map { it.relative }.sorted())
+
+        // A rerun lists the saved keys as recall buttons.
+        box.look(l, scope, dir)
+        val labels = live(box).keys
+        assertTrue("▸ calm" in labels && "▸ storm" in labels, "$labels")
     }
 
     @Test
-    fun morphInterpolatesNumbersAndSnapsFlags() {
+    fun theMorphSliderBlendsKeysAndMovesTheControls() {
         val box = newBox()
         val l = Look()
-        box.look(l)
-        val presets = box.controlPresets("look")
-        presets.save("a")
-        box.gesture("size", ControlValue.Num(9.0))
-        box.gesture("offset", ControlValue.Vec(1.0, 1.0))
-        box.gesture("tint", ControlValue.Rgba(0.0, 0.0, 0.0, 0.0))
-        box.gesture("on", ControlValue.Flag(true))
-        box.gesture("title", ControlValue.Text("b"))
-        presets.save("b")
+        val scope = KeyframeScope()
+        val bar = box.look(l, scope, tempKeys())
+        bar.store("a")
+        box.gesture("size") { it.copy(value = 9.0) }
+        box.gesture("offset") { it.copy(x = 1.0, y = 1.0) }
+        box.gesture("tint") { it.copy(r = 0.0, g = 0.0, b = 0.0, a = 0.0) }
+        box.gesture("on") { it.copy(checked = true) }
+        bar.store("b")
+        assertTrue(scope.capture().values.keys.none { it.contains(presetMorphLabel) }, "the morph slider is not in a key")
 
-        presets.morph(0.25, "a", "b")
+        bar.morph(0.25)
         assertEquals(3.0, l.size, 1e-9)
         assertEquals(0.25f, l.offset.x, 1e-6f)
         assertEquals(0.75f, l.tint.x, 1e-6f)
         assertFalse(l.on, "a flag holds until halfway")
-        assertEquals("calm", l.title)
+        assertEquals(3.0, live(box).getValue("size").value!!, 1e-9, "the slider shows the blend")
 
-        presets.morph(0.75, "a", "b")
+        val morph = live(box).getValue(presetMorphLabel)
+        getSliderCallback(morph.id)!!.invoke(0.75)
         assertEquals(7.0, l.size, 1e-9)
         assertTrue(l.on)
-        assertEquals("b", l.title)
+        assertNull(PresetBar(scope, tempKeys()).morph(0.5), "nothing to blend without two keys")
     }
 
     @Test
-    fun morphAcrossThreePresetsIsPiecewise() {
-        val p = listOf(
-            mapOf("k" to ControlValue.Num(0.0)),
-            mapOf("k" to ControlValue.Num(10.0), "only" to ControlValue.Num(4.0)),
-            mapOf("k" to ControlValue.Num(0.0)),
-        )
-        assertEquals(ControlValue.Num(5.0), morphControlValues(p, 0.25)["k"])
-        assertEquals(ControlValue.Num(10.0), morphControlValues(p, 0.5)["k"])
-        assertEquals(ControlValue.Num(5.0), morphControlValues(p, 0.75)["k"])
-        assertEquals(ControlValue.Num(0.0), morphControlValues(p, 1.0)["k"])
-        assertEquals(ControlValue.Num(4.0), morphControlValues(p, 0.25)["only"], "a key one side lacks keeps its value")
-        assertEquals(ControlValue.Num(0.0), morphControlValues(p, -3.0)["k"], "t is clamped")
+    fun interpolateAlongIsPiecewiseAndClamped() {
+        val scope = KeyframeScope()
+        val keys = listOf(scope.Key("k" to 0.0), scope.Key("k" to 10.0), scope.Key("k" to 0.0))
+        assertEquals(5.0, scope.interpolateAlong(keys, 0.25).values["k"])
+        assertEquals(10.0, scope.interpolateAlong(keys, 0.5).values["k"])
+        assertEquals(5.0, scope.interpolateAlong(keys, 0.75).values["k"])
+        assertEquals(0.0, scope.interpolateAlong(keys, 1.0).values["k"])
+        assertEquals(0.0, scope.interpolateAlong(keys, -3.0).values["k"])
+        assertEquals(keys[0], scope.interpolateAlong(keys.take(1), 0.7))
     }
 
     @Test
-    fun presetsSurviveAnEdnRoundTripAndAFreshBox() {
-        val box = newBox()
-        val l = Look()
-        box.look(l)
-        box.gesture("size", ControlValue.Num(6.5))
-        box.gesture("tint", ControlValue.Rgba(0.1, 0.2, 0.3, 0.4))
-        box.gesture("title", ControlValue.Text("saved"))
-        box.controlPresets("look").save("keep")
-
-        val edn = Edn.write(box.properties[controlPresetsProperty])
-        val reloaded = Edn.read(edn)
-
-        val fresh = newBox()
-        fresh.properties[controlPresetsProperty] = reloaded
-        val l2 = Look()
-        fresh.look(l2)
-        val presets = fresh.controlPresets("look")
-        assertEquals(listOf("keep"), presets.names)
-        assertTrue(presets.recall("keep"))
-        assertEquals(6.5, l2.size, 1e-9)
-        assertEquals(0.4f, l2.tint.w, 1e-6f)
-        assertEquals("saved", l2.title)
-    }
-
-    @Test
-    fun storedValuesReadTolerantly() {
-        assertEquals(ControlValue.Num(2.0), controlValueFromStored(mapOf("value" to 2L)))
-        assertEquals(ControlValue.Flag(true), controlValueFromStored(mapOf("checked" to "true")))
-        assertEquals(ControlValue.Vec(1.0, 2.0), controlValueFromStored(mapOf("x" to "1", "y" to 2)))
-        assertNull(controlValueFromStored(mapOf("nothing" to 1)))
-        listOf(ControlValue.Num(1.5), ControlValue.Vec(1.0, -1.0), ControlValue.Rgba(0.1, 0.2, 0.3, 0.4), ControlValue.Flag(false), ControlValue.Text("x"))
-            .forEach { assertEquals(it, controlValueFromStored(controlValueToStored(it))) }
-    }
-
-    @Test
-    fun theMorphSliderIsNotPartOfAPresetAndDrivesTheBlend() {
-        val box = newBox()
-        val l = Look()
-        box.look(l, bar = true)
-        val presets = box.controlPresets("look")
-        presets.save("a")
-        assertTrue(presets["a"]!!.keys.none { it.contains(presetMorphLabel) })
-        box.gesture("size", ControlValue.Num(10.0))
-        presets.save("b")
-        box.look(l, bar = true) // rerun: a recall button per preset now exists
-        val labels = controllerControlsForBox(box.id).map { it.label }
-        assertTrue("▸ a" in labels && "▸ b" in labels, "$labels")
-
-        val morph = controllerControlsForBox(box.id).first { it.label == presetMorphLabel }
-        getSliderCallback(morph.id)!!.invoke(0.5)
-        assertEquals(5.5, l.size, 1e-9)
+    fun savedKeyNamesSkipsHistories() {
+        val scope = KeyframeScope()
+        val dir = tempKeys()
+        assertEquals(emptyList(), scope.savedKeyNames(dir))
+        scope.Key("x" to 1.0).save(dir.resolve("b"))
+        scope.Key("x" to 2.0).save(dir.resolve("a"))
+        assertEquals(listOf("a", "b"), scope.savedKeyNames(dir))
     }
 
     @Test
     fun recordingBakesATakeIntoKeys() {
         val box = newBox()
         val l = Look()
-        box.look(l)
+        box.plainLook(l)
         val rec = box.recordControl("size", "look", curveName = "size-take")
         // A straight ramp and a hold: thinning keeps the corners, not every sample.
         for (i in 0..20) rec.capture(i * 0.05, i * 0.5)
@@ -190,9 +186,9 @@ class ControlPresetsTest {
 
         // A real gesture reaches the recorder through the same path a browser change takes.
         val live = box.recordControl("size", "look")
-        box.gesture("size", ControlValue.Num(4.0))
+        box.gesture("size") { it.copy(value = 4.0) }
         assertEquals(1, live.sampleCount)
-        box.gesture("on", ControlValue.Flag(true))
+        box.gesture("on") { it.copy(checked = true) }
         assertEquals(1, live.sampleCount, "another control is not recorded")
     }
 

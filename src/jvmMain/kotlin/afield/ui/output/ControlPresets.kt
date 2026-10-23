@@ -3,150 +3,52 @@ package afield.ui.output
 import afield.animation.gesture.reduceTakeIndices
 import afield.animation.keyframes.Keyframe
 import afield.animation.keyframes.KeyframeEvaluator
+import afield.animation.keyframes.KeyframeScope
 import afield.animation.keyframes.keyframes
 import afield.app.diagnostics.logging.lprintln
 import afield.app.protocol.ControllerControl
 import afield.app.server.broadcastControllerControlUpdates
 import afield.audio.synth.MidiInput
 import afield.document.graph.Box
+import afield.document.workspace.FileManager
 import afield.ui.controls.ControlLaw
 import afield.ui.controls.ControlLawSpec
 import afield.math.linalg.Vector2f
 import afield.math.linalg.Vector4f
+import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import javax.sound.midi.ShortMessage
+import kotlin.io.path.exists
 
 /*
- * Presets, morphing, recording and MIDI learn for `controlGroup` controls.
+ * Presets, recording and MIDI learn for `controlGroup` controls.
  *
- * Everything here addresses a control by its *preset key*, `type/label#ordinal` (`slider/speed#0`): the
- * label-derived part of the id a control group already gives each control, so a key names the same
- * control after the box runs again, after Field restarts, and on the tablet. Nothing needs declaring
- * per control: any slider, vec2, colour, checkbox or text in a group can be stored, morphed, recorded
- * or bound to a knob.
+ * A preset is a keyframer key: declare the controls with the `keyframe*` helpers (keyframer.kt), and
+ * [presetBar] stores, recalls and blends `KeyframeScope` keys — saved with version history, browsable
+ * in the keyframe collection browser. Recording and MIDI learn address a control by its *control key*,
+ * `type/label#ordinal` (`slider/speed#0`): the label-derived part of the id a control group already
+ * gives each control, so a key names the same control after a rerun, a restart, and on the tablet.
  */
 
 // ------------------------------------------------------------------------
-// Values
+// Moving live controls from code (recording playback, knobs)
 
-/** One stored control value. Numbers, points and colours morph; flags and text snap. */
-sealed interface ControlValue {
-    data class Num(val value: Double) : ControlValue
-    data class Vec(val x: Double, val y: Double) : ControlValue
-    data class Rgba(val r: Double, val g: Double, val b: Double, val a: Double) : ControlValue
-    data class Flag(val checked: Boolean) : ControlValue
-    data class Text(val text: String) : ControlValue
-}
-
-/** The value [control] holds, or null for a control that has none worth storing (button, meter, ...). */
-fun controlValueOf(control: ControllerControl): ControlValue? = when (control.type) {
-    "slider" -> control.value?.let { ControlValue.Num(it) }
-    "vec2" -> if (control.x != null && control.y != null) ControlValue.Vec(control.x!!, control.y!!) else null
-    "color" -> if (control.r != null) ControlValue.Rgba(control.r!!, control.g ?: 0.0, control.b ?: 0.0, control.a ?: 1.0) else null
-    "checkbox" -> control.checked?.let { ControlValue.Flag(it) }
-    "string" -> control.text?.let { ControlValue.Text(it) }
-    else -> null
-}
-
-/** [control] showing [value], clamped to its range; null when the kinds do not match. */
-fun withControlValue(control: ControllerControl, value: ControlValue): ControllerControl? = when {
-    control.type == "slider" && value is ControlValue.Num ->
-        control.copy(value = value.value.coerceIn(minOf(control.min, control.max), maxOf(control.min, control.max)))
-    control.type == "vec2" && value is ControlValue.Vec ->
-        control.copy(
-            x = value.x.coerceIn(minOf(control.xMin, control.xMax), maxOf(control.xMin, control.xMax)),
-            y = value.y.coerceIn(minOf(control.yMin, control.yMax), maxOf(control.yMin, control.yMax))
-        )
-    control.type == "color" && value is ControlValue.Rgba ->
-        control.copy(r = value.r.coerceIn(0.0, 1.0), g = value.g.coerceIn(0.0, 1.0), b = value.b.coerceIn(0.0, 1.0), a = value.a.coerceIn(0.0, 1.0))
-    control.type == "checkbox" && value is ControlValue.Flag -> control.copy(checked = value.checked)
-    control.type == "string" && value is ControlValue.Text -> control.copy(text = value.text)
-    else -> null
-}
+/** The kinds of control a knob or a recording can move. */
+private val valueControlTypes = setOf("slider", "vec2", "color", "checkbox", "string")
 
 /**
- * [a] at `f = 0` to [b] at `f = 1`. Numbers, points and colours move in a straight line; a flag or
- * text, which has no in-between, takes [b] from the halfway point. Mismatched kinds snap the same way.
+ * Applies [changes] (control key -> new record, or null to leave it) to [box]'s [channel] controls,
+ * shows them, and calls each changed control's callback as if a person had moved it. Only the
+ * in-memory rerun cache moves: a knob or a replay makes many changes a second. Returns the keys changed.
  */
-fun lerpControlValue(a: ControlValue, b: ControlValue, f: Double): ControlValue {
-    fun l(x: Double, y: Double) = x + (y - x) * f
-    return when {
-        a is ControlValue.Num && b is ControlValue.Num -> ControlValue.Num(l(a.value, b.value))
-        a is ControlValue.Vec && b is ControlValue.Vec -> ControlValue.Vec(l(a.x, b.x), l(a.y, b.y))
-        a is ControlValue.Rgba && b is ControlValue.Rgba -> ControlValue.Rgba(l(a.r, b.r), l(a.g, b.g), l(a.b, b.b), l(a.a, b.a))
-        else -> if (f < 0.5) a else b
-    }
-}
-
-/**
- * The blend of [presets] at [t] in `0..1`: the presets sit evenly along `t` in order, and between two
- * neighbours each control is [lerpControlValue]d. A control only one neighbour stores keeps that value.
- */
-fun morphControlValues(presets: List<Map<String, ControlValue>>, t: Double): Map<String, ControlValue> {
-    if (presets.isEmpty()) return emptyMap()
-    if (presets.size == 1) return presets[0]
-    val s = t.coerceIn(0.0, 1.0) * (presets.size - 1)
-    val i = s.toInt().coerceAtMost(presets.size - 2)
-    val f = s - i
-    val a = presets[i]
-    val b = presets[i + 1]
-    val out = LinkedHashMap<String, ControlValue>()
-    (a.keys + b.keys).forEach { key ->
-        val va = a[key]
-        val vb = b[key]
-        out[key] = when {
-            va != null && vb != null -> lerpControlValue(va, vb, f)
-            else -> va ?: vb!!
-        }
-    }
-    return out
-}
-
-/** [value] as plain data for `metadata.edn`. */
-fun controlValueToStored(value: ControlValue): Map<String, Any> = when (value) {
-    is ControlValue.Num -> mapOf("value" to value.value)
-    is ControlValue.Vec -> mapOf("x" to value.x, "y" to value.y)
-    is ControlValue.Rgba -> mapOf("r" to value.r, "g" to value.g, "b" to value.b, "a" to value.a)
-    is ControlValue.Flag -> mapOf("checked" to value.checked)
-    is ControlValue.Text -> mapOf("text" to value.text)
-}
-
-/** The inverse of [controlValueToStored]; tolerant of strings and other numbers, null when unreadable. */
-fun controlValueFromStored(stored: Map<*, *>): ControlValue? {
-    fun n(k: String): Double? = when (val v = stored[k]) { is Number -> v.toDouble(); is String -> v.toDoubleOrNull(); else -> null }
-    return when {
-        stored.containsKey("text") -> stored["text"]?.toString()?.let { ControlValue.Text(it) }
-        stored.containsKey("checked") -> when (val v = stored["checked"]) {
-            is Boolean -> ControlValue.Flag(v)
-            is String -> v.toBooleanStrictOrNull()?.let { ControlValue.Flag(it) }
-            else -> null
-        }
-        stored.containsKey("r") -> ControlValue.Rgba(n("r") ?: return null, n("g") ?: 0.0, n("b") ?: 0.0, n("a") ?: 1.0)
-        stored.containsKey("x") -> ControlValue.Vec(n("x") ?: return null, n("y") ?: return null)
-        stored.containsKey("value") -> n("value")?.let { ControlValue.Num(it) }
-        else -> null
-    }
-}
-
-// ------------------------------------------------------------------------
-// Applying values to live controls
-
-/**
- * Shows [values] in [box]'s [channel] controls and calls each changed control's callback, as if a
- * person had set it. [durable] writes the rerun cache through the operation log (a recall); otherwise
- * only the in-memory cache moves (a morph, a knob, a replay — many changes a second).
- * Returns the keys that changed.
- */
-internal fun applyControlValues(box: Box, channel: String, values: Map<String, ControlValue>, durable: Boolean): List<String> {
+internal fun applyControlChanges(box: Box, channel: String, changes: Map<String, (ControllerControl) -> ControllerControl?>): List<String> {
     val changed = mutableListOf<String>()
     val document = box.takeIf { it.isInsideInitialized() }?.inside?.filename
     controlGroupControlsWithKeys(box, channel).forEach { (key, control) ->
-        val value = values[key] ?: return@forEach
-        val next = withControlValue(control, value) ?: return@forEach
+        val next = changes[key]?.invoke(control) ?: return@forEach
         if (next == control) return@forEach
-        val updated = if (durable) updateControllerControlValue(control.id) { next }
-        else updateControllerControlValueProgrammatically(control.id) { next }
+        val updated = updateControllerControlValueProgrammatically(control.id) { next }
         if (updated.isEmpty()) return@forEach
         document?.let { broadcastControllerControlUpdates(updated, it) }
         invokeControlCallback(next)
@@ -169,9 +71,11 @@ private fun invokeControlCallback(control: ControllerControl) {
     }.onFailure { lprintln("error,controls", "control callback for '${control.label}' threw: ${it.message}") }
 }
 
-/** The preset key for the control labelled [label] (of any storable kind) in [box]'s [channel], or null. */
-internal fun presetKeyForLabel(box: Box, channel: String, label: String): String? =
-    controlGroupControlsWithKeys(box, channel).firstOrNull { it.second.label == label && controlValueOf(it.second) != null }?.first
+private fun clampTo(v: Double, a: Double, b: Double) = v.coerceIn(minOf(a, b), maxOf(a, b))
+
+/** The control key for the control labelled [label] (of a movable kind) in [box]'s [channel], or null. */
+internal fun controlKeyForLabel(box: Box, channel: String, label: String): String? =
+    controlGroupControlsWithKeys(box, channel).firstOrNull { it.second.label == label && it.second.type in valueControlTypes }?.first
 
 // ------------------------------------------------------------------------
 // Gesture listeners: every change a person makes, from the browser or the tablet
@@ -186,140 +90,79 @@ internal fun addControlGestureListener(listener: (Box, ControllerControl) -> Uni
 internal fun removeControlGestureListener(listener: (Box, ControllerControl) -> Unit) { controlGestureListeners -= listener }
 
 // ------------------------------------------------------------------------
-// Presets
+// Presets: keys of a KeyframeScope
 
-internal const val controlPresetsProperty = "_controlPresets"
-
-/** The label of the morph slider [presetBar] adds; never stored in a preset, or it would morph itself. */
+/** The label of the blend slider [presetBar] adds. It is not a scope target, so no key holds it. */
 const val presetMorphLabel = "preset morph"
 
 /**
- * Named snapshots of one control group, saved with the box.
- *
- * ```kotlin
- * val presets = controlPresets("look")
- * presets.save("calm")
- * presets.recall("storm")
- * presets.morph(0.25, "calm", "storm")
- * ```
- *
- * A snapshot holds every slider, vec2, colour, checkbox and text in the group, except the morph slider
- * a [presetBar] adds. Recall and morph call each changed control's callback, so the box's variables
- * follow exactly as if the controls had been moved by hand.
+ * The keys a [presetBar] stores, in [directory]: one file per name, written by [KeyframeScope.saveKey]
+ * so each store adds to that key's version history and the folder opens in `keyframeBrowser`.
  */
-class ControlPresets internal constructor(val box: Box, val channel: String) {
+class PresetBar internal constructor(val scope: KeyframeScope, val directory: Path) {
 
-    /** The group's current values, by preset key. */
-    fun snapshot(): Map<String, ControlValue> {
-        val out = LinkedHashMap<String, ControlValue>()
-        controlGroupControlsWithKeys(box, channel).forEach { (key, control) ->
-            if (control.label == presetMorphLabel) return@forEach
-            controlValueOf(control)?.let { out[key] = it }
-        }
-        return out
-    }
+    /** Saved key names, sorted. */
+    val names: List<String> get() = scope.savedKeyNames(directory)
 
-    /** Preset names, in the order they were first saved. */
-    val names: List<String> get() = stored().keys.toList()
+    /** Where key [name] lives. */
+    fun path(name: String): Path = directory.resolve(name)
 
-    /** The values stored under [name], or null. */
-    operator fun get(name: String): Map<String, ControlValue>? = stored()[name]
+    /** Captures the scope as key [name] (a new version if it exists) and returns it. */
+    fun store(name: String, note: String? = null): KeyframeScope.Key = scope.capture().save(path(name), note)
 
-    /** Stores the current values as [name] (replacing a preset of that name) and returns them. */
-    fun save(name: String): Map<String, ControlValue> {
-        val snap = snapshot()
-        write(stored().also { it[name] = LinkedHashMap(snap) })
-        return snap
-    }
-
-    /** Stores [values] as [name] without touching the controls — a preset written in code. */
-    fun put(name: String, values: Map<String, ControlValue>) {
-        write(stored().also { it[name] = LinkedHashMap(values) })
-    }
-
-    /** Shows preset [name] and calls the callbacks of the controls it changes. False if there is none. */
+    /** Applies the latest save of [name]; false if there is none. */
     fun recall(name: String): Boolean {
-        val values = stored()[name] ?: return false
-        applyControlValues(box, channel, values, durable = true)
+        val p = path(name)
+        if (!p.exists()) return false
+        scope.loadKey(p)()
         return true
     }
 
-    /** Forgets [name]. */
-    fun delete(name: String): Boolean {
-        val all = stored()
-        val removed = all.remove(name) != null
-        if (removed) write(all)
-        return removed
-    }
-
-    /** The blend at [t] (`0..1`) along [between], in order — every preset when empty; see [morphControlValues]. */
-    fun blend(t: Double, between: List<String> = emptyList()): Map<String, ControlValue> {
-        val all = stored()
-        val chosen = (between.ifEmpty { all.keys.toList() }).mapNotNull { all[it] }
-        return morphControlValues(chosen, t)
-    }
-
-    /** Shows [blend] at [t] and calls the callbacks it changes. */
-    fun morph(t: Double, vararg between: String): List<String> =
-        applyControlValues(box, channel, blend(t, between.toList()), durable = false)
-
-    /** [morph] over a list of names. */
-    fun morph(t: Double, between: List<String>): List<String> =
-        applyControlValues(box, channel, blend(t, between), durable = false)
-
-    private fun stored(): LinkedHashMap<String, LinkedHashMap<String, ControlValue>> {
-        val out = LinkedHashMap<String, LinkedHashMap<String, ControlValue>>()
-        val all = box.properties[controlPresetsProperty] as? Map<*, *> ?: return out
-        val forChannel = all[channel] as? Map<*, *> ?: return out
-        forChannel.forEach { (name, values) ->
-            val map = values as? Map<*, *> ?: return@forEach
-            val decoded = LinkedHashMap<String, ControlValue>()
-            map.forEach { (key, stored) -> (stored as? Map<*, *>)?.let(::controlValueFromStored)?.let { decoded[key.toString()] = it } }
-            out[name.toString()] = decoded
-        }
-        return out
-    }
-
-    private fun write(presets: Map<String, Map<String, ControlValue>>) {
-        val all = LinkedHashMap<String, Any?>()
-        (box.properties[controlPresetsProperty] as? Map<*, *>)?.forEach { (k, v) -> all[k.toString()] = v }
-        all[channel] = LinkedHashMap<String, Any>().apply {
-            presets.forEach { (name, values) ->
-                this[name] = LinkedHashMap<String, Any>().apply { values.forEach { (k, v) -> this[k] = controlValueToStored(v) } }
-            }
-        }
-        box.setPropertyRaw(controlPresetsProperty, all, doResync = false)
+    /**
+     * Applies the blend at [t] (`0..1`) along [between], in order — every saved key when empty — via
+     * [KeyframeScope.interpolateAlong]. Returns the applied key, or null with fewer than two keys.
+     */
+    fun morph(t: Double, between: List<String> = emptyList()): KeyframeScope.Key? {
+        val chosen = between.ifEmpty { names }.filter { path(it).exists() }
+        if (chosen.size < 2) return null
+        return scope.interpolateAlong(chosen.map { scope.loadKey(path(it)) }, t).also { it() }
     }
 }
 
-/** Presets for the controls in [channel]; see [ControlPresets]. */
-fun Box.controlPresets(channel: String = "controls"): ControlPresets = ControlPresets(this, channel)
-
 /**
- * Adds a preset strip to this group: a name field with **store** and **recall** buttons, a button per
- * preset already saved, and a [presetMorphLabel] slider that blends across [morphBetween] (every saved
- * preset, in order, when empty — so a preset stored a moment ago joins the morph at once).
+ * A preset strip for the controls of [scope]: a name field with **store** and **recall**, a button per
+ * saved key, and a [presetMorphLabel] slider blending across [morphBetween] (every saved key, in
+ * name order, when empty). Controls join by being declared with the `keyframe*` helpers on [scope].
  *
  * ```kotlin
+ * val keys = KeyframeScope()
  * controlGroup("look") {
- *     slider("size", 0.0, 1.0) { size = it }
- *     colorPicker("tint") { tint = it }
- *     presetBar()
+ *     keyframeSlider(keys, "size", "size", 0.0, 10.0, get = { size }, set = { size = it })
+ *     presetBar(keys)
  * }
  * ```
  *
- * Call it last, so the presets see the controls declared above it.
+ * Keys are saved in [directory], by default `keys/<box id>/<channel>` in the document's files.
  */
-fun ControlGroupBuilder.presetBar(morphBetween: List<String> = emptyList(), morph: Boolean = true) {
-    val presets = ownerBox.controlPresets(ownerChannel)
-    var name = presets.names.lastOrNull() ?: "A"
-    text("preset", initialValue = name) { name = it.trim().ifEmpty { "A" } }
-    button("store preset") { down -> if (down) presets.save(name) }
-    button("recall preset") { down -> if (down) presets.recall(name) }
-    presets.names.forEach { saved -> button("▸ $saved") { down -> if (down) presets.recall(saved) } }
-    if (morph) slider(presetMorphLabel, 0.0, 1.0, 0.001, initialValue = 0.0) { t ->
-        if (presets.names.size >= 2) presets.morph(t, morphBetween)
+fun ControlGroupBuilder.presetBar(
+    scope: KeyframeScope,
+    directory: Path? = null,
+    morphBetween: List<String> = emptyList(),
+    morph: Boolean = true
+): PresetBar {
+    val bar = PresetBar(scope, directory ?: FileManager.current().path("%document/keys/${ownerBox.id}/$ownerChannel"))
+    val saved = bar.names
+    var name = saved.lastOrNull() ?: "A"
+    inlineRow {
+        text("preset", initialValue = name) { name = it.trim().ifEmpty { "A" } }
+        button("store preset", "store") { down -> if (down) bar.store(name) }
+        button("recall preset", "recall") { down -> if (down) bar.recall(name) }
     }
+    if (saved.isNotEmpty()) inlineRow {
+        saved.forEach { key -> button("▸ $key", "▸ $key") { down -> if (down) bar.recall(key) } }
+    }
+    if (morph) slider(presetMorphLabel, 0.0, 1.0, 0.001, initialValue = 0.0) { t -> bar.morph(t, morphBetween) }
+    return bar
 }
 
 // ------------------------------------------------------------------------
@@ -400,10 +243,16 @@ fun Box.recordControl(label: String, channel: String = "controls", curveName: St
  * Call it from an animation loop. A vec2 also needs [curveY].
  */
 fun Box.playControl(label: String, curve: KeyframeEvaluator, time: Double, channel: String = "controls", curveY: KeyframeEvaluator? = null): Boolean {
-    val key = presetKeyForLabel(this, channel, label) ?: return false
+    val key = controlKeyForLabel(this, channel, label) ?: return false
     val v = curve.evaluateValueAt(time)
-    val value = if (key.startsWith("vec2/")) ControlValue.Vec(v, curveY?.evaluateValueAt(time) ?: v) else ControlValue.Num(v)
-    return applyControlValues(this, channel, mapOf(key to value), durable = false).isNotEmpty()
+    val change: (ControllerControl) -> ControllerControl? = { c ->
+        when (c.type) {
+            "vec2" -> c.copy(x = clampTo(v, c.xMin, c.xMax), y = clampTo(curveY?.evaluateValueAt(time) ?: v, c.yMin, c.yMax))
+            "slider" -> c.copy(value = clampTo(v, c.min, c.max))
+            else -> null
+        }
+    }
+    return applyControlChanges(this, channel, mapOf(key to change)).isNotEmpty()
 }
 
 /**
@@ -436,7 +285,7 @@ private val activeRecordings = ConcurrentHashMap<String, ControlRecording>()
 
 internal const val controlMidiProperty = "_controlMidi"
 
-/** A hardware controller [cc] on MIDI [midiChannel] (0-based) bound to the control with preset [key]. */
+/** A hardware controller [cc] on MIDI [midiChannel] (0-based) bound to the control with control key [key]. */
 data class MidiBinding(val key: String, val midiChannel: Int, val cc: Int)
 
 /**
@@ -469,7 +318,7 @@ class ControlMidiMap internal constructor(val box: Box, val channel: String) {
         }
 
     private val listener: (Box, ControllerControl) -> Unit = { owner, control ->
-        if (learning && owner === box && control.channel == channel && control.label != "MIDI learn" && controlValueOf(control) != null) {
+        if (learning && owner === box && control.channel == channel && control.label != "MIDI learn" && control.type in valueControlTypes) {
             pendingKey = controlGroupControlsWithKeys(box, channel).firstOrNull { it.second.id == control.id }?.first
             tryBind()
         }
@@ -489,14 +338,14 @@ class ControlMidiMap internal constructor(val box: Box, val channel: String) {
 
     /** Binds [cc] on [midiChannel] to the control labelled [label], in code. */
     fun bind(label: String, cc: Int, midiChannel: Int = 0): Boolean {
-        val key = presetKeyForLabel(box, channel, label) ?: return false
+        val key = controlKeyForLabel(box, channel, label) ?: return false
         writeBinding(MidiBinding(key, midiChannel, cc))
         return true
     }
 
     /** Removes the binding for the control labelled [label]. */
     fun unbind(label: String) {
-        val key = presetKeyForLabel(box, channel, label) ?: return
+        val key = controlKeyForLabel(box, channel, label) ?: return
         write(bindings.filterNot { it.key == key })
     }
 
@@ -509,12 +358,7 @@ class ControlMidiMap internal constructor(val box: Box, val channel: String) {
         val t = value.coerceIn(0, 127) / 127.0
         val targets = bindings.filter { it.midiChannel == midiChannel && it.cc == cc }.map { it.key }.toSet()
         if (targets.isEmpty()) return
-        val values = LinkedHashMap<String, ControlValue>()
-        controlGroupControlsWithKeys(box, channel).forEach { (key, control) ->
-            if (key !in targets) return@forEach
-            travelValue(control, t)?.let { values[key] = it }
-        }
-        applyControlValues(box, channel, values, durable = false)
+        applyControlChanges(box, channel, targets.associateWith { { control: ControllerControl -> travelValue(control, t) } })
     }
 
     /** Listens to hardware [input]; detach by closing it. */
@@ -551,12 +395,12 @@ class ControlMidiMap internal constructor(val box: Box, val channel: String) {
 }
 
 /** [control] at travel [t] (`0..1`), as a knob would place it. */
-internal fun travelValue(control: ControllerControl, t: Double): ControlValue? = when (control.type) {
-    "slider" -> ControlValue.Num(
-        ControlLawSpec(ControlLaw.fromWireName(control.law), control.min, control.max, control.lawExponent, control.lawCenter).valueAt(t)
+internal fun travelValue(control: ControllerControl, t: Double): ControllerControl? = when (control.type) {
+    "slider" -> control.copy(
+        value = ControlLawSpec(ControlLaw.fromWireName(control.law), control.min, control.max, control.lawExponent, control.lawCenter).valueAt(t)
     )
-    "checkbox" -> ControlValue.Flag(t >= 0.5)
-    "vec2" -> ControlValue.Vec(control.xMin + (control.xMax - control.xMin) * t, control.y ?: 0.0)
+    "checkbox" -> control.copy(checked = t >= 0.5)
+    "vec2" -> control.copy(x = control.xMin + (control.xMax - control.xMin) * t)
     else -> null
 }
 

@@ -2453,6 +2453,23 @@ body.field-pane-resizing-h * {
     font-family: var(--field-font);
 }
 
+/* Controls side by side (ControlGroupBuilder.inlineRow), e.g. a preset strip. */
+.field-control-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.field-control-row > .field-control {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 4px 6px;
+}
+
+.field-control-row > .field-text {
+    flex: 1 1 140px;
+}
+
 /* Momentary button — a gesture, not a state. `.held` is set by sliders.js while the pointer is down,
    and cleared by the window-level release listeners, so a pointer that comes up elsewhere cannot leave
    the control looking (or being) stuck on. */
