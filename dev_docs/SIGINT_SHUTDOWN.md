@@ -177,14 +177,49 @@ saved it 2/2: the first-read marking above masked the gap. Script:
 
 ### Still open
 
-- Churn (N1020-7): a box that rewrites a persisted property every frame causes one full save per
-  5 s tick (snapshot, write, backup rotation capped at 10). Not measured or throttled.
 - A value of a class with an identity `hashCode` that is mutated in place is invisible to the
   fingerprint, as it was to marking. Every persisted type today (`Rect`, strings, numbers,
   collections of those, box refs) hashes by content.
 - A brand-new document has no fingerprint until its first save, so an unmarked edit before then is
   caught only by the next marked one.
-- The macro-replay/`--as-copy` SIGINT smoke test (N1020-1) was not written.
+
+## Tripwire, no-op saves, macro replay (2026-10-23)
+
+**Tripwire (N1022-2).** `PersistedFingerprint.entries` keeps one hash per `(box id, property)`;
+`SessionInformation.savedFingerprintEntries` holds the set that matched disk. When
+`DocumentShutdownFlush.saveIfPending` saves, every key whose hash moved without being in
+`pendingSidecarSaves` gets one line on the `warning,persistence` channel:
+
+```
+[warning,persistence] unmarked edit: box 7cb72a9c-... (Mut) property 'layerFrames' changed without notePersistentChange; saved on autosave
+```
+
+The save still happens; the line names a mutator to fix. It is always on (one hash map per 5 s
+tick per open document). In a live backdoor session on port 9611 it fired for box code writing
+`thisBox.layerFrames["start"] = rect`, and for nothing else exercised: new box, `set-rect`
+moves, `set-active-layer` in and out of a layer, `set-visible-layers`, `set-string`, and a macro
+replay (create, connect, edit). `Box.layerFrames` now returns `PersistentMapView`, which marks
+on `put`/`putAll`/`remove`/`clear`; the same run afterwards saved with no tripwire line. Not yet
+driven through the tripwire: drawing layer, notation, bookmarks, panes, keyframes, controls,
+slideshow.
+
+**No-op saves (N1020-7).** `set-string` (and every explicit `markSidecarPending` caller) marks
+even when the text is unchanged. `safeSave` already skips writing identical files, so this was
+never a *disk* write: measured live, three identical `set-string`s 6 s apart left `metadata.edn`'s
+mtime and the backup count (15) unchanged on both builds. What it cost was a full save pass per
+tick (snapshot, EDN serialisation, read-and-compare of every file): `save_reload.log` showed 3
+`[save]` passes with `changed=0` with the skip disabled, and 0 with it. The skip: when the
+fingerprint equals the saved one and every marked value hashes by content
+(`PersistedFingerprint.hashesByContent`), the marks are cleared and nothing is saved. A marked
+value hashed by identity still saves. A box that writes a *different* value every frame still
+saves once per tick; that was not throttled.
+
+**Macro replay, then SIGINT (N1020-1).** `tools/sigint_macro_persistence_smoke.py --port <p>
+--workspace <ws>` replays a create/create/connect/edit macro into a fresh document of a Field you
+started, signals it as soon as `macro run` returns, waits for exit and checks `metadata.edn` and
+the sidecar. Run 2026-10-23 on port 9611: SIGINT 0 ms after the macro, Field exited, 7/7 checks
+held. It is a Python script, not a `FIELD_TEST` jvm-main smoke, because it needs a real server it
+may stop.
 
 ## Not verified
 
