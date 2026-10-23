@@ -1335,9 +1335,9 @@ loop {
 
 ### Presets and morphing
 
-A group can store its settings under a name and bring them back, and blend between stored settings with one slider; any slider, pad, colour picker, checkbox or text field in it takes part. Add `presetBar()` as the last line of the group. It gives the group a name field with **store preset** and **recall preset** buttons, a button for every preset already saved, and a **preset morph** slider. Here two presets, `calm` and `storm`, are written in code the first time the box runs, before the group is built, so the bar has a button for each and something to morph between straight away:
+A preset is a [keyframer](keyframer_examples.md) key. Declare the controls with the `keyframe*` helpers, which put each one in a `KeyframeScope` and keep the control and its local in step (see [One value shared by a local, a control and a key](keyframer_examples.md#one-value-shared-by-a-local-a-control-and-a-key)), then add `presetBar(keys)` to the group. The bar has a name field with **store** and **recall**, a button for each saved key, and a **preset morph** slider. Here two keys, `calm` and `storm`, are saved the first time the box runs, so there is something to morph between straight away:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-preset-bar.png" capture="box" open-outputs="true" wait="2.0" w="700" embed=true name="controls-preset-bar" alt="A control group: a size slider at 0.40, an offset pad, a blue tint colour picker, a ring checkbox, a preset name field reading storm, store preset and recall preset buttons, buttons named calm and storm, a preset morph slider at 0, a rec size button and a MIDI learn button. Below it a dark square holding a blue circle"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-preset-bar.png" capture="box" open-outputs="true" wait="2.0" w="700" embed=true name="controls-preset-bar" alt="A control group: a size slider at 0.40, an offset pad, a blue tint colour picker, a ring checkbox, then a row with a preset name field reading storm and store and recall buttons, a row of calm and storm buttons, a preset morph slider at 0, a rec size button and a MIDI learn button. Below it a dark square holding a blue circle"}
 :::static
 var size = 0.4
 var tint = Vector4f(0.2f, 0.6f, 1f, 1f)
@@ -1353,54 +1353,33 @@ fun draw() {
     display("main", "<svg width='220' height='180' style='background:#222'><circle cx='$cx' cy='$cy' r='$r' fill='$fill' $stroke/></svg>")
 }
 
-// Two presets to start from, written once; after that the stored ones are used.
-val presets = controlPresets("look")
-if (presets.names.isEmpty()) {
-    presets.put("calm", mapOf(
-        "slider/size#0" to ControlValue.Num(0.25),
-        "vec2/offset#0" to ControlValue.Vec(-0.5, 0.3),
-        "color/tint#0" to ControlValue.Rgba(0.2, 0.6, 1.0, 1.0),
-        "checkbox/ring#0" to ControlValue.Flag(false)))
-    presets.put("storm", mapOf(
-        "slider/size#0" to ControlValue.Num(0.95),
-        "vec2/offset#0" to ControlValue.Vec(0.6, -0.4),
-        "color/tint#0" to ControlValue.Rgba(1.0, 0.25, 0.1, 1.0),
-        "checkbox/ring#0" to ControlValue.Flag(true)))
+val keys = KeyframeScope()
+val dir = presetDirectory("look")
+
+// Two keys to start from, written once; after that the stored ones are used.
+if (keys.savedKeyNames(dir).isEmpty()) {
+    keys.Key("size" to 0.25, "offset" to Vector2f(-0.5f, 0.3f), "tint" to Vector4f(0.2f, 0.6f, 1f, 1f), "ring" to 0f)
+        .save(dir.resolve("calm"))
+    keys.Key("size" to 0.95, "offset" to Vector2f(0.6f, -0.4f), "tint" to Vector4f(1f, 0.25f, 0.1f, 1f), "ring" to 1f)
+        .save(dir.resolve("storm"))
 }
 
 controlGroup("look") {
-    slider("size", 0.0, 1.0, initialValue = size) { size = it; draw() }
-    vec2Control("offset", offset) { offset = it; draw() }
-    colorPicker("tint", tint) { tint = it; draw() }
-    checkbox("ring", ring) { ring = it; draw() }
-    presetBar()
+    keyframeSlider(keys, "size", "size", get = { size }, set = { size = it; draw() })
+    keyframeVec2Control(keys, "offset", "offset", get = { offset }, set = { offset = it; draw() })
+    keyframeColorPicker(keys, "tint", "tint", get = { tint }, set = { tint = it; draw() })
+    keyframeCheckbox(keys, "ring", "ring", get = { ring }, set = { ring = it; draw() })
+    presetBar(keys)
     recordToggle("size")
     midiLearnButton()
 }
 
 draw()
-println("presets: ${presets.names}")
 ```
 
-Type a name into **preset** and press **store preset** to save the panel as it is now; press a preset's own button, or type its name and press **recall preset**, to bring it back. Recalling moves the controls on screen and runs their callbacks, so `size`, `tint` and the rest change exactly as they would if you had dragged each control there yourself.
+**store** captures the scope under the name in the field; **recall**, or a key's own button, applies it, which moves the controls and runs their `set`, as if you had dragged each one there. **preset morph** blends across the saved keys in name order with `KeyframeScope.interpolate`: numbers, pads and colours move smoothly, and a checkbox switches at the halfway point. With `calm` and `storm`, the morph at 0.5 gives a mid-size purple circle with the ring on.
 
-**preset morph** blends across every saved preset, in the order they were first stored: at 0 the panel is the first preset, at 1 the last, and in between it moves through the others in turn. Numbers, pads and colours move smoothly; a checkbox or a text field has no in-between, so it switches at the halfway point between two presets. With `calm` and `storm` above, the morph at 0.5 gives a half-size, purple circle, with the ring already on.
-
-Presets are saved with the box, so they survive a rerun and closing Field. A preset only stores the controls in its own group (`"look"` here), and never the morph slider itself.
-
-#### From code
-
-`controlPresets(channel)` gives the same presets to code:
-
-```diffstatic {data-lang=kotlin}
-val presets = controlPresets("look")
-presets.save("wide")              // the panel as it is now
-presets.recall("calm")            // move every control, run every callback
-presets.morph(0.3, "calm", "wide")
-println(presets.names)
-```
-
-`morph(t, ...)` takes the presets to blend in order; with no names it uses all of them, as the slider does. A preset is a map from a control's key to its value, so you can also write one without touching the panel, as the example does with `put`. A key is the control's type, its label and which of that label it is: `slider/size#0`, `vec2/offset#0`, `color/tint#0`, `checkbox/ring#0`, `string/title#0`. Renaming a control's label therefore leaves it out of the presets stored before.
+The keys are ordinary key files in `presetDirectory("look")`, so every store adds to that key's history, and `keyframeBrowser(dir, scope = keys)` shows them side by side: see [Saving: every save is history](keyframer_examples.md#saving-every-save-is-history) and [Browsing saved keys](keyframer_examples.md#browsing-saved-keys). `presetBar` returns the bar, whose `store(name)`, `recall(name)` and `morph(t, between)` do the same from code.
 
 ### MIDI learn
 
@@ -1445,7 +1424,7 @@ To hear hardware, open an input with `MidiDevices` and attach it: `midi.attach(M
 - Use `rangeSlider(...)` for an interval, such as a band, a window or a velocity range. Use `polar = true` when the value wraps around, like a phase or a hue.
 - Use `menu(...)` for choosing one of a few named options.
 - Use `gesture(...)` for a two-axis movement you want to perform once and loop.
-- Use `recordToggle(...)` to perform one control's movement into a keyframe curve, and `presetBar()` to store and morph between whole settings of a panel.
+- Use `recordToggle(...)` to perform one control's movement into a keyframe curve, and `presetBar(keys)` to store and morph between whole settings of a panel.
 - For a curve over time you shape by hand, an envelope, use the keyframe editor, `keyframes(...)`: see [Keyframes and timelines](funFeatures.md#keyframes-and-timelines).
 
 The `vec2Control(...)` includes an XY pad, a vector line, and magnitude readout, so it works well for motion and layout values where two sliders would hide the relationship between axes.

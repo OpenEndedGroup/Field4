@@ -4,15 +4,22 @@ User page: `public/docs/visualizers.md` (Controls section). Source: `src/jvmMain
 tests `src/jvmTest/kotlin/afield/ui/output/ControlPresetsTest.kt`, demo transcript
 `dev_docs/agents/transcripts/controls_presets_morph_midi.yaml`.
 
-- Addressing: a *preset key* is `type/label#ordinal`, derived from the control-group cache key
-  (`controlGroupControlsWithKeys` in `outputs.kt`). Renaming a label orphans stored presets/bindings.
-- Persistence: `_controlPresets` ({channel: {preset: {key: value-map}}}) and `_controlMidi`
-  ({channel: {key: {channel, cc}}}), both in `Box.ioPersistentProperties`.
-- Applying values (`applyControlValues`): recall goes through `updateControllerControlValue`
-  (durable, notifies gesture listeners); morph/knob/playback go through the programmatic path
-  (in-memory cache, no operation log). Both broadcast `control-value-update` and call the callback.
-- Gesture listeners hang off `updateControllerControlValue`, which every browser and tablet
-  change goes through; button and meter updates do not, by design.
+- Presets are keyframer keys. `presetBar(scope, directory)` is UI over a `KeyframeScope`
+  (`afield/animation/keyframes/keyframer.kt`): store = `scope.capture().save(dir/name)` (version
+  history, readable by `KeyframeCollection` / `keyframeBrowser`), recall = `scope.loadKey(...)()`,
+  morph = `scope.interpolateAlong(keys, t)`. Controls take part by being declared with the
+  `keyframe*` helpers, whose targets move the visible control (`ControlValueHandle.set`).
+  Default directory: `Box.presetDirectory(channel)` = `%document/keys/<box id>/<channel>`.
+  keyframer.kt additions for this: `savedKeyNames(dir)`, `interpolateAlong(keys, t)`.
+- The bar lays its name field and buttons in wrapping rows (`ControlGroupBuilder.inlineRow`,
+  `.field-control-row` in `field.css`; buttons show their label on the hit face).
+- Recording and MIDI address a control by its *control key* `type/label#ordinal`, derived from
+  the control-group cache key (`controlGroupControlsWithKeys` in `outputs.kt`). Renaming a label
+  orphans its MIDI binding. `_controlMidi` ({channel: {key: {channel, cc}}}) is in
+  `Box.ioPersistentProperties`.
+- Knob and playback changes go through `applyControlChanges` (programmatic path: in-memory cache,
+  no operation log, broadcast, callback). Gesture listeners hang off `updateControllerControlValue`,
+  which every browser and tablet change goes through; button and meter updates do not.
 - The record control is a *button*, not a checkbox: a checkbox's cached state is restored on rerun
   and re-armed the take.
 
@@ -20,6 +27,6 @@ Known gaps (2026-10-23):
 - Values applied *during* the run that builds the group (e.g. `midi.feed` in the same box) reach an
   open page via broadcast, but a page that loads later replays the group's original HTML, so it
   shows the pre-feed values until the next change. The docs MIDI example is static for that reason.
-- The preset strip is built from ordinary controls, so each button renders as a full-width row
-  with a "HOLD" face; a compact dedicated strip in `sliders.js` would read better.
+- The bar's key buttons are built when the group is built; a key stored since shows as a button
+  after the next run (it joins the morph at once).
 - No undo for control changes; click-to-learn has unit coverage but no browser-driven test.

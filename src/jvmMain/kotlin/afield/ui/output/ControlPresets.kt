@@ -130,6 +130,12 @@ class PresetBar internal constructor(val scope: KeyframeScope, val directory: Pa
 }
 
 /**
+ * Where a [presetBar] on [channel] keeps its keys by default: `keys/<box id>/<channel>` in the
+ * document's files — also the folder to hand `keyframeBrowser`, or to seed with `key.save(...)`.
+ */
+fun Box.presetDirectory(channel: String = "controls"): Path = FileManager.current().path("%document/keys/$id/$channel")
+
+/**
  * A preset strip for the controls of [scope]: a name field with **store** and **recall**, a button per
  * saved key, and a [presetMorphLabel] slider blending across [morphBetween] (every saved key, in
  * name order, when empty). Controls join by being declared with the `keyframe*` helpers on [scope].
@@ -142,7 +148,7 @@ class PresetBar internal constructor(val scope: KeyframeScope, val directory: Pa
  * }
  * ```
  *
- * Keys are saved in [directory], by default `keys/<box id>/<channel>` in the document's files.
+ * Keys are saved in [directory], by default [presetDirectory] for this box and channel.
  */
 fun ControlGroupBuilder.presetBar(
     scope: KeyframeScope,
@@ -150,7 +156,7 @@ fun ControlGroupBuilder.presetBar(
     morphBetween: List<String> = emptyList(),
     morph: Boolean = true
 ): PresetBar {
-    val bar = PresetBar(scope, directory ?: FileManager.current().path("%document/keys/${ownerBox.id}/$ownerChannel"))
+    val bar = PresetBar(scope, directory ?: ownerBox.presetDirectory(ownerChannel))
     val saved = bar.names
     var name = saved.lastOrNull() ?: "A"
     inlineRow {

@@ -1,8 +1,8 @@
 name: controls_presets_morph_midi
-description: Two boxes for the controls page - a preset bar with calm and storm presets, a morph slider, a record button and MIDI learn; and a log-law cutoff slider driven by a stand-in MIDI knob.
+description: Two boxes for the controls page - keyframe controls with a preset bar over their KeyframeScope (calm and storm keys), a morph slider, a record button and MIDI learn; and a log-law cutoff slider driven by a stand-in MIDI knob.
 docs:
   - page: visualizers.md
-    why: "The page's two examples, ready to open: store, recall and morph presets, record the size slider into keyframes, bind a knob."
+    why: "The page's two examples, ready to open: store, recall and morph presets as keyframer keys, record the size slider into keyframes, bind a knob."
 operations:
   - create:
       box: controls_presets_demo
@@ -28,33 +28,31 @@ operations:
               display("main", "<svg width='220' height='180' style='background:#222'><circle cx='$cx' cy='$cy' r='$r' fill='$fill' $stroke/></svg>")
           }
 
-          // Two presets to start from, written once; after that the stored ones are used.
-          val presets = controlPresets("look")
-          if (presets.names.isEmpty()) {
-              presets.put("calm", mapOf(
-                  "slider/size#0" to ControlValue.Num(0.25),
-                  "vec2/offset#0" to ControlValue.Vec(-0.5, 0.3),
-                  "color/tint#0" to ControlValue.Rgba(0.2, 0.6, 1.0, 1.0),
-                  "checkbox/ring#0" to ControlValue.Flag(false)))
-              presets.put("storm", mapOf(
-                  "slider/size#0" to ControlValue.Num(0.95),
-                  "vec2/offset#0" to ControlValue.Vec(0.6, -0.4),
-                  "color/tint#0" to ControlValue.Rgba(1.0, 0.25, 0.1, 1.0),
-                  "checkbox/ring#0" to ControlValue.Flag(true)))
+          // Each control is a keyframe target on `keys`, so a preset is a key of that scope.
+          val keys = KeyframeScope()
+          val dir = presetDirectory("look")
+
+          // Two keys to start from, written once; after that the stored ones are used.
+          if (keys.savedKeyNames(dir).isEmpty()) {
+              keys.Key("size" to 0.25, "offset" to Vector2f(-0.5f, 0.3f), "tint" to Vector4f(0.2f, 0.6f, 1f, 1f), "ring" to 0f)
+                  .save(dir.resolve("calm"), "seeded by the demo")
+              keys.Key("size" to 0.95, "offset" to Vector2f(0.6f, -0.4f), "tint" to Vector4f(1f, 0.25f, 0.1f, 1f), "ring" to 1f)
+                  .save(dir.resolve("storm"), "seeded by the demo")
           }
 
+          var presets: PresetBar? = null
           controlGroup("look") {
-              slider("size", 0.0, 1.0, initialValue = size) { size = it; draw() }
-              vec2Control("offset", offset) { offset = it; draw() }
-              colorPicker("tint", tint) { tint = it; draw() }
-              checkbox("ring", ring) { ring = it; draw() }
-              presetBar()
+              keyframeSlider(keys, "size", "size", get = { size }, set = { size = it; draw() })
+              keyframeVec2Control(keys, "offset", "offset", get = { offset }, set = { offset = it; draw() })
+              keyframeColorPicker(keys, "tint", "tint", get = { tint }, set = { tint = it; draw() })
+              keyframeCheckbox(keys, "ring", "ring", get = { ring }, set = { ring = it; draw() })
+              presets = presetBar(keys)
               recordToggle("size")
               midiLearnButton()
           }
 
           draw()
-          println("presets: ${presets.names}")
+          println("presets: ${presets!!.names} in $dir")
   - execute:
       box: controls_presets_demo
       property: code
