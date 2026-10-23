@@ -1,0 +1,95 @@
+name: controls_presets_morph_midi
+description: Two boxes for the controls page - a preset bar with calm and storm presets, a morph slider, a record button and MIDI learn; and a log-law cutoff slider driven by a stand-in MIDI knob.
+docs:
+  - page: controls.md
+    why: "The page's two examples, ready to open: store, recall and morph presets, record the size slider into keyframes, bind a knob."
+operations:
+  - create:
+      box: controls_presets_demo
+      name: Presets · morph · record · run me
+      frame:
+        x: 80.0
+        y: 80.0
+        w: 300.0
+        h: 60.0
+      properties:
+        code: |
+          var size = 0.4
+          var tint = Vector4f(0.2f, 0.6f, 1f, 1f)
+          var ring = false
+          var offset = Vector2f(0f, 0f)
+
+          fun draw() {
+              val r = (20 + size * 60).toInt()
+              val cx = 110 + (offset.x * 60).toInt()
+              val cy = 90 - (offset.y * 50).toInt()
+              val fill = "rgba(${(tint.x * 255).toInt()},${(tint.y * 255).toInt()},${(tint.z * 255).toInt()},${tint.w})"
+              val stroke = if (ring) "stroke='white' stroke-width='6'" else ""
+              display("main", "<svg width='220' height='180' style='background:#222'><circle cx='$cx' cy='$cy' r='$r' fill='$fill' $stroke/></svg>")
+          }
+
+          // Two presets to start from, written once; after that the stored ones are used.
+          val presets = controlPresets("look")
+          if (presets.names.isEmpty()) {
+              presets.put("calm", mapOf(
+                  "slider/size#0" to ControlValue.Num(0.25),
+                  "vec2/offset#0" to ControlValue.Vec(-0.5, 0.3),
+                  "color/tint#0" to ControlValue.Rgba(0.2, 0.6, 1.0, 1.0),
+                  "checkbox/ring#0" to ControlValue.Flag(false)))
+              presets.put("storm", mapOf(
+                  "slider/size#0" to ControlValue.Num(0.95),
+                  "vec2/offset#0" to ControlValue.Vec(0.6, -0.4),
+                  "color/tint#0" to ControlValue.Rgba(1.0, 0.25, 0.1, 1.0),
+                  "checkbox/ring#0" to ControlValue.Flag(true)))
+          }
+
+          controlGroup("look") {
+              slider("size", 0.0, 1.0, initialValue = size) { size = it; draw() }
+              vec2Control("offset", offset) { offset = it; draw() }
+              colorPicker("tint", tint) { tint = it; draw() }
+              checkbox("ring", ring) { ring = it; draw() }
+              presetBar()
+              recordToggle("size")
+              midiLearnButton()
+          }
+
+          draw()
+          println("presets: ${presets.names}")
+  - execute:
+      box: controls_presets_demo
+      property: code
+      type: fragment
+  - create:
+      box: controls_midi_demo
+      name: MIDI learn · run me
+      frame:
+        x: 80.0
+        y: 200.0
+        w: 300.0
+        h: 60.0
+      properties:
+        code: |
+          var cutoff = 1000.0
+          var bright = false
+          controlGroup("synth") {
+              slider("cutoff", 20.0, 20000.0, initialValue = cutoff, law = ControlLaw.LOGARITHMIC) { cutoff = it }
+              checkbox("bright", bright) { bright = it }
+              midiLearnButton()
+          }
+          val midi = midiLearn("synth")
+          midi.bind("cutoff", cc = 74)
+          midi.bind("bright", cc = 64)
+          // What a knob sends; with hardware, midi.attach(MidiDevices.openInput(MidiDevices.inputs().first())).
+          for (v in listOf(0, 32, 64, 96, 127)) {
+              midi.feed(0, 74, v)
+              println("CC74 = $v  ->  cutoff ${"%.1f".format(cutoff)}")
+          }
+          midi.feed(0, 64, 127)
+          midi.feed(0, 74, 80)
+          println("bright = $bright, bindings = ${midi.bindings}")
+  - execute:
+      box: controls_midi_demo
+      property: code
+      type: fragment
+  - wait:
+      millis: 500
