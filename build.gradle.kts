@@ -4100,6 +4100,14 @@ val smokeCeresInteractionExamples = tasks.register<JavaExec>("smokeCeresInteract
     )
 }
 
+// A session built on one thread and solved and closed on another, closed twice: the house sketch's runloop rebuild.
+val smokeCeresCrossThreadClose = tasks.register<JavaExec>("smokeCeresCrossThreadClose") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresCrossThreadCloseSmokeKt",
+        "Runs the Ceres smoke that solves and closes a native session off the thread that built it.",
+    )
+}
+
 // Solver options, the summary, a selectable loss, and the midsphere/global constraint family.
 val smokeCeresSolverOptions = tasks.register<JavaExec>("smokeCeresSolverOptions") {
     configureCeresSmokeTask(
@@ -4200,6 +4208,7 @@ tasks.register("smokeCeres") {
         smokeCeresGeometryPrimitives,
         smokeCeresArchitecturalDsl,
         smokeCeresInteractionExamples,
+        smokeCeresCrossThreadClose,
         smokeCeresSolverOptions,
         smokeCeresCanonical,
         smokeCeresExpression,
