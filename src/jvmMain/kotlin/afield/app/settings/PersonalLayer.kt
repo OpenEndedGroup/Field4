@@ -153,6 +153,10 @@ object PersonalLayer {
 
     private fun stage(): List<File> = roots.map { root ->
         if (root.isDirectory) return@map root
+        // Kit JARs already live at immutable, content-addressed paths. Staging beside them would
+        // write generations into the package snapshot and invalidate its integrity on the next build.
+        val packages = File(afield.document.workspace.KitPackages.directory, "packages").canonicalFile.toPath()
+        if (root.canonicalFile.toPath().startsWith(packages)) return@map root
         runCatching {
             runCatching { removeExitedStaging(File(root.parentFile, "generations")) }
             val staged = stagedPath(root, generation)

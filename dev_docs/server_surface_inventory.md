@@ -25,9 +25,9 @@ the category, which is enough to decide whether the new door wanted a guard.
 It is not the whole story of Field's exposure, and two other guards own the parts it leaves
 out:
 
-- **state-changing HTTP routes** — 56 of them, 43 with a named verb and 13 that name no verb
+- **state-changing HTTP routes** — 64 of them, 51 with a named verb and 13 that name no verb
   at all — belong to `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned`, which
-  has pinned them since 2026-08-12 and counts the routes without their own guard (**48 of 56**). The
+  has pinned them since 2026-08-12 and counts the routes without their own guard (**56 of 64**). The
   Local AI model-discovery probe has a same-site check and permits trusted remote Field clients. This
   page does not duplicate that table, but it does count the thirteen verbless routes below,
   because a door that answers every method has to appear in an inventory of doors;
@@ -37,7 +37,7 @@ What was uncovered before this page existed, and is what it adds:
 
 | surface | count | previously guarded by |
 | --- | --- | --- |
-| HTTP **read** routes | 45 | nothing — the mutating census skips `get` outright |
+| HTTP **read** routes | 51 | nothing — the mutating census skips `get` outright |
 | **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
 | `staticFiles` directory mounts | 7 | nothing — invisible to every route regex in the tree |
 | `/ws` **command** names (`handlers`) | 130 | nothing |
@@ -69,7 +69,7 @@ default**. That inversion is the single most useful sentence on either page.
 
 ## HTTP read routes
 
-47 routes, 36 of them with no route-specific guard. `guard` is computed from the handler
+51 routes, 40 of them with no route-specific guard. `guard` is computed from the handler
 body by the docs-route vocabulary the mutating census also uses
 (`docsAnnotations.kt:739#fun ApplicationCall.refuseUnlessSameSiteDocsClient`,
 `docsAnnotations.kt:723#fun ApplicationCall.refuseUnlessLocalDocsClient`); there is no `install(Authentication)`
@@ -107,6 +107,10 @@ mutation; it is a different one.
 | `GET /api/document-guide-asset` | `documentGuides.kt` | none |
 | `GET /api/export-tagged-documents` | `Server.kt` | none |
 | `GET /api/instance-info` | `Server.kt` | none |
+| `GET /api/kits` | `KitRoutes.kt` | none |
+| `GET /api/kits/guide` | `KitRoutes.kt` | none |
+| `GET /api/kits/instances` | `KitRoutes.kt` | none |
+| `GET /api/kits/restart-status` | `KitRoutes.kt` | none |
 | `GET /api/maven-classpath` | `Server.kt` | none |
 | `GET /api/maven-search` | `Server.kt` | none |
 | `GET /api/patchy-document/{binding}` | `PatchyWebStorage.kt` | same-site |

@@ -4,7 +4,13 @@ A Field presentation is a document you can teach from. Its Kotlin code combines 
 
 ## Start a presentation
 
-With [Field running](installation.md) in its Electron app, choose **Presentation → New Presentation…**. Give the new document a name inside your current workspace. Field copies the starter and opens it. The starter runs its **Presentation** box to open the audience and presenter windows.
+With [Field running](installation.md) in its Electron app, open Welcome:
+
+1. Expand **Kits** beneath Starting points and Templates, then press **Add presentation starter kit**.
+2. Press **Restart Field**. Field prepares the registered kit before restarting; the same Electron window reconnects.
+3. Expand **Kits → Presentations** and press **Create document** beside **Teaching with Field**.
+
+Field copies the starting point into your workspace and records its kit revision. Its **Teaching guide**, **Live Field** and **Presentation** boxes start in order, opening the audience and presenter windows. Each new talk is an editable document; the installed starting point stays unchanged. See [Kits and Starting Points](kits.md#add-a-self-contained-kit-in-welcome) for adding a kit from another folder.
 
 Use **Next**, **Previous** or a named step in the presenter controls. **Show audience** brings the audience window forward; **Fullscreen audience** makes that window fullscreen. In the audience, the arrow keys, Page Up/Down and Space navigate slides. F8 and F9 navigate backwards and forwards while a live webpage or Field document has focus, leaving their ordinary editing keys available.
 
@@ -12,7 +18,7 @@ Edit the **Presentation** box and run it again to update the talk. It keeps the 
 
 There is no per-talk Node project or package installation. The presentation is an ordinary document folder with Kotlin sidecars, guides, macros and files. Keep that folder in Git if you want version history and collaboration. Put shared media in `files/` and refer to it by filename, for example `img { src = mediaName }`, rather than copying it into each slide.
 
-The starter is also available as **presentation** under **Templates** on the Welcome screen. In a browser, the document and its guides remain usable; the separate audience display requires the Electron app.
+For a standalone copy, the starter remains available as **presentation** under **Templates** on Welcome. That route does not register the package or create a managed package instance. In a browser, the document and its guides remain usable; the separate audience display requires the Electron app.
 
 ## Organize a long talk
 
@@ -161,9 +167,13 @@ Webpages use top-level, isolated Electron views, allowing sites with iframe rest
 
 ## Reuse the starter as a kit
 
-The starter includes a small [Field kit](kits.md): the teaching-guide helper and the shared presentation style. Its `kit.json`, `roles/` and `files/kit.json` record the shared parts and their revision. The authored **Presentation** box and **Live Field** example are ordinary document content outside those roles.
+The [Presentations package](kits.md#add-a-self-contained-kit-in-welcome) is declared by `field-kit.json`. It supplies the starting point, its guide and the order of the boxes to run. Documents created through Kits belong to the **kit-presentation** Project and record their package and runtime revisions in `.field-kit-instance.json`.
 
-That separation lets a kit update improve a teaching helper without replacing the words of a lecture. Run `showKit()` in a box to inspect the shared parts. Kit migrations are explicit and refuse to overwrite locally edited shared parts. The kit travels inside the document, so moving the talk to another machine does not depend on a path in the original author's home directory.
+To update a managed talk, close it, use **Check source for updates** on Welcome's Presentations card, then restart Field. Under **Your documents**, choose **Inspect update** before **Apply update to closed document** and **Run**. Package updates compare the original starting files, your current files and the new starting point. They preserve unrelated edits and refuse conflicts, including changes to the same talk source or `metadata.edn`. Updates are explicit; installing a new package never silently rewrites a lecture.
+
+Inside the document, the smaller `kit.json` role kit owns the teaching-guide helper and shared stylesheet. `roles/` holds their source, and `files/kit.json` records the document's role revision. The authored **Presentation** box and **Live Field** example are outside those roles. `showKit()` inspects this inner helper/style kit; it does not report the outer package's installation or update status.
+
+Keep the document folder, including `.field-kit-instance.json` when present, in Git. On another machine, add the package revision that instance records and restart Field before using **Run**. Keep package source versions in Git too, so that revision can be installed again. The [kit guide](kits.md#starting-point-revisions-and-instance-updates) explains package snapshots, shared Project resources and recovery.
 
 ## Optional Motion Canvas scenes
 

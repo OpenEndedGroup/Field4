@@ -21,8 +21,10 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.security.SecureRandom
+import java.security.MessageDigest
 import java.security.cert.X509Certificate
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.Properties
 import javax.imageio.ImageIO
 import javax.net.ssl.*
 
@@ -470,16 +472,39 @@ fun fieldAotBuildFingerprint(
 // The path is announced to the app via a system property rather than the classpath.
 // Optional project-owned extensions share the existing isolated personal compilation.
 // Never add these roots to core: the dependency direction remains extension -> Field.
-val externalExtensionRoots = (providers.gradleProperty("fieldExtensionDirs").orNull
+// Welcome writes an immutable package profile for the next launch. Gradle reads data, never kit build scripts.
+val kitDirectory = file(providers.gradleProperty("fieldKitsDir").orNull
+    ?: System.getenv("AFIELD_KITS_DIR") ?: "${System.getProperty("user.home")}/.afield/kits")
+val kitProfile = Properties().apply {
+    val profile = File(kitDirectory, "runtime.properties")
+    if (profile.isFile) profile.inputStream().use { load(it) }
+}
+val kitCount = kitProfile.getProperty("count", "0").toInt()
+fun kitValues(name: String): List<String> = (0 until kitCount).flatMap { k ->
+    val prefix = "kit.$k.$name"
+    (0 until kitProfile.getProperty("$prefix.count", "0").toInt()).map { kitProfile.getProperty("$prefix.$it") }
+}
+val kitCoordinates = kitValues("dependencies").distinct()
+val kitJars = files(kitValues("jars"))
+val kitDependencies = configurations.create("kitRuntime") {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    resolutionStrategy.failOnVersionConflict()
+    resolutionStrategy.failOnDynamicVersions()
+    resolutionStrategy.failOnChangingVersions()
+}
+kitCoordinates.forEach { coordinate -> dependencies.add(kitDependencies.name, coordinate) }
+val kitClasspath = kitJars + kitDependencies
+val externalExtensionRoots = ((providers.gradleProperty("fieldExtensionDirs").orNull
     ?: providers.environmentVariable("AFIELD_EXTENSION_DIRS").orNull).orEmpty()
-    .split(File.pathSeparatorChar).filter { it.isNotBlank() }.map { file(it.trim()).canonicalFile }
-    .distinct().onEach { root ->
+    .split(File.pathSeparatorChar).filter { it.isNotBlank() } + kitValues("extensions"))
+    .map { file(it.trim()).canonicalFile }.distinct().onEach { root ->
         require(root.isDirectory && (File(root, "kotlin").isDirectory || File(root, "resources").isDirectory)) {
             "Field extension root must contain kotlin/ or resources/: $root"
         }
     }
 val personalSourceRoots = (listOf(file("src/personal")) + externalExtensionRoots).distinctBy { it.canonicalPath }
-val hasPersonalLayer = personalSourceRoots.any { File(it, "kotlin").isDirectory || File(it, "resources").isDirectory }
+val hasPersonalLayer = personalSourceRoots.any { File(it, "kotlin").isDirectory || File(it, "resources").isDirectory } || kitCoordinates.isNotEmpty() || !kitJars.isEmpty
 val personalLayerJar: File = layout.buildDirectory.file("personal/afield-personal.jar").get().asFile
 /** Must match `afield.app.settings.PersonalLayer.CLASSPATH_PROPERTY`. */
 val personalLayerProperty = "afield.personal.classpath"
@@ -525,7 +550,20 @@ fun requiredRunJvmArgs(): List<String> {
         add("-Dafield.ceres.library=${ceresNative.asFile.absolutePath}")
         add("-Dafield.opendlssnr.root=${layout.buildDirectory.dir("native/field-opendlssnr").get().asFile.absolutePath}")
         add(steamAudioJvmArg())
-        if (hasPersonalLayer) add("-D$personalLayerProperty=${personalLayerJar.absolutePath}")
+        if (hasPersonalLayer) add("-D$personalLayerProperty=" + (files(personalLayerJar) + kitClasspath).asPath)
+        add("-Dafield.kits.dir=${kitDirectory.absolutePath}")
+        add("-Dafield.kit.revisions=" + (0 until kitCount).joinToString(",") {
+            kitProfile.getProperty("kit.$it.id") + "@" + kitProfile.getProperty("kit.$it.revision")
+        })
+        add("-Dafield.kit.sources=" + kitValues("extensions").map { File(it, "kotlin").path }.joinToString(File.pathSeparator))
+        add("-Dafield.kit.packages=" + (0 until kitCount).joinToString(File.pathSeparator) { kitProfile.getProperty("kit.$it.directory") })
+        val nativeDirs = kitValues("natives")
+        if (nativeDirs.isNotEmpty()) add("-Djava.library.path=" + (nativeDirs + System.getProperty("java.library.path").split(File.pathSeparator)).distinct().joinToString(File.pathSeparator))
+        (0 until kitCount).forEach { k ->
+            (0 until kitProfile.getProperty("kit.$k.properties.count", "0").toInt()).forEach { i ->
+                add("-D" + kitProfile.getProperty("kit.$k.properties.$i.key") + "=" + kitProfile.getProperty("kit.$k.properties.$i.value"))
+            }
+        }
         if (!onWindowsOrLinux) {
             add("-XstartOnFirstThread")
             add("-Xdock:name=Field4")
@@ -887,6 +925,7 @@ kotlin {
             val jvmMainCompilation = compilations.getByName("main")
             compilations.create("personal") {
                 associateWith(jvmMainCompilation)
+                compileDependencyFiles += kitClasspath
                 defaultSourceSet {
                     kotlin.setSrcDirs(personalSourceRoots.map { File(it, "kotlin") })
                     resources.setSrcDirs(personalSourceRoots.map { File(it, "resources") })
@@ -3071,13 +3110,57 @@ fun javaArgfileToken(value: String): String =
     "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"")
         .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t") + "\""
 
+val verifyKitDependencies = tasks.register("verifyKitDependencies") {
+    group = "verification"
+    doLast {
+        (0 until kitCount).forEach { k ->
+            val directory = file(kitProfile.getProperty("kit.$k.directory")).canonicalFile
+            val expected = (0 until kitProfile.getProperty("kit.$k.files.count", "0").toInt()).map { kitProfile.getProperty("kit.$k.files.$it.path") }.toSet()
+            directory.walkTopDown().onEnter { folder ->
+                require(!Files.isSymbolicLink(folder.toPath())) { "Kit snapshot contains a directory symlink: $folder" }
+                true
+            }.filter { it.isFile && it.name != ".DS_Store" }.forEach { path ->
+                require(path.relativeTo(directory).invariantSeparatorsPath in expected) { "Kit snapshot has an unregistered file: $path" }
+            }
+            (0 until kitProfile.getProperty("kit.$k.files.count", "0").toInt()).forEach { i ->
+                val path = File(directory, kitProfile.getProperty("kit.$k.files.$i.path")).canonicalFile
+                require(path.toPath().startsWith(directory.toPath()) && path.isFile) { "Kit snapshot file is missing: $path" }
+                val digest = MessageDigest.getInstance("SHA-256")
+                path.inputStream().use { input -> val buffer = ByteArray(65536); while (true) { val n = input.read(buffer); if (n < 0) break; digest.update(buffer, 0, n) } }
+                val actual = digest.digest().joinToString("") { "%02x".format(it) }
+                require(actual == kitProfile.getProperty("kit.$k.files.$i.hash")) { "Kit snapshot changed: $path. Reinstall from its source folder." }
+            }
+        }
+        if (kitCoordinates.isNotEmpty()) {
+            val core = configurations.getByName("jvmRuntimeClasspath").resolvedConfiguration.resolvedArtifacts
+                .associate { "${it.moduleVersion.id.group}:${it.name}" to it.moduleVersion.id.version }
+            kitDependencies.resolvedConfiguration.resolvedArtifacts.forEach { artifact ->
+                val id = artifact.moduleVersion.id
+                val existing = core["${id.group}:${artifact.name}"]
+                require(existing == null || existing == id.version) {
+                    "Kit dependency ${id.group}:${artifact.name}:${id.version} conflicts with Field's $existing. Use the host version."
+                }
+            }
+        }
+    }
+}
+tasks.matching { it.name == "compilePersonalKotlinJvm" }.configureEach { dependsOn(verifyKitDependencies) }
+if (kitValues("extensions").isNotEmpty()) {
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().matching { it.name == "compilePersonalKotlinJvm" }.configureEach {
+        // Every kit revision moves its sources to a new immutable path. K2 incremental compilation
+        // can retain the previous path's package declarations and report false conflicting overloads.
+        // Rebuild this optional extension layer as a unit; core compilation stays incremental.
+        incremental = false
+    }
+}
+
 val fieldServerOnly = providers.gradleProperty("fieldServerOnly").map(String::toBoolean).orElse(false)
 
 tasks.register("dumpFieldLaunch") {
     group = "application"
     description = "Writes build/field-launch/{java,args} so ./field.sh and .\\field.ps1 can launch " +
         "afield.app.server.Server directly in a terminal (stdout stays a TTY, so the pinned console renders)."
-    dependsOn(tasks.named("jvmJar"), prepareSmileNative)
+    dependsOn(tasks.named("jvmJar"), prepareSmileNative, verifyKitDependencies)
     dependsOn(tasks.named("generateLocalKeystore"))
     if (!fieldServerOnly.get()) dependsOn(electronInstall)
     personalJar?.let { dependsOn(it) }

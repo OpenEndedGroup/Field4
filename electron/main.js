@@ -10,6 +10,7 @@ const {
   ipcMain,
   screen,
   systemPreferences,
+  dialog,
 } = require("electron");
 
 const APP_NAME = "Field4";
@@ -1596,6 +1597,7 @@ function createMainWindow() {
     ipcMain.removeListener("field4-tabs-hide", onHideTabs);
     ipcMain.removeHandler("field4-history-capture-window");
     ipcMain.removeHandler("field4-tab-identity");
+    ipcMain.removeHandler("field4-kit-folder");
     ipcMain.removeListener("field4-renderer-diagnostic", onRendererDiagnostic);
   });
 
@@ -1613,6 +1615,13 @@ function createMainWindow() {
   };
   const presentationServerTab = () => presentationFieldTab() ||
     (isFieldServerTab(activeTab()) ? activeTab() : tabs.find(isFieldServerTab));
+  ipcMain.removeHandler("field4-kit-folder");
+  ipcMain.handle("field4-kit-folder", async event => {
+    const tab = tabs.find(t => liveContents(t) === event.sender);
+    if (!isFieldServerTab(tab) || !isWelcomeUrl(contentsUrl(tab))) throw new Error("Choose kits from Field Welcome");
+    const result = await dialog.showOpenDialog(win, {title: "Add a Field kit", properties: ["openDirectory"]});
+    return result.canceled ? null : result.filePaths[0];
+  });
   const presentationHost = {
     getFieldContents: () => { const tab = presentationFieldTab(); return tab && liveContents(tab); },
     openDocument: name => {
