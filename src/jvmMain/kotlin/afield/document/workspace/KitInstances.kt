@@ -4,6 +4,26 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import kotlinx.serialization.Serializable
 import java.io.File
 
+/**
+ * Making a document from a kit package's starting point, and bringing it up to a newer revision.
+ *
+ * [KitInstances.create] copies the starting point's document directory into the workspace, drops
+ * the package manifest from the copy, and writes a [KitInstanceRecord] into
+ * `.field-kit-instance.json`: the kit, the revision and runtime revision it was made from, the
+ * starting point, the project, and a hash for every seed file. It also makes the `kit-<id>`
+ * workspace project on first use and seeds that project's preferences from the manifest, so every
+ * document from one kit shares a parent and a preferences file. Creating is refused unless the
+ * installed revision is the one this host launched with.
+ *
+ * That per-file baseline is what makes an update a three-way comparison rather than an overwrite.
+ * [KitInstances.inspect] reads the record's hash, the document's hash and the installed seed's hash
+ * for every path either side knows, and labels each `update`, `remove`, `edited-here` or
+ * `conflict`, the last meaning both sides have changed it since the baseline.
+ * [KitInstances.migrate] refuses while any conflict stands, copies every file it is about to write
+ * or delete into `backups/kit-<uuid>` inside the document, and restores that backup if a write
+ * fails partway. The caller closes the document first; this writes files, not a loaded session.
+ */
+
 /** The seed revision and file baselines this document actually received. */
 @Serializable
 data class KitInstanceRecord(val kit: String, val revision: String, val runtimeRevision: String,

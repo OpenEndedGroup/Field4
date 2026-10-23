@@ -8,6 +8,33 @@ import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.Properties
 
+/**
+ * The machine-wide registry of kit packages, and the immutable snapshots it installs them into.
+ *
+ * A kit package is a directory with a [KitPackageManifest] in its `field-kit.json`: one or more
+ * starting points, each an ordinary Field document directory, together with whatever Kotlin
+ * extension source, JARs, pinned Maven coordinates and native libraries those documents need.
+ * [KitPackages.install] validates the manifest, hashes every file the manifest reaches, copies them
+ * under [KitPackages.directory] (`~/.afield/kits` unless `afield.kits.dir` or `AFIELD_KITS_DIR`
+ * says otherwise) and rehashes the copy before registering it. A revision is the hash of that file
+ * inventory, so an existing revision is never rewritten and documents created from it keep the
+ * bytes they were created from. No code from the package runs here.
+ *
+ * Registration writes two files beside the snapshots. `registry.json` is what
+ * [KitPackages.installed] and Welcome read. `runtime.properties` is for `build.gradle.kts`, which
+ * turns it into the next launch's extension roots, classpath, `java.library.path` and `-D`
+ * properties, so a kit's runtime reaches Field through a restart rather than through the running
+ * host. [KitPackages.active] reads back the revisions this process did launch with, which is how
+ * [KitPackages.statuses] tells an active kit from one waiting for a restart.
+ *
+ * Two rules keep a package self-contained and its classpath buildable. [KitPackages.child]
+ * resolves every manifest path canonically and refuses one that leaves the package; a symbolic
+ * link under any path the manifest names is refused outright. And a second kit may not contradict
+ * the first: conflicting versions of one Maven coordinate, two values for one system property, or
+ * two different native libraries with the same filename each fail registration rather than the
+ * launch.
+ */
+
 /** A self-contained runtime package. Each starting point is an ordinary Field document directory. */
 @Serializable
 data class KitPackageManifest(
@@ -43,6 +70,7 @@ data class KitStartingPoint(val title: String, val path: String, val description
 @Serializable
 data class InstalledKit(val id: String, val revision: String, val runtimeRevision: String, val directory: String, val source: String)
 
+/** One row of Welcome's kit list: `active`, `restart-required` or `error`, with the reason. */
 @Serializable
 data class KitPackageStatus(
     val installed: InstalledKit,

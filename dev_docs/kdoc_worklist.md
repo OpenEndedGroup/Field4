@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17648 of 34326 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17652 of 34326 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2247 undocumented entry points** (types, top-level functions and values) and 13717 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2243 undocumented entry points** (types, top-level functions and values) and 13717 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -412,9 +412,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [boxImports.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/boxImports.kt) | Workspace | — | 2 | 2 | 71% |
 | [PetriEditorExtension.kt](../src/jvmMain/kotlin/afield/simulation/petri/PetriEditorExtension.kt) | Simulation | — | 2 | 2 | 33% |
 | [Server_protocol.kt](../src/jvmMain/kotlin/afield/app/protocol/Server_protocol.kt) | Workspace | — | 2 | 0 | 0% |
-| [KitRoutes.kt](../src/jvmMain/kotlin/afield/app/server/KitRoutes.kt) | Workspace | — | 2 | 0 | 33% |
 | [vma.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/buffers/vma.kt) | Graphics | — | 2 | 0 | 0% |
-| [KitPackages.kt](../src/jvmMain/kotlin/afield/document/workspace/KitPackages.kt) | Workspace | — | 1 | 33 | 17% |
 | [KotlinInterface2.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/KotlinInterface2.kt) | Workspace | — | 1 | 33 | 24% |
 | [FrameBufferGroup.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/buffers/FrameBufferGroup.kt) | Graphics | — | 1 | 28 | 3% |
 | [textures.kt](../src/jvmMain/kotlin/afield/graphics/texture/textures.kt) | Graphics | — | 1 | 27 | 17% |
@@ -481,7 +479,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FaustSmokeTest.kt](../src/jvmMain/kotlin/afield/audio/synth/FaustSmokeTest.kt) | Audio | — | 1 | 2 | 0% |
 | [SonicPiPatternsSmokeTest.kt](../src/jvmMain/kotlin/afield/audio/synth/SonicPiPatternsSmokeTest.kt) | Audio | — | 1 | 2 | 0% |
 | [SafeSaveAtomicSmokeTest.kt](../src/jvmMain/kotlin/afield/document/persistence/SafeSaveAtomicSmokeTest.kt) | Workspace | — | 1 | 2 | 0% |
-| [KitRestarts.kt](../src/jvmMain/kotlin/afield/document/workspace/KitRestarts.kt) | Workspace | — | 1 | 2 | 25% |
 | [BooleanNetworksSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/BooleanNetworksSmokeTest.kt) | Examples | — | 1 | 2 | 0% |
 | [JSONLineServerSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/JSONLineServerSmokeTest.kt) | Examples | — | 1 | 2 | 0% |
 | [JSONProcessSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/JSONProcessSmokeTest.kt) | Examples | — | 1 | 2 | 0% |
@@ -598,6 +595,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [StackSLWatchmaker.kt](../src/jvmMain/kotlin/afield/lang/stacksl/evolution/StackSLWatchmaker.kt) | Search | — | 0 | 40 | 36% |
 | [KratosStudy.kt](../src/jvmMain/kotlin/afield/simulation/kratos/KratosStudy.kt) | Simulation | — | 0 | 39 | 45% |
 | [GestureReplayMain.kt](../src/jvmMain/kotlin/afield/graphics/paint/GestureReplayMain.kt) | Internal | — | 0 | 35 | 10% |
+| [KitPackages.kt](../src/jvmMain/kotlin/afield/document/workspace/KitPackages.kt) | Workspace | — | 0 | 33 | 19% |
 | [Score.kt](../src/jvmMain/kotlin/afield/animation/motion/Score.kt) | Simulation | — | 0 | 30 | 60% |
 | [FabricatePassChain.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricatePassChain.kt) | Renderers | — | 0 | 30 | 57% |
 | [PingPongRenderToTexture.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/targets/PingPongRenderToTexture.kt) | Graphics | — | 0 | 30 | 26% |
@@ -892,6 +890,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DocumentShutdownFlush.kt](../src/jvmMain/kotlin/afield/document/persistence/DocumentShutdownFlush.kt) | Workspace | — | 0 | 2 | 60% |
 | [PersistedFingerprint.kt](../src/jvmMain/kotlin/afield/document/persistence/PersistedFingerprint.kt) | Workspace | — | 0 | 2 | 33% |
 | [KitDedicatedHost.kt](../src/jvmMain/kotlin/afield/document/workspace/KitDedicatedHost.kt) | Workspace | — | 0 | 2 | 60% |
+| [KitRestarts.kt](../src/jvmMain/kotlin/afield/document/workspace/KitRestarts.kt) | Workspace | — | 0 | 2 | 50% |
 | [BoxCodeFormat.kt](../src/jvmMain/kotlin/afield/examples/BoxCodeFormat.kt) | Examples | — | 0 | 2 | 33% |
 | [DocumentGuideWorkout.kt](../src/jvmMain/kotlin/afield/examples/DocumentGuideWorkout.kt) | Examples | — | 0 | 2 | 33% |
 | [ExportedAnnotationTest.kt](../src/jvmMain/kotlin/afield/examples/ExportedAnnotationTest.kt) | Examples | — | 0 | 2 | 33% |
@@ -1251,4 +1250,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `Mesh` | class | `src/jvmMain/kotlin/afield/graphics/render/Mesh.kt:45` |
 | `Renderable` | interface | `src/jvmMain/kotlin/afield/graphics/render/Module.kt:307` |
 
-…and **2127 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **2123 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

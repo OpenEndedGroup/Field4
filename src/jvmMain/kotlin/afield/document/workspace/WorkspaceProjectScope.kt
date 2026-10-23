@@ -7,6 +7,28 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * What several documents in one workspace project share: a parent box, a preferences file and a
+ * folder of files.
+ *
+ * A project is a directory under the workspace's `_projects`, listed by [listWorkspaceProjects].
+ * [WorkspaceProjectScope] gives it a [Box] that is invisible on the canvas and parented to
+ * [afield.document.graph.metaroot], so a property set there is inherited by every document attached
+ * to the project, exactly as any other parent's would be. The box's id comes from the project
+ * directory's canonical path and [WorkspaceProjectScopes] hands out one scope per directory, so
+ * reattaching a document finds the same box rather than a new one.
+ *
+ * [WorkspaceProjectScope.preferences] reads `preferences.json` in that directory and
+ * [WorkspaceProjectScope.setPreference] writes it, which is the part that survives a restart; the
+ * same map is mirrored onto the project box as `projectPreferences`, where box code reaches it
+ * through inheritance. [WorkspaceProjectScope.files] is a folder for assets several documents want.
+ * From a box, [projectScopes] lists the scopes above it, ordinarily one for a document made from a
+ * kit package.
+ *
+ * A project root is canvas furniture rather than document content, so persistence drops it from the
+ * parent and child sets it writes, asking [WorkspaceProjectScopes.isProjectRoot].
+ */
+
 /** One workspace project's shared parent, persistent preferences and shared files. */
 class WorkspaceProjectScope internal constructor(val directory: File) {
     private val mapper = jacksonObjectMapper()

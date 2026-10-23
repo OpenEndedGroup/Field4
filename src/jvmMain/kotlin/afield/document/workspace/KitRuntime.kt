@@ -7,6 +7,29 @@ import afield.app.diagnostics.logging.lprintln
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * Loading a kit package's Kotlin lifecycle, and attaching it to the documents made from that kit.
+ *
+ * [KitRuntime.start] runs once as the server comes up, over the package directories the launcher
+ * captured in `afield.kit.packages` rather than over whatever [KitPackages.installed] says now: the
+ * classpath this JVM has is the one those directories described when it was built. For each it
+ * reads the manifest, instantiates the `runtime.lifecycle` class named there through
+ * [afield.app.settings.PersonalLayer]'s loader, and calls [KitLifecycle.startup]. A kit whose
+ * startup throws is cleaned up and recorded in [KitRuntime.errors], where Welcome shows it as that
+ * kit's state, and the others still load. A kit carrying a [KitDedicatedHost] block is skipped,
+ * since it runs in its own host. A shutdown hook deactivates documents and cleans the kits up in
+ * reverse, with four seconds to finish.
+ *
+ * [KitRuntime.activate] runs when a document loads, and only for one carrying a
+ * [KitInstanceRecord]. It refuses when the record's runtime revision is not this host's, because
+ * the document was created against a package whose extension code this host may not have on its
+ * classpath, and it hands [KitLifecycle.activate] both the document and its
+ * [WorkspaceProjectScope], so state shared by a kit's documents outlives any one of them.
+ * [KitRuntime.launchBoxes] resolves the recorded starting point's launch names against the live
+ * document, requiring exactly one box for each, and reads those names from the revision the
+ * document was created from rather than from the newer revision this host may have loaded.
+ */
+
 /** Implement in a kit's Kotlin extension; startup/cleanup belong to the host, activation to a document. */
 interface KitLifecycle {
     fun startup(context: KitHostContext) {}

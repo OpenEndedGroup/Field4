@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-224 source file(s), 3119 public symbol(s), 1112 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+224 source file(s), 3119 public symbol(s), 1116 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1066,21 +1066,46 @@ Makes `kill -INT` (and Ctrl-C) stop Field even when Field was started with SIGIN
 
 ## KitRoutes.kt { #kitroutes-kt }
 
+The HTTP surface behind Welcome's kit library, one route per action that panel offers.
+
+`GET /api/kits` is the list: every registered package with its manifest and its state, whether
+the registry and the revisions this host launched with have diverged, and the packages bundled in
+the checkout's `templates/`. `install` and `remove` edit the registry; `restart-status` and
+`restart` drive [`afield.document.workspace.KitRestarts`](workspace.md#kitrestarts-kt-kitrestarts); `create` copies a starting point into the
+workspace and announces the new document; `open-host` starts a kit that brings its own host and
+answers with a URL into it; `guide` renders the package's Markdown guide as a standalone page,
+served under a sandboxing Content-Security-Policy because that text belongs to the package rather
+than to Field.
+
+The three routes that touch an existing document are the careful ones. `instances` and `inspect`
+report a three-way comparison and write nothing; `migrate` refuses unless the document is closed,
+flushing and unloading one that is loaded with nothing attached to it first; and `activate`
+starts the kit's runtime for a loaded document and launches its boxes in order, or answers with
+the URL that would open it when it is not loaded. A document is addressed by name and has to
+resolve to a direct child of the workspace, so a path cannot reach outside it.
+
+Nothing here runs code from a package. Installing is validation and copying; it is the next
+launch that puts a kit's classes on the classpath.
+
 `src/jvmMain/kotlin/afield/app/server/KitRoutes.kt` — [read the source](source/jvmMain/afield/app/server/KitRoutes/)
 
 ### Top-level functions { #kitroutes-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="kitroutes-kt--installkitroutes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Route</span><span class="p">.</span><span class="nf">installKitRoutes</span><span class="p">(</span><span class="n">restart</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/KitRoutes/#L23) | Local kit lifecycle APIs used by Welcome; registration never executes the package's code. |
+| <a id="kitroutes-kt--installkitroutes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Route</span><span class="p">.</span><span class="nf">installKitRoutes</span><span class="p">(</span><span class="n">restart</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/KitRoutes/#L48) | Local kit lifecycle APIs used by Welcome; registration never executes the package's code. |
 
 ### KitPackageRequest { #kitroutes-kt-kitpackagerequest }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitPackageRequest</span><span class="p">(</span><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">startingPoint</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">document</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/KitRoutes/#L17)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitPackageRequest</span><span class="p">(</span><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">startingPoint</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">document</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/KitRoutes/#L41)
+
+One request body for every kit route; each reads the fields its own action needs.
 
 ### KitLibraryResponse { #kitroutes-kt-kitlibraryresponse }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitLibraryResponse</span><span class="p">(</span><span class="k">val</span> <span class="n">kits</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KitPackageStatus</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">restartRequired</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">bundled</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/KitRoutes/#L20)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitLibraryResponse</span><span class="p">(</span><span class="k">val</span> <span class="n">kits</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KitPackageStatus</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">restartRequired</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">bundled</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/KitRoutes/#L45)
+
+The whole kit library as Welcome draws it, including packages bundled in `templates/`.
 
 ## NetStats.kt { #netstats-kt }
 
@@ -3360,11 +3385,30 @@ The property delegate that makes a value *inherited*: reading it looks in this b
 
 ## KitDedicatedHost.kt { #kitdedicatedhost-kt }
 
+Registering a project that already has its own launcher and workspace, without changing either.
+
+Some of what a kit package would describe already exists as a checkout with a `field.sh`, its own
+documents and its own runtime. A manifest with a [`KitDedicatedHost`](workspace.md#kitdedicatedhost-kt-kitdedicatedhost) block says so: it names the
+launcher to run, the loopback HTTP endpoint that project serves on, and the workspace that
+endpoint has to report. Registration validates and hashes those and nothing more, and the current
+host leaves such a kit's runtime out of its own classpath profile, so the project's files are not
+rewritten and its code is not loaded here.
+
+[`KitDedicatedHosts.open`](workspace.md#kitdedicatedhost-kt--kitdedicatedhosts--open) is the only thing that starts it, from an explicit action in Welcome. It
+asks the endpoint's `/api/instance-info` whether a Field is already serving the expected
+workspace and refuses outright if a different workspace answers there. If none is, it checks that
+the launcher where the project lives still hashes to the copy installed under the registry, runs
+it from there with the environment variables that would otherwise point it at this Field's ports,
+workspace, extensions and Electron profile removed, and waits up to three minutes for the
+endpoint to come up, reporting the launcher's log if it exits first. What comes back is a URL
+into that host: its Welcome page, or a document the host itself created from the named starting
+point.
+
 `src/jvmMain/kotlin/afield/document/workspace/KitDedicatedHost.kt` — [read the source](source/jvmMain/afield/document/workspace/KitDedicatedHost/)
 
 ### KitDedicatedHost { #kitdedicatedhost-kt-kitdedicatedhost }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitDedicatedHost</span><span class="p">(</span><span class="k">val</span> <span class="n">launcher</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">endpoint</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">workspace</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">environment</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitDedicatedHost/#L14)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitDedicatedHost</span><span class="p">(</span><span class="k">val</span> <span class="n">launcher</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">endpoint</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">workspace</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">environment</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitDedicatedHost/#L35)
 
 Compatibility for an existing project launcher. Its original workspace and runtime remain authoritative.
 
@@ -3374,14 +3418,14 @@ Compatibility for an existing project launcher. Its original workspace and runti
 
 ### KitDedicatedHosts { #kitdedicatedhost-kt-kitdedicatedhosts }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">KitDedicatedHosts</span></code>](source/jvmMain/afield/document/workspace/KitDedicatedHost/#L18)
+[<code class="highlight"><span class="k">object</span> <span class="nc">KitDedicatedHosts</span></code>](source/jvmMain/afield/document/workspace/KitDedicatedHost/#L39)
 
 Starts an existing local project without rewriting its launcher, manifests or existing documents.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="kitdedicatedhost-kt--kitdedicatedhosts--validate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">validate</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">host</span><span class="p">:</span> <span class="nc">KitDedicatedHost</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitDedicatedHost/#L22) |  |
-| <a id="kitdedicatedhost-kt--kitdedicatedhosts--open"></a>[<code class="highlight"><span class="k">fun</span> <span class="k">open</span><span class="p">(</span><span class="n">kit</span><span class="p">:</span> <span class="nc">InstalledKit</span><span class="p">,</span> <span class="n">startingPoint</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitDedicatedHost/#L34) | The launcher is invoked only by an explicit Run/Create action, never by installation. |
+| <a id="kitdedicatedhost-kt--kitdedicatedhosts--validate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">validate</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">host</span><span class="p">:</span> <span class="nc">KitDedicatedHost</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitDedicatedHost/#L43) |  |
+| <a id="kitdedicatedhost-kt--kitdedicatedhosts--open"></a>[<code class="highlight"><span class="k">fun</span> <span class="k">open</span><span class="p">(</span><span class="n">kit</span><span class="p">:</span> <span class="nc">InstalledKit</span><span class="p">,</span> <span class="n">startingPoint</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitDedicatedHost/#L55) | The launcher is invoked only by an explicit Run/Create action, never by installation. |
 
 ## KitFirstOpen.kt { #kitfirstopen-kt }
 
@@ -3408,11 +3452,29 @@ Finds the roles a freshly copied kit document launches on its first open.
 
 ## KitInstances.kt { #kitinstances-kt }
 
+Making a document from a kit package's starting point, and bringing it up to a newer revision.
+
+[`KitInstances.create`](workspace.md#kitinstances-kt--kitinstances--create) copies the starting point's document directory into the workspace, drops
+the package manifest from the copy, and writes a [`KitInstanceRecord`](workspace.md#kitinstances-kt-kitinstancerecord) into
+`.field-kit-instance.json`: the kit, the revision and runtime revision it was made from, the
+starting point, the project, and a hash for every seed file. It also makes the `kit-<id>`
+workspace project on first use and seeds that project's preferences from the manifest, so every
+document from one kit shares a parent and a preferences file. Creating is refused unless the
+installed revision is the one this host launched with.
+
+That per-file baseline is what makes an update a three-way comparison rather than an overwrite.
+[`KitInstances.inspect`](workspace.md#kitinstances-kt--kitinstances--inspect) reads the record's hash, the document's hash and the installed seed's hash
+for every path either side knows, and labels each `update`, `remove`, `edited-here` or
+`conflict`, the last meaning both sides have changed it since the baseline.
+[`KitInstances.migrate`](workspace.md#kitinstances-kt--kitinstances--migrate) refuses while any conflict stands, copies every file it is about to write
+or delete into `backups/kit-<uuid>` inside the document, and restores that backup if a write
+fails partway. The caller closes the document first; this writes files, not a loaded session.
+
 `src/jvmMain/kotlin/afield/document/workspace/KitInstances.kt` — [read the source](source/jvmMain/afield/document/workspace/KitInstances/)
 
 ### KitInstanceRecord { #kitinstances-kt-kitinstancerecord }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitInstanceRecord</span><span class="p">(</span><span class="k">val</span> <span class="n">kit</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">runtimeRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">startingPoint</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">project</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">files</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L9)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitInstanceRecord</span><span class="p">(</span><span class="k">val</span> <span class="n">kit</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">runtimeRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">startingPoint</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">project</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">files</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L29)
 
 The seed revision and file baselines this document actually received.
 
@@ -3422,11 +3484,11 @@ The seed revision and file baselines this document actually received.
 
 ### KitInstanceChange { #kitinstances-kt-kitinstancechange }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitInstanceChange</span><span class="p">(</span><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L13)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitInstanceChange</span><span class="p">(</span><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L33)
 
 ### KitInstanceInspection { #kitinstances-kt-kitinstanceinspection }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitInstanceInspection</span><span class="p">(</span><span class="k">val</span> <span class="n">document</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">record</span><span class="p">:</span> <span class="nc">KitInstanceRecord</span><span class="p">,</span> <span class="k">val</span> <span class="n">availableRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">changes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KitInstanceChange</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">conflicts</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L16)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitInstanceInspection</span><span class="p">(</span><span class="k">val</span> <span class="n">document</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">record</span><span class="p">:</span> <span class="nc">KitInstanceRecord</span><span class="p">,</span> <span class="k">val</span> <span class="n">availableRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">changes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KitInstanceChange</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">conflicts</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L36)
 
 | Declaration | Summary |
 | --- | --- |
@@ -3434,28 +3496,53 @@ The seed revision and file baselines this document actually received.
 
 ### KitInstances { #kitinstances-kt-kitinstances }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">KitInstances</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L20)
+[<code class="highlight"><span class="k">object</span> <span class="nc">KitInstances</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L40)
 
 Starting-point copies and all-or-nothing three-way file migration. Runtime snapshots remain immutable.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="kitinstances-kt--kitinstances--record"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RECORD</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L21) |  |
-| <a id="kitinstances-kt--kitinstances--first-open"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">FIRST&#95;OPEN</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L22) |  |
-| <a id="kitinstances-kt--kitinstances--record-2"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">record</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">KitInstanceRecord</span><span class="o">?</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L26) |  |
-| <a id="kitinstances-kt--kitinstances--files"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">files</span><span class="p">(</span><span class="n">seed</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L31) |  |
-| <a id="kitinstances-kt--kitinstances--create"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">create</span><span class="p">(</span><span class="n">workspace</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">startingPoint</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">DuplicateDocumentResponse</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L39) |  |
-| <a id="kitinstances-kt--kitinstances--inspect"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">inspect</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">KitInstanceInspection</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L63) |  |
-| <a id="kitinstances-kt--kitinstances--migrate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">migrate</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">KitInstanceInspection</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L89) | Caller must close/unload a live document first. Validate the whole plan before writing any file. |
-| <a id="kitinstances-kt--kitinstances--sharedresources"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">sharedResources</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L124) |  |
+| <a id="kitinstances-kt--kitinstances--record"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RECORD</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L41) |  |
+| <a id="kitinstances-kt--kitinstances--first-open"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">FIRST&#95;OPEN</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L42) |  |
+| <a id="kitinstances-kt--kitinstances--record-2"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">record</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">KitInstanceRecord</span><span class="o">?</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L46) |  |
+| <a id="kitinstances-kt--kitinstances--files"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">files</span><span class="p">(</span><span class="n">seed</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L51) |  |
+| <a id="kitinstances-kt--kitinstances--create"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">create</span><span class="p">(</span><span class="n">workspace</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">startingPoint</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">DuplicateDocumentResponse</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L59) |  |
+| <a id="kitinstances-kt--kitinstances--inspect"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">inspect</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">KitInstanceInspection</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L83) |  |
+| <a id="kitinstances-kt--kitinstances--migrate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">migrate</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">KitInstanceInspection</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L109) | Caller must close/unload a live document first. Validate the whole plan before writing any file. |
+| <a id="kitinstances-kt--kitinstances--sharedresources"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">sharedResources</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L144) |  |
 
 ## KitPackages.kt { #kitpackages-kt }
+
+The machine-wide registry of kit packages, and the immutable snapshots it installs them into.
+
+A kit package is a directory with a [`KitPackageManifest`](workspace.md#kitpackages-kt-kitpackagemanifest) in its `field-kit.json`: one or more
+starting points, each an ordinary Field document directory, together with whatever Kotlin
+extension source, JARs, pinned Maven coordinates and native libraries those documents need.
+[`KitPackages.install`](workspace.md#kitpackages-kt--kitpackages--install) validates the manifest, hashes every file the manifest reaches, copies them
+under [`KitPackages.directory`](workspace.md#kitpackages-kt--kitpackages--directory) (`~/.afield/kits` unless `afield.kits.dir` or `AFIELD_KITS_DIR`
+says otherwise) and rehashes the copy before registering it. A revision is the hash of that file
+inventory, so an existing revision is never rewritten and documents created from it keep the
+bytes they were created from. No code from the package runs here.
+
+Registration writes two files beside the snapshots. `registry.json` is what
+[`KitPackages.installed`](workspace.md#kitpackages-kt--kitpackages--installed) and Welcome read. `runtime.properties` is for `build.gradle.kts`, which
+turns it into the next launch's extension roots, classpath, `java.library.path` and `-D`
+properties, so a kit's runtime reaches Field through a restart rather than through the running
+host. [`KitPackages.active`](workspace.md#kitpackages-kt--kitpackages--active) reads back the revisions this process did launch with, which is how
+[`KitPackages.statuses`](workspace.md#kitpackages-kt--kitpackages--statuses) tells an active kit from one waiting for a restart.
+
+Two rules keep a package self-contained and its classpath buildable. [`KitPackages.child`](workspace.md#kitpackages-kt--kitpackages--child)
+resolves every manifest path canonically and refuses one that leaves the package; a symbolic
+link under any path the manifest names is refused outright. And a second kit may not contradict
+the first: conflicting versions of one Maven coordinate, two values for one system property, or
+two different native libraries with the same filename each fail registration rather than the
+launch.
 
 `src/jvmMain/kotlin/afield/document/workspace/KitPackages.kt` — [read the source](source/jvmMain/afield/document/workspace/KitPackages/)
 
 ### KitPackageManifest { #kitpackages-kt-kitpackagemanifest }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitPackageManifest</span><span class="p">(</span><span class="k">val</span> <span class="n">schema</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;field.kit.package.v1&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">version</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">guide</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">runtime</span><span class="p">:</span> <span class="nc">KitPackageRuntime</span> <span class="o">=</span> <span class="nc">KitPackageRuntime</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">startingPoints</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">KitStartingPoint</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">sharedResources</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">preferences</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">host</span><span class="p">:</span> <span class="nc">KitDedicatedHost</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L13)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitPackageManifest</span><span class="p">(</span><span class="k">val</span> <span class="n">schema</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;field.kit.package.v1&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">version</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">guide</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">runtime</span><span class="p">:</span> <span class="nc">KitPackageRuntime</span> <span class="o">=</span> <span class="nc">KitPackageRuntime</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">startingPoints</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">KitStartingPoint</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">sharedResources</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">preferences</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">host</span><span class="p">:</span> <span class="nc">KitDedicatedHost</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L40)
 
 A self-contained runtime package. Each starting point is an ordinary Field document directory.
 
@@ -3475,7 +3562,7 @@ A self-contained runtime package. Each starting point is an ordinary Field docum
 
 ### KitPackageRuntime { #kitpackages-kt-kitpackageruntime }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitPackageRuntime</span><span class="p">(</span><span class="k">val</span> <span class="n">extensionDirs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">jars</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">dependencies</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">nativeDirectories</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">systemProperties</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">lifecycle</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L29)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitPackageRuntime</span><span class="p">(</span><span class="k">val</span> <span class="n">extensionDirs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">jars</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">dependencies</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">nativeDirectories</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">systemProperties</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">lifecycle</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L56)
 
 Runtime declarations are consumed at the next build/restart, never injected into a running host.
 
@@ -3490,19 +3577,21 @@ Runtime declarations are consumed at the next build/restart, never injected into
 
 ### KitStartingPoint { #kitpackages-kt-kitstartingpoint }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitStartingPoint</span><span class="p">(</span><span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">launch</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L40)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitStartingPoint</span><span class="p">(</span><span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">launch</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L67)
 
 A named, versioned seed; `launch` names boxes to launch in order on first open and explicit activation.
 
 ### InstalledKit { #kitpackages-kt-installedkit }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">InstalledKit</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">runtimeRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L44)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">InstalledKit</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">runtimeRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L71)
 
 One immutable package snapshot registered on this machine. Old revisions remain for existing instances.
 
 ### KitPackageStatus { #kitpackages-kt-kitpackagestatus }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitPackageStatus</span><span class="p">(</span><span class="k">val</span> <span class="n">installed</span><span class="p">:</span> <span class="nc">InstalledKit</span><span class="p">,</span> <span class="k">val</span> <span class="n">manifest</span><span class="p">:</span> <span class="nc">KitPackageManifest</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L47)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitPackageStatus</span><span class="p">(</span><span class="k">val</span> <span class="n">installed</span><span class="p">:</span> <span class="nc">InstalledKit</span><span class="p">,</span> <span class="k">val</span> <span class="n">manifest</span><span class="p">:</span> <span class="nc">KitPackageManifest</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L75)
+
+One row of Welcome's kit list: `active`, `restart-required` or `error`, with the reason.
 
 | Declaration | Summary |
 | --- | --- |
@@ -3513,47 +3602,85 @@ One immutable package snapshot registered on this machine. Old revisions remain 
 
 ### KitPackages { #kitpackages-kt-kitpackages }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">KitPackages</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L55)
+[<code class="highlight"><span class="k">object</span> <span class="nc">KitPackages</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L83)
 
 Registry and immutable snapshots used by Welcome and by the launcher's Gradle runtime profile.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="kitpackages-kt--kitpackages--manifest"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MANIFEST</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L56) |  |
-| <a id="kitpackages-kt--kitpackages--directory"></a>[<code class="highlight"><span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L60) |  |
-| <a id="kitpackages-kt--kitpackages--read"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">read</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">KitPackageManifest</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L63) |  |
-| <a id="kitpackages-kt--kitpackages--child"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">child</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">File</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L96) | Canonical containment applies to symlinks too; installed snapshots never depend on outside files. |
-| <a id="kitpackages-kt--kitpackages--hash"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">hash</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L102) |  |
-| <a id="kitpackages-kt--kitpackages--runtimerevision"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runtimeRevision</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L141) |  |
-| <a id="kitpackages-kt--kitpackages--hashtext"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">hashText</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L142) |  |
-| <a id="kitpackages-kt--kitpackages--installed"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">installed</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">InstalledKit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L146) |  |
-| <a id="kitpackages-kt--kitpackages--install"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">InstalledKit</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L154) | Validate and copy a package before publishing its new registry entry. No code executes here. |
-| <a id="kitpackages-kt--kitpackages--remove"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">remove</span><span class="p">(</span><span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L205) |  |
-| <a id="kitpackages-kt--kitpackages--writejson"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">writeJson</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L246) |  |
-| <a id="kitpackages-kt--kitpackages--active"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">active</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L253) |  |
-| <a id="kitpackages-kt--kitpackages--statuses"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">statuses</span><span class="p">(</span><span class="n">errors</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KitPackageStatus</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L256) |  |
-| <a id="kitpackages-kt--kitpackages--platform"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">platform</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L265) |  |
+| <a id="kitpackages-kt--kitpackages--manifest"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MANIFEST</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L84) |  |
+| <a id="kitpackages-kt--kitpackages--directory"></a>[<code class="highlight"><span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L88) |  |
+| <a id="kitpackages-kt--kitpackages--read"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">read</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">KitPackageManifest</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L91) |  |
+| <a id="kitpackages-kt--kitpackages--child"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">child</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">File</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L124) | Canonical containment applies to symlinks too; installed snapshots never depend on outside files. |
+| <a id="kitpackages-kt--kitpackages--hash"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">hash</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L130) |  |
+| <a id="kitpackages-kt--kitpackages--runtimerevision"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runtimeRevision</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L169) |  |
+| <a id="kitpackages-kt--kitpackages--hashtext"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">hashText</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L170) |  |
+| <a id="kitpackages-kt--kitpackages--installed"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">installed</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">InstalledKit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L174) |  |
+| <a id="kitpackages-kt--kitpackages--install"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">InstalledKit</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L182) | Validate and copy a package before publishing its new registry entry. No code executes here. |
+| <a id="kitpackages-kt--kitpackages--remove"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">remove</span><span class="p">(</span><span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L233) |  |
+| <a id="kitpackages-kt--kitpackages--writejson"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">writeJson</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L274) |  |
+| <a id="kitpackages-kt--kitpackages--active"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">active</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L281) |  |
+| <a id="kitpackages-kt--kitpackages--statuses"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">statuses</span><span class="p">(</span><span class="n">errors</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KitPackageStatus</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L284) |  |
+| <a id="kitpackages-kt--kitpackages--platform"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">platform</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L293) |  |
 
 ## KitRestarts.kt { #kitrestarts-kt }
+
+Building the next launch's kit classpath while the current Field keeps running.
+
+A kit's extension source, JARs and dependencies only reach Field through a launch, from the
+profile [`KitPackages`](workspace.md#kitpackages-kt-kitpackages) writes for the build, so taking a newly installed kit into use means a
+restart. [`KitRestarts.prepare`](workspace.md#kitrestarts-kt--kitrestarts--prepare) does the build first: on a daemon thread it runs the checkout's
+Gradle wrapper for `jvmJar dumpFieldLaunch -PfieldServerOnly=true`, logging to
+`logs/restart.log` under the kits directory, and calls back to stop and relaunch the host only
+when that exits cleanly. A kit that does not compile therefore leaves the running Field alone and
+the failure readable in Welcome instead of taking the host down with it. The build is given
+twenty minutes, `AFIELD_OFFLINE` passes `--offline` through to it, and an installation with no
+launcher or build wrapper beside it is refused before any of this starts.
+
+[`KitRestarts.status`](workspace.md#kitrestarts-kt--kitrestarts--status) is what Welcome polls while the build runs: a phase, a message for the
+reader, and the path of that log.
 
 `src/jvmMain/kotlin/afield/document/workspace/KitRestarts.kt` — [read the source](source/jvmMain/afield/document/workspace/KitRestarts/)
 
 ### KitRestartStatus { #kitrestarts-kt-kitrestartstatus }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitRestartStatus</span><span class="p">(</span><span class="k">val</span> <span class="n">running</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">phase</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;idle&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">log</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRestarts/#L8)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitRestartStatus</span><span class="p">(</span><span class="k">val</span> <span class="n">running</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">phase</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;idle&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">log</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRestarts/#L26)
+
+Phase and log of the kit runtime build: `idle`, `building`, `restarting` or `failed`.
 
 ### KitRestarts { #kitrestarts-kt-kitrestarts }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">KitRestarts</span></code>](source/jvmMain/afield/document/workspace/KitRestarts/#L11)
+[<code class="highlight"><span class="k">object</span> <span class="nc">KitRestarts</span></code>](source/jvmMain/afield/document/workspace/KitRestarts/#L29)
 
 Prepare the next classpath before stopping Field, so a failed kit build leaves Welcome usable.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="kitrestarts-kt--kitrestarts--status"></a>[<code class="highlight"><span class="k">var</span> <span class="n">status</span></code>](source/jvmMain/afield/document/workspace/KitRestarts/#L12) |  |
-| <a id="kitrestarts-kt--kitrestarts--prepare"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">prepare</span><span class="p">(</span><span class="n">checkout</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">ready</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRestarts/#L16) |  |
+| <a id="kitrestarts-kt--kitrestarts--status"></a>[<code class="highlight"><span class="k">var</span> <span class="n">status</span></code>](source/jvmMain/afield/document/workspace/KitRestarts/#L30) |  |
+| <a id="kitrestarts-kt--kitrestarts--prepare"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">prepare</span><span class="p">(</span><span class="n">checkout</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">ready</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRestarts/#L34) |  |
 
 ## KitRuntime.kt { #kitruntime-kt }
+
+Loading a kit package's Kotlin lifecycle, and attaching it to the documents made from that kit.
+
+[`KitRuntime.start`](workspace.md#kitruntime-kt--kitruntime--start) runs once as the server comes up, over the package directories the launcher
+captured in `afield.kit.packages` rather than over whatever [`KitPackages.installed`](workspace.md#kitpackages-kt--kitpackages--installed) says now: the
+classpath this JVM has is the one those directories described when it was built. For each it
+reads the manifest, instantiates the `runtime.lifecycle` class named there through
+[`afield.app.settings.PersonalLayer`](workspace.md#personallayer-kt-personallayer)'s loader, and calls [`KitLifecycle.startup`](workspace.md#kitruntime-kt--kitlifecycle--startup). A kit whose
+startup throws is cleaned up and recorded in [`KitRuntime.errors`](workspace.md#kitruntime-kt--kitruntime--errors), where Welcome shows it as that
+kit's state, and the others still load. A kit carrying a [`KitDedicatedHost`](workspace.md#kitdedicatedhost-kt-kitdedicatedhost) block is skipped,
+since it runs in its own host. A shutdown hook deactivates documents and cleans the kits up in
+reverse, with four seconds to finish.
+
+[`KitRuntime.activate`](workspace.md#kitruntime-kt--kitruntime--activate) runs when a document loads, and only for one carrying a
+[`KitInstanceRecord`](workspace.md#kitinstances-kt-kitinstancerecord). It refuses when the record's runtime revision is not this host's, because
+the document was created against a package whose extension code this host may not have on its
+classpath, and it hands [`KitLifecycle.activate`](workspace.md#kitruntime-kt--kitlifecycle--activate) both the document and its
+[`WorkspaceProjectScope`](workspace.md#workspaceprojectscope-kt-workspaceprojectscope), so state shared by a kit's documents outlives any one of them.
+[`KitRuntime.launchBoxes`](workspace.md#kitruntime-kt--kitruntime--launchboxes) resolves the recorded starting point's launch names against the live
+document, requiring exactly one box for each, and reads those names from the revision the
+document was created from rather than from the newer revision this host may have loaded.
 
 `src/jvmMain/kotlin/afield/document/workspace/KitRuntime.kt` — [read the source](source/jvmMain/afield/document/workspace/KitRuntime/)
 
@@ -3561,43 +3688,43 @@ Prepare the next classpath before stopping Field, so a failed kit build leaves W
 
 ### KitLifecycle { #kitruntime-kt-kitlifecycle }
 
-[<code class="highlight"><span class="k">interface</span> <span class="nc">KitLifecycle</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L11)
+[<code class="highlight"><span class="k">interface</span> <span class="nc">KitLifecycle</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L34)
 
 Implement in a kit's Kotlin extension; startup/cleanup belong to the host, activation to a document.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="kitruntime-kt--kitlifecycle--startup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">startup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitHostContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L12) |  |
-| <a id="kitruntime-kt--kitlifecycle--activate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">activate</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitDocumentContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L13) |  |
-| <a id="kitruntime-kt--kitlifecycle--deactivate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">deactivate</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitDocumentContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L14) |  |
-| <a id="kitruntime-kt--kitlifecycle--cleanup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">cleanup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitHostContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L15) |  |
+| <a id="kitruntime-kt--kitlifecycle--startup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">startup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitHostContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L35) |  |
+| <a id="kitruntime-kt--kitlifecycle--activate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">activate</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitDocumentContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L36) |  |
+| <a id="kitruntime-kt--kitlifecycle--deactivate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">deactivate</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitDocumentContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L37) |  |
+| <a id="kitruntime-kt--kitlifecycle--cleanup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">cleanup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitHostContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L38) |  |
 
 ### KitHostContext { #kitruntime-kt-kithostcontext }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitHostContext</span><span class="p">(</span><span class="k">val</span> <span class="n">kit</span><span class="p">:</span> <span class="nc">InstalledKit</span><span class="p">,</span> <span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L19)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitHostContext</span><span class="p">(</span><span class="k">val</span> <span class="n">kit</span><span class="p">:</span> <span class="nc">InstalledKit</span><span class="p">,</span> <span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L42)
 
 The immutable runtime revision loaded by this process.
 
 ### KitDocumentContext { #kitruntime-kt-kitdocumentcontext }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitDocumentContext</span><span class="p">(</span><span class="k">val</span> <span class="n">host</span><span class="p">:</span> <span class="nc">KitHostContext</span><span class="p">,</span> <span class="k">val</span> <span class="n">document</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">,</span> <span class="k">val</span> <span class="n">project</span><span class="p">:</span> <span class="nc">WorkspaceProjectScope</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L22)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitDocumentContext</span><span class="p">(</span><span class="k">val</span> <span class="n">host</span><span class="p">:</span> <span class="nc">KitHostContext</span><span class="p">,</span> <span class="k">val</span> <span class="n">document</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">,</span> <span class="k">val</span> <span class="n">project</span><span class="p">:</span> <span class="nc">WorkspaceProjectScope</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L45)
 
 The ordinary Field document and its project's shared parent/resources/preferences.
 
 ### KitRuntime { #kitruntime-kt-kitruntime }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">KitRuntime</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L25)
+[<code class="highlight"><span class="k">object</span> <span class="nc">KitRuntime</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L48)
 
 Runtime lifecycle for the exact package paths captured by the launcher, independent of pending registry changes.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="kitruntime-kt--kitruntime--errors"></a>[<code class="highlight"><span class="k">val</span> <span class="n">errors</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L31) |  |
-| <a id="kitruntime-kt--kitruntime--start"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L34) |  |
-| <a id="kitruntime-kt--kitruntime--activate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">activate</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L64) |  |
-| <a id="kitruntime-kt--kitruntime--deactivate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">deactivate</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L84) |  |
-| <a id="kitruntime-kt--kitruntime--shutdown"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">shutdown</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L91) |  |
-| <a id="kitruntime-kt--kitruntime--launchboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">launchBoxes</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="o">?</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L101) |  |
+| <a id="kitruntime-kt--kitruntime--errors"></a>[<code class="highlight"><span class="k">val</span> <span class="n">errors</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L54) |  |
+| <a id="kitruntime-kt--kitruntime--start"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L57) |  |
+| <a id="kitruntime-kt--kitruntime--activate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">activate</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L87) |  |
+| <a id="kitruntime-kt--kitruntime--deactivate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">deactivate</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L107) |  |
+| <a id="kitruntime-kt--kitruntime--shutdown"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">shutdown</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L114) |  |
+| <a id="kitruntime-kt--kitruntime--launchboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">launchBoxes</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="o">?</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L124) |  |
 
 ## Kits.kt { #kits-kt }
 
@@ -3788,39 +3915,59 @@ One addressable file: its `afield:` [`uri`](workspace.md#virtualfilesystem-kt--v
 
 ## WorkspaceProjectScope.kt { #workspaceprojectscope-kt }
 
+What several documents in one workspace project share: a parent box, a preferences file and a
+folder of files.
+
+A project is a directory under the workspace's `_projects`, listed by [`listWorkspaceProjects`](workspace.md#dir-kt--listworkspaceprojects).
+[`WorkspaceProjectScope`](workspace.md#workspaceprojectscope-kt-workspaceprojectscope) gives it a [`Box`](workspace.md#boxes-kt-box) that is invisible on the canvas and parented to
+[`afield.document.graph.metaroot`](workspace.md#boxes-kt--metaroot), so a property set there is inherited by every document attached
+to the project, exactly as any other parent's would be. The box's id comes from the project
+directory's canonical path and [`WorkspaceProjectScopes`](workspace.md#workspaceprojectscope-kt-workspaceprojectscopes) hands out one scope per directory, so
+reattaching a document finds the same box rather than a new one.
+
+[`WorkspaceProjectScope.preferences`](workspace.md#workspaceprojectscope-kt--workspaceprojectscope--preferences) reads `preferences.json` in that directory and
+[`WorkspaceProjectScope.setPreference`](workspace.md#workspaceprojectscope-kt--workspaceprojectscope--setpreference) writes it, which is the part that survives a restart; the
+same map is mirrored onto the project box as `projectPreferences`, where box code reaches it
+through inheritance. [`WorkspaceProjectScope.files`](workspace.md#workspaceprojectscope-kt--workspaceprojectscope--files) is a folder for assets several documents want.
+From a box, [`projectScopes`](workspace.md#workspaceprojectscope-kt--projectscopes) lists the scopes above it, ordinarily one for a document made from a
+kit package.
+
+A project root is canvas furniture rather than document content, so persistence drops it from the
+parent and child sets it writes, asking [`WorkspaceProjectScopes.isProjectRoot`](workspace.md#workspaceprojectscope-kt--workspaceprojectscopes--isprojectroot).
+
 `src/jvmMain/kotlin/afield/document/workspace/WorkspaceProjectScope.kt` — [read the source](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/)
 
 ### Top-level functions { #workspaceprojectscope-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="workspaceprojectscope-kt--projectscopes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">projectScopes</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">WorkspaceProjectScope</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L58) | Shared project scopes above this document's root; a kit instance ordinarily has exactly one. |
+| <a id="workspaceprojectscope-kt--projectscopes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">projectScopes</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">WorkspaceProjectScope</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L80) | Shared project scopes above this document's root; a kit instance ordinarily has exactly one. |
 
 ### WorkspaceProjectScope { #workspaceprojectscope-kt-workspaceprojectscope }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">WorkspaceProjectScope</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L11)
+[<code class="highlight"><span class="k">class</span> <span class="nc">WorkspaceProjectScope</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L33)
 
 One workspace project's shared parent, persistent preferences and shared files.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="workspaceprojectscope-kt--workspaceprojectscope--name"></a>[<code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L13) |  |
-| <a id="workspaceprojectscope-kt--workspaceprojectscope--files"></a>[<code class="highlight"><span class="k">val</span> <span class="n">files</span><span class="p">:</span> <span class="nc">File</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L14) |  |
-| <a id="workspaceprojectscope-kt--workspaceprojectscope--root"></a>[<code class="highlight"><span class="k">val</span> <span class="n">root</span><span class="p">:</span> <span class="nc">Box</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L15) |  |
-| <a id="workspaceprojectscope-kt--workspaceprojectscope--preferences"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">preferences</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L26) | A snapshot; write a preference with [`setPreference`](workspace.md#workspaceprojectscope-kt--workspaceprojectscope--setpreference) so it survives a host restart. |
-| <a id="workspaceprojectscope-kt--workspaceprojectscope--setpreference"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">setPreference</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L32) |  |
+| <a id="workspaceprojectscope-kt--workspaceprojectscope--name"></a>[<code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L35) |  |
+| <a id="workspaceprojectscope-kt--workspaceprojectscope--files"></a>[<code class="highlight"><span class="k">val</span> <span class="n">files</span><span class="p">:</span> <span class="nc">File</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L36) |  |
+| <a id="workspaceprojectscope-kt--workspaceprojectscope--root"></a>[<code class="highlight"><span class="k">val</span> <span class="n">root</span><span class="p">:</span> <span class="nc">Box</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L37) |  |
+| <a id="workspaceprojectscope-kt--workspaceprojectscope--preferences"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">preferences</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L48) | A snapshot; write a preference with [`setPreference`](workspace.md#workspaceprojectscope-kt--workspaceprojectscope--setpreference) so it survives a host restart. |
+| <a id="workspaceprojectscope-kt--workspaceprojectscope--setpreference"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">setPreference</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L54) |  |
 
 ### WorkspaceProjectScopes { #workspaceprojectscope-kt-workspaceprojectscopes }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">WorkspaceProjectScopes</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L42)
+[<code class="highlight"><span class="k">object</span> <span class="nc">WorkspaceProjectScopes</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L64)
 
 Stable scope identity per workspace/project, rebuilt from project membership on document attachment.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="workspaceprojectscope-kt--workspaceprojectscopes--get"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">workspace</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">WorkspaceProjectScope</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L44) |  |
-| <a id="workspaceprojectscope-kt--workspaceprojectscopes--fordocument"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">forDocument</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">WorkspaceProjectScope</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L50) |  |
-| <a id="workspaceprojectscope-kt--workspaceprojectscopes--isprojectroot"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">isProjectRoot</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L54) |  |
+| <a id="workspaceprojectscope-kt--workspaceprojectscopes--get"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">workspace</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">WorkspaceProjectScope</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L66) |  |
+| <a id="workspaceprojectscope-kt--workspaceprojectscopes--fordocument"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">forDocument</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">WorkspaceProjectScope</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L72) |  |
+| <a id="workspaceprojectscope-kt--workspaceprojectscopes--isprojectroot"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">isProjectRoot</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L76) |  |
 
 ## copy.kt { #copy-kt }
 

@@ -4,6 +4,24 @@ import kotlinx.serialization.Serializable
 import java.io.File
 import java.util.concurrent.TimeUnit
 
+/**
+ * Building the next launch's kit classpath while the current Field keeps running.
+ *
+ * A kit's extension source, JARs and dependencies only reach Field through a launch, from the
+ * profile [KitPackages] writes for the build, so taking a newly installed kit into use means a
+ * restart. [KitRestarts.prepare] does the build first: on a daemon thread it runs the checkout's
+ * Gradle wrapper for `jvmJar dumpFieldLaunch -PfieldServerOnly=true`, logging to
+ * `logs/restart.log` under the kits directory, and calls back to stop and relaunch the host only
+ * when that exits cleanly. A kit that does not compile therefore leaves the running Field alone and
+ * the failure readable in Welcome instead of taking the host down with it. The build is given
+ * twenty minutes, `AFIELD_OFFLINE` passes `--offline` through to it, and an installation with no
+ * launcher or build wrapper beside it is refused before any of this starts.
+ *
+ * [KitRestarts.status] is what Welcome polls while the build runs: a phase, a message for the
+ * reader, and the path of that log.
+ */
+
+/** Phase and log of the kit runtime build: `idle`, `building`, `restarting` or `failed`. */
 @Serializable
 data class KitRestartStatus(val running: Boolean = false, val phase: String = "idle", val message: String = "", val log: String = "")
 
