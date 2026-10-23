@@ -109,7 +109,7 @@ subdirectories so each instance receives only its starting material.
 A runtime may name a compiled class in `runtime.lifecycle`. It implements `KitLifecycle`:
 
 ```diffstatic {data-lang=kotlin}
-package example
+package afield.example
 
 import afield.document.workspace.*
 

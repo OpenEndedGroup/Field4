@@ -29,7 +29,7 @@ class KitPackagesTest {
     private fun packageAt(name: String = "source", lifecycle: String = ""): File {
         val source = File(temp, name).apply { mkdirs() }
         File("templates/presentation").copyRecursively(File(source, "seeds/talk"))
-        File(source, "extensions/kotlin/demo/Extra.kt").apply { parentFile.mkdirs(); writeText("package demo\nclass Extra") }
+        File(source, "extensions/kotlin/demo/Extra.kt").apply { parentFile.mkdirs(); writeText("package afield.demo\nclass Extra") }
         File(source, "shared/reference.txt").apply { parentFile.mkdirs(); writeText("shared") }
         File(source, "guide.md").writeText("# An example kit")
         KitPackages.writeJson(File(source, KitPackages.MANIFEST), KitPackageManifest(id = "example", title = "Example", version = "1",
@@ -54,7 +54,7 @@ class KitPackagesTest {
         assertEquals("restart-required", KitPackages.statuses().single().state)
         assertTrue(KitLifecycleFixture.events.isEmpty())
         File(source, "extensions/kotlin/demo/Extra.kt").writeText("changed")
-        assertEquals("package demo\nclass Extra", File(installed.directory, "extensions/kotlin/demo/Extra.kt").readText())
+        assertEquals("package afield.demo\nclass Extra", File(installed.directory, "extensions/kotlin/demo/Extra.kt").readText())
         active(installed)
         assertEquals("active", KitPackages.statuses().single().state)
         val properties = Properties().apply { File(KitPackages.directory, "runtime.properties").inputStream().use { load(it) } }
