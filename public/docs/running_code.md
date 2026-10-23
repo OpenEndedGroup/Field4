@@ -377,14 +377,55 @@ Tempo holds `bpm` and `key`, and Accent, two levels down, reads both straight fr
 
 ### Which box is whose parent decides what is visible
 
-[The box graph](box_graph.md) walks through this from the user's side, with captured examples of
-shadowing, two parents, `fromContext` and each failure message.
-
 Both the preamble gather and the value walk follow `parents`. Connecting a child under a parent (`parent.connect(child)`, or selecting the parent and pressing `g` in the UI) is what puts the parent into the child's ancestor chain.
 
 This is the commonest graphics mistake: a freshly created box whose only parent is the document root is a **sibling** of the renderer box, not a descendant. It will *not* inherit `renderer`: the accessor never gathers into it, and the value walk never reaches it. Only after you connect it **beneath the renderer box** does the next run gather the accessor and resolve the live `Renderer`. (The [RectSL examples](rectsl_examples.md) are built this way: one `window + renderer` box, with every example connected beneath it.)
 
 When a value comes from a box you did not expect, [Why does this value resolve here?](why.md) shows how to ask Field which box supplied it, by what path, and which other boxes it shadowed.
+
+### Disconnecting a running box
+
+A box reads an inherited value at the moment its code reads the name. Disconnecting it does not stop
+it or change the code it compiled; the next read just walks a graph that no longer has the parent in
+it. **Ticker** runs a `go` block that reads Garden's `petals` every 300 ms, and partway through its
+connection to Garden was cut:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/running_code/disconnect.png" capture="box" open-outputs="true" wait="0.2" timeout="180" embed=true name="running-code-disconnect" macro-file="../../dev_docs/agents/transcripts/docs_capture/running_code_disconnect.yaml" capture-box="bgx_ticker" w="760" h="100" alt="Ticker's main output after its connection to Garden was cut: read 10: Can't find a value for inherited property 'petals' in 'Ticker' or any of its 2 parent boxes. Are you sure the parent boxes that define 'petals' have been executed?"}
+go {
+    repeat(40) { n ->
+        val seen = try { "petals = $petals" } catch (e: Exception) { e.message }
+        markdown("read $n: $seen")
+        delay(300)
+    }
+}
+```
+
+Before the cut each read found Garden's 5; the capture is a read after it. Ticker keeps running, but
+every read now fails. A long-running box that must survive being rewired reads the value once, before
+it starts, and keeps it. The same holds for `renderer`: read it before `start { }` or `go { }` and
+pass it in, rather than looking it up inside a block that may run after the box has moved.
+
+### When a lookup fails
+
+Three different failures, and the message says which one you have.
+
+**`Unresolved reference 'petals'`** is a compile error: no box above this one declares `petals`.
+The box is not connected where you think it is, or the declaring box uses another name.
+
+**`Can't find a value for inherited property ...`** means the accessor was gathered but no box up the
+graph has a value yet. Usually the parent has not run, or it failed. Here Garden declares `petals`
+but was never run, and Flower, beneath it, reports:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/running_code/missing.png" capture="box" open-outputs="true" wait="1.5" timeout="180" embed=true name="running-code-missing" macro-file="../../dev_docs/agents/transcripts/docs_capture/running_code_missing.yaml" capture-box="bgm_flower" w="760" h="100" alt="Flower's main output: Can't find a value for inherited property 'petals' in 'Flower' or any of its 3 parent boxes. Are you sure the parent boxes that define 'petals' have been executed?"}
+val seen = try { "petals = $petals" } catch (e: Exception) { e.message }
+markdown("$seen")
+```
+
+**`must pass in a value for context parameter ...`** comes from `fromContext<T>()` when nothing up
+the graph is a `T`; for a renderer it names `afield.graphics.vulkan.Renderer`. Pass
+`fromContext(defaultValue = ...)` if the box should run without one.
+
+Waiting longer fixes none of these; the connection or the parent's run does.
 
 A child sees a changed value the next time it runs. To have Field rerun the readers when the value changes, or run the supplier when a read finds nothing, declare it with `propDown`, `propUp` or `propUpDown`: [Properties that re-run boxes](reactive_properties.md).
 

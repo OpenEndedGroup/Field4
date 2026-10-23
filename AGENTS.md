@@ -342,8 +342,10 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
   `vertex`, `compute`, `task`, `mesh`) are built this way (`afield/stdlib/shaders.kt`), which is
   why shader graphs compose through box connections.
 - `fromContext<T>()` (in `afield.document.context`, `src/jvmMain/kotlin/afield/document/context/Mesh_context.kt`)
-  finds the nearest `T` by searching the executing `Box` (`Box.context`), its `properties`, its
-  script variables (`box.ki.context.vars`), then each parent in turn. Use
+  finds the nearest `T` by searching the executing `Box` (`Box.context`), its `properties`, then
+  each ancestor generation in turn (properties, then script variables `box.ki.context.vars`). The
+  asking box's own script variables are skipped unless `includeLocalVariables = true`, or
+  `val r = fromContext<R>()` would find its own previous answer on every later run. Use
   `fromContextWithNameOrNull<T>("name")` for a specific named value. A missing `Renderer` is
   usually topology, not timing: the renderer parent was not launched, the box is not connected
   beneath it, or the lookup happened after an async boundary. Fix the graph or capture the

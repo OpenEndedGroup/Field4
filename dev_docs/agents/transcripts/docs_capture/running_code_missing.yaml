@@ -1,6 +1,6 @@
-name: box_graph_missing
+name: running_code_missing
 description: |
-  Setup for `public/docs/box_graph.md`, "When a lookup fails". "Garden" declares petals but has
+  Setup for `public/docs/running_code.md`, "When a lookup fails". "Garden" declares petals but has
   never run; "Flower", beneath it, compiles (the declaration comes from Garden's code) but finds no
   value. Only Flower runs; the page captures the message it reports.
 operations:

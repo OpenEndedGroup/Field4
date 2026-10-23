@@ -289,7 +289,7 @@ object DemoTranscriptExecSmokeTest {
         "box_layout_demo",
         // Seven pure-compute boxes: prop inheritance through a diamond (nearer wins, then
         // connection order) and fromContext / fromContextWithNameOrNull, each writing one markdown
-        // line. The main example of public/docs/box_graph.md.
+        // line. The examples of public/docs/why.md, in one document.
         "box_graph_demo",
         // Deterministic synthesised audio and token fixtures through the real CodecVisualization
         // renderer; it deliberately does not reach for EnCodec's GPU service, so it completes here.

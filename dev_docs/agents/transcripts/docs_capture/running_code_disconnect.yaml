@@ -1,6 +1,6 @@
-name: box_graph_disconnect
+name: running_code_disconnect
 description: |
-  Setup for `public/docs/box_graph.md`, "Disconnecting a running box". Garden sets petals = 5;
+  Setup for `public/docs/running_code.md`, "Disconnecting a running box". Garden sets petals = 5;
   Ticker, beneath it, starts a go block that reads petals every 300 ms. After Ticker has read it a
   few times, the connection is cut; the page captures Ticker's output after the next reads.
 operations:
