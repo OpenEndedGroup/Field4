@@ -109,7 +109,7 @@ val midi = midiLearn("synth")
 midi.bind("cutoff", cc = 74)
 midi.bind("bright", cc = 64)
 // What a knob sends; with hardware, midi.attach(MidiDevices.openInput(MidiDevices.inputs().first())).
-for (v in listOf(0, 32, 64, 96, 127)) {
+for (v in [0, 32, 64, 96, 127]) {
     midi.feed(0, 74, v)
     println("CC74 = $v  ->  cutoff ${"%.1f".format(cutoff)}")
 }
