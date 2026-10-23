@@ -63,7 +63,8 @@ names the source records.
 | `engine.create` | `createKotlinScriptEngine` for a box, `detail` async (`makeKI`) or sync (`makeKIHere`) |
 | `engine.bootstrap` | `ki.bootstrap(intro)`: compiling and evaluating the stdlib intro into a new engine |
 | `engine.bootstrapWait` | an `exec` waiting on the engine's bootstrap gate (non-zero when a box runs before its async bootstrap finished) |
-| `engine.reset` | `execute-all`'s `makeKIHere`: the whole replacement engine, create + bootstrap + preamble |
+| `engine.reset` | `execute-all`'s `makeKIHere`: the replacement engine, a spare's preamble or a whole create + bootstrap + preamble |
+| `engine.spare` | building a box's spare engine in the background after a run's verdict (`SpareEngines`; its bootstrap is a separate `engine.bootstrap`) |
 | `kotlin.compile` | one K2 snippet compile (`detail` kind and length) |
 | `kotlin.compile.cacheHit` | an instant: the rerun compile cache served the snippet |
 | `kotlin.eval` | one snippet evaluation |

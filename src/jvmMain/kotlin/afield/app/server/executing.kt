@@ -41,6 +41,7 @@ import afield.ui.slides.*
 import afield.ui.visualization.*
 import afield.app.server.Server.Companion.stop
 import afield.app.diagnostics.logging.lprintln
+import afield.runtime.kotlin.SpareEngines
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -89,7 +90,11 @@ internal fun executeAllRequest(
 ) {
     val box = inItsLanguage(target)
     val requested = System.nanoTime()
-    val timedReply = verdictTimed("execute.all", requested, box.id, reply)
+    val timedReply = verdictTimed("execute.all", requested, box.id) { message ->
+        // The run has its verdict: build the engine the next one will take (see SpareEngines).
+        if (message.name == "execution-verdict" && box.ke is KotlinExecution) SpareEngines.prepare(box)
+        reply(message)
+    }
     inMain {
         LatencySpans.record("execute.queue", requested, box = box.id)
         // Before the engine is replaced, and before this thread's session is set (this can

@@ -1,6 +1,7 @@
 package afield.app.diagnostics
 
 import java.lang.management.ManagementFactory
+import java.time.Instant
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.serialization.Serializable
 
@@ -35,13 +36,35 @@ object LatencySpans {
         val dropped: Long,
         val jvmStartEpochMillis: Long,
         val readyMillis: Long?,
+        /** This clock's now, so a client can measure its offset from it rather than assume none. */
+        val nowEpochMicros: Long,
     )
 
     private const val CAPACITY = 8192
     private val ring = arrayOfNulls<Span>(CAPACITY)
     private val seq = AtomicLong(0)
-    private val anchorEpochMicros = System.currentTimeMillis() * 1000
-    private val anchorNanos = System.nanoTime()
+    // The wall clock read between two nanoTime reads, keeping the tightest of a few tries: read on
+    // two separate lines during startup, a pause between them shifted every span by tens of ms.
+    private val anchorNanos: Long
+    private val anchorEpochMicros: Long
+
+    init {
+        var bestGap = Long.MAX_VALUE
+        var nanos = 0L
+        var epoch = 0L
+        repeat(16) {
+            val before = System.nanoTime()
+            val wall = Instant.now()
+            val after = System.nanoTime()
+            if (after - before < bestGap) {
+                bestGap = after - before
+                nanos = before + (after - before) / 2
+                epoch = wall.epochSecond * 1_000_000 + wall.nano / 1000
+            }
+        }
+        anchorNanos = nanos
+        anchorEpochMicros = epoch
+    }
 
     /** JVM start to [afield.app.diagnostics.logging.PinnedConsole.finishStartup], once it has run. */
     @Volatile
@@ -84,6 +107,7 @@ object LatencySpans {
             dropped = maxOf(0, first - (after + 1)),
             jvmStartEpochMillis = ManagementFactory.getRuntimeMXBean().startTime,
             readyMillis = readyMillis,
+            nowEpochMicros = epochMicros(System.nanoTime()),
         )
     }
 }

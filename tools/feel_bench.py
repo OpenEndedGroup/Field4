@@ -81,19 +81,41 @@ class Step:
 
 
 class Bench:
-    def __init__(self, client: fb.FieldBackdoor, port: int, timeout: float) -> None:
+    def __init__(self, client: fb.FieldBackdoor, port: int, timeout: float, think: float) -> None:
         self.client = client
+        self.think = think
         self.port = port
         self.timeout = timeout
         self.ssl = fb.make_unverified_ssl_context()
         self.span_cursor = 0
         self.steps: list[Step] = []
+        # Server clock minus this one, in seconds; see [calibrate].
+        self.clock_offset = 0.0
 
     # -- server spans -------------------------------------------------------
     def spans_since(self, cursor: int) -> dict[str, Any]:
         url = f"https://localhost:{self.port}/api/perf/spans?since={cursor}"
         with urllib.request.urlopen(url, context=self.ssl, timeout=10) as response:
             return json.loads(response.read().decode("utf-8"))
+
+    def calibrate(self, samples: int = 9) -> float:
+        """Measure the server's clock against this one: the offset from the round trip with the
+        smallest delay, assuming the server read its clock halfway through (NTP's estimate).
+        Span times are converted with it, so a step's window and a span's start agree."""
+        best: tuple[float, float] | None = None
+        for _ in range(samples):
+            sent = time.time()
+            now = self.spans_since(1 << 62)["nowEpochMicros"] / 1e6
+            received = time.time()
+            if best is None or received - sent < best[0]:
+                best = (received - sent, now - (sent + received) / 2)
+        assert best is not None
+        self.clock_offset = best[1]
+        return self.clock_offset
+
+    def span_start(self, span: dict[str, Any]) -> float:
+        """A span's start on this clock, in seconds."""
+        return span["startEpochMicros"] / 1e6 - self.clock_offset
 
     def drain_spans(self) -> list[dict[str, Any]]:
         snap = self.spans_since(self.span_cursor)
@@ -115,7 +137,14 @@ class Bench:
         box: str | None = None,
         settle: float = 0.0,
     ) -> Step:
-        """Time [action]; attribute the spans that started inside it and the box's first output."""
+        """Time [action]; attribute the spans that started inside it and the box's first output.
+
+        First waits [think] seconds, off the clock: a person reads the result and types the next edit
+        before running again, and work Field does in that gap (a spare engine) is work they never wait
+        for. A `frame` step follows its launch at once, so it does not wait.
+        """
+        if phase != "frame" and self.think > 0:
+            await asyncio.sleep(self.think)
         self.drain_spans()
         start_seq = self.client.event_seq
         t0 = time.time()
@@ -140,8 +169,11 @@ class Bench:
                 first_output = (float(event["receivedAt"]) - t0) * 1000
                 break
         spans: dict[str, dict[str, float]] = {}
+        # Every span recorded since the drain at the start of the step belongs to it, except one that
+        # began well before it (background work finishing). Not a tight window on start times: a span
+        # that starts as the server receives the message sits within the clock offset's error of t0.
         for span in self.drain_spans():
-            if span["startEpochMicros"] / 1e6 < t0 - 0.002 or span["startEpochMicros"] / 1e6 > observed:
+            if self.span_start(span) < t0 - 0.05:
                 continue
             agg = spans.setdefault(span["name"], {"ms": 0.0, "count": 0, "maxMs": 0.0})
             ms = span["durationMicros"] / 1000
@@ -198,7 +230,7 @@ class Bench:
             snap = self.spans_since(cursor)
             for span in snap.get("spans", []):
                 if span["name"] == name and (box is None or span.get("box") == box):
-                    end = (span["startEpochMicros"] + span["durationMicros"]) / 1e6
+                    end = self.span_start(span) + span["durationMicros"] / 1e6
                     return {"ok": "success=false" not in (span.get("detail") or ""), "endEpoch": end,
                             "data": {"detail": span.get("detail")}}
             await asyncio.sleep(0.01)
@@ -485,8 +517,9 @@ async def run_bench(args: argparse.Namespace) -> int:
                                       logger=logger, attach_existing=True)
             await client.ensure_server()
             await client.connect()
-            bench = Bench(client, port, args.timeout)
+            bench = Bench(client, port, args.timeout, args.think)
             boot["readyMillis"] = bench.spans_since(0).get("readyMillis")
+            boot["clockOffsetMs"] = round(bench.calibrate() * 1000, 2)
             boot["scenarios"] = group
             boots.append(boot)
             print(f"  boot {boot}", flush=True)
@@ -505,6 +538,7 @@ async def run_bench(args: argparse.Namespace) -> int:
         "git": git_info(),
         "machine": machine_info(),
         "reps": args.reps,
+        "thinkSeconds": args.think,
         "freshJvmPerScenario": args.fresh_jvm_per_scenario,
         "boot": boots[0],
         "boots": boots,
@@ -516,7 +550,7 @@ async def run_bench(args: argparse.Namespace) -> int:
     ledger = Path(args.ledger).expanduser()
     ledger.parent.mkdir(parents=True, exist_ok=True)
     with ledger.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps({k: result[k] for k in ("schema", "stamp", "git", "machine", "reps",
+        handle.write(json.dumps({k: result[k] for k in ("schema", "stamp", "git", "machine", "reps", "thinkSeconds",
                                                         "freshJvmPerScenario", "boot", "summary")}) + "\n")
     print_summary(result)
     print(f"\nwrote {out_path}\nappended {ledger}")
@@ -545,6 +579,8 @@ def compare(args: argparse.Namespace) -> int:
             return 2
         base, head = entries[-2], entries[-1]
     print(f"base {base['stamp']} {base['git']['commit'][:10]}  ->  head {head['stamp']} {head['git']['commit'][:10]}")
+    if base.get("thinkSeconds") != head.get("thinkSeconds"):
+        print(f"  note: think time differs ({base.get('thinkSeconds')} s -> {head.get('thinkSeconds')} s); rerun timings are not comparable")
     for key in ("gradleMs", "jvmToHealthMs", "readyMillis"):
         a, b = base["boot"].get(key), head["boot"].get(key)
         if a and b:
@@ -569,6 +605,8 @@ def main() -> int:
     p_run.add_argument("--reps", type=int, default=5)
     p_run.add_argument("--port", type=int)
     p_run.add_argument("--timeout", type=float, default=180.0)
+    p_run.add_argument("--think", type=float, default=1.0,
+                       help="Seconds between steps, off the clock (a person reading and typing); 0 for back to back.")
     p_run.add_argument("--no-graphics", action="store_true", help="Skip scenarios that need Vulkan.")
     p_run.add_argument("--fresh-jvm-per-scenario", action="store_true",
                        help="Boot a new Field for each scenario, so every one sees a cold JVM.")
