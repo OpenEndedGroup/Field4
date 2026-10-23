@@ -287,6 +287,10 @@ object DemoTranscriptExecSmokeTest {
         // Nine boxes and their connections, created and wired but never executed: the scene is the
         // starting position for the "Lay out selection" commands, which the reader runs.
         "box_layout_demo",
+        // Seven pure-compute boxes: prop inheritance through a diamond (nearer wins, then
+        // connection order) and fromContext / fromContextWithNameOrNull, each writing one markdown
+        // line. The main example of public/docs/box_graph.md.
+        "box_graph_demo",
         // Deterministic synthesised audio and token fixtures through the real CodecVisualization
         // renderer; it deliberately does not reach for EnCodec's GPU service, so it completes here.
         "audio_ai_codec",
