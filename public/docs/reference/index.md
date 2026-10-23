@@ -392,7 +392,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - <span class="reference-internal">[history](workspace.md#historymetrics-kt)</span>
 - <span class="reference-internal">[persistence](workspace.md#documentshutdownflush-kt)</span>
 - *properties* — [Data](data.md#saved-kt) · [Internal](internal.md#binding-kt) · [Workspace](workspace.md#propertybag-kt)
-- *workspace* — [Data](data.md#filemanager-kt) · [Workspace](workspace.md#kitfirstopen-kt)
+- *workspace* — [Data](data.md#filemanager-kt) · [Workspace](workspace.md#kitdedicatedhost-kt)
 
 </div>
 
@@ -645,7 +645,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**34208 public symbols across 1539 source files**, 17609 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34301 public symbols across 1546 source files**, 17634 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -673,7 +673,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 77 | 2092 | 1013 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 584 | 397 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 121 | 3082 | 1397 (45%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 217 | 3026 | 1087 (35%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 224 | 3119 | 1112 (35%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 94 | 2211 | 689 (31%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 | [IO](io.md) | 1 | 22 | 15 (68%) |  |
@@ -815,7 +815,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>execution/<wbr></small> [BoxBodyRun.kt](workspace.md#boxbodyrun-kt) | Workspace | 3 | 3 | Which boxes are executing their body right now, as distinct from a frame loop or callback the body started: `BoxBodyRun` counts each box's nested body runs, and a source-backed block reads it to refuse re-entering its own box. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [BoxCodeCompileGuard.kt](examples.md#boxcodecompileguard-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [BoxCodeFormat.kt](examples.md#boxcodeformat-kt) | Examples | 3 | 1 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>graph/<wbr></small> [Boxes.kt](workspace.md#boxes-kt) | Workspace | 80 | 21 | The `Box` model: a box's properties, its `children`/`parents` graph, and the property sets that decide what is saved and what is sent to the browser. | [Keyboard shortcuts](../keybindings.md), [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md), [Layers](../layers.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>graph/<wbr></small> [Boxes.kt](workspace.md#boxes-kt) | Workspace | 80 | 22 | The `Box` model: a box's properties, its `children`/`parents` graph, and the property sets that decide what is saved and what is sent to the browser. | [Keyboard shortcuts](../keybindings.md), [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md), [Layers](../layers.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [BoxImportCensus.kt](examples.md#boximportcensus-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [boxImports.kt](workspace.md#boximports-kt) | Workspace · internal | 14 | 10 | Which of a box's imports it needs. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>layout/<wbr></small> [BoxLayout.kt](visualization.md#boxlayout-kt) | Visualization | 3 | 3 | "Lay out selection" — arranging boxes on the canvas the way a diagram tool would, using the layout engines in `native/field-d2-layout`. |  |
@@ -979,7 +979,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Devices.kt](audio.md#devices-kt) | Audio | 36 | 18 | Optional compute devices for Steam Audio: `EmbreeDevice` for the Embree ray tracer, `OpenClDeviceList` and `OpenClDevice` for GPU work, and the `RadeonRaysDevice` and `TrueAudioNextDevice` built on OpenCL. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>lifecycle/<wbr></small> [di.kt](workspace.md#di-kt) | Workspace | 11 | 3 | Startup phases: functions annotated `RunsAt` are found by a classpath scan and called by `runAll` at a named phase. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>diag/<wbr></small> [Diagnostics.kt](languages.md#diagnostics-kt) | Languages | 13 | 13 | Where a FieldML compile says something is wrong, and how badly. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [dir.kt](workspace.md#dir-kt) | Workspace | 407 | 17 | The server side of the workspace browser: listing, searching, tagging and copying the documents under a workspace folder. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [dir.kt](workspace.md#dir-kt) | Workspace | 408 | 18 | The server side of the workspace browser: listing, searching, tagging and copying the documents under a workspace folder. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [DirectEffect.kt](audio.md#directeffect-kt) | Audio | 22 | 17 | Rendering the direct sound path: distance attenuation, air absorption, directivity, occlusion and transmission. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>lighting/<wbr></small> [DirectLighting.kt](graphics.md#directlighting-kt) | Graphics | 25 | 7 | Direct lighting from one-sided rectangular area emitters, shaded over a raster G-buffer. | [Direct lighting](../direct_lighting.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>lighting/<wbr></small> [DirectLightingDemo.kt](graphics.md#directlightingdemo-kt) | Graphics | 13 | 1 | A small scene for trying `DirectLighting`: a floor, three cubes and a moving area light. |  |
@@ -1337,7 +1337,13 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [KeyframeSweepDemo.kt](examples.md#keyframesweepdemo-kt) | Examples | 6 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>keyframes/<wbr></small> [keyframeTidy.kt](graphics.md#keyframetidy-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>keyframes/<wbr></small> [keyframeTypeLibrary.kt](graphics.md#keyframetypelibrary-kt) | Graphics | 10 | 9 | The key types every keyframe editor offers beyond its five built-in ones: the easing family, splines that look past the segment to the keys either side, shapes, and shaped noise. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitDedicatedHost.kt](workspace.md#kitdedicatedhost-kt) | Workspace | 5 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitFirstOpen.kt](workspace.md#kitfirstopen-kt) | Workspace | 3 | 3 | A document copied from a kit's starting point runs its roles, in the kit's launch order, the first time it opens, so it does something without `field_kit.py activate`. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitInstances.kt](workspace.md#kitinstances-kt) | Workspace | 14 | 3 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitPackages.kt](workspace.md#kitpackages-kt) | Workspace | 41 | 7 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitRestarts.kt](workspace.md#kitrestarts-kt) | Workspace | 4 | 1 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [KitRoutes.kt](workspace.md#kitroutes-kt) | Workspace · internal | 3 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitRuntime.kt](workspace.md#kitruntime-kt) | Workspace | 14 | 4 |  | [Kits and Starting Points](../kits.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [Kits.kt](workspace.md#kits-kt) | Workspace | 24 | 20 | Kits package the shared parts of one kind of document so many documents can be installed from, and migrated to, the same source. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [KitTools.kt](machine-learning.md#kittools-kt) | Machine learning | 4 | 0 | The AI4 tool that reports which kit a document runs and which of its kit-provided properties and assets have drifted from the kit. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>study/<wbr>ui/<wbr></small> [KnobNames.kt](workspace.md#knobnames-kt) | Workspace | 0 | 0 |  |  |
@@ -2224,6 +2230,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [WindowsExternalBrowserSurface.kt](imaging.md#windowsexternalbrowsersurface-kt) | Imaging | 3 | 1 | Windows import path for Electron browser frames: wraps a D3D11 shared texture, passed as an NT handle, in a Vulkan image that Field can copy from. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [WitherSmokeTest.kt](workspace.md#withersmoketest-kt) | Workspace · internal | 3 | 0 | Smoke for the experiment that wires the Wither compiler plugin (kyay10/wither) into the K2 REPL (`KotlinInterface2`). |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [WorkspaceLastDocument.kt](workspace.md#workspacelastdocument-kt) | Workspace | 0 | 0 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [WorkspaceProjectScope.kt](workspace.md#workspaceprojectscope-kt) | Workspace | 11 | 4 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [WorkspaceSearch.kt](machine-learning.md#workspacesearch-kt) | Machine learning | 34 | 2 | #### Literal-text search over saved files, for AI agents |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [WorkspaceSymbolSearchSupport.kt](machine-learning.md#workspacesymbolsearchsupport-kt) | Machine learning | 1 | 0 |  |  |
 
