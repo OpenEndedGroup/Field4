@@ -124,6 +124,10 @@ nav:
     # Directly after why.md, which already sends readers into its inheritance section.
     - Running Code in a Box: running_code.md
     - Properties That Re-run Boxes: reactive_properties.md
+    # Beside running_code.md and reactive_properties.md: the user-facing account of how a value
+    # travels down connections (prop, rootProp, fromContext, nearer-wins, two parents, failures),
+    # which those pages assume.
+    - The Box Graph: box_graph.md
     # The three history pages together. history_lens.md used to sit below the two performance
     # pages, which put the inline view of a property's past two clicks away from the two pages
     # that explain what that past is; nothing about the split was deliberate.

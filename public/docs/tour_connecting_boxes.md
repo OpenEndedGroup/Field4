@@ -110,6 +110,8 @@ for it.
 
 See also:
 
+- [The box graph](box_graph.md), for the whole lookup: nearer wins, two parents, `rootProp`,
+  `fromContext`, disconnecting a running box, and what each failure message means.
 - [Why does this value resolve here?](why.md), for asking Field which box supplied a value when
   there are several candidates, and for values found by type with `fromContext()`.
 - [Properties that re-run boxes](reactive_properties.md), for `propDown`, `propUp` and

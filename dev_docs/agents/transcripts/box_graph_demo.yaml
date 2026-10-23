@@ -1,0 +1,77 @@
+name: box_graph_demo
+description: |
+  The main examples of `public/docs/box_graph.md` in one fresh document. Garden publishes
+  `prop<Int>(petals) = 5`; Left (7) and Right (9) shadow it; Sibling reads Garden's 5; Bloom has two
+  parents, connected Right first, so it reads 9. To the right, Studio holds plain variables and
+  Sketch finds them with fromContext / fromContextWithNameOrNull. Every box runs once, parents
+  first. Try disconnecting Bloom from Right (select Right, shift-select Bloom, `u`) and re-running
+  Bloom: it reads 7.
+operations:
+  - create:
+      box: bgdemo_garden
+      name: Garden
+      frame: { x: 200.0, y: 40.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          prop<Int>(petals) = 5
+  - create:
+      box: bgdemo_left
+      name: Left
+      frame: { x: 40.0, y: 180.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          petals = 7
+  - create:
+      box: bgdemo_right
+      name: Right
+      frame: { x: 360.0, y: 180.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          petals = 9
+  - create:
+      box: bgdemo_sibling
+      name: Sibling
+      frame: { x: 600.0, y: 180.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          markdown("Sibling sees petals = $petals")
+  - create:
+      box: bgdemo_bloom
+      name: Bloom
+      frame: { x: 200.0, y: 320.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          markdown("Bloom sees petals = $petals")
+  - connect: { parent: bgdemo_garden, child: bgdemo_left }
+  - connect: { parent: bgdemo_garden, child: bgdemo_right }
+  - connect: { parent: bgdemo_garden, child: bgdemo_sibling }
+  - connect: { parent: bgdemo_right, child: bgdemo_bloom }
+  - connect: { parent: bgdemo_left, child: bgdemo_bloom }
+  - execute: { box: bgdemo_garden, property: code }
+  - execute: { box: bgdemo_left, property: code }
+  - execute: { box: bgdemo_right, property: code }
+  - execute: { box: bgdemo_sibling, property: code }
+  - execute: { box: bgdemo_bloom, property: code }
+  - create:
+      box: bgdemo_studio
+      name: Studio
+      frame: { x: 900.0, y: 40.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          val ink = java.awt.Color(200, 40, 40)
+          val title = "Spring"
+  - create:
+      box: bgdemo_sketch
+      name: Sketch
+      frame: { x: 900.0, y: 200.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          val ink = fromContext<java.awt.Color>()
+          val title = fromContextWithNameOrNull<String>("title")
+          val missing = fromContextWithNameOrNull<String>("subtitle")
+          markdown("ink = (${ink.red}, ${ink.green}, ${ink.blue}), title = $title, subtitle = $missing")
+  - connect: { parent: bgdemo_studio, child: bgdemo_sketch }
+  - execute: { box: bgdemo_studio, property: code }
+  - execute: { box: bgdemo_sketch, property: code }
+  - await: {}
+  - wait: { frames: 10 }

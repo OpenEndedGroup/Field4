@@ -377,6 +377,9 @@ Tempo holds `bpm` and `key`, and Accent, two levels down, reads both straight fr
 
 ### Which box is whose parent decides what is visible
 
+[The box graph](box_graph.md) walks through this from the user's side, with captured examples of
+shadowing, two parents, `fromContext` and each failure message.
+
 Both the preamble gather and the value walk follow `parents`. Connecting a child under a parent (`parent.connect(child)`, or selecting the parent and pressing `g` in the UI) is what puts the parent into the child's ancestor chain.
 
 This is the commonest graphics mistake: a freshly created box whose only parent is the document root is a **sibling** of the renderer box, not a descendant. It will *not* inherit `renderer`: the accessor never gathers into it, and the value walk never reaches it. Only after you connect it **beneath the renderer box** does the next run gather the accessor and resolve the live `Renderer`. (The [RectSL examples](rectsl_examples.md) are built this way: one `window + renderer` box, with every example connected beneath it.)

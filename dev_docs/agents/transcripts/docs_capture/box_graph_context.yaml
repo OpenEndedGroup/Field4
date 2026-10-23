@@ -1,0 +1,29 @@
+name: box_graph_context
+description: |
+  Setup for `public/docs/box_graph.md`, "Finding a value by type or by name". "Studio" holds two
+  ordinary top-level variables, a Color and a String; "Sketch", beneath it, finds the first by type
+  with fromContext and the second by name. Both run once; the page captures Sketch.
+operations:
+  - create:
+      box: bgc_studio
+      name: Studio
+      frame: { x: 40.0, y: 40.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          val ink = java.awt.Color(200, 40, 40)
+          val title = "Spring"
+  - create:
+      box: bgc_sketch
+      name: Sketch
+      frame: { x: 40.0, y: 200.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          val ink = fromContext<java.awt.Color>()
+          val title = fromContextWithNameOrNull<String>("title")
+          val missing = fromContextWithNameOrNull<String>("subtitle")
+          markdown("ink = (${ink.red}, ${ink.green}, ${ink.blue}), title = $title, subtitle = $missing")
+  - connect: { parent: bgc_studio, child: bgc_sketch }
+  - execute: { box: bgc_studio, property: code }
+  - execute: { box: bgc_sketch, property: code }
+  - await: {}
+  - wait: { frames: 10 }
