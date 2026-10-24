@@ -807,13 +807,21 @@ class ConstraintScope internal constructor(private val model: GeometryModelScope
     }
 
     /**
-     * Two segments the same length, without saying what ([EqualDistance]).
+     * Two segments the same length, without saying what ([EqualDistance]). Use [sameVectorAs] if you also mean parallel.
      *
-     * The two segments must not share a point — see [EqualDistance], which does not check for it and cannot be encoded
-     * that way. Use [sameVectorAs] if you also mean parallel.
+     * Segments that share a point — two walls meeting at a corner — are the common case for "make this room square", and
+     * Ceres aborts the whole process on a residual that names one point twice. So a shared point re-encodes as one
+     * [expression] residual over the distinct points: the same `|ab| - |cd|`, scaled by the same `sqrt(weight)`.
      */
     fun LineRef.sameLengthAs(other: LineRef, weight: Double = 1.0) {
-        add(EqualDistance(a.id, b.id, other.a.id, other.b.id, weight))
+        val ends = listOf(a, b, other.a, other.b)
+        if (ends.map { it.id }.distinct().size == 4) {
+            add(EqualDistance(a.id, b.id, other.a.id, other.b.id, weight))
+            return
+        }
+        val distinct = ends.distinctBy { it.id }
+        fun slot(p: PointRef) = distinct.indexOfFirst { it.id == p.id }
+        expression(distinct, weight) { v -> listOf(v[slot(a)].distanceTo(v[slot(b)]) - v[slot(other.a)].distanceTo(v[slot(other.b)])) }
     }
 
     /**

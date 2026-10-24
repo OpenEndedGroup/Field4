@@ -105,6 +105,197 @@ class AstraBridgeContractTest {
         }
     }
 
+    private fun reply(exchange: com.sun.net.httpserver.HttpExchange, body: String, status: Int = 200, streaming: Boolean = false) {
+        val bytes = if (streaming) ("data: " + mapper.writeValueAsString(mapOf(
+            "type" to "response.completed", "sequence_number" to 0, "response" to mapper.readTree(body)
+        )) + "\n\n").toByteArray() else body.toByteArray()
+        exchange.responseHeaders.add("Content-Type", if (streaming) "text/event-stream" else "application/json")
+        exchange.sendResponseHeaders(status, bytes.size.toLong())
+        exchange.responseBody.use { it.write(bytes) }
+    }
+
+    private val contextError = """{"error":{"code":400,"type":"exceed_context_size_error",
+        "message":"request (65833 tokens) exceeds the available context size (65536 tokens), try increasing it"}}"""
+
+    @Test
+    fun localContextOverflowShrinksHistoryAndKeepsTheCurrentImagePrompt() {
+        for (streaming in listOf(false, true)) withServer("local") { server, requests, bridge ->
+            server.createContext("/v1/responses") { exchange ->
+                requests.add(mapper.readTree(exchange.requestBody))
+                if (requests.size == 5) reply(exchange, contextError, 400)
+                else reply(exchange, finalResponse("resp_${requests.size}"), streaming = requests.last().path("stream").asBoolean())
+            }
+            val state = bridge.startThread("context.kt", "SEED_FILE", "SEED_INSTRUCTIONS")
+            repeat(4) { bridge.send(state, "OLD_EXCHANGE_$it " + "x".repeat(8_000)) }
+            val progress = mutableListOf<OpenAiIdeCodexBridge.ProgressUpdate>()
+            val result = bridge.send(state, "CURRENT_TASK", imageDataUrls = listOf("data:image/png;base64,Y3VycmVudA=="),
+                onTextDelta = if (streaming) { _ -> } else null, onProgress = { progress += it })
+            assertEquals("Inspected roof.", result.text.trim())
+            assertEquals(6, requests.size)
+            val original = requests[4]["input"].toString()
+            val recovered = requests[5]["input"].toString()
+            assertTrue(recovered.length < original.length)
+            for (kept in listOf("SEED_FILE", "SEED_INSTRUCTIONS", "CURRENT_TASK", "data:image/png;base64,Y3VycmVudA==")) {
+                assertTrue(recovered.contains(kept), "Recovery lost $kept")
+            }
+            assertTrue(recovered.contains("context window was exceeded"))
+            assertFalse(recovered.contains("OLD_EXCHANGE_0"))
+            assertEquals(requests[4]["tools"], requests[5]["tools"])
+            assertEquals(requests[4]["max_output_tokens"], requests[5]["max_output_tokens"])
+            assertTrue(progress.any { it.title.startsWith("Local model context full") })
+            bridge.send(state, "NEXT_TASK")
+            assertFalse(requests.last()["input"].toString().contains("OLD_EXCHANGE_0"), "Shortened history must persist")
+        }
+    }
+
+    @Test
+    fun localContextRecoveryDoesNotReplayToolsOrLosePendingCallOutputs() {
+        for (forcedFinal in listOf(false, true)) withServer("local") { server, requests, bridge ->
+            var executions = 0
+            bridge.registerTool(InspectPanel::class.java) { _, _ -> executions++; mapOf("marker" to "COMPLETED_WORK") }
+            server.createContext("/v1/responses") { exchange ->
+                requests.add(mapper.readTree(exchange.requestBody))
+                when (requests.size) {
+                    2 -> reply(exchange, response("resp_call", """[{"type":"function_call","id":"fc_context",
+                        "call_id":"call_context","name":"InspectPanel","arguments":"{}","status":"completed"}]"""))
+                    3 -> reply(exchange, contextError, 400)
+                    else -> reply(exchange, finalResponse("resp_${requests.size}"))
+                }
+            }
+            val state = bridge.startThread("context-tools.kt", "", "Keep completed work")
+            bridge.send(state, "OLD_TASK " + "x".repeat(12_000))
+            bridge.send(state, "CURRENT_INSPECTION", maxToolRounds = if (forcedFinal) 0 else 3)
+            assertEquals(4, requests.size)
+            assertEquals(if (forcedFinal) 0 else 1, executions)
+            fun pending(index: Int) = requests[index]["input"].filter { it["type"]?.asText() == "function_call_output" }
+            assertEquals(pending(2), pending(3), "Recovery must retain the exact already-computed outputs")
+            val recovered = requests[3]["input"]
+            assertTrue(recovered.any { it["type"]?.asText() == "function_call" && it["call_id"]?.asText() == "call_context" })
+            assertTrue(recovered.toString().contains("CURRENT_INSPECTION"))
+            assertEquals(requests[2]["tool_choice"], requests[3]["tool_choice"])
+            assertTrue(recovered.toString().length < requests[2]["input"].toString().length)
+        }
+    }
+
+    @Test
+    fun localContextRecoveryIsBoundedAndLeavesFailedHistoryIntact() = withServer("local") { server, requests, bridge ->
+        var rejecting = false
+        server.createContext("/v1/responses") { exchange ->
+            requests.add(mapper.readTree(exchange.requestBody))
+            if (rejecting) reply(exchange, contextError, 400) else reply(exchange, finalResponse("resp_${requests.size}"))
+        }
+        val state = bridge.startThread("bounded-context.kt", "", "Keep instructions")
+        repeat(8) { bridge.send(state, "OLDER_$it " + "x".repeat(8_000)) }
+        rejecting = true
+        val failure = assertFails { bridge.send(state, "CURRENT_TASK") }
+        assertTrue(failure.message.orEmpty().contains("after two history reductions"))
+        assertEquals(11, requests.size, "One request plus at most two context retries")
+        // The failed turn learned the window from the error, so the next request may be fitted to it;
+        // what must survive is the saved history the fitting draws from.
+        assertTrue(bridge.savedHistory(state).toString().contains("OLDER_0"), "Failed recovery must not discard saved history")
+        rejecting = false
+        bridge.send(state, "Continue")
+        assertTrue(requests.last()["input"].toString().contains("Continue"))
+    }
+
+    @Test
+    fun unrelatedBadRequestsAreNotRetriedAndHostedOverflowGetsOneFittedRetry() {
+        for (provider in listOf("local", "openrouter")) withServer(provider) { server, requests, bridge ->
+            server.createContext("/v1/responses") { exchange ->
+                requests.add(mapper.readTree(exchange.requestBody))
+                if (requests.size == 1) reply(exchange, finalResponse("resp_warm"))
+                else reply(exchange, if (provider == "local") """{"error":{"message":"unsupported tool schema","code":"invalid_request_error"}}""" else contextError, 400)
+            }
+            val state = bridge.startThread("no-retry.kt", "", "Keep instructions")
+            bridge.send(state, "OLD_TASK " + "x".repeat(8_000))
+            assertFails { bridge.send(state, "CURRENT_TASK") }
+            if (provider == "local") {
+                assertEquals(2, requests.size, "An unrelated bad request is not retried")
+            } else {
+                // A hosted stateless provider's overflow is fitted to the window the error names and
+                // retried once (createFittedResponse), not shortened and retried twice like a local one.
+                assertEquals(3, requests.size, "A hosted overflow gets exactly one fitted retry")
+                assertTrue(requests[2]["input"].toString().contains("CURRENT_TASK"), "The retry still carries the current prompt")
+            }
+        }
+    }
+
+    @Test
+    fun localContextStreamErrorsRecoverOnlyBeforeVisibleText() {
+        for (partial in listOf(false, true)) withServer("local") { server, requests, bridge ->
+            server.createContext("/v1/responses") { exchange ->
+                requests.add(mapper.readTree(exchange.requestBody))
+                if (requests.size != 2) {
+                    reply(exchange, finalResponse("resp_${requests.size}"), streaming = requests.last().path("stream").asBoolean())
+                } else {
+                    fun event(type: String, vararg fields: Pair<String, Any?>) = "data: " + mapper.writeValueAsString(
+                        mapOf("type" to type, "sequence_number" to 0) + fields.toMap()) + "\n\n"
+                    val prefix = if (!partial) "" else
+                        event("response.created", "response" to mapper.readTree(response("resp_partial", "[]"))) +
+                        event("response.output_item.added", "output_index" to 0, "item" to mapOf("type" to "message", "id" to "msg_partial", "role" to "assistant", "status" to "in_progress", "content" to emptyList<Any>())) +
+                        event("response.content_part.added", "item_id" to "msg_partial", "output_index" to 0, "content_index" to 0, "part" to mapOf("type" to "output_text", "text" to "", "annotations" to emptyList<Any>())) +
+                        event("response.output_text.delta", "item_id" to "msg_partial", "output_index" to 0, "content_index" to 0, "delta" to "VISIBLE_PARTIAL")
+                    val body = prefix + event("error", "code" to "context_length_exceeded", "message" to "maximum context length exceeded", "param" to null)
+                    exchange.responseHeaders.add("Content-Type", "text/event-stream")
+                    exchange.sendResponseHeaders(200, body.toByteArray().size.toLong())
+                    exchange.responseBody.use { it.write(body.toByteArray()) }
+                }
+            }
+            val state = bridge.startThread("stream-context.kt", "", "Keep instructions")
+            bridge.send(state, "OLD_TASK " + "x".repeat(8_000))
+            val visible = StringBuilder()
+            if (partial) {
+                val failure = assertFails { bridge.send(state, "CURRENT_TASK", onTextDelta = { visible.append(it) }) }
+                assertTrue(failure.message.orEmpty().contains("partial answer is retained"))
+                assertEquals("VISIBLE_PARTIAL", visible.toString())
+                assertEquals(2, requests.size, "Visible partial answers must not be replayed automatically")
+            } else {
+                assertEquals("Inspected roof.", bridge.send(state, "CURRENT_TASK", onTextDelta = { visible.append(it) }).text.trim())
+                assertEquals(3, requests.size)
+            }
+        }
+    }
+
+    @Test
+    fun localEmptyCompletedAnswersRecoverWithoutSavingTheDiscardedReasoning() {
+        for (streaming in listOf(false, true)) withServer("local") { server, requests, bridge ->
+            server.createContext("/v1/responses") { exchange ->
+                requests.add(mapper.readTree(exchange.requestBody))
+                val body = if (requests.size == 2) response("resp_reasoning_only", """[
+                    {"type":"reasoning","id":"rs_exhausted","summary":[{"type":"summary_text","text":"DISCARDED_THINKING"}]}
+                ]""") else finalResponse("resp_${requests.size}")
+                reply(exchange, body, streaming = requests.last().path("stream").asBoolean())
+            }
+            val state = bridge.startThread("empty-answer.kt", "", "Keep instructions")
+            bridge.send(state, "OLDER_TASK " + "x".repeat(8_000))
+            val progress = mutableListOf<OpenAiIdeCodexBridge.ProgressUpdate>()
+            val result = bridge.send(state, "CURRENT_TASK", onTextDelta = if (streaming) { _ -> } else null,
+                onProgress = { progress += it })
+            assertEquals("Inspected roof.", result.text.trim())
+            assertEquals(3, requests.size)
+            assertTrue(progress.any { it.title.startsWith("Local model returned no answer") })
+            assertFalse(requests.last()["input"].toString().contains("DISCARDED_THINKING"))
+            assertTrue(requests.last()["input"].toString().length < requests[1]["input"].toString().length)
+        }
+    }
+
+    @Test
+    fun localEmptyAnswerWithoutRoomToReduceFailsClearlyAndRefusalsAreNotRetried() {
+        for (refusing in listOf(false, true)) withServer("local") { server, requests, bridge ->
+            server.createContext("/v1/responses") { exchange ->
+                requests.add(mapper.readTree(exchange.requestBody))
+                reply(exchange, response("resp_empty", if (refusing) """[
+                    {"type":"message","id":"msg_refused","role":"assistant","status":"completed",
+                     "content":[{"type":"refusal","refusal":"Cannot assist with this request."}]}
+                ]""" else "[]"))
+            }
+            val state = bridge.startThread("fresh-empty.kt", "", "")
+            val failure = assertFails { bridge.send(state, "CURRENT_TASK") }
+            assertTrue(failure.message.orEmpty().contains(if (refusing) "Cannot assist" else "no answer or tool call"))
+            assertEquals(1, requests.size)
+        }
+    }
+
     private fun response(id: String, output: String): String = """{
         "id":"$id", "object":"response", "created_at":1,
         "model":"gpt-6-astra", "status":"completed", "output":$output,

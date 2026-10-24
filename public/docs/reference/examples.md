@@ -1194,7 +1194,7 @@ Runs `brief.js` for real, in node, against a mocked Monaco.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="ceresarchitecturaldslsmoke-kt--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/ceres/CeresArchitecturalDslSmoke/#L12) |  |
+| <a id="ceresarchitecturaldslsmoke-kt--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/ceres/CeresArchitecturalDslSmoke/#L14) |  |
 
 ## CeresCanonicalVerification.kt { #cerescanonicalverification-kt }
 
