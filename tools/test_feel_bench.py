@@ -50,6 +50,63 @@ class SummarizeTest(unittest.TestCase):
         self.assertNotIn("wallMs", summary)
 
 
+def result(stamp: str, host: str = "h.local", think: float = 1.0, **steps: tuple[float, float]) -> dict:
+    """A result whose summary holds one scenario `s` with the given (median, p90) per step."""
+    return {
+        "stamp": stamp, "reps": 100, "thinkSeconds": think, "coldRuns": 0, "loadAverageStartEnd": [1.0, 1.0],
+        "git": {"commit": "c" * 40, "dirty": False},
+        "machine": {"host": host, "cpu": "cpu", "cores": 10, "memBytes": 2**35, "os": "os"},
+        "summary": {"s": {k.replace("_", " "): {"n": 100, "failed": 0, "wallMs": m, "wallP90Ms": p, "spansMs": {"kotlin.compile": m / 2}}
+                          for k, (m, p) in steps.items()}},
+    }
+
+
+class RatchetTest(unittest.TestCase):
+    def test_a_band_is_three_times_the_measured_spread_but_never_below_the_minimum(self) -> None:
+        runs = [result("1", quiet=(100.0, 120.0), noisy=(100.0, 120.0)),
+                result("2", quiet=(102.0, 121.0), noisy=(130.0, 200.0)),
+                result("3", quiet=(101.0, 119.0), noisy=(100.0, 120.0))]
+        steps = feel_bench.make_baseline(runs)["steps"]["s"]
+        self.assertEqual(steps["quiet"]["wallMs"], 101.0)
+        self.assertEqual(steps["quiet"]["tolMedianPct"], feel_bench.MIN_MEDIAN_PCT)
+        # The noisy step's median run is 100; one run was 30% out, so its band is 90%.
+        self.assertEqual(steps["noisy"]["tolMedianPct"], 90.0)
+        self.assertGreater(steps["noisy"]["tolP90Pct"], feel_bench.MIN_P90_PCT)
+
+    def test_check_flags_regressions_and_improvements_outside_the_band_only(self) -> None:
+        baseline = feel_bench.make_baseline([result("1", same=(100.0, 120.0), slower=(100.0, 120.0), quicker=(100.0, 120.0), tiny=(10.0, 12.0))])
+        head = result("2", same=(110.0, 140.0), slower=(130.0, 150.0), quicker=(70.0, 90.0), tiny=(14.0, 15.0))
+        rows, problems = feel_bench.check_against(head, baseline)
+        self.assertEqual(problems, [])
+        verdicts = {r["step"]: r["verdict"] for r in rows}
+        self.assertEqual(verdicts, {"same": "ok", "slower": "regressed", "quicker": "faster", "tiny": "ok"})
+
+    def test_a_p90_regression_alone_is_a_regression(self) -> None:
+        baseline = feel_bench.make_baseline([result("1", tail=(100.0, 120.0))])
+        rows, _ = feel_bench.check_against(result("2", tail=(100.0, 200.0)), baseline)
+        self.assertEqual(rows[0]["verdict"], "regressed")
+
+    def test_another_host_or_think_time_is_not_comparable(self) -> None:
+        baseline = feel_bench.make_baseline([result("1", a=(1.0, 2.0))])
+        _, problems = feel_bench.check_against(result("2", host="other", think=0.0, a=(1.0, 2.0)), baseline)
+        self.assertEqual(len(problems), 2)
+
+    def test_a_missing_or_failed_step_fails_the_check(self) -> None:
+        baseline = feel_bench.make_baseline([result("1", a=(1.0, 2.0), b=(1.0, 2.0))])
+        head = result("2", a=(1.0, 2.0))
+        head["summary"]["s"]["a"]["failed"] = 1
+        verdicts = {r["step"]: r["verdict"] for r in feel_bench.check_against(head, baseline)[0]}
+        self.assertEqual(verdicts, {"a": "failed", "b": "missing"})
+
+    def test_one_baseline_per_host_and_think_time(self) -> None:
+        with self.assertRaises(SystemExit):
+            feel_bench.make_baseline([result("1", a=(1.0, 2.0)), result("2", host="other", a=(1.0, 2.0))])
+
+    def test_the_committed_page_is_what_page_writes(self) -> None:
+        self.assertEqual(feel_bench.BASELINE_PAGE.read_text(encoding="utf-8"), feel_bench.render_page(),
+                         f"{feel_bench.BASELINE_PAGE.name} is generated: run `feel_bench.py page`")
+
+
 class SpanNamesTest(unittest.TestCase):
     def test_documented_span_names_are_recorded_in_source(self) -> None:
         recorded: set[str] = set()
