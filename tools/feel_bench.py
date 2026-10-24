@@ -340,9 +340,12 @@ async def scenario_demo_document(b: Bench, reps: int) -> None:
     final `await`. The spans split it by operation (`transcript.op`, `transcript.launchGroup`) and by
     what those cost (engine builds, compiles, shader compiles, pipelines). The first replay is in a JVM
     that has only run the scenarios before it; the rest reuse its renderer's Vulkan device.
+
+    At most four replays follow the first, whatever `--reps` is: each one is a whole document with a
+    renderer, about 5 s, and four are enough for a median. A cold round (one rep) keeps the first.
     """
     name = "demo-document"
-    for i in range(1 + reps // 2):
+    for i in range(1 + min(reps // 2, 4)):
         await b.command(f"open feel_demo_document_{i} --create")
         written = await b.command(f"macro write demo_document --file {shlex.quote(str(DEMO_TRANSCRIPT))}")
         if not written.get("ok"):
