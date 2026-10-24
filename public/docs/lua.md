@@ -38,7 +38,7 @@ one run and call it from a selected line in the next. Two Lua boxes never share 
 
 ## What a Lua box can reach
 
-`box` is the box the code is in. Its properties are read and written by name, a missing one is read
+`box` (also `field.box`) is the box the code is in. Its properties are read and written by name, a missing one is read
 from the nearest parent that has it, the way Field's inherited properties are, and `box.children`
 and `box.parents` are lists of boxes. `field.named(name)` finds another box in the document.
 
@@ -51,18 +51,24 @@ for _, parent in ipairs(box.parents) do print("a parent:", parent.name) end
 
 Values cross as plain data: Lua numbers, strings and booleans become Kotlin `Double`, `String` and
 `Boolean`, a table with keys `1..n` becomes a list, any other table a map, and `box.frame` is a table
-with `x`, `y`, `w` and `h`. Assigning `nil` removes a property. `children`, `parents` and `id` are
-read-only.
+with `x`, `y`, `w` and `h`. A box stored in a property, `box.friend = field.named("drums")`, is the
+box itself on the Kotlin side, and a Lua function stored in one comes back as that function. Any other
+Kotlin value, a `Vec3` or an `FLine`, arrives in Lua as its text: a Kotlin `vec(1.0, 2.0, 3.0)` reads
+as the string `"(1.0, 2.0, 3.0)"`. Assigning `nil` removes a property. `children`, `parents`, `id` and
+`code_language` are read-only; writing one is an error on that line.
 
 `print` writes to the box's output, with its arguments separated by tabs as Lua's own `print` does,
-and `display(channel, html)` puts HTML into one of the box's output panels.
+and `display(channel, html)` puts HTML into one of the box's output panels; `display(html)` alone
+uses the panel called `output`. `field.describe(value)` gives a value back as a line note shows it
+(`{1, 2, 3}`, `a table of 5 entries`), and `field.clock()` is wall-clock seconds, for timing.
 
 ## Drawing
 
 `line()` starts a line and its methods add to it: `moveTo`, `lineTo`, `cubicTo`, `close`, `rect`,
-`circle`, and `color(r, g, b, a)`, `width(w)`, `fill()` for its style. Each returns the line, so they
+`circle`, and `color(r, g, b, a)`, `width(w)`, `fill()` and `stroke(false)` for its style. Each returns the line, so they
 chain. `line{{x, y}, …}` is a polyline through those points. `lines(...)` draws any number of them in
-the box's `lines` panel, and a table at the end sets its size.
+the box's `lines` panel, and a table at the end sets its size (`w`, `h`), another panel
+(`channel = "sketch"`), or `fit = true` to scale the drawing to that size.
 
 ```diffstatic_runner {data-lang=lua screenshot="assets/lua/drawing.png" capture="box" open-outputs=true trim=true requires="luajit" wait="3" wait-output=true wait-output-kind="display" timeout="180" embed=true name="lua-drawing" w="820" h="80" alt="The lines panel of a Lua box: twenty-four spokes from a common centre, alternately long and short, shading from blue on the right through violet to pink as they turn, under a filled yellow circle at the centre, inside a thin grey rectangle."}
 local shapes = {}
@@ -102,7 +108,8 @@ end
 ```
 
 `spawn(fn)` runs a function as a coroutine alongside `update`, resumed once a frame, and `wait(s)`
-inside it pauses it for that many seconds, or a single frame when `s` is left out. A launched box with
+inside it pauses it for that many seconds, or a single frame when `s` is left out. Arguments after
+the function, `spawn(fn, a, b)`, are passed to it. A launched box with
 no `update` stops by itself when its last spawned function returns.
 
 ```diffstatic_runner {data-lang=lua screenshot="assets/lua/spawn.png" execution="launch" capture="editor" outputs="inline" requires="luajit" wait="4" padding="10" timeout="180" embed=true name="lua-spawn" w="900" h="300" alt="A Lua box that spawns a function printing tick 1 to tick 4 with half a second between them, then done. Its output lists the four ticks, each with the Field frame it happened on, and then done."}
@@ -123,7 +130,8 @@ launch. Stopping the box ends `update` and drops its spawned functions, but its 
 `slider(label, min, max, initial, fn)` puts a slider in the box's `controls` panel and calls `fn`
 with its value each time it moves; it returns `initial`, so the first drawing and every later one can
 go through the same function. `checkbox(label, initial, fn)` is the same for a checkbox. The callback
-runs in the box's Lua, on Field's main thread, under the frame budget.
+runs in the box's Lua, on Field's main thread, under the frame budget. Leaving out `initial` starts
+a slider halfway between `min` and `max` and a checkbox unchecked.
 
 ```diffstatic_runner {data-lang=lua screenshot="assets/lua/slider.png" capture="box" open-outputs=true trim=true requires="luajit" wait="3" wait-output=true wait-output-kind="display" timeout="180" embed=true name="lua-slider" w="820" h="80" alt="A Lua box's output: a controls panel with one slider, RADIUS, at 40, and below it a lines panel with a filled orange circle centred in a thin grey rectangle."}
 local function draw(r)
@@ -141,11 +149,13 @@ or `"~"` a rest, and a nested list a step divided (`{60, {64, 67}, false, 72}`).
 [mini-notation](pattern_language.md) as it stands.
 
 `play(sequence, options)` loops it through the same voice a Kotlin box's `patSynth(pat(…))` uses,
-until the box stops or plays something else; `hush()` stops it. `field.render(sequence, options)`
+until the box stops or plays something else, and returns whether an audio device is open; `hush()`
+stops it. `field.render(sequence, options)`
 renders the same voice offline, shows it as a player in the box's `sound` panel, and returns what it
 measured: `frames`, `seconds`, `peak`, `rms`, and `crossings`, the upward zero crossings a second.
 Both take `cps` (cycles a second, 1 unless given), `wave` (`sine`, `saw`, `square`, `triangle`,
-`noise`), `decay`, `sustain` and `gain`, and `field.render` also `cycles` and a `wav` path to write.
+`noise`), `attack`, `decay`, `sustain` and `gain`, and `field.render` also `cycles`, a `wav` path to
+write, `channel` for another panel and `show = false` to measure without showing a player.
 
 ```diffstatic_runner {data-lang=lua screenshot="assets/lua/sound.png" capture="box" open-outputs=true trim=true requires="luajit" wait="3" wait-output=true wait-output-kind="display" timeout="180" embed=true name="lua-sound" w="820" h="80" alt="The sound panel of a Lua box: an audio player labelled 64 60 67 74 57 64 60 79, the sequence the Lua made, over a two-second waveform whose texture changes at each quarter-second step, with play controls beneath."}
 local scale = {0, 3, 5, 7, 10}
@@ -249,7 +259,9 @@ lua_demo from the welcome screen's starting points.
 
 ## Limits
 
-LuaJIT's own `ffi` library is present, but nothing on this page is built on it. A Lua box reaches only
+LuaJIT's own `ffi` library is present, but nothing on this page is built on it. `require` searches
+LuaJIT's usual `package.path` (`./?.lua`, then Homebrew's and `/usr/local/share/lua/5.1/`), so a
+pure-Lua module installed there loads. A Lua box reaches only
 what Field's
 [Lua prelude](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/resources/afield/lua/prelude.lua)
 defines, so its sound goes through the pattern voice

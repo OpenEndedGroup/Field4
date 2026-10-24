@@ -340,6 +340,10 @@ beside the form that printed it, and so does the exception when a form throws.
 
 And, yes: we have rainbow parens. [Clojure in a box](clojure.md) is the whole story.
 
+## Lua
+
+Lua, the scripting language inside norns, Renoise, Reaper and LÖVE, runs in a box through LuaJIT, loaded into Field's own process. A Lua box prints, draws lines, reads and writes box properties, makes sliders, and, launched, gets an `update(dt)` every frame. [Lua in a Box](lua.md) is the full account.
+
 ## ForthField & a-Nano
 
 Primarily for teaching purposes, a bizarrely useful live-coding dialect of Forth: stack words, dictionary inspection, recursion, return-stack tricks, helpful diagnostics, Field-native visualization, and full JVM interop:
