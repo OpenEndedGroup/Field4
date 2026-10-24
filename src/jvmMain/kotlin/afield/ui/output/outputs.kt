@@ -2066,10 +2066,11 @@ private fun Box.updateCachedControlGroupValue(control: ControllerControl) {
 private fun Box.updateCachedControlGroupValueInMemory(control: ControllerControl) {
     val cache = existingControlGroupCache() ?: return
     val cacheKey = cache.entries.firstOrNull { it.value.id == control.id }?.key ?: return
+    // Only the cache: a rerun reads it first ([cachedControlGroupValue]). This used to rewrite the
+    // persisted `_controlGroupValues` too, behind dirty marking's back, so the fingerprint tripwire
+    // saved the document every 5 s while a keyframe curve played and named the box as an unmarked
+    // edit (2026-10-24, `AutosaveSubsystemMarkingTest`). The last *gesture* stays what disk holds.
     cache[cacheKey] = control
-    val values = controlGroupValues()
-    values[cacheKey] = controlGroupStoredValue(control)
-    properties[controlGroupValuesProperty] = values
 }
 
 internal fun registerControllerControlGroup(box: Box, channel: String, controls: List<ControllerControl>) {

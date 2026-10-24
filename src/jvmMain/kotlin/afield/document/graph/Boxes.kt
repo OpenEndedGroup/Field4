@@ -239,11 +239,50 @@ internal class PersistentMapView<K, V>(
     override fun putAll(from: Map<out K, V>) { backing.putAll(from); if (from.isNotEmpty()) changed() }
     override fun remove(key: K): V? = backing.remove(key).also { if (it != null) changed() }
     override fun clear() { if (backing.isNotEmpty()) { backing.clear(); changed() } }
-    // Writes through entries/keys/values are not seen here; the tripwire still reports them.
+    // Writes through the entry, key and value views mark too (N1023-5): `entries.removeIf { ... }`,
+    // `keys.retainAll(...)`, an iterator's `remove()`, `entry.setValue(...)`.
+    override val entries: MutableSet<MutableMap.MutableEntry<K, V>>
+        get() = MarkingSet(backing.entries, ::changed) { MarkingEntry(it, ::changed) }
+    override val keys: MutableSet<K> get() = MarkingSet(backing.keys, ::changed) { it }
+    override val values: MutableCollection<V> get() = MarkingCollection(backing.values, ::changed) { it }
     override fun equals(other: Any?): Boolean = backing == other
     override fun hashCode(): Int = backing.hashCode()
     override fun toString(): String = backing.toString()
 }
+/** A view of a map's entry, key or value collection that calls [changed] after each removal through it. */
+internal open class MarkingCollection<T>(
+    private val backing: MutableCollection<T>,
+    protected val changed: () -> Unit,
+    private val wrap: (T) -> T,
+) : MutableCollection<T> by backing {
+    override fun iterator(): MutableIterator<T> = object : MutableIterator<T> {
+        val inner = backing.iterator()
+        override fun hasNext() = inner.hasNext()
+        override fun next(): T = wrap(inner.next())
+        override fun remove() { inner.remove(); changed() }
+    }
+    override fun remove(element: T): Boolean = backing.remove(element).also { if (it) changed() }
+    override fun removeAll(elements: Collection<T>): Boolean = backing.removeAll(elements.toSet()).also { if (it) changed() }
+    override fun retainAll(elements: Collection<T>): Boolean = backing.retainAll(elements.toSet()).also { if (it) changed() }
+    override fun removeIf(filter: java.util.function.Predicate<in T>): Boolean = backing.removeIf(filter).also { if (it) changed() }
+    override fun clear() { if (backing.isNotEmpty()) { backing.clear(); changed() } }
+    override fun equals(other: Any?): Boolean = backing == other
+    override fun hashCode(): Int = backing.hashCode()
+    override fun toString(): String = backing.toString()
+}
+
+internal class MarkingSet<T>(backing: MutableSet<T>, changed: () -> Unit, wrap: (T) -> T) :
+    MarkingCollection<T>(backing, changed, wrap), MutableSet<T>
+
+/** A map entry whose [setValue] calls [changed] when the value differs. */
+internal class MarkingEntry<K, V>(private val inner: MutableMap.MutableEntry<K, V>, private val changed: () -> Unit) :
+    MutableMap.MutableEntry<K, V> by inner {
+    override fun setValue(newValue: V): V = inner.setValue(newValue).also { if (it != newValue) changed() }
+    override fun equals(other: Any?): Boolean = inner == other
+    override fun hashCode(): Int = inner.hashCode()
+    override fun toString(): String = inner.toString()
+}
+
 var Box.templateId by Delegation<String?>(defaultValue = { null }) // tracks which template this box was created from
 
 const val METAROOT_ID = "metaroot"
