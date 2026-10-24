@@ -70,7 +70,7 @@ chain. `line{{x, y}, …}` is a polyline through those points. `lines(...)` draw
 the box's `lines` panel, and a table at the end sets its size (`w`, `h`), another panel
 (`channel = "sketch"`), or `fit = true` to scale the drawing to that size.
 
-```diffstatic_runner {data-lang=lua screenshot="assets/lua/drawing.png" capture="box" open-outputs=true trim=true requires="luajit" wait="3" wait-output=true wait-output-kind="display" timeout="180" embed=true name="lua-drawing" w="820" h="80" alt="The lines panel of a Lua box: twenty-four spokes from a common centre, alternately long and short, shading from blue on the right through violet to pink as they turn, under a filled yellow circle at the centre, inside a thin grey rectangle."}
+```diffstatic_runner {data-lang=lua screenshot="assets/lua/drawing.png" capture="box" open-outputs=true trim=true requires="luajit" wait="3" wait-output=true wait-output-kind="display" timeout="180" embed=true name="lua-drawing" w="820" h="80" alt="The lines panel of a Lua box: twenty-four spokes from a common centre, alternately long and short, shading from blue on the right through grey on the left to orange as they turn, under a filled yellow circle at the centre, inside a thin grey rectangle."}
 local shapes = {}
 for k = 0, 23 do
   local a = k * math.pi / 12
