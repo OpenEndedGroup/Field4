@@ -756,6 +756,7 @@ RUNNER_DIGEST_SOURCE_FILES = (
     "src/jvmMain/kotlin/afield/graphics/someSkiko.kt",
     "src/commonMain/resources/outputareas2.js",
     "tools/field_backdoor.py",
+    "tools/lighting/capture_background.js",
     "tools/capture_transaction.py",
     "tools/run_field_tests.py",
 )
