@@ -209,8 +209,41 @@ fun textPropertyValue(box: Box, property: String, value: String): Any {
 /** Comma-separated membership used by the frontend and server visibility intersection. */
 var Box.layers by Delegation<String>(defaultValue = { "default" })
 
-/** Persisted frame overrides keyed by layer; updated when the session leaves an active layer. */
-var Box.layerFrames by Delegation<MutableMap<String, Rect>>(defaultValue = { mutableMapOf() })
+/**
+ * Persisted frame overrides keyed by layer; updated when the session leaves an active layer.
+ *
+ * Reads return a view that marks the document dirty on every write through it, so box code's
+ * `layerFrames[layer] = rect` saves like any other edit; the stored value stays a plain map. The
+ * fingerprint tripwire (`DocumentShutdownFlush`, channel `warning,persistence`) caught that
+ * in-place write in a live session on 2026-10-23 (N1022-2).
+ */
+var Box.layerFrames: MutableMap<String, Rect>
+    get() {
+        @Suppress("UNCHECKED_CAST")
+        val stored = getPropertyRaw("layerFrames") as? MutableMap<String, Rect>
+            ?: (mutableMapOf<String, Rect>().also { setPropertyRaw("layerFrames", it) })
+        return PersistentMapView(this, "layerFrames", stored)
+    }
+    set(value) {
+        setPropertyRaw("layerFrames", if (value is PersistentMapView<String, Rect>) value.backing else value)
+    }
+
+/** A [MutableMap] over [backing] that tells [box] its persistent property [property] changed on each write. */
+internal class PersistentMapView<K, V>(
+    private val box: Box,
+    private val property: String,
+    val backing: MutableMap<K, V>,
+) : MutableMap<K, V> by backing {
+    private fun changed() = box.notePersistentChange(property)
+    override fun put(key: K, value: V): V? = backing.put(key, value).also { if (it != value) changed() }
+    override fun putAll(from: Map<out K, V>) { backing.putAll(from); if (from.isNotEmpty()) changed() }
+    override fun remove(key: K): V? = backing.remove(key).also { if (it != null) changed() }
+    override fun clear() { if (backing.isNotEmpty()) { backing.clear(); changed() } }
+    // Writes through entries/keys/values are not seen here; the tripwire still reports them.
+    override fun equals(other: Any?): Boolean = backing == other
+    override fun hashCode(): Int = backing.hashCode()
+    override fun toString(): String = backing.toString()
+}
 var Box.templateId by Delegation<String?>(defaultValue = { null }) // tracks which template this box was created from
 
 const val METAROOT_ID = "metaroot"
