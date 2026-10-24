@@ -37,6 +37,7 @@ The run exits non-zero when a step fails.
 | `kotlin-println` | a new box running `println("hello")` | first run, same code again, warm reruns, edit + rerun (a new literal each time) |
 | `first-steps` | `templates/first-steps`, the welcome page's "Start here" | first launch, Alt+Enter `var petals = N` while it runs (`execute-fragment`), stop, second launch, warm relaunches |
 | `first-graphics` | `templates/first-graphics`, "Next: native graphics" | renderer launch, its first frames, triangle launch, its frames, same relaunch, fragment edit + Reload Shader, fragment edit + Update Shader, fragment edit + relaunch, Kotlin edit + relaunch |
+| `demo-document` | `dev_docs/agents/transcripts/demo_document.yaml`, the [demo document](../../public/docs/demo_document.md) | the whole transcript replayed into a fresh, empty document by one `macro run` (every create, connect, execute and launch, to its last `await`), then once more into another |
 
 The shader steps send what the editor sends. Alt+Enter in a `fragment`/`vertex` editor (and
 alt-r) is `set-string` with the edited text and then `perform-action moduleHere_reload`;
@@ -80,6 +81,9 @@ names the source records.
 | `pipeline.update` | the same, for a module rebuilding its pipeline |
 | `renderer.firstRender` | the first `render()` of a `Renderer.run` invocation |
 | `renderer.toFirstFrame` | `Renderer` construction to the end of its first frame (starts before the launch step, so the harness attributes it to no step; it is in the raw spans) |
+| `transcript.run` | one `macro run` of an operation transcript, `detail` its name |
+| `transcript.op` | one transcript operation other than a launch, `box` the box it names, `detail` macro and verb |
+| `transcript.launchGroup` | a run of consecutive `launch` operations, applied as one awaited batch, `detail` macro and boxes |
 
 ## Baseline, 2026-10-23
 

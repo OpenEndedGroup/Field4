@@ -21,7 +21,8 @@
      location from our own <script src> — no hard-coded base path. */
   var assetsBase = new URL(".", script.src);          // …/field4/assets/
   var siteBase   = new URL("..", assetsBase);         // …/field4/
-  var bannerUrl  = new URL("banner.mp4", assetsBase); // …/field4/assets/banner.mp4
+  /* The film of the demo document (demo_document.md), made by the docs build. */
+  var bannerUrl  = new URL("demo_document/film.mp4", assetsBase);
 
   function normalize(pathname) {
     return pathname.replace(/index\.html$/, "").replace(/\/*$/, "/");

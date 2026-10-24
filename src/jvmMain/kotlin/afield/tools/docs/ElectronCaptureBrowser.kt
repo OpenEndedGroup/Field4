@@ -56,6 +56,10 @@ class ElectronCaptureBrowser private constructor(
     }
 
     companion object {
+        /** The capture page's size in CSS px, the drive's usual `viewport`; other sizes are emulated. */
+        const val CAPTURE_WIDTH = 1280
+        const val CAPTURE_HEIGHT = 720
+
         fun launch(playwright: Playwright, appUrl: String, timeoutMs: Long = 60_000): ElectronCaptureBrowser {
             val electronDir = File(locateFieldProjectRoot(), "electron")
             val binary = File(electronDir, if (System.getProperty("os.name").startsWith("Linux"))
@@ -72,6 +76,8 @@ class ElectronCaptureBrowser private constructor(
                 .redirectOutput(log)
                 .also {
                     it.environment()["APP_URL"] = appUrl
+                    // The page at the docs capture size, shown without taking focus (electron/main.js).
+                    it.environment()["FIELD_ELECTRON_CAPTURE_SIZE"] = "${CAPTURE_WIDTH}x${CAPTURE_HEIGHT}"
                     // electron/main.js quits once this pid is gone, so a killed JVM leaves no orphan.
                     it.environment()["FIELD_ELECTRON_OWNER_PID"] = ProcessHandle.current().pid().toString()
                     // A fresh profile: no per-host zoom or window state from the user's own Field4 app.

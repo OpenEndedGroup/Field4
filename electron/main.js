@@ -755,8 +755,22 @@ function installDockIcon() {
   app.dock.setIcon(APP_ICON_1024);
 }
 
+// The docs/backdoor capture Electron (afield.tools.docs.ElectronCaptureBrowser) sets
+// FIELD_ELECTRON_CAPTURE_SIZE=WxH: the page area is opened at exactly that size, so a capture of that
+// size needs no viewport emulation (which leaves the rest of a larger window black and flickering),
+// and the window is shown without taking focus from whatever the person is doing.
+const CAPTURE_SIZE = (() => {
+  const m = /^(\d+)x(\d+)$/.exec(process.env.FIELD_ELECTRON_CAPTURE_SIZE || "");
+  return m ? { width: Number(m[1]), height: Number(m[2]) } : null;
+})();
+
 function initialWindowBounds() {
   const { x, y, width, height } = screen.getPrimaryDisplay().workArea;
+  if (CAPTURE_SIZE) {
+    const w = CAPTURE_SIZE.width;
+    const h = CAPTURE_SIZE.height + TAB_STRIP_HEIGHT;
+    return { x: x + Math.max(0, width - w), y: y + Math.max(0, height - h), width: w, height: h, useContentSize: true };
+  }
   const windowWidth = Math.floor(width * 0.8);
   const windowHeight = Math.floor(height * 0.8);
 
@@ -771,6 +785,11 @@ function initialWindowBounds() {
 function presentWindow(win) {
   if (!win || win.isDestroyed()) return;
   if (win.isMinimized()) win.restore();
+
+  if (CAPTURE_SIZE) {
+    win.showInactive();
+    return;
+  }
 
   win.show();
 

@@ -775,11 +775,15 @@ body.field-docs-image-lightbox-open {
     opacity: 0;
 }
 
+/* The film is the flat Field window (demo_document.md); the tilt is applied here, as the old
+   hand-made banner had it baked in. */
 .field-homepage-video video {
     width: 110%;
     height: 100%;
     object-fit: cover;
     object-position: center center;
+    transform-origin: 60% 50%;
+    transform: perspective(1400px) rotateX(16deg) rotateY(-18deg) rotateZ(5deg) scale(1.4);
 }
 
 .field-homepage-video__veil {
