@@ -43,7 +43,7 @@ import kotlin.math.sin
  * agreement is therefore strong evidence that both are right, in a way that any number of assertions
  * against constants would not be.
  *
- * The same argument has since been applied to a **third** reading — the differentiable one in
+ * The same argument covers a **third** reading, the differentiable one in
  * `SolidGradient.kt`, which is `toScalarField`'s arithmetic replaced by
  * [afield.math.autodiff.AD] and shares no line of code with it. It is measured by
  * [SolidExpr.gradientAgreement] rather than folded in here, and the reason is that the two compare
@@ -86,8 +86,7 @@ enum class AgreementKind {
      * Still two independent marchers on one field, so it catches a broken lowering; but both sides
      * are approximations of the same field, so agreement here says nothing about whether that field
      * is the shape the notation meant. Counted separately for exactly that reason: a report that
-     * folded these into an "N of N agree" would be the classic overclaim, where the refusal path
-     * quietly counts as a pass.
+     * folded these into an "N of N agree" would be counting the refusal path as a pass.
      */
     MARCHED_VS_MARCHED,
 }
