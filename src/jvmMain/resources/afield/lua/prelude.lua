@@ -17,11 +17,14 @@ local getinfo, getlocal, sethook = debug.getinfo, debug.getlocal, debug.sethook
 
 local function pack(...) return { n = select('#', ...), ... } end
 
--- Wrap a raw handler so that its failure is a Lua error raised where the box called it.
-local function checked(f)
+-- Wrap a raw handler so that its failure is a Lua error raised where the box called it. `level` is
+-- error()'s: 2 blames the caller of the wrapper; 3 skips one more frame, for a wrapper called from
+-- inside a metamethod, so that `box.id = 1` is reported at the box's line, not the prelude's.
+local function checked(f, level)
+  level = level or 2
   return function(...)
     local r = pack(f(...))
-    if r[1] ~= true then error(tostring(r[2] or "a call into Field failed"), 2) end
+    if r[1] ~= true then error(tostring(r[2] or "a call into Field failed"), level) end
     return unpack(r, 2, r.n)
   end
 end
@@ -104,8 +107,9 @@ local function untag(kind, v)
   return v
 end
 
-local box_get = raw.get and checked(raw.get)
-local box_set = raw.set and checked(raw.set)
+-- Level 3: these are called from the proxy's __index/__newindex, one frame below the box's code.
+local box_get = raw.get and checked(raw.get, 3)
+local box_set = raw.set and checked(raw.set, 3)
 
 proxy = function(id)
   if id == nil then return nil end
