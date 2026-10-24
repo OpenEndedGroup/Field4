@@ -3,6 +3,7 @@ import { aiChatMarkdownToHtml, aiChatHistoryToHtml, aiChatSetToolFamilies, send,
 import { renderAiChatFences } from "./aiChatFenceRenderers.js";
 import { typesetAiChatMath } from "./aiChatMath.js";
 import { installAiChatFenceCatalog } from "./aiChatFenceCatalog.js";
+import { mountLocalAiFeedback } from "./localAiFeedback.js";
 
 // Rebuild every open chat once, for a catalog that arrived after it first rendered.
 function rerenderOpenChats() {
@@ -2468,6 +2469,7 @@ function ensureAiChat(container, uid, property) {
                         textarea.focus();
                 }
         });
+        mountLocalAiFeedback(root);
         root.appendChild(messages);
         root.appendChild(inputWrap);
         container.innerHTML = "";
