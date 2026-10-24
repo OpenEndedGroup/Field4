@@ -104,8 +104,16 @@ __beginService();
     }
 
     // console.log / info / warn / error from box code also print beside the calling line, the way
-    // `print` does; the browser console still gets them. Field's own logging is not in a box_ frame
-    // and is left alone.
+    // `print` does; the browser console still gets them. Only a call made directly from box code is
+    // routed: the head's own logging (FLine geometry, the scene) stays in the browser console even
+    // when box code is further up the stack.
+    function directBoxCaller() {
+        const locations = FieldRemoteErrors.locationsFor(new Error());
+        // [0] is this function, [1] the routed console method, [2] whoever called console.*.
+        const caller = locations[2];
+        return caller && caller.filename.indexOf("box_") === 0 ? caller : null;
+    }
+
     function installConsoleRouting(print) {
         const original = global.console;
         ["log", "info", "warn", "error", "debug"].forEach(function (level) {
@@ -113,7 +121,7 @@ __beginService();
             if (!real || real.__fieldRouted) return;
             const routed = function () {
                 real.apply(null, arguments);
-                const caller = boxCaller();
+                const caller = directBoxCaller();
                 if (!caller) return;
                 const parts = Array.prototype.map.call(arguments, function (value) {
                     return typeof value === "string" ? value : betterPretty(value, 2, "JSON", false);
