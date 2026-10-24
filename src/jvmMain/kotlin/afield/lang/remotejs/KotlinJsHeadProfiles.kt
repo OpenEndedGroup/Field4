@@ -405,7 +405,7 @@ private fun reportRemoteResult(box: Box, response: JSONObject): Boolean {
     val payload = response.getJSONObject("payload")
     val kind = payload.getString("kind")
     val message = payload.optString("message", "")
-    val line = if (payload.has("line")) payload.getInt("line") else 0
+    val line = kotlinJsEditorLine(box, payload)
     when (kind) {
         "ERROR" -> box.output.errorProxy(message, "code", line)
         "SUCCESS" -> if (message.trim() != "OK") box.output.proxy(message.replace("<json>", ""), true, line)
@@ -413,4 +413,22 @@ private fun reportRemoteResult(box: Box, response: JSONObject): Boolean {
         else -> box.output.proxy(message, true, line)
     }
     return kind != "ERROR" && kind != "RUN-STOP"
+}
+
+/**
+ * The editor line for a head reply. `print` arrives already on its Kotlin line (`__fieldPrintAt`);
+ * an error's stack and a routed `console.log` (`jsFrame`) carry generated-JavaScript lines, mapped
+ * back through the module's source map ([KotlinJsSourceMap]).
+ */
+internal fun kotlinJsEditorLine(box: Box, payload: JSONObject): Int {
+    val line = if (payload.has("line")) payload.optInt("line", 0) else 0
+    val map = KotlinJsSourceMap.forBox(box.id) ?: return line
+    return when {
+        payload.optString("kind") == "ERROR" ->
+            map.editorLineForStack(payload.optString("stack", ""), target(box))
+                ?: map.editorLine(line, payload.optInt("column", 1))
+                ?: 0
+        payload.optBoolean("jsFrame") -> map.editorLine(line, payload.optInt("column", 1)) ?: 0
+        else -> line
+    }
 }

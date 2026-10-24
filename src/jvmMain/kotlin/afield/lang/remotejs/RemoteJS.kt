@@ -447,13 +447,19 @@ fun compileAndSendKotlin(
     result.diagnostics.filter { it.severity == "error" }.forEach {
         b.output.errorProxy(it.message, "code", it.line)
     }
-    val js = result.js
+    val js = result.js?.replace(Regex("""(?m)^//# sourceMappingURL=.*$"""), "")
     if (!result.success || js == null) {
         if (result.diagnostics.none { it.severity == "error" })
             b.output.errorProxy("Kotlin->JS compile failed:\n${result.rawLog.takeLast(600)}", "code", 0)
         return false
     }
 
+    KotlinJsSourceMap.remember(
+        b.id,
+        result.sourceMap?.let { map ->
+            runCatching { KotlinJsSourceMap(map, "$moduleName.kt", preparedSource::userLineFor) }.getOrNull()
+        },
+    )
     val send = {
         selection.profile.send(b, selection, js, launchable, lifecycleName, onResponse)
     }

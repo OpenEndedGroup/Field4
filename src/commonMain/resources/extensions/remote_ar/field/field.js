@@ -127,7 +127,9 @@ __beginService();
                     return typeof value === "string" ? value : betterPretty(value, 2, "JSON", false);
                 });
                 const prefix = level === "warn" ? "warning: " : (level === "error" ? "error: " : "");
-                print(prefix + parts.join(" "), caller.line);
+                // jsFrame: the line is the caller's generated-JavaScript line; a Kotlin→JS box maps
+                // it back to its Kotlin line through the module's source map.
+                print(prefix + parts.join(" "), caller.line, {jsFrame: true, column: caller.column});
             };
             routed.__fieldRouted = true;
             original[level] = routed;
@@ -201,7 +203,7 @@ __beginService();
     }
 
     function installPrinting() {
-        const print = function (value, line) {
+        const print = function (value, line, extra) {
             const returnTo = global.__sandbox__ && global.__sandbox__.__returnTo
                 ? global.__sandbox__.__returnTo
                 : _field.globalReturnTo;
@@ -218,6 +220,7 @@ __beginService();
             // The box this came from, so output printed after the run has finished (from a timer,
             // an event handler, an animation frame) still reaches it: its returnTo is gone by then.
             payload.codeName = caller ? caller.filename : globalCodeName;
+            if (extra) Object.assign(payload, extra);
             _field.send(returnTo, payload);
         };
         installBoxSurface(print);

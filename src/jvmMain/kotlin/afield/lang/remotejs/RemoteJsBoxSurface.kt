@@ -79,8 +79,8 @@ object RemoteJsBoxSurface {
         val box = find(payload.optString("codeName")) ?: return false
         val message = payload.optString("message", "").removePrefix("<json>")
         if (message.trim() == "OK") return true
-        val line = if (payload.has("line")) payload.getInt("line") else 0
-        box.output.proxy(message, true, line)
+        // A Kotlin→JS box's routed console.log carries a generated-JavaScript line; map it back.
+        box.output.proxy(message, true, kotlinJsEditorLine(box, payload))
         return true
     }
 
