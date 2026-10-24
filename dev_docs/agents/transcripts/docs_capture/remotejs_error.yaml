@@ -1,0 +1,30 @@
+name: remotejs_error
+description: >
+  Capture for docs/remotejs.md. A Javascript language root embeds the browser head on the canvas
+  with remoteAr(). A Javascript child whose second call throws inside the function it defined; the runner runs it and screenshots the editor with the error marked.
+operations:
+  - create:
+      box: remotejs_error_root
+      name: "Javascript root"
+      frame: { x: 60.0, y: 40.0, w: 300.0, h: 90.0 }
+      properties:
+        mainLanguage: remotejs
+        isRemoteJSRoot: true
+        code: |
+          remoteAr(width = 480, height = 270)
+  - execute: { box: remotejs_error_root, property: code }
+  - wait: { millis: 8000 }
+  - create:
+      box: remotejs_error_box
+      name: "an error on the line that raised it"
+      frame: { x: 60.0, y: 700.0, w: 360.0, h: 120.0 }
+      properties:
+        code: |
+          function mean(values) {
+            return values.reduce((a, b) => a + b) / values.length
+          }
+
+          print(mean([1, 2, 3]))
+          print(mean([]))
+  - connect: { parent: remotejs_error_root, child: remotejs_error_box }
+  - wait: { frames: 2 }

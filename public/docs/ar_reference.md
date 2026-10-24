@@ -16,6 +16,9 @@ Load it on an Android phone, on a headset, or in a second browser window on the 
 
 There is no external key, hosted scene, or platform-specific page to set up.
 
+To sketch in a browser tab on your desktop, with no headset involved, start with [Javascript in a
+browser tab](remotejs.md); this page is the reference for the head itself and for WebXR.
+
 This is the *browser* head. Field's other head is native and does not go through WebXR at all. See
 [Apple Vision Pro](vision.md) for the visionOS front end, its RealityKit and Live Metal surfaces,
 and the pose channel that lets the desktop renderer draw from the wearer's own viewpoint.
@@ -157,38 +160,9 @@ The head requests `local-floor`, `viewer`, and `hit-test` through standard WebXR
 
 ## Printing, display and controls
 
-A RemoteJS box writes to its own output the way a Kotlin box does. `print(value)` and
-`console.log(...)` (also `info`, `warn` and `error`) appear beside the line that called them, and the
-box's last expression is shown beside its last line. Output printed later, from a `setTimeout`, an
-event handler or a `launch` loop, still reaches the box. The browser console gets `console.log` too.
-
-```diffstatic {data-lang=javascript}
-print("from print")
-console.log("from console.log", {answer: 6 * 7})
-setTimeout(() => print("half a second later"), 500)
-```
-
-`display(channel, html)` fills a named output channel, and `slider` and `checkbox` draw the controls a
-Kotlin box's `slider(...)` and `checkbox(...)` draw. Their callbacks run in the head:
-
-```diffstatic {data-lang=javascript}
-const state = {freq: 3.0, square: false}
-function redraw() {
-    display("main", `<b>${state.square ? "square" : "sine"}</b> at ${state.freq.toFixed(1)} Hz`)
-}
-slider("frequency", v => { state.freq = v; redraw() }, {min: 1, max: 10, step: 0.1, value: 3.0})
-checkbox("square wave", v => { state.square = v; redraw() })
-redraw()
-```
-
-The options object takes `min`, `max`, `step`, `value` and `channel` (default `controls`). A moved
-control keeps its value when the box runs again. Browser globals such as `setTimeout`, `fetch`,
-`JSON` and `THREE` are available to box code as they are in any page script.
-
-If no head is connected, running a RemoteJS box is an error that says so, and nothing runs.
-
-The [remotejs_box_parity](agent_transcripts.md#remotejs_box_parity) document has one box for each of
-these.
+A RemoteJS box prints beside its lines, marks errors where they happen, and draws `display`
+channels, sliders and checkboxes the way a Kotlin box does. [Javascript in a browser
+tab](remotejs.md) covers all of it, with the box on a desktop rather than a headset.
 
 ## Completion and errors
 

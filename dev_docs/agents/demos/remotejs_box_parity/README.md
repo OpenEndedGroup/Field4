@@ -2,8 +2,7 @@
 
 Open `metadata.edn` in Field (**File ▸ Open**, or `./field.sh <path to this folder>/metadata.edn`).
 It is the saved form of `dev_docs/agents/transcripts/remotejs_box_parity.yaml`; the written-up
-version is the "Printing, display and controls" section of
-[RemoteJS and WebXR](../../../../public/docs/ar_reference.md). **Run the root first**: it opens the
+version is [Javascript in a browser tab](../../../../public/docs/remotejs.md). **Run the root first**: it opens the
 browser head the Javascript boxes run in. Without it, running a child says no head is connected.
 
 - **print and console.log beside their lines**: both print beside the calling line; `true` (the last

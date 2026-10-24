@@ -1,0 +1,34 @@
+name: remotejs_controls
+description: >
+  Capture for docs/remotejs.md. A Javascript language root embeds the browser head on the canvas
+  with remoteAr(). A Javascript child that draws a slider and a checkbox and fills the main channel; the runner screenshots the box with its outputs open.
+operations:
+  - create:
+      box: remotejs_controls_root
+      name: "Javascript root"
+      frame: { x: 60.0, y: 40.0, w: 300.0, h: 90.0 }
+      properties:
+        mainLanguage: remotejs
+        isRemoteJSRoot: true
+        code: |
+          remoteAr(width = 480, height = 270)
+  - execute: { box: remotejs_controls_root, property: code }
+  - wait: { millis: 8000 }
+  - create:
+      box: remotejs_controls_box
+      name: "a slider, a checkbox and display"
+      frame: { x: 60.0, y: 700.0, w: 360.0, h: 120.0 }
+      properties:
+        code: |
+          const state = {speed: 3.0, outline: false}
+
+          function redraw() {
+            const style = state.outline ? "outlined" : "filled"
+            display("main", `<b>${style}</b> square, turning at ${state.speed.toFixed(1)} rpm`)
+          }
+
+          slider("speed", v => { state.speed = v; redraw() }, {min: 0, max: 10, step: 0.1, value: 3.0})
+          checkbox("outline", v => { state.outline = v; redraw() })
+          redraw()
+  - connect: { parent: remotejs_controls_root, child: remotejs_controls_box }
+  - wait: { frames: 2 }

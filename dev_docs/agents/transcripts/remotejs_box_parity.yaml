@@ -16,7 +16,7 @@ description: |
 
   Run the root first: it opens the head the Javascript boxes run in.
 docs:
-  - page: ar_reference.md
+  - page: remotejs.md
     why: "Documents RemoteJS boxes: printing, errors, display, controls and Stop."
 operations:
   - create:

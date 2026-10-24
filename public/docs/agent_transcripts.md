@@ -2361,7 +2361,7 @@ from callbacks in the head; a `setTimeout` prints after the run has finished; an
 `launch(...)` loop. Run the root first.
 
 `DemoTranscriptExecSmokeTest` compiles the Kotlin root and skips the Javascript boxes, which need a
-browser head; `RemoteJsBoxSurfaceTest` runs the JVM half. [RemoteJS and WebXR](ar_reference.md)
+browser head; `RemoteJsBoxSurfaceTest` runs the JVM half. [Javascript in a browser tab](remotejs.md)
 teaches the same calls.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/remotejs_box_parity/metadata.edn)

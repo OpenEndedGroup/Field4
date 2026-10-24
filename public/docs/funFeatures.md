@@ -340,6 +340,15 @@ beside the form that printed it, and so does the exception when a form throws.
 
 And, yes: we have rainbow parens. [Clojure in a box](clojure.md) is the whole story.
 
+## RemoteJS
+
+A Javascript box runs in a browser tab that Field keeps connected, which can sit right on the canvas
+beside your code. `print` and `console.log` land beside their lines, errors are marked where they
+happened, `launch` loops stop when you press Stop, and `display`, `slider` and `checkbox` fill the
+box's outputs the way they do in Kotlin. The tab is a Three.js scene, so an `FLine` assigned into
+`stage` is drawn there. [Javascript in a browser tab](remotejs.md) is the whole story, and the same
+head on a phone or headset is [RemoteJS and WebXR](ar_reference.md).
+
 ## ForthField & a-Nano
 
 Primarily for teaching purposes, a bizarrely useful live-coding dialect of Forth: stack words, dictionary inspection, recursion, return-stack tricks, helpful diagnostics, Field-native visualization, and full JVM interop:
