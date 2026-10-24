@@ -209,10 +209,11 @@ class AutosaveSubsystemMarkingTest {
     }
 
     @Test
-    fun controlDrivenByKeyframesWritesNothingPersistent() {
-        // The programmatic path (a keyframe curve playing a slider) is meant to record no edit. Until
-        // 2026-10-24 it still rewrote `_controlGroupValues` in place, so the fingerprint saw an unmarked
-        // edit on every autosave tick of a playing curve and saved the document each time.
+    fun controlDrivenByKeyframesIsMarked() {
+        // The programmatic path (a keyframe curve or key recall setting a slider) keeps the recalled
+        // value for the next run (`KeyframerTest`), in `_controlGroupValues`. Until 2026-10-24 it
+        // wrote that in place without marking: the fingerprint still saved it, and the tripwire named
+        // the box as an unmarked edit on every autosave tick while a curve played.
         val info = savedDocument("controls-programmatic")
         val a = info.boxes.getValue("a")
         a.output.displayProxy = { _, _ -> }
@@ -220,11 +221,7 @@ class AutosaveSubsystemMarkingTest {
         info.assertMarkedAndSaved("a", "_controlGroupValues")
         val id = controllerControlsForBox("a").single().id
         for (step in 1..5) updateControllerControlValueProgrammatically(id) { it.copy(value = step / 10.0) }
-        assertTrue(info.pendingSidecarSaves.isEmpty(), "pending: ${info.pendingSidecarSaves}")
-        assertEquals(0, DocumentShutdownFlush.flushPendingDocumentSaves(), "a curve playing a slider saved the document")
-        // A rerun still starts from the value on screen, not the last gesture.
-        a.controlGroup("controls") { slider("gain", min = 0.0, max = 1.0, initialValue = 0.25) { } }
-        assertEquals(0.5, controllerControlsForBox("a").single().value)
+        assertTrue("0.5" in info.assertMarkedAndSaved("a", "_controlGroupValues").toString())
     }
 
     @Test
