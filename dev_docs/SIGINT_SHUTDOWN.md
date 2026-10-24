@@ -199,9 +199,8 @@ tick per open document). In a live backdoor session on port 9611 it fired for bo
 `thisBox.layerFrames["start"] = rect`, and for nothing else exercised: new box, `set-rect`
 moves, `set-active-layer` in and out of a layer, `set-visible-layers`, `set-string`, and a macro
 replay (create, connect, edit). `Box.layerFrames` now returns `PersistentMapView`, which marks
-on `put`/`putAll`/`remove`/`clear`; the same run afterwards saved with no tripwire line. Not yet
-driven through the tripwire: drawing layer, notation, bookmarks, panes, keyframes, controls,
-slideshow.
+on `put`/`putAll`/`remove`/`clear`; the same run afterwards saved with no tripwire line. The other
+subsystems were driven on 2026-10-24 (next section).
 
 **No-op saves (N1020-7).** `set-string` (and every explicit `markSidecarPending` caller) marks
 even when the text is unchanged. `safeSave` already skips writing identical files, so this was
@@ -220,6 +219,58 @@ started, signals it as soon as `macro run` returns, waits for exit and checks `m
 the sidecar. Run 2026-10-23 on port 9611: SIGINT 0 ms after the macro, Field exited, 7/7 checks
 held. It is a Python script, not a `FIELD_TEST` jvm-main smoke, because it needs a real server it
 may stop.
+
+## Subsystems through the tripwire (2026-10-24)
+
+`AutosaveSubsystemMarkingTest` drives each older subsystem that persists into a root or box
+property through its own write path, in a saved document, and checks three things: the write is
+*marked* (`(box, property)` lands in `pendingSidecarSaves`), the save that follows leaves the
+tripwire *quiet* (`DocumentShutdownFlush.lastUnmarked` empty), and the value is *on disk* as the
+loader reads it back (`SavingContext.readEdnTransfers`). A future write path in any of these that
+mutates a persisted value without marking fails the first or second check.
+
+| Subsystem | Property | Write path driven | Marked at base | Now | Test |
+| --- | --- | --- | --- | --- | --- |
+| Bookmarks | root `bookmarks` | `set-string` handler's `setPropertyRaw(textPropertyValue(...))` | yes | yes | `bookmarks` |
+| Split panes | root `panes` | same | yes | yes | `splitPanes` |
+| Drawing layer (string) | root `drawing` | same | yes | yes | `drawingLayerSentAsAString` |
+| Drawing layer (merge) | root `drawing` | the real `notation-scene` handler (`installNotationHandlers`) → `NotationStore.update` | yes | yes | `drawingLayerMergedThroughNotationScene` |
+| Notation from box code | root `drawing` | `box.notation { rect(...) }`, then an edit of the same mark | yes | yes | `notationWrittenByBoxCode` |
+| Keyframe editor keys | `keyframeData` | `saveKeyframeData` (what the `__keyframes__` handler calls) | yes | yes | `keyframeEditorKeys` |
+| Keyframe interpolants | `keyframeInterpolants` | `registerInterpolant` with source | yes | yes | `keyframeInterpolantSource` |
+| Layer frames, map views | `layerFrames` | `entries...setValue`, `keys.removeIf`, `values.iterator().remove()` | **no** (N1023-5) | yes | `layerFramesThroughEveryMapView` |
+| Controls, gesture | `_controlGroupValues` | `controlGroup { slider }`, `updateControllerControlValue` | yes | yes | `controlGestureIsMarked` |
+| Controls, keyframe-driven | `_controlGroupValues` | `updateControllerControlValueProgrammatically` (key recall, a playing curve) | **no** | yes | `controlDrivenByKeyframesIsMarked` |
+| Slideshow | `slideShow` | `box.slideShow { step(...) }` | yes | yes | `slideshowDefinitionIsMarkedButNotWrittenToDisk` |
+
+"Marked at base" was observed by running the test with this branch's `src/jvmMain` changes
+stashed: the two **no** rows failed ("written without marking"), the other nine passed.
+
+- **Layer-frame views (N1023-5).** `PersistentMapView` marked `put`/`putAll`/`remove`/`clear`
+  only. `entries`, `keys` and `values` now return views (`MarkingSet`, `MarkingCollection`,
+  `MarkingEntry` in `Boxes.kt`) that mark on an iterator `remove()`, `remove`, `removeAll`,
+  `retainAll`, `removeIf`, `clear` and `entry.setValue`, and only when something changed.
+- **Keyframe-driven controls.** `updateCachedControlGroupValueInMemory` rewrote
+  `_controlGroupValues` with `properties[...] = values`, past marking, on purpose ("without
+  recording one document edit for every animation frame"). Since the 10-22 fingerprint that
+  write was saved anyway on the next tick, with a tripwire line each time a curve played. It
+  now calls `notePersistentChange`; still no resync and no flight-recorder entry per frame. The
+  persisted value is kept because `KeyframerTest` pins it (a rerun restores a recalled key). A
+  playing curve therefore saves once per 5 s tick, as before, now for a named reason.
+- **Slideshow.** `slideShow` is in the persistent list, but its value is a live
+  `SlideShowInstance` (lambdas). It is marked and a save runs, and nothing reaches
+  `metadata.edn`: the box's code rebuilds it on the next run. The test pins both halves.
+- The `set-string` rows call the handler's own statement, not the handler: `Server.server()`
+  installs it with the rest of the server. The notation row runs the real handler.
+- The persistence of each row was checked as the value in `metadata.edn`, not by reopening a
+  document in a live Field. Manual check: add a bookmark (Alt+B) or split the canvas, `kill -INT`
+  Field within 1 s, restart, and the bookmark or split is there.
+
+Also in this pass (N1023-2): the missing-inherited-property error counted the document root and
+metaroot as parent boxes, so a box with one parent read "any of its 3 parent boxes".
+`ContextResolution.Search.boxAncestorsExamined` leaves them out, the message reads "in 'Flower'
+or the 1 box above it (the document root was searched too)", and FieldML's `prop` message counts
+the same way (`MissingInheritedPropertyCountTest`).
 
 ## Not verified
 
