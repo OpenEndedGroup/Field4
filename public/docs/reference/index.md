@@ -645,7 +645,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**34341 public symbols across 1556 source files**, 17652 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34341 public symbols across 1557 source files**, 17652 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -673,7 +673,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 77 | 2092 | 1013 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 584 | 397 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 121 | 3082 | 1397 (45%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 227 | 3134 | 1120 (35%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 228 | 3134 | 1120 (35%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 100 | 2235 | 698 (31%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 | [IO](io.md) | 1 | 22 | 15 (68%) |  |
@@ -1445,6 +1445,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>lua/<wbr></small> [LuaState.kt](languages.md#luastate-kt) | Languages | 20 | 20 | The LuaJIT state behind a Lua box: `LuaState` opens a `lua_State`, runs chunks under `lua_pcall`, and marshals values between Lua and Kotlin. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [MacExternalBrowserSurface.kt](imaging.md#macexternalbrowsersurface-kt) | Imaging | 4 | 1 | The macOS browser-frame receiver, which imports Electron's IOSurfaces into Vulkan. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [MacHdrActivator.kt](graphics.md#machdractivator-kt) | Graphics | 2 | 1 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>automation/<wbr></small> [MacroReplayCode.kt](workspace.md#macroreplaycode-kt) | Workspace · internal | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>macros/<wbr></small> [macros.kt](workspace.md#macros-kt) | Workspace | 40 | 12 | The call-rewriting macro pass that box code goes through before it compiles: a call such as `prop(...)`, `moduleHere(...)` or `_println(...)` is replaced by source text generated for the box that contains it. | [Running code in a box](../running_code.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>buffers/<wbr></small> [magic.kt](graphics.md#magic-kt) | Graphics | 50 | 2 | The buffer DSL: `buffer` and `defaultBuffer` build a `BufferParameters` that says how a Vulkan buffer is sized, placed in memory and used. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr></small> [MainLanguageRegistry.kt](workspace.md#mainlanguageregistry-kt) | Workspace | 12 | 2 | The registry that lets a box choose the language its children run in, such as Python instead of Kotlin. |  |
