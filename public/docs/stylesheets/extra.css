@@ -782,8 +782,10 @@ body.field-docs-image-lightbox-open {
     height: 100%;
     object-fit: cover;
     object-position: center center;
-    transform-origin: 60% 50%;
-    transform: perspective(1400px) rotateX(16deg) rotateY(-18deg) rotateZ(5deg) scale(1.4);
+    /* Mostly an in-plane turn with a little depth; three tilted axes read as a shear. 1.25 keeps
+       the turned corners outside a 16:9 window. */
+    transform-origin: 50% 50%;
+    transform: perspective(2400px) rotateY(-10deg) rotateZ(-8deg) scale(1.25);
 }
 
 .field-homepage-video__veil {
