@@ -179,8 +179,12 @@ h3 {
 
 /* ── mobile drawer — force monochrome ────────────────────────── */
 @media screen and (max-width: 76.234375em) {
+    /* Frosted like the header: tint and blur on the drawer itself, every layer
+       inside it transparent so the blur shows through. */
     .md-sidebar--primary {
-        background-color: var(--mono-bg) !important;
+        background-color: rgba(0, 0, 0, 0.45) !important;
+        backdrop-filter: blur(20px) brightness(0.8);
+        -webkit-backdrop-filter: blur(20px) brightness(0.8);
     }
     .md-sidebar--primary .md-sidebar__scrollwrap,
     .md-sidebar--primary .md-sidebar__inner,
@@ -188,7 +192,7 @@ h3 {
     .md-sidebar--primary .md-nav__list,
     .md-sidebar--primary .md-nav__item,
     .md-sidebar--primary .md-nav__item--nested > .md-nav {
-        background-color: var(--mono-bg) !important;
+        background-color: transparent !important;
     }
 
     /* Clear the fixed header at the top of the drawer. The offset has to sit on
@@ -1426,10 +1430,16 @@ button.md-search__icon[aria-label="Clear"] {
         pointer-events: auto !important;
     }
 
+    .md-sidebar--primary {
+        background: rgba(0, 0, 0, 0.45) !important;
+        backdrop-filter: blur(20px) brightness(0.8);
+        -webkit-backdrop-filter: blur(20px) brightness(0.8);
+    }
+
     .md-sidebar--primary .md-sidebar__scrollwrap,
     .md-sidebar--primary .md-sidebar__inner,
     .md-sidebar--primary .md-nav {
-        background: #040404 !important;
+        background: transparent !important;
     }
 
     .md-sidebar--primary .md-nav__link,
