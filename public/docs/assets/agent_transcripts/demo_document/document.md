@@ -295,33 +295,12 @@ From `code`
 A time slider: drag it sideways and it starts each box it enters and stops each box it leaves.
 
 ```edn [field-box id="demo_timeline" role="properties"]
-{"id" "demo_timeline" "index" 11 "name" "t" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "t" "_tombstone" false "frame" #afield/rect [4300.0 -80.0 40.0 1400.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "demo_timeline_code_.kt" "lines" 52 "characters" 1374 "sha256" "55d006fcef0f89f2476ad78653717f8acdaca1bb1fe2b02d20f94669975b2f79"}]}
+{"id" "demo_timeline" "index" 11 "name" "t" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "t" "_tombstone" false "frame" #afield/rect [4300.0 -80.0 40.0 1400.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "demo_timeline_code_.kt" "lines" 45 "characters" 1519 "sha256" "761a34a2486bb74a215e61ec7ac3283449f59edd88be25b3a7ece5798da05f48"}]}
 ```
 
 ```kotlin [field-property box="demo_timeline" name="code" path="demo_timeline_code_.kt"]
 // A time slider: drag it sideways and it starts each box it enters and stops each box it leaves.
 rootProp<Box>(execution) = thisBox
-
-fun launchFrom(was: Double, now: Double) {
-    val all = root.children - thisBox
-    val a = all.filter { it.frame.intersects(was) }
-    val b = all.filter { it.frame.intersects(was, now) }
-    val c = all.filter { it.frame.intersects(now) }
-
-    val incoming = c - a
-    val outgoing = a - c
-    val onlyOne = b - (a + c)
-
-    incoming.forEach(Box::begin)
-    outgoing.forEach(Box::end)
-    onlyOne.forEach {
-        inMain {
-            it.begin()
-            yield()
-            it.end()
-        }
-    }
-}
 
 onViewportChange +=
     "lock_x" to
@@ -332,7 +311,21 @@ onViewportChange +=
 onFrameChange +=
     "lock_x" to
         { inside, a, b ->
-            launchFrom(a.x, b.x)
+            // The boxes under the line before the move, swept by it, and under it after.
+            val all = root.children - thisBox
+            val before = all.filter { it.frame.intersects(a.x) }
+            val swept = all.filter { it.frame.intersects(a.x, b.x) }
+            val after = all.filter { it.frame.intersects(b.x) }
+            (after - before).forEach(Box::begin)
+            (before - after).forEach(Box::end)
+            // Crossed in one move: start it and stop it again.
+            (swept - (before + after)).forEach {
+                inMain {
+                    it.begin()
+                    yield()
+                    it.end()
+                }
+            }
             b.copy(y = -inside.viewport.y - 100, w = 40.0)
         }
 
@@ -364,20 +357,20 @@ From `code`
 Marks on the drawing layer (alt/option-D), owned by this box and redrawn when it reruns.
 
 ```edn [field-box id="demo_notes" role="properties"]
-{"id" "demo_notes" "index" 12 "name" "notes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "notes" "_tombstone" false "frame" #afield/rect [1300.0 1500.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "demo_notes_code_.kt" "lines" 15 "characters" 821 "sha256" "5953e23aa9bde1fa449c47068103abaa415c19afae3b4fbf3ea853ac77ad780c"}]}
+{"id" "demo_notes" "index" 12 "name" "notes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "notes" "_tombstone" false "frame" #afield/rect [1300.0 1500.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "demo_notes_code_.kt" "lines" 15 "characters" 837 "sha256" "5a3c3ed55995564fd14f77ede3d91526a7d36a4bc3c76c8dd064d99269350a30"}]}
 ```
 
 ```kotlin [field-property box="demo_notes" name="code" path="demo_notes_code_.kt"]
 // Marks on the drawing layer (alt/option-D), owned by this box and redrawn when it reruns.
-fun boxNamed(n: String) = inside.boxes.values.first { it.name == n }
+val byName = inside.boxes.values.associateBy { it.name }
 notation {
     stroke = "#1971c2"
     ellipse(10, 10, 360, 160)
     text("one value, pushed down", 40, -30)
-    arrow(from = boxNamed("palette"), to = boxNamed("gyroid"), label = "and beside it, 3D")
+    arrow(from = byName.getValue("palette"), to = byName.getValue("gyroid"), label = "and beside it, 3D")
     stroke = "#e8590c"
     rect(2270, 10, 740, 700, label = "Vulkan, streamed into the page")
-    arrow(from = boxNamed("probed particles"), to = boxNamed("streamed spiral"), label = "probed")
+    arrow(from = byName.getValue("probed particles"), to = byName.getValue("streamed spiral"), label = "probed")
     stroke = "#2f9e44"
     rect(4380, 40, 1000, 860, label = "a timeline to scrub")
     stroke((0..80).map { k -> vec(1300 + k * 12.0, 1440 + 30 * sin(k / 5.0)) }, stroke = "#2f9e44")

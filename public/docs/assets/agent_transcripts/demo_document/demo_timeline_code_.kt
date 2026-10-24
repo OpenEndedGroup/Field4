@@ -1,27 +1,6 @@
 // A time slider: drag it sideways and it starts each box it enters and stops each box it leaves.
 rootProp<Box>(execution) = thisBox
 
-fun launchFrom(was: Double, now: Double) {
-    val all = root.children - thisBox
-    val a = all.filter { it.frame.intersects(was) }
-    val b = all.filter { it.frame.intersects(was, now) }
-    val c = all.filter { it.frame.intersects(now) }
-
-    val incoming = c - a
-    val outgoing = a - c
-    val onlyOne = b - (a + c)
-
-    incoming.forEach(Box::begin)
-    outgoing.forEach(Box::end)
-    onlyOne.forEach {
-        inMain {
-            it.begin()
-            yield()
-            it.end()
-        }
-    }
-}
-
 onViewportChange +=
     "lock_x" to
         { inside, a, b ->
@@ -31,7 +10,21 @@ onViewportChange +=
 onFrameChange +=
     "lock_x" to
         { inside, a, b ->
-            launchFrom(a.x, b.x)
+            // The boxes under the line before the move, swept by it, and under it after.
+            val all = root.children - thisBox
+            val before = all.filter { it.frame.intersects(a.x) }
+            val swept = all.filter { it.frame.intersects(a.x, b.x) }
+            val after = all.filter { it.frame.intersects(b.x) }
+            (after - before).forEach(Box::begin)
+            (before - after).forEach(Box::end)
+            // Crossed in one move: start it and stop it again.
+            (swept - (before + after)).forEach {
+                inMain {
+                    it.begin()
+                    yield()
+                    it.end()
+                }
+            }
             b.copy(y = -inside.viewport.y - 100, w = 40.0)
         }
 

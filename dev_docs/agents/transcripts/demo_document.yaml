@@ -376,27 +376,6 @@ operations:
           // A time slider: drag it sideways and it starts each box it enters and stops each box it leaves.
           rootProp<Box>(execution) = thisBox
 
-          fun launchFrom(was: Double, now: Double) {
-              val all = root.children - thisBox
-              val a = all.filter { it.frame.intersects(was) }
-              val b = all.filter { it.frame.intersects(was, now) }
-              val c = all.filter { it.frame.intersects(now) }
-
-              val incoming = c - a
-              val outgoing = a - c
-              val onlyOne = b - (a + c)
-
-              incoming.forEach(Box::begin)
-              outgoing.forEach(Box::end)
-              onlyOne.forEach {
-                  inMain {
-                      it.begin()
-                      yield()
-                      it.end()
-                  }
-              }
-          }
-
           onViewportChange +=
               "lock_x" to
                   { inside, a, b ->
@@ -406,7 +385,21 @@ operations:
           onFrameChange +=
               "lock_x" to
                   { inside, a, b ->
-                      launchFrom(a.x, b.x)
+                      // The boxes under the line before the move, swept by it, and under it after.
+                      val all = root.children - thisBox
+                      val before = all.filter { it.frame.intersects(a.x) }
+                      val swept = all.filter { it.frame.intersects(a.x, b.x) }
+                      val after = all.filter { it.frame.intersects(b.x) }
+                      (after - before).forEach(Box::begin)
+                      (before - after).forEach(Box::end)
+                      // Crossed in one move: start it and stop it again.
+                      (swept - (before + after)).forEach {
+                          inMain {
+                              it.begin()
+                              yield()
+                              it.end()
+                          }
+                      }
                       b.copy(y = -inside.viewport.y - 100, w = 40.0)
                   }
 
@@ -474,15 +467,15 @@ operations:
       properties:
         code: |
           // Marks on the drawing layer (alt/option-D), owned by this box and redrawn when it reruns.
-          fun boxNamed(n: String) = inside.boxes.values.first { it.name == n }
+          val byName = inside.boxes.values.associateBy { it.name }
           notation {
               stroke = "#1971c2"
               ellipse(10, 10, 360, 160)
               text("one value, pushed down", 40, -30)
-              arrow(from = boxNamed("palette"), to = boxNamed("gyroid"), label = "and beside it, 3D")
+              arrow(from = byName.getValue("palette"), to = byName.getValue("gyroid"), label = "and beside it, 3D")
               stroke = "#e8590c"
               rect(2270, 10, 740, 700, label = "Vulkan, streamed into the page")
-              arrow(from = boxNamed("probed particles"), to = boxNamed("streamed spiral"), label = "probed")
+              arrow(from = byName.getValue("probed particles"), to = byName.getValue("streamed spiral"), label = "probed")
               stroke = "#2f9e44"
               rect(4380, 40, 1000, 860, label = "a timeline to scrub")
               stroke((0..80).map { k -> vec(1300 + k * 12.0, 1440 + 30 * sin(k / 5.0)) }, stroke = "#2f9e44")
