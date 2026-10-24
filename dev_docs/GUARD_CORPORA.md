@@ -85,14 +85,14 @@ property that makes a page like this checkable by a person at all.
 
 | family | count | how | what it selects |
 | --- | --- | --- | --- |
-| transcripts, top level | 262 | `ls -1 dev_docs/agents/transcripts/*.yaml` | what `AgentTranscriptIndexGuard` and the three verification registries count |
-| transcripts, recursive | 301 | `find dev_docs/agents/transcripts -name '*.yaml' -o -name '*.yml'` | what `AgentTranscriptLayoutGuard` walks; the difference is the `docs_capture/` variants |
-| demo directories | 54 | `git ls-files dev_docs/agents/demos/ \| cut -d/ -f4 \| sort -u` | the COMMITTED demo directories, which is what a ledger can be stated over. `ls -1d` was the derivation until 2026-09-25, and it counts anything on disk — so an ignored scratch folder under `demos/` read as an undeclared demo and failed this guard in a working tree while the committed corpus was correct. held as a named set by `AgentDemoRegistrationTest.DEMO_CORPUS` and `test_demo_build_scripts.CORPUS`. **Directories, not documents** — one of them (`flow_grain`, 2026-09-22) has no `metadata.edn` and is transcript *source* rather than a saved document, so the loadable-document population is one smaller and is what `AgentDemoRegistrationTest.demoDocuments` filters to |
+| transcripts, top level | 263 | `ls -1 dev_docs/agents/transcripts/*.yaml` | what `AgentTranscriptIndexGuard` and the three verification registries count |
+| transcripts, recursive | 306 | `find dev_docs/agents/transcripts -name '*.yaml' -o -name '*.yml'` | what `AgentTranscriptLayoutGuard` walks; the difference is the `docs_capture/` variants |
+| demo directories | 55 | `git ls-files dev_docs/agents/demos/ \| cut -d/ -f4 \| sort -u` | the COMMITTED demo directories, which is what a ledger can be stated over. `ls -1d` was the derivation until 2026-09-25, and it counts anything on disk — so an ignored scratch folder under `demos/` read as an undeclared demo and failed this guard in a working tree while the committed corpus was correct. held as a named set by `AgentDemoRegistrationTest.DEMO_CORPUS` and `test_demo_build_scripts.CORPUS`. **Directories, not documents** — one of them (`flow_grain`, 2026-09-22) has no `metadata.edn` and is transcript *source* rather than a saved document, so the loadable-document population is one smaller and is what `AgentDemoRegistrationTest.demoDocuments` filters to |
 | demos shipping a `build.yaml` | 10 | `git ls-files 'dev_docs/agents/demos/*/build.yaml'` | the population `test_demo_build_scripts.py` diffs against its `_code_.kt` sidecars |
-| entries on `public/docs/agent_transcripts.md` | 262 | `grep -oE '^### [a-z0-9_]+$' public/docs/agent_transcripts.md` | must equal the top-level transcript count, both directions |
-| materialized starting-point bundles | 256 | `ls -1d public/docs/assets/agent_transcripts/*/` | transcripts minus `AgentTranscriptMaterializer.EXCLUDE` |
+| entries on `public/docs/agent_transcripts.md` | 263 | `grep -oE '^### [a-z0-9_]+$' public/docs/agent_transcripts.md` | must equal the top-level transcript count, both directions |
+| materialized starting-point bundles | 257 | `ls -1d public/docs/assets/agent_transcripts/*/` | transcripts minus `AgentTranscriptMaterializer.EXCLUDE` |
 
-The two transcript counts are both right and they are not the same measurement: 301 = 262 + 39 under `docs_capture/`. If you quote one of them, say which.
+The two transcript counts are both right and they are not the same measurement: 306 = 263 + 43 under `docs_capture/`. If you quote one of them, say which.
 
 <!-- guard-corpora: generated end -->
 
