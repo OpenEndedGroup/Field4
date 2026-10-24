@@ -91,6 +91,107 @@ __beginService();
         return "[... " + string.substring(0, Math.min(500, maxLength)) + " +" + string.length + " characters long ...]";
     }
 
+    // The innermost stack frame in box code: every box is evaluated with
+    // `//# sourceURL=box_<name>|<uid>`, so its frames name the box and the line in the editor.
+    function boxCaller() {
+        const locations = FieldRemoteErrors.locationsFor(new Error());
+        return locations.find((entry) => entry.filename.indexOf("box_") === 0) || null;
+    }
+
+    function codeNameHere() {
+        const caller = boxCaller();
+        return caller ? caller.filename : globalCodeName;
+    }
+
+    // console.log / info / warn / error from box code also print beside the calling line, the way
+    // `print` does; the browser console still gets them. Field's own logging is not in a box_ frame
+    // and is left alone.
+    function installConsoleRouting(print) {
+        const original = global.console;
+        ["log", "info", "warn", "error", "debug"].forEach(function (level) {
+            const real = original[level] && original[level].bind(original);
+            if (!real || real.__fieldRouted) return;
+            const routed = function () {
+                real.apply(null, arguments);
+                const caller = boxCaller();
+                if (!caller) return;
+                const parts = Array.prototype.map.call(arguments, function (value) {
+                    return typeof value === "string" ? value : betterPretty(value, 2, "JSON", false);
+                });
+                const prefix = level === "warn" ? "warning: " : (level === "error" ? "error: " : "");
+                print(prefix + parts.join(" "), caller.line);
+            };
+            routed.__fieldRouted = true;
+            original[level] = routed;
+        });
+    }
+
+    // display(channel, html) and the controls a Kotlin box has: slider and checkbox. All three are
+    // forwarded to Field, which owns the box's output area; a control's moves come back as
+    // __fieldControl(id, value).
+    const controlCallbacks = {};
+    const pendingControls = {};
+
+    function display(channel, html) {
+        if (typeof html === "undefined") {
+            html = channel;
+            channel = "main";
+        }
+        const markup = typeof html === "string" ? html : "<pre>" + betterPretty(html, 2, "JSON", false) + "</pre>";
+        _field.send("box.display", {codeName: codeNameHere(), channel: String(channel), html: markup});
+    }
+
+    function queueControl(kind, label, callback, options) {
+        options = options || {};
+        const codeName = codeNameHere();
+        const id = codeName + "|" + kind + "|" + label;
+        controlCallbacks[id] = {callback, codeName};
+        const spec = {id, kind, label: String(label), channel: String(options.channel || "controls")};
+        if (kind === "slider") {
+            spec.min = Number(options.min ?? 0);
+            spec.max = Number(options.max ?? 1);
+            spec.step = Number(options.step ?? (spec.max - spec.min) / 100);
+            spec.value = Number(options.value ?? spec.min);
+        } else {
+            spec.value = !!options.value;
+        }
+        let pending = pendingControls[codeName];
+        if (!pending) {
+            pending = pendingControls[codeName] = [];
+            // One message per run: everything a run asks for is sent once its synchronous part ends.
+            Promise.resolve().then(function () {
+                delete pendingControls[codeName];
+                _field.send("box.controls", {codeName, controls: pending});
+            });
+        }
+        pending.push(spec);
+        return spec.value;
+    }
+
+    function slider(label, callback, options) { return queueControl("slider", label, callback, options); }
+    function checkbox(label, callback, options) { return queueControl("checkbox", label, callback, options); }
+
+    global.__fieldControl = function (id, value) {
+        const entry = controlCallbacks[id];
+        if (!entry || typeof entry.callback !== "function") return false;
+        globalCodeName = entry.codeName;
+        try {
+            entry.callback(value);
+        } catch (error) {
+            const detail = FieldRemoteErrors.describe(error, {codeName: entry.codeName});
+            _field.send("(handler error)", Object.assign({kind: "ERROR"}, detail));
+        }
+        return true;
+    };
+
+    function installBoxSurface(print) {
+        installConsoleRouting(print);
+        [["display", display], ["slider", slider], ["checkbox", checkbox]].forEach(function (pair) {
+            __superglobal[pair[0]] = pair[1];
+            global[pair[0]] = pair[1];
+        });
+    }
+
     function installPrinting() {
         const print = function (value, line) {
             const returnTo = global.__sandbox__ && global.__sandbox__.__returnTo
@@ -103,9 +204,15 @@ __beginService();
                 message: safe(printable, 120000),
                 kind: "SUCCESS"
             };
+            const caller = boxCaller();
             if (Number.isFinite(line)) payload.line = Math.max(1, Math.trunc(line));
+            else if (caller) payload.line = caller.line;
+            // The box this came from, so output printed after the run has finished (from a timer,
+            // an event handler, an animation frame) still reaches it: its returnTo is gone by then.
+            payload.codeName = caller ? caller.filename : globalCodeName;
             _field.send(returnTo, payload);
         };
+        installBoxSurface(print);
         __superglobal.print = print;
         __superglobal.log = print;
         global.print = print;
@@ -169,7 +276,9 @@ __beginService();
                 }
                 result = global.eval(code);
                 if (typeof __fieldSealLifecycle === "function") __fieldSealLifecycle(lifecycle);
-            } else if (envelope.code.trim().split("\n").length < 2) {
+            } else if (envelope.code.trim().split("\n").length < 2 || !/\byield\b/.test(envelope.code)) {
+                // Only code that yields needs the generator trampoline; everything else is
+                // evaluated directly so its last expression comes back as the box's value.
                 result = runInSandbox(context, code);
             } else {
                 const factory = runInSandbox_generator(context, code);

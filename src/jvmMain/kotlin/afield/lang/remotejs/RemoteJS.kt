@@ -238,6 +238,8 @@ fun install() {
                     box.error(message, "code", v.getInt("line"))
                 }
             }
+        } else if (RemoteJsBoxSurface.handle(o)) {
+            // display / controls / output printed after the run ended (RemoteJsBoxSurface)
         } else {
 //            lprintln("warning,remotejs", "remote sent a message that I don't understand $o")
             return@mutableSetOf       Handled.no
@@ -501,11 +503,11 @@ fun target(box: Box): String {
 
 fun stop(b: Box) {
     executeRemoteJS(
-        "if (__tasks[\"" + target(b) + "\"]) __tasks[\"" + target(b) + "\"].stop()",
+        RemoteJsBoxSurface.stopScript(target(b)),
         filename = target(b),
-        launchable = true,
-        doASTA = true,
-        requiresSandbox = true
+        launchable = false,
+        doASTA = false,
+        requiresSandbox = false
     ) {
         false
     }
