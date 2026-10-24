@@ -88,6 +88,7 @@ mutation; it is a different one.
 | route | declared in | guard |
 | --- | --- | --- |
 | `GET /api/agent-worktrees` | `Server.kt` | none |
+| `GET /api/ai-local-feedback` | `Server.kt` | none |
 | `GET /api/ai-tool-use-improvement` | `Server.kt` | none |
 | `GET /api/ai-tool-use-improvement/view` | `Server.kt` | none |
 | `GET /api/chatlog/blob` | `ChatlogRoutes.kt` | loopback + same-site |
