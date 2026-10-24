@@ -74,6 +74,32 @@ keepAlive() // ask the head to keep ticking frames
 `onStart`/`onFrame`/`onStop`/`keepAlive` are inert during a plain Execute; they come alive on
 **Launch**, and the head runs registered `onStop` callbacks exactly once on relaunch or Stop.
 
+## Printing, errors, display and controls
+
+The browser profiles (`remoteAR`, `tone`, and no marker) give a box the same output a Kotlin box on
+the JVM has. `println` and `console.log` print beside the line that called them. An exception
+puts the red marker on the line of your code it came from, and a run with no head connected is an
+error on the box. `display`, `slider` and `checkbox` draw into the box's output area, and their
+callbacks run in the head:
+
+```diffstatic {data-lang=kotlin}
+:::static
+// {{ remoteAR }}
+var freq = 3.0
+
+fun redraw() = display("main", "<b>sine</b> at $freq Hz")
+
+slider("frequency", min = 1.0, max = 10.0, step = 0.1, initialValue = 3.0) { freq = it; redraw() }
+checkbox("square wave") { println("square: $it") }
+setTimeout({ println("half a second later") }, 500)
+redraw()
+```
+
+`setTimeout` is the browser's timer; what it prints still reaches the box. An exception thrown
+inside an inline standard-library function such as `reduce` is marked on the line that called the
+function it was inlined into. The [Javascript page](remotejs.md) shows the same sketch for a
+Javascript box.
+
 ## A vector type with operators
 
 The smallest box that shows the whole idea. This one is `remoteAR`, and it declares a Kotlin

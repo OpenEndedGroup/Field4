@@ -140,7 +140,23 @@ Javascript boxes run in the head, so they cannot see other boxes' properties, an
 as the browser they run in.
 
 If you want the browser but would rather write Kotlin, [Kotlin in the Head](kotlin_in_the_head.md)
-compiles a box's Kotlin to Javascript and sends it to the same head. For a Three.js scene that
+compiles a box's Kotlin to Javascript and sends it to the same head. The controls box above, in
+Kotlin, is the same calls with Kotlin lambdas:
+
+```diffstatic {data-lang=kotlin}
+:::static
+// {{ remoteAR }}
+var speed = 3.0
+var outline = false
+
+fun redraw() = display("main", "<b>${if (outline) "outlined" else "filled"}</b> square, turning at $speed rpm")
+
+slider("speed", min = 0.0, max = 10.0, step = 0.1, initialValue = 3.0) { speed = it; redraw() }
+checkbox("outline") { outline = it; redraw() }
+redraw()
+```
+
+`print`, `console.log`, errors, output after the run and **Stop** behave as they do here. For a Three.js scene that
 stays on the JVM side, see [Field's 3D Output](three_output.md).
 
 ## See also
