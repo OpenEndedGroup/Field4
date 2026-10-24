@@ -3,6 +3,24 @@ package afield.ui.slides
 import afield.ui.output.FieldMarkdown
 import kotlinx.html.*
 
+/**
+ * The receiver of a presentation step's `audience { }` block: standard kotlinx.html builders, with
+ * Markdown, a stylesheet and two image layouts added.
+ *
+ * [AudienceBuilder] is a `DIV` of class `field-slide`, so every ordinary HTML tag is in scope and
+ * `+"text"` is escaped by the library. `.md` renders a string through Field's Markdown renderer
+ * ([FieldMarkdown]) into an [AudienceMarkdown], which unary plus inserts with its generated tags
+ * intact, and the nested `div` here keeps both available inside it.
+ * [AudienceBuilder.stylesheet] loads a CSS file from the document's `files/` directory and marks it
+ * so Refresh slide can fetch the saved file again without recompiling the talk.
+ *
+ * [AudienceBuilder.fullScreenImage] fills the window with a picture and its credit, and
+ * [AudienceBuilder.imageBeside] sets that pair beside HTML or Markdown content on either side. Both
+ * take an [AudienceImageFit] and emit the `field-image-full`, `field-image-beside` and
+ * `field-image-text` classes a stylesheet can override. The audience page styles the fragment and
+ * runs no script in it; a slide that needs scripts uses a webpage surface instead.
+ */
+
 /** A rendered Markdown fragment, inserted with unary plus inside [AudienceBuilder]. */
 class AudienceMarkdown internal constructor(internal val html: String)
 

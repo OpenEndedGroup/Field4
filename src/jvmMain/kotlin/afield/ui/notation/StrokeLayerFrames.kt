@@ -9,6 +9,19 @@ import afield.math.linalg.Vec4
 import kotlin.math.hypot
 
 /**
+ * The wire format of the stroke layer: a document's living strokes as the JSON one window draws.
+ *
+ * [StrokeSketch] calls `encode` once per published frame, giving it every stroke's lines and the
+ * width its pen uses for a line that sets no `thickness`, and sends the result as
+ * `stroke-layer-frame` to each window showing the document; `strokeLayer.kt` in the frontend draws
+ * it. Colour, dot radius and the overshoot ticks are worked out here rather than on the page, so the
+ * FLine properties a stroke sets are read in this file.
+ *
+ * `indexedPositions` is the other half, flattening a stroke's lines into the array of x, y pairs that
+ * [Stroke.closestOutput] searches, with lines marked `ignore` left out.
+ */
+
+/**
  * One frame of the stroke layer, as the JSON the page draws (`strokeLayer.kt` in the frontend).
  *
  * ```

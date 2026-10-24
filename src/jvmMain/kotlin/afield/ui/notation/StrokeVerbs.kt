@@ -24,6 +24,21 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
+ * The curve and drawing vocabulary a living stroke is written in: noise, resampling, curve
+ * arithmetic, and the verbs that turn a list of points into a line.
+ *
+ * The verbs are methods of [StrokeVerbs], which [Stroke] extends, so inside an [eachStroke] block
+ * they are plain calls. A curve is a `List<Vec2>`; `polyline`, `smooth`, `arcs` and `dots` turn one
+ * into an [FLine], and the list of FLines a stroke's `draw { t -> }` returns is what it draws that
+ * frame.
+ *
+ * The three properties this file adds to [FLine] and its nodes are read by the stroke layer rather
+ * than by the verbs. `overshoot`, set on a line or on the node that ends a subpath, draws each open
+ * end a short way past where it stops; `ignore` keeps a line out of what [Stroke.closestOutput]
+ * searches.
+ */
+
+/**
  * How far past each end the stroke layer draws every subpath of this line, along its tangent, in the
  * line's own units: the sketchy overrun of a pen that does not stop exactly where it means to. `null`
  * (the default) draws none. Only the stroke layer ([eachStroke]) draws it.

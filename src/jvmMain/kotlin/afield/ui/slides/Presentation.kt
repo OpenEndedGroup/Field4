@@ -8,6 +8,23 @@ import kotlinx.html.stream.createHTML
 import kotlinx.html.visitAndFinalize
 import java.net.URI
 
+/**
+ * Showing a guide to an audience: a second display carrying slides, a live webpage, a video or
+ * another Field document, while the presenter's own window keeps the source and the notes.
+ *
+ * [presentation] builds the same [SlideShowBuilder] a guide does, with a title and a cross-fade
+ * duration, and [SlideShowInstance.present] opens the audience display in Field's Electron app. A
+ * step's notes, callbacks and annotations stay the guide's; what the audience sees is whichever
+ * `audience` verb the step calls. `audience { }` builds an HTML fragment with [AudienceBuilder],
+ * while `audienceHtml` and `audienceMarkdown` take one ready made. [audienceWebpage],
+ * [audienceYouTube] and [audienceDocument] give the window a real page, a YouTube embed or a
+ * document in the workspace instead, each able to sit in a fractional rect of the window rather
+ * than fill it.
+ *
+ * A step that sets no audience surface shows its note HTML. Running the box again keeps the current
+ * step where it can.
+ */
+
 /** Options for showing a guide on a separate audience display. */
 data class PresentationOptions(val title: String, val transitionMs: Int = 450) {
     init { require(transitionMs in 0..2000) { "transitionMs must be between 0 and 2000" } }
