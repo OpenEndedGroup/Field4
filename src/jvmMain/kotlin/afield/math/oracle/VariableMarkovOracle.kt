@@ -5,6 +5,30 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
+ * The index that makes recombination possible: a Factor Oracle over a continuous recording, which
+ * finds where that recording repeats itself and links those places together.
+ *
+ * `build` is the way in. It takes a [Trajectory], turns it into scaled value-and-velocity frames
+ * with [GestureFeatures], and decides for itself how close two frames have to be to count as the
+ * same symbol, by scanning candidate thresholds and keeping the one whose information rate is
+ * highest. The threshold is the oracle's one real parameter, and the rate falls to nearly zero at
+ * both ends of its range: too small and no two frames are ever the same, too large and they all
+ * are. `thresholdScan` returns every candidate with its rate, so that choice can be plotted.
+ *
+ * The built oracle is read in three ways. Its suffix links say, for each sample, where the longest
+ * repeat of the material leading up to that sample ends, which is what an [Improviser] follows
+ * when it jumps. `cue` goes the other way, ranking the places in memory whose recent past best
+ * matches a passage handed to it, over whichever channels are asked for, so a performer driving
+ * two channels can pull the rest of the memory towards them; each answer is a [Cue]. `bridges`
+ * covers what the suffix links cannot, since separately recorded takes rarely share context: for a
+ * sample it gives up to three nearest moments in the other episodes, computed over all pairs of
+ * samples on first use, and nothing at all for a recording with one episode.
+ *
+ * Tests: `VmoReferenceTest` against pinned output from the reference package, and
+ * `VariableMarkovOracleTest`.
+ */
+
+/**
  * A Variable Markov Oracle (Wang and Dubnov, 2014) over a [Trajectory]: a Factor Oracle
  * (Allauzen, Crochemore and Raffinot, 1999) built on continuous frames, where two frames count
  * as "the same symbol" when their [GestureFeatures] lie within [threshold] of each other.

@@ -25,6 +25,31 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
+/**
+ * Mistral's pretrained Timestral forecaster behind the [TemporalSession] interface, so a box can
+ * continue a signal from its recent history alone, with no recording to remember and no training
+ * step.
+ *
+ * The model runs in its own Python process rather than inside Field, started through `uv` from
+ * the pinned dependencies of `python/fieldtemporal/timestral_worker.py`, so PyTorch never loads
+ * into the JVM or into the Python-box environment. `propose` sends the request's history across
+ * as float32 and returns the median as its proposal with a quantile envelope around it. Those
+ * quantiles are per-step marginals, describing the uncertainty at each step rather than a set of
+ * whole futures, which is why this session offers no sampled alternatives.
+ *
+ * Nothing downloads until `install` is called, and that call blocks on the download. `status`
+ * starts nothing and answers beforehand whether a session could start without the network, as a
+ * [ProviderStatus] carrying both the cause and the fix when it could not, so a box can ask before
+ * it builds anything. Afterwards a worker honours `AFIELD_OFFLINE=1`. A session
+ * created inside a box run belongs to that run, and its worker exits when the box stops or
+ * re-runs.
+ *
+ * Pair it with [RecedingHorizon] to step a forecast from a frame loop without ever waiting on
+ * one, or with [ForecastJudge] to have it rate an [Improviser]'s proposals rather than produce
+ * samples itself. Tests: `TimestralSessionTest`, which needs the downloaded checkpoint and so
+ * runs only with `AFIELD_TIMESTRAL_TEST=1`.
+ */
+
 /** Where an optional provider stands, with the reason when it is not usable. */
 sealed class ProviderStatus {
     data class Installed(val detail: String) : ProviderStatus()

@@ -8,6 +8,33 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
+ * Rating an [Improviser]'s proposed continuations against a forecast, so that memory proposes and
+ * a forecasting model chooses between the proposals.
+ *
+ * This is where `afield.math.temporal` plugs back into `afield.math.oracle`: [ForecastJudge]
+ * implements that package's [ContinuationJudge] over any [TemporalSession], and [TimestralSession]
+ * is the session that forecasts rather than remembers. It sees every frame the improviser
+ * actually plays, asks the session in the
+ * background on a fixed refresh for a forecast of the next few seconds, and scores a proposed
+ * path by its mean pinball loss against that forecast's quantiles, divided by each channel's
+ * spread. The improviser still plays only what is in the recording; the forecast chooses which
+ * part of it.
+ *
+ * The score is per step against a marginal, so it asks whether each step of a path sits inside
+ * the forecast's fan, not how probable the path is as a whole. It is also not always there:
+ * before the first forecast arrives, and wherever a path runs past the end of the horizon, the
+ * judge gives no opinion and the improviser decides alone. A failure stops further requests and
+ * is kept in `failure`, after which the judge falls silent once the last forecast is used up.
+ * `forecasts` counts the ones that arrived and `latencies` records how long each took.
+ *
+ * Requests do not block the caller, so a judge can run in a frame loop. With `lockstep` each one
+ * is waited for instead, which is what makes an offline render come out the same on any machine.
+ * `ContinuationJudgeTest` covers the improviser's side of this with a stand-in judge; the
+ * measurements against the real forecaster run from `TemporalExperiments` with
+ * `AFIELD_TEMPORAL_EXPERIMENTS=1`.
+ */
+
+/**
  * A forecaster as a [ContinuationJudge]: the hybrid where the oracle proposes and the
  * forecaster judges.
  *

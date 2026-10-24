@@ -6,6 +6,38 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
+/**
+ * Playing a [VariableMarkovOracle]'s memory forward, one sample at a time, so that a recording
+ * continues in its own style for as long as it is asked to.
+ *
+ * [Improviser] follows the recording sample by sample and, once it has stayed on a passage long
+ * enough to count as a phrase, may jump to another place that shares the same recent context.
+ * Candidates are scored by how much context they share, how far the join would be, and how
+ * recently their material was last played, and one is drawn from a seeded softmax over those
+ * scores. A jump whose join would need too large a correction, or that leaves too little of its
+ * episode to play, is refused rather than smoothed over; the correction an accepted join does
+ * need fades out over `joinTime` seconds and is recorded rather than hidden. [Policy] switches
+ * between this and two baselines: looping the recording, and matching recent history with no
+ * oracle structure.
+ *
+ * Nothing is invented. On a channel the performer has not taken over, and wherever a continuation
+ * is available to play, each output sample is a sample of the recording plus that fading join
+ * correction. [Performance] is both the result and the record of it, holding the output beside
+ * the memory position behind every sample, the correction applied there, and which channels were
+ * performed, with one [Segment] per stretch and a [Reason] for why it began. It also measures the
+ * outcome: how much of the output replays a passage it played recently and how much of the
+ * memory is reached at all, how much the output repeats itself whatever its source in memory,
+ * how rough the joins are against the recording, and
+ * how far the output's distribution of acceleration has moved from the recording's.
+ *
+ * A [ContinuationJudge] is a second opinion, asked at every jump decision to rate each
+ * candidate's next few seconds, and [JudgeMode] decides whether its loss joins the score or only
+ * removes candidates. `afield.math.temporal.ForecastJudge` supplies one from a forecasting model.
+ *
+ * A step allocates nothing beyond the recent-history buffer, so playback can run inside a frame
+ * loop. Tests: `VariableMarkovOracleTest`, `SeveralTakesTest`, `ContinuationJudgeTest`.
+ */
+
 /** How an [Improviser] chooses where to go next. */
 enum class Policy {
     /** Play each episode straight through and start it again: the baseline that never varies. */
