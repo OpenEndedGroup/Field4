@@ -4,6 +4,7 @@ import afield.graphics.render.main
 import afield.graphics.scene.main
 
 import afield.graphics.vulkan.util.Options
+import afield.app.diagnostics.LatencySpans
 import afield.app.diagnostics.logging.lprintln
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.system.NativeResource
@@ -145,7 +146,25 @@ object ShaderSPIRVUtils {
 
     @Volatile private var warnedPrintfWithoutLayer = false
 
-    fun compileShader(source: ShaderCompileSource, shaderKind: ShaderKind): SPIRV {
+    /**
+     * One shaderc compiler for the life of the JVM, never released. Releasing the last compiler
+     * finalizes glslang and drops its built-in symbol tables, so a compiler made and released per
+     * call rebuilt them every time: ~55 ms per stage on an M1 Max, for any shader, however small
+     * (`shader.compile` in `dev_docs/testing/FEEL_BENCHMARKS.md`). shaderc documents a compiler as
+     * safe to use from several threads at once; options stay per call.
+     */
+    private val sharedCompiler: Long by lazy {
+        Shaderc.shaderc_compiler_initialize().also {
+            if (it == MemoryUtil.NULL) throw RuntimeException("Failed to create shader compiler")
+        }
+    }
+
+    fun compileShader(source: ShaderCompileSource, shaderKind: ShaderKind): SPIRV =
+        LatencySpans.time("shader.compile", detail = "${shaderKind.name} ${source.sourceName}") {
+            compileShaderUntimed(source, shaderKind)
+        }
+
+    private fun compileShaderUntimed(source: ShaderCompileSource, shaderKind: ShaderKind): SPIRV {
         // debugPrintfEXT is implemented by the validation layer: with neither validation nor shader
         // printf on, the call compiles and prints nothing. Say so once rather than leave it silent.
         if (!warnedPrintfWithoutLayer && !(Options.validate || Options.shaderDebugPrintf) &&
@@ -158,11 +177,7 @@ object ShaderSPIRVUtils {
                     "Options.shaderDebugPrintf (-Dafield.four.shaderDebugPrintf=true) is on, so it will print nothing",
             )
         }
-        val compiler = Shaderc.shaderc_compiler_initialize()
-
-        if (compiler == MemoryUtil.NULL) {
-            throw RuntimeException("Failed to create shader compiler")
-        }
+        val compiler = sharedCompiler
 
         val opts = Shaderc.shaderc_compile_options_initialize()
 //        Shaderc.shaderc_compile_options_set_target_env(opts, Shaderc.shaderc_target_env_webgpu, Shaderc.shaderc_env_version_webgpu)
@@ -236,7 +251,6 @@ object ShaderSPIRVUtils {
             entryBuffer?.let(MemoryUtil::memFree)
             includeBridge?.free()
             Shaderc.shaderc_compile_options_release(opts)
-            Shaderc.shaderc_compiler_release(compiler)
         }
     }
 
