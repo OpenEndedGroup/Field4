@@ -23,7 +23,7 @@ remoteAr(width = 480, height = 270)
 
 Here is a first Javascript box. It prints, logs to the console, and ends on a value:
 
-```diffstatic_runner {data-lang=javascript capture="editor" screenshot="assets/remotejs/print.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/remotejs_print.yaml" run-box="remotejs_print_box" capture-box="remotejs_print_box" wait="1.5" timeout="180" padding="18" embed=true name="remotejs-print" alt="A Javascript box in Field's editor. Under line 1, an output block reads hello from the browser, then the head is 480 pixels wide. Under line 4, the box's last value: the array CIRCLE, SQUARE, TRIANGLE."}
+```diffstatic_runner {data-lang=javascript capture="editor" outputs="inline" screenshot="assets/remotejs/print.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/remotejs_print.yaml" run-box="remotejs_print_box" capture-box="remotejs_print_box" wait="1.5" timeout="180" padding="18" embed=true name="remotejs-print" alt="A Javascript box in Field's editor. Under line 1, an output block reads hello from the browser, then the head is 480 pixels wide. Under line 4, the box's last value: the array CIRCLE, SQUARE, TRIANGLE."}
 print("hello from the browser")
 console.log(`the head is ${window.innerWidth} pixels wide`)
 const shapes = ["circle", "square", "triangle"]
@@ -51,7 +51,7 @@ An error is marked beside the line where it happened, even when that line is ins
 box defined. Here the first call to `mean` prints `2`; the second fails inside `mean`, on line 2,
 and that is where the marker goes:
 
-```diffstatic_runner {data-lang=javascript capture="editor" screenshot="assets/remotejs/error.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/remotejs_error.yaml" run-box="remotejs_error_box" capture-box="remotejs_error_box" expects-error=true wait="1.5" timeout="180" padding="18" embed=true name="remotejs-error" alt="The mean box in Field's editor. Under line 2, inside the function, a red marker reads Reduce of empty array with no initial value. Under line 5, the first call's output: 2."}
+```diffstatic_runner {data-lang=javascript capture="editor" outputs="inline" screenshot="assets/remotejs/error.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/remotejs_error.yaml" run-box="remotejs_error_box" capture-box="remotejs_error_box" expects-error=true wait="1.5" timeout="180" padding="18" embed=true name="remotejs-error" alt="The mean box in Field's editor. Under line 2, inside the function, a red marker reads Reduce of empty array with no initial value. Under line 5, the first call's output: 2."}
 function mean(values) {
   return values.reduce((a, b) => a + b) / values.length
 }
