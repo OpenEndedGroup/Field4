@@ -1,0 +1,99 @@
+name: remotejs_box_parity
+description: |
+  **RemoteJS boxes doing what Kotlin, Python and Clojure boxes do: printing beside the line, errors
+  on the right line, display channels, live controls, and a Stop that stops.** Six boxes: a Kotlin
+  root that embeds the browser head on the canvas, and five Javascript boxes under it that run in
+  that head.
+
+    - **Print and console.log beside their lines, and the last value.** `print` and `console.log`
+      both appear next to the line that called them; the box's last expression is shown too.
+    - **An error is marked on the line that raised it.** The red marker sits on line 4, inside
+      `mean`, not on the call on line 7.
+    - **display, a slider and a checkbox.** The same output channel and controls a Kotlin box draws;
+      moving the slider calls the Javascript callback in the head.
+    - **Output after the run.** A `setTimeout` prints half a second after the run finished.
+    - **Stop stops `launch` loops.** Launch the spinner box, then Stop it: the counter freezes.
+
+  Run the root first: it opens the head the Javascript boxes run in.
+docs:
+  - page: ar_reference.md
+    why: "Documents RemoteJS boxes: printing, errors, display, controls and Stop."
+operations:
+  - create:
+      box: rparity_root
+      name: "RemoteJS root -- children of this box run as Javascript in the head below"
+      frame: { x: 60.0, y: 40.0, w: 420.0, h: 100.0 }
+      properties:
+        mainLanguage: remotejs
+        isRemoteJSRoot: true
+        code: |
+          // This box stays Kotlin. It opens the browser head on the canvas; its children run there.
+          remoteAr(debug = true, width = 480, height = 270)
+  - create:
+      box: rparity_print
+      name: "print and console.log beside their lines"
+      frame: { x: 60.0, y: 640.0, w: 420.0, h: 100.0 }
+      properties:
+        code: |
+          // Both appear beside the line that called them; the last value is shown too.
+          print("from print")
+          console.log("from console.log", {answer: 6 * 7})
+          const now = new Date().getFullYear()
+          now > 2000
+  - create:
+      box: rparity_error
+      name: "an error is marked where it happened"
+      frame: { x: 60.0, y: 1140.0, w: 420.0, h: 100.0 }
+      properties:
+        code: |
+          // The marker lands on line 4, inside mean, where reduce failed --
+          // not on line 7, where mean was called.
+          function mean(values) {
+            return values.reduce((a, b) => a + b) / values.length
+          }
+
+          mean([])
+  - create:
+      box: rparity_controls
+      name: "display, a slider and a checkbox"
+      frame: { x: 60.0, y: 1640.0, w: 420.0, h: 100.0 }
+      properties:
+        code: |
+          // The same output channel and controls a Kotlin box draws, calling back into the head.
+          const state = {freq: 3.0, square: false}
+
+          function redraw() {
+            display("main", `<b>${state.square ? "square" : "sine"}</b> at ${state.freq.toFixed(1)} Hz`)
+          }
+
+          slider("frequency", v => { state.freq = v; redraw() }, {min: 1, max: 10, step: 0.1, value: 3.0})
+          checkbox("square wave", v => { state.square = v; redraw() })
+          redraw()
+  - create:
+      box: rparity_late
+      name: "output printed after the run finished"
+      frame: { x: 60.0, y: 2340.0, w: 420.0, h: 100.0 }
+      properties:
+        code: |
+          // The run ends at once; this line prints half a second later, beside line 3.
+          setTimeout(() => {
+            print("half a second later")
+          }, 500)
+          print("the run is over")
+  - create:
+      box: rparity_spin
+      name: "Stop stops launch loops"
+      frame: { x: 60.0, y: 2840.0, w: 420.0, h: 100.0 }
+      properties:
+        code: |
+          // Run this, then Stop it: the counter in the head freezes.
+          window.spins = 0
+          launch(() => { window.spins++ }, "spinner", false)
+          print("spinning")
+  - connect: { parent: rparity_root, child: rparity_print }
+  - connect: { parent: rparity_root, child: rparity_error }
+  - connect: { parent: rparity_root, child: rparity_controls }
+  - connect: { parent: rparity_root, child: rparity_late }
+  - connect: { parent: rparity_root, child: rparity_spin }
+  - execute: { box: rparity_root, property: code }
+  - await: {}

@@ -17,6 +17,9 @@ import org.json.JSONObject
  */
 object RemoteJsBoxSurface {
 
+    /** The error a run gets when no browser head is connected to run it. */
+    const val NO_HEAD = "No RemoteJS head is connected: open one (remoteAr() in a Kotlin box, or /extensions/remote_ar/index.html) and run again"
+
     /** The box uid inside a [target] code name, or null for a name that is not a box's. */
     fun uidOf(codeName: String?): String? {
         if (codeName == null || !codeName.startsWith("box_")) return null
@@ -98,6 +101,16 @@ object RemoteJsBoxSurface {
                 }
             }
         }
+    }
+
+    /**
+     * Whether a reply ends a run: an error, a bare "OK", or the run's own value (the head marks
+     * that `terminal`). Before 2026-10-24 a run ending in a value never settled its receipt.
+     */
+    fun isTerminal(payload: JSONObject): Boolean {
+        val kind = payload.optString("kind")
+        val message = payload.optString("message", "")
+        return kind == "ERROR" || (kind == "SUCCESS" && (message.trim() == "OK" || payload.optBoolean("terminal")))
     }
 
     /** Javascript that hands [value] to the head-side callback of control [id]. */

@@ -96,4 +96,12 @@ class RemoteJsBoxSurfaceTest {
         assertTrue("k === \"box_a|uid1\"" in script, script)
         assertTrue("k.indexOf(\"box_a|uid1\") === 0" in script, script)
     }
+
+    @Test
+    fun `a run that ends with a value settles`() {
+        assertTrue(RemoteJsBoxSurface.isTerminal(JSONObject().put("kind", "SUCCESS").put("message", "<json>42").put("terminal", true)))
+        assertTrue(RemoteJsBoxSurface.isTerminal(JSONObject().put("kind", "SUCCESS").put("message", "OK")))
+        assertTrue(RemoteJsBoxSurface.isTerminal(JSONObject().put("kind", "ERROR").put("message", "boom")))
+        assertFalse(RemoteJsBoxSurface.isTerminal(JSONObject().put("kind", "SUCCESS").put("message", "<json>a print")))
+    }
 }

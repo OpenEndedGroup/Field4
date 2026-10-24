@@ -377,7 +377,10 @@ fun executeFragment(b: Box, code: String, lineOffset: Int = 0, onComplete: (() -
         val p = it.getJSONObject("payload")
         val kind = p.getString("kind")
         val message = p.optString("message", "")
-        val line = if (p.has("line")) p.getInt("line") else lineOffset
+        // The run's own value (marked `terminal`) sits beside the fragment's last line, as a Kotlin
+        // box's last expression does.
+        val lastLine = lineOffset + code.trimEnd().lines().size
+        val line = if (p.has("line")) p.getInt("line") else if (p.optBoolean("terminal")) lastLine else lineOffset
 
         when (kind) {
             "ERROR" -> b.output.errorProxy(message, "code", line)
@@ -386,10 +389,17 @@ fun executeFragment(b: Box, code: String, lineOffset: Int = 0, onComplete: (() -
                 } else b.output.proxy(message.replace("<json>", ""), true, line)
             }
 
+            // launch(...) inside a run reports its task starting and stopping; that is the
+            // running stripe, not output (it used to print a stray "OK").
+            "RUN-START" -> send(Message("is-running").payload(IsRunning(b.id, true, -1)))
+            "RUN-STOP" -> send(Message("is-running").payload(IsRunning(b.id, false, -1)))
+
             else -> b.output.proxy(message, true, line)
         }
 
-        val terminal = kind == "ERROR" || (kind == "SUCCESS" && message.trim() == "OK")
+        // A run that ends with a value used to be reported as never finishing: only a bare "OK"
+        // counted, so the receipt waited for a reply that had already come.
+        val terminal = RemoteJsBoxSurface.isTerminal(p)
         if (terminal) onComplete?.invoke()
         !terminal
     }
@@ -511,6 +521,9 @@ fun stop(b: Box) {
     ) {
         false
     }
+    // A task launch() started inside a run reports RUN-STOP to that run's reply channel, which has
+    // closed by now; lower the stripe here so Stop always ends "running".
+    send(Message("is-running").payload(IsRunning(b.id, false, -1)))
 }
 
 fun complete(inside: Box, file: String, position: Int, success: (Completion) -> Unit) = runBlocking {
@@ -595,10 +608,16 @@ class RemoteJSExectution : BoxExecution {
             trace.finish(success, reason)
         }
 
-        if (knownOpenRemoteClients.isEmpty())
+        knownOpenRemoteClients.entries.removeIf { it.value.outgoing.isClosedForSend }
+        if (knownOpenRemoteClients.isEmpty()) {
+            // Nothing will run this code. It used to settle as a success, so a backdoor `run`
+            // reported ok=true for code no browser ever saw.
             notify("Warning! no connected remote clients", "remotejs")
-        else
-            notify("$announce in ${knownOpenRemoteClients.size} browser(s)", "remotejs")
+            inside.output.errorProxy(RemoteJsBoxSurface.NO_HEAD, "code", -1)
+            settle(false, RemoteJsBoxSurface.NO_HEAD)
+            return
+        }
+        notify("$announce in ${knownOpenRemoteClients.size} browser(s)", "remotejs")
 
         try {
             body { settle(true) }
