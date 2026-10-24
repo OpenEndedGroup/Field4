@@ -112,13 +112,12 @@ gives the exact rules.
 Field also writes a `document.md` beside `metadata.edn`: a readable copy of the boxes and their
 code, meant for tools that read documents. Field never reads it, so editing it changes nothing.
 
-??? aside "Agents: how this page was checked, and why it has no figures"
+??? aside "How this page was checked"
     Every behaviour above was run on 2026-10-18 against a live Field on a scratch document,
     editing files from a shell while the backdoor held the document open, and checking the box
     with the backdoor's `boxes`, `run`, `wait-output` and `native-screenshot` commands and
-    `~/.afield/logs/save_reload.log`. The checks interleave a shell and a running Field over
-    several seconds, which a docs-runner capture fence cannot stage, so no figure was made rather
-    than one that only appears to show it.
+    `~/.afield/logs/save_reload.log`. The page has no figures because a docs-runner capture fence
+    cannot interleave a shell and a running Field over several seconds.
 
     Three of them are pinned by tests: a second edit to a file before Field's autosave
     (`examples.file-watch.sidecar-reedit`), an edit to the inline code in `metadata.edn`
