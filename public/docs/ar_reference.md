@@ -117,7 +117,7 @@ launch(function () {
 }, "move-triangle", false)
 ```
 
-The optional third argument controls one-shot behavior. `false` keeps the function in the runloop. `over(seconds, name, callback)` supplies a value from 0 to 1 over a duration. Field's stop action removes tasks launched by that box. Animation mixers for loaded glTF assets advance on this same scene tick; there is no second `requestAnimationFrame` loop.
+The optional third argument controls one-shot behavior. `false` keeps the function in the runloop. `over(seconds, name, callback)` supplies a value from 0 to 1 over a duration. Stop removes every task the box started, both its own `_r` task and each `launch(...)`. Animation mixers for loaded glTF assets advance on this same scene tick; there is no second `requestAnimationFrame` loop.
 
 ## Pointer and XR interaction
 
@@ -155,11 +155,46 @@ var latest = xrHit()
 
 The head requests `local-floor`, `viewer`, and `hit-test` through standard WebXR. Android browsers provide these directly. Endrun supplies the same `navigator.xr` surface from ARKit on iOS.
 
+## Printing, display and controls
+
+A RemoteJS box writes to its own output the way a Kotlin box does. `print(value)` and
+`console.log(...)` (also `info`, `warn` and `error`) appear beside the line that called them, and the
+box's last expression is shown beside its last line. Output printed later, from a `setTimeout`, an
+event handler or a `launch` loop, still reaches the box. The browser console gets `console.log` too.
+
+```diffstatic {data-lang=javascript}
+print("from print")
+console.log("from console.log", {answer: 6 * 7})
+setTimeout(() => print("half a second later"), 500)
+```
+
+`display(channel, html)` fills a named output channel, and `slider` and `checkbox` draw the controls a
+Kotlin box's `slider(...)` and `checkbox(...)` draw. Their callbacks run in the head:
+
+```diffstatic {data-lang=javascript}
+const state = {freq: 3.0, square: false}
+function redraw() {
+    display("main", `<b>${state.square ? "square" : "sine"}</b> at ${state.freq.toFixed(1)} Hz`)
+}
+slider("frequency", v => { state.freq = v; redraw() }, {min: 1, max: 10, step: 0.1, value: 3.0})
+checkbox("square wave", v => { state.square = v; redraw() })
+redraw()
+```
+
+The options object takes `min`, `max`, `step`, `value` and `channel` (default `controls`). A moved
+control keeps its value when the box runs again. Browser globals such as `setTimeout`, `fetch`,
+`JSON` and `THREE` are available to box code as they are in any page script.
+
+If no head is connected, running a RemoteJS box is an error that says so, and nothing runs.
+
+The [remotejs_box_parity](agent_transcripts.md#remotejs_box_parity) document has one box for each of
+these.
+
 ## Completion and errors
 
 Completion is generated in the connected head from live globals, sandbox variables, prototypes, Three.js, and the documented helper functions. It does not evaluate arbitrary function calls while completing a member expression.
 
-Every execution carries a stable `box_NAME|UUID` source name. Runtime failures and callback failures are returned to the originating Field box with the browser's message, stack, filename, line, and column. Printed values can arrive before terminal `OK`; the return channel remains open for those values and closes on the terminal response.
+Every execution carries a stable `box_NAME|UUID` source name. Runtime failures and callback failures are returned to the originating Field box with the browser's message, stack, filename, line, and column. An error is marked on the line that raised it, including a line inside a function the box defined.
 
 ## Testing the head
 

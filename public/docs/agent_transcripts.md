@@ -2351,6 +2351,21 @@ one box of four; `ClojureFieldCoreTest` and `ClojureHostTest` run what the Cloju
 
 [Open ↗](offline.html?file=assets/agent_transcripts/clojure_box_parity/metadata.edn)
 
+### remotejs_box_parity
+
+**RemoteJS boxes doing what Kotlin, Python and Clojure boxes do.** Six boxes: a Kotlin root that opens
+the browser head on the canvas, and five Javascript boxes that run in it. `print` and `console.log`
+appear beside their lines and the last value beside the last line; an error is marked on line 4,
+inside `mean`, not on the call on line 7; `display`, a slider and a checkbox redraw a `main` panel
+from callbacks in the head; a `setTimeout` prints after the run has finished; and Stop freezes a
+`launch(...)` loop. Run the root first.
+
+`DemoTranscriptExecSmokeTest` compiles the Kotlin root and skips the Javascript boxes, which need a
+browser head; `RemoteJsBoxSurfaceTest` runs the JVM half. [RemoteJS and WebXR](ar_reference.md)
+teaches the same calls.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/remotejs_box_parity/metadata.edn)
+
 ### fieldcv_webcam
 
 **Your webcam through fieldcv, drawn by the GPU from shared memory.** Eight boxes: a render window; a
