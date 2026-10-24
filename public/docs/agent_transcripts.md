@@ -2905,9 +2905,8 @@ the icosphere shell leads; six of the demo's inserts follow, one on each of its 
 scanlines over the ToyCar model, read with `SplatSet.fromGltf` as one disc per vertex. Each launches
 into the same window with the demo's turn, size and trail controls; the gravity well starts with
 its trail on, each frame laid over a fading copy of the last. The insert runs in a compute pass
-ahead of the depth sort, so a dissolve that throws splats outward is sorted where they went:
-measured on the GPU, editing the splat vertex shader instead draws half of all neighbouring pairs
-in the wrong order.
+ahead of the depth sort, so a dissolve that throws splats outward is sorted where they went.
+Moving splats in the vertex shader instead would draw many neighbouring pairs in the wrong order.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/splat_shader_passthrough.png" capture="native-window" native-wait-frames="90" trim-native=true wait="3.0" embed=true hidden=true timeout="300" name="gallery-splat-shader" alt="The icosphere shell in the native window: a sphere of about a thousand small glowing splats on black, coloured by longitude from cyan on the left through chartreuse at the front to red and orange on the right, with the far side's violet splats showing between the near ones" macro-file="../../dev_docs/agents/transcripts/splat_shader.yaml" capture-box="splat_renderer"}
 // The transcript builds every box and launches the renderer and the passthrough.
