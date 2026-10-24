@@ -1563,9 +1563,9 @@ What a [`GeometryBuilder`](graphics.md#geometrybuilder-kt-geometrybuilder) recip
 
 Shrinking an exported GLB with gltfpack, meshoptimizer's glTF optimiser.
 
-[`Gltfpack`](graphics.md#gltfpack-kt-gltfpack) is the whole of it: one call per file, with the quantisation and meshopt-compression
-settings the madp geometry toolbox exports with. It is an optional extra. Without a gltfpack on
-disk [`Gltfpack.available`](graphics.md#gltfpack-kt--gltfpack--available) is false and Field's GLB writers emit the file uncompressed, so code
+[`Gltfpack`](graphics.md#gltfpack-kt-gltfpack) is the whole of it: one gltfpack process per GLB, run with [`Gltfpack.DEFAULT_ARGS`](graphics.md#gltfpack-kt--gltfpack--default-args),
+the arguments the madp geometry toolbox exports with. It is an optional extra. Without a gltfpack
+on disk [`Gltfpack.available`](graphics.md#gltfpack-kt--gltfpack--available) is false and Field's GLB writers emit the file uncompressed, so code
 that wants a smaller GLB only when one is cheap calls [`Gltfpack.compressIfSmaller`](graphics.md#gltfpack-kt--gltfpack--compressifsmaller) and never
 asks whether the tool is there.
 
@@ -9994,10 +9994,10 @@ against them, and writes frames of the deformation.
 [`StressFixture`](graphics.md#riggedfixture-kt-stressfixture)'s sheared plate, loads both back through the Assimp path, prints every number
 `dev_docs/SKINNED_CHARACTERS.md` quotes alongside the population it was measured over, and
 renders the posed meshes into `dev_docs/agents/evidence/skinning/`.
-[`SkinningEvidence.frames`](graphics.md#skinningevidence-kt--skinningevidence--frames) names those renders, and [`SkinningEvidence.anchor`](graphics.md#skinningevidence-kt--skinningevidence--anchor) is the pair of tiny
-triangles merged into each one so a sequence is framed identically: [`MeshView`](graphics.md#mesh-field-kt-meshview) measures its
-distance in multiples of the mesh's own bounding-sphere radius, so without an anchor each frame
-would reframe itself and the cylinder would never appear to move.
+[`SkinningEvidence.frames`](graphics.md#skinningevidence-kt--skinningevidence--frames) names the cylinder sequence, and [`SkinningEvidence.anchor`](graphics.md#skinningevidence-kt--skinningevidence--anchor) is the pair of
+tiny triangles merged into every render so a sequence is framed identically: [`MeshView`](graphics.md#mesh-field-kt-meshview)'s distance
+is in multiples of the mesh's own bounding-sphere radius, so without an anchor each frame would
+reframe itself and the cylinder would never appear to move.
 
 `src/jvmMain/kotlin/afield/graphics/scene/SkinningEvidence.kt` — [read the source](source/jvmMain/afield/graphics/scene/SkinningEvidence/)
 
@@ -12402,11 +12402,12 @@ Webcam-backed RGBA texture for Vulkan sampling.
 Showing a `geometry { }` recipe in a studio-lit `three` view, and handing the recipe language to
 this document's AI4 chat.
 
-[`geometry`](graphics.md#geometryview-kt--geometry) runs a [`GeometryBuilder`](graphics.md#geometrybuilder-kt-geometrybuilder) block in a box and draws the [`GeometryScene`](graphics.md#geometrybuilder-kt-geometryscene) it builds: every
-part as a mesh with its own material, the scene's background and ground, and the toolbox's
-three-quarter camera. [`animateGeometry`](graphics.md#geometryview-kt--animategeometry) re-runs the block with the builder's `t` moving and
-returns a [`Frames`](workspace.md#phased-kt-frames) for the box to launch. Both keep the view's camera between frames, so the
-model can be orbited while it changes underneath.
+[`Box.geometry`](graphics.md#geometryview-kt--geometry) runs a [`GeometryBuilder`](graphics.md#geometrybuilder-kt-geometrybuilder) block in a box and draws the [`GeometryScene`](graphics.md#geometrybuilder-kt-geometryscene) it builds:
+every part as a mesh with its own material, the scene's background and ground, and the toolbox's
+three-quarter camera. [`Box.animateGeometry`](graphics.md#geometryview-kt--animategeometry) re-runs the block with `GeometryBuilder.t` moving and
+returns a [`Frames`](workspace.md#phased-kt-frames) for the box to launch. The camera is a spec rather than a position, so it
+survives both a re-run and an animation frame and the model can be orbited while it changes
+underneath.
 
 [`geometryAgent`](graphics.md#geometryview-kt--geometryagent) bridges those views to AI4. The chat agent is given [`GEOMETRY_GUIDE`](graphics.md#geometryview-kt--geometry-guide) before every
 turn and a `geometry.look` tool that returns a picture of a view as it stands on screen, which is
@@ -12419,27 +12420,27 @@ CPU rasterizer instead, without the studio's lighting, and the agent is told whi
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="geometryview-kt--geometry"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">ThreeSceneBuilder</span><span class="p">.</span><span class="nf">geometry</span><span class="p">(</span><span class="n">scene</span><span class="p">:</span> <span class="nc">GeometryScene</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/three/GeometryView/#L37) | Draw a [`GeometryScene`](graphics.md#geometrybuilder-kt-geometryscene) in this view: every part as a mesh with its own material, the studio look, the scene's background, and the toolbox's three-quarter camera. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">geometry</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;main&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;geometry&quot;</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">460</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="mi">680</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="nc">GeometryBuilder</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">GeometryScene</span></code>](source/jvmMain/afield/graphics/three/GeometryView/#L84) | Run a [`GeometryBuilder`](graphics.md#geometrybuilder-kt-geometrybuilder) recipe and show the result in a studio-lit `three` view. |
-| <a id="geometryview-kt--animategeometry"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">animateGeometry</span><span class="p">(</span><span class="n">fps</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">30.0</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;main&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;geometry&quot;</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">460</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="mi">680</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="nc">GeometryBuilder</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">Frames</span></code>](source/jvmMain/afield/graphics/three/GeometryView/#L117) | Run a [`GeometryBuilder`](graphics.md#geometrybuilder-kt-geometrybuilder) recipe `fps` times a second with `GeometryBuilder.t` moving, and show each result in the same studio-lit `three` view: the toolbox's **Animate** button. |
-| <a id="geometryview-kt--geometryagent"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">geometryAgent</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/three/GeometryView/#L208) | Bridge this document's geometry boxes to AI4: the chat agent learns the [`GeometryBuilder`](graphics.md#geometrybuilder-kt-geometrybuilder) language ([`GEOMETRY_GUIDE`](graphics.md#geometryview-kt--geometry-guide), before every turn) and gets a `geometry.look` tool that returns a picture of a geometry view as it is on screen — the toolbox's screenshot-to-code loop, with Field's own chat. `/geometry` in the chat shows the guide. |
+| <a id="geometryview-kt--geometry"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">ThreeSceneBuilder</span><span class="p">.</span><span class="nf">geometry</span><span class="p">(</span><span class="n">scene</span><span class="p">:</span> <span class="nc">GeometryScene</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/three/GeometryView/#L38) | Draw a [`GeometryScene`](graphics.md#geometrybuilder-kt-geometryscene) in this view: every part as a mesh with its own material, the studio look, the scene's background, and the toolbox's three-quarter camera. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">geometry</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;main&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;geometry&quot;</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">460</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="mi">680</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="nc">GeometryBuilder</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">GeometryScene</span></code>](source/jvmMain/afield/graphics/three/GeometryView/#L85) | Run a [`GeometryBuilder`](graphics.md#geometrybuilder-kt-geometrybuilder) recipe and show the result in a studio-lit `three` view. |
+| <a id="geometryview-kt--animategeometry"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">animateGeometry</span><span class="p">(</span><span class="n">fps</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">30.0</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;main&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;geometry&quot;</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">460</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="mi">680</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="nc">GeometryBuilder</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">Frames</span></code>](source/jvmMain/afield/graphics/three/GeometryView/#L118) | Run a [`GeometryBuilder`](graphics.md#geometrybuilder-kt-geometrybuilder) recipe `fps` times a second with `GeometryBuilder.t` moving, and show each result in the same studio-lit `three` view: the toolbox's **Animate** button. |
+| <a id="geometryview-kt--geometryagent"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">geometryAgent</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/three/GeometryView/#L209) | Bridge this document's geometry boxes to AI4: the chat agent learns the [`GeometryBuilder`](graphics.md#geometrybuilder-kt-geometrybuilder) language ([`GEOMETRY_GUIDE`](graphics.md#geometryview-kt--geometry-guide), before every turn) and gets a `geometry.look` tool that returns a picture of a geometry view as it is on screen — the toolbox's screenshot-to-code loop, with Field's own chat. `/geometry` in the chat shows the guide. |
 
 ### Top-level values { #geometryview-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="geometryview-kt--geometry-guide"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">GEOMETRY&#95;GUIDE</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/graphics/three/GeometryView/#L167) | The [`GeometryBuilder`](graphics.md#geometrybuilder-kt-geometrybuilder) language, written for a model: what the madp toolbox's **Copy Guide** button put on the clipboard. [`geometryAgent`](graphics.md#geometryview-kt--geometryagent) gives it to this document's AI4 chat before every turn. |
+| <a id="geometryview-kt--geometry-guide"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">GEOMETRY&#95;GUIDE</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/graphics/three/GeometryView/#L168) | The [`GeometryBuilder`](graphics.md#geometrybuilder-kt-geometrybuilder) language, written for a model: what the madp toolbox's **Copy Guide** button put on the clipboard. [`geometryAgent`](graphics.md#geometryview-kt--geometryagent) gives it to this document's AI4 chat before every turn. |
 
 ## SimplexView.kt { #simplexview-kt }
 
 An [`EmbeddingSimplex`](data.md#embeddingsimplex-kt-embeddingsimplex) drawn as a picture you can take hold of: a sphere per point, an edge per
 pair, and each edge's length written on it.
 
-[`simplexView`](graphics.md#simplexview-kt--simplexview) opens the view and hands back a [`SimplexView`](graphics.md#simplexview-kt-simplexview) to [`SimplexView.show`](graphics.md#simplexview-kt--simplexview--show) each new simplex
-into. It keeps its camera between them, so the picture can be orbited while it changes underneath,
-and [`SimplexView.dim`](graphics.md#simplexview-kt--simplexview--dim) greys what is on screen while a newer one is being worked out. [`showSimplex`](graphics.md#simplexview-kt--showsimplex)
-does both in one call, for a picture drawn once. Until the first `show` the view holds a regular
-tetrahedron with no lengths.
+[`Box.simplexView`](graphics.md#simplexview-kt--simplexview) opens the view and hands back a [`SimplexView`](graphics.md#simplexview-kt-simplexview) to [`SimplexView.show`](graphics.md#simplexview-kt--simplexview--show) each new
+simplex into. It keeps its camera between them, so the picture can be orbited while it changes
+underneath, and [`SimplexView.dim`](graphics.md#simplexview-kt--simplexview--dim) greys what is on screen while a newer one is being worked out.
+[`Box.showSimplex`](graphics.md#simplexview-kt--showsimplex) does both in one call, for a picture drawn once. Until the first
+[`SimplexView.show`](graphics.md#simplexview-kt--simplexview--show) the view holds a regular tetrahedron with no lengths.
 
 The drawing follows the madp `tetra` page: one colour per point, a table of the pairs with bars in
 the corner, a slow turn that stops when you take hold of it, and an optional flag at both ends of

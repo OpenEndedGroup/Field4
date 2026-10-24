@@ -15,11 +15,12 @@ import afield.runtime.lifecycle.frames
  * Showing a `geometry { }` recipe in a studio-lit `three` view, and handing the recipe language to
  * this document's AI4 chat.
  *
- * [geometry] runs a [GeometryBuilder] block in a box and draws the [GeometryScene] it builds: every
- * part as a mesh with its own material, the scene's background and ground, and the toolbox's
- * three-quarter camera. [animateGeometry] re-runs the block with the builder's `t` moving and
- * returns a [Frames] for the box to launch. Both keep the view's camera between frames, so the
- * model can be orbited while it changes underneath.
+ * [Box.geometry] runs a [GeometryBuilder] block in a box and draws the [GeometryScene] it builds:
+ * every part as a mesh with its own material, the scene's background and ground, and the toolbox's
+ * three-quarter camera. [Box.animateGeometry] re-runs the block with [GeometryBuilder.t] moving and
+ * returns a [Frames] for the box to launch. The camera is a spec rather than a position, so it
+ * survives both a re-run and an animation frame and the model can be orbited while it changes
+ * underneath.
  *
  * [geometryAgent] bridges those views to AI4. The chat agent is given [GEOMETRY_GUIDE] before every
  * turn and a `geometry.look` tool that returns a picture of a view as it stands on screen, which is

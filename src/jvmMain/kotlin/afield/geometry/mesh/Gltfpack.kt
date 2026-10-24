@@ -9,9 +9,9 @@ import java.util.concurrent.TimeUnit
 /**
  * Shrinking an exported GLB with gltfpack, meshoptimizer's glTF optimiser.
  *
- * [Gltfpack] is the whole of it: one call per file, with the quantisation and meshopt-compression
- * settings the madp geometry toolbox exports with. It is an optional extra. Without a gltfpack on
- * disk [Gltfpack.available] is false and Field's GLB writers emit the file uncompressed, so code
+ * [Gltfpack] is the whole of it: one gltfpack process per GLB, run with [Gltfpack.DEFAULT_ARGS],
+ * the arguments the madp geometry toolbox exports with. It is an optional extra. Without a gltfpack
+ * on disk [Gltfpack.available] is false and Field's GLB writers emit the file uncompressed, so code
  * that wants a smaller GLB only when one is cheap calls [Gltfpack.compressIfSmaller] and never
  * asks whether the tool is there.
  */

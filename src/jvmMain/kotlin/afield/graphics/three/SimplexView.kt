@@ -17,11 +17,11 @@ import kotlin.math.pow
  * An [EmbeddingSimplex] drawn as a picture you can take hold of: a sphere per point, an edge per
  * pair, and each edge's length written on it.
  *
- * [simplexView] opens the view and hands back a [SimplexView] to [SimplexView.show] each new simplex
- * into. It keeps its camera between them, so the picture can be orbited while it changes underneath,
- * and [SimplexView.dim] greys what is on screen while a newer one is being worked out. [showSimplex]
- * does both in one call, for a picture drawn once. Until the first `show` the view holds a regular
- * tetrahedron with no lengths.
+ * [Box.simplexView] opens the view and hands back a [SimplexView] to [SimplexView.show] each new
+ * simplex into. It keeps its camera between them, so the picture can be orbited while it changes
+ * underneath, and [SimplexView.dim] greys what is on screen while a newer one is being worked out.
+ * [Box.showSimplex] does both in one call, for a picture drawn once. Until the first
+ * [SimplexView.show] the view holds a regular tetrahedron with no lengths.
  *
  * The drawing follows the madp `tetra` page: one colour per point, a table of the pairs with bars in
  * the corner, a slow turn that stops when you take hold of it, and an optional flag at both ends of

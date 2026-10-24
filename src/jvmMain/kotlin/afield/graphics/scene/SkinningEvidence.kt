@@ -21,10 +21,10 @@ import java.io.File
  * [StressFixture]'s sheared plate, loads both back through the Assimp path, prints every number
  * `dev_docs/SKINNED_CHARACTERS.md` quotes alongside the population it was measured over, and
  * renders the posed meshes into `dev_docs/agents/evidence/skinning/`.
- * [SkinningEvidence.frames] names those renders, and [SkinningEvidence.anchor] is the pair of tiny
- * triangles merged into each one so a sequence is framed identically: [MeshView] measures its
- * distance in multiples of the mesh's own bounding-sphere radius, so without an anchor each frame
- * would reframe itself and the cylinder would never appear to move.
+ * [SkinningEvidence.frames] names the cylinder sequence, and [SkinningEvidence.anchor] is the pair of
+ * tiny triangles merged into every render so a sequence is framed identically: [MeshView]'s distance
+ * is in multiples of the mesh's own bounding-sphere radius, so without an anchor each frame would
+ * reframe itself and the cylinder would never appear to move.
  */
 
 /**
