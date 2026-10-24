@@ -272,6 +272,7 @@ import afield.ai.completion.AI4_AUTO_NAME_SIGNATURE_PROPERTY
 import afield.ai.models.AiSettingsSaveRequest
 import afield.ai.models.aiProviderStatus
 import afield.ai.models.checkLocalAiConnection
+import afield.ai.models.localAiFeedback
 import afield.ai.models.aiSettingsEnvironmentOverrides
 import afield.ai.models.readLocalAiCredential
 import afield.ai.models.configuredAiBaseUrl
@@ -4685,6 +4686,11 @@ class Server {
                                 lprintln("error,server", "Maven upgrade failed: ${e.message}")
                                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Maven upgrade failed"))
                             }
+                        }
+
+                        get("/api/ai-local-feedback") {
+                            call.response.header("Cache-Control", "no-store")
+                            call.respondText(withContext(Dispatchers.IO) { localAiFeedback() }, ContentType.Application.Json)
                         }
 
                         post("/api/ai-local-connection") {

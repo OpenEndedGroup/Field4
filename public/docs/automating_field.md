@@ -42,7 +42,9 @@ operations:
 The verbs you will use most: `create`, `edit`, `move`, `connect` (wire a parent box to a
 child), `execute` (run once), `launch` (start a running job), `stop`, `await` (wait for
 everything to settle), and `save` (write a document you can open again later). A `launch`
-or `execute` with no inline code simply runs the code the box already has.
+or `execute` with no inline code simply runs the code the box already has. A `launch` always
+runs the box's code as it is when the macro runs, so a macro that launches boxes keeps working
+after you edit them; an `execute` with its own `code:` runs that snippet in the box.
 
 Because the transcript is just data, a macro is legible: you can open one, see what it
 does, change a name or a value, and run your version. Field records what you do as you

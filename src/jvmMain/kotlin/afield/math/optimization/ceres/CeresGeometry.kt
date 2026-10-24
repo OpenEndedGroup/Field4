@@ -379,6 +379,11 @@ data class EqualDistance(
     init {
         requirePair(a, b)
         requirePair(c, d)
+        // Ceres CHECK-fails, killing the JVM, on a residual that names one point twice (a house host, 2026-10-24).
+        require(listOf(a, b, c, d).distinct().size == 4) {
+            "EqualDistance names a point twice ($a, $b, $c, $d); Ceres cannot take a repeated parameter block. " +
+                "For segments that share a point use LineRef.sameLengthAs, which re-encodes it"
+        }
         requireWeight(weight)
     }
 
