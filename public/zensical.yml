@@ -107,6 +107,9 @@ nav:
     # Beside moving_around_the_canvas.md: a canvas flight is a camera move through its bookmarks,
     # filmed to MP4.
     - Filming the Canvas: filming_the_canvas.md
+    # Beside filming_the_canvas.md: the showcase canvas built by demo_document.yaml, and the film of it
+    # that plays behind the home page.
+    - The Demo Document: demo_document.md
     # Beside moving_around_the_canvas.md: which boxes are on the canvas at all, and where each one
     # sits, per layer.
     - Layers: layers.md

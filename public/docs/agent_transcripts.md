@@ -3000,6 +3000,18 @@ The capture below is this transcript instrumented on [Field probes](field_probes
 
 [Open ↗](offline.html?file=assets/agent_transcripts/threebox/metadata.edn)
 
+### demo_document
+
+The [demo document](demo_document.md): one canvas showing most of what Field does. A palette pushes
+`petals` down to three connected boxes, one holding two nested boxes; a three.js gyroid and an editable
+FLine flower sit in output panels; a renderer streams a turning spiral into a box's panel and runs a
+compute shader a Field probe plots; a keyframe curve plays with its playhead running; a box draws inline
+visualizers when its editor is open; a time slider waits to be scrubbed across four cues; and a notes box
+draws on the drawing layer over all of it. Its film plays behind the home page, and the feel benchmark
+times the replay.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/demo_document/metadata.edn)
+
 ### four_pass_chain
 
 A **heterogeneous, multi-resolution** post-process chain in three boxes: a

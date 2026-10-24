@@ -640,17 +640,19 @@ object OperationTranscript {
         if (session != null) thisSessionInfo.set(session)
         try {
             return activeMacroRuns.run(key) {
-                runMacroOnce(
-                    documentPath = documentPath,
-                    name = cleanName,
-                    targetBoxes = normalizedTargets,
-                    direction = normalizedDirection,
-                    strict = strict,
-                    scope = scope,
-                    projectName = projectName,
-                    initializeCreatedBoxes = initializeCreatedBoxes,
-                    replay = replay,
-                )
+                afield.app.diagnostics.LatencySpans.time("transcript.run", detail = cleanName) {
+                    runMacroOnce(
+                        documentPath = documentPath,
+                        name = cleanName,
+                        targetBoxes = normalizedTargets,
+                        direction = normalizedDirection,
+                        strict = strict,
+                        scope = scope,
+                        projectName = projectName,
+                        initializeCreatedBoxes = initializeCreatedBoxes,
+                        replay = replay,
+                    )
+                }
             }
         } finally {
             if (session != null) thisSessionInfo.remove()
@@ -743,8 +745,11 @@ object OperationTranscript {
                         index++
                     }
                     val groupDiagnostics = mutableListOf<String>()
+                    val groupBoxes = launchGroup.joinToString(",") { (op, _) -> operationBoxName(op).orEmpty() }
                     val result = runCatching {
-                        applyMacroLaunchGroup(launchGroup, boxMap, collect, groupDiagnostics)
+                        afield.app.diagnostics.LatencySpans.time("transcript.launchGroup", detail = "$cleanName: $groupBoxes") {
+                            applyMacroLaunchGroup(launchGroup, boxMap, collect, groupDiagnostics)
+                        }
                     }
                     if (result.isSuccess) {
                         val (groupApplied, groupSkipped) = result.getOrThrow()
@@ -775,7 +780,9 @@ object OperationTranscript {
                     initializeCreatedBoxes = initializeCreatedBoxes,
                 )
                 val result = runCatching {
-                    applyMacroOperation(op, boxMap, normalizedDirection, strict, context, collect)
+                    afield.app.diagnostics.LatencySpans.time("transcript.op", box = operationBoxName(op), detail = "$cleanName: $verb") {
+                        applyMacroOperation(op, boxMap, normalizedDirection, strict, context, collect)
+                    }
                 }
                 if (result.isSuccess) {
                     if (result.getOrDefault(false)) applied++ else skipped++
@@ -1880,6 +1887,12 @@ object OperationTranscript {
 
     private fun operationVerb(operation: Map<String, Any?>): String =
         operation.keys.firstOrNull()?.lowercase().orEmpty()
+
+    /** The box an operation names (a `connect`'s child), for its latency span; null for `wait`, `await`, `save`. */
+    private fun operationBoxName(operation: Map<String, Any?>): String? {
+        val payload = operation.values.firstOrNull() as? Map<*, *> ?: return null
+        return (payload["box"] ?: payload["uid"] ?: payload["id"] ?: payload["target"] ?: payload["child"])?.toString()
+    }
 
     private fun applyMacroOperation(
         operation: Map<String, Any?>,

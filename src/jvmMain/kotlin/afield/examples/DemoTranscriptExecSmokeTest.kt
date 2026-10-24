@@ -532,6 +532,8 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // The demo document: a renderer, an ElectronRTTView and a compute shader under it, and loops.
+        "demo_document",
         // ORCA in a box output, playing through a returned PatSynthBank, so running it opens an audio
         // device; and ORCA itself only plays in a browser. `run_ui_regressions.py --id orca-io` runs
         // the same calls in a real page, and OrcaTest feeds the Kotlin side the page's reports.
