@@ -15,6 +15,19 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
+ * Writing a [SplatCloud] out as a PlayCanvas `.compressed.ply`, and quantizing one without writing
+ * anything.
+ *
+ * [CompressedSplatPlyWriter] is the encoding half of [CompressedSplatPly], so a cloud that has been
+ * cropped, filtered, decimated or merged on the CPU can leave in the format it arrived in.
+ * [CompressedSplatPlyWriter.write] puts one on disk; [CompressedSplatPlyWriter.quantize] runs the
+ * same encoder into the [CompressedSplatPly.RawSplats] that [SplatRaster] and a live GPU upload
+ * take, so a preview of an edit is the same picture as its save. Both sort into Morton order first
+ * by default: position, scale and colour are quantized per chunk of 256 against that chunk's own
+ * bounds, so an arbitrary order leaves every chunk bounding the whole scene.
+ */
+
+/**
  * Writes PlayCanvas `.compressed.ply` files — the inverse of [CompressedSplatPly].
  *
  * Field previously had no reason to write these, and [CompressedSplatPlyFixture] says so in as many

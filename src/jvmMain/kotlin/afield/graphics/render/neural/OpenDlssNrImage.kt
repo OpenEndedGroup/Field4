@@ -5,6 +5,7 @@
  * [OpenDlssNrImage.install] evaluates the pass each frame under the renderer, with `controls` for the network and
  * `exposure`, `gamma` and `offset` for grading afterwards.
  */
+
 package afield.graphics.render.neural
 
 import afield.graphics.render.ModulePointer

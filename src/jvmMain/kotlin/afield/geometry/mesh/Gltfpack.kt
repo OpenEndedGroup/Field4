@@ -7,6 +7,16 @@ import java.nio.file.Files
 import java.util.concurrent.TimeUnit
 
 /**
+ * Shrinking an exported GLB with gltfpack, meshoptimizer's glTF optimiser.
+ *
+ * [Gltfpack] is the whole of it: one call per file, with the quantisation and meshopt-compression
+ * settings the madp geometry toolbox exports with. It is an optional extra. Without a gltfpack on
+ * disk [Gltfpack.available] is false and Field's GLB writers emit the file uncompressed, so code
+ * that wants a smaller GLB only when one is cheap calls [Gltfpack.compressIfSmaller] and never
+ * asks whether the tool is there.
+ */
+
+/**
  * gltfpack, meshoptimizer's glTF optimiser, for making an exported GLB small: it quantises and
  * meshopt-compresses the buffers (`-cc`), keeping node and material names (`-kn`, `-km`) — the settings
  * the madp geometry toolbox exports with.

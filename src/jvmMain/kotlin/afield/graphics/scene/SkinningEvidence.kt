@@ -14,6 +14,20 @@ import afield.geometry.mesh.renderPng
 import java.io.File
 
 /**
+ * The `runSkinningEvidence` task: it rebuilds the rigged glTF fixtures, measures skeletal skinning
+ * against them, and writes frames of the deformation.
+ *
+ * `./gradlew --no-daemon runSkinningEvidence` writes [RiggedFixture]'s bending cylinder and
+ * [StressFixture]'s sheared plate, loads both back through the Assimp path, prints every number
+ * `dev_docs/SKINNED_CHARACTERS.md` quotes alongside the population it was measured over, and
+ * renders the posed meshes into `dev_docs/agents/evidence/skinning/`.
+ * [SkinningEvidence.frames] names those renders, and [SkinningEvidence.anchor] is the pair of tiny
+ * triangles merged into each one so a sequence is framed identically: [MeshView] measures its
+ * distance in multiples of the mesh's own bounding-sphere radius, so without an anchor each frame
+ * would reframe itself and the cylinder would never appear to move.
+ */
+
+/**
  * Regenerate the rigged fixture, measure the skinning, and write frames a person can look at.
  *
  * `./gradlew --no-daemon runSkinningEvidence`
