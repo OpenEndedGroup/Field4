@@ -143,8 +143,7 @@ If you want the browser but would rather write Kotlin, [Kotlin in the Head](kotl
 compiles a box's Kotlin to Javascript and sends it to the same head. The controls box above, in
 Kotlin, is the same calls with Kotlin lambdas:
 
-```diffstatic {data-lang=kotlin}
-:::static
+```diffstatic_runner {data-lang=kotlin capture="box" screenshot="assets/remotejs/kotlin-controls.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/remotejs_kotlin_controls.yaml" run-box="remotejs_kotlin_controls_box" capture-box="remotejs_kotlin_controls_box" open-outputs="true" wait="3" timeout="240" padding="18" embed=true name="remotejs-kotlin-controls" alt="The same controls box written in Kotlin: the main channel reads filled square, turning at the slider's speed, and the controls channel holds a SPEED slider and an OUTLINE checkbox."}
 // {{ remoteAR }}
 var speed = 3.0
 var outline = false

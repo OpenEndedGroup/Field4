@@ -82,8 +82,7 @@ puts the red marker on the line of your code it came from, and a run with no hea
 error on the box. `display`, `slider` and `checkbox` draw into the box's output area, and their
 callbacks run in the head:
 
-```diffstatic {data-lang=kotlin}
-:::static
+```diffstatic_runner {data-lang=kotlin capture="box" screenshot="assets/kotlin_in_the_head/controls.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/kith_controls.yaml" run-box="kith_controls_box" capture-box="kith_controls_box" open-outputs="true" wait="3" timeout="240" padding="18" embed=true name="kith-controls" alt="A Kotlin box compiled to Javascript: the main channel reads sine at the slider's frequency, and the controls channel holds a FREQUENCY slider and a SQUARE WAVE checkbox."}
 // {{ remoteAR }}
 var freq = 3.0
 
