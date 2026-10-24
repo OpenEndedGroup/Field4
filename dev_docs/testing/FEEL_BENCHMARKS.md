@@ -153,6 +153,22 @@ retired box disposes its spare; a spare older than a classpath change is refused
 The think time matters: with steps back to back (`--think 0`), the next run arrives while the
 spare is still being built and waits for most of it.
 
+## The demo document, 2026-10-24
+
+`--scenario demo-document --reps 2`, Apple M1 Max, **on battery**, commit `93752ed5c`. The
+transcript makes 20 boxes and launches 6 of them; a step is the one `macro run`.
+
+| Step | wall | `transcript.op` (39) | `transcript.launchGroup` (3) | engines | `kotlin.compile` (44) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| replay in a fresh document (cold JVM) | 19237 | 13107 | 6074 | 20 built, bootstrap 69211 summed | 75759 summed, max 5310 |
+| replay again, another fresh document | 5491 | 3732 | 1743 | 20 built, bootstrap 5015 summed | 7169 summed, max 341 |
+
+The summed spans are larger than the wall time because engines bootstrap and compile on several
+threads at once. Each box that runs gets its own engine, so 20 bootstraps in a cold JVM are most of
+the first replay; the second replay pays ~250 ms per engine. Renderer, shader and pipeline work is
+under 1 s of the cold replay. `/api/perf/spans` has each `transcript.op` with its box, for the
+per-box split.
+
 ## What the baseline says to fix next
 
 1. **The first run of a box builds its engine on the spot.** The engine the box made when it was
