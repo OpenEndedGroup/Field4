@@ -15,7 +15,7 @@ import time
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 try:
     from .field_python_env import ensure_repo_python
@@ -50,6 +50,13 @@ LOCAL_SITE_CAPTURE = re.compile(r"<!--\s*docs-capture-needs-local-site:\s*([a-zA
 ZENSICAL_STALL_ENV = "FIELD_DOCS_ZENSICAL_STALL_SEC"
 ZENSICAL_STALL_SECONDS = 120.0
 STALL_CPU_SECONDS = 1.0
+# A wedge with no file changing under zensical is the machine, not the tree: on 2026-10-24 three lander
+# builds in a row sat at "Build started" at 0% CPU in the eleven minutes after the Mac woke from
+# hibernate on a flat battery, with nothing written under the watched dirs, and the same build passed
+# by hand minutes later and in the lander from then on. Such a wedge is tried again this many times,
+# after ZENSICAL_STALL_RETRY_PAUSE seconds. A wedge with files changing is a writer and fails at once.
+ZENSICAL_STALL_RETRIES = 1
+ZENSICAL_STALL_RETRY_PAUSE = 30.0
 
 # A site missing more than this share of its pages is refused rather than installed.
 MAX_MISSING_PAGE_FRACTION = 0.01
@@ -1077,6 +1084,7 @@ class ZensicalRun:
     finished: bool = False  # Printed "Build finished in ...".
     interrupted: bool = False  # Printed "Received interrupt, exiting".
     stalled: str | None = None  # Why run_zensical stopped it.
+    changed: int = 0  # Files changed under the watched dirs while it ran, counted when it stalled.
 
     def failure(self) -> str | None:
         """Why this run is not a complete build, or None if it is."""
@@ -1136,6 +1144,20 @@ def files_changed_since(roots: list[Path], since: float, *, limit: int = 8) -> t
     return count, found
 
 
+def seconds_since_wake() -> float | None:
+    """Seconds since macOS last woke from sleep (`kern.waketime`), or None elsewhere or if unknown."""
+    if sys.platform != "darwin":
+        return None
+    try:
+        out = subprocess.run(["sysctl", "-n", "kern.waketime"], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    match = re.search(r"sec = (\d+)", out)
+    if not match or int(match.group(1)) == 0:
+        return None
+    return max(0.0, time.time() - int(match.group(1)))
+
+
 def run_zensical(command: list[str], *, cwd: Path, watched: list[Path], stall_seconds: float) -> ZensicalRun:
     """Run zensical, echoing its output, and stop it if it wedges.
 
@@ -1189,7 +1211,10 @@ def run_zensical(command: list[str], *, cwd: Path, watched: list[Path], stall_se
             break
     if run.stalled:
         count, changed = files_changed_since(watched, started_wall)
+        run.changed = count
         print(f"\nzensical has stalled: {run.stalled}.")
+        if (woke := seconds_since_wake()) is not None:
+            print(f"The machine last woke from sleep {woke / 60:.0f} min ago.")
         if count:
             print(f"{count} file(s) changed under directories zensical watches since it started. A process "
                   "that keeps writing there holds zensical's build open; the first of them:")
@@ -1205,6 +1230,28 @@ def run_zensical(command: list[str], *, cwd: Path, watched: list[Path], stall_se
     if proc.stdout is not None and not reader.is_alive():
         proc.stdout.close()
     return run
+
+
+def run_zensical_retrying_idle_wedges(
+    run: Callable[[], ZensicalRun],
+    *,
+    before_retry: Callable[[], bool],
+    retries: int = ZENSICAL_STALL_RETRIES,
+    pause: float = ZENSICAL_STALL_RETRY_PAUSE,
+) -> ZensicalRun | None:
+    """[run], and again up to [retries] times while it wedges with nothing changing under it (see
+    ZENSICAL_STALL_RETRIES). None if [before_retry] (clearing the staging dir) fails."""
+    result = run()
+    for attempt in range(retries):
+        if not (result.stalled and result.changed == 0):
+            break
+        print(f"Nothing changed under the watched dirs, so this wedge is the machine, not the tree; "
+              f"trying again in {pause:.0f} s (retry {attempt + 1} of {retries}).", flush=True)
+        time.sleep(pause)
+        if not before_retry():
+            return None
+        result = run()
+    return result
 
 
 def page_output(relative: Path) -> Path:
@@ -1388,8 +1435,18 @@ def run(args: argparse.Namespace) -> int:
     if args.strict:
         command.append("--strict")
     stall_seconds = float(os.environ.get(ZENSICAL_STALL_ENV) or ZENSICAL_STALL_SECONDS)
-    zensical = run_zensical(command, cwd=public_dir, watched=[generated_docs, public_dir / "overrides"],
-                            stall_seconds=stall_seconds)
+    watched = [generated_docs, public_dir / "overrides"]
+
+    def clear_staging() -> bool:
+        return not staging.exists() or remove_tree(staging)
+
+    zensical = run_zensical_retrying_idle_wedges(
+        lambda: run_zensical(command, cwd=public_dir, watched=watched, stall_seconds=stall_seconds),
+        before_retry=clear_staging,
+    )
+    if zensical is None:
+        print(f"{FAILURE_PREFIX}could not clear the staging site dir {staging}", file=sys.stderr)
+        return 1
     sys.stdout.flush()
     failure = zensical.failure()
     if failure:
