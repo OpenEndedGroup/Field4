@@ -1,9 +1,9 @@
 name: remotejs_box_parity
 description: |
   **RemoteJS boxes doing what Kotlin, Python and Clojure boxes do: printing beside the line, errors
-  on the right line, display channels, live controls, and a Stop that stops.** Six boxes: a Kotlin
-  root that embeds the browser head on the canvas, and five Javascript boxes under it that run in
-  that head.
+  on the right line, display channels, live controls, and a Stop that stops.** A Kotlin root that
+  embeds the browser head on the canvas, five Javascript boxes under it that run in that head, and
+  a Kotlin → head root with five Kotlin boxes compiled to Javascript for the same head.
 
     - **Print and console.log beside their lines, and the last value.** `print` and `console.log`
       both appear next to the line that called them; the box's last expression is shown too.
@@ -14,7 +14,11 @@ description: |
     - **Output after the run.** A `setTimeout` prints half a second after the run finished.
     - **Stop stops `launch` loops.** Launch the spinner box, then Stop it: the counter freezes.
 
-  Run the root first: it opens the head the Javascript boxes run in.
+  The right-hand column is the same contract for Kotlin compiled to Javascript (`kotlinjs`):
+  println and console.log beside their lines, an exception on its line, display and controls,
+  output after the run, and Launch/Stop of an `onFrame` loop.
+
+  Run the root first: it opens the head both columns run in.
 docs:
   - page: remotejs.md
     why: "Documents RemoteJS boxes: printing, errors, display, controls and Stop."
@@ -90,10 +94,92 @@ operations:
           window.spins = 0
           launch(() => { window.spins++ }, "spinner", false)
           print("spinning")
+  - create:
+      box: kparity_root
+      name: "Kotlin → head root -- children of this box are Kotlin compiled to Javascript"
+      frame: { x: 560.0, y: 40.0, w: 420.0, h: 100.0 }
+      properties:
+        mainLanguage: kotlinjs
+        isKotlinJsRoot: true
+        code: |
+          // Nothing to run here. Boxes under this one are Kotlin, compiled to Javascript and sent
+          // to the same browser head as the Javascript boxes on the left.
+  - create:
+      box: kparity_print
+      name: "Kotlin: println and console.log beside their lines"
+      frame: { x: 560.0, y: 640.0, w: 420.0, h: 100.0 }
+      properties:
+        code: |
+          // {{ remoteAR }}
+          println("from println")
+          console.log("from console.log", 6 * 7)
+  - create:
+      box: kparity_error
+      name: "Kotlin: an exception is marked on its line"
+      frame: { x: 560.0, y: 1140.0, w: 420.0, h: 100.0 }
+      properties:
+        code: |
+          // {{ remoteAR }}
+          // The marker lands on line 5, the throw inside mean.
+          fun mean(values: List<Double>): Double {
+              if (values.isEmpty())
+                  throw IllegalArgumentException("mean of nothing")
+              return values.sum() / values.size
+          }
+
+          println(mean(emptyList()))
+  - create:
+      box: kparity_controls
+      name: "Kotlin: display, a slider and a checkbox"
+      frame: { x: 560.0, y: 1640.0, w: 420.0, h: 100.0 }
+      properties:
+        code: |
+          // {{ remoteAR }}
+          var freq = 3.0
+          var square = false
+
+          fun redraw() {
+              display("main", "<b>${if (square) "square" else "sine"}</b> at ${freq.asDynamic().toFixed(1)} Hz")
+          }
+
+          slider("frequency", min = 1.0, max = 10.0, step = 0.1, initialValue = 3.0) { freq = it; redraw() }
+          checkbox("square wave") { square = it; redraw() }
+          redraw()
+  - create:
+      box: kparity_late
+      name: "Kotlin: output printed after the run finished"
+      frame: { x: 560.0, y: 2340.0, w: 420.0, h: 100.0 }
+      properties:
+        code: |
+          // {{ remoteAR }}
+          // The run ends at once; line 4 prints half a second later.
+          setTimeout({
+              println("half a second later")
+          }, 500)
+          println("the run is over")
+  - create:
+      box: kparity_spin
+      name: "Kotlin: Launch, then Stop, a frame loop"
+      frame: { x: 560.0, y: 2840.0, w: 420.0, h: 100.0 }
+      properties:
+        code: |
+          // {{ remoteAR }}
+          // Launch this, then Stop it: the frame count stops changing.
+          onStart {
+              onFrame { frame ->
+                  if (frame.frameNumber % 30 == 0) display("main", "frame ${frame.frameNumber}")
+              }
+          }
   - connect: { parent: rparity_root, child: rparity_print }
   - connect: { parent: rparity_root, child: rparity_error }
   - connect: { parent: rparity_root, child: rparity_controls }
   - connect: { parent: rparity_root, child: rparity_late }
   - connect: { parent: rparity_root, child: rparity_spin }
+  - connect: { parent: rparity_root, child: kparity_root }
+  - connect: { parent: kparity_root, child: kparity_print }
+  - connect: { parent: kparity_root, child: kparity_error }
+  - connect: { parent: kparity_root, child: kparity_controls }
+  - connect: { parent: kparity_root, child: kparity_late }
+  - connect: { parent: kparity_root, child: kparity_spin }
   - execute: { box: rparity_root, property: code }
   - await: {}

@@ -692,7 +692,7 @@ object DemoTranscriptExecSmokeTest {
         // language and skipped. ClojureFieldCoreTest and ClojureHostTest run the Clojure half.
         "clojure_box_parity",
         // RemoteJS box parity: the Kotlin root opens a browser head, which a headless run lacks;
-        // the five Javascript boxes are a guest language and skipped. RemoteJsBoxSurfaceTest runs
+        // the five Javascript boxes and five Kotlin → head boxes are guest languages and skipped. RemoteJsBoxSurfaceTest runs
         // the JVM half; the head half was driven through the backdoor (REMOTEJS_BOX_PARITY.md).
         "remotejs_box_parity",
         "python_box_parity",

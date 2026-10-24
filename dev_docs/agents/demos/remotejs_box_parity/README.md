@@ -15,3 +15,12 @@ browser head the Javascript boxes run in. Without it, running a child says no he
 - **Stop stops launch loops**: run it, then Stop; `window.spins` in the head stops counting.
 
 The code sidecars end in `.kt` because Field names every `code` sidecar that way.
+
+The right-hand column is the same contract for **Kotlin → head** boxes, Kotlin compiled to
+Javascript and sent to the same head ([Kotlin in the head](../../../../public/docs/kotlin_in_the_head.md)):
+
+- **Kotlin: println and console.log beside their lines**: both appear beside lines 2 and 3.
+- **Kotlin: an exception is marked on its line**: the red marker sits on line 5, the `throw`.
+- **Kotlin: display, a slider and a checkbox**: the same controls, with Kotlin callbacks.
+- **Kotlin: output printed after the run finished**: `setTimeout` prints beside line 4.
+- **Kotlin: Launch, then Stop, a frame loop**: Launch it and `main` counts frames; Stop freezes it.
