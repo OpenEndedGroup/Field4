@@ -41,7 +41,10 @@ import afield.ui.slides.*
 import afield.ui.visualization.*
 import afield.app.server.Server.Companion.stop
 import afield.app.diagnostics.logging.lprintln
+import afield.runtime.kotlin.SpareEngines
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
 private fun clearEditorOutputsForLaunch(uid: String) {
@@ -86,7 +89,14 @@ internal fun executeAllRequest(
     originSessionInfo: SessionInformation?,
 ) {
     val box = inItsLanguage(target)
+    val requested = System.nanoTime()
+    val timedReply = verdictTimed("execute.all", requested, box.id) { message ->
+        // The run has its verdict: build the engine the next one will take (see SpareEngines).
+        if (message.name == "execution-verdict" && box.ke is KotlinExecution) SpareEngines.prepare(box)
+        reply(message)
+    }
     inMain {
+        LatencySpans.record("execute.queue", requested, box = box.id)
         // Before the engine is replaced, and before this thread's session is set (this can
         // suspend): a box blocked in a propUp pull is still evaluating in that engine.
         ReactiveRuns.awaitNotBlocked(box)
@@ -98,11 +108,11 @@ internal fun executeAllRequest(
             FlightRecorder.recordExecuteEntrypoint("execute-all", box, exec)
             // experimental
             if (box.ke is KotlinExecution)
-                box.replaceKi(makeKIHere(box, reason = "execute-all handler reset"))
+                box.replaceKi(LatencySpans.time("engine.reset", box = box.id) { makeKIHere(box, reason = "execute-all handler reset") })
             box.properties["_preamble"] = "" // remove record of previous preamble line execs
             box.properties["_introduction"] = "" // ditto for introduction
             box.properties.remove("_attic")
-            box.ke.executeAll(box, exec, reply)
+            box.ke.executeAll(box, exec, timedReply)
         } finally {
             if (previousSession == null) thisSession.remove() else thisSession.set(previousSession)
             if (previousSessionInfo == null) thisSessionInfo.remove() else thisSessionInfo.set(previousSessionInfo)
@@ -116,7 +126,19 @@ internal fun launchAllRequest(target: Box, exec: Execute, reply: (Message) -> Un
     clearEditorOutputsForLaunch(exec.uid)
     FlightRecorder.recordLaunchEntrypoint("launch-all", box, exec, strand = "default")
     OperationTranscript.recordLaunch(box, exec, strand = "default")
-    box.ke.launchAll(box, exec, exec.code, "default", reply)
+    box.ke.launchAll(box, exec, exec.code, "default", verdictTimed("launch.all", System.nanoTime(), box.id, reply))
+}
+
+/** [reply], recording a [LatencySpans] span named [name] from [start] to the first `execution-verdict` through it. */
+private fun verdictTimed(name: String, start: Long, box: String, reply: (Message) -> Unit): (Message) -> Unit {
+    val done = AtomicBoolean(false)
+    return { message ->
+        if (message.name == "execution-verdict" && done.compareAndSet(false, true)) {
+            val ok = (message.payload as? JsonObject)?.get("success")?.toString()
+            LatencySpans.record(name, start, box = box, detail = "success=$ok")
+        }
+        reply(message)
+    }
 }
 
 @RunsAt(installHandlers)
@@ -137,7 +159,7 @@ fun executing() {
             val box = inItsLanguage(box(exec.uid))
             FlightRecorder.recordExecuteEntrypoint("execute-fragment", box, exec)
             OperationTranscript.recordExecuteFragment(box, exec)
-            box.ke.executeFragment(box, exec, reply)
+            box.ke.executeFragment(box, exec, verdictTimed("execute.fragment", System.nanoTime(), box.id, reply))
             Handled.yes
         })
 

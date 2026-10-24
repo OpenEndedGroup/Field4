@@ -52,6 +52,7 @@ import afield.ui.visualization.typed
 import afield.ai.tools.AiToolUseImprovementMonitor
 import afield.app.diagnostics.CodeUseSemanticAnalyzeRequest
 import afield.app.diagnostics.CodeUseTelemetryService
+import afield.app.diagnostics.LatencySpans
 import afield.app.notifications.notify
 import afield.app.protocol.AgentOpenPlaywrightResponse
 import afield.app.protocol.AllLayersResult
@@ -4441,6 +4442,11 @@ class Server {
                                 readWelcomeChangelog(limit)
                             }
                             call.respond(response)
+                        }
+
+                        get("/api/perf/spans") {
+                            val after = call.request.queryParameters["since"]?.toLongOrNull() ?: 0L
+                            call.respond(LatencySpans.since(after))
                         }
 
                         get("/api/code-use/summary") {

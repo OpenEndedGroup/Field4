@@ -31,6 +31,7 @@ import afield.ui.output.tree
 import afield.ui.visualization.typed
 
 import afield.app.diagnostics.CodeUseTelemetryService
+import afield.app.diagnostics.LatencySpans
 import afield.app.diagnostics.ProfileExempt
 import afield.app.notifications.notify
 import afield.app.protocol.put
@@ -359,6 +360,8 @@ class KotlinInterface2(
                     reuse = null
                 }
                 if (reuse != null) {
+                    val hitAt = System.nanoTime()
+                    LatencySpans.record("kotlin.compile.cacheHit", hitAt, hitAt, box = (associatedBox as? Box)?.id, detail = sourceProperty)
                     lprintln(
                         "info,kotlin,perf",
                         "\t\t compile cache hit engine=KotlinInterface2 filePrefix=$filePrefix property=$sourceProperty hits=${rerunCache.hits} misses=${rerunCache.misses} compiles=$compileCount preview=${compileSnippetPreview(s)}"
@@ -490,6 +493,7 @@ class KotlinInterface2(
         messageCollector.clear()
 
         var r: ResultWithDiagnostics<LinkedSnippet<CompiledScript>>? = null
+        val compileStart = System.nanoTime()
         val ns = measureNanoTime {
             try {
                 if (KotlinEngineConfig.offloadCompilation) {
@@ -508,6 +512,7 @@ class KotlinInterface2(
             }
         }
         compileNanos += ns
+        LatencySpans.record("kotlin.compile", compileStart, compileStart + ns, box = (associatedBox as? Box)?.id, detail = "$snippetKind length=${s.length}")
         lprintln("info,kotlin,compile", "compile=${formatMillis(ns)}")
         if (r is ResultWithDiagnostics.Failure) {
             context.debugScripts.discard(snapshot)
@@ -544,6 +549,7 @@ class KotlinInterface2(
             var runtimeClass = ""
             var returnType = ""
             var exception: Throwable? = null
+            val evalStart = System.nanoTime()
             val ns = measureNanoTime {
 
                 val evalConfig = ScriptEvaluationConfiguration {
@@ -569,6 +575,7 @@ class KotlinInterface2(
                 )
             }
             lprintln("info,kotlin,evaluate", "evaluate=${formatMillis(ns)}")
+            LatencySpans.record("kotlin.eval", evalStart, evalStart + ns, box = (associatedBox as? Box)?.id)
             val success = r is ResultWithDiagnostics.Success && r.value.get().result !is ResultValue.Error
             CodeUseTelemetryService.recordEvaluationResult(
                 snippetId = codeUseSnippetIds[e] ?: CodeUseTelemetryService.newSnippetKey(),
@@ -602,6 +609,7 @@ class KotlinInterface2(
             var runtimeClass = ""
             var returnType = ""
             var exception: Throwable? = null
+            val evalStart = System.nanoTime()
             val ns = measureNanoTime {
 
                 val evalConfig = ScriptEvaluationConfiguration {
@@ -628,6 +636,7 @@ class KotlinInterface2(
                 )
             }
             lprintln("info,kotlin,evaluate", "evaluate=${formatMillis(ns)}")
+            LatencySpans.record("kotlin.eval", evalStart, evalStart + ns, box = (associatedBox as? Box)?.id)
             val boxContext = (implicits.firstOrNull { it is Box } as? Box) ?: associatedBox as? Box
             val success = r is ResultWithDiagnostics.Success && r.value.get().result !is ResultValue.Error
             CodeUseTelemetryService.recordEvaluationResult(
@@ -2923,7 +2932,7 @@ class KotlinInterface2(
     ): ResultValue? {
         // Never evaluate before the stdlib intro has (see [bootstrapReady]). The bootstrap
         // itself uses [execInternal] to avoid waiting on itself.
-        bootstrapReady.await()
+        LatencySpans.time("engine.bootstrapWait", box = (associatedBox as? Box)?.id) { bootstrapReady.await() }
         return execInternal(s, onCompileError, onEvalError, onEvalException, implicits)
     }
 

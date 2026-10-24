@@ -3,6 +3,8 @@ package afield.document.graph
 import afield.app.protocol.GoJobs
 
 import afield.app.diagnostics.BoxOutputLog
+import afield.app.diagnostics.LatencySpans
+import afield.runtime.kotlin.SpareEngines
 import afield.app.diagnostics.ProfileOrigin
 import afield.app.diagnostics.logTime
 import afield.app.notifications.notify
@@ -393,6 +395,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         // released them through the run scopes (DocumentToolRegistry); this covers an engine
         // recycled without a retire, whose compiled tool bodies go with it.
         runCatching { afield.ai.tools.DocumentToolRegistry.clearBox(this) }
+        // A spare engine for this box's next run was built for the engine being retired here.
+        SpareEngines.discard(this)
         // Disposes the engine through releaseDiscardedKi, and leaves a later `ki` able to rebuild.
         if (!kiDelegate.discard()) return
         // The engine that ran this preamble no longer exists; see the KDoc above for the race this
@@ -2019,10 +2023,22 @@ private fun KotlinScriptEngine.kotlinStartupEngineLabel(): String {
  * the engine is disposed only once this function returns, which can be after the runloop picks the
  * bootstrap up.
  */
-fun makeKI(box: Box, reason: String = "makeKI call", superseded: () -> Boolean = { false }): KotlinScriptEngine {
+fun makeKI(box: Box, reason: String = "makeKI call", superseded: () -> Boolean = { false }): KotlinScriptEngine =
+    buildKI(box, reason, superseded, spare = false)
+
+/**
+ * [makeKI] for [afield.runtime.kotlin.SpareEngines]: an engine for [box]'s next run, built while its
+ * current engine is still the box's. So it leaves that engine's bookkeeping alone: the `_preamble`
+ * record, `offline` and the topology generation all describe the engine in use, and [adoptKI]
+ * brings the box up to date when the spare is installed.
+ */
+internal fun makeSpareKI(box: Box, superseded: () -> Boolean): KotlinScriptEngine =
+    buildKI(box, "spare for the next run", superseded, spare = true)
+
+private fun buildKI(box: Box, reason: String, superseded: () -> Boolean, spare: Boolean): KotlinScriptEngine {
 
     // force resync of actions per box
-    box.actions
+    if (!spare) box.actions
 
     logTime("ki_standardlib") {
         val startupId = kotlinStartupLogIds.incrementAndGet()
@@ -2031,7 +2047,9 @@ fun makeKI(box: Box, reason: String = "makeKI call", superseded: () -> Boolean =
             "info,ki,startup",
             "request #$startupId async reason=$reason box=${box.kotlinStartupLabel()} caller=$requestedFrom"
         )
-        val ki = createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+        val ki = LatencySpans.time("engine.create", box = box.id, detail = "async") {
+            createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+        }
         ki.associatedBox = box  // Set the box reference for @exported support
         // Close the engine's readiness gate now (synchronously, before returning `ki`) so any
         // exec/evaluate that follows waits for the async intro below, which opens it again.
@@ -2072,17 +2090,23 @@ fun makeKI(box: Box, reason: String = "makeKI call", superseded: () -> Boolean =
                             "info,ki,startup",
                             "begin imports #$startupId box=${box.kotlinStartupLabel()} introLength=${intro.length}"
                         )
-                        ki.bootstrap(
-                            intro, implicits = listOf(box)
-                        )
-                        lprintln("info,ki,startup", "reset preamble cache #$startupId box=${box.kotlinStartupLabel()}")
-                        box.properties.remove("_preamble")
-                        lprintln(
-                            "info,ki,startup",
-                            "complete #$startupId box=${box.kotlinStartupLabel()} box is no longer offline"
-                        )
-                        box.offline = false
-                        si?.topologyGeneration++
+                        LatencySpans.time("engine.bootstrap", box = box.id, detail = "async") {
+                            ki.bootstrap(
+                                intro, implicits = listOf(box)
+                            )
+                        }
+                        if (spare) {
+                            lprintln("info,ki,startup", "complete #$startupId spare box=${box.kotlinStartupLabel()}")
+                        } else {
+                            lprintln("info,ki,startup", "reset preamble cache #$startupId box=${box.kotlinStartupLabel()}")
+                            box.properties.remove("_preamble")
+                            lprintln(
+                                "info,ki,startup",
+                                "complete #$startupId box=${box.kotlinStartupLabel()} box is no longer offline"
+                            )
+                            box.offline = false
+                            si?.topologyGeneration++
+                        }
                     }
                 }
             } finally {
@@ -2096,14 +2120,23 @@ fun makeKI(box: Box, reason: String = "makeKI call", superseded: () -> Boolean =
     }
 }
 
+/**
+ * A fresh engine for [box], ready for its code: the box's spare from
+ * [afield.runtime.kotlin.SpareEngines] when it has one, otherwise one built and bootstrapped here.
+ */
 suspend fun makeKIHere(box: Box, reason: String = "makeKIHere call"): KotlinScriptEngine {
+    if (!box.properties["_tombstone"].isTrue()) {
+        SpareEngines.take(box)?.let { return adoptKI(box, it, reason) }
+    }
     val startupId = kotlinStartupLogIds.incrementAndGet()
     val requestedFrom = kotlinStartupStack()
     lprintln(
         "info,ki,startup",
         "request #$startupId sync reason=$reason box=${box.kotlinStartupLabel()} caller=$requestedFrom"
     )
-    val ki = createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+    val ki = LatencySpans.time("engine.create", box = box.id, detail = "sync") {
+        createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+    }
     ki.associatedBox = box  // Set the box reference for @exported support
     val si = thisSessionInfo.get()
     if (box.properties["_tombstone"].isTrue()) {
@@ -2120,9 +2153,11 @@ suspend fun makeKIHere(box: Box, reason: String = "makeKIHere call"): KotlinScri
                 "info,ki,startup",
                 "begin imports #$startupId box=${box.kotlinStartupLabel()} introLength=${intro.length}"
             )
-            ki.bootstrap(
-                intro, implicits = listOf(box)
-            )
+            LatencySpans.time("engine.bootstrap", box = box.id, detail = "sync") {
+                ki.bootstrap(
+                    intro, implicits = listOf(box)
+                )
+            }
             val preamble = box.preamble
             if (preamble.isNotBlank()) {
                 lprintln(
@@ -2133,6 +2168,27 @@ suspend fun makeKIHere(box: Box, reason: String = "makeKIHere call"): KotlinScri
             preamble.let { ki.exec(it, implicits = listOf(box)) }
             lprintln("info,ki,startup", "complete #$startupId box=${box.kotlinStartupLabel()}")
         }
+    }
+    si?.topologyGeneration++
+    box.offline = false
+    return ki
+}
+
+/**
+ * Finish a spare engine from [makeSpareKI] as [makeKIHere] finishes one it built: run the box's
+ * preamble in it (after its bootstrap, which `exec` waits for) and bring the box's bookkeeping up to
+ * date.
+ */
+private suspend fun adoptKI(box: Box, ki: KotlinScriptEngine, reason: String): KotlinScriptEngine {
+    val si = thisSessionInfo.get()
+    lprintln("info,ki,startup", "adopt spare engine reason=$reason box=${box.kotlinStartupLabel()} engine=${ki.kotlinStartupEngineLabel()}")
+    box.actions
+    Box.withBoxContext(box) {
+        val preamble = box.preamble
+        if (preamble.isNotBlank()) {
+            lprintln("info,ki,startup", "begin preamble spare box=${box.kotlinStartupLabel()} preambleLength=${preamble.length}")
+        }
+        ki.exec(preamble, implicits = listOf(box))
     }
     si?.topologyGeneration++
     box.offline = false
