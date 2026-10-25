@@ -1287,6 +1287,55 @@ pre code {
     color: var(--ai-chat-ai-fg, var(--field-fg));
 }
 
+/* A question the agent asked (AskUserQuestionRequest): the turn waits for the person's answer. */
+.ai-chat-question {
+    align-self: stretch;
+    margin: 4px 6px;
+    padding: 6px 8px;
+    border-left: 2px solid var(--field-border-medium);
+    border-radius: 0 8px 8px 0;
+    background: var(--field-editor-bg);
+    color: var(--field-fg);
+}
+
+.ai-chat-question.open {
+    border-left-color: var(--field-accent);
+    background: rgba(var(--field-accent-rgb), 0.08);
+}
+
+.ai-chat-question-choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.ai-chat-question-choice {
+    font: inherit;
+    padding: 3px 10px;
+    border: 1px solid var(--field-border-strong);
+    border-radius: 12px;
+    background: var(--field-surface);
+    color: var(--field-fg-strong);
+    cursor: pointer;
+}
+
+.ai-chat-question-choice:hover:not(:disabled) {
+    border-color: var(--field-accent);
+    background: rgba(var(--field-accent-rgb), 0.18);
+}
+
+.ai-chat-question-choice:disabled {
+    cursor: default;
+    opacity: 0.5;
+}
+
+.ai-chat-question-hint {
+    margin-top: 4px;
+    font-size: 0.85em;
+    color: var(--field-fg-muted);
+}
+
 .ai-chat-turn.you {
     align-self: flex-end;
     text-align: right;
