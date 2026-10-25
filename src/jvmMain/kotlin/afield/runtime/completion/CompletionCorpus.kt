@@ -78,10 +78,10 @@ import java.security.MessageDigest
  */
 object CompletionCorpus {
 
-    /** Where the bundled starting points and templates live, relative to the repo root. */
     /** The id a document's root box has; `document.md` lists it as a parent without a record of its own. */
     const val ROOT_ID = "root"
 
+    /** Where the bundled starting points and templates live, relative to the repo root. */
     val defaultDirs: List<String> = listOf("public/docs/assets/agent_transcripts", "templates")
 
     /** Checked-in harvest output. */
