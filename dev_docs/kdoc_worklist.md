@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17696 of 34368 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17700 of 34376 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2241 undocumented entry points** (types, top-level functions and values) and 13717 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2241 undocumented entry points** (types, top-level functions and values) and 13721 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -723,6 +723,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ReactiveRuns.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/ReactiveRuns.kt) | Workspace | — | 0 | 9 | 67% |
 | [decorations.kt](../src/jvmMain/kotlin/afield/ui/output/decorations.kt) | Visualization | — | 0 | 9 | 71% |
 | [AiBoxConversation.kt](../src/jvmMain/kotlin/afield/ai/conversation/AiBoxConversation.kt) | Machine learning | — | 0 | 8 | 33% |
+| [TurnSuspension.kt](../src/jvmMain/kotlin/afield/ai/conversation/TurnSuspension.kt) | Machine learning | — | 0 | 8 | 55% |
 | [fline_graph_connectivity.kt](../src/jvmMain/kotlin/afield/data/graph/fline_graph_connectivity.kt) | Graphics | — | 0 | 8 | 38% |
 | [HistoryMetrics.kt](../src/jvmMain/kotlin/afield/document/history/HistoryMetrics.kt) | Workspace | — | 0 | 8 | 11% |
 | [OpenDlssNrImage.kt](../src/jvmMain/kotlin/afield/graphics/render/neural/OpenDlssNrImage.kt) | Graphics | — | 0 | 8 | 20% |
@@ -737,7 +738,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [AgentWorktreeManager.kt](../src/jvmMain/kotlin/afield/tools/automation/AgentWorktreeManager.kt) | Workspace | — | 0 | 8 | 11% |
 | [NotationScene.kt](../src/jvmMain/kotlin/afield/ui/notation/NotationScene.kt) | Visualization | — | 0 | 8 | 42% |
 | [GeometryFinding.kt](../src/jvmMain/kotlin/afield/ui/visualization/GeometryFinding.kt) | Visualization | — | 0 | 8 | 11% |
-| [TurnSuspension.kt](../src/jvmMain/kotlin/afield/ai/conversation/TurnSuspension.kt) | Machine learning | — | 0 | 7 | 53% |
 | [BoxOutputLog.kt](../src/jvmMain/kotlin/afield/app/diagnostics/BoxOutputLog.kt) | Workspace | — | 0 | 7 | 46% |
 | [Scene.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/Scene.kt) | Audio | — | 0 | 7 | 73% |
 | [HarmonicPhaseTracker.kt](../src/jvmMain/kotlin/afield/audio/synth/HarmonicPhaseTracker.kt) | Synthesis | — | 0 | 7 | 74% |
@@ -837,6 +837,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FilestoreDir.kt](../src/jvmMain/kotlin/afield/ai/knowledge/FilestoreDir.kt) | Machine learning | — | 0 | 3 | 66% |
 | [AnthropicBridge.kt](../src/jvmMain/kotlin/afield/ai/models/AnthropicBridge.kt) | Machine learning | — | 0 | 3 | 40% |
 | [RelatedContextDiscovery.kt](../src/jvmMain/kotlin/afield/ai/retrieval/RelatedContextDiscovery.kt) | Machine learning | — | 0 | 3 | 40% |
+| [AskUserTools.kt](../src/jvmMain/kotlin/afield/ai/tools/AskUserTools.kt) | Machine learning | — | 0 | 3 | 40% |
 | [DocsSearchBridge.kt](../src/jvmMain/kotlin/afield/ai/tools/DocsSearchBridge.kt) | Machine learning | — | 0 | 3 | 40% |
 | [LiveProbeClient.kt](../src/jvmMain/kotlin/afield/app/diagnostics/debug/LiveProbeClient.kt) | Workspace | — | 0 | 3 | 25% |
 | [SaveReloadLog.kt](../src/jvmMain/kotlin/afield/app/diagnostics/logging/SaveReloadLog.kt) | Workspace | — | 0 | 3 | 25% |

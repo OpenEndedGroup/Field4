@@ -4,7 +4,7 @@
 
 Models small enough to train inside a box, in plain Kotlin, while you watch. Flow matching carries one 2D or 3D point cloud onto another and hands back the deformation between them; the multi-output regression head it trains is usable on its own. See [Flow Matching](../flow_matching.md).
 
-100 source file(s), 2237 public symbol(s), 700 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+101 source file(s), 2245 public symbol(s), 704 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1657,19 +1657,27 @@ A tool result that ends the model's turn when [`suspension`](machine-learning.md
 
 ### TurnSuspension { #turnsuspension-kt-turnsuspension }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TurnSuspension</span><span class="p">(</span><span class="k">val</span> <span class="n">jobs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AwaitedBuild</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">deadlineMs</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L27)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TurnSuspension</span><span class="p">(</span><span class="k">val</span> <span class="n">jobs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AwaitedBuild</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">deadlineMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">0L</span><span class="p">,</span> <span class="k">val</span> <span class="n">question</span><span class="p">:</span> <span class="nc">AskedQuestion</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L30)
 
-The study-build jobs a suspended turn waits for, and how long it may wait.
+What a suspended turn waits for: study-build [`jobs`](machine-learning.md#turnsuspension-kt--turnsuspension--jobs) and how long it may wait for them, or the person's answer to a [`question`](machine-learning.md#turnsuspension-kt--turnsuspension--question) (`AskUserQuestionRequest`), which has no deadline: their next message is the answer.
 
 | Declaration | Summary |
 | --- | --- |
 | <a id="turnsuspension-kt--turnsuspension--jobs"></a><code class="highlight"><span class="k">val</span> <span class="n">jobs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AwaitedBuild</span><span class="p">&gt;</span></code> |  |
-| <a id="turnsuspension-kt--turnsuspension--deadlinems"></a><code class="highlight"><span class="k">val</span> <span class="n">deadlineMs</span><span class="p">:</span> <span class="nc">Long</span></code> | Epoch milliseconds after which the conversation resumes whatever the jobs' state. |
-| <a id="turnsuspension-kt--turnsuspension--merge"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">merge</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">TurnSuspension</span><span class="p">)</span><span class="p">:</span> <span class="nc">TurnSuspension</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L33) | One round may await more than once (two runners): wait for every job, until the later deadline. |
+| <a id="turnsuspension-kt--turnsuspension--deadlinems"></a><code class="highlight"><span class="k">val</span> <span class="n">deadlineMs</span><span class="p">:</span> <span class="nc">Long</span></code> | Epoch milliseconds after which the conversation resumes whatever the jobs' state; 0 with no jobs. |
+| <a id="turnsuspension-kt--turnsuspension--question"></a><code class="highlight"><span class="k">val</span> <span class="n">question</span><span class="p">:</span> <span class="nc">AskedQuestion</span><span class="o">?</span></code> |  |
+| <a id="turnsuspension-kt--turnsuspension--merge"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">merge</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">TurnSuspension</span><span class="p">)</span><span class="p">:</span> <span class="nc">TurnSuspension</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L37) | One round may await more than once (two runners): wait for every job, until the later deadline. The first question stands. |
+| <a id="turnsuspension-kt--turnsuspension--describe"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L42) | For logs: what the turn waits for. |
+
+### AskedQuestion { #turnsuspension-kt-askedquestion }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AskedQuestion</span><span class="p">(</span><span class="k">val</span> <span class="n">question</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">choices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L54)
+
+A question the agent asked the person, and the answers it suggests (possibly none).
 
 ### AwaitedBuild { #turnsuspension-kt-awaitedbuild }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AwaitedBuild</span><span class="p">(</span><span class="k">val</span> <span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">jobId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">stage</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L43)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AwaitedBuild</span><span class="p">(</span><span class="k">val</span> <span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">jobId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">stage</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L57)
 
 One awaited attempt: the runner (its box and name), the job, and what to call it in the chat.
 
@@ -1684,13 +1692,13 @@ One awaited attempt: the runner (its box and name), the job, and what to call it
 
 ### SuspendedRound { #turnsuspension-kt-suspendedround }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SuspendedRound</span><span class="p">(</span><span class="k">val</span> <span class="n">outputs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PendingToolOutput</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L59)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SuspendedRound</span><span class="p">(</span><span class="k">val</span> <span class="n">outputs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PendingToolOutput</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L73)
 
 The tool outputs of the round that suspended a turn, which the provider has not seen yet. The next turn sends them first: on OpenAI's chained responses its `previous_response_id` is still the response that made these calls, and every call must have an output before anything else can follow it; on Anthropic, whose history this bridge keeps, the `tool_use` blocks need their `tool_result`s in the next user message.
 
 ### PendingToolOutput { #turnsuspension-kt-pendingtooloutput }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PendingToolOutput</span><span class="p">(</span><span class="k">val</span> <span class="n">callId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">outputJson</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">isError</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L62)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PendingToolOutput</span><span class="p">(</span><span class="k">val</span> <span class="n">callId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">outputJson</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">isError</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L76)
 
 A finished call's output as the provider will receive it. `isError` marks a failed call (Anthropic).
 
@@ -4244,6 +4252,36 @@ dry-run patch and transcript are written under this checkout's `build/`.
 | <a id="aitooluseimprovementmonitor-kt--aitooluseimprovementmonitor--view"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">view</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">AiToolUseImprovementView</span></code>](source/jvmMain/afield/ai/tools/AiToolUseImprovementMonitor/#L84) |  |
 | <a id="aitooluseimprovementmonitor-kt--aitooluseimprovementmonitor--start"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="n">dryRun</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">proposalCount</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span><span class="p">:</span> <span class="nc">AiToolUseImprovementStatus</span></code>](source/jvmMain/afield/ai/tools/AiToolUseImprovementMonitor/#L100) |  |
 | <a id="aitooluseimprovementmonitor-kt--aitooluseimprovementmonitor--clearreviewed"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">clearReviewed</span><span class="p">(</span><span class="n">recentOnly</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">AiToolUseImprovementStatus</span></code>](source/jvmMain/afield/ai/tools/AiToolUseImprovementMonitor/#L146) |  |
+
+## AskUserTools.kt { #askusertools-kt }
+
+Asking the person a question mid-task: [`AskUserQuestionRequest`](machine-learning.md#askusertools-kt-askuserquestionrequest) ends the turn with a [`TurnSuspension`](machine-learning.md#turnsuspension-kt-turnsuspension) carrying
+the question. The box chat ends its transcript with a question row (`AiChatBlock.questionRow`), which the panel
+shows with a button per suggested answer; the person's next message, a button's or typed, is the answer, and
+the next turn opens with this call's output ahead of it, as any suspended turn does.
+
+`src/jvmMain/kotlin/afield/ai/tools/AskUserTools.kt` — [read the source](source/jvmMain/afield/ai/tools/AskUserTools/)
+
+### AskUserQuestionRequest { #askusertools-kt-askuserquestionrequest }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AskUserQuestionRequest</span><span class="p">(</span><span class="p">@</span><span class="nc">JsonPropertyDescription</span><span class="p">(</span><span class="s">&quot;The one question, in a sentence or two, with whatever the person needs to answer it. Markdown is allowed.&quot;</span><span class="p">)</span> <span class="k">val</span> <span class="n">question</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="p">@</span><span class="nc">JsonPropertyDescription</span><span class="p">(</span><span class="s">&quot;Up to 6 short suggested answers (a few words each), your recommendation first; empty to ask for a free-text answer.&quot;</span><span class="p">)</span> <span class="k">val</span> <span class="n">choices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/AskUserTools/#L25)
+
+Asking the person a question mid-task: [`AskUserQuestionRequest`](machine-learning.md#askusertools-kt-askuserquestionrequest) ends the turn with a [`TurnSuspension`](machine-learning.md#turnsuspension-kt-turnsuspension) carrying the question. The box chat ends its transcript with a question row (`AiChatBlock.questionRow`), which the panel shows with a button per suggested answer; the person's next message, a button's or typed, is the answer, and the next turn opens with this call's output ahead of it, as any suspended turn does.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="askusertools-kt--askuserquestionrequest--question"></a><code class="highlight"><span class="k">val</span> <span class="n">question</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="askusertools-kt--askuserquestionrequest--choices"></a><code class="highlight"><span class="k">val</span> <span class="n">choices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
+
+### AskUserQuestionResult { #askusertools-kt-askuserquestionresult }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AskUserQuestionResult</span><span class="p">(</span><span class="k">val</span> <span class="n">success</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">suspended</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="p">@</span><span class="n">get</span><span class="p">:</span><span class="nc">JsonIgnore</span> <span class="k">override</span> <span class="k">val</span> <span class="n">suspension</span><span class="p">:</span> <span class="nc">TurnSuspension</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SummarisesForToolLog</span><span class="p">,</span> <span class="nc">SuspendsTurn</span></code>](source/jvmMain/afield/ai/tools/AskUserTools/#L33)
+
+[`AskUserQuestionRequest`](machine-learning.md#askusertools-kt-askuserquestionrequest)'s result. A set `suspension` ends the turn; the model reads only the rest.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="askusertools-kt--askuserquestionresult--toollogsummary"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toolLogSummary</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/AskUserTools/#L35) |  |
 
 ## AttachmentExcerpt.kt { #attachmentexcerpt-kt }
 
