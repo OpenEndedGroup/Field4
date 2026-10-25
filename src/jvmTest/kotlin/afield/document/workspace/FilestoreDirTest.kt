@@ -28,6 +28,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
+import kotlin.test.assertNotNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
@@ -41,6 +43,33 @@ import kotlin.test.assertTrue
  * `FieldSuggestPresentationTest`'s ranks moved with it. See `dev_docs/HERMETIC_COMPLETION_INPUTS.md`.
  */
 class FilestoreDirTest {
+
+    @Test
+    fun diskFallbackIsCachedForCategoryAndKDocLookups() {
+        val was = KotlinSourceIndex.latestIndex
+        try {
+            for (kdoc in listOf(false, true)) {
+                val dir = seed("Math", "fixture documentation")
+                try {
+                    FilestoreDir.withDirectory(dir) {
+                        KotlinSourceIndex.latestIndex = null
+                        fun lookup() = if (kdoc) KotlinSourceIndex.getKDocForSymbol(SYMBOL) else category()
+                        val expected = if (kdoc) "fixture documentation" else "Math"
+                        assertEquals(expected, lookup())
+                        val loaded = assertNotNull(KotlinSourceIndex.latestIndex,
+                            "the disk fallback must populate the same in-memory index as background sync")
+                        Files.delete(dir.resolve("kotlin_source_index.json"))
+                        assertEquals(expected, lookup(), "a second lookup should use the already loaded index")
+                        assertSame(loaded, KotlinSourceIndex.latestIndex)
+                    }
+                } finally {
+                    dir.toFile().deleteRecursively()
+                }
+            }
+        } finally {
+            KotlinSourceIndex.latestIndex = was
+        }
+    }
 
     @Test
     fun theDefaultIsPerCheckoutRatherThanPerMachine() {
@@ -137,7 +166,7 @@ class FilestoreDirTest {
     private fun read(dir: Path): KotlinSourceIndexDb =
         FilestoreDir.withDirectory(dir) { KotlinSourceIndex.loadIndex()!! }
 
-    private fun seed(categoryName: String): Path {
+    private fun seed(categoryName: String, kdoc: String? = null): Path {
         val dir = Files.createTempDirectory("filestore-seed-")
         val db = KotlinSourceIndexDb(
             root = ".",
@@ -147,7 +176,7 @@ class FilestoreDirTest {
             definitions = listOf(
                 KotlinDefinitionRecord(
                     name = SYMBOL, kind = "fun", filePath = "src/jvmMain/kotlin/probe.kt", line = 1,
-                    fileId = null, contentHash = "", kdoc = null, completionCategory = categoryName
+                    fileId = null, contentHash = "", kdoc = kdoc, completionCategory = categoryName
                 )
             ),
         )
