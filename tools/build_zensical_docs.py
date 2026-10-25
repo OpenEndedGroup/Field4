@@ -502,6 +502,49 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
 REQUIRES_ATTR_RE = re.compile(r'(?m)^```\w*_?runner\b[^\n]*?\brequires="([^"]*)"')
 
 
+GRADLE_PREREQUISITE_RE = re.compile(r"\./gradlew (\w+)")
+
+
+def refresh_native_prerequisites(repo_root: Path, needed: dict[str, list[str]]) -> None:
+    """Run the Gradle task behind each needed native artifact, so a stale one is rebuilt.
+
+    The existence check below cannot see staleness: a `libfield_paint_jvm.dylib` built before
+    `field_paint_stroke_noise` existed passes it, and the capture that first calls the new entry
+    point fails with an UnsatisfiedLinkError an hour into the build. The tasks declare their
+    sources as inputs, so a current artifact costs Gradle's up-to-date check and nothing more.
+    A failure here (no cargo, no network) is left to the existence check, which already decides
+    whether a missing artifact is a warning or an error in this mode.
+    `FIELD_DOCS_REFRESH_NATIVES=0` skips it.
+    """
+    if os.environ.get("FIELD_DOCS_REFRESH_NATIVES", "1").strip() == "0":
+        return
+    gradlew = repo_root / "gradlew"
+    if not gradlew.is_file():
+        return
+    tasks = sorted({
+        match.group(1)
+        for key in needed
+        if key in NATIVE_PREREQUISITES
+        and (match := GRADLE_PREREQUISITE_RE.fullmatch(NATIVE_PREREQUISITES[key][1]))
+    })
+    if not tasks:
+        return
+    started = time.monotonic()
+    from verification_runtime import pinned_graalvm_args  # noqa: PLC0415
+    result = subprocess.run(
+        [str(gradlew), *pinned_graalvm_args(repo_root), "--no-daemon", "-q", "--continue", *tasks],
+        cwd=repo_root,
+        check=False,
+    )
+    if result.returncode != 0:
+        print(
+            f"Refreshing native prerequisites ({', '.join(tasks)}) failed; checking what exists.",
+            file=sys.stderr,
+        )
+        return
+    print(f"Native prerequisites current ({', '.join(tasks)}) in {time.monotonic() - started:.1f}s")
+
+
 def check_native_prerequisites(
     *,
     public_dir: Path,
@@ -544,6 +587,8 @@ def check_native_prerequisites(
                 needed.setdefault(key, [])
                 if relative.as_posix() not in needed[key]:
                     needed[key].append(relative.as_posix())
+
+    refresh_native_prerequisites(repo_root, needed)
 
     missing: list[str] = []
     python = resolve_jep_python() if any(key.startswith("python:") for key in needed) else None

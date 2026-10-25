@@ -127,6 +127,42 @@ class PythonPrerequisiteTests(unittest.TestCase):
             self.assertEqual(resolve_jep_python(), (Path("/resolved/python"), Path("/resolved/libjep")))
 
 
+class RefreshNativePrerequisiteTests(unittest.TestCase):
+    """A stale artifact passes the existence check, so the needed Gradle tasks run first."""
+
+    def setUp(self):
+        self.stack = contextlib.ExitStack()
+        self.addCleanup(self.stack.close)
+        self.docs = FakeDocs(self.stack, {"p.md": FENCE.replace('requires="ceres"', 'requires="ceres,paint,manifold"')})
+        (self.docs.repo_root / "gradlew").touch()
+        self.stack.enter_context(patch("verification_runtime.pinned_graalvm_args", return_value=[]))
+        self.run = self.stack.enter_context(
+            patch("build_zensical_docs.subprocess.run", return_value=subprocess.CompletedProcess([], 0)))
+        self.stack.enter_context(contextlib.redirect_stderr(io.StringIO()))
+        self.stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
+
+    def check(self):
+        check_native_prerequisites(public_dir=self.docs.public_dir, repo_root=self.docs.repo_root,
+                                   runner_mode="incremental", page_filters=())
+
+    def test_runs_the_gradle_task_of_each_needed_prerequisite_once(self):
+        self.check()
+        argv = self.run.call_args.args[0]
+        # manifold's remedy is `brew install`, not a task, so it is not in the list.
+        self.assertEqual(argv[-2:], ["buildCeresRedistributable", "buildPaintNative"])
+        self.assertEqual(self.run.call_count, 1)
+
+    def test_opt_out(self):
+        with patch.dict(os.environ, {"FIELD_DOCS_REFRESH_NATIVES": "0"}):
+            self.check()
+        self.run.assert_not_called()
+
+    def test_without_a_gradlew_nothing_runs(self):
+        (self.docs.repo_root / "gradlew").unlink()
+        self.check()
+        self.run.assert_not_called()
+
+
 class FakeDocs:
     """A throwaway public/ tree with one page, so the scan has something to find."""
 
