@@ -26,6 +26,26 @@ import kotlin.math.abs
 import kotlin.system.exitProcess
 
 /**
+ * A program that draws GPU-skinned characters through the real Vulkan path and writes the frames
+ * out as PNGs, each one paired with a CPU-skinned frame of the same pose.
+ *
+ * ```bash
+ * ./gradlew --no-daemon runGpuSkinningEvidence
+ * ```
+ *
+ * It opens a window, poses a rigged fixture bent, blended across two clips, as a crowd of
+ * instances and twisted, and writes the pictures under `dev_docs/agents/evidence/gpu_skinning`.
+ * Each pose is rendered twice so that the two frames can be differenced: they differ in where the
+ * skinning happened and in nothing else, which makes the difference a statement about the vertex
+ * shader rather than about two renderers. A zero difference is weak on its own, so a control
+ * frame with skinning switched off has to look different from the skinned one.
+ *
+ * Every check ends the run with a non-zero exit code when it fails, including a frame that came
+ * back blank, so this reads as a gate as well as a set of pictures. [SkinningEvidence] is the
+ * CPU-side companion, drawn with the software rasteriser.
+ */
+
+/**
  * Render GPU-skinned characters and write frames a person can look at.
  *
  * `./gradlew --no-daemon runGpuSkinningEvidence`
