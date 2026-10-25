@@ -110,7 +110,7 @@ import kotlin.math.sqrt
  * ```kotlin
  * val scene = pickScene {
  *     add("floor", plane(4.0), parts = PickParts.single(plane(4.0), "floor"))
- *     add("lamp", icosphere(2), at = Matrix4f().translation(0f, 1.5f, 0f))
+ *     add("lamp", icosphereMesh(2), at = Matrix4f().translation(0f, 1.5f, 0f))
  * }
  * val camera = MeshView().rayCamera(scene.mergedMesh())
  * val hit = scene.pick(camera.rayThroughPixel(360, 270))

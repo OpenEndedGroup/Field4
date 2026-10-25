@@ -9,6 +9,20 @@ import java.util.concurrent.Executors
 import kotlinx.coroutines.CompletableDeferred
 
 /**
+ * A box's next Kotlin engine, built while the box is idle.
+ *
+ * Running a box gives it a fresh REPL, and building one costs a few hundred milliseconds that the
+ * person who pressed the key waits through. [SpareEngines] moves that wait off the keypress: once a
+ * run has its verdict, the box's next engine is built on a background thread, and the next run
+ * takes the one already standing by. The run still gets a fresh engine; only the waiting moves.
+ *
+ * Engines are tens of megabytes, so only a handful of boxes hold one at a time, the least recently
+ * prepared giving way first. A spare is dropped when its box is retired, and refused if the shared
+ * class loader has gained jars since the spare was built, because an engine fixes its compile
+ * classpath when it is created. `-Dafield.kotlin.spareEngines=0` turns the whole thing off.
+ */
+
+/**
  * Engines built ahead of a box's next `execute-all`, so running a box does not wait for a new
  * Kotlin engine.
  *

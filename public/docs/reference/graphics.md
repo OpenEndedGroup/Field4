@@ -2494,52 +2494,22 @@ Cached connectivity for one [`TriMesh`](graphics.md#mesh-kt-trimesh).
 
 ## pointing_mesh.kt { #pointing-mesh-kt }
 
-Turning a place a person is looking at back into a place in the world.
+Pointing a [`Ray`](graphics.md#pointing-kt-ray) at a mesh and asking what it hits.
 
-This file does one step of that: **pixel → ray**, the unprojection that gets you from a mouse
-position, a controller pose or a headset's aim to a line in the scene. [`PickScene`](graphics.md#pointing-pick-kt-pickscene) is the next
-step, ray → named part, and [`Pointer`](graphics.md#pointing-pointer-kt-pointer) the step before, person → pixel-or-pose. Once you have the
-ray, [`MeshBvh.raycast`](graphics.md#pointing-mesh-kt--raycast), `intersectRayTriangle` and `intersectRayPlane` answer what it hits.
+One extension lives here, because the two halves of this question are in different packages.
+Rays are made in `afield.graphics.interaction`: [`Pointer`](graphics.md#pointing-pointer-kt-pointer) is what a person points with, and the
+unprojection behind [`RayCamera`](graphics.md#pointing-kt-raycamera) turns the pixel or the pose it reports into a [`Ray`](graphics.md#pointing-kt-ray). The
+structure that answers which triangle a ray meets is [`MeshBvh`](graphics.md#mesh-measure-kt-meshbvh), which belongs with the meshes and
+takes an origin and a direction as two separate `Vec3` arguments. The overload below unpacks a
+[`Ray`](graphics.md#pointing-kt-ray) into them.
 
-### The two camera models
+Two things follow from that hop and are easier to state here than at the call site. A [`Ray`](graphics.md#pointing-kt-ray)
+normalises its direction when it is constructed, so the distance in the [`RayHit`](graphics.md#mesh-measure-kt-rayhit) that comes back
+is in world units however the caller built the ray. And a [`Ray`](graphics.md#pointing-kt-ray) holds its origin and direction in
+double precision while `Vec3` is float, so both narrow at this call before the intersection test
+widens them again and runs in double.
 
-Field has two unrelated camera models, and confusing them is the main hazard here:
-
- - **[`MeshView`](graphics.md#mesh-field-kt-meshview)** — the orbital camera behind [`TriMesh.renderPng`](graphics.md#mesh-field-kt--renderpng), Field's CPU rasterizer. Yaw,
-   pitch, a distance *in multiples of the mesh's own bounding-sphere radius*, and a field of view.
-   This is the one that makes pixels with no GPU, no window and no AWT, so it is the one a headless
-   test or a docs capture can prove things with. [`MeshView.rayCamera`](graphics.md#pointing-kt--raycamera) inverts it, and does so by
-   calling straight into [`VisionGeometryPreview.ViewFrame`](graphics.md#visiongeometrypreview-kt--visiongeometrypreview--viewframe) — *the same object the rasterizer
-   projects with*, so the unprojection is the renderer's inverse by construction rather than by
-   transcription.
- - **[`afield.graphics.vulkan.util.Camera`](graphics.md#camera-kt-camera)** — the live Vulkan scene's camera: a `lookAt` model-view and a
-   [`afield.graphics.vulkan.util.SuperProjection`](graphics.md#projection-kt-superprojection), which can be a perspective frustum, an off-centre one, an
-   orthographic prism, or a Lie-group interpolation *between* perspective and ortho. There is no
-   closed-form frustum to re-derive for that last case, so [`rayCameraFor`](graphics.md#pointing-kt--raycamerafor) handles all of them the
-   same way: it inverts the clip matrix numerically, in double precision.
-
-### Conventions
-
- - **Pixel coordinates run from the top-left of the frame, y downward**, which is what GLFW's
-   cursor reports (`Window.cursor` is `glfwGetCursorPos`) and what an image's rows are indexed by.
-   Pixel *centres* are at half-integers: pixel `(0, 0)` covers `[0,1) x [0,1)` and its centre is
-   `(0.5, 0.5)`. All the `rayThroughPixel` overloads take the pixel *index* and aim at its centre.
- - **Field's clip space is Vulkan's depth range, `z` in `0..1`**, and `y` is *up* in NDC despite
-   Vulkan's default being down — [`afield.graphics.vulkan.Renderer`](graphics.md#renderer-kt-renderer) flips it with a negative-height viewport
-   (`setViewportAndScissor` sets `y = rect.y + rect.h` and `height = -rect.h`), precisely so that
-   the familiar GL-style projection matrices keep working. So NDC `y = +1` is the **top** row.
- - **A ray's direction is unit length**, so [`RayCamera`](graphics.md#pointing-kt-raycamera) hit distances are in world units and
-   comparable between pointers.
-
-### Typical use
-
-```diffstatic {data-lang=kotlin}
-val mesh = icosphere(2)
-val view = MeshView(yawDegrees = 30.0, pitchDegrees = 20.0)
-val camera = view.rayCamera(mesh)
-val hit = mesh.bvh().raycast(camera.rayThroughPixel(360, 270))
-println(hit)                                  // the triangle under the middle of the picture
-```
+For ray to *named part* rather than ray to triangle, see [`PickScene`](graphics.md#pointing-pick-kt-pickscene).
 
 `src/jvmMain/kotlin/afield/geometry/mesh/pointing_mesh.kt` — [read the source](source/jvmMain/afield/geometry/mesh/pointing_mesh/)
 
@@ -2547,7 +2517,7 @@ println(hit)                                  // the triangle under the middle o
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="pointing-mesh-kt--raycast"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">MeshBvh</span><span class="p">.</span><span class="nf">raycast</span><span class="p">(</span><span class="n">ray</span><span class="p">:</span> <span class="nc">Ray</span><span class="p">,</span> <span class="n">maxDistance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">MAX&#95;VALUE</span><span class="p">,</span> <span class="n">cullBackFaces</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">RayHit</span><span class="o">?</span></code>](source/jvmMain/afield/geometry/mesh/pointing_mesh/#L110) | Convenience: [`MeshBvh.raycast`](graphics.md#pointing-mesh-kt--raycast) down a [`Ray`](graphics.md#pointing-kt-ray). Distances come back in world units. |
+| <a id="pointing-mesh-kt--raycast"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">MeshBvh</span><span class="p">.</span><span class="nf">raycast</span><span class="p">(</span><span class="n">ray</span><span class="p">:</span> <span class="nc">Ray</span><span class="p">,</span> <span class="n">maxDistance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">MAX&#95;VALUE</span><span class="p">,</span> <span class="n">cullBackFaces</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">RayHit</span><span class="o">?</span></code>](source/jvmMain/afield/geometry/mesh/pointing_mesh/#L80) | Convenience: [`MeshBvh.raycast`](graphics.md#pointing-mesh-kt--raycast) down a [`Ray`](graphics.md#pointing-kt-ray). Distances come back in world units. |
 
 ## GeometryNetwork.kt { #geometrynetwork-kt }
 
@@ -6516,7 +6486,7 @@ Field has two unrelated camera models, and confusing them is the main hazard her
 ### Typical use
 
 ```diffstatic {data-lang=kotlin}
-val mesh = icosphere(2)
+val mesh = icosphereMesh(2)
 val view = MeshView(yawDegrees = 30.0, pitchDegrees = 20.0)
 val camera = view.rayCamera(mesh)
 val hit = mesh.bvh().raycast(camera.rayThroughPixel(360, 270))
@@ -6659,7 +6629,7 @@ geometry every frame, rebuild the [`PickParts`](graphics.md#pointing-pick-kt-pic
 ```diffstatic {data-lang=kotlin}
 val scene = pickScene {
     add("floor", plane(4.0), parts = PickParts.single(plane(4.0), "floor"))
-    add("lamp", icosphere(2), at = Matrix4f().translation(0f, 1.5f, 0f))
+    add("lamp", icosphereMesh(2), at = Matrix4f().translation(0f, 1.5f, 0f))
 }
 val camera = MeshView().rayCamera(scene.mergedMesh())
 val hit = scene.pick(camera.rayThroughPixel(360, 270))
