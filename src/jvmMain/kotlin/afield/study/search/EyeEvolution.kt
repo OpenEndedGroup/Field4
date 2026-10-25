@@ -17,6 +17,23 @@ import java.util.concurrent.Executors
 import kotlin.random.Random
 
 /**
+ * Interactive evolution: a grid of pictures in a box's output panel, where clicking the ones you
+ * like breeds the next generation. The fitness function is the person looking at it.
+ *
+ * This is the half of `afield.study.search` that scores nothing itself. `PopulationSearch.kt`
+ * spends a budget of evaluations against an [Objective]; this file spends your attention instead.
+ * Both describe a genome with the same [GenomeOps], so a genome written for one drives the other
+ * unchanged, and [breedFrom] is the shared rule for turning a pair of parents into a child.
+ *
+ * [EyeEvolution] holds the grid, the current parents and every earlier set; [evolveByEye] puts
+ * one in a box and hands it back; [EyeSetting] is a number the grid's toolbar shows and lets you
+ * turn between generations. Nothing here knows what a genome is beyond the four functions you
+ * supply for breeding it, drawing it, naming it and labelling its tile. In this tree the genome it
+ * is used with is [afield.lang.rpn.ColorRpn], and `ColorRpnEvolution.kt` is the worked example of
+ * wiring one up.
+ */
+
+/**
  * Interactive evolution, where the eye is the fitness function: a grid of tiles in a box's output
  * panel (the parents first, then their children), and clicking [EyeEvolution.pick] tiles makes
  * them the next parents and breeds again. This is the loop of Karl Sims' *Genetic Images* and of
