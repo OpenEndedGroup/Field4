@@ -321,6 +321,9 @@ nav:
     # with the host's objects reachable directly — and a reader who has read one wants the contrast.
     - Clojure in a Box: clojure.md
     - Lua in a Box: lua.md
+    # The desktop, browser-tab side of RemoteJS, beside the other guest languages. Its WebXR and
+    # headset reference (ar_reference.md) stays under Heads & Headsets.
+    - Javascript in a Browser Tab: remotejs.md
     - Nano Examples: nano_examples.md
     # MorphoHDL is a language brought in from outside (upstream's own compiler on GraalJS). Its
     # page is a user page since 2026-10-11; the circuit-search study that used to fill its second

@@ -295,7 +295,7 @@ From `code`
 A time slider: drag it sideways and it starts each box it enters and stops each box it leaves.
 
 ```edn [field-box id="demo_timeline" role="properties"]
-{"id" "demo_timeline" "index" 11 "name" "t" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "t" "_tombstone" false "frame" #afield/rect [4300.0 -80.0 40.0 1400.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "demo_timeline_code_.kt" "lines" 45 "characters" 1519 "sha256" "761a34a2486bb74a215e61ec7ac3283449f59edd88be25b3a7ece5798da05f48"}]}
+{"id" "demo_timeline" "index" 11 "name" "t" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "t" "_tombstone" false "frame" #afield/rect [4300.0 40.0 40.0 1400.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "demo_timeline_code_.kt" "lines" 45 "characters" 1519 "sha256" "761a34a2486bb74a215e61ec7ac3283449f59edd88be25b3a7ece5798da05f48"}]}
 ```
 
 ```kotlin [field-property box="demo_timeline" name="code" path="demo_timeline_code_.kt"]

@@ -5535,7 +5535,25 @@ def build_backdoor_command(
         if options.source_box_wait > 0:
             backdoor_commands.append(shlex.join(["sleep", str(options.source_box_wait)]))
     if options.macro_file:
-        pass
+        # A macro builds the document; `run-box` then names a box to run after it. An editor
+        # capture opens that box's editor first, so the inline output of the run lands in an
+        # editor that is already showing (output that arrives before the editor opens is not
+        # drawn beside its line).
+        if options.run_box:
+            if capture_mode == "editor":
+                backdoor_commands.append(shlex.join([
+                    "editor-open",
+                    options.run_box,
+                    "--property", options.property_name,
+                    "--padding", str(options.padding),
+                    "--timeout", str(options.timeout),
+                ]))
+            backdoor_commands.append(shlex.join([
+                "launch" if options.execution == "launch" else "run",
+                options.run_box,
+                "--property", options.property_name,
+                "--timeout", str(options.timeout),
+            ]))
     elif options.run_box is None and capture_mode == "editor":
         # Target the box explicitly rather than "@last": under graphics-context the
         # box is created via a macro (so "@last" is stale) and must match the box

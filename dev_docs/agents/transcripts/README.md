@@ -286,6 +286,10 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   on the line inside the `defn` that raised, a slider and checkbox whose handlers are Clojure fns or
   atoms, and `(context ...)` reading a parent's property and Kotlin variable. Compile-only here (the
   Kotlin root); `ClojureFieldCoreTest` runs the Clojure half.
+- `remotejs_box_parity.yaml`: **RemoteJS boxes doing what Kotlin, Python and Clojure boxes do**:
+  `print` and `console.log` beside their lines, an error marked inside the function that raised,
+  `display`, a slider and a checkbox whose callbacks run in the browser head, output printed after
+  the run, and a Stop that stops `launch(...)` loops. Needs the head the root opens; compile-only here.
 - `python_box_parity.yaml`: **Python boxes doing what Kotlin boxes do** — an error marked on the line
   inside the function that raised, and a slider and checkbox whose callbacks are Python. Same JEP
   prerequisite as `python_cells`, and compile-only here for the same reason.

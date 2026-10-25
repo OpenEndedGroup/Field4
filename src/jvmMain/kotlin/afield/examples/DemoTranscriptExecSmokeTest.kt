@@ -693,6 +693,10 @@ object DemoTranscriptExecSmokeTest {
         // Clojure box parity: its Kotlin root is compiled; the three Clojure boxes are a guest
         // language and skipped. ClojureFieldCoreTest and ClojureHostTest run the Clojure half.
         "clojure_box_parity",
+        // RemoteJS box parity: the Kotlin root opens a browser head, which a headless run lacks;
+        // the five Javascript boxes and five Kotlin → head boxes are guest languages and skipped. RemoteJsBoxSurfaceTest runs
+        // the JVM half; the head half was driven through the backdoor (REMOTEJS_BOX_PARITY.md).
+        "remotejs_box_parity",
         "python_box_parity",
         "python_cells",
         // fieldcv: the Python cells need JEP plus the optional cv group, and a camera; the Kotlin

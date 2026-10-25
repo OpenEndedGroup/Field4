@@ -705,7 +705,7 @@ object StdlibReferenceGenerator {
     /** Docs pages that are not worked examples and would only add noise as "see also" targets. */
     private val EVIDENCE_PAGE_BLOCKLIST = setOf(
         "index.md", "installation.md", "survivalGuide.md", "funFeatures.md", "aiFeatures.md",
-        "staging.md", "building_and_testing.md", "sketch1.md", "sketch2.md",
+        "staging.md", "building_and_testing.md",
     )
 
     @JvmStatic
