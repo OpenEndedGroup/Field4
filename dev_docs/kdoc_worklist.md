@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17700 of 34376 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17701 of 34377 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2241 undocumented entry points** (types, top-level functions and values) and 13721 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -935,7 +935,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [LinuxExternalBrowserSurface.kt](../src/jvmMain/kotlin/afield/media/browser/LinuxExternalBrowserSurface.kt) | Imaging | — | 0 | 2 | 33% |
 | [WindowsExternalBrowserSurface.kt](../src/jvmMain/kotlin/afield/media/browser/WindowsExternalBrowserSurface.kt) | Imaging | — | 0 | 2 | 33% |
 | [WebRTCSignaling.kt](../src/jvmMain/kotlin/afield/media/webrtc/WebRTCSignaling.kt) | Imaging | — | 0 | 2 | 50% |
-| [CompletionCorpus.kt](../src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt) | Workspace | — | 0 | 2 | 87% |
+| [CompletionCorpus.kt](../src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt) | Workspace | — | 0 | 2 | 88% |
 | [CompiledSnippetTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/CompiledSnippetTest.kt) | Workspace | — | 0 | 2 | 33% |
 | [DataFramePluginSpike.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/DataFramePluginSpike.kt) | Workspace | — | 0 | 2 | 33% |
 | [Kotlin24SyntaxSmokeTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/Kotlin24SyntaxSmokeTest.kt) | Workspace | — | 0 | 2 | 33% |

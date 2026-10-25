@@ -647,7 +647,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**34376 public symbols across 1561 source files**, 17700 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34377 public symbols across 1561 source files**, 17701 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -675,7 +675,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 77 | 2092 | 1013 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 584 | 397 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 123 | 3095 | 1408 (45%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 228 | 3144 | 1129 (35%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 228 | 3145 | 1130 (35%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 101 | 2245 | 704 (31%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 | [IO](io.md) | 1 | 22 | 15 (68%) |  |
@@ -901,7 +901,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [CompiledSnippetTest.kt](workspace.md#compiledsnippettest-kt) | Workspace · internal | 3 | 1 | Smoke test of `KotlinInterface.CompiledSnippet`: compile a snippet once, then evaluate it many times. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>completion/<wbr></small> [CompletionAaE2EProbe.kt](workspace.md#completionaae2eprobe-kt) | Workspace · internal | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>completion/<wbr></small> [CompletionContextProbe.kt](workspace.md#completioncontextprobe-kt) | Workspace · internal | 2 | 1 |  |  |
-| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>completion/<wbr></small> [CompletionCorpus.kt](workspace.md#completioncorpus-kt) | Workspace · internal | 16 | 14 | A reproducible corpus of real boxes for measuring Kotlin completion, harvested with their macros already expanded so each box sees the preamble it has at run time. |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>completion/<wbr></small> [CompletionCorpus.kt](workspace.md#completioncorpus-kt) | Workspace · internal | 17 | 15 | A reproducible corpus of real boxes for measuring Kotlin completion, harvested with their macros already expanded so each box sees the preamble it has at run time. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>completion/<wbr></small> [CompletionCorpusHarvest.kt](workspace.md#completioncorpusharvest-kt) | Workspace · internal | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>completion/<wbr></small> [CompletionCorpusProbe.kt](workspace.md#completioncorpusprobe-kt) | Workspace · internal | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>completion/<wbr></small> [CompletionDiffK1Probe.kt](workspace.md#completiondiffk1probe-kt) | Workspace · internal | 4 | 1 | A probe that dumps the K1 completer's raw candidates over the shared completion fixtures, for diffing against the K2 Analysis-API sidecar's output. |  |
