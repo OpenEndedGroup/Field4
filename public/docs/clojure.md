@@ -422,6 +422,7 @@ ui.clickSelector(".monaco-editor")
 ui.pause(300)
 ui.press("Control+A")
 ui.type("(let [spline (polyline [[0 0] [10 10]])]\n  (lines [sp")
+ui.waitForSelector(".afield-suggest", 15000.0)
 ui.pause(400)
 // Escape first: typing does not open the popup, and opening it once on the finished text is the
 // only way to be sure the request the figure shows is the one for the caret the figure shows.
