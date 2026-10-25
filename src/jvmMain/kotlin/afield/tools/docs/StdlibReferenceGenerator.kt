@@ -1583,8 +1583,34 @@ object StdlibReferenceGenerator {
         } ?: emptyList()
 
     /**
+     * The parameter names of one signature, as a KDoc written above it refers to them.
+     *
+     * `vararg`, `crossinline`, an annotation and a constructor's `val`/`var` are all stripped, so
+     * `fun f(vararg xs: Int)` gives `xs`; a backticked name is unwrapped. See
+     * [TypeAnchors.resolveReference] for what the set is for.
+     *
+     * Only a segment carrying its own `:` counts, which is what keeps a function *type* out. On
+     * `val handler: (Box) -> Unit` the first `(` [splitSignature] finds belongs to the type, so its
+     * one segment is the bare `Box`; reading that as a parameter would take `Box` out of scope for
+     * the whole summary.
+     */
+    internal fun parameterNames(signature: String): Set<String> =
+        splitSignature(signature)?.second.orEmpty().mapNotNull { param ->
+            if (':' !in param) return@mapNotNull null
+            param.substringBefore(':')
+                .trim().substringAfterLast(' ').trim('`')
+                .takeIf { it.matches(Regex("""[A-Za-z_]\w*""")) }
+        }.toSet()
+
+    /**
      * A signature split into everything before the parameter list, the top-level parameters, and
      * everything after — respecting nesting, so `(Fn) -> Double` and `Map<String, Int>` survive.
+     *
+     * The `>` of an arrow closes nothing, which has to be said explicitly because the same scan
+     * counts the `>` of a generic argument. Reading an arrow as a closing bracket brings the depth
+     * to zero at the first function-typed parameter and cuts the list off there:
+     * `keyframeSlider(…, get: () -> Double, set: (Double) -> Unit)` reported `get` as its last
+     * parameter and `tryAll` reported three of its eight.
      */
     private fun splitSignature(signature: String): Triple<String, List<String>, String>? {
         val open = signature.indexOf('(')
@@ -1597,12 +1623,15 @@ object StdlibReferenceGenerator {
             when (ch) {
                 '(', '[', '<' -> { depth++; if (depth > 1) current.append(ch) }
                 ')', ']', '>' -> {
-                    depth--
-                    if (depth == 0) {
-                        if (current.isNotBlank()) params += current.toString()
-                        return Triple(signature.substring(0, open), params, signature.substring(i + 1))
+                    if (ch == '>' && i > open && signature[i - 1] == '-') current.append(ch)
+                    else {
+                        depth--
+                        if (depth == 0) {
+                            if (current.isNotBlank()) params += current.toString()
+                            return Triple(signature.substring(0, open), params, signature.substring(i + 1))
+                        }
+                        current.append(ch)
                     }
-                    current.append(ch)
                 }
                 ',' -> if (depth == 1) { params += current.toString(); current.setLength(0) } else current.append(ch)
                 else -> current.append(ch)
@@ -1753,10 +1782,25 @@ object StdlibReferenceGenerator {
          *
          * Null both when nothing matches and when the qualifier contradicts the match; the caller
          * renders inline code either way.
+         *
+         * [locals] are the names the referring KDoc settles in its own scope before any index is
+         * consulted — in practice the parameter names of the declaration it sits above. Kotlin
+         * resolves a parameter name to the parameter, so a name in this set resolves to nothing and
+         * publishes as plain code.
+         *
+         * Without it a `[param]` reference reaches the index at all, because a parameter is not a
+         * declaration in any file: it misses [byFile] and [corpus] answers with whatever top-level
+         * symbol happens to share the name. `leniaFromLifeRule(rule: LifeRule)` in
+         * `alife_continuous.kt` names its own parameter in its summary, and the row published on the
+         * alife page sent that name to `rewritedsl.kt`'s rewrite-rule builder on the workspace page.
+         * 885 published links across 25 pages pointed off their own page this way.
+         *
+         * The set applies to a bare reference only: `[Owner.name]` still names a member, whatever
+         * the row's parameters are called.
          */
-        fun resolveReference(raw: String, file: String?): String? {
+        fun resolveReference(raw: String, file: String?, locals: Set<String> = emptySet()): String? {
             val simple = raw.substringAfterLast('.')
-            if (simple == raw) return lookup(simple, file)?.target
+            if (simple == raw) return if (raw in locals) null else lookup(simple, file)?.target
             val qualifier = raw.substringBeforeLast('.').substringAfterLast('.')
             val key = "$qualifier.$simple"
             (file?.let { qualifiedByFile[it]?.get(key) } ?: qualifiedCorpus[key])?.let { return it.target }
@@ -2027,7 +2071,7 @@ object StdlibReferenceGenerator {
             val anchor = anchors[key]?.takeIf { emitted.add(key) }?.let { "<a id=\"$it\"></a>" }.orEmpty()
             appendLine(
                 "| $anchor$declaration${overloadBadge(row)} | " +
-                    "${escapeCell(linkify(row.summary, typeAnchors, doc))} |"
+                    "${escapeCell(linkify(row.summary, typeAnchors, doc, parameterNames(signature)))} |"
             )
         }
         appendLine()
@@ -2603,18 +2647,26 @@ object StdlibReferenceGenerator {
      * An ordinary markdown link written in a KDoc is left alone: the lookahead for `(` is what stops
      * `[Lygia](https://lygia.xyz)` becoming `` `Lygia` ``(https://lygia.xyz) with the URL dangling as
      * prose. `SourcePageGenerator.linkifySymbols` draws the same line for the same reason.
+     *
+     * [locals] names what this text resolves for itself — the parameters of the row it summarises.
+     * See [TypeAnchors.resolveReference].
      */
-    private fun linkify(text: String, typeAnchors: TypeAnchors, doc: SourceDocument?): String {
+    private fun linkify(
+        text: String,
+        typeAnchors: TypeAnchors,
+        doc: SourceDocument?,
+        locals: Set<String> = emptySet(),
+    ): String {
         if (text.isBlank()) return text
         val alternate = Regex("""\[([^\]\[]+)]\[([A-Za-z_][\w.]*)]""")
         val simple = Regex("""\[([A-Za-z_][\w.]*)](?!\()""")
         var out = alternate.replace(text) { m ->
-            val target = typeAnchors.resolveReference(m.groupValues[2], doc?.relativePath)
+            val target = typeAnchors.resolveReference(m.groupValues[2], doc?.relativePath, locals)
             if (target != null) "[${m.groupValues[1]}]($target)" else "`${m.groupValues[1]}`"
         }
         out = simple.replace(out) { m ->
             val raw = m.groupValues[1]
-            val target = typeAnchors.resolveReference(raw, doc?.relativePath)
+            val target = typeAnchors.resolveReference(raw, doc?.relativePath, locals)
             if (target != null) "[`$raw`]($target)" else "`$raw`"
         }
         return out
