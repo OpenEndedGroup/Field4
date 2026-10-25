@@ -4,6 +4,22 @@ import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
 
 /**
+ * The source map of a Kotlin→JS box's compiled module, remembered per box so that output arriving
+ * after the run can still be given a line.
+ *
+ * The map is a by-product of the compile, and the output that needs it usually arrives once the run
+ * has finished: an error from a timer, a `console.log` from an event handler, each carrying a line of
+ * generated JavaScript and nothing else. `RemoteJS.kt` builds a map the moment [KotlinToJsCompiler]
+ * returns one and remembers it under the box id; `KotlinJsHeadProfiles.kt` asks for it when a reply
+ * needs a line; the next compile of that box replaces it.
+ *
+ * None of this reports a failure to the box. A compile that produced no map, or a map whose
+ * `mappings` the decoder rejects, leaves the box with none, and its output keeps the generated line
+ * it came with. A position that maps somewhere other than the box's own Kotlin is a null from
+ * [editorLine], and [editorLineForStack] goes on to the next frame of the stack.
+ */
+
+/**
  * Maps a line in the JavaScript a Kotlin→JS box compiled to back to the line in the box's editor.
  *
  * The head reports runtime errors and routed `console.log` calls at the *generated* JavaScript line
@@ -26,7 +42,7 @@ class KotlinJsSourceMap(json: String, private val userSourceSuffix: String, priv
         lines = decode(o.optString("mappings", ""))
     }
 
-    /** The one-based editor line for generated (one-based) [line] / [column], or null when that
+    /** The one-based editor line for generated (one-based) `line` / `column`, or null when that
      *  position is not in the box's own Kotlin. */
     fun editorLine(line: Int, column: Int = 1): Int? {
         val segments = lines.getOrNull(line - 1)?.takeIf { it.isNotEmpty() } ?: return null
@@ -54,6 +70,7 @@ class KotlinJsSourceMap(json: String, private val userSourceSuffix: String, priv
             if (map == null) byBox.remove(boxId) else byBox[boxId] = map
         }
 
+        /** The map of the module box `boxId` last compiled, or null when it has none to map through. */
         fun forBox(boxId: String): KotlinJsSourceMap? = byBox[boxId]
 
         private const val B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"

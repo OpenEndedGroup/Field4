@@ -647,7 +647,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**34378 public symbols across 1562 source files**, 17724 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34378 public symbols across 1562 source files**, 17726 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -674,7 +674,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 40 | 1316 | 721 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 77 | 2092 | 1013 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 584 | 397 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 123 | 3095 | 1408 (45%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 123 | 3095 | 1410 (45%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 229 | 3146 | 1131 (35%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 101 | 2245 | 704 (31%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
@@ -1367,7 +1367,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [KotlinJsLaunchStateSmokeTest.kt](examples.md#kotlinjslaunchstatesmoketest-kt) | Examples · internal | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [KotlinJsRemoteArSurfaceSmokeTest.kt](examples.md#kotlinjsremotearsurfacesmoketest-kt) | Examples · internal | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [KotlinJsRemoteLifecycleSmokeTest.kt](examples.md#kotlinjsremotelifecyclesmoketest-kt) | Examples · internal | 2 | 1 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>remotejs/<wbr></small> [KotlinJsSourceMap.kt](languages.md#kotlinjssourcemap-kt) | Languages | 3 | 3 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>remotejs/<wbr></small> [KotlinJsSourceMap.kt](languages.md#kotlinjssourcemap-kt) | Languages | 3 | 3 | The source map of a Kotlin→JS box's compiled module, remembered per box so that output arriving after the run can still be given a line. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [KotlinJsSourcePreparationSmokeTest.kt](examples.md#kotlinjssourcepreparationsmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [KotlinJsToneSurfaceSmokeTest.kt](examples.md#kotlinjstonesurfacesmoketest-kt) | Examples · internal | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [KotlinLineNotes.kt](workspace.md#kotlinlinenotes-kt) | Workspace · internal | 2 | 2 |  |  |
@@ -1835,7 +1835,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [ReloadResolvers.kt](graphics.md#reloadresolvers-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>remotejs/<wbr></small> [RemoteArKotlinJs.kt](languages.md#remotearkotlinjs-kt) | Languages | 4 | 3 | The Kotlin/JS declarations a box sees when it runs Kotlin in the browser RemoteAR head. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>remotejs/<wbr></small> [RemoteJS.kt](languages.md#remotejs-kt) | Languages | 28 | 2 | RemoteJS — JavaScript that runs in a *browser somewhere else*, written in a Field box here. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>remotejs/<wbr></small> [RemoteJsBoxSurface.kt](languages.md#remotejsboxsurface-kt) | Languages | 10 | 8 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>remotejs/<wbr></small> [RemoteJsBoxSurface.kt](languages.md#remotejsboxsurface-kt) | Languages | 10 | 10 | Where a message from a browser head lands when it names a box rather than a run. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [RemoteJSDiagnosticSmokeTest.kt](examples.md#remotejsdiagnosticsmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [RemoteJSTemplateSmokeTest.kt](examples.md#remotejstemplatesmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>remotejs/<wbr></small> [RemoteLifecycleKotlinJs.kt](languages.md#remotelifecyclekotlinjs-kt) | Languages | 3 | 1 | The `onStart` / `onFrame` / `onStop` / `keepAlive` callbacks that every remote Kotlin/JS head shares. |  |
