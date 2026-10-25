@@ -14,6 +14,9 @@ import afield.graphics.vulkan.buffers.*
 /*graphics-pc-structure:time*/ var Structure.time by Structure.FromStructure<Any>()
 /*graphics-pc-binding:time*/ var Mesh.time by Mesh.BoundFromStructure<Number>()
 /*graphics-pc-binding-group:time*/ var MeshGroup.time by MeshGroup.BoundFromStructure<Number>()
+var Box.execution by Inheritance<Box>() /*from:root*/ /**/
+val Once.execution by Onceing<Box>() /*from:root*/ /**/
+val Why.execution by Whying() /*from:root*/ /**/
 var Box.window by Inheritance<Window>() /*from:demo_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:demo_renderer*/ /**/
 val Why.window by Whying() /*from:demo_renderer*/ /**/
