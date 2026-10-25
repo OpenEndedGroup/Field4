@@ -10,8 +10,12 @@ tests `src/jvmTest/kotlin/afield/ui/output/ControlPresetsTest.kt`, demo transcri
   morph = `scope.interpolateAlong(keys, t)`. Controls take part by being declared as delegated
   locals (`var size by keys.slider(...)`, `KeyframeControls.kt`; `keys.controls()` builds them) or
   with the explicit `keyframe*` helpers the delegates call, whose targets move the visible control
-  (`ControlValueHandle.set`). A rerun restores each delegate from the control-group cache inside
-  `keys.controls()` and calls `onChange` once per control.
+  (`ControlValueHandle.set`). A rerun restores each delegate when it is declared, from the same
+  control-group cache `controlGroup` restores from (`lastControlGroupValue` in outputs.kt: the
+  running box from `Box.context`, the channel found by matching type + label + ordinal across the
+  box's cached channels; ambiguous across two channels falls back to restoring in `controls()`).
+  No second store. A rerun restore does not call `onChange`: `fromControl` ignores a value equal to
+  the local's, which is what `controls()` hands back after the declaration restored it.
   Default directory: `Box.presetDirectory(channel)` = `%document/keys/<box id>/<channel>`.
   keyframer.kt additions for this: `savedKeyNames(dir)`, `interpolateAlong(keys, t)`.
 - The bar lays its name field and buttons in wrapping rows (`ControlGroupBuilder.inlineRow`,

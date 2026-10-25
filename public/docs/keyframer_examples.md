@@ -154,8 +154,8 @@ writable mirror. The local's name is the key name and the control's label. A han
 control writes the local. A key applying a value writes the same local and moves both the desktop
 control and the remote controller. `onChange` hears both, and assigning the local in code moves
 the control without calling it. The programmatic UI update refreshes the box's live rerun cache but
-does not emit one document operation per animation frame, and when the box runs again
-`keys.controls()` hands each local the value the control last held.
+does not emit one document operation per animation frame, and when the box runs again each local
+holds the value the control last held from its declaration onward, without calling `onChange`.
 
 ```diffstatic {data-lang=kotlin}
 val keys = KeyframeScope()
