@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17682 of 34351 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17684 of 34353 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2241 undocumented entry points** (types, top-level functions and values) and 13714 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -506,7 +506,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SharedTypesSmokeTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/SharedTypesSmokeTest.kt) | Workspace | — | 1 | 2 | 0% |
 | [WitherSmokeTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/WitherSmokeTest.kt) | Workspace | — | 1 | 2 | 0% |
 | [DataFrameVisualizerSmokeTest.kt](../src/jvmMain/kotlin/afield/ui/visualization/DataFrameVisualizerSmokeTest.kt) | Visualization | — | 1 | 2 | 0% |
-| [Ai4CompletionDoc.kt](../src/jvmMain/kotlin/afield/ai/completion/Ai4CompletionDoc.kt) | Machine learning | — | 1 | 1 | 71% |
+| [Ai4CompletionDoc.kt](../src/jvmMain/kotlin/afield/ai/completion/Ai4CompletionDoc.kt) | Machine learning | — | 1 | 1 | 77% |
 | [HistoryScreenshotCapture.kt](../src/jvmMain/kotlin/afield/document/history/HistoryScreenshotCapture.kt) | Workspace | — | 1 | 1 | 0% |
 | [Ai4RateLimitRetrySmokeTest.kt](../src/jvmMain/kotlin/afield/examples/Ai4RateLimitRetrySmokeTest.kt) | Examples | — | 1 | 1 | 0% |
 | [BooleanNetworkMusicSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/BooleanNetworkMusicSmokeTest.kt) | Examples | — | 1 | 1 | 0% |

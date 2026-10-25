@@ -647,7 +647,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**34351 public symbols across 1557 source files**, 17682 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34353 public symbols across 1557 source files**, 17684 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -676,7 +676,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio AI](audio-ai.md) | 22 | 584 | 397 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 121 | 3082 | 1397 (45%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 228 | 3144 | 1129 (35%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [Machine learning](machine-learning.md) | 100 | 2235 | 698 (31%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
+| [Machine learning](machine-learning.md) | 100 | 2237 | 700 (31%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 | [IO](io.md) | 1 | 22 | 15 (68%) |  |
 | [Output](output.md) | 1 | 25 | 17 (68%) |  |
@@ -717,7 +717,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>knowledge/<wbr></small> [AI4_filestore.kt](machine-learning.md#ai4-filestore-kt) | Machine learning | 65 | 11 | A local cache that maps file contents to OpenAI file IDs, so the same bytes are uploaded once per API key. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>completion/<wbr></small> [Ai4AutoBoxNamer.kt](machine-learning.md#ai4autoboxnamer-kt) | Machine learning | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [Ai4BackdoorTools.kt](machine-learning.md#ai4backdoortools-kt) | Machine learning | 0 | 0 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>completion/<wbr></small> [Ai4CompletionDoc.kt](machine-learning.md#ai4completiondoc-kt) | Machine learning | 7 | 5 | Drafts documentation, with a language model, for a completion item whose declaration has no KDoc. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>completion/<wbr></small> [Ai4CompletionDoc.kt](machine-learning.md#ai4completiondoc-kt) | Machine learning | 9 | 7 | Drafts documentation, with a language model, for a completion item whose declaration has no KDoc. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>knowledge/<wbr></small> [AI4FilestoreCli.kt](machine-learning.md#ai4filestorecli-kt) | Machine learning | 8 | 0 | A command-line tool that uploads files to OpenAI through the content-hash cache and chats over them. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>completion/<wbr></small> [Ai4GlslAutocomplete.kt](machine-learning.md#ai4glslautocomplete-kt) | Machine learning | 5 | 0 | Language-model autocomplete for shader properties (`fragment`, `vertex`, `compute` and the other shader stages). |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>models/<wbr></small> [Ai4Installer.kt](machine-learning.md#ai4installer-kt) | Machine learning | 24 | 3 | Installs Field's AI assistant: the websocket handlers behind the box and document chat, and the code tools the model calls. |  |

@@ -4,7 +4,7 @@
 
 Models small enough to train inside a box, in plain Kotlin, while you watch. Flow matching carries one 2D or 3D point cloud onto another and hands back the deformation between them; the multi-output regression head it trains is usable on its own. See [Flow Matching](../flow_matching.md).
 
-100 source file(s), 2235 public symbol(s), 698 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+100 source file(s), 2237 public symbol(s), 700 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1158,12 +1158,19 @@ The model is `AFIELD_COMPLETION_DOC_MODEL`, defaulting to the fast model.
 
 `src/jvmMain/kotlin/afield/ai/completion/Ai4CompletionDoc.kt` — [read the source](source/jvmMain/afield/ai/completion/Ai4CompletionDoc/)
 
+### Top-level functions { #ai4completiondoc-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="ai4completiondoc-kt--generatedcompletiondocspath"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">generatedCompletionDocsPath</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Path</span></code>](source/jvmMain/afield/ai/completion/Ai4CompletionDoc/#L912) | The drafts cache: [`GENERATED_COMPLETION_DOCS_ENV`](machine-learning.md#ai4completiondoc-kt--generated-completion-docs-env) when set, else [`GENERATED_COMPLETION_DOCS_FILE`](machine-learning.md#ai4completiondoc-kt--generated-completion-docs-file) in the filestore. |
+
 ### Top-level values { #ai4completiondoc-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
 | <a id="ai4completiondoc-kt--generated-completion-docs-file"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">GENERATED&#95;COMPLETION&#95;DOCS&#95;FILE</span></code>](source/jvmMain/afield/ai/completion/Ai4CompletionDoc/#L53) | The generated-completion-doc cache's file name, spelled once. |
 | <a id="ai4completiondoc-kt--generated-completion-docs-declined-file"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">GENERATED&#95;COMPLETION&#95;DOCS&#95;DECLINED&#95;FILE</span></code>](source/jvmMain/afield/ai/completion/Ai4CompletionDoc/#L59) | Keys of drafts the docs revision pass looked at and chose not to use, written beside the cache by `tools/docs_notes.py` (`DRAFT_DECLINED_FILE`). Completion neither shows nor regenerates them. |
+| <a id="ai4completiondoc-kt--generated-completion-docs-env"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">GENERATED&#95;COMPLETION&#95;DOCS&#95;ENV</span></code>](source/jvmMain/afield/ai/completion/Ai4CompletionDoc/#L909) | Points the drafts cache at one file, leaving the rest of the filestore where it is. The docs runner sets it to a fresh copy of a committed cache, so its captures of the drafts read the same input on every machine; `tools/docs_notes.py` (`DRAFT_CACHE_ENV`) honours it too. |
 
 ### Ai4CompletionDoc { #ai4completiondoc-kt-ai4completiondoc }
 
