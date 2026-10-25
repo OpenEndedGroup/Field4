@@ -8,6 +8,18 @@ The catalogue finds `.md` and `.markdown` files in the document root, plus `docs
 
 ## Box notes in the same list
 
+A Markdown file whose front matter names a page of the Field documentation is a **docs redirect**. It is listed under **Documentation** at the top of the panel, and choosing it opens that page in the docs pane (`/field-docs/`: this checkout's built site, or openendedgroup.com/field4 when it has none) instead of rendering the file:
+
+```markdown
+---
+docs: drawing_and_notation/#reading-a-region
+---
+# Drawing and notation
+Reading the drawing layer from box code.
+```
+
+`docs:` takes a page relative to the docs root (`page/`, `page.md` or `page`, with an optional `#anchor`) or an openendedgroup.com/field4 URL; anything else leaves the file an ordinary guide. The heading is the entry's title and the first paragraph its tooltip. Ordinary guides and notes link to the same pages with `[text](field-docs:page/#anchor)`. Parsing is `docsRedirect` in `documentGuides.kt`; the launcher carries a cyan border.
+
 A **Box notes** section lists the `notes` property of every live box that has one, so a document's prose can be read in one place instead of a box at a time. A note is titled by its own first H1, falling back to the box's name and then its uid; blank notes, tombstoned boxes and notes past the 1 MiB file bound are left out. Notes sort by title after the files, and the launcher names what it found — `Guides · 2 · Notes · 3`, or just `Notes · 3` for a document whose prose lives entirely on its boxes.
 
 Notes address their box rather than a file: `box/<uid>`, a path the file catalogue cannot produce, since it has no Markdown extension and its directory is neither `docs` nor `guides`. Reading one is ordinary — headings outline, links and relative images work, resolving from the document root — but **Save**, **Place on canvas** and the source editor are read-only, and the server refuses a write to a `box/…` path whatever asks for it. **Open box** selects the box and opens its `notes` property, where the box editor's own Markdown preview already edits it; that keeps one writer, and one transcript entry, for the property. **Copy section link** on a note copies `field://box/<uid>?property=notes` instead of a guide link.
@@ -63,7 +75,7 @@ The first pass bounds files to 1 MiB, catalogue results to 128 and local images 
 ## Verification
 
 - `node --test tools/test_document_guide.mjs` checks relative paths, fragments, stable box links, rejected URL schemes, the `box/<uid>` note namespace and the paths a typed note name is allowed to become.
-- `./gradlew jvmTest --tests afield.server.DocumentGuideFilesTest --tests afield.server.DocumentGuideNotesTest` checks discovery, canonical path confinement, stale saves, no-clobber creation, read-only protection and file bounds, plus which box notes are collected and what a read of one returns.
+- `./gradlew jvmTest --tests afield.app.server.DocumentGuideFilesTest --tests afield.app.server.DocumentGuideNotesTest` checks discovery, canonical path confinement, stale saves, no-clobber creation, read-only protection and file bounds, plus which box notes are collected and what a read of one returns.
 - `uv run --project . --group backdoor python tools/run_ui_regressions.py --id document-guide --port 9693 --timeout 60` drives the real guide UI: discovery, local images, box/line navigation, source save, a concurrent writer, close/reopen, live refresh, file proxies, a collected box note refusing writes and handing over to its box, and **Add note** reaching disk. Its retained screenshot shows the reader beside the code editor.
 
 ## Durable notes for AI4 and external agents
@@ -93,4 +105,4 @@ To move an ongoing conversation into Field, create a `HANDOFF.md` that records t
 
 This transfers working context. It does not import another application's hidden conversation state or grant AI4 arbitrary repository/shell tools.
 
-Verification for this layer: `./gradlew jvmTest --tests afield.ai.DocumentGuideToolsTest --tests afield.server.DocumentGuideFilesTest`. The tests dispatch JSON through both registries, compare schemas, exercise interleaved writers, readonly/confinement failures, search/pagination, and reopen disk-backed notes with a fresh provider.
+Verification for this layer: `./gradlew jvmTest --tests afield.ai.tools.DocumentGuideToolsTest --tests afield.app.server.DocumentGuideFilesTest`. The tests dispatch JSON through both registries, compare schemas, exercise interleaved writers, readonly/confinement failures, search/pagination, and reopen disk-backed notes with a fresh provider.

@@ -1,9 +1,9 @@
-import afield.four.fabricated.*
-import afield.four.util.Camera
-import afield.manifold.*
-import afield.stdlib.linalg.Vector3f
 import afield.examples.chain.PhotoToSolidChain
+import afield.geometry.solid.manifold.*
+import afield.graphics.scene.fabricated.*
+import afield.graphics.vulkan.util.Camera
 import java.io.File
+
 prop<PathTracingRenderer>(tracer)
 require(ManifoldLibrary.isAvailable) { ManifoldLibrary.describe() }
 val scene = PathTraceScene()
@@ -14,8 +14,15 @@ scene.importTriMesh(mounted.relief, relief)
 scene.importTriMesh(mounted.frame, frameMaterial)
 println(mounted.summary())
 val floor = scene.material(PathTraceMaterial.plastic(0.55f, 0.56f, 0.58f, 0.55f))
-scene.quad(Vector3f(-6f, -0.16f, -6f), Vector3f(6f, -0.16f, -6f), Vector3f(6f, -0.16f, 6f), Vector3f(-6f, -0.16f, 6f), floor)
-val environment = PathTraceEnvironment.fromFile(File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
+scene.quad(
+    Vector3f(-6f, -0.16f, -6f),
+    Vector3f(6f, -0.16f, -6f),
+    Vector3f(6f, -0.16f, 6f),
+    Vector3f(-6f, -0.16f, 6f),
+    floor,
+)
+val environment =
+    PathTraceEnvironment.fromFile(File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
 val camera = Camera(renderer).also {
     it.at.set(2.2f, 2.25f, 2.6f)
     it.target.set(0f, 0.1f, 0f)
@@ -30,6 +37,8 @@ tracer.indirectClamp = 10f
 tracer.blitToScreen()
 println("${tracer.backend}: ${tracer.triangleCount} triangles")
 frames {
-    while (tracer.samples < 900) { frame() }
+    while (tracer.samples < 900) {
+        frame()
+    }
     println("photo_mount_trace study converged: ${tracer.samples} samples")
 }

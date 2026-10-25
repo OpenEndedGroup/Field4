@@ -1,11 +1,11 @@
 package afield.examples.stdlib
 
-import afield.stdlib.LambdaTerms
-import afield.stdlib.Term
+import afield.lang.lambda.LambdaTerms
+import afield.lang.lambda.Term
 import kotlin.random.Random
 
 /**
- * A seeded generator of **closed** λ-terms for property-testing `afield.stdlib.LambdaTerms`, in two families whose
+ * A seeded generator of **closed** λ-terms for property-testing `afield.lang.lambda.LambdaTerms`, in two families whose
  * distributions are a printed deliverable rather than a footnote.
  *
  * The thing being hunted is the one `dev_docs/INTERACTION_NETS_LAMBDA.md` admits it has not proved: that

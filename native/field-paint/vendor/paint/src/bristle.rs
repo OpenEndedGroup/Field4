@@ -80,6 +80,9 @@ fn transpose(src: &[f32], w: usize, h: usize) -> Vec<f32> {
 /// How far into the tooth's range the paint a fully loaded hair carries
 /// reaches ahead of the hair (see `exchange`).
 const WET_REACH: f32 = 0.5;
+/// (Field) The contact threshold a bristle run dry is drawn up to by `Tool::tooth`: a little above
+/// the ground's local median height (0.5 in `Canvas::surf`'s base).
+const DRY_TH: f32 = 0.55;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Kind {
@@ -126,6 +129,12 @@ pub struct Tool {
     /// down from the belly to the tip as the tip lays it, and a tip run dry
     /// loses its point and splits.
     pub point: f32,
+    /// (Field) How far a bristle's dryness keeps it on the tooth: 0 (every preset), pressure reaches
+    /// into the weave's hollows however dry the bristle; 1, the pressure's reach falls with the
+    /// bristle's load, so a dry bristle rides the peaks however hard it is pressed (only its paint,
+    /// and a soft hair's give, reach lower) and breaks into dry-brush skips on a ground with tooth
+    /// (none on a smooth one). Past 1 drier still; below 0, the reverse.
+    pub tooth: f32,
 }
 
 impl Tool {
@@ -144,6 +153,7 @@ impl Tool {
             splay: 0.3,
             ragged: 0.25,
             point: 0.0,
+            tooth: 0.0,
         }
     }
 
@@ -1520,7 +1530,18 @@ pub(crate) unsafe fn exchange(
         let cap = if capped { crate::thinner::stroke_limit_um(phi) / COAT_UM } else { f32::INFINITY };
         let wet = smoothstep(0.1, 0.8, liquid / full);
         let wick = if tool.point > 0.0 { tool.point * smoothstep(0.02, 0.25, liquid / full) } else { 0.0 }.max(WET_REACH * wet);
-        let th = 1.0 - reach.max(wick) * 1.6;
+        // (Field) `Tool::tooth`: as the bristle dries, the height it reaches down to by pressure is
+        // drawn up toward `DRY_TH`, just above the ground's local median, by `tooth` times its
+        // dryness: on a ground with grain only the peaks clear it (dry-brush skips), on a smooth one
+        // every place sits at the median and the bristle touches all of it, lightly. Its paint
+        // (`wick`) reaches as it did. At tooth 0, exactly as before
+        let th = if tool.tooth != 0.0 {
+            let by_press = 1.0 - reach * 1.6;
+            let by_press = if by_press < DRY_TH || tool.tooth < 0.0 { by_press + (DRY_TH - by_press) * tool.tooth * (1.0 - wet) } else { by_press };
+            by_press.min(1.0 - wick * 1.6)
+        } else {
+            1.0 - reach.max(wick) * 1.6
+        };
 
         // pass 1: contact weights
         let bw = x1 - x0;
@@ -1667,6 +1688,10 @@ pub(crate) unsafe fn exchange(
         // (see `touch_rb`): its contact is its track.
         let hair = if fine || dep.is_some() { rb } else { (tool.hair_radius() * s).min(rb) };
         let push_k = tool.push * (seg / (2.0 * hair)).clamp(0.0, 1.0) * (hair / rb);
+        // (Field) `Tool::tooth`: a bristle ploughs with the bead of paint it carries; run dry it skates
+        // over the peaks it rides, pushing less (by tooth times its dryness), so the paint it lays
+        // there stays on them
+        let push_k = if tool.tooth != 0.0 { push_k * (1.0 - tool.tooth * (1.0 - wet)).max(0.0) } else { push_k };
         // (engine 4: each hair still moves only its own share of paint, but a
         // clump of hairs in stiff paint throws it aside the clump's width,
         // up to a few pixels: walls along the stroke's edges, a bead ahead)

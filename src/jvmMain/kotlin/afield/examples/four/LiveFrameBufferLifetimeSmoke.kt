@@ -1,9 +1,9 @@
 package afield.examples.four
 
-import afield.four.Renderer
-import afield.four.buffers.VulkanBuffer
-import afield.four.util.Options
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.buffers.VulkanBuffer
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.Window
 import org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
 import org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
 import org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT

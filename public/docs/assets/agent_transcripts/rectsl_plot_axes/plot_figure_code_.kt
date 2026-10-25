@@ -1,17 +1,20 @@
-// RectSL plotting-layer demo.
-//
-// The #rectsl program sets ONE shared domain (`->domain` + `->frame`), draws
-// `axes` (rules, nice-number ticks, numeric rect-numeral labels, gridlines),
-// then overlays three series in that domain (`area`, `line`, `points`) and
-// finishes with a `colorbar` and a discrete swatch `legend`. Edit `rectsl`
-// and re-run to change it live. See rectsl_cheatsheet.md ("Plotting layer")
-// / rectsl_examples.md ("A plotted figure").
-import afield.rectsl.RectAnimationOracle
-import afield.rectsl.rectMaterialShaderCode
-import afield.rectsl.writeFrameToMesh
-import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
+/*
+RectSL plotting-layer demo.
 
-val rectsl = """
+The #rectsl program sets ONE shared domain (`->domain` + `->frame`), draws
+`axes` (rules, nice-number ticks, numeric rect-numeral labels, gridlines),
+then overlays three series in that domain (`area`, `line`, `points`) and
+finishes with a `colorbar` and a discrete swatch `legend`. Edit `rectsl`
+and re-run to change it live. See rectsl_cheatsheet.md ("Plotting layer")
+/ rectsl_examples.md ("A plotted figure").
+*/
+import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
+import afield.lang.rectsl.RectAnimationOracle
+import afield.lang.rectsl.rectMaterialShaderCode
+import afield.lang.rectsl.writeFrameToMesh
+
+val rectsl =
+    """
 #rectsl
 ->wall 16 10 abstract
 ->duration 3
@@ -33,13 +36,15 @@ axes
 """
 
 val program = RectAnimationOracle.compile(rectsl).program!!
-val shader  = rectMaterialShaderCode(program)
+val shader = rectMaterialShaderCode(program)
 
-// Seed this box's shader-source properties before `moduleHere {}` runs; the
-// `//%-` fragment break makes this fragment execute first (see the playground
-// transcript for the why).
+/*
+Refresh the generated fragment on every run before `moduleHere {}`; the
+`//%-` fragment break makes this fragment execute first (see the playground
+transcript for the why).
+*/
 once.vertex { RECT_ANIMATION_VERTEX_SHADER }
-once.fragment { shader.exampleFragmentShader!! }
+fragment = shader.exampleFragmentShader!!
 
 //%-
 
@@ -54,7 +59,7 @@ renderer += "rectsl-plot-axes" to module
 
 val ww = program.wall.width.toFloat()
 val wh = program.wall.height.toFloat()
-m.push["worldToClip"] = afield.stdlib.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
+m.push["worldToClip"] = afield.math.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
 m.push["wallWidth"] = ww
 m.push["wallHeight"] = wh
 

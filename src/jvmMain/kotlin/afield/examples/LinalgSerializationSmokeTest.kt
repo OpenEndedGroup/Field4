@@ -1,14 +1,14 @@
 package afield.examples
 
-import afield.FieldJson
+import afield.document.persistence.FieldJson
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
-import afield.stdlib.linalg.Quaternionf
-import afield.stdlib.linalg.Vector2f
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.linalg.Vector4f
+import afield.math.linalg.Quaternionf
+import afield.math.linalg.Vector2f
+import afield.math.linalg.Vector3f
+import afield.math.linalg.Vector4f
 import kotlin.math.abs
 
 /*

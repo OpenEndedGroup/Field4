@@ -39,7 +39,7 @@ CHAT_FILE = "polytope_source_ai4_chat_history_.md"
 CODE_FILE = "polytope_source_code_.kt"
 STARTER_FILES = ("README.md", "AGENTS.md", "metadata.edn", "polytope_renderer_code_.kt", CODE_FILE,
                  "polytope_source_vertex_.glsl", "polytope_source_fragment_.glsl")
-TOOLS_SOURCE = ROOT / "src/jvmMain/kotlin/afield/stacksl/study/StackAutoStudyTools.kt"
+TOOLS_SOURCE = ROOT / "src/jvmMain/kotlin/afield/lang/stacksl/study/StackAutoStudyTools.kt"
 CAPTURED = ("starter.png", "burst.mp4", "card.png", "in-shader.png", "saved-chat.png")
 IMAGE_REF = re.compile(r"\]\((images/[0-9a-f]{20}\.(?:png|jpg))\)")
 TITLE = "A polytope that bursts and burns"
@@ -150,6 +150,8 @@ def excerpt(source: str, start: str, end: str) -> str:
 
 
 def fence(source: str, lang: str = "stacksl") -> str:
+    if lang == "kotlin":
+        source = demo.current_kotlin_listing(source)
     return f"```diffstatic {{data-lang={lang}}}\n" + source.strip("\n") + "\n```"
 
 
@@ -163,11 +165,12 @@ def folded(title: str, source: str, lang: str = "stacksl") -> str:
 
 
 def source_blocks() -> dict[str, str]:
-    """Listings on the page, each copied from the starter, a saved revision or the recorded box."""
+    """Listings from saved sources, with the disclosed current Kotlin list spelling."""
     starter = DEMOS / STARTER
     code = (folder() / CODE_FILE).read_text()
     for slot in ("explode", "face_decay"):
-        assert f'module.{slot} = """{head(slot)}"""' in code, f"the box's code does not hold stack.auto.{slot}'s HEAD"
+        assignment = rf'module\.{re.escape(slot)}\s*=\s*"""{re.escape(head(slot))}"""'
+        assert re.search(assignment, code), f"the box's code does not hold stack.auto.{slot}'s HEAD"
     starter_fragment = (starter / "polytope_source_fragment_.glsl").read_text()
     final_fragment = (folder() / "polytope_source_fragment_.glsl").read_text()
     return {

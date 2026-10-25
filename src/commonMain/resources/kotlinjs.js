@@ -7,7 +7,7 @@
 // Monaco's own official Kotlin grammar (conf + Monarch tokens), so it looks exactly like Kotlin.
 //
 // Loaded via "bithero/kotlinjs" in bootstrapMonaco.js. The box's code_language is "kotlinjs"
-// (see afield.remotejs.kotlinJsTopologyNeedsUpdating), which the editor uses as the model language.
+// (see afield.lang.remotejs.kotlinJsTopologyNeedsUpdating), which the editor uses as the model language.
 define("bithero/kotlinjs", ["require", "vs/editor/editor.api"], function (require, monacoModule) {
     "use strict";
 

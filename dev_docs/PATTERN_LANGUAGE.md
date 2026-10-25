@@ -1,6 +1,6 @@
 # The `pat(...)` pattern language — design decisions
 
-`afield.four.synth`'s pattern language is four files. This document is the *why*: the decisions that
+`afield.audio.synth`'s pattern language is four files. This document is the *why*: the decisions that
 are not obvious from the code, the two places it knowingly diverges from Tidal, three behaviours that
 were measured rather than assumed, and one advertised feature that turned out to be broken.
 

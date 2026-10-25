@@ -1,9 +1,9 @@
 # A photograph, closed and mounted
 
-This page turns one photograph into a printable object. `afield.onnx` runs the Depth Anything V2
+This page turns one photograph into a printable object. `afield.ai.inference.onnx` runs the Depth Anything V2
 Small model, which predicts how far away everything in a still image is. Field's imaging functions
 normalise and smooth that prediction, its mesh functions turn it into triangles, and
-`afield.manifold` closes and combines the result as a solid. The
+`afield.geometry.solid.manifold` closes and combines the result as a solid. The
 [photo_to_solid_chain](agent_transcripts.md#photo_to_solid_chain) starting point has the whole
 route as a document you can open.
 
@@ -38,12 +38,12 @@ flat base and floors it, the way a lithophane, a relief map or a stamp is made:
 
 ```diffstatic {data-lang=kotlin}
 // before: two calls that do not compose
-val open = depth.toHeightfieldMesh(scale = 0.35)   // χ = 1, one boundary loop
-open.toSolid()                                     // refused: not a closed manifold
+val open = depth.toHeightfieldMesh(scale = 0.35) // χ = 1, one boundary loop
+open.toSolid() // refused: not a closed manifold
 
 // after
-val plaque = depth.toReliefMesh(scale = 0.35, baseThickness = 0.12)  // χ = 2, no boundary loops
-plaque.toSolid()                                                     // legal
+val plaque = depth.toReliefMesh(scale = 0.35, baseThickness = 0.12) // χ = 2, no boundary loops
+plaque.toSolid() // legal
 ```
 
 You can predict the size of the mesh before you build it. With `P = 2·nx + 2·nz` rim vertices, a
@@ -137,25 +137,9 @@ about one marching cell. One walks a grid in Kotlin; the other is Manifold's own
 back into Kotlin for each sample. Either gets a plaque out of a depth map, and `Img.asHeightSdf` is
 the entry point to the second. This box builds both and compares them.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_photo_to_solid/levelset.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="display" wait-output-contains="eroded to islands" embed=true force=true timeout="900" w="1100" h="420" padding="18" name="chain-photo-levelset" alt="A four-column table headed regime, components, parallel = false and parallel = true. Each of three rows names a regime and its component count, and the parallel = false column reads 1/8 distinct on every row while the parallel = true column varies" macro-file="../../dev_docs/agents/transcripts/photo_to_solid_chain.yaml" capture-box="photo_levelset"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_photo_to_solid/levelset.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="display" wait-output-contains="agreeing to about one marching cell" embed=true force=true timeout="300" w="1100" h="200" padding="18" name="chain-photo-levelset" alt="A short panel giving the grid and marched plaque volumes and how far apart they are in percent, and saying the two constructions agree to about one marching cell" macro-file="../../dev_docs/agents/transcripts/photo_to_solid_chain.yaml" capture-box="photo_levelset"}
 // Built and launched from dev_docs/agents/transcripts/photo_to_solid_chain.yaml.
 ```
-
-### `Solid.levelSet(parallel = true)` is not reproducible
-
-The second half of that box runs the same level set eight times on each row of the table, with
-`parallel = false` and with `parallel = true`. Only `floor` changes from row to row: raising it
-erodes the plaque so that only the nearer parts of the photograph survive, as islands. Two runs
-count as the same answer only if the triangle count, the component count and the volume all agree.
-
-- `parallel = false` gives the same answer on all eight runs, on every row.
-- `parallel = true` does not, even on the first row, where the plaque is a single solid block. It
-  is worst on the most fragmented row. The exact figures change from one capture to the next.
-- `parallel = true` can also agree with itself on the wrong answer: at some values of `floor` it
-  finds one component on every run where the sequential path finds two.
-
-So use `parallel = false` for any level set whose numbers you are going to read or count.
-`Solid.levelSetOf` already defaults to it.
 
 ## Why Manifold reports a negative genus
 
@@ -173,7 +157,8 @@ route changes; only the photograph does.
 ## Where the code is
 
 * `reliefMesh` and `Img.toReliefMesh` are in
-  [`mesh_generate.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/mesh_generate.kt).
-* The whole route as one program is `afield.examples.chain.PhotoToSolidChain`.
+  [`mesh_generate.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/mesh/mesh_generate.kt).
+* The whole route as one program is
+  [`PhotoToSolidChain.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/examples/chain/PhotoToSolidChain.kt).
 * The [photo_to_solid_chain](agent_transcripts.md#photo_to_solid_chain) starting point is the same
   route as a document.

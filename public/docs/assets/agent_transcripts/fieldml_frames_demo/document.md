@@ -14,30 +14,16 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 From `code`
 
-Scaffolding, and it is Kotlin for two reasons worth naming.
-
-`prop` and `once` are SOURCE MACROS -- mechanism A of dev_docs/FIELDML_HOST_BRIDGE.md.
-They rewrite Kotlin source before it is compiled, so there is no JVM member for a
-reflective bridge to reach. And `Renderer.run` is a `suspend` member: on the JVM it is
-`run(Continuation)`, and FieldML can now *satisfy* a suspend function type but still
-cannot *call into* one, because it has no continuation to pass and nowhere to resume.
-
-Everything that actually draws, and everything that moves, is in the FieldML box.
+Kotlin owns the renderer loop: FieldML cannot call the suspend member Renderer.run.
+The FieldML child builds the scene; launch this parent first to publish its renderer.
 
 ```edn [field-box id="fieldml-frames-renderer" role="properties"]
-{"id" "fieldml-frames-renderer" "index" 0 "name" "window and renderer" "parents" ["root"] "children" ["fieldml-frames-root"] "properties" {"children" #{#afield/box "fieldml-frames-root"} "parents" #{#afield/box "root"} "name" "window and renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-frames-renderer_code_.kt" "lines" 17 "characters" 809 "sha256" "562bfbf01c8a5da70cf7f7b1a99016deb0418e3f923a271c32273535abdd5377"}]}
+{"id" "fieldml-frames-renderer" "index" 0 "name" "window and renderer" "parents" ["root"] "children" ["fieldml-frames-root"] "properties" {"children" #{#afield/box "fieldml-frames-root"} "parents" #{#afield/box "root"} "name" "window and renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-frames-renderer_code_.kt" "lines" 10 "characters" 389 "sha256" "0fe8c080298fe1351eb5c6d25538f0ab5b6f1b5bbeac5d86caf34224a8bd7e41"}]}
 ```
 
 ```kotlin [field-property box="fieldml-frames-renderer" name="code" path="fieldml-frames-renderer_code_.kt"]
-// Scaffolding, and it is Kotlin for two reasons worth naming.
-//
-// `prop` and `once` are SOURCE MACROS -- mechanism A of dev_docs/FIELDML_HOST_BRIDGE.md.
-// They rewrite Kotlin source before it is compiled, so there is no JVM member for a
-// reflective bridge to reach. And `Renderer.run` is a `suspend` member: on the JVM it is
-// `run(Continuation)`, and FieldML can now *satisfy* a suspend function type but still
-// cannot *call into* one, because it has no continuation to pass and nowhere to resume.
-//
-// Everything that actually draws, and everything that moves, is in the FieldML box.
+// Kotlin owns the renderer loop: FieldML cannot call the suspend member Renderer.run.
+// The FieldML child builds the scene; launch this parent first to publish its renderer.
 prop<Window>(window)
 prop<Renderer>(renderer)
 once.renderer {
@@ -48,12 +34,12 @@ println("renderer ready - now run the FieldML box")
 start(renderer::run)
 ```
 
-## 2. FieldML - a moving afield.four scene
+## 2. FieldML - a moving Field 4 scene
 
 <!-- field-box id="fieldml-frames-root" index="1" -->
 
 ```edn [field-box id="fieldml-frames-root" role="properties"]
-{"id" "fieldml-frames-root" "index" 1 "name" "FieldML - a moving afield.four scene" "parents" ["root" "fieldml-frames-renderer"] "children" ["fieldml-frames-live"] "properties" {"children" #{#afield/box "fieldml-frames-live"} "parents" #{#afield/box "root" #afield/box "fieldml-frames-renderer"} "name" "FieldML - a moving afield.four scene" "_tombstone" false "frame" #afield/rect [40.0 170.0 300.0 100.0] "isFieldMLRoot" true "mainLanguage" "fieldml"} "blockProperties" []}
+{"id" "fieldml-frames-root" "index" 1 "name" "FieldML - a moving Field 4 scene" "parents" ["root" "fieldml-frames-renderer"] "children" ["fieldml-frames-live"] "properties" {"children" #{#afield/box "fieldml-frames-live"} "parents" #{#afield/box "root" #afield/box "fieldml-frames-renderer"} "name" "FieldML - a moving Field 4 scene" "_tombstone" false "frame" #afield/rect [40.0 170.0 300.0 100.0] "isFieldMLRoot" true "mainLanguage" "fieldml"} "blockProperties" []}
 ```
 
 ## 3. A triangle that spins, driven by eachFrame
@@ -64,7 +50,7 @@ start(renderer::run)
 
 From `code`
 
-A whole afield.four scene, described from FieldML -- and, unlike the still-life demo
+A whole Field 4 scene, described from FieldML -- and, unlike the still-life demo
 next door, one that MOVES. There is no hostAs anywhere in this box.
 
 This box needs a live Vulkan device. Run the `window and renderer` box above it first;
@@ -76,11 +62,11 @@ parameter is a Continuation, and the bridge now drops that continuation, hands t
 the real `Frames`, and coerces the result to the type declared inside the continuation.
 
 ```edn [field-box id="fieldml-frames-live" role="properties"]
-{"id" "fieldml-frames-live" "index" 2 "name" "A triangle that spins, driven by eachFrame" "parents" ["root" "fieldml-frames-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-frames-root"} "name" "A triangle that spins, driven by eachFrame" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-frames-live_code_.kt" "lines" 77 "characters" 4476 "sha256" "25422d20e68e1420b9b9c23ca9c7a1fb9e625481002ef7fbf194e9c846bd43f2"}]}
+{"id" "fieldml-frames-live" "index" 2 "name" "A triangle that spins, driven by eachFrame" "parents" ["root" "fieldml-frames-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-frames-root"} "name" "A triangle that spins, driven by eachFrame" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-frames-live_code_.kt" "lines" 77 "characters" 4497 "sha256" "375425aab774ab0cc5b8c70d8acc63b0e21875923dc4d6ab406c73ed15785894"}]}
 ```
 
 ```kotlin [field-property box="fieldml-frames-live" name="code" path="fieldml-frames-live_code_.kt"]
-// A whole afield.four scene, described from FieldML -- and, unlike the still-life demo
+// A whole Field 4 scene, described from FieldML -- and, unlike the still-life demo
 // next door, one that MOVES. There is no hostAs anywhere in this box.
 //
 // This box needs a live Vulkan device. Run the `window and renderer` box above it first;
@@ -100,8 +86,8 @@ let inherited name box =
 
 let renderer = thisBox |> inherited "renderer"
 
-let ModuleKt = hostClass "afield.four.modules.ModuleKt"
-let Phased = hostClass "afield.PhasedKt"
+let ModuleKt = hostClass "afield.graphics.render.ModuleKt"
+let Phased = hostClass "afield.runtime.lifecycle.PhasedKt"
 let Pair = hostClass "kotlin.Pair"
 
 // One push-constant member, read by both stages. The name that matters is the MEMBER name
@@ -120,9 +106,9 @@ let params =
     p |> hostSet "name" "fieldmlSpin"
   ) ModuleKt
 
-let module = hostNew (params) (hostClass "afield.four.modules.Module")
+let module = hostNew (params) (hostClass "afield.graphics.render.Module")
 let pointer = module |> hostExt ModuleKt "pointer" Unit
-let mesh = hostNew (renderer, pointer) (hostClass "afield.four.modules.Mesh")
+let mesh = hostNew (renderer, pointer) (hostClass "afield.graphics.render.Mesh")
 let _ = pointer |> hostCall1 "plusAssign" (hostNew ("tri", mesh) Pair)
 let _ = mesh |> hostCall "resize" (3, 0, pointer)
 let target = renderer |> hostCall1 "renderTargetFor" 0
@@ -134,7 +120,7 @@ let _ = target |> hostCall1 "plusAssign_module" (hostNew ("fieldmlSpin", module)
 // setter is the way across: `Vector4f.set(float, float, float, float)` really declares
 // floats, so the bridge's numeric ladder narrows for us. The same object stays in the
 // structure and is re-serialised on every draw, so mutating it is what moves the triangle.
-let spin = hostNew (0.0, 0.0, 0.0, 0.0) (hostClass "afield.stdlib.linalg.Vector4f")
+let spin = hostNew (0.0, 0.0, 0.0, 0.0) (hostClass "afield.math.linalg.Vector4f")
 let _ = mesh |> hostGet "push" |> hostCall "set" ("spin", spin)
 
 // Mechanism D. `f` is typed `Frames` off the JVM signature, so `f.frameNumber` is checked

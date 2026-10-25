@@ -8,7 +8,7 @@
 **What was asked.** The note on `graph_connectivity_examples.md` asked whether Field has an orthant neighbourhood graph. It does, and this pass added a section showing it. While checking the code I found that its KDoc describes a different graph than the code builds. The KDoc is in `src/`, which this docs pass is not allowed to edit.
 
 **Evidence.**
-- `src/jvmMain/kotlin/afield/stdlib/graph_connectivity.kt` — the KDoc on `vec2OrthantGraph` (and on `vec3OrthantGraph`) says "Two points are connected if they are *mutual* nearest neighbors in the same orthant."
+- `src/jvmMain/kotlin/afield/data/graph/graph_connectivity.kt` — the KDoc on `vec2OrthantGraph` (and on `vec3OrthantGraph`) says "Two points are connected if they are *mutual* nearest neighbors in the same orthant."
 - The body of `vec2OrthantGraph` gives every point `i` an edge to its nearest point in each non-empty quadrant, and adds it to a `mutableSetOf<GraphEdge>()`. It never checks that `j` also picks `i`. `GraphEdge.equals` ignores direction (same file, `data class GraphEdge`), so the set only removes duplicates. The graph is the **union** of the per-point choices, not the mutual intersection. `vec3OrthantGraph` works the same way over octants.
 - `GraphConnectivitySmokeTest.test2DOrthantGraph` expects the centre point to have degree 4. That holds under both readings, so the test cannot tell them apart.
 

@@ -9,9 +9,10 @@ Register the callback in the source box:
 ```diffstatic {data-lang=kotlin}
 import kotlinx.serialization.json.*
 
-val endpoint = outputRequests("editor") { request ->
-    buildJsonObject { put("received", request) }
-}
+val endpoint =
+    outputRequests("editor") { request ->
+        buildJsonObject { put("received", request) }
+    }
 ```
 
 Pass `endpoint.id` to the iframe as part of its rendered configuration. In its JavaScript module:

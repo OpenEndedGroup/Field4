@@ -27,8 +27,8 @@ expect:
 */
 private val DOCUMENT_TOOL_SNIPPET = """
 // example:start
-import afield.ai.core.AgentToolExtensions
-import afield.stacksl.study.StackSLStudyShader
+import afield.ai.tools.AgentToolExtensions
+import afield.lang.stacksl.study.StackSLStudyShader
 import com.fasterxml.jackson.annotation.JsonClassDescription
 
 @JsonClassDescription("The colours a StackSL program types, as the window shows them.")
@@ -43,9 +43,9 @@ AgentToolExtensions.register(ColoursOfStackSLStudy::class.java,
 // example:end
 
 thisBox.setPropertyRaw("stackSL", "[0.9,0.5,0.2] uv x *")
-val focused = afield.ai.core.ToolExecutionContext(focus = afield.ai.core.ToolFocus(document, thisBox, "stackSL"))
+val focused = afield.ai.tools.ToolExecutionContext(focus = afield.ai.tools.ToolFocus(document, thisBox, "stackSL"))
 println("colours " + AgentToolExtensions.execute(focused, "ColoursOfStackSLStudy", "{}"))
-println("offered elsewhere " + AgentToolExtensions.isAvailable(afield.ai.core.ToolExecutionContext(), "ColoursOfStackSLStudy"))
+println("offered elsewhere " + AgentToolExtensions.isAvailable(afield.ai.tools.ToolExecutionContext(), "ColoursOfStackSLStudy"))
 AgentToolExtensions.unregister("ColoursOfStackSLStudy", scope = document)
 println("retired " + !AgentToolExtensions.isAvailable(focused, "ColoursOfStackSLStudy"))
 """.trimIndent()

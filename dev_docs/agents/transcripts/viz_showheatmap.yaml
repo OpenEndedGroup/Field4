@@ -16,6 +16,9 @@ description: >
   screen, then swap a colormap ("viridis"/"magma"/"inferno"/"plasma"/"turbo"/"coolwarm"/"grayscale")
   or toggle logScale / smooth / flipY and re-run a box to change it live. Each `execute` op omits
   inline code, so it runs the box's stored `code` property.
+docs:
+  - page: reference/visualization.md
+    why: "Reference for showHeatmap and showImage."
 operations:
   - create:
       box: heatmap_gaussian
@@ -25,13 +28,14 @@ operations:
         code: |
           // A smooth 2-D Gaussian bump -> viridis heatmap. showHeatmap min-max normalizes,
           // bilinear-upsamples the coarse grid, and displays the PNG inline in one call.
-          val bump = Array(48) { row ->
-              DoubleArray(64) { col ->
-                  val dx = (col - 32) / 16.0
-                  val dy = (row - 24) / 12.0
-                  exp(-(dx * dx + dy * dy))
+          val bump =
+              Array(48) { row ->
+                  DoubleArray(64) { col ->
+                      val dx = (col - 32) / 16.0
+                      val dy = (row - 24) / 12.0
+                      exp(-(dx * dx + dy * dy))
+                  }
               }
-          }
           showHeatmap(bump, colormap = "viridis", width = 640)
   - create:
       box: heatmap_diverging
@@ -41,9 +45,10 @@ operations:
         code: |
           // A sin*sin field in [-1,1]. A fixed vmin/vmax with normalize=false anchors the coolwarm
           // white midpoint at zero, so blue = negative, red = positive.
-          val field = Array(48) { row ->
-              DoubleArray(64) { col -> sin(col * 0.18) * sin(row * 0.22) }
-          }
+          val field =
+              Array(48) { row ->
+                  DoubleArray(64) { col -> sin(col * 0.18) * sin(row * 0.22) }
+              }
           showHeatmap(field, colormap = "coolwarm", width = 640, vmin = -1.0, vmax = 1.0, normalize = false)
   - create:
       box: heatmap_spectrogram
@@ -51,17 +56,21 @@ operations:
       frame: { x: 820.0, y: 80.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // A synthetic [frame][bin] magnitude spectrogram with a rising ridge. transpose=true puts
-          // time on x and frequency on y; flipY keeps low frequency at the bottom; logScale gives a
-          // dB-like view. This is exactly the shape the spectral docs hand-rolled by hand before.
-          val frames = 120; val bins = 80
-          val spec = Array(frames) { f ->
-              DoubleArray(bins) { bin ->
-                  val ridge = (bins * (0.15 + 0.7 * f / frames)).toInt()
-                  val d = (bin - ridge).toDouble()
-                  (0.001 + exp(-d * d / 12.0)) * (1.0 + 0.3 * sin(f * 0.3))
+          /*
+          A synthetic [frame][bin] magnitude spectrogram with a rising ridge. transpose=true puts
+          time on x and frequency on y; flipY keeps low frequency at the bottom; logScale gives a
+          dB-like view.
+          */
+          val frames = 120
+          val bins = 80
+          val spec =
+              Array(frames) { f ->
+                  DoubleArray(bins) { bin ->
+                      val ridge = (bins * (0.15 + 0.7 * f / frames)).toInt()
+                      val d = (bin - ridge).toDouble()
+                      (0.001 + exp(-d * d / 12.0)) * (1.0 + 0.3 * sin(f * 0.3))
+                  }
               }
-          }
           showHeatmap(spec, colormap = "magma", width = 900, transpose = true, flipY = true, logScale = true)
   - create:
       box: heatmap_image
@@ -71,7 +80,8 @@ operations:
         code: |
           // showImage displays a ready-made ARGB IntArray directly (encode + display), for when you
           // already have a pixel buffer rather than a scalar field.
-          val w = 512; val h = 256
+          val w = 512
+          val h = 256
           val px = IntArray(w * h)
           for (y in 0 until h) for (x in 0 until w) {
               val r = x * 255 / (w - 1)

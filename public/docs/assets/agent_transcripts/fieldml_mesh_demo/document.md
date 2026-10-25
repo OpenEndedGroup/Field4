@@ -19,13 +19,15 @@ Scaffolding, and Kotlin for two reasons named in the FieldML box next door:
 member*, which the bridge can satisfy the type of but cannot call into.
 
 ```edn [field-box id="fieldml-mesh-renderer" role="properties"]
-{"id" "fieldml-mesh-renderer" "index" 0 "name" "window and renderer" "parents" ["root"] "children" ["fieldml-mesh-root"] "properties" {"children" #{#afield/box "fieldml-mesh-root"} "parents" #{#afield/box "root"} "name" "window and renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-mesh-renderer_code_.kt" "lines" 11 "characters" 461 "sha256" "be983f43db7e9f0b57105a9f3907fff273e5e38e22c3fae9dcead4643f80c168"}]}
+{"id" "fieldml-mesh-renderer" "index" 0 "name" "window and renderer" "parents" ["root"] "children" ["fieldml-mesh-root"] "properties" {"children" #{#afield/box "fieldml-mesh-root"} "parents" #{#afield/box "root"} "name" "window and renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-mesh-renderer_code_.kt" "lines" 13 "characters" 458 "sha256" "4bd915bf455170e001327a3502d0dae362439a6a0ade809695d8a738a109ae17"}]}
 ```
 
 ```kotlin [field-property box="fieldml-mesh-renderer" name="code" path="fieldml-mesh-renderer_code_.kt"]
-// Scaffolding, and Kotlin for two reasons named in the FieldML box next door:
-// `prop`/`once` are SOURCE MACROS (mechanism A), and `Renderer.run` is a suspend
-// *member*, which the bridge can satisfy the type of but cannot call into.
+/*
+Scaffolding, and Kotlin for two reasons named in the FieldML box next door:
+`prop`/`once` are SOURCE MACROS (mechanism A), and `Renderer.run` is a suspend
+*member*, which the bridge can satisfy the type of but cannot call into.
+*/
 prop<Window>(window)
 prop<Renderer>(renderer)
 once.renderer {
@@ -65,7 +67,7 @@ here and written straight into the mesh's vertex buffers.
 Run the `window and renderer` box above first; this one walks up to find it.
 
 ```edn [field-box id="fieldml-mesh-live" role="properties"]
-{"id" "fieldml-mesh-live" "index" 2 "name" "Sixteen triangles, recomputed per frame" "parents" ["root" "fieldml-mesh-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-mesh-root"} "name" "Sixteen triangles, recomputed per frame" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-mesh-live_code_.kt" "lines" 106 "characters" 5129 "sha256" "974292e87020aef0c22f05fba56c60c6564e5502a0d5ad500061d79714acee11"}]}
+{"id" "fieldml-mesh-live" "index" 2 "name" "Sixteen triangles, recomputed per frame" "parents" ["root" "fieldml-mesh-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-mesh-root"} "name" "Sixteen triangles, recomputed per frame" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-mesh-live_code_.kt" "lines" 106 "characters" 5156 "sha256" "cd463f4edc26b440615a475e0b11c157420e8df73817c658e13d9b5d3e42ae7e"}]}
 ```
 
 ```kotlin [field-property box="fieldml-mesh-live" name="code" path="fieldml-mesh-live_code_.kt"]
@@ -90,8 +92,8 @@ let inherited name box =
 
 let renderer = thisBox |> inherited "renderer"
 
-let ModuleKt = hostClass "afield.four.modules.ModuleKt"
-let Phased = hostClass "afield.PhasedKt"
+let ModuleKt = hostClass "afield.graphics.render.ModuleKt"
+let Phased = hostClass "afield.runtime.lifecycle.PhasedKt"
 let Pair = hostClass "kotlin.Pair"
 
 // Two vertex inputs. `Mesh.resize` reads these back out of the compiled SPIR-V
@@ -107,9 +109,9 @@ let params =
     p |> hostSet "name" "fieldmlRing"
   ) ModuleKt
 
-let module = hostNew (params) (hostClass "afield.four.modules.Module")
+let module = hostNew (params) (hostClass "afield.graphics.render.Module")
 let pointer = module |> hostExt ModuleKt "pointer" Unit
-let mesh = hostNew (renderer, pointer) (hostClass "afield.four.modules.Mesh")
+let mesh = hostNew (renderer, pointer) (hostClass "afield.graphics.render.Mesh")
 let _ = pointer |> hostCall1 "plusAssign" (hostNew ("ring", mesh) Pair)
 
 let blades = 16

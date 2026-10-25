@@ -1,15 +1,15 @@
 package afield.ai.agent
 
-import afield.AiAssist
-import afield.Box
-import afield.SessionInformation
-import afield.payload
-import afield.ai.core.AiBoxConversation
-import afield.ai.core.AwaitedBuild
-import afield.ai.core.TurnSuspension
-import afield.logger.lprintln
-import afield.stdlib.StudyBuildNoticeKind
-import afield.stdlib.StudyBuildStatus
+import afield.app.protocol.AiAssist
+import afield.document.graph.Box
+import afield.app.server.SessionInformation
+import afield.app.protocol.payload
+import afield.ai.conversation.AiBoxConversation
+import afield.ai.conversation.AwaitedBuild
+import afield.ai.conversation.TurnSuspension
+import afield.app.diagnostics.logging.lprintln
+import afield.study.build.StudyBuildNoticeKind
+import afield.study.build.StudyBuildStatus
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.time.Instant
@@ -20,6 +20,12 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+
+/**
+ * Waiting for study build jobs without the model: a box chat that ended its turn on [AwaitStudyBuildsRequest] is resumed by [StudyBuildAwaits] when its jobs are done or its deadline passes.
+ *
+ * [AiChatSuspension] and [AiChatAwaitedJob] are the wait as `ai-chat-history` reports it to the panel.
+ */
 
 /** A job a chat waits for, as `ai-chat-history` reports it. [status] is the last one seen, or "" before the first poll. */
 @Serializable
@@ -38,7 +44,7 @@ data class AiChatSuspension(val since: String, val resumesBy: String, val jobs: 
  * is terminal, or the deadline passes, this writes a continuation (each job's status, currency, facts and
  * result notes) and hands it to the box chat as a request of Field's own (`AiAssist.continuationId`). The
  * chat starts a turn with it, or, when a turn is already running in that box, gives it to that turn the way
- * a message typed mid-turn is given ([afield.ai.core.AiTurnInbox]). A request the chat refuses (AI setup
+ * a message typed mid-turn is given ([afield.ai.conversation.AiTurnInbox]). A request the chat refuses (AI setup
  * failed, say) is offered again later, backing off to ten minutes.
  *
  * A restarted Field arms every saved wait again when the document is next opened ([rearm]). A runner that
@@ -56,7 +62,7 @@ class StudyBuildAwaits(
     val runnerGraceMs: Long = 120_000,
     private val clock: () -> Long = System::currentTimeMillis,
     /** Whether a document is still open in this Field; a closed one's waits are armed again when it reopens. */
-    private val isOpen: (SessionInformation) -> Boolean = { info -> afield.documents.values.any { it === info } },
+    private val isOpen: (SessionInformation) -> Boolean = { info -> afield.app.server.documents.values.any { it === info } },
 ) : AutoCloseable {
 
     /** What [PROPERTY] holds. [row] is the transcript block the suspended turn ended with. */
@@ -172,12 +178,39 @@ class StudyBuildAwaits(
             if (!terminal && now < a.saved.deadline) continue
             val outcomes = a.saved.jobs.map { graph.studyBuilds.awaitedOutcome(it.awaited()) }
             val text = continuationText(outcomes, now - a.saved.since, timedOut = !terminal)
+            val (images, shown) = pictures(graph, outcomes)
             val continuation = AiAssist(uid = a.box.id, prompt = (a.box.getPropertyRaw(a.saved.property) as? String).orEmpty(),
-                extraPrompt = text, property = a.saved.property, kind = "general", maxToolRounds = a.saved.maxToolRounds,
+                extraPrompt = text + shown, images = images, property = a.saved.property, kind = "general", maxToolRounds = a.saved.maxToolRounds,
                 queueIfBusy = true, continuationId = UUID.randomUUID().toString())
             a.pending = continuation
             offer(k, a, continuation, now)
         }
+    }
+
+    /**
+     * The views the outcomes' notes name ([afield.study.build.StudyBuildView]), drawn and captured, as attachments,
+     * and a line saying what each picture is (or why it is missing). At most [MAX_VIEWS], one per box.
+     */
+    private fun pictures(graph: FieldGraphTools, outcomes: List<AwaitedJobOutcome>): Pair<List<String>, String> {
+        val views = outcomes.flatMap { it.notes }.mapNotNull { it.view }.distinctBy { it.box }.take(MAX_VIEWS)
+        val images = mutableListOf<String>()
+        val lines = StringBuilder()
+        for (view in views) {
+            val drawn = runCatching { view.show?.invoke() }.exceptionOrNull()
+            val captured = runCatching { graph.viewOutput(ViewBoxOutputRequest(view.box, settleMs = VIEW_SETTLE_MS, note = view.caption)) }
+            val shot = captured.getOrNull()
+            val url = shot?.dataUrl.orEmpty()
+            if (drawn == null && shot != null && shot.success && url.isNotBlank()) {
+                images += url
+                lines.append("\n\nAttached: what `${shot.name.ifBlank { view.box }}` shows now")
+                if (view.caption.isNotBlank()) lines.append(" (${view.caption})")
+                lines.append('.')
+            } else {
+                val why = drawn?.message ?: captured.exceptionOrNull()?.message ?: shot?.message ?: "no picture"
+                lines.append("\n\nThe view in `${view.box}` could not be attached: $why. Look at it yourself with ViewBoxOutputRequest.")
+            }
+        }
+        return images to lines.toString()
     }
 
     private fun offer(k: String, a: Armed, continuation: AiAssist, now: Long) {
@@ -233,10 +266,14 @@ class StudyBuildAwaits(
 
         private fun plural(n: Int) = if (n == 1) "1 build" else "$n builds"
 
+        /** Pictures a resumed message carries at most; a view's box is drawn and given this long to settle. */
+        internal const val MAX_VIEWS = 3
+        internal const val VIEW_SETTLE_MS = 1500
+
         /** The closed transcript block a suspended turn ends with; [shown] opens it while the wait lasts. */
         internal fun waitingRow(jobs: List<SavedJob>, deadline: Long): String = buildString {
             append("<<progress>>\n")
-            append(afield.AiChatBlock.buildWaitTitle(jobs.size)).append('\n')
+            append(afield.ai.conversation.AiChatBlock.buildWaitTitle(jobs.size)).append('\n')
             jobs.forEach { append(jobLine(it)).append('\n') }
             val at = Instant.ofEpochMilli(deadline).atZone(ZoneId.systemDefault())
             val today = Instant.now().atZone(ZoneId.systemDefault()).toLocalDate() == at.toLocalDate()
@@ -272,7 +309,7 @@ class StudyBuildAwaits(
          */
         internal fun continuationText(outcomes: List<AwaitedJobOutcome>, waitedMs: Long, timedOut: Boolean): String = buildString {
             val running = outcomes.count { it.record?.status in ACTIVE && it.runnerLive }
-            append(afield.AiChatBlock.FIELD_MESSAGE_PREFIX)
+            append(afield.ai.conversation.AiChatBlock.FIELD_MESSAGE_PREFIX)
             if (timedOut) append("the time you allowed for these builds has passed (${duration(waitedMs)}), and " +
                 "${plural(running)} ${if (running == 1) "is" else "are"} still running; they keep running. No model call was made while you waited.\n\n")
             else append("the ${if (outcomes.size == 1) "build" else "builds"} you awaited ${if (outcomes.size == 1) "has" else "have"} ended, " +
@@ -314,16 +351,16 @@ class StudyBuildAwaits(
 
         /** The default way to hand a continuation to a chat: the `ai-assist` handler, as the panel sends it. */
         fun resumeThroughChat(info: SessionInformation, box: Box, continuation: AiAssist): Boolean {
-            val previousInfo = afield.thisSessionInfo.get()
-            val previousSession = afield.thisSession.get()
-            afield.thisSessionInfo.set(info)
+            val previousInfo = afield.app.server.thisSessionInfo.get()
+            val previousSession = afield.app.server.thisSession.get()
+            afield.app.server.thisSessionInfo.set(info)
             // The turn's notices go to a page showing the document; with none open, to every page.
-            info.sessions.firstOrNull()?.let { afield.thisSession.set(it) } ?: afield.thisSession.remove()
+            info.sessions.firstOrNull()?.let { afield.app.server.thisSession.set(it) } ?: afield.app.server.thisSession.remove()
             try {
-                afield.handle(afield.Message("ai-assist").payload(continuation)) { }
+                afield.app.protocol.handle(afield.app.protocol.Message("ai-assist").payload(continuation)) { }
             } finally {
-                if (previousInfo == null) afield.thisSessionInfo.remove() else afield.thisSessionInfo.set(previousInfo)
-                if (previousSession == null) afield.thisSession.remove() else afield.thisSession.set(previousSession)
+                if (previousInfo == null) afield.app.server.thisSessionInfo.remove() else afield.app.server.thisSessionInfo.set(previousInfo)
+                if (previousSession == null) afield.app.server.thisSession.remove() else afield.app.server.thisSession.set(previousSession)
             }
             return taken.remove(continuation.continuationId)
         }

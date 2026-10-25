@@ -1,0 +1,53 @@
+{
+  "baseline": "d54d91aa6",
+  "sources": [
+    {
+      "path": "public/docs/klecks.md",
+      "kotlinBodies": 2,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/csound.md",
+      "kotlinBodies": 7,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/interactive_guides.md",
+      "kotlinBodies": 6,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "kotlinBodies": 33,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/alife_examples.md",
+      "kotlinBodies": 28,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/four_simulation_chain.yaml",
+      "kotlinBodies": 4,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/assets/four_in_output_areas/rtt-view_vertex_.glsl",
+      "kotlinBodies": 0,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "templates/advanced_remote/e3fe297a-36b5-450a-8343-116e105de4ee_vertex_.glsl",
+      "kotlinBodies": 0,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

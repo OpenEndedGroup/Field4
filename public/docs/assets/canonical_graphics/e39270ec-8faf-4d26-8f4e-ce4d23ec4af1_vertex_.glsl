@@ -39,8 +39,8 @@ float random01(inout uint state) {
 
 vec2 randomPosition(inout uint state, ivec2 dims) {
     return vec2(
-        random01(state) * float(max(dims.x - 1, 0)),
-        random01(state) * float(max(dims.y - 1, 0))
+    random01(state) * float(max(dims.x - 1, 0)),
+    random01(state) * float(max(dims.y - 1, 0))
     );
 }
 
@@ -70,19 +70,21 @@ void main() {
     if (mode != 0u) {
         positionPx = randomPosition(rng, dims);
         mode = 0u;
-    } else {
+    }
+    else {
         ivec2 center = clamp(ivec2(round(positionPx)), ivec2(0), dims - 1);
         int probe = max(int(round(push.sampleStepPx)), 1);
         bool solidNeighbor =
-            isSolidAt(center + ivec2(probe, 0), dims, push.solidThreshold) ||
-            isSolidAt(center + ivec2(-probe, 0), dims, push.solidThreshold) ||
-            isSolidAt(center + ivec2(0, probe), dims, push.solidThreshold) ||
-            isSolidAt(center + ivec2(0, -probe), dims, push.solidThreshold);
+        isSolidAt(center + ivec2(probe, 0), dims, push.solidThreshold) ||
+        isSolidAt(center + ivec2(-probe, 0), dims, push.solidThreshold) ||
+        isSolidAt(center + ivec2(0, probe), dims, push.solidThreshold) ||
+        isSolidAt(center + ivec2(0, -probe), dims, push.solidThreshold);
 
         if (solidNeighbor) {
             mode = 1u;
             becameSolid = true;
-        } else {
+        }
+        else {
             positionPx = clamp(positionPx + randomWalkStep(rng, push.walkStepPx), vec2(0.0), maxPos);
         }
     }
@@ -96,6 +98,6 @@ void main() {
     gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
     gl_PointSize = push.pointSize;
     vColor = becameSolid
-        ? vec4(push.stuckRed, 0.0, push.stuckBlue, 0.0)
-        : vec4(0.0, push.walkerGreen, 0.0, 0.0);
+    ? vec4(push.stuckRed, 0.0, push.stuckBlue, 0.0)
+    : vec4(0.0, push.walkerGreen, 0.0, 0.0);
 }

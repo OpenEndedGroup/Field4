@@ -27,6 +27,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolVisibility
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
+import org.jetbrains.kotlin.analysis.api.types.KaFlexibleType
 import org.jetbrains.kotlin.analysis.api.types.KaTypeParameterType
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
 import org.jetbrains.kotlin.analysis.api.types.KaType
@@ -65,7 +66,7 @@ import java.util.concurrent.ConcurrentHashMap
  * The imports a snippet is analysed under when the caller does not say.
  *
  * THE SOURCE OF TRUTH FOR FIELD'S REPL IMPORTS IS `afield.Boxes.intro`, surfaced as the list
- * `afield.introImports` and sent per request as [CompletionRequest.replImports]. Nothing here is
+ * `afield.document.graph.introImports` and sent per request as [CompletionRequest.replImports]. Nothing here is
  * authoritative and nothing here should be edited to "add a package a box needs" — add it to `intro`.
  *
  * This module cannot see `afield` (it is a standalone tool built against the Kotlin compiler, not
@@ -82,17 +83,109 @@ object CompletionImports {
     )
 
     /**
-     * A strict subset of Field's REPL imports, used ONLY when a request carries no `replImports`.
-     *
-     * It is the historical hand-written guess, kept because the corpus fixtures resolve under it —
-     * not because it is right. It is missing `afield.nano`, `afield.graphquery`, `afield.four.targets`,
-     * `afield.four.buffers`, `afield.four.texture` and the `afield.stdlib.linalg` sub-packages, all of
-     * which `intro` has. Those now arrive from the live client, which is why this is allowed to stay
-     * wrong rather than being another thing to keep in step.
+     * The star imports of Field's REPL preamble (`Boxes.kt` `intro`), used ONLY when a request carries
+     * no `replImports`. Keep it in step with `intro`'s `import x.*` lines: the live client sends the
+     * real list, so this only decides what an import-less request (and the corpus fixtures) resolve.
      */
     val fieldFallback = listOf(
-        "afield.*", "afield.stdlib.*", "afield.stdlib.linalg.*", "afield.graphics.*",
-        "afield.four.*", "afield.four.util.*", "afield.four.synth.*", "afield.four.modules.*",
+        "afield.ai.agent.*",
+        "afield.ai.conversation.*",
+        "afield.ai.learning.*",
+        "afield.ai.retrieval.*",
+        "afield.ai.tools.*",
+        "afield.animation.gesture.*",
+        "afield.animation.interpolation.*",
+        "afield.animation.keyframes.*",
+        "afield.animation.motion.*",
+        "afield.app.commands.*",
+        "afield.app.diagnostics.*",
+        "afield.app.notifications.*",
+        "afield.app.protocol.*",
+        "afield.app.server.*",
+        "afield.app.settings.*",
+        "afield.audio.ai.*",
+        "afield.audio.analysis.*",
+        "afield.audio.analysis.loris.*",
+        "afield.audio.synth.*",
+        "afield.audio.tone.*",
+        "afield.data.collections.*",
+        "afield.data.formats.*",
+        "afield.data.graph.*",
+        "afield.data.query.datalog.*",
+        "afield.data.query.graph.*",
+        "afield.data.sorting.*",
+        "afield.data.table.*",
+        "afield.document.context.*",
+        "afield.document.graph.*",
+        "afield.document.history.*",
+        "afield.document.persistence.*",
+        "afield.document.properties.*",
+        "afield.document.workspace.*",
+        "afield.geometry.mesh.*",
+        "afield.geometry.path.*",
+        "afield.geometry.polytope.*",
+        "afield.geometry.spatial.*",
+        "afield.graphics.color.*",
+        "afield.graphics.interaction.*",
+        "afield.graphics.paint.*",
+        "afield.graphics.render.*",
+        "afield.graphics.scene.*",
+        "afield.graphics.shader.*",
+        "afield.graphics.text.*",
+        "afield.graphics.texture.*",
+        "afield.graphics.three.*",
+        "afield.graphics.visionos.*",
+        "afield.graphics.vulkan.*",
+        "afield.graphics.vulkan.buffers.*",
+        "afield.graphics.vulkan.targets.*",
+        "afield.graphics.vulkan.util.*",
+        "afield.io.osc.*",
+        "afield.io.process.*",
+        "afield.lang.lambda.*",
+        "afield.lang.nano.*",
+        "afield.lang.python.*",
+        "afield.lang.remotejs.*",
+        "afield.lang.rpn.*",
+        "afield.lang.stacksl.*",
+        "afield.lang.stacksl.evolution.*",
+        "afield.math.autodiff.*",
+        "afield.math.control.*",
+        "afield.math.estimation.*",
+        "afield.math.functions.*",
+        "afield.math.gp.*",
+        "afield.math.linalg.*",
+        "afield.math.linalg.arena.*",
+        "afield.math.linalg.storage.*",
+        "afield.math.optimization.*",
+        "afield.math.statistics.*",
+        "afield.math.units.*",
+        "afield.media.capture.*",
+        "afield.media.image.*",
+        "afield.media.video.*",
+        "afield.runtime.completion.*",
+        "afield.runtime.execution.*",
+        "afield.runtime.kotlin.*",
+        "afield.runtime.languages.*",
+        "afield.runtime.lifecycle.*",
+        "afield.simulation.agents.*",
+        "afield.simulation.automata.*",
+        "afield.simulation.particles.*",
+        "afield.study.build.*",
+        "afield.study.evidence.*",
+        "afield.study.search.*",
+        "afield.study.source.*",
+        "afield.study.ui.*",
+        "afield.tools.automation.*",
+        "afield.tools.docs.*",
+        "afield.ui.controls.*",
+        "afield.ui.film.*",
+        "afield.ui.layout.*",
+        "afield.ui.notation.*",
+        "afield.ui.output.*",
+        "afield.ui.output.templates.*",
+        "afield.ui.slides.*",
+        "afield.ui.visualization.*",
+        "kotlin.math.*",
     )
 
     /** What a session's ASM prefix index is seeded with before any request has been seen. A package a
@@ -137,7 +230,7 @@ data class AaCandidate(
      * distinction is load-bearing for sectioning: the server used to infer a candidate's category from
      * the expression's receiver, so on a `ComputeMesh.` panel `let`, `also` and `apply` were all filed
      * under GRAPHICS — a section header that described the receiver rather than the row. Categorising on
-     * the declaration puts `also` under Kotlin, `T.onBeat` (afield.four.synth) under Audio, and leaves
+     * the declaration puts `also` under Kotlin, `T.onBeat` (afield.audio.synth) under Audio, and leaves
      * GRAPHICS meaning what it says.
      */
     val declaredIn: String = "",
@@ -248,7 +341,7 @@ data class AaLoweringResult(
 )
 
 /**
- * Compact a type string for display: `afield/graphics/FLine` → `FLine`,
+ * Compact a type string for display: `afield/geometry/path/FLine` → `FLine`,
  * `kotlin.collections.List<kotlin.Int>` → `List<Int>`, `kotlin.Float?` → `Float?`. Package segments
  * (lowercase) before a Capitalised class name are dropped; generics/nullability are preserved.
  */
@@ -306,7 +399,7 @@ data class AaSymbolIndex(
     /** package fqName -> type-alias simple names (read from facade @Metadata; they have no .class). */
     val typeAliases: Map<String, List<String>>,
     /**
-     * ASM internal receiver name (`java/nio/IntBuffer`, `afield/stdlib/Functions$RectifyMode`) -> the
+     * ASM internal receiver name (`java/nio/IntBuffer`, `afield/math/functions/Functions$RectifyMode`) -> the
      * `package|name` of every top-level callable whose FIRST PARAMETER is that type — which, for an
      * extension, is exactly its receiver (`fun Img.sobel()` compiles to `static sobel(Img)`).
      *
@@ -661,7 +754,7 @@ internal fun prefixAt(snippet: String, cursor: Int): String =
 private val IMPORT_LINE = Regex("""\s*import\s+\w+(?:\.\w+)*(?:\.\*)?(?:\s+as\s+\w+)?\s*""")
 
 /** A line up to the caret when the caret is in an `import`'s path: `import ‸`, `import kotlin.ma‸`,
- *  `import afield.pd.‸`. Not past the path — `import a.b.*‸` and `import a.b.C as D‸` do not match. */
+ *  `import afield.audio.pd.‸`. Not past the path — `import a.b.*‸` and `import a.b.C as D‸` do not match. */
 private val IMPORT_PATH_HEAD = Regex("""\s*import\s+(?:\w+\.)*\w*""")
 
 /** The caret's `import` line ([line], in snippet offsets) and its text from `import` up to the caret
@@ -741,7 +834,7 @@ class AaCompleter(
     private val defaultImports: List<String>,
     /** The session's binary roots, so a package [index] does not cover can be scanned on demand: one the
      *  box imports outside [defaultImports] (`sentences`, a user's own jar), or one a package path names
-     *  (`afield.pd.‸`, see [contentsOf]). Empty disables that, leaving only the prebuilt index. */
+     *  (`afield.audio.pd.‸`, see [contentsOf]). Empty disables that, leaving only the prebuilt index. */
     private val binaryRoots: List<Path> = emptyList(),
 ) {
     /** One-line index size summary, for sidecar startup logging. */
@@ -819,8 +912,8 @@ class AaCompleter(
     /**
      * What [index] knows about the single package [pkg], scanning it on demand if nothing imported it.
      *
-     * A package path written out by hand — `afield.pd.‸PdInstance`, `prop<afield.four.fabricated.‸X>(x)`,
-     * `afield.four.audio.‸WavFloatArrayWriter` — names a package precisely BECAUSE the box did not import
+     * A package path written out by hand — `afield.audio.pd.‸PdInstance`, `prop<afield.graphics.scene.fabricated.‸X>(x)`,
+     * `afield.audio.engine.‸WavFloatArrayWriter` — names a package precisely BECAUSE the box did not import
      * it. [index] holds only the imported packages' contents, so the panel listed the sub-packages
      * ([AaSymbolIndex.allPackages] knows every package's name) and none of the classes: 56 of the caret
      * sweep's misses over the boxes written after the floors were cut answered "0 matched in package".
@@ -856,7 +949,7 @@ class AaCompleter(
      *                          non-declaration preambles; the caller (KI2) falls back to K1 on error.
      * @param declarations      synthetic declarations that must remain at file scope, such as a
      *                          Kotlin/JS head's JVM-analysis-safe object/class model.
-     * @param implicitReceivers fully-qualified receiver types active in the box (e.g. `afield.Box`).
+     * @param implicitReceivers fully-qualified receiver types active in the box (e.g. `afield.document.graph.Box`).
      *                          Modelled as nested `with(param)` scopes so their members resolve as
      *                          bare names and receiver dot-completion works.
      * @param extraImports      per-request imports (the box's own `import` lines), added to the
@@ -1021,8 +1114,8 @@ class AaCompleter(
         //     (`fun Mesh.set(…, builder: MappedStructure.() -> Unit)`), where losing either the receiver
         //     or the class means the lambda body has no implicit receiver.
         // Without them `m.set(3, 1) { tri.‸ }` had no `MappedStructure` in scope, so `tri` resolved to the
-        // next thing in scope by that name — `afield.four.synth.tri`, a triangle oscillator, via `intro`'s
-        // `import afield.four.synth.*` — and the panel filled with `TriOsc`'s members. So the preamble is
+        // next thing in scope by that name — `afield.audio.synth.tri`, a triangle oscillator, via `intro`'s
+        // `import afield.audio.synth.*` — and the panel filled with `TriOsc`'s members. So the preamble is
         // ALSO emitted verbatim at file scope, where it is legal (it came from one) and where a class and a
         // receiver-typed lambda parameter both survive. The local stubs stay: they shadow harmlessly (a
         // local `val window: Window` over a top-level `var Box.window`, same name, same type) and they are
@@ -1240,7 +1333,7 @@ class AaCompleter(
 
     /**
      * The caret's line, when the caret is in the PATH of the `import` on it: `import ‸`,
-     * `import kotlin.ma‸`, `import afield.pd.‸`, and the path of a star or aliased import
+     * `import kotlin.ma‸`, `import afield.audio.pd.‸`, and the path of a star or aliased import
      * (`import a.b.‸*`, `import a.b.Fo‸ as D`). Null anywhere else, including past the path
      * (`import a.b.*‸`, `… as D‸`), where there is no package to complete. Decided on code, so an
      * `import` inside a string or a comment is not one.
@@ -1502,7 +1595,7 @@ class AaCompleter(
 
             /**
              * Resolve a dotted receiver that is a CLASS QUALIFIER rather than a value — `FnGradientMode`,
-             * `afield.stdlib.Functions.RectifyMode` — to its class symbol.
+             * `afield.math.functions.Functions.RectifyMode` — to its class symbol.
              *
              * There is no reference-resolution helper wired into this standalone session, but
              * `findClassLike(ClassId)` resolves fine by exact name (the same property the binary name
@@ -1543,7 +1636,7 @@ class AaCompleter(
                 // The JDK is not on the binary roots, so the ASM scan never sees `java.util.concurrent.atomic`'s
                 // classes, only the package's NAME, from the boot layer. AA's own package scope lists them: it
                 // enumerates a Java package, which it cannot do for a binary Kotlin one (the reason the ASM
-                // index exists; it answers 0 for `afield.pd`). The use-site check drops the package-private
+                // index exists; it answers 0 for `afield.audio.pd`). The use-site check drops the package-private
                 // helpers a JDK package is full of (`java.util.ArrayPrefixHelpers`, `atomic.Striped64`).
                 if (pkg in jdkPackages) {
                     runCatching {
@@ -1618,7 +1711,7 @@ class AaCompleter(
 
                 if (parts.size > 1) {
                     // Fully/partially qualified: try every package|nested split, longest package first
-                    // so `afield.stdlib` + `Functions.RectifyMode` is preferred over root + the whole path.
+                    // so `afield.math.functions` + `Functions.RectifyMode` is preferred over root + the whole path.
                     for (split in parts.size - 1 downTo 0) {
                         classAt(parts.take(split), parts.drop(split))?.let { return it }
                     }
@@ -1632,9 +1725,8 @@ class AaCompleter(
                         val fq = imp.importedFqName?.asString() ?: continue
                         if (imp.isAllUnder) add(fq) else if (fq.endsWith(".$text")) add(fq.removeSuffix(".$text"))
                     }
-                    // Box bodies lean on these two whether or not an import is written out.
-                    add("afield.stdlib")
-                    add("afield")
+                    // Box bodies lean on the REPL preamble whether or not an import is written out.
+                    for (star in CompletionImports.fieldFallback) add(star.removeSuffix(".*"))
                 }
                 for (pkg in candidatePackages.distinct()) {
                     classAt(if (pkg.isEmpty()) emptyList() else pkg.split('.'), listOf(text))?.let { return it }
@@ -1818,7 +1910,7 @@ class AaCompleter(
             }
 
             // The caret's own IMPORT line, which [lower] moved into the header: `import kotlin.math.‸`,
-            // `import afield.pd.‸`, `import kot‸`. Under a package an import can name everything
+            // `import afield.audio.pd.‸`, `import kot‸`. Under a package an import can name everything
             // [packageCandidates] lists, top-level functions and properties included (`import
             // kotlin.math.sin`); under a class, what [importableFrom] lists; at the root, a root package.
             // Never the value path below: an import's qualifier is not a value, and that path answers an
@@ -1850,8 +1942,8 @@ class AaCompleter(
                 )
             }
 
-            // A dot inside a TYPE REFERENCE: `prop<afield.‸stdlib.Vec4>(x)`, `fromContextWithNameOrNull<
-            // afield.four.‸targets.ComputeTarget>("…")`, `var f: java.util.‸concurrent.Future<T>`. A
+            // A dot inside a TYPE REFERENCE: `prop<afield.‸math.linalg.Vec4>(x)`, `fromContextWithNameOrNull<
+            // afield.graphics.vulkan.‸targets.ComputeTarget>("…")`, `var f: java.util.‸concurrent.Future<T>`. A
             // qualified type is a `KtUserType` with a qualifier, not a `KtQualifiedExpression`, so the dot
             // path below bailed with "no qualified expr" — 55 misses per editing bucket in the caret sweep,
             // every one of them a `prop<…>` or `fromContextWithNameOrNull<…>` path in a box written after
@@ -2062,12 +2154,19 @@ class AaCompleter(
                     ctx.implicitReceivers.asSequence().flatMap { r ->
                         r.type.scope?.getCallableSignatures(match)?.map { it.symbol } ?: emptySequence()
                     }).filter { it.isExtension }.toList()
+                fun hasFreeReceiverParameter(t: KaType): Boolean = when (t) {
+                    is KaTypeParameterType -> true
+                    is KaClassType -> t.typeArguments.any { it.type?.let(::hasFreeReceiverParameter) == true }
+                    is KaFlexibleType -> hasFreeReceiverParameter(t.lowerBound) || hasFreeReceiverParameter(t.upperBound)
+                    else -> false
+                }
                 val extensions = extCandidates.filter { ext ->
                     if (checker != null && runCatching {
                             checker.computeApplicability(ext) is KaExtensionApplicabilityResult.Applicable
                         }.getOrDefault(false)) return@filter true
                     val rt = ext.receiverParameter?.returnType ?: return@filter false
                     if (runCatching { type.isSubtypeOf(rt) }.getOrDefault(false)) return@filter true
+                    if (!hasFreeReceiverParameter(rt)) return@filter false
                     val cid = (rt as? KaClassType)?.classId ?: return@filter false
                     runCatching { type.isSubtypeOf(cid) }.getOrDefault(false)
                 }.mapNotNull { asCandidate(it, AaCandidate.Kind.EXTENSION, typeStr, proximityOf(it, ownId, superIds)) }

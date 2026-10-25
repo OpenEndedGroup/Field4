@@ -50,12 +50,12 @@ section 4, and tier two is sections 5 to 7.
 
 | file | what is in it |
 |---|---|
-| `afield/stdlib/neuralparticles.kt` | `MlpWeights`, `MlpWeights.glsl`, `FlowMatchExport`, `blendWith`, `MlpAgreement` — the network-to-shader bridge |
-| `afield/stdlib/neuralparticles_system.kt` | `ShaderNeuralParticles`, `NeuralParticleSettings` — tier one, as a running system |
-| `afield/stdlib/flowmatching.kt` | `flowMatch`, `contourComponents`, `mixtureSource` — the CPU half, shared with [Flow matching](flow_matching.md) |
-| `afield/stdlib/deepsets.kt` | `trainDeepSets`, `trainEquivariant`, and their GLSL emitters — tier two's learned rule |
-| `afield/four/util/GpuNeighbourGrid.kt` | hash, sort, ranges: the neighbour search both flocks share |
-| `afield/four/physics/ShaderBoids.kt` | `ShaderBoids`, `BoidSettings`: the written rule and the learned one, in one system |
+| [`afield/simulation/particles/neuralparticles.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/simulation/particles/neuralparticles.kt) | `MlpWeights`, `MlpWeights.glsl`, `FlowMatchExport`, `blendWith`, `MlpAgreement` — the network-to-shader bridge |
+| [`afield/simulation/particles/neuralparticles_system.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/simulation/particles/neuralparticles_system.kt) | `ShaderNeuralParticles`, `NeuralParticleSettings` — tier one, as a running system |
+| [`afield/ai/learning/flowmatching.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ai/learning/flowmatching.kt) | `flowMatch`, `contourComponents`, `mixtureSource` — the CPU half, shared with [Flow matching](flow_matching.md) |
+| [`afield/ai/learning/deepsets.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ai/learning/deepsets.kt) | `trainDeepSets`, `trainEquivariant`, and their GLSL emitters — tier two's learned rule |
+| [`afield/graphics/vulkan/util/GpuNeighbourGrid.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/graphics/vulkan/util/GpuNeighbourGrid.kt) | hash, sort, ranges: the neighbour search both flocks share |
+| [`afield/simulation/physics/ShaderBoids.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/simulation/physics/ShaderBoids.kt) | `ShaderBoids`, `BoidSettings`: the written rule and the learned one, in one system |
 
 Four transcripts open as complete documents from [Agent transcripts](agent_transcripts.md) or the
 welcome screen: **`neural_particles`**, **`learned_boids`**, **`letter_interpolation`** and
@@ -71,8 +71,8 @@ Three calls take that network to the GPU:
 
 ```diffstatic {data-lang=kotlin}
 val field = flowMatch(pairing.to, pairing.from, FlowMatchOptions(coupling = FlowCoupling.PAIRED))
-val export = field.export()                  // weights, training frame, source cloud
-val glsl = export.glsl("neuralField")        // place this immediately after #version
+val export = field.export() // weights, training frame, source cloud
+val glsl = export.glsl("neuralField") // place this immediately after #version
 ```
 
 `export()` is a snapshot: the weights flat and layer-major, plus the centring and scaling the
@@ -89,15 +89,21 @@ readable GLSL.
 val particles = ShaderNeuralParticles(export) {
     particleCount = 300_000
     stepsPerCycle = 150
-    dwellCycles = 3f        // how long a particle rests on the target once it arrives
+    dwellCycles = 3f // how long a particle rests on the target once it arrives
 }
-particles.installInto()     // defaults to renderer.renderList
+particles.installInto() // defaults to renderer.renderList
 ```
 
 Each particle is a struct rather than a texel, because of the two unusual fields:
 
 ```diffstatic {data-lang=glsl}
-struct Particle { vec2 position; vec2 start; vec2 velocity; float t; float pad; };
+struct Particle {
+    vec2 position;
+    vec2 start;
+    vec2 velocity;
+    float t;
+    float pad;
+};
 ```
 
 A flow is a map. Each particle travels from one specific source point to wherever the field takes it by `t = 1`, and when it arrives it goes back
@@ -156,32 +162,41 @@ val pairing = mixtureSource(components, seed = 5)
 fun cloud(points: List<Vec3>, size: Double, c: Vec4): FLine {
     val f = FLine()
     points.forEach { f.moveTo(it) }
-    f.pointed = true; f.pointSize = size; f.color = c
+    f.pointed = true
+    f.pointSize = size
+    f.color = c
     return f
 }
 
 // Every 100th correspondence, to show the pairing is point-for-point and not a cloud match.
 val threads = FLine()
 for (i in pairing.from.indices step 100) {
-    threads.moveTo(pairing.from[i]); threads.lineTo(pairing.to[i])
+    threads.moveTo(pairing.from[i])
+    threads.lineTo(pairing.to[i])
 }
-threads.color = vec(1.0, 0.62, 0.25, 0.75); threads.thickness = 1.2
+threads.color = vec(1.0, 0.62, 0.25, 0.75)
+threads.thickness = 1.2
 :::fold draw the source, the target and the pairing
 lines(
-    listOf(
+    [
         cloud(pairing.to, 2.0, vec(0.55, 0.55, 0.62, 0.9)),
         cloud(pairing.from, 1.6, vec(0.44, 0.83, 0.78, 1.0)),
         threads,
-    ),
-    w = 1000.0, h = 450.0, fitToSize = true,
+    ],
+    w = 1000.0,
+    h = 450.0,
+    fitToSize = true,
 )
-markdown("what", """
+markdown(
+    "what",
+    """
     ~~~
 closed subpaths found   ${components.size}
 points per component    ${components.map { it.size }.joinToString(", ")}
 paired points           ${pairing.from.size}
     ~~~
-""")
+""",
+)
 :::endfold
 ```
 
@@ -212,8 +227,8 @@ seconds.
 Train a second field, from the same source, and you can interpolate the **weights**:
 
 ```diffstatic {data-lang=kotlin}
-val blended = fieldA.blendWith(fieldB, t)     // t from 0 to 1
-particles.updateWeights(blended.network)      // a buffer write; nothing recompiles
+val blended = fieldA.blendWith(fieldB, t) // t from 0 to 1
+particles.updateWeights(blended.network) // a buffer write; nothing recompiles
 ```
 
 Interpolating the *targets*, sending point `i` to `(1-t)·A_i + t·B_i`, is a straight-line
@@ -242,17 +257,21 @@ than either endpoint, because a circle is the shortest closed curve there is.
 
     **The same source cloud.** Both fields must be trained from one shared cloud, so a particle
     has one start point and two destinations. That is also what makes the two normalisation frames
-    agree, and this one the API does enforce: `blendWith` refuses to blend fields normalised
+    agree, and the API enforces it: `blendWith` refuses to blend fields normalised
     differently, because `t = 1` meaning "B's weights read in A's coordinates" is a different field
     from B and would look exactly like an interesting result.
 
-    **The same initialisation.** Train both with the same `seed`; nothing checks this for you.
-    Hidden units are exchangeable, so two runs from different random starts represent similar
-    functions through different permutations of the same machinery, and averaging across a
-    permutation should produce nothing.
+    **The seed matters less than you would expect.** Hidden units are exchangeable, so two runs
+    from different random starts could represent similar functions through different permutations
+    of the same machinery, and averaging across a permutation would produce nothing. For letters
+    trained with `PAIRED` coupling from a shared source, it does not happen: midpoints of fields
+    trained from different seeds are as tidy as those from one seed, because the two training
+    problems are nearly the same problem. `blendWith` does not check seeds. For a wider network,
+    harder targets or another coupling, train both with the same `seed` to be safe.
 
-The `letter_interpolation` transcript sweeps `t` slowly and continuously, forty seconds there and
-back, and `letter_interpolation_panels` is the still above. Both need letters that are a **single
+The [`letter_interpolation`](agent_transcripts.md#letter_interpolation) starting point sweeps `t`
+slowly and continuously, forty seconds there and back, and
+[`letter_interpolation_panels`](agent_transcripts.md#letter_interpolation_panels) is the still above. Both need letters that are a **single
 closed contour** in the typeface: C, S, E, F, L, T, V, Z and so on. An O or a D has two, and one
 circle cannot be paired with two contours at once.
 
@@ -266,7 +285,7 @@ it is useful on its own for anything that needs neighbours on the GPU:
 ```diffstatic {data-lang=kotlin}
 val grid = GpuNeighbourGrid(
     capacity = 12_000,
-    cellsPerSide = 32,              // cellSize = domainSize / cellsPerSide = 0.0625
+    cellsPerSide = 32, // cellSize = domainSize / cellsPerSide = 0.0625
     domainMin = Vector2f(-1f, -1f),
     domainSize = 2f,
 )
@@ -292,13 +311,10 @@ Cells are row-major rather than Morton-ordered. A hierarchy needs a node's *chil
 flat grid needs a *cell's members* contiguous, and row-major does that while making the nine
 indices of a 3x3 neighbourhood plain arithmetic instead of a bit interleave.
 
-!!! warning "Cell size is the interaction radius"
-
-    The 3x3 block covers one cell width, so `cellSize` (`domainSize / cellsPerSide`) is the
-    largest radius the query answers correctly. Make the cells smaller than your interaction radius
-    and the query silently misses neighbours: the shader still runs and the flock still flocks, but
-    the result is wrong and nothing reports it. Size the grid from the radius, not from the
-    particle count.
+The 3x3 block covers one cell width, so `cellSize` (`domainSize / cellsPerSide`) is the largest
+radius the query answers correctly. `install` refuses a larger radius, and one raised past it later
+is held to `cellSize` with a warning in the log. Size the grid from the radius, not from the
+particle count.
 
 Particles outside the domain are clamped into the edge cells rather than dropped, because a lost
 particle is a particle that silently stops interacting.
@@ -315,28 +331,19 @@ something like it, install once rather than once per module.
 
 ```diffstatic {data-lang=kotlin}
 val written = ShaderBoids(grid, count = 12_000) {
-    radius = 2f / 64f
-    separation = 0.02f; separationRadiusFraction = 0.25f
-    alignment = 3.0f; cohesion = 200f
-    maxSpeed = 0.25f
-    containment = 1.5f; containmentRadius = 0.44f   // a soft wall, applied after the rule
-    driverStrength = -0.9f                          // negative: flee the driver
+    containment = 1.5f
+    containmentRadius = 0.44f // a soft wall, applied after the rule
+    driverStrength = -0.9f // negative: flee the driver
 }
-written.installDrawInto()                           // defaults to renderer.renderList
+written.installDrawInto() // defaults to renderer.renderList
 ```
 
-!!! warning "The textbook weights do not flock, and the defaults are the textbook weights"
-
-    `0.02 / 1.2 / 0.8` is what every boids tutorial gives, and at this density it produces an
-    evenly spaced gas rather than a flock. The weights are **not scale-free**: separation *sums*
-    over neighbours while alignment and cohesion take *means*, so their relative strength depends
-    on the density and the interaction radius. In this scene (57 neighbours a boid, separation
-    summing terms of about 137, cohesion averaging an offset of about 0.003) the textbook
-    numbers put separation 27x above alignment and 4600x above cohesion.
-
-    So expect to retune all three whenever you change `radius` or the particle count, and tune them
-    by bringing the three *terms* to the same order, not by adjusting the weights until it looks
-    right.
+The default weights flock at this density and `radius = 2f / 64f`. They are far from the textbook
+`0.02 / 1.2 / 0.8`, which gives an evenly spaced gas here, because separation *sums* over
+neighbours while alignment and cohesion take *means*. In this scene a boid has about 57
+neighbours, and the textbook numbers put separation 27x above alignment and 4600x above cohesion.
+If you change `radius` or the particle count, retune all three. Bring the three *terms* to the
+same order rather than adjusting the weights until it looks right.
 
 `separationRadiusFraction` is the other dial that decides the shape. One radius for all three terms
 cannot clump: separation wants to be short-range while alignment and cohesion want the whole
@@ -459,9 +466,11 @@ drift of the plain Deep Sets form was what made it look lively. To get motion, a
 the interaction:
 
 ```diffstatic {data-lang=kotlin}
-boids.settings.driverStrength = -1.5f     // negative flees, positive pursues
+boids.settings.driverStrength = -1.5f // negative flees, positive pursues
 boids.settings.driverRadius = 0.25f
-boids.driver = { wanderingPoint() }       // read once a frame
+boids.driver = {
+    wanderingPoint()
+} // read once a frame
 ```
 
 `driverStrength` adds a pull toward, or a push away from, a point you supply each frame. It is
@@ -499,11 +508,11 @@ about it**, so two flocks side by side still differ only in their rule. No retra
 
 | Setting | Default | Effect |
 | --- | --- | --- |
-| `radius` | 0.06 | Sets the neighbour interaction radius in simulation coordinates. It must not exceed the spatial grid’s cell size, or the query would miss neighbours. |
-| `separation`, `alignment`, `cohesion` | 0.02, 1.2, 0.8 | Weights repulsion, velocity matching and attraction to neighbours’ centre respectively. Their balance depends on density; the defaults alone need not produce distinct flocks. |
-| `separationRadiusFraction` | 1 | Sets separation’s reach as a fraction of `radius`. Values below one let longer-range cohesion gather clumps without equally long-range repulsion. |
+| `radius` | 2/64 | Sets the neighbour interaction radius in simulation coordinates. It must not exceed the spatial grid’s cell size, or the query would miss neighbours. |
+| `separation`, `alignment`, `cohesion` | 0.02, 3, 200 | Weights repulsion, velocity matching and attraction to neighbours’ centre respectively. The defaults flock at about 12,000 boids over a unit square at the default `radius`; their balance depends on density, so retune them if you change either. |
+| `separationRadiusFraction` | 0.25 | Sets separation’s reach as a fraction of `radius`. Values below one let longer-range cohesion gather clumps without equally long-range repulsion. |
 | `minSeparationFraction` | 0.05 | Floors pair distance in the separation denominator at this fraction of `radius`. This keeps coincident or nearly coincident neighbours from producing unbounded force. |
-| `maxSpeed` | 0.35 | Caps speed after acceleration is applied. This keeps one strong interaction from sending a particle arbitrarily far in the next step. |
+| `maxSpeed` | 0.25 | Caps speed after acceleration is applied. This keeps one strong interaction from sending a particle arbitrarily far in the next step. |
 | `dt` | 1/60 | Sets the fixed integration time step. Set zero to calculate accelerations without moving the particles. |
 | `containment`, `containmentRadius`, `containmentCenter` | 0, 0.8, origin | Adds a soft restoring force outside a circle centred on `containmentCenter`. Strength zero disables it; the radius sets where the force begins. |
 | `driverStrength`, `driverRadius` | 0, 0.25 | Controls the moving driver’s force and influence radius. Positive strength attracts and negative strength repels; zero disables the driver. |
@@ -515,20 +524,9 @@ about it**, so two flocks side by side still differ only in their rule. No retra
 
 ---
 
-## Running it
-
-The four transcripts are the intended entry point. The four GPU smokes are the same machinery driven
-headlessly, and are what to run after changing any of it:
-
-```diffstatic {data-lang=text}
-tools/run_field_tests.py --id four.neural-field-parity.smoke   # one forward pass, CPU vs GPU
-tools/run_field_tests.py --id four.neural-particles.smoke      # a whole trajectory, point by point
-tools/run_field_tests.py --id four.neighbour-grid.smoke        # neighbour sets vs brute force
-tools/run_field_tests.py --id four.shader-boids.smoke          # both rules vs a CPU brute force
-```
-
-All four need a GPU and an awake display: `afield.four` has no headless mode, so even a
-compute-only dispatch needs a `Window` for the device to exist.
+??? aside "Agents: smoke tests"
+    The four GPU smokes that check this machinery, and what each compares, are listed in
+    [`dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md#smoke-tests).
 
 ## Limits
 
@@ -543,12 +541,12 @@ compute-only dispatch needs a `Window` for the device to exist.
 ## See also
 
 [Flow matching](flow_matching.md) is the CPU half of tier one and worth reading first.
-[afield.four Graphics](afield_four_graphics.md) is the compute-then-draw shape both systems are
+[Field 4 Graphics](afield_four_graphics.md) is the compute-then-draw shape both systems are
 built on. The API is in [Machine learning](reference/machine-learning.md) and
 [Simulation](reference/simulation.md).
 
 ??? aside "Where the numbers come from"
 
-    The measurements quoted on this page are in `dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md`. The
+    The measurements quoted on this page are in [`dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md). The
     figures are screenshots of the live system, because the native window capture takes stills
     only.

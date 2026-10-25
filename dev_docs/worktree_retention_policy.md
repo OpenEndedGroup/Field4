@@ -46,9 +46,17 @@ which matters because caches that carry their own `.gitignore` (`public/.cache`,
 reported file by file. Anything that does not match refuses the tree, and the refusal names it. The
 list is deliberately short; adding a pattern is a decision that the files it matches are worthless.
 
-Two expected precious files, `ARCHIVED_FILES`, are copied out instead of refusing:
+The reverse case matters too: git reports a wholly ignored directory as one entry, so a directory
+that does not match is opened and judged file by file. On 2026-10-21, 13 merged, clean trees (21 GiB)
+were refused for `.afield-local/`, whose only content was the 4 KB `last-workspace.txt` that
+`field.sh` rewrites. `.afield-local/last-workspace.txt` and `.afield-local/*.log` are now regenerable,
+but the folder as a whole is not: kept intermediate renders are copied there, and one such file still
+refuses its tree.
+
+Expected precious files, `ARCHIVED_FILES`, are copied out instead of refusing:
 `NIGHTLY_WORKLOG.md` (deliberately untracked, so it exists only on that disk) to
-`<repo>-archive/worklogs/`, and `.claude/settings.local.json` to `<repo>-archive/settings/`.
+`<repo>-archive/worklogs/`, and `.claude/settings.local.json` and `.claude/launch.json` to
+`<repo>-archive/settings/`.
 
 `.nightly-tmp/`, the nightly agents' scratch directory, used to make every nightly tree read as dirty
 — it was untracked, not ignored. It is now in `.gitignore`, and is also skipped by the dirty check for
@@ -203,6 +211,18 @@ the first `git status` inside one exited 128 and stopped the whole run, includin
 tree `prunable`. `--apply` runs `git worktree prune` first, which is lossless: it drops only the
 admin entries of worktrees whose directories no longer exist, and their branches and commits stay.
 A dry run lists them and leaves them alone. `--clean-builds` skips them.
+
+## Keeping a worktree: `.reaper-keep`
+
+Merged, clean and idle is not the same as unused. On 2026-10-12 the reaper removed
+`.claude/worktrees/split-panes-p0`, a tree Marc had asked to keep. It was safe only while an
+`http.server` held its cwd, and the day that server stopped, nothing distinguished it from any other
+finished tree. The list of trees to keep lived in an agent's notes, where the tool could not see it.
+
+A file named `.reaper-keep` in a worktree's root now refuses it, ahead of every other check, with the
+verdict `kept`: it is never removed, `--completed` naming it is an error, and `--clean-builds` leaves
+its build output alone. The file is gitignored, so it does not make the tree dirty. To keep a tree,
+`touch <tree>/.reaper-keep`; to release it, delete the file.
 
 ## Running it
 

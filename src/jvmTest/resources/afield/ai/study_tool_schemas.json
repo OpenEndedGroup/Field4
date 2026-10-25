@@ -403,7 +403,7 @@
           "type" : "number"
         },
         "source" : {
-          "description" : "Complete Kotlin source with imports. Last expression returns afield.stdlib.StudyComposition. No filesystem/network/process effects; no mutable or stateful evaluators.",
+          "description" : "Complete Kotlin source with imports. Last expression returns afield.math.functions.StudyComposition. No filesystem/network/process effects; no mutable or stateful evaluators.",
           "type" : "string"
         }
       },
@@ -431,7 +431,7 @@
           "type" : "number"
         },
         "source" : {
-          "description" : "Complete Kotlin source with imports. Last expression returns afield.stdlib.StudyComposition. No filesystem/network/process effects; no mutable or stateful evaluators.",
+          "description" : "Complete Kotlin source with imports. Last expression returns afield.math.functions.StudyComposition. No filesystem/network/process effects; no mutable or stateful evaluators.",
           "type" : "string"
         }
       },

@@ -27,9 +27,9 @@ val word = layoutText("Handgloves", face)
 // rasterizeText is a scanline fill over the contours this family extracted. Not drawString.
 showImgGrid(
     "Handgloves — %d contours, %d of them counters, %.0f units wide"
-        .format(word.contourCount, word.holeCount, word.advanceWidth) to
-        rasterizeText(word, 1600, 380),
-    columns = 1, cellSide = 900,
+        .format(word.contourCount, word.holeCount, word.advanceWidth) to rasterizeText(word, 1600, 380),
+    columns = 1,
+    cellSide = 900,
 )
 ```
 
@@ -63,12 +63,20 @@ val window = layout.bounds
 // The control arm is one argument. Same filler, same NON_ZERO rule, same rings — only their
 // direction differs, and NON_ZERO cancels a +1 outer against a −1 hole to leave a counter.
 val withConvention = rasterizeText(
-    layout, 900, 460, window = window,
-    fillRule = TextFillRule.NON_ZERO, rings = layout.toContours(honourHoles = true),
+    layout,
+    900,
+    460,
+    window = window,
+    fillRule = TextFillRule.NON_ZERO,
+    rings = layout.toContours(honourHoles = true),
 )
 val withoutConvention = rasterizeText(
-    layout, 900, 460, window = window,
-    fillRule = TextFillRule.NON_ZERO, rings = layout.toContours(honourHoles = false),
+    layout,
+    900,
+    460,
+    window = window,
+    fillRule = TextFillRule.NON_ZERO,
+    rings = layout.toContours(honourHoles = false),
 )
 
 // EVEN_ODD counts crossings and ignores direction, depending on nesting parity instead. Over
@@ -86,7 +94,8 @@ showImgGrid(
     "convention on — %.1f%% ink".format(100 * withConvention.inkFraction()) to withConvention,
     "convention off — %.1f%% ink".format(100 * withoutConvention.inkFraction()) to withoutConvention,
     "EVEN_ODD: max diff %.5f".format(worst) to evenOdd,
-    columns = 3, cellSide = 380,
+    columns = 3,
+    cellSide = 380,
 )
 :::endfold
 ```
@@ -117,7 +126,7 @@ val rings = layout.toContours()
 :::fold one closed FLine per ring, tinted by classification
 val lines = rings.map { ring ->
     fline {
-        ring.points.forEachIndexed { i, p -> if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y) }
+        data("m l+", ring.points)
         lineTo(ring.points[0].x, ring.points[0].y)
         color = if (ring.isHole) vec(1.0, 0.55, 0.28, 0.95) else vec(0.5, 0.82, 1.0, 0.95)
         thickness = 1.8
@@ -125,11 +134,16 @@ val lines = rings.map { ring ->
 }
 val signs = rings.joinToString(" ") { if (it.signedArea > 0) "+" else "−" }
 showPlaneGrid(
-    "outer rings — depth even, area positive (${rings.count { !it.isHole }})" to lines.filter { !it.second }.map { it.first },
-    "hole rings — depth odd, area negative (${rings.count { it.isHole }})" to lines.filter { it.second }.map { it.first },
+    "outer rings — depth even, area positive (${rings.count { !it.isHole }})" to
+        lines.filter { !it.second }.map { it.first },
+    "hole rings — depth odd, area negative (${rings.count { it.isHole }})" to
+        lines.filter { it.second }.map { it.first },
     "all ${rings.size} rings, signs $signs" to lines.map { it.first },
     "the same layout, filled" to layout.toFLines(filled = true, stroked = false, thickness = 1.0),
-    columns = 2, cellWidth = 460, cellHeight = 250, window = layout.bounds,
+    columns = 2,
+    cellWidth = 460,
+    cellHeight = 250,
+    window = layout.bounds,
 )
 :::endfold
 ```
@@ -152,7 +166,8 @@ val face = typeface("SansSerif", 120.0)
 val prose = wrapText(
     "Type is geometry that happens to be legible, and legibility is the one test " +
         "a plausible looking picture cannot pass.",
-    face.atSize(44.0), maxWidth = 620.0,
+    face.atSize(44.0),
+    maxWidth = 620.0,
 )
 :::endfold
 
@@ -175,14 +190,22 @@ showPlaneGrid(
     "tracking 0.16em — %.0f units, i.e. exactly %d gaps × %.1f wider"
         .format(loose.advanceWidth, tight.glyphs.size - 1, t) to
         (loose.metricsFLines() + loose.advanceBoxFLines() + loose.toFLines(thickness = 1.0)),
-    channel = "metrics", columns = 1, cellWidth = 880, cellHeight = 240,
-    window = afield.Rect(-20.0, -face.ascent - 20, loose.advanceWidth + 40, face.lineHeight + 40),
+    channel = "metrics",
+    columns = 1,
+    cellWidth = 880,
+    cellHeight = 240,
+    window = afield.app.protocol.Rect(-20.0, -face.ascent - 20, loose.advanceWidth + 40, face.lineHeight + 40),
 )
 showImgGrid(
-    *TextAlign.entries.map { a ->
-        a.name.lowercase() to rasterizeText(layoutText(prose, face.atSize(44.0), align = a, lineSpacing = 1.12), 700, 380)
-    }.toTypedArray(),
-    channel = "alignment", columns = 3, cellSide = 290,
+    *TextAlign.entries
+        .map { a ->
+            a.name.lowercase() to
+                rasterizeText(layoutText(prose, face.atSize(44.0), align = a, lineSpacing = 1.12), 700, 380)
+        }
+        .toTypedArray(),
+    channel = "alignment",
+    columns = 3,
+    cellSide = 290,
 )
 :::endfold
 ```
@@ -229,14 +252,29 @@ showImgGrid(
         rasterizeText(onCircle, 620, 620),
     "%d of %d glyphs turned".format(onWave.glyphs.count { kotlin.math.abs(it.rotation) > 0.05 }, onWave.glyphs.size) to
         rasterizeText(onWave, 620, 620),
-    channel = "rasters", columns = 2, cellSide = 420,
+    channel = "rasters",
+    columns = 2,
+    cellSide = 420,
 )
 showPlaneGrid(
     "the circle it sits on — original untouched: ${ring.glyphs.all { it.isUntransformed }}" to
-        (listOf(circle.copy { color = vec(0.4, 0.6, 0.8, 0.6); thickness = 1.0 }) + onCircle.toFLines(thickness = 1.0)),
+        ([
+            circle.copy {
+                color = vec(0.4, 0.6, 0.8, 0.6)
+                thickness = 1.0
+            },
+        ] + onCircle.toFLines(thickness = 1.0)),
     "the cubic it sits on" to
-        (listOf(wave.copy { color = vec(0.4, 0.6, 0.8, 0.6); thickness = 1.0 }) + onWave.toFLines(thickness = 1.0)),
-    channel = "paths", columns = 2, cellWidth = 430, cellHeight = 430,
+        ([
+            wave.copy {
+                color = vec(0.4, 0.6, 0.8, 0.6)
+                thickness = 1.0
+            },
+        ] + onWave.toFLines(thickness = 1.0)),
+    channel = "paths",
+    columns = 2,
+    cellWidth = 430,
+    cellHeight = 430,
 )
 :::endfold
 ```
@@ -267,12 +305,21 @@ val layout = layoutText("KINETIC", face, tracking = 16.0)
 // move and the picture would stand still. Probe both extremes of the wave and union them.
 val window = run {
     val probe = layoutText("KINETIC", face, tracking = 16.0)
-    probe.eachGlyph { i -> rotation = 0.5; scale = vec(1.3, 1.3); offset = vec(0.0, 34.0) }
+    probe.eachGlyph { i ->
+        rotation = 0.5
+        scale = vec(1.3, 1.3)
+        offset = vec(0.0, 34.0)
+    }
     val a = probe.bounds
-    probe.eachGlyph { i -> rotation = -0.5; scale = vec(1.3, 1.3); offset = vec(0.0, -34.0) }
+    probe.eachGlyph { i ->
+        rotation = -0.5
+        scale = vec(1.3, 1.3)
+        offset = vec(0.0, -34.0)
+    }
     a.union(probe.bounds)
 }
 val started = AnimationClock.nowSeconds()
+
 :::endfold
 
 // The line you would change: elapsed seconds and a glyph index in, a travelling wave out. During
@@ -290,7 +337,8 @@ animate {
     }
     showImgGrid(
         "t = %.1fs".format(elapsed) to rasterizeText(layout, 1100, 420, window = window),
-        columns = 1, cellSide = 820,
+        columns = 1,
+        cellSide = 820,
     )
 }
 ```
@@ -314,9 +362,11 @@ val l = layoutText("l", face).toMesh(depth = 46.0, centre = true)
 val word = layoutText("mesh", typeface("SansSerif", 130.0)).toMesh(depth = 36.0, centre = true)
 :::endfold
 
-// A 2D count against a 3D one. The hole count comes from ring nesting in the plane; the genus comes
-// from counting the mesh's vertices, edges and faces. They have no reason to agree unless the
-// extruder is right.
+/*
+A 2D count against a 3D one. The hole count comes from ring nesting in the plane; the genus comes
+from counting the mesh's vertices, edges and faces. They have no reason to agree unless the
+extruder is right.
+*/
 val holesIn2D = layoutText("o", face).holeCount
 
 // A 2D area against a 3D volume: a shoelace sum times the depth, against the divergence theorem
@@ -325,15 +375,19 @@ val expected = layoutText("o", face).glyphs.sumOf { it.glyph.inkArea } * 46.0
 val measured = layoutText("o", face).toMesh(depth = 46.0, yUp = false).volume()
 
 :::fold draw them — note what is NOT here: flatShaded()
-// flatShaded() un-welds every triangle, and the genus in these labels is topology() over whatever
-// you hand it — so a flat-shaded copy would label itself "genus null, watertight false" while
-// looking identical. The `word` panel below goes further: single-mesh showMesh writes its own fact
-// line, and that line would read "open (N boundary loop(s))". Unnecessary as well: both renderers
-// apply shadedNormals to a mesh that arrives without normals for you.
+/*
+flatShaded() un-welds every triangle, and the genus in these labels is topology() over whatever
+you hand it — so a flat-shaded copy would label itself "genus null, watertight false" while
+looking identical. The `word` panel below goes further: single-mesh showMesh writes its own fact
+line, and that line would read "open (N boundary loop(s))". Unnecessary as well: both renderers
+apply shadedNormals to a mesh that arrives without normals for you.
+*/
 showMeshGrid(
     "o — genus ${o.genus()}, 2D hole count $holesIn2D, watertight ${o.isWatertight()}" to o,
     "l — genus ${l.genus()}, watertight ${l.isWatertight()}" to l,
-    channel = "letters", columns = 2, cellWidth = 420,
+    channel = "letters",
+    columns = 2,
+    cellWidth = 420,
     view = MeshView(yawDegrees = 26.0, pitchDegrees = 16.0, distance = 3.2),
 )
 showMesh(
@@ -341,8 +395,9 @@ showMesh(
     channel = "word",
     view = MeshView(yawDegrees = 22.0, pitchDegrees = 14.0, distance = 2.6, width = 820, height = 340),
     title = "extruded from the same contours the raster filled",
-    caption = "'o': ink area × depth = %.0f, mesh volume %.0f, relative difference %.2e"
-        .format(expected, measured, kotlin.math.abs(expected - measured) / expected),
+    caption =
+        "'o': ink area × depth = %.0f, mesh volume %.0f, relative difference %.2e"
+            .format(expected, measured, kotlin.math.abs(expected - measured) / expected),
 )
 :::endfold
 ```
@@ -357,15 +412,6 @@ or an unpunched counter, so they are a quick check on any mesh you build from te
 Back faces are culled in this render, so an inside-out wall would show up as a *missing* wall rather
 than as odd shading. The line of facts under the `word` panel is computed by `showMesh` from the
 mesh it was given ([Field's 3D output](three_output.md#showmesh-and-the-renderer-parameter)).
-
-??? aside "`flatShaded()` and the figure's fact line"
-
-    It un-welds every triangle into its own three vertices, so the copy is no longer topologically
-    anything — and `showMesh` computes `topology()` on whatever you hand it and prints the answer
-    *as fact* in the figure's fact line. Pass it a flat-shaded `o` and that line reads
-    `open (N boundary loop(s))` beside a title stating the mesh is closed. You do not need it in any
-    case: both renderers apply `shadedNormals` to a mesh that arrives without normals, and an
-    extrusion is all creases, so it comes out faceted anyway.
 
 ## Letters in the SDF family
 
@@ -386,20 +432,26 @@ val wrung = marchingCubes(sdf.field.twisted(0.5), sdf.bounds, 130)
 
 :::fold draw the grid and the four surfaces
 val grid = sdf.distanceField
-// showImgGrid rather than showImg: showImg sends its caption as a separate output message,
-// which the image then replaces, so the caption never survives to the page. montage only ever
-// scales a tile DOWN, so upscale the grid first or it lands as a 340px thumbnail.
+/*
+showImgGrid rather than showImg: showImg sends its caption as a separate output message,
+which the image then replaces, so the caption never survives to the page. montage only ever
+scales a tile DOWN, so upscale the grid first or it lands as a 340px thumbnail.
+*/
 showImgGrid(
     "signed distance field, %dx%d grid, deepest %.0f".format(grid.nx, grid.ny, grid.deepestInside()) to
         grid.toImg().upscaleNearest(2),
-    channel = "grid", columns = 1, cellSide = 880,
+    channel = "grid",
+    columns = 1,
+    cellSide = 880,
 )
 showMeshGrid(
     "marchingCubes on the letters — ${marched.triangleCount} triangles, genus ${marched.genus()}" to marched,
     "sdfSmoothUnion with a sphere — ${melted.triangleCount}" to melted,
     "field.shell(0.02) — ${hollow.triangleCount}" to hollow,
     "field.twisted(0.5) — ${wrung.triangleCount}" to wrung,
-    channel = "surfaces", columns = 2, cellWidth = 420,
+    channel = "surfaces",
+    columns = 2,
+    cellWidth = 420,
     view = MeshView(yawDegrees = 18.0, pitchDegrees = 12.0, distance = 2.6),
 )
 :::endfold
@@ -433,13 +485,16 @@ val km = vec2KMedoids(coarse, k = 6, options = KMedoidsOptions(randomSeed = 11L)
 val layer = ClusterLayer("outline strokes", km.labels)
 showPlaneGrid(
     "outline samples — ${coarse.size} at spacing 18, ${fine.size} at 4.5 (%.2fx for 4x finer)"
-        .format(fine.size.toDouble() / coarse.size) to listOf(layout.toPointFLine(spacing = 18.0, pointSize = 1.1)),
+        .format(fine.size.toDouble() / coarse.size) to [layout.toPointFLine(spacing = 18.0, pointSize = 1.1)],
     "vec2DelaunayGraph over those samples — ${graph.edges.size} edges" to
-        listOf(graph.toFLine(coarse, thickness = 0.8), layout.toPointFLine(spacing = 18.0, pointSize = 0.9)),
+        [graph.toFLine(coarse, thickness = 0.8), layout.toPointFLine(spacing = 18.0, pointSize = 0.9)],
     "vec2KMedoids, k = 6 — distortion %.1f, converged ${km.converged}".format(km.distortion) to
         layer.toFLines(coarse, centers = km.medoids, drawSpokes = false),
     "the outlines the samples came from" to layout.toFLines(thickness = 1.2),
-    columns = 2, cellWidth = 420, cellHeight = 250, window = layout.bounds,
+    columns = 2,
+    cellWidth = 420,
+    cellHeight = 250,
+    window = layout.bounds,
 )
 :::endfold
 ```
@@ -457,26 +512,16 @@ The examples above use the logical families `SansSerif` and `Serif`, which every
 ask for a particular font, or load one from a file:
 
 ```diffstatic {data-lang=kotlin}
-typeface("SansSerif", 64.0)                              // logical family: always resolves
-Typefaces.named("Futura", 64.0, strict = true)           // throws instead of substituting silently
-Typefaces.firstAvailable("Futura", "Avenir", size = 64)  // the first one this machine actually has
-Typefaces.fromFile("/path/to/Whatever.ttf", 64.0)        // Font.createFont, not registered globally
+typeface("SansSerif", 64.0) // logical family: always resolves
+Typefaces.named("Futura", 64.0, strict = true) // throws instead of substituting silently
+Typefaces.firstAvailable("Futura", "Avenir", size = 64) // the first one this machine actually has
+Typefaces.fromFile("/path/to/Whatever.ttf", 64.0) // Font.createFont, not registered globally
 ```
 
 `Typefaces.available()` lists the installed families.
 
 `SansSerif` and `Serif` map to different real fonts on different machines, so the pictures above
 will look a little different on yours. The ring counts, genus and winding do not change.
-
-??? aside "Reading outlines in a JVM you launched yourself"
-
-    A JVM that reads glyph outlines and passes `-XstartOnFirstThread` must also pass
-    `-Djava.awt.headless=true`, set before any AWT class initialises. On macOS
-    `sun.font.CFontManager.loadFonts` dispatches to the process's first thread and waits, and under
-    `-XstartOnFirstThread`, which GLFW requires, that thread only services the dispatch if something is
-    pumping its run loop. `Typefaces.warm()` detects this in four seconds and throws with the flag in the
-    message rather than hanging. Field's own desktop JVM sets it (`build.gradle.kts`, `requiredRunJvmArgs`),
-    so you only meet this in a JVM you launched yourself.
 
 ## Run it yourself
 

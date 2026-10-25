@@ -16,6 +16,9 @@ description: |
   The clock is the frame count at sixty a second, so the picture is the same on every machine and
   needs no audio device. To hear the net in step with it, play `sparkNet.emits()` through a Dirt
   player and read the cycle from the same clock.
+docs:
+  - page: chain_petri_sparks.md
+    why: "Walks through this Petri-to-sparks chain."
 operations:
   - create:
       box: ps_renderer
@@ -23,7 +26,7 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 200.0, h: 50.0 }
       properties:
         code: |
-          import afield.four.util.Options
+          import afield.graphics.vulkan.util.Options
 
           prop<Window>(window)
           prop<Renderer>(renderer)
@@ -40,15 +43,17 @@ operations:
       frame: { x: 260.0, y: 40.0, w: 240.0, h: 50.0 }
       properties:
         code: |
-          import afield.petri.PetriNet
-          import afield.petri.PetriRun
-          import afield.petri.petri
+          import afield.simulation.petri.PetriNet
+          import afield.simulation.petri.PetriRun
+          import afield.simulation.petri.petri
 
           // Inherited by the box below, which is all it takes for the particles to hear the net.
           prop<PetriNet>(sparkNet)
           prop<PetriRun>(sparkRun)
 
-          sparkNet = petri("""
+          sparkNet =
+              petri(
+                  """
               #petri
               !grid 1/8
 
@@ -76,7 +81,8 @@ operations:
               // four kicks fill charge, and emptying it is a clap
               charge : 0 ^4
               4*charge -[ clap : cp ]->
-          """)
+          """,
+              )
 
           // One run, shared: a run remembers the steps it has taken, so every query below reuses them.
           sparkRun = sparkNet.run()
@@ -128,12 +134,19 @@ operations:
           };
 
           // snare ring, kick ring, hat ring, from the centre out
-          const float[3] ringRadius = { 0.36, 0.56, 0.76 };
-          const vec3[3] ringTint = { vec3(0.30, 0.78, 1.00), vec3(1.00, 0.52, 0.18), vec3(1.00, 0.86, 0.40) };
+          const float[3] ringRadius = {
+              0.36, 0.56, 0.76
+          };
+          const vec3[3] ringTint = {
+              vec3(0.30, 0.78, 1.00), vec3(1.00, 0.52, 0.18), vec3(1.00, 0.86, 0.40)
+          };
+
 
           float hash(uint x) {
-              x ^= x >> 16; x *= 0x7feb352du;
-              x ^= x >> 15; x *= 0x846ca68bu;
+              x ^= x >> 16;
+              x *= 0x7feb352du;
+              x ^= x >> 15;
+              x *= 0x846ca68bu;
               x ^= x >> 16;
               return float(x) / 4294967295.0;
           }
@@ -174,7 +187,8 @@ operations:
                   float fade = 1.0 - age / lifetime;
                   float twinkle = 0.55 + 0.45 * sin(age * 47.0 + hash(seed + 3u) * 6.2831853);
                   colour = mix(vec3(1.0), tint[kind], clamp(age * 3.0, 0.0, 1.0)) * fade * fade * twinkle * 0.9;
-              } else {
+              }
+              else {
                   uint q = p - SLOTS * PER;
                   uint ring = min(q / DUST, 2u);
                   uint j = q % DUST;
@@ -208,19 +222,20 @@ operations:
               uFragColor = vec4(colour * glow, 0.0);
           }
         code: |
-          import afield.four.synth.PatArc
-          import afield.four.synth.PatQ
           import org.lwjgl.vulkan.VK10.*
 
-          val cps = 0.5     // cycles a second; the net's grid is an eighth of a cycle
-          val life = 1.6    // seconds a spark lives, LIFE in the vertex shader
-          val slots = 24    // SLOTS in the vertex shader: firings drawn at once
-          val particles = slots * 1400 + 3 * 2400
+          val cps = 0.5 // cycles a second; the net's grid is an eighth of a cycle
+          val life = 1.6 // seconds a spark lives, LIFE in the vertex shader
+          val slots = 24 // SLOTS in the vertex shader: firings drawn at once
+          val perBurst = 1400 // PER in the vertex shader: particles per firing.
+          val perRing = 2400 // DUST in the vertex shader: particles per dust ring.
+          // Change slots/perBurst/perRing together with SLOTS/PER/DUST, then relaunch this box.
+          val particles = slots * perBurst + 3 * perRing
 
           // The rings as the shader draws them, centre out, and where each sounding transition
           // launches from: (colour, ring, place). The clap launches from the centre.
-          val rings = listOf(listOf("s0", "s1", "s2"), listOf("k0", "k1", "k2", "k3"), listOf("h0", "h1", "h2", "h3", "h4"))
-          val radius = listOf(0.36, 0.56, 0.76)
+          val rings = [["s0", "s1", "s2"], ["k0", "k1", "k2", "k3"], ["h0", "h1", "h2", "h3", "h4"]]
+          val radius = [0.36, 0.56, 0.76]
           val launches = mapOf(
               "kick" to Triple(0, 1, 0),
               "snare" to Triple(1, 0, 0),
@@ -249,7 +264,8 @@ operations:
           var bursts = defaultBuffer {
               perFrame = true
               size = slots.vec4s
-          }.buffer
+          }
+              .buffer
 
           var charge = 0.0
           val tokens = DoubleArray(3)
@@ -272,9 +288,7 @@ operations:
 
               // Everything that fired in the last `life` seconds, newest last.
               val since = PatQ.fromDouble(maxOf(0.0, now - life * cps))
-              val recent = sparkRun.firingsOver(PatArc(since, at))
-                  .filter { it.transition in launches }
-                  .takeLast(slots)
+              val recent = sparkRun.firingsOver(PatArc(since, at)).filter { it.transition in launches }.takeLast(slots)
 
               bursts.write {
                   for (s in 0 until slots) {

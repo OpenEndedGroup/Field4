@@ -17,13 +17,13 @@ have added either weaker queue/timing control or another integration surface.
 
 The implementation, not this record, owns the behavioral contract:
 
-- `src/jvmMain/kotlin/afield/four/texture/video/AudioDecoder.kt` — FFmpeg decode and resample to
+- `src/jvmMain/kotlin/afield/graphics/texture/video/AudioDecoder.kt` — FFmpeg decode and resample to
   interleaved signed 16-bit PCM.
-- `src/jvmMain/kotlin/afield/four/texture/video/AudioPlayer.kt` — one OpenAL source and a fixed pool
+- `src/jvmMain/kotlin/afield/graphics/texture/video/AudioPlayer.kt` — one OpenAL source and a fixed pool
   of four queued buffers.
-- `src/jvmMain/kotlin/afield/four/texture/video/PlaybackClock.kt` — wall-clock and OpenAL-backed
+- `src/jvmMain/kotlin/afield/graphics/texture/video/PlaybackClock.kt` — wall-clock and OpenAL-backed
   clock implementations.
-- `src/jvmMain/kotlin/afield/four/texture/video/VideoTexture.kt` — optional clock consumption.
+- `src/jvmMain/kotlin/afield/graphics/texture/video/VideoTexture.kt` — optional clock consumption.
 - `src/jvmMain/kotlin/afield/four/texture/video/README.md` — current usage guide.
 - `build.gradle.kts` — OpenAL and platform-native dependencies.
 

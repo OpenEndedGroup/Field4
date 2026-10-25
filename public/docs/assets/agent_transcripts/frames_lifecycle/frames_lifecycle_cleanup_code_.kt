@@ -1,37 +1,20 @@
 /*
-NOT launched by the transcript, because the point is that you drive this one yourself.
-Three things to try, in this order:
-
-  1. Run it and press STOP inside the eight seconds.
-     -> both lines, with .end { } first. Note that they appear on the frame AFTER the
-        button: cancelling the body resumes it through the dispatcher, so the end phase
-        lands on a later Runloop tick and stop is not a synchronous barrier for it.
-  2. Run it and let the eight seconds elapse.
-     -> only the finally line. The body returned; there was no cancellation to catch,
-        and a cancellation is the only route into .end { }.
-  3. Run it, and while it is still counting, RUN IT AGAIN.
-     -> both lines again. A re-run bumps the strand generation rather than the launch
-        epoch, but either way the end job registers and runs — and it runs from inside
-        frame()'s catch, before the cancellation unwinds the body's finally.
-
-So .end { } means "when this animation is cancelled", not "when it finishes".
+Launch this box yourself and try three exits:
+1. Stop before eight seconds: .end runs, then finally, on a later Runloop tick.
+2. Let eight seconds elapse: the body returns and only finally runs.
+3. Re-run while it is counting: the old run prints .end, then finally.
+The .end block handles cancellation; finally also handles a normal return.
 */
 val started = AnimationClock.nowSeconds()
 val runFor = 8.0
-val notes = mutableListOf<String>()
 var nextDraw = 0.0
 
 val show: (String) -> Unit = { headline -> markdown("main", headline.md) }
 
-/*
-Cleanup goes to its OWN channel. Re-running the box immediately repaints "main" from
-the new launch, which would clobber the old launch's cleanup line before you could
-read it -- and the re-run case is the whole point of instruction 3.
-{ok:} styles them as the theme's success colour.
-*/
+// Keep a bounded cleanup history across launches. Old cleanup cannot overwrite a
+// newer run's cleanup; the live readout uses a separate channel.
 val note: (String) -> Unit = { line ->
-    notes += line
-    markdown("cleanup", notes.joinToString("\n\n") { "{ok:${it.md}}" })
+    markdownAppend("cleanup", "{ok:${line.md}}", maxEntries = 12)
 }
 
 frames {
@@ -39,7 +22,7 @@ frames {
         var elapsed = AnimationClock.nowSeconds() - started
         while (elapsed < runFor) {
             if (elapsed >= nextDraw) {
-                show("running - %.1f s of %.0f, frame %,d".format(elapsed, runFor, frameNumber))
+                show("running - ${elapsed.f1} s of ${runFor.f0}, frame ${"%,d".format(frameNumber)}")
                 nextDraw = elapsed + 0.1
             }
             frame()

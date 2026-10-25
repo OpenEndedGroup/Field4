@@ -532,13 +532,30 @@ const viewerTools = createViewerTools({
 let captureState = {ready:false, error:null, revision:null};
 window.FieldViewer = Object.freeze({renderStats: () => renderScheduler.stats(), exportGLB, tools:viewerTools,
     turntable: () => turntable.status(), cameraLink: () => cameraLink.status(), shot: () => shot.status(),
+    film: Object.freeze({begin: filmBegin, at: filmAt, end: filmEnd, status: filmStatus}),
     captureStatus: () => {
         const tools = viewerTools.status(), render = renderScheduler.stats();
         return {...captureState, ready:captureState.ready && !tools.pending.length && !tools.error &&
             render.visible && render.frames > 0, error:captureState.error || tools.error};
     }});
 let glbExporting = false;
-async function exportGLB({download=true} = {}) {
+const formatGlbSize = n => n < 1048576 ? Math.ceil(n / 1024) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
+/**
+ * The GLB through Field's gltfpack, when it is installed (`./gradlew prepareGltfpack`) and makes it smaller;
+ * otherwise `null`, and the export stays uncompressed. A downloaded export only: what `exportGLB` returns to
+ * code is the plain GLB, which any loader reads.
+ */
+async function gltfpackGLB(data) {
+    try {
+        const ws = new URL(buildWsUrl());
+        const origin = `${ws.protocol === 'wss:' ? 'https:' : 'http:'}//${ws.host}`;
+        const response = await fetch(`${origin}/three-gltfpack`, {method: 'POST', headers: {'Content-Type': 'model/gltf-binary'}, body: data});
+        if (!response.ok) return null;
+        const packed = await response.arrayBuffer();
+        return packed.byteLength > 0 && packed.byteLength < data.byteLength ? packed : null;
+    } catch (_) { return null; }
+}
+async function exportGLB({download=true, compress=download} = {}) {
     if (glbExporting) throw new Error('An export is already in progress.');
     glbExporting = true;
     const button = document.getElementById('export-glb'), status = document.getElementById('glb-status');
@@ -556,15 +573,17 @@ async function exportGLB({download=true} = {}) {
             metadata:{viewId:urlParams.get('uid'), revision:featureIdentity(), explodeAmount:state.explode,
                 assemblyStep:state.assemblyStep, tools:state.tools, sectionEnabled:state.sectionEnabled,
                 renderOrigin:state.renderOrigin, renderUpAxis:state.renderUpAxis}});
+        const packed = compress ? await gltfpackGLB(data) : null;
         if (download) {
-            const url = URL.createObjectURL(new Blob([data], {type:'model/gltf-binary'}));
+            const url = URL.createObjectURL(new Blob([packed || data], {type:'model/gltf-binary'}));
             const link = document.createElement('a');
             link.href = url; link.download = (urlParams.get('uid') || 'field-view').replace(/[^a-zA-Z0-9_-]/g, '_') + (state.xray ? '-xray' : '') + '.glb';
             document.body.appendChild(link); link.click(); link.remove();
             setTimeout(() => URL.revokeObjectURL(url), 30000);
         }
-        status.textContent = 'GLB ready · ' + (data.byteLength < 1048576
-            ? Math.ceil(data.byteLength / 1024) + ' KB' : (data.byteLength / 1048576).toFixed(1) + ' MB');
+        status.textContent = packed
+            ? `GLB ready · gltfpack ${formatGlbSize(data.byteLength)} → ${formatGlbSize(packed.byteLength)}`
+            : 'GLB ready · ' + formatGlbSize(data.byteLength);
         return data;
     } catch (error) {
         status.classList.add('is-error'); status.textContent = 'Export failed: ' + error.message;
@@ -623,7 +642,7 @@ const turntable = createTurntable({key: `${urlParams.get('uid') || ''} ${Math.ra
 // A box can ask for a looping presentation move (`shot(…)`): the camera dollies while the model explodes
 // and goes see-through, on the wall clock, held by the same interactions as the turntable. `shotDistance`
 // is this frame's dolly, read by the panel cameras; `shotAppliedDistance` is what the single camera has.
-const shot = createShot({wake: ms => setTimeout(requestRender, ms)});
+const shot = createShot({now: () => filmClockMs ?? Date.now(), wake: ms => setTimeout(requestRender, ms)});
 let shotDistance = 1, shotAppliedDistance = 1;
 // About the target and the view's up axis. Positive turns the model anticlockwise seen from above.
 // `cameraTurned` lets a resize refit an untouched view without undoing the turn.
@@ -633,6 +652,54 @@ function turnCamera(angle) {
     camera.position.sub(controls.target).applyAxisAngle(camera.up, -angle).add(controls.target);
     cameraTurned = true;
 }
+// [viewer-region film] BEGIN
+// A canvas flight films this view (CanvasFlightClient in the main page): `film.begin` notes the camera,
+// `film.at(seconds)` puts it back there and turns it `degreesPerSecond * seconds` about its target and
+// up axis with turnCamera, plays a shot() on the flight's clock rather than the wall clock, and draws at
+// once; `film.end` restores the camera as it was. While it films, the turntable stands aside, damping is
+// off (no inertia between frames) and the camera link neither sends nor takes poses, so every frame
+// depends on the flight's clock alone.
+let film = null, filmClockMs = null;
+function filmBegin({degreesPerSecond = 8} = {}) {
+    if (film) filmEnd();
+    const damping = controls.enableDamping;
+    controls.enableDamping = false; controls.update();
+    const rate = Number(degreesPerSecond);
+    film = {rate: Number.isFinite(rate) ? rate * Math.PI / 180 : 0, damping, wall: Date.now(),
+        eye: camera.position.clone(), target: controls.target.clone(), up: camera.up.toArray(),
+        zoom: camera.zoom, fov: camera.fov, turned: cameraTurned, moved: cameraWasMoved, shotApplied: shotAppliedDistance};
+    filmClockMs = film.wall;
+    return filmStatus();
+}
+function filmAt(seconds) {
+    if (!film) return false;
+    const t = Math.max(0, Number(seconds) || 0);
+    filmClockMs = film.wall + t * 1000;
+    camera.position.copy(film.eye); controls.target.copy(film.target); cameraUp(film.up);
+    shotAppliedDistance = film.shotApplied;
+    turnCamera(film.rate * t);
+    controls.update();
+    render();
+    return true;
+}
+function filmEnd() {
+    if (!film) return false;
+    const f = film;
+    film = null; filmClockMs = null;
+    camera.position.copy(f.eye); controls.target.copy(f.target); cameraUp(f.up);
+    camera.zoom = f.zoom; camera.fov = f.fov; camera.updateProjectionMatrix();
+    shotAppliedDistance = f.shotApplied;
+    controls.update(); controls.enableDamping = f.damping;
+    cameraTurned = f.turned; cameraWasMoved = f.moved;
+    requestRender();
+    return true;
+}
+function filmStatus() {
+    return {filming: !!film, degreesPerSecond: film ? film.rate * 180 / Math.PI : null,
+        panels: Math.max(1, panelState.cameras.length), eye: camera.position.toArray(), target: controls.target.toArray(),
+        up: camera.up.toArray()};
+}
+// [viewer-region film] END
 const cameraLinkButton = document.getElementById('camera-link');
 let cameraLinkOn = false;
 const cameraLink = createCameraLink({
@@ -641,6 +708,7 @@ const cameraLink = createCameraLink({
     read: () => ({eye:camera.position.toArray(),target:controls.target.toArray(),up:camera.up.toArray(),
         fov:camera.fov,zoom:camera.zoom,near:camera.near,far:camera.far}),
     write: pose => {
+        if (film) return;
         // Drain local inertial motion before applying a remote pose, preventing echo/drift.
         const damping = controls.enableDamping;
         controls.enableDamping = false; controls.update();
@@ -674,7 +742,7 @@ function applyCameraLinkRequest(request) {
     else if (!request && on && linkFromRequest) { cameraLink.setEnabled(false); linkFromRequest = false; }
 }
 cameraLinkButton.addEventListener('click',()=>{linkFromRequest=false;cameraLink.setEnabled(!cameraLink.status().enabled);});
-controls.addEventListener('change',()=>cameraLink.localChanged());
+controls.addEventListener('change',()=>{if(!film)cameraLink.localChanged();});
 controls.addEventListener('start',()=>{cameraLink.dragging(true);turntable.hold(true);shot.hold(true);});
 controls.addEventListener('end',()=>{cameraLink.dragging(false);turntable.hold(false);shot.hold(false);cameraLink.localChanged();});
 for (const type of ['pointerdown', 'wheel', 'keydown'])
@@ -684,7 +752,8 @@ let appliedCameraSpec = null, cameraViewport = null;
 renderer.domElement.addEventListener('webglcontextlost', () => { contextAvailable = false; renderScheduler.visibilityChanged(); });
 renderer.domElement.addEventListener('webglcontextrestored', () => { contextAvailable = true; renderScheduler.visibilityChanged(); });
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+scene.add(ambientLight);
 const keyLight = new THREE.DirectionalLight(0xffffff, 0.7);
 keyLight.position.set(5, 8, 6);
 scene.add(keyLight);
@@ -709,6 +778,194 @@ const axes = new THREE.AxesHelper(0.9);
 axes.material.depthTest = false;
 axes.renderOrder = 1;
 scene.add(axes);
+
+// [viewer-region studio] BEGIN
+// `studio(…)`: the look of a model on a plinth. ACES tone mapping, a shadow-casting key with a hemisphere
+// fill and a cool rim, a dark ground that receives the shadows and a faint grid on it. The rig is the
+// one the madp geometry toolbox lights its triangles with, placed relative to the scene's bounds (it
+// was tuned for a scene about 4.5 units in radius), so a model of any size is lit the same way. With no
+// studio the ambient/key/rim above draw, exactly as before, and nothing casts a shadow.
+const studioRoot = new THREE.Group();
+studioRoot.visible = false;
+scene.add(studioRoot);
+const studioHemi = new THREE.HemisphereLight(0xd7ecff, 0x17120e, 1.6);
+const studioKey = new THREE.DirectionalLight(0xffffff, 3.1);
+studioKey.castShadow = true;
+studioKey.shadow.mapSize.set(2048, 2048);
+const studioRim = new THREE.DirectionalLight(0x87bfff, 0.7);
+const studioGround = new THREE.Mesh(new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshStandardMaterial({color: 0x08090a, roughness: 0.92, metalness: 0.02}));
+studioGround.rotation.x = -Math.PI / 2;
+studioGround.receiveShadow = true;
+const studioGrid = new THREE.GridHelper(1, 40, 0x22333a, 0x151d20);
+studioGrid.material.transparent = true;
+studioGrid.material.opacity = 0.28;
+studioRoot.add(studioHemi, studioKey, studioKey.target, studioRim, studioRim.target, studioGround, studioGrid);
+function applyStudio(spec, bounds) {
+    const on = !!spec;
+    studioRoot.visible = on;
+    ambientLight.visible = keyLight.visible = rimLight.visible = !on;
+    renderer.toneMapping = on ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+    renderer.toneMappingExposure = on ? (spec.exposure ?? 1) : 1;
+    const shadows = on && spec.shadows !== false;
+    if (renderer.shadowMap.enabled !== shadows) {
+        renderer.shadowMap.enabled = shadows;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        // Shadow support is compiled into each program, so a switch has to recompile them.
+        scene.traverse(o => { if (o.material && !Array.isArray(o.material)) o.material.needsUpdate = true; });
+    }
+    studioAo.wanted = on && spec.ambientOcclusion !== false;
+    if (studioAo.wanted) loadStudioAo();
+    if (!on) return;
+    const min = bounds?.min || [-1, -1, -1], max = bounds?.max || [1, 1, 1];
+    const cx = (min[0] + max[0]) / 2, cz = (min[2] + max[2]) / 2;
+    const radius = Math.max(1e-3, 0.5 * Math.hypot(max[0] - min[0], max[1] - min[1], max[2] - min[2]));
+    const k = radius / 4.5;
+    const groundY = Number.isFinite(spec.groundY) ? spec.groundY : min[1] - 0.05 * radius;
+    const cy = groundY + 1.25 * k;
+    studioKey.position.set(cx + 4.5 * k, cy + 7 * k, cz + 4.2 * k);
+    studioKey.target.position.set(cx, cy, cz);
+    const sc = studioKey.shadow.camera;
+    sc.near = 0.5 * k; sc.far = 24 * k; sc.left = sc.bottom = -8 * k; sc.right = sc.top = 8 * k;
+    sc.updateProjectionMatrix();
+    // A small normal offset keeps a faceted surface from shadowing itself in stripes (acne).
+    studioKey.shadow.normalBias = 0.02 * k;
+    studioRim.position.set(cx - 5 * k, cy + 3 * k, cz - 4 * k);
+    studioRim.target.position.set(cx, cy, cz);
+    studioGround.visible = spec.ground !== false;
+    studioGround.material.color.set(spec.groundColor || '#08090a');
+    studioGround.position.set(cx, groundY, cz);
+    studioGround.scale.set(80 * k, 80 * k, 1);
+    studioGrid.visible = spec.grid !== false;
+    studioGrid.position.set(cx, groundY + 0.005 * k, cz);
+    studioGrid.scale.setScalar(20 * k);
+    baseGeometryRoot.traverse(o => {
+        if (o.isMesh && o.material?.isMeshStandardMaterial) { o.castShadow = shadows; o.receiveShadow = shadows; }
+    });
+}
+// Ambient occlusion, as the toolbox has it: RenderPass → SSAOPass → OutputPass (tone mapping and sRGB),
+// loaded from the vendored add-ons the first time a studio asks for it, so other views never fetch them.
+// One view only: a contact sheet's panels and X-ray draw directly, as before.
+const studioAo = {wanted: false, composer: null, pass: null, loading: null};
+function loadStudioAo() {
+    if (studioAo.loading) return studioAo.loading;
+    studioAo.loading = Promise.all([
+        import('three/addons/postprocessing/EffectComposer.js'),
+        import('three/addons/postprocessing/RenderPass.js'),
+        import('three/addons/postprocessing/SSAOPass.js'),
+        import('three/addons/postprocessing/OutputPass.js'),
+    ]).then(([{EffectComposer}, {RenderPass}, {SSAOPass}, {OutputPass}]) => {
+        const w = Math.max(1, container.clientWidth), h = Math.max(1, container.clientHeight);
+        const composer = new EffectComposer(renderer);
+        composer.setPixelRatio(getDpr());
+        composer.setSize(w, h);
+        const pass = new SSAOPass(scene, camera, w, h);
+        pass.kernelRadius = 12;
+        composer.addPass(new RenderPass(scene, camera));
+        composer.addPass(pass);
+        composer.addPass(new OutputPass());
+        studioAo.composer = composer; studioAo.pass = pass;
+        requestRender();
+    }).catch(error => console.warn('three viewer: ambient occlusion is unavailable', error));
+    return studioAo.loading;
+}
+function studioAoActive() {
+    return studioAo.wanted && !!studioAo.composer && studioRoot.visible && panelState.cameras.length <= 1 && !xrayState.enabled;
+}
+function renderStudioAo() {
+    // SSAO compares depths as fractions of far - near. The toolbox's thresholds (0.001, 0.075) were set
+    // for its camera, near = d / 100 and far = d * 100 at distance d, so they are rescaled to this one.
+    const d = camera.position.distanceTo(controls.target);
+    const scale = (d * 100 - d / 100) / Math.max(1e-9, camera.far - camera.near);
+    studioAo.pass.minDistance = 0.001 * scale;
+    studioAo.pass.maxDistance = Math.min(1, 0.075 * scale);
+    studioAo.composer.render();
+}
+// [viewer-region studio] END
+
+// [viewer-region labels] BEGIN
+// Text anchored to points in the scene (`payload.labels`), an HTML block in a corner (`payload.overlays`),
+// a greyed-out "stale" state (`payload.dimmed`, `payload.note`), and no HUD (`payload.hud === false`). Labels are DOM elements re-projected
+// every frame rather than sprites, so they stay crisp at any DPR and take ordinary CSS; they are drawn for
+// a single view only (a contact sheet hides them). None of it is pickable: the layer ignores the pointer.
+const labelLayer = document.createElement('div');
+labelLayer.className = 'scene-label-layer';
+container.appendChild(labelLayer);
+const labelStyleSheet = document.createElement('style');
+labelStyleSheet.textContent = `
+  .scene-label-layer, .scene-overlay, .scene-note { position:absolute; pointer-events:none; }
+  .scene-label-layer { inset:0; overflow:hidden; }
+  #canvas-wrap canvas, .scene-label-layer { transition: opacity .2s, filter .2s; }
+  #canvas-wrap.scene-dimmed canvas, #canvas-wrap.scene-dimmed .scene-label-layer { opacity:.38; filter:grayscale(.8); }
+  .scene-label { position:absolute; transform:translate(-50%,-50%); white-space:nowrap; text-shadow:0 1px 5px #000; }
+  .scene-label.chip { min-width:24px; height:24px; padding:0 5px; display:inline-flex; align-items:center; justify-content:center;
+    border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.62); color:#f2f2f2; font-size:12px; }
+  .scene-label.tag { padding:2px 5px; color:rgba(230,230,230,.72); background:rgba(0,0,0,.48);
+    border:1px solid rgba(255,255,255,.08); font-size:10px; }
+  .scene-label.diamond { width:10px; height:10px; border:1px solid rgba(255,255,255,.54);
+    box-shadow:0 1px 7px rgba(0,0,0,.85); transform:translate(-50%,-50%) rotate(45deg); }
+  .scene-overlay { max-width:calc(100% - 24px); font-size:11px; }
+  .scene-overlay.top-right { top:12px; right:12px; } .scene-overlay.top-left { top:12px; left:12px; }
+  .scene-overlay.bottom-right { bottom:12px; right:12px; } .scene-overlay.bottom-left { bottom:12px; left:12px; }
+  body.hud-off #hud { display:none; }
+  .scene-note { left:16px; bottom:14px; color:rgba(255,255,255,.35); font-size:11px; letter-spacing:.05em; text-transform:uppercase; }
+`;
+document.head.appendChild(labelStyleSheet);
+let sceneLabels = [];
+let sceneOverlayEls = [];
+const sceneNote = document.createElement('div');
+sceneNote.className = 'scene-note';
+container.appendChild(sceneNote);
+
+function applyLabels(payload) {
+    labelLayer.replaceChildren();
+    sceneLabels = (payload.labels || []).map(spec => {
+        const el = document.createElement('div');
+        el.className = 'scene-label ' + (spec.style || 'tag');
+        el.textContent = spec.text || '';
+        if (spec.color) {
+            if ((spec.style || 'tag') === 'diamond') el.style.background = spec.color;
+            else el.style.color = spec.color;
+        }
+        if (spec.background) el.style.background = spec.background;
+        if (spec.border) el.style.borderColor = spec.border;
+        if (spec.title) el.title = spec.title;
+        labelLayer.appendChild(el);
+        return {el, at: new THREE.Vector3(spec.position[0], spec.position[1], spec.position[2])};
+    });
+    sceneOverlayEls.forEach(el => el.remove());
+    sceneOverlayEls = (payload.overlays || []).map(spec => {
+        const el = document.createElement('div');
+        el.className = 'scene-overlay ' + (spec.corner || 'top-right');
+        el.innerHTML = spec.html || '';
+        container.appendChild(el);
+        return el;
+    });
+    container.classList.toggle('scene-dimmed', !!payload.dimmed);
+    // A picture to look at rather than a model to inspect: no tool buttons, no counts.
+    document.body.classList.toggle('hud-off', payload.hud === false);
+    sceneNote.textContent = payload.note || '';
+}
+
+const labelProjection = new THREE.Vector3();
+function updateLabels(cam) {
+    const single = panelState.cameras.length <= 1;
+    labelLayer.style.display = single ? '' : 'none';
+    if (!single || sceneLabels.length === 0) return;
+    const width = container.clientWidth, height = container.clientHeight;
+    for (const label of sceneLabels) {
+        labelProjection.copy(label.at).project(cam);
+        const visible = labelProjection.z > -1 && labelProjection.z < 1;
+        label.el.style.display = visible ? '' : 'none';
+        if (!visible) continue;
+        // Kept inside the view, as the madp tetra page does, so a label never leaves by an edge.
+        const halfW = (label.el.offsetWidth || 24) / 2 + 6, halfH = (label.el.offsetHeight || 18) / 2 + 6;
+        const x = (labelProjection.x * 0.5 + 0.5) * width, y = (-labelProjection.y * 0.5 + 0.5) * height;
+        label.el.style.left = Math.min(width - halfW, Math.max(halfW, x)) + 'px';
+        label.el.style.top = Math.min(height - halfH, Math.max(halfH, y)) + 'px';
+    }
+}
+// [viewer-region labels] END
 
 const baseGeometryRoot = new THREE.Group();
 const editorOverlayRoot = new THREE.Group();
@@ -1474,7 +1731,7 @@ function makeSurfaceMaterial(style, hoverColor) {
     };
     const material = s.unlit
         ? new THREE.MeshBasicMaterial(parameters)
-        : new THREE.MeshStandardMaterial({...parameters, roughness: 0.6, metalness: 0.1, flatShading: !!s.flatShading});
+        : new THREE.MeshStandardMaterial({...parameters, ...surfaceMaterialParameters(s.material), flatShading: !!s.flatShading});
     material.toneMapped = !s.unlit;
     material.depthWrite = s.depthWrite !== false;
     material.onBeforeCompile = (shader) => {
@@ -1509,6 +1766,17 @@ function makeSurfaceMaterial(style, hoverColor) {
         'vertex-alpha-v4|' + (s.unlit ? 'unlit|' : 'lit|') + (s.flatShading ? 'flat' : 'smooth') + '|' +
         (s.doubleSided === false ? 'front' : 'double') + '|' + (hover ? 'hover' : 'plain');
     return material;
+}
+
+/**
+ * A ThreeSurfaceMaterial as MeshStandardMaterial parameters. Colours arrive linear, the space three.js
+ * shades in, so they are set as they are. With none, the fixed look every figure had before.
+ */
+function surfaceMaterialParameters(m) {
+    if (!m) return {roughness: 0.6, metalness: 0.1};
+    const c = m.color || [1, 1, 1], e = m.emissive || [0, 0, 0];
+    return {color: new THREE.Color(c[0], c[1], c[2]), roughness: m.roughness ?? 0.68, metalness: m.metalness ?? 0.04,
+        emissive: new THREE.Color(e[0], e[1], e[2]), emissiveIntensity: m.emissiveIntensity ?? 0};
 }
 
 /** The depth-tested wireframe MeshView.wireframe asks for, as an overlay object. */
@@ -3470,14 +3738,14 @@ function buildPointsGeometry(points, color, alpha, size) {
 // [viewer-region planar-tessellation] BEGIN
 //
 // Everything between this sentinel and its END is lifted verbatim, as text, and executed on GraalJS
-// by `src/jvmTest/kotlin/afield/graphics/ViewerJavaScript.kt`, then compared ring-set by ring-set
-// against `afield.graphics.PlanarTessellation` — the Kotlin it is a transliteration of — by
+// by `src/jvmTest/kotlin/afield/graphics/three/ViewerJavaScript.kt`, then compared ring-set by ring-set
+// against `afield.geometry.path.PlanarTessellation` — the Kotlin it is a transliteration of — by
 // `ThreeJsViewerTessellationParityTest`. The extractor fails loudly if either sentinel goes missing,
 // so the seam cannot be quietly deleted. Two rules keep the region liftable, and both are asserted
 // by `ViewerJavaScriptRegionTest`: no DOM, and no `THREE` beyond `Vector2` and
 // `ShapeUtils.triangulateShape`.
 //
-// --- planar tessellation, ported from afield.graphics.PlanarTessellation --------------------
+// --- planar tessellation, ported from afield.geometry.path.PlanarTessellation --------------------
 //
 // Editable mode re-triangulates client-side, because the user drags points and the fill has to
 // follow between server round-trips. It used to do that with a naive fan over each subpath's
@@ -3485,7 +3753,7 @@ function buildPointsGeometry(points, color, alpha, size) {
 // could disagree about both the holes and the facing of the *same* FLine. This is the rule the
 // server runs, so now they agree.
 //
-// Keep in step with `src/jvmMain/kotlin/afield/graphics/PlanarTessellation.kt`, and with the two
+// Keep in step with `src/jvmMain/kotlin/afield/geometry/path/PlanarTessellation.kt`, and with the two
 // tolerances in `Coplanarity`. Both are dimensionless: COPLANAR_SINE_OF_ANGLE is the sine of the
 // angle between two rings' unit Newell normals — unsigned, so antiparallel counts as parallel,
 // because a hole is normally wound against the ring it is a hole in — and COPLANAR_OFFSET_FRACTION
@@ -4731,11 +4999,15 @@ function featureVisible(point) {
     const cut=inspectorState.cut;
     return !cut || point.x*cut.n[0]+point.y*cut.n[1]+point.z*cut.n[2]+cut.d>=-1e-7;
 }
-function featureProject(source,point) {
-    // A restored camera can be queried before the next render updates its inverse.
-    camera.updateMatrixWorld(true);
-    const world=featureWorld(source,point), projected=world.clone().project(camera);
-    return {x:(projected.x+1)/2,y:(1-projected.y)/2,depth:projected.z,world};
+// Normalized canvas coordinates, as pick takes them. On a contact sheet the point is projected in
+// [panel], by default the panel the source is drawn in (the first, for FLines every panel shares).
+function featureProject(source,point,panel=null) {
+    const sheet=panelState.cameras.length>1;
+    const view=featureView(sheet ? (panel ?? (source.slot.panel>=0 ? source.slot.panel : 0)) : null);
+    const canvas=renderer.domElement.getBoundingClientRect();
+    const world=featureWorld(source,point), projected=world.clone().project(view.camera);
+    return {x:(view.rect.left-canvas.left+(projected.x+1)/2*view.rect.width)/canvas.width,
+        y:(view.rect.top-canvas.top+(1-projected.y)/2*view.rect.height)/canvas.height,depth:projected.z,world};
 }
 function featureValidate(selection) {
     if(selection==null)return null;
@@ -4756,6 +5028,12 @@ function featureValidate(selection) {
     } else throw new Error('Invalid feature reference');
     if(!Array.isArray(s.point)||s.point.length!==3||s.point.some((v,i)=>!Number.isFinite(v)||Math.abs(v-point[i])>Math.max(1e-7,Math.abs(point[i])*1e-12)))
         throw new Error('Feature coordinates disagree with its topology');
+    // On a contact sheet a feature is picked in one panel, and must be drawn there.
+    const panels=panelState.cameras.length;
+    if(panels>1) {
+        if(!Number.isInteger(s.panel)||s.panel<0||s.panel>=panels)throw new Error('Feature on a contact sheet names no panel of it');
+        if(![undefined,-1,s.panel].includes(source.slot.panel))throw new Error('Feature is not drawn in its panel');
+    } else if(s.panel!==undefined)throw new Error('Feature belongs to a panel of a contact sheet');
     if(s.kind==='region') {
         const r=s.region;
         if(!r||![r.cx,r.cy,r.width,r.height,r.angle].every(Number.isFinite)||r.cx<0||r.cx>1||r.cy<0||r.cy>1||r.width<=0||r.width>1||r.height<=0||r.height>1||Math.abs(r.angle)>180||!Array.isArray(r.surfaces)||!r.surfaces.length)throw new Error('Invalid region reference');
@@ -4913,11 +5191,37 @@ renderer.domElement.addEventListener('pointerup',event=>{
     if(region.width>.002&&region.height>.002)try {featureRegion(region,true);}catch(e){featureMessage(String(e),true);}
 },true);
 renderer.domElement.addEventListener('pointercancel',()=>{featureDrag=null;controls.enabled=true;featureRectangleBox(null);},true);
+// The view a feature is picked in and shown in: the whole canvas, or one panel of a contact sheet.
+// A panel has its own camera, its own rectangle of the canvas and its own drawables; FLines, which
+// every panel shares, belong to all of them. `panel` is null on a single viewport.
+function featureView(panel=null) {
+    const rect=renderer.domElement.getBoundingClientRect(), count=panelState.cameras.length;
+    if(count<=1) {
+        if(panel!=null)throw new Error('Note belongs to a panel of a contact sheet');
+        camera.updateMatrixWorld(true);
+        return {panel:null,camera,rect:{left:rect.left,top:rect.top,width:rect.width,height:rect.height},owns:()=>true};
+    }
+    if(!Number.isInteger(panel)||panel<0||panel>=count)throw new Error('Feature review on a contact sheet needs a panel');
+    updatePanelCameras();
+    const vp=panelViewport(panel,count), sx=rect.width/container.clientWidth, sy=rect.height/container.clientHeight;
+    const cam=panelState.cameras[panel].camera;cam.updateMatrixWorld(true);
+    return {panel,camera:cam,rect:{left:rect.left+vp.x*sx,top:rect.bottom-(vp.y+vp.h)*sy,width:vp.w*sx,height:vp.h*sy},
+        owns:slot=>slot.panel===undefined||slot.panel===-1||slot.panel===panel};
+}
+// Normalized canvas coordinates to a view and coordinates normalized within it; null off every panel.
+function featureViewAt(x,y) {
+    if(panelState.cameras.length<=1)return {view:featureView(),x,y};
+    updatePanelCameras();
+    const hit=panelPointerAt(x*container.clientWidth,(1-y)*container.clientHeight,panelState.cameras.map((_,i)=>panelViewport(i,panelState.cameras.length)));
+    return hit ? {view:featureView(hit.panel),x:(hit.x+1)/2,y:(1-hit.y)/2} : null;
+}
 function featurePick(x,y,kind='face',publish=false) {
-    if(panelState.cameras.length>1)throw new Error('Feature review currently requires a single viewport');
     if(!['point','face','edge','vertex'].includes(kind)||![x,y].every(v=>Number.isFinite(v)&&v>=0&&v<=1))throw new Error('Pick uses normalized canvas coordinates and face, edge or vertex');
-    camera.updateMatrixWorld(true);
-    const sources=featureSources().filter(s=>s.slot.object.visible && !inspectorState.hidden.has(s.id));
+    const at=featureViewAt(x,y);
+    if(!at)return featureSet(null,publish);
+    const {view}=at, camera=view.camera, withPanel=selection=>selection && view.panel!=null ? {...selection,panel:view.panel} : selection;
+    ({x,y}=at);
+    const sources=featureSources().filter(s=>s.slot.object.visible && !inspectorState.hidden.has(s.id) && view.owns(s.slot));
     const meshes=sources.filter(s=>s.slot.object.isMesh).map(s=>s.slot.object);
     meshes.forEach(m=>m.updateWorldMatrix(true,false));
     const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2(2*x-1,1-2*y),camera);
@@ -4925,9 +5229,9 @@ function featurePick(x,y,kind='face',publish=false) {
     if(kind==='face'||kind==='point') {
         const hit=hits[0];if(!hit)return featureSet(null,publish);
         const source=sources.find(s=>s.slot.object===hit.object);
-        return featureSet(featureSurfaceSelection(source,hit,kind),publish);
+        return featureSet(withPanel(featureSurfaceSelection(source,hit,kind)),publish);
     }
-    const rect=renderer.domElement.getBoundingClientRect(), candidates=[];
+    const rect=view.rect, candidates=[];
     for(const source of sources) {
         const g=featureTopology(source);
         const vertices=source.slot.object.isPoints ? [...new Set(g.indices)] : [...new Set(g.edges.flat())];
@@ -4954,7 +5258,7 @@ function featurePick(x,y,kind='face',publish=false) {
         }
     }
     candidates.sort((a,b)=>a.distance-b.distance||a.depth-b.depth);
-    return featureSet(candidates[0]?.selection || null,publish);
+    return featureSet(withPanel(candidates[0]?.selection || null),publish);
 }
 function featureDraw() {
     const s=inspectorState.selection;if(!s)return;
@@ -4971,11 +5275,11 @@ function featureDraw() {
     const overlay=s.kind==='face'?new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({...options,transparent:true,opacity:.35,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2})):
         s.kind==='edge'?new THREE.LineSegments(geometry,new THREE.LineBasicMaterial({...options,depthTest:false})):
         new THREE.Points(geometry,new THREE.PointsMaterial({...options,size:9,sizeAttenuation:false,depthTest:false}));
-    overlay.renderOrder=1000;inspectorRoot.add(overlay);
+    overlay.renderOrder=1000;overlay.userData.featurePanel=s.panel;inspectorRoot.add(overlay);
     if(s.kind==='face'||s.kind==='edge') {
         const markerGeometry=new THREE.BufferGeometry().setFromPoints([featureAnchorWorld(source,s)]);
         const marker=new THREE.Points(markerGeometry,new THREE.PointsMaterial({...options,size:7,sizeAttenuation:false,depthTest:false}));
-        marker.renderOrder=1001;inspectorRoot.add(marker);
+        marker.renderOrder=1001;marker.userData.featurePanel=s.panel;inspectorRoot.add(marker);
     }
 }
 function featureHud() {
@@ -4985,8 +5289,9 @@ function featureHud() {
     if(s?.region)document.getElementById('feature-angle').value=String(s.region.angle);
     document.getElementById('feature-angle-value').textContent=document.getElementById('feature-angle').value+'°';
     document.getElementById('feature-tools').classList.toggle('hidden',!featureIdentity() || !editorState.uiVisible);
-    featureModeEl.disabled=panelState.cameras.length>1;
-    featureModeEl.title=featureModeEl.disabled?'Open a single viewport for feature review':'';
+    const sheet=panelState.cameras.length>1, rectangle=featureModeEl.querySelector('option[value="region"]');
+    if(rectangle){rectangle.disabled=sheet;rectangle.title=sheet?'Rectangle review needs a single viewport':'';}
+    if(sheet&&featureModeEl.value==='region')featureModeEl.value='off';
     document.getElementById('feature-review').classList.toggle('hidden',!s && featureModeEl.value==='off');
     const source=s && featureSources().find(p=>p.id===s.partId);
     document.getElementById('feature-description').textContent=s ? `${source.label} · ${s.kind}${s.region?' · '+s.region.surfaces.length+' visible part(s)':''}\n${s.point.map(v=>v.toFixed(3)).join(', ')} ${inspectorState.spec?.units||''}` : (featureModeEl.value==='region'?'Drag a rectangle over visible surfaces. Rotate it with the Angle slider.':'Click a feature. Edge and vertex picks snap within 12 pixels.');
@@ -5006,20 +5311,24 @@ function featureObservation(text,verdict='note') {
 // These are geometry-canvas images, without the note editor covering the selected feature.
 function featureCaptureEvidence(record) {
     if(!record?.selection)throw new Error('Pick a feature before saving a note');
-    if(panelState.cameras.length>1)throw new Error('Image review requires a single viewport');
     const current=inspectorSnapshot(), noteText=featureNoteEl.value;
     try {
         featureReview(record);
         const canvas=renderer.domElement, rect=canvas.getBoundingClientRect();
-        camera.updateMatrixWorld(true);
-        renderer.setViewport(0,0,rect.width,rect.height);
-        renderer.setScissorTest(false); renderGeometry(camera);
+        const view=featureView(record.selection.panel ?? null);
+        if(view.panel==null) {
+            renderer.setViewport(0,0,rect.width,rect.height);
+            renderer.setScissorTest(false); renderGeometry(camera);
+        } else renderPanels(); // every panel, as on screen; the images are cut from the note's panel
+        // The view's rectangle in canvas pixels.
+        const px=canvas.width/rect.width, py=canvas.height/rect.height;
+        const sx=(view.rect.left-rect.left)*px, sy=(view.rect.top-rect.top)*py, sw=view.rect.width*px, sh=view.rect.height*py;
         const full=document.createElement('canvas');
-        const scale=Math.min(1,1600/canvas.width,1600/canvas.height);
-        full.width=Math.max(1,Math.round(canvas.width*scale)); full.height=Math.max(1,Math.round(canvas.height*scale));
-        const ctx=full.getContext('2d');ctx.drawImage(canvas,0,0,full.width,full.height);
+        const scale=Math.min(1,1600/sw,1600/sh);
+        full.width=Math.max(1,Math.round(sw*scale)); full.height=Math.max(1,Math.round(sh*scale));
+        const ctx=full.getContext('2d');ctx.drawImage(canvas,sx,sy,sw,sh,0,0,full.width,full.height);
         const s=record.selection, region=s.region ? featureDisplayRegion(s.region) : null;
-        const source=featureSources().find(p=>p.id===s.partId), projected=featureAnchorWorld(source,s).project(camera);
+        const source=featureSources().find(p=>p.id===s.partId), projected=featureAnchorWorld(source,s).project(view.camera);
         const anchor={x:(projected.x+1)/2,y:(1-projected.y)/2};
         const cx=(region?.cx ?? anchor.x)*full.width,cy=(region?.cy ?? anchor.y)*full.height;
         const a=(region?.angle||0)*Math.PI/180;
@@ -5035,7 +5344,7 @@ function featureCaptureEvidence(record) {
         crop.getContext('2d').drawImage(full,x0,y0,x1-x0,y1-y0,0,0,crop.width,crop.height);
         const encode=c=>({width:c.width,height:c.height,dataUrl:c.toDataURL('image/png')});
         return {schemaVersion:1,artifactDigest:record.artifactDigest,view:featureClone(record.view),
-            viewport:[rect.width,rect.height],cropBounds:[x0/full.width,y0/full.height,(x1-x0)/full.width,(y1-y0)/full.height],
+            viewport:[view.rect.width,view.rect.height],...(view.panel!=null?{panel:view.panel}:{}),cropBounds:[x0/full.width,y0/full.height,(x1-x0)/full.width,(y1-y0)/full.height],
             context:encode(full),crop:encode(crop)};
     } finally { inspectorRestore(current); featureNoteEl.value=noteText; requestRender(); }
 }
@@ -5277,7 +5586,7 @@ function inspectorPartHud() {
 window.FieldInspector = Object.freeze({ snapshot: inspectorSnapshot, restore: inspectorRestore,
     pick:featurePick, region:featureRegion, select:featureSet, review:featureReview,
     parts:()=>featureClone(inspectorPartTree()),
-    project:(id,point)=>{const s=featureSources().find(p=>p.id===id);if(!s)throw new Error('Unknown feature owner');const p=featureProject(s,point);return {x:p.x,y:p.y,depth:p.depth};},
+    project:(id,point,panel=null)=>{const s=featureSources().find(p=>p.id===id);if(!s)throw new Error('Unknown feature owner');const p=featureProject(s,point,panel);return {x:p.x,y:p.y,depth:p.depth};},
     sources:()=>featureSources().map(s=>({id:s.id,label:s.label,source:s.source,precision:s.canonical?'canonical-double':'display-float'})),
     // Display-space diagnostics for automation; never use these Float bounds as Boolean geometry.
     rendered: () => payloadGeometrySlots.drawables.filter(s => s.object && s.object.isMesh).map(s => {
@@ -5511,21 +5820,67 @@ function fitCameraToBounds(cam, bounds, target, margin, points) {
  * @param fit when true, [fitCameraToBounds] then pulls the distance in or out so the geometry fills
  * the frame the viewer was actually given. The spec's `distance` becomes the padding factor.
  */
+// `camera(follow = true)`: carry the camera along with the centre of the bounds, and step the grid
+// by whole cells under it so the floor stays put while the subject moves across it.
+//
+// The camera chases a smoothed centre, not the raw one: a walking subject's bounds jump with every
+// step. Per update it closes FOLLOW_EASE of the gap along each axis — gently along x, much more
+// gently across (y), and not at all in height, which only bobs. A jump of more than FOLLOW_CUT in
+// one update (an animation starting over) is a cut: the camera goes straight there.
+const GRID_CELL = 10 / 20;
+const FOLLOW_EASE = [0.08, 0.015, 0];
+const FOLLOW_CUT = 2;
+let followCenter = null;
+function followUp() { return payloadState?.camera?.upAxis === 'Z' ? 'Z' : 'Y'; }
+function followBounds(payload) {
+    const b = payload.bounds;
+    if (!payload.camera?.follow || !b?.min || !b?.max || panelState.cameras.length > 1) {
+        followCenter = null;
+        grid.position.set(0, 0, 0);
+        return;
+    }
+    const raw = new THREE.Vector3().fromArray(b.min).add(new THREE.Vector3().fromArray(b.max)).multiplyScalar(0.5);
+    const cut = followCenter && raw.distanceTo(followCenter) > FOLLOW_CUT;
+    const c = followCenter && !cut ? followCenter.clone() : raw;
+    if (cut) {
+        const d = raw.clone().sub(followCenter);
+        camera.position.add(d);
+        controls.target.add(d);
+        controls.update();
+    } else if (followCenter) {
+        const k = followUp() === 'Z' ? FOLLOW_EASE : [FOLLOW_EASE[0], FOLLOW_EASE[2], FOLLOW_EASE[1]];
+        c.x += (raw.x - c.x) * k[0];
+        c.y += (raw.y - c.y) * k[1];
+        c.z += (raw.z - c.z) * k[2];
+        const d = c.clone().sub(followCenter);
+        camera.position.add(d);
+        controls.target.add(d);
+        controls.update();
+    }
+    followCenter = c;
+    grid.position.set(Math.round(c.x / GRID_CELL) * GRID_CELL, Math.round(c.y / GRID_CELL) * GRID_CELL, 0);
+    requestRender();
+}
 function applyCameraSpec(cam, spec, bounds, fit, points) {
     if (!spec || !bounds || !bounds.min || !bounds.max) return null;
     const derived = cameraPresetEye(spec, bounds);
+    if (spec.upAxis === 'Z') {
+        // The y-up preset, turned rigidly so its up becomes +z: an eye offset (x, y, z) becomes (x, -z, y).
+        const t = derived.target, e = derived.eye;
+        derived.eye = [e[0], t[1] - (e[2] - t[2]), t[2] + (e[1] - t[1])];
+    }
     cam.position.set(derived.eye[0], derived.eye[1], derived.eye[2]);
-    cam.up.set(0, 1, 0);
+    cam.up.set(0, spec.upAxis === 'Z' ? 0 : 1, spec.upAxis === 'Z' ? 1 : 0);
     cam.lookAt(derived.target[0], derived.target[1], derived.target[2]);
     cam.fov = spec.fieldOfViewDegrees === undefined ? 40 : spec.fieldOfViewDegrees;
     cam.near = derived.near;
     cam.far = derived.far;
     cam.updateProjectionMatrix();
     if (fit) {
-        // 2.7 is MeshView's default distance and frames the bounding sphere with a little air, so it
-        // is the multiple that means "no extra padding" here.
-        const requested = spec.distance === undefined ? 2.7 : spec.distance;
-        fitCameraToBounds(cam, bounds, derived.target, Math.max(1.02, requested / 2.7 * 1.06), points);
+        // The fit margin is the spec's viewer-only padding; distance is the rasterizer's and does not
+        // move the fitted camera.
+        const padding = spec.padding === undefined ? 1.06 : spec.padding;
+        fitCameraToBounds(cam, bounds, derived.target, Math.max(1.0, padding), points);
     }
     return derived;
 }
@@ -5886,8 +6241,8 @@ function wireFailed(error) {
 }
 
 function wireReceive(message) {
-    // A newer geometry message makes the fetch in flight moot.
-    if (message.type === 'three/geometry' && wireInbox.fetching) wireInbox.fetching.abort();
+    // A fetch in flight is not aborted for a newer message: under continuous updates every fetch would be
+    // aborted and nothing drawn. Queued messages it supersedes are compacted away instead.
     wireInbox.queue.push(message);
     wirePump();
 }
@@ -5960,6 +6315,8 @@ function applyGeometry(payload) {
     const wantHelpers = payload.helpers !== false;
     grid.visible = wantHelpers;
     axes.visible = wantHelpers;
+    applyStudio(payload.studio, payload.bounds);
+    applyLabels(payload);
     if (!hasFramedInitialGeometry && payload.bounds && payload.autoFrame !== false) {
         frameBounds(payload.bounds);
         hasFramedInitialGeometry = true;
@@ -5973,13 +6330,16 @@ function applyGeometry(payload) {
         applyCameraSpec(camera, payload.camera, payload.bounds, true,
             sweptFitPoints(fitPointsForPanel(-1), payload.bounds, !!payload.turntable));
         const derived = cameraPresetEye(payload.camera, payload.bounds);
+        cameraUp(payload.camera.upAxis === 'Z' ? [0, 0, 1] : [0, 1, 0]);
         controls.target.set(derived.target[0], derived.target[1], derived.target[2]);
         controls.update();
         hasFramedInitialGeometry = true;
         appliedCameraSpec = cameraKey;
         cameraWasMoved = false; cameraTurned = false;
         cameraViewport = [container.clientWidth, container.clientHeight];
+        followCenter = null;
     }
+    followBounds(payload);
     // Last, because it reads the geometry the steps above created and because framing the camera first
     // means the first dimension is offset across the view the user is actually going to see.
     inspectorCapture(payload);
@@ -5995,6 +6355,8 @@ function applyGeometry(payload) {
         shot.configure(payload.shot); shotDistance = 1; shotAppliedDistance = 1;
         applyCameraLinkRequest(payload.cameraLink);
         inspectorRefresh();
+        // A capture waits for the occlusion pass a studio asked for, so it is never taken without it.
+        if (studioAo.wanted) await loadStudioAo();
         requestRender();
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         if (payloadState === payload || (settleKey !== null && captureState.settleKey === settleKey)) captureState.ready = true;
@@ -6029,6 +6391,27 @@ function sendMessage(payload) {
     wsState.ws.send(JSON.stringify(message));
 }
 
+/**
+ * Field asks what this view looks like (`ThreeGeometryViewState.snapshot`, an agent's `geometry.look`):
+ * draw one frame and read the canvas in the same task, before the drawing buffer is presented and cleared.
+ * The camera is wherever the person left it; the HUD is HTML and not in the picture.
+ */
+function answerSnapshot(id) {
+    try {
+        render();
+        // Flattened onto the view's background (the canvas itself is transparent) and at most 1600 px.
+        const canvas = renderer.domElement, scale = Math.min(1, 1600 / Math.max(canvas.width, canvas.height));
+        const flat = document.createElement('canvas');
+        flat.width = Math.round(canvas.width * scale); flat.height = Math.round(canvas.height * scale);
+        const ctx = flat.getContext('2d');
+        ctx.fillStyle = getComputedStyle(container).backgroundColor || '#000';
+        ctx.fillRect(0, 0, flat.width, flat.height);
+        ctx.drawImage(canvas, 0, 0, flat.width, flat.height);
+        const dataUrl = flat.toDataURL('image/png');
+        sendMessage({type: 'three-snapshot', id, dataUrl});
+    } catch (error) { console.warn('three viewer: snapshot failed', error); }
+}
+
 function connectWs() {
     const ws = new WebSocket(buildWsUrl());
     wsState.ws = ws;
@@ -6038,6 +6421,7 @@ function connectWs() {
         let message = null;
         try { message = JSON.parse(event.data); } catch (_) { return; }
         if(message.type==='three-review-ack'){featureSaving=false; featureHud(); featureMessage(message.message,!message.ok);return;}
+        if (message.type === 'three/snapshot-request') { answerSnapshot(message.id); return; }
         wireReceive(message);
     });
     ws.addEventListener('close', () => {
@@ -6521,9 +6905,11 @@ function applyScenePanels(payload) {
         const vp = panelViewport(index, panels.length);
         const cam = new THREE.PerspectiveCamera(45, vp.h > 0 ? vp.w / vp.h : 1, 0.01, 10000);
         const bounds = p.bounds || payload.bounds;
-        if (bounds) applyCameraSpec(cam, p.camera || {}, bounds, true, fitPointsForPanel(index));
+        // fitBounds: frame the bounds as given (a shared scale), not this panel's own geometry.
+        const fitPoints = p.fitBounds ? null : fitPointsForPanel(index);
+        if (bounds) applyCameraSpec(cam, p.camera || {}, bounds, true, fitPoints);
         panelState.cameras.push({
-            camera: cam, spec: p.camera || {}, bounds: bounds, fitPoints: fitPointsForPanel(index)
+            camera: cam, spec: p.camera || {}, bounds: bounds, fitPoints: fitPoints
         });
     });
 
@@ -6647,7 +7033,8 @@ function updatePanelCameras() {
             // Polar is measured from +y down, so a positive polar delta is a *lower* pitch.
             pitchDegrees: (spec.pitchDegrees || 0) - dPolar,
             distance: spec.distance === undefined ? 2.7 : spec.distance,
-            fieldOfViewDegrees: spec.fieldOfViewDegrees
+            fieldOfViewDegrees: spec.fieldOfViewDegrees,
+            padding: spec.padding
         };
         if (turning) placeTurningPanel(entry, view);
         else applyCameraSpec(entry.camera, view, entry.bounds, true, entry.fitPoints);
@@ -6670,6 +7057,10 @@ function setPanelVisibility(index) {
         if (!slot || !slot.object) return;
         slot.object.visible = inspectorDrawableVisible(slot, ordinal) && (slot.panel === -1 || slot.panel === index);
     });
+    // A picked feature is highlighted in the panel it was picked in, not wherever its world position falls.
+    inspectorRoot.children.forEach((child) => {
+        if (child.userData.featurePanel != null) child.visible = child.userData.featurePanel === index;
+    });
 }
 
 function onResize() {
@@ -6678,6 +7069,7 @@ function onResize() {
     const height = container.clientHeight;
     renderer.setPixelRatio(getDpr());
     renderer.setSize(width, height);
+    if (studioAo.composer) { studioAo.composer.setPixelRatio(getDpr()); studioAo.composer.setSize(width, height); }
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     // A genuine viewport resize may refit an untouched initial view. Geometry refreshes and
@@ -6767,7 +7159,7 @@ function applyShotLook(look) {
 }
 
 function render() {
-    const turn = turntable.step();
+    const turn = film ? null : turntable.step();
     if (turn !== null) { turnCamera(turn); requestRender(); }
     // A shot draws continuously, but only while the view is on screen and the page is showing.
     if (shot.active() && onScreen && document.visibilityState !== 'hidden') {
@@ -6778,8 +7170,19 @@ function render() {
     const interactivePointer = editorState.mode === 'camera' ? updateInteractiveHover() : false;
     if (editorState.mode === 'camera') renderer.domElement.style.cursor = interactivePointer ? 'pointer' : '';
 
+    if (panelState.cameras.length > 1) renderPanels();
+    else if (studioAoActive()) renderStudioAo();
+    else {
+        renderer.setViewport(0, 0, container.clientWidth, container.clientHeight);
+        renderGeometry(camera);
+    }
+    updateLabels(camera);
+}
+
+/** Every panel of a contact sheet, each through its own camera into its own rectangle. */
+function renderPanels() {
     const count = panelState.cameras.length;
-    if (count > 1) {
+    {
         updatePanelCameras();
         renderer.setScissorTest(true);
         for (let i = 0; i < count; i += 1) {
@@ -6795,9 +7198,7 @@ function render() {
         payloadGeometrySlots.drawables.forEach((slot, ordinal) => {
             if (slot && slot.object) slot.object.visible = inspectorDrawableVisible(slot, ordinal);
         });
-    } else {
-        renderer.setViewport(0, 0, container.clientWidth, container.clientHeight);
-        renderGeometry(camera);
+        inspectorRoot.children.forEach((child) => { if (child.userData.featurePanel != null) child.visible = true; });
     }
 }
 

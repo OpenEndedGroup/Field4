@@ -18,7 +18,7 @@ Give Field's AI a tool of its own — the whole mechanism, in one box, and with 
 
 A tool is an ordinary Kotlin class (which becomes the schema the model reads) plus an
 ordinary Kotlin lambda (which becomes what happens when the model calls it). Register the
-pair through afield.ai.core.AgentToolExtensions and the model can call it by name.
+pair through afield.ai.tools.AgentToolExtensions and the model can call it by name.
 
 Nothing in Field has to be edited to add one: the registration goes the other way.
 
@@ -26,51 +26,52 @@ public/docs/aiFeatures.md      — "Give the AI a tool of your own"
 dev_docs/ai/AGENT_TOOL_EXTENSIONS.md — the design, and what is still not covered
 
 ```edn [field-box id="ai-tool-demo-minimal" role="properties"]
-{"id" "ai-tool-demo-minimal" "index" 0 "name" "Give the AI a tool — the whole mechanism" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Give the AI a tool — the whole mechanism" "_tombstone" false "frame" #afield/rect [60.0 60.0 620.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai-tool-demo-minimal_code_.kt" "lines" 101 "characters" 4632 "sha256" "dc03b4ef9a50f6c7c1012aa4cf4973dfb9fab5fd3798a1997f814f72a77e2b4c"}]}
+{"id" "ai-tool-demo-minimal" "index" 0 "name" "Give the AI a tool — the whole mechanism" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Give the AI a tool — the whole mechanism" "_tombstone" false "frame" #afield/rect [60.0 60.0 620.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai-tool-demo-minimal_code_.kt" "lines" 114 "characters" 4548 "sha256" "5c2566dd600b0917ebaa2e456946fed4d5d66c128e0310cdec22c747bd5ae289"}]}
 ```
 
 ```kotlin [field-property box="ai-tool-demo-minimal" name="code" path="ai-tool-demo-minimal_code_.kt"]
-// Give Field's AI a tool of its own — the whole mechanism, in one box, and with no API key.
-//
-// A tool is an ordinary Kotlin class (which becomes the schema the model reads) plus an
-// ordinary Kotlin lambda (which becomes what happens when the model calls it). Register the
-// pair through afield.ai.core.AgentToolExtensions and the model can call it by name.
-//
-// Nothing in Field has to be edited to add one: the registration goes the other way.
-//
-//   public/docs/aiFeatures.md      — "Give the AI a tool of your own"
-//   dev_docs/ai/AGENT_TOOL_EXTENSIONS.md — the design, and what is still not covered
+/*
+Give Field's AI a tool of its own — the whole mechanism, in one box, and with no API key.
 
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.SummarisesForToolLog
-import afield.ai.core.ToolExecutionContext
+A tool is an ordinary Kotlin class (which becomes the schema the model reads) plus an
+ordinary Kotlin lambda (which becomes what happens when the model calls it). Register the
+pair through afield.ai.tools.AgentToolExtensions and the model can call it by name.
+
+Nothing in Field has to be edited to add one: the registration goes the other way.
+
+  public/docs/aiFeatures.md      — "Give the AI a tool of your own"
+  dev_docs/ai/AGENT_TOOL_EXTENSIONS.md — the design, and what is still not covered
+*/
+
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
 // ---------------------------------------------------------------- 1. the request class
 
-// This class IS the schema. Its simple name is the tool's name, and these annotations are
-// the only prompt the tool gets — write them for a reader who cannot see the code.
-//
-//   a parameter with no default  -> "required"
-//   a parameter with a default   -> optional, and Kotlin's default is what happens
-//   an enum                      -> {"type": "string", "enum": [...]}
+/*
+This class IS the schema. Its simple name is the tool's name, and these annotations are
+the only prompt the tool gets — write them for a reader who cannot see the code.
+
+  a parameter with no default  -> "required"
+  a parameter with a default   -> optional, and Kotlin's default is what happens
+  an enum                      -> {"type": "string", "enum": [...]}
+*/
 
 @JsonClassDescription("Measure a rectangular room and say whether it meets a minimum floor area.")
 data class MeasureRoom(
-    @JsonPropertyDescription("The room's width in metres.")
-    val width: Double,
-    @JsonPropertyDescription("The room's depth in metres.")
-    val depth: Double,
+    @JsonPropertyDescription("The room's width in metres.") val width: Double,
+    @JsonPropertyDescription("The room's depth in metres.") val depth: Double,
     @JsonPropertyDescription("The smallest floor area, in square metres, that counts as acceptable.")
     val minimumArea: Double = 11.0,
 )
 
 // ---------------------------------------------------------------- 2. the result
 
-// SummarisesForToolLog is worth implementing on every result. Without it, Field's tool I/O
-// log records only the class name, which cannot tell a turn where the model got what it
-// needed from one where it got an error and gave up.
+/*
+SummarisesForToolLog is worth implementing on every result. Without it, Field's tool I/O
+log records only the class name, which cannot tell a turn where the model got what it
+needed from one where it got an error and gave up.
+*/
 
 data class MeasureRoomResult(
     val area: Double,
@@ -83,9 +84,11 @@ data class MeasureRoomResult(
 
 // ---------------------------------------------------------------- 3. register it
 
-// Idempotent by tool NAME, so re-running this box replaces the tool rather than adding a
-// second copy of it — and reaches an AI Chat that is already open, on its next turn.
-// There is no order you have to follow.
+/*
+Idempotent by tool NAME, so re-running this box replaces the tool rather than adding a
+second copy of it — and reaches an AI Chat that is already open, on its next turn.
+There is no order you have to follow.
+*/
 
 AgentToolExtensions.register(MeasureRoom::class.java) { _, request ->
     val area = request.width * request.depth
@@ -93,18 +96,23 @@ AgentToolExtensions.register(MeasureRoom::class.java) { _, request ->
         area = area,
         perimeter = 2 * (request.width + request.depth),
         acceptable = area >= request.minimumArea,
-        note = if (area >= request.minimumArea)
-            "%.2f m2 clears the %.1f m2 minimum by %.2f.".format(area, request.minimumArea, area - request.minimumArea)
-        else
-            "%.2f m2 is %.2f short of the %.1f m2 minimum.".format(area, request.minimumArea - area, request.minimumArea),
+        note =
+            if (area >= request.minimumArea)
+                "%.2f m2 clears the %.1f m2 minimum by %.2f."
+                    .format(area, request.minimumArea, area - request.minimumArea)
+            else
+                "%.2f m2 is %.2f short of the %.1f m2 minimum."
+                    .format(area, request.minimumArea - area, request.minimumArea),
     )
 }
 
 // ---------------------------------------------------------------- 4. see it the way a model does
 
-// execute() is the same entry point a model's tool call goes through: a name and a JSON
-// string. So you can drive your own tool from a box, with no API key and no model, and see
-// exactly what would come back.
+/*
+execute() is the same entry point a model's tool call goes through: a name and a JSON
+string. So you can drive your own tool from a box, with no API key and no model, and see
+exactly what would come back.
+*/
 
 val ctx = ToolExecutionContext()
 
@@ -118,12 +126,17 @@ println(big.note)
 println("tool log line: " + big.toolLogSummary())
 println()
 
-// minimumArea was omitted above, so Kotlin's default (11.0) applied. Supply it and the
-// same room becomes unacceptable — which is the whole point of testing the JSON path
-// rather than calling the handler directly.
-val strict = AgentToolExtensions.execute(
-    ctx, "MeasureRoom", """{"width": 4.2, "depth": 3.1, "minimumArea": 15.0}"""
-) as MeasureRoomResult
+/*
+minimumArea was omitted above, so Kotlin's default (11.0) applied. Supply it and the
+same room becomes unacceptable — which is the whole point of testing the JSON path
+rather than calling the handler directly.
+*/
+val strict =
+    AgentToolExtensions.execute(
+        ctx,
+        "MeasureRoom",
+        """{"width": 4.2, "depth": 3.1, "minimumArea": 15.0}""",
+    ) as MeasureRoomResult
 println(strict.note)
 println()
 
@@ -143,7 +156,7 @@ From `code`
 
 A tool that hands the model a PICTURE.
 
-GeometryAgentTools (afield.four.modules) is a real, public tool set built on the same
+GeometryAgentTools (afield.graphics.render) is a real, public tool set built on the same
 AgentToolExtensions seam as the box to the left, over the loaders in
 public/docs/geometry_from_disk.md. It does the thing that makes a geometry tool worth
 having: the model can LOOK at what it just asked about, because the result implements
@@ -153,33 +166,32 @@ This box builds a mesh, writes it somewhere the tools are allowed to read, and t
 them exactly as a model would. No API key, no model.
 
 ```edn [field-box id="ai-tool-demo-geometry" role="properties"]
-{"id" "ai-tool-demo-geometry" "index" 1 "name" "A tool that hands the model a picture" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A tool that hands the model a picture" "_tombstone" false "frame" #afield/rect [720.0 60.0 620.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai-tool-demo-geometry_code_.kt" "lines" 80 "characters" 4054 "sha256" "6f980c3bf539b90fde0b770d7608064752727cfc6397b885a5ba48f9e7811e52"}]}
+{"id" "ai-tool-demo-geometry" "index" 1 "name" "A tool that hands the model a picture" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A tool that hands the model a picture" "_tombstone" false "frame" #afield/rect [720.0 60.0 620.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai-tool-demo-geometry_code_.kt" "lines" 97 "characters" 3902 "sha256" "0f1a25427d5d3f8913bb99ac12ef290ea9bff848a4f6334f919398264281ba50"}]}
 ```
 
 ```kotlin [field-property box="ai-tool-demo-geometry" name="code" path="ai-tool-demo-geometry_code_.kt"]
-// A tool that hands the model a PICTURE.
-//
-// GeometryAgentTools (afield.four.modules) is a real, public tool set built on the same
-// AgentToolExtensions seam as the box to the left, over the loaders in
-// public/docs/geometry_from_disk.md. It does the thing that makes a geometry tool worth
-// having: the model can LOOK at what it just asked about, because the result implements
-// CarriesToolImages and the render is CPU-only — no GPU, no window, no AWT.
-//
-// This box builds a mesh, writes it somewhere the tools are allowed to read, and then calls
-// them exactly as a model would. No API key, no model.
+/*
+A tool that hands the model a PICTURE.
 
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.CarriesToolImages
-import afield.ai.core.SummarisesForToolLog
-import afield.ai.core.ToolExecutionContext
-import afield.four.modules.InspectGeometryFileResult
+GeometryAgentTools (afield.graphics.render) is a real, public tool set built on the same
+AgentToolExtensions seam as the box to the left, over the loaders in
+public/docs/geometry_from_disk.md. It does the thing that makes a geometry tool worth
+having: the model can LOOK at what it just asked about, because the result implements
+CarriesToolImages and the render is CPU-only — no GPU, no window, no AWT.
+
+This box builds a mesh, writes it somewhere the tools are allowed to read, and then calls
+them exactly as a model would. No API key, no model.
+*/
+
 import java.io.File
 
 // ---------------------------------------------------------------- somewhere to look
 
-// The search roots are the ENTIRE permission model for these tools: they take a path from a
-// language model, and will not read outside a root you added. Point this at your own scans
-// or exports instead — .obj .stl .ply .glb .gltf .fbx .dae all load.
+/*
+The search roots are the ENTIRE permission model for these tools: they take a path from a
+language model, and will not read outside a root you added. Point this at your own scans
+or exports instead — .obj .stl .ply .glb .gltf .fbx .dae all load.
+*/
 val root = File(System.getProperty("java.io.tmpdir"), "field-ai-tool-demo").also { it.mkdirs() }
 if (!File(root, "ball.obj").isFile) {
     icosphereMesh(3, 1.0).withColor(0.3, 0.7, 1.0).saveObj(File(root, "ball.obj"))
@@ -196,11 +208,18 @@ val ctx = ToolExecutionContext()
 
 // ---------------------------------------------------------------- the gate
 
-// Both tools are gated on there being somewhere to look. A gate is asked on every turn, and
-// a closed one removes the tool from the list the model is shown rather than leaving it
-// visible and failing when called — seventeen schemas on every request is a real cost for a
-// conversation that is not about the subject.
-println("with a root: " + AgentToolExtensions.availableToolNames(ctx).filter { it.endsWith("GeometryFile") || it.endsWith("GeometryFiles") })
+/*
+Both tools are gated on there being somewhere to look. A gate is asked on every turn, and
+a closed one removes the tool from the list the model is shown rather than leaving it
+visible and failing when called — seventeen schemas on every request is a real cost for a
+conversation that is not about the subject.
+*/
+println(
+    "with a root: " +
+        AgentToolExtensions.availableToolNames(ctx).filter {
+            it.endsWith("GeometryFile") || it.endsWith("GeometryFiles")
+        },
+)
 
 // ---------------------------------------------------------------- the calls
 
@@ -210,9 +229,12 @@ println(AgentToolExtensions.execute(ctx, "ListGeometryFiles", "{}"))
 
 println()
 println("--- InspectGeometryFile ---")
-val report = AgentToolExtensions.execute(
-    ctx, "InspectGeometryFile", """{"path": "knot.obj", "yawDegrees": 34.0}"""
-) as InspectGeometryFileResult
+val report =
+    AgentToolExtensions.execute(
+        ctx,
+        "InspectGeometryFile",
+        """{"path": "knot.obj", "yawDegrees": 34.0}""",
+    ) as InspectGeometryFileResult
 
 println((report as SummarisesForToolLog).toolLogSummary())
 println()
@@ -226,13 +248,21 @@ report.notes.forEach { println("  note        " + it) }
 
 // ---------------------------------------------------------------- what the model sees
 
-// The picture does NOT travel in the JSON above. CarriesToolImages annotates toolImages
-// @get:JsonIgnore, because a base64 PNG in a function result is spent as text tokens and
-// buys nothing — a model cannot see an image encoded inside a JSON string. The bridge lifts
-// it onto the conversation as a real image message instead. Here it is:
+/*
+The picture does NOT travel in the JSON above. CarriesToolImages annotates toolImages
+@get:JsonIgnore, because a base64 PNG in a function result is spent as text tokens and
+buys nothing — a model cannot see an image encoded inside a JSON string. The bridge lifts
+it onto the conversation as a real image message instead. Here it is:
+*/
 val image = (report as CarriesToolImages).toolImages.single()
-display("<div style='color:#9fb0c4;font:12px sans-serif;padding-bottom:6px'>" + image.caption + "</div>" +
-        "<img src='" + image.dataUrl + "' style='width:100%;border-radius:4px'/>")
+display(
+    "<div style='color:#9fb0c4;font:12px sans-serif;padding-bottom:6px'>" +
+        image.caption +
+        "</div>" +
+        "<img src='" +
+        image.dataUrl +
+        "' style='width:100%;border-radius:4px'/>",
+)
 
 println()
 println("Change yawDegrees above and re-run to see the other side — which is exactly what a")

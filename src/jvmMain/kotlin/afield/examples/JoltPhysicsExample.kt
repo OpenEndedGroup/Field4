@@ -1,11 +1,11 @@
 package afield.examples
 
-import afield.four.physics.JoltBodyPick
-import afield.four.physics.JoltPhysicsWorld
-import afield.graphics.FLine
-import afield.stdlib.Quat
-import afield.stdlib.Vec3
-import afield.stdlib.vec
+import afield.simulation.physics.JoltBodyPick
+import afield.simulation.physics.JoltPhysicsWorld
+import afield.geometry.path.FLine
+import afield.math.linalg.Quat
+import afield.math.linalg.Vec3
+import afield.math.linalg.vec
 import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.random.Random

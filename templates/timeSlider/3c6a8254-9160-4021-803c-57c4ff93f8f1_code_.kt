@@ -1,16 +1,16 @@
-// export this box so that any box can now write 'execute' to talk about this box
+// Publish this timeline controller as execution so other boxes can refer to it.
 rootProp<Box>(execution) = thisBox
 
-fun launchFrom(was : Double, now : Double) {
+fun launchFrom(was: Double, now: Double) {
 
     val all = root.children - thisBox
     val a = all.filter { it.frame.intersects(was) }
     val b = all.filter { it.frame.intersects(was, now) }
     val c = all.filter { it.frame.intersects(now) }
 
-    val incomming = c-a // starting
-    val outgoing = a-c // stopping
-    val onlyOne = b-(a+c) // starting and stopping
+    val incomming = c - a // starting
+    val outgoing = a - c // stopping
+    val onlyOne = b - (a + c) // starting and stopping
 
     incomming.forEach(Box::begin)
     outgoing.forEach(Box::end)
@@ -24,19 +24,24 @@ fun launchFrom(was : Double, now : Double) {
     }
 }
 
-onViewportChange += "lock_x" to { inside, a, b ->
-    frame = frame.copy(y = -b.y-100, h = b.h*2-50, w = 40.0)
-}
+onViewportChange +=
+    "lock_x" to
+        { inside, a, b ->
+            frame = frame.copy(y = -b.y - 100, h = b.h * 2 - 50, w = 40.0)
+        }
 
-onFrameChange += "lock_x" to { inside, a, b ->
-    launchFrom(a.x, b.x)
-    b.copy(y = -inside.viewport.y-100, w = 40.0)
-}
+onFrameChange +=
+    "lock_x" to
+        { inside, a, b ->
+            launchFrom(a.x, b.x)
+            b.copy(y = -inside.viewport.y - 100, w = 40.0)
+        }
 
-frame = frame.copy(w=40.0)
+frame = frame.copy(w = 40.0)
 
 // set a custom border, and lock the height
-customization = """
+customization =
+    """
     this.style.border = "0px solid transparent"
     this.style.borderLeft = "3px solid red"
     this.style.background = "transparent"

@@ -29,4 +29,4 @@ incidental colors or prose:
 
 Inspect the saved EDN and server log when an invariant fails. The exact restore implementation is
 documented on `HistoryManager.restoreVersion` in
-`src/jvmMain/kotlin/afield/history.kt`.
+`src/jvmMain/kotlin/afield/document/history/history.kt`.

@@ -2,7 +2,7 @@
 """How AI4's tools are actually used, read from the per-turn tool I/O logs.
 
 Both bridges write one JSONL file per turn under `~/.afield/logs/ai4_tool_io/`
-(`AiToolIoLogger`, `src/jvmMain/kotlin/afield/ai/core/Logging.kt`): a `session_start` line with
+(`AiToolIoLogger`, `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt`): a `session_start` line with
 the provider, model and prompt, then `tool_call` / `tool_result` / `tool_exception` lines, then a
 terminal `session_end` / `session_failed` / `session_cancelled`.
 

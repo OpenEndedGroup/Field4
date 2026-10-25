@@ -1,0 +1,10 @@
+{
+  "realOrcaNotesAndCells": true,
+  "realChromiumConsole": true,
+  "sameNameReplacedCallbacks": true,
+  "callbacksRetainedRegisteringRunContext": true,
+  "stopDetachedCallbacksWhileSourcesKeptRunning": true,
+  "cachedModelWorkerThreadStoppedAcrossTwoRuns": true,
+  "inferenceClaimed": false,
+  "oldStopPreservedNewRunListeners": true
+}

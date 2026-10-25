@@ -26,7 +26,7 @@ Open it: **`uv run --project . --group backdoor python tools/field_backdoor.py -
 Field has two unrelated camera models. This is the single most likely way to get picking wrong, so it
 is the first thing here.
 
-**`afield.four.util.Camera`** is the live Vulkan scene's camera: a `lookAt` model-view and a
+**`afield.graphics.vulkan.util.Camera`** is the live Vulkan scene's camera: a `lookAt` model-view and a
 `SuperProjection`. That projection is not always a frustum — it Lie-interpolates in `GL(4)` between an
 off-centre perspective matrix and an orthographic prism, `P(t) = P₀·exp(t·log(P₀⁻¹P₁))`. At
 `orthoness = 0.4` there is no field of view to take a tangent of and no eye point that all the rays
@@ -282,7 +282,7 @@ run `./gradlew materializeAgentTranscripts`.
 
 ## Deliberately not done
 
-- **Picking FLines in 3D.** Nothing in `afield.four` draws an FLine into a 3D scene: `grep -rln FLine
+- **Picking FLines in 3D.** Nothing in Field 4 draws an FLine into a 3D scene: `grep -rln FLine
   src/jvmMain/kotlin/afield/four` returns 11 files and all of them *produce* FLines for the 2D/browser
   output. There is no 3D FLine path to pick *in*, so the JVM does not fill `FLineIntersection`-shaped
   records for 3D geometry. `clickableProjection` is the 2D bridge instead.

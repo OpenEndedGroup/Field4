@@ -61,7 +61,7 @@
     <div class="test-section">
         <h2>Test 1: Basic Viewer</h2>
         <p>Open the offline viewer with a simple example:</p>
-        <a href="offline.html?file=metadata_store/simple_hello/metadata.edn" target="_blank" class="test-link">
+        <a href="offline.html?file=assets/agent_transcripts/hello_display/metadata.edn" target="_blank" class="test-link">
             Open Simple Hello Example
         </a>
         <p><strong>Expected:</strong> Should display one box with "Hello World" content. Clicking the box should show code in Monaco editor.</p>
@@ -70,10 +70,10 @@
     <div class="test-section">
         <h2>Test 2: Multiple Boxes</h2>
         <p>Open the offline viewer with multiple boxes:</p>
-        <a href="offline.html?file=metadata_store/example_template/metadata.edn" target="_blank" class="test-link">
-            Open Example Template
+        <a href="offline.html?file=assets/agent_transcripts/shared_types_demo/metadata.edn" target="_blank" class="test-link">
+            Open Shared Types
         </a>
-        <p><strong>Expected:</strong> Should display two boxes. Each box should be clickable and show its code.</p>
+        <p><strong>Expected:</strong> Should display four boxes. Each box should be clickable and show its code.</p>
     </div>
 
     <div class="test-section">
@@ -121,7 +121,7 @@
         <h2>Build Script Test</h2>
         <p>Test the automated build script:</p>
         <pre>cd /home/runner/work/Field4/Field4
-./build-offline-docs.sh
+./tools/build-offline-docs.sh
 cd dist/offline-viewer
 python3 -m http.server 8000</pre>
         <p><strong>Expected:</strong> Should create dist/offline-viewer with all necessary files.</p>

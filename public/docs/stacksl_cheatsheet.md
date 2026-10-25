@@ -1,6 +1,6 @@
 # StackSL cheatsheet
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`stacksl.kt`](reference/graphics.md#stacksl-kt). Start from [what's already in the box](reference/index.md).*
+*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`StackSL.kt`](reference/languages.md#stacksl-kt) for the compiler and [`StackSLBox.kt`](reference/graphics.md#stackslbox-kt) for the box helpers. Start from [what's already in the box](reference/index.md).*
 
 <div class="stacksl-reference" markdown>
 
@@ -400,7 +400,7 @@ octave count, so `input 0.03 3 curl3.3` is "epsilon 0.03, three octaves".
 | `fbm4` | `coord octaves lacunarity gain -- s` | the same in four dimensions. |
 | `curl3` | `coord epsilon octaves -- vec` | divergence-free curl noise, as `vec4(v.xyz, 0)`. The curl of a three-offset `fbm3` vector potential, so an advected particle swirls instead of piling into a sink. Short form uses epsilon `0.05` and three octaves. |
 | `fbmd3` | `coord epsilon octaves -- vec` | `fbm3` and its gradient at once: `.x` is the value, `.yzw` the gradient, which is the normal of the isosurface through that point. |
-| `warp3` | `coord strength octaves -- s` | domain-warped `fbm3` — `fbm3` sampled at a position displaced by another `fbm3` vector field. Filaments and folds rather than clouds. Still `0..1`. |
+| `warp3` | `coord strength octaves -- s` | domain-warped `fbm3`: `fbm3` sampled at a position displaced by another `fbm3` vector field. Filaments and folds rather than clouds. Still `0..1`. |
 | `worley3`, `voronoi3` | `coord -- vec` | cellular noise, packed: `.x` is F1 (distance to the nearest feature point), `.y` is F2, `.z` is `F2 - F1` (near zero exactly on the cell walls, so it is the crack field), `.w` is a constant per cell for flat shading. `worley3 x` reads like `fbm x`; `worley3 z` draws the cracks. |
 
 </div>
@@ -495,11 +495,11 @@ Colour offsets and contrast changes look more even in OKLab: convert with `rgb2o
 
 Define reusable words with `: name ... ;`. A call consumes one input value, runs the definition with that value as its local stack/input, then pushes the result.
 
-**A definition must therefore be net zero on the stack: consume its input, leave its result.** It is not an error: an unbalanced definition compiles, the surplus is pruned, and everything downstream silently takes the wrong operand. Open a definition with `>name`, which *moves* the top, and not `=name`, which *copies* it:
+A definition must therefore be net zero on the stack: consume its input, leave its result. A called definition that is not is a compile error naming it. Open a definition with `>name`, which *moves* the top, and not `=name`, which *copies* it:
 
 ```diffstatic {data-lang=stacksl}
 : half  >v  <v 0.5 *  ;      # right: consumes one, leaves one
-: half  =v  <v 0.5 *  ;      # wrong: leaves its input under its result, so every call pushes two
+: half  =v  <v 0.5 *  ;      # refused: leaves its input under its result, so every call pushes two
 ```
 
 `stack.auto` reports this. A slot whose program has an unbalanced definition, or any warning at all, writes a card into the box's `stack.auto` output channel and closes it again once the program is clean. Ask directly with `stackAutoShaderReport("…", "slotName")`, which returns a `StackAutoReport` carrying `problems`, `warnings` and `notes` and renders itself as HTML for `display()`.
@@ -578,8 +578,7 @@ Local marks name a stack value inside the current root program or definition. Th
 
 </div>
 
-A mark cannot be called `x`, `y`, `z` or `w`: `>x` is already the word that replaces one lane of a
-value, so `>x <x` reads a mark that was never made.
+A mark cannot be called `x`, `y`, `z` or `w`, and the compiler says so when you try.
 
 <div data-code-lang="stacksl" markdown>
 

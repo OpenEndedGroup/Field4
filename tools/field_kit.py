@@ -1,6 +1,6 @@
 """Kits: the box code, box-held sources and asset files every document of one kind receives.
 
-A kit is a directory holding `kit.json` and the files it names (see `afield.stdlib.Kits` for the
+A kit is a directory holding `kit.json` and the files it names (see `afield.document.workspace.Kits` for the
 format, and public/docs/kits.md for the user's page):
 
     make <kit> --document D --role KEY=BOX ...   make a kit from a document in a running Field

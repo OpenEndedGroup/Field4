@@ -1,4 +1,3 @@
-import afield.darkMode
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 
@@ -46,28 +45,43 @@ fun progress(values: List<Double>) = values.indices.map { it / (values.size - 1)
 // Faint lines for single inputs, a bold line with a marker per layer for the mean.
 fun Plot.network(label: String, traces: List<List<Double>>, mean: List<Double>, hue: String) {
     for (trace in traces) scatter {
-        x.set(progress(trace)); y.set(trace)
+        x.set(progress(trace))
+        y.set(trace)
         mode = ScatterMode.lines
-        line { color(hue); width = 1.0 }
+        line {
+            color(hue)
+            width = 1.0
+        }
         opacity = 0.2
         showlegend = false
     }
     scatter {
         name = "$label, mean"
-        x.set(progress(mean)); y.set(mean)
+        x.set(progress(mean))
+        y.set(mean)
         mode = ScatterMode.`lines+markers`
-        line { color(hue); width = 3.0 }
-        marker { size = 7; color(hue) }
+        line {
+            color(hue)
+            width = 3.0
+        }
+        marker {
+            size = 7
+            color(hue)
+        }
     }
 }
 
-display("sorting-disorder", Plotly.plot {
-    network("bubble", bubbleTraces, bubbleProfile, "#94d9ff")
-    network("odd-even merge", mergeTraces, mergeProfile, "#ffba61")
-    layout {
-        title = "Disorder left after each layer"
-        xaxis { title = "fraction of the network's layers applied" }
-        yaxis { title = "inversions / most possible" }
-        height = 480
-    }
-}.darkMode())
+display(
+    "sorting-disorder",
+    Plotly.plot {
+            network("bubble", bubbleTraces, bubbleProfile, "#94d9ff")
+            network("odd-even merge", mergeTraces, mergeProfile, "#ffba61")
+            layout {
+                title = "Disorder left after each layer"
+                xaxis { title = "fraction of the network's layers applied" }
+                yaxis { title = "inversions / most possible" }
+                height = 480
+            }
+        }
+        .darkMode(),
+)

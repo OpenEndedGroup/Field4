@@ -1,17 +1,15 @@
-// A saved slot that applies to nowhere.
-//
-// The browser has always drawn one half of this: a slot the scope watches that no key holds — the
-// "you have never saved this" row. The other half was silent. A slot a *key* holds that the scope no
-// longer watches renders as an ordinary row, with its real saved range across every key, and
-// `KeyframeScope.loadKey` is explicit about what happens next: "a file whose values have since left
-// the scope loads fine — the extra names simply have nowhere to go on apply."
-//
-// So a rename half-done looks exactly like a working slot, and Apply quietly drops it.
+/*
+A saved slot that applies to nowhere.
 
-import afield.stdlib.KeyframeCollection
-import afield.stdlib.KeyframeScope
-import afield.stdlib.everyKeyGlob
-import afield.four.buffers.Structure
+The browser has always drawn one half of this: a slot the scope watches that no key holds — the
+"you have never saved this" row. The other half was silent. A slot a *key* holds that the scope no
+longer watches renders as an ordinary row, with its real saved range across every key, and
+`KeyframeScope.loadKey` is explicit about what happens next: "a file whose values have since left
+the scope loads fine — the extra names simply have nowhere to go on apply."
+
+So a rename half-done looks exactly like a working slot, and Apply quietly drops it.
+*/
+
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("keyframe-orphaned-slots")
@@ -22,10 +20,10 @@ run {
     val past = KeyframeScope()
     past.target("glow@radius", old)
     past.target("glow@blur", old)
-    listOf(1f to 4f, 6f to 5f, 11f to 6f).forEachIndexed { i, (r, b) ->
+    [1f to 4f, 6f to 5f, 11f to 6f].forEachIndexed { i, (r, b) ->
         old.bind("radius") { r }
         old.bind("blur") { b }
-        past.capture().save(dir.resolve(listOf("a", "b", "c")[i]), "look ${listOf("a", "b", "c")[i]}")
+        past.capture().save(dir.resolve(["a", "b", "c"][i]), "look ${listOf("a", "b", "c")[i]}")
     }
 }
 
@@ -52,9 +50,11 @@ c.slots().forEach { s ->
     println("  ${s.name.padEnd(14)} ${tag}")
 }
 println()
-// The flag is not just "scopeSlots is empty". A read-only browse cannot know which slots are live,
-// and must not accuse every row; an attached scope watching nothing must accuse every row. Both
-// leave scopeSlots empty, so `scopeAttached` is what tells them apart.
+/*
+The flag is not just "scopeSlots is empty". A read-only browse cannot know which slots are live,
+and must not accuse every row; an attached scope watching nothing must accuse every row. Both
+leave scopeSlots empty, so `scopeAttached` is what tells them apart.
+*/
 val readOnly = KeyframeCollection.load(dir, everyKeyGlob, scope = null)
 println("read-only browse: scopeAttached=${readOnly.scopeAttached}, orphaned=${readOnly.orphanedSlots}")
 println("  (no scope, so no accusation — this is why scopeAttached exists as its own flag)")

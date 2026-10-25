@@ -8,15 +8,16 @@ layout(std430, buffer_reference) buffer vertexData
 };
 
 layout(push_constant) uniform matrices {
-    mat4 p; 
-    mat4 m; 
+    mat4 p;
+    mat4 m;
     vertexData vertexData;
 } pc;
 
 layout(location=0) out vec4 localColor;
 
 float wrap(int a, int b) {
-    return (a%b)/(b-1);
+    // Divide as floats so the ramp includes intermediate channel values.
+    return float(a % b) / float(b - 1);
 }
 
 void main()

@@ -1,14 +1,18 @@
 package afield.ai.agent
 
-import afield.AiChatModelIdentity
-import afield.Box
-import afield.Message
-import afield.SessionInformation
-import afield.Set_output
-import afield._send
-import afield.ai.core.AiBoxConversation
-import afield.displayOpen
-import afield.payload
+import afield.ai.conversation.AiChatModelIdentity
+import afield.document.graph.Box
+import afield.app.protocol.Message
+import afield.app.server.SessionInformation
+import afield.app.protocol.Set_output
+import afield.app.protocol._send
+import afield.ai.conversation.AiBoxConversation
+import afield.ui.output.displayOpen
+import afield.app.protocol.payload
+
+/**
+ * Writes an agent task into a box's AI4 chat transcript, so a finished task can be read and continued in that box's chat panel.
+ */
 
 /**
  * Writes an agent task into a box's AI4 chat transcript (`ai4_chat_history`), in the transcript's
@@ -82,7 +86,7 @@ object AgentTaskTranscript {
         append(prefix).append(call.tool).append(if (call.ok) " finished" else " failed").append("\n")
         append(call.arguments.take(400)).append("\n")
         if (!call.ok) {
-            val message = runCatching { afield.ai.core.aiToolMapper.readTree(call.result).get("message")?.asText() }.getOrNull()
+            val message = runCatching { afield.ai.tools.aiToolMapper.readTree(call.result).get("message")?.asText() }.getOrNull()
             if (!message.isNullOrBlank()) append(message.take(400)).append("\n")
         }
     }

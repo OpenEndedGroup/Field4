@@ -1,5 +1,3 @@
-package afield.stdlib.linalg
-
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 import kotlin.math.*

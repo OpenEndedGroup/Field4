@@ -1,21 +1,21 @@
-// The counterfactual, run twice: the same fit, the same seed, the same target, the same sixty Adam
-// steps, with the surrogate OFF and then ON.
-//
-// This is PARAMETER RECOVERY, not fitting. The target is rendered by the same program at a known
-// edge, so "did it work" has an arithmetic answer and not an aesthetic one. Fitting a picture no
-// StackSL program generated is a different claim and is not made here.
-//
-// With the surrogate off the fitted value is bit-identical to the seed — an exact gradient of zero
-// is a zero step in ADAM too. That is what a wall looks like from inside an optimiser.
+/*
+The counterfactual, run twice: the same fit, the same seed, the same target, the same sixty Adam
+steps, with the surrogate OFF and then ON.
 
-import afield.stacksl.cpu.AdAnnealing
-import afield.stacksl.cpu.StackSLCpu
-import afield.stacksl.cpu.StackSLFit
-import afield.util.PngEncoder
-import kotlin.math.abs
+This is PARAMETER RECOVERY, not fitting. The target is rendered by the same program at a known
+edge, so "did it work" has an arithmetic answer and not an aesthetic one. Fitting a picture no
+StackSL program generated is a different claim and is not made here.
+
+With the surrogate off the fitted value is bit-identical to the seed — an exact gradient of zero
+is a zero step in ADAM too. That is what a wall looks like from inside an optimiser.
+*/
+
+import afield.lang.stacksl.cpu.AdAnnealing
+import afield.lang.stacksl.cpu.StackSLCpu
+import afield.lang.stacksl.cpu.StackSLFit
+import afield.media.image.util.PngEncoder
 
 run {
-
     val seedProgram = "uv x 0.35 threshold"
     val targetProgram = "uv x 0.57 threshold"
     val truth = 0.57
@@ -27,14 +27,26 @@ run {
 
     val started = System.nanoTime()
     val off = StackSLFit.fit(
-        seedProgram, target, template, dim = dim, iterations = iterations, learningRate = 0.05
+        seedProgram,
+        target,
+        template,
+        dim = dim,
+        iterations = iterations,
+        learningRate = 0.05,
     )
-    // Geometric from a quarter of a unit cell down to a percent of one, stepped once per loss
-    // evaluation. STEP only: the staircase family would also soften a noise lattice, where zero is
-    // the CORRECT derivative — see the third box for what that costs.
+    /*
+    Geometric from a quarter of a unit cell down to a percent of one, stepped once per loss
+    evaluation. STEP only: the staircase family would also soften a noise lattice, where zero is
+    the CORRECT derivative — see the third box for what that costs.
+    */
     val on = StackSLFit.fit(
-        seedProgram, target, template, dim = dim, iterations = iterations, learningRate = 0.05,
-        annealing = AdAnnealing.stepOnly(iterations)
+        seedProgram,
+        target,
+        template,
+        dim = dim,
+        iterations = iterations,
+        learningRate = 0.05,
+        annealing = AdAnnealing.stepOnly(iterations),
     )
     val seconds = (System.nanoTime() - started) / 1e9
 
@@ -49,12 +61,16 @@ run {
     println("$iterations Adam steps at lr=0.05, ${dim}x$dim, both arms, %.1fs total".format(seconds))
     println()
     println("             fitted edge   relative error   loss")
-    println("  seed         %.5f       %.4f          %.4e".format(seedValue, abs(seedValue - truth) / truth, off.seedLoss))
+    println(
+        "  seed         %.5f       %.4f          %.4e".format(seedValue, abs(seedValue - truth) / truth, off.seedLoss),
+    )
     println("  surrogate off %.5f      %.4f          %.4e".format(offValue, offError, off.fittedLoss))
     println("  surrogate on  %.5f      %.4f          %.4e".format(onValue, onError, on.fittedLoss))
     println()
     println("  did the OFF arm move at all? " + (offValue != seedValue))
-    println("  recovery improvement: %.1fx".format(if (onError == 0.0) Double.POSITIVE_INFINITY else offError / onError))
+    println(
+        "  recovery improvement: %.1fx".format(if (onError == 0.0) Double.POSITIVE_INFINITY else offError / onError),
+    )
     println("  annealing: ${on.annealing}, stepped ${on.annealing?.used} times")
     println()
     println("the re-emitted program, which is a program:")
@@ -72,7 +88,7 @@ run {
     // A NEUTRAL grey canvas: these panels are thresholded to pure black and white, so a dark gutter
     // is invisible against them and the four panels read as one banded image.
     val strip = IntArray(width * panel) { 0xFF7A7F87.toInt() }
-    listOf(target, seedRaster, offRaster, onRaster).forEachIndexed { index, raster ->
+    [target, seedRaster, offRaster, onRaster].forEachIndexed { index, raster ->
         val argb = raster.toArgb()
         val x0 = index * (panel + gutter)
         for (y in 0 until panel) for (x in 0 until panel) {
@@ -83,13 +99,15 @@ run {
     println("panels: TARGET | SEED | surrogate OFF (identical to the seed) | surrogate ON")
     display(PngEncoder.encode(strip, width, panel))
 
-    // Try it: replace `threshold` with `6.0 posterize palette` and set the truth to 0.52 — a
-    // quantiser rather than a predicate, and it needs the STAIRCASE family instead — add
-    // `import afield.stacksl.cpu.AdSurrogateFamily` and pass:
-    //
-    //     annealing = AdAnnealing(0.25, 0.01, iterations, setOf(AdSurrogateFamily.STAIRCASE))
-    //
-    // Continuous parameters like this edge recover to about 2% relative. An INTEGER-valued one — a
-    // level count, a bit depth — recovers to about 20%, because the loss is itself a staircase in
-    // that parameter and a bump of width t cannot see across its shelves.
+    /*
+    Try it: replace `threshold` with `6.0 posterize palette` and set the truth to 0.52 — a
+    quantiser rather than a predicate, and it needs the STAIRCASE family instead — add
+    `import afield.lang.stacksl.cpu.AdSurrogateFamily` and pass:
+
+        annealing = AdAnnealing(0.25, 0.01, iterations, setOf(AdSurrogateFamily.STAIRCASE))
+
+    Continuous parameters like this edge recover to about 2% relative. An INTEGER-valued one — a
+    level count, a bit depth — recovers to about 20%, because the loss is itself a staircase in
+    that parameter and a bump of width t cannot see across its shelves.
+    */
 }

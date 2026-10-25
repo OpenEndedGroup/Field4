@@ -1,7 +1,6 @@
 prop<RenderToTexture>(b0) = target
 
 prop<RenderToTexture>(b1) = RenderToTexture {
-    clearFirst = true
     useDepth = false
     mipLevels = 10
     colorLayerCount = 2
@@ -10,10 +9,10 @@ prop<RenderToTexture>(b1) = RenderToTexture {
 
 renderer.renderList += "b1" to b1
 
-var module = moduleHere { 
+var module = moduleHere {
     primitiveType = triangle_strip
     depth = 0
-    b1.apply()
+    +b1
 }
 
 var m = Mesh()

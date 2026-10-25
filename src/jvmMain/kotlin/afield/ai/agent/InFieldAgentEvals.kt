@@ -1,6 +1,6 @@
 package afield.ai.agent
 
-import afield.ai.core.aiToolMapper
+import afield.ai.tools.aiToolMapper
 import kotlinx.serialization.Serializable
 
 /**
@@ -10,12 +10,14 @@ import kotlinx.serialization.Serializable
  *
  * The scripted solutions are real Kotlin for real Field. Replayed through [ScriptedLlmBridge] against
  * a live Field (`agent-eval --mode scripted`) they test the tools, the execution path and the checkers
- * end to end with no model — and a scripted pass is the floor any model run should reach. Replayed in
+ * end to end with no model, and a scripted pass is the floor any model run should reach. Replayed in
  * jvmTest against a fake host, they test the harness logic. A `live` run hands the same goals and
  * checks to the configured provider and ignores the solutions.
  *
  * Box names are fixed, so run each task in a fresh document ([AgentEvalRunner] does).
  */
+
+/** The eval tasks, their scripted solutions, and the helpers that build them. */
 object InFieldAgentEvals {
 
     data class EvalTask(val id: String, val request: AgentTaskRequest, val solution: String)
@@ -498,7 +500,7 @@ data class AgentEvalReport(
     val distilled: List<String> = emptyList(),
     val distilMessage: String = "",
     /**
-     * Leak evidence, filled by the server's entry points ([afield.runAgentEvalHeadless]): open documents
+     * Leak evidence, filled by the server's entry points ([afield.app.server.runAgentEvalHeadless]): open documents
      * before and after the run, and AI4 capture pages still open after it. -1 = not measured.
      */
     val documentsBefore: Int = -1,

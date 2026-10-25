@@ -1,22 +1,27 @@
 package afield.examples.stacksl
 
-import afield.stacksl.cpu.StackSLCpu
-import afield.stdlib.Img
-import afield.stdlib.Selection
-import afield.stdlib.StackSLEvolution
-import afield.stdlib.StackSLEvolveSettings
-import afield.stdlib.StackSLImageObjective
-import afield.stdlib.StackSLLayout
-import afield.stdlib.StackSLMetric
-import afield.stdlib.StackSLProgram
-import afield.stdlib.StackSLTarget
-import afield.stdlib.StackSLTargets
-import afield.stdlib.StackSLWatchmaker
-import afield.stdlib.evolveStackSLTowards
-import afield.stdlib.montage
-import afield.stdlib.savePng
-import afield.stdlib.toImg
-import afield.stdlib.upscaleNearest
+import afield.lang.stacksl.cpu.StackSLCpu
+import afield.media.image.Img
+import afield.study.search.Selection
+import afield.lang.stacksl.evolution.StackSLEvolution
+import afield.lang.stacksl.evolution.StackSLEvolveSettings
+import afield.lang.stacksl.evolution.StackSLImageObjective
+import afield.lang.stacksl.evolution.StackSLLayout
+import afield.lang.stacksl.evolution.StackSLMetric
+import afield.lang.stacksl.evolution.StackSLProgram
+import afield.lang.stacksl.evolution.StackSLTarget
+import afield.lang.stacksl.evolution.StackSLTargets
+import afield.lang.stacksl.evolution.StackSLWatchmaker
+import afield.lang.stacksl.evolution.evolveStackSLTowards
+import afield.media.image.montage
+import afield.media.image.savePng
+import afield.simulation.automata.savePng
+import afield.graphics.text.toImg
+import afield.lang.stacksl.evolution.toImg
+import afield.media.image.toImg
+import afield.simulation.agents.toImg
+import afield.simulation.automata.toImg
+import afield.media.image.upscaleNearest
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import java.io.File
 
@@ -130,7 +135,7 @@ object StackSLWatchmakerTrial {
         for (dir in dirs) for (f in dir.listFiles().orEmpty().sortedBy { it.name }) {
             val m = name.matchEntire(f.name) ?: continue
             val (seed, target, arm) = m.destructured
-            val snapshot = runCatching { afield.stdlib.StackSLEvolutionSnapshot.read(f) }.getOrNull() ?: continue
+            val snapshot = runCatching { afield.lang.stacksl.evolution.StackSLEvolutionSnapshot.read(f) }.getOrNull() ?: continue
             val t = targetAt(target, side).raster
             val referee = referees.getOrPut(target) { StackSLImageObjective(targetAt(target, 32), metric = StackSLMetric.LPIPS) }
             for (i in snapshot.improvements) {
@@ -215,7 +220,7 @@ object StackSLWatchmakerTrial {
                     // Every round's prompt, picture and raw reply, numbered, so the exchange can be read afterwards.
                     val model = StackSLWatchmaker()
                     var round = 0
-                    e.watchmaker = afield.stdlib.StackSLProposer { request ->
+                    e.watchmaker = afield.lang.stacksl.evolution.StackSLProposer { request ->
                         val n = ++round
                         File(out, "s$seed-$name-$arm-round$n.png").writeBytes(request.sheetPng)
                         val preview = request.preview
@@ -228,7 +233,7 @@ object StackSLWatchmakerTrial {
                         })
                         model.propose(logged).also { reply ->
                             File(out, "s$seed-$name-$arm-round$n.txt").writeText(
-                                afield.stdlib.StackSLWatchmakerPrompt.round(request) + "\n\n---- reply (${reply.usage}) ----\n" + reply.raw
+                                afield.lang.stacksl.evolution.StackSLWatchmakerPrompt.round(request) + "\n\n---- reply (${reply.usage}) ----\n" + reply.raw
                             )
                         }
                     }
@@ -238,7 +243,7 @@ object StackSLWatchmakerTrial {
                     while (e.renders < budget && e.usage.calls < LLM_ONLY_CALLS) e.step(1)
                 } else e.runTo(budget)
                 val s = (System.nanoTime() - t0) / 1e9
-                File(out, "s$seed-$name-$arm.json").writeText(afield.stdlib.StackSLEvolutionSnapshot.toJson(e.snapshot("$name $arm")))
+                File(out, "s$seed-$name-$arm.json").writeText(afield.lang.stacksl.evolution.StackSLEvolutionSnapshot.toJson(e.snapshot("$name $arm")))
                 judge(arm, e.best?.genome, e.renders, s, e.notes.filter { "watchmaker" in it || "fit" in it }.takeLast(40),
                     e.credit.mapValues { (_, c) -> "${c.offered}/${c.survived}/${c.leads}" }, e.usage.takeIf { it.calls > 0 }?.toString() ?: "")
                 println(e.summary())

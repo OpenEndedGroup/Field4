@@ -1,7 +1,7 @@
-import afield.four.Renderer
-import afield.four.util.Window
-var Box.browserControl by Inheritance<afield.four.browser.PuppetBrowser>() /**/
-val Once.browserControl by Onceing<afield.four.browser.PuppetBrowser>() /**/
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+var Box.browserControl by Inheritance<afield.media.browser.PuppetBrowser>() /**/
+val Once.browserControl by Onceing<afield.media.browser.PuppetBrowser>() /**/
 val Why.browserControl by Whying() /**/
 var Box.window by Inheritance<Window>() /*from:youtube_desktop_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:youtube_desktop_renderer*/ /**/

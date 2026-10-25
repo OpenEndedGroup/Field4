@@ -1,5 +1,10 @@
 # Generated from stacksl_gallery/metadata.edn by afield.examples.DocumentToTranscript.
 name: "stacksl_gallery"
+docs:
+  - page: stacksl_examples.md
+    why: "Explains the StackSL programs in the gallery."
+  - page: stacksl_cheatsheet.md
+    why: "Lists the StackSL vocabulary."
 operations:
   - create:
       box: "renderer"
@@ -7,18 +12,18 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         "code": |
-          import afield.four.util.Options
-
+          import afield.graphics.vulkan.util.Options
+          
           prop<Window>(window)
           prop<Renderer>(renderer)
-
+          
           Options.enableHDR = true
-
+          
           once.renderer {
               window = Window("Field \u2014 StackSL gallery")
               Renderer(window)
           }
-
+          
           start(renderer::run)
   - create:
       box: "uv-coordinates"
@@ -27,13 +32,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -84,13 +91,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -146,13 +155,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -203,13 +214,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -265,13 +278,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -327,13 +342,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -388,13 +405,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -447,13 +466,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -487,7 +508,7 @@ operations:
           }
         "stackSL": |
           : warp
-            uv 6.0 * time + sin
+            drop uv 6.0 * time + sin
             0.35 *
             uv +
           ;
@@ -514,13 +535,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -578,13 +601,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -640,13 +665,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -697,13 +724,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -759,13 +788,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -816,13 +847,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -873,20 +906,20 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A feedback StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot, and the program in this box's `stackSL` property samples `source`: the
-          // frame this box drew last time, so the picture feeds back into itself.
-          //
-          // A window cannot be read back like that, so this box draws into a ping-pong
-          // target instead. It holds two images, draws into one while `source` reads the
-          // other, and swaps them every frame; `blitToScreen` puts the newest in the window.
-          //
-          // [[property stackSL]]
+          /*
+          A feedback StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot, and the program in this box's `stackSL` property samples `source`: the
+          frame this box drew last time, so the picture feeds back into itself.
 
-          import afield.four.targets.PingPongRenderToTexture
+          A window cannot be read back like that, so this box draws into a ping-pong
+          target instead. It holds two images, draws into one while `source` reads the
+          other, and swaps them every frame; `blitToScreen` puts the newest in the window.
 
-          prop<afield.four.targets.PingPongRenderToTexture>(target)
-          prop<afield.four.texture.HasImageView>(source)
+          [[property stackSL]]
+          */
+
+          prop<afield.graphics.vulkan.targets.PingPongRenderToTexture>(target)
+          prop<afield.graphics.texture.HasImageView>(source)
 
           // `once`, so re-running the box keeps the images and the trails already in them.
           once.target {
@@ -894,15 +927,14 @@ operations:
           }
           source = target.otherImageView
 
-          val module = moduleHere { target.apply() }
+          val module = moduleHere { +target }
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
           target += "fullscreen" to module
 
-          // The fragment reads the program's time from `pc.params.x`. It advances per frame
-          // drawn, at the rate this box's docs clip is rendered at (1/24 s of clip time every
-          // two frames), so the trails are as long as in the clip at any window frame rate.
+          // pc.params.x advances per rendered frame. Edit the scale below to change its rate;
+          // a faster window frame rate also advances more program time per wall-clock second.
           val first = renderer.frameCounter
           m.params = { vec((renderer.frameCounter - first) * 1.667 / 48, 0.0, 0.0, 0.0) }
 
@@ -920,7 +952,9 @@ operations:
 
           // Feedback: `source` is the previous frame (bound by a ping-pong host).
           layout(set = 0, binding = 0) uniform sampler2D source;
-          layout(push_constant) uniform Push { vec4 params; } pc;
+          layout(push_constant) uniform Push {
+              vec4 params;
+          } pc;
 
           float gallery_hash12(vec2 p) {
               vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -960,13 +994,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1017,13 +1053,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1074,13 +1112,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1131,13 +1171,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1188,13 +1230,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1245,13 +1289,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1307,13 +1353,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1364,13 +1412,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1421,13 +1471,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1478,13 +1530,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1535,13 +1589,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1592,13 +1648,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1650,13 +1708,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1707,13 +1767,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1764,13 +1826,15 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-          // shader re-binds in place.
-          //
-          // [[property stackSL]]
+          /*
+          A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          shader re-binds in place.
 
-          val module = moduleHere { }
+          [[property stackSL]]
+          */
+
+          val module = moduleHere {}
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1825,20 +1889,20 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // A feedback StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-          // slot, and the program in this box's `stackSL` property samples `source`: the
-          // frame this box drew last time, so the picture feeds back into itself.
-          //
-          // A window cannot be read back like that, so this box draws into a ping-pong
-          // target instead. It holds two images, draws into one while `source` reads the
-          // other, and swaps them every frame; `blitToScreen` puts the newest in the window.
-          //
-          // [[property stackSL]]
+          /*
+          A feedback StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          slot, and the program in this box's `stackSL` property samples `source`: the
+          frame this box drew last time, so the picture feeds back into itself.
 
-          import afield.four.targets.PingPongRenderToTexture
+          A window cannot be read back like that, so this box draws into a ping-pong
+          target instead. It holds two images, draws into one while `source` reads the
+          other, and swaps them every frame; `blitToScreen` puts the newest in the window.
 
-          prop<afield.four.targets.PingPongRenderToTexture>(target)
-          prop<afield.four.texture.HasImageView>(source)
+          [[property stackSL]]
+          */
+
+          prop<afield.graphics.vulkan.targets.PingPongRenderToTexture>(target)
+          prop<afield.graphics.texture.HasImageView>(source)
 
           // `once`, so re-running the box keeps the images and the trails already in them.
           once.target {
@@ -1846,15 +1910,14 @@ operations:
           }
           source = target.otherImageView
 
-          val module = moduleHere { target.apply() }
+          val module = moduleHere { +target }
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
           target += "fullscreen" to module
 
-          // The fragment reads the program's time from `pc.params.x`. It advances per frame
-          // drawn, at the rate this box's docs clip is rendered at (1/24 s of clip time every
-          // two frames), so the trails are as long as in the clip at any window frame rate.
+          // pc.params.x advances per rendered frame. Edit the scale below to change its rate;
+          // a faster window frame rate also advances more program time per wall-clock second.
           val first = renderer.frameCounter
           m.params = { vec((renderer.frameCounter - first) * 1.0 / 48, 0.0, 0.0, 0.0) }
 
@@ -1872,7 +1935,9 @@ operations:
 
           // Feedback: `source` is the previous frame (bound by a ping-pong host).
           layout(set = 0, binding = 0) uniform sampler2D source;
-          layout(push_constant) uniform Push { vec4 params; } pc;
+          layout(push_constant) uniform Push {
+              vec4 params;
+          } pc;
 
           float gallery_hash12(vec2 p) {
               vec3 p3 = fract(vec3(p.xyx) * 0.1031);

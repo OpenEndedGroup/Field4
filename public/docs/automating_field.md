@@ -42,7 +42,9 @@ operations:
 The verbs you will use most: `create`, `edit`, `move`, `connect` (wire a parent box to a
 child), `execute` (run once), `launch` (start a running job), `stop`, `await` (wait for
 everything to settle), and `save` (write a document you can open again later). A `launch`
-or `execute` with no inline code simply runs the code the box already has.
+or `execute` with no inline code simply runs the code the box already has. A `launch` always
+runs the box's code as it is when the macro runs, so a macro that launches boxes keeps working
+after you edit them; an `execute` with its own `code:` runs that snippet in the box.
 
 Because the transcript is just data, a macro is legible: you can open one, see what it
 does, change a name or a value, and run your version. Field records what you do as you
@@ -50,10 +52,23 @@ work, so you can turn a sequence you just performed into a macro and replay it e
 The [Agent transcript gallery](agent_transcripts.md) is a whole corpus of them: documents agents
 built from a blank canvas this way, each one a transcript you can open, run and change.
 
-The **Macro Recorder** panel is where that recording happens: press **Start** and work as
-normal while each operation you perform is appended to the transcript, then **Save** the
-sequence as a named macro at document, project, or workspace scope. Saved macros are
-listed along the bottom and **Run** replays them; **Promote** moves one to a wider scope.
+The **Macro Recorder** panel (in the command palette) is where that recording happens. Name
+the macro, press **Record**, and work as normal: making a box, typing its code, dragging it,
+connecting it to another with `g`, deleting one, running one. Press **Save** and what you did
+is saved as a named macro at document, project or workspace scope, written as the same
+operations you would write by hand: a new box is one `create` with its name, frame and code,
+not a stream of keystrokes.
+
+Saved macros are listed by scope, each with its own **Run**, **Rename** and **Delete** (a
+deleted macro is kept in the scope's `.deleted` folder). Click a macro's name to open its YAML
+beside a readable list of its steps; edit the YAML there and **Save** to keep your version.
+**Promote** copies a macro to a wider scope.
+
+Replaying a recording in a fresh document rebuilds the same document. To use a recording as a
+stamp instead, tick **as a copy**: the boxes it creates get new identities, so every run makes
+another set, shifted by the **offset** you give. **Step** replays one operation at a time and
+marks where you are in the list, which is the easiest way to see what a macro does before you
+trust it with a document.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".macro-recorder-panel" screenshot="assets/automating_field/macro-panel.png" transcript="assets/transcripts/greeter_macro.yaml" alt="Field's Macro Recorder panel listing recorded operations" padding="8" wait="0" timeout="90" embed=true hidden=true name="macro-panel"}
 ui.eval("window.macroTranscriptPanel()")
@@ -80,21 +95,19 @@ exceptions appear. Running a box that isn't there, or that has no code, comes ba
 failure that names the box, never as a silent skip.
 
 The backdoor also captures pictures — a single box, the editor, the whole window, or the
-native `afield.four` graphics window — which is how this site's figures are made. It
+native Field 4 graphics window — which is how this site's figures are made. It
 records short videos of the first three. The native graphics window is stills only.
 
-Some captures fail without saying so. A `screenshot-box` of a box whose outputs were
-never opened comes back `ok: true`, clipped to the collapsed box rather than to the output
-you wanted. [What a Capture Can and Cannot Show](capture_limits.md) lists these cases and
-the reply field that tells you when you have hit one.
+[What a Capture Can and Cannot Show](capture_limits.md) lists what a capture cannot see, and
+the reply fields that tell you when you have hit one of those limits.
 
 ## Where to go next
 
-- The [Staging Overview](staging.md) section "Reproducible docs and transcript
-  automation" explains how the docs build itself uses this machinery.
+- [How these pages are built](staging.md#how-these-pages-are-built) says how the docs
+  build itself uses this machinery.
 - [Building & Testing](building_and_testing.md) covers the backdoor as a test harness.
 - For the complete reference — every operation, the observable results, and worked
-  examples on the canvas and in `afield.four` Vulkan graphics — see the
+  examples on the canvas and in Field 4 Vulkan graphics — see the
   [operation transcript reference](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/OPERATION_TRANSCRIPT.md)
   and the [backdoor reference](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/FIELD_BACKDOOR.md)
   in the Field repository. The [agent transcript gallery](agent_transcripts.md) has a worked

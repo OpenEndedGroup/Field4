@@ -9,5 +9,6 @@ layout(push_constant) uniform matrices {
 
 void main()
 {
+    // finalColor.xy supplies the animated object-space offset; it is not a colour here.
     gl_Position = pc.p * pc.m * vec4(pos + vec3(pc.finalColor.xy, 0), 1);
 }

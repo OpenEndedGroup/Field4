@@ -1,0 +1,6 @@
+backups/
+history_screenshots/
+history_metrics/
+versions.edn
+.afield-local/
+.DS_Store

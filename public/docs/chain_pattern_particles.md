@@ -16,7 +16,8 @@ time instead, so `patSynth` is what connects the two.
 Each ring follows one band, in the same four colours the plot further down uses: the innermost is
 70 Hz and the outermost 8 kHz. In the frame above the kick had just landed, so the innermost ring has
 bloomed into a disc while the hats hold the outermost one thin. It is one frame of something moving,
-and that plot is the signal it is following.
+and that plot is the signal it is following. The document behind the figure is a starting point:
+[pattern_particles](agent_transcripts.md#pattern_particles).
 
 ## `patSynth`, the scheduler
 
@@ -48,8 +49,8 @@ Stopping the box stops the voices and the feeder thread. `PatSynthLaunch` is als
 falls in. Its output is therefore the same, sample for sample, whatever buffer size the audio
 engine runs at.
 
-The offline renderer, `patRenderStereo`, works in seconds rather than frames, so a note it plays can
-start or end one frame away from the same note played by `patSynth`.
+The offline renderer, `patRenderStereo`, runs the same voice bank, so a `.wav` it writes is sample
+for sample what `patSynth` plays.
 
 ## What it sounds like
 
@@ -58,21 +59,21 @@ does.
 
 The beat the rest of the sound documentation starts from:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_pattern_particles/seam-beat.wav" audio-spec="seam-beat" audio-renderer="afield.four.synth.PatSynthDocs" embed=true hidden=true name="chain-pattern-beat-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_pattern_particles/seam-beat.wav" audio-spec="seam-beat" audio-renderer="afield.audio.synth.PatSynthDocs" embed=true hidden=true name="chain-pattern-beat-audio"}
 // Offline-rendered by PatSynthDocs.renderWav("seam-beat").
 ```
 
 Sixteen hats against twelve triangle notes, at a tempo where a twelfth of a cycle is 2666.67 frames,
 so almost nothing lands on a block boundary at any buffer size:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_pattern_particles/seam-triplets.wav" audio-spec="seam-triplets" audio-renderer="afield.four.synth.PatSynthDocs" embed=true hidden=true name="chain-pattern-triplets-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_pattern_particles/seam-triplets.wav" audio-spec="seam-triplets" audio-renderer="afield.audio.synth.PatSynthDocs" embed=true hidden=true name="chain-pattern-triplets-audio"}
 // Offline-rendered by PatSynthDocs.renderWav("seam-triplets").
 ```
 
 And the bar the particles are dancing to, which is a kick, a mid-register square stab on the
 offbeats, and sixteen hats:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_pattern_particles/seam-bands.wav" audio-spec="seam-bands" audio-renderer="afield.four.synth.PatSynthDocs" embed=true hidden=true name="chain-pattern-bands-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_pattern_particles/seam-bands.wav" audio-spec="seam-bands" audio-renderer="afield.audio.synth.PatSynthDocs" embed=true hidden=true name="chain-pattern-bands-audio"}
 // Offline-rendered by PatSynthDocs.renderWav("seam-bands").
 ```
 
@@ -84,9 +85,6 @@ oscillator.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_pattern_particles/bands.png" alt="A line plot titled 'four bands of one bar, the numbers the shader reads', four traces over two seconds against a legend of 70 Hz, 340 Hz, 1.6 kHz and 8 kHz. The 70 Hz trace spikes sixteen times, to about 0.32; the 340 Hz trace spikes with it at about two thirds the height; the 1.6 kHz and 8 kHz traces stay busier and flatter, hovering around 0.05 and 0.1" wait="8" capture="box" open-outputs="true" w="1180" h="360" padding="18" timeout="120" name="chain-pattern-bands" embed=true}
 :::static
-import afield.four.synth.PatSynthDocs
-import afield.four.synth.logBands
-
 // The same scene the .wav above is, and the same scene the GPU figure plays.
 val scene = PatSynthDocs.SCENES.first { it.name == "seam-bands" }
 val audio = scene.render()
@@ -118,7 +116,7 @@ other.
 ??? aside "Take band levels from the tap"
 
     Take your band levels from `PatSynthLaunch.tap`, which is a snapshot the audio path published.
-    Do not render the synth graph a second time to get a display value: `afield.four.synth`'s nodes
+    Do not render the synth graph a second time to get a display value: `afield.audio.synth`'s nodes
     are audio-thread-owned, and many of them carry mutable DSP state past the per-cycle `Signal`
     cache, so a second render from another thread makes a modulation oscillator run at double speed.
     `BandSplit` keeps its own band-passes and input buffer, and reads only the tap.
@@ -129,14 +127,14 @@ The compute shader declares four floats beside its two buffer references:
 
 ```diffstatic {data-lang=glsl}
 layout(push_constant) uniform dat {
-    Seeds seeds;      // written once: one random phase and radius per particle
-    Out   outData;    // this frame's positions, read by the draw box
+    Seeds seeds; // written once: one random phase and radius per particle
+    Out outData; // this frame's positions, read by the draw box
     float time;
-    float band0;      // 70 Hz    — the kick
-    float band1;      // 340 Hz
-    float band2;      // 1.6 kHz  — the square stab's harmonics
-    float band3;      // 8 kHz    — the hats
-    uint  count;
+    float band0; // 70 Hz    — the kick
+    float band1; // 340 Hz
+    float band2; // 1.6 kHz  — the square stab's harmonics
+    float band3; // 8 kHz    — the hats
+    uint count;
 } pc;
 ```
 
@@ -144,10 +142,12 @@ and the Kotlin binds each one to a lambda. The renderer evaluates them once per 
 sees this frame's analysis and nothing is copied by hand:
 
 ```diffstatic {data-lang=kotlin}
-step.band0 = { (bandEnergy.getOrElse(0) { 0.0 } * 2.4).f }
-step.band1 = { (bandEnergy.getOrElse(1) { 0.0 } * 2.4).f }
-step.band2 = { (bandEnergy.getOrElse(2) { 0.0 } * 2.4).f }
-step.band3 = { (bandEnergy.getOrElse(3) { 0.0 } * 2.4).f }
+var gain = 2.4 // Edit and Alt+Enter this declaration to change the running response.
+
+step.band0 = { (bandEnergy.getOrElse(0) { 0.0 } * gain).f }
+step.band1 = { (bandEnergy.getOrElse(1) { 0.0 } * gain).f }
+step.band2 = { (bandEnergy.getOrElse(2) { 0.0 } * gain).f }
+step.band3 = { (bandEnergy.getOrElse(3) { 0.0 } * gain).f }
 ```
 
 `bandEnergy` is an inherited property, declared with `prop<DoubleArray>(bandEnergy)` in the audio box
@@ -166,12 +166,11 @@ float radius = base * (1.0 + 0.55 * energy) + thickness * (seed.y - 0.5) * 2.0;
 
 ??? aside "Why the figure is a still, and silent"
 
-    The docs runner cannot record a native `afield.four` window, so the page shows one frame and
+    The docs runner cannot record a native Field 4 window, so the page shows one frame and
     the band plot instead of a clip. While capturing, the audio box calls
     `PatSynthLaunch.advanceOffline` once per frame instead of returning the launch for the audio
-    engine, so the figure is the same on a machine with no sound output.
-    `FieldAudioEngine.outputActive` tells a box which of the two it should do; doing both would
-    advance every voice twice.
+    engine, so the figure is the same on a machine with no sound output. While an engine is
+    pulling the launch, `advanceOffline` does nothing, so a box can do both.
 
 ## Where each piece is documented
 
@@ -181,7 +180,7 @@ float radius = base * (1.0 + 0.55 * energy) + thickness * (seed.y - 0.5) * 2.0;
 * [DoughDSP Sound Examples](dough_dsp_sound.md) for the filters, envelopes and oscillators a voice
   is built from, and [Synthesis](reference/synthesis.md) plus [Patterns](reference/patterns.md) for
   the declarations.
-* [afield.four Graphics](afield_four_graphics.md) for compute modules, buffers and push constants,
+* [Field 4 Graphics](afield_four_graphics.md) for compute modules, buffers and push constants,
   and [GPU State](gpu_state.md) for what changes when a shader's input is its own last output.
 * [A cellular automaton you can hear](chain_ca_sound.md) is the neighbouring chain in the other
   direction: a discrete dynamical system into notation, and notation into sound.

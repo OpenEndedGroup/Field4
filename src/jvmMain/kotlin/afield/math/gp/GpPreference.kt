@@ -1,7 +1,15 @@
-@file:afield.CompletionCategory("Math")
+@file:afield.runtime.completion.CompletionCategory("Math")
 package afield.math.gp
 
 import kotlin.math.*
+
+/**
+ * Preference learning from pairwise "A or B?" judgements, using a probit GP over a latent utility.
+ *
+ * [GpPreference] records each [GpComparison], estimates the utility of any parameter setting, ranks
+ * what it has seen, and proposes the next pair to ask about with `nextPair`. It shares [GpRange] with
+ * [GpOptimizer], and suits tuning by eye when no numeric score exists.
+ */
 
 /** One judgement: [winner] was preferred to [loser]. */
 data class GpComparison(val winner: Map<String, Double>, val loser: Map<String, Double>)

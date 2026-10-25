@@ -1,0 +1,118 @@
+{
+  "baseline": "75a55b8f7",
+  "findingIds": [
+    "170e901a1e79-01",
+    "1792195c9f35-01",
+    "182e2a3a7d40-01",
+    "184894c9ac87-02",
+    "60adf96b2454-01",
+    "60adf96b2454-02",
+    "a07e76d1a20a-01",
+    "a6aa1047e7f5-03",
+    "a6aa1047e7f5-04",
+    "b495b962cd41-01",
+    "b56688721388-01",
+    "c51c8c35b71e-01",
+    "dc7b44b35a5c-01",
+    "dc7b44b35a5c-02",
+    "ee1b57fa1953-01"
+  ],
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/alife_worked_example.yaml",
+      "kotlinBodies": 20,
+      "collectionLiterals": 22,
+      "bodyMatchesReviewedChanges": true,
+      "executionBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/aperture_playground.yaml",
+      "kotlinBodies": 8,
+      "collectionLiterals": 0,
+      "bodyMatchesReviewedChanges": true,
+      "executionBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fn_rewrite_kotlin_boxes.yaml",
+      "kotlinBodies": 6,
+      "collectionLiterals": 4,
+      "bodyMatchesReviewedChanges": true,
+      "executionBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/midi_clip.yaml",
+      "kotlinBodies": 4,
+      "collectionLiterals": 3,
+      "bodyMatchesReviewedChanges": true,
+      "executionBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/pat_fn_graph_fit.yaml",
+      "kotlinBodies": 5,
+      "collectionLiterals": 0,
+      "bodyMatchesReviewedChanges": true,
+      "executionBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/path_tracer_instrument.yaml",
+      "kotlinBodies": 6,
+      "collectionLiterals": 0,
+      "bodyMatchesReviewedChanges": true,
+      "executionBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/skinned_characters.yaml",
+      "kotlinBodies": 8,
+      "collectionLiterals": 2,
+      "bodyMatchesReviewedChanges": true,
+      "executionBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/solidsl_inverse.yaml",
+      "kotlinBodies": 3,
+      "collectionLiterals": 2,
+      "bodyMatchesReviewedChanges": true,
+      "executionBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/assets/stacksl_volumetric_noise/stacksl_volumetric_noise.yaml",
+      "kotlinBodies": 1,
+      "collectionLiterals": 0,
+      "bodyMatchesReviewedChanges": true,
+      "executionBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_cpu_demo/stacksl-cpu-feedback_code_.kt",
+      "kotlinBodies": 1,
+      "collectionLiterals": 0,
+      "bodyMatchesReviewedChanges": true,
+      "executionBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/assets/transcripts/document_history_setup.yaml",
+      "kotlinBodies": 1,
+      "collectionLiterals": 0,
+      "bodyMatchesReviewedChanges": true,
+      "executionBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/assets/transcripts/funfeatures_tour_setup.yaml",
+      "kotlinBodies": 2,
+      "collectionLiterals": 0,
+      "bodyMatchesReviewedChanges": true,
+      "executionBoundariesPreserved": true
+    }
+  ],
+  "sourceFacts": {
+    "midiBeats": 16,
+    "barsIn4_4": 4.0,
+    "gliderCells": 5,
+    "sixGlidersCells": 30,
+    "defaultCurlCalls": 124416,
+    "alternativeCurlCalls": 1327104,
+    "sourceApertureLookMembers": [
+      "x",
+      "y"
+    ]
+  }
+}

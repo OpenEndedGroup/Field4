@@ -1,11 +1,14 @@
-// A distance is worth more than a coverage mask. Everything below comes
-// from the single float that `scene` returns, and none of it is available
-// from the rasterized-quad path that RectSL normally renders through.
-import afield.rectsl.RectAnimationOracle
-import afield.rectsl.RectSLGlsl
-import afield.rectsl.RectSLSdfLook
+/*
+A distance is worth more than a coverage mask. Everything below comes
+from the single float that `scene` returns, and none of it is available
+from the rasterized-quad path that RectSL normally renders through.
+*/
+import afield.lang.rectsl.RectAnimationOracle
+import afield.lang.rectsl.RectSLGlsl
+import afield.lang.rectsl.RectSLSdfLook
 
-val rectsl = """
+val rectsl =
+    """
 #rectsl
 ->wall 8 5 abstract
 ->duration 4
@@ -45,8 +48,10 @@ println(fragment.lines().takeLast(12).joinToString("\n"))
 println()
 println("full fragment: ${fragment.length} chars")
 println()
-// This box assembles the shader by hand to show what the pieces are. You do not
-// have to: RectSLSdfLook is that vocabulary as data, RectSLSdfShader assembles the
-// whole thing, and there is one preset per capability the field is good for.
+/*
+This box assembles the shader by hand to show what the pieces are. You do not
+have to: RectSLSdfLook is that vocabulary as data, RectSLSdfShader assembles the
+whole thing, and there is one preset per capability the field is good for.
+*/
 println("presets that do this for you: " + RectSLSdfLook.PRESETS.joinToString(", ") { it.name })
 println("to see it drawn and moving, replay the rectsl_sdf_live transcript")

@@ -57,7 +57,7 @@ indent 7 → <p>val groove = pat("<a href="3,8">bd cp</a> hh!2")</p>
 indent 8 → <pre><code>val groove = pat("[bd cp](3,8) hh!2")</code></pre>
 ```
 
-**Fixed at** `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt` — one space added to each of
+**Fixed at** `src/jvmMain/kotlin/afield/audio/synth/TidalPatterns.kt` — one space added to each of
 55 sample lines, the whole numbered list, not just the line that broke. Plus 3 lines in
 `PointController.kt`. Never in the generated page.
 
@@ -230,7 +230,7 @@ site, `reference/source/jvmMain/afield/outputs/index.html` contains
 The `<` is escaped. The element does not exist. What survives unescaped is the **attribute text**,
 quotes and all, so a regex over the raw HTML matches `src="…"` inside a code block. Nothing was
 reaching the browser; the extractor was reading displayed source. `generate_source_pages` — which
-is `afield.docs.SourcePageGenerator`, emitting `diffstatic` fences — needs no escaping change.
+is `afield.tools.docs.SourcePageGenerator`, emitting `diffstatic` fences — needs no escaping change.
 
 This is also why mode 3 and mode 4 are one mechanism on two page families.
 
@@ -380,9 +380,9 @@ count, and a `displayed code masked:` line, so neither number can be quoted bare
 | `tools/test_check_doc_site_links.py` | 33 tests (was 25) |
 | `tools/check_doc_offline_links.py` | the offline-viewer link shape lint (carrier set measured, not listed) |
 | `tools/test_check_doc_offline_links.py` | 14 tests |
-| `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt` | mode 1's origin |
-| `src/jvmMain/kotlin/afield/four/synth/PatCondense.kt` | the immune form: inline backticks |
-| `src/jvmMain/kotlin/afield/docs/AgentTranscriptIndexGuard.kt` | mode 2's dictating guard |
+| `src/jvmMain/kotlin/afield/audio/synth/TidalPatterns.kt` | mode 1's origin |
+| `src/jvmMain/kotlin/afield/audio/synth/PatCondense.kt` | the immune form: inline backticks |
+| `src/jvmMain/kotlin/afield/tools/docs/AgentTranscriptIndexGuard.kt` | mode 2's dictating guard |
 | `src/commonMain/resources/offline-viewer.js` | `ednFileCandidates`, why a relative `?file=` works |
-| `src/jvmMain/kotlin/afield/docs/SourcePageGenerator.kt` | mode 5: `attrListSafe`, and `verifyPage`'s anchor invariant |
+| `src/jvmMain/kotlin/afield/tools/docs/SourcePageGenerator.kt` | mode 5: `attrListSafe`, and `verifyPage`'s anchor invariant |
 | `dev_docs/DOCS_SITE_PREFIX_REFS.md` | the prefix family and the guard's design |

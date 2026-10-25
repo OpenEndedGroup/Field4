@@ -1,7 +1,3 @@
-import afield.stdlib.Functions
-import afield.stdlib.fitGradient
-import afield.stdlib.graphNode
-
 with(Functions) {
     val target = patFn("g:(0.9,0.18) g:(0.1,0.18)", cps = 1.0, range = 0.9)
     // Right structure, wrong numbers — wrong heights and wrong widths.
@@ -13,13 +9,15 @@ with(Functions) {
     plot(target, 0.0..2.0, channel = "1 target", title = "target")
     plot(run.fitted, 0.0..2.0, channel = "2 fitted", title = "fitted")
 
-    val report = """
+    val report =
+        """
     seed    ${seed.graphNode().strings["source"]}
     fitted  ${run.fitted.graphNode().strings["source"]}
     RMSE    ${"%.4f".format(run.initialError)} -> ${"%.4f".format(run.finalError)}
-    """.trimIndent()
+    """
+            .trimIndent()
     println(report)
     display("<pre>" + report + "</pre>")
 
-    run   // Field renders the FnFitRun: RMSE before -> after + a loss sparkline
+    run // Field renders the FnFitRun: RMSE before -> after + a loss sparkline
 }

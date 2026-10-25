@@ -1,38 +1,46 @@
 package afield.ai.agent
 
-import afield.ReadOnlyDocuments
-import afield.SessionInformation
-import afield.ai.core.SummarisesForToolLog
-import afield.ai.core.AwaitedBuild
-import afield.ai.core.SuspendsTurn
-import afield.ai.core.TurnSuspension
-import afield.ai.core.AgentToolMeta
-import afield.ai.core.ToolExposure
-import afield.ai.core.ToolEffect
-import afield.ai.core.ToolRegistry
-import afield.ai.core.LlmProgressUpdate
-import afield.stdlib.BoxStudyBuildBinding
-import afield.stdlib.StudyBuildArtifact
-import afield.stdlib.StudyBuildRecord
-import afield.stdlib.StudyBuilds
-import afield.stdlib.StudyBuildStatus
-import afield.stdlib.StudyStageState
-import afield.stdlib.StudyBuildFinding
-import afield.stdlib.StudyBuildNotice
-import afield.stdlib.StudyBuildNoticeKind
-import afield.stdlib.studyBuildGeometryView
-import afield.stdlib.studyBuildUsedEarlierInputs
-import afield.ai.core.aiToolMapper
+import afield.app.server.ReadOnlyDocuments
+import afield.app.server.SessionInformation
+import afield.ai.tools.SummarisesForToolLog
+import afield.ai.conversation.AwaitedBuild
+import afield.ai.conversation.SuspendsTurn
+import afield.ai.conversation.TurnSuspension
+import afield.ai.tools.AgentToolMeta
+import afield.ai.tools.ToolExposure
+import afield.ai.tools.ToolEffect
+import afield.ai.tools.ToolRegistry
+import afield.ai.models.LlmProgressUpdate
+import afield.study.build.BoxStudyBuildBinding
+import afield.study.build.StudyBuildArtifact
+import afield.study.build.StudyBuildRecord
+import afield.study.build.StudyBuilds
+import afield.study.build.StudyBuildStatus
+import afield.study.build.StudyStageState
+import afield.study.build.StudyBuildFinding
+import afield.study.build.StudyBuildNotice
+import afield.study.build.StudyBuildNoticeKind
+import afield.study.build.studyBuildGeometryView
+import afield.study.build.studyBuildUsedEarlierInputs
+import afield.ai.tools.aiToolMapper
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 import com.fasterxml.jackson.module.kotlin.convertValue
 
+/**
+ * AI4 tools over a box's study builds: list, inspect, start, wait for, cancel, await and prune build jobs.
+ *
+ * Each request class is one tool and returns a [StudyBuildToolResult]. [AwaitStudyBuildsRequest]
+ * is the exception: its [StudyBuildAwaitResult] can end the turn with a suspension, which
+ * [StudyBuildAwaits] then holds until the jobs finish.
+ */
+
 @JsonClassDescription("List the live derived-stage build runners in this document. Returns success plus, per runner, its source box id, name, dependency currency, current results and latest attempt. Use it when you need a runner's boxId and name and the task does not give them. A document with no runners returns an empty list, not an error. e.g. a result entry has boxId = `a1b2`, name = `mesh`.")
 @AgentToolMeta("builds", ToolExposure.DIRECT, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
 data class ListStudyBuildsRequest(val unused: Int = 0)
 
-@JsonClassDescription("Inspect a document build runner's stages and paged durable attempt history, or one jobId. Returns each stage with its fingerprint and currency, what a waiting stage waits for (inputHelp, such as a closed gate's measurement), the attempts with their requests, structured failure suggestions and retained artifact identities. Running, succeeded and current are different: an old success can be stale after edits. Use it before StartStudyBuildRequest, which needs the stage fingerprint from here. This does not start or retry work. An unknown boxId/name fails with success=false and says to list runners. e.g. boxId = `a1b2`, name = `mesh`, limit = 5.")
+@JsonClassDescription("Inspect a document build runner's stages and paged durable attempt history, or one jobId. Returns each stage with its fingerprint and currency, what a waiting stage waits for (inputHelp, such as a closed gate's measurement), the attempts with their requests, structured failure suggestions and retained artifact identities. A stage's resultNotes explain its current result; its failureNotes explain a latest attempt that failed against the current inputs, which is never current. Running, succeeded and current are different: an old success can be stale after edits. Use it before StartStudyBuildRequest, which needs the stage fingerprint from here. This does not start or retry work. An unknown boxId/name fails with success=false and says to list runners. e.g. boxId = `a1b2`, name = `mesh`, limit = 5.")
 @AgentToolMeta("builds", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
 data class InspectStudyBuildsRequest(val boxId: String, val name: String, val jobId: String = "", val offset: Int = 0, val limit: Int = 10)
 
@@ -304,7 +312,7 @@ internal class StudyBuildTools(private val info: SessionInformation, private val
     private fun stageSummary(stage: StudyStageState): Map<String, Any?> = mapOf("id" to stage.id, "label" to stage.label,
         "fingerprint" to stage.fingerprint, "current" to stage.current?.let { jobSummary(it, stage) },
         "latest" to stage.latest?.let { jobSummary(it, stage) }, "reason" to stage.reason, "blockedBy" to stage.blockedBy,
-        "inputHelp" to stage.inputHelp, "resultNotes" to stage.resultNotes)
+        "inputHelp" to stage.inputHelp, "resultNotes" to stage.resultNotes, "failureNotes" to stage.failureNotes)
 }
 
 /** [StartStudyBuildRequest.request]: blank is no request, otherwise a JSON object whose values reach the worker as JSON types. */

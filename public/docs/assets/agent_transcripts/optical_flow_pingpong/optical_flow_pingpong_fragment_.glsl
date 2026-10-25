@@ -1,6 +1,8 @@
 #version 460
 layout(location=0) out vec4 color;
-layout(push_constant) uniform Frame { float time; } frame;
+layout(push_constant) uniform Frame {
+    float time;
+} frame;
 // Optical flow follows brightness. Hue changes alone did not disambiguate the old
 // repeating checkerboard: neighboring cells could produce convincing wrong matches.
 float brightnessKey(ivec2 cell) {
@@ -15,7 +17,7 @@ float textureKey(vec2 p) {
     ivec2 c=ivec2(floor(q));
     f=f*f*(3.0-2.0*f);
     return mix(mix(brightnessKey(c),brightnessKey(c+ivec2(1,0)),f.x),
-               mix(brightnessKey(c+ivec2(0,1)),brightnessKey(c+ivec2(1,1)),f.x),f.y);
+    mix(brightnessKey(c+ivec2(0,1)),brightnessKey(c+ivec2(1,1)),f.x),f.y);
 }
 void main() {
     vec2 p=gl_FragCoord.xy-vec2(sin(frame.time)*180,cos(frame.time*1.3)*120);

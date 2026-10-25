@@ -1,5 +1,5 @@
-import afield.four.modules.SlangCompiler
-import afield.four.modules.ShaderKind
+import afield.graphics.shader.SlangCompiler
+import afield.graphics.shader.ShaderKind
 check(System.getenv("AFIELD_SLANGC").isNullOrBlank())
 check(System.getProperty("afield.slangc").isNullOrBlank())
 val source="""

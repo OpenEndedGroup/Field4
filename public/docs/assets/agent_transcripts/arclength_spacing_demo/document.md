@@ -18,7 +18,7 @@ Same two curves, ticked instead of dashed, so you can see the spacing itself rat
 than its effect on a dash.
 
 ```edn [field-box id="arclength_ticks" role="properties"]
-{"id" "arclength_ticks" "index" 0 "name" "where the mechanism actually is" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "where the mechanism actually is" "_tombstone" false "frame" #afield/rect [80.0 720.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "arclength_ticks_code_.kt" "lines" 96 "characters" 3912 "sha256" "65eb2bd52e29a5d90612ca2ae74b844489b18642ae816dd9730daadcaeb6c3ab"}]}
+{"id" "arclength_ticks" "index" 0 "name" "where the mechanism actually is" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "where the mechanism actually is" "_tombstone" false "frame" #afield/rect [80.0 720.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "arclength_ticks_code_.kt" "lines" 105 "characters" 3884 "sha256" "88f18e7356c7c48079a0f12db5bfc6fcbb1413f06d6a1791c835077896d679ad"}]}
 ```
 
 ```kotlin [field-property box="arclength_ticks" name="code" path="arclength_ticks_code_.kt"]
@@ -45,9 +45,11 @@ val ticks = { line: FLine, byArcLength: Boolean ->
         val f = i.toFloat() / steps
         if (byArcLength) c.setD(total * f) else c.setT(span * f)
         val p = c.position()
-        // normal2D() is the tangent rotated 90 degrees and is NOT normalised — its
-        // magnitude is |B'(t)|, which is in the hundreds here — so normalise it or the
-        // ticks come out as a fan hundreds of units long.
+        /*
+        normal2D() is the tangent rotated 90 degrees and is NOT normalised — its
+        magnitude is |B'(t)|, which is in the hundreds here — so normalise it or the
+        ticks come out as a fan hundreds of units long.
+        */
         val n = c.normal2D()
         val len = kotlin.math.hypot(n?.x ?: 0f, n?.y ?: 1f).coerceAtLeast(1e-6f)
         val nx = (n?.x ?: 0f) / len
@@ -59,10 +61,14 @@ val ticks = { line: FLine, byArcLength: Boolean ->
                 .apply {
                     thickness = 2.0
                     color = if (byArcLength) vec(0.35, 0.95, 0.6, 1.0) else vec(1.0, 0.45, 0.35, 1.0)
-                }
+                },
         )
     }
-    out + line.apply { thickness = 1.0; color = vec(0.55, 0.55, 0.65, 1.0) }
+    out +
+        line.apply {
+            thickness = 1.0
+            color = vec(0.55, 0.55, 0.65, 1.0)
+        }
 }
 
 // The gap between consecutive tick positions, as a max/median ratio. 1.0 is perfect.
@@ -70,11 +76,12 @@ val evenness = { line: FLine, byArcLength: Boolean ->
     val c = line.cursor()
     val total = c.lengthD()
     val span = (line.nodes.size - 1).toFloat()
-    val pts = (0..steps).map { i ->
-        val f = i.toFloat() / steps
-        if (byArcLength) c.setD(total * f) else c.setT(span * f)
-        c.position()
-    }
+    val pts =
+        (0..steps).map { i ->
+            val f = i.toFloat() / steps
+            if (byArcLength) c.setD(total * f) else c.setT(span * f)
+            c.position()
+        }
     val gaps = (1..steps).map { pts[it].distance(pts[it - 1]).toDouble() }.sorted()
     gaps.last() / gaps[gaps.size / 2]
 }
@@ -89,16 +96,17 @@ showPlaneGrid(
     cellHeight = 220,
 )
 
-// The mechanism, live. `flatness` is the OLD subdivision criterion: the distance of the
-// control points from the chord. `skew` is the term added on 2026-07-31: the distance
-// between the curve's mid-PARAMETER point B(0.5) and the chord's mid-POINT. Neither
-// subsumes the other, which is why the criterion takes the larger of the two.
+/*
+Flatness measures control-point distance from the chord; skew measures the distance
+between B(0.5) and the chord midpoint. Use the larger: either test can miss a curve
+that the other detects.
+*/
 val report = { name: String, line: FLine ->
     val n = line.nodes[1] as FLine.CubicTo
     val a = line.nodes[0].to
     val b = n.to
     val ptSeg = { p: Vec3 ->
-        field.graphics.FLinesAndJavaShapes.ptSegDistSq3(a.x, a.y, a.z, b.x, b.y, b.z, p.x, p.y, p.z)
+        afield.geometry.path.java2d.FLinesAndJavaShapes.ptSegDistSq3(a.x, a.y, a.z, b.x, b.y, b.z, p.x, p.y, p.z)
     }
     val flatness = kotlin.math.sqrt(maxOf(ptSeg(n.c1), ptSeg(n.c2)))
     val mid = vec(
@@ -108,16 +116,17 @@ val report = { name: String, line: FLine ->
     )
     val chordMid = vec(0.5 * (a.x + b.x), 0.5 * (a.y + b.y), 0.5 * (a.z + b.z))
     val skew = mid.distance(chordMid)
-    val leaves = afield.graphics.PathFlattener(line, 0.01f).mappings.size
+    val leaves = afield.geometry.path.PathFlattener(line, 0.01f).mappings.size
     "%-22s flatness %8.3f   skew %8.3f   leaves %5d".format(name, flatness, skew, leaves)
 }
 
-listOf(
-    report("S-curve", bent),
-    report("collinear", straight),
-    "",
-    "flatness alone stops at one leaf whenever it reads 0.000, and no tolerance can beat 0.",
-).joinToString("\n")
+[
+        report("S-curve", bent),
+        report("collinear", straight),
+        "",
+        "flatness alone stops at one leaf whenever it reads 0.000, and no tolerance can beat 0.",
+    ]
+    .joinToString("\n")
 ```
 
 ## 2. dashes, spaced by parameter and by arc length
@@ -135,15 +144,17 @@ end: geometrically a straight line, parameterised so that t = 0.5 is 82% of the 
 along. Its flatness is exactly 0.0, so no tolerance could ever force a subdivision.
 
 ```edn [field-box id="arclength_dashes" role="properties"]
-{"id" "arclength_dashes" "index" 1 "name" "dashes, spaced by parameter and by arc length" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "dashes, spaced by parameter and by arc length" "_tombstone" false "frame" #afield/rect [80.0 80.0 410.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "arclength_dashes_code_.kt" "lines" 76 "characters" 2744 "sha256" "09f355be91be728410e3c7fa896877934cf5093278b86d09ece7acc6635da634"}]}
+{"id" "arclength_dashes" "index" 1 "name" "dashes, spaced by parameter and by arc length" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "dashes, spaced by parameter and by arc length" "_tombstone" false "frame" #afield/rect [80.0 80.0 410.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "arclength_dashes_code_.kt" "lines" 79 "characters" 2728 "sha256" "ee8e56057b3740170d181825f6c51aced47a637f9e6f87747b4793e6d68d767c"}]}
 ```
 
 ```kotlin [field-property box="arclength_dashes" name="code" path="arclength_dashes_code_.kt"]
-// Two curves. `bent` is an ordinary S-shaped cubic — its control points are far off the
-// chord, so the old flatness criterion always subdivided it and its spacing was already
-// fine. `straight` has its control points exactly ON the chord but bunched at the far
-// end: geometrically a straight line, parameterised so that t = 0.5 is 82% of the way
-// along. Its flatness is exactly 0.0, so no tolerance could ever force a subdivision.
+/*
+Two curves. `bent` is an ordinary S-shaped cubic — its control points are far off the
+chord, so the old flatness criterion always subdivided it and its spacing was already
+fine. `straight` has its control points exactly ON the chord but bunched at the far
+end: geometrically a straight line, parameterised so that t = 0.5 is 82% of the way
+along. Its flatness is exactly 0.0, so no tolerance could ever force a subdivision.
+*/
 val bent = fline {
     moveTo(20, 40)
     cubicTo(90, 200, 330, -80, 400, 90)
@@ -157,9 +168,11 @@ val straight = fline {
 val dash = 22f
 val gap = 13f
 
-// What a one-leaf mapping produced: t marched in equal steps, each dash a straight chord
-// between its two ends. Reproduced explicitly rather than remembered, so the comparison
-// is computed here and now on both sides.
+/*
+What a one-leaf mapping produced: t marched in equal steps, each dash a straight chord
+between its two ends. Reproduced explicitly rather than remembered, so the comparison
+is computed here and now on both sides.
+*/
 val byParameter = { line: FLine ->
     val c = line.cursor()
     val span = (line.nodes.size - 1).toFloat()
@@ -195,8 +208,7 @@ val paint = { dashes: List<FLine> ->
 // whatever length is left over at the end of the curve.
 val spread = { dashes: List<FLine> ->
     val lengths = dashes.dropLast(1).map(drawnLength).filter { it > 0.0 }
-    if (lengths.isEmpty()) "no dashes"
-    else "asked $dash, drew %.1f .. %.1f".format(lengths.min(), lengths.max())
+    if (lengths.isEmpty()) "no dashes" else "asked $dash, drew %.1f .. %.1f".format(lengths.min(), lengths.max())
 }
 
 val bentOld = paint(byParameter(bent))

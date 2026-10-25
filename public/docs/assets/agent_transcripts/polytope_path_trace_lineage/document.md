@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chain_renderer" index="0" -->
 
 ```edn [field-box id="chain_renderer" role="properties"]
-{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["polytope_lineage_trace"] "properties" {"children" #{#afield/box "polytope_lineage_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 219 "sha256" "19487060214b1bc963fb497fc9abca03cb6699de062ca5d14c0a5c38ecdd6c71"}]}
+{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["polytope_lineage_trace"] "properties" {"children" #{#afield/box "polytope_lineage_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 10 "characters" 231 "sha256" "12a08fe341d020f5d3755a6b482f8a7f5304a7e4bcd249587e7c71135d4b9119"}]}
 ```
 
 ```kotlin [field-property box="chain_renderer" name="code" path="chain_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,59 +32,73 @@ start(renderer::run)
 <!-- field-box id="polytope_lineage_trace" index="1" -->
 
 ```edn [field-box id="polytope_lineage_trace" role="properties"]
-{"id" "polytope_lineage_trace" "index" 1 "name" "lineage chooses the material" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "lineage chooses the material" "_tombstone" false "frame" #afield/rect [320.0 140.0 280.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_lineage_trace_code_.kt" "lines" 91 "characters" 4271 "sha256" "dbda386ac41a3dd4a8ce57509ddd113663c87c637a5cb9d169f75dfd95dc6212"}]}
+{"id" "polytope_lineage_trace" "index" 1 "name" "lineage chooses the material" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "lineage chooses the material" "_tombstone" false "frame" #afield/rect [320.0 140.0 280.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_lineage_trace_code_.kt" "lines" 109 "characters" 4553 "sha256" "edd0506cf3f50875cb2e1ff015adda7b9fd8f687075a6c862013cd55d39641f1"}]}
 ```
 
 ```kotlin [field-property box="polytope_lineage_trace" name="code" path="polytope_lineage_trace_code_.kt"]
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.fabricated.importTriMesh
-import afield.four.util.Camera
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.importTriMesh
+import afield.graphics.vulkan.util.Camera
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)
 
-// ---- the topology ---------------------------------------------------------------
-// Bevel the dodecahedron, then canonicalize so the faces come out edge-tangent and the
-// whole thing is worth looking at. Both steps keep the lineage.
+// Start here when changing render cost, lighting or convergence.
+val samplesPerFrame = 2
+val maxBounces = 8
+val exposure = 1.35f
+val environmentRotation = 2.1f
+val indirectClamp = 10f // Optional biased suppression of indirect fireflies.
+val targetSamples = 900
+
+/*
+---- the topology ---------------------------------------------------------------
+Bevel the dodecahedron, then canonicalize so the faces come out edge-tangent and the
+whole thing is worth looking at. Both steps keep the lineage.
+*/
 val chain = canonicalConway("bD")
 val poly = chain.polyhedron
 val geometry = poly.triangulate(normals = NormalPolicy.Flat)
 
-// Bevel sends every output face back to exactly one element of the seed, so `single()` is
-// safe here and would throw the moment that stopped being true. The rank is the whole
-// classification: 2 means the face sits over one of the dodecahedron's pentagons, 1 over
-// one of its edges, 0 over one of its vertices.
+/*
+Bevel sends every output face back to exactly one element of the seed, so `single()` is
+safe here and would throw the moment that stopped being true. The rank is the whole
+classification: 2 means the face sits over one of the dodecahedron's pentagons, 1 over
+one of its edges, 0 over one of its vertices.
+*/
 fun seedRank(face: ElementId): Int = chain.sourceElements(face).single().rank
 
 val faces = poly.topology.elements(2)
 val census = faces.groupingBy { seedRank(it.id) }.eachCount().toSortedMap()
 println("bD: ${faces.size} faces, ${geometry.triangleCount} triangles")
 census.forEach { (rank, count) ->
-    val sides = faces.filter { seedRank(it.id) == rank }
-        .map { poly.topology.faceCycle(it.id).size }.distinct().sorted()
+    val sides = faces.filter { seedRank(it.id) == rank }.map { poly.topology.faceCycle(it.id).size }.distinct().sorted()
     println("  rank $rank -> $count faces, $sides sides each")
 }
 println("  the dodecahedron has 12 faces, 30 edges and 20 vertices")
 
-// ---- the materials -------------------------------------------------------------
-// Thin glass rather than solid: a face of a closed polyhedron is a patch, and solid glass
-// measures its attenuation between surface crossings, which a patch does not give it.
+/*
+---- the materials -------------------------------------------------------------
+Thin glass rather than solid: a face of a closed polyhedron is a patch, and solid glass
+measures its attenuation between surface crossings, which a patch does not give it.
+*/
 val scene = PathTraceScene()
-// Roughness 0.32 rather than a mirror finish: a decagon is flat and large, and a flat
-// mirror this size returns one direction of a hazy sky, which reads as pale rather than
-// as metal. Spreading the lobe averages the map and the gold tint comes back.
+/*
+Roughness 0.32 rather than a mirror finish: a decagon is flat and large, and a flat
+mirror this size returns one direction of a hazy sky, which reads as pale rather than
+as metal. Spreading the lobe averages the map and the gold tint comes back.
+*/
 val gold = scene.material(PathTraceMaterial.metal(1.0f, 0.73f, 0.31f, 0.32f))
 val glass = scene.material(PathTraceMaterial.thinGlass(1.52f, Vector3f(0.9f, 0.97f, 0.94f)))
 val plastic = scene.material(PathTraceMaterial.plastic(0.05f, 0.09f, 0.34f, 0.3f))
 val floor = scene.material(PathTraceMaterial.plastic(0.55f, 0.56f, 0.58f, 0.55f))
 
 fun materialFor(face: ElementId): Int = when (seedRank(face)) {
-    2 -> gold      // the twelve decagons, one per pentagon of the dodecahedron
-    1 -> glass     // the thirty squares, one per edge
+    2 -> gold // the twelve decagons, one per pentagon of the dodecahedron
+    1 -> glass // the thirty squares, one per edge
     else -> plastic // the twenty hexagons, one per vertex
 }
 
@@ -99,8 +114,10 @@ println("       bounds ${added.boundsMin} .. ${added.boundsMax}")
 val low = added.boundsMin.y - 0.02f
 val reach = 6f
 scene.quad(
-    Vector3f(-reach, low, -reach), Vector3f(reach, low, -reach),
-    Vector3f(reach, low, reach), Vector3f(-reach, low, reach),
+    Vector3f(-reach, low, -reach),
+    Vector3f(reach, low, -reach),
+    Vector3f(reach, low, reach),
+    Vector3f(-reach, low, reach),
     floor,
 )
 
@@ -115,15 +132,17 @@ val camera = Camera(renderer).also {
 }
 // 1000 x 614 is the window's own aspect, so the blit fills it rather than letterboxing.
 tracer = PathTracingRenderer(renderer, scene, environment, 1000, 614, camera).install()
-tracer.samplesPerFrame = 2
-tracer.maxBounces = 8
-tracer.exposure = 1.35f
-tracer.environmentRotation = 2.1f
-tracer.indirectClamp = 10f // Optional biased suppression of indirect fireflies.
+tracer.samplesPerFrame = samplesPerFrame
+tracer.maxBounces = maxBounces
+tracer.exposure = exposure
+tracer.environmentRotation = environmentRotation
+tracer.indirectClamp = indirectClamp
 tracer.blitToScreen()
 println("${tracer.backend}: ${tracer.triangleCount} triangles")
 frames {
-    while (tracer.samples < 900) { frame() }
+    while (tracer.samples < targetSamples) {
+        frame()
+    }
     println("lineage study converged: ${tracer.samples} samples")
 }
 ```

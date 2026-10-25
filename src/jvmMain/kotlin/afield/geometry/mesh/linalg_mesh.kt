@@ -1,0 +1,107 @@
+@file:afield.runtime.completion.CompletionCategory("Math")
+
+package afield.geometry.mesh
+
+import afield.data.collections.get
+import afield.data.collections.invoke
+import afield.data.collections.s
+import afield.data.collections.times
+import afield.document.graph.minusAssign
+import afield.document.graph.plusAssign
+import afield.document.properties.compareTo
+import afield.document.workspace.file
+import afield.geometry.spatial.Cuboid
+import afield.geometry.spatial.aabbBounds
+import afield.geometry.spatial.center
+import afield.geometry.spatial.convexHullPeelingMedian
+import afield.geometry.spatial.medianVec
+import afield.geometry.spatial.obbBounds
+import afield.graphics.render.rangeTo
+import afield.graphics.text.layout
+import afield.math.autodiff.compareTo
+import afield.math.autodiff.div
+import afield.math.autodiff.minus
+import afield.math.autodiff.plus
+import afield.math.autodiff.times
+import afield.math.units.div
+import afield.math.units.minus
+import afield.math.units.plus
+import afield.math.units.times
+import afield.media.image.median
+import afield.study.ui.numbers
+
+import afield.audio.synth.*
+import afield.math.linalg.Vec3
+import afield.math.linalg.i
+import afield.math.linalg.x
+import com.github.quickhull3d.QuickHull3D
+import afield.math.linalg.Vector2f
+import afield.math.linalg.Vector2fc
+import afield.math.linalg.Vector3f
+import afield.math.linalg.Vector3fc
+import afield.math.linalg.Vector4f
+import afield.math.linalg.Vector4fc
+import afield.math.linalg.Quaternionf
+import afield.math.linalg.Quaternionfc
+import afield.math.linalg.Matrix3f
+import afield.math.linalg.Matrix3fc
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Matrix4fc
+import afield.math.linalg.DualQuaternionf
+import afield.math.linalg.*
+import kotlin.math.max
+import kotlin.math.min
+
+/**
+ * The short vector aliases ([Vec2], [Vec3], [Vec4], [Quat], [DualQuat]) plus the constructors and
+ * point-cloud helpers that sit on top of Field's generated `afield.math.linalg` types.
+ *
+ * `vec(...)` is the usual way to make one — from numbers, by copying, or by concatenating a
+ * scalar with a smaller vector — and `quat` / `dualquat` do the same for rotations. Collections
+ * of vectors gain `center`, `median` / `medianVec` and `aabbBounds` in 2D, 3D and 4D; 3D also
+ * gets `obbBounds` (a box aligned to the covariance matrix's principal axes, found by power
+ * iteration, so a PCA fit rather than a minimal-volume one),
+ * `convexHull`, which goes through the QuickHull3D library and returns the input unchanged if the
+ * hull cannot be built, and `convexHullPeelingMedian`, which peels hulls away and returns the
+ * centre of what is left — a single point, not a cloud. [Cuboid] is a separate plain 3D
+ * box-with-size type used for layout-style union / inset / intersects work.
+ *
+ * These vector types are mutable and most operations mutate the receiver, so copy first
+ * (`Vec3(existing)`) when you need to keep the original. Swizzles and the *vector* `invoke`, `%=`
+ * and `len` operators are absent here: they are generated for every float vector into
+ * `Swizzles.kt` and `VectorOperators.kt` by `tools/linalg-generator`. `%=` for [Quat] and
+ * [DualQuat] is defined here, because no generator emits those.
+ */
+
+/**
+ * The vertices of the 3D convex hull, via QuickHull3D — the points on the outside, with the interior
+ * ones dropped.
+ *
+ * Vertices only, in the library's own order, with no faces or winding; and they are fresh [Vec3]s, not
+ * the receiver's instances. Fewer than four points, or a degenerate cloud QuickHull cannot triangulate
+ * (all coplanar, all collinear, duplicates), returns **the input unchanged** rather than throwing — so
+ * a result the same size as the input means "hull, or gave up", and the two are not distinguishable
+ * from the return value alone.
+ */
+fun List<Vec3>.convexHull(): List<Vec3> {
+    if (size < 4) return this.toList()  // Need at least 4 non-coplanar points
+    
+    val points = DoubleArray(size * 3)
+    for (i in indices) {
+        points[i * 3] = this[i].x.toDouble()
+        points[i * 3 + 1] = this[i].y.toDouble()
+        points[i * 3 + 2] = this[i].z.toDouble()
+    }
+    
+    return try {
+        val qh = QuickHull3D()
+        qh.build(points)
+        
+        val hullVerts = qh.vertices
+        hullVerts.map { Vec3(it[0].toFloat(), it[1].toFloat(), it[2].toFloat()) }
+    } catch (e: Exception) {
+        // If hull computation fails (coplanar points, etc.), return original
+        this.toList()
+    }
+}
+

@@ -14,6 +14,9 @@ description: |
   `PRESENTED` comes back after the fence — but current Chromium can export a dma-buf it never fills.
   The opt-in CPU bitmap fallback makes the browser usable while that upstream Electron issue remains.
   See dev_docs/external_browser_surfaces.md.
+docs:
+  - page: puppet_browser.md
+    why: "Explains Chromium as a native Field surface sampled by the renderer."
 operations:
   - create:
       box: field_ui_texture_renderer
@@ -21,19 +24,19 @@ operations:
       frame: { x: 140.0, y: 180.0, w: 350.0, h: 105.0 }
       properties:
         code: |
-          import afield.four.util.Options
-
+          import afield.graphics.vulkan.util.Options
+          
           prop<Window>(window)
           prop<Renderer>(renderer)
-
+          
           Options.enableHDR = false
           Options.profiling = false
-
+          
           once.renderer {
               window = Window("Field UI on a texture")
               Renderer(window)
           }
-
+          
           println("Field UI texture renderer ready")
           start(renderer::run)
   - create:
@@ -42,16 +45,16 @@ operations:
       frame: { x: 560.0, y: 180.0, w: 430.0, h: 105.0 }
       properties:
         code: |
-          import afield.four.browser.FieldUiBrowserTexture
-          import afield.four.browser.PuppetBrowser
-          import afield.four.browser.PuppetBrowserUvInput
-          import afield.four.browser.PuppetBrowserWindowInput
+          import afield.media.browser.FieldUiBrowserTexture
+          import afield.media.browser.PuppetBrowser
+          import afield.media.browser.PuppetBrowserUvInput
+          import afield.media.browser.PuppetBrowserWindowInput
+          import java.util.concurrent.CompletableFuture
           import kotlinx.serialization.json.JsonElement
           import kotlinx.serialization.json.buildJsonObject
           import kotlinx.serialization.json.put
-          import java.util.concurrent.CompletableFuture
 
-          prop<afield.four.browser.PuppetBrowser>(browserControl)
+          prop<afield.media.browser.PuppetBrowser>(browserControl)
           val browser = FieldUiBrowserTexture(
               renderer = renderer,
               url = FieldUiBrowserTexture.fieldDocumentUrl(thisBox),
@@ -59,20 +62,23 @@ operations:
               height = 720,
               readyBoxUid = thisBox.id,
               // Linux: Chromium's shared-texture export never fills the buffer (electron#53271).
-              cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired
+              cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired,
           )
           browserControl = browser
           val interaction = PuppetBrowserWindowInput(browser, renderer.window)
           val scriptedInput = PuppetBrowserUvInput(browser)
-          val removeReadyBridge = browser.onPageRequest("field-ready") { payload ->
-              println("Field UI page called Field: $payload")
-              CompletableFuture.completedFuture<JsonElement>(buildJsonObject {
-                  put("accepted", true)
-                  put("echo", payload)
-              })
-          }
+          val removeReadyBridge =
+              browser.onPageRequest("field-ready") { payload ->
+                  println("Field UI page called Field: $payload")
+                  CompletableFuture.completedFuture<JsonElement>(
+                      buildJsonObject {
+                          put("accepted", true)
+                          put("echo", payload)
+                      },
+                  )
+              }
           renderer.renderList.preTargets["field-ui-browser-upload"] =
-              afield.four.Target { command, _ -> browser.prepareSampledImagesFor(command) }
+              afield.graphics.vulkan.Target { command, _ -> browser.prepareSampledImagesFor(command) }
 
           val material = moduleHere {
               textures("fieldUi" to browser)
@@ -83,10 +89,18 @@ operations:
 
           panel.set(4, 2) {
               pos.add(
-                  -0.96, -0.96, 0.0,
-                   0.96, -0.96, 0.0,
-                   0.96,  0.96, 0.0,
-                  -0.96,  0.96, 0.0
+                  -0.96,
+                  -0.96,
+                  0.0,
+                  0.96,
+                  -0.96,
+                  0.0,
+                  0.96,
+                  0.96,
+                  0.0,
+                  -0.96,
+                  0.96,
+                  0.0,
               )
               tc.add(0, 0, 1, 0, 1, 1, 0, 1)
               tri.add(0, 1, 2, 0, 2, 3)
@@ -97,7 +111,9 @@ operations:
               if (!announced && browser.pageReady) {
                   announced = true
                   println("Field UI browser texture is live: ${browser.presentedFrame}")
-                  browser.evaluate("""
+                  browser
+                      .evaluate(
+                          """
                       new Promise((resolve, reject) => {
                           const deadline = Date.now() + 10000
                           const prepare = () => {
@@ -119,8 +135,11 @@ operations:
                           }
                           prepare()
                       })
-                  """).thenCompose {
-                      browser.evaluate("""
+                  """,
+                      )
+                      .thenCompose {
+                          browser.evaluate(
+                              """
                       (() => {
                           const probe = document.createElement("input")
                           probe.id = "field-puppet-input-probe"
@@ -128,15 +147,19 @@ operations:
                           document.body.appendChild(probe)
                           return true
                       })()
-                      """)
-                  }.thenCompose {
-                      scriptedInput.move(40.0 / scriptedInput.cssWidth, 28.0 / scriptedInput.cssHeight)
-                      scriptedInput.down()
-                      scriptedInput.up()
-                      browser.insertText("always available in VR")
-                      browser.flushInput()
-                  }.thenCompose {
-                      browser.evaluate("""
+                      """,
+                          )
+                      }
+                      .thenCompose {
+                          scriptedInput.move(40.0 / scriptedInput.cssWidth, 28.0 / scriptedInput.cssHeight)
+                          scriptedInput.down()
+                          scriptedInput.up()
+                          browser.insertText("always available in VR")
+                          browser.flushInput()
+                      }
+                      .thenCompose {
+                          browser.evaluate(
+                              """
                           (() => {
                               const probe = document.getElementById("field-puppet-input-probe")
                               const input = probe.value
@@ -147,20 +170,23 @@ operations:
                                   input
                               })
                           })()
-                      """)
-                  }.whenComplete { result, error ->
-                      if (error == null) println("Puppet page/Field/JavaScript round trip: ${result.value}")
-                      else error.printStackTrace()
-                  }
+                      """,
+                          )
+                      }
+                      .whenComplete { result, error ->
+                          if (error == null) println("Puppet page/Field/JavaScript round trip: ${result.value}")
+                          else error.printStackTrace()
+                      }
               }
               frame()
-          }.end {
-              renderer.renderList.modules.remove("field-ui-browser-texture")
-              renderer.renderList.preTargets.remove("field-ui-browser-upload")
-              removeReadyBridge()
-              interaction.close()
-              browser.close()
           }
+              .end {
+                  renderer.renderList.modules.remove("field-ui-browser-texture")
+                  renderer.renderList.preTargets.remove("field-ui-browser-upload")
+                  removeReadyBridge()
+                  interaction.close()
+                  browser.close()
+              }
         vertex: |
           #version 450
           layout(location = 0) in vec3 pos;
@@ -187,19 +213,19 @@ operations:
       type: code
       strand: renderer
       code: |
-        import afield.four.util.Options
-
+        import afield.graphics.vulkan.util.Options
+        
         prop<Window>(window)
         prop<Renderer>(renderer)
-
+        
         Options.enableHDR = false
         Options.profiling = false
-
+        
         once.renderer {
             window = Window("Field UI on a texture")
             Renderer(window)
         }
-
+        
         println("Field UI texture renderer ready")
         start(renderer::run)
   - wait: { frames: 3 }
@@ -209,16 +235,16 @@ operations:
       type: code
       strand: browser-texture
       code: |
-        import afield.four.browser.FieldUiBrowserTexture
-        import afield.four.browser.PuppetBrowser
-        import afield.four.browser.PuppetBrowserUvInput
-        import afield.four.browser.PuppetBrowserWindowInput
+        import afield.media.browser.FieldUiBrowserTexture
+        import afield.media.browser.PuppetBrowser
+        import afield.media.browser.PuppetBrowserUvInput
+        import afield.media.browser.PuppetBrowserWindowInput
+        import java.util.concurrent.CompletableFuture
         import kotlinx.serialization.json.JsonElement
         import kotlinx.serialization.json.buildJsonObject
         import kotlinx.serialization.json.put
-        import java.util.concurrent.CompletableFuture
 
-        prop<afield.four.browser.PuppetBrowser>(browserControl)
+        prop<afield.media.browser.PuppetBrowser>(browserControl)
         val browser = FieldUiBrowserTexture(
             renderer = renderer,
             url = FieldUiBrowserTexture.fieldDocumentUrl(thisBox),
@@ -226,20 +252,23 @@ operations:
             height = 720,
             readyBoxUid = thisBox.id,
             // Linux: Chromium's shared-texture export never fills the buffer (electron#53271).
-            cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired
+            cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired,
         )
         browserControl = browser
         val interaction = PuppetBrowserWindowInput(browser, renderer.window)
         val scriptedInput = PuppetBrowserUvInput(browser)
-        val removeReadyBridge = browser.onPageRequest("field-ready") { payload ->
-            println("Field UI page called Field: $payload")
-            CompletableFuture.completedFuture<JsonElement>(buildJsonObject {
-                put("accepted", true)
-                put("echo", payload)
-            })
-        }
+        val removeReadyBridge =
+            browser.onPageRequest("field-ready") { payload ->
+                println("Field UI page called Field: $payload")
+                CompletableFuture.completedFuture<JsonElement>(
+                    buildJsonObject {
+                        put("accepted", true)
+                        put("echo", payload)
+                    },
+                )
+            }
         renderer.renderList.preTargets["field-ui-browser-upload"] =
-            afield.four.Target { command, _ -> browser.prepareSampledImagesFor(command) }
+            afield.graphics.vulkan.Target { command, _ -> browser.prepareSampledImagesFor(command) }
 
         val material = moduleHere {
             textures("fieldUi" to browser)
@@ -250,10 +279,18 @@ operations:
 
         panel.set(4, 2) {
             pos.add(
-                -0.96, -0.96, 0.0,
-                 0.96, -0.96, 0.0,
-                 0.96,  0.96, 0.0,
-                -0.96,  0.96, 0.0
+                -0.96,
+                -0.96,
+                0.0,
+                0.96,
+                -0.96,
+                0.0,
+                0.96,
+                0.96,
+                0.0,
+                -0.96,
+                0.96,
+                0.0,
             )
             tc.add(0, 0, 1, 0, 1, 1, 0, 1)
             tri.add(0, 1, 2, 0, 2, 3)
@@ -264,7 +301,9 @@ operations:
             if (!announced && browser.pageReady) {
                 announced = true
                 println("Field UI browser texture is live: ${browser.presentedFrame}")
-                browser.evaluate("""
+                browser
+                    .evaluate(
+                        """
                     new Promise((resolve, reject) => {
                         const deadline = Date.now() + 10000
                         const prepare = () => {
@@ -286,8 +325,11 @@ operations:
                         }
                         prepare()
                     })
-                """).thenCompose {
-                    browser.evaluate("""
+                """,
+                    )
+                    .thenCompose {
+                        browser.evaluate(
+                            """
                     (() => {
                         const probe = document.createElement("input")
                         probe.id = "field-puppet-input-probe"
@@ -295,15 +337,19 @@ operations:
                         document.body.appendChild(probe)
                         return true
                     })()
-                    """)
-                }.thenCompose {
-                    scriptedInput.move(40.0 / scriptedInput.cssWidth, 28.0 / scriptedInput.cssHeight)
-                    scriptedInput.down()
-                    scriptedInput.up()
-                    browser.insertText("always available in VR")
-                    browser.flushInput()
-                }.thenCompose {
-                    browser.evaluate("""
+                    """,
+                        )
+                    }
+                    .thenCompose {
+                        scriptedInput.move(40.0 / scriptedInput.cssWidth, 28.0 / scriptedInput.cssHeight)
+                        scriptedInput.down()
+                        scriptedInput.up()
+                        browser.insertText("always available in VR")
+                        browser.flushInput()
+                    }
+                    .thenCompose {
+                        browser.evaluate(
+                            """
                         (() => {
                             const probe = document.getElementById("field-puppet-input-probe")
                             const input = probe.value
@@ -314,17 +360,20 @@ operations:
                                 input
                             })
                         })()
-                    """)
-                }.whenComplete { result, error ->
-                    if (error == null) println("Puppet page/Field/JavaScript round trip: ${result.value}")
-                    else error.printStackTrace()
-                }
+                    """,
+                        )
+                    }
+                    .whenComplete { result, error ->
+                        if (error == null) println("Puppet page/Field/JavaScript round trip: ${result.value}")
+                        else error.printStackTrace()
+                    }
             }
             frame()
-        }.end {
-            renderer.renderList.modules.remove("field-ui-browser-texture")
-            renderer.renderList.preTargets.remove("field-ui-browser-upload")
-            removeReadyBridge()
-            interaction.close()
-            browser.close()
         }
+            .end {
+                renderer.renderList.modules.remove("field-ui-browser-texture")
+                renderer.renderList.preTargets.remove("field-ui-browser-upload")
+                removeReadyBridge()
+                interaction.close()
+                browser.close()
+            }

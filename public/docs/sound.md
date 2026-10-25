@@ -1,11 +1,13 @@
 # Sound: from a pattern to something you can hear
 
-`pat("bd ~ sd ~")` is a schedule. It says *kick, rest, snare, rest* and it says exactly
-when — but a schedule makes no sound. Something has to turn each event into samples.
+Boxes make sound too. Write `pat("bd ~ sd ~")` in one and you have a beat: kick, rest, snare,
+rest, round and round. This stop follows that one line until you can hear it — first through a
+small synthesiser built into Field, then through real drum samples — and then runs the path
+backwards, from a recording to a pattern you can play again.
 
-This page follows one pattern through the two voices that render it without an audio device: a
-small built-in synthesiser, and the Tidal drum library if you have it installed. Every audio figure
-below says which of them produced it.
+A pattern on its own is only a schedule. It says what happens and exactly when, but it makes no
+sound; something has to turn each event into samples. Nothing on this page needs an audio device:
+every figure is rendered to a file you can play right here, and each one says which voice made it.
 
 Other pages cover the other voices. A pattern can play a
 [Faust program](faust.md#a-pattern-plays-it) as a polyphonic instrument, or be placed in space with
@@ -83,7 +85,7 @@ value when it parses as a MIDI number, and otherwise from a drum map with five e
 `showPatAudio(pattern)` renders through it and drops an audio player into the box's output.
 Here is the beat:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/sound_render_path/beat-stand-in.wav" audio-spec="beat-stand-in" audio-renderer="afield.four.synth.SoundRenderPathDocs" embed=true hidden=true name="sound-doc-beat-stand-in"}
+```diffstatic_runner {data-lang=kotlin audio="assets/sound_render_path/beat-stand-in.wav" audio-spec="beat-stand-in" audio-renderer="afield.audio.synth.SoundRenderPathDocs" embed=true hidden=true name="sound-doc-beat-stand-in"}
 // showPatAudio(pat("bd ~ sd ~, hh*8") with gain(0.9))
 // offline-rendered through patVoice by SoundRenderPathDocs — listen below
 ```
@@ -98,14 +100,14 @@ every machine, every time.
 
 ## The real samples
 
-`DirtRender` (`src/jvmMain/kotlin/afield/four/synth/DirtRender.kt`) is the other half.
+`DirtRender` (`src/jvmMain/kotlin/afield/audio/synth/DirtRender.kt`) is the other half.
 `DirtSamples.kt` plays the genuine Tidal sample set **live** and only live: `playDirt` needs
 `respondAhead`, a clock and an audio device, none of which exist in a docs build or a headless
 box. `patRenderStereoDirt` mixes the same library straight into a buffer instead.
 
 The same beat, the same ten events a cycle, the same `gain` / `pan` / `speed` annotations:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/sound_render_path/beat-dirt.wav" audio-spec="beat-dirt" audio-renderer="afield.four.synth.SoundRenderPathDocs" embed=true hidden=true name="sound-doc-beat-dirt"}
+```diffstatic_runner {data-lang=kotlin audio="assets/sound_render_path/beat-dirt.wav" audio-spec="beat-dirt" audio-renderer="afield.audio.synth.SoundRenderPathDocs" embed=true hidden=true name="sound-doc-beat-dirt"}
 // showDirtAudio(pat("bd ~ sd ~, hh*8") with gain(0.9))
 // offline-rendered from the Dirt-Samples quark by SoundRenderPathDocs — listen below
 ```
@@ -153,10 +155,12 @@ mixed on top of the sampled ones, and `DirtRenderResult.unmatched` names them.
 Dirt install and `zzzznotadrum` is in none. You can hear where the join falls: three sampled
 drums and one square-wave blip, in one bar.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/sound_render_path/per-event-fallback.wav" audio-spec="per-event-fallback" audio-renderer="afield.four.synth.SoundRenderPathDocs" embed=true hidden=true name="sound-doc-per-event-fallback"}
-// showDirtAudio(pat("bd zzzznotadrum bd hh") with gain(0.9),
-//               voice = patVoice(wave = PatWave.SQUARE, baseHz = 330.0, ...))
-// offline-rendered by SoundRenderPathDocs — listen below
+```diffstatic_runner {data-lang=kotlin audio="assets/sound_render_path/per-event-fallback.wav" audio-spec="per-event-fallback" audio-renderer="afield.audio.synth.SoundRenderPathDocs" embed=true hidden=true name="sound-doc-per-event-fallback"}
+/*
+showDirtAudio(pat("bd zzzznotadrum bd hh") with gain(0.9),
+              voice = patVoice(wave = PatWave.SQUARE, baseHz = 330.0, ...))
+offline-rendered by SoundRenderPathDocs — listen below
+*/
 ```
 
 **Voice: real Dirt-Samples where the library had the token, the stand-in synth per event where it did not.**
@@ -206,7 +210,7 @@ showPatAudio(pat("bd ~ sd ~, hh*8") with gain(0.9))
 
 // the real thing — same shape, same annotations
 val played = showDirtAudio(pat("bd ~ sd ~, hh*8") with gain(0.9))
-println(played.describe())          // say which voice you actually got
+println(played.describe()) // say which voice you actually got
 ```
 
 Both put a player in the box's output. `showPatAudio` hands back the rendered
@@ -246,7 +250,7 @@ transcribing when the first pass says the material is not one line.
 It does not promise a correct answer, but it never gives a wrong one silently: a wrong output
 carries a warning that says where it is wrong. Check the warnings before you trust the result.
 
-To try it, open the [pitch_transcription_roundtrip](agent_transcripts.md) starting point.
+To try it, open the [`pitch_transcription_roundtrip`](agent_transcripts.md#pitch_transcription_roundtrip) starting point.
 
 ### What that looks like
 
@@ -264,7 +268,9 @@ cents. The bars sit on the outlines, and in the third panel they sit off them by
 Splitting audio into notes is harder. The two ways of finding where a note starts fail on
 opposite material. A flat-envelope Dough render has no energy transients to cut on
 (energy recall 0.13) but clean pitch steps (0.86); a line that strikes each pitch
-twice has the transients but no pitch change at half of them (energy 0.13, pitch 0.81, 0.88 merged):
+twice has transients at every note but no pitch change at half of them. Field's pitch detector
+still finds most of those at the dip where the note is struck again (energy 0.00, pitch 0.88, 0.88
+merged), and merging the two never loses a note start the pitch detector found:
 
 ![Two panels: a legato Dough render where the energy detector finds almost nothing while the pitch steps are clean, and a repeated-pitch line where the reverse holds](assets/pat_transcription/pat-transcription-opposite-failures.svg)
 
@@ -276,7 +282,7 @@ wrong one:
 
 ![Three panels: a chord triad recovering zero of twelve notes and emitting pat tilde, a fast line recovering 23 of 32 when told its register, and the same audio recovering zero of 32 when not told, its whole span struck out by a declined band](assets/pat_transcription/pat-transcription-refusals-and-limits.svg)
 
-??? aside "Regenerating the transcription figures"
+??? aside "Agents: regenerating the transcription figures"
     The three figures above come from the `synth.pat.transcription` smoke test:
 
     ```diffstatic {data-lang=bash}
@@ -286,7 +292,7 @@ wrong one:
 
 <a id="what-a-voice-caption-promises"></a>
 
-??? aside "Where the \"Voice:\" captions come from"
+??? aside "Agents: where the \"Voice:\" captions come from"
     The *"Voice: …"* captions on this page are written by the docs build, not by hand. A clip
     captioned as the stand-in has to match a fresh synth render, and one captioned as real samples
     has to *not* match one. That shows an asset did not come from the synth; it does not show it

@@ -1,5 +1,8 @@
 # Generated from dmx_lighting_demo/metadata.edn by afield.examples.DocumentToTranscript.
 name: "dmx_lighting_demo"
+docs:
+  - page: dmx_lighting.md
+    why: "Explains driving lights over Art-Net and sACN as this document does."
 operations:
   - create:
       box: "dmx-receiver"
@@ -8,12 +11,12 @@ operations:
       properties:
         "autorun": false
         "code": |
-          import afield.dmx.*
-
+          import afield.io.dmx.*
+          
           // Field as an Art-Net node: listen on UDP 6454, merge what arrives (HTP), answer ArtPoll.
           // Launch this first, then launch the sender. Stopping this box closes the socket.
           val input = artnetIn()
-
+          
           // Redraw the two received universes as RGB cells whenever new data has arrived.
           var seen = -1L
           loop {
@@ -31,7 +34,7 @@ operations:
       properties:
         "autorun": false
         "code": |
-          import afield.dmx.*
+          import afield.io.dmx.*
 
           // 200 RGB pixels of LED tape stuck along a curve. 170 fit in universe 1 (510 slots);
           // the patch rolls the other 30 into universe 2 by itself.
@@ -45,9 +48,11 @@ operations:
           // A colour field over (x, y, t), evaluated on the DMX sender's own 44 Hz clock.
           patch.animate(out) { t ->
               map(t) { x, y, time ->
-                  vec(0.5 + 0.5 * sin(x * 0.03 - time * 2.0),
+                  vec(
+                      0.5 + 0.5 * sin(x * 0.03 - time * 2.0),
                       0.5 + 0.5 * sin(x * 0.03 - time * 2.0 + 2.1),
-                      0.5 + 0.5 * sin(y * 0.03 + time))
+                      0.5 + 0.5 * sin(y * 0.03 + time),
+                  )
               }
           }
 
@@ -62,8 +67,8 @@ operations:
       properties:
         "autorun": false
         "code": |
-          import afield.dmx.*
-
+          import afield.io.dmx.*
+          
           // Art-Net discovery: send one ArtPoll and list every node that answers within a second.
           // With the receiver box running, Field itself answers. Try "255.255.255.255" on a real network.
           artPoll("127.0.0.1").forEach { println(it) }
@@ -74,7 +79,7 @@ operations:
       properties:
         "autorun": false
         "code": |
-          import afield.dmx.*
+          import afield.io.dmx.*
 
           // sACN (E1.31) out and back in, in one box: an image shown on a 16 x 8 matrix of RGBW fixtures.
           // 128 RGBW fixtures x 4 slots fill universe 10 exactly; the matrix is wired serpentine, as most are.
@@ -82,18 +87,23 @@ operations:
           patch.grid(16, 8, spacing = 10.0, profile = FixtureProfile.RGBW, serpentine = true)
 
           // Any Img will do (imgFromFile("...") for a file); here a small gradient made in place.
-          val img = Img(64, 32, 3, FloatArray(64 * 32 * 3) { i ->
-              val x = (i / 3) % 64 / 63f
-              val y = (i / 3) / 64 / 31f
-              when (i % 3) {
-                  0 -> x
-                  1 -> y
-                  else -> 1f - x
-              }
-          })
+          val img = Img(
+              64,
+              32,
+              3,
+              FloatArray(64 * 32 * 3) { i ->
+                  val x = (i / 3) % 64 / 63f
+                  val y = (i / 3) / 64 / 31f
+                  when (i % 3) {
+                      0 -> x
+                      1 -> y
+                      else -> 1f - x
+                  }
+              },
+          )
 
-          val out = sacnOut("127.0.0.1")   // host = null sends to multicast 239.255.0.10 instead
-          val node = sacnIn()              // Field as an sACN receiver on UDP 5568
+          val out = sacnOut("127.0.0.1") // host = null sends to multicast 239.255.0.10 instead
+          val node = sacnIn() // Field as an sACN receiver on UDP 5568
 
           // On the sender's clock: sample the image, then sweep a wave of brightness across it.
           patch.animate(out) { t ->

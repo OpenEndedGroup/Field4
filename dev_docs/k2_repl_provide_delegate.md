@@ -197,8 +197,8 @@ provider — so the radius is *unbounded from Field's side* and includes user co
 Within Field's own published API the enumeration is complete and small. `operator fun
 provideDelegate` is declared by exactly two production types:
 
-- `KeyCameraDelegateProvider` — `src/jvmMain/kotlin/afield/four/util/KeyCamera.kt:331`
-- `OrbitControlsDelegateProvider` — `src/jvmMain/kotlin/afield/four/util/OrbitControls.kt:306`
+- `KeyCameraDelegateProvider` — `src/jvmMain/kotlin/afield/graphics/vulkan/util/KeyCamera.kt:331`
+- `OrbitControlsDelegateProvider` — `src/jvmMain/kotlin/afield/graphics/vulkan/util/OrbitControls.kt:306`
 
 Each is reachable through exactly one factory, and I checked explicitly for the wrapper trap that
 has bitten this project before — there is **no** `inline`, `reified`, or `typealias` wrapper around
@@ -367,6 +367,7 @@ println("REACHED-RUNTIME abcd=" + abcd)
 
 ## Demo document
 
-`metadata_store/provide_delegate_defect/metadata.edn` — open that document in Field and run its
+The historical `provide_delegate_defect` document was archived with the retired example store
+in October 2026. Its original manual procedure was to run its
 three boxes top to bottom. They show, side by side, the broken idiom, the working control, and the
 workaround. The document predates both fixes: box 1 now compiles and runs, so its comments are stale.

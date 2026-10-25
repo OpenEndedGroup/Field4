@@ -87,8 +87,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIELD_SH = REPO_ROOT / "field.sh"
 FIELD_PS1 = REPO_ROOT / "field.ps1"
-SERVER_KT = REPO_ROOT / "src" / "jvmMain" / "kotlin" / "afield" / "Server.kt"
-SAVING_KT = REPO_ROOT / "src" / "jvmMain" / "kotlin" / "afield" / "saving.kt"
+SERVER_KT = REPO_ROOT / "src" / "jvmMain" / "kotlin" / "afield" / "app" / "server" / "Server.kt"
+SAVING_KT = REPO_ROOT / "src" / "jvmMain" / "kotlin" / "afield" / "document" / "persistence" / "saving.kt"
 
 # The shells `field.sh` has to satisfy. `#!/bin/sh` names the first; AGENTS.md and README.md hand
 # the command to humans, whose interactive shell is bash or zsh on the machines this ships to; dash
@@ -203,7 +203,9 @@ class FieldShSandbox:
         ).hexdigest(), "the sandbox copy of field.sh is not the shipped field.sh"
 
         # ensure_graalvm_toolchain reads this even when provisioning is skipped on some paths.
-        (self.checkout / "build.gradle.kts").write_text('val graalvmVersion = "25.0.2"\n')
+        (self.checkout / "build.gradle.kts").write_text(
+            'val graalvmVersion = "25.4.4.1.1"\nval graalvmJdkBuild = "25i4-25.0.4.1.1"\n'
+        )
         gradlew = self.checkout / "gradlew"
         gradlew.write_text("#!/bin/sh\necho \"stub gradlew $*\"\n")
         gradlew.chmod(0o755)
@@ -248,6 +250,10 @@ class FieldShSandbox:
     @property
     def preference_file(self) -> Path:
         return self.home / ".afield" / "last-workspace.txt"
+
+    @property
+    def checkout_preference_file(self) -> Path:
+        return self.checkout / ".afield-local" / "last-workspace.txt"
 
     def run(
         self,
@@ -390,6 +396,8 @@ class FieldShLauncherTests(unittest.TestCase):
         for fragment in (
             'INVOKED_FROM="$PWD"',
             'WORKSPACE_PREFERENCE_FILE="$HOME/.afield/last-workspace.txt"',
+            'CHECKOUT_WORKSPACE_PREFERENCE_FILE="$DIR/.afield-local/last-workspace.txt"',
+            'export AFIELD_WORKSPACE_PREFERENCE_FILE="$CHECKOUT_WORKSPACE_PREFERENCE_FILE"',
             "--print-workspace",
             "resolve_workspace_request()",
             "is_document_dir()",
@@ -580,9 +588,29 @@ class FieldShLauncherTests(unittest.TestCase):
             result = sandbox.run(shell, "--print-workspace")
             self.assertEqual(result.stdout.strip(), str(sandbox.workspace))
             result = sandbox.run(shell)
-            self.assertIn("last used, per", result.stderr)
+            self.assertIn("last used on this machine, per", result.stderr)
         finally:
             sandbox.preference_file.unlink()
+
+    def test_this_checkouts_record_wins_over_the_machine_wide_one(self) -> None:
+        """The record is per checkout: a sibling worktree's last launch, which wrote the machine-wide
+        file before this change, must not decide what this checkout opens once it has its own."""
+        sandbox = self.sandbox
+        shell = _resolved_shells()["sh"]
+        elsewhere = sandbox.plain_directory
+        sandbox.preference_file.parent.mkdir(parents=True, exist_ok=True)
+        sandbox.checkout_preference_file.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            sandbox.preference_file.write_text(f"{elsewhere}\n")
+            sandbox.checkout_preference_file.write_text(f"{sandbox.workspace}\n")
+            result = sandbox.run(shell, "--print-workspace")
+            self.assertEqual(result.stdout.strip(), str(sandbox.workspace))
+            result = sandbox.run(shell)
+            self.assertIn("last used by this checkout, per", result.stderr)
+            self.assertIn(str(sandbox.checkout_preference_file), result.stderr)
+        finally:
+            sandbox.preference_file.unlink()
+            sandbox.checkout_preference_file.unlink()
 
     def test_naming_a_document_opens_it_and_says_so(self) -> None:
         """This used to print "open docA from the welcome page once the window is up" — an apology
@@ -646,7 +674,7 @@ class FieldShLauncherTests(unittest.TestCase):
             for shell_name, shell in _resolved_shells().items():
                 with self.subTest(shell=shell_name):
                     result = sandbox.run(shell, "-d", "docA")
-                    self.assertIn("last used, per", result.stderr)
+                    self.assertIn("last used on this machine, per", result.stderr)
                     self.assertEqual(sandbox.backend_argv(), ["--document", "docA"])
         finally:
             sandbox.preference_file.unlink()

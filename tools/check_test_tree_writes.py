@@ -6,7 +6,7 @@ the somewhere kept being the repository. Three separate rounds of that bug are o
 
 1. Relative-path proof writes (``File("sparkline-proof")``, ``File("chebyshev-proof.svg")``),
    which landed junk in whatever tree the suite ran in — every nightly agent worktree included.
-   Fixed by ``proofDir()`` in ``src/jvmTest/kotlin/afield/TestProofDir.kt``.
+   Fixed by ``proofDir()`` in ``src/jvmTest/kotlin/afield/tools/docs/TestProofDir.kt``.
 2. ``ArraySparklineVisualizerTest``, the same thing again in a class the first fix missed.
 3. ``ValueVisualizerDocCaptureTest`` and ``VectorAlgebraDocCaptureTest``, which wrote their
    docs-capture PNGs straight into ``public/docs/assets/…`` on every ``./gradlew jvmTest``, so a
@@ -388,7 +388,7 @@ def report(findings: Sequence[Finding], escapes: Dict[str, Tuple[str, ...]], lab
         "",
         "A test must not write into the repository it is running in. Render into a temp directory"
         " and inspect it there — see proofDir()/docsAssetDir() in"
-        " src/jvmTest/kotlin/afield/TestProofDir.kt — or, if the artifact really is a committed one,"
+        " src/jvmTest/kotlin/afield/tools/docs/TestProofDir.kt — or, if the artifact really is a committed one,"
         " gate the write behind an opt-in variable and register it in tools/check_test_tree_writes.py.",
         "",
     ]

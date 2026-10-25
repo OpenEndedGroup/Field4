@@ -3,7 +3,7 @@
  * Demonstrates various Kotlin features for compiler testing.
  */
 
-import kotlin.math.*
+
 import kotlin.random.Random
 
 // Type alias

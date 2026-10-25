@@ -1,10 +1,13 @@
-import afield.four.Renderer
-import afield.four.util.Window
-import afield.four.buffers.FrameBufferGroup
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.buffers.FrameBufferGroup
 import arrow.core.right
 import arrow.core.left
-import afield.four.modules.*
-import afield.four.buffers.*
+import afield.graphics.shader.*
+import afield.graphics.scene.*
+import afield.graphics.render.*
+import afield.document.context.*
+import afield.graphics.vulkan.buffers.*
 /*start*/
 /*compute-structure-type:inData:InData*/
 class InData(
@@ -14,7 +17,7 @@ class InData(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var a by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var a by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun InDataByteSize(): Long = 16L
 fun InDataLayoutMembers(): List<Introspected.Member> =
@@ -35,7 +38,7 @@ class OutData(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var a by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var a by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun OutDataByteSize(): Long = 16L
 fun OutDataLayoutMembers(): List<Introspected.Member> =
@@ -76,7 +79,7 @@ class FieldProbeBuffer(
     var maxOrderedY by Structure.FromStructure<UInt>()
     var maxOrderedZ by Structure.FromStructure<UInt>()
     var maxOrderedW by Structure.FromStructure<UInt>()
-    var samples by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var samples by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun FieldProbeBufferByteSize(): Long = 4194384L
 fun FieldProbeBufferLayoutMembers(): List<Introspected.Member> =
@@ -109,14 +112,17 @@ fun BufferParameters.asFieldProbeBuffer(): FieldProbeBuffer =
     buffer.asFieldProbeBuffer()
 /*end*/
 /*compute-pc-structure:inData*/ var Structure.inData by Structure.FromStructure<Any>()
-/*compute-pc-binding:inData*/ var ComputeMesh.inData by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*compute-pc-binding-group:inData*/ var ComputeMeshGroup.inData by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*compute-pc-binding:inData*/ var ComputeMesh.inData by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-pc-binding-group:inData*/ var ComputeMeshGroup.inData by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*compute-pc-structure:outData*/ var Structure.outData by Structure.FromStructure<Any>()
-/*compute-pc-binding:outData*/ var ComputeMesh.outData by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*compute-pc-binding-group:outData*/ var ComputeMeshGroup.outData by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*compute-pc-binding:outData*/ var ComputeMesh.outData by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-pc-binding-group:outData*/ var ComputeMeshGroup.outData by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*compute-pc-structure:something*/ var Structure.something by Structure.FromStructure<Any>()
-/*compute-pc-binding:something*/ var ComputeMesh.something by ComputeMesh.BoundFromStructure<Float>()
-/*compute-pc-binding-group:something*/ var ComputeMeshGroup.something by ComputeMeshGroup.BoundFromStructure<Float>()
+/*compute-pc-binding:something*/ var ComputeMesh.something by ComputeMesh.BoundFromStructure<Number>()
+/*compute-pc-binding-group:something*/ var ComputeMeshGroup.something by ComputeMeshGroup.BoundFromStructure<Number>()
+/*compute-pc-structure:particleCount*/ var Structure.particleCount by Structure.FromStructure<Any>()
+/*compute-pc-binding:particleCount*/ var ComputeMesh.particleCount by ComputeMesh.BoundFromStructure<Any>()
+/*compute-pc-binding-group:particleCount*/ var ComputeMeshGroup.particleCount by ComputeMeshGroup.BoundFromStructure<Any>()
 /*compute-ssbo:FieldProbeBuffer*/ val ComputeModulePointer.FieldProbeBuffer by ComputeMesh.FromUniform()
 var Box.outputPositions by Inheritance<FrameBufferGroup>() /**/
 val Once.outputPositions by Onceing<FrameBufferGroup>() /**/

@@ -1,19 +1,19 @@
 package afield.examples.four
 
-import afield.four.Renderer
-import afield.four.imgui.ImGuiPanel
-import afield.four.imgui.ImGuiRenderToTexture
-import afield.four.modules.Mesh
-import afield.four.modules.Module
-import afield.four.modules.parameters
-import afield.four.modules.pointer
-import afield.four.targets.SideBySideStereoTarget
-import afield.four.texture.TextureSampler
-import afield.four.util.Window
-import afield.four.util.updateForever
-import afield.stdlib.fromViews
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.imgui.ImGuiPanel
+import afield.graphics.vulkan.imgui.ImGuiRenderToTexture
+import afield.graphics.render.Mesh
+import afield.graphics.render.Module
+import afield.graphics.render.parameters
+import afield.graphics.render.pointer
+import afield.graphics.vulkan.targets.SideBySideStereoTarget
+import afield.graphics.texture.TextureSampler
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.util.updateForever
+import afield.graphics.shader.fromViews
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
 import imgui.ImGui
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -74,9 +74,7 @@ class ImGuiVrPanelDemo(
     private val panelDistance = 1.5f
 
     fun build() {
-        // Eyes at the origin looking down +Z, up = +Y. With this pose the camera-right vector is +X,
-        // so world +X maps to screen-right and the ImGui text reads correctly (looking down -Z instead
-        // mirrors +X to screen-left, which flips the panel horizontally). The panel sits at z = +distance.
+        // Eyes at the origin looking down +Z, up = +Y. The panel sits at z = +distance and faces them.
         sbs.stereoCamera.base.at.set(0f, 0f, 0f)
         sbs.stereoCamera.base.target.set(0f, 0f, 1f)
 
@@ -86,7 +84,6 @@ class ImGuiVrPanelDemo(
             parameters = {
                 width = 2048
                 height = 2048
-                clearFirst = true
                 format = VK_FORMAT_B8G8R8A8_SRGB
                 mipLevels = 4
             },
@@ -137,10 +134,10 @@ class ImGuiVrPanelDemo(
         val uvs = floatArrayOf(0f, 0f, 0f, 1f, 1f, 1f, 1f, 0f)
         val indices = intArrayOf(0, 1, 2, 0, 2, 3)
 
-        // Place the panel `panelDistance` in front of the eyes, upright (+x right, +y up). Rebinding it
-        // to a hand later is just another place(handPos, handRight, handUp) call each frame.
+        // Place the panel `panelDistance` in front of the eyes, facing them and upright: faceToward reads
+        // correctly from wherever the eye is. Rebinding it to a hand is a place(...) call each frame.
         panel = ImGuiPanel(imgui, halfW, halfH)
-        panel.place(Vector3f(0f, 0f, panelDistance), Vector3f(1f, 0f, 0f), Vector3f(0f, 1f, 0f))
+        panel.faceToward(Vector3f(0f, 0f, panelDistance), Vector3f(0f, 0f, 0f))
 
         val sampler = TextureSampler(renderer, mipLevels = 4, anisotropyEnable = true)
 
@@ -233,7 +230,7 @@ class ImGuiVrPanelDemo(
     /**
      * Verification loop: aim the mock controller straight at the panel centre, render a warm-up of
      * frames, then grab the *live macOS window* with `screencapture` (the same tool doc.kt uses for
-     * afield.four window shots). We deliberately avoid the Vulkan swapchain readback here because that
+     * Field 4 window shots). We deliberately avoid the Vulkan swapchain readback here because that
      * path is Y-flipped for our blitted content; screencapture records exactly what is on screen.
      */
     fun runCapture(outputPath: String) {

@@ -11,7 +11,7 @@ description: >
 
   To see it: replay this, click into either box's editor, put the caret at the end of the seeded
   prefix line and press Ctrl+Space (or Cmd+Space). Read the grey group header above the rows. The
-  headless regression cover for the same thing is `afield.FieldSuggestPresentationTest`
+  headless regression cover for the same thing is `afield.runtime.completion.FieldSuggestPresentationTest`
   (dev_docs/completion_popup_cover.md); this is the human-eyeball version of it, and the only version
   that also proves the CSS, Monaco and the real transport.
 
@@ -28,9 +28,11 @@ operations:
         h: 150.0
       properties:
         code: |
-          // Caret at the end of the next line, then Ctrl+Space.
-          // Every completion offered here is declared `@file:CompletionCategory("ALife")`, so the
-          // group header above the rows must read exactly "ALife".
+          /*
+          Caret at the end of the next line, then Ctrl+Space.
+          Every completion offered here is declared `@file:CompletionCategory("ALife")`, so the
+          group header above the rows must read exactly "ALife".
+          */
           lenia
   - create:
       box: agent_completion_header_audio_ai
@@ -42,13 +44,13 @@ operations:
         h: 150.0
       properties:
         code: |
-          // The import is load-bearing: nothing in the audioai package is in the REPL intro, so
-          // without it the popup correctly offers nothing here at all (measured, not guessed).
-          import afield.stdlib.noir.audioai.*
-
-          // Caret at the end of the next line, then Ctrl+Space.
-          // These come from `@file:CompletionCategory("Audio AI")`, so the group header must read
-          // exactly "Audio AI" — two capitals, no "Audio Ai".
+          /*
+          The import is load-bearing: nothing in the audioai package is in the REPL intro, so
+          without it the popup correctly offers nothing here at all (measured, not guessed).
+          Caret at the end of the next line, then Ctrl+Space.
+          These come from `@file:CompletionCategory("Audio AI")`, so the group header must read
+          exactly "Audio AI" — two capitals, no "Audio Ai".
+          */
           fieldAudio
   - wait:
       millis: 200

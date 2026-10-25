@@ -9,9 +9,13 @@ loop {
     goal = if ((frameNumber / 40) % 2 == 0) 1.0 else -1.0
     target += goal
     seen += eased()
+    if (target.size > 240) {
+        target.removeAt(0)
+        seen.removeAt(0)
+    }
     showSignals(
-        "goal" to target.takeLast(240),
-        "inertialTo" to seen.takeLast(240),
+        "goal" to target,
+        "inertialTo" to seen,
         title = "one value, chasing a square wave",
         xTitle = "frame",
     )

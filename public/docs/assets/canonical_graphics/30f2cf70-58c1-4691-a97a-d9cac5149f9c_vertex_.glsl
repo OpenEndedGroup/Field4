@@ -1,6 +1,6 @@
 #version 450
 
-{% include "vertex_included" %}
+{% property "vertex_included" %}
 
 layout (location = 0) out vec4 fcol;
 

@@ -1,7 +1,7 @@
 package afield.examples
 
-import afield.remotejs.KotlinJsHeadProfiles
-import afield.remotejs.KotlinToJsCompiler
+import afield.lang.remotejs.KotlinJsHeadProfiles
+import afield.lang.remotejs.KotlinToJsCompiler
 import java.io.File
 
 /*
@@ -122,7 +122,7 @@ object KotlinInTheHeadEvidence {
 
     private fun compileThroughProfile(
         source: String,
-        profile: afield.remotejs.KotlinJsHeadProfile,
+        profile: afield.lang.remotejs.KotlinJsHeadProfile,
         module: String,
     ): KotlinToJsCompiler.Result {
         val selection = KotlinJsHeadProfiles.resolve(source)

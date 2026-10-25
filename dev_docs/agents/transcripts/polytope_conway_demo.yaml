@@ -1,11 +1,14 @@
 name: polytope_conway_demo
 description: >
-  One editable Field box for the afield.stdlib.polytope vertical slice. It marks the two opposite
+  One editable Field box for the afield.geometry.polytope vertical slice. It marks the two opposite
   square faces of a cube with different height attributes, selects those faces, applies kis only
   there, and sends the resulting polygonal face FLines to Field's on-canvas Three.js viewer.
   Orbit the result, hover a face, or click it to inspect its output id, Conway provenance, source
   elements, and resolved non-uniform parameter. This deliberately compact worked example is
   the starting point for exploring the completed polytope vertical slice.
+docs:
+  - page: polytope_examples.md
+    why: "Explains polytope face selection and Conway operators used here."
 operations:
   - create:
       box: polytope_selective_kis
@@ -13,7 +16,6 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 400.0, h: 100.0 }
       properties:
         code: |
-
           // Topology is the source of truth. Coordinates and the FLine viewer only arrive after
           // selection and the abstract Conway operation have decided what the new faces are.
           var source = cube()
@@ -22,7 +24,7 @@ operations:
           // The first pair are the cube's opposite z faces. Attributes do both jobs here: `raise`
           // selects the domain of kis, while `height` is deployed independently over that domain.
           val raisedFaces = sourceFaces.take(2)
-          val raisedHeights = listOf(0.22, 0.68)
+          val raisedHeights = [0.22, 0.68]
           for (i in raisedFaces.indices) {
               source = source.withAttributes(
                   raisedFaces[i].id,
@@ -44,7 +46,8 @@ operations:
               transform = ${result.summary()}
               triangles = ${triangles.summary()}
               orbit the view; hover and click a face to inspect its lineage
-              """.trimIndent(),
+              """
+                  .trimIndent(),
           )
 
           val status: (String) -> Unit = { message -> markdown("face provenance", message) }
@@ -56,8 +59,7 @@ operations:
               val height = (attributes["height"] as? Number)?.toDouble()
               val lineage = result.lineage(face.id)
               val role = (lineage as? ElementLineage.Derived)?.role ?: "source"
-              val sources = result.sourceElements(face.id)
-                  .joinToString { "rank ${it.rank} / id ${it.id.value}" }
+              val sources = result.sourceElements(face.id).joinToString { "rank ${it.rank} / id ${it.id.value}" }
 
               line.filled = true
               line.stroked = true
@@ -78,7 +80,8 @@ operations:
                       - deployed height: `$deployed`
                       - source: $sources
                       - clicked at: `${hit.position}`
-                      """.trimIndent(),
+                      """
+                          .trimIndent(),
                   )
               }
           }
@@ -95,7 +98,7 @@ operations:
 
           // These are registered polytope value printers. They reduce the larger immutable objects
           // to public data-class summaries, then use Field's normal nested data-class visualizer.
-          viz("inspection", listOf(result, triangles))
+          viz("inspection", [result, triangles])
   - execute:
       box: polytope_selective_kis
   - wait:

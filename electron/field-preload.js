@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer, sharedTexture } = require("electron");
+const { contextBridge, ipcRenderer, sharedTexture, webUtils } = require("electron");
 
 const linuxDrawTimes = new Map();
 const frameKey = m => `${m.viewId}:${m.generation}:${m.slot}:${m.seq}`;
@@ -42,7 +42,27 @@ ipcRenderer.on("field4-rtt-error", (_, meta) => {
   if (label) label.textContent = "RTT view: " + meta.error;
 });
 
+ipcRenderer.on("field4-presentation-sources", (_, paths) => {
+  if (!Array.isArray(paths) || paths.length > 64 || !paths.every(path => typeof path === "string")) return;
+  window.dispatchEvent(new CustomEvent("field-presentation-sources", { detail: paths }));
+});
+ipcRenderer.on("field4-presentation-project", (_, paths) => {
+  if (!Array.isArray(paths) || paths.length > 64 || !paths.every(path => typeof path === "string")) return;
+  window.dispatchEvent(new CustomEvent("field-presentation-project", { detail: paths }));
+});
+
 contextBridge.exposeInMainWorld("fieldElectron", {
+  chooseKitFolder() { return ipcRenderer.invoke("field4-kit-folder"); },
+  filePath(file) { return webUtils.getPathForFile(file); },
+  presentGuide(state) {
+    ipcRenderer.send("field-presentation-native-state", state);
+  },
+  presentationTypeScript(request) {
+    return ipcRenderer.invoke("field-presentation-tsx", request);
+  },
+  identity() {
+    return ipcRenderer.invoke("field4-tab-identity");
+  },
   outputIframe(request) {
     return ipcRenderer.invoke("field4-live-output-iframe", request);
   },
@@ -52,6 +72,11 @@ contextBridge.exposeInMainWorld("fieldElectron", {
   // "granted" | "denied" | "restricted" | "not-determined" (macOS); always "granted" elsewhere.
   microphoneAccess() {
     return ipcRenderer.invoke("field4-microphone-access");
+  },
+  // Signs in to an aaaframe server in a Field-owned window and returns { ok, base, login, session }
+  // (see aaaframe-sign-in.js). `force` discards a remembered login first.
+  aaaframeSignIn(url, force = false) {
+    return ipcRenderer.invoke("field4-aaaframe-sign-in", { url, force });
   },
   diagnostic(event, details = {}) {
     ipcRenderer.send("field4-renderer-diagnostic", { event, details });

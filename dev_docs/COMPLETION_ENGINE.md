@@ -17,7 +17,7 @@ Current routing:
   `complete-kotlin-ai`, and `resolve-completion` RPCs.
 - Language extensions may still expose `provideCompletionItems(...)`, but
   FieldSuggest consumes those results and renders them in its own panel.
-- Server-side, `InfixCompletion` (`src/jvmMain/kotlin/afield/execution.kt`) resolves
+- Server-side, `InfixCompletion` (`src/jvmMain/kotlin/afield/runtime/execution/execution.kt`) resolves
   the operand type(s) after `receiver op <caret>` and boosts (`contextScore`)
   candidates whose return type matches. It is overload-aware: an operator overloaded
   on operand type (e.g. `Fn.over(Domain)` / `Fn.over(ClosedRange<*>)`) contributes the
@@ -56,7 +56,7 @@ Reflection discards comments, so the text is carried by hand, in three legs:
    a KDoc block: the preamble is line-oriented and keyed by the leading marker comment
    (`preambleLineKey`), and a shader author's text is arbitrary enough to close a KDoc it was pasted
    into.
-3. **Read back.** `ShaderBindingDocs` (`src/jvmMain/kotlin/afield/ShaderBindingDocs.kt`) parses the
+3. **Read back.** `ShaderBindingDocs` (`src/jvmMain/kotlin/afield/tools/docs/ShaderBindingDocs.kt`) parses the
    box's *inherited* preamble back into a lookup, which `completionFor` in `execution.kt` consults
    before the source-index KDoc lookups — the note is box-local and receiver-matched, so it should
    win over an index hit for a repository symbol that merely shares the name.

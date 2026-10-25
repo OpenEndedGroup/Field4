@@ -24,20 +24,25 @@ alternation is the rhythm. The example draws the net and prints the first few st
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/two_place_loop.png" alt="three stacked output channels. The drawing is a diamond: the place kick at the top holding one token, hats at the bottom holding none, and between them the transitions hit (green, ready to fire) and back (grey). The summary panel lists kick 1, hats 0, two places, two transitions, step at grid 1/8. The text panel below tabulates six steps at 0, 1/8, 1/4, 3/8, 1/2 and 5/8 with the token alternating between the two places, then reports period 1/4 cycles, the single T-invariant back + hit, and a state space of two markings that is deadlock-free, safe, quasi-live, live and reversible" wait="2.0" capture="box" open-outputs="true" embed=true name="petri-two-place-loop" w="1240" padding="12"}
 :::static
-import afield.petri.*
+import afield.simulation.petri.*
 
-val net = petri("""
+val net =
+    petri(
+        """
     #petri
     !grid 1/8
 
     kick : 1
     kick -[ hit  @1/8 : bd ]-> hats
     hats -[ back @1/8 : sd ]-> kick
-""")
+""",
+    )
 
 :::fold draw the net and print what it plays
 showPetriNet(net, w = 760.0, h = 420.0)
-markdown("main", """
+markdown(
+    "main",
+    """
     #### one token, going round
 
     ~~~
@@ -47,7 +52,8 @@ ${net.asciiTimeline(6).trimEnd()}
     ~~~
 ${net.report().trimEnd()}
     ~~~
-""")
+""",
+)
 displayOpen("main")
 :::endfold
 ```
@@ -71,9 +77,11 @@ long the whole net takes to repeat. The answer, fifteen, appears nowhere in the 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/polyrhythm.png" alt="two token rings drawn side by side and touching at one point: a five-place ring a0 to a4 on the left and a three-place ring b0 to b2 on the right, each with its one marked place ringed and its next transition green. The summary reads 8 places, 8 transitions, step at grid 1/15. Below it: the two rings are independent, settling after 15 steps, with two T-invariants of sizes 5 and 3 rather than one combined" wait="2.0" capture="box" open-outputs="true" embed=true name="petri-polyrhythm" w="1240" padding="12"}
 :::static
-import afield.petri.*
+import afield.simulation.petri.*
 
-val net = petri("""
+val net =
+    petri(
+        """
     #petri
     !grid 1/15
 
@@ -88,13 +96,16 @@ val net = petri("""
     b0 -[ b0.go : y ]-> b1
     b1 -[ b1.go     ]-> b2
     b2 -[ b2.go : y ]-> b0
-""")
+""",
+    )
 
 val lasso = net.settle()!!
 
 :::fold draw it and report the period it found
 showPetriNet(net, w = 820.0, h = 520.0)
-markdown("main", """
+markdown(
+    "main",
+    """
     #### five against three
 
     The two rings are independent, which the analysis states as *two separate T-invariants*
@@ -104,7 +115,8 @@ markdown("main", """
     - settles after **${lasso.loopSteps} steps** = **${lasso.duration} cycle**
     - T-invariants: **${net.tInvariants().size}**, of sizes ${net.tInvariants().map { it.size }}
     - the loop the engine ran is a genuine invariant: **${net.checkLoopIsInvariant() == null}**
-""")
+""",
+)
 displayOpen("main")
 :::endfold
 ```
@@ -112,14 +124,17 @@ displayOpen("main")
 You can also ask whether a net will get stuck, before you play it:
 
 ```diffstatic {data-lang=kotlin}
-net.willDeadlock()      // false — it loops
-net.deadTransitions()   // [] — every voice is sounding
+net.willDeadlock() // false — it loops
+net.deadTransitions() // [] — every voice is sounding
 
-petri("""
+petri(
+        """
     armed : 1
     src   : 4
     ~armed + src -[ blocked : bd ]-> dst
-""").willDeadlock()     // true — nothing can ever empty 'armed'
+""",
+    )
+    .willDeadlock() // true — nothing can ever empty 'armed'
 ```
 
 `~armed` is an inhibitor arc: the transition is enabled only while that place is empty. Nothing
@@ -137,8 +152,7 @@ ring of eight places plays the same rhythm as `euclid(3, 8)`.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/language.png" alt="two sixteen-place rings drawn as a figure of eight, kick on the left and hat on the right, each with one ringed marked place and one green transition. The summary lists all 32 places and 32 transitions at grid 1/16. The text panel tabulates onsets in cycle 0 against cycle 1: kit.emits() gives 15 and 15, .every(4) { it.fast(2) } gives 30 and 15, .jux { it.rev() } on top gives 60 and 30. Underneath, a token walking a ring of eight lands on 0, 3/8 and 5/8, the same positions euclid(3, 8) gives" wait="2.5" capture="box" open-outputs="true" embed=true name="petri-language" w="1240" padding="12"}
 :::static
-import afield.petri.*
-import afield.four.synth.*
+import afield.simulation.petri.*
 
 // A four-on-the-floor kick and a syncopated hat, as two Euclidean token rings in one net.
 val kit = petri {
@@ -148,22 +162,23 @@ val kit = petri {
 }
 
 // From here it is just a pattern.
-val voice = kit.emits()
-    .every(4) { it.fast(2) }
-    .jux { it.rev() }
-    .with(gain(sine().range(0.4, 1.0)))
+val voice = kit.emits().every(4) { it.fast(2) }.jux { it.rev() }.with(gain(sine().range(0.4, 1.0)))
 
 :::fold count what came out, and check it against the language's own euclid
-val fromNet = petriRing("k", 3, 8, emit = "bd").emits()
-    .events(PatArc(PatQ.ZERO, PatQ.ONE)).filter { it.hasOnset }.map { it.arc.start }
-val fromLanguage = euclid(3, 8)
-    .events(PatArc(PatQ.ZERO, PatQ.ONE)).filter { it.value }.map { it.arc.start }
+val fromNet =
+    petriRing("k", 3, 8, emit = "bd")
+        .emits()
+        .events(PatArc(PatQ.ZERO, PatQ.ONE))
+        .filter { it.hasOnset }
+        .map { it.arc.start }
+val fromLanguage = euclid(3, 8).events(PatArc(PatQ.ZERO, PatQ.ONE)).filter { it.value }.map { it.arc.start }
 
-fun onsets(p: PatPattern<*>, c: Long) =
-    p.events(PatArc(PatQ.of(c), PatQ.of(c + 1))).count { it.hasOnset }
+fun onsets(p: PatPattern<*>, c: Long) = p.events(PatArc(PatQ.of(c), PatQ.of(c + 1))).count { it.hasOnset }
 
 showPetriNet(kit, w = 900.0, h = 560.0)
-markdown("main", """
+markdown(
+    "main",
+    """
     #### a net, put through the pattern language
 
     | | onsets in cycle 0 | onsets in cycle 1 |
@@ -177,7 +192,8 @@ markdown("main", """
     - from the net: `${fromNet.joinToString(" ")}`
     - from `euclid`: `${fromLanguage.joinToString(" ")}`
     - equal: **${fromNet.sorted() == fromLanguage.sorted()}**
-""")
+""",
+)
 displayOpen("main")
 :::endfold
 ```
@@ -199,13 +215,12 @@ whose tokens are rhythms arranges the piece. This example builds a verse and a c
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/sections.png" alt="the same two-place diamond as before, now labelled verse and chorus with the transitions play-verse and play-chorus between them, verse marked and tagged '1 pattern', timed at grid 1/16. The text panel lists eight cycles: cycles 0 to 3 each play bd sd, cycles 4 to 7 each play bd bd bd bd. Exactly one place is marked at a time, so exactly one section is sounding" wait="2.5" capture="box" open-outputs="true" embed=true name="petri-sections" w="1240" padding="12"}
 :::static
-import afield.petri.*
-import afield.four.synth.*
+import afield.simulation.petri.*
 
 // One place per section, one token circulating, each section held for its own number of cycles.
 // The token carries the pattern that should be sounding next.
 val song = petriSong(
-    "verse"  to (pat("bd ~ sd ~") to 4),
+    "verse" to (pat("bd ~ sd ~") to 4),
     "chorus" to (pat("bd*4") to 4),
 )
 
@@ -213,11 +228,17 @@ val song = petriSong(
 val notes = song.pattern().unfold<String>()
 
 :::fold render eight bars of the arrangement
-fun bar(c: Long) = notes.events(PatArc(PatQ.of(c), PatQ.of(c + 1)))
-    .filter { it.hasOnset }.sortedBy { it.arc.start }.joinToString(" ") { it.value }
+fun bar(c: Long) =
+    notes
+        .events(PatArc(PatQ.of(c), PatQ.of(c + 1)))
+        .filter { it.hasOnset }
+        .sortedBy { it.arc.start }
+        .joinToString(" ") { it.value }
 
 showPetriNet(song, w = 700.0, h = 380.0)
-markdown("main", """
+markdown(
+    "main",
+    """
     #### eight bars, from a two-place net
 
     ~~~
@@ -227,7 +248,8 @@ ${(0L..7L).joinToString("\n") { "    cycle %d   %s".format(it, bar(it)) }}
     Four bars of one rhythm, four of the other, and then round again — from two places and
     two transitions. Only one place is marked: exactly one section can be sounding, which is
     what "an arrangement" means and is enforced by the net rather than by a scheduler.
-""")
+""",
+)
 displayOpen("main")
 :::endfold
 ```
@@ -259,21 +281,24 @@ can use like any other. Here tokens pile up in `tension` and open a filter on th
 previous section:
 
 ```diffstatic {data-lang=kotlin}
-val net = petri("""
+val net =
+    petri(
+        """
     !grid 1/4
     src     : 8
     tension : 0 ^8
     src -[ build @1/4 ]-> tension
-""")
+""",
+    )
 val run = net.run()
 
 // `level` normalises against the place's declared capacity, which is the form `rangex` wants.
 kit.emits() with cutoff(run.level("tension").rangex(200, 8000))
 
 // and the raw count, a gate, and a smoothed ramp are all there too
-run.signal("tension")                       // 0, 1, 2, … as a continuous pattern
-run.gate("armed")                           // 1 while occupied, 0 when not
-run.signal("tension", PetriInterp.SMOOTH)   // no corners, safe on a cutoff
+run.signal("tension") // 0, 1, 2, … as a continuous pattern
+run.gate("armed") // 1 while occupied, 0 when not
+run.signal("tension", PetriInterp.SMOOTH) // no corners, safe on a cutoff
 ```
 
 Use `level` rather than `signal` when the value is going into `range` or `rangex`: those map
@@ -290,7 +315,7 @@ plays, by clicking on its drawing:
 ```diffstatic {data-lang=kotlin}
 val live = net.live()
 
-showPetriNet(live)                 // click a place to inject a token, a transition to fire it
+showPetriNet(live) // click a place to inject a token, a transition to fire it
 live.play(cps = 2.0) { firing -> firing.emit?.let { dirt(it.toString()) } }
 ```
 
@@ -319,7 +344,7 @@ each one whether it deadlocks and which transitions never fire.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/philosophers.png" alt="a tangled fifteen-place net with five ringed fork places marked and five green grab transitions ready, drawn without names because the drawing is past the label limit. The summary lists fork.0 to fork.4 holding one token each and every holding and eating place empty. The table below compares three tables: all left-handed deadlocks and never fires any eat or done; one reaches right first does not deadlock but never fires grab.4, eat.4 or done.4; round-robin conflict does not deadlock and starves nobody. The deadlocked table stops with five philosophers each holding one fork" wait="2.0" capture="box" open-outputs="true" embed=true name="petri-philosophers" w="1240" padding="12"}
 :::static
-import afield.petri.*
+import afield.simulation.petri.*
 
 // The shape of this net is computed, which is exactly what the notation cannot express.
 fun table(reverseLast: Boolean, fairly: Boolean) = petri {
@@ -331,9 +356,20 @@ fun table(reverseLast: Boolean, fairly: Boolean) = petri {
         val right = (i + 1) % 5
         // The classic fix: the last philosopher reaches right first, breaking the symmetry.
         val reversed = reverseLast && i == 4
-        t("grab.$i") { from("fork.${if (reversed) right else left}"); to("holding.$i") }
-        t("eat.$i") { from("holding.$i"); from("fork.${if (reversed) left else right}"); to("eating.$i") }
-        t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+        t("grab.$i") {
+            from("fork.${if (reversed) right else left}")
+            to("holding.$i")
+        }
+        t("eat.$i") {
+            from("holding.$i")
+            from("fork.${if (reversed) left else right}")
+            to("eating.$i")
+        }
+        t("done.$i") {
+            from("eating.$i")
+            to("fork.$left")
+            to("fork.$right")
+        }
     }
 }
 
@@ -342,12 +378,17 @@ val asymmetric = table(reverseLast = true, fairly = false)
 val fairTable = table(reverseLast = true, fairly = true)
 
 :::fold draw the deadlocked table, then compare all three
-fun row(label: String, net: PetriNet) = "| $label | " +
-    (if (net.willDeadlock()) "**yes**" else "no") + " | " +
-    net.deadTransitions().ifEmpty { listOf("—") }.joinToString(", ") + " |"
+fun row(label: String, net: PetriNet) =
+    "| $label | " +
+        (if (net.willDeadlock()) "**yes**" else "no") +
+        " | " +
+        net.deadTransitions().ifEmpty { ["—"] }.joinToString(", ") +
+        " |"
 
 showPetriNet(naive, w = 900.0, h = 560.0)
-markdown("main", """
+markdown(
+    "main",
+    """
     #### five philosophers, three tables
 
     | table | deadlocks? | never fires |
@@ -358,7 +399,8 @@ markdown("main", """
 
     The deadlocked table stops with **${naive.deadlockMarking()!!.occupied.count { it.startsWith("holding") }}**
     philosophers each holding one fork and no fork left on the table.
-""")
+""",
+)
 displayOpen("main")
 :::endfold
 ```
@@ -378,31 +420,46 @@ P-invariants, and checks one of them against a run.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/bounded_buffer.png" alt="a four-place net: producer and consumer each holding one token, items empty, and free holding four, drawn as a cloverleaf of four dots. The green produce transition takes from producer and free, the grey consume takes from consumer and items. The summary reads free 4, items 0, producer 1, consumer 1. The text panel lists three invariants (producer, consumer, and free + items each never change) and reports that over 40 steps items + free took the single value 4" wait="2.0" capture="box" open-outputs="true" embed=true name="petri-bounded-buffer" w="1240" padding="12"}
 :::static
-import afield.petri.*
+import afield.simulation.petri.*
 
 val buffer = petri {
     grid = cyc(1, 8)
-    place("free", tokens = 4)          // four empty slots
-    place("items", capacity = 4)       // …and never more than four full ones
+    place("free", tokens = 4) // four empty slots
+    place("items", capacity = 4) // …and never more than four full ones
     place("producer", tokens = 1)
     place("consumer", tokens = 1)
     // Each worker holds a token it puts straight back: that is what makes it *one* worker
     // rather than an unbounded supply of them.
-    t("produce") { from("producer"); from("free"); to("items"); to("producer") }
-    t("consume") { from("consumer"); from("items"); to("free"); to("consumer") }
+    t("produce") {
+        from("producer")
+        from("free")
+        to("items")
+        to("producer")
+    }
+    t("consume") {
+        from("consumer")
+        from("items")
+        to("free")
+        to("consumer")
+    }
 }
 
 :::fold draw it, state the laws, and check them against a real run
-val laws = buffer.pInvariants().joinToString("\n    ") { invariant ->
-    "- `" + invariant.entries.sortedBy { it.key }
-        .joinToString(" + ") { if (it.value == 1) it.key else "${it.value}·${it.key}" } +
-        "` never changes"
-}
+val laws =
+    buffer.pInvariants().joinToString("\n    ") { invariant ->
+        "- `" +
+            invariant.entries
+                .sortedBy { it.key }
+                .joinToString(" + ") { if (it.value == 1) it.key else "${it.value}·${it.key}" } +
+            "` never changes"
+    }
 val run = buffer.run()
 val totals = run.steps(40).map { it.after.count("items") + it.after.count("free") }.distinct()
 
 showPetriNet(buffer, w = 760.0, h = 420.0)
-markdown("main", """
+markdown(
+    "main",
+    """
     #### a four-slot buffer that provably cannot leak
 
     $laws
@@ -410,7 +467,8 @@ markdown("main", """
     Over 40 steps `items + free` took the values **$totals** — a set of one element, which is
     what a conservation law looks like from the outside. The capacity on `items` is belt and
     braces: the invariant already makes overflow impossible.
-""")
+""",
+)
 displayOpen("main")
 :::endfold
 ```
@@ -436,7 +494,7 @@ as runnable boxes.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/state_space.png" alt="the reachability graph drawn as six columns of pale dots joined by a dense grey web, with one thick orange path traced from a green 'start' node on the left through grab.0, grab.1, grab.2, grab.3 and grab.4 to a red node labelled 'stuck' on the right. The summary panel reads 82 markings, 265 firings, depth 5, tagged can deadlock, safe (1-bounded), not live, not reversible, with the shortest counterexample spelled out. The text panel repeats those and names the fifteen transitions that can be lost for good" wait="2.0" capture="box" open-outputs="true" embed=true name="petri-state-space" w="1240" padding="12"}
 :::static
-import afield.petri.*
+import afield.simulation.petri.*
 
 fun table(reverseLast: Boolean) = petri {
     conflict = PetriConflict.ORDER
@@ -446,9 +504,20 @@ fun table(reverseLast: Boolean) = petri {
         val left = i
         val right = (i + 1) % 5
         val reversed = reverseLast && i == 4
-        t("grab.$i") { from("fork.${if (reversed) right else left}"); to("holding.$i") }
-        t("eat.$i") { from("holding.$i"); from("fork.${if (reversed) left else right}"); to("eating.$i") }
-        t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+        t("grab.$i") {
+            from("fork.${if (reversed) right else left}")
+            to("holding.$i")
+        }
+        t("eat.$i") {
+            from("holding.$i")
+            from("fork.${if (reversed) left else right}")
+            to("eating.$i")
+        }
+        t("done.$i") {
+            from("eating.$i")
+            to("fork.$left")
+            to("fork.$right")
+        }
     }
 }
 
@@ -457,7 +526,9 @@ val trace = graph.deadlockTrace()!!
 
 :::fold draw the state space with the counterexample on it
 showPetriStateSpace(graph, w = 1080.0, h = 560.0)
-markdown("main", """
+markdown(
+    "main",
+    """
     #### ${graph.stateCount} reachable markings, and the ${trace.length} firings that ruin them
 
     ~~~
@@ -468,7 +539,8 @@ ${graph.report().trimEnd()}
     **${trace.verify() ?: "it checks out"}**. Breaking the symmetry (`reverseLast = true`)
     leaves **${table(reverseLast = true).stateSpace().stateCount}** markings and *proves*
     there is no deadlock among them.
-""")
+""",
+)
 displayOpen("main")
 :::endfold
 ```
@@ -501,9 +573,9 @@ On the table with one reversed philosopher, the two kinds of check disagree, and
 what is wrong:
 
 ```diffstatic {data-lang=kotlin}
-val net = table(reverseLast = true)      // asymmetric, PetriConflict.ORDER
-net.deadTransitions()                    // [grab.4, eat.4, done.4]  ← starved by the policy
-net.stateSpace().neverFires()            // []                       ← the *net* is fine
+val net = table(reverseLast = true) // asymmetric, PetriConflict.ORDER
+net.deadTransitions() // [grab.4, eat.4, done.4]  ← starved by the policy
+net.stateSpace().neverFires() // []                       ← the *net* is fine
 ```
 
 The starving philosopher comes from the conflict policy, not from the net: some order of events
@@ -528,32 +600,43 @@ starting point has a smaller net to compare on.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/tala-vs-force.png" alt="the same thirty-node table drawn twice, side by side and unlabelled. The left panel, headed 'FORCE, spring model - 0 arc crossings', is a loose organic cluster whose arcs are straight lines between node centres. The right panel, headed 'TALA, d2 v0.9.0 - 3 arc crossings', spreads the same net over a wide rectangle with every arc running in horizontal and vertical segments that turn corners around the nodes in the way" wait="3.0" capture="box" open-outputs="true" embed=true name="petri-tala-vs-force" w="1240" padding="12"}
 :::static
-import afield.petri.*
-import afield.layout.D2Layout
+import afield.simulation.petri.*
 
 fun table() = petri {
     for (i in 0 until 5) place("fork.$i", tokens = 1)
     for (i in 0 until 5) {
         val left = i
         val right = (i + 1) % 5
-        t("grab.$i") { from("fork.$left"); to("holding.$i") }
-        t("eat.$i") { from("holding.$i"); from("fork.$right"); to("eating.$i") }
-        t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+        t("grab.$i") {
+            from("fork.$left")
+            to("holding.$i")
+        }
+        t("eat.$i") {
+            from("holding.$i")
+            from("fork.$right")
+            to("eating.$i")
+        }
+        t("done.$i") {
+            from("eating.$i")
+            to("fork.$left")
+            to("fork.$right")
+        }
     }
 }
 
 val net = table()
 
 :::fold draw it twice, labelling each panel with the engine and what it cost in crossings
-// Both labels are generated, so the figure reports itself rather than asking you to take a claim
-// on trust. On a machine with no helper the right-hand panel says so, instead of showing FORCE's
-// drawing under TALA's name.
+/*
+Both labels are generated, so the figure reports itself rather than asking you to take a claim
+on trust. On a machine with no helper the right-hand panel says so, instead of showing FORCE's
+drawing under TALA's name.
+*/
 val forceDrawing = net.frame(PetriLayout.FORCE)
 val talaDrawing = net.frame(PetriLayout.TALA)
 val engine = if (D2Layout.available) "TALA, d2 " + D2Layout.version else "helper absent: FORCE again"
 
-fun label(name: String, drawing: PetriDrawing) =
-    name + " - " + drawing.arcCrossings() + " arc crossings"
+fun label(name: String, drawing: PetriDrawing) = name + " - " + drawing.arcCrossings() + " arc crossings"
 
 showPlaneGrid(
     label("FORCE, spring model", forceDrawing) to forceDrawing.toFLines(),
@@ -577,10 +660,10 @@ panel turns corners and reads more like a schematic than a graph drawing. `Petri
 lays the net out once per direction (up, down, right, and no preference) and keeps the drawing with
 the fewest crossings.
 
-TALA needs a helper program, `native/field-d2-layout`, written in Go, which Field does not build or
-ship. Without it `PetriLayout.TALA` falls back to `FORCE`, so a document that asks for TALA still
-opens, and `D2Layout.available` tells you which one you got. When a box asks for TALA and the
-helper is missing, Field prints the command that builds it.
+TALA needs a helper program, `native/field-d2-layout`, written in Go. With Go installed,
+`./gradlew buildD2LayoutHelper` builds it and enables TALA; a helper built while Field is running is
+used from the next draw. Without it `PetriLayout.TALA` falls back to `FORCE`, so a document that asks
+for TALA still opens, and `D2Layout.available` tells you which one you got.
 
 ---
 
@@ -589,10 +672,9 @@ helper is missing, Field prints the command that builds it.
 - **Invariants only see token counts.** Read and inhibitor arcs don't change token counts, so the
   invariants can't see them. `net.report()` says so when a net uses them and suggests
   `stateSpace()`, which does see them.
-- **Loop detection compares colours by name.** Two different patterns both print as
-  `PatPattern(...)`, so to the loop detector swapping one section for another looks like nothing
-  happening. `stateSpace()` compares colours exactly, so a net that makes a new colour on every
-  firing runs out of search budget there instead.
+- **A net that makes a new colour on every firing never repeats.** Loop detection and `stateSpace()`
+  both compare colours by equality, so such a net finds no loop, and `stateSpace()` runs out of
+  search budget.
 - **The editor checks spelling, not behaviour.** The editor marks `@1/0` as a bad duration and
   `=> wobble` as an unknown combinator as you type. It can't tell that a transition will never
   fire; the Kotlin parser reports that when the box runs.
@@ -659,13 +741,13 @@ Three limits bound what it will answer:
   on it.
 - **A colour-dependent net is not reduced.** The closure reasons about arcs, and a guard or an
   `enabledIf` is an arbitrary predicate no arc analysis can see, so `stateSpace(reduction = STUBBORN)`
-  on such a net returns an unreduced (and therefore still `exact`) graph, with no complaint and with
-  `graph.reduction == PetriReduction.NONE` saying so.
+  on such a net returns an unreduced (and therefore still `exact`) graph, and `graph.caveats` and
+  `report()` say so.
 
 ??? aside "How the reduction is checked"
     A differential test runs both searches over generated nets and compares the set of reachable
     terminal markings, the length of the counterexample, containment of the reduced state set in the
-    full one, and that every accessor gated on `exact` refuses. `dev_docs/PETRI_REDUCTION_AGREEMENT.md`
+    full one, and that every accessor gated on `exact` refuses. [`PETRI_REDUCTION_AGREEMENT.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/PETRI_REDUCTION_AGREEMENT.md)
     has the corpus, the floors and a run's numbers.
 
     Half of that corpus uses read arcs, inhibitor arcs, capacities and arc weights. A stubborn set
@@ -685,12 +767,16 @@ grow without limit is written as **ω**, which keeps the graph finite for every 
 ```diffstatic {data-lang=kotlin}
 val leak = petri {
     place("run", tokens = 1)
-    t("make") { from("run"); to("run"); to("queue") }
+    t("make") {
+        from("run")
+        to("run")
+        to("queue")
+    }
 }
 
-leak.stateSpace(budget = 500).outcome    // BUDGET — and bounds, isSafe, neverFires() are all null
-leak.coverability().unboundedPlaces      // [queue]
-leak.coverability().bound("queue")       // null — which here means ω, not "unknown"
+leak.stateSpace(budget = 500).outcome // BUDGET — and bounds, isSafe, neverFires() are all null
+leak.coverability().unboundedPlaces // [queue]
+leak.coverability().bound("queue") // null — which here means ω, not "unknown"
 ```
 
 Use the two together. `stateSpace()` handles every feature (read arcs, inhibitor arcs, colour

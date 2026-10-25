@@ -1,4 +1,4 @@
-"""Independent decoders for the Art-Net / sACN packets Field's afield.dmx sends.
+"""Independent decoders for the Art-Net / sACN packets Field's afield.io.dmx sends.
 
 Written from the protocol documents, not from the Kotlin encoder, so it can disagree with it.
 Receivers, all listening on 127.0.0.1:

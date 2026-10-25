@@ -1,7 +1,7 @@
 package afield.examples
 
-import afield.remotejs.Asta
-import afield.remotejs.preferAstaLocationForBrowserSyntaxError
+import afield.lang.remotejs.Asta
+import afield.lang.remotejs.preferAstaLocationForBrowserSyntaxError
 import org.json.JSONObject
 import org.openjdk.nashorn.api.tree.Diagnostic
 

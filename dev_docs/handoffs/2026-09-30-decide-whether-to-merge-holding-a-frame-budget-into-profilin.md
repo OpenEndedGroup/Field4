@@ -25,7 +25,7 @@ A merge touches two pages, the nav, several pages that link in, and tests that n
 - Sizes: frame_budget.md is 460 lines with 10 sections. profiling_timeline.md is 294 lines, with a demo, 2 runner captures driven by `dev_docs/agents/transcripts/profiling_timeline.yaml`, and 8 sections. Together they would make a page of about 750 lines.
 - Inbound links to `frame_budget.md`: `profiling_timeline.md`, `simulation_clock.md`, `flow_grain.md`, `staging.md` (it describes the two as "the pair"), `aperture_playground.md`, `building_and_testing.md`, and `animation_time_model.md` (twice).
 - Tests and tools that name the file by path:
-  - `src/jvmTest/kotlin/afield/docs/CitationContractTest.kt`: the `"public/docs/frame_budget.md" to 21` citation count.
+  - `src/jvmTest/kotlin/afield/tools/docs/CitationContractTest.kt`: the `"public/docs/frame_budget.md" to 21` citation count.
   - `DerivedArithmeticGuard.kt` and `DerivedArithmeticContractTest.kt`: these name it in comments, as a history.
   - `tools/docs_voice/number_restated.py`: an exemption keyed on this page's `63.9` / `3,002.6` restatement.
   - `dev_docs/derived_arithmetic_sweep.md` and `dev_docs/citation_contracts.md`: these name it as history.

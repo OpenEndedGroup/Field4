@@ -25,9 +25,11 @@ four, and the transition that takes all four out at once is the clap.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_petri_sparks/net.png" alt="the Petri net drawn as three token rings and one extra place: rings of three, four and five places, each with one ringed marked place and a green transition ready to fire, and a fourth place, charge, fed by the kick transition and drained by the clap transition. Below it, a summary listing the transitions that make a sound and the cycle at which the first clap fires" wait="2.5" capture="box" open-outputs="true" embed=true name="chain-petri-sparks-net" w="1240" padding="12"}
 :::static
-import afield.petri.*
+import afield.simulation.petri.*
 
-val net = petri("""
+val net =
+    petri(
+        """
     #petri
     !grid 1/8
 
@@ -55,18 +57,22 @@ val net = petri("""
     // four kicks fill charge, and emptying it is a clap
     charge : 0 ^4
     4*charge -[ clap : cp ]->
-""")
+""",
+    )
 
 :::fold draw it, and find the first clap
 val run = net.run()
-val firstClap = run.firingsOver(afield.four.synth.PatArc(cyc(0), cyc(4))).first { it.transition == "clap" }
+val firstClap = run.firingsOver(afield.audio.synth.PatArc(cyc(0), cyc(4))).first { it.transition == "clap" }
 showPetriNet(net, w = 900.0, h = 560.0)
-markdown("main", """
+markdown(
+    "main",
+    """
     #### three rings and a counter
 
     - transitions that make a sound: ${net.transitions.filter { it.emit != null }.map { "`${it.name}` → `${it.emit}`" }.joinToString(", ")}
     - the first clap fires at cycle **${firstClap.at}**, one step after the fourth kick
-""")
+""",
+)
 displayOpen("main")
 :::endfold
 ```
@@ -79,7 +85,7 @@ The text after each colon is what a transition emits, and these are Dirt-Samples
 Eight cycles at half a cycle a second, played by `patRenderStereoDirt` from the pinned
 Dirt-Samples:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_petri_sparks/petri-sparks-drums.wav" audio-spec="petri-sparks-drums" audio-renderer="afield.four.synth.PetriSparksDocs" embed=true hidden=true name="chain-petri-sparks-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_petri_sparks/petri-sparks-drums.wav" audio-spec="petri-sparks-drums" audio-renderer="afield.audio.synth.PetriSparksDocs" embed=true hidden=true name="chain-petri-sparks-audio"}
 // Offline-rendered by PetriSparksDocs.renderWav("petri-sparks-drums").
 ```
 
@@ -149,6 +155,6 @@ sparks add up and the centre of a fresh burst burns white.
 * [Petri nets](petri_nets.md) for the notation, `emits()`, runs and markings.
 * [A pattern that moves particles](chain_pattern_particles.md) for the other way of tying sound to
   particles, by measuring the audio rather than reading the score.
-* [afield.four Graphics](afield_four_graphics.md) for modules, meshes, buffers and push constants.
+* [Field 4 Graphics](afield_four_graphics.md) for modules, meshes, buffers and push constants.
 * [Making a sound, every path there is](sound_paths.md) for the Dirt-Samples and the other ways to
   play a pattern.

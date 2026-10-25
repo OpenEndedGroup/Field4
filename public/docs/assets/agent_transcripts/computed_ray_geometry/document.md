@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_graphics_context" index="0" -->
 
 ```edn [field-box id="agent_graphics_context" role="properties"]
-{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["computed_ray_geometry"] "properties" {"children" #{#afield/box "computed_ray_geometry"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 17 "characters" 321 "sha256" "79dab431bdab018f5a13ebcb55d1eaf22c276161949fb54c70dbe0d69aa149fa"}]}
+{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["computed_ray_geometry"] "properties" {"children" #{#afield/box "computed_ray_geometry"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 17 "characters" 331 "sha256" "0925cc7e55ed8f4619c46cce4c8106e5e68b88f1ffcd20f5957115422d43b653"}]}
 ```
 
 ```kotlin [field-property box="agent_graphics_context" name="code" path="agent_graphics_context_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -39,61 +39,94 @@ start(renderer::run)
 <!-- field-box id="computed_ray_geometry" index="1" -->
 
 ```edn [field-box id="computed_ray_geometry" role="properties"]
-{"id" "computed_ray_geometry" "index" 1 "name" "computed ray geometry" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "computed ray geometry" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "computed_ray_geometry_code_.kt" "lines" 26 "characters" 1127 "sha256" "6e67a74c4e4d00e74356887fad4fec9b7f22411e402fc711bba68f80104938f3"} {"name" "compute" "language" "glsl" "path" "computed_ray_geometry_compute_.glsl" "lines" 30 "characters" 1768 "sha256" "25ae45ac65babc0545a50d58b73605a97867b88d479eae27c899c25880a9e579"}]}
+{"id" "computed_ray_geometry" "index" 1 "name" "computed ray geometry" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "computed ray geometry" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "computed_ray_geometry_code_.kt" "lines" 32 "characters" 1228 "sha256" "1017ae814be70b284470445692329c35f83c58be672ca9da2ba13ac9cd38c69e"} {"name" "compute" "language" "glsl" "path" "computed_ray_geometry_compute_.glsl" "lines" 57 "characters" 2115 "sha256" "2623e5af6cc1174f5b57cb53add15849c260b0c63a10c8e09178999c523c2350"}]}
 ```
 
 ```kotlin [field-property box="computed_ray_geometry" name="code" path="computed_ray_geometry_code_.kt"]
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.modules.*
-
 prop<ClusterGeometryDemo>(lab)
-fromContextWithNameOrNull<ClusterGeometryDemo>("lab")?.close()
+val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
 check(renderer.device.supportsClusterAccelerationStructure) {
     "This Starting Point needs enabled VK_NV_cluster_acceleration_structure and a ray-tracing pipeline."
 }
-lab = ClusterGeometryDemo(renderer, producerFactory={ computeModuleHere(it) }).install()
-var animate=true
-var topology=0
-var view=0
+val ownedLab = runScope.own(ClusterGeometryDemo(renderer, producerFactory = { computeModuleHere(it) }).install())
+lab = ownedLab
+var animate = true
+var topology = 0
+var view = 0
 controlGroup("computed ray geometry") {
-    checkbox("Animate computed vertices",initialValue=true) { animate=it }
-    slider("Topology: alternate diagonals",min=0.0,max=1.0,step=1.0,initialValue=0.0) { topology=it.toInt() }
-    slider("0: Surface · 1: Clusters · 2: Triangles",min=0.0,max=2.0,step=1.0,initialValue=0.0) { view=it.toInt() }
+    checkbox("Animate computed vertices", initialValue = true) { animate = it }
+    slider("Topology: alternate diagonals", min = 0.0, max = 1.0, step = 1.0, initialValue = 0.0) {
+        topology = it.toInt()
+    }
+    slider("0: Surface · 1: Clusters · 2: Triangles", min = 0.0, max = 2.0, step = 1.0, initialValue = 0.0) {
+        view = it.toInt()
+    }
 }
 displayOpen("computed ray geometry")
-println("Edit the compute shader: it writes the positions, local indices and cluster descriptions. 768 clusters / 98,304 triangles.")
+println(
+    "Edit the compute shader: it writes the positions, local indices and cluster descriptions. 768 clusters / 98,304 triangles.",
+)
 frames {
-    while(true) {
-        lab.animate=animate;lab.topology=topology;lab.view=view
+    while (true) {
+        ownedLab.animate = animate
+        ownedLab.topology = topology
+        ownedLab.view = view
         frame()
     }
-}.end { lab.close() }
+}
+    .end { ownedLab.close() }
 ```
 
 ```glsl [field-property box="computed_ray_geometry" name="compute" path="computed_ray_geometry_compute_.glsl"]
 #version 460
 #extension GL_EXT_buffer_reference : require
 layout(local_size_x=64) in;
-layout(buffer_reference,std430,buffer_reference_align=16) buffer Positions {vec4 data[];};
-layout(buffer_reference,std430,buffer_reference_align=4) buffer Indices {uint data[];};
-struct Cluster {uvec4 range;uvec4 identity;};
-layout(buffer_reference,std430,buffer_reference_align=16) buffer Clusters {Cluster data[];};
-layout(push_constant) uniform Generate {Positions positions;Indices indices;Clusters descriptions;
-    uint columns;uint rows;float time;uint topology;int invalidCluster;int invalidMode;} pc;
-void main(){uint id=gl_GlobalInvocationID.x;if(id>=pc.columns*pc.rows)return;
+layout(buffer_reference,std430,buffer_reference_align=16) buffer Positions {
+    vec4 data[];
+};
+layout(buffer_reference,std430,buffer_reference_align=4) buffer Indices {
+    uint data[];
+};
+// range: vertex offset, index offset, vertex count, triangle count.
+// identity: cluster ID, geometry ID, then two reserved zero components.
+struct Cluster {
+    uvec4 range;
+    uvec4 identity;
+};
+layout(buffer_reference,std430,buffer_reference_align=16) buffer Clusters {
+    Cluster data[];
+};
+layout(push_constant) uniform Generate {
+    Positions positions;
+    Indices indices;
+    Clusters descriptions;
+    uint columns;
+    uint rows;
+    float time;
+    uint topology;
+    int invalidCluster;
+    int invalidMode;
+} pc;
+void main() {
+    uint id=gl_GlobalInvocationID.x;
+    if(id>=pc.columns*pc.rows)return;
     uint cx=id%pc.columns,cy=id/pc.columns;
-    for(uint y=0;y<9;y++)for(uint x=0;x<9;x++){
+    for(uint y=0;y<9;y++)for(uint x=0;x<9;x++) {
         vec2 p=(vec2(cx,cy)+vec2(x,y)/8)/vec2(pc.columns,pc.rows)*8-4;
         float z=.55*sin(p.x*1.7+pc.time)*cos(p.y*1.3-pc.time*.7)+.2*sin(p.x*3+p.y*2+pc.time*1.3);
         pc.positions.data[id*81+y*9+x]=vec4(p.x,z,p.y,1);
     }
-    for(uint y=0;y<8;y++)for(uint x=0;x<8;x++){
+    for(uint y=0;y<8;y++)for(uint x=0;x<8;x++) {
         uint a=y*9+x,b=a+1,c=a+10,d=a+9,o=id*384+(y*8+x)*6;
         bool flip=((x+y+pc.topology)&1)!=0;
-        pc.indices.data[o]=a;pc.indices.data[o+1]=flip?d:c;pc.indices.data[o+2]=b;
-        pc.indices.data[o+3]=flip?b:a;pc.indices.data[o+4]=d;pc.indices.data[o+5]=c;
+        pc.indices.data[o]=a;
+        pc.indices.data[o+1]=flip?d:c;
+        pc.indices.data[o+2]=b;
+        pc.indices.data[o+3]=flip?b:a;
+        pc.indices.data[o+4]=d;
+        pc.indices.data[o+5]=c;
     }
+    // A 9x9 vertex grid contains 8x8 quads: 81 vertices, 128 triangles, 384 indices.
     pc.descriptions.data[id]=Cluster(uvec4(id*81,id*384,81,128),uvec4(id,id,0,0));
     // Deliberate invalid address-range injection exercises the public builder's GPU guard.
     if(int(id)==pc.invalidCluster) {

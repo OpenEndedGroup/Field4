@@ -1,17 +1,17 @@
 package afield.examples.ceres
 
-import afield.stdlib.LeastSquaresOptions
-import afield.stdlib.ceres.CeresLinearSolver
-import afield.stdlib.polytope.CeresRealization
-import afield.stdlib.polytope.CeresRelaxationOptions
-import afield.stdlib.polytope.ConstraintResidualReport
-import afield.stdlib.polytope.PolyhedralObject
-import afield.stdlib.polytope.RealizationSolveResult
-import afield.stdlib.polytope.RelaxationPlan
-import afield.stdlib.polytope.ceresRealizationAvailable
-import afield.stdlib.polytope.conway
-import afield.stdlib.polytope.relax
-import afield.stdlib.polytope.relaxWithCeres
+import afield.math.optimization.LeastSquaresOptions
+import afield.math.optimization.ceres.CeresLinearSolver
+import afield.geometry.polytope.CeresRealization
+import afield.geometry.polytope.CeresRelaxationOptions
+import afield.geometry.polytope.ConstraintResidualReport
+import afield.geometry.polytope.PolyhedralObject
+import afield.geometry.polytope.RealizationSolveResult
+import afield.geometry.polytope.RelaxationPlan
+import afield.geometry.polytope.ceresRealizationAvailable
+import afield.geometry.polytope.conway
+import afield.geometry.polytope.relax
+import afield.geometry.polytope.relaxWithCeres
 
 /**
  * Runs the same [RelaxationPlan] through the Kotlin least-squares realizer and the Ceres one, on a

@@ -7,10 +7,12 @@ second hand-written file list here.
 Build the standalone distribution with:
 
 ```bash
-./build-offline-docs.sh
+./tools/build-offline-docs.sh
 ```
 
-This synchronizes the canonical resources into `dist/offline-viewer/`. The same
+This synchronizes the canonical resources and the `hello_display` and `shared_types_demo`
+transcript-generated documents into `dist/offline-viewer/`. Both transcripts are registered for
+execution by `DemoTranscriptExecSmokeTest`; the bundle reuses their generated documents. The same
 Python synchronizer is used by the documentation build, so fixes belong in the
 source resources or in that script rather than in generated output.
 
@@ -23,7 +25,7 @@ python3 -m http.server 8000
 ```
 
 Then open
-`http://localhost:8000/offline.html?file=metadata_store/simple_hello/metadata.edn`.
+`http://localhost:8000/offline.html?file=assets/agent_transcripts/hello_display/metadata.edn`.
 Remote `?file=` URLs require the document server to permit the viewer's origin
 with CORS.
 

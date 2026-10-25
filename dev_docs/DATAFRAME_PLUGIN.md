@@ -60,20 +60,20 @@ computes the schema, and rewrites `call()` into
 `run { class Token; class Scope; call() as DataFrame<Token> }`, with **local** classes, because the
 extension runs at body-resolve and cannot create top-level declarations. The accessors are not
 declarations anywhere: a per-call-site local type plus an implicit extension receiver injected by
-`ReturnTypeBasedReceiverInjector` — `DataFramePluginSpike.kt:27#ReturnTypeBasedReceiverInjector`.
+`ReturnTypeBasedReceiverInjector` — `DataFramePluginSpike.kt:53#receiver injected by the plugin`.
 
 That is the whole boundary. A local class cannot appear in the type of a snippet's property, so the
 inferred type cannot outlive the expression that produced it. Two mechanisms were candidates for
 making it work anyway and are worth naming because they are the reason this was *measured* rather than
 asserted: `addReceiversFromExtensions` bails unless the enclosing container is a `FirCallableSymbol` or
 `FirCodeFragmentSymbol`, and `FirReplSnippetSymbol` is neither
-(`DataFramePluginSpike.kt:37#is neither, so the injected receiver`); but the schema state rides on the FIR
+(`DataFramePluginSpike.kt:64#neither, so the injected receiver`); but the schema state rides on the FIR
 declaration via `FirDeclarationDataRegistry` rather than a session component, which could have carried
-it across (`DataFramePluginSpike.kt:39#FirDeclarationDataRegistry`).
+it across (`DataFramePluginSpike.kt:65#declaration itself, which is the mechanism`).
 
 ### The spike, and its five probes
 
-`kotlin.dataframe-plugin.spike`, runner `jvm-main`, entrypoint `afield.DataFramePluginSpike`
+`kotlin.dataframe-plugin.spike`, runner `jvm-main`, entrypoint `afield.runtime.kotlin.DataFramePluginSpike`
 (`DataFramePluginSpike.kt:8#kotlin.dataframe-plugin.spike`). It asserts two invariants loudly and then
 reports either way on five probes — the invariants exist because a spike that silently measures plain
 Kotlin is worse than no spike:
@@ -174,7 +174,7 @@ preamble re-entry point, not just a text split.**
 
 ## 4. `DataFrameVisualizer`
 
-`src/jvmMain/kotlin/afield/visualization/DataFrameVisualizer.kt`, 148 lines, `package afield`.
+`src/jvmMain/kotlin/afield/ui/visualization/DataFrameVisualizer.kt`, 148 lines, `package afield.ui.visualization`.
 
 `DataFrame` is a third-party interface and cannot implement `ToHTML` the way `Table` and `Img` do,
 which is what `ValuePrinterRegistry` (compact `.h`) and `H2ValueRegistry` (`.h2`) exist for:
@@ -365,7 +365,7 @@ them to make its own figure green.
 4. **`checkCodebaseReference` is red on `d7d8dccc2` itself**, independently of this branch. Measured
    2026-08-22 in a clean worktree: `visualization.md` generates 10 files / 323 symbols against the 9 /
    320 committed — `DataFrameVisualizer.kt` sits under the published source root
-   `StdlibReferenceGenerator.kt:115#kotlin/afield/visualization` and is not in `EXCLUDE_PREFIXES`, so the
+   `StdlibReferenceGenerator.kt:259#kotlin/afield/ui/visualization` and is not in `EXCLUDE_PREFIXES`, so the
    commit that added it needed a `./gradlew generateCodebaseReference` and did not get one. `index.md`
    and `dev_docs/kdoc_worklist.md` drift with it. Not regenerated here on purpose: a docs-only branch
    regenerating that artifact collides with every sibling branch.

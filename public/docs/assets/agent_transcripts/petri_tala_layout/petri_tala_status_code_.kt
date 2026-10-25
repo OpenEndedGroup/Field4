@@ -1,5 +1,4 @@
-import afield.petri.*
-import afield.layout.D2Layout
+import afield.simulation.petri.*
 
 fun philosophers(count: Int = 5): PetriNet = petri {
     for (index in 0 until count) place("fork.$index", tokens = 1)
@@ -8,20 +7,28 @@ fun philosophers(count: Int = 5): PetriNet = petri {
         place("think.$index", tokens = 1)
         place("eat.$index")
         t("take.$index") {
-            from("think.$index"); from("fork.$index"); from("fork.$right"); to("eat.$index")
+            from("think.$index")
+            from("fork.$index")
+            from("fork.$right")
+            to("eat.$index")
         }
         t("drop.$index") {
-            from("eat.$index"); to("think.$index"); to("fork.$index"); to("fork.$right")
+            from("eat.$index")
+            to("think.$index")
+            to("fork.$index")
+            to("fork.$right")
         }
     }
 }
 
 val net = philosophers()
 
-// Timing each layout once, in order, is the obvious thing and it lies: the first one pays
-// for JVM warmup and the second does not. Both are warmed, then measured three times from
-// a cleared cache, and the minimum kept — the reading least polluted by whatever else the
-// machine is doing.
+/*
+Timing each layout once, in order, is the obvious thing and it lies: the first one pays
+for JVM warmup and the second does not. Both are warmed, then measured three times from
+a cleared cache, and the minimum kept — the reading least polluted by whatever else the
+machine is doing.
+*/
 fun best(layout: PetriLayout): Long {
     net.frame(layout)
     var bestNs = Long.MAX_VALUE
@@ -44,20 +51,21 @@ val force = net.frame(PetriLayout.FORCE)
 val tala = net.frame(PetriLayout.TALA)
 val differ = net.placeNames.any { force.position(it) != tala.position(it) }
 
-val headline = if (D2Layout.available)
-    "helper present — d2 ${D2Layout.version}"
-else
-    "helper absent — boxes 1 and 2 are the same drawing"
+val headline =
+    if (D2Layout.available) "helper present — d2 ${D2Layout.version}"
+    else "helper absent — boxes 1 and 2 are the same drawing"
 
-val detail = if (D2Layout.available)
-    "The two drawings differ: <b>$differ</b>. False here would mean TALA fell back silently."
-else
-    "differ = <b>$differ</b>, which is the fallback working. Build it with " +
-    "<code>(cd native/field-d2-layout &amp;&amp; go build -o build/field-d2-layout .)</code> — " +
-    "Field prints that line itself, with an install hint when <code>go</code> is not on PATH."
+val detail =
+    if (D2Layout.available) "The two drawings differ: <b>$differ</b>. False here would mean TALA fell back silently."
+    else
+        "differ = <b>$differ</b>, which is the fallback working. Build it with " +
+            "<code>(cd native/field-d2-layout &amp;&amp; go build -o build/field-d2-layout .)</code> — " +
+            "Field prints that line itself, with an install hint when <code>go</code> is not on PATH."
 
 // Rendered rather than returned as a string, so the demo is something to look at.
-display("main", """
+display(
+    "main",
+    """
   <div style="font:13px/1.55 ui-monospace,SFMono-Regular,monospace;background:#0d0d0d;
               color:#dcdcdc;border:1px solid #2b2b2b;padding:14px 16px;max-width:720px">
     <div style="font-size:15px;color:#7fd7c4;margin-bottom:8px">$headline</div>
@@ -75,6 +83,8 @@ display("main", """
     <div style="margin-top:8px;color:#8a8a8a">TALA is never chosen by
       <code>PetriLayout.AUTO</code>, so nothing already drawn changes.</div>
   </div>
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 
 headline

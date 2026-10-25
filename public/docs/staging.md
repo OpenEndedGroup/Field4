@@ -4,12 +4,12 @@ The [Tour](funFeatures.md) this page ends is an arc under *Start Here*, meant to
 
 ## Chains across subsystems
 
-Each of these follows one object through several parts of Field. They are the quickest way to see how the sections below fit together before you pick one to learn.
+The [Long Way Round](chains.md) pages each follow one object through several parts of Field. They are the quickest way to see how the sections below fit together before you pick one to learn.
 
 - [A Polytope, Cut Open and Traced](chain_polytope_render.md) is the one to read first: a polytope built with Conway operators, cut with an exact Boolean, then path-traced.
 - [A Cellular Automaton You Can Hear](chain_ca_sound.md) goes the other way, from a Wolfram rule to the shortest pattern notation that plays it, rendered to a `.wav`.
 
-The rest of the section crosses physics, patterns, RectSL, photographs, λ-terms and lighting; open it for the full set.
+The rest cross physics, patterns, RectSL, photographs, λ-terms and lighting; [the overview](chains.md) lists the full set.
 
 ## Working in a document
 
@@ -17,8 +17,8 @@ The document itself: moving around it, finding things in it, and getting back wh
 
 - [Moving Around the Canvas](moving_around_the_canvas.md) is the one to read first: panning and zooming, `Cmd Cmd`-and-hold to see every box an arrow key can reach, and the function keys that jump to saved views.
 - [File Management](files_and_paths.md) is short and saves a lot of time: `"data.csv".file` resolves inside the document folder first and the workspace project second, so a path keeps working after the document is moved or handed to somebody else.
-- [Your History with Field](history_overview.md) says which of Field's kinds of history holds what, and which tool opens each. [Document History](document_history.md) is whole-document recovery from saved versions; the [History Lens](history_lens.md) shows what *this line* said a few saves ago, without leaving the editor.
-- [Snapping](snapping.md) is a toggle rather than a mode, for a moment of layout cleanup.
+- [Your History with Field](history_overview.md) says which of Field's kinds of history holds what, and which tool opens each. [Document History](document_history.md) is whole-document recovery from saved versions; [Code History](history_lens.md) shows what *this line* said a few saves ago, without leaving the editor.
+- [Snapping](snapping.md) is a toggle rather than a mode, for a moment of layout cleanup. The drawing layer over the canvas is on the Tour, in [Drawing and Notation](drawing_and_notation.md).
 - [The Semantic Index](semantic_index.md) is the second of the two searches that `/welcome` runs over your workspace as you type.
 - [Profiling](profiling_timeline.md) is the page to open when a piece stops keeping up. It covers the panel that records what each box cost, what its numbers mean, and [simulation time](profiling_timeline.md#simulation-time), which runs coroutine code against a clock you advance yourself instead of the wall clock.
 
@@ -28,7 +28,7 @@ What happens when a box ends on a value, which is most of what working in Field 
 
 - [Visualizers & Controls](visualizers.md) is the one to read first: `.h`, the output panel, sliders and the value visualizer that draws anything you hand it.
 - [Interactive Guides](interactive_guides.md) shows how boxes can walk a reader through a document with slide notes, selections, callbacks, templated values, per-slide chat and callout lines.
-- [Charts as FLines](chart.md) and [DataFrames in a Box](dataframe.md) cover the two shapes tabular data usually arrives in.
+- [Charts as FLines](chart.md) and [DataFrames in a Box](dataframe.md) cover the two shapes tabular data usually arrives in, and take over where the Tour's [Looking at Data](tour_data.md) stops.
 
 ## Drawing from data
 
@@ -59,7 +59,9 @@ The section ends with pages about making your own. [Rewriting Your Own Syntax](p
 
 ## Graphics, GPU and headsets
 
-- [afield.four Graphics](afield_four_graphics.md) exercises the lower-level renderer path, through the transcript-driven renderer parent described at the foot of this page.
+The Tour's [Graphics on the GPU](tour_gpu_graphics.md) stop gets a shader drawing in a window. These pages go further.
+
+- [Field 4 Graphics](afield_four_graphics.md) exercises the lower-level renderer path, through the transcript-driven renderer parent described at the foot of this page.
 - [Fabricate Renderer](fabricate_renderer.md) covers the `StandardRenderer` bundle: scene graph, render planning, frame graph, post stack, glTF import, material response, shadows and ambient occlusion.
 - [Aperture Playground](aperture_playground.md) is the worked multi-pass example: light bands, reductions, aperture filters and a composite, each in its own box, with every shader stage in the document. It shows defocus spreading a line rather than just dimming it.
 - [Field Probes](field_probes.md) instruments live shaders, with the CPU read-back `fieldProbe` and the GPU-resident `fieldStats` both demonstrated on one compute-shader particle system.
@@ -67,7 +69,7 @@ The section ends with pages about making your own. [Rewriting Your Own Syntax](p
 - [Ray Tracing Examples](ray_tracing_examples.md) walks through `VK_KHR_ray_tracing_pipeline` programs, from a raygen shader writing into a storage image to procedural spheres reflecting a traced floor. They need a GPU and driver with hardware ray tracing; the [path tracer](path_tracing.md) has a compute backend for machines without it.
 - [Kotlin in the Head](kotlin_in_the_head.md) is the compile route into that headset and into an ordinary browser tab: a box whose Kotlin is cross-compiled to JavaScript in-process and shipped over Field's own WebSocket, so `data class`es, operator overloading and compile-time type checking carry over into a THREE.js scene, a Tone.js engine, or a native Metal shader.
 
-Not here yet: a guide to the low-level Vulkan renderer internals, especially device setup, synchronization, descriptor ownership and shader reflection. Fabricate Renderer is the entry point for the fabricated layer above them, and afield.four Graphics for the layer below.
+Not here yet: a guide to the low-level Vulkan renderer internals, especially device setup, synchronization, descriptor ownership and shader reflection. Fabricate Renderer is the entry point for the fabricated layer above them, and Field 4 Graphics for the layer below.
 
 ## AI and agents
 
@@ -90,4 +92,4 @@ Neither section is a worked example. The reference is for looking something up; 
 
 The pictures and videos on these pages come from running each page's code in Field when the docs are built, so an example pasted into a box gives the same result.
 
-[Building the Docs & Running the Tests](building_and_testing.md) has the build command and its capture modes. Read what it says about ports before you start a build: the runner shuts down whatever Field is answering on its port, including the one you are working in. [Code Diff Player](diff-player.md) lists the attributes a single capture fence can carry, and [Automating Field](automating_field.md) covers the transcript format the graphics captures replay.
+[Building the Docs & Running the Tests](building_and_testing.md) has the build command and its capture modes. [Code Diff Player](diff-player.md) lists the attributes a single capture fence can carry, and [Automating Field](automating_field.md) covers the transcript format the graphics captures replay.

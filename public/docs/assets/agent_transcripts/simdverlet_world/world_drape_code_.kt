@@ -1,5 +1,4 @@
-import afield.four.physics.*
-import afield.stdlib.vec
+import afield.simulation.physics.*
 
 /*
 A cloth, and something for it to land on.

@@ -16,6 +16,12 @@ layout(location=0) out vec2 emCoord;
 const vec2 corners[6] = vec2[6](vec2(0,0), vec2(1,0), vec2(1,1), vec2(0,0), vec2(1,1), vec2(0,1));
 void main() {
     vec4 bounds = data4(8u);
+    // A closed SlugBuffer's empty atlas: nothing to cover, so put every corner outside the clip volume.
+    if (!(bounds.z > bounds.x && bounds.w > bounds.y)) {
+        emCoord = vec2(0.0);
+        gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
+        return;
+    }
     vec2 corner = corners[gl_VertexIndex % 6];
     vec2 q = mix(bounds.xy, bounds.zw, corner);
     vec2 normal = 2.0 * corner - 1.0;

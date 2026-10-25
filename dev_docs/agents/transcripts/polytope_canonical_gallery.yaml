@@ -1,6 +1,6 @@
 name: polytope_canonical_gallery
 description: >
-  One editable Field box for canonical realization in afield.stdlib.polytope. Change the single
+  One editable Field box for canonical realization in afield.geometry.polytope. Change the single
   Conway expression string at the top and the box re-evaluates the notation, canonicalizes the
   result, and draws both side by side in the on-canvas Three.js viewer: on the left the raw
   per-operator realization, on the right the canonical form in which every edge is tangent to one
@@ -8,6 +8,9 @@ description: >
   spread, the tangency-centroid offset and the planarity error before and after, so the picture and
   the numbers agree. Hover a face to highlight it; click it to read its degree, its combinatorial
   symmetry orbit, and its distance from the centre.
+docs:
+  - page: polytope_examples.md
+    why: "Explains Conway notation and canonical realization of polytopes."
 operations:
   - create:
       box: polytope_canonical_gallery
@@ -15,11 +18,11 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 450.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.Vec3
-
-          // ---- the one parameter to change -------------------------------------------------
-          // Conway prefix notation, read right to left, over the seeds T C O I D and the
-          // operators d a k t g j n z o e s m b. Try "gD", "ktC", "bD", "sD", "dkD", "tI", "eC".
+          /*
+          ---- the one parameter to change -------------------------------------------------
+          Conway prefix notation, read right to left, over the seeds T C O I D and the
+          operators d a k t g j n z o e s m b. Try "gD", "ktC", "bD", "sD", "dkD", "tI", "eC".
+          */
           val expression = "gD"
           // ----------------------------------------------------------------------------------
 
@@ -37,7 +40,8 @@ operations:
               after:  spread ${"%.3e".format(run.finalDiagnostics.tangencyRadiusSpread)}  planarity ${"%.3e".format(run.finalDiagnostics.maxFacePlanarityError)}  centre ${"%.3e".format(run.finalDiagnostics.tangencyCentroidOffset)}
               ${run.reason} after ${run.iterations} iterations (reciprocal ${run.reciprocalIterations}, relaxation ${run.relaxationIterations}, reseeded ${run.reseeded})
               orbits: ${orbits.summary()}
-              """.trimIndent(),
+              """
+                  .trimIndent(),
           )
 
           val status: (String) -> Unit = { message -> markdown("canonical face", message) }
@@ -79,14 +83,17 @@ operations:
                           - degree: `$degree`
                           - combinatorial orbit: `$orbit of ${orbits.faceClassCount}`
                           - face-plane distance from centre: `${"%.5f".format(depth)}`
-                          """.trimIndent(),
+                          """
+                              .trimIndent(),
                       )
                   }
               }
 
-          // Left: the per-operator realization the Conway transform produced. Right: its canonical
-          // representative. Both are centred and scaled by the same rigid gauge, so the difference
-          // on screen is shape and nothing else.
+          /*
+          Left: the per-operator realization the Conway transform produced. Right: its canonical
+          representative. Both are centred and scaled by the same rigid gauge, so the difference
+          on screen is shape and nothing else.
+          */
           val before = raw.normalize(RigidGauge.CANONICAL, reference = raw.realization)
           val faceLines = before.panel("realized", -1.4f, 0.34) + solid.panel("canonical", 1.4f, 0.86)
 
@@ -100,7 +107,7 @@ operations:
           )
           displayOpen("polytope")
 
-          viz("diagnostics", listOf(run.initialDiagnostics, run.finalDiagnostics, orbits))
+          viz("diagnostics", [run.initialDiagnostics, run.finalDiagnostics, orbits])
   - execute:
       box: polytope_canonical_gallery
   - wait:

@@ -3,7 +3,7 @@ description: >
   Loadable demo of the exhaustive Petri analysis in PetriStateSpace.kt — the classical questions,
   answered exactly, with counterexamples. Six pure-compute boxes; no Window, no Renderer, no GPU,
   no audio device.
-  The companion to petri_sound, which is the *musical* half of afield.petri. This is the half that
+  The companion to petri_sound, which is the *musical* half of afield.simulation.petri. This is the half that
   treats a net as a concurrency model: an exhaustive reachability graph over every interleaving, a
   Karp-Miller coverability graph with omega-markings, and — the point — the shortest firing
   sequence that breaks whatever you asked about, drawn over the state graph so you can see it.
@@ -31,6 +31,9 @@ description: >
   Replay into a fresh Field with the agent backdoor (field_run_transcript) or open the materialized
   document; then change any net and re-run that box. Each `execute` op omits inline code, so it runs
   the box's stored `code` property. See public/docs/petri_nets.md and public/docs/petri_cheatsheet.md.
+docs:
+  - page: petri_nets.md#checking-every-possible-order
+    why: "Explains exhaustive state-space analysis and its counterexamples."
 operations:
   # 1 ── the classical question, on the net everybody already knows the answer to.
   - create:
@@ -39,7 +42,7 @@ operations:
       frame: { x: 60.0, y: 60.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.petri.*
+          import afield.simulation.petri.*
 
           // Five philosophers, five forks, everybody left-handed. Whether this wedges depends on
           // the order the grabs happen in, which is precisely what running it once cannot tell you.
@@ -51,9 +54,20 @@ operations:
                   val left = i
                   val right = (i + 1) % 5
                   val reversed = reverseLast && i == 4
-                  t("grab.$i") { from("fork.${if (reversed) right else left}"); to("holding.$i") }
-                  t("eat.$i") { from("holding.$i"); from("fork.${if (reversed) left else right}"); to("eating.$i") }
-                  t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+                  t("grab.$i") {
+                      from("fork.${if (reversed) right else left}")
+                      to("holding.$i")
+                  }
+                  t("eat.$i") {
+                      from("holding.$i")
+                      from("fork.${if (reversed) left else right}")
+                      to("eating.$i")
+                  }
+                  t("done.$i") {
+                      from("eating.$i")
+                      to("fork.$left")
+                      to("fork.$right")
+                  }
               }
           }
 
@@ -76,7 +90,6 @@ operations:
 
           // BFS layers left to right, one dot per reachable marking, the counterexample in orange.
           showPetriStateSpace(graph, w = 1100.0, h = 640.0)
-
   # 2 ── the fix, proved rather than observed — and the fault that survives it.
   - create:
       box: petri_ss_asymmetric
@@ -84,7 +97,7 @@ operations:
       frame: { x: 420.0, y: 60.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.petri.*
+          import afield.simulation.petri.*
 
           fun table(reverseLast: Boolean) = petri {
               conflict = PetriConflict.ORDER
@@ -94,9 +107,20 @@ operations:
                   val left = i
                   val right = (i + 1) % 5
                   val reversed = reverseLast && i == 4
-                  t("grab.$i") { from("fork.${if (reversed) right else left}"); to("holding.$i") }
-                  t("eat.$i") { from("holding.$i"); from("fork.${if (reversed) left else right}"); to("eating.$i") }
-                  t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+                  t("grab.$i") {
+                      from("fork.${if (reversed) right else left}")
+                      to("holding.$i")
+                  }
+                  t("eat.$i") {
+                      from("holding.$i")
+                      from("fork.${if (reversed) left else right}")
+                      to("eating.$i")
+                  }
+                  t("done.$i") {
+                      from("eating.$i")
+                      to("fork.$left")
+                      to("fork.$right")
+                  }
               }
           }
 
@@ -118,7 +142,6 @@ operations:
           println("                     transition is genuinely dead. That is a property of the NET.")
 
           showPetriStateSpace(graph, w = 1100.0, h = 640.0)
-
   # 3 ── an exact state count, and a query with a witness.
   - create:
       box: petri_ss_buffer
@@ -126,19 +149,31 @@ operations:
       frame: { x: 780.0, y: 60.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.petri.*
+          import afield.simulation.petri.*
 
-          // The producer/consumer buffer from public/docs/petri_nets.md. Each worker holds a token
-          // it puts straight back, which is what makes it *one* worker rather than an unbounded
-          // supply of them.
+          /*
+          The producer/consumer buffer from public/docs/petri_nets.md. Each worker holds a token
+          it puts straight back, which is what makes it *one* worker rather than an unbounded
+          supply of them.
+          */
           val buffer = petri {
               grid = cyc(1, 8)
               place("free", tokens = 4)
               place("items", capacity = 4)
               place("producer", tokens = 1)
               place("consumer", tokens = 1)
-              t("produce") { from("producer"); from("free"); to("items"); to("producer") }
-              t("consume") { from("consumer"); from("items"); to("free"); to("consumer") }
+              t("produce") {
+                  from("producer")
+                  from("free")
+                  to("items")
+                  to("producer")
+              }
+              t("consume") {
+                  from("consumer")
+                  from("items")
+                  to("free")
+                  to("consumer")
+              }
           }
 
           val graph = buffer.stateSpace()
@@ -155,7 +190,6 @@ operations:
           println("items + free == 4 always? " + (conserved?.let { "no — $it" } ?: "yes, over all ${graph.stateCount} markings"))
 
           showPetriStateSpace(graph, w = 900.0, h = 320.0)
-
   # 4 ── the net with no finite answer, and the two honest things to say about it.
   - create:
       box: petri_ss_unbounded
@@ -163,13 +197,17 @@ operations:
       frame: { x: 60.0, y: 200.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.petri.*
+          import afield.simulation.petri.*
 
           // `make` puts its token straight back and drops another one in `queue`, so `queue` grows
           // forever and the state space is infinite.
           val leak = petri {
               place("run", tokens = 1)
-              t("make") { from("run"); to("run"); to("queue") }
+              t("make") {
+                  from("run")
+                  to("run")
+                  to("queue")
+              }
           }
 
           // The exhaustive search cannot finish, and does not pretend to. Every accessor that would
@@ -188,20 +226,25 @@ operations:
           println("bound('queue') = ${cover.bound("queue")}   (null here means omega, not unknown)")
           println("bound('run')   = ${cover.bound("run")}")
 
-          // The trade, stated: coverability terminates on everything and is only *valid* for plain
-          // place/transition nets. Add a capacity and it says so rather than guessing — even here,
-          // where it happens to get the right answer anyway, because a capped place is bounded by
-          // its capacity whatever the pumping argument says and so is never given an ω.
+          /*
+          The trade, stated: coverability terminates on everything and is only *valid* for plain
+          place/transition nets. Add a capacity and it says so rather than guessing — even here,
+          where it happens to get the right answer anyway, because a capped place is bounded by
+          its capacity whatever the pumping argument says and so is never given an ω.
+          */
           val capped = petri {
               place("run", tokens = 1)
               place("queue", capacity = 3)
-              t("make") { from("run"); to("run"); to("queue") }
+              t("make") {
+                  from("run")
+                  to("run")
+                  to("queue")
+              }
           }
           println()
           println(capped.coverability().report())
           println("the caveat is conservative, not a wrong answer — the exhaustive search agrees:")
           println("  " + capped.stateSpace().report().lines().first())
-
   # 5 ── the thing the incidence matrix structurally cannot see.
   - create:
       box: petri_ss_exclusion
@@ -209,7 +252,7 @@ operations:
       frame: { x: 420.0, y: 200.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.petri.*
+          import afield.simulation.petri.*
 
           // Two processes and a critical section each. The only difference between these two nets
           // is an inhibitor arc — "not while the other one is in there".
@@ -218,10 +261,24 @@ operations:
               place("idle.b", tokens = 1)
               place("crit.a")
               place("crit.b")
-              t("enter.a") { from("idle.a"); if (guarded) inhibit("crit.b"); to("crit.a") }
-              t("leave.a") { from("crit.a"); to("idle.a") }
-              t("enter.b") { from("idle.b"); if (guarded) inhibit("crit.a"); to("crit.b") }
-              t("leave.b") { from("crit.b"); to("idle.b") }
+              t("enter.a") {
+                  from("idle.a")
+                  if (guarded) inhibit("crit.b")
+                  to("crit.a")
+              }
+              t("leave.a") {
+                  from("crit.a")
+                  to("idle.a")
+              }
+              t("enter.b") {
+                  from("idle.b")
+                  if (guarded) inhibit("crit.a")
+                  to("crit.b")
+              }
+              t("leave.b") {
+                  from("crit.b")
+                  to("idle.b")
+              }
           }
 
           val safe = net(guarded = true)
@@ -229,8 +286,9 @@ operations:
 
           // An inhibitor arc moves no token, and the incidence matrix is a record of *change*. So
           // the two nets have the same matrix, and no amount of algebra can distinguish them.
-          println("same incidence matrix? " +
-              (safe.incidence().map { it.toList() } == unsafe.incidence().map { it.toList() }))
+          println(
+              "same incidence matrix? " + (safe.incidence().map { it.toList() } == unsafe.incidence().map { it.toList() }),
+          )
           println(safe.incidenceTable())
           println("P-invariants: " + safe.pInvariants())
           println("…none of which couples crit.a to crit.b, so the algebra cannot prove exclusion.")
@@ -238,14 +296,16 @@ operations:
 
           // The search asks the engine whether a transition is enabled, and the engine knows about
           // inhibitor arcs. So it can.
-          println("guarded:   mutually exclusive? " + safe.stateSpace().mutuallyExclusive("crit.a", "crit.b") +
-              "   over ${safe.stateSpace().stateCount} reachable markings")
+          println(
+              "guarded:   mutually exclusive? " +
+                  safe.stateSpace().mutuallyExclusive("crit.a", "crit.b") +
+                  "   over ${safe.stateSpace().stateCount} reachable markings",
+          )
           val breach = unsafe.stateSpace().mutualExclusionFailure("crit.a", "crit.b")!!
           println("unguarded: broken in ${breach.length} firings — $breach")
           println(breach.describe(ending = "→ both processes are inside the critical section"))
 
           showPetriNet(safe, w = 760.0, h = 400.0, layout = PetriLayout.FORCE)
-
   # 6 ── where the wall is, and how to move it.
   - create:
       box: petri_ss_reduction
@@ -253,7 +313,7 @@ operations:
       frame: { x: 780.0, y: 200.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.petri.*
+          import afield.simulation.petri.*
 
           fun philosophers(n: Int) = petri {
               conflict = PetriConflict.ORDER
@@ -262,15 +322,28 @@ operations:
               for (i in 0 until n) {
                   val left = i
                   val right = (i + 1) % n
-                  t("grab.$i") { from("fork.$left"); to("holding.$i") }
-                  t("eat.$i") { from("holding.$i"); from("fork.$right"); to("eating.$i") }
-                  t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+                  t("grab.$i") {
+                      from("fork.$left")
+                      to("holding.$i")
+                  }
+                  t("eat.$i") {
+                      from("holding.$i")
+                      from("fork.$right")
+                      to("eating.$i")
+                  }
+                  t("done.$i") {
+                      from("eating.$i")
+                      to("fork.$left")
+                      to("fork.$right")
+                  }
               }
           }
 
-          // An exhaustive search is exponential in how much is happening at once, so the useful
-          // question is not "does this work" but "how far does it get". The answer is a fact
-          // about your net and your machine, so measure it rather than guess.
+          /*
+          An exhaustive search is exponential in how much is happening at once, so the useful
+          question is not "does this work" but "how far does it get". The answer is a fact
+          about your net and your machine, so measure it rather than guess.
+          */
           println(" n   full         reduced   speed-up   verdict     ms(full) ms(red)")
           for (n in 2..12) {
               val net = philosophers(n)
@@ -284,25 +357,36 @@ operations:
               val red = net.stateSpace(reduction = PetriReduction.STUBBORN)
               val redMs = (System.nanoTime() - t1) / 1_000_000
 
-              println("%2d   %-11s  %-7d   %-8s   %-9s   %5d    %5d".format(
-                  n,
-                  if (full.complete) "${full.stateCount}" else "BUDGET(${full.stateCount})",
-                  red.stateCount,
-                  if (full.complete) "%.1fx".format(full.stateCount.toDouble() / red.stateCount) else "—",
-                  "${full.canDeadlock}/${red.canDeadlock}",
-                  fullMs, redMs))
+              println(
+                  "%2d   %-11s  %-7d   %-8s   %-9s   %5d    %5d"
+                      .format(
+                          n,
+                          if (full.complete) "${full.stateCount}" else "BUDGET(${full.stateCount})",
+                          red.stateCount,
+                          if (full.complete) "%.1fx".format(full.stateCount.toDouble() / red.stateCount) else "—",
+                          "${full.canDeadlock}/${red.canDeadlock}",
+                          fullMs,
+                          redMs,
+                      ),
+              )
           }
 
-          // The full sequence is the companion Pell numbers, a(n) = 2a(n-1) + a(n-2); the reduced
-          // one is 2n^2 - 2n + 2. Twelve philosophers is past the default budget for the full
-          // search — which says BUDGET and refuses to answer — and 266 markings for the reduced one.
+          /*
+          The full sequence is the companion Pell numbers, a(n) = 2a(n-1) + a(n-2); the reduced
+          one is 2n^2 - 2n + 2. Twelve philosophers is past the default budget for the full
+          search — which says BUDGET and refuses to answer — and 266 markings for the reduced one.
+          */
           val twelve = philosophers(12)
           val reduced = twelve.stateSpace(reduction = PetriReduction.STUBBORN)
           println()
           println("full   : " + twelve.stateSpace().report().trim().lines().joinToString(" | "))
           println("reduced: " + reduced.report().trim().lines().joinToString(" | "))
-          println("counterexample: " + reduced.deadlockTrace()!! + "   verify=" +
-              (reduced.deadlockTrace()!!.verify() ?: "checks out"))
+          println(
+              "counterexample: " +
+                  reduced.deadlockTrace()!! +
+                  "   verify=" +
+                  (reduced.deadlockTrace()!!.verify() ?: "checks out"),
+          )
 
           // The reduction answers deadlock and refuses everything else, because that is all the
           // theorem covers. `exact` is the flag that keeps the two apart.
@@ -311,7 +395,6 @@ operations:
           println("reduced.bounds=${reduced.bounds}  isLive=${reduced.isLive}  isReversible=${reduced.isReversible}")
 
           showPetriStateSpace(reduced, w = 1100.0, h = 600.0)
-
   - execute: { box: petri_ss_philosophers }
   - execute: { box: petri_ss_asymmetric }
   - execute: { box: petri_ss_buffer }

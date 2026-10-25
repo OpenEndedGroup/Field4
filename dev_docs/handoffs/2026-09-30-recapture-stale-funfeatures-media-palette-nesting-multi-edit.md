@@ -28,7 +28,7 @@ out of date or missing:
 - 72f4589b ("## Navigating"): the command-palette video
   (`assets/Screen-Recording-2026-03-21-at-4.03.42.mp4`) shows an old palette. The prose is now
   fixed: it says `command/ctrl-shift-P` (or `f1`), press again for document commands, which
-  matches `open-command-palette` in `src/jsMain/kotlin/afield/KeybindingsClient.kt` and the hint
+  matches `open-command-palette` in `src/jsMain/kotlin/afield/app/editor/KeybindingsClient.kt` and the hint
   in `src/commonMain/resources/quickpick.js`. The video is still stale.
 - 4f87253e ("## Nesting"): `assets/nesting.mp4` shows an old command palette.
 - 7f222014 ("## Multiple editors"): `assets/multieditor.mp4` shows an old command palette.

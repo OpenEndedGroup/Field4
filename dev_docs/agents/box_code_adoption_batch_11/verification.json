@@ -1,0 +1,89 @@
+{
+  "baseline": "c2103ed97",
+  "findingIds": [
+    "02b566216ca7-01",
+    "02b566216ca7-02",
+    "25f85b04108e-01",
+    "25f85b04108e-02",
+    "25f85b04108e-03"
+  ],
+  "mechanical": {
+    "kotlinDocumentationStates": 27,
+    "glslDocumentationStates": 30,
+    "savedKotlinSources": 3,
+    "savedShaders": 2,
+    "bodyTokensPreserved": true,
+    "shaderCommentsAndLiteralsPreserved": true
+  },
+  "savedWrappersCompiled": 4,
+  "bufferReferenceGpuCounts": [
+    0,
+    1,
+    64,
+    65,
+    100000
+  ],
+  "baseline65ParticlesWritten": 64,
+  "descriptorGpu": [
+    {
+      "count": 1,
+      "localSize": 16,
+      "workgroups": 1,
+      "allOutputScalarsChecked": 4
+    },
+    {
+      "count": 16,
+      "localSize": 16,
+      "workgroups": 1,
+      "allOutputScalarsChecked": 64
+    },
+    {
+      "count": 17,
+      "localSize": 16,
+      "workgroups": 2,
+      "allOutputScalarsChecked": 68
+    },
+    {
+      "count": 65,
+      "localSize": 16,
+      "workgroups": 5,
+      "allOutputScalarsChecked": 260
+    }
+  ],
+  "streamer": {
+    "privateUdpPort": 59134,
+    "packets": 194,
+    "completeFrames": 36,
+    "firstKeyframe": 0,
+    "identityBefore": 1004728150,
+    "identityAfter": 1004728150,
+    "encodedBefore": 9,
+    "encodedAfter": 32,
+    "decodedSize": [
+      1280,
+      720
+    ],
+    "decodedMean": [
+      39.659521484375,
+      11.932579210069445,
+      0.8111545138888889
+    ],
+    "decodedStddev": [
+      47.206988662596,
+      18.402209098534403,
+      0.9991420644804957
+    ],
+    "sourceChangesForFixture": [
+      "private loopback UDP port",
+      "private renderer title and SDR window"
+    ]
+  },
+  "particleDrawCount": 100000,
+  "nativeParticleCaptures": 3,
+  "structureProxyRegressionTests": 1,
+  "limits": [
+    "N=0 checked with padded allocation; no zero-size allocation claim",
+    "Particle scale captures use an animated scene; no pixel equality claim",
+    "Private verification window uses SDR; user Electron session untouched"
+  ]
+}

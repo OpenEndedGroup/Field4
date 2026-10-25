@@ -1,7 +1,8 @@
-import afield.four.Renderer
-import afield.four.util.Window
-var Box.neuralExport by Inheritance<afield.stdlib.FlowMatchExport>() /**/
-val Once.neuralExport by Onceing<afield.stdlib.FlowMatchExport>() /**/
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.simulation.particles.FlowMatchExport
+var Box.neuralExport by Inheritance<FlowMatchExport>() /**/
+val Once.neuralExport by Onceing<FlowMatchExport>() /**/
 val Why.neuralExport by Whying() /**/
 var Box.window by Inheritance<Window>() /*from:np_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:np_renderer*/ /**/

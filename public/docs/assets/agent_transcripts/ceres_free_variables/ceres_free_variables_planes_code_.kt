@@ -1,31 +1,47 @@
-import afield.graphics.FLine
-import afield.stdlib.Vec3
-import afield.stdlib.ceres.CachedCeresSolvers
-import afield.stdlib.ceres.CeresLinearSolver
-import afield.stdlib.ceres.FfmCeresBackend
-import afield.stdlib.ceres.PointCloud
-import afield.stdlib.ceres.SolveOptions
-import afield.stdlib.ceres.SolveRequest
+import afield.math.optimization.ceres.CachedCeresSolvers
+import afield.math.optimization.ceres.CeresLinearSolver
+import afield.math.optimization.ceres.FfmCeresBackend
+import afield.math.optimization.ceres.PointCloud
+import afield.math.optimization.ceres.SolveOptions
+import afield.math.optimization.ceres.SolveRequest
 import java.nio.file.Files
 import java.nio.file.Path
 
-// ---- the one parameter to change -------------------------------------------------
-// Conway prefix notation, read right to left. "tI" — the truncated icosahedron, a football —
-// is the default because it is nearly round, so every solved plane sits on the surface where
-// you can see it. Set this to "kkC" for the standing counter-example in
-// dev_docs/POLYTOPE_ALGEBRA.md that neither Kotlin iteration canonicalizes and that the
-// plane-as-a-free-variable formulation cracked: 12 iterations, tangency 2.7e-08. Its
-// canonical form is a stellation, so the stems end up inside it. Also try "aC", "gD", "kkD".
+/*
+---- the one parameter to change -------------------------------------------------
+Conway prefix notation, read right to left. "tI" — the truncated icosahedron, a football —
+is the default because it is nearly round, so every solved plane sits on the surface where
+you can see it. Set this to "kkC" for the standing counter-example in
+dev_docs/POLYTOPE_ALGEBRA.md that neither Kotlin iteration canonicalizes and that the
+plane-as-a-free-variable formulation cracked: 12 iterations, tangency 2.7e-08. Its
+canonical form is a stellation, so the stems end up inside it. Also try "aC", "gD", "kkD".
+*/
 val expression = "tI"
 // ----------------------------------------------------------------------------------
 
 // Nothing is committed, so look where each build task puts its artifact. Constructing the
 // backend is what refuses a missing or too-old library, so that is the check.
-val backend = listOf(
-    Path.of("build/ken-ceres-redistributable/libken_ceres_jvm.dylib"),
-    Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
-).filter { Files.exists(it) }
-    .firstNotNullOfOrNull { runCatching { FfmCeresBackend(it) }.getOrNull() }
+val backendFailures = mutableListOf<String>()
+val backend =
+    [
+            Path.of("build/ken-ceres-redistributable/libken_ceres_jvm.dylib"),
+            Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
+        ]
+        .filter { Files.exists(it) }
+        .firstNotNullOfOrNull { path ->
+            runCatching { FfmCeresBackend(path) }
+                .onFailure { failure ->
+                    val detail = "$path: ${failure.javaClass.simpleName}: ${failure.message}"
+                    backendFailures += detail
+                    println("Ceres load failed: $detail")
+                }
+                .getOrNull()
+        }
+val backendStatus = when {
+    backend != null -> "Loaded a compatible Ceres wrapper."
+    backendFailures.isEmpty() -> "No Ceres wrapper found in build/ken-ceres-redistributable or build/ken-ceres."
+    else -> "Ceres wrappers were found but could not load:\n" + backendFailures.joinToString("\n")
+}
 
 val seed = conway(expression).polyhedron
 val problem = RealizationProblem.of(seed)
@@ -40,14 +56,15 @@ fun faintSeed() = seed.toFaceFLines { _, line ->
 }
 
 if (backend == null) {
-    println("no Ceres wrapper built; drawing the unsolved seed")
+    println("$backendStatus\nDrawing the unsolved seed.")
     markdown(
         "ceres",
         """
         ### This box needs the native Ceres wrapper
 
-        The solver is an optional extra and no binary is committed, so there is nothing here
-        to solve yet. Build one from the repository root and re-run this box:
+        $backendStatus
+
+        Build or update the optional wrapper from the repository root and re-run this box:
 
         ```
         ./gradlew buildCeresRedistributable
@@ -56,7 +73,8 @@ if (backend == null) {
         That produces a self-contained library — `otool -L` shows only `libc++` and
         `libSystem` — from pinned Ceres and Eigen source. `dev_docs/CERES.md` has the whole
         story.
-        """.trimIndent(),
+        """
+            .trimIndent(),
     )
     displayOpen("ceres")
     threeLines(faintSeed(), channel = "solid", name = "ceres-planes", height = 520, autoFrame = true)
@@ -71,19 +89,22 @@ if (backend == null) {
         summary = true,
     )
 
-    fun solve(planes: PlaneFormulation) = CachedCeresSolvers(backend).use { solvers ->
-        solvers.solve(
-            SolveRequest(
-                PointCloud(problem.initialCoordinates),
-                CeresRealization.program(plan, problem, planes, 1.0),
-                options = options,
-            ),
-        )
-    }
+    fun solve(planes: PlaneFormulation) =
+        CachedCeresSolvers(backend).use { solvers ->
+            solvers.solve(
+                SolveRequest(
+                    PointCloud(problem.initialCoordinates),
+                    CeresRealization.program(plan, problem, planes, 1.0),
+                    options = options,
+                ),
+            )
+        }
 
-    // Each face's plane as a free unit normal (on a sphere manifold) plus a free scalar
-    // offset, written in Kotlin as `corner . n - d` — and the same parameterisation as the
-    // hand-written C++ opcode, so the two can be compared on the spot.
+    /*
+    Each face's plane as a free unit normal (on a sphere manifold) plus a free scalar
+    offset, written in Kotlin as `corner . n - d` — and the same parameterisation as the
+    hand-written C++ opcode, so the two can be compared on the spot.
+    */
     val expressed = solve(PlaneFormulation.HESSE_EXPRESSION)
     val opcode = solve(PlaneFormulation.HESSE)
     val agreement = expressed.points.values.indices.maxOf {
@@ -104,9 +125,10 @@ if (backend == null) {
 
     // The free variables, read back in declaration order: two blocks per face, a unit normal
     // and an offset. They are not in the point cloud — they never were points.
-    val planes = faces.indices.map { f ->
-        expressed.variables[2 * f].vec3() to expressed.variables[2 * f + 1].scalar
-    }
+    val planes =
+        faces.indices.map { f ->
+            expressed.variables[2 * f].vec3() to expressed.variables[2 * f + 1].scalar
+        }
     val worstUnit = planes.maxOf { (n, _) ->
         kotlin.math.abs(kotlin.math.sqrt(n.x * n.x + n.y * n.y + n.z * n.z) - 1.0)
     }
@@ -122,7 +144,8 @@ if (backend == null) {
         canonical  : tangency spread ${"%.3e".format(diagnostics.tangencyRadiusSpread)}  centre ${"%.3e".format(diagnostics.tangencyCentroidOffset)}  planarity ${"%.3e".format(diagnostics.maxFacePlanarityError)}
         every solved normal is still unit to ${"%.2e".format(worstUnit)} — the sphere manifold's own doing,
         since no residual ever asks it to stay there
-        """.trimIndent(),
+        """
+            .trimIndent(),
     )
 
     val status: (String) -> Unit = { message -> markdown("plane", message) }
@@ -157,14 +180,17 @@ if (backend == null) {
 
                 The residual is just `corner . n - d`, written in Kotlin and differentiated by
                 Ceres on `ceres::Jet` — no C++, no finite differences.
-                """.trimIndent(),
+                """
+                    .trimIndent(),
             )
         }
     }
 
-    // One stem per free variable: from the point of that face's plane nearest the origin,
-    // outward along the normal. Both endpoints come from `n` and `d` alone — this is the part
-    // of the picture you cannot draw at all without reading the free variables back.
+    /*
+    One stem per free variable: from the point of that face's plane nearest the origin,
+    outward along the normal. Both endpoints come from `n` and `d` alone — this is the part
+    of the picture you cannot draw at all without reading the free variables back.
+    */
     val stem = 0.6
     val stems = planes.map { (n, d) ->
         FLine()
@@ -197,7 +223,8 @@ if (backend == null) {
         nearest the origin.
 
         Click a face to read its plane.
-        """.trimIndent(),
+        """
+            .trimIndent(),
     )
     displayOpen("plane")
 }

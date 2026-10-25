@@ -7,7 +7,7 @@ The published behaviour is on [`public/docs/path_tracing.md`](../public/docs/pat
 This page is the part a future change to the same code needs: the method, the numbers
 with their populations, and the two traps that cost time.
 
-Code: `src/jvmMain/kotlin/afield/four/fabricated/PathTraceScene.kt` (`Packed`'s
+Code: `src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceScene.kt` (`Packed`'s
 `emitterDistribution` and `emitterLookup`), `src/jvmMain/resources/afield/four/pathtracing/trace.comp`
 (`sampleEmitter`, `emitterPdf`, and the two new arms), `PathTracingRenderer.kt`
 (the property and the two scene buffers), `PathTraceTestMain.kt` (CPU contracts,
@@ -221,7 +221,7 @@ For a standalone run with a durable audit verdict:
 
 ```bash
 uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9730 --timeout 3900 \
-  --command 'run-jvm-main afield.four.fabricated.RayTracingGpuAudit --arg=--stage=emitters --timeout 3800'
+  --command 'run-jvm-main afield.graphics.scene.fabricated.RayTracingGpuAudit --arg=--stage=emitters --timeout 3800'
 ```
 
 That route writes `build/raytracing-audit/gpu/emitters/<backend>/` and `report.json`.

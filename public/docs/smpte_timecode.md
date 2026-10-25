@@ -6,10 +6,10 @@ buzz on a spare audio track or cable. MTC (MIDI Time Code) is the same time carr
 messages. Field reads and writes both, and turns either into a clock a box can ask "what time is
 it?" from its draw loop.
 
-Everything is in the package `afield.timecode`, which box code imports:
+Everything is in the package `afield.io.timecode`, which box code imports:
 
 ```diffstatic {data-lang=kotlin}
-import afield.timecode.*
+import afield.io.timecode.*
 ```
 
 ## Timecode values and drop-frame
@@ -36,13 +36,16 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/smpte_timecode/arithmetic.png" alt="the box's output: 00:00:59;29 plus one frame is 00:01:00;02, 00:09:59;29 plus one frame is 00:10:00;00, and an hour of drop-frame labels is 3599.996 seconds of wall time" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="smpte-arithmetic" w="760" h="140"}
 :::static
-import afield.timecode.*
+import afield.io.timecode.*
 
 val t = Timecode.parse("00:00:59;29")
 val tenth = Timecode.parse("00:09:59;29")
 val hour = Timecode.parse("01:00:00;00").totalSeconds
-markdown("main", "`$t` + 1 frame = `${t + 1}`  \n`$tenth` + 1 frame = `${tenth + 1}`  \n" +
-    "an hour of drop-frame labels is ${"%.3f".format(hour)} s of wall time")
+markdown(
+    "main",
+    "`$t` + 1 frame = `${t + 1}`  \n`$tenth` + 1 frame = `${tenth + 1}`  \n" +
+        "an hour of drop-frame labels is ${"%.3f".format(hour)} s of wall time",
+)
 ```
 
 At minute 1 the label jumps from `;29` to `;02`. At minute 10 it does not skip. `totalSeconds` is
@@ -62,7 +65,7 @@ only needs the time between flips, not the signal level, and the level can be in
 saves them as a mono `.wav` to play out of an interface into a desk or a video server:
 
 ```diffstatic {data-lang=kotlin}
-import afield.timecode.*
+import afield.io.timecode.*
 
 val ltc = LtcEncoder.render(Timecode.parse("10:00:00:00", TimecodeRate.FPS_25), seconds = 60.0)
 TimecodeWav.write(java.io.File("/tmp/ltc_25fps.wav"), ltc, sampleRate = 48000)
@@ -86,7 +89,7 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/smpte_timecode/ltc_roundtrip.png" alt="a plot: the decoded frame number rises steadily over four seconds of playback, while the measured speed climbs in a straight line from 0.9 to 1.1; below it, 118 frames decoded, consecutive, with 00:00:59;29 followed by 00:01:00;02" wait-output=true wait-output-kind=display wait-output-channel="info" capture="box" embed=true name="smpte-ltc-roundtrip" w="760" h="420"}
 :::static
-import afield.timecode.*
+import afield.io.timecode.*
 
 // Four seconds of 29.97 drop-frame LTC across the one-minute boundary.
 val start = Timecode.parse("00:00:58;00")
@@ -106,12 +109,18 @@ while (p < ltc.size - 1) {
 val frames = LtcDecoder(48000, TimecodeRate.FPS_2997_DF).decodeAll(played.toFloatArray())
 
 // Decoded frame number against playback time, and the speed the decoder measured.
-val w = 640.0; val h = 220.0
+val w = 640.0
+val h = 220.0
 val tMax = played.size / 48000.0
 val fMax = frames.maxOf { it.timecode - start }.toDouble()
-val pts = frames.joinToString(" ") { "%.1f,%.1f".format(it.sampleStart / 48000 / tMax * w, h - (it.timecode - start) / fMax * h) }
-val spd = frames.joinToString(" ") { "%.1f,%.1f".format(it.sampleStart / 48000 / tMax * w, h - (it.speed - 0.8) / 0.4 * h) }
-display("main", """<svg width="${w + 60}" height="${h + 40}" style="font: 12px sans-serif">
+val pts = frames.joinToString(" ") {
+    "%.1f,%.1f".format(it.sampleStart / 48000 / tMax * w, h - (it.timecode - start) / fMax * h)
+}
+val spd =
+    frames.joinToString(" ") { "%.1f,%.1f".format(it.sampleStart / 48000 / tMax * w, h - (it.speed - 0.8) / 0.4 * h) }
+display(
+    "main",
+    """<svg width="${w + 60}" height="${h + 40}" style="font: 12px sans-serif">
   <g transform="translate(40,10)">
     <rect width="$w" height="$h" fill="none" stroke="#999"/>
     <polyline points="$pts" fill="none" stroke="#2a7" stroke-width="2"/>
@@ -119,10 +128,14 @@ display("main", """<svg width="${w + 60}" height="${h + 40}" style="font: 12px s
     <text x="4" y="14" fill="#2a7">decoded frame (0 … ${fMax.toInt()})</text>
     <text x="4" y="${h - 6}" fill="#c52">measured speed (0.8 … 1.2)</text>
     <text x="${w / 2 - 40}" y="${h + 22}" fill="#999">playback time, s (0 … ${"%.2f".format(tMax)})</text>
-  </g></svg>""")
-markdown("info", "decoded **${frames.size}** frames, ${frames.first().timecode} … ${frames.last().timecode}; " +
-    "consecutive: ${frames.zipWithNext().all { (a, b) -> a.timecode + 1 == b.timecode }}; " +
-    "across the minute: ${frames.map { it.timecode.toString() }.filter { it.startsWith("00:00:59;2") || it.startsWith("00:01:00;0") }}")
+  </g></svg>""",
+)
+markdown(
+    "info",
+    "decoded **${frames.size}** frames, ${frames.first().timecode} … ${frames.last().timecode}; " +
+        "consecutive: ${frames.zipWithNext().all { (a, b) -> a.timecode + 1 == b.timecode }}; " +
+        "across the minute: ${frames.map { it.timecode.toString() }.filter { it.startsWith("00:00:59;2") || it.startsWith("00:01:00;0") }}",
+)
 ```
 
 Four seconds at 29.97 is 120 frames. The decoder reports 118: it spends the first frame learning
@@ -154,7 +167,7 @@ Through a MIDI port opened with `MidiDevices`, `MidiOutput.sendMtcQuarterFrames(
 `sendMtcFullFrame(tc)` send, and `MidiInput.mtcDecoder()` listens:
 
 ```diffstatic {data-lang=kotlin}
-import afield.timecode.*
+import afield.io.timecode.*
 
 val input = MidiDevices.openInput(MidiDevices.findInput("IAC")!!)
 val clock = TimecodeClock(TimecodeRate.FPS_25).followMtc(input)
@@ -171,10 +184,10 @@ sees smooth time even though LTC arrives 24 to 30 times a second. When a followe
 clock runs on for `freewheelSeconds` (half a second) and then holds.
 
 ```diffstatic {data-lang=kotlin}
-import afield.timecode.*
+import afield.io.timecode.*
 
 val clock = TimecodeClock(TimecodeRate.FPS_30).generate(Timecode.parse("00:59:50:00", TimecodeRate.FPS_30))
-println(clock.now())        // 00:59:50:00, counting from the moment generate was called
+println(clock.now()) // 00:59:50:00, counting from the moment generate was called
 ```
 
 Feed `feedLtc` from the thread that owns the audio buffers. The decoder holds per-sample state and

@@ -16,6 +16,9 @@ Load it on an Android phone, on a headset, or in a second browser window on the 
 
 There is no external key, hosted scene, or platform-specific page to set up.
 
+To sketch in a browser tab on your desktop, with no headset involved, start with [Javascript in a
+browser tab](remotejs.md); this page is the reference for the head itself and for WebXR.
+
 This is the *browser* head. Field's other head is native and does not go through WebXR at all. See
 [Apple Vision Pro](vision.md) for the visionOS front end, its RealityKit and Live Metal surfaces,
 and the pose channel that lets the desktop renderer draw from the wearer's own viewpoint.
@@ -43,11 +46,15 @@ remoteAr(debug = true, selfTest = true)
 `debug = true` shows the status panel (connection, A-Frame/Three.js versions, XR platform); `selfTest = true` runs the head's in-browser self-test on boot and reports pass/fail. The iframe carries the class `field-remote-ar-head` so page scripts and tests can target it. `remoteAr()` is a thin convenience over assigning the iframe into a box output channel yourself and opening it:
 
 ```diffstatic {data-lang=kotlin}
-display("remote-ar", """
+display(
+    "remote-ar",
+    """
 <iframe src="/extensions/remote_ar/index.html?debug=1"
         allow="xr-spatial-tracking; fullscreen"
         style="display:block;width:960px;height:540px;border:0;background:#000"></iframe>
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 displayOpen("remote-ar")
 ```
 
@@ -113,7 +120,7 @@ launch(function () {
 }, "move-triangle", false)
 ```
 
-The optional third argument controls one-shot behavior. `false` keeps the function in the runloop. `over(seconds, name, callback)` supplies a value from 0 to 1 over a duration. Field's stop action removes tasks launched by that box. Animation mixers for loaded glTF assets advance on this same scene tick; there is no second `requestAnimationFrame` loop.
+The optional third argument controls one-shot behavior. `false` keeps the function in the runloop. `over(seconds, name, callback)` supplies a value from 0 to 1 over a duration. Stop removes every task the box started, both its own `_r` task and each `launch(...)`. Animation mixers for loaded glTF assets advance on this same scene tick; there is no second `requestAnimationFrame` loop.
 
 ## Pointer and XR interaction
 
@@ -151,34 +158,48 @@ var latest = xrHit()
 
 The head requests `local-floor`, `viewer`, and `hit-test` through standard WebXR. Android browsers provide these directly. Endrun supplies the same `navigator.xr` surface from ARKit on iOS.
 
+## Printing, display and controls
+
+A RemoteJS box prints beside its lines, marks errors where they happen, and draws `display`
+channels, sliders and checkboxes the way a Kotlin box does. [Javascript in a browser
+tab](remotejs.md) covers all of it, with the box on a desktop rather than a headset.
+
 ## Completion and errors
 
 Completion is generated in the connected head from live globals, sandbox variables, prototypes, Three.js, and the documented helper functions. It does not evaluate arbitrary function calls while completing a member expression.
 
-Every execution carries a stable `box_NAME|UUID` source name. Runtime failures and callback failures are returned to the originating Field box with the browser's message, stack, filename, line, and column. Printed values can arrive before terminal `OK`; the return channel remains open for those values and closes on the terminal response.
+Every execution carries a stable `box_NAME|UUID` source name. Runtime failures and callback failures are returned to the originating Field box with the browser's message, stack, filename, line, and column. An error is marked on the line that raised it, including a line inside a function the box defined.
 
 ## Testing the head
 
-Append `?selftest=1&debug=1` to the head URL. The small status panel shows the connection, dependency versions, WebXR platform, and self-test result. Automation can read:
+Append `?selftest=1&debug=1` to the head URL. The small status panel shows the connection, dependency versions, WebXR platform, and self-test result. A script in the head's page can read the same state:
 
 ```diffstatic {data-lang=javascript}
 window.__fieldRemoteHead.snapshot()
 await window.__fieldRemoteHead.selfTest()
 ```
 
-The self-test checks the vendored A-Frame/Three pairing, scene setup, sandbox storage, runtime completion, source-mapped errors, FLine stroke/cubic geometry, hit callback surfaces, glTF loader, and a complete task lifecycle driven by A-Frame's frame loop. The browser regression additionally creates a real RemoteJS language root in Field, runs a child box through the WebSocket, observes `42` in the head, and captures the status panel:
+The self-test checks the vendored A-Frame/Three pairing, scene setup, sandbox storage, runtime completion, source-mapped errors, FLine stroke/cubic geometry, hit callback surfaces, glTF loader, and a complete task lifecycle driven by A-Frame's frame loop. It runs on a desktop browser; camera permission and entering an AR session on an Android phone or through Endrun/ARKit can only be checked on the device itself.
 
-```diffstatic {data-lang=bash}
-uv run --project . --group backdoor python tools/run_ui_regressions.py \
-  --id remote-ar-head --port 9490 --timeout 45
-```
+??? aside "Agents: the browser regression for the head"
 
-The test is a desktop check of the full transport and rendering head. Camera permission, native Android WebXR session entry, and Endrun/ARKit session entry still require their physical devices.
+    The UI regression creates a real RemoteJS language root in Field, runs a child box through the WebSocket, observes `42` in the head, and captures the status panel:
+
+    ```diffstatic {data-lang=bash}
+    uv run --project . --group backdoor python tools/run_ui_regressions.py \
+      --id remote-ar-head --port 9490 --timeout 45
+    ```
+
+    It is a desktop check of the full transport and rendering head. Camera permission, native Android WebXR session entry, and Endrun/ARKit session entry have no automated test: each needs its physical device, and nothing in the suites drives one.
 
 ## Vendored runtime
 
-The head loads local copies of A-Frame 1.8.0 and Tone.js 15.1.22 from `extensions/remote_ar/vendor/`. A-Frame's browser bundle embeds its own `super-three` 0.184.0, so there is no separate Three.js here; the one Three.js anything imports directly is the stock build under `vendor/three/` that the docs viewer uses. Licenses, package metadata, archive checksums, and refresh instructions live beside them. To reproduce the vendor tree:
+The head loads local copies of A-Frame 1.8.0 and Tone.js 15.1.22 from `extensions/remote_ar/vendor/`, so it needs no network beyond the connection to Field. A-Frame's browser bundle embeds its own `super-three` 0.184.0, so there is no separate Three.js in the head.
 
-```diffstatic {data-lang=bash}
-python3 tools/vendor_remote_ar_runtime.py
-```
+??? aside "Agents: refreshing the vendor tree"
+
+    The one Three.js anything imports directly is the stock build under `vendor/three/` that the docs viewer uses. Licenses, package metadata, archive checksums, and refresh instructions live beside the vendored files. To reproduce the vendor tree:
+
+    ```diffstatic {data-lang=bash}
+    python3 tools/vendor_remote_ar_runtime.py
+    ```

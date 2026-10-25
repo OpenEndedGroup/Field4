@@ -5,7 +5,7 @@ a survey — it is the thing to follow when you want to add one, or when you hav
 know what else it touches.
 
 Every `file:line` below was read in the worktree that shipped this page, and
-`SmallLanguageAnatomyTest` (`src/jvmTest/kotlin/afield/docs/SmallLanguageAnatomyTest.kt`) re-checks
+`SmallLanguageAnatomyTest` (`src/jvmTest/kotlin/afield/tools/docs/SmallLanguageAnatomyTest.kt`) re-checks
 each one on every `./gradlew check`: it scrapes the ledger table out of *this file* and fails if a
 cited **anchor** no longer exists in the file it points at. Every count claimed in prose is asserted
 there too, against a set derived from the code rather than a number typed in. So if this page is
@@ -42,35 +42,35 @@ call to `registerMainLanguageRuntime`:
 
 | id | `BoxExecution` | site | anchor |
 | --- | --- | --- | --- |
-| `morpho` | `MorphoExecution` | `src/jvmMain/kotlin/afield/morpho/MorphoInterface.kt:61` | `class MorphoExecution` |
-| `nano` | `NanoExecution` | `src/jvmMain/kotlin/afield/nano/NanoInterface.kt:48` | `class NanoExecution` |
-| `clojure` | `ClojureExecution` | `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt:410` | `class ClojureExecution` |
-| `python` | `PythonExecution` | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:195` | `class PythonExecution` |
-| `fieldml` | `FieldMLExecution` | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:45` | `class FieldMLExecution` |
-| `kotlinjs` | `KotlinJsExecution` | `src/jvmMain/kotlin/afield/remotejs/KotlinJs.kt:73` | `class KotlinJsExecution` |
-| `forth` | `ForthExecution` | `src/jvmMain/kotlin/afield/forth/ForthInterface.kt:23` | `class ForthExecution` |
-| `remotejs` | `RemoteJSExectution` | `src/jvmMain/kotlin/afield/remotejs/RemoteJS.kt:446` | `class RemoteJSExectution` |
-| `datalog` | `DatalogExecution` | `src/jvmMain/kotlin/afield/datalog/DatalogInterface.kt:44` | `class DatalogExecution` |
-| `pd` | `PdExecution` | `src/jvmMain/kotlin/afield/pd/PdLanguage.kt:51` | `class PdExecution` |
-| `lua` | `LuaExecution` | `src/jvmMain/kotlin/afield/lua/LuaLanguage.kt:71` | `class LuaExecution` |
-| `csound` | `CsoundExecution` | `src/jvmMain/kotlin/afield/csound/CsoundLanguage.kt:59` | `class CsoundExecution` |
+| `morpho` | `MorphoExecution` | `src/jvmMain/kotlin/afield/lang/morpho/MorphoInterface.kt:61` | `class MorphoExecution` |
+| `nano` | `NanoExecution` | `src/jvmMain/kotlin/afield/lang/nano/NanoInterface.kt:48` | `class NanoExecution` |
+| `clojure` | `ClojureExecution` | `src/jvmMain/kotlin/afield/lang/clojure/ClojureInterface.kt:410` | `class ClojureExecution` |
+| `python` | `PythonExecution` | `src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt:195` | `class PythonExecution` |
+| `fieldml` | `FieldMLExecution` | `src/jvmMain/kotlin/afield/lang/fieldml/FieldMLInterface.kt:45` | `class FieldMLExecution` |
+| `kotlinjs` | `KotlinJsExecution` | `src/jvmMain/kotlin/afield/lang/remotejs/KotlinJs.kt:73` | `class KotlinJsExecution` |
+| `forth` | `ForthExecution` | `src/jvmMain/kotlin/afield/lang/forth/ForthInterface.kt:23` | `class ForthExecution` |
+| `remotejs` | `RemoteJSExectution` | `src/jvmMain/kotlin/afield/lang/remotejs/RemoteJS.kt:446` | `class RemoteJSExectution` |
+| `datalog` | `DatalogExecution` | `src/jvmMain/kotlin/afield/data/query/datalog/DatalogInterface.kt:44` | `class DatalogExecution` |
+| `pd` | `PdExecution` | `src/jvmMain/kotlin/afield/audio/pd/PdLanguage.kt:51` | `class PdExecution` |
+| `lua` | `LuaExecution` | `src/jvmMain/kotlin/afield/lang/lua/LuaLanguage.kt:71` | `class LuaExecution` |
+| `csound` | `CsoundExecution` | `src/jvmMain/kotlin/afield/audio/csound/CsoundLanguage.kt:59` | `class CsoundExecution` |
 
 and the `registerMainLanguageRuntime` call each one makes:
 
 | id | site | anchor |
 | --- | --- | --- |
-| `morpho` | `src/jvmMain/kotlin/afield/morpho/MorphoInterface.kt:402` | `id = "morpho"` |
-| `nano` | `src/jvmMain/kotlin/afield/nano/NanoInterface.kt:505` | `id = "nano"` |
-| `clojure` | `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt:554` | `id = "clojure"` |
-| `python` | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:160` | `id = "python"` |
-| `fieldml` | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:244` | `id = "fieldml"` |
-| `kotlinjs` | `src/jvmMain/kotlin/afield/remotejs/KotlinJs.kt:64` | `id = "kotlinjs"` |
-| `forth` | `src/jvmMain/kotlin/afield/forth/ForthInterface.kt:264` | `id = "forth"` |
-| `remotejs` | `src/jvmMain/kotlin/afield/remotejs/RemoteJS.kt:145` | `id = "remotejs"` |
-| `datalog` | `src/jvmMain/kotlin/afield/datalog/DatalogInterface.kt:280` | `id = "datalog"` |
-| `pd` | `src/jvmMain/kotlin/afield/pd/PdLanguage.kt:269` | `id = "pd"` |
-| `lua` | `src/jvmMain/kotlin/afield/lua/LuaLanguage.kt:478` | `id = "lua"` |
-| `csound` | `src/jvmMain/kotlin/afield/csound/CsoundLanguage.kt:341` | `id = "csound"` |
+| `morpho` | `src/jvmMain/kotlin/afield/lang/morpho/MorphoInterface.kt:402` | `id = "morpho"` |
+| `nano` | `src/jvmMain/kotlin/afield/lang/nano/NanoInterface.kt:505` | `id = "nano"` |
+| `clojure` | `src/jvmMain/kotlin/afield/lang/clojure/ClojureInterface.kt:554` | `id = "clojure"` |
+| `python` | `src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt:160` | `id = "python"` |
+| `fieldml` | `src/jvmMain/kotlin/afield/lang/fieldml/FieldMLInterface.kt:244` | `id = "fieldml"` |
+| `kotlinjs` | `src/jvmMain/kotlin/afield/lang/remotejs/KotlinJs.kt:64` | `id = "kotlinjs"` |
+| `forth` | `src/jvmMain/kotlin/afield/lang/forth/ForthInterface.kt:264` | `id = "forth"` |
+| `remotejs` | `src/jvmMain/kotlin/afield/lang/remotejs/RemoteJS.kt:145` | `id = "remotejs"` |
+| `datalog` | `src/jvmMain/kotlin/afield/data/query/datalog/DatalogInterface.kt:280` | `id = "datalog"` |
+| `pd` | `src/jvmMain/kotlin/afield/audio/pd/PdLanguage.kt:269` | `id = "pd"` |
+| `lua` | `src/jvmMain/kotlin/afield/lang/lua/LuaLanguage.kt:478` | `id = "lua"` |
+| `csound` | `src/jvmMain/kotlin/afield/audio/csound/CsoundLanguage.kt:341` | `id = "csound"` |
 
 Kotlin is the twelfth and is the *absence* of an entry: `mainLanguage = null` means Kotlin
 (`MainLanguageRegistry.kt:51-56`), so there is no `KotlinExecution` runtime registered here.
@@ -89,7 +89,7 @@ it is a literal token that must still appear somewhere in the cited file. The li
 
 | # | integration point | site | anchor |
 | --- | --- | --- | --- |
-| 1 | the `BoxExecution` contract every main language implements | `src/jvmMain/kotlin/afield/execution.kt:57` | `interface BoxExecution` |
+| 1 | the `BoxExecution` contract every main language implements | `src/jvmMain/kotlin/afield/runtime/execution/execution.kt:57` | `interface BoxExecution` |
 | 2 | the per-box property that chooses the language | `src/jvmMain/kotlin/afield/runtime/MainLanguageRegistry.kt:22` | `var Box.mainLanguage` |
 | 3 | the main-language registry itself | `src/jvmMain/kotlin/afield/runtime/MainLanguageRegistry.kt:26` | `fun registerMainLanguageRuntime` |
 | 4 | the descriptor a language registers | `src/jvmMain/kotlin/afield/runtime/MainLanguageRegistry.kt:14` | `data class MainLanguageRuntime` |
@@ -105,14 +105,14 @@ it is a literal token that must still appear somewhere in the cited file. The li
 | 14 | the gate that consults it | `src/commonMain/resources/fieldSuggest.js:1174` | `this.languages.has` |
 | 15 | client-side ranking (fuzzy + category + recency + contextScore) | `src/commonMain/resources/fieldSuggest.js:759` | `const rankItems` |
 | 16 | the `complete` RPC the browser sends | `src/commonMain/resources/fieldSuggest.js:1320` | `requestWithReply("complete"` |
-| 17 | the server handler for it | `src/jvmMain/kotlin/afield/Server.kt:2191` | `handlers["complete"]` |
-| 18 | the polymorphic hop into the language's own completion | `src/jvmMain/kotlin/afield/Server.kt:2197` | `box.ke.complete` |
-| 19 | the sibling hover/doc route | `src/jvmMain/kotlin/afield/Server.kt:2218` | `handlers["symbol-context"]` |
-| 20 | how any language's result becomes box output | `src/jvmMain/kotlin/afield/execution.kt:1134` | `fun dispatchExecutionOutput` |
-| 21 | how `print`/`error` inside a program reach the box | `src/jvmMain/kotlin/afield/execution.kt:1179` | `fun configureOutputProxies` |
-| 22 | the Ktor route that serves your `.js` to the browser | `src/jvmMain/kotlin/afield/Server.kt:4648` | `dir = File("./src/commonMain/resources/"), block` |
-| 23 | the `Cache-Control` it sets, and the headless exception | `src/jvmMain/kotlin/afield/Server.kt:4628` | `val assetCache` |
-| 24 | the per-box-property Monaco language table | `src/jsMain/kotlin/afield/BootstrapMonacoInit.kt:73` | `monacoPropertyLanguages` |
+| 17 | the server handler for it | `src/jvmMain/kotlin/afield/app/server/Server.kt:2191` | `handlers["complete"]` |
+| 18 | the polymorphic hop into the language's own completion | `src/jvmMain/kotlin/afield/app/server/Server.kt:2197` | `box.ke.complete` |
+| 19 | the sibling hover/doc route | `src/jvmMain/kotlin/afield/app/server/Server.kt:2218` | `handlers["symbol-context"]` |
+| 20 | how any language's result becomes box output | `src/jvmMain/kotlin/afield/runtime/execution/execution.kt:1134` | `fun dispatchExecutionOutput` |
+| 21 | how `print`/`error` inside a program reach the box | `src/jvmMain/kotlin/afield/runtime/execution/execution.kt:1179` | `fun configureOutputProxies` |
+| 22 | the Ktor route that serves your `.js` to the browser | `src/jvmMain/kotlin/afield/app/server/Server.kt:4648` | `dir = File("./src/commonMain/resources/"), block` |
+| 23 | the `Cache-Control` it sets, and the headless exception | `src/jvmMain/kotlin/afield/app/server/Server.kt:4628` | `val assetCache` |
+| 24 | the per-box-property Monaco language table | `src/jsMain/kotlin/afield/app/editor/BootstrapMonacoInit.kt:73` | `monacoPropertyLanguages` |
 
 ### Reading the ledger
 
@@ -146,13 +146,13 @@ prelude in two halves, one `BoxExecution`, one Monaco module, and two coverage g
 
 | stage | site | anchor |
 | --- | --- | --- |
-| the one function that runs all five stages | `src/jvmMain/kotlin/afield/ml/FieldMLCompiler.kt:26` | `fun compile(source: String)` |
-| every intermediate form is kept, one field per stage | `src/jvmMain/kotlin/afield/ml/FieldMLCompiler.kt:14` | `data class CompilationResult` |
-| 1. lex | `src/jvmMain/kotlin/afield/ml/lex/Lexer.kt:20` | `fun lex()` |
-| 2. parse | `src/jvmMain/kotlin/afield/ml/parse/Parser.kt:54` | `fun parse()` |
-| 3. infer | `src/jvmMain/kotlin/afield/ml/type/Inferencer.kt:52` | `fun infer(expr: Expr)` |
-| 4. lower to core | `src/jvmMain/kotlin/afield/ml/core/Lowerer.kt:34` | `fun lower(expr: TExpr)` |
-| 5. evaluate | `src/jvmMain/kotlin/afield/ml/core/Evaluator.kt:42` | `fun evaluate(expr: CoreExpr)` |
+| the one function that runs all five stages | `src/jvmMain/kotlin/afield/lang/fieldml/FieldMLCompiler.kt:26` | `fun compile(source: String)` |
+| every intermediate form is kept, one field per stage | `src/jvmMain/kotlin/afield/lang/fieldml/FieldMLCompiler.kt:14` | `data class CompilationResult` |
+| 1. lex | `src/jvmMain/kotlin/afield/lang/fieldml/lex/Lexer.kt:20` | `fun lex()` |
+| 2. parse | `src/jvmMain/kotlin/afield/lang/fieldml/parse/Parser.kt:54` | `fun parse()` |
+| 3. infer | `src/jvmMain/kotlin/afield/lang/fieldml/type/Inferencer.kt:52` | `fun infer(expr: Expr)` |
+| 4. lower to core | `src/jvmMain/kotlin/afield/lang/fieldml/core/Lowerer.kt:34` | `fun lower(expr: TExpr)` |
+| 5. evaluate | `src/jvmMain/kotlin/afield/lang/fieldml/core/Evaluator.kt:42` | `fun evaluate(expr: CoreExpr)` |
 
 `CompilationResult` keeping *every* intermediate form is not tidiness. It is what lets one compile
 serve three consumers: the evaluator wants `core`, the error reporter wants `diagnostics` with source
@@ -166,10 +166,10 @@ agree name for name:
 
 | half | site | anchor |
 | --- | --- | --- |
-| types, consumed by the inferencer | `src/jvmMain/kotlin/afield/ml/type/FieldMLTypePrelude.kt:67` | `val schemes: Map<String, Scheme>` |
-| values, consumed by the evaluator | `src/jvmMain/kotlin/afield/ml/FieldMLRuntimePrelude.kt:33` | `fun values(` |
-| where the type half enters | `src/jvmMain/kotlin/afield/ml/type/Inferencer.kt:54` | `FieldMLTypePrelude.schemes` |
-| where the value half enters | `src/jvmMain/kotlin/afield/ml/core/Evaluator.kt:43` | `RuntimeEnv()` |
+| types, consumed by the inferencer | `src/jvmMain/kotlin/afield/lang/fieldml/type/FieldMLTypePrelude.kt:67` | `val schemes: Map<String, Scheme>` |
+| values, consumed by the evaluator | `src/jvmMain/kotlin/afield/lang/fieldml/FieldMLRuntimePrelude.kt:33` | `fun values(` |
+| where the type half enters | `src/jvmMain/kotlin/afield/lang/fieldml/type/Inferencer.kt:54` | `FieldMLTypePrelude.schemes` |
+| where the value half enters | `src/jvmMain/kotlin/afield/lang/fieldml/core/Evaluator.kt:43` | `RuntimeEnv()` |
 
 The runtime half takes `output: HasOutput?` and `box: Box?` (`FieldMLRuntimePrelude.kt:33`) — that is
 how host effects get in. `display` (`FieldMLRuntimePrelude.kt:45-48`) and `draw`
@@ -183,14 +183,14 @@ Multi-argument natives are nested single-argument closures (`native1`/`native2`/
 
 | what | site | anchor |
 | --- | --- | --- |
-| the execution | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:45` | `class FieldMLExecution` |
-| the name the editor sees | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:159` | `languageName` |
-| the `@RunsAt(early)` installer | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:240` | `fun installFieldML` |
-| the topology watcher it starts | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:254` | `installFieldMLPlugin` |
-| prelude + evaluate, on the launch path | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:70` | `FieldMLRuntimePrelude.values` |
-| the `value : Type` inline result | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:297` | `fun renderInlineResult` |
-| only print it if the program printed nothing | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:174` | `output.printed` |
-| diagnostics → box error output | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:203` | `private fun reportDiagnostics` |
+| the execution | `src/jvmMain/kotlin/afield/lang/fieldml/FieldMLInterface.kt:45` | `class FieldMLExecution` |
+| the name the editor sees | `src/jvmMain/kotlin/afield/lang/fieldml/FieldMLInterface.kt:159` | `languageName` |
+| the `@RunsAt(early)` installer | `src/jvmMain/kotlin/afield/lang/fieldml/FieldMLInterface.kt:240` | `fun installFieldML` |
+| the topology watcher it starts | `src/jvmMain/kotlin/afield/lang/fieldml/FieldMLInterface.kt:254` | `installFieldMLPlugin` |
+| prelude + evaluate, on the launch path | `src/jvmMain/kotlin/afield/lang/fieldml/FieldMLInterface.kt:70` | `FieldMLRuntimePrelude.values` |
+| the `value : Type` inline result | `src/jvmMain/kotlin/afield/lang/fieldml/FieldMLInterface.kt:297` | `fun renderInlineResult` |
+| only print it if the program printed nothing | `src/jvmMain/kotlin/afield/lang/fieldml/FieldMLInterface.kt:174` | `output.printed` |
+| diagnostics → box error output | `src/jvmMain/kotlin/afield/lang/fieldml/FieldMLInterface.kt:203` | `private fun reportDiagnostics` |
 
 `TrackingOutput` (`FieldMLInterface.kt:270`) exists only to answer "did the program print anything",
 so the automatic `value : Type` line does not duplicate a program's own output. That is a small idea
@@ -200,9 +200,9 @@ worth copying: an expression language wants to show its result, and a language w
 
 | what | site | anchor |
 | --- | --- | --- |
-| the engine | `src/jvmMain/kotlin/afield/ml/FieldMLCompletionEngine.kt:41` | `fun complete(request: CompletionRequest)` |
-| the hover/doc-panel sibling | `src/jvmMain/kotlin/afield/ml/FieldMLCompletionEngine.kt:85` | `fun describeSymbolContext` |
-| the `BoxExecution` override that routes into it | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:153` | `FieldMLCompletionEngine.complete` |
+| the engine | `src/jvmMain/kotlin/afield/lang/fieldml/FieldMLCompletionEngine.kt:41` | `fun complete(request: CompletionRequest)` |
+| the hover/doc-panel sibling | `src/jvmMain/kotlin/afield/lang/fieldml/FieldMLCompletionEngine.kt:85` | `fun describeSymbolContext` |
+| the `BoxExecution` override that routes into it | `src/jvmMain/kotlin/afield/lang/fieldml/FieldMLInterface.kt:153` | `FieldMLCompletionEngine.complete` |
 
 The engine answers from the *same type prelude the compiler uses*, so items carry their real inferred
 types, and after a `|>` it ranks the functions whose last argument accepts the piped type. No
@@ -331,35 +331,35 @@ string starting `#rectsl` inside a Kotlin box.
 
 | what | site | anchor |
 | --- | --- | --- |
-| RectSL compile entry point | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1464` | `fun compileRectSL` |
-| the one word-registration path | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:3396` | `internal fun word` |
-| backend 1, the CPU `eval:` column | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:369` | `val eval: (Double) -> Double` |
-| backend 2, the GLSL emitter | `src/jvmMain/kotlin/afield/rectsl/RectSLGlsl.kt:265` | `fun emitSdf` |
-| backend 3, the differentiable `fn:` lowering | `src/jvmMain/kotlin/afield/rectsl/RectSLFn.kt:493` | `fun Track<Double>.toFn` |
+| RectSL compile entry point | `src/jvmMain/kotlin/afield/lang/rectsl/RectSL.kt:1464` | `fun compileRectSL` |
+| the one word-registration path | `src/jvmMain/kotlin/afield/lang/rectsl/RectSL.kt:3396` | `internal fun word` |
+| backend 1, the CPU `eval:` column | `src/jvmMain/kotlin/afield/lang/rectsl/RectSL.kt:369` | `val eval: (Double) -> Double` |
+| backend 2, the GLSL emitter | `src/jvmMain/kotlin/afield/lang/rectsl/RectSLGlsl.kt:265` | `fun emitSdf` |
+| backend 3, the differentiable `fn:` lowering | `src/jvmMain/kotlin/afield/lang/rectsl/RectSLFn.kt:493` | `fun Track<Double>.toFn` |
 | the editor extension object | `src/commonMain/resources/rectsl.js:836` | `const extension = {` |
 | its standalone `.rectsl` Monaco language | `src/commonMain/resources/rectsl.js:862` | `registerRectSLLanguage` |
-| the Kotlin side that reads the JS verbatim | `src/jvmMain/kotlin/afield/rectsl/RectSLEditorExtension.kt:15` | `fun javascript()` |
+| the Kotlin side that reads the JS verbatim | `src/jvmMain/kotlin/afield/lang/rectsl/RectSLEditorExtension.kt:15` | `fun javascript()` |
 | the node probe that runs that JS for real | `src/jvmMain/kotlin/afield/examples/rectsl/RectSLEditorExtensionWorkout.kt:45` | `private fun runNodeProbe` |
-| RectSL's gallery harness | `src/jvmMain/kotlin/afield/four/fabricated/RectSLGalleryHarness.kt:67` | `object RectSLGalleryHarness` |
-| StackSL's compiler | `src/jvmMain/kotlin/afield/stacksl/StackSL.kt:105` | `object StackSLCompiler` |
-| StackSL's word table | `src/jvmMain/kotlin/afield/stacksl/StackSL.kt:2645` | `builtinWords` |
+| RectSL's gallery harness | `src/jvmMain/kotlin/afield/graphics/scene/fabricated/RectSLGalleryHarness.kt:67` | `object RectSLGalleryHarness` |
+| StackSL's compiler | `src/jvmMain/kotlin/afield/lang/stacksl/StackSL.kt:105` | `object StackSLCompiler` |
+| StackSL's word table | `src/jvmMain/kotlin/afield/lang/stacksl/StackSL.kt:2645` | `builtinWords` |
 | StackSL's extension object | `src/commonMain/resources/stacksl.js:2111` | `stackSLLanguageExtension` |
 | StackSL's Monaco language | `src/commonMain/resources/stacksl.js:7` | `monaco.languages.register` |
 | StackSL's Monarch grammar | `src/commonMain/resources/stacksl.js:2134` | `setMonarchTokensProvider` |
 | StackSL's document formatter | `src/commonMain/resources/stacksl.js:2194` | `registerDocumentFormattingEditProvider` |
-| StackSL as a first-class box property | `src/jvmMain/kotlin/afield/Boxes.kt:464` | `"stackSL" to "stacksl"` |
-| StackSL's gallery harness | `src/jvmMain/kotlin/afield/four/fabricated/StackSLGalleryHarness.kt:53` | `object StackSLGalleryHarness` |
-| Brief's compile entry point | `src/jvmMain/kotlin/afield/brief/BriefLowering.kt:89` | `fun compileBrief` |
-| Brief's one vocabulary table | `src/jvmMain/kotlin/afield/brief/Brief.kt:350` | `object BriefVerbs` |
-| Brief's weight ladder | `src/jvmMain/kotlin/afield/brief/Brief.kt:134` | `enum class BriefStrength` |
-| Brief's lowering into the Kotlin DSL | `src/jvmMain/kotlin/afield/brief/BriefLowering.kt:624` | `fun BriefProgram.toGeometryModel` |
+| StackSL as a first-class box property | `src/jvmMain/kotlin/afield/document/graph/Boxes.kt:464` | `"stackSL" to "stacksl"` |
+| StackSL's gallery harness | `src/jvmMain/kotlin/afield/graphics/scene/fabricated/StackSLGalleryHarness.kt:53` | `object StackSLGalleryHarness` |
+| Brief's compile entry point | `src/jvmMain/kotlin/afield/lang/brief/BriefLowering.kt:89` | `fun compileBrief` |
+| Brief's one vocabulary table | `src/jvmMain/kotlin/afield/lang/brief/Brief.kt:350` | `object BriefVerbs` |
+| Brief's weight ladder | `src/jvmMain/kotlin/afield/lang/brief/Brief.kt:134` | `enum class BriefStrength` |
+| Brief's lowering into the Kotlin DSL | `src/jvmMain/kotlin/afield/lang/brief/BriefLowering.kt:624` | `fun BriefProgram.toGeometryModel` |
 | Brief's extension object | `src/commonMain/resources/brief.js:394` | `const extension = {` |
 | its standalone `.brief` Monaco language | `src/commonMain/resources/brief.js:429` | `registerBriefLanguage` |
-| the Kotlin side that reads the JS verbatim | `src/jvmMain/kotlin/afield/brief/BriefEditorExtension.kt:18` | `fun javascript()` |
+| the Kotlin side that reads the JS verbatim | `src/jvmMain/kotlin/afield/lang/brief/BriefEditorExtension.kt:18` | `fun javascript()` |
 | the node probe that runs that JS for real | `src/jvmMain/kotlin/afield/examples/brief/BriefEditorExtensionWorkout.kt:55` | `private fun runNodeProbe` |
 
 **Brief is the third member of this shape and the newest**, so it is the one to read if you are adding
-one: a weighted constraint notation whose programs lower to `afield.stdlib.ceres.ConstraintScope`. It
+one: a weighted constraint notation whose programs lower to `afield.math.optimization.ceres.ConstraintScope`. It
 was built after this page existed and followed it, which makes it a fair test of the page — the two
 things it needed that the page did not predict are recorded in `dev_docs/brief_notation.md`
 ("What the anatomy page did not warn about").
@@ -402,12 +402,12 @@ itself before the compiler runs.
 
 | what | site | anchor |
 | --- | --- | --- |
-| the authoring surface, all of it erased | `src/jvmMain/kotlin/afield/macros/RewriteDsl.kt:76` | `fun rewrite(rule: () -> Unit)` |
-| the throw that means expansion did not happen | `src/jvmMain/kotlin/afield/macros/RewriteDsl.kt:62` | `private fun erased` |
-| the metavariable kinds | `src/jvmMain/kotlin/afield/macros/RewriteDsl.kt:34` | `sealed interface MetaKind` |
-| the expander | `src/jvmMain/kotlin/afield/macros/PatternRewrite.kt:76` | `object PatternRewrite` |
-| where the REPL calls it | `src/jvmMain/kotlin/afield/KotlinInterface2.kt:2595` | `PatternRewrite.expand` |
-| its smoke test | `src/jvmMain/kotlin/afield/PatternRewriteSmokeTest.kt:14` | `kotlin.pattern-rewrite.smoke` |
+| the authoring surface, all of it erased | `src/jvmMain/kotlin/afield/runtime/macros/RewriteDsl.kt:76` | `fun rewrite(rule: () -> Unit)` |
+| the throw that means expansion did not happen | `src/jvmMain/kotlin/afield/runtime/macros/RewriteDsl.kt:62` | `private fun erased` |
+| the metavariable kinds | `src/jvmMain/kotlin/afield/runtime/macros/RewriteDsl.kt:34` | `sealed interface MetaKind` |
+| the expander | `src/jvmMain/kotlin/afield/runtime/macros/PatternRewrite.kt:76` | `object PatternRewrite` |
+| where the REPL calls it | `src/jvmMain/kotlin/afield/runtime/kotlin/KotlinInterface2.kt:2595` | `PatternRewrite.expand` |
+| its smoke test | `src/jvmMain/kotlin/afield/math/functions/PatternRewriteSmokeTest.kt:14` | `kotlin.pattern-rewrite.smoke` |
 
 The design idea is worth stating plainly, because it is not obvious and it is cheap: **a rule body only
 has to parse, never type-check.** PSI parsing runs no name resolution, so `from { max(x, y) }` parses
@@ -427,10 +427,10 @@ own**. They wrap a host interpreter and use the *box-graph* mechanism instead:
 
 | what | site | anchor |
 | --- | --- | --- |
-| the interpreter binding | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:21` | `import jep.` |
-| the legacy per-box root flag | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:37` | `var Box.isPythonRoot` |
-| the toggle predicate: root flag **or** `mainLanguage` | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:179` | `it.isPythonRoot == true` |
-| Clojure's equivalent | `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt:547` | `var Box.isClojureRoot` |
+| the interpreter binding | `src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt:21` | `import jep.` |
+| the legacy per-box root flag | `src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt:37` | `var Box.isPythonRoot` |
+| the toggle predicate: root flag **or** `mainLanguage` | `src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt:179` | `it.isPythonRoot == true` |
+| Clojure's equivalent | `src/jvmMain/kotlin/afield/lang/clojure/ClojureInterface.kt:547` | `var Box.isClojureRoot` |
 
 The mechanism to understand is `applyRuntimeToggle` (`LanguageRuntimeSupport.kt:43-89`). A *language
 root* box confers its language on its **children**, and a child stays in that language while it still
@@ -567,7 +567,7 @@ capture. RectSL does the same for its page (`RectSLExamples.kt:388-410`).
 
 **Shape 4 — a vocabulary mirrored across the JVM/browser boundary, in both directions.** `fnrewrite.js`
 keeps a curated `opWords` list (`fnrewrite.js:21`) that has to stay in step with
-`afield.stdlib.OpRegistry`. `FunctionsGraphRewriteTest.editorOpVocabularyMirrorsTheRegistryInBothDirections`
+`afield.math.functions.OpRegistry`. `FunctionsGraphRewriteTest.editorOpVocabularyMirrorsTheRegistryInBothDirections`
 (`FunctionsGraphRewriteTest.kt:105`) reads the `.js` file from Kotlin, scrapes the list, then asserts
 forward (every editor op is known to the registry) *and* reverse (every transmutable target appears in
 the editor). This is the shape to use whenever a duplicated list is the price of the browser/JVM split —
@@ -587,15 +587,15 @@ There are **9** coverage guards over these languages' pages and vocabularies:
 
 | guard | shape | site | anchor |
 | --- | --- | --- | --- |
-| FieldML cheatsheet ↔ type prelude | 1 | `src/jvmTest/kotlin/afield/ml/tests/FieldMLCheatsheetCoverageTest.kt:16` | `fieldml_cheatsheet.md` |
-| FieldML operators are documented | 1 | `src/jvmTest/kotlin/afield/ml/tests/FieldMLCheatsheetCoverageTest.kt:63` | `\|>` |
-| every FieldML doc snippet compiles and evaluates | 3 | `src/jvmTest/kotlin/afield/ml/tests/FieldMLSmokeExamplesTest.kt:63` | `docsFieldMLExamplesCompileAndEvaluate` |
+| FieldML cheatsheet ↔ type prelude | 1 | `src/jvmTest/kotlin/afield/lang/fieldml/tests/FieldMLCheatsheetCoverageTest.kt:16` | `fieldml_cheatsheet.md` |
+| FieldML operators are documented | 1 | `src/jvmTest/kotlin/afield/lang/fieldml/tests/FieldMLCheatsheetCoverageTest.kt:63` | `\|>` |
+| every FieldML doc snippet compiles and evaluates | 3 | `src/jvmTest/kotlin/afield/lang/fieldml/tests/FieldMLSmokeExamplesTest.kt:63` | `docsFieldMLExamplesCompileAndEvaluate` |
 | every RectSL cheatsheet operator has a worked example | 2 | `src/jvmMain/kotlin/afield/examples/rectsl/RectSLExamples.kt:441` | `checkCheatsheetCoverage` |
 | the RectSL operator scrape has not silently broken | 2 | `src/jvmMain/kotlin/afield/examples/rectsl/RectSLExamples.kt:448` | `operators.size > 100` |
-| fnrewrite's editor op list ↔ `OpRegistry`, both ways | 4 | `src/jvmTest/kotlin/afield/stdlib/FunctionsGraphRewriteTest.kt:105` | `editorOpVocabularyMirrorsTheRegistryInBothDirections` |
-| this page's own citations | 1 | `src/jvmTest/kotlin/afield/docs/SmallLanguageAnatomyTest.kt:40` | `class SmallLanguageAnatomyTest` |
-| Brief's constructs ↔ `ConstraintScope`'s members | 1 | `src/jvmTest/kotlin/afield/brief/BriefCoverageTest.kt:35` | `class BriefCoverageTest` |
-| `brief.js`'s vocabulary ↔ `BriefVerbs`, both ways | 4 | `src/jvmTest/kotlin/afield/brief/BriefEditorExtensionTest.kt:39` | `theEditorVocabularyMirrorsBriefVerbsInBothDirections` |
+| fnrewrite's editor op list ↔ `OpRegistry`, both ways | 4 | `src/jvmTest/kotlin/afield/math/functions/FunctionsGraphRewriteTest.kt:105` | `editorOpVocabularyMirrorsTheRegistryInBothDirections` |
+| this page's own citations | 1 | `src/jvmTest/kotlin/afield/tools/docs/SmallLanguageAnatomyTest.kt:40` | `class SmallLanguageAnatomyTest` |
+| Brief's constructs ↔ `ConstraintScope`'s members | 1 | `src/jvmTest/kotlin/afield/lang/brief/BriefCoverageTest.kt:35` | `class BriefCoverageTest` |
+| `brief.js`'s vocabulary ↔ `BriefVerbs`, both ways | 4 | `src/jvmTest/kotlin/afield/lang/brief/BriefEditorExtensionTest.kt:39` | `theEditorVocabularyMirrorsBriefVerbsInBothDirections` |
 
 RectSL's guard runs as a `FIELD_TEST` catalog entry rather than a JUnit test —
 `RectSLExamples.kt:13-23` declares `id: rectsl.examples.smoke`, `runner: jvm-main` — so it is invoked

@@ -40,7 +40,10 @@ description: >
   on screen, then change a uniform, move a camera endpoint, add a value the union cannot carry, or
   edit the source block and re-run a box to watch the answer change. Each `execute` op omits inline
   code, so it runs the box's stored `code` property. Companion page:
-  public/docs/keyframer_examples.md. Companion tests: afield.stdlib.KeyframerTest.
+  public/docs/keyframer_examples.md. Companion tests: afield.animation.keyframes.KeyframerTest.
+docs:
+  - page: keyframer_examples.md
+    why: "Explains KeyframeScope snapshots, blends and persistence used here."
 operations:
   - create:
       box: keyframe_targets
@@ -53,9 +56,6 @@ operations:
           write to. The simplest is a uniform Structure — and none of this needs a GPU, because
           Structure is constructible bare and bind/bindings are plain maps.
           */
-          import afield.four.buffers.Structure
-          import afield.stdlib.KeyframeScope
-
           val glow = Structure()
           val blur = Structure()
           glow.bind("radius") { 4.0f }
@@ -128,12 +128,12 @@ operations:
               | blur.radius | ${bound(blur, "radius")} |
               | glow.glow@radius | ${(glow.bindings["glow@radius"]?.invoke() ?: "<unbound>").md} |
 
-              #### 4 — the bindings/values trap
+              #### 4 — capture reads bindings and plain values
 
               | binding | value |
               | --- | --- |
               | bound (via bind) | ${trap["bound"].md} |
-              | set (via values) | ${trap["set"].md} {warn:← captured as null, silently} |
+              | set (via values) | ${trap["set"].md} (plain value) |
 
               #### 5 — captured() again, then re-captured
 
@@ -143,7 +143,6 @@ operations:
           """,
               width = 800,
           )
-
   - create:
       box: keyframe_camera
       name: A camera move is a screw motion
@@ -156,10 +155,6 @@ operations:
           SCREW MOTION, and between two cameras looking at the same subject it is a very different
           move from lerping the two positions. Draw both and the argument makes itself.
           */
-          import afield.four.util.CameraPose
-          import afield.stdlib.KeyframeScope
-          import afield.stdlib.linalg.Vector3f
-
           // The two camera positions; both look at the subject at the origin. Move one and rerun.
           var fromPos = Vector3f(8f, 2f, 0f)
           var toPos = Vector3f(0f, 2f, 8f)
@@ -251,7 +246,7 @@ operations:
           showPlaneGrid(
               ("plan view, looking down y\n" +
                   "blue: sclerp, a quarter circle. orange: the straight line between the same two positions") to
-                  listOf(sight, sightLerp, subject, chord, screw),
+                  [sight, sightLerp, subject, chord, screw],
               ("distance to the subject, over the move\n" +
                   "sclerp holds %.4f..%.4f; the straight line dips to %.4f — %.1f%% nearer"
                       .format(
@@ -259,7 +254,7 @@ operations:
                           rMax,
                           lerpMid,
                           closer,
-                      )) to listOf(dScrew, dChord),
+                      )) to [dScrew, dChord],
               columns = 2,
               cellWidth = 440,
               cellHeight = 380,
@@ -269,7 +264,6 @@ operations:
               "worst-case aiming error along the sclerp path: **%.6f** world units — ".format(worstAim) +
                   "the subject never leaves the centre of frame.",
           )
-
   - create:
       box: keyframe_persist
       name: Saving is always additive history
@@ -281,9 +275,6 @@ operations:
           <file>.versions directory with a manifest. Nothing prunes it, so a hundred saves leave a
           hundred files. What survives the trip is a closed set; everything else is dropped silently.
           */
-          import afield.stdlib.KeyframeScope
-          import afield.stdlib.linalg.Vector3f
-          import afield.stdlib.stackSLString
           import java.nio.file.Files
 
           val dir = Files.createTempDirectory("keyframer-demo")
@@ -319,7 +310,7 @@ operations:
               mutableMapOf(
                   "gain" to 0.90f,
                   "enabled" to true, // a Boolean is outside the union
-                  "taps" to listOf(1, 2, 3), // so is a list
+                  "taps" to [1, 2, 3], // so is a list
                   "absent" to null, // and a null is dropped too
               ),
           )
@@ -386,7 +377,6 @@ operations:
           """,
               width = 820,
           )
-
   - create:
       box: keyframe_updatecode
       name: A captured look becomes source
@@ -398,13 +388,8 @@ operations:
           Kotlin, so a state you arrived at by fiddling becomes a diff you can commit. Every
           literal is chosen so the paste round-trips as the same TYPE, not merely the same number.
           */
-          import afield.stdlib.KeyframeScope
-          import afield.stdlib.SourceBackedBlock
-          import afield.stdlib.linalg.Quaternionf
-          import afield.stdlib.linalg.Vector3f
-          import afield.stdlib.stackSLString
-
           val scope = KeyframeScope()
+          val unsupportedNotes: List<String> = ["unsupported", "on purpose"]
           val key = scope.Key(
               mutableMapOf(
                   "gain" to 0.65f, // a Float — and the 'f' suffix is load-bearing
@@ -418,7 +403,7 @@ operations:
                   would interpolate at paste time, so it must come out escaped.
                   */
                   "block" to SourceBackedBlock<Any?>("box-1", "val total = 2\nprintln(\"sum: \$total\")"),
-                  "notes" to listOf("unsupported", "on purpose"),
+                  "notes" to unsupportedNotes,
               ),
           )
 
@@ -437,7 +422,6 @@ operations:
           )
 
           display("code", "<pre>" + code + "</pre>")
-
   - execute:
       box: keyframe_targets
   - execute:

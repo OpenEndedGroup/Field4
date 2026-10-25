@@ -1,6 +1,8 @@
 #version 450
 #extension GL_EXT_buffer_reference : require
-layout(std430, buffer_reference) buffer inData { vec4 pos[]; };
+layout(std430, buffer_reference) buffer inData {
+    vec4 pos[];
+};
 layout(location = 0) out vec2 tc;
 layout(push_constant) uniform push {
     inData inData;

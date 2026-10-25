@@ -1,0 +1,5 @@
+# a slow grey memory of a classmate's stream
+0.0006 0.0010 vec2 sample 0.97 *
+0 sample1 luma 0.05 *
++
+saturate

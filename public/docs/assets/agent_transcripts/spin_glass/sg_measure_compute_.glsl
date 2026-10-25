@@ -17,7 +17,7 @@ layout(push_constant) uniform PushC {
     float field;
 } pc;
 
-{% include "fieldProbe" %}
+{% property "fieldProbe" %}
 
 void main() {
     uint L = pc.L;

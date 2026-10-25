@@ -25,7 +25,10 @@ layout(buffer_reference, std430, buffer_reference_align = 16) buffer Positions {
 layout(buffer_reference, std430, buffer_reference_align = 4) buffer Indices {
     uint data[];
 };
-struct Cluster { uvec4 range; uvec4 identity; };
+struct Cluster {
+    uvec4 range;
+    uvec4 identity;
+};
 layout(buffer_reference, std430, buffer_reference_align = 16) buffer Clusters {
     Cluster data[];
 };
@@ -49,12 +52,12 @@ void main() {
 
     for (uint y = 0; y < 9; y++) for (uint x = 0; x < 9; x++) {
         vec2 p = (vec2(cx, cy) + vec2(x, y) / 8)
-               / vec2(pc.columns, pc.rows) * 8 - 4;
+        / vec2(pc.columns, pc.rows) * 8 - 4;
 
         // Edit this expression: it determines the surface's height.
         float z = .55 * sin(p.x * 1.7 + pc.time)
-                     * cos(p.y * 1.3 - pc.time * .7)
-                + .2 * sin(p.x * 3 + p.y * 2 + pc.time * 1.3);
+        * cos(p.y * 1.3 - pc.time * .7)
+        + .2 * sin(p.x * 3 + p.y * 2 + pc.time * 1.3);
 
         pc.positions.data[id * 81 + y * 9 + x] = vec4(p.x, z, p.y, 1);
     }
@@ -62,9 +65,9 @@ void main() {
     // Two triangles per grid cell, with indices local to this cluster.
     for (uint y = 0; y < 8; y++) for (uint x = 0; x < 8; x++) {
         uint a = y * 9 + x, b = a + 1, c = a + 10, d = a + 9,
-             o = id * 384 + (y * 8 + x) * 6;
+        o = id * 384 + (y * 8 + x) * 6;
         bool flip = ((x + y + pc.topology) & 1) != 0;
-        pc.indices.data[o]     = a;
+        pc.indices.data[o] = a;
         pc.indices.data[o + 1] = flip ? d : c;
         pc.indices.data[o + 2] = b;
         pc.indices.data[o + 3] = flip ? b : a;
@@ -73,7 +76,7 @@ void main() {
     }
 
     pc.descriptions.data[id] = Cluster(
-        uvec4(id * 81, id * 384, 81, 128), uvec4(id, id, 0, 0));
+    uvec4(id * 81, id * 384, 81, 128), uvec4(id, id, 0, 0));
 
 :::fold Invalid-input injection for the GPU checks (disabled in the scene)
     // Deliberate invalid address-range injection exercises the public builder's GPU guard.
@@ -107,14 +110,19 @@ Try changing `.55` to `1.1` and use **Update Compute Shader**. The waves become 
 Offsets count vertices or indices, not bytes. `TriangleCluster.write()` writes the same record from Kotlin into a native-order buffer. A cluster contains indexed triangles; the adapter does not partition an arbitrary mesh for you. A procedural generator often knows its own patches already. Each patch here has 81 vertices and 128 triangles.
 
 ```diffstatic {data-lang=kotlin}
-val geometry = ClusterGeometry(renderer,
-    capacity = 768, verticesPerCluster = 81,
-    trianglesPerCluster = 128, maxGeometryId = 767)
+val geometry = ClusterGeometry(
+    renderer,
+    capacity = 768,
+    verticesPerCluster = 81,
+    trianglesPerCluster = 128,
+    maxGeometryId = 767,
+)
 val inputs = ClusterGeometryInput(positions, indices, descriptions)
 
 // Inside your Target.render(), on Field's graphics queue:
 producer.current.render(command, Rectanglef())
 geometry.build(command, rayPipeline, inputs)
+
 // Use geometry as the BLAS address in a RayTracingInstance,
 // rebuild the containing TLAS, then record the ray-tracing pass.
 ```
@@ -124,8 +132,12 @@ The ray pipeline is Field's `RayTracingModule`, with `allowClusterAccelerationSt
 The editable example uses this exact path:
 
 ```diffstatic {data-lang=kotlin}
-val lab = ClusterGeometryDemo(renderer,
-    producerFactory = { computeModuleHere(it) }).install()
+val lab =
+    ClusterGeometryDemo(
+            renderer,
+            producerFactory = { computeModuleHere(it) },
+        )
+        .install()
 ```
 
 `ClusterGeometryDemo` is the terrain viewer. `ClusterGeometry` is the reusable builder: its inputs need not resemble terrain, use the sample's patch counts, or originate in GLSL. A Slang producer can write the same buffers. The builder's returned address can be instanced with ordinary TLAS transforms.
@@ -136,7 +148,7 @@ A build records GPU input validation, conversion to Vulkan's cluster records, cl
 
 The builder owns fixed-capacity storage, scratch, sanitized geometry and record buffers. It borrows your producer buffers. Static geometry needs one explicit build; retain its BLAS and skip later calls. Rebuild after position or topology changes, and rebuild the TLAS when bounds change. Recreate the builder to increase capacity. Every build rebuilds all clusters; template instantiation, compaction, LOD streaming and selective cluster reuse are not supported.
 
-Everything runs on Field's graphics queue, with dependencies between producer, converter, cluster build, BLAS build and tracing. Stop/close defers destruction through Field's normal retirement mechanism. A GPU-written 64-byte instance buffer can also be passed to `AccelerationStructure.buildTopLevel()`; synchronize its producer before that call. Use a fresh TLAS owner: the first GPU-buffer build fixes its instance count and flags. Transform/address edits within those records are supported; recreate the TLAS and defer retiring the old one if its count or flags must change.
+Everything runs on Field's graphics queue, with dependencies between producer, converter, cluster build, BLAS build and tracing. Stop/close defers destruction through Field's normal retirement mechanism. A GPU-written 64-byte instance buffer can also be passed to `AccelerationStructure.buildTopLevel()`; synchronize its producer before that call. Its first build fixes the instance count and flags; later builds may edit transforms and addresses within those records, and one that changes the count or flags is refused with a message saying to use a new TLAS.
 
 ## Cost on the RTX 4090
 

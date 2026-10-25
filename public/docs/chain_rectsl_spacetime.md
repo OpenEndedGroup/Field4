@@ -71,12 +71,12 @@ one returns.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_rectsl_spacetime/readout.png" wait="12" capture="box" open-outputs="true" w="1120" h="340" padding="18" timeout="240" name="chain-rectsl-readout" embed=true alt="A table: one RectSL scene with both rects lowered and zero channel disagreement; then four rows showing marching cubes leaving the unpadded volume open with two boundary loops while the level set closes it, and both closing the padded volume; and one component"}
 :::static
-import afield.manifold.Solid
-import afield.rectsl.compileRectSL
-import afield.rectsl.toAdField
-import afield.stdlib.*
+import afield.geometry.solid.manifold.Solid
+import afield.lang.rectsl.compileRectSL
+import afield.lang.rectsl.toAdField
 
-val source = """
+val source =
+    """
 #rectsl
 ->wall 8 8 abstract
 ->duration 4
@@ -91,7 +91,8 @@ val source = """
   1.2 1.2 ->wh
   1.6 -1.4 ->xy
   '( 0=0.3  4=2.2 ) ->w
-""".trimIndent()
+"""
+        .trimIndent()
 
 val program = compileRectSL(source).program
 val field = program.toAdField()
@@ -119,7 +120,7 @@ for (k in 0 until nt) {
 val cutBounds = boundsOf(vec(-halfWall, -halfWall, -halfDepth), vec(halfWall, halfWall, halfDepth))
 val cut = sampledField3D(inner, nx, ny, nt, cutBounds)
 val cutMarch = marchingCubes(cut, cutBounds, resolution = 140)
-val cutSolid = Solid.levelSetOf(cut, cutBounds, edgeLength = 0.12, parallel = false)
+val cutSolid = Solid.levelSetOf(cut, cutBounds, edgeLength = 0.12)
 
 // And with one empty slice each side, a hair outside, so it closes a fraction of a cell beyond.
 val dz = 2 * halfDepth / (nt - 1.0)
@@ -134,10 +135,12 @@ val bounds = boundsOf(
 )
 val closed = sampledField3D(padded, nx, ny, nt + 2, bounds)
 val closedMarch = marchingCubes(closed, bounds, resolution = 140)
-val closedSolid = Solid.levelSetOf(closed, bounds, edgeLength = 0.12, parallel = false)
+val closedSolid = Solid.levelSetOf(closed, bounds, edgeLength = 0.12)
 val parts = closedSolid.decompose()
 
-markdown("spacetime", """
+markdown(
+    "spacetime",
+    """
 #### One RectSL scene, ${field.rectCount} of ${program.nodes.size} rects lowered, ${program.duration}s over an ${program.wall.width} x ${program.wall.height} wall
 
 `${inner.size}` samples on ${nt} tapes; `${inner.count { it < 0f }}` of them inside; the worst
@@ -146,13 +149,15 @@ disagreement between the autodiff channels and `Fn.eval` was `${field.worstChann
 | the volume ends | marcher | triangles | closed | detail |
 |---|---|---|---|---|
 | at the first and last frame | `marchingCubes` | ${cutMarch.triangleCount} | **${cutMarch.isWatertight()}** | ${cutMarch.diagnose().boundaryLoops.size} boundary loops |
-| at the first and last frame | `levelSetOf` | ${cutSolid.triangleCount} | ${cutSolid.status == afield.manifold.ManifoldStatus.NO_ERROR} | genus ${cutSolid.genus}, volume ${"%.3f".format(cutSolid.volume)} |
+| at the first and last frame | `levelSetOf` | ${cutSolid.triangleCount} | ${cutSolid.status == afield.geometry.solid.manifold.ManifoldStatus.NO_ERROR} | genus ${cutSolid.genus}, volume ${"%.3f".format(cutSolid.volume)} |
 | one empty slice beyond each | `marchingCubes` | ${closedMarch.triangleCount} | **${closedMarch.isWatertight()}** | genus ${closedMarch.genus()} |
-| one empty slice beyond each | `levelSetOf` | ${closedSolid.triangleCount} | ${closedSolid.status == afield.manifold.ManifoldStatus.NO_ERROR} | genus ${closedSolid.genus}, volume ${"%.3f".format(closedSolid.volume)} |
+| one empty slice beyond each | `levelSetOf` | ${closedSolid.triangleCount} | ${closedSolid.status == afield.geometry.solid.manifold.ManifoldStatus.NO_ERROR} | genus ${closedSolid.genus}, volume ${"%.3f".format(closedSolid.volume)} |
 
 `decompose()` finds **${parts.size}** component, because the bar passes over the square at some
 frame and two shapes that touch on screen are one solid in space-time.
-""", width = 1040)
+""",
+    width = 1040,
+)
 
 parts.forEach { it.close() }
 cutSolid.close()
@@ -177,7 +182,8 @@ with a sawtooth wherever neighbouring samples differ, because the jump to `sampl
     Outside the union that is exact; inside it under-estimates, because the nearest individual
     boundary can be much closer than the union's own. The zero set is unaffected, which is all a march
     reads, so the surface here is right. An erosion or an offset of this field would not be, and
-    `dev_docs/RECTSL_SOFT_RASTER.md` measures that bias where it matters.
+    [RectSL soft raster](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/RECTSL_SOFT_RASTER.md)
+    measures that bias where it matters.
 
 ## Where each piece is documented
 

@@ -1,8 +1,9 @@
-import afield.four.Renderer
-import afield.four.util.Window
-import afield.four.fabricated.StandardRenderer
-var Box.chain by Inheritance<afield.four.fabricated.FabricateBuiltChain>() /**/
-val Once.chain by Onceing<afield.four.fabricated.FabricateBuiltChain>() /**/
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.FabricateBuiltChain
+var Box.chain by Inheritance<FabricateBuiltChain>() /**/
+val Once.chain by Onceing<FabricateBuiltChain>() /**/
 val Why.chain by Whying() /**/
 var Box.bundle by Inheritance<StandardRenderer.Bundle>() /*from:rp_bundle*/ /**/
 val Once.bundle by Onceing<StandardRenderer.Bundle>() /*from:rp_bundle*/ /**/

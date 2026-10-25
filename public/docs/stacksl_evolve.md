@@ -16,11 +16,14 @@ print(run.best!!.text)
 
 // The program the watchmaker (below) found for the same target, for comparison.
 val watchmaker = StackSLProgram.of(
-    "[0.05,0.06,0.15] [0.98,0.9,0.1] uv x 0.5 < mix [0.1,0.5,0.95] [0.9,0.1,0.1] uv x 0.5 < mix uv y 0.5 > mix"
+    "[0.05,0.06,0.15] [0.98,0.9,0.1] uv x 0.5 < mix [0.1,0.5,0.95] [0.9,0.1,0.1] uv x 0.5 < mix uv y 0.5 > mix",
 )
-showImg(run.contactSheet(also = listOf("watchmaker" to watchmaker)),
-    caption = "the target, the evolved program, the random control's best, and the watchmaker's (skill %.2f)"
-        .format(run.skillOf(watchmaker)))
+showImg(
+    run.contactSheet(also = ["watchmaker" to watchmaker]),
+    caption =
+        "the target, the evolved program, the random control's best, and the watchmaker's (skill %.2f)"
+            .format(run.skillOf(watchmaker)),
+)
 ```
 
 It takes under a minute. `budget` is the number of programs each side gets to render; doubling it roughly doubles the time. The printed line gives both sides' scores as *skill*: 0 is what a flat fill of the target's average colour would score, 1 is an exact match. The contact sheet draws each program at 160 pixels, so you see the program itself rather than an enlarged thumbnail of what the search scored. The last picture is not from this search: it is the program a language model wrote for the same target in [one of the runs below](#the-watchmaker), passed in with `also` and scored the same way by `run.skillOf`.
@@ -48,7 +51,10 @@ Simple, high-contrast pictures work best: flat shapes, a few colours, structure 
 val evolution = StackSLEvolution(StackSLTargets.spot(32), StackSLEvolveSettings.wide())
 evolution.runTo(600)
 print(evolution.summary())
-showImg(evolution.contactSheet(top = 3), caption = "the target and the best programs that score differently, with their skill")
+showImg(
+    evolution.contactSheet(top = 3),
+    caption = "the target and the best programs that score differently, with their skill",
+)
 ```
 
 Without the model, 600 renders find no disc: the best is a red and green cross on dark stripes, and the population has settled on variants of it. `summary()` prints the best program and a table of where improvements came from.
@@ -148,13 +154,20 @@ A program can have the right words and a wrong number: a disc of radius 0.4 wher
 :::static
 val evolution = StackSLEvolution(StackSLTargets.spot(32))
 val seed = StackSLProgram.of("[1,0.82,0.25] [0.03,0.04,0.12] p length 0.4 threshold mix")
-val fitted = evolution.fit(seed, literals = listOf(4), iterations = 30)
+val fitted = evolution.fit(seed, literals = [4], iterations = 30)
 print(fitted)
-showImg(montage(listOf(
-    "target" to evolution.target.raster.toImg().upscaleNearest(5),
-    "seed" to seed.render(),
-    "fitted" to StackSLProgram.of(fitted.fitted!!).render()
-), columns = 3, cellSide = 170), caption = "the disc's radius, moved by gradient descent")
+showImg(
+    montage(
+        [
+            "target" to evolution.target.raster.toImg().upscaleNearest(5),
+            "seed" to seed.render(),
+            "fitted" to StackSLProgram.of(fitted.fitted!!).render(),
+        ],
+        columns = 3,
+        cellSide = 170,
+    ),
+    caption = "the disc's radius, moved by gradient descent",
+)
 ```
 
 `literals = listOf(4)` lets only the fifth word, `0.4`, move. Leave it out and every number in the program may. The gradient goes through the threshold's hard edge by smoothing it slightly while the descent runs, and through LPIPS, which Field also differentiates. The fit scores LPIPS plus pixel error, because LPIPS alone would let a descent turn a striped program's colours the wrong way round.
@@ -176,7 +189,7 @@ stackSLEvolveStudio(evolution)
 
 ## How "close" is measured
 
-The default score is LPIPS, a learned perceptual distance (`Lpips.distance(a, b)` in [`afield.onnx`](reference/machine-learning.md)): both pictures go through the convolution stages of an image-recognition network, and the differences between their features are weighted by a layer trained on people's judgements of which images look alike. It compares edges, blobs and textures, not pixel values. The first time it runs on a machine Field builds the model, which takes about a minute.
+The default score is LPIPS, a learned perceptual distance (`Lpips.distance(a, b)` in [`afield.ai.inference.onnx`](reference/machine-learning.md)): both pictures go through the convolution stages of an image-recognition network, and the differences between their features are weighted by a layer trained on people's judgements of which images look alike. It compares edges, blobs and textures, not pixel values. The first time it runs on a machine Field builds the model, which takes about a minute.
 
 `metric = StackSLMetric.PIXEL` scores by average pixel error instead. Here are both on the bands target, 400 renders each:
 
@@ -191,14 +204,15 @@ print("lpips: " + lpips.best!!.text)
 :::fold draw the target and both winners side by side
 showImg(
     montage(
-        listOf(
+        [
             "target" to target.raster.toImg().upscaleNearest(5),
             "pixel error" to pixel.objective.render(pixel.best!!, 160).toImg(),
-            "LPIPS" to lpips.objective.render(lpips.best!!, 160).toImg()
-        ),
-        columns = 3, cellSide = 170
+            "LPIPS" to lpips.objective.render(lpips.best!!, 160).toImg(),
+        ],
+        columns = 3,
+        cellSide = 170,
     ),
-    caption = "six yellow and blue bands, and the best program found under each score"
+    caption = "six yellow and blue bands, and the best program found under each score",
 )
 :::endfold
 ```
@@ -249,7 +263,8 @@ Without the watchmaker, these are the five built-in targets' best programs at 1,
 
 ![five rows on black, one per built-in target: the target, then the best picture from evolveStackSLTowards (GP), from wide() without a model, and from the search with the watchmaker (both), each with its layout agreement. GP draws a white disc on blue for the disc, wavy lines for the rings, too many bands, a smear for the checkerboard and quadrants in the wrong colours; wide draws grey rings, fine wavy stripes, very fine stripes, a blurred cross and the same wrong quadrants; both draws all five almost exactly](assets/stacksl_evolve/watchmaker-original.png)
 
-`StackSLEvolveGallery` (the `stacksl.evolve.gallery` smoke test) runs `evolveStackSLTowards` across three targets and two metrics at 700 renders each, and fails if LPIPS with lexicase stops beating its control or stops out-drawing pixel error on `quadrants`. The watchmaker is not in it, since it needs a model.
+??? aside "The smoke test that pins this"
+    `StackSLEvolveGallery` (the `stacksl.evolve.gallery` smoke test) runs `evolveStackSLTowards` across three targets and two metrics at 700 renders each, and fails if LPIPS with lexicase stops beating its control or stops out-drawing pixel error on `quadrants`. The watchmaker is not in it, since it needs a model.
 
 ??? aside "How the watchmaker's figures and numbers were made"
     The comparison table, the two results figures and the watchmaker's pictures come from `afield.examples.stacksl.StackSLWatchmakerTrial`, run with OpenAI's `gpt-6-luna` as the fast model on 2026-10-08, and are committed images rather than runner captures, because a capture would call a paid model on every docs build. The trial saves every round's prompt, both pictures and the raw replies beside its results. To run it again: `run-jvm-main afield.examples.stacksl.StackSLWatchmakerTrial --arg=--budget --arg 1200 --arg=--seeds --arg 1,2,3` through the backdoor (about two hours for all arms), and `--arg=--figure --arg <dir>/trial.json` to draw a figure from the results. The model is not deterministic, so a rerun gives other programs and numbers near these.

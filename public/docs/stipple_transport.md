@@ -129,8 +129,6 @@ transport if working in ordinary Field coordinates. A point's z coordinate is pr
 
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.stdlib.loadStippleTransport
-
 val field = loadStippleTransport("public/docs/assets/stipple_transport/two-images.json")
 val canonical = field.sourceParticles(400, seed = 44) // retain once
 val formed = field.transport(canonical, transportTime = .65, movieTime = .35, steps = 32)
@@ -139,8 +137,13 @@ val point = field.flowMap(vec(.2, -.1, 0), transportTime = .65, movieTime = .35)
 val trails = field.pathsFrom(canonical.take(40), movieTime = .35)
 
 // Reverse integration at a fixed movie condition.
-val back = field.transport(formed, transportTime = 0.0, movieTime = .35,
-                          fromTransportTime = .65, steps = 32)
+val back = field.transport(
+    formed,
+    transportTime = 0.0,
+    movieTime = .35,
+    fromTransportTime = .65,
+    steps = 32,
+)
 ```
 
 The stipple sheet does this live. Open **stipple_sheet** from Starting points on the welcome screen,
@@ -152,7 +155,7 @@ particles and a coordinate lattice deform. Its code is also in
 ![Actual Field output with a loaded conditioned model, separate transport/movie sliders, integration-step control, and a transported particle sheet and grid](assets/stipple_transport/field-sheet.png)
 
 The [changed-control capture](assets/stipple_transport/field-controls.png) shows the same Field
-example after browser callbacks set `t=.5` and `tau=.75`.
+example with the sliders set to `t=.5` and `tau=.75`.
 
 Neither time is clamped in the query API. Freeze, scrub, reverse and extrapolate by changing these
 arguments; negative times and overshoot are extrapolation experiments. Different geometry can use
@@ -187,8 +190,8 @@ Outputs include reloadable `.pt` checkpoints, portable JSON models, figures, opt
 measurements. Temporal models can also bake velocities onto a spatial/transport/movie lattice in
 NPZ format, ready for a shader to read; nothing in Field reads it on the GPU yet.
 
-Library examples, format layout and the full control reference are in the repository's
-`optional/transport-flow/README.md`, and `run.py --help` lists the command-line controls.
+Library examples, format layout and the full control reference are in
+[optional/transport-flow/README.md](https://github.com/OpenEndedGroup/Field4/blob/main/optional/transport-flow/README.md), and `run.py --help` lists the command-line controls.
 
 ## Blending network weights
 

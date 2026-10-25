@@ -22,7 +22,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-from afield.python import NumpyShared, PythonInterface
+from afield.lang.python import NumpyShared, PythonInterface
 
 
 def current_box_id() -> str | None:

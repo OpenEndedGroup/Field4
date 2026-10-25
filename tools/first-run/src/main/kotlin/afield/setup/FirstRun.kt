@@ -49,8 +49,8 @@ internal fun packagePlan(manager: String?, desktop: Boolean, missing: Set<String
     val notes = mutableListOf<String>()
     val commands = mutableListOf<List<String>>()
     if (manager != null && manager != "brew") packages += missing.filter { it in setOf("curl", "tar", "gzip") }
-    val native = extras.any { it in setOf("ceres", "tetgen", "libpd", "csound", "paint", "syphon", "docs", "tracker") }
-    val python = extras.any { it in setOf("python", "cv", "voice", "ceres", "tetgen", "libpd", "csound", "docs", "tracker") }
+    val native = extras.any { it in setOf("ceres", "tetgen", "libpd", "csound", "paint", "syphon", "docs", "tracker", "patchy-web") }
+    val python = extras.any { it in setOf("python", "cv", "voice", "ceres", "tetgen", "libpd", "csound", "docs", "tracker", "patchy-web") }
     val buildMissing = (desktop || native) && missing.any { it in setOf("g++", "cmake", "make", "xcrun") }
     when (manager) {
         "apt-get" -> {
@@ -62,6 +62,7 @@ internal fun packagePlan(manager: String?, desktop: Boolean, missing: Set<String
             if ("csound" in extras) packages += listOf("flex", "bison", "pkg-config", "libsndfile1-dev")
             if (missing.any { it in setOf("cargo", "rustc") }) packages += "cargo"
             if ("tracker" in extras) packages += "ffmpeg"
+            if ("polyvector" in extras) packages += listOf("libopencv-dev", "libboost-dev", "libeigen3-dev")
             if (packages.isNotEmpty()) commands += listOf("sudo", "apt-get", "install", "--") + packages
         }
         "dnf" -> {
@@ -73,6 +74,7 @@ internal fun packagePlan(manager: String?, desktop: Boolean, missing: Set<String
             if ("csound" in extras) packages += listOf("flex", "bison", "pkgconf-pkg-config", "libsndfile-devel")
             if (missing.any { it in setOf("cargo", "rustc") }) packages += "cargo"
             if ("tracker" in extras) packages += "ffmpeg-free"
+            if ("polyvector" in extras) packages += listOf("opencv-devel", "boost-devel", "eigen3-devel")
             if (packages.isNotEmpty()) commands += listOf("sudo", "dnf", "install", "--") + packages
         }
         "pacman" -> {
@@ -84,6 +86,7 @@ internal fun packagePlan(manager: String?, desktop: Boolean, missing: Set<String
             if ("csound" in extras) packages += listOf("flex", "bison", "pkgconf", "libsndfile")
             if (missing.any { it in setOf("cargo", "rustc") }) packages += "rust"
             if ("tracker" in extras) packages += "ffmpeg"
+            if ("polyvector" in extras) packages += listOf("opencv", "boost", "eigen")
             // Do not refresh only the package index on Arch: that can create a partial upgrade.
             if (packages.isNotEmpty()) commands += listOf("sudo", "pacman", "-S", "--needed", "--") + packages
             if (packages.isNotEmpty()) notes += "Use a fully updated Arch system. If package downloads return 404, update the system normally before retrying."
@@ -103,6 +106,7 @@ internal fun packagePlan(manager: String?, desktop: Boolean, missing: Set<String
             if ("tracker" in extras) packages += "ffmpeg"
             if ("manifold" in extras) packages += "manifold"
             if ("lua" in extras) packages += "luajit"
+            if ("polyvector" in extras) packages += listOf("opencv", "boost", "eigen")
             if (packages.isNotEmpty()) commands += listOf("brew", "install", "--") + packages
             if (buildMissing || "python" in extras) notes += "Apple Command Line Tools: xcode-select --install (finish Apple's dialog, then rerun setup)."
             if ("vulkan" in extras) notes += "Use the welcome page's Vulkan panel for macOS SDK/driver setup; Linux Vulkan packages do not apply."

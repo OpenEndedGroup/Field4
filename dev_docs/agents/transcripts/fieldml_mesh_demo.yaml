@@ -1,5 +1,10 @@
 # Generated from fieldml_mesh_demo/metadata.edn by afield.examples.DocumentToTranscript.
 name: "fieldml_mesh_demo"
+docs:
+  - page: fieldml_host_bridge.md
+    why: "Explains the JVM bridge FieldML uses to build meshes."
+  - page: mesh_examples.md
+    why: "Reference for the mesh types the bridge hands back."
 operations:
   - create:
       box: "fieldml-mesh-renderer"
@@ -7,9 +12,11 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         "code": |
-          // Scaffolding, and Kotlin for two reasons named in the FieldML box next door:
-          // `prop`/`once` are SOURCE MACROS (mechanism A), and `Renderer.run` is a suspend
-          // *member*, which the bridge can satisfy the type of but cannot call into.
+          /*
+          Scaffolding, and Kotlin for two reasons named in the FieldML box next door:
+          `prop`/`once` are SOURCE MACROS (mechanism A), and `Renderer.run` is a suspend
+          *member*, which the bridge can satisfy the type of but cannot call into.
+          */
           prop<Window>(window)
           prop<Renderer>(renderer)
           once.renderer {
@@ -52,8 +59,8 @@ operations:
 
           let renderer = thisBox |> inherited "renderer"
 
-          let ModuleKt = hostClass "afield.four.modules.ModuleKt"
-          let Phased = hostClass "afield.PhasedKt"
+          let ModuleKt = hostClass "afield.graphics.render.ModuleKt"
+          let Phased = hostClass "afield.runtime.lifecycle.PhasedKt"
           let Pair = hostClass "kotlin.Pair"
 
           // Two vertex inputs. `Mesh.resize` reads these back out of the compiled SPIR-V
@@ -69,9 +76,9 @@ operations:
               p |> hostSet "name" "fieldmlRing"
             ) ModuleKt
 
-          let module = hostNew (params) (hostClass "afield.four.modules.Module")
+          let module = hostNew (params) (hostClass "afield.graphics.render.Module")
           let pointer = module |> hostExt ModuleKt "pointer" Unit
-          let mesh = hostNew (renderer, pointer) (hostClass "afield.four.modules.Mesh")
+          let mesh = hostNew (renderer, pointer) (hostClass "afield.graphics.render.Mesh")
           let _ = pointer |> hostCall1 "plusAssign" (hostNew ("ring", mesh) Pair)
 
           let blades = 16

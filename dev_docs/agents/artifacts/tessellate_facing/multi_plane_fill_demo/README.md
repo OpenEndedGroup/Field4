@@ -58,11 +58,11 @@ did that with a naive per-subpath fan.
 | `editable_false.png` | The server's triangulation of the same line, for comparison: the same picture and the same `24 tri`. |
 
 `threejs_viewer.html`'s `tessellateCoplanarGroups` is now the same rule as
-`afield.graphics.PlanarTessellation`. Written twice, deliberately — a dragged point must not wait for
+`afield.geometry.path.PlanarTessellation`. Written twice, deliberately — a dragged point must not wait for
 a round-trip to re-fill.
 
 Guarded, since 2026-08-04, by a test that **runs the viewer's JavaScript**:
-`src/jvmTest/kotlin/afield/graphics/ThreeJsViewerTessellationParityTest.kt` lifts the marked region of
+`src/jvmTest/kotlin/afield/graphics/three/ThreeJsViewerTessellationParityTest.kt` lifts the marked region of
 `threejs_viewer.html` and evaluates it on GraalJS (`ViewerJavaScript.kt`), then compares it against
 `PlanarTessellation` triangle for triangle over roughly sixty ring sets. One of its counterfactuals
 injects the fan that produced `editable_true_before.png` and asserts the differential goes red, so the

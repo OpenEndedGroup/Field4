@@ -9,7 +9,7 @@ pictures. The four conversation pages ([a function](function_conversation.md),
 AI4 tools. This page is the layer underneath them: the ten verbs every study shares, and how a
 document's own box becomes a study with the same tools.
 
-Everything here is `afield.stdlib`: `LiveStudy` and `registerStudyTools` in `LiveStudy.kt`,
+Everything here is in `afield.study.source`: `LiveStudy` and `registerStudyTools` in `LiveStudy.kt`,
 `SourceFramesStudy` in `SourceFramesStudy.kt`.
 
 ## The ten verbs
@@ -66,42 +66,58 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/define.png" alt="the main output channel: a list of ten tool names from InspectRingsStudy to RestoreRingsRevision, the line 'r1-… : Checked and activated', and a sheet titled 'studies-define study' showing the seven-ring pattern at t = 0, 0.5 and 1 seconds, the rings moving outward between frames, each frame labelled with its mean luma" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true timeout="120" name="studies-define" w="760" h="260"}
 :::static
-thisBox.setPropertyRaw("rings", "7 rings 0.05 ink 0.8 warmth")
+prop<String>(rings)
+rings = "7 rings 0.05 ink 0.8 warmth"
 
-val rings = sourceFramesStudy("rings", studyFrames("rings, drawn on the CPU") { source: String, w: Int, h: Int, t: Double ->
-    val (count, ink, warmth) = StudyKnobs.plainNumbers(source).map { it.value.toFloat() }
-    val px = FloatArray(w * h * 4)
-    for (y in 0 until h) for (x in 0 until w) {
-        val d = Math.hypot(x + 0.5 - w / 2.0, y + 0.5 - h / 2.0) / w
-        val v = (0.5 + 0.5 * Math.cos(d * count * 12.0 - t * 2.0)).toFloat()
-        val i = (y * w + x) * 4
-        px[i] = v * warmth + ink * (1 - v); px[i + 1] = v * 0.5f + ink * (1 - v); px[i + 2] = v * (1 - warmth) + ink * (1 - v); px[i + 3] = 1f
-    }
-    afield.stacksl.cpu.CpuRaster(w, h, px)
-})
+val ringsStudy = sourceFramesStudy(
+    "rings",
+    studyFrames("rings, drawn on the CPU") { source: String, w: Int, h: Int, t: Double ->
+        val (count, ink, warmth) = StudyKnobs.plainNumbers(source).map { it.value.toFloat() }
+        val px = FloatArray(w * h * 4)
+        for (y in 0 until h) for (x in 0 until w) {
+            val d = Math.hypot(x + 0.5 - w / 2.0, y + 0.5 - h / 2.0) / w
+            val v = (0.5 + 0.5 * Math.cos(d * count * 12.0 - t * 2.0)).toFloat()
+            val i = (y * w + x) * 4
+            px[i] = v * warmth + ink * (1 - v)
+            px[i + 1] = v * 0.5f + ink * (1 - v)
+            px[i + 2] = v * (1 - warmth) + ink * (1 - v)
+            px[i + 3] = 1f
+        }
+        afield.lang.stacksl.cpu.CpuRaster(w, h, px)
+    },
+)
 
-val tools = registerStudyTools("Rings", rings, about = "The source is three numbers: ring count, ink brightness, warmth 0..1.")
+val tools = registerStudyTools(
+    "Rings",
+    ringsStudy,
+    about = "The source is three numbers: ring count, ink brightness, warmth 0..1.",
+)
 
-val empty = rings.inspect(StudyCall.Inspect())
-val first = rings.edit(StudyCall.Edit("empty", empty.facts["liveSourceHash"] as String, "7 rings 0.05 ink 0.8 warmth", "seven warm rings"))
-val seen = rings.observe(StudyCall.Observe(seconds = listOf(0.0, 0.5, 1.0)))
+val empty = ringsStudy.inspect(StudyCall.Inspect())
+val first = ringsStudy.edit(
+    StudyCall.Edit(
+        "empty",
+        empty.facts["liveSourceHash"] as String,
+        "7 rings 0.05 ink 0.8 warmth",
+        "seven warm rings",
+    ),
+)
+val seen = ringsStudy.observe(StudyCall.Observe(seconds = [0.0, 0.5, 1.0]))
 
-markdown("main", tools.values.joinToString(" · ") { "`${it.name}`" } +
-    "\n\n`${first.revision}`: ${first.facts["message"]}\n\n" + seen.h)
+markdown(
+    "main",
+    tools.values.joinToString(" · ") { "`${it.name}`" } +
+        "\n\n`${first.revision}`: ${first.facts["message"]}\n\n" +
+        seen.h,
+)
 ```
 
 The revision is named `r1-` and the first twelve hex digits of its source's hash, so the same source
 always gets the same name. The sheet is the picture a model receives from Observe, as an image
 rather than as text; the numbers beside it (mean luma, clipping, detail, palette, motion between
 frames) come back in the report's facts. The study keeps its revisions in the document, under
-`studies/<box id>/rings`, and the sheet is saved there too.
-
-!!! note "Saving the property"
-    A property is written to the document on save only if its name is in
-    `Box.ioPersistentProperties`, and a name you make up, such as `rings`, is not. The study's
-    revisions are files under `studies/` and survive, but the box's own text does not unless you add
-    the name: `Box.ioPersistentProperties.add("rings")`. The starting point below does this in its
-    first box.
+`studies/<box id>/rings`, and the sheet is saved there too. `sourceFramesStudy("rings", …)` also
+registers `rings` as a saved property, so the box's text is written to the document with them.
 
 ## Changing it
 
@@ -125,29 +141,50 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/change.png" alt="the main output channel: 'box now holds: 7 rings 0.05 ink 0.2 warmth', the stale edit refused with 'Conflict: the revision or the live source changed since you read them', 'luma preserved: false', and below it a sheet headed 'cooler rings' with the new blue rings on top, the orange parent beneath, and their difference map" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true timeout="120" name="studies-change" w="760" h="260"}
 :::static
-thisBox.setPropertyRaw("rings", "7 rings 0.05 ink 0.8 warmth")
+prop<String>(rings)
+rings = "7 rings 0.05 ink 0.8 warmth"
 
-val rings = sourceFramesStudy("rings", studyFrames("rings, drawn on the CPU") { source: String, w: Int, h: Int, t: Double ->
-    val (count, ink, warmth) = StudyKnobs.plainNumbers(source).map { it.value.toFloat() }
-    val px = FloatArray(w * h * 4)
-    for (y in 0 until h) for (x in 0 until w) {
-        val d = Math.hypot(x + 0.5 - w / 2.0, y + 0.5 - h / 2.0) / w
-        val v = (0.5 + 0.5 * Math.cos(d * count * 12.0 - t * 2.0)).toFloat()
-        val i = (y * w + x) * 4
-        px[i] = v * warmth + ink * (1 - v); px[i + 1] = v * 0.5f + ink * (1 - v); px[i + 2] = v * (1 - warmth) + ink * (1 - v); px[i + 3] = 1f
-    }
-    afield.stacksl.cpu.CpuRaster(w, h, px)
-})
+val ringsStudy = sourceFramesStudy(
+    "rings",
+    studyFrames("rings, drawn on the CPU") { source: String, w: Int, h: Int, t: Double ->
+        val (count, ink, warmth) = StudyKnobs.plainNumbers(source).map { it.value.toFloat() }
+        val px = FloatArray(w * h * 4)
+        for (y in 0 until h) for (x in 0 until w) {
+            val d = Math.hypot(x + 0.5 - w / 2.0, y + 0.5 - h / 2.0) / w
+            val v = (0.5 + 0.5 * Math.cos(d * count * 12.0 - t * 2.0)).toFloat()
+            val i = (y * w + x) * 4
+            px[i] = v * warmth + ink * (1 - v)
+            px[i + 1] = v * 0.5f + ink * (1 - v)
+            px[i + 2] = v * (1 - warmth) + ink * (1 - v)
+            px[i + 3] = 1f
+        }
+        afield.lang.stacksl.cpu.CpuRaster(w, h, px)
+    },
+)
 
-val first = rings.edit(StudyCall.Edit("empty", rings.inspect(StudyCall.Inspect()).facts["liveSourceHash"] as String, "7 rings 0.05 ink 0.8 warmth", "seven warm rings"))
-val hash = rings.inspect(StudyCall.Inspect()).facts["liveSourceHash"] as String
+val first = ringsStudy.edit(
+    StudyCall.Edit(
+        "empty",
+        ringsStudy.inspect(StudyCall.Inspect()).facts["liveSourceHash"] as String,
+        "7 rings 0.05 ink 0.8 warmth",
+        "seven warm rings",
+    ),
+)
+val hash = ringsStudy.inspect(StudyCall.Inspect()).facts["liveSourceHash"] as String
 
-val cooler = rings.setNumbers(StudyCall.SetNumbers(first.revision, hash, listOf(StudyCall.Number(2, 0.2)), "cooler rings"))
-val late = runCatching { rings.edit(StudyCall.Edit(first.revision, hash, "3 rings 0.5 ink 0.5 warmth", "an edit from a stale read")) }
-val kept = rings.compare(StudyCall.Compare(first.revision, cooler.revision, mode = "luma"))
+val cooler =
+    ringsStudy.setNumbers(StudyCall.SetNumbers(first.revision, hash, [StudyCall.Number(2, 0.2)], "cooler rings"))
+val late = runCatching {
+    ringsStudy.edit(StudyCall.Edit(first.revision, hash, "3 rings 0.5 ink 0.5 warmth", "an edit from a stale read"))
+}
+val kept = ringsStudy.compare(StudyCall.Compare(first.revision, cooler.revision, mode = "luma"))
 
-markdown("main", "The box holds `${thisBox.getPropertyRaw("rings", "")}`. The stale edit: ${late.exceptionOrNull()?.message} " +
-    "Luma preserved: ${kept.facts["preservedOutsideRegion"]}.\n\n" + cooler.h)
+markdown(
+    "main",
+    "The box holds `${rings}`. The stale edit: ${late.exceptionOrNull()?.message} " +
+        "Luma preserved: ${kept.facts["preservedOutsideRegion"]}.\n\n" +
+        cooler.h,
+)
 ```
 
 Knob 2 is the third number, `0.8`, and the box's property now reads `0.2` in its place. The stale
@@ -177,33 +214,58 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/speculate.png" alt="the main output channel: three lines of variant results, tight and cold ok and short refused with 'That source does not draw', the line 'adopted r2-… ; box now holds: 7 rings 0.05 ink 0.1 warmth', a sweep sheet of five ring patterns at 3, 5, 7 (marked now), 11 and 15 rings, and a variants sheet: the current rings, the tight and cold candidates, and a red error tile for short" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true timeout="120" name="studies-speculate" w="760" h="260"}
 :::static
-thisBox.setPropertyRaw("rings", "7 rings 0.05 ink 0.8 warmth")
+prop<String>(rings)
+rings = "7 rings 0.05 ink 0.8 warmth"
 
-val rings = sourceFramesStudy("rings", studyFrames("rings, drawn on the CPU") { source: String, w: Int, h: Int, t: Double ->
-    val (count, ink, warmth) = StudyKnobs.plainNumbers(source).map { it.value.toFloat() }
-    val px = FloatArray(w * h * 4)
-    for (y in 0 until h) for (x in 0 until w) {
-        val d = Math.hypot(x + 0.5 - w / 2.0, y + 0.5 - h / 2.0) / w
-        val v = (0.5 + 0.5 * Math.cos(d * count * 12.0 - t * 2.0)).toFloat()
-        val i = (y * w + x) * 4
-        px[i] = v * warmth + ink * (1 - v); px[i + 1] = v * 0.5f + ink * (1 - v); px[i + 2] = v * (1 - warmth) + ink * (1 - v); px[i + 3] = 1f
-    }
-    afield.stacksl.cpu.CpuRaster(w, h, px)
-})
+val ringsStudy = sourceFramesStudy(
+    "rings",
+    studyFrames("rings, drawn on the CPU") { source: String, w: Int, h: Int, t: Double ->
+        val (count, ink, warmth) = StudyKnobs.plainNumbers(source).map { it.value.toFloat() }
+        val px = FloatArray(w * h * 4)
+        for (y in 0 until h) for (x in 0 until w) {
+            val d = Math.hypot(x + 0.5 - w / 2.0, y + 0.5 - h / 2.0) / w
+            val v = (0.5 + 0.5 * Math.cos(d * count * 12.0 - t * 2.0)).toFloat()
+            val i = (y * w + x) * 4
+            px[i] = v * warmth + ink * (1 - v)
+            px[i + 1] = v * 0.5f + ink * (1 - v)
+            px[i + 2] = v * (1 - warmth) + ink * (1 - v)
+            px[i + 3] = 1f
+        }
+        afield.lang.stacksl.cpu.CpuRaster(w, h, px)
+    },
+)
 
-val first = rings.edit(StudyCall.Edit("empty", rings.inspect(StudyCall.Inspect()).facts["liveSourceHash"] as String, "7 rings 0.05 ink 0.8 warmth", "seven warm rings"))
+val first = ringsStudy.edit(
+    StudyCall.Edit(
+        "empty",
+        ringsStudy.inspect(StudyCall.Inspect()).facts["liveSourceHash"] as String,
+        "7 rings 0.05 ink 0.8 warmth",
+        "seven warm rings",
+    ),
+)
 
-val swept = rings.sweep(StudyCall.Sweep(knob = 0, values = listOf(3.0, 5.0, 7.0, 11.0, 15.0)))
-val tried = rings.tryVariants(StudyCall.TryVariants(listOf(
-    StudyCall.Variant("tight", source = "15 rings 0.05 ink 0.8 warmth", note = "twice the rings"),
-    StudyCall.Variant("cold", edits = listOf(StudySourceEdit("0.8 warmth", "0.1 warmth"))),
-    StudyCall.Variant("short", source = "7 rings"))))
+val swept = ringsStudy.sweep(StudyCall.Sweep(knob = 0, values = [3.0, 5.0, 7.0, 11.0, 15.0]))
+val tried = ringsStudy.tryVariants(
+    StudyCall.TryVariants(
+        [
+            StudyCall.Variant("tight", source = "15 rings 0.05 ink 0.8 warmth", note = "twice the rings"),
+            StudyCall.Variant("cold", edits = [StudySourceEdit("0.8 warmth", "0.1 warmth")]),
+            StudyCall.Variant("short", source = "7 rings"),
+        ],
+    ),
+)
 
-val now = rings.inspect(StudyCall.Inspect())
-val adopted = rings.adoptVariant(StudyCall.Adopt(now.revision, now.facts["liveSourceHash"] as String, "cold"))
+val now = ringsStudy.inspect(StudyCall.Inspect())
+val adopted = ringsStudy.adoptVariant(StudyCall.Adopt(now.revision, now.facts["liveSourceHash"] as String, "cold"))
 
-markdown("main", (tried.facts["variants"] as List<*>).joinToString("\n") { "- $it" } +
-    "\n\nAdopted `${adopted.revision}`; the box holds `${thisBox.getPropertyRaw("rings", "")}`.\n\n" + swept.h + "\n\n" + tried.h)
+markdown(
+    "main",
+    (tried.facts["variants"] as List<*>).joinToString("\n") { "- $it" } +
+        "\n\nAdopted `${adopted.revision}`; the box holds `${rings}`.\n\n" +
+        swept.h +
+        "\n\n" +
+        tried.h,
+)
 ```
 
 A refused candidate still has a row on the sheet, with the reason in place of a frame, so a model
@@ -230,15 +292,19 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/refuse.png" alt="the main output channel: 'tools: InspectLookStudy, ObserveLookStudy', 'inspect: source=nothing to edit here' in braces, and 'observe: This study does not offer Observe'" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true timeout="90" name="studies-refuse" w="760" h="120"}
 :::static
 val lookOnly = object : LiveStudy {
-    override fun inspect(q: StudyRequest.Inspect) = StudyReport("current", mapOf("source" to "nothing to edit here"))
+    override fun inspect(q: StudyRequest.Inspect) =
+        StudyReport("current", mapOf("source" to "nothing to edit here"))
 }
 val tools = registerStudyTools("Look", lookOnly, verbs = setOf(StudyVerb.INSPECT, StudyVerb.OBSERVE))
 
 val read = lookOnly.inspect(StudyCall.Inspect())
-val look = runCatching { lookOnly.observe(StudyCall.Observe(seconds = listOf(0.0))) }
+val look = runCatching { lookOnly.observe(StudyCall.Observe(seconds = [0.0])) }
 
-markdown("main", "Tools: ${tools.values.joinToString { "`${it.name}`" }}. Inspect: ${read.facts}. " +
-    "Observe: ${look.exceptionOrNull()?.message}.")
+markdown(
+    "main",
+    "Tools: ${tools.values.joinToString { "`${it.name}`" }}. Inspect: ${read.facts}. " +
+        "Observe: ${look.exceptionOrNull()?.message}.",
+)
 ```
 
 The refusal is a `StudyRejection` (an `IllegalArgumentException`), thrown by `LiveStudy`'s default
@@ -263,14 +329,19 @@ For an existing `SourceStudy` named `design`, this small stage writes a report f
 source it captured when the build started:
 
 ```diffstatic {data-lang=kotlin}
-val builds = studyBuilds("reports", listOf(
-    StudyBuildStage("summary", "Source report", "report-v1", setOf("source")) { context ->
-        val source = context.inputs.getValue("source")
-        context.progress(0.5, "Writing the report")
-        context.file("summary.txt").writeText("${source.lines().size} source lines")
-        StudyBuildProduct(listOf("summary.txt"))
+val builds = studyBuilds(
+    "reports",
+    [
+        StudyBuildStage("summary", "Source report", "report-v1", setOf("source")) { context ->
+            val source = context.inputs.getValue("source")
+            context.progress(0.5, "Writing the report")
+            context.file("summary.txt").writeText("${source.lines().size} source lines")
+            StudyBuildProduct(["summary.txt"])
+        },
+    ],
+) {
+        mapOf("source" to design.liveSource())
     }
-)) { mapOf("source" to design.liveSource()) }
 showStudyBuilds("reports")
 ```
 
@@ -335,8 +406,7 @@ over its saved `StudyBuildRecord.facts`, for example:
 ```diffstatic {data-lang=kotlin}
 resultNotes = { result ->
     val count = (result.facts["unresolved"] as? Number)?.toInt() ?: 0
-    if (count > 0) listOf(StudyBuildNotice("$count findings remain. Inspect the retained report."))
-    else emptyList()
+    if (count > 0) [StudyBuildNotice("$count findings remain. Inspect the retained report.")] else emptyList()
 }
 ```
 
@@ -344,11 +414,34 @@ Warnings show **Current · Needs review**; `StudyBuildNoticeKind.ERROR` shows
 **Current · Needs correction**, with red explanatory text. `INFO` supplies context without
 implying a problem. The same notes appear in native agent inspection and the completion stream.
 The adapter must be fast and pure: read the supplied record's retained facts, never the live
-design, and perform no build work. It also works over existing attempt history. A formatter
-failure shows a review notice and keeps the result. Notes only explain: they do not change
+design, and perform no build work.
+
+A note can also name a picture of the result: `StudyBuildNotice(message, view = StudyBuildView(box, caption) { draw() })`.
+`box` is the box (uid or name) that shows it, and `draw` displays the result there; nothing runs while
+the notes are read. An [AI4 chat that waited for the build](ai4_long_builds.md) is shown the
+picture when it resumes: Field runs `draw`, captures the box's output and attaches it to the
+message. Notes also work over existing attempt history. A formatter failure shows a review notice and keeps the result. Notes only explain: they do not change
 fingerprints, acceptance, or whether downstream stages can use the result. A requirement a result
 must meet belongs in the recipe or in a [gate](#wait-until-a-measurement-passes). A stale result
 drops its notes from the current-result view; inspecting that attempt still shows them.
+
+`resultNotes` explains successes only. To explain a failure as well, give the stage a `failureNotes`
+adapter: it takes the failed `StudyBuildRecord`, usually reads its `problem.details`, and returns
+notes under the same rules. A route stage that fails because some routes were held can name a view
+of them, so a chat that waited for the build resumes with a close-up of the held routes:
+
+```diffstatic {data-lang=kotlin}
+failureNotes = { failed ->
+    val held = failed.problem?.details?.get("held") as? List<*>
+    if (held.isNullOrEmpty()) emptyList()
+    else [StudyBuildNotice("${held.size} routes were held.", StudyBuildNoticeKind.ERROR,
+        StudyBuildView("Held routes", "each held route, close up") { showHeld(held) })]
+}
+```
+
+The card shows these notes under the failure, agent inspection and the completion stream carry
+them, and a resumed chat gets their pictures, as it would a success's. A failed attempt is never
+current: its notes are not the current result's, and they leave the card once the inputs change.
 
 An edit during a build leaves the old attempt available for inspection, marked **obsolete**.
 It cannot become the current result. Changing a dependency result or `recipeVersion` also
@@ -365,9 +458,14 @@ When a failure has a place in the geometry, draw that geometry in red in a box's
 the box in `details["geometryView"]`. Here the box that owns the stage draws the clash itself:
 
 ```diffstatic {data-lang=kotlin}
-throw StudyBuildFailure(StudyBuildProblem("stair-clash", "Wall W3 crosses the stair opening",
-    listOf("Move the stair or shorten W3"),
-    details = mapOf("geometryView" to mapOf("box" to thisBox.id, "caption" to "W3 and the stair opening"))))
+throw StudyBuildFailure(
+    StudyBuildProblem(
+        "stair-clash",
+        "Wall W3 crosses the stair opening",
+        ["Move the stair or shorten W3"],
+        details = mapOf("geometryView" to mapOf("box" to thisBox.id, "caption" to "W3 and the stair opening")),
+    ),
+)
 ```
 
 Under the failure message, the card adds a red **Show where it fails…** link followed by the
@@ -413,22 +511,33 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/gate.png" alt="the builds output channel: a card with two stages, 'Measure paths' marked Current with a Rebuild button, and 'Place loot' marked 'Waiting for reachable loot', with the sentence 'Out of reach (more than 30 steps): L3.' and no Build button" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="builds" wait-output-contains="Waiting for reachable loot" capture="box" embed=true timeout="90" name="studies-gate" w="760" h="120"}
 :::static
 // Each loot point, and how many steps it is from the spawn.
-thisBox.setPropertyRaw("loot", "L1 12, L3 41, L7 30")
+prop<String>(loot)
+loot = "L1 12, L3 41, L7 30"
 
-val reachable = StudyBuildGate("reachable loot", dependencies = listOf("paths")) { evidence ->
-    val far = evidence.facts("paths")["outOfReach"] as List<*>
-    if (far.isEmpty()) null else "Out of reach (more than 30 steps): ${far.joinToString()}."
-}
-val builds = studyBuilds("loot", listOf(
-    StudyBuildStage("paths", "Measure paths", "paths-v1", setOf("loot")) { c ->
-        val steps = c.inputs.getValue("loot").split(", ").associate { it.substringBefore(' ') to it.substringAfter(' ').toInt() }
-        c.file("steps.txt").writeText(steps.toString())
-        StudyBuildProduct(listOf("steps.txt"), mapOf("outOfReach" to steps.filterValues { it > 30 }.keys.toList()))
-    },
-    StudyBuildStage("place", "Place loot", "place-v1", setOf("reachable loot"), listOf("paths")) { c ->
-        c.file("placed.txt").writeText("loot placed along " + c.dependencyFile("paths", "steps.txt").readText())
-        StudyBuildProduct(listOf("placed.txt"))
-    }), gates = listOf(reachable)) { mapOf("loot" to thisBox.getPropertyRaw("loot", "").toString()) }
+val reachable =
+    StudyBuildGate("reachable loot", dependencies = ["paths"]) { evidence ->
+        val far = evidence.facts("paths")["outOfReach"] as List<*>
+        if (far.isEmpty()) null else "Out of reach (more than 30 steps): ${far.joinToString()}."
+    }
+val builds = studyBuilds(
+    "loot",
+    [
+        StudyBuildStage("paths", "Measure paths", "paths-v1", setOf("loot")) { c ->
+            val steps = c.inputs.getValue("loot").split(", ").associate {
+                it.substringBefore(' ') to it.substringAfter(' ').toInt()
+            }
+            c.file("steps.txt").writeText(steps.toString())
+            StudyBuildProduct(["steps.txt"], mapOf("outOfReach" to steps.filterValues { it > 30 }.keys.toList()))
+        },
+        StudyBuildStage("place", "Place loot", "place-v1", setOf("reachable loot"), ["paths"]) { c ->
+            c.file("placed.txt").writeText("loot placed along " + c.dependencyFile("paths", "steps.txt").readText())
+            StudyBuildProduct(["placed.txt"])
+        },
+    ],
+    gates = [reachable],
+) {
+        mapOf("loot" to loot)
+    }
 
 builds.await(builds.start("paths", builds.stages().first { it.id == "paths" }.fingerprint!!).id)
 showStudyBuilds("loot")
@@ -465,13 +574,19 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/request.png" alt="the builds output channel: a card with one stage, 'Search for routes', marked Current with a Rebuild button, and the grey line 'Request: budgetSeconds = 60'" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="builds" wait-output-contains="Current" capture="box" embed=true timeout="90" name="studies-request" w="760" h="120"}
 :::static
-val builds = studyBuilds("search", listOf(
-    StudyBuildStage("route", "Search for routes", "route-v1", setOf("rooms")) { c ->
-        val budget = (c.request["budgetSeconds"] as? Number)?.toInt() ?: 10
-        c.progress(0.5, "Searching for $budget s")
-        c.file("route.txt").writeText("${c.inputs.getValue("rooms")} rooms searched for $budget s")
-        StudyBuildProduct(listOf("route.txt"), mapOf("budgetSeconds" to budget))
-    })) { mapOf("rooms" to "6") }
+val builds = studyBuilds(
+    "search",
+    [
+        StudyBuildStage("route", "Search for routes", "route-v1", setOf("rooms")) { c ->
+            val budget = (c.request["budgetSeconds"] as? Number)?.toInt() ?: 10
+            c.progress(0.5, "Searching for $budget s")
+            c.file("route.txt").writeText("${c.inputs.getValue("rooms")} rooms searched for $budget s")
+            StudyBuildProduct(["route.txt"], mapOf("budgetSeconds" to budget))
+        },
+    ],
+) {
+        mapOf("rooms" to "6")
+    }
 
 builds.start("route", builds.stages().single().fingerprint!!, mapOf("budgetSeconds" to 60))
 showStudyBuilds("search")
@@ -505,20 +620,33 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/depends-on.png" alt="the builds output channel: a card with one stage, 'Place loot', marked 'Ready to build' with a Build button, above the line 'Not built yet'" wait="2.0" wait-output=true wait-output-kind=display wait-output-channel="builds" wait-output-contains="Ready to build" capture="box" embed=true timeout="90" name="studies-depends-on" w="760" h="120"}
 :::static
-thisBox.setPropertyRaw("plan", "four rooms, two doors")
+prop<String>(plan)
+plan = "four rooms, two doors"
 
-val level = studyBuilds("level", listOf(
-    StudyBuildStage("blockout", "Block out walls", "blockout-v1", setOf("plan")) { c ->
-        c.file("walls.txt").writeText("walls for " + c.inputs.getValue("plan"))
-        StudyBuildProduct(listOf("walls.txt"))
-    })) { mapOf("plan" to thisBox.getPropertyRaw("plan", "").toString()) }
+val level = studyBuilds(
+    "level",
+    [
+        StudyBuildStage("blockout", "Block out walls", "blockout-v1", setOf("plan")) { c ->
+            c.file("walls.txt").writeText("walls for " + c.inputs.getValue("plan"))
+            StudyBuildProduct(["walls.txt"])
+        },
+    ],
+) {
+        mapOf("plan" to plan)
+    }
 
-val loot = studyBuilds("loot", listOf(
-    StudyBuildStage("place", "Place loot", "place-v1", dependencies = listOf(dependsOn("level", "blockout"))) { c ->
-        val walls = c.dependencyFile(dependsOn("level", "blockout"), "walls.txt").readText()
-        c.file("loot.txt").writeText("loot placed inside $walls")
-        StudyBuildProduct(listOf("loot.txt"))
-    })) { emptyMap() }
+val loot = studyBuilds(
+    "loot",
+    [
+        StudyBuildStage("place", "Place loot", "place-v1", dependencies = [dependsOn("level", "blockout")]) { c ->
+            val walls = c.dependencyFile(dependsOn("level", "blockout"), "walls.txt").readText()
+            c.file("loot.txt").writeText("loot placed inside $walls")
+            StudyBuildProduct(["loot.txt"])
+        },
+    ],
+) {
+        emptyMap()
+    }
 
 level.await(level.start("blockout", level.stages().single().fingerprint!!).id)
 showStudyBuilds("loot")
@@ -552,14 +680,20 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/resume.png" alt="the builds output channel: a card with one stage, 'Relax the route', marked Current with a Rebuild button, and two grey lines: 'Request: resume = ' followed by the first attempt's ID, and 'Continued from attempt' followed by the first eight characters of that ID and 'checkpoint.txt'" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="builds" wait-output-contains="Continued from attempt" capture="box" embed=true timeout="90" name="studies-resume" w="760" h="120"}
 :::static
-val builds = studyBuilds("relax", listOf(
-    StudyBuildStage("relax", "Relax the route", "relax-v1", setOf("route")) { c ->
-        (c.request["resume"] as? String)?.let { c.resumeFrom(it, listOf("checkpoint.txt")) }
-        val checkpoint = c.file("checkpoint.txt")
-        val passes = (if (checkpoint.isFile) checkpoint.readText().toInt() else 0) + 100
-        checkpoint.writeText("$passes")
-        StudyBuildProduct(listOf("checkpoint.txt"), mapOf("passes" to passes))
-    })) { mapOf("route" to "spawn to L7") }
+val builds = studyBuilds(
+    "relax",
+    [
+        StudyBuildStage("relax", "Relax the route", "relax-v1", setOf("route")) { c ->
+            (c.request["resume"] as? String)?.let { c.resumeFrom(it, ["checkpoint.txt"]) }
+            val checkpoint = c.file("checkpoint.txt")
+            val passes = (if (checkpoint.isFile) checkpoint.readText().toInt() else 0) + 100
+            checkpoint.writeText("$passes")
+            StudyBuildProduct(["checkpoint.txt"], mapOf("passes" to passes))
+        },
+    ],
+) {
+        mapOf("route" to "spawn to L7")
+    }
 
 val fingerprint = builds.stages().single().fingerprint!!
 val first = builds.await(builds.start("relax", fingerprint).id)
@@ -609,19 +743,33 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 val script = "%document/relax.py".file
-script.writeText("""
+script.writeText(
+    """
 import json, time
 for n in range(1, 5):
     json.dump({"fraction": n / 4, "message": f"pass {n} of 4"}, open("progress.json", "w"))
     time.sleep(3)
 open("relaxed.txt", "w").write("relaxed in 4 passes")
-""".trimStart())
+"""
+        .trimStart(),
+)
 
-val builds = studyBuilds("external", listOf(
-    StudyBuildStage("relax", "Relax in Python", "relax-" + fileIdentity(script), setOf("route")) { c ->
-        c.runProcess(listOf("python3", script.path), progressFile = "progress.json", stall = 30.seconds, deadline = 10.minutes)
-        StudyBuildProduct(listOf("relaxed.txt", "process.log"))
-    })) { mapOf("route" to "spawn to L7") }
+val builds = studyBuilds(
+    "external",
+    [
+        StudyBuildStage("relax", "Relax in Python", "relax-" + fileIdentity(script), setOf("route")) { c ->
+            c.runProcess(
+                ["python3", script.path],
+                progressFile = "progress.json",
+                stall = 30.seconds,
+                deadline = 10.minutes,
+            )
+            StudyBuildProduct(["relaxed.txt", "process.log"])
+        },
+    ],
+) {
+        mapOf("route" to "spawn to L7")
+    }
 
 builds.start("relax", builds.stages().single().fingerprint!!)
 showStudyBuilds("external")
@@ -665,21 +813,33 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/prune.png" alt="the main output channel: 'A dry run would delete 3 attempts. Pruning deleted 3 and freed' followed by about 1900 kB, 'keeping 2: the current walls and the pinned first version.'" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="main" wait-output-contains="Pruning deleted" capture="box" embed=true timeout="90" name="studies-prune" w="760" h="120"}
 :::static
-val builds = studyBuilds("walls", listOf(
-    StudyBuildStage("mesh", "Mesh the walls", "mesh-v1", setOf("rooms")) { c ->
-        c.file("walls.obj").writeText("v 0 0 0\n".repeat(20_000 * c.inputs.getValue("rooms").toInt()))
-        StudyBuildProduct(listOf("walls.obj"))
-    })) { mapOf("rooms" to thisBox.getPropertyRaw("rooms", "2").toString()) }
+prop<String>(rooms, "2")
+
+val builds = studyBuilds(
+    "walls",
+    [
+        StudyBuildStage("mesh", "Mesh the walls", "mesh-v1", setOf("rooms")) { c ->
+            c.file("walls.obj").writeText("v 0 0 0\n".repeat(20_000 * c.inputs.getValue("rooms").toInt()))
+            StudyBuildProduct(["walls.obj"])
+        },
+    ],
+) {
+        mapOf("rooms" to rooms)
+    }
 
 // Five versions of the level, each built once.
-val built = (2..6).map { rooms ->
-    thisBox.setPropertyRaw("rooms", "$rooms")
-    builds.await(builds.start("mesh", builds.stages().single().fingerprint!!).id)
-}
+val built =
+    (2..6).map { roomCount ->
+        rooms = "$roomCount"
+        builds.await(builds.start("mesh", builds.stages().single().fingerprint!!).id)
+    }
 val preview = builds.prune(pins = setOf(built.first().id), dryRun = true)
 val pruned = builds.prune(pins = setOf(built.first().id))
-markdown("main", "A dry run would delete ${preview.deleted.size} attempts. Pruning deleted ${pruned.deleted.size} " +
-    "and freed ${pruned.freedBytes / 1000} kB, keeping ${pruned.kept.size}: the current walls and the pinned first version.")
+markdown(
+    "main",
+    "A dry run would delete ${preview.deleted.size} attempts. Pruning deleted ${pruned.deleted.size} " +
+        "and freed ${pruned.freedBytes / 1000} kB, keeping ${pruned.kept.size}: the current walls and the pinned first version.",
+)
 ```
 
 A dry run (`dryRun = true`) reports what would go and deletes nothing. A deleted attempt is gone
@@ -718,8 +878,9 @@ on the welcome screen's starting points) is this page as a document: `rings` def
 two boxes under it, `change it` and `try things`, drive its verbs. Open it and run the three boxes
 in order.
 
-??? aside "Tests and design notes"
+??? aside "Agents: tests and design notes"
     `study.document.registrar` (`src/jvmMain/kotlin/afield/examples/ai/DocumentStudySmokeTest.kt`)
     drives all ten verbs on a document's study through the same tool registry an agent calls, with
-    no model. The design notes are in `dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`, under "Studies: one
+    no model. The design notes are in
+    [`dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/ai/AGENT_TOOL_EXTENSIONS.md), under "Studies: one
     registrar for the standard verbs".

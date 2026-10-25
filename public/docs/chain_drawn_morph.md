@@ -30,17 +30,26 @@ fun chord(a: Vec2, b: Vec2, dx: Double) = FLine().moveTo(a.x + dx, a.y).lineTo(b
     it.thickness = 0.8
     it.color = okhsl(atan2(a.y - 260.0, a.x - 520.0) * 180 / PI + 360, 0.85, 0.6, 0.9)
 }
-lines(from.indices.map { chord(from[it], partner[it], -220.0) } + from.indices.map { chord(from[it], to[it], 220.0) },
-    w = 760.0, h = 380.0, fitToSize = true)
-val byIndex = from.indices.sumOf { (from[it].x - to[it].x).toDouble().pow(2) + (from[it].y - to[it].y).toDouble().pow(2) }
-markdown("travel", """
+lines(
+    from.indices.map { chord(from[it], partner[it], -220.0) } + from.indices.map { chord(from[it], to[it], 220.0) },
+    w = 760.0,
+    h = 380.0,
+    fitToSize = true,
+)
+val byIndex =
+    from.indices.sumOf { (from[it].x - to[it].x).toDouble().pow(2) + (from[it].y - to[it].y).toDouble().pow(2) }
+markdown(
+    "travel",
+    """
 | | |
 |---|---|
 | points drawn, circle and heart | ${drawnFrom.size} and ${drawnTo.size} |
 | points after resampling | ${from.size} and ${to.size} |
 | squared travel, matched (left) | ${"%.0f".format(match.squaredCost)} |
 | squared travel, by list index (right) | ${"%.0f".format(byIndex)} |
-""", width = 420)
+""",
+    width = 420,
+)
 :::endfold
 ```
 
@@ -67,16 +76,25 @@ val to = notation.named("to")!!.points.resampleByLength(240, closed = true)
 val partner = matchPoints(from, to).reorder(to)
 
 :::fold draw five steps of each
-fun dot(p: Vec2, dx: Double, dy: Double, colour: Vec4) = FLine().also { f ->
-    val x = (p.x - 520.0) * 0.5 + dx; val y = (p.y - 260.0) * 0.5 + dy
-    f.moveTo(x - 2, y - 2).lineTo(x + 2, y - 2).lineTo(x + 2, y + 2).lineTo(x - 2, y + 2).lineTo(x - 2, y - 2)
-    f.color = colour; f.filled = true; f.stroked = false
-}
-val steps = listOf(0.0, 0.25, 0.5, 0.75, 1.0)
-lines(steps.indices.flatMap { s ->
-    morphBetween(from, partner, steps[s]).map { dot(it, s * 200.0, 0.0, vec(0.1, 0.45, 0.85, 1.0)) } +
-        morphBetween(from, to, steps[s]).map { dot(it, s * 200.0, 200.0, vec(0.88, 0.2, 0.2, 1.0)) }
-}, w = 1000.0, h = 400.0, fitToSize = true)
+fun dot(p: Vec2, dx: Double, dy: Double, colour: Vec4) =
+    FLine().also { f ->
+        val x = (p.x - 520.0) * 0.5 + dx
+        val y = (p.y - 260.0) * 0.5 + dy
+        f.rect(x - 2, y - 2, 4, 4)
+        f.color = colour
+        f.filled = true
+        f.stroked = false
+    }
+val steps = [0.0, 0.25, 0.5, 0.75, 1.0]
+lines(
+    steps.indices.flatMap { s ->
+        morphBetween(from, partner, steps[s]).map { dot(it, s * 200.0, 0.0, vec(0.1, 0.45, 0.85, 1.0)) } +
+            morphBetween(from, to, steps[s]).map { dot(it, s * 200.0, 200.0, vec(0.88, 0.2, 0.2, 1.0)) }
+    },
+    w = 1000.0,
+    h = 400.0,
+    fitToSize = true,
+)
 :::endfold
 ```
 
@@ -96,12 +114,16 @@ notation { morphShapes() }
 val from = notation.named("from")!!.points.resampleByLength(240, closed = true)
 val to = notation.named("to")!!.points.resampleByLength(240, closed = true)
 val partner = matchPoints(from, to).reorder(to)
-notation.clear()   // read: take the strokes down so they do not lie over the plot
+notation.clear() // read: take the strokes down so they do not lie over the plot
 val ts = (0..50).map { it / 50.0 }
 showSignals(
     "matched" to ts.map { spreadOf(morphBetween(from, partner, it)) },
     "by list index" to ts.map { spreadOf(morphBetween(from, to, it)) },
-    x = ts, title = "how big the cloud is, through the morph", xTitle = "t", yTitle = "spread", channel = "spread",
+    x = ts,
+    title = "how big the cloud is, through the morph",
+    xTitle = "t",
+    yTitle = "spread",
+    channel = "spread",
 )
 ```
 
@@ -114,23 +136,27 @@ it. `patTimed` makes the notes a pattern of eight beats, and `patRenderStereo` p
 val notes = mutableListOf<TimedNote>()
 val spread0 = spreadOf(from)
 for (k in 0 until 32) {
-    val t = if (k < 16) k / 15.0 else (31 - k) / 15.0   // out to the heart, then back
+    val t = if (k < 16) k / 15.0 else (31 - k) / 15.0 // out to the heart, then back
     val midi = 72 + 12 * log2(spreadOf(morphBetween(from, partner, t)) / spread0)
     notes += TimedNote(k * 0.25, k * 0.25 + 0.25, midi)
 }
-val audio = patRenderStereo(patTimed(notes, beats = 8.0), cycles = 2, cps = 0.25,
-    voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.004, sustain = 0.6))
+val audio = patRenderStereo(
+    patTimed(notes, beats = 8.0),
+    cycles = 2,
+    cps = 0.25,
+    voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.004, sustain = 0.6),
+)
 ```
 
 The matched morph, twice through:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_morph/drawn-morph-matched.wav" audio-spec="drawn-morph-matched" audio-renderer="afield.four.synth.DrawnMorphDocs" embed=true hidden=true name="chain-drawn-morph-matched-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_morph/drawn-morph-matched.wav" audio-spec="drawn-morph-matched" audio-renderer="afield.audio.synth.DrawnMorphDocs" embed=true hidden=true name="chain-drawn-morph-matched-audio"}
 // Offline-rendered by DrawnMorphDocs.renderWav("drawn-morph-matched").
 ```
 
 The same loop with `to` in place of `partner`, the points paired by index:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_morph/drawn-morph-index.wav" audio-spec="drawn-morph-index" audio-renderer="afield.four.synth.DrawnMorphDocs" embed=true hidden=true name="chain-drawn-morph-index-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_morph/drawn-morph-index.wav" audio-spec="drawn-morph-index" audio-renderer="afield.audio.synth.DrawnMorphDocs" embed=true hidden=true name="chain-drawn-morph-index-audio"}
 // Offline-rendered by DrawnMorphDocs.renderWav("drawn-morph-index").
 ```
 
@@ -144,19 +170,30 @@ The pitch the box computes, step by step, for both:
 notation { morphShapes() }
 val from = notation.named("from")!!.points.resampleByLength(240, closed = true)
 val to = notation.named("to")!!.points.resampleByLength(240, closed = true)
-val matched = DrawnMorphDocs.morphNotes(from, matchPoints(from, to).reorder(to))   // the loop above
+val matched = DrawnMorphDocs.morphNotes(from, matchPoints(from, to).reorder(to)) // the loop above
 val byIndex = DrawnMorphDocs.morphNotes(from, to)
 notation.clear()
 
-showSignals("matched" to matched.map { it.note }, "by list index" to byIndex.map { it.note },
-    title = "pitch per step", xTitle = "step", yTitle = "MIDI", channel = "pitch")
-markdown("dips", "lowest note, matched: %.2f  \nlowest note, by list index: %.2f".format(matched.minOf { it.note }, byIndex.minOf { it.note }), width = 400)
+showSignals(
+    "matched" to matched.map { it.note },
+    "by list index" to byIndex.map { it.note },
+    title = "pitch per step",
+    xTitle = "step",
+    yTitle = "MIDI",
+    channel = "pitch",
+)
+markdown(
+    "dips",
+    "lowest note, matched: %.2f  \nlowest note, by list index: %.2f"
+        .format(matched.minOf { it.note }, byIndex.minOf { it.note }),
+    width = 400,
+)
 ```
 
 ## Drawing your own
 
-Open drawn_morph from the welcome screen's starting points and run `shapes`, then `paired`,
-`morph` and `play`. To morph your own shapes, press `alt-d` and draw two closed strokes with the
+Open [drawn_morph](agent_transcripts.md#drawn_morph) from the welcome screen's starting points and run `shapes`, then `paired`,
+`morph` and `play`. To morph your own shapes, press `alt/option-d` and draw two closed strokes with the
 pen (`p`), then replace `morphShapes()` in `shapes` with a line that names the two strokes you drew
 last:
 

@@ -1,29 +1,35 @@
-package afield.rectsl.study
+package afield.lang.rectsl.study
 
-import afield.Box
-import afield.RunsAt
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.ToolExecutionContext
-import afield.plugins
-import afield.stdlib.FileManager
-import afield.stdlib.StudySourceEdit
-import afield.stdlib.LiveStudy
-import afield.stdlib.StudyReport
-import afield.stdlib.StudyRequest
-import afield.stdlib.StudyToolClasses
-import afield.stdlib.registerStudyTools
-import afield.stdlib.numbers
+import afield.document.graph.Box
+import afield.runtime.lifecycle.RunsAt
+import afield.ai.tools.AgentToolExtensions
+import afield.ai.tools.ToolExecutionContext
+import afield.runtime.lifecycle.plugins
+import afield.document.workspace.FileManager
+import afield.math.functions.StudySourceEdit
+import afield.study.source.LiveStudy
+import afield.study.evidence.StudyReport
+import afield.study.source.StudyRequest
+import afield.study.source.StudyToolClasses
+import afield.study.source.registerStudyTools
+import afield.study.ui.numbers
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
-// The tools an AI4 conversation gets when it is opened on a RectSL scene's `rectSL` property. Each
-// works on the focused box's own study (see RectSLPrograms), so nothing here is per document. A
-// document can still add tools of its own from a box: AgentToolExtensions.register with its document
-// as the scope.
+/**
+ * The tools an AI4 conversation gets when it is opened on a RectSL scene's `rectSL` property.
+ *
+ * Each works on the focused box's own study (see [RectSLPrograms]), so nothing here is per
+ * document. A document can still add tools of its own from a box: [AgentToolExtensions.register]
+ * with its document as the scope.
+ */
 
+/** The working guide for RectSL studies, or the words guide's entries matching a search term. */
 @JsonClassDescription("Read how to work on a RectSL study: the wall and its coordinates, idioms that hold, traps, the tools and the style a person expects. Call it once, before your first edit in a conversation. With search, return the words guide's entries matching a word or phrase instead.")
 data class RectSLStudyGuide(
-    @JsonPropertyDescription("A word or phrase to look up in the RectSL words guide; empty returns the working guide") val search: String = ""
+    /** A word or phrase to look up in the words guide; empty returns the working guide. */
+    @JsonPropertyDescription("A word or phrase to look up in the RectSL words guide; empty returns the working guide")
+    val search: String = ""
 )
 
 @JsonClassDescription("Read this RectSL study: the checked scene, whether the editor holds an unchecked human edit (dirty; then liveSource is what is in the box and liveCheck says whether it compiles), revision history, the scene's shape (wall, duration, rectangles, what is visible when), the analysis's warnings, the lines that make rectangles, knobs (typed numbers and colours, one line each: index, line:column, as typed, what reads it), and personAt — the line the person's editor cursor is on, which a click on a rectangle in the window moves to the line that made it, so 'this one' usually means it. Inspect once before editing and reuse liveSourceHash. The window above the box plays the scene live; prefer ObserveRectSLStudy or TimelineRectSLStudy, which draw exact times.")
@@ -48,7 +54,7 @@ data class PatchRectSLStudy(override val expectedRevision: String, override val 
 data class RectSLNumberEdit(
     override val knob: Int,
     @JsonPropertyDescription("The new value; for a hex colour knob, the colour as a 24-bit number (0xff8800 is 16746496)") override val value: Double
-) : afield.stdlib.NumberEdit
+) : afield.study.ui.NumberEdit
 
 @JsonClassDescription("Set typed numbers and hex colours (knobs, by index from Inspect) to new values, rewritten in place. Checks and activates like an edit.")
 data class SetRectSLNumbers(override val expectedRevision: String, override val expectedSourceHash: String,
@@ -129,7 +135,7 @@ private val onAScene: (ToolExecutionContext) -> Boolean = { ctx ->
 }
 
 /** The scope the library's tools register under, so a document's own tool of the same name adds to them. */
-private const val LIBRARY = "afield.rectsl.study"
+private const val LIBRARY = "afield.lang.rectsl.study"
 
 private fun scene(ctx: ToolExecutionContext): Box =
     ctx.focus?.box ?: throw IllegalStateException("RectSL study tools work on the box whose chat is open")
@@ -180,6 +186,6 @@ fun installRectSLStudyTools() {
 }
 
 /** The [RectSLStudyGuide] tool's answer. */
-data class RectSLGuideText(val text: String) : afield.ai.core.SummarisesForToolLog {
+data class RectSLGuideText(val text: String) : afield.ai.tools.SummarisesForToolLog {
     override fun toolLogSummary(): String = "guide ${text.length} chars"
 }

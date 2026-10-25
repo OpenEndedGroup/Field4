@@ -46,8 +46,11 @@ Open contours are closed for filling. All coordinates, including cubic controls,
 must be finite and lie in the XY plane (`z = 0`).
 
 ```diffstatic {data-lang=kotlin}
-val prepared = SlugPath.compile(path, "field-slug".file,
-    tolerance = 1e-4f)
+val prepared = SlugPath.compile(
+    path,
+    "field-slug".file,
+    tolerance = 1e-4f,
+)
 val data = SlugBuffer(renderer, prepared)
 ```
 
@@ -58,9 +61,9 @@ one after pending frames finish. Preparation starts a process, so keep it out of
 the frame loop. For frequent edits, prepare away from rendering and publish the
 finished result on the render thread.
 
-The demo removes its consuming mesh before closing the buffer when the box stops
-or runs again. Follow that ordering in your own code. `close()` is idempotent,
-but a closed buffer cannot be bound or replaced.
+Close the buffer when the box stops or runs again. The mesh can be removed before
+or after: a mesh still bound to a closed buffer draws nothing. `close()` can be
+called more than once, and a closed buffer cannot be replaced.
 
 ## Shading and transparency
 

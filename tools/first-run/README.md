@@ -49,9 +49,10 @@ and `NO_COLOR` get plain output.
 ## Optional feature inventory
 
 `OptionalExtras.kt` is the shared menu and preparation inventory. It covers Vulkan, Python/JEP,
-computer vision, voice, Ceres, TetGen, paint, libpd, Csound, Manifold, LuaJIT, Syphon,
-Slang/learned shaders, NGX, OpenDLSS-NR, Kratos, particle tracking, transport training,
-StreamDiffusion, audio AI, agent tools, docs, AI providers, OpenXR, ONNX models, guide/template services and the pinned Dirt audio samples.
+computer vision, voice, Ceres, TetGen, paint, libpd, Csound, Manifold, SolidCraft, LuaJIT, Syphon,
+the pinned Slang compiler, Slang/learned shaders, NGX, OpenDLSS-NR, Patchy Web, Kratos, particle tracking, transport training,
+StreamDiffusion, audio AI, agent tools, docs, AI providers, OpenXR, ONNX models, the pinned Dirt audio samples and
+the pinned gltfpack for compressed GLB export.
 The complete checkbox list opens immediately. Up/Down moves, Space toggles, Enter reviews;
 Page Up/Down scrolls, `a` selects available features, `n` clears and `q` cancels without saving.
 Prerequisites appear on the right of each row. Missing tools disable and strike through a
@@ -65,8 +66,8 @@ requested, still-available features start checked. Each selected feature points 
 The terminal selector uses [JLine](https://jline.org/docs/terminal/); Unix uses its `stty` provider,
 and Windows uses bundled Jansi. No system terminal library needs to be installed.
 
-Setup can run the existing Ceres, TetGen, paint, libpd, Csound, Syphon and learned-shader
-preparation tasks, plus the pinned sample download. It checks their required tools again after any package installation.
+Setup can run the existing Ceres, TetGen, paint, SolidCraft, libpd, Csound, Syphon, Patchy Web and learned-shader
+preparation tasks, plus the pinned sample and gltfpack downloads. It checks their required tools again after any package installation.
 Platform restrictions are enforced before constructing a command: Syphon is macOS-only,
 and the Csound source-build script is not offered on Windows. Windows native builds need
 a Visual Studio Developer PowerShell with `cl.exe` on PATH; the default app launch does not.

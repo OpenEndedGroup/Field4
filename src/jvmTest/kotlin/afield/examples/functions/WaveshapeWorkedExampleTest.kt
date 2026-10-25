@@ -1,6 +1,6 @@
 package afield.examples.functions
 
-import afield.stdlib.graphSignature
+import afield.math.functions.graphSignature
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals

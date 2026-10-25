@@ -10,9 +10,9 @@ looked broken or a broken one looked fine, and what fixed it was a sharper instr
 different code. The six sections below each name the instrument that settled the question, in the
 order they came up.
 
-Source: `src/jvmMain/kotlin/afield/stdlib/neuralparticles.kt`, `neuralparticles_system.kt`,
-`deepsets.kt`, `src/jvmMain/kotlin/afield/four/util/GpuNeighbourGrid.kt`,
-`src/jvmMain/kotlin/afield/four/physics/ShaderBoids.kt`. The assertions are the four smokes named at
+Source: `src/jvmMain/kotlin/afield/simulation/particles/neuralparticles.kt`, `neuralparticles_system.kt`,
+`deepsets.kt`, `src/jvmMain/kotlin/afield/graphics/vulkan/util/GpuNeighbourGrid.kt`,
+`src/jvmMain/kotlin/afield/simulation/physics/ShaderBoids.kt`. The assertions are the four smokes named at
 the end of the public page.
 
 ---
@@ -320,3 +320,19 @@ limit produces something an audience accepts, which is why "it flocks" was never
 here.
 
 ---
+
+## Smoke tests
+
+The four transcripts on `public/docs/neural_particles.md` are the entry point for a reader. The four
+GPU smokes drive the same machinery from automation, with no box UI, and are what to run after changing
+any of it:
+
+```text
+uv run --project . --group backdoor python tools/run_field_tests.py --id four.neural-field-parity.smoke   # one forward pass, CPU vs GPU
+uv run --project . --group backdoor python tools/run_field_tests.py --id four.neural-particles.smoke      # a whole trajectory, point by point
+uv run --project . --group backdoor python tools/run_field_tests.py --id four.neighbour-grid.smoke        # neighbour sets vs brute force
+uv run --project . --group backdoor python tools/run_field_tests.py --id four.shader-boids.smoke          # both rules vs a CPU brute force
+```
+
+All four need a GPU and an awake display: Field 4 creates its Vulkan device through a `Window`, so
+even a compute-only dispatch needs one.

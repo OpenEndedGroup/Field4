@@ -3,13 +3,8 @@ The last step of the loop closes it: Key.updateCode() emits the snapshot as past
 Kotlin, so a state you arrived at by fiddling becomes a diff you can commit. Every
 literal is chosen so the paste round-trips as the same TYPE, not merely the same number.
 */
-import afield.stdlib.KeyframeScope
-import afield.stdlib.SourceBackedBlock
-import afield.stdlib.linalg.Quaternionf
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.stackSLString
-
 val scope = KeyframeScope()
+val unsupportedNotes: List<String> = ["unsupported", "on purpose"]
 val key = scope.Key(
     mutableMapOf(
         "gain" to 0.65f, // a Float — and the 'f' suffix is load-bearing
@@ -23,7 +18,7 @@ val key = scope.Key(
         would interpolate at paste time, so it must come out escaped.
         */
         "block" to SourceBackedBlock<Any?>("box-1", "val total = 2\nprintln(\"sum: \$total\")"),
-        "notes" to listOf("unsupported", "on purpose"),
+        "notes" to unsupportedNotes,
     ),
 )
 

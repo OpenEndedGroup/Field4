@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="path_trace_renderer" index="0" -->
 
 ```edn [field-box id="path_trace_renderer" role="properties"]
-{"id" "path_trace_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["path_trace_hidden_environment"] "properties" {"children" #{#afield/box "path_trace_hidden_environment"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_renderer_code_.kt" "lines" 9 "characters" 208 "sha256" "b6c2bd22807c33e2c2e4d8717a315d29f7748bf5fc921acfae8e2aad2e0a0ec1"}]}
+{"id" "path_trace_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["path_trace_hidden_environment"] "properties" {"children" #{#afield/box "path_trace_hidden_environment"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_renderer_code_.kt" "lines" 10 "characters" 220 "sha256" "d9a523d21baae9bd403e31097aeb6360849ac2629258b04f0145cc3d54c4d2a9"}]}
 ```
 
 ```kotlin [field-property box="path_trace_renderer" name="code" path="path_trace_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,16 +32,21 @@ start(renderer::run)
 <!-- field-box id="path_trace_hidden_environment" index="1" -->
 
 ```edn [field-box id="path_trace_hidden_environment" role="properties"]
-{"id" "path_trace_hidden_environment" "index" 1 "name" "environment lighting without a visible sky" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "environment lighting without a visible sky" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_hidden_environment_code_.kt" "lines" 18 "characters" 835 "sha256" "73c76e92d317480d52b092d121ffff046b225e2a0358a9bd90a2a93ea99e0c1e"}]}
+{"id" "path_trace_hidden_environment" "index" 1 "name" "environment lighting without a visible sky" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "environment lighting without a visible sky" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_hidden_environment_code_.kt" "lines" 25 "characters" 889 "sha256" "9803893402681c2315563f5cc5824e6dd72b7a3aee4da57acdebdd592c8d13bb"}]}
 ```
 
 ```kotlin [field-property box="path_trace_hidden_environment" name="code" path="path_trace_hidden_environment_code_.kt"]
-import afield.four.fabricated.PathTraceDemo
-import afield.four.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.PathTraceDemo
+import afield.graphics.scene.fabricated.PathTracingRenderer
 import java.io.File
+
 prop<PathTracingRenderer>(tracer)
-tracer = PathTraceDemo.install(renderer, width=1280, height=720,
-    environmentPath=File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
+tracer = PathTraceDemo.install(
+    renderer,
+    width = 1280,
+    height = 720,
+    environmentPath = File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath,
+)
 tracer.samplesPerFrame = 1
 tracer.maxBounces = 5
 tracer.indirectClamp = 10f // Optional biased suppression of indirect fireflies.
@@ -50,7 +56,9 @@ tracer.showEnvironment = false
 tracer.blitToScreen()
 // This coroutine only announces capture readiness; the named scene owns the tracer.
 frames {
-    while (tracer.samples < 1024) { frame() }
+    while (tracer.samples < 1024) {
+        frame()
+    }
     println("hidden environment study converged: ${tracer.samples} samples")
 }
 ```

@@ -1,0 +1,9 @@
+{
+  "privateServiceIdentityVerified": true,
+  "gestureAndStyleRealLookupFailureReported": true,
+  "completeUnderfitSourceTypechecked": true,
+  "stopCancelsDelayedActualLookupOperation": true,
+  "twoRealGpuJpegsDecodedAt96x64": true,
+  "completeDiffusionBodyTypechecked": true,
+  "limits": "No MusicGen/Underfit generation or TensorRT streaming diffusion is claimed. Underfit requires an unavailable real LoRA checkpoint; its complete body was typechecked in an unentered branch. Candidate failure tests use the real private service with an absent filename; Stop adds only a deterministic delay before a real lookup. JPEG evidence uses the real existing authored teacher render target. The private native host later blocked in vkAcquireNextImageKHR; its thread trace is retained and it was stopped. The subsequent GPU write-failure case did not finish and is unverified. A fresh CPU host typechecked the complete diffusion example without entering its hardware branch."
+}

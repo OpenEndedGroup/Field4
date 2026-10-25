@@ -11,12 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="youtube_desktop_renderer" index="0" -->
 
 ```edn [field-box id="youtube_desktop_renderer" role="properties"]
-{"id" "youtube_desktop_renderer" "index" 0 "name" "16:9 window + renderer" "parents" ["root"] "children" ["youtube_desktop_panel"] "properties" {"children" #{#afield/box "youtube_desktop_panel"} "parents" #{#afield/box "root"} "name" "16:9 window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_desktop_renderer_code_.kt" "lines" 20 "characters" 414 "sha256" "601f0cd1fd9f3d84553de5330a8487ce4c7bf5d7e2d8122b0dfd39c7e174fbb0"}]}
+{"id" "youtube_desktop_renderer" "index" 0 "name" "16:9 window + renderer" "parents" ["root"] "children" ["youtube_desktop_panel"] "properties" {"children" #{#afield/box "youtube_desktop_panel"} "parents" #{#afield/box "root"} "name" "16:9 window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_desktop_renderer_code_.kt" "lines" 19 "characters" 407 "sha256" "53af4900d8eb44bd30c235869088104ad7e91cff42abb1c7ff2e1a86fbbcd8ae"}]}
 ```
 
 ```kotlin [field-property box="youtube_desktop_renderer" name="code" path="youtube_desktop_renderer_code_.kt"]
-import afield.Rect
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -28,7 +27,7 @@ Options.profiling = false
 once.renderer {
     window = Window(
         "YouTube · mouse + keyboard",
-        initialDimensions = Rect(80.0, 80.0, 1280.0, 720.0)
+        initialDimensions = Rect(80.0, 80.0, 1280.0, 720.0),
     )
     Renderer(window)
 }
@@ -42,15 +41,15 @@ start(renderer::run)
 <!-- field-box id="youtube_desktop_panel" index="1" -->
 
 ```edn [field-box id="youtube_desktop_panel" role="properties"]
-{"id" "youtube_desktop_panel" "index" 1 "name" "YouTube — direct mouse + keyboard" "parents" ["root" "youtube_desktop_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_desktop_renderer"} "name" "YouTube — direct mouse + keyboard" "_tombstone" false "frame" #afield/rect [330.0 140.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_desktop_panel_code_.kt" "lines" 36 "characters" 1285 "sha256" "bc5b2c219e184fc6245d1cfa2bbed23d2dadabbe5a97a47380a2d2f6b327cff6"}]}
+{"id" "youtube_desktop_panel" "index" 1 "name" "YouTube — direct mouse + keyboard" "parents" ["root" "youtube_desktop_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_desktop_renderer"} "name" "YouTube — direct mouse + keyboard" "_tombstone" false "frame" #afield/rect [330.0 140.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_desktop_panel_code_.kt" "lines" 38 "characters" 1321 "sha256" "1c29e0f8711256788d98cd04e56a17d3fd6345b810106594debc022a22918542"}]}
 ```
 
 ```kotlin [field-property box="youtube_desktop_panel" name="code" path="youtube_desktop_panel_code_.kt"]
-import afield.four.Target
-import afield.four.browser.FieldUiBrowserTexture
-import afield.four.browser.PuppetBrowserWindowPanel
+import afield.graphics.vulkan.Target
+import afield.media.browser.FieldUiBrowserTexture
+import afield.media.browser.PuppetBrowserWindowPanel
 
-prop<afield.four.browser.PuppetBrowser>(browserControl)
+prop<afield.media.browser.PuppetBrowser>(browserControl)
 
 val browser = FieldUiBrowserTexture(
     renderer = renderer,
@@ -58,12 +57,13 @@ val browser = FieldUiBrowserTexture(
     width = 1280,
     height = 720,
     // Linux: Chromium's shared-texture export never fills the buffer (electron#53271).
-    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired
+    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired,
 )
 browserControl = browser
 
-renderer.renderList.preTargets["youtube-desktop-browser-upload"] =
-    Target { command, _ -> browser.prepareSampledImagesFor(command) }
+renderer.renderList.preTargets["youtube-desktop-browser-upload"] = Target { command, _ ->
+    browser.prepareSampledImagesFor(command)
+}
 
 // This is direct window input, not a synthetic controller ray. The panel letterboxes if
 // the window is resized and uses that same fitted rectangle for its mouse hit test.
@@ -77,10 +77,11 @@ loop {
         println("YouTube is live: click, scroll and type directly in the Chromium page")
     }
     frame()
-}.end {
-    renderer.renderList.preTargets.remove("youtube-desktop-browser-upload")
-    screen.close()
-    browser.close()
 }
+    .end {
+        renderer.renderList.preTargets.remove("youtube-desktop-browser-upload")
+        screen.close()
+        browser.close()
+    }
 ```
 

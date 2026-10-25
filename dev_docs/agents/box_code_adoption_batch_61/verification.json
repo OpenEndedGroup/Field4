@@ -1,0 +1,11 @@
+{
+  "baseline": "234b206ca",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/aperture_playground.yaml",
+      "kotlinBodies": 8,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

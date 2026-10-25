@@ -1,0 +1,25 @@
+name: tour_connect_prop
+description: |
+  Setup for `public/docs/tour_connecting_boxes.md`, "A parent publishes, a child reads".
+  "Palette" declares `prop<Int>(petals)` and sets 5; "Swatch", connected beneath it, reads
+  `petals` and draws that many. Both run once; the page captures Swatch's output.
+operations:
+  - create:
+      box: tc_palette
+      name: Palette
+      frame: { x: 40.0, y: 40.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          prop<Int>(petals) = 5
+  - create:
+      box: tc_swatch
+      name: Swatch
+      frame: { x: 40.0, y: 200.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          markdown("A flower with $petals petals: " + "✿".repeat(petals))
+  - connect: { parent: tc_palette, child: tc_swatch }
+  - execute: { box: tc_palette, property: code }
+  - execute: { box: tc_swatch, property: code }
+  - await: {}
+  - wait: { frames: 10 }

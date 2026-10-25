@@ -1,10 +1,6 @@
-// Samples against wall seconds, with a labelled dashed rule wherever accumulation
-// restarted and why. Run box 3 or 4 first and re-run this to see a mark appear.
-//
-// This is one call to `showSignals`, the house terse-plot helper. There is no new plotting
-// code anywhere in this feature: `showSignals` already takes named series, a shared x, and
-// `marks` drawn as full-height dashed rules carrying their label into the legend.
-import afield.four.fabricated.*
+// Samples against wall seconds, with labelled rules where accumulation restarted.
+// Run the swap or restore box, then re-run this convergence box to see the reset.
+import afield.graphics.scene.fabricated.*
 
 prop<PathTracingRenderer>(tracer)
 prop<PathTraceConvergence>(log)

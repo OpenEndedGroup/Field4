@@ -26,6 +26,7 @@ from build_zensical_docs import (  # noqa: E402
     prepare_local_site_for_captures,
     process_cpu_seconds,
     run_zensical,
+    run_zensical_retrying_idle_wedges,
 )
 
 # Prints what zensical prints up to the deadlock, then waits on nothing.
@@ -92,6 +93,48 @@ class RunZensicalTests(unittest.TestCase):
         with redirect_stdout(out):
             fake(writer, self.tmp, stall_seconds=1.5)
         self.assertIn(".DS_Store", out.getvalue())
+
+    def test_an_idle_wedge_counts_no_changed_files(self) -> None:
+        self.assertEqual(fake(WEDGED_AFTER_START, self.tmp, stall_seconds=1.5).changed, 0)
+
+    def test_an_idle_wedge_is_tried_again_and_a_clean_second_run_wins(self) -> None:
+        # 2026-10-24: three lander builds wedged after a wake from hibernate with nothing written
+        # under the watched dirs; the same build passed minutes later.
+        runs = iter([ZensicalRun(returncode=None, stalled="no output", changed=0),
+                     ZensicalRun(returncode=0, finished=True)])
+        cleared: list[bool] = []
+        result = run_zensical_retrying_idle_wedges(lambda: next(runs), before_retry=lambda: cleared.append(True) or True,
+                                                   pause=0)
+        self.assertIsNotNone(result)
+        self.assertIsNone(result.failure())
+        self.assertEqual(cleared, [True])
+
+    def test_a_wedge_with_files_changing_is_a_writer_and_not_retried(self) -> None:
+        calls: list[int] = []
+
+        def run() -> ZensicalRun:
+            calls.append(1)
+            return ZensicalRun(returncode=None, stalled="no output", changed=3)
+
+        result = run_zensical_retrying_idle_wedges(run, before_retry=lambda: True, pause=0)
+        self.assertEqual(len(calls), 1)
+        self.assertIn("stalled", result.failure() or "")
+
+    def test_retries_are_bounded(self) -> None:
+        calls: list[int] = []
+
+        def run() -> ZensicalRun:
+            calls.append(1)
+            return ZensicalRun(returncode=None, stalled="no output", changed=0)
+
+        result = run_zensical_retrying_idle_wedges(run, before_retry=lambda: True, retries=1, pause=0)
+        self.assertEqual(len(calls), 2)
+        self.assertIn("stalled", result.failure() or "")
+
+    def test_a_staging_dir_that_cannot_be_cleared_stops_the_retry(self) -> None:
+        result = run_zensical_retrying_idle_wedges(
+            lambda: ZensicalRun(returncode=None, stalled="no output", changed=0), before_retry=lambda: False, pause=0)
+        self.assertIsNone(result)
 
     def test_cpu_time_of_a_running_process_reads(self) -> None:
         import os

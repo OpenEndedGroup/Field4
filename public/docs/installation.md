@@ -27,7 +27,7 @@ not.
 | **Linux, x86-64** | A glibc desktop distribution, Git LFS, `curl`, a C/C++ toolchain, Make, CMake, and the desktop libraries listed below. Run from your desktop session. |
 | **Windows, x64** | Git for Windows with Git LFS enabled. Use `field.bat`, or PowerShell as shown below. The launcher provisions its runtimes; a separate C++ compiler is not needed for the default Windows launch. |
 | **Linux, ARM64** | The launcher has an ARM64 provisioning path, but this release has not yet been validated end to end on ARM64. Treat it as experimental. |
-| **Intel Macs / native Windows ARM64** | Not supported by the pinned toolchain. GraalVM Community 25.0.2 supplies no Intel macOS or Windows ARM64 build; the launcher reports this before downloading. |
+| **Intel Macs / native Windows ARM64** | Not supported by the pinned toolchain. GraalVM Community 25.4 supplies no Intel macOS or Windows ARM64 build; the launcher reports this before downloading. |
 
 </div>
 
@@ -102,7 +102,7 @@ setup can install every missing tool through winget; install the other prerequis
 setup. Features your platform does not support, and NVIDIA-only features without a working
 `nvidia-smi`, are left out. Limited terminals use numbered checkboxes:
 type numbers or names to toggle, then Enter to review. Leave everything unchecked to skip extras.
-It shows the exact package-manager commands and requires typing `INSTALL`
+Setup then shows the exact package-manager commands and requires typing `INSTALL`
 before running them. Administrator authentication belongs to your OS package manager; no API keys
 are requested. You can leave the commands for later and install them yourself.
 
@@ -111,7 +111,9 @@ Python prerequisites do not include a configured JEP runtime: complete that in t
 and agent tooling have their own guides and prerequisites.
 
 The menu covers Python/JEP, computer vision and voice; Vulkan/OpenXR and shader tools;
-Ceres, TetGen, Manifold and paint; Pure Data, Csound and LuaJIT; and optional
+Ceres, TetGen, Manifold, [SolidCraft](solidcraft.md), paint and the [Patchy layered editor](patchy.md); the geometry extensions
+([Morse–Smale complexes](morse_smale.md), [principal curves](principal_curves.md) and [polyvector vectorization](polyvector.md),
+whose OpenCV, Boost and Eigen packages setup installs on macOS and Linux); Pure Data, Csound and LuaJIT; and optional
 physics, video, audio-AI and training workers, guide/template services and audio samples. It also includes agent and documentation tooling.
 Kotlin, JavaScript, Faust, ordinary audio and browser drawing work without selecting any extras.
 
@@ -159,7 +161,7 @@ The launcher then opens Field's desktop app. Press `?` for help, or consult the
 The first tab in the desktop app is the welcome page, also at `https://localhost:9092/welcome` in
 a browser:
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-welcome-frame" screenshot="assets/welcome/welcome-page.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="welcome-page" alt="The welcome page in a fresh workspace. Across the top, Field·4 and buttons for Start here: a moving drawing, the five-minute guide, native graphics, documentation, and shutdown, then a filename box with Create. On the left, Running now, a search box, No documents found in this workspace yet, and the collapsed Starting points and Templates lists with their counts. On the right, the Changelog open on recent commits, and below it the collapsed Projects, Maven, Workspace, Runtime, Vulkan, Python, AI, Preferences and OSC panels with one-line summaries."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x1260" clip-selector="#docs-welcome-frame" screenshot="assets/welcome/welcome-page.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="welcome-page" alt="The welcome page. Across the top, Field·4 and buttons for Start here: a moving drawing, the five-minute guide, native graphics, documentation, and shutdown, then a filename box with Create. On the left, Running now, a search box and the workspace's documents, and the collapsed Starting points, Templates and Kits disclosures with their counts. On the right, the Changelog open on recent commits, and below it the collapsed Projects, Maven, Workspace, Runtime, Vulkan, Geometry extensions, Python, AI, Preferences and OSC panels with one-line summaries."}
 // The compact /welcome row and empty-workspace prompt point to Start here; /welcome is its own page, so it is loaded into a frame on the capture page at a desktop
 // window's size, against the runner's fresh checkout-local workspace: what a new user sees.
 ui.eval("""
@@ -167,7 +169,7 @@ ui.eval("""
     const f = document.createElement("iframe")
     f.id = "docs-welcome-frame"
     f.src = "/welcome"
-    f.setAttribute("style", "position:fixed;left:0;top:0;width:1100px;height:1000px;border:0;background:#111;z-index:2147483000")
+    f.setAttribute("style", "position:fixed;left:0;top:0;width:1100px;height:1240px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
     return true
 """.trimIndent())
@@ -187,6 +189,19 @@ for (i in 0 until 60) {
 }
 check(state.contains("ready")) { "the welcome page did not finish loading: " + state }
 ui.pause(1200)
+ui.eval("""
+    const f = document.getElementById("docs-welcome-frame")
+    const d = f.contentDocument
+    const kits = d.getElementById("kit-library")
+    if (kits?.tagName !== "DETAILS" || kits.open) throw new Error("Kits must be a collapsed disclosure")
+    const summary = kits.querySelector("summary")
+    const r = summary.getBoundingClientRect()
+    if (r.width <= 0 || r.top < 0 || r.bottom > f.clientHeight) throw new Error("Kits disclosure is outside the capture")
+    if (!summary.querySelector("[data-kit-count]")) throw new Error("Kits count is missing")
+    const response = await f.contentWindow.fetch("/api/kits", {cache: "no-store"})
+    if (!response.ok) throw new Error("Kit library failed to load: " + response.status)
+    return true
+""".trimIndent())
 ```
 
 The left side is your documents. Type a name into the box at the top and press **Create** to make
@@ -195,6 +210,10 @@ well as their names. Below the list, **Starting points** and **Templates** are c
 scaffolds; opening one gives you an editable copy in your workspace, which is the quickest way to
 see what Field does.
 
+The **Kits** disclosure below them adds reusable packages and their document starting points.
+Add a kit folder there; packages that add runtime code become available after a restart. See
+[Kits and Starting Points](kits.md#add-a-self-contained-kit-in-welcome) for installation and updates.
+
 The right side is a stack of collapsible panels, one per part of Field:
 
 - **Changelog**: the most recent commits in your checkout.
@@ -202,7 +221,7 @@ The right side is a stack of collapsible panels, one per part of Field:
   extra Java libraries.
 - **Runtime** and **Vulkan**: the JVM Field is running on, and whether graphics windows will open
   on this machine. If Vulkan is missing, the panel gives install steps for your OS; the graphics
-  system itself is described in [afield.four Graphics](afield_four_graphics.md).
+  system itself is described in [Field 4 Graphics](afield_four_graphics.md).
 - **Python**: which interpreter [Python boxes](python.md) will use.
 - **AI**: model settings and the background tasks that improve Field's docs and tools, described
   in [Your History with Field](history_overview.md#the-welcome-dashboard); what the models do
@@ -218,9 +237,10 @@ document files. Opening one makes an editable copy in the current workspace. The
 is left alone, and copies you made earlier are not updated. Opening a copy does not run its boxes.
 
 To keep your templates somewhere else, start Field with
-`-Dafield.personalTemplates.dir=/path/to/templates`. When two templates share a name, a bundled
-one wins, then one in `src/personal`, then one in your own directory, so give yours distinctive
-names. Git ignores `src/personal`, so back those templates up yourself.
+`-Dafield.personalTemplates.dir=/path/to/templates`. If one of your templates has the same name
+as a bundled one, both are listed: yours gets `-checkout` (from `src/personal`) or `-personal`
+(from your own directory) added to its name. Git ignores `src/personal`, so back those templates
+up yourself.
 
 ## Browser or server-only use
 
@@ -286,7 +306,7 @@ _Field·4_ is still beta software. Report reproducible problems through the publ
 
 ## Updating
 
-Update it the same way:
+To update Field, pull the latest source into your checkout:
 
 ```diffstatic {data-lang=bash}
 git pull
@@ -294,7 +314,7 @@ git pull
 
 and then start it again, which rebuilds whatever changed.
 
-The command palette (`Cmd-Shift-P`, or `Ctrl-Shift-P` on Windows and Linux; `F1` also works) includes **Check for updates**, which tells you whether that is worth
+The command palette (`ctrl/command-shift-P`) includes **Check for updates**, which tells you whether that is worth
 doing. It reports how many commits you are behind `origin`, and any local commits of your own that
 `origin` does not have.
 
@@ -306,7 +326,7 @@ It does not pull or change your checkout. If the answer is "7 new commits on ori
 If it cannot answer (Field was unpacked from an archive, `HEAD` is detached, there is no `origin`,
 or the network is down) it says which, rather than reporting that you are up to date.
 
-??? aside "For maintainers: making an update announce itself"
+??? aside "Agents: making an update announce itself"
     Most commits should pass without comment — the count is enough. When a commit needs everyone
     who pulls it to *do* something, give it a `Field-Notice` trailer:
 

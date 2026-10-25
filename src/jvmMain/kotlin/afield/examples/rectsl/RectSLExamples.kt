@@ -1,12 +1,12 @@
 package afield.examples.rectsl
 
-import afield.KotlinInterface2
-import afield.KotlinScriptEngine
-import afield.rectsl.RectAnimationOracle
-import afield.rectsl.compileRectSL
-import afield.rectsl.lowerSampledScene
-import afield.rectsl.rectMaterialShaderCode
-import afield.stdlib.Functions
+import afield.runtime.kotlin.KotlinInterface2
+import afield.runtime.kotlin.KotlinScriptEngine
+import afield.lang.rectsl.RectAnimationOracle
+import afield.lang.rectsl.compileRectSL
+import afield.lang.rectsl.lowerSampledScene
+import afield.lang.rectsl.rectMaterialShaderCode
+import afield.math.functions.Functions
 import java.io.File
 
 /*
@@ -377,7 +377,7 @@ object RectSLExamples {
         // it carries a box per example.
         val edn = File(dir, "metadata.edn")
         check(edn.exists()) { "gallery workspace metadata.edn missing: ${edn.absolutePath}" }
-        val transfers = afield.SavingContext().readEdnTransfersFromString(edn.readText())
+        val transfers = afield.document.persistence.SavingContext().readEdnTransfersFromString(edn.readText())
         val boxIds = transfers.filter { it.id != "root" }.map { it.id }.toSet()
         check(boxIds.containsAll(names)) {
             "metadata.edn is missing boxes for workspace examples: ${names - boxIds}"

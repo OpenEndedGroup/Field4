@@ -23,7 +23,7 @@ one level up. Key cross-references:
 - `../field-encode-linux/` + `../field-fdpass/` — the Linux/NVENC **sender**, verified end-to-end
   against this receiver (real device, sustained streaming, zero dropped/malformed datagrams). Same
   control + wire protocol as the Mac sender; this receiver needed zero changes for it.
-- `../../src/jvmMain/kotlin/afield/four/stream/FieldRTTStreamer.kt` — the **producer**, OS-branching
+- `../../src/jvmMain/kotlin/afield/media/stream/FieldRTTStreamer.kt` — the **producer**, OS-branching
   internally (Mac: IOSurface ring imported from the helper; Linux: Vulkan ring allocated here and
   handed to the helper). `FieldEncodeProcess.kt` is the JSON stdin/stdout driver, shared by both
   backends.
@@ -340,7 +340,7 @@ Writing an undeclared name reports the declared list back to the box rather than
 
 ### Kotlin/JS external surface
 
-`src/jvmMain/kotlin/afield/graphics/VisionMetalKotlinJs.kt` is the typed Kotlin/JS description of the
+`src/jvmMain/kotlin/afield/graphics/visionos/VisionMetalKotlinJs.kt` is the typed Kotlin/JS description of the
 JavaScriptCore globals. It derives its API from this native host rather than pretending browser,
 THREE, or DOM globals exist. The marker's first line selects the profile; the compiler appends the
 externals; completion receives a colocated JVM-analysis-safe mirror. The `MeshBuilder` source itself

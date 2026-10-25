@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Demonstrate why `afield.tetgen` never asks TetGen for second-order elements.
+"""Demonstrate why `afield.geometry.mesh.tetgen` never asks TetGen for second-order elements.
 
 TetGen has a `-o2` switch that adds a node at the midpoint of every edge, turning 4-node tetrahedra
 into 10-node ones. Field wants exactly that — it is what cures the constant-strain tetrahedron's
 shear locking in `structural.bodyFitted` — and instead does the promotion itself in
-`afield.tetgen.TetMesh.quadratic`. This script is the reason, run rather than asserted.
+`afield.geometry.mesh.tetgen.TetMesh.quadratic`. This script is the reason, run rather than asserted.
 
     python3 tools/tetgen_o2_use_after_free.py
 
@@ -154,7 +154,7 @@ def main() -> int:
     if stock < 0 and patched == 0:
         print("CONFIRMED: -o2 through tetgenio dies on a signal, and removing the single")
         print(f"           `{OFFENDING_LINE}` in highorder() is enough to fix it.")
-        print("           That is a use-after-free, and it is why afield.tetgen.TetMesh.quadratic")
+        print("           That is a use-after-free, and it is why afield.geometry.mesh.tetgen.TetMesh.quadratic")
         print("           does the promotion instead of asking TetGen for it.")
         return 0
     print(f"NOT REPRODUCED on this platform: stock={stock}, patched={patched}.")

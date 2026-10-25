@@ -12,16 +12,16 @@ expect:
 */
 package afield.examples
 
-import afield.four.synth.BooleanTriggerMode
-import afield.four.synth.ScheduledNote
-import afield.four.synth.asNoteProcess
-import afield.four.synth.asDrivenNoteProcess
-import afield.four.synth.note
-import afield.four.synth.respondAhead
-import afield.four.synth.scheduledDrivenSteps
-import afield.four.synth.scheduledNotes
-import afield.four.synth.scheduledSteps
-import afield.stdlib.toggleNetwork
+import afield.audio.synth.BooleanTriggerMode
+import afield.audio.synth.ScheduledNote
+import afield.audio.synth.asNoteProcess
+import afield.audio.synth.asDrivenNoteProcess
+import afield.audio.synth.note
+import afield.audio.synth.respondAhead
+import afield.audio.synth.scheduledDrivenSteps
+import afield.audio.synth.scheduledNotes
+import afield.audio.synth.scheduledSteps
+import afield.simulation.automata.toggleNetwork
 
 object BooleanNetworkMusicSmokeTest {
 

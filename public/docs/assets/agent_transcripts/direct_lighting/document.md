@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_graphics_context" index="0" -->
 
 ```edn [field-box id="agent_graphics_context" role="properties"]
-{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["direct_light_lab"] "properties" {"children" #{#afield/box "direct_light_lab"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 16 "characters" 289 "sha256" "48b4c5aeec967fc6ec5dc83b23de5c1e6e911c61acc39c811a8d1eac77f6020a"}]}
+{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["direct_light_lab"] "properties" {"children" #{#afield/box "direct_light_lab"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 16 "characters" 300 "sha256" "ed9c90e9909e15814bcf04d30e27c778e23b8bdb27e200771a092e766fb4a29b"}]}
 ```
 
 ```kotlin [field-property box="agent_graphics_context" name="code" path="agent_graphics_context_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -38,18 +38,12 @@ start(renderer::run)
 <!-- field-box id="direct_light_lab" index="1" -->
 
 ```edn [field-box id="direct_light_lab" role="properties"]
-{"id" "direct_light_lab" "index" 1 "name" "direct lighting" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "direct lighting" "_tombstone" false "frame" #afield/rect [400.0 160.0 340.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "direct_light_lab_code_.kt" "lines" 85 "characters" 4006 "sha256" "50f734ae28e65243651b7fb24ba6b4083be7c285a1ebfd01011797a990e43746"}]}
+{"id" "direct_light_lab" "index" 1 "name" "direct lighting" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "direct lighting" "_tombstone" false "frame" #afield/rect [400.0 160.0 340.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "direct_light_lab_code_.kt" "lines" 111 "characters" 4478 "sha256" "901e4547c85d328f85e6bc6bdd2d2e0cee3c561a8ab4a6b52146445d4fbf3264"}]}
 ```
 
 ```kotlin [field-property box="direct_light_lab" name="code" path="direct_light_lab_code_.kt"]
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.lighting.*
-import afield.four.fabricated.rtxdiSettings
-import afield.stdlib.linalg.Vector3f
-import kotlin.math.*
-import afield.four.modules.fromContextWithNameOrNull
-import afield.four.util.keyCamera
+import afield.graphics.render.lighting.*
+import afield.graphics.scene.fabricated.rtxdiSettings
 
 prop<DirectLightingDemo>(lab)
 // Re-executing this box replaces the experiment at a frame boundary.
@@ -58,9 +52,13 @@ lab = DirectLightingDemo(renderer, 1280, 720)
 var cameraControl by keyCamera(renderer, lab.bundle.scene.camera)
 
 val restir = lab.bundle.rtxdiSettings()
-val sdkReady = lab.visibility.available && runCatching {
-    lab.lighting.enableRtxdi(RtxdiProgram.load(), restir).getOrThrow()
-}.onFailure { println("Optional RTXDI unavailable: ${it.message}") }.isSuccess
+val sdkReady =
+    lab.visibility.available &&
+        runCatching {
+            lab.lighting.enableRtxdi(RtxdiProgram.load(), restir).getOrThrow()
+        }
+            .onFailure { println("Optional RTXDI unavailable: ${it.message}") }
+            .isSuccess
 var useRtxdi = sdkReady
 var reference = false
 var temporal = true
@@ -84,16 +82,28 @@ controlGroup("lighting") {
         checkbox("Reference estimator", initialValue = reference) { reference = it }
         checkbox("Reconstruct lighting", initialValue = reconstruct) { reconstruct = it }
         checkbox("Temporal reuse", initialValue = temporal) { temporal = it }
-        slider("Spatial neighbors", min = 0.0, max = 16.0, step = 1.0, initialValue = 8.0) { neighbors = it.toInt() }
-        slider("Area lights", min = 1.0, max = 128.0, step = 1.0, initialValue = 16.0) { lightCount = it.toInt() }
+        slider("Spatial neighbors", min = 0.0, max = 16.0, step = 1.0, initialValue = neighbors.toDouble()) {
+            neighbors = it.toInt()
+        }
+        slider("Area lights", min = 1.0, max = 128.0, step = 1.0, initialValue = lightCount.toDouble()) {
+            lightCount = it.toInt()
+        }
         button("Reset history") { if (it) reset = true }
     }
     checkbox("Animate light", initialValue = animate) { animate = it }
     slider("Samples", min = 1.0, max = 128.0, step = 1.0, initialValue = budget.toDouble()) { budget = it.toInt() }
-    slider("Effect weight", initialValue = 1.0) { weight = it.toFloat() }
-    slider("Radiance", min = 0.0, max = 150.0, initialValue = 60.0) { power = it.toFloat() }
-    slider("Light phase", min = 0.0, max = 6.283, initialValue = 0.0) { phase = it }
-    slider("View (0: lit, 9: raw)", min = 0.0, max = if (sdkReady) 9.0 else 4.0, step = 1.0, initialValue = 0.0) { diagnostic = it.toInt() }
+    slider("Effect weight", initialValue = weight.toDouble()) { weight = it.toFloat() }
+    slider("Radiance", min = 0.0, max = 150.0, initialValue = power.toDouble()) { power = it.toFloat() }
+    slider("Light phase", min = 0.0, max = 6.283, initialValue = phase) { phase = it }
+    slider(
+        "View (0: lit, 9: raw)",
+        min = 0.0,
+        max = if (sdkReady) 9.0 else 4.0,
+        step = 1.0,
+        initialValue = diagnostic.toDouble(),
+    ) {
+        diagnostic = it.toInt()
+    }
 }
 displayOpen("lighting")
 println("Direct lighting ready: use the lighting controls and arrow-key camera.")
@@ -105,18 +115,34 @@ frames {
         restir.temporal = temporal
         restir.spatialSamples = neighbors
         restir.shadows = shadows
-        if (reset) { restir.resetHistory(); reset = false }
-        if (sdkReady) restir.commitLights(List(lightCount) { i ->
-            val a = i * 2.0 * PI / lightCount + seconds + phase
-            IdentifiedAreaLight(100 + i, AreaEmitter(
-                Vector3f((cos(a)*3.0 + sin(seconds + phase)*1.5).toFloat(), 4.5f, (sin(a)*2.0).toFloat()),
-                Vector3f(0.6f,0f,0f), Vector3f(0f,0f,0.6f), Vector3f(power*3f/lightCount)))
-        })
-        lab.lighting.mode = if (source) DirectLighting.Mode.SOURCE
+        if (reset) {
+            restir.resetHistory()
+            reset = false
+        }
+        if (sdkReady)
+            restir.commitLights(
+                List(lightCount) { i ->
+                    val a = i * 2.0 * PI / lightCount + seconds + phase
+                    IdentifiedAreaLight(
+                        100 + i,
+                        AreaEmitter(
+                            Vector3f(
+                                (cos(a) * 3.0 + sin(seconds + phase) * 1.5).toFloat(),
+                                4.5f,
+                                (sin(a) * 2.0).toFloat(),
+                            ),
+                            Vector3f(0.6f, 0f, 0f),
+                            Vector3f(0f, 0f, 0.6f),
+                            Vector3f(power * 3f / lightCount),
+                        ),
+                    )
+                },
+            )
+        lab.lighting.mode =
+            if (source) DirectLighting.Mode.SOURCE
             else if (useRtxdi && sdkReady) {
                 if (reference) DirectLighting.Mode.RTXDI_REFERENCE else DirectLighting.Mode.RTXDI
-            }
-            else if (shadows && lab.visibility.available) DirectLighting.Mode.RAY_QUERY
+            } else if (shadows && lab.visibility.available) DirectLighting.Mode.RAY_QUERY
             else DirectLighting.Mode.UNSHADOWED
         lab.lighting.view = DirectLighting.View.entries[diagnostic]
         lab.lighting.samples = budget

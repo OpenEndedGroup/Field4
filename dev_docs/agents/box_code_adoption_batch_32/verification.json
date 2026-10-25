@@ -1,0 +1,29 @@
+{
+  "baseline": "ce168ea49",
+  "sources": [
+    {
+      "path": "dev_docs/agents/demos/stackauto_conversation/polytope_source_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/kotlinjs_live_test.yaml",
+      "kotlinBodies": 2,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/stackauto_conversation/polytope_source_vertex_.glsl",
+      "kotlinBodies": 0,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/stackauto_conversation/polytope_source_fragment_.glsl",
+      "kotlinBodies": 0,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

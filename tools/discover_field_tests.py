@@ -37,7 +37,6 @@ DEFAULT_ROOTS = [
     "src/personal/kotlin",
     "dev_docs",
     "public/docs",
-    "metadata_store",
 ]
 
 BLOCK_COMMENT_PATTERN = re.compile(r"/\*(.*?)\*/", re.DOTALL)
@@ -544,9 +543,9 @@ def fabricate_docs_harness_code(*, scene: str, output_path: str) -> str:
     output_literal = json.dumps(output_path)
     ready_literal = json.dumps(ready_message)
     return f"""
-import afield.four.Renderer
-import afield.four.fabricated.StandardRendererDocsHarness
-import afield.four.modules.fromContext
+import afield.graphics.vulkan.Renderer
+import afield.graphics.scene.fabricated.StandardRendererDocsHarness
+import afield.document.context.fromContext
 
 val renderer: Renderer = fromContext()
 

@@ -214,20 +214,17 @@ only when Python has published a new frame, and puts it on a quad that fills the
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/python_cv/native_shared_memory.png" alt="A native Field render window showing Katherine Murphy on the swing from Ballet Mécanique as a full-window texture, with green point tracks and a pink pose skeleton drawn over her as GPU line geometry." wait="6" timeout="300" capture="native-window" native-wait-frames="90" trim-native=true graphics-context=true embed=true name="python-cv-native-shared-memory" macro-file="../../python/fieldcv/examples/shared_memory.yaml" capture-box="cv_camera_quad" requires="jep,python:cv2,python:mediapipe"}
 :::static
-import afield.python.NumpyShared
-
 prop<LoadedTexture>(camera) = NumpyShared.image("camera").texture()
 
-var module = moduleHere { }
-var m = Mesh()
-module += m named "camera quad"
-renderer += module
-
-// the image fills the window. Field's NDC is y-up, image v is y-down: v = 0 is the top edge
-m.set(4, 6) {
-    pos.add(-1, -1, 0.9,  1, -1, 0.9,  1, 1, 0.9,  -1, 1, 0.9)
-    tc.add(0, 1,  1, 1,  1, 0,  0, 0)
-    tri.add(0, 1, 2,  0, 2, 3)
+renderer += moduleHere {
+    +Mesh("camera quad") {
+        // the image fills the window. Field's NDC is y-up, image v is y-down: v = 0 is the top edge
+        set(4, 6) {
+            pos.add(-1, -1, 0.9, 1, -1, 0.9, 1, 1, 0.9, -1, 1, 0.9)
+            tc.add(0, 1, 1, 1, 1, 0, 0, 0)
+            tri.add(0, 1, 2, 0, 2, 3)
+        }
+    }
 }
 ```
 
@@ -236,25 +233,27 @@ A second box draws the tracks and the skeleton, rebuilt every frame from
 becomes a thin quad of two triangles, because a GPU line is one pixel wide whatever the window:
 
 ```diffstatic {data-lang=kotlin}
-import afield.python.NumpyShared
-
 val tracks = NumpyShared.lines("tracks")
 val skeleton = NumpyShared.lines("skeleton")
 
-var module = moduleHere { }
-var m = Mesh()
-module += m named "overlay"
+val module = moduleHere { +Mesh("overlay") }
+val m = module.current.meshes.getValue("overlay")
 renderer += module
 
-val width = 0.004   // half the line's width, in NDC: about two pixels across a 1000-pixel window
+val width = 0.004 // half the line's width, in NDC: about four pixels across a 1000-pixel window
 
 fun segments(l: List<FLine>) = l.flatMap { it.nodes.zipWithNext() }
 
 frames {
     while (frame()) {
-        val segs = segments(tracks.lines()).map { it to vec(0.2, 1.0, 0.3, 1.0) } +
-                   segments(skeleton.lines()).map { it to vec(1.0, 0.3, 0.8, 1.0) }
-        if (segs.isEmpty()) continue
+        val segs =
+            segments(tracks.lines()).map { it to vec(0.2, 1.0, 0.3, 1.0) } +
+                segments(skeleton.lines()).map { it to vec(1.0, 0.3, 0.8, 1.0) }
+        if (segs.isEmpty()) {
+            // Publish an empty draw when detections disappear; retain no old overlay.
+            m.resize(0, 0)
+            continue
+        }
         // each segment is a thin quad, two triangles, since GPU lines are a single pixel wide
         m.set(4 * segs.size, 2 * segs.size) {
             for ((i, s) in segs.withIndex()) {
@@ -356,4 +355,4 @@ Python boxes share one interpreter, so the pipeline's thread is an ordinary Pyth
 running after the cell that started it returns, and it can call into the JVM. Field's **Stop** on its
 own cancels only a box's asyncio tasks, so `fieldcv` registers each pipeline with the box that
 started it and closes it when that box stops. See also
-[Python in a Box](python.md) and [afield.four graphics](afield_four_graphics.md).
+[Python in a Box](python.md) and [Field 4 graphics](afield_four_graphics.md).

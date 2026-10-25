@@ -1,6 +1,3 @@
-[[vk::binding(0, 0)]]
-StructuredBuffer<float4> foo;
-
 struct Matrices
 {
     float4x4 p;
@@ -32,7 +29,6 @@ Varyings vsMain(uint vertexIndex : SV_VulkanVertexID, uniform Matrices matrices)
         wrap(int(vertexIndex), 11),
         1.0);
 
-    output.localColor.r += foo[0].x;
     return output;
 }
 

@@ -1,5 +1,5 @@
 {
-  "entrypoint": "afield.four.reconstruction.ReconstructionSmoke",
+  "entrypoint": "afield.media.reconstruction.ReconstructionSmoke",
   "exitCode": 0,
   "completionMarker": true,
   "vulkanValidationErrors": 0,

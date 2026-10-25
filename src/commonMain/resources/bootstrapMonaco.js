@@ -12,6 +12,38 @@ import {
 } from "./afield.mjs"
 import { renderFieldMarkdown } from "./markdownView.js"
 import { installFieldSuggest, requestLineNote, lineNoteHtml } from "./fieldSuggest.js"
+import { attachPresentationTypeScript } from "./presentationTsx.js"
+
+window.addEventListener("field-presentation-project", (event) => {
+        if (Array.isArray(event.detail)) attachPresentationTypeScript(event.detail)
+})
+window.fieldElectron?.presentationTypeScript?.({action: "sources"})
+        .then(paths => { if (Array.isArray(paths)) attachPresentationTypeScript(paths) })
+        .catch(() => {})
+
+// The Electron presentation control can attach its ordinary source files to the current Field
+// document. These are live absolute file proxies, so Monaco edits write to the Git-backed talk.
+window.addEventListener("field-presentation-sources", async (event) => {
+        const paths = event.detail
+        if (!Array.isArray(paths)) return
+        attachPresentationTypeScript(paths)
+        for (const [index, path] of paths.entries()) {
+                if (typeof path !== "string" || !path.startsWith("/")) continue
+                const fileName = path.split("/").pop() || "source"
+                const callbackName = `presentation-file-proxy-${Date.now()}-${index}`
+                await new Promise((resolve) => {
+                        sendWithReply("create-file-proxy-box", {
+                                mode: "absolute", path, fileName,
+                                x: 80 + (index % 4) * 280,
+                                y: 80 + Math.floor(index / 4) * 130,
+                        }, callbackName, (_message, payload) => {
+                                if (!payload?.ok) console.error("presentation source attach failed", fileName, payload?.message)
+                                resolve()
+                                return "remove"
+                        })
+                })
+        }
+})
 
 if (!window.require || typeof window.require.config !== "function") {
         throw new Error("Monaco AMD loader is missing; expected /min/vs/loader.js to define window.require before bootstrapMonaco.js")
@@ -438,6 +470,18 @@ const installDebugProbeDoubleClick = (editor, resolveContext) => {
 
 window.installDebugProbeDoubleClick = installDebugProbeDoubleClick
 
+// The StackSL strings of the selected box's code, as the server finds them: it alone knows the box's
+// `stack.auto` slots, so only it can tell that a string assigned to one is StackSL. stacksl.js asks.
+window.requestStackSLRegions = (code, done) => {
+        const selected = window.currentSelectedCode || []
+        if (!selected[0] || !selected[0].uid || (window.currentSelectedProperty || "code") !== "code") return false
+        sendWithReply("stacksl-regions", { uid: selected[0].uid, code }, "stacksl-regions", (_message, payload) => {
+                done(Array.isArray(payload && payload.regions) ? payload.regions : [])
+                return true
+        })
+        return true
+}
+
 const buildSymbolContextRequest = (editor, resolveContext, options = {}) => {
         const allowUnfocused = !!options.allowUnfocused
         if (!editor || (!allowUnfocused && typeof editor.hasTextFocus === "function" && !editor.hasTextFocus())) return null
@@ -848,7 +892,10 @@ const setBoxRunning = (uid, isRunning, watermark, strand, mode = "launch") => {
                         first.latestWatermark.set(strand, watermark)
                         first.latestRunningState.set(strand, false)
 
-                        window.setStatusForExecutionMarker?.(strand, false, mode)
+                        // A launch that started go { } jobs ends before they do (Alt+1 on a go block):
+                        // its margin marker stays on while they run (setGoJobsBadge in Main.kt).
+                        if (first.goJobStrands?.has(strand)) window.setStatusForExecutionMarker?.(strand, true, "go")
+                        else window.setStatusForExecutionMarker?.(strand, false, mode)
 
                         let removedAny = false
                         if (first.runningEntries.delete(name)) {

@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chain_renderer" index="0" -->
 
 ```edn [field-box id="chain_renderer" role="properties"]
-{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["skinned_volume_trace"] "properties" {"children" #{#afield/box "skinned_volume_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 221 "sha256" "f23e4958c4740029324481f504f3e4dcd8c32d101d0c44f45a77d7efdf714fdd"}]}
+{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["skinned_volume_trace"] "properties" {"children" #{#afield/box "skinned_volume_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 10 "characters" 233 "sha256" "9098b49a7802040c0753b00e347a4ccc1373811cbdadc9c7c8a9fb22961adb5e"}]}
 ```
 
 ```kotlin [field-property box="chain_renderer" name="code" path="chain_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,24 +32,20 @@ start(renderer::run)
 <!-- field-box id="skinned_volume_trace" index="1" -->
 
 ```edn [field-box id="skinned_volume_trace" role="properties"]
-{"id" "skinned_volume_trace" "index" 1 "name" "a twisted limb, skinned two ways, weighed, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a twisted limb, skinned two ways, weighed, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "skinned_volume_trace_code_.kt" "lines" 84 "characters" 3501 "sha256" "8042018d8511e9290b664716107beb7bb4ab83526249586c09989bc39041b345"}]}
+{"id" "skinned_volume_trace" "index" 1 "name" "a twisted limb, skinned two ways, weighed, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a twisted limb, skinned two ways, weighed, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "skinned_volume_trace_code_.kt" "lines" 97 "characters" 3603 "sha256" "b296faf30cc8a2bae0ec97800cd0991b17a179e1b2f7da1a634893970d5b9127"}]}
 ```
 
 ```kotlin [field-property box="skinned_volume_trace" name="code" path="skinned_volume_trace_code_.kt"]
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.fabricated.importTriMesh
-import afield.four.modules.CappedTwistFixture
-import afield.four.modules.GltfSkinning.SkinningMethod
-import afield.four.modules.GltfSkinning.SkinningOptions
-import afield.four.modules.skinnedGltfToTriMesh
-import afield.four.util.Camera
-import afield.manifold.ManifoldLibrary
-import afield.manifold.toSolid
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.toSolid
+import afield.graphics.scene.GltfSkinning.SkinningMethod
+import afield.graphics.scene.GltfSkinning.SkinningOptions
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.importTriMesh
+import afield.graphics.vulkan.util.Camera
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)
@@ -57,23 +54,35 @@ require(ManifoldLibrary.isAvailable) {
     ManifoldLibrary.describe() + "\nOn macOS: brew install manifold, then run this box again."
 }
 
-val twist = 180f   // degrees about the bone's own axis; 180 is the worst case for LBS
+val twist = 180f // degrees about the bone's own axis; 180 is the worst case for LBS
 
 // ---- stage one: skin the same file two ways -----------------------------------
 val rig = CappedTwistFixture.locate()
 fun posed(method: SkinningMethod) = skinnedGltfToTriMesh(
-    rig, clip = "twist", seconds = CappedTwistFixture.secondsFor(twist),
+    rig,
+    clip = "twist",
+    seconds = CappedTwistFixture.secondsFor(twist),
     options = SkinningOptions(method = method),
 )
 
-// ---- stage two: each pose becomes a solid, is weighed, and comes back shaded ----
-// 60 degrees splits the caps from the wall and leaves the 30-degree facets of the
-// twelve-sided wall smooth.
-fun weighed(method: SkinningMethod) = posed(method).toSolid().use { solid ->
-    println("%-16s genus %d, volume %.4f (rest %.1f)".format(
-        method.name, solid.genus, solid.volume, CappedTwistFixture.REST_VOLUME))
-    solid.toTriMesh(normals = true, minSharpAngle = 60.0)
-}
+/*
+---- stage two: each pose becomes a solid, is weighed, and comes back shaded ----
+60 degrees splits the caps from the wall and leaves the 30-degree facets of the
+twelve-sided wall smooth.
+*/
+fun weighed(method: SkinningMethod) =
+    posed(method).toSolid().use { solid ->
+        println(
+            "%-16s genus %d, volume %.4f (rest %.1f)"
+                .format(
+                    method.name,
+                    solid.genus,
+                    solid.volume,
+                    CappedTwistFixture.REST_VOLUME,
+                ),
+        )
+        solid.toTriMesh(normals = true, minSharpAngle = 60.0)
+    }
 val lbs = weighed(SkinningMethod.LINEAR_BLEND)
 val dqs = weighed(SkinningMethod.DUAL_QUATERNION)
 
@@ -85,17 +94,20 @@ val floor = scene.material(PathTraceMaterial.plastic(0.5f, 0.51f, 0.53f, 0.5f))
 
 // The rig stands along +y from 0 to 4. Turn it onto its side (+y to +x), centre it, and
 // lift it by its radius so it rests on the floor at y = 0.
-fun lying(z: Float) = Matrix4f().translation(-2f, CappedTwistFixture.RADIUS, z)
-    .rotateZ(-0.5f * Math.PI.toFloat())
+fun lying(z: Float) = Matrix4f().translation(-2f, CappedTwistFixture.RADIUS, z).rotateZ(-0.5f * Math.PI.toFloat())
 val a = scene.importTriMesh(lbs, cyan, lying(0.8f))
 val b = scene.importTriMesh(dqs, orange, lying(-0.8f))
-println("scene: ${a.triangleCount + b.triangleCount} triangles appended, " +
-    "${a.degenerateCount + b.degenerateCount} dropped")
+println(
+    "scene: ${a.triangleCount + b.triangleCount} triangles appended, " +
+        "${a.degenerateCount + b.degenerateCount} dropped",
+)
 
 val reach = 8f
 scene.quad(
-    Vector3f(-reach, 0f, -reach), Vector3f(reach, 0f, -reach),
-    Vector3f(reach, 0f, reach), Vector3f(-reach, 0f, reach),
+    Vector3f(-reach, 0f, -reach),
+    Vector3f(reach, 0f, -reach),
+    Vector3f(reach, 0f, reach),
+    Vector3f(-reach, 0f, reach),
     floor,
 )
 
@@ -116,7 +128,9 @@ tracer.indirectClamp = 10f
 tracer.blitToScreen()
 println("${tracer.backend}: ${tracer.triangleCount} triangles")
 frames {
-    while (tracer.samples < 500) { frame() }
+    while (tracer.samples < 500) {
+        frame()
+    }
     println("skinned volume study converged: ${tracer.samples} samples")
 }
 ```

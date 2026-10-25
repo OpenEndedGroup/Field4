@@ -1,5 +1,5 @@
 {
-  "entrypoint": "afield.four.neural.LearnedShaderSmoke",
+  "entrypoint": "afield.graphics.shader.learning.LearnedShaderSmoke",
   "exitCode": 0,
   "completionMarker": "LEARNED SHADER CHECK DONE",
   "vulkanValidationErrors": 0,

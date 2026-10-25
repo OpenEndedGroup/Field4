@@ -122,7 +122,7 @@ python -m fieldcv --source movie.mp4 --tracks --pose --pose-model lite > out.jso
 
 ```bash
 uv run --project . --group cv python -m unittest tools/test_fieldcv.py   # detectors, on synthetic frames
-./gradlew jvmTest --tests 'afield.python.NumpySharedTest'                # the publish/consume contract
+./gradlew jvmTest --tests 'afield.lang.python.NumpySharedTest'                # the publish/consume contract
 ```
 
 The Python suite skips itself, and says why, when the `cv` group is not installed.

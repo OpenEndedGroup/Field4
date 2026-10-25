@@ -1,5 +1,3 @@
-package afield.stdlib.linalg
-
 import java.nio.FloatBuffer
 
 operator fun Vector2fc.plus(other:Vector2fc)=add(other,Vector2f())

@@ -1,14 +1,9 @@
-import afield.four.targets.RenderToTexture
-import afield.four.modules.fromContextWithNameOrNull
 import org.lwjgl.vulkan.VK10.*
 
-// Screen composite. B and G in the paint box control this shared vector.
-val controls = fromContextWithNameOrNull<afield.stdlib.Vec4>("apertureControl")!!
-val source = fromContextWithNameOrNull<RenderToTexture>("paintSource")!!
-val medium = fromContextWithNameOrNull<RenderToTexture>("paintMedium")!!
-val broad = fromContextWithNameOrNull<RenderToTexture>("paintBroad")!!
+// Screen composite: apertureControl.x is gain; y selects the display mode.
+// Edit and rerun apertureControl.set below to update the vector read by the push supplier.
 var module = moduleHere {
-    textures("paintSource" to source, "paintMedium" to medium, "paintBroad" to broad)
+    textures("paintSource" to paintSource, "paintMedium" to paintMedium, "paintBroad" to paintBroad)
     depthTest = false
     depthWrite = false
     blend = true
@@ -20,9 +15,9 @@ var module = moduleHere {
 var mesh = Mesh()
 module += "composite" to mesh
 mesh.resize(3)
-mesh.displayControl = { controls }
+mesh.displayControl = { apertureControl }
 renderer.renderList += "paint-composite" to module
 println("paint composite ready")
 
 // y: 0 aperture, 1 sharp, 2 radius guide. Edit here and re-execute.
-controls.set(1.0f,0.0f,0.0f,0.0f)
+apertureControl.set(1.0f, 0.0f, 0.0f, 0.0f)

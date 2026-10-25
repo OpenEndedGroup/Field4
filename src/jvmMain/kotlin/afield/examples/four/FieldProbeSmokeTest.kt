@@ -1,17 +1,17 @@
 package afield.examples.four
 
-import afield.Box
-import afield.four.Renderer
-import afield.four.modules.ComputeMesh
-import afield.four.modules.ComputeModule
-import afield.four.modules.Parameters
-import afield.four.modules.ShaderKind
-import afield.four.modules.pointer
-import afield.four.util.FIELD_PROBE_BUFFER_NAME
-import afield.four.util.ShaderFieldProbe
-import afield.four.util.Window
-import afield.stdlib._fieldProbe
-import afield.stdlib.preprocess
+import afield.document.graph.Box
+import afield.graphics.vulkan.Renderer
+import afield.graphics.render.ComputeMesh
+import afield.graphics.render.ComputeModule
+import afield.graphics.render.Parameters
+import afield.graphics.shader.ShaderKind
+import afield.graphics.render.pointer
+import afield.graphics.vulkan.util.FIELD_PROBE_BUFFER_NAME
+import afield.graphics.vulkan.util.ShaderFieldProbe
+import afield.graphics.vulkan.util.Window
+import afield.graphics.shader._fieldProbe
+import afield.graphics.shader.preprocess
 
 class FieldProbeSmokeTest {
     companion object {
@@ -34,7 +34,7 @@ class FieldProbeSmokeTest {
             val rawShader = """
                 #version 450
                 layout(local_size_x = 64) in;
-                {% include "fieldProbe" %}
+                {% property "fieldProbe" %}
                 void main() {
                     uint idx = gl_GlobalInvocationID.x;
                     float value = sin(float(idx) * 0.1) * 100.0;

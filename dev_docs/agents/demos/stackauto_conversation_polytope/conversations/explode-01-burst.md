@@ -34,7 +34,7 @@ ReloadShadersRequest finished (175 ms)
 Completed
 <<ai>>
 <<model:{"provider":"openai","requestedModel":"gpt-6-astra","responseModel":"gpt-6-astra"}>>
-_afield.four render window 'Polytope', captured live. Describe what you actually see, then say whether it matches what was asked for._
+_Field 4 render window 'Polytope', captured live. Describe what you actually see, then say whether it matches what was asked for._
 
 ![tool image](images/3319ceca77b94353c116.jpg)
 <<ai>>
@@ -44,7 +44,7 @@ _after the edit — stack.auto.explode in your shader: the window, as it is draw
 ![tool image](images/9710a97f232f231153dd.png)
 <<ai>>
 <<model:{"provider":"openai","requestedModel":"gpt-6-astra","responseModel":"gpt-6-astra"}>>
-_Post-shader-reload screenshot of the afield.four render window, captured after a rendered frame. Inspect it against what the user asked for, together with any earlier screenshot. If the requested visual result is not achieved, edit and reload again before finalizing._
+_Post-shader-reload screenshot of the Field 4 render window, captured after a rendered frame. Inspect it against what the user asked for, together with any earlier screenshot. If the requested visual result is not achieved, edit and reload again before finalizing._
 
 ![tool image](images/099f0483088342f01175.jpg)
 <<ai>>

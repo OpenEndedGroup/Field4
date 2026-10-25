@@ -15,13 +15,13 @@ model, the gotchas, and how to run it. The public worked-example lives at
 
 | Thing | File | Role |
 | --- | --- | --- |
-| `ImGuiPanel` | `src/jvmMain/kotlin/afield/four/imgui/ImGuiPanel.kt` | The helper: a world-space rectangle wrapping an `ImGuiRenderToTexture`, with `place`/`faceToward`, `raycast`/`interact`, `panelMvp`, and `controllerRay`. |
+| `ImGuiPanel` | `src/jvmMain/kotlin/afield/graphics/vulkan/imgui/ImGuiPanel.kt` | The helper: a world-space rectangle wrapping an `ImGuiRenderToTexture`, with `place`/`faceToward`, `raycast`/`interact`, `panelMvp`, and `controllerRay`. |
 | `ImGuiVrPanelDemo` | `src/jvmMain/kotlin/afield/examples/four/ImGuiVrPanelDemo.kt` | Standalone runnable demo (`runImGuiVrPanelDemo`) that wires the whole loop. |
 | `ImGuiVrPanelSmokeTest` | `src/jvmMain/kotlin/afield/examples/four/ImGuiVrPanelSmokeTest.kt` | End-to-end smoke, FIELD_TEST id `examples.four.imgui-vr-panel-smoke`. |
 | `imgui_vr_panel.yaml` | `dev_docs/agents/transcripts/imgui_vr_panel.yaml` | Agent transcript that builds the same thing as two live boxes. |
 
-`ImGuiRenderToTexture` (`src/jvmMain/kotlin/afield/four/imgui/ImGuiRenderToTexture.kt`) and
-`SideBySideStereoTarget` (`src/jvmMain/kotlin/afield/four/targets/SideBySideStereoTarget.kt`)
+`ImGuiRenderToTexture` (`src/jvmMain/kotlin/afield/graphics/vulkan/imgui/ImGuiRenderToTexture.kt`) and
+`SideBySideStereoTarget` (`src/jvmMain/kotlin/afield/graphics/vulkan/targets/SideBySideStereoTarget.kt`)
 already existed; the new work is the `ImGuiPanel` helper plus the demo/smoke/transcript that
 compose them.
 

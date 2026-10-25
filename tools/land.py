@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """The landing queue: agents enqueue a branch and stop; one lander puts it on `main`.
 
+    uv run python tools/land.py precheck [--plan]                 # first: the guards this diff can trip
     uv run python tools/land.py enqueue [branch] [--note "..."]   # agents: this, then stop
     uv run python tools/land.py status [id] [--watch]             # what is queued, landed, bounced
     uv run python tools/land.py wait <id>                         # block until it lands or bounces
     uv run python tools/land.py mine [branch]                     # the mailbox: this branch's attempts
     uv run python tools/land.py sync [--push]                     # bring origin/main in via the queue
     uv run python tools/land.py doc                               # build the local docs when its turn arrives
-    uv run python tools/land.py huh [--context]                   # ask claude -p what the queue is doing
-    uv run python tools/land.py bouncy [--hours 12] [--context]   # ask claude -p about stranded bounces
+    uv run python tools/land.py huh [--context]                   # ask the agent what the queue is doing
+    uv run python tools/land.py bouncy [--hours 12] [--context]   # ask the agent about stranded bounces
     uv run python tools/land.py run [--once]                      # the lander (one per clone)
 
 Why: every agent used to land itself. Each merged `main`, ran ~45 minutes of guards, found `main` had
@@ -34,7 +35,8 @@ What the lander does with each round:
    the item: the reason and the log path go in `status`, and `main` is untouched. Fix the branch,
    commit, and enqueue again.
 
-The fixer: at a red round, `claude -p` runs in the lander's worktree on the exact tree that failed,
+The fixer: at a red round, the agent (`claude -p`, or `codex exec` with FIELD_AGENT=codex; see
+tools/field_agent.py) runs in the lander's worktree on the exact tree that failed,
 once per item, for up to FIELD_LAND_FIXER_MIN (15) minutes. It decides whether the failure is a
 small mechanical slip one branch made (a missed count, a citation to something that moved, a
 misplaced KDoc). If so it edits; the lander checks the edit (at most 6 files and 60 lines, no
@@ -45,7 +47,9 @@ bounce. Every attempt is in `field-land-queue/fixer.jsonl`. FIELD_LAND_FIXER=off
 
 `doc` is a queue barrier: preceding landings finish before it builds `public/field4/` in the
 checkout holding `main`; later landings wait until the build finishes. It reuses committed captures
-and reports its own failure without undoing a landing. The running lander must be restarted after
+and reports its own failure without undoing a landing. It refuses to build while that checkout has
+uncommitted changes under src/ or public/docs, because the site would mix them with pages generated
+from HEAD. The running lander must be restarted after
 changes to this script are landed, because Python does not reload it while running.
 
 The queue is plain JSON files in the clone's common git dir (`field-land-queue/`), so every worktree
@@ -69,6 +73,9 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import field_agent  # noqa: E402  (which agent to ask: claude or codex)
 
 PENDING, LANDED, BOUNCED = "pending", "landed", "bounced"
 DOC = "doc"
@@ -231,6 +238,8 @@ def cmd_doc(args: argparse.Namespace) -> int:
         item["id"] = f"{base}-{n}"
     _move(queue, item, PENDING)
     print(f"land: queued docs build {item['id']} for {holder}; {len(_items(queue, PENDING)) - 1} ahead of it.")
+    if dirty := _dirty_doc_inputs(holder):
+        print(f"land: warning: it will be refused unless this changes by its turn: {_dirty_doc_reason(holder, dirty)}", file=sys.stderr)
     print(f"Progress: uv run python tools/land.py status {item['id']}")
     print(f"Outcome: uv run python tools/land.py wait {item['id']}")
     return 0
@@ -301,6 +310,11 @@ def _phase(item: dict) -> tuple[str, str]:
         return "building local docs", (lines[-1][:400] if lines else "")
     if not lines:
         return "starting", ""
+    # The fixer prints nothing while it works (its reply goes to the log at the end), so the line
+    # announcing it is the newest one until it answers.
+    asked = [n for n, line in enumerate(lines) if line.startswith("land: ") and "asking the fixer" in line]
+    if asked and not any(line.startswith("land: fixer: ") for line in lines[asked[-1]:]):
+        return "red; " + lines[asked[-1]].split("red; ", 1)[-1], lines[asked[-1]][:400]
     steps = [line for line in lines if line.startswith("merge_regen:")]
     tasks = [line[len("> Task "):].split()[0] for line in lines if line.startswith("> Task :")]
     step = steps[-1][len("merge_regen: "):] if steps else "merging onto main"
@@ -515,28 +529,22 @@ Be brief and specific. Plain text, no markdown headers.
 
 
 def _ask_huh(queue: Path) -> str:
-    claude = shutil.which("claude")
-    if not claude:
-        return "`claude` is not on PATH, so there is nothing to ask. The context it would have read:\n\n" + _huh_context(queue)
-    context = _huh_context(queue)
-    try:
-        result = subprocess.run([claude, "-p", "--output-format", "text"], input=HUH_PROMPT + context,
-                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=240)
-        return result.stdout.strip() or "(claude returned nothing)"
-    except subprocess.TimeoutExpired:
-        return "claude -p took more than 4 minutes; giving up."
+    return _ask_agent(HUH_PROMPT, _huh_context(queue), timeout=240)
 
 
-def _ask_claude(prompt: str, context: str) -> str:
-    claude = shutil.which("claude")
-    if not claude:
-        return "`claude` is not on PATH, so there is nothing to ask. The context it would have read:\n\n" + context
+def _ask_agent(prompt: str, context: str, timeout: int = 300) -> str:
+    """Ask the configured agent (field_agent: claude -p or codex exec) about [context], read-only."""
+    agent = field_agent.configured_agent()
+    argv = field_agent.headless_argv(agent)
+    if argv is None:
+        return f"`{agent}` is not installed, so there is nothing to ask. The context it would have read:\n\n" + context
     try:
-        result = subprocess.run([claude, "-p", "--output-format", "text"], input=prompt + context,
-                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=300)
-        return result.stdout.strip() or "(claude returned nothing)"
+        # stdout is the answer; codex narrates its progress on stderr, kept only for when there is no answer.
+        result = subprocess.run(argv, input=prompt + context, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True, timeout=timeout)
+        return result.stdout.strip() or result.stderr.strip()[-2000:] or f"({agent} returned nothing)"
     except subprocess.TimeoutExpired:
-        return "claude -p took more than 5 minutes; giving up."
+        return f"{field_agent.describe(agent)} took more than {timeout // 60} minutes; giving up."
 
 
 # ---------------------------------------------------------------------------- bouncy?
@@ -621,7 +629,7 @@ def _ask_bouncy(queue: Path, hours: float) -> str:
     if not items:
         return f"Nothing bounced in the last {hours:g} h is left stranded: every bounce since then has landed or is queued again."
     head = f"{len(items)} stranded bounce(s) in the last {hours:g} h: " + ", ".join(i["branch"] for i in items) + "\n\n"
-    return head + _ask_claude(BOUNCY_PROMPT, _bouncy_context(queue, items))
+    return head + _ask_agent(BOUNCY_PROMPT, _bouncy_context(queue, items))
 
 
 def cmd_bouncy(args: argparse.Namespace) -> int:
@@ -684,7 +692,11 @@ class _Style:
             "gradle": "\ue660" if nerd else "", "note": "\uf249" if nerd else "#",
             "log": "\uf15c" if nerd else "", "main": "\uf126" if nerd else "",
             "push": "\uf062" if nerd else "^", "pull": "\uf063" if nerd else "v",
+            "fix": "\uf0ad" if nerd else "%",
         }
+        if nerd:
+            # Nerd Font icons draw wider than the one cell the terminal gives them; pad so they don't touch the text.
+            self.g = {k: v + " " for k, v in self.g.items()}
 
     def c(self, code: str, text: str) -> str:
         return f"\033[{code}m{text}\033[0m" if self.color else text
@@ -737,6 +749,11 @@ def _pretty_status(queue: Path, recent: int) -> None:
               + st.cyan("uv run python tools/land.py run"))
     print()
 
+    def fixed_line(item: dict) -> str:
+        f = item["fixup"]
+        head = f"{g['fix']} fixer {f['sha'][:9]} on {f['branch']}: "
+        return st.yellow(head) + clip(f.get("reason", ""), 6 + len(head))
+
     pending = _items(queue, PENDING)
     active = [i for i in pending if i.get("started")]
     waiting = [i for i in pending if not i.get("started")]
@@ -760,6 +777,8 @@ def _pretty_status(queue: Path, recent: int) -> None:
             print(f"  {st.yellow(g['land'])} {who(member)}")
             if member.get("note"):
                 print(f"    {st.dim(g['note'] + ' ' + clip(member['note'], 6))}")
+            if member.get("fixup"):
+                print(f"    {fixed_line(member)}")
         if typical:
             frac = running / typical
             tail = f"~{_span(typical - running)} left" if running < typical else st.yellow(f"{_span(running - typical)} over typical")
@@ -782,6 +801,8 @@ def _pretty_status(queue: Path, recent: int) -> None:
     for n, item in enumerate(waiting, 1):
         eta = f"  starts ~{_span(ahead)}" if typical else ""
         print(f"  {st.dim(str(n) + '.')} {st.cyan(g['wait'])} {who(item)}  {st.dim('waiting ' + _span(_since(item.get('enqueued'))) + eta)}")
+        if item.get("fixup"):
+            print(f"     {fixed_line(item)}")
         if item.get("blocked"):
             b = item["blocked"]
             print(f"     {st.yellow(g['bounce'] + ' blocked ' + _span(_since(b.get('since'))))} "
@@ -824,6 +845,8 @@ def _pretty_status(queue: Path, recent: int) -> None:
             how = (g["gradle"] + " guard") if _ran_gradle(item) else "no gradle"
             print(f"  {st.green(g['ok'])} {who(item)}  {st.dim(g['main'] + ' ' + item.get('landed_as', '')[:9])}"
                   f"  {st.dim(ago + ' ago')}" + (st.dim(f" \u00b7 took {_span(took)} \u00b7 {how}") if took is not None else ""))
+            if item.get("fixup"):
+                print(f"      {fixed_line(item)}")
         elif _superseded_by(queue, item):
             continue  # bounced, then landed: history, not news
         else:
@@ -877,12 +900,12 @@ def cmd_status(args: argparse.Namespace) -> int:
                     if key in (b"q", b"Q", b"\x1b", b"\x03"):
                         break
                     if key in (b"b", b"B"):
-                        sys.stdout.write("\033[2J\033[H" + _Style().yellow("bouncy? looking for bounces nobody followed up (then claude -p; ~30-60 s)") + "\n")
+                        sys.stdout.write("\033[2J\033[H" + _Style().yellow("bouncy? looking for bounces nobody followed up (then the agent; ~30-60 s)") + "\n")
                         sys.stdout.flush()
                         _pager(_ask_bouncy(queue, 12), stdin)
                         sys.stdout.write("\033[2J")
                     if key in (b"h", b"H"):
-                        sys.stdout.write("\033[2J\033[H" + _Style().yellow("huh? asking claude about the queue (gathering context, then claude -p; ~30-60 s)") + "\n")
+                        sys.stdout.write("\033[2J\033[H" + _Style().yellow("huh? asking the agent about the queue (gathering context, then the agent; ~30-60 s)") + "\n")
                         sys.stdout.flush()
                         _pager(_ask_huh(queue), stdin)
                         sys.stdout.write("\033[2J")
@@ -1217,7 +1240,9 @@ def _run_watched(cmd: list[str], cwd: Path, env: dict, log: Path, out) -> int | 
     # Its own session, so the watchdog can stop the whole build: which also means stopping the lander
     # no longer stops it. Record it, so a SIGTERM'd lander stops it and a new lander finds an orphan.
     record = log.parent.parent / "build.json"
-    record.write_text(json.dumps({"pgid": proc.pid, "lander": os.getpid(), "started": _now(), "log": str(log)}) + "\n")
+    pending = record.with_suffix(".json.tmp")
+    pending.write_text(json.dumps({"pgid": proc.pid, "lander": os.getpid(), "started": _now(), "log": str(log)}) + "\n")
+    pending.replace(record)
     _CURRENT_BUILD["pgid"] = proc.pid
     try:
         return _watch(proc, cwd, env, log, out)
@@ -1310,9 +1335,11 @@ def _is_pull(item: dict) -> bool:
 def _collect_failures(wt: Path, since: float, log: Path) -> str | None:
     """Gradle prints a failing test as "AssertionError at Foo.kt:769"; the message itself is only in
     the JUnit XML inside the lander's worktree, which the next round overwrites. Copy every failure
-    written during this round next to the log, and return a one-line summary of the first."""
+    written during this round next to the log, and return a one-line summary of the first.
+    `checkPythonTools` writes the same XML (build/test-results/pythonTools), message = exception
+    line, body = traceback; both are kept."""
     import xml.etree.ElementTree as ET
-    found: list[tuple[str, str]] = []
+    found: list[tuple[str, str, str]] = []
     for xml in sorted((wt / "build" / "test-results").glob("*/TEST-*.xml")):
         if xml.stat().st_mtime < since:
             continue
@@ -1323,12 +1350,15 @@ def _collect_failures(wt: Path, since: float, log: Path) -> str | None:
         for case in root.iter("testcase"):
             for failure in list(case.findall("failure")) + list(case.findall("error")):
                 name = f"{case.get('classname', '').rsplit('.', 1)[-1]}.{case.get('name')}"
-                found.append((name, (failure.get("message") or failure.text or "").strip()))
+                message = (failure.get("message") or "").strip()
+                body = (failure.text or "").strip()
+                found.append((name, message or body, body if body != message else ""))
     if not found:
         return None
     path = log.with_suffix(".failures.txt")
-    path.write_text("".join(f"## {name}\n{message}\n\n" for name, message in found))
-    first_name, first_message = found[0]
+    path.write_text("".join(f"## {name}\n{message}\n" + (f"{body}\n" if body else "") + "\n"
+                            for name, message, body in found))
+    first_name, first_message, _ = found[0]
     first_line = next((line.strip() for line in first_message.splitlines() if line.strip()), "")
     more = f" (+{len(found) - 1} more)" if len(found) > 1 else ""
     return f"{first_name}: {first_line[:220]}{more}; full messages: {path}"
@@ -1339,7 +1369,7 @@ def _collect_failures(wt: Path, since: float, log: Path) -> str | None:
 
 # Most bounces are a missed number, a citation pointing at a symbol that moved, a KDoc in the wrong
 # place: a minute's fix, followed by a re-enqueue and (in a batch) an hour of bisecting. At a red
-# round the lander gives `claude -p` one chance, in its own worktree on the exact tree that failed,
+# round the lander gives the agent (field_agent.py) one chance, in its own worktree on the exact tree that failed,
 # to make the fix and say whose branch it belongs to. A fix that passes the checks below is committed
 # onto that branch's tip as `fixup/<branch>` (the branch itself is never moved: it is usually checked
 # out in somebody's worktree) and the whole batch goes round again with the full guard. The guard,
@@ -1392,11 +1422,7 @@ def _fixer_command() -> list[str] | None:
     if custom:
         import shlex
         return shlex.split(custom)
-    claude = shutil.which("claude")
-    if not claude:
-        return None
-    return [claude, "-p", "--output-format", "text", "--permission-mode", "acceptEdits",
-            "--allowedTools", "Bash Read Edit Write Grep Glob"]
+    return field_agent.headless_argv(edits=True)
 
 
 def _fixer_context(members: list[dict], main_sha: str, wt: Path, log: Path, failures: str | None, queue: Path) -> str:
@@ -1547,7 +1573,7 @@ def _try_fixer(members: list[dict], main_sha: str, wt: Path, queue: Path, log: P
         _record_fixer(queue, out, outcome="rejected", branch=culprit["branch"],
                       reason=f"the fix does not apply to {culprit['branch']} on its own, so it is not that branch's alone ({reason})")
         return None
-    message = (f"Lander fixup: {reason}\n\nMade by the landing queue's fixer (claude -p) when {log.stem} went red;\n"
+    message = (f"Lander fixup: {reason}\n\nMade by the landing queue's fixer ({field_agent.describe()}) when {log.stem} went red;\n"
                f"the full guard ran again on it before landing.\n\n"
                f"Lander-Fixup: {culprit['id']} {culprit['sha'][:12]}\n")
     fixer_env = {**env, "GIT_AUTHOR_NAME": "Field lander fixer", "GIT_AUTHOR_EMAIL": "lander-fixer@field.invalid"}
@@ -1705,6 +1731,28 @@ def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecti
     return "green"
 
 
+# What the docs build reads from the working tree rather than from a commit: the source mirror
+# (`generateSourcePages`) walks every `.kt` under src/, tracked or not, and the site is built from
+# public/docs. The committed reference pages cite source lines as of HEAD, so a build over uncommitted
+# edits installs source pages whose line anchors no longer match those citations, and the link check
+# fails on links that are fine on main (20261022-111619-doc: 116 `#L` anchors, all into files edited
+# but not committed).
+DOC_BUILD_INPUTS = ("src", "public/docs")
+
+
+def _dirty_doc_inputs(checkout: Path) -> list[str]:
+    """Paths under DOC_BUILD_INPUTS that differ from HEAD: modified, staged, or untracked and not ignored."""
+    changed = _git(checkout, "diff", "--name-only", "HEAD", "--", *DOC_BUILD_INPUTS, check=False).splitlines()
+    untracked = _git(checkout, "ls-files", "--others", "--exclude-standard", "--", *DOC_BUILD_INPUTS, check=False).splitlines()
+    return sorted({p for p in changed + untracked if p})
+
+
+def _dirty_doc_reason(checkout: Path, dirty: list[str]) -> str:
+    shown = ", ".join(dirty[:5]) + (f" and {len(dirty) - 5} more" if len(dirty) > 5 else "")
+    return (f"{checkout} has {len(dirty)} uncommitted change(s) under {' or '.join(DOC_BUILD_INPUTS)} that the docs "
+            f"build would read ({shown}); commit or set them aside, then queue `land.py doc` again")
+
+
 def _run_doc(item: dict, primary: Path, queue: Path) -> None:
     """Build the served checkout after earlier queue items, without changing Git history."""
     checkout = Path(item["checkout"])
@@ -1719,6 +1767,12 @@ def _run_doc(item: dict, primary: Path, queue: Path) -> None:
     script = checkout / "tools" / "build_zensical_docs.py"
     if not script.is_file():
         item.update(reason=f"docs builder missing in {checkout}", finished=_now())
+        _move(queue, item, BOUNCED)
+        return
+    # Refuse rather than build a site that is neither main nor the working tree. Checked here, at the
+    # item's turn, because the tree it would build is the one on disk now, not at enqueue time.
+    if dirty := _dirty_doc_inputs(checkout):
+        item.update(reason=_dirty_doc_reason(checkout, dirty), finished=_now())
         _move(queue, item, BOUNCED)
         return
     item["built_from"] = _git(checkout, "rev-parse", "HEAD")
@@ -1834,9 +1888,22 @@ def cmd_run(args: argparse.Namespace) -> int:
         lock_file.close()
 
 
+def cmd_precheck(argv: list[str]) -> int:
+    # Imported here: it pulls in the guard selection, which the queue commands never need (and which a
+    # copy of this script used on its own, as tools/test_docs_notes.py makes, does not have).
+    import land_precheck  # noqa: PLC0415
+
+    return land_precheck.main(argv)
+
+
 def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["precheck"]:
+        return cmd_precheck(argv[1:])
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
+    # Dispatched above, before parsing; listed here so `land.py --help` names it.
+    sub.add_parser("precheck", help="before enqueue: merge main, run only the guards this diff can trip (minutes)")
     p = sub.add_parser("enqueue", help="queue a branch for landing, then stop")
     p.add_argument("branch", nargs="?", help="default: the current branch")
     p.add_argument("--note", help="one line for the landing commit, e.g. what to look at if it bounces")
@@ -1851,11 +1918,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--plain", action="store_true", help="the plain text agents see, even on a terminal")
     p.add_argument("--watch", action="store_true", help="on a terminal, redraw every 2 seconds; q, Esc or ctrl-c quits")
     p.set_defaults(func=cmd_status)
-    p = sub.add_parser("bouncy", help="ask claude -p about recent bounces nobody followed up (what --watch's b key does)")
+    p = sub.add_parser("bouncy", help="ask the agent about recent bounces nobody followed up (what --watch's b key does)")
     p.add_argument("--hours", type=float, default=12.0, help="how far back to look (default 12)")
     p.add_argument("--context", action="store_true", help="print the context it would send, and do not ask")
     p.set_defaults(func=cmd_bouncy)
-    p = sub.add_parser("huh", help="ask claude -p what is going on with the queue (what --watch's h key does)")
+    p = sub.add_parser("huh", help="ask the agent what is going on with the queue (what --watch's h key does)")
     p.add_argument("--context", action="store_true", help="print the context it would send, and do not ask")
     p.set_defaults(func=cmd_huh)
     p = sub.add_parser("sync", help="fetch origin/main and land it through the queue (--push: push main after)")

@@ -60,5 +60,23 @@ try {
 
     push(diagram);
     await wait(() => messages.querySelector('.ai-chat-fence-preview svg'), 'Mermaid rerenders');
-    return {ok: true, renderers: ['fixture', 'mermaid'], fallback: true};
+
+    // Math: inline and display delimiters in prose, a math fence, and TeX that does not parse.
+    check(catalog.fences.some(f => f.language === 'math' && f.modulePath === '/katex/field-katex.js'), 'math missing from shared catalog');
+    const prose = 'The form \\(Q = ax^2 + bxy + cy^2\\) costs $5, not $10.\n\n$$\\Delta = b^2 - 4ac$$\n\nBroken \\(\\frac{1}{\\)';
+    push(prose + '\n\n```math\n\\begin{aligned} a &= b \\\\ c &= d \\end{aligned}\n```');
+    await wait(() => messages.querySelector('.ai-math .katex'), 'inline math typeset');
+    await wait(() => messages.querySelector('.ai-math-fence .katex-display'), 'math fence typeset');
+    const inline = messages.querySelector('.ai-math:not(.ai-math-display)');
+    check(inline.querySelector('annotation')?.textContent === 'Q = ax^2 + bxy + cy^2', 'inline TeX survives escaping');
+    check(messages.querySelector('.ai-math-display .katex-display'), 'display math typeset');
+    check(messages.querySelector('.ai-math-error')?.textContent === '\\(\\frac{1}{\\)', 'bad TeX keeps its source');
+    check(messages.textContent.includes('costs $5, not $10.'), 'dollar amounts stay prose');
+    const katexFont = getComputedStyle(inline.querySelector('.katex')).fontFamily;
+    check(/KaTeX/.test(katexFont), `KaTeX stylesheet not applied (${katexFont})`);
+    // Once loaded, a re-render (a streamed chunk) typesets synchronously: no raw TeX between chunks.
+    push(prose + ' more');
+    check(messages.querySelector('.ai-math .katex'), 'math not typeset synchronously on re-render');
+    await document.fonts.ready;
+    return {ok: true, renderers: ['fixture', 'mermaid', 'math'], fallback: true};
 } catch (error) { return {ok: false, reason: String(error)}; }

@@ -1,7 +1,7 @@
 # Field Slug prototype
 
 This optional C++20 helper compiles one filled path into a Slughorn atlas. It is
-invoked on geometry edits by `afield.graphics.slug.SlugPath`, leaving placement and
+invoked on geometry edits by `afield.graphics.text.slug.SlugPath`, leaving placement and
 shading independent of atlas construction. No native helper is built or loaded
 by Field's ordinary startup.
 

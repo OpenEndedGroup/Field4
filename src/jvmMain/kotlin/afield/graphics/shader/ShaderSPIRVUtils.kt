@@ -1,0 +1,371 @@
+package afield.graphics.shader
+
+import afield.graphics.render.main
+import afield.graphics.scene.main
+
+import afield.graphics.vulkan.util.Options
+import afield.app.diagnostics.LatencySpans
+import afield.app.diagnostics.logging.lprintln
+import org.lwjgl.system.MemoryUtil
+import org.lwjgl.system.NativeResource
+import org.lwjgl.util.shaderc.Shaderc
+import org.lwjgl.util.shaderc.ShadercIncludeResolve
+import org.lwjgl.util.shaderc.ShadercIncludeResult
+import org.lwjgl.util.shaderc.ShadercIncludeResultRelease
+import org.lwjgl.vulkan.KHRRayTracingPipeline
+import org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_MESH_BIT_EXT
+import org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_TASK_BIT_EXT
+import org.lwjgl.vulkan.VK10
+import java.io.File
+import java.io.IOException
+import java.net.URI
+import java.net.URISyntaxException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.util.concurrent.ConcurrentHashMap
+
+/**
+ * GLSL to SPIR-V compilation through shaderc, with `#include` resolution and line-numbered error reports.
+ *
+ * [ShaderSPIRVUtils] compiles a source for one [ShaderKind] (vertex, fragment, compute, mesh, task and
+ * the ray-tracing stages), and throws [CompilerError] with the compiler's message on failure. A
+ * [ShaderIncludeResolver] passed in a [ShaderCompileSource] answers each include request.
+ */
+
+enum class ShaderKind(internal val kind: Int) {
+    VERTEX_SHADER(Shaderc.shaderc_glsl_vertex_shader), GEOMETRY_SHADER(Shaderc.shaderc_glsl_geometry_shader), FRAGMENT_SHADER(
+        Shaderc.shaderc_glsl_fragment_shader
+    ),
+    COMPUTE_SHADER(Shaderc.shaderc_glsl_compute_shader),
+
+    MESH_SHADER(Shaderc.shaderc_glsl_mesh_shader),
+    TASK_SHADER(Shaderc.shaderc_glsl_task_shader),
+
+    RAYGEN_SHADER(Shaderc.shaderc_glsl_raygen_shader),
+    ANY_HIT_SHADER(Shaderc.shaderc_glsl_anyhit_shader),
+    CLOSEST_HIT_SHADER(Shaderc.shaderc_glsl_closesthit_shader),
+    MISS_SHADER(Shaderc.shaderc_glsl_miss_shader),
+    INTERSECTION_SHADER(Shaderc.shaderc_glsl_intersection_shader),
+    CALLABLE_SHADER(Shaderc.shaderc_glsl_callable_shader);
+
+    fun toVulkan(): Int {
+        return when(kind) {
+            Shaderc.shaderc_glsl_vertex_shader -> VK10.VK_SHADER_STAGE_VERTEX_BIT
+            Shaderc.shaderc_glsl_fragment_shader -> VK10.VK_SHADER_STAGE_FRAGMENT_BIT
+            Shaderc.shaderc_glsl_geometry_shader -> VK10.VK_SHADER_STAGE_GEOMETRY_BIT
+            Shaderc.shaderc_glsl_compute_shader -> VK10.VK_SHADER_STAGE_COMPUTE_BIT
+            Shaderc.shaderc_glsl_mesh_shader -> VK_SHADER_STAGE_MESH_BIT_EXT
+            Shaderc.shaderc_glsl_task_shader ->VK_SHADER_STAGE_TASK_BIT_EXT
+            Shaderc.shaderc_glsl_raygen_shader -> KHRRayTracingPipeline.VK_SHADER_STAGE_RAYGEN_BIT_KHR
+            Shaderc.shaderc_glsl_anyhit_shader -> KHRRayTracingPipeline.VK_SHADER_STAGE_ANY_HIT_BIT_KHR
+            Shaderc.shaderc_glsl_closesthit_shader -> KHRRayTracingPipeline.VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR
+            Shaderc.shaderc_glsl_miss_shader -> KHRRayTracingPipeline.VK_SHADER_STAGE_MISS_BIT_KHR
+            Shaderc.shaderc_glsl_intersection_shader -> KHRRayTracingPipeline.VK_SHADER_STAGE_INTERSECTION_BIT_KHR
+            Shaderc.shaderc_glsl_callable_shader -> KHRRayTracingPipeline.VK_SHADER_STAGE_CALLABLE_BIT_KHR
+            else -> throw RuntimeException(" unknown shader type $kind")
+        }
+    }
+}
+
+class CompilerError(override val message : String) : Exception(message) {
+
+}
+
+enum class ShaderIncludeType(internal val shadercType: Int) {
+    RELATIVE(Shaderc.shaderc_include_type_relative),
+    STANDARD(Shaderc.shaderc_include_type_standard);
+
+    companion object {
+        fun fromShaderc(type: Int): ShaderIncludeType = when (type) {
+            Shaderc.shaderc_include_type_relative -> RELATIVE
+            Shaderc.shaderc_include_type_standard -> STANDARD
+            else -> throw IllegalArgumentException("Unknown shader include type $type")
+        }
+    }
+}
+
+data class ShaderIncludeRequest(
+    val requestedPath: String,
+    val includeType: ShaderIncludeType,
+    val requestingSource: String?,
+    val includeDepth: Long
+)
+
+data class ShaderIncludeResolution(
+    val resolvedPath: String,
+    val source: String
+)
+
+fun interface ShaderIncludeResolver {
+    fun resolve(request: ShaderIncludeRequest): ShaderIncludeResolution?
+}
+
+data class ShaderCompileSource(
+    val sourceName: String,
+    val sourceText: String,
+    val includeResolver: ShaderIncludeResolver? = null
+)
+
+object ShaderSPIRVUtils {
+    fun wrapBytecode(bytes: ByteArray): SPIRV {
+        val buffer = ByteBuffer.allocateDirect(bytes.size).order(ByteOrder.nativeOrder())
+        buffer.put(bytes)
+        buffer.flip()
+        return SPIRV(0L, buffer)
+    }
+
+    fun compileShaderFile(shaderFile: String?, shaderKind: ShaderKind): SPIRV? {
+        return compileShaderAbsoluteFile(
+            ClassLoader.getSystemClassLoader().getResource(shaderFile).toExternalForm(), shaderKind
+        )
+    }
+
+    fun compileShaderAbsoluteFile(shaderFile: String, shaderKind: ShaderKind): SPIRV? {
+        try {
+            val source = String(Files.readAllBytes(Paths.get(URI(shaderFile))))
+            return compileShader(ShaderCompileSource(shaderFile, source), shaderKind)
+        } catch (e: IOException) {
+            e.printStackTrace()
+        } catch (e: URISyntaxException) {
+            e.printStackTrace()
+        }
+        return null
+    }
+
+    fun compileShader(filename: String, source: String?, shaderKind: ShaderKind): SPIRV {
+        return compileShader(
+            ShaderCompileSource(
+                sourceName = filename,
+                sourceText = source ?: File(filename).readText()
+            ),
+            shaderKind
+        )
+    }
+
+    @Volatile private var warnedPrintfWithoutLayer = false
+
+    /**
+     * One shaderc compiler for the life of the JVM, never released. Releasing the last compiler
+     * finalizes glslang and drops its built-in symbol tables, so a compiler made and released per
+     * call rebuilt them every time: ~55 ms per stage on an M1 Max, for any shader, however small
+     * (`shader.compile` in `dev_docs/testing/FEEL_BENCHMARKS.md`). shaderc documents a compiler as
+     * safe to use from several threads at once; options stay per call.
+     */
+    private val sharedCompiler: Long by lazy {
+        Shaderc.shaderc_compiler_initialize().also {
+            if (it == MemoryUtil.NULL) throw RuntimeException("Failed to create shader compiler")
+        }
+    }
+
+    fun compileShader(source: ShaderCompileSource, shaderKind: ShaderKind): SPIRV =
+        LatencySpans.time("shader.compile", detail = "${shaderKind.name} ${source.sourceName}") {
+            compileShaderUntimed(source, shaderKind)
+        }
+
+    private fun compileShaderUntimed(source: ShaderCompileSource, shaderKind: ShaderKind): SPIRV {
+        // debugPrintfEXT is implemented by the validation layer: with neither validation nor shader
+        // printf on, the call compiles and prints nothing. Say so once rather than leave it silent.
+        if (!warnedPrintfWithoutLayer && !(Options.validate || Options.shaderDebugPrintf) &&
+            source.sourceText.contains("debugPrintfEXT")
+        ) {
+            warnedPrintfWithoutLayer = true
+            afield.app.diagnostics.logging.lprintln(
+                "warning,shader",
+                "${source.sourceName} calls debugPrintfEXT, but neither Options.validate nor " +
+                    "Options.shaderDebugPrintf (-Dafield.four.shaderDebugPrintf=true) is on, so it will print nothing",
+            )
+        }
+        val compiler = sharedCompiler
+
+        val opts = Shaderc.shaderc_compile_options_initialize()
+//        Shaderc.shaderc_compile_options_set_target_env(opts, Shaderc.shaderc_target_env_webgpu, Shaderc.shaderc_env_version_webgpu)
+
+        if (Options.validate || Options.shaderDebugPrintf) {
+            Shaderc.shaderc_compile_options_set_generate_debug_info(opts)
+        }
+
+        Shaderc.shaderc_compile_options_set_target_env(
+            opts, Shaderc.shaderc_target_env_vulkan, Shaderc.shaderc_env_version_vulkan_1_3
+        )
+        Shaderc.shaderc_compile_options_set_target_spirv(
+            opts, Shaderc.shaderc_spirv_version_1_5
+        )
+
+        val includeBridge = source.includeResolver?.let(::NativeShadercIncludeBridge)
+        if (includeBridge != null) {
+            Shaderc.shaderc_compile_options_set_include_callbacks(
+                opts,
+                includeBridge.resolveCallback,
+                includeBridge.releaseCallback,
+                MemoryUtil.NULL
+            )
+        }
+
+        // Encode onto the heap, not LWJGL's MemoryStack. The CharSequence
+        // overloads of shaderc_compile_into_spv stack-allocate their arguments,
+        // and that stack defaults to 64KB — so a large *generated* shader (a
+        // RectSL scene lowered to an SDF, say) fails with a bare "Out of stack
+        // space." that reads like a compiler bug rather than a buffer limit.
+        var sourceBuffer: ByteBuffer? = null
+        var nameBuffer: ByteBuffer? = null
+        var entryBuffer: ByteBuffer? = null
+        try {
+            if (Options.logShadercSource) {
+                logShadercSource(source, shaderKind)
+            }
+
+            // The source is passed with an explicit length, so a NUL terminator
+            // would be read as part of the program; the two names are ordinary C
+            // strings and do need one.
+            sourceBuffer = MemoryUtil.memUTF8(source.sourceText, false)
+            nameBuffer = MemoryUtil.memUTF8(source.sourceName, true)
+            entryBuffer = MemoryUtil.memUTF8("main", true)
+
+            val result = Shaderc.shaderc_compile_into_spv(
+                compiler,
+                sourceBuffer,
+                shaderKind.kind,
+                nameBuffer,
+                entryBuffer,
+                opts
+            )
+
+            if (result == MemoryUtil.NULL) {
+                throw CompilerError("Failed to compile shader ${source.sourceName} into SPIR-V")
+            }
+
+            if (Shaderc.shaderc_result_get_compilation_status(result) != Shaderc.shaderc_compilation_status_success) {
+                lprintln("error,graphics", "Failed to compile shader ${source.sourceName} into SPIR-V: error is")
+                lprintln("error,graphics", Shaderc.shaderc_result_get_error_message(result))
+                throw CompilerError(Shaderc.shaderc_result_get_error_message(result)?:"")
+            }
+
+            val res = SPIRV(result, Shaderc.shaderc_result_get_bytes(result))
+            lprintln("info,graphics", "compiled, got results $res ${res.bytecode()}")
+            return res
+        } finally {
+            sourceBuffer?.let(MemoryUtil::memFree)
+            nameBuffer?.let(MemoryUtil::memFree)
+            entryBuffer?.let(MemoryUtil::memFree)
+            includeBridge?.free()
+            Shaderc.shaderc_compile_options_release(opts)
+        }
+    }
+
+    private fun logShadercSource(source: ShaderCompileSource, shaderKind: ShaderKind) {
+        lprintln("debug,graphics", buildString {
+            appendLine(
+                "GLSL source sent to shaderc: ${source.sourceName} " +
+                    "kind=${shaderKind.name} chars=${source.sourceText.length}"
+            )
+            appendLine("----- BEGIN GLSL ${source.sourceName} -----")
+            append(lineNumberedShaderSource(source.sourceText))
+            if (!endsWith('\n')) appendLine()
+            appendLine("----- END GLSL ${source.sourceName} -----")
+        })
+    }
+
+    private fun lineNumberedShaderSource(sourceText: String): String {
+        if (sourceText.isEmpty()) return "1 | "
+        val lines = sourceText.split('\n')
+        val renderedLineCount = if (sourceText.endsWith('\n')) lines.size - 1 else lines.size
+        val width = renderedLineCount.coerceAtLeast(1).toString().length
+        return buildString {
+            lines.forEachIndexed { index, line ->
+                if (index == lines.lastIndex && sourceText.endsWith('\n')) return@forEachIndexed
+                append((index + 1).toString().padStart(width))
+                append(" | ")
+                append(line)
+                if (index != lines.lastIndex || sourceText.endsWith('\n')) appendLine()
+            }
+        }
+    }
+
+    private data class NativeIncludeAllocation(
+        val result: ShadercIncludeResult,
+        val sourceName: ByteBuffer?,
+        val content: ByteBuffer?
+    ) {
+        fun free() {
+            sourceName?.let(MemoryUtil::memFree)
+            content?.let(MemoryUtil::memFree)
+            result.free()
+        }
+    }
+
+    private class NativeShadercIncludeBridge(
+        private val resolver: ShaderIncludeResolver
+    ) : NativeResource {
+        private val allocations = ConcurrentHashMap<Long, NativeIncludeAllocation>()
+
+        val resolveCallback = ShadercIncludeResolve.create { _, requestedSource, type, requestingSource, includeDepth ->
+            val request = ShaderIncludeRequest(
+                requestedPath = MemoryUtil.memUTF8(requestedSource),
+                includeType = ShaderIncludeType.fromShaderc(type),
+                requestingSource = if (requestingSource == MemoryUtil.NULL) null else MemoryUtil.memUTF8(requestingSource),
+                includeDepth = includeDepth
+            )
+
+            val resolution: ShaderIncludeResolution? = try {
+                resolver.resolve(request)
+            } catch (t: Throwable) {
+                return@create failedInclude(request, t.message ?: "Unable to resolve include '${request.requestedPath}'.")
+            }
+
+            if (resolution == null) {
+                failedInclude(request, unresolvedIncludeMessage(request))
+            } else {
+                createIncludeResult(resolution.resolvedPath, resolution.source)
+            }
+        }
+
+        val releaseCallback = ShadercIncludeResultRelease.create { _, includeResult ->
+            allocations.remove(includeResult)?.free()
+        }
+
+        override fun free() {
+            allocations.values.forEach { it.free() }
+            allocations.clear()
+            resolveCallback.free()
+            releaseCallback.free()
+        }
+
+        private fun failedInclude(request: ShaderIncludeRequest, message: String): Long {
+            return createIncludeResult("", message)
+        }
+
+        private fun unresolvedIncludeMessage(request: ShaderIncludeRequest): String {
+            val source = request.requestingSource?.takeIf { it.isNotBlank() } ?: "<root>"
+            return "Unable to resolve include '${request.requestedPath}' from '$source'."
+        }
+
+        private fun createIncludeResult(sourceName: String, content: String): Long {
+            val result = ShadercIncludeResult.calloc()
+            val sourceNameBuffer = MemoryUtil.memUTF8(sourceName, true)
+            val contentBuffer = MemoryUtil.memUTF8(content, true)
+            result.source_name(sourceNameBuffer)
+            result.content(contentBuffer)
+            ShadercIncludeResult.nsource_name_length(result.address(), (sourceNameBuffer.remaining() - 1).coerceAtLeast(0).toLong())
+            ShadercIncludeResult.ncontent_length(result.address(), (contentBuffer.remaining() - 1).coerceAtLeast(0).toLong())
+            val address = result.address()
+            allocations[address] = NativeIncludeAllocation(result, sourceNameBuffer, contentBuffer)
+            return address
+        }
+    }
+
+    class SPIRV(private val handle: Long, private var bytecode: ByteBuffer?) : NativeResource {
+        fun bytecode(): ByteBuffer? {
+            bytecode?.position(0)
+            return bytecode
+        }
+
+        override fun free() {
+            if (handle != 0L) {
+                Shaderc.shaderc_result_release(handle)
+            }
+            bytecode = null // Help the GC
+        }
+    }
+}

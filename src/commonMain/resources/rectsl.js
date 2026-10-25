@@ -3,7 +3,7 @@
 //
 // This is the single source of truth for the RectSL editor extension. It is served as a
 // static AMD module (loaded via bithero/rectsl in bootstrapMonaco.js) in the browser, and
-// is also read verbatim by afield.rectsl.RectSLEditorExtension for the node-probe smoke
+// is also read verbatim by afield.lang.rectsl.RectSLEditorExtension for the node-probe smoke
 // test. The wrapper below supports both worlds: it registers an AMD module when a Monaco
 // loader is present, and otherwise self-installs immediately (as it does under bare eval).
 (function () {
@@ -186,7 +186,7 @@
     ["colc", wordDoc("-- number", "Centered column col-(cols-1)/2 inside grid.")],
     ["rowc", wordDoc("-- number", "Centered row row-(rows-1)/2 inside grid.")],
 
-    ["ease", wordDoc("x name -- x", "Shape a scalar/track through a named Penner easing (quad-out, cubic-in-out, back-out, elastic-in-out, bounce-out, sine-in-out, expo-out, circ-in-out, smoothstep, smootherstep, ...). Borrowed from afield.stdlib.Functions.")],
+    ["ease", wordDoc("x name -- x", "Shape a scalar/track through a named Penner easing (quad-out, cubic-in-out, back-out, elastic-in-out, bounce-out, sine-in-out, expo-out, circ-in-out, smoothstep, smootherstep, ...). Borrowed from afield.math.functions.Functions.")],
     ["gaussian", wordDoc("-- Fn", "A bell-curve distribution over [0,1] centered at 0.5. Sample at the array fraction f.")],
     ["noise", wordDoc("seed -- Fn", "A seeded value-noise curve over [0,1] — deterministic, reproducible scatter.")],
     ["fbm", wordDoc("seed -- Fn", "A seeded fractal (fBm) noise curve over [0,1] — richer multi-octave scatter.")],

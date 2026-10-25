@@ -52,13 +52,13 @@ Three ideas hold it together:
 **Files.** `settings.gradle.kts`, a single `build.gradle.kts` (4161 lines), `gradle.properties`.
 No `buildSrc`, no version catalog. Gradle 9.5.1 through the wrapper, which the
 `me.filippov.gradle.jvm.wrapper` plugin patches to fetch Corretto 17 into `~/.field4/gradle-jvm`
-to run Gradle itself. Field's own toolchain is pinned GraalVM 25.0.2 (`fieldLauncher()` pins the
+to run Gradle itself. Field's own toolchain is pinned GraalVM Community 25.4 (graal 25.4.4.1.1, JDK 25.0.4.1.1; `fieldLauncher()` pins the
 vendor for every launcher, because `-XX:+EnableJVMCI` kills a non-Graal JDK 25 before `main()`);
 `field.sh` downloads and checksums that exact release into `~/.field4/toolchains`.
 
 **Targets.** Kotlin Multiplatform 2.5.0-Beta1:
 
-- `jvm` (`mainClass = afield.Server`, `jvmTarget` 24, `-Xcollection-literals`).
+- `jvm` (`mainClass = afield.app.server.Server`, `jvmTarget` 24, `-Xcollection-literals`).
 - `js` (ES modules, webpack output `afield.mjs`, copied into the jar's `static/` by `jvmJar`).
   Two workarounds keep incremental JS builds alive: `-Xklib-ir-inliner=disabled`
   (`dev_docs/KOTLIN_2_5_JS_IC_INLINER.md`) and a sweep that deletes Finder `.DS_Store` files from
@@ -297,7 +297,7 @@ currently empty.**
 file, and fails on new files, modified files, and files rewritten with identical bytes. Regenerators
 opt in explicitly through nineteen escape variables (`AFIELD_DOCS_ASSETS`, `FIELD_CITATIONS_WRITE`,
 `AFIELD_HARVEST_WRITE`, `AFIELD_WRITE_DERIVED_COUNTS`, `AFIELD_PROOF_DIR`, ...); tests write proofs
-through `proofDir()` / `docsAssetDir()` in `src/jvmTest/kotlin/afield/TestProofDir.kt`.
+through `proofDir()` / `docsAssetDir()` in `src/jvmTest/kotlin/afield/tools/docs/TestProofDir.kt`.
 
 ### The smoke catalog
 
@@ -318,7 +318,7 @@ reaps stale Field JVMs that belong to this checkout, prewarms one `runJvm` per r
 each graphics-context test), and orders an unfiltered run unseen-first, then least recently run
 (`build/field-tests/coverage-state.json`). Exit 1 means failures, 2 means the environment was
 incomplete (not run, interrupted). `jvm-main` tests go through `run-jvm-main`: the server spawns
-`java <requiredAgentJvmArgs()> afield.AgentJvmMainLauncher <entry>`, and the launcher refuses
+`java <requiredAgentJvmArgs()> afield.tools.automation.AgentJvmMainLauncher <entry>`, and the launcher refuses
 (exit 4) if the required JVM arguments did not take effect.
 
 ### Python and JS tool tests
@@ -355,7 +355,7 @@ Agents drive Field through the same protocol as the browser. References:
 ### `tools/field_backdoor.py`
 
 A WebSocket client on `wss://localhost:<port>/ws` speaking the frontend's JSON messages plus 23
-`agent-*` handlers in `src/jvmMain/kotlin/afield/agent_backdoor.kt` (installed in every Field via
+`agent-*` handlers in `src/jvmMain/kotlin/afield/app/server/agent_backdoor.kt` (installed in every Field via
 the `@RunsAt(installHandlers)` scan; the server binds to loopback). It acknowledges output messages
 the way the frontend does, so a long session keeps receiving output under back-pressure.
 
@@ -511,7 +511,7 @@ panel that feeds [the revision pass](#docs-revision-pass).
 
 Two formats with two jobs: `metadata.edn` is what a document *is*; operation-transcript YAML is a
 script that builds, edits and runs one (`dev_docs/agents/OPERATION_TRANSCRIPT.md`). The engine is
-`object OperationTranscript` in `src/jvmMain/kotlin/afield/operation_transcript.kt`.
+`object OperationTranscript` in `src/jvmMain/kotlin/afield/tools/automation/operation_transcript.kt`.
 
 **Verbs.** `create`, `edit`, `move`, `connect`/`disconnect` (with `nested`), `delete`, `execute`,
 `launch`, `stop`, `wait`, `await` (pump frames until nothing is executing), `save`, and `drive` (a

@@ -1,5 +1,5 @@
 """Pins the line protocol of `python/fieldvoice/whisper_worker.py`, the process
-`afield.ai.core.VoiceTranscriber` talks to for AI4 push-to-talk.
+`afield.ai.models.VoiceTranscriber` talks to for AI4 push-to-talk.
 
 No model is loaded: a stub `mlx_whisper` package placed first on PYTHONPATH stands in for the
 backend, echoing what it was given, so the test checks the protocol (ready line, one reply per

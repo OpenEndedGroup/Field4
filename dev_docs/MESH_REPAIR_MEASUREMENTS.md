@@ -5,7 +5,7 @@ disk and into a Boolean. This is the measurement behind the one claim that page 
 that `repairToSolid()` fixes open boundaries and non-manifold edges, and refuses rather than
 guesses — plus the residuals that claim hides.
 
-Owner: `src/jvmTest/kotlin/afield/stdlib/MeshFromDiskTest.kt`. Every number below is asserted
+Owner: `src/jvmTest/kotlin/afield/geometry/mesh/MeshFromDiskTest.kt`. Every number below is asserted
 there as an exact value, not printed.
 
 ## How the table is built

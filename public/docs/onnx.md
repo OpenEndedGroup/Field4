@@ -1,6 +1,6 @@
 # Depth and CLIP: neural vision in a box
 
-`afield.onnx` binds two pretrained vision models. Depth Anything V2 Small reads one photograph and
+`afield.ai.inference.onnx` binds two pretrained vision models. Depth Anything V2 Small reads one photograph and
 predicts how far away everything in it is; CLIP embeds images and text into a shared 512-dimensional
 space, so a picture can be scored against a written prompt with no training and no label set.
 
@@ -12,10 +12,11 @@ webcam frame in one box.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/onnx/overview.png" wait="30" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.onnx.*
-:::fold load a photograph that ships with Field, and pack it as the RGBA8 bytes both models read
+import afield.ai.inference.onnx.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+
+:::fold load a photograph that ships with Field, and pack it as the RGBA8 bytes both models read
 
 val photo = imgFromFile("public/docs/assets/vision/fline-viewer.jpg", 3).scaleBy(0.45)
 
@@ -37,11 +38,12 @@ val rgbaBytes = toRgba8(photo)
 // How far away is everything? — one image in, one single-channel map out.
 val depth = DepthAnything.forSource(photo.width, photo.height)
 depth.infer(rgbaBytes, photo.width, photo.height)
-depth.depthFp16                       // ready to upload as VK_FORMAT_R16_SFLOAT
+depth.depthFp16 // ready to upload as VK_FORMAT_R16_SFLOAT
 
 // What is this a picture of? — no training, no labels, just prompts.
-val prompts = ClipText.encodeAll(listOf("an empty room", "a person at a desk"))
-val best = ClipImage().encode(rgbaBytes, photo.width, photo.height).best(prompts)!!   // the better-matching label, and its share
+val prompts = ClipText.encodeAll(["an empty room", "a person at a desk"])
+val best =
+    ClipImage().encode(rgbaBytes, photo.width, photo.height).best(prompts)!! // the better-matching label, and its share
 :::fold show both answers
 val depthMap = Img(depth.width, depth.height, 1, FloatArray(depth.width * depth.height) { depth.depthRaw.get(it) })
 showImgGrid(
@@ -98,7 +100,7 @@ Field) at two input sizes, and shows both depth maps beside the source.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/onnx/depth.png" wait="12" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.onnx.*
+import afield.ai.inference.onnx.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -106,7 +108,7 @@ import java.nio.ByteOrder
 val photo = imgFromFile("public/docs/assets/vision/fline-viewer.jpg", 3).scaleBy(0.45)
 
 // Both models want tightly packed RGBA8, and an Img is interleaved floats in 0..1 — so this is the
-// whole adapter. Nothing in afield.onnx knows about Img; it asks for bytes and a size.
+// whole adapter. Nothing in afield.ai.inference.onnx knows about Img; it asks for bytes and a size.
 fun toRgba8(img: Img): ByteBuffer {
     val out = ByteBuffer.allocateDirect(img.width * img.height * 4).order(ByteOrder.nativeOrder())
     for (p in 0 until img.pixelCount) {
@@ -121,9 +123,11 @@ fun toRgba8(img: Img): ByteBuffer {
 
 val rgba = toRgba8(photo)
 
-// Run the same frame at two sizes. sizeFor snaps to multiples of 14 (the backbone is ViT-S/14) and
-// preserves aspect. adaptation = 1f means "normalise against this frame's own range", which is what
-// a single still wants; a video stream wants the default 0.1f so the picture does not flicker.
+/*
+Run the same frame at two sizes. sizeFor snaps to multiples of 14 (the backbone is ViT-S/14) and
+preserves aspect. adaptation = 1f means "normalise against this frame's own range", which is what
+a single still wants; a video stream wants the default 0.1f so the picture does not flicker.
+*/
 fun runAt(longestSide: Int): Triple<DepthAnything, DepthStats, Img> {
     val (w, h) = DepthAnything.sizeFor(photo.width, photo.height, longestSide)
     val d = DepthAnything(w, h, adaptation = 1f)
@@ -145,9 +149,11 @@ println("${caption("@266", big, bigStats)}  ${big.lastInferenceMs}ms on ${big.ac
 println("${caption("@126", small, smallStats)}  ${small.lastInferenceMs}ms on ${small.activeProvider}")
 println("window settled=${bigStats.settled}; larger raw value = NEARER; the units are arbitrary")
 
-// Both maps are upscaled to the source size so the panels are comparable by eye, and each is
-// colour-mapped against its OWN range — which is exactly why the two look similarly bright despite
-// the ranges in their captions being completely different.
+/*
+Both maps are upscaled to the source size so the panels are comparable by eye, and each is
+colour-mapped against its OWN range — which is exactly why the two look similarly bright despite
+the ranges in their captions being completely different.
+*/
 showImgGrid(
     "source ${photo.width}x${photo.height} (bright = near, below)" to photo,
     caption("@266", big, bigStats) to bigMap.colormap("inferno").resize(photo.width, photo.height),
@@ -207,12 +213,16 @@ inference on its own thread. The renderer never waits; it draws the most recent 
 is a few frames old. The sketch below sets one up and feeds it webcam frames:
 
 ```diffstatic {data-lang=kotlin}
-// once
+// Construct once per box run; Stop or rerun closes its worker thread.
 val depth = DepthAnythingWorker(width = 266, height = 266)
-val tex = StreamingTexture(depth.depthFp16, depth.width, depth.height,
-                           imageFormat = VK10.VK_FORMAT_R16_SFLOAT)
+val tex = StreamingTexture(
+    depth.depthFp16,
+    depth.width,
+    depth.height,
+    imageFormat = VK10.VK_FORMAT_R16_SFLOAT,
+)
 // per frame
-depth.submit(webcam.frameBuffer, 640, 480)   // returns immediately
+depth.submit(webcam.frameBuffer, 640, 480) // returns immediately
 if (depth.consume()) tex.recordUpload(commandBuffer)
 ```
 
@@ -244,7 +254,7 @@ projection head has to be reimplemented here.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/onnx/clip.png" wait="30" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.onnx.*
+import afield.ai.inference.onnx.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -266,7 +276,7 @@ val car = imgFromFile("public/docs/assets/fabricate-toy-car-donmccurdy-reference
 
 // Encode the prompts ONCE, into a val. That is the whole discipline: the text tower is then simply
 // not in the per-frame path, and there is nothing cleverer to do about it than this.
-val prompts = listOf("an empty living room", "a shelf of books", "a car", "red cloth", "a bowl of soup")
+val prompts = ["an empty living room", "a shelf of books", "a car", "red cloth", "a bowl of soup"]
 val text: Map<String, ClipVector> = ClipText.encodeAll(prompts)
 
 val encoder = ClipImage()
@@ -276,9 +286,11 @@ val carVec = encoder.encode(toRgba8(car), car.width, car.height)
 // A text-text cosine for scale, so the modality gap below is visible rather than asserted.
 val textText = clipEncode("storm").cosine(clipEncode("calm"))
 
-// A semantic axis: the unit direction from one prompt towards another. Projecting an image onto it
-// is a continuous knob whose units are meaning rather than pixels. What matters is not the absolute
-// value — same modality gap — but that the two images order correctly along it.
+/*
+A semantic axis: the unit direction from one prompt towards another. Projecting an image onto it
+is a continuous knob whose units are meaning rather than pixels. What matters is not the absolute
+value — same modality gap — but that the two images order correctly along it.
+*/
 val axis = text.getValue("an empty living room") axisTo text.getValue("a car")
 val roomOnAxis = roomVec.project(axis)
 val carOnAxis = carVec.project(axis)
@@ -396,7 +408,7 @@ So depth alone costs about 99 MB and CLIP costs about 608<!--derive: 254.1+351.7
 `OnnxModel.isPresent` is a cheap boolean if you want to branch on it. `Clip.TOKENIZER` is fetched
 the same way.
 
-`afield.onnx` needs nothing but network access on first run: the ONNX Runtime native library ships
+`afield.ai.inference.onnx` needs nothing but network access on first run: the ONNX Runtime native library ships
 inside the JNI jar.
 
 ## CoreML, fp16 and thread pinning
@@ -463,9 +475,10 @@ The opening snippet, the depth figure and the CLIP figure run as shown. The sess
 and the worker sketch are not run: the worker needs a Vulkan device and a webcam, so treat it as a
 starting point to finish rather than code to paste.
 
-??? aside "Snippet coverage"
+??? aside "Agents: snippet coverage"
     `StreamingTexture(...)` and `recordUpload(...)` are the only calls on this page that nothing in
-    the repository exercises. `dev_docs/DOCS_PAGE_SNIPPET_COVERAGE.md` has the block-by-block census.
+    the repository exercises. [`dev_docs/DOCS_PAGE_SNIPPET_COVERAGE.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/DOCS_PAGE_SNIPPET_COVERAGE.md) has the block-by-block census.
+
 ## Reference
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
@@ -499,7 +512,7 @@ starting point to finish rather than code to paste.
 
 - [Imaging and computer vision](imaging_examples.md) — `Img`, and everything you would do to a depth
   map once you have one: colour maps, gradients, thresholds, contours.
-- [afield.four graphics](afield_four_graphics.md) — `StreamingTexture` and the Vulkan side of getting
+- [Field 4 graphics](afield_four_graphics.md) — `StreamingTexture` and the Vulkan side of getting
   an `R16_SFLOAT` map onto the GPU.
 - [`onnx_webcam_live`](agent_transcripts.md#onnx_webcam_live): a starting point running both models
   on one webcam frame in a single box.

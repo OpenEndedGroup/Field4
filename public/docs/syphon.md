@@ -2,7 +2,7 @@
 
 [Syphon](https://syphon.info) is how video applications on a Mac hand frames to each other without
 encoding them: Resolume, TouchDesigner, MadMapper, VDMX, Max, OBS (through its Syphon source) and
-many more publish and receive it. Field joins in through `afield.syphon`: a box can publish
+many more publish and receive it. Field joins in through `afield.io.syphon`: a box can publish
 pictures for any of those to receive, and can receive what they publish.
 
 Syphon is macOS-only, and Field reaches it through a small Objective-C library that is not built by
@@ -44,7 +44,7 @@ To publish what a Vulkan render target draws, have the server follow the target:
 
 ```diffstatic {data-lang=kotlin}
 val out = syphonServer("Field render")
-out.follow(target)          // every frame target renders, until out.stopFollowing()
+out.follow(target) // every frame target renders, until out.stopFollowing()
 ```
 
 `follow` reads each frame back from the GPU once its work has finished and passes it to Syphon,
@@ -56,7 +56,7 @@ When the box is under a renderer, `out.followOnGpu(target)` skips the read-back:
 GPU, on the same command buffer that drew it, into an IOSurface (the macOS shared image Syphon
 passes between applications). Nothing is read back to the CPU. It needs a `B8G8R8A8` target (the
 default) and a driver with `VK_EXT_external_memory_host`, which both drivers Field uses on Apple
-silicon have. Call it after the target is in the renderer's list.
+silicon have.
 
 ## Receiving
 
@@ -110,5 +110,5 @@ name in the third box to receive another application.
     values, then the probe publishes it and Field asserts them. Orientation is part of what it pins:
     row 0 is the top in both directions. Syphon's discovery rides on macOS distributed
     notifications, which arrive on the main run loop; Field's main thread runs Field's own loop, so
-    `afield.syphon` turns the run loop once per Field frame. Without that, Field's servers were seen
+    `afield.io.syphon` turns the run loop once per Field frame. Without that, Field's servers were seen
     only by clients that were already listening when they started.

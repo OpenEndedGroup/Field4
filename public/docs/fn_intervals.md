@@ -26,12 +26,15 @@ val range = f.certifiedRange(0.0, 6.0)
 // A yes/no question with the same guarantee.
 val claim = f.certifiedNeverExceeds(0.42, 0.0, 6.0)
 
-display("answers", Table(listOf("question", "answer"), title = "saw + a 0.5 ms bump on [0, 6]")
-    .row("largest of 1200 samples", sampled)
-    .row("f.enclose(0, 6)", "[${once.lo}, ${once.hi}]")
-    .row("certifiedRange: max reached", "${range.max!!.value} at x = ${range.max!!.witness}")
-    .row("certifiedRange: max proven ≤", range.max!!.bound)
-    .row("certifiedNeverExceeds(0.42)", "${claim.kind} at x = ${claim.witness}"))
+display(
+    "answers",
+    Table(["question", "answer"], title = "saw + a 0.5 ms bump on [0, 6]")
+        .row("largest of 1200 samples", sampled)
+        .row("f.enclose(0, 6)", "[${once.lo}, ${once.hi}]")
+        .row("certifiedRange: max reached", "${range.max!!.value} at x = ${range.max!!.witness}")
+        .row("certifiedRange: max proven ≤", range.max!!.bound)
+        .row("certifiedNeverExceeds(0.42)", "${claim.kind} at x = ${claim.witness}"),
+)
 ```
 
 The samples say the function peaks at 0.4. The single enclosure says the peak is no higher than about 1.0, which is true but not useful. `certifiedRange` finds the bump at `x = 2.31` and pins its height between a value it actually computed there and a bound it proved, less than a millionth apart. `certifiedNeverExceeds(0.42)` is refuted, and the result carries the `x` that breaks the claim.
@@ -76,20 +79,28 @@ The triangle needs one more step. Its shape is `if (t < 0.5) 2t else 2 - 2t`. Wh
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fn_intervals/oscillators.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1100" timeout="120" name="fn-intervals-oscillators"}
 :::static
 val cases = with(Functions) {
-    listOf(
+    [
         "saw(0.5)" to saw(0.5),
         "triangle(0.5)" to triangle(0.5),
         "square(0.5, duty = 0.3)" to square(0.5, duty = 0.3),
         "saw + square * triangle" to (saw(1.0) + square(0.25) * triangle(2.0)),
-        "pulseTrain, jittered" to pulseTrain(c(0.5, Functions.Domain.ALL), duty = c(0.4, Functions.Domain.ALL),
-            rise = c(0.05, Functions.Domain.ALL), jitter = c(0.3, Functions.Domain.ALL), domain = Functions.Domain.ALL),
+        "pulseTrain, jittered" to
+            pulseTrain(
+                c(0.5, Functions.Domain.ALL),
+                duty = c(0.4, Functions.Domain.ALL),
+                rise = c(0.05, Functions.Domain.ALL),
+                jitter = c(0.3, Functions.Domain.ALL),
+                domain = Functions.Domain.ALL,
+            ),
         "saw, eased BOUNCE_OUT" to saw(1.0, amplitude = 0.5, offset = 0.5).ease(Functions.Easing.BOUNCE_OUT),
         "valueNoise(1, 3)" to valueNoise(1L, 3.0),
         "fn { x -> x * x }" to fn(0.0..100.0, "lambda") { x -> x * x },
-    )
+    ]
 }
-val table = Table(listOf("function", "one enclosure on [-17.3, 83.9]", "refused because"),
-    title = "One-shot bounds across about two hundred periods")
+val table = Table(
+    ["function", "one enclosure on [-17.3, 83.9]", "refused because"],
+    title = "One-shot bounds across about two hundred periods",
+)
 for ((name, f) in cases) {
     val e = f.enclose(-17.3, 83.9)
     table.row(name, if (e.certified) "[${e.lo}, ${e.hi}]" else "-", e.refusal ?: "")
@@ -119,5 +130,5 @@ Refused, by name:
 !!! note "What exactly is guaranteed"
     The bound covers the `Double` values `f.eval(x)` returns for every double `x` in `[a, b]`: the numbers a plot or a sampler would see, not the real-number function they approximate. Addition, multiplication and division need no extra widening for this, because their rounding is monotone. `sin`, `exp` and the other library functions are widened by four ulps at each end, since the JVM only promises they are accurate to within a couple of ulps. A value that may be NaN is reported as `maybeNaN`, not folded into the range.
 
-??? aside "Where this lives"
-    The walker is `evalFormulaInterval` in [`FnInterval.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/FnInterval.kt), the third walker over the `FnExpr` formulas in `autodiff_formula.kt` (the other two are the plain `Double` evaluator and reverse-mode autodiff). The fractional-part rule and the branch narrowing are both recognised structurally in that walker, not per op, so a new formula that uses either shape gets the tight bound without extra code. `FnIntervalTest` checks containment over a generated population of several hundred functions, the three generators among them, and `FnIntervalPictureTest` checks that every box the picture draws is a real enclosure. The design note is `dev_docs/FN_INTERVAL.md`.
+??? aside "Agents: where this lives"
+    The walker is `evalFormulaInterval` in [`FnInterval.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/math/functions/FnInterval.kt), the third walker over the `FnExpr` formulas in [`autodiff_formula.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/math/autodiff/autodiff_formula.kt) (the other two are the plain `Double` evaluator and reverse-mode autodiff). The fractional-part rule and the branch narrowing are both recognised structurally in that walker, not per op, so a new formula that uses either shape gets the tight bound without extra code. `FnIntervalTest` checks containment over a generated population of several hundred functions, the three generators among them, and `FnIntervalPictureTest` checks that every box the picture draws is a real enclosure. The design note is [`dev_docs/FN_INTERVAL.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/FN_INTERVAL.md).

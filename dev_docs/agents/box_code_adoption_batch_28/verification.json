@@ -1,0 +1,11 @@
+{
+  "baseline": "13f9020ce",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/ai4_paint_studio.yaml",
+      "kotlinBodies": 2,
+      "collectionConversions": 4,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

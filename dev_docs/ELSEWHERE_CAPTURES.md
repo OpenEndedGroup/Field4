@@ -19,6 +19,40 @@ against their content-addressed asset IDs and checks MuScriptor note bounds.
 The Pat source and sample-use assertions are in
 `tools/docs_capture_elsewhere/render_pat.kt`.
 
+## Beat and pitch board, 2026-10-17
+
+Handoff `27cd487c-5423-4ee2-b346-26d360c6554e` replaces the removed synthetic
+`audio_ai_analysis` figure. The page's actual Nancy 18–42 s workflow now submits,
+monitors and awaits all three durable jobs through Field. Its retained runner
+capture shows the source waveform, beat/onset/tempo/confidence lanes, pYIN F0 and
+voicing, and Basic Pitch notes and activation lanes. It is reused by the visualizers
+page and Starting Point entry. The complete image was visually checked.
+
+The API and analysis worker were started from `/home/marc/temp/music/scripts/`,
+with `CUDA_VISIBLE_DEVICES` empty. No GPU inference was used. Durable results are
+from librosa 0.11.0 and Basic Pitch 0.4.0. The source asset is
+`sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973`;
+all three results name precisely start 18 s, duration 24 s. Basic Pitch's bounded
+preview contains 90 notes; the beat result has four tempo scales.
+
+`uv run python tools/export_audio_analysis_capture.py` exports previews and
+provenance to `public/docs/assets/audio_ai_analysis/`, including a SHA-256 manifest.
+The exporter checks the content-addressed full-resolution NPZ bytes as well as
+each preview's operation and duration. Source audio is not copied into the repo.
+The Starting Point gallery now loads these real previews. Its code and all three
+panels were verified with both the API and analysis worker stopped.
+
+Recapture with the real API and analysis worker running:
+
+```bash
+FIELD_DOCS_CAPTURE_PROFILES=linux-nvidia FIELD_DOCS_RUNNER_MODE=always \
+  uv run --project . --group docs python tools/build_zensical_docs.py --page audio_ai_analysis
+uv run python tools/export_audio_analysis_capture.py
+./gradlew regenerateAgentTranscriptStartingPoints checkAgentDemos checkBoxIdioms checkAgentTranscriptIndex
+```
+
+## Original audio exports
+
 - **EnCodec:** the committed Faust eight-voice chord, 4.25 seconds; real 32 kHz
   model input, native reconstruction, four codebooks and measured errors. Both
   WAVs are playable from the docs page. AudioCraft and checkpoint revisions remain

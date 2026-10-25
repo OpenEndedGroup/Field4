@@ -1,12 +1,13 @@
 package afield.examples.four
 
-import afield.Box
-import afield.KotlinInterface
-import afield.preamble
-import afield.stdlib.applyInsertToPreamble
-import afield.stdlib.fragment
-import afield.stdlib.macro_moduleHereWithDefaultShaders
-import afield.stdlib.vertex
+import afield.document.graph.Box
+import afield.runtime.kotlin.KotlinInterface
+import afield.document.graph.preamble
+import afield.graphics.shader.applyInsertToPreamble
+import afield.data.graph.fragment
+import afield.graphics.shader.fragment
+import afield.graphics.shader.macro_moduleHereWithDefaultShaders
+import afield.graphics.shader.vertex
 
 class ShaderTypedStructurePreambleSmokeTest {
     companion object {
@@ -100,7 +101,7 @@ class ShaderTypedStructurePreambleSmokeTest {
             require(preamble.contains("class KaliParamsBuffer(")) { preamble }
             require(preamble.contains("val P: Params")) { preamble }
             require(preamble.contains("val V0: SpatialVar")) { preamble }
-            require(preamble.contains("var noise0 by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()")) { preamble }
+            require(preamble.contains("var noise0 by Structure.FromStructure<afield.math.linalg.Vector4f>()")) { preamble }
             require(preamble.contains("fun KaliParamsBufferByteSize(): Long = 464L")) { preamble }
             require(!preamble.contains("const val byteSize")) { preamble }
             require(preamble.contains("fun HasBuffer.asKaliParamsBuffer(): KaliParamsBuffer")) { preamble }
@@ -138,8 +139,8 @@ class ShaderTypedStructurePreambleSmokeTest {
                     ${insert.preambleAfterImports}
 
                     val typedBufferLayoutSmoke = KaliParamsBuffer().apply {
-                        P.noise0 = afield.stdlib.linalg.Vector4f(1f, 2f, 3f, 4f)
-                        V0.meta0 = afield.stdlib.linalg.Vector4f(5f, 6f, 7f, 8f)
+                        P.noise0 = afield.math.linalg.Vector4f(1f, 2f, 3f, 4f)
+                        V0.meta0 = afield.math.linalg.Vector4f(5f, 6f, 7f, 8f)
                     }
                     val typedBufferNoiseSmoke = typedBufferLayoutSmoke.P.noise0
                     val typedBufferAsHasBufferSmoke: HasBuffer = typedBufferLayoutSmoke

@@ -9,7 +9,7 @@ looked right from the source.
 
 ## The chain, and where it actually breaks
 
-`src/jsMain/kotlin/afield/outputareas.kt:186-193`, the iframe output view:
+`src/jsMain/kotlin/outputareas.kt:186-193`, the iframe output view:
 
 ```kotlin
 iframe.style.height = request.height ?: iframe.style.height.takeIf { it.isNotBlank() } ?: "420px"

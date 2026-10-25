@@ -294,7 +294,7 @@ therefore a docs-only edit cannot inherit a stale JVM-test result.
 ### Tests must not write into the working tree
 
 A test renders into a temp directory and inspects it there. `proofDir()` and
-`docsAssetDir()` in `src/jvmTest/kotlin/afield/TestProofDir.kt` are how; their KDoc
+`docsAssetDir()` in `src/jvmTest/kotlin/afield/tools/docs/TestProofDir.kt` are how; their KDoc
 carries the history.
 
 `checkTestTreeWrites` enforces it. Every `Test` task depends on
@@ -508,7 +508,7 @@ uv run python tools/check_offline_assets.py
 Build and verify a disposable standalone distribution when changing ownership:
 
 ```bash
-./build-offline-docs.sh
+./tools/build-offline-docs.sh
 uv run python tools/check_offline_assets.py --target dist/offline-viewer
 ```
 

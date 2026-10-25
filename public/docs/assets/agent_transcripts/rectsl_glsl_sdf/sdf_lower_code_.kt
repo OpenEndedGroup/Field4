@@ -1,14 +1,17 @@
-// Lower a RectSL scene to a GLSL signed distance field.
-//
-// RectSL is a staged language: the stack VM runs once at compile time, so
-// `array`, `grid`, selections, charts and the {{ }} escapes are all spent
-// before this point. What reaches the GPU is a flat list of rects whose
-// channels are tracks — which is why so little of the language has to be
-// ported. See rectsl_cheatsheet.md, "Lowering to GLSL".
-import afield.rectsl.RectAnimationOracle
-import afield.rectsl.RectSLGlsl
+/*
+Lower a RectSL scene to a GLSL signed distance field.
 
-val rectsl = """
+RectSL is a staged language: the stack VM runs once at compile time, so
+`array`, `grid`, selections, charts and the {{ }} escapes are all spent
+before this point. What reaches the GPU is a flat list of rects whose
+channels are tracks — which is why so little of the language has to be
+ported. See rectsl_cheatsheet.md, "Lowering to GLSL".
+*/
+import afield.lang.rectsl.RectAnimationOracle
+import afield.lang.rectsl.RectSLGlsl
+
+val rectsl =
+    """
 #rectsl
 ->wall 8 5 abstract
 ->duration 4

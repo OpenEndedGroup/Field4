@@ -10,6 +10,6 @@ operations:
       frame: { x: 60, y: 60, w: 160, h: 60 }
       properties:
         code: |
-          // A ring of points, saved three times.
+          // Successive radius values, saved as three source versions.
           val radius = 40.0
           println("radius " + radius)

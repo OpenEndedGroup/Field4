@@ -250,6 +250,14 @@ class TargetVoice(unittest.TestCase):
                     total, 0,
                     f"score_voice no longer fires on a fault Marc named: {quote!r}")
 
+    def test_todo_as_a_noun_or_a_call_is_not_a_plan(self):
+        for text in ("Tag every note that has a TODO in it.", "An unwritten body is `= TODO()`."):
+            with self.subTest(text=text):
+                _t, _w, _e, hits, *_ = self.sv.score(text + "\n")
+                self.assertNotIn("plan-in-docs", hits)
+        _t, _w, _e, hits, *_ = self.sv.score("TODO: wire this up.\n")
+        self.assertIn("plan-in-docs", hits)
+
     def test_plain_documentation_is_silent(self):
         total, _words, _em, hits, _detail, _meas = self.sv.score(CLEAN)
         self.assertEqual(total, 0, f"fired on plain documentation prose: {dict(hits)}")
@@ -333,6 +341,33 @@ class Narrowings(unittest.TestCase):
         # The true sense stays: underscores at word boundaries, and stars anywhere, are still emphasis.
         self.assertEqual(ca.strip_inline("an _emphasised_ word"), "an emphasised word")
         self.assertEqual(ca.strip_inline("a **bold** one"), "a bold one")
+
+    def test_anchor_examples_in_code_spans_are_not_live_links(self):
+        ca = load("check_anchors")
+        with tempfile.TemporaryDirectory() as tmp:
+            page = Path(tmp) / "example.md"
+            page.write_text('Use `[Click me](#custom:example)` or ``a `tick` [label](#literal)``.\n'
+                            '[Real link](#destination) and `[another](#example)`\n')
+            self.assertEqual(ca.links_of(page), [(2, '', 'destination')])
+
+    def test_overview_comparison_keeps_link_labels_and_block_tags(self):
+        checker = load("check_kdoc_mirror")
+        self.assertEqual(checker.undecorate('There is an [apply][KeyframeBrowserProtocol] op.'),
+                         checker.undecorate('There is an `apply` op.'))
+        self.assertEqual(checker._body(['/**', ' * Overview.', ' *', ' * @see Example',
+                                       ' *   continued on this line']),
+                         ['Overview.', '', '@see Example', '  continued on this line'])
+        self.assertEqual(checker._body(['/**', ' * Overview.', ' *', ' * @see Example',
+                                       ' * @return Result']), ['Overview.'])
+
+    def test_file_overview_must_precede_the_first_declaration(self):
+        checker = load("check_kdoc_mirror")
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "Example.kt"
+            source.write_text("package example\nfun first() {}\n/**\n * Member note.\n */\n\nfun second() {}\n")
+            self.assertIsNone(checker.file_overview(source))
+            source.write_text("package example\n/**\n * File overview.\n */\n\nfun first() {}\n")
+            self.assertEqual(["File overview."], checker.file_overview(source))
 
     def test_argument_is_only_a_label_when_it_is_an_argument_for_something(self):
         sv = load("score_voice")

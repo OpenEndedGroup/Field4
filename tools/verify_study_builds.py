@@ -15,9 +15,7 @@ from field_backdoor import FieldBackdoor, SessionLogger, select_automation_port,
 ROOT = Path(__file__).resolve().parents[1]
 
 SOURCE = r'''
-import afield.*
-import afield.stdlib.*
-import afield.manifold.*
+import afield.geometry.solid.manifold.*
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 
 val owner = Box.context.get()!!

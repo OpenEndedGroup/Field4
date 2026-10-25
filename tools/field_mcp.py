@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Field4 MCP server — a thin stdio bridge onto the existing agent backdoor.
 
-This is *not* a new automation surface. It is a stdio Model Context Protocol
-server that translates MCP ``tools/call`` requests into the exact same
-WebSocket messages ``tools/field_backdoor.py`` already speaks (``agent-snapshot``,
+This is a stdio Model Context Protocol server. Document and box calls translate
+into the exact same WebSocket messages ``tools/field_backdoor.py`` already speaks (``agent-snapshot``,
 ``agent-open-document``, ``macro-transcript-command``, ``agent-create-box``,
 ``agent-box-screenshot``). All the semantics — the operation transcript op
 vocabulary, the awaited launch/settle barrier, box output capture — live in the
 JVM (`operation_transcript.kt`) and are reused verbatim. See
 ``dev_docs/agents/OPERATION_TRANSCRIPT.md`` and ``FIELD_BACKDOOR.md``.
+The Electron tab tools address the user's existing WebContentsViews through
+loopback CDP and the tab identity exposed by the app's preload.
 
 Design intent (why a bridge, not a JVM MCP server): the transcript/backdoor
 split (`dev_docs/agents/README.md`) parked in-JVM MCP servers
@@ -39,6 +40,7 @@ import json
 import os
 import re
 import sys
+import time
 import traceback
 import urllib.parse
 from datetime import datetime, timezone
@@ -66,9 +68,19 @@ from field_backdoor import (  # noqa: E402
     make_unverified_ssl_context,
 )
 from verification_runtime import field_instance_info  # noqa: E402
+from field_electron_mcp import (  # noqa: E402
+    ElectronUnavailable,
+    act_on_tab,
+    inspect_tab,
+    list_tabs,
+    public_tab,
+    recent_console,
+    screenshot_tab,
+    select_tab,
+)
 
 SERVER_NAME = "field"
-SERVER_VERSION = "0.1.0"
+SERVER_VERSION = "0.2.0"
 DEFAULT_PROTOCOL_VERSION = "2024-11-05"
 ADHOC_MACRO_NAME = "mcp-adhoc"
 
@@ -374,6 +386,24 @@ class FieldMcpServer:
         result["attachedDocument"] = self.attached_document
         return result
 
+    async def tool_electron_tabs(self, _args: dict[str, Any]) -> dict[str, Any]:
+        return {"tabs": [public_tab(tab) for tab in await list_tabs(self.port)]}
+
+    async def tool_electron_inspect(self, args: dict[str, Any]) -> dict[str, Any]:
+        return await inspect_tab(await select_tab(self.port, args.get("tab")))
+
+    async def tool_electron_act(self, args: dict[str, Any]) -> dict[str, Any]:
+        return await act_on_tab(
+            await select_tab(self.port, args.get("tab")),
+            args["action"], args["target"], args.get("value"),
+        )
+
+    async def tool_electron_screenshot(self, args: dict[str, Any]) -> list[dict[str, Any]]:
+        return await screenshot_tab(await select_tab(self.port, args.get("tab")))
+
+    async def tool_electron_console(self, args: dict[str, Any]) -> dict[str, Any]:
+        return recent_console(await select_tab(self.port, args.get("tab")), int(args.get("limit", 30)))
+
     async def tool_list_open_documents(self, _args: dict[str, Any]) -> dict[str, Any]:
         if not health_check(self.port, self.ssl_context):
             raise McpToolError(f"Field4 is not running on port {self.port}.")
@@ -634,6 +664,39 @@ class FieldMcpServer:
             {"type": "image", "data": base64.b64encode(data).decode("ascii"), "mimeType": "image/png"},
         ]
 
+    async def tool_paint_gesture(self, args: dict[str, Any]) -> list[dict[str, Any]]:
+        """Replay a gesture take (or its keyframe lanes) as a brush stroke: GestureReplayMain via run-jvm-main."""
+        if not args.get("samples") and not args.get("lanes"):
+            raise McpToolError("field_paint_gesture needs 'samples' (rows [t,x,y] or [t,x,y,pressure,tiltX,tiltY,twist]) or 'lanes' ({x, y, pressure?, ...} keyframes).")
+        out_dir = Path(__file__).resolve().parent.parent / ".field-backdoor" / "mcp-paint-gesture"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        stamp = f"{int(time.time() * 1000)}"
+        request = {k: v for k, v in args.items() if v is not None}
+        request["out"] = str(out_dir / f"replay-{stamp}.png")
+        if request.get("bake") is not None and not request.get("lanesOut"):
+            request["lanesOut"] = str(out_dir / f"lanes-{stamp}.json")
+        request_path = out_dir / f"request-{stamp}.json"
+        request_path.write_text(json.dumps(request))
+        # a fresh canvas in a child JVM: no document needs to be open
+        client = await self._ensure_client()
+        payload = await client.run_jvm_main(
+            "afield.graphics.paint.GestureReplayMain", jvm_args=[str(request_path)], timeout=max(self.timeout, 300.0)
+        )
+        stdout = str(payload.get("stdout") or "")
+        try:
+            report = json.loads(stdout[stdout.index("{"):])
+        except ValueError:
+            raise McpToolError(f"GestureReplayMain gave no report (exit {payload.get('exitCode')}): {stdout[-800:]} {payload.get('stderr', '')[-800:]}")
+        if not report.get("ok"):
+            raise McpToolError(f"GestureReplayMain failed: {report.get('error')}")
+        if request.get("lanesOut"):
+            report["lanesOut"] = request["lanesOut"]
+        data = Path(report["out"]).read_bytes()
+        return [
+            {"type": "text", "text": json.dumps(report)},
+            {"type": "image", "data": base64.b64encode(data).decode("ascii"), "mimeType": "image/png"},
+        ]
+
     async def tool_debug_probe(self, args: dict[str, Any]) -> dict[str, Any]:
         symbol = args.get("symbol")
         line = args.get("line")
@@ -688,7 +751,7 @@ class FieldMcpServer:
         else:
             # Source mode: probe any loaded class/file by name. The JDI helper matches
             # on the source basename and/or fully-qualified class name, so a repo path
-            # like "src/jvmMain/kotlin/afield/Server.kt" reduces to "Server.kt".
+            # like "src/jvmMain/kotlin/afield/app/server/Server.kt" reduces to "Server.kt".
             source_name = Path(str(file_arg)).name if file_arg else None
             class_name = str(class_arg) if class_arg else None
             payload = await client.debug_source_probe(
@@ -752,6 +815,11 @@ class FieldMcpServer:
     # ---- MCP protocol -----------------------------------------------------
 
     TOOLS: list[dict[str, Any]] = [
+        {"name": "field_electron_tabs", "description": "List the real Field Electron windows and tabs, including the selected tab, URL, document, and app identity. Does not open a browser copy or change tabs.", "inputSchema": {"type": "object", "properties": {}}},
+        {"name": "field_electron_inspect", "description": "Read the selected live Field Electron tab's visible text, headings, links and labelled controls. Pass tab id or distinctive title to inspect another existing tab.", "inputSchema": {"type": "object", "properties": {"tab": {"type": "string"}}}},
+        {"name": "field_electron_act", "description": "Click or fill one visible labelled control in the live Field Electron tab. Matches a unique accessible label, text or id; returns ambiguity instead of guessing. This changes the user's visible app.", "inputSchema": {"type": "object", "required": ["action", "target"], "properties": {"tab": {"type": "string"}, "action": {"type": "string", "enum": ["click", "fill"]}, "target": {"type": "string"}, "value": {"type": "string"}}}},
+        {"name": "field_electron_screenshot", "description": "Capture the actual live Field Electron tab's viewport as an MCP image. Defaults to the selected tab; no independent browser is opened.", "inputSchema": {"type": "object", "properties": {"tab": {"type": "string"}}}},
+        {"name": "field_electron_console", "description": "Read recent warning and error console messages recorded by the real Field Electron tab.", "inputSchema": {"type": "object", "properties": {"tab": {"type": "string"}, "limit": {"type": "integer", "minimum": 1, "maximum": 100}}}},
         {"name": "field_reply_note", "description": "Append a persistent reply to a geometry annotation for findings, decisions, verification or handoff context. Replies do not resolve or reopen notes. Requires the current note version and geometry revision. Original note, previous replies and images remain intact.", "inputSchema": {"type":"object", "required":["viewId","noteId","text","actor","checkedRevision","expectedVersion"], "properties": {
             "viewId":{"type":"string"}, "noteId":{"type":"string"}, "text":{"type":"string","description":"Durable findings and evidence, up to 16000 characters."},
             "actor":{"type":"string","description":"Person or agent/task name."}, "checkedRevision":{"type":"string"}, "expectedVersion":{"type":"integer"}
@@ -945,6 +1013,42 @@ class FieldMcpServer:
             },
         },
         {
+            "name": "field_paint_gesture",
+            "description": (
+                "Replay a gesture as a brush stroke on a fresh paint canvas and return the painted PNG. "
+                "Give the take a gesture pad records — 'samples', rows [t, x, y] or with a pen "
+                "[t, x, y, pressure, tiltX, tiltY, twist] (seconds; pad units, y up; PointerEvent ranges) — "
+                "or keyframe 'lanes' {x, y, pressure?, tiltX?, tiltY?, twist?}, lists of "
+                "{time, value, type} as the keyframe editor stores them. With 'samples' and 'bake' (a "
+                "tolerance in pad units) the take is first baked into lanes, written to the returned "
+                "'lanesOut' file: edit those and pass them back as 'lanes' to replay the edit. The same "
+                "operation as PaintCanvas.gesture(pad) in a box (afield/paint/gestureReplay.kt); needs the "
+                "paint wrapper (./gradlew buildPaintNative)."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "samples": {"type": "array", "items": {"type": "array", "items": {"type": "number"}}},
+                    "lanes": {"type": "object", "description": "{x: [...], y: [...], pressure?: [...]} keyframes."},
+                    "bake": {"type": "number", "description": "Bake samples into lanes at this tolerance first."},
+                    "xRange": {"type": "array", "items": {"type": "number"}, "description": "Pad x at its left and right edges (default [-1, 1])."},
+                    "yRange": {"type": "array", "items": {"type": "number"}, "description": "Pad y at its bottom and top edges (default [-1, 1])."},
+                    "into": {"type": "array", "items": {"type": "number"}, "description": "[x, y, w, h] on the 1000-wide canvas the pad maps onto."},
+                    "brush": {"type": "string", "description": "BrushKind name, e.g. Round, Filbert, HogFlat (default Round)."},
+                    "brushWidth": {"type": "number"},
+                    "dynamic": {"type": "boolean", "description": "Simulated hairs (default true) or an ordinary brush."},
+                    "color": {"type": "array", "items": {"type": "number"}, "description": "sRGB 0..1 (default umber)."},
+                    "pressure": {"type": "number", "description": "Press used where the take has no pressure (default 0.6)."},
+                    "pressureScale": {"type": "number", "description": "Pen pressure 0..1 times this (default 1.2)."},
+                    "tilt": {"type": "number", "description": "Handle lean, degrees, where the take has no tilt (default 30)."},
+                    "timeScale": {"type": "number", "description": "Stretch the take's timing (default 1)."},
+                    "widthPx": {"type": "integer"},
+                    "sizeMm": {"type": "number", "description": "Physical canvas width (default 200 mm)."},
+                    "seed": {"type": "integer"},
+                },
+            },
+        },
+        {
             "name": "field_debug_probe",
             "description": (
                 "Ask the running JVM what a variable's value is at runtime, and get the answer. "
@@ -954,8 +1058,8 @@ class FieldMcpServer:
                 "type, thread, resolution) plus any in-scope 'scope' symbols.\n\n"
                 "Two targeting modes (give exactly one):\n"
                 "  • Source mode — probe ANYWHERE in loaded src/ code: pass 'file' (e.g. "
-                "'Server.kt' or 'src/jvmMain/kotlin/afield/Server.kt') and/or 'class' (fully "
-                "qualified, e.g. 'afield.Server'), with 'line' the real file line.\n"
+                "'Server.kt' or 'src/jvmMain/kotlin/afield/app/server/Server.kt') and/or 'class' (fully "
+                "qualified, e.g. 'afield.app.server.Server'), with 'line' the real file line.\n"
                 "  • Box mode — probe a running box's snippet: pass 'box' (uid/name), 'line' within "
                 "the box 'property' (default 'code'); run the box first.\n\n"
                 "Preconditions: Field launches with remote debugging on by default (JDWP); the "
@@ -979,7 +1083,7 @@ class FieldMcpServer:
                     },
                     "class": {
                         "type": "string",
-                        "description": "Source mode: fully-qualified class, e.g. 'afield.Server'.",
+                        "description": "Source mode: fully-qualified class, e.g. 'afield.app.server.Server'.",
                     },
                     "box": {
                         "type": "string",
@@ -1015,6 +1119,11 @@ class FieldMcpServer:
     def _dispatch_table(self):
         return {
             "field_status": self.tool_status,
+            "field_electron_tabs": self.tool_electron_tabs,
+            "field_electron_inspect": self.tool_electron_inspect,
+            "field_electron_act": self.tool_electron_act,
+            "field_electron_screenshot": self.tool_electron_screenshot,
+            "field_electron_console": self.tool_electron_console,
             "field_inspect_view": self.tool_inspect_view,
             "field_review_note": self.tool_review_note,
             "field_reply_note": self.tool_reply_note,
@@ -1036,6 +1145,7 @@ class FieldMcpServer:
             "field_transcript_page": self.tool_transcript_page,
             "field_screenshot_box": self.tool_screenshot_box,
             "field_debug_probe": self.tool_debug_probe,
+            "field_paint_gesture": self.tool_paint_gesture,
         }
 
     def _all_tools(self) -> list[dict[str, Any]]:
@@ -1128,6 +1238,8 @@ class FieldMcpServer:
                     content = [{"type": "text", "text": json.dumps(result, indent=2, default=str)}]
                 return self._ok(msg_id, {"content": content, "isError": False})
             except McpToolError as exc:
+                return self._ok(msg_id, {"content": [{"type": "text", "text": str(exc)}], "isError": True})
+            except ElectronUnavailable as exc:
                 return self._ok(msg_id, {"content": [{"type": "text", "text": str(exc)}], "isError": True})
             except BackdoorError as exc:
                 log("backdoor error:", exc)

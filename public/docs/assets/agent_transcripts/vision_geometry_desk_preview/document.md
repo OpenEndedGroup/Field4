@@ -10,17 +10,22 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 <!-- field-box id="agent_vision_geometry_desk_preview" index="0" -->
 
+### Narrative
+
+From `code`
+
+Exactly what you would paste into a `// {{ visionmetal }}` box — a lantern built from
+the shape helpers and a hand-written ring of quads on top.
+
 ```edn [field-box id="agent_vision_geometry_desk_preview" role="properties"]
-{"id" "agent_vision_geometry_desk_preview" "index" 0 "name" "Vision geometry — desk preview" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Vision geometry — desk preview" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_desk_preview_code_.kt" "lines" 70 "characters" 2988 "sha256" "37bb3186068b290e5035be50a2891c4fbd7832f154dee20a1f948fed1f7a5856"}]}
+{"id" "agent_vision_geometry_desk_preview" "index" 0 "name" "Vision geometry — desk preview" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Vision geometry — desk preview" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_desk_preview_code_.kt" "lines" 76 "characters" 3009 "sha256" "dca8c44fc4f5847b2e89a8f301f1ba2656c2fee80b80b0a1e3cda6a035bd5eb7"}]}
 ```
 
 ```kotlin [field-property box="agent_vision_geometry_desk_preview" name="code" path="agent_vision_geometry_desk_preview_code_.kt"]
-import afield.graphics.VisionGeometryPreview
-import afield.graphics.previewVisionGeometry
-
 // Exactly what you would paste into a `// {{ visionmetal }}` box — a lantern built from
 // the shape helpers and a hand-written ring of quads on top.
-val program = """
+val program =
+    """
     // {{ visionmetal uniforms=spin }}
     import kotlin.math.cos
     import kotlin.math.sin
@@ -65,24 +70,32 @@ val program = """
         }
         onFrame { frame -> uniform("spin", frame.time * 0.5) }
     }
-""".trimIndent()
+"""
+        .trimIndent()
 
 // This really compiles the Kotlin above to JavaScript and really runs it; the mesh drawn
 // below is the packed array Metal would have received. It takes a second or two.
 val capture = try {
     previewVisionGeometry(source = program)
 } catch (missing: VisionGeometryPreview.NodeUnavailable) {
-    // The mesh comes from running the box's own compiled program, so without node there
-    // is no mesh at all. Print why instead of a stand-in picture.
-    println("geometry preview needs node on PATH: " + missing.message)
-    null
-}
+        // The mesh comes from running the box's own compiled program, so without node there
+        // is no mesh at all. Print why instead of a stand-in picture.
+        println("geometry preview needs node on PATH: " + missing.message)
+        null
+    }
 
 capture?.mesh()?.let { mesh ->
     println("built " + mesh.vertexCount + " vertices, " + mesh.triangleCount + " triangles")
     val b = mesh.bounds()
-    println("extent " + "%.3f".format(b[3] - b[0]) + " x " + "%.3f".format(b[4] - b[1]) +
-        " x " + "%.3f".format(b[5] - b[2]) + " m")
+    println(
+        "extent " +
+            "%.3f".format(b[3] - b[0]) +
+            " x " +
+            "%.3f".format(b[4] - b[1]) +
+            " x " +
+            "%.3f".format(b[5] - b[2]) +
+            " m",
+    )
     println("winding agreement " + "%.0f".format(mesh.windingAgreement() * 100) + "%")
 }
 ```
@@ -91,18 +104,26 @@ capture?.mesh()?.let { mesh ->
 
 <!-- field-box id="agent_vision_geometry_desk_preview_inverted" index="1" -->
 
+### Narrative
+
+From `code`
+
+A ring of quads whose corners are given in the other order. Every normal still points
+outward; only the winding changed. The head culls back faces, so on the device this is a
+ring you can only see from the inside — and from any normal viewing position, nothing.
+
 ```edn [field-box id="agent_vision_geometry_desk_preview_inverted" role="properties"]
-{"id" "agent_vision_geometry_desk_preview_inverted" "index" 1 "name" "… and the same mesh wound backwards" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "… and the same mesh wound backwards" "_tombstone" false "frame" #afield/rect [60.0 400.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_desk_preview_inverted_code_.kt" "lines" 44 "characters" 1688 "sha256" "fe209273b373c2c0b20007d5e5bf40eb8121d0b9098a9d235e391b167c3fd975"}]}
+{"id" "agent_vision_geometry_desk_preview_inverted" "index" 1 "name" "… and the same mesh wound backwards" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "… and the same mesh wound backwards" "_tombstone" false "frame" #afield/rect [60.0 400.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_desk_preview_inverted_code_.kt" "lines" 48 "characters" 1653 "sha256" "2163f912225b0dc51e2f1db8d64e1f66064a92fa4afcf6a1fae6675f28182b7d"}]}
 ```
 
 ```kotlin [field-property box="agent_vision_geometry_desk_preview_inverted" name="code" path="agent_vision_geometry_desk_preview_inverted_code_.kt"]
-import afield.graphics.VisionGeometryPreview
-import afield.graphics.previewVisionGeometry
-
-// A ring of quads whose corners are given in the other order. Every normal still points
-// outward; only the winding changed. The head culls back faces, so on the device this is a
-// ring you can only see from the inside — and from any normal viewing position, nothing.
-val inverted = """
+/*
+A ring of quads whose corners are given in the other order. Every normal still points
+outward; only the winding changed. The head culls back faces, so on the device this is a
+ring you can only see from the inside — and from any normal viewing position, nothing.
+*/
+val inverted =
+    """
     // {{ visionmetal }}
     import kotlin.math.cos
     import kotlin.math.sin
@@ -125,20 +146,24 @@ val inverted = """
             }
         }
     }
-""".trimIndent()
+"""
+        .trimIndent()
 
 val capture = try {
     previewVisionGeometry(source = inverted)
 } catch (missing: VisionGeometryPreview.NodeUnavailable) {
-    println("geometry preview needs node on PATH: " + missing.message)
-    null
-}
+        println("geometry preview needs node on PATH: " + missing.message)
+        null
+    }
 
 capture?.mesh()?.let { mesh ->
     val agreement = mesh.windingAgreement()
-    println("winding agreement " + "%.0f".format(agreement * 100) + "% — " +
-        (if (agreement < 0.5) "wound inside-out; the head would cull this away"
-         else "consistent"))
+    println(
+        "winding agreement " +
+            "%.0f".format(agreement * 100) +
+            "% — " +
+            (if (agreement < 0.5) "wound inside-out; the head would cull this away" else "consistent"),
+    )
 }
 ```
 

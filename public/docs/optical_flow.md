@@ -10,7 +10,7 @@ Field has two implementations behind one contract. `opticalFlow(...)` picks betw
 
 | Backend | Class | Runs on | Cost channel |
 | --- | --- | --- | --- |
-| `HARDWARE` | `OpticalFlow` | Devices with `VK_NV_optical_flow` enabled: NVIDIA Ada (RTX 40-series) and later | The engine's raw matching cost |
+| `HARDWARE` | `HardwareOpticalFlow` | Devices with `VK_NV_optical_flow` enabled: NVIDIA Ada (RTX 40-series) and later | The engine's raw matching cost |
 | `PYRAMID` | `PyramidOpticalFlow` | Every Vulkan device Field runs on, including macOS through MoltenVK | Mean absolute window residual, in grey levels 0–255 |
 
 `OpticalFlowBackend.AUTO`, the default, chooses `HARDWARE` when the device reports the extension and `PYRAMID` otherwise. Both starting points below print the backend they used. The motion vectors mean the same thing on both. **The cost scales differ**, so a rejection threshold tuned on one backend does not transfer to the other.
@@ -39,7 +39,7 @@ The field can be useful even when the correspondence is imperfect. Repetition, n
 
 ## Constructing the operation
 
-`opticalFlow(renderer, firstImage, secondImage, grid = 4)` creates a reusable operation, an `OpticalFlowOperation`, on whichever backend `AUTO` picks. Pass `backend = OpticalFlowBackend.PYRAMID` to force the portable one. Constructing `OpticalFlow(...)` directly still means hardware only, and it fails on a device without the extension. The two image arguments have type **`HasImageView`**, Field's interface for a GPU image view. **A `RenderToTexture` implements that interface**, so two RTTs can be passed directly:
+`opticalFlow(renderer, firstImage, secondImage, grid = 4)` creates a reusable operation, an `OpticalFlowOperation`, on whichever backend `AUTO` picks. Pass `backend = OpticalFlowBackend.PYRAMID` to force the portable one. The two image arguments have type **`HasImageView`**, Field's interface for a GPU image view. **A `RenderToTexture` implements that interface**, so two RTTs can be passed directly:
 
 ```diffstatic {data-lang=kotlin}
 // firstTarget and secondTarget are already-rendered RTTs of the same size.
@@ -59,14 +59,18 @@ prop<RenderToTexture>(motion) = flow.output
 | `secondImage` | Later image, with the same width and height. |
 | `grid = 4` | One flow texel per 4 × 4 input pixels. A 960 × 540 pair produces a 240 × 135 field. Supported grids are checked on the device. |
 | `backend` | `OpticalFlowBackend.AUTO` (the default), `HARDWARE`, or `PYRAMID`. |
-| `quality` | Hardware only, on `OpticalFlow(...)`: `OpticalFlow.Quality.FAST`, `MEDIUM`, or `SLOW` (the default). |
+| `quality` | Hardware only, on `HardwareOpticalFlow(...)`: `HardwareOpticalFlow.Quality.FAST`, `MEDIUM`, or `SLOW` (the default). |
 | `flow.output` | An owned **`RenderToTexture`**, containing a sampled RGBA32F motion texture. |
 
 For two attachments of one RTT, select them explicitly:
 
 ```diffstatic {data-lang=kotlin}
-val flow = opticalFlow(renderer,
-    pair.imageViewArray[0], pair.imageViewArray[1], grid = 4)
+val flow = opticalFlow(
+    renderer,
+    pair.imageViewArray[0],
+    pair.imageViewArray[1],
+    grid = 4,
+)
 ```
 
 The inputs are borrowed: keep them alive while the operation uses them. `evaluate()` reads their current contents; it neither renders them nor keeps a previous input frame for you. Recreate the operation when dimensions, grid, quality, or input resources change. Call `flow.close()` when finished, after removing consumers of its output.
@@ -109,14 +113,20 @@ Open the [optical_flow_pingpong](agent_transcripts.md#optical_flow_pingpong) sta
 ![One editable shader, retained previous/current frames, and the motion texture sampled by another module](assets/optical_flow/pingpong.png)
 
 ```diffstatic {data-lang=kotlin}
-prop<PingPongRenderToTexture>(history) = PingPongRenderToTexture(renderer) {
-    width = 960; height = 540; useDepth = false
+propDown<PingPongRenderToTexture>(history) = PingPongRenderToTexture(renderer) {
+    width = 960
+    height = 540
+    useDepth = false
     format = VK_FORMAT_R16G16B16A16_SFLOAT
 }
 
-val flow = opticalFlow(renderer,
-    history.previousImageView, history.latestImageView, grid = 4)
-prop<RenderToTexture>(motion) = flow.output
+val flow = opticalFlow(
+    renderer,
+    history.previousImageView,
+    history.latestImageView,
+    grid = 4,
+)
+propDown<RenderToTexture>(motion) = flow.output
 ```
 
 Those two image-view providers follow the ring as it rotates; keep the providers themselves, rather than caching their `.imageView` handles. After each source render, `latestImageView` is the new completed frame and `previousImageView` is the one before it. No manual swap is needed.
@@ -126,13 +136,13 @@ The example's frame loop is:
 ```diffstatic {data-lang=kotlin}
 // renderSource() is a helper defined in the example: it records history.render(),
 // submits that command buffer, and waits for the source to finish.
-if (reset) renderSource()   // Seed both slots with the same time on startup/reset.
+if (reset) renderSource() // Seed both slots with the same time on startup/reset.
 renderSource()
 flow.evaluate(reset = reset || !animate)
-frame()                    // The child now samples the completed motion texture.
+frame() // The child now samples the completed motion texture.
 ```
 
-Edit the parent's **fragment** to change the source; edit the child's **fragment** to use the motion. **Animate source** pauses time: both slots receive the paused frame, and motion should settle near zero. Repeated paused pairs disable temporal hints on every evaluation. **Reset the pair** seeds both slots and disables hints for that pair. A successful source shader edit does the same, so unrelated old and new patterns are not treated as consecutive animation frames. When relaunching the parent, relaunch the child too so its texture bindings follow the new allocation.
+Edit the parent's **fragment** to change the source; edit the child's **fragment** to use the motion. **Animate source** pauses time: both slots receive the paused frame, and motion should settle near zero. Repeated paused pairs disable temporal hints on every evaluation. **Reset the pair** seeds both slots and disables hints for that pair. A successful source shader edit does the same, so unrelated old and new patterns are not treated as consecutive animation frames. The parent publishes its textures as `propDown` slots, so relaunching it relaunches the child too, and the child's samplers bind the new allocation.
 
 This source also publishes `expectedMotion`, its analytical displacement in input pixels. The live check compares the measured interior field against it through movement, pause, reset, and relaunch. The brightness texture between the circles gives the matcher distinctive details to follow. If you replace it with a repeating pattern, one circle can match a neighboring cell instead of itself. The example shows the raw field: matching cost often rises in wrong patches, but a wrong match can also have low cost. Cost is useful for rejecting vectors, not a guarantee of their accuracy.
 

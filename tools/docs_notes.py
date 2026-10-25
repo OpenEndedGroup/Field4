@@ -76,6 +76,9 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator
 from urllib.parse import unquote, urlsplit
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import field_agent  # noqa: E402  (claude or codex: FIELD_AGENT, or ~/.afield/agent)
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS_ORIGIN = "https://openendedgroup.com"
 DOCS_ROOT = "/field4/"
@@ -101,6 +104,8 @@ REQUEST_KINDS = ("note", DRAFT_KIND)
 DRAFT_CACHE_FILE = "generated_completion_docs.json"
 DRAFT_DECLINED_FILE = "generated_completion_docs.declined.json"
 FILESTORE_ENV = "AFIELD_FILESTORE_DIR"
+# One file for the drafts cache, the rest of the filestore untouched; `GENERATED_COMPLETION_DOCS_ENV` in Kotlin.
+DRAFT_CACHE_ENV = "AFIELD_COMPLETION_DRAFTS_FILE"
 
 ENTRY_KINDS = ("comment", "memory", "question", "reply", "resolution", "reopen", "run", "handoff", "blocked", "unblocked")
 HANDOFF_DIR = "dev_docs/handoffs"
@@ -470,7 +475,7 @@ def resolve_page_source(page_url: str, git: Git) -> PageSource:
             source_set, _, rest = trimmed.partition("/")
             kotlin = f"src/{source_set}/kotlin/{rest}.kt"
             if (git.root / kotlin).is_file():
-                return PageSource(page_url, rel, kotlin, {"generator": "afield.docs.SourcePageGenerator",
+                return PageSource(page_url, rel, kotlin, {"generator": "afield.tools.docs.SourcePageGenerator",
                                                           "from": kotlin, "regenerate": "./gradlew generateSourcePages"})
     return PageSource(page_url, candidates[0] if candidates else "", None)
 
@@ -1066,9 +1071,11 @@ _DECLARATION_KEYWORDS = r"(?:fun|val|var|class|interface|object|typealias|enum\s
 
 
 def draft_cache_path(git: Git, explicit: str | None = None) -> Path:
-    """Where Field keeps the drafts: `$AFIELD_FILESTORE_DIR`, else `.field/filestore/` in the checkout."""
+    """Where Field keeps the drafts: `$AFIELD_COMPLETION_DRAFTS_FILE`, else in `$AFIELD_FILESTORE_DIR`, else `.field/filestore/` in the checkout."""
     if explicit:
         return Path(explicit).expanduser().resolve()
+    if os.environ.get(DRAFT_CACHE_ENV, "").strip():
+        return Path(os.environ[DRAFT_CACHE_ENV].strip()).expanduser().resolve()
     configured = os.environ.get(FILESTORE_ENV, "").strip()
     base = Path(configured).expanduser() if configured else git.root / ".field" / "filestore"
     return (base / DRAFT_CACHE_FILE).resolve()
@@ -1147,7 +1154,7 @@ def _draft_source(git: Git, path: str, line: int, draft: dict[str, Any], status:
               "trackedAtEpochMs": now_ms(), "trackedHead": head, "path": path, "startLine": line, "endLine": line,
               "status": status, "origins": origins_for(git, None, path, line, line), "anchoredAt": head,
               "method": "declaration", "excerpt": excerpt(text, line, line),
-              "generated": {"generator": "afield.docs.SourcePageGenerator", "from": path,
+              "generated": {"generator": "afield.tools.docs.SourcePageGenerator", "from": path,
                             "regenerate": "./gradlew generateSourcePages"},
               "draft": draft}
     if previous and previous.get("firstAnchoredAt"):
@@ -1175,6 +1182,19 @@ def draft_note_id(key: str) -> str:
     return "draft-" + key[:24]
 
 
+def relocate_moved_source(git: Git, path: str, name: str) -> str | None:
+    """Where a draft's file went when *path* is gone: the one tracked file of the same name under
+    `src/` that still declares *name*. The cache keeps the path completion saw, so a package move
+    (the October hierarchy cutover moved most of `src/`) would otherwise turn every draft "outside"."""
+    basename = path.rsplit("/", 1)[-1]
+    found = []
+    for candidate in git.run("ls-files", "--", f"src/*/{basename}", check=False).split("\n"):
+        candidate = candidate.strip()
+        if candidate.endswith("/" + basename) and locate_declaration(git.show(None, candidate) or "", name, 0) is not None:
+            found.append(candidate)
+    return found[0] if len(found) == 1 else None
+
+
 def import_drafts(store: Store, git: Git, cache: Path, *, limit: int = 0,
                   log: Callable[[str], None] = lambda _m: None) -> dict[str, int]:
     """Add a `kdoc-draft` note for every cached draft that is ours to edit and not yet a note."""
@@ -1190,6 +1210,11 @@ def import_drafts(store: Store, git: Git, cache: Path, *, limit: int = 0,
         path, documentation = str(record.get("sourcePath", "")), str(record.get("documentation", "")).strip()
         if not documentation:
             continue
+        if in_our_tree(path) and not (git.root / path).is_file():
+            moved = relocate_moved_source(git, path, simple_name(str(record.get("sourceName", ""))))
+            if moved:
+                log(f"  moved: {path} is now {moved}")
+                path = moved
         if not in_our_tree(path) or not source_page_url(path) or not (git.root / path).is_file():
             counts["outside"] += 1
             continue
@@ -2536,7 +2561,7 @@ def pass_status(git: Git, store: Store) -> dict[str, Any]:
     result: dict[str, Any] = {"primary": str(git.root), "notes": counts, "handoffs": handoffs, "questions": questions,
                               "batches": batch_overview(git, notes),
                               "primaryBranch": git.run("branch", "--show-current", check=False).strip(),
-                              "pass": load_pass(git.root)}
+                              "pass": load_pass(git.root), "agent": field_agent.configured_agent()}
     state = result["pass"]
     if state and Path(state["worktree"]).is_dir():
         wt = Git(Path(state["worktree"]))
@@ -3280,7 +3305,7 @@ def start_session(git: Git, store: Store, batch_key: str, driver: str = "") -> d
                 item.setdefault("handoff", {})["state"] = "taken"
                 add_entry(item, "comment", f"taken in a {batch['title']} session: {worktree}", "human")
     store.mutate(take)
-    command = f"cd {shlex.quote(str(worktree))} && claude \"Read HANDOFF_SESSION.md, then let's start with the first handoff.\""
+    command = f"cd {shlex.quote(str(worktree))} && {field_agent.configured_agent()} \"Read HANDOFF_SESSION.md, then let's start with the first handoff.\""
     session = {"batch": batch_key, "title": batch["title"], "worktree": str(worktree), "branch": branch,
                "base": base_commit, "handoffs": ids, "command": command, "createdAtEpochMs": now_ms()}
     if driver:
@@ -3323,7 +3348,7 @@ def end_session(git: Git, store: Store, batch_key: str, abandon: bool) -> int:
 
 
 def add_revise_arguments(p: argparse.ArgumentParser) -> None:
-    p.add_argument("--agent", choices=sorted(AGENTS), default=os.environ.get("DOCS_NOTES_AGENT", "claude"))
+    p.add_argument("--agent", choices=sorted(AGENTS), default=os.environ.get("DOCS_NOTES_AGENT") or field_agent.configured_agent())
     p.add_argument("--agent-command", help="custom agent argv template: {prompt}, {prompt_file}, {root}")
     p.add_argument("--jobs", "-j", type=int, default=4)
     p.add_argument("--tag", action="append", default=[])

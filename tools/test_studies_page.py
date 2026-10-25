@@ -1,7 +1,7 @@
 """Hold public/docs/studies.md's verb table to the verbs LiveStudy actually has.
 
 The page lists the ten standard study verbs with the `LiveStudy` method each one calls. Both lists
-live in `src/jvmMain/kotlin/afield/stdlib/LiveStudy.kt`: the `StudyVerb` enum (what a document's
+live in `src/jvmMain/kotlin/afield/study/source/LiveStudy.kt`: the `StudyVerb` enum (what a document's
 `registerStudyTools` can offer) and the `LiveStudy` interface (one method per verb). A verb added,
 renamed or removed there without the page following fails here, in both directions.
 
@@ -16,7 +16,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PAGE = REPO_ROOT / "public/docs/studies.md"
-SOURCE = REPO_ROOT / "src/jvmMain/kotlin/afield/stdlib/LiveStudy.kt"
+SOURCE = REPO_ROOT / "src/jvmMain/kotlin/afield/study/source/LiveStudy.kt"
 
 
 def page_rows() -> list[tuple[str, str]]:

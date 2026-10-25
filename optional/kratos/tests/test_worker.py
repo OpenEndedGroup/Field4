@@ -237,7 +237,7 @@ def beam_mesh(nx, ny, nz, length=1.0, breadth=0.1, depth=0.1):
 
 
 def promote(mesh):
-    """A 4-node mesh promoted to 10, the way `afield.tetgen.TetMesh.quadratic` does it on the JVM.
+    """A 4-node mesh promoted to 10, the way `afield.geometry.mesh.tetgen.TetMesh.quadratic` does it on the JVM.
 
     Deliberately a second implementation of the same convention rather than a shared helper. In
     production the promotion happens in Kotlin and this side only receives the result, so if the two

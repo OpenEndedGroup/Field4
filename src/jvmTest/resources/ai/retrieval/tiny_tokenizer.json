@@ -1,0 +1,15 @@
+{
+  "version": "1.0",
+  "truncation": null,
+  "padding": null,
+  "added_tokens": [],
+  "normalizer": {"type": "Lowercase"},
+  "pre_tokenizer": {"type": "Whitespace"},
+  "post_processor": null,
+  "decoder": null,
+  "model": {
+    "type": "WordLevel",
+    "vocab": {"[PAD]": 0, "red": 1, "green": 2, "blue": 3, "alpha": 4, "yellow": 5, "cyan": 6, "[UNK]": 7},
+    "unk_token": "[UNK]"
+  }
+}

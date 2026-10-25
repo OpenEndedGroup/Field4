@@ -1,16 +1,21 @@
 package afield.ai.agent
 
-import afield.Box
-import afield.SessionInformation
-import afield.ai.core.*
-import afield.graphics.GeometryFinding
-import afield.graphics.ThreeGeometryViewState
-import afield.graphics.threeViewFor
-import afield.stdlib.BoxStudyBuildBinding
-import afield.stdlib.StudyBuildFailure
-import afield.stdlib.StudyBuildProblem
-import afield.stdlib.StudyBuildStage
-import afield.stdlib.StudyBuilds
+import afield.document.graph.Box
+import afield.app.server.SessionInformation
+import afield.ai.completion.*
+import afield.ai.conversation.*
+import afield.ai.diagnostics.*
+import afield.ai.models.*
+import afield.ai.tools.*
+import afield.runtime.languages.*
+import afield.ui.visualization.GeometryFinding
+import afield.graphics.three.ThreeGeometryViewState
+import afield.graphics.three.threeViewFor
+import afield.study.build.BoxStudyBuildBinding
+import afield.study.build.StudyBuildFailure
+import afield.study.build.StudyBuildProblem
+import afield.study.build.StudyBuildStage
+import afield.study.build.StudyBuilds
 import kotlinx.serialization.json.*
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
@@ -67,7 +72,7 @@ class GeometryReviewToolsTest {
     @Test fun customCanvasesShareNotesImagesConcurrencyAndLifetimeWithoutPretendingToBeThreeViews() {
         val f = fixture()
         val owner = f.view.reviewInbox.owner!!
-        fun bind() = afield.graphics.bindGeometryReviewSurface(owner, "plan", "r1") { it() }
+        fun bind() = afield.ui.visualization.bindGeometryReviewSurface(owner, "plan", "r1") { it() }
         val surface = bind()
         val record = JsonObject(note(f.view, images = true) + ("viewId" to JsonPrimitive(surface.uid)))
         val id = surface.receive(record).getValue("id").jsonPrimitive.content
@@ -98,7 +103,7 @@ class GeometryReviewToolsTest {
 
     @Test fun presentationToolsRespectDocumentScopeAndReadOnlyState() {
         val f = fixture()
-        f.view.update(afield.graphics.ThreeGeometryPayload(uid = f.view.uid))
+        f.view.update(afield.graphics.three.ThreeGeometryPayload(uid = f.view.uid))
         val revision = f.view.reviews()["revision"]!!.jsonPrimitive.content
         assertTrue(call(f, StyleGeometryPartsRequest(f.view.uid, revision, emptyList(), replace = true)).success)
         assertFalse(call(fixture(), StyleGeometryPartsRequest(f.view.uid, revision, emptyList())).success)
@@ -116,11 +121,11 @@ class GeometryReviewToolsTest {
         val schema = openAiTool(StyleGeometryPartsRequest::class.java as Class<Any>)
         assertEquals("StyleGeometryPartsRequest", schema.name())
         val f = fixture()
-        val drawable = afield.graphics.ThreeDrawable(id = "a",
-            geometry = afield.graphics.ThreeGeometryData(attributes = mapOf(
-                "position" to afield.graphics.ThreeAttribute(3, floatArrayOf(0f,0f,0f,1f,0f,0f,0f,1f,0f)))),
-            style = afield.graphics.ThreeDrawStyle(kind = "surface"))
-        f.view.update(afield.graphics.ThreeGeometryPayload(uid = f.view.uid, drawables = listOf(drawable)))
+        val drawable = afield.graphics.three.ThreeDrawable(id = "a",
+            geometry = afield.graphics.three.ThreeGeometryData(attributes = mapOf(
+                "position" to afield.graphics.three.ThreeAttribute(3, floatArrayOf(0f,0f,0f,1f,0f,0f,0f,1f,0f)))),
+            style = afield.graphics.three.ThreeDrawStyle(kind = "surface"))
+        f.view.update(afield.graphics.three.ThreeGeometryPayload(uid = f.view.uid, drawables = listOf(drawable)))
         val revision = f.view.reviews()["revision"]!!.jsonPrimitive.content
         val request = StyleGeometryPartsRequest(f.view.uid, revision,
             listOf(GeometryPartColor("a", listOf(1.0,0.7,0.2))), unlit = true, xrayOpacity = 1.0)
@@ -320,7 +325,7 @@ class GeometryReviewToolsTest {
 
             plan = "stair at 4"
             // The build card's predicate: the agent and the person get the same verdict.
-            assertTrue(afield.stdlib.studyBuildLatestUsedEarlierInputs(builds.stages().single()))
+            assertTrue(afield.study.build.studyBuildLatestUsedEarlierInputs(builds.stages().single()))
             assertEquals<Map<*, *>>(mapOf(fromBuild to true, elsewhere to null, plain to null), marks())
             assertContains(read().message, "1 from a build attempt with earlier inputs")
             // The discussion is still open; only its bearing on the current design changed.

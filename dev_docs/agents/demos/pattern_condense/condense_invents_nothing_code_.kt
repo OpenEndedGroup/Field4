@@ -1,18 +1,22 @@
-import afield.four.synth.*
 import kotlin.random.Random
 
-// 2 - Invent nothing.
-//
-// The failure mode of a description-length search is naming a figure that is one step away
-// from the rhythm in front of it. This box runs that check live, on masks with no structure
-// put into them.
-//
-// POKE THIS: change `seed`, or `density` (one step in N is on), or `trials`. The count of
-// wrong namings has to stay 0 whatever you set, because every mask that came back as a
-// whole-span figure is recomputed here from bjorklund / kolakoskiMask and compared.
+/*
+2 - Invent nothing.
+
+The failure mode of a description-length search is naming a figure that is one step away
+from the rhythm in front of it. This box runs that check live, on masks with no structure
+put into them.
+
+POKE THIS: change `seed`, or `density` (one step in N is on), or `trials`. The count of
+wrong namings has to stay 0 whatever you set, because every mask that came back as a
+whole-span figure is recomputed here from bjorklund / kolakoskiMask and compared.
+*/
 val seed = 20260910
 val density = 3
 val trials = 300
+
+require(density > 0) { "density must be positive (one step in N is on)" }
+require(trials > 0) { "trials must be positive to compare compression" }
 
 val random = Random(seed)
 val euclidean = Regex("""^x\((\d+),(\d+)(?:,(\d+))?\)$""")
@@ -65,5 +69,6 @@ markdown(
     None of this rests on the search's own opinion of itself: every string it returned was
     re-parsed and re-played before it was accepted, and the namings above are recomputed from
     the generators rather than read off the label.
-    """.trimIndent()
+    """
+        .trimIndent(),
 )

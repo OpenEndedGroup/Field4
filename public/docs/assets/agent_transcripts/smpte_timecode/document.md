@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="tc_ltc_roundtrip" index="0" -->
 
 ```edn [field-box id="tc_ltc_roundtrip" role="properties"]
-{"id" "tc_ltc_roundtrip" "index" 0 "name" "2 - LTC encode, mangle, decode" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - LTC encode, mangle, decode" "_tombstone" false "frame" #afield/rect [520.0 60.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tc_ltc_roundtrip_code_.kt" "lines" 37 "characters" 2081 "sha256" "b4058a58c9c450ea05ef945b5809c61b41fd0046b344baec7c3a15062531933d"}]}
+{"id" "tc_ltc_roundtrip" "index" 0 "name" "2 - LTC encode, mangle, decode" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - LTC encode, mangle, decode" "_tombstone" false "frame" #afield/rect [520.0 60.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tc_ltc_roundtrip_code_.kt" "lines" 47 "characters" 2121 "sha256" "746aea5fabd802077c4ff5cc5bcb3fa3a23c5f1782c387f2d65859340dd62124"}]}
 ```
 
 ```kotlin [field-property box="tc_ltc_roundtrip" name="code" path="tc_ltc_roundtrip_code_.kt"]
-import afield.timecode.*
+import afield.io.timecode.*
 
 // Four seconds of 29.97 drop-frame LTC across the one-minute boundary.
 val start = Timecode.parse("00:00:58;00")
@@ -35,12 +35,18 @@ while (p < ltc.size - 1) {
 val frames = LtcDecoder(48000, TimecodeRate.FPS_2997_DF).decodeAll(played.toFloatArray())
 
 // Decoded frame number against playback time, and the speed the decoder measured.
-val w = 640.0; val h = 220.0
+val w = 640.0
+val h = 220.0
 val tMax = played.size / 48000.0
 val fMax = frames.maxOf { it.timecode - start }.toDouble()
-val pts = frames.joinToString(" ") { "%.1f,%.1f".format(it.sampleStart / 48000 / tMax * w, h - (it.timecode - start) / fMax * h) }
-val spd = frames.joinToString(" ") { "%.1f,%.1f".format(it.sampleStart / 48000 / tMax * w, h - (it.speed - 0.8) / 0.4 * h) }
-display("main", """<svg width="${w + 60}" height="${h + 40}" style="font: 12px sans-serif">
+val pts = frames.joinToString(" ") {
+    "%.1f,%.1f".format(it.sampleStart / 48000 / tMax * w, h - (it.timecode - start) / fMax * h)
+}
+val spd =
+    frames.joinToString(" ") { "%.1f,%.1f".format(it.sampleStart / 48000 / tMax * w, h - (it.speed - 0.8) / 0.4 * h) }
+display(
+    "main",
+    """<svg width="${w + 60}" height="${h + 40}" style="font: 12px sans-serif">
   <g transform="translate(40,10)">
     <rect width="$w" height="$h" fill="none" stroke="#999"/>
     <polyline points="$pts" fill="none" stroke="#2a7" stroke-width="2"/>
@@ -48,10 +54,14 @@ display("main", """<svg width="${w + 60}" height="${h + 40}" style="font: 12px s
     <text x="4" y="14" fill="#2a7">decoded frame (0 … ${fMax.toInt()})</text>
     <text x="4" y="${h - 6}" fill="#c52">measured speed (0.8 … 1.2)</text>
     <text x="${w / 2 - 40}" y="${h + 22}" fill="#999">playback time, s (0 … ${"%.2f".format(tMax)})</text>
-  </g></svg>""")
-markdown("info", "decoded **${frames.size}** frames, ${frames.first().timecode} … ${frames.last().timecode}; " +
-    "consecutive: ${frames.zipWithNext().all { (a, b) -> a.timecode + 1 == b.timecode }}; " +
-    "across the minute: ${frames.map { it.timecode.toString() }.filter { it.startsWith("00:00:59;2") || it.startsWith("00:01:00;0") }}")
+  </g></svg>""",
+)
+markdown(
+    "info",
+    "decoded **${frames.size}** frames, ${frames.first().timecode} … ${frames.last().timecode}; " +
+        "consecutive: ${frames.zipWithNext().all { (a, b) -> a.timecode + 1 == b.timecode }}; " +
+        "across the minute: ${frames.map { it.timecode.toString() }.filter { it.startsWith("00:00:59;2") || it.startsWith("00:01:00;0") }}",
+)
 ```
 
 ## 2. 1 - Drop-frame arithmetic
@@ -59,14 +69,17 @@ markdown("info", "decoded **${frames.size}** frames, ${frames.first().timecode} 
 <!-- field-box id="tc_arithmetic" index="1" -->
 
 ```edn [field-box id="tc_arithmetic" role="properties"]
-{"id" "tc_arithmetic" "index" 1 "name" "1 - Drop-frame arithmetic" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Drop-frame arithmetic" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tc_arithmetic_code_.kt" "lines" 4 "characters" 312 "sha256" "643daedcfb5421aa6778d11208581e4c91976197150cc1b22dedf9df4a926f80"}]}
+{"id" "tc_arithmetic" "index" 1 "name" "1 - Drop-frame arithmetic" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Drop-frame arithmetic" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tc_arithmetic_code_.kt" "lines" 7 "characters" 326 "sha256" "28cab6f99da0c271541e40e09ab6a079e7da89f8dffd125194237e65a97d0836"}]}
 ```
 
 ```kotlin [field-property box="tc_arithmetic" name="code" path="tc_arithmetic_code_.kt"]
-import afield.timecode.*
+import afield.io.timecode.*
 
 val t = Timecode.parse("00:00:59;29")
-markdown("main", "`$t` + 1 frame = `${t + 1}`  \n`${Timecode.parse("00:09:59;29")}` + 1 frame = `${Timecode.parse("00:09:59;29") + 1}`  \nan hour of drop-frame labels is ${"%.3f".format(Timecode.parse("01:00:00;00").totalSeconds)} s of wall time")
+markdown(
+    "main",
+    "`$t` + 1 frame = `${t + 1}`  \n`${Timecode.parse("00:09:59;29")}` + 1 frame = `${Timecode.parse("00:09:59;29") + 1}`  \nan hour of drop-frame labels is ${"%.3f".format(Timecode.parse("01:00:00;00").totalSeconds)} s of wall time",
+)
 ```
 
 ## 3. 3 - MIDI Time Code into a clock
@@ -74,11 +87,11 @@ markdown("main", "`$t` + 1 frame = `${t + 1}`  \n`${Timecode.parse("00:09:59;29"
 <!-- field-box id="tc_mtc" index="2" -->
 
 ```edn [field-box id="tc_mtc" role="properties"]
-{"id" "tc_mtc" "index" 2 "name" "3 - MIDI Time Code into a clock" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - MIDI Time Code into a clock" "_tombstone" false "frame" #afield/rect [60.0 260.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tc_mtc_code_.kt" "lines" 15 "characters" 795 "sha256" "5cfd800e55770c6a0da0b4f14124e737557a07dd65eea3d80a46df1824b94eba"}]}
+{"id" "tc_mtc" "index" 2 "name" "3 - MIDI Time Code into a clock" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - MIDI Time Code into a clock" "_tombstone" false "frame" #afield/rect [60.0 260.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tc_mtc_code_.kt" "lines" 18 "characters" 792 "sha256" "74c6695c346bb758678309231c7dff4523136d5238b9a611ef95a6ae9c44a6a4"}]}
 ```
 
 ```kotlin [field-property box="tc_mtc" name="code" path="tc_mtc_code_.kt"]
-import afield.timecode.*
+import afield.io.timecode.*
 
 // A locate, then two seconds of running MTC at 25 fps, decoded as it would be on the far end of a cable.
 val decoder = MtcDecoder()
@@ -87,12 +100,15 @@ val clock = TimecodeClock(TimecodeRate.FPS_25).followMtc(decoder)
 var tc = Timecode.parse("09:59:58:00", TimecodeRate.FPS_25)
 decoder.accept(Mtc.fullFrameMessage(tc))
 val afterLocate = clock.now()
-repeat(25) {                      // 25 cycles of 8 quarter frames = 50 frames
+repeat(25) { // 25 cycles of 8 quarter frames = 50 frames
     Mtc.quarterFrameMessages(tc).forEach { decoder.accept(it) }
     tc += 2
 }
-markdown("main", "full frame: `${Mtc.fullFrame(Timecode.parse("09:59:58:00", TimecodeRate.FPS_25)).joinToString(" ") { "%02X".format(it) }}`  \n" +
-    "clock after the locate: `$afterLocate`  \nclock after 50 frames of quarter frames: `${clock.now()}` (locked: ${clock.locked})")
+markdown(
+    "main",
+    "full frame: `${Mtc.fullFrame(Timecode.parse("09:59:58:00", TimecodeRate.FPS_25)).joinToString(" ") { "%02X".format(it) }}`  \n" +
+        "clock after the locate: `$afterLocate`  \nclock after 50 frames of quarter frames: `${clock.now()}` (locked: ${clock.locked})",
+)
 ```
 
 ## 4. 4 - A clock following LTC
@@ -100,11 +116,11 @@ markdown("main", "full frame: `${Mtc.fullFrame(Timecode.parse("09:59:58:00", Tim
 <!-- field-box id="tc_follow_ltc" index="3" -->
 
 ```edn [field-box id="tc_follow_ltc" role="properties"]
-{"id" "tc_follow_ltc" "index" 3 "name" "4 - A clock following LTC" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - A clock following LTC" "_tombstone" false "frame" #afield/rect [520.0 260.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tc_follow_ltc_code_.kt" "lines" 12 "characters" 651 "sha256" "8ba6477f07f8419fecf3f2745c0a797b27c6278830397670058adf873741c32a"}]}
+{"id" "tc_follow_ltc" "index" 3 "name" "4 - A clock following LTC" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - A clock following LTC" "_tombstone" false "frame" #afield/rect [520.0 260.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tc_follow_ltc_code_.kt" "lines" 13 "characters" 649 "sha256" "23897bc5a6049838a441367eebec28f7ded5699ae4a19b12d85f89c4abd794eb"}]}
 ```
 
 ```kotlin [field-property box="tc_follow_ltc" name="code" path="tc_follow_ltc_code_.kt"]
-import afield.timecode.*
+import afield.io.timecode.*
 
 // Follow LTC delivered in audio-sized blocks, and read the clock between blocks, as a draw loop would.
 val clock = TimecodeClock(TimecodeRate.FPS_24).followLtc(48000)
@@ -112,8 +128,9 @@ val ltc = LtcEncoder.render(Timecode.parse("01:00:00:00", TimecodeRate.FPS_24), 
 val readings = ArrayList<String>()
 for (i in ltc.indices step 512) {
     clock.feedLtc(ltc, i, minOf(512, ltc.size - i))
-    Thread.sleep(10)              // ~ the real duration of 512 samples
-    if (clock.locked && i % (512 * 16) == 0) readings += "${clock.now()} (${clock.source}, speed ${"%.2f".format(clock.speed)})"
+    Thread.sleep(10) // ~ the real duration of 512 samples
+    if (clock.locked && i % (512 * 16) == 0)
+        readings += "${clock.now()} (${clock.source}, speed ${"%.2f".format(clock.speed)})"
 }
 markdown("main", readings.joinToString("  \n"))
 ```

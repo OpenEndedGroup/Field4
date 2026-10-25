@@ -1,0 +1,530 @@
+package afield.lang.remotejs
+
+import afield.ai.agent.*
+import afield.ai.conversation.*
+import afield.ai.tools.*
+import afield.animation.gesture.*
+import afield.animation.interpolation.*
+import afield.animation.keyframes.*
+import afield.app.diagnostics.*
+import afield.app.notifications.*
+import afield.app.protocol.*
+import afield.app.server.*
+import afield.app.settings.*
+import afield.audio.synth.*
+import afield.data.table.*
+import afield.document.context.*
+import afield.document.graph.*
+import afield.document.history.*
+import afield.document.persistence.*
+import afield.document.properties.*
+import afield.document.workspace.*
+import afield.graphics.color.*
+import afield.graphics.paint.*
+import afield.graphics.vulkan.*
+import afield.math.functions.*
+import afield.media.capture.*
+import afield.media.stream.*
+import afield.media.video.*
+import afield.runtime.completion.*
+import afield.runtime.execution.*
+import afield.runtime.kotlin.*
+import afield.runtime.lifecycle.*
+import afield.tools.automation.*
+import afield.tools.docs.*
+import afield.ui.controls.*
+import afield.ui.layout.*
+import afield.ui.notation.*
+import afield.ui.output.*
+import afield.ui.output.templates.*
+import afield.ui.slides.*
+import afield.ui.visualization.*
+import afield.app.diagnostics.logging.lprintln
+import afield.runtime.MainLanguageRuntime
+import afield.runtime.TopologyWatcher
+import afield.runtime.applyRuntimeToggle
+import afield.runtime.isMainLanguage
+import afield.runtime.registerMainLanguageRuntime
+import afield.ai.learning.*
+import afield.ai.retrieval.*
+import afield.animation.motion.*
+import afield.app.commands.*
+import afield.audio.analysis.*
+import afield.data.collections.*
+import afield.data.formats.*
+import afield.data.graph.*
+import afield.data.sorting.*
+import afield.geometry.mesh.*
+import afield.geometry.path.*
+import afield.geometry.spatial.*
+import afield.graphics.interaction.*
+import afield.graphics.render.*
+import afield.graphics.shader.*
+import afield.graphics.text.*
+import afield.graphics.vulkan.buffers.*
+import afield.io.osc.*
+import afield.io.process.*
+import afield.lang.lambda.*
+import afield.lang.python.*
+import afield.lang.remotejs.*
+import afield.lang.stacksl.*
+import afield.math.autodiff.*
+import afield.math.control.*
+import afield.math.estimation.*
+import afield.math.linalg.*
+import afield.math.optimization.*
+import afield.math.statistics.*
+import afield.math.units.*
+import afield.media.image.*
+import afield.runtime.languages.*
+import afield.simulation.agents.*
+import afield.simulation.automata.*
+import afield.simulation.particles.*
+import afield.study.build.*
+import afield.study.evidence.*
+import afield.study.search.*
+import afield.study.source.*
+import afield.study.ui.*
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+
+/**
+ * SPIKE — a "Kotlin in the head" main language. A box flagged `mainLanguage = "kotlinjs"` (or its
+ * legacy [isKotlinJsRoot] root flag) compiles its Kotlin source to JavaScript via
+ * [KotlinToJsCompiler] (PLAIN_DCE: self-contained, tree-shaken, eval-able) and ships it to the
+ * connected browser / visionOS head over the same WebSocket transport RemoteJS uses.
+ *
+ * This reuses RemoteJS's transport wholesale ([compileAndSendKotlin] → [executeRemoteJS] with
+ * `doASTA = false`); it only swaps *what runs the box* (Kotlin→JS compile) for the JS path. Kotlin
+ * gets native operator overloading (no ASTA), real types, and compile-time diagnostics at the
+ * source line. See dev_docs/kotlin_to_js_spike.md.
+ */
+
+var Box.isKotlinJsRoot by Delegation<Boolean?>()
+
+// Kotlin→JS compiles are CPU-heavy (~0.6–1.2s); keep them off the main runloop.
+private val kotlinJsCompilePool = Executors.newSingleThreadExecutor { r ->
+    Thread(r, "kotlinjs-compile").apply { isDaemon = true }
+}
+
+// Completion hits the out-of-process AA sidecar over HTTP; keep it off the runloop and separate from
+// the compile pool so completion never queues behind a compile.
+private val kotlinJsCompletionPool = Executors.newFixedThreadPool(2) { r ->
+    Thread(r, "kotlinjs-complete").apply { isDaemon = true }
+}
+
+fun kotlinJsTopologyNeedsUpdating(values: Collection<Box>) {
+    applyRuntimeToggle(
+        boxes = values,
+        isRoot = { it.isKotlinJsRoot == true || it.isMainLanguage("kotlinjs") },
+        runtimeClass = KotlinJsExecution::class,
+        newExecution = { _ -> KotlinJsExecution() },
+        // code_language: drives the editor's Monaco highlighter. Lowercase "kotlinjs" matches the
+        // registered Monaco language (kotlinjs.js) across all editor resolution paths (one lowercases
+        // it, others use it raw) — reuses Kotlin highlighting without the JVM-Kotlin providers.
+        language = "kotlinjs",
+        customization = "",
+        notifyCategory = "kotlinjs",
+    )
+}
+
+@RunsAt(plugins)
+fun installKotlinJs() {
+    TopologyWatcher("kotlinjs") { kotlinJsTopologyNeedsUpdating(it) }.start()
+}
+
+@RunsAt(early)
+fun installKotlinJsMainLanguage() {
+    Box.ioPersistentProperties.add("isKotlinJsRoot")
+    registerMainLanguageRuntime(
+        MainLanguageRuntime(
+            id = "kotlinjs",
+            label = "Kotlin → head",
+            runtimeClass = KotlinJsExecution::class,
+            setLegacyRoot = { box, enabled -> box.isKotlinJsRoot = enabled },
+            applyTopology = ::kotlinJsTopologyNeedsUpdating,
+        ),
+    )
+}
+
+class KotlinJsExecution : BoxExecution {
+
+    override val languageName: String = "KotlinJS"
+    private val launches = ConcurrentHashMap<String, KotlinJsLaunchTracker>()
+
+    override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) =
+        runKotlin(inside, execute, launchable = false, code = execute.code, strand = "__fragment__", reply = reply)
+
+    override fun executeAll(inside: Box, execute: Execute, reply: (Message) -> Unit) =
+        runKotlin(inside, execute, launchable = false, code = execute.code, strand = "__fragment__", reply = reply)
+
+    override fun launchAll(inside: Box, execute: Execute, code: String, strand: String, reply: (Message) -> Unit) =
+        runKotlin(
+            inside,
+            execute,
+            launchable = true,
+            code = code,
+            strand = strand.ifBlank { "default" },
+            reply = reply,
+        )
+
+    override fun stop(inside: Box) {
+        val active = launches.entries.filter { it.value.box === inside }
+        if (active.isNotEmpty()) {
+            active.groupBy { it.value.selection.profile }.forEach { (profile, entries) ->
+                entries.forEach { (key, tracker) ->
+                    launches.remove(key, tracker)
+                    tracker.cancel()
+                }
+                profile.stop(
+                    inside,
+                    entries.first().value.selection,
+                    entries.map { it.value.lifecycleName },
+                )
+            }
+            return
+        }
+
+        val selection = try {
+            KotlinJsHeadProfiles.resolveForBox(inside, "")
+        } catch (e: IllegalArgumentException) {
+            inside.output.errorProxy(e.message ?: "Invalid Kotlin/JS head marker", "code", 0)
+            return
+        }
+        if (selection.profile.connectedHeadCount() == 0 && selection.profile != KotlinJsHeadProfiles.visionMetal)
+            notify("Warning! no connected ${selection.profile.id} heads", "kotlinjs")
+        selection.profile.stop(inside, selection, listOf(kotlinJsLifecycleName(inside, "default")))
+    }
+
+    override fun executeSymbol(inside: Box, executeSymbol: ExecuteSymbol, reply: (Message) -> Unit) {
+        val exec = Execute(
+            uid = executeSymbol.uid, type = "fragment", line = executeSymbol.line,
+            code = "${executeSymbol.symbol}()", singleLine = true,
+        )
+        executeFragment(inside, exec, reply)
+    }
+
+    override fun complete(inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit) {
+        val pos = completionRequest.position
+        fun empty() = Completion(boundsStart = pos, boundsEnd = pos, metadata = emptyList())
+
+        // This is called on the Netty event loop serving the browser's websocket (Server.kt launches
+        // every handler in the /ws session's scope), so nothing here runs before the hand-off to the
+        // pool. Every path replies, a throw included, so the popup never waits out its timeout. The
+        // pool, not Dispatchers.IO, because it bounds how many completions sit in the sidecar at once
+        // while the user types, and its threads show up by name in a thread dump.
+        kotlinJsCompletionPool.execute {
+            val completion = try {
+                completeOffLoop(inside, completionRequest) ?: empty()
+            } catch (t: Throwable) {
+                lprintln("warning,kotlinjs", "completion failed: ${t.javaClass.simpleName}: ${t.message.orEmpty()}")
+                empty()
+            }
+            reply(Message("complete").payload(completion))
+        }
+    }
+
+    /** The completion for [completionRequest], or null when there is nothing to offer. Blocks for up
+     *  to four sidecar round trips, so it runs on [kotlinJsCompletionPool]. */
+    private fun completeOffLoop(inside: Box, completionRequest: CompletionRequest): Completion? {
+        val pos = completionRequest.position
+        val selection = try {
+            KotlinJsHeadProfiles.resolveForBox(inside, completionRequest.allCode)
+        } catch (e: IllegalArgumentException) {
+            notify(e.message ?: "Invalid Kotlin/JS head marker", "kotlinjs_error")
+            return null
+        }
+
+        // Stage 1: reuse the rich K2 Analysis-API completion, but scope the analysis classpath to the
+        // Kotlin stdlib only (KotlinJsExecution.kotlinStdlibRoots). The box has no JVM classpath — its
+        // symbol universe is stdlib + its own declarations (present in `allCode`) + the selected head
+        // profile's JVM-analysis-safe declaration model + keywords. Profile declarations stay at file
+        // scope so nested types and member/callback inference work; their public callables are also
+        // represented as local stubs for discoverability.
+        val stdlibRoots = AaCompletionClient.kotlinStdlibRoots()
+        if (stdlibRoots.isEmpty()) return null
+
+        // The sidecar builds a fresh Analysis-API session per distinct classpath and answers
+        // "warming up" (empty) on the first call(s) for a cold stdlib session. Retry a few
+        // times so a user's first completion in a session isn't silently empty.
+        var success: afield.runtime.kotlin.CompletionResult.Success? = null
+        var lastDetail = ""
+        repeat(4) { attempt ->
+            if (success != null) return@repeat
+            val outcome = AaCompletionClient.complete(
+                snippet = completionRequest.allCode,
+                cursor = pos,
+                preamble = "",
+                declarations = selection.profile.completionDeclarations,
+                implicitReceivers = emptyList(),
+                classpathRootsOverride = stdlibRoots,
+                jsTarget = true,
+            )
+            lastDetail = outcome.detail
+            success = outcome.result as? afield.runtime.kotlin.CompletionResult.Success
+            if (success == null && attempt < 3) Thread.sleep(300)
+        }
+        val built = success
+        if (built == null) {
+            lprintln("info,kotlinjs", "completion backend=AA(stdlib) → empty ($lastDetail)")
+            return null
+        }
+        return Completion(
+            boundsStart = built.bounds.start,
+            boundsEnd = built.bounds.end,
+            metadata = built.metadata.map {
+                Metadata(
+                    icon = it.icon,
+                    tail = it.tail,
+                    text = it.text,
+                    displayText = it.displayText,
+                    documentation = "",
+                )
+            },
+        )
+    }
+
+    private fun runKotlin(
+        inside: Box,
+        execute: Execute,
+        launchable: Boolean,
+        code: String,
+        strand: String,
+        reply: (Message) -> Unit,
+    ) {
+        // The receipt every engine owes an awaited run (ExecutionVerdict.kt). Before 2026-10-24 a
+        // Kotlin→JS run published none, so every backdoor `run` of one timed out, errors included.
+        val trace = ExecutionTrace.forEngine(inside, execute, if (launchable) "launch" else "run", reply)
+        configureOutputProxies(inside, trace.reply)
+        val settle = KotlinJsReceipt(trace)
+
+        val selection = try {
+            KotlinJsHeadProfiles.resolveForBox(inside, code)
+        } catch (e: IllegalArgumentException) {
+            inside.output.errorProxy(e.message ?: "Invalid Kotlin/JS head marker", "code", 0)
+            settle.finish(false, e.message ?: "Invalid Kotlin/JS head marker")
+            return
+        }
+        val connected = selection.profile.connectedHeadCount()
+
+        if (connected == 0 && selection.profile != KotlinJsHeadProfiles.visionMetal) {
+            // Nothing would run it; this used to compile, warn in a toast and report success.
+            notify("Warning! no connected ${selection.profile.id} heads", "kotlinjs")
+            inside.output.errorProxy(RemoteJsBoxSurface.NO_HEAD, "code", -1)
+            settle.finish(false, RemoteJsBoxSurface.NO_HEAD)
+            return
+        } else if (connected == 0)
+            notify("compiling Kotlin → ${selection.profile.id}; program will replay when the head connects", "kotlinjs")
+        else
+            notify("compiling Kotlin → ${selection.profile.id} for $connected head(s)", "kotlinjs")
+
+        if (!launchable) {
+            runFragment(inside, execute, code, selection, settle)
+            return
+        }
+
+        val lifecycleName = kotlinJsLifecycleName(inside, strand)
+        val key = "${inside.id}\u0000$strand"
+        launches.remove(key)?.let { previous ->
+            previous.cancel()
+            previous.selection.profile.stop(inside, previous.selection, listOf(previous.lifecycleName))
+        }
+
+        val generation = synchronized(inside) {
+            val next = (inside.runGeneration[strand] ?: -1) + 1
+            inside.runGeneration[strand] = next
+            inside.currentRunningStates[strand] = RunningState(next, "launch")
+            next
+        }
+        send(Message("is-running").payload(IsRunning(execute.uid, true, generation, strand, "launch")))
+
+        lateinit var tracker: KotlinJsLaunchTracker
+        tracker = KotlinJsLaunchTracker(
+            box = inside,
+            strand = strand,
+            generation = generation,
+            lifecycleName = lifecycleName,
+            selection = selection,
+            notifyStopped = {
+                send(Message("is-running").payload(IsRunning(execute.uid, false, generation, strand, "launch")))
+            },
+            onFinished = { launches.remove(key, tracker) },
+        )
+        launches[key] = tracker
+
+        kotlinJsCompilePool.submit {
+            try {
+                val sent = compileAndSendKotlin(
+                    inside,
+                    code,
+                    launchable = true,
+                    selectedHead = selection,
+                    lifecycleName = lifecycleName,
+                    onResponse = { response -> settle.observe(response, launch = true); tracker.onResponse(response) },
+                    sendGate = tracker::sendIfActive,
+                )
+                if (!sent) settle.finish(false, "Kotlin → JS did not compile, or the launch was replaced")
+                else if (selection.profile == KotlinJsHeadProfiles.visionMetal && connected == 0) settle.finish(true)
+                tracker.deliveryFinished(
+                    sent = sent,
+                    durableWithoutResponse = false,
+                )
+            } catch (e: Exception) {
+                lprintln("error,kotlinjs", e.stackTraceToString())
+                notify("Kotlin → JS failed: ${e.message}", "kotlinjs_error")
+                inside.output.errorProxy(e.message ?: "compile error", "code", 0)
+                settle.finish(false, e.message ?: "compile error")
+                tracker.cancel()
+            }
+        }
+    }
+
+    private fun runFragment(
+        inside: Box,
+        execute: Execute,
+        code: String,
+        selection: KotlinJsHeadSelection,
+        settle: KotlinJsReceipt,
+    ) {
+        val watermark = ++inside.fragmentGeneration
+        send(Message("is-running").payload(IsRunning(execute.uid, true, watermark, "__fragment__")))
+        val boxSource = inside.getPropertyRaw(execute.property) as? String
+        val fragmentContext = boxSource?.takeIf(String::isNotBlank)?.let {
+            val firstLine = execute.line.coerceAtLeast(0) + 1
+            KotlinJsFragmentContext(
+                boxSource = it,
+                activeUserLines = firstLine..(firstLine + code.count { c -> c == '\n' }),
+            )
+        }
+        kotlinJsCompilePool.submit {
+            try {
+                val sent = compileAndSendKotlin(
+                    inside,
+                    code,
+                    launchable = false,
+                    selectedHead = selection,
+                    fragmentContext = fragmentContext,
+                    onResponse = { response -> settle.observe(response, launch = false); response.kind != "ERROR" && response.kind != "RUN-STOP" },
+                )
+                if (!sent) settle.finish(false, "Kotlin → JS did not compile")
+                else if (selection.profile == KotlinJsHeadProfiles.visionMetal) settle.finish(true)
+            } catch (e: Exception) {
+                lprintln("error,kotlinjs", e.stackTraceToString())
+                notify("Kotlin → JS failed: ${e.message}", "kotlinjs_error")
+                inside.output.errorProxy(e.message ?: "compile error", "code", 0)
+                settle.finish(false, e.message ?: "compile error")
+            } finally {
+                send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
+            }
+        }
+    }
+}
+
+/**
+ * Finishes a Kotlin→JS run's [ExecutionTrace] once, from the first head reply that ends it: the
+ * module's own terminal SUCCESS (or, for a Launch, its RUN-START), or an ERROR.
+ */
+internal class KotlinJsReceipt(private val trace: ExecutionTrace) {
+    private var done = false
+
+    fun observe(response: KotlinJsHeadResponse, launch: Boolean) {
+        when {
+            response.kind == "ERROR" -> finish(false)
+            response.kind == "SUCCESS" && response.terminal -> finish(true)
+            launch && response.kind == "RUN-START" -> finish(true)
+        }
+    }
+
+    @Synchronized
+    fun finish(success: Boolean, reason: String = "") {
+        if (done) return
+        done = true
+        trace.finish(success, reason)
+    }
+}
+
+internal class KotlinJsLaunchTracker(
+    val box: Box,
+    private val strand: String,
+    private val generation: Int,
+    val lifecycleName: String,
+    val selection: KotlinJsHeadSelection,
+    private val notifyStopped: () -> Unit,
+    private val onFinished: () -> Unit,
+) {
+    private val expectedHeads = mutableSetOf<String>()
+    private val activeHeads = mutableSetOf<String>()
+    private val terminalHeads = mutableSetOf<String>()
+    private var finished = false
+
+    @Synchronized
+    fun onResponse(response: KotlinJsHeadResponse): Boolean {
+        if (finished || !isCurrent()) return false
+        expectedHeads += response.expectedHeadIds
+        expectedHeads += response.headId
+        when (response.kind) {
+            "RUN-START" -> {
+                activeHeads += response.headId
+                terminalHeads -= response.headId
+            }
+            "RUN-STOP", "ERROR" -> {
+                activeHeads -= response.headId
+                terminalHeads += response.headId
+            }
+            "SUCCESS" -> if (response.terminal && response.headId !in activeHeads) {
+                terminalHeads += response.headId
+            }
+        }
+        if (activeHeads.isEmpty() && expectedHeads.isNotEmpty() && terminalHeads.containsAll(expectedHeads)) {
+            finish()
+        }
+        return !finished
+    }
+
+    @Synchronized
+    fun deliveryFinished(sent: Boolean, durableWithoutResponse: Boolean) {
+        if (finished || !isCurrent()) return
+        if (!sent) {
+            finish()
+        } else if (durableWithoutResponse) {
+            activeHeads += "durable-head"
+        }
+    }
+
+    /**
+     * Make the final active-generation check and publication one atomic operation with respect to
+     * [cancel]. If stop wins, the compiled module is discarded. If publication wins, stop blocks
+     * until publication returns and then sends the matching profile stop, so a launch cannot appear
+     * remotely after its stop has already passed.
+     */
+    @Synchronized
+    fun sendIfActive(send: () -> Boolean): Boolean {
+        if (finished || !isCurrent()) return false
+        return send()
+    }
+
+    @Synchronized
+    fun cancel() {
+        if (!finished) finish()
+    }
+
+    private fun isCurrent(): Boolean = synchronized(box) {
+        box.runGeneration[strand] == generation &&
+            box.currentRunningStates[strand]?.watermark == generation
+    }
+
+    private fun finish() {
+        if (finished) return
+        finished = true
+        synchronized(box) {
+            if (box.currentRunningStates[strand]?.watermark == generation) {
+                box.currentRunningStates.remove(strand)
+                notifyStopped()
+            }
+            if (box.runGeneration[strand] == generation) {
+                box.runGeneration[strand] = generation + 1
+            }
+        }
+        onFinished()
+    }
+}

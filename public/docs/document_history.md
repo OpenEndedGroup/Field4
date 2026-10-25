@@ -24,7 +24,7 @@ ui.eval("""
     return true
 """.trimIndent())
 ui.pause(6500)
-val versions = listOf(
+val versions = [
     """
     // A ring of points, saved three times.
     val radius = 40.0
@@ -38,7 +38,7 @@ val versions = listOf(
     val ring = (0 until count).map { it * 360.0 / count }
     println("radius " + radius + ", " + ring.size + " points")
     """.trimIndent(),
-)
+]
 for (text in versions) {
     val quoted = "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\""
     ui.eval("window.globalEditor.setValue($quoted); return true")
@@ -90,7 +90,7 @@ ui.moveMouse(5.0, 5.0, 2)
 ui.pause(800)
 ```
 
-Above, an earlier save of the box `sketch` is selected in the timeline, and the editor shows how it differs from the current code. To scrub one line back through its versions without leaving the editor, use the [History Lens](history_lens.md) instead.
+Above, an earlier save of the box `sketch` is selected in the timeline, and the editor shows how it differs from the current code. To scrub one line back through its versions without leaving the editor, use [Code History](history_lens.md) instead.
 
 ## Get back an earlier version
 
@@ -104,7 +104,9 @@ Above, an earlier save of the box `sketch` is selected in the timeline, and the 
 The restore is itself saved, so the state you restored *from* becomes the newest backup and
 stays in the timeline: a restore can always be undone by restoring again. Edits made since the
 last autosave (5 s) are not in any backup, so let the document save before you restore over work
-you care about.
+you care about. Every edit that changes what is saved counts: a new box, a move, a rename, a
+deletion or a connection as well as code. Closing the document and stopping Field both save what the
+autosave has not reached yet.
 
 ### Restore just a few boxes
 
@@ -141,7 +143,7 @@ can briefly read `0 boxes`.
 - **Line** keeps only the versions that changed the line your editor cursor is on — a per-line
   blame.
 - **name this version** labels the selected version (`#12 before the refactor`); named versions
-  are listed in the sidebar, and the [History Lens](history_lens.md) shows the same labels.
+  are listed in the sidebar, and [Code History](history_lens.md) shows the same labels.
 
 ## Where versions come from
 
@@ -153,7 +155,15 @@ History is read from files in the document's folder:
   keystroke. Document backups are never pruned; the history goes back to the document's first
   save. (Sidecar files such as a box's `.kt` keep their own last ten backups in the same folder;
   history does not need them, since each document backup holds the box text too.)
-- `versions.edn` holds version names and the list of full-restore jumps.
+- `backups/<sidecar>.external-<time>` files are disk edits Field overrode. When a sidecar is
+  edited outside Field while the same box has an unsaved edit in Field, Field's edit wins and the
+  disk text is kept here, with a notice naming the file. They are not versions and do not appear
+  in the timeline; the newest ten per sidecar are kept.
+- `versions.edn` holds version names and the list of full-restore jumps, for example
+  `{"transitions" [{"fromIndex" 4 "toIndex" 0 "timestamp" …}] "names" {1 "radius sixty-four"}}`.
+- `history_metrics.edn` records what happened between saves (how many boxes were edited, moved
+  or run) for the timeline's per-version statistics. Losing it loses those statistics, not any
+  version.
 
 A document that has been saved only once has nothing earlier to show. Deleting backup files
 renumbers every later version, and version names follow the numbers, so leave `backups/` alone if
@@ -161,6 +171,6 @@ you have named versions.
 
 ## Related features
 
-- Use the [History Lens](history_lens.md) to scrub a single line through its versions without leaving the editor.
+- Use [Code History](history_lens.md) to scrub a single line through its versions without leaving the editor.
 - Use a [bookmark](moving_around_the_canvas.md#bookmarks) to return to a saved working view without changing content.
 - Use [Interactive Guides](interactive_guides.md) when you want to explain a document state instead of restoring one.

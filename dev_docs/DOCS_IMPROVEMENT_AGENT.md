@@ -7,8 +7,8 @@
 > historical evidence, not the fresh-install defaults. See `public/docs/server_surface.md`.
 
 
-Two features live in `src/jvmMain/kotlin/afield/server/docsAnnotations.kt`,
-`src/jvmMain/kotlin/afield/server/docsPass.kt` and `src/commonMain/resources/docsAnnotations.js`.
+Two features live in `src/jvmMain/kotlin/afield/app/server/docsAnnotations.kt`,
+`src/jvmMain/kotlin/afield/app/server/docsPass.kt` and `src/commonMain/resources/docsAnnotations.js`.
 
 The first is benign and pleasant: `/field-docs/…` mirrors the published documentation
 through Field's own origin and injects a note-taking panel into it. Select a sentence,
@@ -553,31 +553,31 @@ The same two exposures the write half leaves standing, unchanged:
 
 Six files, 60 tests. Four of them start a real Ktor application; two read source.
 
-- `src/jvmTest/kotlin/afield/server/DocsAnnotationRouteSecurityTest.kt` — **17 tests**,
+- `src/jvmTest/kotlin/afield/app/server/DocsAnnotationRouteSecurityTest.kt` — **17 tests**,
   route-level, through the real CORS configuration. This file exists because of a measured
   gap: delete the guard *call* at the head of `post("/api/docs-annotations")` and the 19
   tests that existed before it **all still pass**, while 6 of the 12 route tests that
   existed then go red. Testing a predicate is not testing a route. The DNS-rebinding row
   was also watched red first: `Host == Origin` plus `Sec-Fetch-Site: same-origin` returned
   200 until the literal/localhost host allow-list ran before those signals.
-- `src/jvmTest/kotlin/afield/server/FieldApiWriteGuardTest.kt` — **7 tests** over
+- `src/jvmTest/kotlin/afield/app/server/FieldApiWriteGuardTest.kt` — **7 tests** over
   `AFIELD_API_REQUIRE_SAME_SITE`, including one whose entire job is to assert the
   *limitation*: a request with no `Origin` is not refused, so the switch does nothing about
   the network.
-- `src/jvmTest/kotlin/afield/server/FieldApiReadGuardTest.kt` — **10 tests** over the read
+- `src/jvmTest/kotlin/afield/app/server/FieldApiReadGuardTest.kt` — **10 tests** over the read
   half, added 2026-08-20. It opens by asserting its own premise (that the guard refuses
   *anything*), so the six tests that assert a `200` cannot pass vacuously if the switch is
   ever unwired; it reproduces the measured leak including a check that the refusal does not
   itself echo the checkout path; and three of its tests exist to catch the guard eating one of
   the deliberate exemptions.
-- `src/jvmTest/kotlin/afield/server/FieldWebSocketWriteGuardTest.kt` — **4 route-level
+- `src/jvmTest/kotlin/afield/app/server/FieldWebSocketWriteGuardTest.kt` — **4 route-level
   tests** proving that the default remains compatible, the switch closes a foreign browser
   upgrade with a policy violation, Field's own browser still connects, and a native client
   without browser-origin headers remains compatible.
-- `src/jvmTest/kotlin/afield/server/DocsAnnotationSecurityTest.kt` — **16 tests** over the
+- `src/jvmTest/kotlin/afield/app/server/DocsAnnotationSecurityTest.kt` — **16 tests** over the
   guard functions as pure functions of a `DocsAccessPolicy` value, which is what makes
   reverting one and re-running a two-minute experiment.
-- `src/jvmTest/kotlin/afield/server/FieldApiCorsExposureTest.kt` — **6 tests** pinning
+- `src/jvmTest/kotlin/afield/app/server/FieldApiCorsExposureTest.kt` — **6 tests** pinning
   decisions rather than behaviour: the CORS block literally, the route→guard table and every
   statement of its census, that adding `PUT` to `allowMethod` widens the surface, and that a
   verbless route answers every method. Another inventories every WebSocket and distinguishes
@@ -585,3 +585,13 @@ Six files, 60 tests. Four of them start a real Ktor application; two read source
 
 **If you change a guard, revert it and watch the suite before trusting the green.** Every
 count in those files was observed, not predicted.
+
+### Kit library routes (2026-10-22)
+
+Welcome adds eight state-changing kit routes and four read routes, inventoried in
+`server_surface_inventory.md` and `FieldApiCorsExposureTest`. These use the same application-wide
+browser-origin policy and loopback bind default as Welcome's Maven and project controls. They add
+no route-specific access policy: the current mutating census is **56 of 64** without one. Registering
+a package only snapshots it; runtime preparation and restart, document activation and the optional
+existing-project launcher are explicit actions. The existing-project adapter verifies the dedicated
+host's workspace before reusing its port. Older measurements and counts above remain historical.

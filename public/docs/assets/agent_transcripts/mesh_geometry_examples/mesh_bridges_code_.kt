@@ -4,10 +4,7 @@ triangulates each cell's polygonal faces into a closed solid. A Voronoi tessella
 partitions its clip box exactly, so the cell volumes must sum to the box's own volume —
 a one-line check on the whole conversion.
 */
-val rand = java.util.Random(31)
-val sites = List(48) {
-    vec(rand.nextFloat() * 1.6 - 0.8, rand.nextFloat() * 1.6 - 0.8, rand.nextFloat() * 1.6 - 0.8)
-}
+val sites = randomPoints(48, seed = 31, bounds = AxisAlignedBoundingBox3D(vec(-0.8, -0.8, -0.8), vec(0.8, 0.8, 0.8)))
 val lattice = Voronoi3d.build(sites, clipPadding = 0.15f)
 var total = 0.0
 var closed = 0
@@ -33,11 +30,12 @@ println("${interior.size} of them are interior cells (no face touches the clip b
 // A tube swept along an FLine: rotation-minimising frames, so it does not twist where the
 // path's curvature swings through vertical.
 val path = FLine()
+path.breakNext()
 for (i in 0..120) {
     val t = i / 120.0
     val a = 2.0 * PI * 2.0 * t
     val p = vec(cos(a) * 0.6, (t - 0.5) * 1.3, sin(a) * 0.6)
-    if (i == 0) path.moveTo(p) else path.lineTo(p)
+    path.lineTo(p)
 }
 val coil = tubeMesh(path, radius = 0.1, sides = 18, samples = 120, caps = true)
 println()

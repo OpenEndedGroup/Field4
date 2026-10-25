@@ -1,0 +1,8 @@
+{
+  "actualNativeGraph": true,
+  "fivePassChainFourTargets": true,
+  "rerunKeepsBundleChainAndTargets": true,
+  "beforeAfterPixelsEqual": true,
+  "liveKnobsChangePixelsAndRestoreExactly": true,
+  "limits": "Uses existing private renderer instead of starting another window; authored scene and chain at original 1024 resolution. No public capture replaced."
+}

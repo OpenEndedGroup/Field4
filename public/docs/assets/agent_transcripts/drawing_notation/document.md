@@ -20,15 +20,17 @@ where it crossed the curves. Here the line is yours: draw one across the sheet (
 and this box reads it. Run the box first; it draws the sheet.
 
 ```edn [field-box id="dn_fontana" role="properties"]
-{"id" "dn_fontana" "index" 0 "name" "fontana mix" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "fontana mix" "_tombstone" false "frame" #afield/rect [2160.0 120.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dn_fontana_code_.kt" "lines" 23 "characters" 1313 "sha256" "8b629c1c51d5f55b2263f1fe0190848841780efa5373bcb55f9cdee42075c274"}]}
+{"id" "dn_fontana" "index" 0 "name" "fontana mix" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "fontana mix" "_tombstone" false "frame" #afield/rect [2160.0 120.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dn_fontana_code_.kt" "lines" 27 "characters" 1305 "sha256" "3002ba646bb2271f9c3bf1c48fde4f88cc0ce8ba08a92ab6b87c31f661764aad"}]}
 ```
 
 ```kotlin [field-property box="dn_fontana" name="code" path="dn_fontana_code_.kt"]
-// After John Cage's Fontana Mix (1958): six curves, a grid, a point, and a straight line.
-// Cage's performer laid a line from a point inside the grid to one outside it and measured
-// where it crossed the curves. Here the line is yours: draw one across the sheet (Alt+D, then L)
-// and this box reads it. Run the box first; it draws the sheet.
-val colors = listOf("#e03131", "#1971c2", "#2f9e44", "#f08c00", "#9c36b5", "#0c8599")
+/*
+After John Cage's Fontana Mix (1958): six curves, a grid, a point, and a straight line.
+Cage's performer laid a line from a point inside the grid to one outside it and measured
+where it crossed the curves. Here the line is yours: draw one across the sheet (Alt+D, then L)
+and this box reads it. Run the box first; it draws the sheet.
+*/
+val colors = ["#e03131", "#1971c2", "#2f9e44", "#f08c00", "#9c36b5", "#0c8599"]
 notation("sheet") {
     frame("fontana mix", 1200, 100, 900, 520)
     for (i in 0 until 6) {
@@ -46,7 +48,9 @@ fun read(line: Mark) {
 }
 
 notation.lines.lastOrNull { it.handDrawn }?.let(::read)
-notation.onChange("fontana") { edit -> (edit.added + edit.updated).lastOrNull { it.kind == MarkType.LINE }?.let(::read) }
+notation.onChange("fontana") { edit ->
+    (edit.added + edit.updated).lastOrNull { it.kind == MarkType.LINE }?.let(::read)
+}
 ```
 
 ## 2. projection 1
@@ -62,24 +66,33 @@ are high, middle and low. Draw boxes (Alt+D, then R) in the grid, and this box r
 as events: when each starts, how long it lasts, which register it sits in.
 
 ```edn [field-box id="dn_projection" role="properties"]
-{"id" "dn_projection" "index" 1 "name" "projection 1" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "projection 1" "_tombstone" false "frame" #afield/rect [1120.0 700.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dn_projection_code_.kt" "lines" 16 "characters" 929 "sha256" "55ec64b308105d403da98dd393148cdee3330539c2190f020568dc21d3c513e1"}]}
+{"id" "dn_projection" "index" 1 "name" "projection 1" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "projection 1" "_tombstone" false "frame" #afield/rect [1120.0 700.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dn_projection_code_.kt" "lines" 25 "characters" 946 "sha256" "cd3cf2b676caecbebb0e39c674967a6770d57c6e04013ec44479b698ba282cfe"}]}
 ```
 
 ```kotlin [field-property box="dn_projection" name="code" path="dn_projection_code_.kt"]
-// After Morton Feldman's Projection 1 (1950): time runs left to right; the grid's three rows
-// are high, middle and low. Draw boxes (Alt+D, then R) in the grid, and this box reads them
-// as events: when each starts, how long it lasts, which register it sits in.
+/*
+After Morton Feldman's Projection 1 (1950): time runs left to right; the grid's three rows
+are high, middle and low. Draw boxes (Alt+D, then R) in the grid, and this box reads them
+as events: when each starts, how long it lasts, which register it sits in.
+*/
 notation("grid") {
     stroke = "#868e96"
     frame("projection", 100, 700, 960, 270)
-    for (row in 1..2) line(listOf(vec(100, 700 + row * 90), vec(1060, 700 + row * 90)))
-    rect(160, 715, 120, 60, fill = "#1971c2")                     // one to start with
+    for (row in 1..2) line([vec(100, 700 + row * 90), vec(1060, 700 + row * 90)])
+    rect(160, 715, 120, 60, fill = "#1971c2") // one to start with
 }
-val score = notation.space("projection", x = 0.0..16.0, y = 3.0..0.0)   // 16 beats; 3 rows
-fun register(v: Double) = when { v >= 2 -> "high"; v >= 1 -> "middle"; else -> "low" }
-fun read() = score.events.filter { it.mark.kind == MarkType.RECTANGLE }.forEach {
-    println("beat %.1f for %.1f, %s".format(it.start, it.duration, register(it.value)))
+val score = notation.space("projection", x = 0.0..16.0, y = 3.0..0.0) // 16 beats; 3 rows
+fun register(v: Double) = when {
+    v >= 2 -> "high"
+    v >= 1 -> "middle"
+    else -> "low"
 }
+fun read() =
+    score.events
+        .filter { it.mark.kind == MarkType.RECTANGLE }
+        .forEach {
+            println("beat %.1f for %.1f, %s".format(it.start, it.duration, register(it.value)))
+        }
 read()
 notation.onChange("projection") { read() }
 ```
@@ -96,7 +109,7 @@ Drawing from code. Everything this block makes belongs to this box: run it again
 the marks are replaced, not duplicated. Marks drawn by hand are never touched.
 
 ```edn [field-box id="dn_draw" role="properties"]
-{"id" "dn_draw" "index" 2 "name" "draw" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "draw" "_tombstone" false "frame" #afield/rect [200.0 200.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dn_draw_code_.kt" "lines" 9 "characters" 489 "sha256" "0b9d4bb35db555055728ce0ea83d7b9a2a260d25db241485f8621954900d5b37"}]}
+{"id" "dn_draw" "index" 2 "name" "draw" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "draw" "_tombstone" false "frame" #afield/rect [200.0 200.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dn_draw_code_.kt" "lines" 9 "characters" 487 "sha256" "74ee0ecdfec96fef94ba00472c976b42ff56549c67dc8a88286be46486124a84"}]}
 ```
 
 ```kotlin [field-property box="dn_draw" name="code" path="dn_draw_code_.kt"]
@@ -107,7 +120,7 @@ notation {
     stroke = "#1971c2"
     text("drawn by ${name}", frame.x, frame.y - 34)
     ellipse(frame.x - 20, frame.y - 20, frame.w + 40, frame.h + 40)
-    arrow(from = thisBox, to = listener, label = "tells")   // drag either box: the arrow follows
+    arrow(from = thisBox, to = listener, label = "tells") // drag either box: the arrow follows
 }
 ```
 
@@ -148,31 +161,35 @@ Run this to draw one; then draw your own in the frame with the pen (Alt+D, then 
 box reads everything in the frame again. Two hairpins, or a diminuendo, read the same way.
 
 ```edn [field-box id="dn_crescendo" role="properties"]
-{"id" "dn_crescendo" "index" 4 "name" "crescendo" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "crescendo" "_tombstone" false "frame" #afield/rect [960.0 1060.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dn_crescendo_code_.kt" "lines" 23 "characters" 1350 "sha256" "1672b8823bd5f3a3d7037b72ebabd6401ea8b488e761edbca7bf7569444f7376"}]}
+{"id" "dn_crescendo" "index" 4 "name" "crescendo" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "crescendo" "_tombstone" false "frame" #afield/rect [960.0 1060.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dn_crescendo_code_.kt" "lines" 27 "characters" 1347 "sha256" "e46399773dcc89005e9398d1e6246d3672df2c80adf771a96d26b8f376f47e2b"}]}
 ```
 
 ```kotlin [field-property box="dn_crescendo" name="code" path="dn_crescendo_code_.kt"]
-// A crescendo read by cutting it. A vertical line at a beat crosses the hairpin's two sides,
-// and the gap between the crossings is how loud it is: nothing at the point, most at the mouth.
-// Run this to draw one; then draw your own in the frame with the pen (Alt+D, then P) and this
-// box reads everything in the frame again. Two hairpins, or a diminuendo, read the same way.
+/*
+A crescendo read by cutting it. A vertical line at a beat crosses the hairpin's two sides,
+and the gap between the crossings is how loud it is: nothing at the point, most at the mouth.
+Run this to draw one; then draw your own in the frame with the pen (Alt+D, then P) and this
+box reads everything in the frame again. Two hairpins, or a diminuendo, read the same way.
+*/
 notation("hairpin") {
     frame("dynamics", 100, 1060, 800, 200)
-    val hand = { i: Int -> 2.5 * sin(i * 2.3) + 1.5 * sin(i * 0.7) }     // a hand is not a ruler
-    val hairpin = (0..60).map { i ->
-        val k = if (i <= 30) i else 60 - i                                // out along the top, back along the bottom
-        val side = if (i <= 30) -1 else 1
-        vec(860 - k * 23.0, 1160 + side * (75 - k * 2.5) + hand(i))
-    }
+    val hand = { i: Int -> 2.5 * sin(i * 2.3) + 1.5 * sin(i * 0.7) } // a hand is not a ruler
+    val hairpin =
+        (0..60).map { i ->
+            val k = if (i <= 30) i else 60 - i // out along the top, back along the bottom
+            val side = if (i <= 30) -1 else 1
+            vec(860 - k * 23.0, 1160 + side * (75 - k * 2.5) + hand(i))
+        }
     stroke(hairpin, name = "hairpin", stroke = "#e03131")
 }
 val dynamics = notation.space("dynamics", x = 0.0..8.0, y = 0.0..1.0)
-val markings = listOf("niente", "pp", "p", "mp", "mf", "f", "ff")
-fun read() = (0..7).forEach { beat ->
-    val ys = dynamics.vertical(beat.toDouble()).filter { !it.isSpan }.map { it.value }
-    val gap = if (ys.size >= 2) ys.max() - ys.min() else 0.0
-    println("beat $beat: %.2f %s".format(gap, markings[(gap / 0.75 * 6).roundToInt().coerceIn(0, 6)]))
-}
+val markings = ["niente", "pp", "p", "mp", "mf", "f", "ff"]
+fun read() =
+    (0..7).forEach { beat ->
+        val ys = dynamics.vertical(beat.toDouble()).filter { !it.isSpan }.map { it.value }
+        val gap = if (ys.size >= 2) ys.max() - ys.min() else 0.0
+        println("beat $beat: %.2f %s".format(gap, markings[(gap / 0.75 * 6).roundToInt().coerceIn(0, 6)]))
+    }
 read()
 notation.onStroke("crescendo") { read() }
 ```

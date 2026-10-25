@@ -52,7 +52,7 @@ each returning a pointer to a struct of function pointers:
 Every parameter in every one of those interfaces is a pointer or an integer. There are no by-value
 struct arguments in the calling convention, no C++ templates in the exported surface, no
 name-mangled symbols. That is the difference between this and Ceres: **no `native/ken-flow` wrapper
-is needed.** The binding would look like `afield.manifold` — Kotlin `java.lang.foreign` talking
+is needed.** The binding would look like `afield.geometry.solid.manifold` — Kotlin `java.lang.foreign` talking
 straight to a library NVIDIA built — not like `native/ken-ceres`, which exists only because Ceres
 exports C++ templates and nothing else.
 
@@ -127,7 +127,7 @@ them from `enumerateParamTypes` instead, and is version-proof for it.
 
 Flow's Vulkan backend creates its own `VkInstance`/`VkDevice`; `NvFlowDeviceDesc` is only
 `{ deviceIndex, enableExternalUsage, logPrint }`, so **you cannot hand Flow an existing
-`VkDevice`**. To land on the same GPU as `afield.four`, enumerate with
+`VkDevice`**. To land on the same GPU as Field 4, enumerate with
 `deviceInterface.enumerateDevices` and match on `NvFlowPhysicalDeviceDesc`, which carries
 `deviceUUID[16]`, `deviceLUID[8]`, `deviceNodeMask` and `deviceLUIDValid` — the same UUID
 `VkPhysicalDeviceIDProperties` reports, so the match is exact.
@@ -165,11 +165,11 @@ tuned — is on the wrong side of the fence.
 `NvFlowContextInterface` is not just something Flow hands you; it is an interface Flow *consumes*.
 `gridInterface.createGrid` takes a `NvFlowContextInterface*` and an opaque `NvFlowContext*`, and
 Flow's ops call through it for every resource and every pass. Implement those 39 function pointers
-as FFM upcall stubs over `afield.four` and there is no interop at all: Flow's compute passes record
+as FFM upcall stubs over Field 4 and there is no interop at all: Flow's compute passes record
 into Field's command buffers, its resources *are* `VulkanBuffer` and `Image`, and `render` can
 composite into a Field `RenderToTexture`.
 
-The 39 members fall into five groups, and each maps onto machinery `afield.four` already has:
+The 39 members fall into five groups, and each maps onto machinery Field 4 already has:
 
 | group | members | Field side |
 |---|---|---|
@@ -246,6 +246,6 @@ of the API), `include/nvflowext/NvFlowLoader.h` (the loader worth copying, six s
 `source/nvfloweditor/StandaloneTest.cpp` (the minimal app), `source/nvflowext/vulkan/` and
 `source/nvflowext/cpu/` (the two backends that matter here).
 
-In Field, the two precedents: `src/jvmMain/kotlin/afield/manifold/ManifoldNative.kt` for the binding
+In Field, the two precedents: `src/jvmMain/kotlin/afield/geometry/solid/manifold/ManifoldNative.kt` for the binding
 style this would follow, and [`CERES.md`](./CERES.md) for the native-build-and-package story it
 would borrow.

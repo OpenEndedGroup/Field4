@@ -24,8 +24,10 @@ minutes.
 val home = option("workspace") { readPersistedWorkspacePath() ?: defaultWorkspacePath() }
 ```
 
-The `--workspace` argument wins; failing that the backend reads `~/.afield/last-workspace.txt`, which
-is **machine-wide** — any clone or worktree may have been the last to write it. So if the launcher
+The `--workspace` argument wins; failing that the backend reads this checkout's
+`.afield-local/last-workspace.txt` (named to it by `AFIELD_WORKSPACE_PREFERENCE_FILE`), and failing
+that the **machine-wide** `~/.afield/last-workspace.txt`, which any clone or worktree may have been the
+last to write before the record became per checkout. So if the launcher
 prints a workspace on stderr and then fails to pass `--workspace`, the user is told one thing and
 shown another, silently, with no error anywhere.
 
@@ -77,7 +79,8 @@ curl -sk https://localhost:9712/api/welcome-docs | python3 -c \
 Three rules learned doing it:
 
 - **`AFIELD_SKIP_WORKSPACE_PERSIST=1` is not optional.** Without it a real launch rewrites
-  `~/.afield/last-workspace.txt` and re-points every other clone's next bare `./field.sh`. Back the
+  the checkout's `.afield-local/last-workspace.txt` (or, launched outside a checkout, the
+  machine-wide `~/.afield/last-workspace.txt`, re-pointing every other clone's next bare `./field.sh`). Back the
   file up and check its hash afterwards regardless; `tools/verification_runtime.py` sets this for
   every automated server for the same reason.
 - **A sandbox `HOME` does not isolate the backend.** It redirects `field.sh`'s own `$HOME` reads, but

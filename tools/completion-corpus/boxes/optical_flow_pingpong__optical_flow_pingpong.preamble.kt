@@ -1,34 +1,37 @@
-import afield.four.Renderer
-import afield.four.util.Window
-import afield.stdlib.linalg.Vector2f
-import afield.four.targets.RenderToTexture
-import afield.four.texture.HasImageView
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.math.linalg.Vector2f
+import afield.graphics.vulkan.targets.RenderToTexture
+import afield.graphics.texture.HasImageView
 import java.nio.*
 import arrow.core.right
 import arrow.core.left
-import afield.four.modules.*
-import afield.four.buffers.*
-import afield.four.targets.PingPongRenderToTexture
+import afield.graphics.shader.*
+import afield.graphics.scene.*
+import afield.graphics.render.*
+import afield.document.context.*
+import afield.graphics.vulkan.buffers.*
+import afield.graphics.vulkan.targets.PingPongRenderToTexture
 var Box.flowSession by Inheritance<AutoCloseable>() /**/
 val Once.flowSession by Onceing<AutoCloseable>() /**/
 val Why.flowSession by Whying() /**/
-var Box.history by Inheritance<PingPongRenderToTexture>() /**/
+var Box.history by ReactiveInheritance<PingPongRenderToTexture>(Reactive.DOWN) /**/
 val Once.history by Onceing<PingPongRenderToTexture>() /**/
 val Why.history by Whying() /**/
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
 /*graphics-pc-structure:time*/ var Structure.time by Structure.FromStructure<Any>()
-/*graphics-pc-binding:time*/ var Mesh.time by Mesh.BoundFromStructure<Float>()
-/*graphics-pc-binding-group:time*/ var MeshGroup.time by MeshGroup.BoundFromStructure<Float>()
-var Box.previousImage by Inheritance<HasImageView>() /**/
+/*graphics-pc-binding:time*/ var Mesh.time by Mesh.BoundFromStructure<Number>()
+/*graphics-pc-binding-group:time*/ var MeshGroup.time by MeshGroup.BoundFromStructure<Number>()
+var Box.previousImage by ReactiveInheritance<HasImageView>(Reactive.DOWN) /**/
 val Once.previousImage by Onceing<HasImageView>() /**/
 val Why.previousImage by Whying() /**/
-var Box.currentImage by Inheritance<HasImageView>() /**/
+var Box.currentImage by ReactiveInheritance<HasImageView>(Reactive.DOWN) /**/
 val Once.currentImage by Onceing<HasImageView>() /**/
 val Why.currentImage by Whying() /**/
-var Box.flow by Inheritance<afield.four.vision.OpticalFlowOperation>() /**/
-val Once.flow by Onceing<afield.four.vision.OpticalFlowOperation>() /**/
+var Box.flow by Inheritance<afield.media.vision.OpticalFlowOperation>() /**/
+val Once.flow by Onceing<afield.media.vision.OpticalFlowOperation>() /**/
 val Why.flow by Whying() /**/
-var Box.motion by Inheritance<RenderToTexture>() /**/
+var Box.motion by ReactiveInheritance<RenderToTexture>(Reactive.DOWN) /**/
 val Once.motion by Onceing<RenderToTexture>() /**/
 val Why.motion by Whying() /**/
 var Box.expectedMotion by Inheritance<Vector2f>() /**/

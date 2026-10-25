@@ -62,10 +62,10 @@ ui.pause(6000)
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-mobile-controller-group" screenshot="assets/mobile_controllers/group.png" alt="The Group tab of the Field mobile controller showing a box's controlGroup at iPhone size" padding="0" wait="0" timeout="120" embed=true hidden=true name="mobile-controller-group"}
 controlGroup("controls") {
     slider("gain", min = 0.0, max = 1.0, step = 0.01, initialValue = 0.35) { }
-    vec2Control("orbit", initialValue = afield.stdlib.linalg.Vector2f(0.35f, -0.2f)) { }
+    vec2Control("orbit", initialValue = afield.math.linalg.Vector2f(0.35f, -0.2f)) { }
     checkbox("armed", initialValue = true) { }
     stringInput("name", initialValue = "Field") { }
-    colorPicker("accent", initialValue = afield.stdlib.linalg.Vector4f(0.95f, 0.45f, 0.15f, 0.85f)) { }
+    colorPicker("accent", initialValue = afield.math.linalg.Vector4f(0.95f, 0.45f, 0.15f, 0.85f)) { }
 }
 ui.eval("""
     document.getElementById("docs-mobile-controller-group")?.remove()
@@ -112,7 +112,7 @@ controlGroup("sequencer") {
         band = it
         print(it.h)
     }
-    menu("wave", listOf("sine", "saw", "square", "noise"), initialIndex = 1) { _, name ->
+    menu("wave", ["sine", "saw", "square", "noise"], initialIndex = 1) { _, name ->
         wave = name
     }
 }

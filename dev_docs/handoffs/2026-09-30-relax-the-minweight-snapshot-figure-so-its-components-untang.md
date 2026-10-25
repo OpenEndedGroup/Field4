@@ -31,7 +31,7 @@ want a library helper that does not exist yet.
   of the 240-point background mesh, so at thresholds 0.0 and 0.5 everything overlaps in one blob,
   and even at 1.2 / 2.0 the clusters are drawn over the mesh they have just separated from.
 - The page already has a spring relaxation: `SpringMotionProcess` in
-  `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt` (used in the morphogenesis section).
+  `src/jvmMain/kotlin/afield/data/graph/dynamic_graph_systems.kt` (used in the morphogenesis section).
   `graph_connectivity.kt` (the `PointGraph` side) may have or want a force-directed layout.
 
 ## Proposed approach

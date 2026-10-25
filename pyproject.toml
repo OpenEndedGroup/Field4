@@ -41,6 +41,14 @@ cv = [
     # helper) when any landmarker is created, CPU delegate or not; inside Field that kills the JVM.
     "mediapipe>=0.10.14,<1.0",
 ]
+vmo = [
+    # Cheng-i Wang's reference Variable Markov Oracle (GPL-3.0, fine under Field's AGPL-3.0+).
+    # `afield.math.oracle` is a Kotlin port; this group only regenerates the fixture that
+    # `VmoReferenceTest` compares it with: `uv run --group vmo python tools/vmo_reference_fixture.py`.
+    "vmo==0.30.5",
+    "numpy>=1.26",
+    "scipy>=1.11",
+]
 voice = [
     # Optional local speech-to-text for AI4 push-to-talk (`python/fieldvoice`). Not part of any
     # default gate: install with `uv sync --inexact --group voice` into the venv Field's JEP is

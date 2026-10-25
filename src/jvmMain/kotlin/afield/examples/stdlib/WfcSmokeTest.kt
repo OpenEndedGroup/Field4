@@ -1,30 +1,30 @@
 package afield.examples.stdlib
 
-import afield.Colormaps
-import afield.stdlib.WFC_ALLOWED_COLOR
-import afield.stdlib.WFC_CONTRADICTION_COLOR
-import afield.stdlib.WFC_DISALLOWED_COLOR
-import afield.stdlib.WFC_EAST
-import afield.stdlib.WFC_MOORE_NEIGHBORHOOD
-import afield.stdlib.WFC_SOUTH
-import afield.stdlib.WFC_UNDECIDED_COLOR
-import afield.stdlib.WFC_UNDEFINED_COLOR
-import afield.stdlib.WFC_WEST
-import afield.stdlib.WfcNeighborhood
-import afield.stdlib.WfcRules
-import afield.stdlib.WfcSolver
-import afield.stdlib.WfcStatus
-import afield.stdlib.entropyGrid
-import afield.stdlib.entropyHeatmap
-import afield.stdlib.fullSetEntropy
-import afield.stdlib.possibilityCountHeatmap
-import afield.stdlib.sliceIntoOverlappingPatterns2D
-import afield.stdlib.solveWithRetries
-import afield.stdlib.wfcRules
-import afield.stdlib.wfcRulesHtml
-import afield.stdlib.wfcSolverHtml
-import afield.stdlib.weightsImg
-import afield.stdlib.wfcTileColor
+import afield.graphics.color.Colormaps
+import afield.simulation.automata.WFC_ALLOWED_COLOR
+import afield.simulation.automata.WFC_CONTRADICTION_COLOR
+import afield.simulation.automata.WFC_DISALLOWED_COLOR
+import afield.simulation.automata.WFC_EAST
+import afield.simulation.automata.WFC_MOORE_NEIGHBORHOOD
+import afield.simulation.automata.WFC_SOUTH
+import afield.simulation.automata.WFC_UNDECIDED_COLOR
+import afield.simulation.automata.WFC_UNDEFINED_COLOR
+import afield.simulation.automata.WFC_WEST
+import afield.simulation.automata.WfcNeighborhood
+import afield.simulation.automata.WfcRules
+import afield.simulation.automata.WfcSolver
+import afield.simulation.automata.WfcStatus
+import afield.simulation.automata.entropyGrid
+import afield.simulation.automata.entropyHeatmap
+import afield.simulation.automata.fullSetEntropy
+import afield.simulation.automata.possibilityCountHeatmap
+import afield.simulation.automata.sliceIntoOverlappingPatterns2D
+import afield.simulation.automata.solveWithRetries
+import afield.simulation.automata.wfcRules
+import afield.simulation.automata.wfcRulesHtml
+import afield.simulation.automata.wfcSolverHtml
+import afield.simulation.automata.weightsImg
+import afield.simulation.automata.wfcTileColor
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.util.Base64
@@ -371,7 +371,7 @@ object WfcSmokeTest {
         )) require(phrase in html) { "the inline view no longer says \"$phrase\"" }
 
         // ToHTML and the free function are the same view, so the docs page and a live box agree.
-        require((solver as afield.ToHTML).toHTML() == wfcSolverHtml(solver)) {
+        require((solver as afield.ui.visualization.ToHTML).toHTML() == wfcSolverHtml(solver)) {
             "WfcSolver.toHTML() diverged from wfcSolverHtml()"
         }
 

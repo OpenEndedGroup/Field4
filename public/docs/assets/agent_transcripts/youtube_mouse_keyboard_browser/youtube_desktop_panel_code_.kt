@@ -1,8 +1,8 @@
-import afield.four.Target
-import afield.four.browser.FieldUiBrowserTexture
-import afield.four.browser.PuppetBrowserWindowPanel
+import afield.graphics.vulkan.Target
+import afield.media.browser.FieldUiBrowserTexture
+import afield.media.browser.PuppetBrowserWindowPanel
 
-prop<afield.four.browser.PuppetBrowser>(browserControl)
+prop<afield.media.browser.PuppetBrowser>(browserControl)
 
 val browser = FieldUiBrowserTexture(
     renderer = renderer,
@@ -10,12 +10,13 @@ val browser = FieldUiBrowserTexture(
     width = 1280,
     height = 720,
     // Linux: Chromium's shared-texture export never fills the buffer (electron#53271).
-    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired
+    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired,
 )
 browserControl = browser
 
-renderer.renderList.preTargets["youtube-desktop-browser-upload"] =
-    Target { command, _ -> browser.prepareSampledImagesFor(command) }
+renderer.renderList.preTargets["youtube-desktop-browser-upload"] = Target { command, _ ->
+    browser.prepareSampledImagesFor(command)
+}
 
 // This is direct window input, not a synthetic controller ray. The panel letterboxes if
 // the window is resized and uses that same fitted rectangle for its mouse hit test.
@@ -29,8 +30,9 @@ loop {
         println("YouTube is live: click, scroll and type directly in the Chromium page")
     }
     frame()
-}.end {
-    renderer.renderList.preTargets.remove("youtube-desktop-browser-upload")
-    screen.close()
-    browser.close()
 }
+    .end {
+        renderer.renderList.preTargets.remove("youtube-desktop-browser-upload")
+        screen.close()
+        browser.close()
+    }

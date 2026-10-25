@@ -1,10 +1,13 @@
-import afield.four.Renderer
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
 import arrow.core.right
 import arrow.core.left
-import afield.four.modules.*
-import afield.four.buffers.*
-import afield.four.modules.ClusterGeometryDemo
+import afield.graphics.shader.*
+import afield.graphics.scene.*
+import afield.graphics.render.*
+import afield.document.context.*
+import afield.graphics.vulkan.buffers.*
+import afield.graphics.render.ClusterGeometryDemo
 var Box.lab by Inheritance<ClusterGeometryDemo>() /**/
 val Once.lab by Onceing<ClusterGeometryDemo>() /**/
 val Why.lab by Whying() /**/
@@ -17,8 +20,8 @@ class Cluster(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var range by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var identity by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var range by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var identity by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun ClusterByteSize(): Long = 32L
 fun ClusterLayoutMembers(): List<Introspected.Member> =
@@ -40,7 +43,7 @@ class Positions(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var data by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var data by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun PositionsByteSize(): Long = 16L
 fun PositionsLayoutMembers(): List<Introspected.Member> =
@@ -61,7 +64,7 @@ class Indices(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var data by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var data by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun IndicesByteSize(): Long = 16L
 fun IndicesLayoutMembers(): List<Introspected.Member> =
@@ -82,7 +85,7 @@ class Clusters(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var data by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var data by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun ClustersByteSize(): Long = 16L
 fun ClustersLayoutMembers(): List<Introspected.Member> =
@@ -95,26 +98,26 @@ fun BufferParameters.asClusters(): Clusters =
     buffer.asClusters()
 /*end*/
 /*compute-pc-structure:positions*/ var Structure.positions by Structure.FromStructure<Any>()
-/*compute-pc-binding:positions*/ var ComputeMesh.positions by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*compute-pc-binding-group:positions*/ var ComputeMeshGroup.positions by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*compute-pc-binding:positions*/ var ComputeMesh.positions by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-pc-binding-group:positions*/ var ComputeMeshGroup.positions by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*compute-pc-structure:indices*/ var Structure.indices by Structure.FromStructure<Any>()
-/*compute-pc-binding:indices*/ var ComputeMesh.indices by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*compute-pc-binding-group:indices*/ var ComputeMeshGroup.indices by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*compute-pc-binding:indices*/ var ComputeMesh.indices by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-pc-binding-group:indices*/ var ComputeMeshGroup.indices by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*compute-pc-structure:descriptions*/ var Structure.descriptions by Structure.FromStructure<Any>()
-/*compute-pc-binding:descriptions*/ var ComputeMesh.descriptions by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*compute-pc-binding-group:descriptions*/ var ComputeMeshGroup.descriptions by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*compute-pc-binding:descriptions*/ var ComputeMesh.descriptions by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-pc-binding-group:descriptions*/ var ComputeMeshGroup.descriptions by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*compute-pc-structure:columns*/ var Structure.columns by Structure.FromStructure<Any>()
-/*compute-pc-binding:columns*/ var ComputeMesh.columns by ComputeMesh.BoundFromStructure<UInt>()
-/*compute-pc-binding-group:columns*/ var ComputeMeshGroup.columns by ComputeMeshGroup.BoundFromStructure<UInt>()
+/*compute-pc-binding:columns*/ var ComputeMesh.columns by ComputeMesh.BoundFromStructure<Any>()
+/*compute-pc-binding-group:columns*/ var ComputeMeshGroup.columns by ComputeMeshGroup.BoundFromStructure<Any>()
 /*compute-pc-structure:rows*/ var Structure.rows by Structure.FromStructure<Any>()
-/*compute-pc-binding:rows*/ var ComputeMesh.rows by ComputeMesh.BoundFromStructure<UInt>()
-/*compute-pc-binding-group:rows*/ var ComputeMeshGroup.rows by ComputeMeshGroup.BoundFromStructure<UInt>()
+/*compute-pc-binding:rows*/ var ComputeMesh.rows by ComputeMesh.BoundFromStructure<Any>()
+/*compute-pc-binding-group:rows*/ var ComputeMeshGroup.rows by ComputeMeshGroup.BoundFromStructure<Any>()
 /*compute-pc-structure:time*/ var Structure.time by Structure.FromStructure<Any>()
-/*compute-pc-binding:time*/ var ComputeMesh.time by ComputeMesh.BoundFromStructure<Float>()
-/*compute-pc-binding-group:time*/ var ComputeMeshGroup.time by ComputeMeshGroup.BoundFromStructure<Float>()
+/*compute-pc-binding:time*/ var ComputeMesh.time by ComputeMesh.BoundFromStructure<Number>()
+/*compute-pc-binding-group:time*/ var ComputeMeshGroup.time by ComputeMeshGroup.BoundFromStructure<Number>()
 /*compute-pc-structure:topology*/ var Structure.topology by Structure.FromStructure<Any>()
-/*compute-pc-binding:topology*/ var ComputeMesh.topology by ComputeMesh.BoundFromStructure<UInt>()
-/*compute-pc-binding-group:topology*/ var ComputeMeshGroup.topology by ComputeMeshGroup.BoundFromStructure<UInt>()
+/*compute-pc-binding:topology*/ var ComputeMesh.topology by ComputeMesh.BoundFromStructure<Any>()
+/*compute-pc-binding-group:topology*/ var ComputeMeshGroup.topology by ComputeMeshGroup.BoundFromStructure<Any>()
 /*compute-pc-structure:invalidCluster*/ var Structure.invalidCluster by Structure.FromStructure<Any>()
 /*compute-pc-binding:invalidCluster*/ var ComputeMesh.invalidCluster by ComputeMesh.BoundFromStructure<Int>()
 /*compute-pc-binding-group:invalidCluster*/ var ComputeMeshGroup.invalidCluster by ComputeMeshGroup.BoundFromStructure<Int>()

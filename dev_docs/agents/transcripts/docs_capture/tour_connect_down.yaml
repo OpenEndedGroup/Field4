@@ -1,0 +1,30 @@
+name: tour_connect_down
+description: |
+  Setup for `public/docs/tour_connecting_boxes.md`, "Run the parent, watch the child".
+  "Palette" declares `propDown<Int>(petals)` and sets 5; "Swatch", connected beneath it, reads
+  `petals`. Both run once; then Palette's code is edited to 8 and only Palette is run. Swatch's
+  second run is the rerun propDown asks for, so its output shows eight petals.
+operations:
+  - create:
+      box: tcd_palette
+      name: Palette
+      frame: { x: 40.0, y: 40.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          propDown<Int>(petals) = 5
+  - create:
+      box: tcd_swatch
+      name: Swatch
+      frame: { x: 40.0, y: 200.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          markdown("A flower with $petals petals: " + "✿".repeat(petals))
+  - connect: { parent: tcd_palette, child: tcd_swatch }
+  - execute: { box: tcd_palette, property: code }
+  - execute: { box: tcd_swatch, property: code }
+  - await: {}
+  - edit: { box: tcd_palette, property: code, from: "(petals) = 5", to: "(petals) = 8" }
+  - execute: { box: tcd_palette, property: code }
+  - await: {}
+  - wait: { millis: 1500 }
+  - await: {}

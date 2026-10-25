@@ -34,19 +34,6 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json \
 The source corpus lives in the repository at `dev_docs/agents/transcripts/`, with a companion
 `README.md` covering the op vocabulary, capture commands, and the graphics-topology rule.
 
-### Two things to know before you edit one
-
-Some transcripts ship a `build.yaml` beside the saved document, and the script says, in its own
-words, that re-running it rebuilds that document. Most still do. Two do not: `logging_layer` and
-`frame_history_reprojection` were edited in Field afterwards and re-saved with the build script left
-behind — five boxes between them, and `logging_layer`'s older code has lost an import and no longer
-compiles. **Take the document as the truth for those two.** `tools/test_demo_build_scripts.py` holds
-the rest to it, and lists the known-stale boxes explicitly so an exception cannot outlive its reason.
-
-**Do not hand-edit a `metadata.edn`.** `AgentDemoDriftGuard` requires it to be byte-for-byte what
-Field's own EDN codec writes, so an edit that looks right comes back modified from the next
-regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or change it in Field.
-
 ## How CI checks them
 
 <!-- transcript-index: totals -->
@@ -65,12 +52,15 @@ the box's `// {{ marker }}` selects.
 
 None of the three proves a picture is *right*; that is what the docs captures and the gallery
 FIELD_TESTs are for. What all three prove is that the code in these files still compiles and runs
-against today's stdlib. A second guard, `checkAgentTranscripts`, materializes every transcript into
-a document and compares it byte-for-byte against the committed starting points, so the copy the
-welcome screen opens is the one the yaml produces today.
+against today's stdlib. A separate check makes sure the copy the welcome screen opens is the one
+the yaml produces today.
 
 The saved documents under `dev_docs/agents/demos/` each have a transcript here too, so their box
 Kotlin is compiled on every build.
+
+??? aside "Agents: the starting-point guard"
+    `checkAgentTranscripts` materializes every transcript into a document and compares it
+    byte-for-byte against the committed starting points.
 
 ??? aside "Why the demos are registered here"
     Box code goes through the K2 REPL against a different import set from `jvmMain`, so no Gradle
@@ -165,6 +155,18 @@ in audio-sized blocks. See [SMPTE Timecode](smpte_timecode.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/smpte_timecode/metadata.edn)
 
+### matrix_profile
+
+**Motifs, discords and contrast**, in four boxes that use `afield.math.matrixprofile` (no GPU
+needed). A random walk with a wiggle hidden three times, found by `matrixProfile(...).motifs()`; a
+pulse train with one malformed beat, found by `discords()`; four noisy channels with a gesture in
+two of them, which `multiMatrixProfile` finds along with the channels that carry it; and two sets
+of examples where only one has a step, found by `contrastProfile(...).platos()`. Each box makes its
+own signal from a fixed seed, so replace that with your own data.
+See [Motifs, Discords and Contrast](matrix_profile.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/matrix_profile/metadata.edn)
+
 ### ai4_chat_archive
 
 **Reading a saved AI4 chat**, in four boxes: a lens viewer with the chat-log tools registered, the
@@ -195,7 +197,7 @@ and compare bytes per frame. See [Simulation time](profiling_timeline.md#simulat
 
 ### drawing_notation
 
-Six boxes on the drawing layer (`alt-d`) and the `notation` API. `draw` circles itself and draws an
+Six boxes on the drawing layer (`alt/option-d`) and the `notation` API. `draw` circles itself and draws an
 arrow to `listen` that follows both boxes when you drag them; `read` prints every mark and what it
 sits on; `listen` prints each stroke you draw. The other three read the drawing by cutting it:
 `projection 1`, after Feldman, reads rectangles in a three-row grid as onsets, durations and
@@ -205,6 +207,30 @@ headless, since the drawing is data on the server and needs no window. See
 [Drawing and Notation](drawing_and_notation.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn)
+
+### notation_elements
+
+The `notation` API end to end, in five boxes. `elements` draws one of every kind of mark from code
+(shapes, lines, strokes, text, an arrow between boxes, a frame, a group) in each fill and stroke
+style; `score` turns a frame into a score and reads the notes in it; `audit` calls every read, write
+and cut and prints one line per call; `listen` reacts to strokes, arrows and text drawn by hand; and
+`hand` sends a stroke, an arrow and a text from the page the way the drawing layer does. Run them in
+that order, then press `alt/option-d` to see the drawing. See
+[Drawing and Notation](drawing_and_notation.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/notation_elements/metadata.edn)
+
+### slideshow_guide
+
+A four-step guide over two small boxes. Run `tour` and follow the links in its note: the first step
+selects the guide, the second selects `numbers` and draws a line to it while counting your visits,
+the third opens `squares` with line 3 highlighted and a dashed line drawn to it, and the last has a
+link whose callback updates a count the note shows. The whole tour, captured from a Field window
+for [Interactive Guides](interactive_guides.md#a-guide-to-open):
+
+<video controls muted loop playsinline preload="metadata" src="assets/interactive_guides/slideshow_guide.mp4" width="1500" height="620" style="max-width:100%;height:auto;aspect-ratio:1500/620" aria-label="The slideshow_guide document in a Field window: tour, numbers and squares on the left, the editor on the right. Tour's note types itself in and Start is clicked; numbers is selected and a green line runs from the note to it, with one visit counted; squares opens in the editor with line 3 marked and a dashed line to it; the last note's star link is clicked twice and the count reads 2; Finish closes the note."></video>
+
+[Open ↗](offline.html?file=assets/agent_transcripts/slideshow_guide/metadata.edn)
 
 ### drawn_score
 
@@ -326,6 +352,20 @@ sphere and the floor, and both ends of that sentence are asserted by
 
 [Open ↗](offline.html?file=assets/agent_transcripts/simdverlet_world/metadata.edn)
 
+### evolving_water_bugs
+
+A genetic algorithm that evolves little 2D creatures of points, springs and motorised joints, with
+every point a foot that steps on its own cycle. The library evolves the body, the foot timing and
+the joint curves together; the box says what world they live in. In `water_bug` that is a water
+surface seen from above: a foot that touches down grips the surface film where it landed, and one
+that is up drags through the water. That rule is a dozen lines of `ContactModel` in the box, next
+to the fitness that rewards distance and charges for stretching and effort. `ground_crawler` swaps
+in a floor and gravity and scores only horizontal distance, and nothing else changes. Evolution runs
+on its own thread and both loops draw the current champion; CI launches them, advances 90 frames,
+and stops them.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/evolving_water_bugs/metadata.edn)
+
 ### inertial_movement
 
 Motion that survives being interrupted, as three boxes that get longer in
@@ -397,7 +437,7 @@ execution prints `ages: [15, 30, 45]` off a frame it never reloaded.
 
 ### linalg_thumbnails_demo
 
-Each box evaluates one `afield.stdlib.linalg` value; on execute its
+Each box evaluates one `afield.math.linalg` value; on execute its
 output shows the terse text head plus a small inline SVG thumbnail the `ValueVisualizer` draws: an
 auto-scaled arrow for vectors (isometric for `vec3`), a diverging heatmap grid for matrices.
 
@@ -418,7 +458,7 @@ the difference between a gesture and a state.
 ### fn_differentiable_fit_demo
 
 A self-contained demo of the differentiable fitter
-(`afield.stdlib.fitBest` / `fitGradient`), the gradient-descent counterpart to the genetic
+(`afield.math.functions.fitBest` / `fitGradient`), the gradient-descent counterpart to the genetic
 `evolve()`. The target is a product of two oscillators with a seed chosen to be wrong; a single
 `fitGradient` stalls in a frequency local-minimum, so the demo uses `fitBest` (jittered restarts) to
 land in the global basin. On execute it plots the target and the fitted curve and returns an RMSE
@@ -505,7 +545,8 @@ see it move and then see it stop. Box 3 shows that re-running a box replaces its
 adding a second one: run it twice and the counter restarts in a new colour. It also prints its own
 frame rate, which is a different number on every machine. Box 4 is yours to drive: stop it inside
 its eight seconds, let it run out, or re-run it, and compare which cleanup lines appear. `.end { }`
-runs when the loop is cancelled, not when it finishes.
+runs when the loop is cancelled, not when it finishes. Its cleanup lines collect in a separate channel that keeps the last
+twelve across launches, so an earlier run's lines are still there to compare.
 
 Every box redraws on a clock, 30 times a second at most, rather than on every frame, because the
 loop runs thousands of frames a second and drawing each one floods the output.
@@ -553,6 +594,16 @@ rules side by side on a ring. From the measuring sections of [Drawing with FLine
 ```
 
 [Open ↗](offline.html?file=assets/agent_transcripts/fline_measure/metadata.edn)
+
+### fline_exact_booleans
+
+**Exact booleans and cubic offsets, side by side with the old paths.** Two boxes, each with a dot on every node: the union and difference of a blob and a circle through `Area` and through `booleanExact`, and a star and an S-curve offset by `byOffsetting` and by `byOffsettingExact`. From [Drawing with FLines](fline_examples.md#exact-booleans-and-offsets).
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/fline_exact_booleans.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="120" padding="12" name="gallery-fline-exact-booleans" alt="Offsets of a star and an S-curve, with a dot on every node. On the left, in orange, the sampled byOffsetting: the star offset crosses itself in loops at every point, and the S-curve offset is a dense chain of dots. On the right, in blue, byOffsettingExact: clean outlines with rounded joins on a handful of nodes" macro-file="../../dev_docs/agents/transcripts/fline_exact_booleans.yaml" capture-box="fline-exact-offsets"}
+// The transcript builds and runs both boxes; this is the offsets box.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fline_exact_booleans/metadata.edn)
 
 ### sound_render_path
 
@@ -621,7 +672,7 @@ those lines compiling.
 
 ### petri_state_space
 
-The other half of `afield.petri`: the same engine as an exact concurrency
+The other half of `afield.simulation.petri`: the same engine as an exact concurrency
 checker, in five boxes. Where `petri_sound` asks what a net *plays*, this asks what it can *do*,
 [the classical questions](petri_nets.md) over every interleaving rather than the one the conflict
 policy picks. The first box makes the case: on the symmetric five-philosopher table `willDeadlock()`
@@ -693,7 +744,7 @@ cylinder and prints what each one is: welded, watertight, χ = 2. *Marching cube
 drilled sphere and a gyroid out of scalar fields and shows the surface converging on the analytic
 volume as the resolution doubles. *SDF modelling* writes a shape as an expression (primitives combined
 with union, difference and a smooth minimum) then meshes it. *Subdivide, smooth, decimate* runs one
-mesh through Loop subdivision, then Laplacian against Taubin (watch which one holds its volume), then
+mesh through Loop subdivision, then Laplacian against Taubin (the printed volumes show how much less Taubin shrinks), then
 QEM decimation to a triangle budget with the deviation that costs. *Curvature, rays, closest points,
 inside* queries a torus through the BVH and prints correctly-signed Gaussian curvature. *Bridges* turns
 `voronoi3d` cells into meshes, meshes into `FLine`s, and writes OBJ and STL. The last box needs no view
@@ -921,10 +972,9 @@ independent definition of the same thing*, written out longhand in the box. *pyr
 decimation against blur-then-throw-away, and prints the max elementwise difference so you can see the
 only disagreement is float summation order. *boxBlur* times the running-sum implementation against
 `convolveSeparable(boxKernel1D)`, which shares no code with it, and then prints the two blocks
-together, at radius 2 and at radius 24, because read together they say something the O(1)-beats-O(k)
-story gets wrong: at radius 2 the *kernel* is faster, and only past a crossover of a few pixels does
-the running sum win. A running sum is serial by nature; five taps of separable convolution vectorize
-freely. *bilateral* has no cheap reference, so it probes 3 px either side of a disc boundary at
+at radius 2 and at `comparisonRadius` (24), with how each cost grew and which was faster at radius 2
+in that run. The answer depends on the machine: a running sum is serial by nature, while five taps of
+separable convolution vectorize freely, so at small radii the kernel can win. *bilateral* has no cheap reference, so it probes 3 px either side of a disc boundary at
 `y = 210`, about one `sigmaSpace`, chosen because probing 30 px out would show a preserved step and
 prove nothing, then prints the noise left in a flat patch. The absolute milliseconds here are not the
 published benchmark (that is `:tools:imaging-bench` against OpenCV); what these boxes show is the
@@ -1019,6 +1069,60 @@ Both boxes compute both spacings live, so neither picture is stored. Move a cont
 middle of the chord and re-run to watch the two columns converge.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/arclength_spacing_demo/metadata.edn)
+
+### lp_curves
+
+Linear-programming algorithms as curve generators, the companion to
+[Linear programs as curves](lp_curves.md). *Every route* draws one pentagon and one objective
+direction seven ways: the central path, a fan of central paths, the primal-dual iterates, a PDHG
+spiral, the ellipsoid method with its ellipses, the simplex walk and cutting planes, each captioned
+with its own numbers. *A turning objective* is launched: the direction turns once every twelve
+seconds while the hexagon's vertices breathe, and the central path, the PDHG spiral and the simplex
+walk are recomputed twenty times a second. Change the weights or the PDHG step size and run it again.
+*Drag the polygon* draws the [fan as a map](lp_curves.md#the-fan-as-a-map) in an editable viewer:
+choose the pencil tool and drag a corner, and the grid is redrawn for the new polygon when the drag
+ends.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/lp_curves/metadata.edn)
+
+### lp_curves_3d
+
+The same methods in three dimensions, the companion to
+[Linear programs as curves, in three dimensions](lp_curves.md#in-three-dimensions). *Every route* takes the convex hull of a
+seeded point cloud as an `LpPolytope` and draws the central path, the primal-dual iterates, the
+simplex walk along the hull's edges and a PDHG spiral to one vertex, in a `three { }` scene you can
+orbit. *A fan of central paths* draws one path per direction over the sphere and turns it on a
+turntable. Change the direction or the seed and run it again.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/lp_curves_3d_fan.png" capture="box" open-outputs="true" wait="6.0" embed=true hidden=true timeout="180" padding="12" name="gallery-lp-curves-3d-fan" alt="A translucent faceted solid with grey edges and a bundle of rainbow-coloured central paths leaving a common point inside it and fanning out to every corner" macro-file="../../dev_docs/agents/transcripts/lp_curves_3d.yaml" capture-box="lp3_fan"}
+// The transcript builds and runs both boxes; this is the fan box, caught mid-turn.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/lp_curves_3d/metadata.edn)
+
+### madp_geometry
+
+The madp geometry toolbox as a starting point. A model is a recipe of triangles: `geometry { }`
+runs the block, which emits triangles through a transform stack with a current colour and a current
+material (`mat`, `color`, `tri`, `quad`, `surface`, `revolve`, `tube`, `box`, `push`/`pop`). It
+draws the result in a `three { }` view lit like a studio, with soft shadows and ambient occlusion on
+a dark ground. The first box is the starter, a rippled terrain. The other ten are the toolbox's
+presets: a crystal bloom of single triangles, a lathe-turned vessel with a metal rim, a tube along a
+knot, a fungal tree of recursive tubes, phyllotaxis fronds, a Menger sponge and a city of boxes, a
+lesson in triangle winding, and two animations, a breathing sheet and a torn signal, that
+`animateGeometry { }` rebuilds thirty times a second. Launch those two to play them. Edit any recipe
+and run it again; the view keeps your orbit.
+
+The starter also calls `geometryAgent()`, which gives the document's AI4 chat the language and a
+`geometry.look` tool. The tool returns a picture of any view here as it is on screen, so you can ask
+the chat for a model and it can check its own work. The viewer's **Export GLB** saves a model, and
+compresses it when gltfpack is installed.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_geometry_terrain.png" capture="box" open-outputs="true" wait="4.0" embed=true hidden=true timeout="180" padding="12" name="gallery-madp-geometry-terrain" alt="A rippled blue-green terrain of flat-shaded triangles floating over a dark ground, casting a soft shadow onto it" macro-file="../../dev_docs/agents/transcripts/madp_geometry.yaml" capture-box="ripple_terrain"}
+// The transcript builds and runs every box; this is the starter, ripple_terrain.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_geometry/metadata.edn)
 
 ### close_node_demo
 
@@ -1209,6 +1313,26 @@ out of it and bakes it again. CI launches the box, advances 90 frames, and stops
 
 [Open ↗](offline.html?file=assets/agent_transcripts/gesture_to_keyframes/metadata.edn)
 
+### gesture_paint_replay
+
+A gesture recorded on a pad and painted with a brush. `pad to paint` holds a pen
+[gesture pad](visualizers.md#recording-a-gesture), made with `gesture(pen = true)`. Each sample
+keeps the pointer's pressure, tilt and twist as well as its position and time. The pad holds a
+wave, pressed hardest in the middle. Running the box bakes the take into x, y and pressure lanes
+and paints them with a [brush of moving hairs](paint_gestures.md):
+`canvas.gesture(x, y, pressureLane = pressure)` turns the lanes into a timed gesture, and the
+stroke moves as fast as the hand did. Edit a lane and press **paint lanes**. **paint take**
+paints the take itself, tilt included. Shift-drag on the pad, with a tablet pen for pressure and
+tilt, to record your own, then press **bake take**. `what the pad drops` paints one take four
+ways: position and time only, as a mouse records it; with the pen's pressure; with pressure and
+tilt; and the same path at an even speed. CI executes both boxes.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/gesture_paint_replay.png" capture="box" open-outputs="true" wait="6.0" embed=true hidden=true timeout="180" padding="12" name="gallery-gesture-paint-replay" alt="The pad to paint box with every panel open: three keyframe lanes for x (a rising line), y (one wave) and pressure (a single hump, hardest in the middle); the pen pad with its bake take, paint lanes, paint take and replay lanes buttons; and a cream sheet with one brown brush stroke along the wave, dark and heavy where it starts and fading as the pressure lifts" macro-file="../../dev_docs/agents/transcripts/gesture_paint_replay.yaml" capture-box="gpr_pad"}
+// The transcript builds and runs both boxes; this is the pad box.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/gesture_paint_replay/metadata.edn)
+
 ### keyframer_worked_example
 
 `KeyframeScope`, the thing that stops a look you spent twenty minutes
@@ -1390,8 +1514,8 @@ absent one.
 
 ### manifold_solids
 
-Two boxes on [robust mesh Booleans](manifold.md), the second optional native
-dependency in the tree, and the one that needs no wrapper: Manifold ships a C ABI, so the whole
+Two boxes on [robust mesh Booleans](manifold.md), an optional native
+dependency that needs no wrapper: Manifold ships a C ABI, so the whole
 binding is Panama/FFM against `libmanifoldc`. *A part, and whether it is manufacturable* builds a
 60×40×8 plate with four bored bosses, a properly rounded slot (a square `offset` by 4.5 with round
 joins, then extruded) and an 0.8mm chamfer done as a Minkowski closing with an octahedron, then
@@ -1412,6 +1536,19 @@ same shape through Field's own `marchingCubes` and names the difference.
 ![A gyroid-thickened torus drawn as a pale wireframed surface, its rim rippling in and out where the gyroid cuts it, captioned 14869 verts, 29738 tris, chi=0 genus 1, watertight, volume 17750.1245, and "29738 triangles, genus 1, guaranteed closed"](assets/manifold/levelset.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/manifold_solids/metadata.edn)
+
+### solidcraft_intro
+
+**One design, two evaluations.** The box from [SolidCraft: edit the design, then see the part](solidcraft.md)
+opens a bundled feature-tree design, changes `width` from 40 to 50 mm, and draws the resulting
+parts side by side. A fixed 20 mm circular cut is through the first extrusion and blind in the
+second; the box also prints B-rep volumes and STEP/STL export sizes. This uses the optional
+SolidCraft Rust bridge (`./gradlew buildSolidCraftNative`). Without it, the box gives that command
+instead of failing.
+
+![The SolidCraft starting point showing the 40 mm through-cut part beside the 50 mm blind-cut part almost front-on](assets/solidcraft/compare-near-front.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/solidcraft_intro/metadata.edn)
 
 ### ai4_paint_studio
 
@@ -1480,11 +1617,7 @@ Manifold and Field's own divergence-theorem sum agree on to the last digit despi
 *Boolean* checks inclusion–exclusion, `vol(A ∪ B) + vol(A ∩ B) = vol(A) + vol(B)`, rather than
 checking that the union got bigger, and shows the frame's genus going 1 → 0 as the plaque plugs its
 window. *Levelset* marches the same depth field as an independent second construction of the same
-solid — the two agree to about one marching cell — and then puts a recorded claim back on the bench:
-eight runs each way, in three regimes, of `Solid.levelSet`. `parallel = false` returns one distinct
-answer in eight on every row, every time; `parallel = true` never does, and at one floor it returns
-the wrong component count on all eight runs rather than a noisy one. That figure is recaptured on
-every docs build and its last column reads differently each time, which is the claim itself. Every picture is `TriMesh.renderPng`
+solid — the two agree to about one marching cell. Every picture is `TriMesh.renderPng`
 — a CPU rasteriser, AWT-free through `PngEncoder` — so there is no Window and no Renderer.
 
 ![Three renders of the same pale wireframed relief plaque on a dark background: from above, where the room reads as a shallow basin with a raised near edge and raised side walls; from three-quarters, where the flat base slab shows under the relief; and edge-on along the rim, where the slab and the vertical skirt joining it to the surface are clearest](assets/chain_photo_to_solid/plaque.png)
@@ -1493,7 +1626,7 @@ every docs build and its last column reads differently each time, which is the c
 
 ### solidsl_notation
 
-Two boxes on [`afield.solidsl`](solid_notation.md), the notation in which a
+Two boxes on [`afield.lang.solidsl`](solid_notation.md), the notation in which a
 solid is a *value* rather than a `(Vec3) -> Float`. *A part, and what the notation knows before it
 meshes* interrogates a bored plate with a blended boss before anything is built: **17 nodes**,
 symbolic bounds, and exactly one subtree with no exact CSG form: the `SmoothUnion`, because "a
@@ -1625,7 +1758,7 @@ here; the voice wants an audio device and the last one is meant to fail.
 ### popup_prior_inspect
 
 Asks Field what ranking prior the completion popup currently has for a
-receiver type, by calling the object the completion server itself calls, `afield.CommonMemberPrior`,
+receiver type, by calling the object the completion server itself calls, `afield.runtime.completion.CommonMemberPrior`,
 rather than describing it. Tabulates the type's `@CommonMembers` list in declared order with the score
 each position earns. Change one string to ask about your own class, and replay it when a member you
 expect near the top of `ctrl-space` is not there. It answers one of the two questions that place a row:
@@ -1667,7 +1800,7 @@ wants an audio device.
 
 ### alife_script
 
-**Giving one agent a program.** `afield.stdlib.alife_script` adds a per-agent behaviour layer to ALife:
+**Giving one agent a program.** `afield.simulation.agents`' `alife_script.kt` adds a per-agent behaviour layer to ALife:
 the nine `alife_*.kt` files already there advance a whole population with one `step(params)` call, and
 this lets an *individual* agent sequence behaviours, wait on simulation time, hold named phases, run
 bounded concurrent sub-behaviours, and compose steering drives from whichever of them are active right
@@ -1750,7 +1883,7 @@ window, no sidecar. Three boxes: the corpus itself with its payload distribution
 `KotlinSourceIndex.getCompletionCategoryForSymbol` called with the real recorded `declaredIn`, and
 the whole decision re-scored through the shipped
 weights. The third box shells out to `tools/rank_weight_lab.py` and wants a spec file
-`afield.FieldSuggestPresentationTest` drops; if it says so, run that test once.
+`afield.runtime.completion.FieldSuggestPresentationTest` drops; if it says so, run that test once.
 `dev_docs/completion_rank_at_scale.md` is the written-up version, with the sweep and the falsification
 behind it.
 
@@ -1847,7 +1980,7 @@ grid never looks. `dev_docs/FN_INTERVAL.md` is the write-up.
 
 ### solidsl_inverse
 
-**A Solid you can differentiate — and therefore solve.** `afield.solidsl` writes a 3D solid down as a
+**A Solid you can differentiate — and therefore solve.** `afield.lang.solidsl` writes a 3D solid down as a
 value and had two readings of it, a marchable distance field and Manifold's exact CSG; both are
 *evaluations*, and neither changes what you can ask the notation for. This is the third reading. Three
 boxes, no Manifold, no GPU, no window — marching cubes and the mesh rasteriser are both pure Kotlin.
@@ -1869,6 +2002,33 @@ made addressable, gradient descent on those numbers, and the fitted program prin
 you can paste into a shader.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/stacksl_fit_demo/metadata.edn)
+
+### macro_recorder_stamp
+
+**A macro used as a stamp.** The first box saves a macro the way the
+[Macro Recorder](automating_field.md) writes one: a box with code, another box, and a connection
+between them. The second replays it as a copy three times, each lower down the canvas, so every run
+makes a new connected pair; the third replays it one operation at a time, as the panel's Step
+button does. Open the Macro Recorder afterwards to find the macro listed with its own Run, Rename
+and Delete.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/macro_recorder_stamp/metadata.edn)
+
+### madp_ga
+
+**Interactive evolution, after Karl Sims**, ported from the madp GA demo. Each tile is a short
+reverse-Polish colour program (`x 9 * sin 0.18 + y 0.55 + 0.62 hsl`) run once per pixel, and you
+are the fitness function: each box shows two parents and seven children in a 3×3 grid, and
+clicking two tiles makes them the parents of the next generation. The lead box starts from the
+demo's two starters, two more from its example programs, and the last changes the breeding rules
+so that only numbers mutate. The language is `ColorRpn` and the grid is `evolveByEye`, which takes
+any genome with a picture; design notes in `dev_docs/madp/ga.md`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_ga_lead.png" capture="box" open-outputs="true" wait="2.0" embed=true hidden=true timeout="180" padding="12" name="gallery-madp-ga-lead" alt="The GA grid on a near-black ground: a toolbar with Reroll, Fresh Parents and Start over and the mut, len and res settings, then nine tiles in three rows, the two parents (rainbow vertical stripes and rainbow spokes) outlined in blue and seven mutated children below them, each with its program written under it" macro-file="../../dev_docs/agents/transcripts/madp_ga.yaml" capture-box="madp_ga_lead"}
+// The transcript builds and runs every box; this is the lead box, starting from the demo's starters.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_ga/metadata.edn)
 
 ## Service-backed composition scenes
 
@@ -1893,11 +2053,13 @@ Walkthrough: [Gesture board: drawing toward a sound](audio_ai_gesture_board.md).
 
 ### audio_ai_analysis
 
+![Nancy’s source waveform above real beat, pYIN pitch and Basic Pitch note panels.](assets/audio_ai_analysis/synchronized_analysis.png)
+
 Resolve a recording by filename, display its exact source window, submit
 librosa beat and pYIN analysis plus Spotify Basic Pitch, follow all three jobs through replaceable
 progress cards and the durable monitor, await their immutable results, then compare onset, tempo,
 confidence, monophonic F0, voicing and polyphonic notes on synchronized timelines. Its first two
-boxes are model-free and remain runnable without the analysis worker.
+boxes show the guide and real cached previews without the analysis worker.
 Walkthrough: [Beat and pitch analysis](audio_ai_analysis.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/audio_ai_analysis/metadata.edn)
@@ -1947,6 +2109,33 @@ Walkthrough: [Corpus microscope: from recordings to related windows](audio_ai_co
 
 [Open ↗](offline.html?file=assets/agent_transcripts/audio_ai_corpus_microscope/metadata.edn)
 
+### contour_trees_explorer
+
+[Merge trees and contour trees](contour_trees.md). The first box shows a landscape of hills and
+hollows with its contour tree's nodes, the regions its arcs stand for, and the tree drawn as a plot,
+with a slider that prunes branches by persistence. The second divides the brightness of the leaf
+print into contour-tree regions, lightly and strongly simplified. Plain Kotlin, no optional
+libraries.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/contour_trees_explorer/metadata.edn)
+
+### vector_field_explorer
+
+[Vector field topology](vector_field_topology.md). The first box builds a flow from swirls,
+sources and sinks and draws its critical points and separatrices over streamlines, with a slider
+that scales the swirl. The second draws the ridges and valleys of the leaf print's brightness as
+the topology of its gradient, with a blur slider. Plain Kotlin, no optional libraries.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/vector_field_explorer/metadata.edn)
+
+### mapper_explorer
+
+[Mapper graphs of point clouds](mapper.md). The first box draws the Mapper graph of a ring with a
+tail and a separate blob over its points, with sliders for the number of bins, their overlap and
+the lens. The second scatters points along the letters A, H and O and counts the loops in each
+graph. Plain Kotlin, no optional libraries.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/mapper_explorer/metadata.edn)
 
 ## External-service live-coding scenes
 
@@ -1964,6 +2153,19 @@ and the third plays four notes and a controller from that peer, which the first 
 Nothing else needs to be on the network. See [Network MIDI](rtp_midi.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/rtp_midi_demo/metadata.edn)
+
+### temporal_memory
+
+**Continuing a gesture**, in seven boxes. A lab notebook with the measurements and wrong turns behind
+the design; six takes of modern dance from the CMU motion capture database, remembered by the
+Variable Markov Oracle and continued as a strip of poses, as hand and head heights labelled by take,
+and as a dancing figure you launch and leave running; two oscillators with a slider to take over a
+channel; a Timestral forecast drawn as a quantile fan; and the dance played five ways, two judged
+by Timestral, with coverage, repetition and join roughness for each. Boxes 5 and 6 start the
+Timestral worker, which needs `TimestralSession.install()` once.
+See [Continuing a Gesture](temporal_memory.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/temporal_memory/metadata.edn)
 
 ### ai_tool_demo
 
@@ -2110,7 +2312,7 @@ importable from Python, and `fig.show()` landing in the box. The root stays Kotl
 swaps the execution of a root's **children**, never of the root; its `mainLanguage` property is what
 makes the four boxes below Python. This one has a prerequisite the
 other scenes do not — Field must have found an interpreter with JEP's native library in it *before it
-started*, or the four cells stay Kotlin and fail to compile. `public/docs/python.md` has the recipe.
+started*; without one each cell reports "Python unavailable" and how to fix it. [Python in Field](python.md) has the recipe.
 
 `DemoTranscriptExecSmokeTest` compiles the Kotlin root and **skips the four Python cells**, because
 they are not Kotlin, so CI checks one box of five. Run against a real interpreter, the cells print
@@ -2119,6 +2321,50 @@ reach `java.lang.System` from Python. The last cell's `fig.show()` needs a brows
 `--with-playwright` it opens this box's `browser` channel, and headless it emits no output at all.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/python_cells/metadata.edn)
+
+### python_box_parity
+
+**Python boxes doing what Kotlin boxes do: errors on the right line, and live controls.** Three boxes:
+a Kotlin language root and two Python cells under it. Run the first cell and the red error marker sits
+on line 6, inside `mean`, where the division by zero happened. The second draws a slider and a checkbox
+whose callbacks are Python functions; moving either runs the function, and its `display(...)` updates
+the box. Same prerequisite as `python_cells`: Field must have found a Python with JEP before it started.
+
+`DemoTranscriptExecSmokeTest` compiles the Kotlin root and skips the two Python cells, so CI checks one
+box of three. [Python in Field](python.md) shows both cells' output.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/python_box_parity/metadata.edn)
+
+### clojure_box_parity
+
+**Clojure boxes doing what Kotlin and Python boxes do: errors on the right line, live controls, and
+values from the parent.** Four boxes: a Kotlin language root and three Clojure boxes under it. Run
+the first and the red error marker sits on line 6, inside `mean`, where the division by zero
+happened, not on the call on line 8. The second draws a slider and a checkbox whose handlers are a
+Clojure fn and an atom; ticking the box redraws its `main` panel, and running it again keeps the
+tick. The third prints the root's `speed` property and its Kotlin `palette` variable, both read with
+`(context ...)`. Run the root first. Nothing to install: Clojure ships inside Field.
+
+`DemoTranscriptExecSmokeTest` compiles the Kotlin root and skips the three Clojure boxes, so CI checks
+one box of four; `ClojureFieldCoreTest` and `ClojureHostTest` run what the Clojure boxes use.
+[Clojure in a box](clojure.md) teaches the same calls.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/clojure_box_parity/metadata.edn)
+
+### remotejs_box_parity
+
+**RemoteJS boxes doing what Kotlin, Python and Clojure boxes do.** Six boxes: a Kotlin root that opens
+the browser head on the canvas, and five Javascript boxes that run in it. `print` and `console.log`
+appear beside their lines and the last value beside the last line; an error is marked on line 4,
+inside `mean`, not on the call on line 7; `display`, a slider and a checkbox redraw a `main` panel
+from callbacks in the head; a `setTimeout` prints after the run has finished; and Stop freezes a
+`launch(...)` loop. Run the root first.
+
+`DemoTranscriptExecSmokeTest` compiles the Kotlin root and skips the Javascript boxes, which need a
+browser head; `RemoteJsBoxSurfaceTest` runs the JVM half. [Javascript in a browser tab](remotejs.md)
+teaches the same calls.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/remotejs_box_parity/metadata.edn)
 
 ### fieldcv_webcam
 
@@ -2158,8 +2404,8 @@ boxes and skips the three Pd ones, as it skips Python cells. [Pure Data](pure_da
 
 **Csound inside Field.** A Kotlin root whose `mainLanguage` makes three Csound boxes under it, and
 five Kotlin boxes that talk to Csound. **pluck** is a `.csd` with a plucked string, a MIDI-played
-`Key` instrument and a global reverb on a `chnmix` bus. Launched, Alt-Enter on its score line
-`i "Pluck" 0 1 69 -9` answers `sent …`, and Alt-Enter inside `instr Pluck` answers `recompiled instr
+`Key` instrument and a global reverb on a `chnmix` bus. Launched, alt/option-Enter on its score line
+`i "Pluck" 0 1 69 -9` answers `sent …`, and alt/option-Enter inside `instr Pluck` answers `recompiled instr
 Pluck`. **typo** has `oscilx` on line 4, which launching marks there. **talk to pluck** writes a k-
 and an S-channel and sends score events built from Kotlin values; the orchestra's `outvalue`s come
 back as `Csound said: from Kotlin` and the reverb's level. **keys** sends MIDI notes, which `Key`
@@ -2198,6 +2444,102 @@ under the grids shows what Kotlin heard and changed. Launch the box, then type i
 [ORCA](orca.md#two-orcas-and-kotlin-between-them) has the video and a recording.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/orca_duet/metadata.edn)
+
+### madp_chargrid
+
+**A picture as a grid of glyph indices.** A box's program writes numbers into a 40 × 25 grid with
+`SET(x, y, g, color, style)`, a charset string turns each number into a character, and each cell can
+carry a CSS colour and a rotation. `charGrid { }` runs the program once a tick and lets it read the
+last tick with `PREV`, which is all Conway's Life needs; `charStream { }` runs one long program in
+which every `SET` waits a tick, so 10 PRINT's maze types itself out. Every glyph can be a dough sound:
+the Glass box's charset is eight bars, A minor from E2 to E4, and its arpeggios draw and play at
+once. The lead box is the demo's plasma; the others are 10 PRINT, Life, matrix rain, Glass, spinners
+(one `CSSVAR` spins the whole field) and a C64 typewriter. A port of the madp charGrid demo; the
+design notes are in `dev_docs/madp/chargrid.md`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_chargrid_plasma.png" capture="box" open-outputs="true" wait="4.0" embed=true hidden=true timeout="180" padding="12" name="gallery-madp-chargrid-plasma" alt="A 40 by 25 grid of block and box-drawing glyphs in rotating rainbow hues, a plasma of two sine waves, on a near-black panel" macro-file="../../dev_docs/agents/transcripts/madp_chargrid.yaml" capture-box="madp_chargrid_plasma"}
+// The transcript builds and runs every box; this is the lead, the plasma.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_chargrid/metadata.edn)
+
+### madp_score
+
+**The canvas as a score.** Run the first box and an orange playhead sweeps the canvas from left to
+right every eleven seconds. Every box it crosses runs its `score { }` block each frame while the
+playhead is over it, drawing into the dark panel under the first box and playing dough sounds:
+McLaren's twitching scratches, a Fischinger orbit, two Glass phase boxes that run the same code at
+different widths and drift apart, a box that jump-cuts itself to somewhere else in the score, and a
+duck. `thisRMS` is how loud a box's own sounds are right now, measured from its voices, so the
+shapes swell with the notes. Drag a box to move it in time, stretch it to make it last longer, and
+run it again after an edit. A port of the madp score demo; the design notes are in
+`dev_docs/madp/score.md`.
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" hide-toasts=true viewport="1900x660" clip="0,0,1900,660" screenshot="assets/agent_transcripts_gallery/madp_score.png" macro-file="../../dev_docs/agents/transcripts/madp_score.yaml" padding="0" wait="0" timeout="300" embed=true hidden=true name="gallery-madp-score" alt="Field's canvas as a score: seven dark boxes spread left to right and an orange playhead line crossing the two Glass phase boxes, which are lit red and olive; under the first box, a dark panel shows what they draw, a row of thin orange bars above a row of blue ones"}
+// The transcript builds the score and runs its first box. Wait until the playhead is about seven
+// seconds in, where the two Glass phase boxes overlap, then take the picture.
+var at = ""
+for (i in 0 until 240) {
+    ui.pause(250)
+    at = ui.eval("""
+        const f = document.querySelector("iframe[src*='score_view']")
+        const s = f && f.contentDocument && f.contentDocument.getElementById("status")
+        return s ? s.textContent : "no score view yet"
+    """.trimIndent()).toString()
+    val t = Regex("score · ([0-9.]+)s").find(at)?.groupValues?.get(1)?.toDouble()
+    if (t != null && t in 6.9..7.5) break
+}
+check(Regex("score · ([0-9.]+)s").containsMatchIn(at)) { "the score never started: " + at }
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_score/metadata.edn)
+
+### madp_line
+
+**Strokes that come alive.** Run the first box, press Alt+D, choose the pencil and draw on the
+empty canvas beside the boxes. Each stroke turns into a moving, sounding object: its shape sets up a
+small synth choir, and the louder the choir plays, the wider the stroke's ribbon swings. Every
+stroke keeps the code it was drawn with, so edit the box and run it again, and only the strokes you
+draw next change. Run another box to give it the pen: a filled ribbon, comet dust with long trails,
+curve maths that splits a stroke into four related curves, strokes that pull each other into a web,
+and a stroke snapped onto a twelve-step sequencer whose cursor marks the note you hear. The block
+in `eachStroke { }` runs once per stroke and its `draw { t -> }` sixty times a second. No pen to
+hand? **draw for me** sends three strokes the way the drawing layer does. The lead box's notes walk
+through the demo and how this version maps onto it. A port of the madp line demo; the design notes
+are in `dev_docs/madp/line.md`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_line.png" capture="window" open-outputs="false" clip="20,20,1260,840" wait="5.0" embed=true hidden=true timeout="180" name="gallery-madp-line" alt="The madp line boxes in a column on the left of the dark canvas, with draw for me beside the first; to their right three drawn strokes have come alive as softly waving cyan ribbons, a long arc, a loop and a low wave, strung with small green, yellow and orange beads" macro-file="../../dev_docs/agents/transcripts/madp_line.yaml"}
+// The transcript builds every box, runs the prism choir to take the pen, then runs draw for me,
+// whose three strokes arrive over the drawing layer's own message and come alive.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_line/metadata.edn)
+
+### madp_tetra
+
+**Four pictures as a tetrahedron.** Run the first box and CLIP turns each of four photographs (a
+cat, a dog, a tiger, a car) into a point in its 512-dimensional space. The six distances between
+them become the six edges of a tetrahedron that turns slowly in the view below the pictures, with
+each edge's length written on it and listed in the corner. Any four points of such a space sit
+exactly in three dimensions, so the picture loses nothing: here the car's three edges are the three
+longest. Drop your own pictures on the slots, or drag one up from the tray. The second box puts a
+sentence in the fourth slot. Its point sits far from all three pictures, even the one it describes,
+and the coloured diamonds rank each point's three edges, so you can still see which picture the
+sentence is nearest. The third box swaps the car for a wolf. The fourth adds a fifth picture, and
+the note under its picture gives the stress, how far the best 3D fit is from the real distances.
+A port of the madp tetra demo; the design notes are in `dev_docs/madp/tetra.md`.
+
+??? aside "Not the madp page's model"
+    The madp page embeds with jina-clip-v2 on a Python server. Field runs OpenAI's CLIP ViT-B/32
+    through ONNX in the JVM, so the distances differ from the page's. The geometry does not depend
+    on the model: four unit vectors in any dimension embed exactly in 3D. The page's `tetra2` server
+    also squared its distances twice before MDS, which this port does not repeat.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_tetra.png" capture="box" open-outputs="true" wait="10.0" embed=true hidden=true timeout="240" padding="12" name="gallery-madp-tetra" alt="Four photographs (a cat, a dog, a tiger and a red car) in coloured slots above a dark view of a tetrahedron with coloured spheres at its corners, each edge labelled with its CLIP distance, and a table of the six distances in the corner" macro-file="../../dev_docs/agents/transcripts/madp_tetra.yaml" capture-box="tetra"}
+// The transcript builds and runs every box; this is the starter, tetra.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_tetra/metadata.edn)
 
 ### mqtt_demo
 
@@ -2277,6 +2619,65 @@ CI compiles the boxes; new inference requires that separate environment.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/particle_video/metadata.edn)
 
+### morse_smale_explorer
+
+[Morse–Smale complexes](morse_smale.md), three ways. The first box draws the ridges of a
+photograph under a persistence slider. The complex is built once and the slider only re-reads it,
+so dragging is instant. The second, launched, moves six hills around a 200 × 150 grid and
+recomputes the field and its complex on every frame, colouring each critical point by its id; a peak
+keeps its colour while it stays on the same grid cell. The third prints one saddle's four
+separatrices as a table. Needs the optional native library: `./gradlew buildMorseSmaleNative`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/morse_smale_explorer/metadata.edn)
+
+### principal_curves_explorer
+
+[Principal curves](principal_curves.md), three ways. The first box fits three noisy strands as
+curves under a bending slider and draws a band around each showing how widely its points are
+scattered. The second fits the green pixels of the leaf print as a branching tree. The third,
+launched, moves 2000 points along a travelling wave and refines one forest five iterations a frame
+to follow them, never regrowing it. Needs the optional native library:
+`./gradlew buildPrincipalCurvesNative`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/principal_curves_explorer/metadata.edn)
+
+### polyvector_explorer
+
+[Line-drawing vectorization](polyvector.md) by polyvector fields. The first box draws a pencil
+sketch with a T-junction, a crossing and a wave, builds its field once, and re-traces it whenever
+the pruning slider moves, drawing the field's streamlines under the curves. The second vectorizes
+the edges of a photograph on a worker thread, which takes about a minute. The third turns the
+vectorized sketch into geometry and treats it as such: parallel outlines, normals and a wave. Needs the optional native
+library and its OpenCV, Boost and Eigen packages: the welcome page's **Geometry extensions** panel
+says how, or run `./gradlew buildPolyvectorNative`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/polyvector_explorer/metadata.edn)
+
+### tracking_explorer
+
+[Tracking features through time and scale](topology_tracking.md). The first box, launched, moves six
+hills in a computed field and follows their peaks frame by frame, each with its own colour and
+trail, reporting how many peaks there are and how many tracks have existed. The second follows the
+dark places in a photograph across increasing blur and draws each as a circle the size of the
+largest blur it survives. Needs the optional Morse–Smale library: `./gradlew buildMorseSmaleNative`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/tracking_explorer/metadata.edn)
+
+### eagle_flow_explorer
+
+**An eagle's flight, read in two frames of reference.** A 1930s film of a golden eagle landing on a
+falconer's fist, turned into a flow by tracked particles. Taken as it is, the flow's streamlines,
+separatrices and critical points describe the film weaving in the gate, and sweep across the sky
+around the bird. A slider removes the camera's motion, leaving only the eagle, and another scrubs
+the 306 frames; the second box renders the whole clip as a movie. From
+[Vector field topology](vector_field_topology.md#flow-from-old-film). Needs FFmpeg.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/eagle_flow_raw.png" capture="box" open-outputs="true" wait="8.0" embed=true hidden=true timeout="240" padding="12" name="gallery-eagle-flow" alt="A darkened frame of old film in which an eagle, wings spread, lands on a falconer's fist, covered edge to edge in pale streamlines that sweep across the sky in long curves, wrap around the bird in a tight spiral and fan out over the field below, with orange and blue separatrices running from two white saddles" macro-file="../../dev_docs/agents/transcripts/eagle_flow_explorer.yaml" capture-box="eagle_flow_live"}
+// The transcript builds and runs the first box; this is frame 270 with the camera's motion kept.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/eagle_flow_explorer/metadata.edn)
+
 ## FieldML scenes
 
 <!-- transcript-index: verified-by = compile -->
@@ -2310,7 +2711,7 @@ knows nothing.
 
 ### fieldml_afield_four_demo
 
-A whole afield.four scene described from FieldML, from [FieldML and the JVM](fieldml_host_bridge.md):
+A whole Field 4 scene described from FieldML, from [FieldML and the JVM](fieldml_host_bridge.md):
 a triangle on a real Vulkan device. Run the `window and renderer` box first, then the FieldML box.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/fieldml_afield_four_demo/metadata.edn)
@@ -2508,6 +2909,26 @@ absent, rather than shipping somebody's capture as a fixture.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/splat_sequence_streaming/metadata.edn)
 
+### splat_shader
+
+The madp splat-shader demo: a few lines of GLSL run once per Gaussian splat per frame and may
+rewrite its centre, radii, colour and rotation (`pos`, `scales`, `rgba`, `quat`, with `index` and
+`t` to read). Each box's compute tab is just those lines between `#include "splat/insert"` and
+`#include "splat/end"`, and its code hands the module and a cloud to `SplatShader`. A passthrough on
+the icosphere shell leads; six of the demo's inserts follow, one on each of its procedural clouds
+(pulse rings, dissolve, gravity well, fern veins, lichen tangle, xray shell), and a last box runs
+scanlines over the ToyCar model, read with `SplatSet.fromGltf` as one disc per vertex. Each launches
+into the same window with the demo's turn, size and trail controls; the gravity well starts with
+its trail on, each frame laid over a fading copy of the last. The insert runs in a compute pass
+ahead of the depth sort, so a dissolve that throws splats outward is sorted where they went.
+Moving splats in the vertex shader instead would draw many neighbouring pairs in the wrong order.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/splat_shader_passthrough.png" capture="native-window" native-wait-frames="90" trim-native=true wait="3.0" embed=true hidden=true timeout="300" name="gallery-splat-shader" alt="The icosphere shell in the native window: a sphere of about a thousand small glowing splats on black, coloured by longitude from cyan on the left through chartreuse at the front to red and orange on the right, with the far side's violet splats showing between the near ones" macro-file="../../dev_docs/agents/transcripts/splat_shader.yaml" capture-box="splat_renderer"}
+// The transcript builds every box and launches the renderer and the passthrough.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/splat_shader/metadata.edn)
+
 ### mega_texture_wall
 
 A directory of images as one wall, behind a virtual texture the **GPU**
@@ -2529,10 +2950,10 @@ because its pixels belong to another image by the time the page table stops nami
 Worth opening for the shape as much as the subject. The wall's geometry is arithmetic on
 `gl_InstanceIndex` — six vertices, one instance per image, no vertex buffer at all — and both
 shaders are box properties with `{{ mega.all }}` interpolated into them, so the sampling, the layout
-and the LOD policy are all editable with `alt-r` rather than buried in Kotlin. Flip
+and the LOD policy are all editable with `alt/option-r` rather than buried in Kotlin. Flip
 `showResidentLevel` in the fragment shader to watch residency directly: red is the base level, green
 is a full source frame, and flying at the wall turns it green ahead of you. The library is
-`afield/four/texture/mega/`, reached from a box through `megaTextureHere { folder(…) }`.
+`afield/graphics/texture/mega/`, reached from a box through `megaTextureHere { folder(…) }`.
 
 Needs a graphics parent, so replay `graphics_renderer_launch` first, and point the `folder(…)` line
 at images of your own — which together are why this one ships no starting point.
@@ -2540,12 +2961,12 @@ at images of your own — which together are why this one ships no starting poin
 ### gpu_probe_bench
 
 A bench for asserting things about compute shaders. Four boxes: a renderer, because
-`afield.four` has no headless mode and a compute-only dispatch still needs a window for the device
+Field 4 has no headless mode and a compute-only dispatch still needs a window for the device
 to exist; the whole `GpuProbe` idiom on one screen; the pressure-projection chain a GPU fluid
 actually runs — divergence, twelve Jacobi sweeps, project — graded cell by cell against a closed
 form written in Kotlin; and a deliberate half-dispatch, so a reader can watch the sentinel fire and
 read what it says. Every assertion prints the measured value beside the floor it is compared
-against. The library is `afield/four/util/GpuProbe.kt` and the design notes are in the repository at `dev_docs/GPU_PROBE.md`.
+against. The library is `afield/graphics/vulkan/util/GpuProbe.kt` and the design notes are in the repository at `dev_docs/GPU_PROBE.md`.
 
 Registered `COMPILE_ONLY` — box 1 opens a window — so what CI holds is that all four box bodies
 still compile against Field's real K2 import set. The numbers are asserted separately, by the
@@ -2592,6 +3013,18 @@ The capture below is this transcript instrumented on [Field probes](field_probes
 ![100k soft-quad particles drawn as a glowing galaxy in a native Vulkan window](assets/field_probes/particles-galaxy.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/threebox/metadata.edn)
+
+### demo_document
+
+The [demo document](demo_document.md): one canvas showing most of what Field does. A palette pushes
+`petals` down to three connected boxes, one holding two nested boxes; a three.js gyroid and an editable
+FLine flower sit in output panels; a renderer streams a turning spiral into a box's panel and runs a
+compute shader a Field probe plots; a keyframe curve plays with its playhead running; a box draws inline
+visualizers when its editor is open; a time slider waits to be scrubbed across four cues; and a notes box
+draws on the drawing layer over all of it. Its film plays behind the home page, and the feel benchmark
+times the replay.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/demo_document/metadata.edn)
 
 ### four_pass_chain
 
@@ -2728,10 +3161,103 @@ A 2D Edwards–Anderson spin glass, Vulkan-compute accelerated. A renderer box, 
 cosine simulated annealing, updating in-place buffers), a "measure" compute box (probes
 `vec2(spin, energy)` per site so the stats card's x-mean is the magnetization and y-mean the energy
 per spin), and a "lattice view" draw box whose fragment shader colours each cell. Demonstrates a
-`renderer → update → measure → view` publish/read chain and a two-dispatch red-black update with a
-`computeMemoryBarrier` between passes.
+`renderer → update → measure → view` publish/read chain and a red-black update in two half-sweeps,
+with `computeBarrier()` between them and `computeBarrier(graphics = true)` before the view reads the
+spins. The lattice size must be positive and even; after changing it, rebuild update, measure and
+view.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/spin_glass/metadata.edn)
+
+### lattice_boltzmann_cylinder
+
+A **lattice Boltzmann fluid** in a wind tunnel, with a cylinder in the way. Three boxes: a renderer
+that opens its own window, a fluid box that builds a `ShaderLatticeBoltzmannSystem` and publishes it as
+`lbm`, and a cylinder box beneath it whose fragment shader draws into the fluid's control texture: a
+solid disc, walls top and bottom, and stripes at the left edge that release dye and hold the wind
+steady. Within a minute or so the wake behind the cylinder starts shedding a von Kármán vortex
+street, shown as vorticity. Assign `lbm.settings.previewMode` from another box to see the dye, the
+speed or the velocity instead. The fluid box's `fragment` tab is the collision-and-streaming rule. The
+same two boxes are lessons 10 and 10b of `canonical_graphics`;
+[A fluid: lattice Boltzmann](afield_four_graphics.md#lattice-boltzmann) walks through them.
+
+![Vorticity behind a white cylinder in a dark wind tunnel: the flow divides round it and the shear layers behind it have rolled up into a street of alternating orange and blue vortices](assets/afield_four_graphics/10-lattice-boltzmann.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/lattice_boltzmann_cylinder/metadata.edn)
+
+### forest_fire
+
+A **forest fire** on the GPU, in a square window. A renderer box, a forest box that builds a
+`ShaderForestFireSystem` and publishes it as `fire`, and a fire-starter box beneath it whose fragment
+shader keeps two points lit in the fire's ignition texture, one red and one green. Burnt trees
+recover, so each point sends out a train of ragged rings, one per recovery time, and where the two
+trains meet they interleave. Red recovers faster, so its rings come more often. The forest box's
+`fragment` tab is the spreading rule. The same two boxes are lessons 11 and 11b of
+`canonical_graphics`; [A forest fire](afield_four_graphics.md#forest-fire) walks through them.
+
+![A square forest crowded with ragged concentric rings of red and green fire, the two trains interleaved where they have met](assets/afield_four_graphics/11-forest-fire.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/forest_fire/metadata.edn)
+
+### fern_iterated_systems
+
+**Fern**, the classroom demo of iterated systems, on the GPU. Each system is tens or hundreds of
+thousands of particles, each stepped by one rule every frame and plotted after every step into a
+picture that fades a little each frame, so their visits pile up into fine glowing dust. A renderer
+box, then four systems beneath it: the **Barnsley fern** (four affine maps chosen at random, the
+chaos game, launched when the scene opens), the **Lorenz attractor** (a continuous chaotic flow,
+projected from 3D and coloured by height), a **flame-style IFS** (each map followed by a swirl,
+handkerchief or spherical variation, shown as log density), and the **Sierpinski triangle** (the
+smallest chaos game). Each system box's `compute` tab holds the rule as six GLSL functions,
+`initParticle`, `step`, `project`, `shouldDraw`, `color` and `pointSize`; its code sets the
+viewport, the background, the particle count and the fade, and shows sliders for fps, steps,
+fade and exposure. Launch another system box to switch to it.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/fern_iterated_systems_barnsley.png" capture="native-window" native-wait-frames="120" trim-native=true wait="30.0" embed=true hidden=true timeout="400" name="gallery-fern-iterated-systems" alt="The Barnsley fern in the native window: a tall green frond of fine glowing dust on black, its leaflets built of smaller leaflets, the lowest left one turning yellow-green" macro-file="../../dev_docs/agents/transcripts/fern_iterated_systems.yaml" capture-box="fern_renderer"}
+// The transcript builds every box and launches the renderer and the Barnsley fern.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fern_iterated_systems/metadata.edn)
+
+### particles_sketchbook
+
+**Particles**, the classroom particle sketchbook, on the GPU. The world starts empty: drag in the
+renderer window and particles are painted in along the stroke, and four hooks decide what they
+do. A renderer box, then seven sketches beneath it: **boids ribbon** (three schools flocking along
+a noise flow, launched when the scene opens), **spring mesh** (neighbours knit into a web of
+springs), **predator wake** (a hunter only `draw()` shows cuts through a flock), **bounce house**
+(gravity, walls and ball collisions), **sine garden** (orbits, clumping and sinusoidal forcing),
+**pendulum bloom** (particles tethered to where they were painted) and **vortex brush** (rings that
+follow the pointer). Each sketch box's `compute` tab holds the demo's hooks as GLSL, `spawn`,
+`eachPair`, `update` and `draw`, run once for every particle each frame over a neighbour grid, with
+the demo's helpers by the same names (`flock`, `clump`, `spring`, `collide`, `link`, `springTo`,
+`oscillate`, `bounce`, `wrap`, `ring`, ...); its code holds the demo's `init()` world settings and
+shows a trail slider, pause and reset. Launch another sketch box to switch to it.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/particles_sketchbook_boids.png" capture="native-window" native-wait-frames="90" trim-native=true wait="8.0" embed=true hidden=true timeout="300" name="gallery-particles-sketchbook" alt="Boids ribbon in the native window: a few hundred small glowing dots on near-black, gathered into loose schools in cyan, green, yellow and pink, with faint threads between close neighbours of the same school" macro-file="../../dev_docs/agents/transcripts/particles_sketchbook.yaml" capture-box="particles_renderer"}
+// The transcript builds every box and launches the renderer and boids ribbon.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/particles_sketchbook/metadata.edn)
+
+### madp_boids
+
+**boids**, the classroom flocking sketchbook, on the GPU. A flock is written as a spec: kinds of
+boid, each with a count, speed limits, a field of view, a look and a list of steering rules, and
+every boid's acceleration is the sum of its rules' Reynolds steering forces. A renderer box, then
+seven flocks: **murmuration** (the three classic rules, colour by heading, the pointer as a hawk,
+launched when the scene opens), **hawks** (predators that chase, eat and rest), **fireflies** (two
+swarms seeking moving points, glowing where trails cross), **ink** (a noise flow field on paper
+that keeps every stroke), **bait ball** (a mill of sardines blown open by sharks), **two tribes**
+(a mixed flock sorting itself by colour) and **conga** (one hand-written rule that makes chains).
+Each flock box's code is the spec and its compute tab says how the boids look; the controls are
+the page's fps, steps, trail and fade, with pause, reset, a metrics card and an inspector that
+shows what one boid sees. Launch another flock box to switch to it.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_boids_murmuration.png" capture="native-window" native-wait-frames="90" trim-native=true wait="8.0" embed=true hidden=true timeout="300" name="gallery-madp-boids" alt="Murmuration in the native window: several hundred small arrows on near-black, gathered into drifting flocks, each flock one colour because colour follows heading, mostly violet, blue and pink with one green flock heading the other way, with short fading trails behind them" macro-file="../../dev_docs/agents/transcripts/madp_boids.yaml" capture-box="boids_renderer"}
+// The transcript builds every box and launches the renderer and murmuration.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_boids/metadata.edn)
 
 ### recstl_playground
 
@@ -2895,6 +3421,27 @@ shows the same side-by-side scene and its mouse supplies the controller ray.
 ![A full YouTube browser panel rendered for the left and right eyes in a side-by-side stereo Field window](assets/puppet_browser/youtube-stereo.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/youtube_vr_browser/metadata.edn)
+
+### webrtc_shader_jam
+
+The classroom shader jam from Field. One box publishes a fragment shader as a WebRTC stream
+named `login/field-shader`, and another lists who is publishing and draws the stream it picks on a
+quad in the renderer's window. After `WebRTCNetwork.join(url)` once, Field signs in to that
+aaaframe class in its own window and remembers it; a browser ShaderTrinket then receives the Field
+box like any classmate, and Field can show any student's Publish. Before joining, the receiving box
+shows its neighbour's stream through Field's own relay. Needs the Field Electron app.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/webrtc_shader_jam.png" capture="native-window" capture-profile="macos-electron" native-wait-frames="90" trim-native=true wait="25.0" embed=true hidden=true timeout="400" name="gallery-webrtc-shader-jam" alt="Field's renderer window showing the stream the publishing box sends over Field's own relay: a three-lobed flower of blue-violet petals ringed by teal and green bands with dark outlines, filling a 16 by 9 frame on black" macro-file="../../dev_docs/agents/transcripts/webrtc_shader_jam.yaml" capture-box="webrtc_renderer"}
+// The transcript builds and launches all three boxes; on Field's own relay the receiving box shows the publishing box's stream.
+```
+
+The same box receiving a browser ShaderTrinket's stream through aaaframe:
+
+![Field's renderer window showing a stream from a browser ShaderTrinket: pink and yellow petals in a tall frame centred on black](assets/webrtc/field-receives-shadertrinket.png)
+
+Walkthrough: [WebRTC Streams](webrtc.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/webrtc_shader_jam/metadata.edn)
 
 ### direct_lighting
 
@@ -3305,7 +3852,7 @@ number of panels with no extra training and no extra shaders.
 ### skinned_characters
 
 **A rigged mesh you can bend, and a crowd of sixty-four of them.** Skeletal animation for
-`afield.four`: bones and per-vertex weights read out of a glTF, a joint-matrix palette evaluated at
+Field 4: bones and per-vertex weights read out of a glTF, a joint-matrix palette evaluated at
 a time, and linear blend skinning into a deformed surface.
 
 Eight boxes. A window and renderer the four GPU boxes hang beneath; a box that prints what the
@@ -3379,6 +3926,45 @@ shader. Launch the renderer, then launch any example; each one replaces the last
 
 [Open ↗](offline.html?file=assets/agent_transcripts/stacksl_gallery/metadata.edn)
 
+### shadertrinket
+
+**ShaderTrinket in Field.** A ShaderToy Image pass, `void mainImage(out vec4 fragColor, in vec2
+fragCoord)`, lives in each box's `fragment` property, under one `{{ shadertoy.image }}` line, and
+draws into a canvas the renderer window shows. Launch the renderer, then the lead box (Flat Rings,
+ShaderTrinket's default program); each preset box (Classic Plasma, Star Tunnel, Mandelbrot Glow,
+SDF Sphere Trace) replaces the picture when you launch it, the way choosing a preset does. Edit a
+`fragment` and press alt-R to recompile; an error is marked on its own line. The Camera Input Demo
+binds the camera to `iChannel0` with `textures("iChannel0" to webcam())`. The last two boxes are
+the classroom jam, as in [WebRTC streams](webrtc.md): Publish shares the canvas as
+`@you/field-shader`, and Live Stream lists everyone publishing and samples the one you click as
+`iChannel2`, from a browser ShaderTrinket or another Field. Both need the Field Electron app. A port
+of the madp ShaderTrinket demo; the design notes are in `dev_docs/madp/shadertrinket.md`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/shadertrinket_flat_rings.png" capture="native-window" native-wait-frames="90" trim-native=true wait="6.0" embed=true hidden=true timeout="300" name="gallery-shadertrinket" alt="Flat Rings in the native window: eight thick rings in teal, amber and blue, each with a pale dot at its centre, drifting and overlapping over a faint dark checkerboard" macro-file="../../dev_docs/agents/transcripts/shadertrinket.yaml" capture-box="shadertrinket_renderer"}
+// The transcript builds every box and launches the renderer and the lead box, Flat Rings.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/shadertrinket/metadata.edn)
+
+### stacktrinket_feedback
+
+StackTrinket, the classroom StackSL editor, in Field: StackSL programs that read their own previous
+frame. A renderer box, then seven programs beneath it: the pulse ring, feedback fog, persistent
+bloom, store channels, subroutine cse, four memory bands and long memory ecology. Each box keeps its
+program in the `stackSL` tab and calls `stackFeedback()`, which draws it every frame with the last
+frame bound as `state` and follows edits live. The box's lowering panel shows how deep its stack
+ends and any error at its line and column, and its glsl panel the GLSL the program becomes.
+Launching a box replaces the program in the window. The jam box joins the classroom shader jam, the
+WebRTC network browser ShaderTrinkets use. It publishes its program as `@you/stacktrinket`, lists
+who else is publishing, and hands the stream you pick to its program as a second picture, which
+`0 sample1` reads at this pixel the way `prev` reads the last frame.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/stacktrinket_feedback_pulse_ring.png" capture="native-window" native-wait-frames="90" trim-native=true wait="3.0" embed=true hidden=true timeout="300" name="gallery-stacktrinket-feedback" alt="The pulse ring in the native window: a soft white ring on black, centred, its radius half the window's width, fading smoothly to black on both sides" macro-file="../../dev_docs/agents/transcripts/stacktrinket_feedback.yaml" capture-box="stacktrinket_renderer"}
+// The transcript builds every box and launches the renderer and the pulse ring.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/stacktrinket_feedback/metadata.edn)
+
 ## Graphics building blocks
 
 <!-- transcript-index: verified-by = compile -->
@@ -3400,7 +3986,7 @@ The other half: a single draw box with no renderer of its own,
 which calls `fromContext()` and expects an `agent_graphics_context` parent to have supplied one.
 Replayed alone it has nothing to draw into, which is the rule it exists to demonstrate. The figure is
 this same box *given* that parent, which is how the
-[afield.four graphics walkthrough](afield_four_graphics.md) opens: the docs runner supplies the
+[Field 4 graphics walkthrough](afield_four_graphics.md) opens: the docs runner supplies the
 context, and one triangle arrives.
 
 ![A right triangle filling a native Vulkan window against black, filled with a smooth interpolated gradient from deep blue at its lower-left corner to green at its upper-right](assets/afield_four_graphics/00-traditional-triangle.png)

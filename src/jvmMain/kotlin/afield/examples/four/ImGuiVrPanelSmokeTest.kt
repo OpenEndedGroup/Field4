@@ -1,9 +1,9 @@
 package afield.examples.four
 
-import afield.four.Renderer
-import afield.four.targets.SideBySideStereoTarget
-import afield.four.util.Window
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.targets.SideBySideStereoTarget
+import afield.graphics.vulkan.util.Window
+import afield.math.linalg.Vector3f
 import kotlin.math.abs
 
 /*

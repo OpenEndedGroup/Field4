@@ -144,9 +144,11 @@ class SidecarLease:
             )
 
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
+        from verification_runtime import pinned_graalvm_args  # noqa: PLC0415
+
         gradle_wrapper = "gradlew.bat" if os.name == "nt" else "./gradlew"
         command = [
-            str(self.repo_root / gradle_wrapper), "--no-daemon", "-p", "tools/code-use-semantic-sidecar", "run",
+            str(self.repo_root / gradle_wrapper), *pinned_graalvm_args(self.repo_root), "--no-daemon", "-p", "tools/code-use-semantic-sidecar", "run",
             f"--args=--port {port} --workspace {self.repo_root}",
         ]
         self.log(f"starting completion sidecar on port {port} (log: {self.log_path})")

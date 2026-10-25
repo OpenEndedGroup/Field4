@@ -1,0 +1,98 @@
+{
+  "baseline": "e97a8c4a9",
+  "sourceSha256": {
+    "dev_docs/agents/transcripts/loris_partial_explorer.yaml": "912d991b285f652bfdbfe4e100fcfc6d6b4ed0d8c4010f292ddaef52fa52cefd",
+    "dev_docs/agents/transcripts/audio_ai_spectral_embeddings.yaml": "8ccf12239f8e681dd4a82e65f9d7ccdaf409f66cc3510357caa369f0c2e27586",
+    "dev_docs/agents/transcripts/audio_ai_corpus_microscope.yaml": "5bc10d58bccd5ebc363f3003ecd2e806552adff0a8f9ca68b22cdfa8c5910ebb",
+    "src/jvmTest/kotlin/afield/audio/ai/TrackedAnalysisTest.kt": "d2f644e4e9b0a3232d83ca1caa450486f3e743f3691cb4efbe6cfa425459fd81",
+    "src/jvmMain/kotlin/afield/runtime/lifecycle/AsyncOperation.kt": "d77cbe0d14019c3b0696d3e7d476749048364647fe76309abd4191c8ed58185b",
+    "src/jvmMain/kotlin/afield/audio/ai/TrackedAnalysis.kt": "7dc7489f72bbb209228299c28b722221decceb7a195cddf1ab07f11f10c15d7f",
+    "src/jvmMain/kotlin/afield/audio/analysis/loris/Loris.kt": "df800a54e1db0386e3a6449e2785499a10e0cf67c551cbf72eadc98a0776fd92"
+  },
+  "tests": {
+    "tests": 15,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "preservation": {
+    "loris_partial_explorer": {
+      "changedBodies": [
+        "loris_edit_partials",
+        "loris_two_resolutions",
+        "loris_spectral_whirlpool",
+        "loris_label_align_morph"
+      ],
+      "nonCodeStructureUnchanged": true,
+      "fragmentMarkersUnchanged": true
+    },
+    "audio_ai_spectral_embeddings": {
+      "changedBodies": [
+        "spectral_embedding_guide",
+        "spectral_embedding_visualizer_gallery",
+        "analyse_near_drowning_spectral"
+      ],
+      "nonCodeStructureUnchanged": true,
+      "fragmentMarkersUnchanged": true
+    },
+    "audio_ai_corpus_microscope": {
+      "changedBodies": [
+        "corpus_microscope_guide",
+        "index_and_explore_corpus"
+      ],
+      "nonCodeStructureUnchanged": true,
+      "fragmentMarkersUnchanged": true
+    }
+  },
+  "wavEquivalence": {
+    "original": {
+      "loris_edit_partials": [
+        "25403506715998e878089c2654570e2ecfc6470dae3925531a96284d8d6fd274"
+      ],
+      "loris_two_resolutions": [
+        "4b1093951560ce7969df61ab967c93b780ba72506c968adf1c9d77155a60064e",
+        "6b889ef355dca3a6d25ccff389bd8199bfe16851e3b1c92358158cf28807ab34"
+      ],
+      "loris_spectral_whirlpool": [
+        "0f5a37ea902cb6ce05bebaa15feeb37d44b1c8a1b97b0e0a0d0b0c92498b433a"
+      ],
+      "loris_label_align_morph": [
+        "33eb04a7cc5ab3fa9d086a7d3a3baeb0b08596a3b3b82be353987f167c5a9beb"
+      ]
+    },
+    "revised": {
+      "loris_edit_partials": [
+        "25403506715998e878089c2654570e2ecfc6470dae3925531a96284d8d6fd274"
+      ],
+      "loris_two_resolutions": [
+        "4b1093951560ce7969df61ab967c93b780ba72506c968adf1c9d77155a60064e",
+        "6b889ef355dca3a6d25ccff389bd8199bfe16851e3b1c92358158cf28807ab34"
+      ],
+      "loris_spectral_whirlpool": [
+        "0f5a37ea902cb6ce05bebaa15feeb37d44b1c8a1b97b0e0a0d0b0c92498b433a"
+      ],
+      "loris_label_align_morph": [
+        "33eb04a7cc5ab3fa9d086a7d3a3baeb0b08596a3b3b82be353987f167c5a9beb"
+      ]
+    },
+    "identical": true
+  },
+  "nativeSynthesisCancellation": {
+    "pid": 15828,
+    "request": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/adoption-2/synthesis-cancel-1792153746867011000/request-7841897239434732163",
+    "operation": "synthesize",
+    "exited": true,
+    "requestRemoved": true,
+    "staleResultCount": 0
+  },
+  "runtimeBatches": 36,
+  "runtimeCommands": 71,
+  "allRecordedRuntimeCommandsPassed": true,
+  "limits": [
+    "No fresh Field Audio model job: configured port serves another application.",
+    "HTTP/WebSocket ownership tests use the repository protocol service, not model inference.",
+    "An already-running t-SNE fit has no interrupt hook; later fits/publication are suppressed.",
+    "No audition claim."
+  ],
+  "evidenceEncoding": "Large inline text omitted from compact verdicts with length/hash; exact real WAV bytes deduplicated by hash; screenshots unmodified."
+}

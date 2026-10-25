@@ -1,7 +1,16 @@
-@file:afield.CompletionCategory("Math")
+@file:afield.runtime.completion.CompletionCategory("Math")
 package afield.math.gp
 
 import kotlin.math.*
+
+/**
+ * Sample paths drawn from a Gaussian process: functions you can evaluate anywhere, consistently, after the draw.
+ *
+ * [GpSamplePath] (from [samplePath]) is an exact draw extended lazily, conditioned on every point
+ * already evaluated, and limited to a few thousand points. For large fields, [GpRbfFeatures] builds a
+ * random-Fourier-feature approximation of an RBF kernel; its [GpFeatureModel] gives a path that costs
+ * the same at every query.
+ */
 
 /**
  * One lazily extended exact GP draw. Repeated queries return the same value; new locations are

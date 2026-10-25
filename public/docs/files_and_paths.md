@@ -29,8 +29,8 @@ different type:
 There is a spelled-out form too, for when the name is in a variable rather than a literal:
 
 ```diffstatic {data-lang=kotlin}
-val a = files.file("data.csv")          // `files` is the current session's file manager
-val b = fileManager.file(name)          // `fileManager` is the same object under a longer name
+val a = files.file("data.csv") // `files` is the current session's file manager
+val b = fileManager.file(name) // `fileManager` is the same object under a longer name
 val c = files.path("data.csv")
 ```
 
@@ -63,9 +63,9 @@ pin the wrong answer for the rest of the session.
 Two roots have built-in names, and a leading `%` asks for one of them by hand rather than searching:
 
 ```diffstatic {data-lang=kotlin}
-val mine   = "%document/data.csv".file   // this document's files/ only, skipping the projects
+val mine = "%document/data.csv".file // this document's files/ only, skipping the projects
 val shared = "%project/palette.json".file // the project files/ only, skipping the document
-val dir    = "%document".path             // the files/ directory itself
+val dir = "%document".path // the files/ directory itself
 ```
 
 `%project` needs the document to be in exactly one workspace project, or in one whose `files/`
@@ -103,8 +103,8 @@ already unless you ask for it:
 
 ```diffstatic {data-lang=kotlin}
 FileManager.add("renders", "~/Desktop/field-renders", create = true)
-FileManager["renders"]                   // the absolute Path stored, or null
-FileManager.remove("renders")            // unregisters; nothing on disk is touched
+FileManager["renders"] // the absolute Path stored, or null
+FileManager.remove("renders") // unregisters; nothing on disk is touched
 ```
 
 A name has to look like an identifier: letters, digits, `_` and `-`, not starting with a digit. A
@@ -129,7 +129,8 @@ have to exist yet: until it does, the name resolves as if it were not registered
 `%document/` or `%project/` paths ignore these registrations.
 
 Field registers one of these itself, `field-slug`, pointing into the checkout it was started from.
-Build it once with `bash native/field-slug/build.sh` and `"field-slug".file` works from any
+Build it once with `bash native/field-slug/build.sh`
+([build.sh](https://github.com/OpenEndedGroup/Field4/blob/main/native/field-slug/build.sh)) and `"field-slug".file` works from any
 document.
 
 ## Globs
@@ -138,7 +139,7 @@ A spec containing `*`, `?`, `[` or `{` is matched by walking each search root re
 the first match in sorted path order:
 
 ```diffstatic {data-lang=kotlin}
-val anyScan = "**/*.ply".file            // first .ply under the document, then under the projects
+val anyScan = "**/*.ply".file // first .ply under the document, then under the projects
 val inFolder = "scans/*.ply".file
 ```
 

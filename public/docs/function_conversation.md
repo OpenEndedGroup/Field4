@@ -17,7 +17,7 @@ In any document, select a box (press **n** to make one) and choose **Make a
 Function Study** from the command palette. An empty box is given the starter's
 source, below, which is checked in as the first revision and drawn in the box's
 signal viewer; a box whose Kotlin already returns a `StudyComposition` keeps it.
-Select the box and press **command/ctrl-4** to open AI4 chat. Configure an AI
+Select the box and press **ctrl/command-4** to open AI4 chat. Configure an AI
 provider through Field's welcome page if you have not already; see
 [AI features](aiFeatures.md).
 
@@ -51,19 +51,16 @@ collects the three channels. The conversation replaces and extends this same cod
 
 <!-- function-study-source:starter -->
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.Functions
-import afield.stdlib.StudyComposition
-import afield.stdlib.StudyChoice
-
 // Three empty channels. Describe the function you want in this box's AI4 chat.
 with(Functions) {
     StudyComposition(
-        channels = listOf("x", "y", "z").map { name ->
-            fn(0.0..3600.0, name) { 0.0 }
-        },
+        channels =
+            listOf("x", "y", "z").map { name ->
+                fn(0.0..3600.0, name) { 0.0 }
+            },
         choices = listOf(
-            StudyChoice("One hour, three zero-valued channels: a starting point to replace", "starter assumption")
-        )
+            StudyChoice("One hour, three zero-valued channels: a starting point to replace", "starter assumption"),
+        ),
     )
 }
 ```
@@ -108,7 +105,7 @@ entirely. Zoom in before you judge a detail.
 to open **function_conversation_example**. It contains the finished source, all
 nine saved revisions, and the recorded conversations and plots. Opening it restores
 the checked composition and draws the viewer. Then select **The function — talk
-here (AI4)** and press **command/ctrl-4**.
+here (AI4)** and press **ctrl/command-4**.
 The seven recorded turns are already in that box's chat, with their original
 prompts, replies, tool traces and plot images. Scroll back to watch the function
 grow, or send a new message to continue from the finished example. Simply opening
@@ -130,9 +127,9 @@ this same source; the first saved conversation grows r2 into r3.
 
 <!-- function-study-source:recorded-start -->
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.Functions
-import afield.stdlib.StudyComposition
-import afield.stdlib.StudyChoice
+import afield.math.functions.Functions
+import afield.math.functions.StudyComposition
+import afield.math.functions.StudyChoice
 
 // A blank musical page: three constant channels. Ask AI4 to grow this Kotlin.
 // The final expression returns a candidate; the tools box compiles and checks it.
@@ -297,10 +294,10 @@ the listing away, copy it from the code block, or [download the Kotlin file](ass
 ???+ example "Complete final source · r9-82456e1e48ac"
 
     ```diffstatic {data-lang=kotlin}
-    import afield.stdlib.Functions
-    import afield.stdlib.StudyComposition
-    import afield.stdlib.StudyEvent
-    import afield.stdlib.StudyChoice
+    import afield.math.functions.Functions
+    import afield.math.functions.StudyComposition
+    import afield.math.functions.StudyEvent
+    import afield.math.functions.StudyChoice
     import kotlin.math.PI
 
     with(Functions) {

@@ -13,7 +13,7 @@ Field used to depend on the crate by git revision (`8e78df0`, engine 2). Upstrea
 since been rewritten and that commit is no longer in it; and Field's tools need the crate's
 internals (a held brush's bristles are crate-private), so the crate is vendored instead. Engines
 are kept: a canvas made with `engine = 2` paints what `8e78df0` painted, pixel for pixel, and a
-state saved by it still opens (`src/jvmTest/kotlin/afield/paint/PaintToolsTest.kt` pins both).
+state saved by it still opens (`src/jvmTest/kotlin/afield/graphics/paint/PaintToolsTest.kt` pins both).
 
 ## Field's changes
 
@@ -66,6 +66,11 @@ these hooks:
   - `src/graphite.rs`: `hand_line_world` and `sketch_marks_world` (the old functions call them with
     no world arc).
 
+- Dry bristles on the tooth: `src/bristle.rs`, `Tool` gains `tooth` (0 in every preset; written
+  after a held brush's bristles in `field/state.rs` where it isn't 0); in `exchange`, as a bristle
+  dries, the height it reaches down to by pressure is drawn up toward `DRY_TH` (just above the ground's
+  local median) and its push falls, both by `tooth` times its dryness. At 0, exactly as before.
+
 ## Taking a newer upstream
 
 Copy `crates/paint/{Cargo.toml,build.rs,src}` of the new commit over this directory (keeping
@@ -74,7 +79,7 @@ Copy `crates/paint/{Cargo.toml,build.rs,src}` of the new commit over this direct
 ```bash
 cargo test --release --offline --manifest-path native/field-paint/vendor/paint/Cargo.toml --target-dir build/field-paint --lib
 ./gradlew buildPaintNative
-./gradlew jvmTest --tests 'afield.paint.*'
+./gradlew jvmTest --tests 'afield.graphics.paint.*'
 ```
 
 A new upstream engine number is a new behaviour, not a fix to an old one: keep `engine = N` canvases

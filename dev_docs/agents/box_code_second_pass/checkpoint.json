@@ -1,0 +1,1778 @@
+{
+  "worklist": "../box_code_first_pass/findings.json",
+  "worklistFindings": 405,
+  "unlistedStatus": "open",
+  "findings": {
+    "2bd52af3a439-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_1/README.md",
+      "commit": "ffa7ab7fb"
+    },
+    "2bd52af3a439-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_1/README.md",
+      "commit": "ffa7ab7fb"
+    },
+    "2bd52af3a439-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_1/README.md",
+      "commit": "ffa7ab7fb"
+    },
+    "2bd52af3a439-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_1/README.md",
+      "commit": "ffa7ab7fb"
+    },
+    "2bd52af3a439-05": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_1/README.md",
+      "commit": "ffa7ab7fb"
+    },
+    "c473c040a9cc-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_1/README.md",
+      "commit": "ffa7ab7fb"
+    },
+    "c473c040a9cc-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_1/README.md",
+      "commit": "ffa7ab7fb"
+    },
+    "93089e79009a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_2/README.md"
+    },
+    "93089e79009a-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_2/README.md"
+    },
+    "3b06cede4fe6-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_43/README.md"
+    },
+    "0abf058ae10d-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_3/README.md"
+    },
+    "0abf058ae10d-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_3/README.md"
+    },
+    "0abf058ae10d-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_3/README.md"
+    },
+    "0abf058ae10d-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_3/README.md"
+    },
+    "bb71d7b005b0-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_3/README.md"
+    },
+    "293b7bec8185-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_3/README.md"
+    },
+    "bc7141d7966c-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_3/README.md"
+    },
+    "bc7141d7966c-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_3/README.md"
+    },
+    "fbfacf99f495-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_4/README.md"
+    },
+    "fbfacf99f495-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_4/README.md"
+    },
+    "fbfacf99f495-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_4/README.md"
+    },
+    "295f4a39bd7e-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_4/README.md"
+    },
+    "66e56f9df08a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_4/README.md"
+    },
+    "66e56f9df08a-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_4/README.md"
+    },
+    "26600b760ed2-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "2faae815ec59-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "38f740826e40-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "3e079fb5b468-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "529867af68d6-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "5785aee81323-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "5e4f699ab6f2-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "7cf9b84db8a9-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "828653ef6c8f-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "c6c74dbec00b-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "c6c74dbec00b-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "e6ef02e482cb-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "0126e7e793b5-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "013ba1fa3c91-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "032cda1ce14b-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "11428fab3472-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "17619d9b3487-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "272ce62186f6-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "28bad5b5095d-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "3a0b51470071-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "4620ce43d259-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "551f75ddb8a1-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "6d4ced47bdb0-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "7f23e1187aa1-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "c1345019b329-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "cf60e95a215d-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "d88828b4b527-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "db8df547c711-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "db8df547c711-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "e78ad0ff5144-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "e78ad0ff5144-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "eedfb551e7c1-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "0138746883aa-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "021f373e6bf8-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "05cfe9d79f8c-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "12a95c86b5aa-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "170fca19e6cf-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "17291ebbeb49-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "22b6fafe7412-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "2f08a46f3b63-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "3321d8acc458-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "3ce0ef5aa3ce-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "42e191350b0b-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "91a9cbd293cd-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "a10737de4739-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "a10737de4739-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "bdd9a7752234-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "e70830985ea4-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "6cfe9b59212d-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "38cc11f4aec9-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "60cbfe1ce06d-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "11428fab3472-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "bdd9a7752234-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "f1cd34c20563-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "1e41294cbe22-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "1e41294cbe22-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "be7d487fe213-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "f662b987785f-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "71f5ce4fdf67-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "e78ad0ff5144-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "6f64454544dc-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "2a5118786b1d-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "35626c97e953-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "420156cf2bfc-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "3ce0ef5aa3ce-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "086fc56aee74-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "91a9cbd293cd-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "91a9cbd293cd-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md"
+    },
+    "0f986d714cbb-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md",
+      "commit": "c7c58915d"
+    },
+    "0f986d714cbb-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md",
+      "commit": "c7c58915d"
+    },
+    "0f986d714cbb-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_8/README.md",
+      "commit": "c7c58915d"
+    },
+    "e66d79c561bf-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_9/README.md"
+    },
+    "e66d79c561bf-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_9/README.md"
+    },
+    "1c5968b652f2-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_9/README.md"
+    },
+    "1c5968b652f2-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_9/README.md"
+    },
+    "1c5968b652f2-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_9/README.md"
+    },
+    "e667e592a8c0-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_9/README.md"
+    },
+    "e667e592a8c0-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_9/README.md"
+    },
+    "e667e592a8c0-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_9/README.md"
+    },
+    "05626017d0bb-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_10/README.md"
+    },
+    "05626017d0bb-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_10/README.md"
+    },
+    "231a6405af15-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_10/README.md"
+    },
+    "2fc7c487bcec-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_10/README.md"
+    },
+    "60769e678e73-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_10/README.md"
+    },
+    "6bcdc2e8f183-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_10/README.md"
+    },
+    "7b313a87a84a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_10/README.md"
+    },
+    "989a5a4701ef-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_10/README.md"
+    },
+    "ba6b1a9fc12f-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_10/README.md"
+    },
+    "02b566216ca7-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_11/README.md"
+    },
+    "02b566216ca7-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_11/README.md"
+    },
+    "25f85b04108e-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_11/README.md"
+    },
+    "25f85b04108e-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_11/README.md"
+    },
+    "25f85b04108e-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_11/README.md"
+    },
+    "170e901a1e79-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_12/README.md"
+    },
+    "1792195c9f35-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_12/README.md"
+    },
+    "182e2a3a7d40-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_12/README.md"
+    },
+    "184894c9ac87-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_12/README.md"
+    },
+    "60adf96b2454-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_12/README.md"
+    },
+    "60adf96b2454-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_12/README.md"
+    },
+    "a07e76d1a20a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_12/README.md"
+    },
+    "a6aa1047e7f5-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_12/README.md"
+    },
+    "a6aa1047e7f5-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_12/README.md"
+    },
+    "b495b962cd41-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_12/README.md"
+    },
+    "b56688721388-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_12/README.md"
+    },
+    "c51c8c35b71e-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_12/README.md"
+    },
+    "dc7b44b35a5c-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_12/README.md"
+    },
+    "dc7b44b35a5c-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_12/README.md"
+    },
+    "ee1b57fa1953-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_12/README.md"
+    },
+    "589abcc2d706-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "589abcc2d706-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "b03fdbe93779-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "2ca4db3f3487-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "2ca4db3f3487-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "9a4223365d56-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "bf9f959b8774-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "0a33eb54ffdf-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "6d9a970c7e16-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "1609b587b44f-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "113ffc46da27-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "57825533a6fd-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_14/README.md"
+    },
+    "37a05a6a3061-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_14/README.md"
+    },
+    "df15428bb18d-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_14/README.md"
+    },
+    "b6d0fbbea830-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_14/README.md"
+    },
+    "e8cfa39cac4a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_14/README.md"
+    },
+    "e8cfa39cac4a-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_14/README.md"
+    },
+    "fcc9169b9383-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_14/README.md"
+    },
+    "211b613e50d0-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_14/README.md"
+    },
+    "211b613e50d0-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_14/README.md"
+    },
+    "40ffebac7f6a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_14/README.md"
+    },
+    "2d149091b532-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_14/README.md"
+    },
+    "6ff037ed7cf2-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_15/README.md"
+    },
+    "bd45498b7b54-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_15/README.md"
+    },
+    "658310c9b20b-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_15/README.md"
+    },
+    "6c7164f2f250-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_15/README.md"
+    },
+    "66e4a5045376-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_15/README.md"
+    },
+    "919f8f675222-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_15/README.md"
+    },
+    "aa124ad6ef0c-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_15/README.md"
+    },
+    "653a201275e6-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_15/README.md"
+    },
+    "653a201275e6-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_15/README.md"
+    },
+    "a97fbfa8a763-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_15/README.md"
+    },
+    "7757039d181e-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_15/README.md"
+    },
+    "7757039d181e-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_15/README.md"
+    },
+    "7757039d181e-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_15/README.md"
+    },
+    "7757039d181e-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_15/README.md"
+    },
+    "2145b7c0c9c5-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_15/README.md"
+    },
+    "88ec49055037-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_15/README.md"
+    },
+    "3df952fba729-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_15/README.md"
+    },
+    "fcc9169b9383-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_16/README.md"
+    },
+    "fcc9169b9383-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_16/README.md"
+    },
+    "fcc9169b9383-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_16/README.md"
+    },
+    "a68fc49a83f9-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_16/README.md"
+    },
+    "cbee25659232-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_16/README.md",
+      "resolution": "Explicit Box receiver retained: bare named resolves a script-value reference; actual compile/replay demonstrates the distinction."
+    },
+    "5cf07a2fc9d7-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "fe178e5f2f54-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "fe178e5f2f54-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "d020fbb89ce4-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "265c63dc2aac-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "aa7515688d96-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "2f347d18c2a9-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "f82901d657cb-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "b3b75a3d0757-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "fd42702d1541-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "f1708701b118-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "81ba569c56dd-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_18/README.md"
+    },
+    "b03fdbe93779-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_18/README.md"
+    },
+    "ae09b7bae9fc-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_18/README.md"
+    },
+    "1609b587b44f-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_18/README.md"
+    },
+    "a0a84eb67e15-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_18/README.md"
+    },
+    "4620ce43d259-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_19/README.md"
+    },
+    "4620ce43d259-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_19/README.md"
+    },
+    "4620ce43d259-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_19/README.md"
+    },
+    "4620ce43d259-05": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_19/README.md"
+    },
+    "8286d4e220eb-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_19/README.md"
+    },
+    "db9cad39b79a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_19/README.md"
+    },
+    "db9cad39b79a-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_19/README.md"
+    },
+    "db9cad39b79a-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_19/README.md"
+    },
+    "db9cad39b79a-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_19/README.md"
+    },
+    "db9cad39b79a-05": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_19/README.md"
+    },
+    "e8c0554946df-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_19/README.md"
+    },
+    "e8c0554946df-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_19/README.md"
+    },
+    "df987c0112a5-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_20/README.md"
+    },
+    "d55fb0a37340-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_20/README.md"
+    },
+    "d9dc73469897-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_20/README.md"
+    },
+    "12be272acb49-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_20/README.md"
+    },
+    "12be272acb49-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_20/README.md"
+    },
+    "3d9b91c39265-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_20/README.md"
+    },
+    "c69d11328023-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_20/README.md"
+    },
+    "529867af68d6-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_21/README.md"
+    },
+    "771fe021c5ec-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_21/README.md"
+    },
+    "c1345019b329-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_21/README.md"
+    },
+    "d020fbb89ce4-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_21/README.md"
+    },
+    "8af5f374ac6f-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_22/README.md"
+    },
+    "92cb333e3cef-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_22/README.md"
+    },
+    "0ba0a3800939-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_22/README.md"
+    },
+    "e775919b0ba4-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_23/README.md"
+    },
+    "e775919b0ba4-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_23/README.md"
+    },
+    "e775919b0ba4-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_23/README.md"
+    },
+    "48cc48dbfc2e-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_23/README.md"
+    },
+    "6caa5d8a54fe-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_24/README.md"
+    },
+    "6caa5d8a54fe-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_24/README.md"
+    },
+    "6caa5d8a54fe-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_24/README.md"
+    },
+    "b07235012645-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_24/README.md"
+    },
+    "f7d1b3cac96f-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_24/README.md"
+    },
+    "2792e161f146-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_24/README.md"
+    },
+    "60769e678e73-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_24/README.md"
+    },
+    "a7adc74d5415-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_24/README.md"
+    },
+    "875122303a20-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_24/README.md"
+    },
+    "02b566216ca7-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_25/README.md"
+    },
+    "25f85b04108e-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_25/README.md"
+    },
+    "559c80d8da0a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_25/README.md"
+    },
+    "e70830985ea4-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_25/README.md"
+    },
+    "b163aaf8a676-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_26/README.md"
+    },
+    "d09a17e9a5da-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_26/README.md"
+    },
+    "cb381b342d9e-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_26/README.md"
+    },
+    "208dd36b3e5c-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_26/README.md"
+    },
+    "3c65a5fe4b4b-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_26/README.md"
+    },
+    "9b47909795cf-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_27/README.md"
+    },
+    "26520a320a82-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_27/README.md"
+    },
+    "36a34426dbf8-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_27/README.md"
+    },
+    "75fde331e73a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_28/README.md"
+    },
+    "75fde331e73a-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_28/README.md"
+    },
+    "75fde331e73a-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_28/README.md"
+    },
+    "5e4f699ab6f2-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_29/README.md"
+    },
+    "5e4f699ab6f2-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_29/README.md"
+    },
+    "5e4f699ab6f2-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_29/README.md"
+    },
+    "a387a211bbe3-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_30/README.md"
+    },
+    "a387a211bbe3-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_30/README.md"
+    },
+    "a387a211bbe3-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_30/README.md"
+    },
+    "a387a211bbe3-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_30/README.md"
+    },
+    "86c50b0f047a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_30/README.md"
+    },
+    "062f48a4f074-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_31/README.md"
+    },
+    "062f48a4f074-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_31/README.md"
+    },
+    "9e657e3b1e5f-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_31/README.md"
+    },
+    "9e657e3b1e5f-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_31/README.md"
+    },
+    "38f740826e40-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_32/README.md"
+    },
+    "38f740826e40-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_32/README.md"
+    },
+    "33496126aa4f-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_32/README.md"
+    },
+    "a3a5be415f98-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_33/README.md"
+    },
+    "f9f433271058-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_33/README.md"
+    },
+    "d05cb6b8df0f-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_33/README.md"
+    },
+    "457ac432cf3a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_34/README.md"
+    },
+    "6f418564df96-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_34/README.md"
+    },
+    "12a95c86b5aa-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_34/README.md"
+    },
+    "e86d8ebef215-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_34/README.md"
+    },
+    "170fca19e6cf-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_35/README.md"
+    },
+    "170fca19e6cf-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_35/README.md"
+    },
+    "1bc3ed402106-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_35/README.md"
+    },
+    "ee7c97ec6dcf-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_35/README.md"
+    },
+    "2380c745a1d4-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_36/README.md"
+    },
+    "b34623b0e55f-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_36/README.md"
+    },
+    "ca367739ec6d-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_37/README.md"
+    },
+    "403fc75454d9-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_37/README.md"
+    },
+    "17291ebbeb49-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_38/README.md"
+    },
+    "17291ebbeb49-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_38/README.md"
+    },
+    "17291ebbeb49-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_38/README.md"
+    },
+    "c69d11328023-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_39/README.md"
+    },
+    "c69d11328023-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_39/README.md"
+    },
+    "c69d11328023-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_39/README.md"
+    },
+    "c69d11328023-05": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_39/README.md"
+    },
+    "fc9b34aa3014-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_39/README.md"
+    },
+    "00f66fc4d1b2-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_40/README.md"
+    },
+    "947ece830417-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_40/README.md"
+    },
+    "35ccd5a56ec6-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_40/README.md"
+    },
+    "cf8a600bbd52-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_41/README.md"
+    },
+    "28e3ddccbba4-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_41/README.md"
+    },
+    "2f08a46f3b63-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_41/README.md"
+    },
+    "0aefe1d7c786-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_42/README.md"
+    },
+    "0aefe1d7c786-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_42/README.md"
+    },
+    "e7aa0b16f15f-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_42/README.md"
+    },
+    "e85075e73aab-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_42/README.md"
+    },
+    "77839dd1b5da-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_43/README.md"
+    },
+    "7f432af2dc54-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_43/README.md"
+    },
+    "69b2bbfea726-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_43/README.md"
+    },
+    "69b2bbfea726-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_43/README.md"
+    },
+    "a4f09a84ef47-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_43/README.md"
+    },
+    "a4f09a84ef47-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_43/README.md"
+    },
+    "b07fd9b678a8-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_45/README.md"
+    },
+    "dd2f4283e7fa-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_45/README.md"
+    },
+    "231a6405af15-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_45/README.md"
+    },
+    "1e41294cbe22-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_45/README.md"
+    },
+    "02b566216ca7-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_46/README.md"
+    },
+    "7a5d00bb1ace-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_46/README.md"
+    },
+    "013ba1fa3c91-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_46/README.md"
+    },
+    "0977f890d8a9-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_46/README.md"
+    },
+    "2792e161f146-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_46/README.md"
+    },
+    "ded1d6a3cafb-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_46/README.md"
+    },
+    "153504d5e8c3-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_46/README.md"
+    },
+    "9be027ca01a6-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_46/README.md"
+    },
+    "ed3814a2e496-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_47/README.md"
+    },
+    "2ef873951f77-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_47/README.md"
+    },
+    "2ef873951f77-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_47/README.md"
+    },
+    "d9ced5632cf1-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_48/README.md"
+    },
+    "6291dfc415aa-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_48/README.md"
+    },
+    "e8da8e8fdcb8-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_49/README.md"
+    },
+    "ab4732b75877-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_49/README.md"
+    },
+    "a96d6bf12ad1-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_49/README.md"
+    },
+    "6caa5d8a54fe-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_49/README.md"
+    },
+    "956a69992e2a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_49/README.md"
+    },
+    "ae09b7bae9fc-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_49/README.md"
+    },
+    "190ee56ab53e-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_50/README.md"
+    },
+    "190ee56ab53e-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_50/README.md"
+    },
+    "7a5d00bb1ace-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_50/README.md"
+    },
+    "919f8f675222-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_51/README.md"
+    },
+    "f4ff6ef40b11-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_51/README.md"
+    },
+    "bcfb7a0fe799-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_51/README.md"
+    },
+    "a0a84eb67e15-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_51/README.md"
+    },
+    "1f8b26cce0b8-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_52/README.md"
+    },
+    "aed906aefa4e-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_52/README.md"
+    },
+    "aed906aefa4e-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_52/README.md"
+    },
+    "7a500644ebfe-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_53/README.md"
+    },
+    "7a500644ebfe-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_53/README.md"
+    },
+    "ded1d6a3cafb-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_53/README.md"
+    },
+    "c958776f78cf-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_54/README.md"
+    },
+    "58fe3dbd8e31-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_54/README.md"
+    },
+    "4e6db45ce6bf-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_55/README.md"
+    },
+    "68263951f250-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_55/README.md"
+    },
+    "a0f1fb8e7acb-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_55/README.md"
+    },
+    "691b5d822671-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_56/README.md"
+    },
+    "d98fa9571c63-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_57/README.md"
+    },
+    "184894c9ac87-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_58/README.md"
+    },
+    "a86d30f62c84-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_59/README.md"
+    },
+    "6af7378331b4-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_59/README.md"
+    },
+    "aff7b1698617-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_59/README.md"
+    },
+    "7f180cbab721-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_60/README.md"
+    },
+    "a6aa1047e7f5-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_61/README.md"
+    },
+    "a6aa1047e7f5-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_61/README.md"
+    },
+    "4e40faf4c597-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_62/README.md"
+    },
+    "e8fc29a1999a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_62/README.md"
+    },
+    "a0a84eb67e15-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_63/README.md"
+    },
+    "a0a84eb67e15-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_63/README.md"
+    },
+    "6bcdc2e8f183-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_65/README.md"
+    },
+    "cf60e95a215d-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_66/README.md"
+    },
+    "cf60e95a215d-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_66/README.md"
+    },
+    "cf60e95a215d-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_66/README.md"
+    },
+    "26e1f530f93d-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_66/README.md"
+    },
+    "a006a9d7cfa3-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_66/README.md"
+    },
+    "1bfc33f3767a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_66/README.md"
+    },
+    "00f66fc4d1b2-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_67/README.md"
+    },
+    "88ec49055037-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_67/README.md"
+    },
+    "192f12341fa6-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_68/README.md"
+    },
+    "25f85b04108e-05": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_68/README.md"
+    },
+    "25f85b04108e-06": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_68/README.md"
+    },
+    "691b5d822671-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_64/README.md"
+    },
+    "794d049770a2-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_70/README.md"
+    },
+    "0d9dd129bf16-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_70/README.md"
+    },
+    "906ab02e18de-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_70/README.md"
+    },
+    "ce11a168cbeb-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_71/README.md"
+    },
+    "153504d5e8c3-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_71/README.md"
+    },
+    "2792e161f146-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_71/README.md"
+    },
+    "2792e161f146-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_71/README.md"
+    },
+    "158f702c98c5-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_72/README.md"
+    },
+    "c02c565581b7-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_72/README.md"
+    },
+    "2ddf54b22aca-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_72/README.md"
+    },
+    "5fd2378f406a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_73/README.md"
+    },
+    "4dac50c9b26c-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_73/README.md"
+    },
+    "5b66e287f774-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_73/README.md"
+    },
+    "a873c7aa4150-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_74/README.md"
+    },
+    "d95e3a0a6eb8-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_75/README.md"
+    },
+    "2c067afda547-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_75/README.md"
+    },
+    "2c067afda547-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_75/README.md"
+    },
+    "50875a2740d1-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_75/README.md"
+    },
+    "50875a2740d1-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_75/README.md"
+    },
+    "b4a34b4f3611-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_75/README.md"
+    },
+    "b2734585c34f-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_76/README.md"
+    },
+    "81ba569c56dd-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_76/README.md"
+    },
+    "a86d30f62c84-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_76/README.md"
+    },
+    "956a69992e2a-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_76/README.md"
+    },
+    "d4ba1b4e01b8-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_76/README.md"
+    },
+    "691b5d822671-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_76/README.md"
+    },
+    "b03fdbe93779-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_76/README.md"
+    },
+    "b03fdbe93779-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_76/README.md"
+    },
+    "d7544ea68a8c-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_76/README.md"
+    },
+    "bdc3d24bed57-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_76/README.md"
+    },
+    "45010413e231-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_76/README.md"
+    },
+    "1dd91cfef057-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_77/README.md"
+    },
+    "a4ee3aaf394c-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_77/README.md"
+    },
+    "82a99c5fd301-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_77/README.md"
+    },
+    "af4d4033b6e8-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_77/README.md"
+    },
+    "a599a60348a0-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_78/README.md"
+    },
+    "bbfaa07fbaa0-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_78/README.md"
+    },
+    "235cc7aef1f3-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_78/README.md"
+    }
+  },
+  "batches": [
+    "../box_code_adoption_batch_1/README.md",
+    "../box_code_adoption_batch_2/README.md",
+    "../box_code_adoption_batch_3/README.md",
+    "../box_code_adoption_batch_4/README.md",
+    "../box_code_adoption_batch_5/README.md",
+    "../box_code_adoption_batch_6/README.md",
+    "../box_code_adoption_batch_7/README.md",
+    "../box_code_adoption_batch_8/README.md",
+    "../box_code_adoption_batch_9/README.md",
+    "../box_code_adoption_batch_10/README.md",
+    "../box_code_adoption_batch_11/README.md",
+    "../box_code_adoption_batch_12/README.md",
+    "../box_code_adoption_batch_13/README.md",
+    "../box_code_adoption_batch_14/README.md",
+    "../box_code_adoption_batch_15/README.md",
+    "../box_code_adoption_batch_16/README.md",
+    "../box_code_adoption_batch_17/README.md",
+    "../box_code_adoption_batch_18/README.md",
+    "../box_code_adoption_batch_19/README.md",
+    "../box_code_adoption_batch_20/README.md",
+    "../box_code_adoption_batch_21/README.md",
+    "../box_code_adoption_batch_22/README.md",
+    "../box_code_adoption_batch_23/README.md",
+    "../box_code_adoption_batch_24/README.md",
+    "../box_code_adoption_batch_25/README.md",
+    "../box_code_adoption_batch_26/README.md",
+    "../box_code_adoption_batch_27/README.md",
+    "../box_code_adoption_batch_28/README.md",
+    "../box_code_adoption_batch_29/README.md",
+    "../box_code_adoption_batch_30/README.md",
+    "../box_code_adoption_batch_31/README.md",
+    "../box_code_adoption_batch_32/README.md",
+    "../box_code_adoption_batch_33/README.md",
+    "../box_code_adoption_batch_34/README.md",
+    "../box_code_adoption_batch_35/README.md",
+    "../box_code_adoption_batch_36/README.md",
+    "../box_code_adoption_batch_37/README.md",
+    "../box_code_adoption_batch_38/README.md",
+    "../box_code_adoption_batch_39/README.md",
+    "../box_code_adoption_batch_40/README.md",
+    "../box_code_adoption_batch_41/README.md",
+    "../box_code_adoption_batch_42/README.md",
+    "../box_code_adoption_batch_43/README.md",
+    "../box_code_adoption_batch_45/README.md",
+    "../box_code_adoption_batch_46/README.md",
+    "../box_code_adoption_batch_47/README.md",
+    "../box_code_adoption_batch_48/README.md",
+    "../box_code_adoption_batch_49/README.md",
+    "../box_code_adoption_batch_50/README.md",
+    "../box_code_adoption_batch_51/README.md",
+    "../box_code_adoption_batch_52/README.md",
+    "../box_code_adoption_batch_53/README.md",
+    "../box_code_adoption_batch_54/README.md",
+    "../box_code_adoption_batch_55/README.md",
+    "../box_code_adoption_batch_56/README.md",
+    "../box_code_adoption_batch_57/README.md",
+    "../box_code_adoption_batch_58/README.md",
+    "../box_code_adoption_batch_59/README.md",
+    "../box_code_adoption_batch_60/README.md",
+    "../box_code_adoption_batch_61/README.md",
+    "../box_code_adoption_batch_62/README.md",
+    "../box_code_adoption_batch_63/README.md",
+    "../box_code_adoption_batch_65/README.md",
+    "../box_code_adoption_batch_66/README.md",
+    "../box_code_adoption_batch_67/README.md",
+    "../box_code_adoption_batch_68/README.md",
+    "../box_code_adoption_batch_64/README.md",
+    "../box_code_adoption_batch_70/README.md",
+    "../box_code_adoption_batch_71/README.md",
+    "../box_code_adoption_batch_72/README.md",
+    "../box_code_adoption_batch_73/README.md",
+    "../box_code_adoption_batch_74/README.md",
+    "../box_code_adoption_batch_75/README.md",
+    "../box_code_adoption_batch_76/README.md",
+    "../box_code_adoption_batch_77/README.md",
+    "../box_code_adoption_batch_78/README.md",
+    "../box_code_adoption_batch_79/README.md"
+  ],
+  "next": "Source review and mechanical coverage complete. Await final lander outcomes and repair any concrete bounces; retain documented optional-backend limitations.",
+  "preparation": {
+    "batch": 43,
+    "evidence": "build/box-code-revision/adoption-43/preparation.json",
+    "serviceSource": "/Users/marc/field4/services/field-audio-ai",
+    "serviceCommit": "8ffcb6b545fe04d3138192eec703fcaadb2d64c5",
+    "apiPort": 18765,
+    "apiSession": 57004,
+    "privateProject": "build/box-code-revision/adoption-43/field-audio-project",
+    "analysisEnvironment": "build/box-code-revision/adoption-43/analysis-env",
+    "analysisInstallSession": 44411,
+    "state": "Real worker analyses, three Smile fits, corpus fragments and whole-box Stop/relaunch pass. Explicit private ONNX portability adaptation and backend duplicate-request race documented in batch43.",
+    "analysisWorkerSession": 59206,
+    "fieldPort": 9716,
+    "fieldSession": 58980
+  },
+  "inProgress": {
+    "batch": 79,
+    "branch": "codex/box-code-readability-79",
+    "baseline": "46818a5a9",
+    "state": "405/405 addressed; final collection and guide screenshot reconciliation complete; awaiting lander",
+    "evidence": "../box_code_adoption_batch_79/README.md"
+  },
+  "mechanical": {
+    "status": "applied_for_valid_kotlin_glsl_with_explicit_retained_cases",
+    "baseline": "75071082a40db358424c27f992ee4316317b18c1",
+    "groups": 567,
+    "sourceOccurrences": 3541,
+    "states": 3548,
+    "distinctBodies": 2953,
+    "alreadyFormattedBodies": 1823,
+    "formattedCandidateBodies": 1107,
+    "languageRetentions": 13,
+    "schematicRetentions": 10,
+    "editedFiles": 562,
+    "parsedProgramsVerified": 2702,
+    "codecDocuments": 43,
+    "mirrorDocuments": 15,
+    "preexistingMirrorDriftRetained": [
+      "dev_docs/agents/demos/interaction_nets_lambda/document.md#lambda-oracle_code_.kt"
+    ],
+    "evidence": "../box_code_adoption_batch_56/README.md",
+    "initialAttemptEditedFiles": 575,
+    "recordedFilesRestored": 13,
+    "retainedRecordedGroup": "dev_docs/agents/demos/function_conversation_example",
+    "landingRepair": "../box_code_adoption_batch_57/README.md",
+    "finalCollectionAudit": {
+      "evidence": "../box_code_adoption_batch_79/README.md",
+      "distinctConversions": 239,
+      "distinctBodies": 129,
+      "authoredOccurrences": 175,
+      "codecDocuments": 25,
+      "matchingMirrors": 9
+    }
+  },
+  "closure": {
+    "sourceReview": "complete",
+    "mechanicalCoverage": "complete_with_explicit_retentions",
+    "guideScreenshotReconciliation": "complete",
+    "landing": "pending"
+  }
+}

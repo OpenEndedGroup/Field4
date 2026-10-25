@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="sim_renderer" index="0" -->
 
 ```edn [field-box id="sim_renderer" role="properties"]
-{"id" "sim_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["sim_bundle"] "properties" {"children" #{#afield/box "sim_bundle"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_renderer_code_.kt" "lines" 12 "characters" 258 "sha256" "51b9a6967bc9c5a3351acb5306ba41ac2cfe9760a04c9e9cf1be69fce5beca11"}]}
+{"id" "sim_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["sim_bundle"] "properties" {"children" #{#afield/box "sim_bundle"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_renderer_code_.kt" "lines" 12 "characters" 269 "sha256" "50febe4b603050de3963c4db4093069990ba3b67450e9832b0dc29ebcd5bd384"}]}
 ```
 
 ```kotlin [field-property box="sim_renderer" name="code" path="sim_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -37,17 +37,16 @@ start(renderer::run)
 
 From `code`
 
-`afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
+`afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
 
 ```edn [field-box id="sim_bundle" role="properties"]
-{"id" "sim_bundle" "index" 1 "name" "bundle" "parents" ["root" "sim_renderer"] "children" ["sim_fluid" "sim_distance"] "properties" {"children" #{#afield/box "sim_fluid" #afield/box "sim_distance"} "parents" #{#afield/box "root" #afield/box "sim_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_bundle_code_.kt" "lines" 30 "characters" 1024 "sha256" "3fb5a414b20d4f23e6ac43ff5f4ba906a11da6e4a98eb8bc223dbd1e8efb4bba"}]}
+{"id" "sim_bundle" "index" 1 "name" "bundle" "parents" ["root" "sim_renderer"] "children" ["sim_fluid" "sim_distance"] "properties" {"children" #{#afield/box "sim_fluid" #afield/box "sim_distance"} "parents" #{#afield/box "root" #afield/box "sim_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_bundle_code_.kt" "lines" 29 "characters" 1027 "sha256" "4d2c19b9e4b143624a6d3998f8067dc866de6a79fdb174527a9b24977ff05eac"}]}
 ```
 
 ```kotlin [field-property box="sim_bundle" name="code" path="sim_bundle_code_.kt"]
-// `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.applyScenePlan
-import afield.stdlib.linalg.Vector3f
+// `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.applyScenePlan
 
 prop<StandardRenderer.Bundle>(bundle)
 
@@ -81,18 +80,18 @@ println("bundle ready: ${bundle.postStack.names()}")
 <!-- field-box id="sim_distance" index="2" -->
 
 ```edn [field-box id="sim_distance" role="properties"]
-{"id" "sim_distance" "index" 2 "name" "distance field" "parents" ["root" "sim_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sim_bundle"} "name" "distance field" "_tombstone" false "frame" #afield/rect [1060.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_distance_code_.kt" "lines" 109 "characters" 4089 "sha256" "46f09d0933bc9e460d383a5b0af2cc7eb4d06e53e14773194cd5661977253786"}]}
+{"id" "sim_distance" "index" 2 "name" "distance field" "parents" ["root" "sim_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sim_bundle"} "name" "distance field" "_tombstone" false "frame" #afield/rect [1060.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_distance_code_.kt" "lines" 109 "characters" 4142 "sha256" "7d0196795c4ab0d29a0e821afaf0af4b9c953b176a725f880a4495a611392741"}]}
 ```
 
 ```kotlin [field-property box="sim_distance" name="code" path="sim_distance_code_.kt"]
-import afield.four.fabricated.FabricatePassChain
-import afield.four.fabricated.FabricatePassInput
-import afield.four.fabricated.FabricatePassLibrary
-import afield.four.fabricated.FabricatePassSize
-import afield.four.fabricated.FabricatePassSpec
-import afield.four.fabricated.addPassChain
+import afield.graphics.scene.fabricated.FabricatePassChain
+import afield.graphics.scene.fabricated.FabricatePassInput
+import afield.graphics.scene.fabricated.FabricatePassLibrary
+import afield.graphics.scene.fabricated.FabricatePassSize
+import afield.graphics.scene.fabricated.FabricatePassSpec
+import afield.graphics.scene.fabricated.addPassChain
 
-prop<afield.four.fabricated.FabricateBuiltChain>(sdf)
+prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(sdf)
 
 // The mask: a disc and a bar, in every channel. A chain head that synthesises its own
 // input is self-contained however the chains before it ended up looking.
@@ -145,17 +144,17 @@ val insetFragment =
 // Declared every run, like the fluid: `addPassChain` replaces by name. Nothing here is
 // persistent, so the whole field simply re-floods from scratch on the next frame.
 sdf = bundle.addPassChain(
-    listOf(
+    [
         FabricatePassSpec(
             name = "mask",
             fragment = maskFragment,
             size = FabricatePassSize.Absolute(256, 256),
             source = FabricatePassChain.CHAIN_INPUT,
         ),
-    ) +
+    ] +
         FabricatePassLibrary.jumpFloodDistance(
             /*
-            Seed, nine flood rounds at halving stride, JFA+1, then the distance — and
+            Seed, flood rounds at halving stride, JFA+1, then the distance — and
             `signed`, which seeds the *boundary* rather than the interior, so one flood
             gives a field that is negative inside and positive out.
             */
@@ -176,7 +175,7 @@ sdf = bundle.addPassChain(
             // sampling the 256x256 field. That combination is the whole point of the layer.
             size = FabricatePassSize.MatchSource,
             source = FabricatePassChain.CHAIN_INPUT,
-            extraInputs = listOf(FabricatePassInput("bandsTex", "sdf-bands")),
+            extraInputs = [FabricatePassInput("bandsTex", "sdf-bands")],
         ),
     printReport = true,
 )
@@ -201,17 +200,15 @@ println("distance field: ${sdf.names().size} passes, output ${sdf.output.width} 
 <!-- field-box id="sim_fluid" index="3" -->
 
 ```edn [field-box id="sim_fluid" role="properties"]
-{"id" "sim_fluid" "index" 3 "name" "fluid" "parents" ["root" "sim_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sim_bundle"} "name" "fluid" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_fluid_code_.kt" "lines" 93 "characters" 3684 "sha256" "3e0ac6a81ef94724b25d1500591da4001006176e881d86db37e37293b078188f"}]}
+{"id" "sim_fluid" "index" 3 "name" "fluid" "parents" ["root" "sim_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sim_bundle"} "name" "fluid" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_fluid_code_.kt" "lines" 91 "characters" 3653 "sha256" "316abbcac0841809391811db8ff2d49f3dd49050fe4d6fa31af17b8fef10d334"}]}
 ```
 
 ```kotlin [field-property box="sim_fluid" name="code" path="sim_fluid_code_.kt"]
-import afield.four.fabricated.FabricatePassChain
-import afield.four.fabricated.FabricatePassLibrary
-import afield.four.fabricated.addPassChain
-import afield.four.util.MouseEvent
-import afield.four.util.MouseEvents
+import afield.graphics.scene.fabricated.FabricatePassChain
+import afield.graphics.scene.fabricated.FabricatePassLibrary
+import afield.graphics.scene.fabricated.addPassChain
 
-prop<afield.four.fabricated.FabricateBuiltChain>(fluid)
+prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(fluid)
 
 // The knobs. A new `resolution` starts an empty fluid; the rest keep the one you painted.
 val resolution = 256

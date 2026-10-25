@@ -7,12 +7,16 @@ repositories {
     mavenCentral()
 }
 
+dependencies {
+    testImplementation(kotlin("test-junit"))
+}
+
 kotlin {
     jvmToolchain(25)
 }
 
 application {
-    mainClass.set("afield.stdlib.linalg.codegen.MainKt")
+    mainClass.set("afield.math.linalg.codegen.MainKt")
 }
 
 val generatedRoot = rootProject.layout.projectDirectory.dir("src/generatedLinalg/kotlin")
@@ -26,6 +30,7 @@ tasks.named<JavaExec>("run") {
 }
 
 tasks.register<JavaExec>("checkGeneratedLinalg") {
+    dependsOn(tasks.test)
     group = "verification"
     description = "Checks that committed linear-algebra sources match the semantic model."
     classpath = sourceSets.main.get().runtimeClasspath

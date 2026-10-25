@@ -125,7 +125,12 @@ REGENERABLE = (
     "public/zensical.generated.build.yml",
     "native/*/build", "native/*/.build", "tools/*/build", "tools/*/.gradle", "tools/*/.kotlin",
     "*__pycache__", "*.pyc", "*.DS_Store", "config/field4-local.p12",
-    "hs_err_pid*.log", "java_pid*.hprof",
+    "hs_err_pid*.log", "java_pid*.hprof", ".nightly-tmp-*.log",
+    # `.afield-local/` is per-checkout state: `field.sh` rewrites `last-workspace.txt` on the next
+    # launch, and agents leave build logs there. It is NOT regenerable as a whole -- Marc's
+    # intermediate renders are copied there to keep them -- so only these two shapes are listed, and
+    # [ignored_work] judges the folder file by file.
+    ".afield-local/last-workspace.txt", ".afield-local/*.log",
 )
 
 # Ignored files that are precious but expected: copied to ``<repo>-archive/<subdir>/<tree>-<name>``
@@ -134,7 +139,14 @@ REGENERABLE = (
 ARCHIVED_FILES = {
     "NIGHTLY_WORKLOG.md": "worklogs",
     ".claude/settings.local.json": "settings",
+    ".claude/launch.json": "settings",
 }
+
+# A file of this name in a worktree's root means "a person needs this checkout; never remove it and
+# never clean its build output". Merged, clean and idle is not the same as unused: on 2026-10-12 the
+# reaper removed `split-panes-p0`, which Marc had asked to keep, the day its `http.server` stopped.
+# The marker is gitignored, so it does not make the tree dirty.
+KEEP_MARKER = ".reaper-keep"
 
 # Untracked (not ignored) paths that do not make a tree dirty. Every nightly tree carries a
 # ``.nightly-tmp/`` scratch directory, which used to make the whole nightly population read as dirty.
@@ -207,6 +219,21 @@ class Verdict:
     reason: str
     removable: bool
     family: RetentionFamily | None
+
+
+# Refusals said out loud as "keeping <path>: <why>". Only live and in-flight used to be, so a clean,
+# merged worktree refused for ignored work, dirt, a submodule or a missing date dropped out of the
+# dry run with no reason given (2026-10-22: two agent checkouts holding plan notes and captures in
+# .afield-local/). "unmerged" stays quiet: it is the normal state of somebody's ongoing branch, and
+# the disk report already counts those. "prunable" has its own line.
+ANNOUNCED_REFUSALS = frozenset({"live", "in-flight", "dirty", "ignored-work", "submodule", "undatable", "kept"})
+
+
+def refusal_line(path: Path, verdict: Verdict) -> str | None:
+    """The "keeping ..." line for a refused worktree, or None for one the run should pass over quietly."""
+    if verdict.removable or verdict.reason not in ANNOUNCED_REFUSALS:
+        return None
+    return f"keeping {path}: {verdict.text}"
 
 
 @dataclass(frozen=True)
@@ -368,10 +395,22 @@ def ignored_work(path: Path) -> list[str]:
     This is the guard that keeps ``src/personal`` alive: it is gitignored, so ``git status`` says
     nothing about it, and on 2026-10-02 a merged, clean tree held 1,205 files of it that main lacked.
     """
-    return [
-        entry for entry in ignored_paths(path)
-        if not is_regenerable(entry) and entry not in ARCHIVED_FILES
-    ]
+    work: list[str] = []
+    for entry in ignored_paths(path):
+        if is_regenerable(entry) or entry in ARCHIVED_FILES:
+            continue
+        # git reports a wholly ignored directory as one entry ("`.afield-local/`"). Judge what is
+        # inside it file by file, so a folder holding only regenerable or archived files does not
+        # refuse the tree, while one file of real work inside it still does.
+        if entry.endswith("/") and (path / entry).is_dir():
+            for inner in sorted((path / entry).rglob("*")):
+                if inner.is_file():
+                    relative = inner.relative_to(path).as_posix()
+                    if not is_regenerable(relative) and relative not in ARCHIVED_FILES:
+                        work.append(relative)
+            continue
+        work.append(entry)
+    return work
 
 
 def submodule_problem(path: Path, repo: Path) -> str | None:
@@ -528,6 +567,8 @@ def classify_worktree(
     if not path.exists():
         return Verdict("registered, but its directory is gone (git worktree prune drops it)",
                        "prunable", False, family)
+    if (path / KEEP_MARKER).exists():
+        return Verdict(f"kept by its {KEEP_MARKER} file", "kept", False, family)
     if family is None:
         return Verdict("out of retention policy", "no-family", False, None)
     active = pids_inside(path, cwds)
@@ -717,6 +758,7 @@ REFUSAL_LABELS = {
     "ignored-work": "holds ignored work",
     "submodule": "a submodule commit could be lost",
     "prunable": "registered, but its directory is gone",
+    "kept": f"kept by a {KEEP_MARKER} file",
 }
 
 
@@ -864,6 +906,7 @@ def print_policy(families: tuple[RetentionFamily, ...], enabled: frozenset[str])
     print("  idle (see --min-idle-hours), no ignored work outside build/cache output, and no")
     print("  submodule commit that exists only in the checkout. --family adds a population and")
     print("  --only-family narrows to the named ones.")
+    print(f"  a {KEEP_MARKER} file in a worktree's root keeps it from removal and from --clean-builds.")
 
 
 def run_clean_builds(
@@ -885,6 +928,9 @@ def run_clean_builds(
             continue
         family = family_for(path, tree.branch, families)
         if family is None or family.name not in enabled:
+            continue
+        if (path / KEEP_MARKER).exists():
+            print(f"keeping {path}: {KEEP_MARKER}")
             continue
         busy = pids_inside(path, cwds)
         if busy:
@@ -1079,9 +1125,9 @@ def main() -> int:
         if not verdict.removable:
             if path in completed:
                 parser.error(f"--completed worktree is not removable: {path} — {verdict.text}")
-            # Worth saying out loud: these two mean something is alive, not merely uninteresting.
-            if verdict.reason in ("live", "in-flight"):
-                print(f"keeping {path}: {verdict.text}")
+            line = refusal_line(path, verdict)
+            if line:
+                print(line)
             continue
         candidates.append((tree, tree_size_kib(path), verdict.family))
 

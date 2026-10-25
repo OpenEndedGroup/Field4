@@ -1,0 +1,30 @@
+{
+  "actualNativeSourceMode": true,
+  "fixedGeometryAndLightCameraOrbitTimes": [
+    0,
+    3,
+    6
+  ],
+  "namedProjectionLayoutChangedRasterEdgePixels": {
+    "0": 3,
+    "3": 0,
+    "6": 0
+  },
+  "lightingUnchangedAtTimeZero": true,
+  "orbitLightingUsesActualEye": true,
+  "flatEyeVersusIndependentFragmentCamera": {
+    "0": {
+      "changedPixels": 0,
+      "maxChannelDelta": 0
+    },
+    "3": {
+      "changedPixels": 7,
+      "maxChannelDelta": 1
+    },
+    "6": {
+      "changedPixels": 1,
+      "maxChannelDelta": 1
+    }
+  },
+  "limits": "256-pixel source-mode study on the existing private Vulkan renderer. Fixture freezes object/light animation to isolate camera motion. No NVIDIA NR claim or public media replacement."
+}

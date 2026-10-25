@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chain_renderer" index="0" -->
 
 ```edn [field-box id="chain_renderer" role="properties"]
-{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["layer_stack_trace"] "properties" {"children" #{#afield/box "layer_stack_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 227 "sha256" "d6bb0208b7ccdc3eab42da36d02b0b1ee2bd13d37c2272b61cf0da6951d2a9b4"}]}
+{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["layer_stack_trace"] "properties" {"children" #{#afield/box "layer_stack_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 10 "characters" 239 "sha256" "a406d13a5203c9196f13fd70c65d73b37945527ba2a10874a761b382cc350e68"}]}
 ```
 
 ```kotlin [field-property box="chain_renderer" name="code" path="chain_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,21 +32,21 @@ start(renderer::run)
 <!-- field-box id="layer_stack_trace" index="1" -->
 
 ```edn [field-box id="layer_stack_trace" role="properties"]
-{"id" "layer_stack_trace" "index" 1 "name" "polytope_layer_stack_path_trace" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "polytope_layer_stack_path_trace" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "layer_stack_trace_code_.kt" "lines" 47 "characters" 2202 "sha256" "a091ed20b489fbfe2a847b5f83e248058fc357c0052ce76d3f1c07b579d7b8e5"}]}
+{"id" "layer_stack_trace" "index" 1 "name" "polytope_layer_stack_path_trace" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "polytope_layer_stack_path_trace" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "layer_stack_trace_code_.kt" "lines" 61 "characters" 2287 "sha256" "52a57064b5a7660a283822ed38d573352f0f15cadd2c39eef13b2eb66494f695"}]}
 ```
 
 ```kotlin [field-property box="layer_stack_trace" name="code" path="layer_stack_trace_code_.kt"]
-import afield.four.fabricated.*
-import afield.four.util.Camera
-import afield.manifold.*
-import afield.stdlib.linalg.Vector3f
-import afield.examples.chain.PhotoToSolidChain
+import afield.geometry.solid.manifold.*
+import afield.graphics.scene.fabricated.*
+import afield.graphics.vulkan.util.Camera
 import java.io.File
+
 prop<PathTracingRenderer>(tracer)
 require(ManifoldLibrary.isAvailable) { ManifoldLibrary.describe() }
 val scene = PathTraceScene()
 Solid.scope {
-    val mesh = conway("gC").polyhedron.canonicalize().polyhedron.triangulate(normals = NormalPolicy.Flat).mesh.weld(1e-6)
+    val mesh =
+        conway("gC").polyhedron.canonicalize().polyhedron.triangulate(normals = NormalPolicy.Flat).mesh.weld(1e-6)
     val original = mesh.toSolid()
     val scaled = original.scaled(1.0 / Math.cbrt(original.volume))
     val bounds = scaled.bounds
@@ -55,16 +56,28 @@ Solid.scope {
     val dz = height / count
     repeat(count) { i ->
         val t = i.toFloat() / (count - 1)
-        val material = scene.material(PathTraceMaterial.plastic(0.08f + 0.8f*t, 0.65f - 0.4f*t, 0.8f - 0.72f*t, 0.32f))
-        val slab = solid.slice(dz * (i + 0.5)).use { it.extruded(dz * 0.92) }
-            .translated(0.0, 0.0, dz * i).rotated(-90.0, 0.0, 0.0)
+        val material =
+            scene.material(PathTraceMaterial.plastic(0.08f + 0.8f * t, 0.65f - 0.4f * t, 0.8f - 0.72f * t, 0.32f))
+        val slab =
+            solid
+                .slice(dz * (i + 0.5))
+                .use { it.extruded(dz * 0.92) }
+                .translated(0.0, 0.0, dz * i)
+                .rotated(-90.0, 0.0, 0.0)
         scene.importTriMesh(slab.toTriMesh(normals = true, minSharpAngle = 20.0), material)
     }
     println("48 canonical gC layers, source volume ${solid.volume}")
 }
 val floor = scene.material(PathTraceMaterial.plastic(0.55f, 0.56f, 0.58f, 0.55f))
-scene.quad(Vector3f(-6f, -0.03f, -6f), Vector3f(6f, -0.03f, -6f), Vector3f(6f, -0.03f, 6f), Vector3f(-6f, -0.03f, 6f), floor)
-val environment = PathTraceEnvironment.fromFile(File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
+scene.quad(
+    Vector3f(-6f, -0.03f, -6f),
+    Vector3f(6f, -0.03f, -6f),
+    Vector3f(6f, -0.03f, 6f),
+    Vector3f(-6f, -0.03f, 6f),
+    floor,
+)
+val environment =
+    PathTraceEnvironment.fromFile(File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
 val camera = Camera(renderer).also {
     it.at.set(2.45f, 2.8f, 3.6f)
     it.target.set(0f, 0.45f, 0f)
@@ -79,7 +92,9 @@ tracer.indirectClamp = 10f
 tracer.blitToScreen()
 println("${tracer.backend}: ${tracer.triangleCount} triangles")
 frames {
-    while (tracer.samples < 900) { frame() }
+    while (tracer.samples < 900) {
+        frame()
+    }
     println("layer_stack_trace study converged: ${tracer.samples} samples")
 }
 ```

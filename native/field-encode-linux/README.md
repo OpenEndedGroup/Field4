@@ -16,7 +16,7 @@ doesn't work for these specific fds — see below).
 
 **The receiver** (the other end of this stream) is the visionOS shell — unchanged by this
 backend; see `../field-encode/README.md`. **The producer** that drives this helper from Field is
-`afield.four.stream.FieldRTTStreamer` (JVM), same class used for the Mac backend — it branches
+`afield.media.stream.FieldRTTStreamer` (JVM), same class used for the Mac backend — it branches
 internally on OS.
 
 ## Build & run
@@ -47,7 +47,7 @@ there's no device kernel here, no nvcc on this build), encodes + streams `--fram
 
 ### Real driving (over stdin/stdout by a JVM `ProcessBuilder`)
 
-The JVM side is `afield.four.stream.FieldEncodeProcess` + `afield.four.stream.FieldRTTStreamer`
+The JVM side is `afield.media.stream.FieldEncodeProcess` + `afield.media.stream.FieldRTTStreamer`
 (same classes as the Mac backend — see `FieldEncodeProcess.defaultBinaryPath()`, which picks this
 binary automatically on Linux). See WIRE_FORMAT.md's Linux addendum for the exact `open` shape
 (`fdSocket` + `{size,rowPitch}` surfaces, fds sent separately via SCM_RIGHTS) — driving it by hand

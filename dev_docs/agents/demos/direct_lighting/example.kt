@@ -1,22 +1,22 @@
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.lighting.*
-import afield.four.fabricated.rtxdiSettings
-import afield.stdlib.linalg.Vector3f
-import kotlin.math.*
-import afield.four.modules.fromContextWithNameOrNull
-import afield.four.util.keyCamera
+import afield.graphics.render.lighting.*
+import afield.graphics.scene.fabricated.rtxdiSettings
 
 prop<DirectLightingDemo>(lab)
 // Re-executing this box replaces the experiment at a frame boundary.
 fromContextWithNameOrNull<DirectLightingDemo>("lab")?.close()
-lab = DirectLightingDemo(renderer, 1280, 720)
-var cameraControl by keyCamera(renderer, lab.bundle.scene.camera)
+// Keep this run's study in callbacks and cleanup, even when lab is replaced.
+val ownedLab = DirectLightingDemo(renderer, 1280, 720)
+lab = ownedLab
+var cameraControl by keyCamera(renderer, ownedLab.bundle.scene.camera)
 
-val restir = lab.bundle.rtxdiSettings()
-val sdkReady = lab.visibility.available && runCatching {
-    lab.lighting.enableRtxdi(RtxdiProgram.load(), restir).getOrThrow()
-}.onFailure { println("Optional RTXDI unavailable: ${it.message}") }.isSuccess
+val restir = ownedLab.bundle.rtxdiSettings()
+val sdkReady =
+    ownedLab.visibility.available &&
+        runCatching {
+            ownedLab.lighting.enableRtxdi(RtxdiProgram.load(), restir).getOrThrow()
+        }
+            .onFailure { println("Optional RTXDI unavailable: ${it.message}") }
+            .isSuccess
 var useRtxdi = sdkReady
 var reference = false
 var temporal = true
@@ -24,7 +24,7 @@ var neighbors = 8
 var lightCount = 16
 var reset = false
 var source = false
-var shadows = lab.visibility.available
+var shadows = ownedLab.visibility.available
 var animate = true
 var budget = 16
 var reconstruct = true
@@ -49,7 +49,9 @@ controlGroup("lighting") {
     slider("Effect weight", initialValue = 1.0) { weight = it.toFloat() }
     slider("Radiance", min = 0.0, max = 150.0, initialValue = 60.0) { power = it.toFloat() }
     slider("Light phase", min = 0.0, max = 6.283, initialValue = 0.0) { phase = it }
-    slider("View (0: lit, 9: raw)", min = 0.0, max = if (sdkReady) 9.0 else 4.0, step = 1.0, initialValue = 0.0) { diagnostic = it.toInt() }
+    slider("View (0: lit, 9: raw)", min = 0.0, max = if (sdkReady) 9.0 else 4.0, step = 1.0, initialValue = 0.0) {
+        diagnostic = it.toInt()
+    }
 }
 displayOpen("lighting")
 println("Direct lighting ready: use the lighting controls and arrow-key camera.")
@@ -61,25 +63,42 @@ frames {
         restir.temporal = temporal
         restir.spatialSamples = neighbors
         restir.shadows = shadows
-        if (reset) { restir.resetHistory(); reset = false }
-        if (sdkReady) restir.commitLights(List(lightCount) { i ->
-            val a = i * 2.0 * PI / lightCount + seconds + phase
-            IdentifiedAreaLight(100 + i, AreaEmitter(
-                Vector3f((cos(a)*3.0 + sin(seconds + phase)*1.5).toFloat(), 4.5f, (sin(a)*2.0).toFloat()),
-                Vector3f(0.6f,0f,0f), Vector3f(0f,0f,0.6f), Vector3f(power*3f/lightCount)))
-        })
-        lab.lighting.mode = if (source) DirectLighting.Mode.SOURCE
+        if (reset) {
+            restir.resetHistory()
+            reset = false
+        }
+        if (sdkReady)
+            restir.commitLights(
+                List(lightCount) { i ->
+                    val a = i * 2.0 * PI / lightCount + seconds + phase
+                    IdentifiedAreaLight(
+                        100 + i,
+                        AreaEmitter(
+                            Vector3f(
+                                (cos(a) * 3.0 + sin(seconds + phase) * 1.5).toFloat(),
+                                4.5f,
+                                (sin(a) * 2.0).toFloat(),
+                            ),
+                            Vector3f(0.6f, 0f, 0f),
+                            Vector3f(0f, 0f, 0.6f),
+                            Vector3f(power * 3f / lightCount),
+                        ),
+                    )
+                },
+            )
+        ownedLab.lighting.mode =
+            if (source) DirectLighting.Mode.SOURCE
             else if (useRtxdi && sdkReady) {
                 if (reference) DirectLighting.Mode.RTXDI_REFERENCE else DirectLighting.Mode.RTXDI
-            }
-            else if (shadows && lab.visibility.available) DirectLighting.Mode.RAY_QUERY
+            } else if (shadows && ownedLab.visibility.available) DirectLighting.Mode.RAY_QUERY
             else DirectLighting.Mode.UNSHADOWED
-        lab.lighting.view = DirectLighting.View.entries[diagnostic]
-        lab.lighting.samples = budget
-        lab.lighting.effectWeight = weight
-        lab.lighting.emitter.radiance.set(power)
-        lab.animate(seconds + phase)
+        ownedLab.lighting.view = DirectLighting.View.entries[diagnostic]
+        ownedLab.lighting.samples = budget
+        ownedLab.lighting.effectWeight = weight
+        ownedLab.lighting.emitter.radiance.set(power)
+        ownedLab.animate(seconds + phase)
         if (animate) seconds += 1.0 / 60.0
         frame()
     }
 }
+    .end { ownedLab.close() }

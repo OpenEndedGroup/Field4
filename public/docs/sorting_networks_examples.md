@@ -10,8 +10,6 @@ This example builds a bubble network and Batcher's odd-even merge network on ten
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/topology_compare.png" wait="1.0" capture="box"}
 :::static
-import afield.graphics.FLine
-
 val bubble = SortingNetwork.bubble(10)
 val merge = SortingNetwork.oddEvenMerge(10)
 
@@ -19,21 +17,18 @@ val merge = SortingNetwork.oddEvenMerge(10)
 fun shift(lines: List<FLine>, dx: Double, dy: Double) = lines.map { it + vec(dx, dy, 0) }
 
 fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
-    moveTo(x, y)
-    lineTo(x + w, y)
-    lineTo(x + w, y + h)
-    lineTo(x, y + h)
-    close()
+    rect(x, y, w, h)
     filled = true
     stroked = true
     thickness = 1.2
     this.color = color
 }
 
-val frames = listOf(
+val frames = [
     panel(30.0, 40.0, 1030.0, 390.0, vec(0.08, 0.14, 0.20, 0.55)),
     panel(30.0, 500.0, 1030.0, 390.0, vec(0.18, 0.11, 0.07, 0.52)),
-)
+]
+
 :::endfold
 
 lines(
@@ -43,7 +38,7 @@ lines(
     channel = "sorting-topology",
     w = 1120.0,
     h = 940.0,
-    fitToSize = true
+    fitToSize = true,
 )
 ```
 
@@ -57,7 +52,6 @@ A diagram doesn't show how quickly a network removes disorder. `layerTrace(...)`
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/disorder_decay.png" wait="1.0" capture="box" open-outputs="true"}
 :::static
-import afield.darkMode
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 
@@ -80,6 +74,7 @@ fun inversions(values: IntArray): Int {
     for (i in values.indices) for (j in i + 1 until values.size) if (values[i] > values[j]) inv++
     return inv
 }
+
 :::endfold
 
 fun profile(net: SortingNetwork): List<Double> {
@@ -107,31 +102,46 @@ fun progress(values: List<Double>) = values.indices.map { it / (values.size - 1)
 // Faint lines for single inputs, a bold line with a marker per layer for the mean.
 fun Plot.network(label: String, traces: List<List<Double>>, mean: List<Double>, hue: String) {
     for (trace in traces) scatter {
-        x.set(progress(trace)); y.set(trace)
+        x.set(progress(trace))
+        y.set(trace)
         mode = ScatterMode.lines
-        line { color(hue); width = 1.0 }
+        line {
+            color(hue)
+            width = 1.0
+        }
         opacity = 0.2
         showlegend = false
     }
     scatter {
         name = "$label, mean"
-        x.set(progress(mean)); y.set(mean)
+        x.set(progress(mean))
+        y.set(mean)
         mode = ScatterMode.`lines+markers`
-        line { color(hue); width = 3.0 }
-        marker { size = 7; color(hue) }
+        line {
+            color(hue)
+            width = 3.0
+        }
+        marker {
+            size = 7
+            color(hue)
+        }
     }
 }
 
-display("sorting-disorder", Plotly.plot {
-    network("bubble", bubbleTraces, bubbleProfile, "#94d9ff")
-    network("odd-even merge", mergeTraces, mergeProfile, "#ffba61")
-    layout {
-        title = "Disorder left after each layer"
-        xaxis { title = "fraction of the network's layers applied" }
-        yaxis { title = "inversions / most possible" }
-        height = 480
-    }
-}.darkMode())
+display(
+    "sorting-disorder",
+    Plotly.plot {
+            network("bubble", bubbleTraces, bubbleProfile, "#94d9ff")
+            network("odd-even merge", mergeTraces, mergeProfile, "#ffba61")
+            layout {
+                title = "Disorder left after each layer"
+                xaxis { title = "fraction of the network's layers applied" }
+                yaxis { title = "inversions / most possible" }
+                height = 480
+            }
+        }
+        .darkMode(),
+)
 ```
 
 Faint lines are single permutations and bold lines the mean, with one marker per layer. Both networks reach zero at the right-hand edge, because that is what being a sorting network means. The horizontal axis stretches each network's layers over the same width, so the plot compares the shape of the two curves, not their length; bubble's extra layers show as its markers sitting closer together.
@@ -146,8 +156,6 @@ Odd-even merge does most of its work early: its first layer is the steepest step
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/anneal_search.png" wait="1.0" capture="box" open-outputs="true" timeout="70"}
 :::static
-import afield.darkMode
-import afield.graphics.FLine
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 
@@ -158,10 +166,10 @@ val best = SortingNetwork.anneal(
     n = 8,
     iterations = 8_000,
     seed = 7L,
-    progressEvery = 120
+    progressEvery = 120,
 ) { iter, net ->
-    history += iter to net
-}
+        history += iter to net
+    }
 
 fun shift(lines: List<FLine>, dx: Double, dy: Double) = lines.map { it + vec(dx, dy, 0) }
 
@@ -172,18 +180,29 @@ lines(
     channel = "sorting-anneal",
     w = 1220.0,
     h = 300.0,
-    fitToSize = true
+    fitToSize = true,
 )
 
 // The best network so far, measured two ways, against the iteration it was found at.
-fun progress(title: String, hue: String, measure: (SortingNetwork) -> Int) = Plotly.plot {
-    scatter {
-        x.set(history.map { it.first }); y.set(history.map { measure(it.second) })
-        mode = ScatterMode.lines
-        line { color(hue); width = 2.0 }
-    }
-    layout { this.title = title; xaxis { this.title = "iteration" }; height = 280; width = 1220 }
-}.darkMode()
+fun progress(title: String, hue: String, measure: (SortingNetwork) -> Int) =
+    Plotly.plot {
+            scatter {
+                x.set(history.map { it.first })
+                y.set(history.map { measure(it.second) })
+                mode = ScatterMode.lines
+                line {
+                    color(hue)
+                    width = 2.0
+                }
+            }
+            layout {
+                this.title = title
+                xaxis { this.title = "iteration" }
+                height = 280
+                width = 1220
+            }
+        }
+        .darkMode()
 
 display("sorting-anneal-count", progress("Best so far: comparators", "#8ee9ff") { it.comparators.size })
 display("sorting-anneal-depth", progress("Best so far: depth", "#8fffa8") { it.depth() })
@@ -199,7 +218,6 @@ This example runs `anneal` over every combination of three starting networks, th
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/anneal_regimes.png" wait="1.0" capture="box" open-outputs="true" timeout="90"}
 :::static
-import afield.darkMode
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 
@@ -219,40 +237,41 @@ data class RunResult(
     val depths: List<Pair<Int, Double>>,
     val best: SortingNetwork,
 )
+
 :::endfold
 
 val merge = SortingNetwork.oddEvenMerge(8)
-val mergeDense =
-    SortingNetwork(
-        8,
-        merge.comparators +
-            listOf(
-                SortingComparator(0, 1),
-                SortingComparator(2, 3),
-                SortingComparator(4, 5),
-                SortingComparator(6, 7),
-            ),
-    )
+val mergeDense = SortingNetwork(
+    8,
+    merge.comparators +
+        listOf(
+            SortingComparator(0, 1),
+            SortingComparator(2, 3),
+            SortingComparator(4, 5),
+            SortingComparator(6, 7),
+        ),
+)
 
 val configs =
-    listOf(
-        Triple("bubble", SortingNetwork.bubble(8), "#8ad6ff"),
-        Triple("merge+", mergeDense, "#ffb857"),
-        Triple("merge", merge, "#94ffad"),
-    ).flatMapIndexed { familyIndex, (family, initial, hue) ->
-        listOf(0.7 to 0.05, 1.5 to 0.02, 3.2 to 0.01).flatMapIndexed { tempIndex, (startTemp, endTemp) ->
-            (0 until 3).map { seed ->
-                RunConfig(
-                    family = family,
-                    initial = initial,
-                    initialTemp = startTemp,
-                    finalTemp = endTemp,
-                    seed = (familyIndex * 100 + tempIndex * 10 + seed).toLong(),
-                    hue = hue,
-                )
+    [
+            Triple("bubble", SortingNetwork.bubble(8), "#8ad6ff"),
+            Triple("merge+", mergeDense, "#ffb857"),
+            Triple("merge", merge, "#94ffad"),
+        ]
+        .flatMapIndexed { familyIndex, (family, initial, hue) ->
+            [0.7 to 0.05, 1.5 to 0.02, 3.2 to 0.01].flatMapIndexed { tempIndex, (startTemp, endTemp) ->
+                (0 until 3).map { seed ->
+                    RunConfig(
+                        family = family,
+                        initial = initial,
+                        initialTemp = startTemp,
+                        finalTemp = endTemp,
+                        seed = (familyIndex * 100 + tempIndex * 10 + seed).toLong(),
+                        hue = hue,
+                    )
+                }
             }
         }
-    }
 
 val iterations = 2_000
 val progressEvery = 80
@@ -260,56 +279,78 @@ val progressEvery = 80
 val runs = configs.map { config ->
     val countTrace = mutableListOf<Pair<Int, Double>>()
     val depthTrace = mutableListOf<Pair<Int, Double>>()
-    val best =
-        SortingNetwork.anneal(
-            n = 8,
-            initialNetwork = config.initial,
-            iterations = iterations,
-            initialTemp = config.initialTemp,
-            finalTemp = config.finalTemp,
-            seed = config.seed,
-            progressEvery = progressEvery,
-        ) { iter, net ->
+    val best = SortingNetwork.anneal(
+        n = 8,
+        initialNetwork = config.initial,
+        iterations = iterations,
+        initialTemp = config.initialTemp,
+        finalTemp = config.finalTemp,
+        seed = config.seed,
+        progressEvery = progressEvery,
+    ) { iter, net ->
             countTrace += iter to net.comparators.size.toDouble()
             depthTrace += iter to net.depth().toDouble()
         }
     RunResult(
         config = config,
-        counts = if (countTrace.lastOrNull()?.first == iterations) countTrace else countTrace + (iterations to best.comparators.size.toDouble()),
-        depths = if (depthTrace.lastOrNull()?.first == iterations) depthTrace else depthTrace + (iterations to best.depth().toDouble()),
+        counts =
+            if (countTrace.lastOrNull()?.first == iterations) countTrace
+            else countTrace + (iterations to best.comparators.size.toDouble()),
+        depths =
+            if (depthTrace.lastOrNull()?.first == iterations) depthTrace
+            else depthTrace + (iterations to best.depth().toDouble()),
         best = best,
     )
 }
 
 // One faint line per run, coloured by its starting network.
-fun traces(title: String, pick: (RunResult) -> List<Pair<Int, Double>>) = Plotly.plot {
-    for (run in runs) scatter {
-        x.set(pick(run).map { it.first }); y.set(pick(run).map { it.second })
-        mode = ScatterMode.lines
-        line { color(run.config.hue); width = 1.4 }
-        opacity = 0.5
-        showlegend = false
-    }
-    layout { this.title = title; xaxis { this.title = "iteration" }; height = 300 }
-}.darkMode()
+fun traces(title: String, pick: (RunResult) -> List<Pair<Int, Double>>) =
+    Plotly.plot {
+            for (run in runs) scatter {
+                x.set(pick(run).map { it.first })
+                y.set(pick(run).map { it.second })
+                mode = ScatterMode.lines
+                line {
+                    color(run.config.hue)
+                    width = 1.4
+                }
+                opacity = 0.5
+                showlegend = false
+            }
+            layout {
+                this.title = title
+                xaxis { this.title = "iteration" }
+                height = 300
+            }
+        }
+        .darkMode()
 
 display("sorting-anneal-counts", traces("Best so far: comparators") { it.counts })
 display("sorting-anneal-depths", traces("Best so far: depth") { it.depths })
 
 // Where each run finished, one marker per run, grouped by starting network.
-display("sorting-anneal-results", Plotly.plot {
-    for ((family, group) in runs.groupBy { it.config.family }) scatter {
-        name = family
-        x.set(group.map { it.best.comparators.size }); y.set(group.map { it.best.depth() })
-        mode = ScatterMode.markers
-        marker { size = 12; color(group.first().config.hue) }
-    }
-    layout {
-        title = "Where each run finished"
-        xaxis { title = "comparators" }; yaxis { title = "depth" }
-        height = 360
-    }
-}.darkMode())
+display(
+    "sorting-anneal-results",
+    Plotly.plot {
+            for ((family, group) in runs.groupBy { it.config.family }) scatter {
+                name = family
+                x.set(group.map { it.best.comparators.size })
+                y.set(group.map { it.best.depth() })
+                mode = ScatterMode.markers
+                marker {
+                    size = 12
+                    color(group.first().config.hue)
+                }
+            }
+            layout {
+                title = "Where each run finished"
+                xaxis { title = "comparators" }
+                yaxis { title = "depth" }
+                height = 360
+            }
+        }
+        .darkMode(),
+)
 ```
 
 The runs that start from `oddEvenMerge(8)` (green) are flat lines along the bottom, because that network already has the fewest comparators known for eight wires and there is nothing to remove; they all finish on the same point of the scatter. `merge+` (orange) is the same network with four of its first-layer comparators repeated, which makes those four copies useless, and its runs finish at different places depending on how many copies each one removed. The runs that start from bubble (blue) wander down through the first half and finish up and to the right, without reaching the depth of either merge network.

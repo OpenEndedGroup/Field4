@@ -6,5 +6,9 @@ val ts = (0..50).map { it / 50.0 }
 showSignals(
     "matched" to ts.map { spreadOf(morphBetween(from, partner, it)) },
     "by list index" to ts.map { spreadOf(morphBetween(from, to, it)) },
-    x = ts, title = "how big the cloud is, through the morph", xTitle = "t", yTitle = "spread", channel = "spread",
+    x = ts,
+    title = "how big the cloud is, through the morph",
+    xTitle = "t",
+    yTitle = "spread",
+    channel = "spread",
 )

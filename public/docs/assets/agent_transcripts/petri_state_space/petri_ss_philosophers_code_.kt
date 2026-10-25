@@ -1,4 +1,4 @@
-import afield.petri.*
+import afield.simulation.petri.*
 
 // Five philosophers, five forks, everybody left-handed. Whether this wedges depends on
 // the order the grabs happen in, which is precisely what running it once cannot tell you.
@@ -10,9 +10,20 @@ fun table(reverseLast: Boolean) = petri {
         val left = i
         val right = (i + 1) % 5
         val reversed = reverseLast && i == 4
-        t("grab.$i") { from("fork.${if (reversed) right else left}"); to("holding.$i") }
-        t("eat.$i") { from("holding.$i"); from("fork.${if (reversed) left else right}"); to("eating.$i") }
-        t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+        t("grab.$i") {
+            from("fork.${if (reversed) right else left}")
+            to("holding.$i")
+        }
+        t("eat.$i") {
+            from("holding.$i")
+            from("fork.${if (reversed) left else right}")
+            to("eating.$i")
+        }
+        t("done.$i") {
+            from("eating.$i")
+            to("fork.$left")
+            to("fork.$right")
+        }
     }
 }
 

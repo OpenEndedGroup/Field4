@@ -28,6 +28,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_staged_generated_artifacts import GUARDS, guards_for_paths  # noqa: E402
+from verification_runtime import pinned_graalvm_args  # noqa: E402
 
 # Guard task -> (Gradle arguments that rewrite the committed artifact, extra environment).
 REGENERATORS: dict[str, tuple[list[str], dict[str, str]]] = {
@@ -36,7 +37,7 @@ REGENERATORS: dict[str, tuple[list[str], dict[str, str]]] = {
     "checkCompletionCorpusFixtures": (["checkCompletionCorpusFixtures"], {"AFIELD_HARVEST_WRITE": "1"}),
     # Counts written into prose as `N<!--count:key-->` (logging.md's lprintln call sites, ...).
     "citationGates": (
-        ["citationGates", "--tests", "afield.docs.ProseNumeralContractTest", "--rerun"],
+        ["citationGates", "--tests", "afield.tools.docs.ProseNumeralContractTest", "--rerun"],
         {"AFIELD_WRITE_DERIVED_COUNTS": "1"},
     ),
 }
@@ -84,7 +85,7 @@ def regenerate(repo: Path, changed: set[str]) -> tuple[int, set[str]]:
             gradle_args += args
             env.update(extra_env)
         print(f"merge_regen: regenerating {', '.join(g.description for g in group)} ({' '.join(gradle_args)})")
-        code = subprocess.run([str(repo / "gradlew"), "--continue", *gradle_args], cwd=repo, env=env).returncode
+        code = subprocess.run([str(repo / "gradlew"), *pinned_graalvm_args(repo), "--continue", *gradle_args], cwd=repo, env=env).returncode
         if code != 0:
             print("merge_regen: regeneration failed; the merge is left uncommitted for you to inspect", file=sys.stderr)
             return code, set()
@@ -99,6 +100,15 @@ def regenerate(repo: Path, changed: set[str]) -> tuple[int, set[str]]:
         print("merge_regen: guard_corpora.py --write failed; the merge is left uncommitted", file=sys.stderr)
         return 1, set()
     _git(repo, "add", "--", "dev_docs/GUARD_CORPORA.md")
+    # The recorded-conversation pages copy demo files and study-tools Kotlin verbatim, so an edit to
+    # either leaves a page stale. Their --check is seconds and needs no Gradle, so run it every time.
+    from conversation_packagers import repackage_stale  # noqa: PLC0415
+    code, written = repackage_stale(repo)
+    if code != 0:
+        print("merge_regen: a conversation packager failed; the merge is left uncommitted", file=sys.stderr)
+        return code, set()
+    if written:
+        _git(repo, "add", "-A", "--", *written)
     if not selected:
         print("merge_regen: no Gradle-generated artifact is affected")
     # A pure drift check ("does the committed artifact equal what the generator writes?") is true by

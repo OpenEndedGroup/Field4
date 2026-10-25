@@ -1,0 +1,35 @@
+{
+  "baseline": "02d964aa9",
+  "sources": [
+    {
+      "path": "public/docs/ai4_experiments.md",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/ai4_paint_studio.yaml",
+      "kotlinBodies": 2,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "templates/advanced_remote/8b78e419-cd1e-4111-96ab-899eb3ed47d1_fragment_.glsl",
+      "kotlinBodies": 0,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "templates/advanced_remote/94f15e77-0d57-498c-a573-b7af7ac70a07_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/interactive_guides.md",
+      "kotlinBodies": 6,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

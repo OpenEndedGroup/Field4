@@ -34,7 +34,7 @@ _r4-830d250a0b67: rectangles at 0 s outlined and labelled with the line that mad
 ![tool image](images/75a7b0b742787076ff32.png)
 <<ai>>
 <<model:{"provider":"openai","requestedModel":"gpt-6-astra","responseModel":"gpt-6-astra"}>>
-_afield.four render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._
+_Field 4 render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._
 
 ![tool image](images/c274448ff95b4f8e3b93.jpg)
 <<ai>>
@@ -49,7 +49,7 @@ _r4-830d250a0b67 → r5-d3311447473f: before | after | difference, per time_
 ![tool image](images/fc613c7dc08a47969de4.png)
 <<ai>>
 <<model:{"provider":"openai","requestedModel":"gpt-6-astra","responseModel":"gpt-6-astra"}>>
-_afield.four render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._
+_Field 4 render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._
 
 ![tool image](images/bb76d183ac30667aae27.jpg)
 <<ai>>

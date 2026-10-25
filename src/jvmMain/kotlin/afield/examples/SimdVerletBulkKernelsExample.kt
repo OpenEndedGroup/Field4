@@ -1,20 +1,20 @@
 package afield.examples
 
-import afield.four.physics.SimdVerlet
-import afield.stdlib.linalg.bulk.addBroadcastRange
-import afield.stdlib.linalg.bulk.addRange
-import afield.stdlib.linalg.bulk.crossRange
-import afield.stdlib.linalg.bulk.dotRange
-import afield.stdlib.linalg.bulk.lengthSquaredRange
-import afield.stdlib.linalg.bulk.lerpRange
-import afield.stdlib.linalg.bulk.normalizeRange
+import afield.simulation.physics.SimdVerlet
+import afield.math.linalg.bulk.addBroadcastRange
+import afield.math.linalg.bulk.addRange
+import afield.math.linalg.bulk.crossRange
+import afield.math.linalg.bulk.dotRange
+import afield.math.linalg.bulk.lengthSquaredRange
+import afield.math.linalg.bulk.lerpRange
+import afield.math.linalg.bulk.normalizeRange
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
  * Worked examples of the generated bulk/SIMD vector kernels
- * (`afield.stdlib.linalg.bulk.*`) and their intended pairing with [SimdVerlet].
+ * (`afield.math.linalg.bulk.*`) and their intended pairing with [SimdVerlet].
  *
  * Part 1 is a standalone tour of the kernel-calling convention: every function is
  * `<op>Range(selfComponents…, [otherComponents…], [scalar], destComponents…, start, endExclusive)`

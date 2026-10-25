@@ -1,10 +1,18 @@
-import afield.four.Renderer
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.targets.RenderToTexture
+import afield.graphics.vulkan.targets.ComputeTarget
+import afield.ui.controls.EffectiveParameter
+import afield.runtime.lifecycle.SimulationReset
+import afield.graphics.vulkan.buffers.FrameBufferGroup
 import java.nio.*
 import arrow.core.right
 import arrow.core.left
-import afield.four.modules.*
-import afield.four.buffers.*
+import afield.graphics.shader.*
+import afield.graphics.scene.*
+import afield.graphics.render.*
+import afield.document.context.*
+import afield.graphics.vulkan.buffers.*
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
 /*start*/
 /*graphics-structure-type:Field:Field*/
@@ -15,7 +23,7 @@ class Field(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var v by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var v by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun FieldByteSize(): Long = 16L
 fun FieldLayoutMembers(): List<Introspected.Member> =
@@ -54,18 +62,87 @@ fun HasBuffer.asHistory(): History =
 fun BufferParameters.asHistory(): History =
     buffer.asHistory()
 /*end*/
-/*graphics-pc-structure:particles*/ var Structure.particles by Structure.FromStructure<Any>() // Pairs of position/generation and smoothed velocity.
-/*graphics-pc-binding:particles*/ var Mesh.particles by Mesh.BoundFromStructure<afield.four.buffers.HasBuffer>() // Pairs of position/generation and smoothed velocity.
-/*graphics-pc-binding-group:particles*/ var MeshGroup.particles by MeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>() // Pairs of position/generation and smoothed velocity.
-/*graphics-pc-structure:history*/ var Structure.history by Structure.FromStructure<Any>() // Camera matrices and target resolution.
-/*graphics-pc-binding:history*/ var Mesh.history by Mesh.BoundFromStructure<afield.four.buffers.HasBuffer>() // Camera matrices and target resolution.
-/*graphics-pc-binding-group:history*/ var MeshGroup.history by MeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>() // Camera matrices and target resolution.
-/*graphics-pc-structure:viewport*/ var Structure.viewport by Structure.FromStructure<Any>() // xy current window dimensions; zw reserved.
-/*graphics-pc-binding:viewport*/ var Mesh.viewport by Mesh.BoundFromStructure<afield.stdlib.linalg.Vector4f>() // xy current window dimensions; zw reserved.
-/*graphics-pc-binding-group:viewport*/ var MeshGroup.viewport by MeshGroup.BoundFromStructure<afield.stdlib.linalg.Vector4f>() // xy current window dimensions; zw reserved.
-/*graphics-pc-structure:look*/ var Structure.look by Structure.FromStructure<Any>() // x seconds of stroke; y half-width pixels; z gain; w reserved.
-/*graphics-pc-binding:look*/ var Mesh.look by Mesh.BoundFromStructure<afield.stdlib.linalg.Vector4f>() // x seconds of stroke; y half-width pixels; z gain; w reserved.
-/*graphics-pc-binding-group:look*/ var MeshGroup.look by MeshGroup.BoundFromStructure<afield.stdlib.linalg.Vector4f>() // x seconds of stroke; y half-width pixels; z gain; w reserved.
+/*graphics-pc-structure:particles*/ var Structure.particles by Structure.FromStructure<Any>()
+/*graphics-pc-binding:particles*/ var Mesh.particles by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding-group:particles*/ var MeshGroup.particles by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-structure:history*/ var Structure.history by Structure.FromStructure<Any>()
+/*graphics-pc-binding:history*/ var Mesh.history by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding-group:history*/ var MeshGroup.history by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-structure:viewport*/ var Structure.viewport by Structure.FromStructure<Any>()
+/*graphics-pc-binding:viewport*/ var Mesh.viewport by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>()
+/*graphics-pc-binding-group:viewport*/ var MeshGroup.viewport by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>()
+/*graphics-pc-structure:look*/ var Structure.look by Structure.FromStructure<Any>()
+/*graphics-pc-binding:look*/ var Mesh.look by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>()
+/*graphics-pc-binding-group:look*/ var MeshGroup.look by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>()
+var Box.flowA by ReactiveInheritance<FrameBufferGroup>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.flowA by Onceing<FrameBufferGroup>() /*from:flow_resources*/ /**/
+val Why.flowA by Whying() /*from:flow_resources*/ /**/
+var Box.flowB by ReactiveInheritance<FrameBufferGroup>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.flowB by Onceing<FrameBufferGroup>() /*from:flow_resources*/ /**/
+val Why.flowB by Whying() /*from:flow_resources*/ /**/
+var Box.advected by ReactiveInheritance<FrameBufferGroup>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.advected by Onceing<FrameBufferGroup>() /*from:flow_resources*/ /**/
+val Why.advected by Whying() /*from:flow_resources*/ /**/
+var Box.divergence by ReactiveInheritance<FrameBufferGroup>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.divergence by Onceing<FrameBufferGroup>() /*from:flow_resources*/ /**/
+val Why.divergence by Whying() /*from:flow_resources*/ /**/
+var Box.pressureA by ReactiveInheritance<FrameBufferGroup>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.pressureA by Onceing<FrameBufferGroup>() /*from:flow_resources*/ /**/
+val Why.pressureA by Whying() /*from:flow_resources*/ /**/
+var Box.pressureB by ReactiveInheritance<FrameBufferGroup>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.pressureB by Onceing<FrameBufferGroup>() /*from:flow_resources*/ /**/
+val Why.pressureB by Whying() /*from:flow_resources*/ /**/
+var Box.particleA by ReactiveInheritance<FrameBufferGroup>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.particleA by Onceing<FrameBufferGroup>() /*from:flow_resources*/ /**/
+val Why.particleA by Whying() /*from:flow_resources*/ /**/
+var Box.particleB by ReactiveInheritance<FrameBufferGroup>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.particleB by Onceing<FrameBufferGroup>() /*from:flow_resources*/ /**/
+val Why.particleB by Whying() /*from:flow_resources*/ /**/
+var Box.tileHeaders by ReactiveInheritance<FrameBufferGroup>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.tileHeaders by Onceing<FrameBufferGroup>() /*from:flow_resources*/ /**/
+val Why.tileHeaders by Whying() /*from:flow_resources*/ /**/
+var Box.cameraHistory by ReactiveInheritance<FrameBufferGroup>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.cameraHistory by Onceing<FrameBufferGroup>() /*from:flow_resources*/ /**/
+val Why.cameraHistory by Whying() /*from:flow_resources*/ /**/
+var Box.itemHistory by ReactiveInheritance<FrameBufferGroup>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.itemHistory by Onceing<FrameBufferGroup>() /*from:flow_resources*/ /**/
+val Why.itemHistory by Whying() /*from:flow_resources*/ /**/
+var Box.resetFlow by ReactiveInheritance<SimulationReset>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.resetFlow by Onceing<SimulationReset>() /*from:flow_resources*/ /**/
+val Why.resetFlow by Whying() /*from:flow_resources*/ /**/
+var Box.force by ReactiveInheritance<EffectiveParameter>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.force by Onceing<EffectiveParameter>() /*from:flow_resources*/ /**/
+val Why.force by Whying() /*from:flow_resources*/ /**/
+var Box.grainCell by ReactiveInheritance<EffectiveParameter>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.grainCell by Onceing<EffectiveParameter>() /*from:flow_resources*/ /**/
+val Why.grainCell by Whying() /*from:flow_resources*/ /**/
+var Box.strokeTime by ReactiveInheritance<EffectiveParameter>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.strokeTime by Onceing<EffectiveParameter>() /*from:flow_resources*/ /**/
+val Why.strokeTime by Whying() /*from:flow_resources*/ /**/
+var Box.flowLook by ReactiveInheritance<afield.math.linalg.Vec4>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.flowLook by Onceing<afield.math.linalg.Vec4>() /*from:flow_resources*/ /**/
+val Why.flowLook by Whying() /*from:flow_resources*/ /**/
+var Box.flowClock by ReactiveInheritance<afield.math.linalg.Vec4>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.flowClock by Onceing<afield.math.linalg.Vec4>() /*from:flow_resources*/ /**/
+val Why.flowClock by Whying() /*from:flow_resources*/ /**/
+var Box.flowEmitter by ReactiveInheritance<afield.math.linalg.Vec4>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.flowEmitter by Onceing<afield.math.linalg.Vec4>() /*from:flow_resources*/ /**/
+val Why.flowEmitter by Whying() /*from:flow_resources*/ /**/
+var Box.flowSimulation by ReactiveInheritance<ComputeTarget>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.flowSimulation by Onceing<ComputeTarget>() /*from:flow_resources*/ /**/
+val Why.flowSimulation by Whying() /*from:flow_resources*/ /**/
+var Box.flowStep by ReactiveInheritance<java.util.concurrent.atomic.AtomicLong>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.flowStep by Onceing<java.util.concurrent.atomic.AtomicLong>() /*from:flow_resources*/ /**/
+val Why.flowStep by Whying() /*from:flow_resources*/ /**/
+var Box.travel by ReactiveInheritance<java.util.concurrent.atomic.AtomicBoolean>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.travel by Onceing<java.util.concurrent.atomic.AtomicBoolean>() /*from:flow_resources*/ /**/
+val Why.travel by Whying() /*from:flow_resources*/ /**/
+var Box.flowWidth by ReactiveInheritance<EffectiveParameter>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.flowWidth by Onceing<EffectiveParameter>() /*from:flow_resources*/ /**/
+val Why.flowWidth by Whying() /*from:flow_resources*/ /**/
+var Box.flowSurface by ReactiveInheritance<RenderToTexture>(Reactive.DOWN) /*from:flow_resources*/ /**/
+val Once.flowSurface by Onceing<RenderToTexture>() /*from:flow_resources*/ /**/
+val Why.flowSurface by Whying() /*from:flow_resources*/ /**/
 var Box.window by Inheritance<Window>() /*from:flow_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:flow_renderer*/ /**/
 val Why.window by Whying() /*from:flow_renderer*/ /**/

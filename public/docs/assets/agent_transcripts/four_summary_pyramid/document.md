@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="sp_renderer" index="0" -->
 
 ```edn [field-box id="sp_renderer" role="properties"]
-{"id" "sp_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["sp_bundle"] "properties" {"children" #{#afield/box "sp_bundle"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_renderer_code_.kt" "lines" 11 "characters" 255 "sha256" "8251a3f6a4fdf54cacf976a2bd1dcd6a751183b0b9587f88304830c00777ea1f"}]}
+{"id" "sp_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["sp_bundle"] "properties" {"children" #{#afield/box "sp_bundle"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_renderer_code_.kt" "lines" 12 "characters" 267 "sha256" "bddd24a9e3e6d02bcd9f0bf82f6ed5a33f4f1cd082679b62ec88a6be20f2907e"}]}
 ```
 
 ```kotlin [field-property box="sp_renderer" name="code" path="sp_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -36,34 +37,35 @@ start(renderer::run)
 
 From `code`
 
-`afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
+Import the fabricated scene helpers explicitly; they are not part of a box's automatic imports.
 
 ```edn [field-box id="sp_bundle" role="properties"]
-{"id" "sp_bundle" "index" 1 "name" "bundle" "parents" ["root" "sp_renderer"] "children" ["sp_summary"] "properties" {"children" #{#afield/box "sp_summary"} "parents" #{#afield/box "root" #afield/box "sp_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_bundle_code_.kt" "lines" 28 "characters" 1013 "sha256" "4a0e744a265a5e311bb014e36b178641aab5638bc270c24f25fb2af585f064a5"}]}
+{"id" "sp_bundle" "index" 1 "name" "bundle" "parents" ["root" "sp_renderer"] "children" ["sp_summary"] "properties" {"children" #{#afield/box "sp_summary"} "parents" #{#afield/box "root" #afield/box "sp_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_bundle_code_.kt" "lines" 29 "characters" 996 "sha256" "f8655ec69a79a81b66d18f93a3ccde4c7614f2e04a307d407224e96471da6c84"}]}
 ```
 
 ```kotlin [field-property box="sp_bundle" name="code" path="sp_bundle_code_.kt"]
-// `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.applyScenePlan
-import afield.stdlib.linalg.Vector3f
+// Import the fabricated scene helpers explicitly; they are not part of a box's automatic imports.
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.applyScenePlan
 
 prop<StandardRenderer.Bundle>(bundle)
 
-// `renderer` is the parent box's `prop<Renderer>`, visible here through the preamble —
-// there is nothing to fetch with `fromContext()`.
-//
-// This one *is* a `once`, unlike the chain box below, and for a reason rather than out of
-// habit: `StandardRenderer.build` has no replace-in-place path, so re-running it would
-// strand the bundle the chain is appended to.
+/*
+`renderer` is the parent box's `prop<Renderer>`, visible here through the preamble —
+there is nothing to fetch with `fromContext()`.
+
+This one *is* a `once`, unlike the chain box below, and for a reason rather than out of
+habit: `StandardRenderer.build` has no replace-in-place path, so re-running it would
+strand the bundle the chain is appended to.
+*/
 once.bundle {
     val b = StandardRenderer.build(
         renderer,
         StandardRenderer.Config(
             renderWidth = 1024,
             renderHeight = 1024,
-            backgroundColor = Vector3f(0.02f, 0.02f, 0.03f)
-        )
+            backgroundColor = Vector3f(0.02f, 0.02f, 0.03f),
+        ),
     )
     b.applyScenePlan()
     b.present(renderer = renderer)
@@ -78,23 +80,26 @@ println("bundle ready: ${bundle.postStack.names()}")
 <!-- field-box id="sp_summary" index="2" -->
 
 ```edn [field-box id="sp_summary" role="properties"]
-{"id" "sp_summary" "index" 2 "name" "summary pyramid" "parents" ["root" "sp_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sp_bundle"} "name" "summary pyramid" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_summary_code_.kt" "lines" 139 "characters" 6723 "sha256" "54bf91fb82219207af0e3a5aa7c5bb310e68fcd81cdd0b68d07252679dfb3bb5"}]}
+{"id" "sp_summary" "index" 2 "name" "summary pyramid" "parents" ["root" "sp_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sp_bundle"} "name" "summary pyramid" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_summary_code_.kt" "lines" 161 "characters" 6916 "sha256" "0d5ebd03b3e9224134263f158bc6738f47fbadc717ffe4be3873ec033ab83a05"}]}
 ```
 
 ```kotlin [field-property box="sp_summary" name="code" path="sp_summary_code_.kt"]
-import afield.four.fabricated.FabricatePassChain
-import afield.four.fabricated.FabricatePassLibrary
-import afield.four.fabricated.FabricatePassSize
-import afield.four.fabricated.FabricatePassSpec
-import afield.four.fabricated.addPassChain
+import afield.graphics.scene.fabricated.FabricatePassChain
+import afield.graphics.scene.fabricated.FabricatePassLibrary
+import afield.graphics.scene.fabricated.FabricatePassSize
+import afield.graphics.scene.fabricated.FabricatePassSpec
+import afield.graphics.scene.fabricated.addPassChain
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT
 
-prop<afield.four.fabricated.FabricateBuiltChain>(summary)
+prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(summary)
 
-// The field being summarised: three anisotropic blobs that drift and rotate, with the
-// mass in alpha and a value ramp in red. A chain head that synthesises its own input is
-// self-contained whatever the post stack looked like before it.
-val fieldFragment = """
+/*
+The field being summarised: three anisotropic blobs that drift and rotate, with the
+mass in alpha and a value ramp in red. A chain head that synthesises its own input is
+self-contained whatever the post stack looked like before it.
+*/
+val fieldFragment =
+    """
     #version 450
     layout(location = 0) in vec2 vUv;
     layout(push_constant) uniform FieldPush {
@@ -128,12 +133,15 @@ val fieldFragment = """
     }
 """
 
-// The field as a *picture*, which is not the same thing as the field. `field` carries a
-// value in red over the whole frame because that is what the pyramid weighs and averages;
-// looking at it directly is looking at a red wash, because the mass that says which part
-// of the frame matters is in the alpha channel. One pass turns it into something to draw
-// on: the value's colour, where the mass is.
-val viewFragment = """
+/*
+The field as a *picture*, which is not the same thing as the field. `field` carries a
+value in red over the whole frame because that is what the pyramid weighs and averages;
+looking at it directly is looking at a red wash, because the mass that says which part
+of the frame matters is in the alpha channel. One pass turns it into something to draw
+on: the value's colour, where the mass is.
+*/
+val viewFragment =
+    """
     #version 450
     layout(location = 0) in vec2 vUv;
     layout(set = 0, binding = 0) uniform sampler2D sourceTex;
@@ -146,80 +154,96 @@ val viewFragment = """
     }
 """
 
-// Declared every run. `addPassChain` replaces passes of the same name and reuses a target
-// whose shape has not changed, so editing a number and hitting run remakes the chain
-// without reallocating anything — which is why there is no `once` here. Wrapping the
-// declaration in one would mean a `resolution` you edited never took effect.
+/*
+Declared every run. `addPassChain` replaces passes of the same name and reuses a target
+whose shape has not changed, so editing a number and hitting run remakes the chain
+without reallocating anything — which is why there is no `once` here. Wrapping the
+declaration in one would mean a `resolution` you edited never took effect.
+*/
 summary = bundle.addPassChain(
-    listOf(
+    [
         FabricatePassSpec(
             name = "field",
             fragment = fieldFragment,
             size = FabricatePassSize.Absolute(256, 256),
-            // fp32, and it matters here rather than being caution: the second moments are
-            // differences that need every bit of the first ones, and an 8-bit field would
-            // quantise the mass before the pyramid ever saw it.
+            /*
+            fp32, and it matters here rather than being caution: the second moments are
+            differences that need every bit of the first ones, and an 8-bit field would
+            quantise the mass before the pyramid ever saw it.
+            */
             format = VK_FORMAT_R32G32B32A32_SFLOAT,
             source = FabricatePassChain.CHAIN_INPUT,
-            push = mapOf("time" to 0f)
+            push = mapOf("time" to 0f),
         ),
         FabricatePassSpec(
             name = "field-view",
             fragment = viewFragment,
             size = FabricatePassSize.Absolute(512, 512),
-            source = "field"
-        )
-    ) + FabricatePassLibrary.summaryPyramid(
-        // Nine levels per plane, three planes: the leaf is 256² and the root is one cell
-        // holding the statistics of the whole field.
-        prefix = "summary",
-        resolution = 256,
-        source = "field",
-        weightChannel = 3,
-        valueChannel = 0
-    ) + FabricatePassLibrary.adaptiveSummaryCells(
-        // The half that makes it a quadtree rather than a pyramid: descend from depth 1,
-        // stop wherever the cell already describes its contents well enough, and draw the
-        // cells you stopped at. Empty space keeps its big cells and the blobs' edges are
-        // resolved six levels down, in one pass chain, from one tree.
-        //
-        // Two passes per level and two *resolutions* per level: the decision runs at the
-        // tree's scale (one texel per cell) and the drawing at the picture's.
-        prefix = "summary",
-        name = "cut",
-        over = "field-view",
-        coarsest = 1,
-        finest = 6,
-        // Refine where the cell is partly full — so the cut tracks the blobs' boundaries
-        // and leaves both the inside and the outside coarse. Try SPREAD instead to refine
-        // where the mass is narrower than its cell, or VALUE_VARIANCE for the classic
-        // image quadtree, which here follows the value ramp rather than the blobs.
-        criterion = FabricatePassLibrary.SubdivisionCriterion.OCCUPANCY,
-        threshold = 0.02f,
-        weightGain = 3f
-    ),
-    printReport = true
+            source = "field",
+        ),
+    ] +
+        FabricatePassLibrary.summaryPyramid(
+            // Nine levels per plane, three planes: the leaf is 256² and the root is one cell
+            // holding the statistics of the whole field.
+            prefix = "summary",
+            resolution = 256,
+            source = "field",
+            weightChannel = 3,
+            valueChannel = 0,
+        ) +
+        FabricatePassLibrary.adaptiveSummaryCells(
+            /*
+            The half that makes it a quadtree rather than a pyramid: descend from depth 1,
+            stop wherever the cell already describes its contents well enough, and draw the
+            cells you stopped at. Empty space keeps its big cells and the blobs' edges are
+            resolved six levels down, in one pass chain, from one tree.
+
+            Two passes per level and two *resolutions* per level: the decision runs at the
+            tree's scale (one texel per cell) and the drawing at the picture's.
+            */
+            prefix = "summary",
+            name = "cut",
+            over = "field-view",
+            coarsest = 1,
+            finest = 6,
+            /*
+            Refine where the cell is partly full — so the cut tracks the blobs' boundaries
+            and leaves both the inside and the outside coarse. Try SPREAD instead to refine
+            where the mass is narrower than its cell, or VALUE_VARIANCE for the classic
+            image quadtree, which here follows the value ramp rather than the blobs.
+            */
+            criterion = FabricatePassLibrary.SubdivisionCriterion.OCCUPANCY,
+            threshold = 0.02f,
+            weightGain = 3f,
+        ),
+    printReport = true,
 )
 // The frame graph has to re-sync before the new passes are scheduled.
 bundle.attachTo(renderer)
 bundle.present(renderer = renderer)
 
-// ── live knobs ──
-//
-// A lambda *binds*: the supplier is re-read every time the push buffer is written, so
-// this one line is the whole animation and there is nothing to call per frame. The whole
-// pyramid is rebuilt from the field every frame — twenty-seven passes over 256² and down,
-// which is cheaper than the blur in four_pass_chain.
+/*
+── live knobs ──
+
+A lambda *binds*: the supplier is re-read every time the push buffer is written, so
+this one line is the whole animation and there is nothing to call per frame. The whole
+pyramid is rebuilt from the field every frame — twenty-seven passes over 256² and down,
+which is cheaper than the blur in four_pass_chain.
+*/
 summary["time"] = { renderer.frameCounter * 0.01f }
-summary["sigma"] = 1f           // the ellipse's radius, in standard deviations
-summary["weightGain"] = 3f      // a mean coverage is a small number; this lifts the fill
-// `threshold` reaches every level of the descent at once, because the cut's select
-// passes all declare it — so turning this one number re-cuts the whole tree on the next
-// frame with nothing rebuilt and nothing reallocated.
+summary["sigma"] = 1f // the ellipse's radius, in standard deviations
+summary["weightGain"] = 3f // a mean coverage is a small number; this lifts the fill
+/*
+`threshold` reaches every level of the descent at once, because the cut's select
+passes all declare it — so turning this one number re-cuts the whole tree on the next
+frame with nothing rebuilt and nothing reallocated.
+*/
 summary["threshold"] = 0.02f
 
-println("summary pyramid: ${summary.names().size} passes, " +
+println(
+    "summary pyramid: ${summary.names().size} passes, " +
         "root ${summary.targetOf("summary-value-0")?.width}x" +
-        "${summary.targetOf("summary-value-0")?.height}")
+        "${summary.targetOf("summary-value-0")?.height}",
+)
 ```
 

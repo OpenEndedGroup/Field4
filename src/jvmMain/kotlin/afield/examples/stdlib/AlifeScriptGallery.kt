@@ -1,18 +1,20 @@
 package afield.examples.stdlib
 
-import afield.graphics.FLine
-import afield.stdlib.BehaviourJob
-import afield.stdlib.BoidFlock
-import afield.stdlib.BoidParams
-import afield.stdlib.Img
-import afield.stdlib.ScriptWorld
-import afield.stdlib.linalg.Vector2d
-import afield.stdlib.montage
-import afield.stdlib.polarization
-import afield.stdlib.rasterizeFLines
-import afield.stdlib.rasterizeFLinesFramed
-import afield.stdlib.savePng
-import afield.stdlib.step
+import afield.geometry.path.FLine
+import afield.simulation.agents.BehaviourJob
+import afield.simulation.agents.BoidFlock
+import afield.simulation.agents.BoidParams
+import afield.media.image.Img
+import afield.simulation.agents.ScriptWorld
+import afield.math.linalg.Vector2d
+import afield.media.image.montage
+import afield.simulation.agents.polarization
+import afield.simulation.agents.rasterizeFLines
+import afield.simulation.agents.rasterizeFLinesFramed
+import afield.media.image.savePng
+import afield.simulation.automata.savePng
+import afield.simulation.agents.step
+import afield.simulation.automata.step
 import java.io.File
 import kotlin.math.PI
 import kotlin.math.abs
@@ -410,7 +412,7 @@ object AlifeScriptGallery {
     private const val DETERMINISM_PHASE_FLOOR: Int = 120
 
     /**
-     * A population whose only drive is [afield.stdlib.BehaviourSteering.wander] — the world the seed
+     * A population whose only drive is [afield.simulation.agents.BehaviourSteering.wander] — the world the seed
      * actually reaches, and so the only place a seed-sensitivity claim can be made.
      */
     private fun wanderWorld(seed: Long): ScriptWorld {

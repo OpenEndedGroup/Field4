@@ -182,3 +182,18 @@ ordered RGB frames agreed across runs for every video; there were no `unknown-fa
 `stale` here means the current capture is reproducible but differs from the old committed movie. It
 is not a flaky result. After review, this 22-video reproducible set replaced the old committed
 movies. Future video changes should pass the same two-run decoded-frame gate before adoption.
+
+## Pages that depend on source their fences do not name
+
+The per-fence digest hashes the source files whose symbols a fence's code names directly. A figure
+that changes when some other file changes — a helper reached through another call, a bridge in a
+different package — needs the page to say so:
+
+```markdown
+<!-- capture-sources: src/jvmMain/kotlin/afield/graphics/scene/MeshFromDisk.kt src/jvmMain/kotlin/afield/geometry/mesh/ -->
+```
+
+Repo-relative paths, whitespace-separated; a trailing `/` means every `.kt` beneath it. Every capture
+on the page then folds those files into its `sourceRefsDigest`, so `incremental` and `strict`
+re-run it after an edit there (`page_capture_sources` in `public/docs_hooks.py`,
+`tools/test_docs_hooks_capture_sources.py`).

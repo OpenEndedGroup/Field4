@@ -1,6 +1,6 @@
 # `GpuProbe` — a compute shader on a bench
 
-`src/jvmMain/kotlin/afield/four/util/GpuProbe.kt`
+`src/jvmMain/kotlin/afield/graphics/vulkan/util/GpuProbe.kt`
 
 Fixture buffers, a dispatch chain, evidence that it ran, and numbers printed next to the bounds
 they were compared against. Usable from `jvmMain` and from a box, with the same API.
@@ -60,14 +60,14 @@ belong in a facility rather than in a box:
 
 Checked by grepping for the *mechanism*, not the name:
 
-- **`afield.four.util.FieldProbe`** (1098 lines) is the closest thing and is the other half of the
+- **`afield.graphics.vulkan.util.FieldProbe`** (1098 lines) is the closest thing and is the other half of the
   problem. It is an in-shader *sample tap*: a GLSL include (`fieldProbe`) plus a ring buffer at
   descriptor binding 63 that a running shader writes samples into, read back asynchronously and
   drawn as a histogram. It instruments a shader that is **already running in a scene**, for
   exploratory looking. It allocates no fixtures, uploads nothing, assembles no module, pumps no
   frames, has no sentinel, no thresholded assertion and no teardown. `GpuProbe` builds the scene
   and grades the answer; the two compose, and a stage's GLSL may include `fieldProbe`.
-- **`afield.four.util.FieldStats`** (790 lines) is a GPU reduction — a measurement primitive a
+- **`afield.graphics.vulkan.util.FieldStats`** (790 lines) is a GPU reduction — a measurement primitive a
   probe would *use*.
 - **`GpuNeighbourGrid` / `GpuRadixSort`** each have an `install` / `removeFrom` / `cleanup` triple,
   which is the closest existing idea to managed teardown, but per-component and hand-written.
@@ -140,12 +140,12 @@ Jacobi iterations are therefore **one** stage and twenty-four dispatches, not tw
 
 ### Two things deliberately *not* done
 
-- **No host-read barrier.** `afield.four.modules.hostReadBarrier` exists (compute write → host
+- **No host-read barrier.** `afield.graphics.render.hostReadBarrier` exists (compute write → host
   read) and is used by none of the six probes, which looked like a latent bug. It is not:
   `VulkanBuffer.mapAndRead` already calls `vmaInvalidateAllocation` over the range before mapping,
   and `landed()` waits *both* of the window's fence arrays, which is the execution dependency. A
   probe reading mid-frame *would* need the barrier, and this is not the facility for that.
-- **No headless path.** `afield.four` has no headless mode: a compute-only dispatch still needs a
+- **No headless path.** Field 4 has no headless mode: a compute-only dispatch still needs a
   `Window` for the device to exist, and an awake display. Building one is a larger, different job.
 
 ### The print sink, and where lines land
@@ -412,5 +412,5 @@ foreign buffer is still refused rather than skipped — which `four.gpu-probe.se
   only because they `exitProcess`. Untouched, because changing them is not this branch's job.
 - Nothing in the repository verifies the demo document's four boxes — see its `README.md` for why
   and what the fix is.
-- `GpuProbe` is new public API in `afield.four.util`, so the generated codebase reference has
+- `GpuProbe` is new public API in `afield.graphics.vulkan.util`, so the generated codebase reference has
   drifted. Regenerating it is a post-merge step and was deliberately not done here.

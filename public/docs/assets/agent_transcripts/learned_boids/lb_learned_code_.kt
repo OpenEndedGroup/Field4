@@ -1,12 +1,12 @@
-import afield.four.physics.ShaderBoids
-import afield.four.util.GpuNeighbourGrid
-import afield.stdlib.linalg.Vector2f
+import afield.simulation.physics.ShaderBoids
 
-// `learnedRule` is the trained network from the parent box. The only difference from
-// the written flock is this argument.
-//
-// A flock compiles its rule into its shaders, so it is cached on the rule: retrain the
-// parent and the next run builds a new flock, releasing the old one.
+/*
+`learnedRule` is the trained network from the parent box. The only difference from
+the written flock is this argument.
+
+A flock compiles its rule into its shaders, so it is cached on the rule: retrain the
+parent and the next run builds a new flock, releasing the old one.
+*/
 val learned = cached<ShaderBoids>(learnedRule, renderer) {
     val grid = GpuNeighbourGrid(
         capacity = 12000,

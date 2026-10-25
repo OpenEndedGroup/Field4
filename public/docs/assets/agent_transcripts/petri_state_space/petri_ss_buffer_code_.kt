@@ -1,16 +1,28 @@
-import afield.petri.*
+import afield.simulation.petri.*
 
-// The producer/consumer buffer from public/docs/petri_nets.md. Each worker holds a token
-// it puts straight back, which is what makes it *one* worker rather than an unbounded
-// supply of them.
+/*
+The producer/consumer buffer from public/docs/petri_nets.md. Each worker holds a token
+it puts straight back, which is what makes it *one* worker rather than an unbounded
+supply of them.
+*/
 val buffer = petri {
     grid = cyc(1, 8)
     place("free", tokens = 4)
     place("items", capacity = 4)
     place("producer", tokens = 1)
     place("consumer", tokens = 1)
-    t("produce") { from("producer"); from("free"); to("items"); to("producer") }
-    t("consume") { from("consumer"); from("items"); to("free"); to("consumer") }
+    t("produce") {
+        from("producer")
+        from("free")
+        to("items")
+        to("producer")
+    }
+    t("consume") {
+        from("consumer")
+        from("items")
+        to("free")
+        to("consumer")
+    }
 }
 
 val graph = buffer.stateSpace()

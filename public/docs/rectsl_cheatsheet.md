@@ -1,6 +1,6 @@
 # RectSL cheatsheet
 
-RectSL is Field's rectangle scene language. It creates animated rectangle geometry on the CPU, samples exact object state for analysis, and lowers sampled scenes into `afield.four` buffers. StackSL is the material language: RectSL decides where rectangles are and what object/material metadata they carry; StackSL decides how a material shades.
+RectSL is Field's rectangle scene language. It creates animated rectangle geometry on the CPU, samples exact object state for analysis, and lowers sampled scenes into Field 4 buffers. StackSL is the material language: RectSL decides where rectangles are and what object/material metadata they carry; StackSL decides how a material shades.
 
 Every section below carries a short snippet and a pointer into
 [RectSL examples](rectsl_examples.md), where the same words appear as complete, rendered
@@ -14,9 +14,10 @@ above it, and its AI4 chat has tools that draw, trace and compare the scene.
 A RectSL string starts with `#rectsl` when embedded in Kotlin:
 
 ```diffstatic {data-lang=kotlin}
-import afield.rectsl.*
+import afield.lang.rectsl.*
 
-val source = """
+val source =
+    """
 #rectsl
 ->wall 4 4 meters
 ->duration 4
@@ -83,7 +84,7 @@ Every scene opens by saying how big the wall is, in what units, and how long the
 runs. Below: a wall 1600×900 *pixels* wide, cropped to fill whatever it is drawn into,
 on a near-black background, four seconds at thirty frames a second, then one gold
 200-pixel square in the middle of it. Changing `pixels` to `meters` leaves the geometry
-as it is; the unit tells the renderer and the `afield.four` lowering what the numbers mean.
+as it is; the unit tells the renderer and the Field 4 lowering what the numbers mean.
 
 ```diffstatic {data-lang=rectsl}
 #rectsl
@@ -288,7 +289,7 @@ is stack-based as written, `linear` included.
 
 </div>
 
-Material StackSL receives rect/material data from the generated shader harness. Prefer RectSL for geometry and StackSL for fragment math; do not duplicate shape layout inside StackSL unless the shape is genuinely shader-only.
+Material StackSL receives rect/material data from the generated shader harness. Prefer RectSL for geometry and StackSL for fragment math; do not duplicate shape layout inside StackSL unless the shape exists only in the shader.
 
 ## Tracks
 
@@ -1001,7 +1002,7 @@ compares the two maskings.
 
 ## Distribution curves (Functions bridge)
 
-Linear `mix` is rarely the shape you want across an array. RectSL borrows [`afield.stdlib.Functions`](functions_examples.md), a tested library of easings, distributions and noise defined over `[0, 1]`. That is exactly the range of the array fraction `f`. `ease` shapes a scalar/track through the full Penner family; the curve words push a reusable `Fn` value you `sample` at `f` (or any x). The curves are graph-backed, so the Functions rewrite/evolve tooling can optimise an array's distribution toward a target.
+Linear `mix` is rarely the shape you want across an array. RectSL borrows [`afield.math.functions.Functions`](functions_examples.md), a tested library of easings, distributions and noise defined over `[0, 1]`. That is exactly the range of the array fraction `f`. `ease` shapes a scalar/track through the full Penner family; the curve words push a reusable `Fn` value you `sample` at `f` (or any x). The curves are graph-backed, so the Functions rewrite/evolve tooling can optimise an array's distribution toward a target.
 
 Three arrays, three distributions. The first spreads nine copies evenly and eases their
 opacity across the array with an elastic overshoot, so the fade overshoots and settles
@@ -1133,15 +1134,15 @@ no buffers, no samplers) that answers *how far is this point from the nearest
 visible rectangle, at this instant*:
 
 ```diffstatic {data-lang=kotlin}
-import afield.rectsl.*
+import afield.lang.rectsl.*
 
 val program = RectAnimationOracle.compile(source).program
 val sdf = RectSLGlsl.emitSdf(program, functionName = "scene")
 
-sdf.glsl                 // float scene(vec2 p, float t) { … }, plus its helpers
-sdf.rectCount            // how many rects the field unions
-sdf.trackFunctionCount   // distinct animation curves it had to emit
-sdf.notes                // fidelity caveats; empty means nothing was approximated
+sdf.glsl // float scene(vec2 p, float t) { … }, plus its helpers
+sdf.rectCount // how many rects the field unions
+sdf.trackFunctionCount // distinct animation curves it had to emit
+sdf.notes // fidelity caveats; empty means nothing was approximated
 ```
 
 ### Why so little of the language has to come along
@@ -1181,7 +1182,7 @@ float rectslTrack1(float t) {
         float u2 = u * u;
         float u3 = u2 * u;
         return (2.0 * u3 - 3.0 * u2 + 1.0) * 0.0 + (u3 - 2.0 * u2 + u) * 0.55
-             + (-2.0 * u3 + 3.0 * u2) * 1.1 + (u3 - u2) * 0.0;
+        + (-2.0 * u3 + 3.0 * u2) * 1.1 + (u3 - u2) * 0.0;
     }
     // ... the 2..4 span, same shape, different constants
     return 0.0;
@@ -1228,10 +1229,13 @@ All of these are one line over the same float:
 ```diffstatic {data-lang=glsl}
 float d = scene(p, t);
 
-float fill    = 1.0 - smoothstep(0.0, 0.01, d);     // antialiased at any zoom
+float fill = 1.0 - smoothstep(0.0, 0.01, d);
+// fixed 0.01 scene-unit feather
 float outline = 1.0 - smoothstep(0.0, 0.01, abs(d) - 0.03);
-float glow    = exp(-8.0 * max(d, 0.0));            // falls off outside the shape
-vec2  normal  = normalize(vec2(dFdx(d), dFdy(d)));  // for beveling or lighting
+float glow = exp(-8.0 * max(d, 0.0));
+// falls off outside the shape
+vec2 normal = normalize(vec2(dFdx(d), dFdy(d)));
+// for beveling or lighting
 ```
 
 Because `t` is an argument rather than a frame index, and every track is
@@ -1309,7 +1313,7 @@ The shape is exact and the arithmetic is not quite, in a way you can plan around
 On a GPU the sampler works in `double` and the shader in `float`, so expect the
 two to part company at about `1e-6` of a wall unit.
 
-??? aside "What the build checks"
+??? aside "Agents: what the build checks"
     The emitted geometry is checked against the CPU sampler to `1e-9` across the
     whole gallery, every gallery scene is compiled through shaderc as part of the
     build, and the GPU agreement guard is `1e-5`. `dev_docs/RECTSL_SDF_AGREEMENT.md`

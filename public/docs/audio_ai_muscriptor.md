@@ -9,17 +9,25 @@ separately from Field.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_muscriptor/piano_roll.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-muscriptor" alt="Real Sonic Pi waveform and MuScriptor instrument-labelled piano roll with polyphony and onset lanes"}
 :::static
-import afield.four.audio.WavFloatArrayLoader
+import afield.audio.engine.WavFloatArrayLoader
 import java.io.File
-import java.nio.file.Path
+
 val json = FieldAudioClient.json
 val folder = File("public/docs/assets/audio_ai_muscriptor")
 val preview = json.decodeFromString<AnalysisPreview>(File(folder, "preview.json").readText())
 val wav = WavFloatArrayLoader.loadWavToFloatArray(File(folder, "source.wav").absolutePath)
 val sync = "docs-real-muscriptor"
-val source = AudioVisualizer.renderSamplesHtml(wav.samples, wav.sampleRate, options = AudioVisualizerOptions(width = 1040, waveformHeight = 130, syncGroup = sync), wavBytes = File(folder, "source.wav").readBytes(), label = "Sonic Pi recording · 8.192 seconds")
-display("transcription", source + analysisPreviewVisualizationHtml(preview, width = 1040, height = 400, syncGroup = sync))
-
+val source = AudioVisualizer.renderSamplesHtml(
+    wav.samples,
+    wav.sampleRate,
+    options = AudioVisualizerOptions(width = 1040, waveformHeight = 130, syncGroup = sync),
+    wavBytes = File(folder, "source.wav").readBytes(),
+    label = "Sonic Pi recording · 8.192 seconds",
+)
+display(
+    "transcription",
+    source + analysisPreviewVisualizationHtml(preview, width = 1040, height = 400, syncGroup = sync),
+)
 ```
 
 Listen to the recording whose notes are shown above.
@@ -30,7 +38,7 @@ Listen to the recording whose notes are shown above.
 The notes above are MuScriptor Small's reading of an eight-second Sonic Pi recording. Instrument
 colours are the model's guesses; they do not establish which instruments produced the sound.
 
-The model-neutral operation is `analysis.transcribe_music`. Its three concrete capabilities are:
+The operation is `analysis.transcribe_music`, served by any of three model sizes:
 
 | Field backend | Upstream scale | Good starting point |
 | --- | ---: | --- |
@@ -45,7 +53,8 @@ than a score; [Limits of a transcription](#limits-of-a-transcription) says how f
 
 MuScriptor's source code is MIT licensed. The model weights are gated under **CC BY-NC 4.0**, with
 additional access terms requiring the operator to have the necessary rights to the input and output.
-Accept the terms for the model size you intend to use on Hugging Face, then authenticate locally:
+Accept the terms for the model size you intend to use on Hugging Face, then authenticate locally and
+start the worker. These scripts run from `services/field-audio-ai` in the Field checkout:
 
 ```diffstatic {data-lang=bash}
 uvx hf auth login
@@ -62,56 +71,73 @@ it also downloads and runs a real model:
 
 Start the ordinary API separately with `./scripts/run-api.sh`. That script points
 `FIELD_AUDIO_MUSCRIPTOR_URL` at `http://127.0.0.1:8769`. Device, dtype, cache location, local
-checkpoint overrides, and revision override variables are documented in the worker README.
+checkpoint overrides, and revision override variables are documented in the
+[worker README](https://github.com/OpenEndedGroup/field-audio-ai/blob/main/worker-environments/muscriptor/README.md).
 
 ## Transcribing a recording
 
-Never block Field's runloop with `.get()` while a transcription is running. Compose futures, update
-the status card from worker events, and await the durable result:
+Never block Field's runloop with `.get()` while a transcription is running. Use a box-owned coroutine and `trackAnalysis` for progress and the durable result.
+Stop or rerun cancels this run’s subscriptions and pending local futures; the durable service job remains:
 
 ```diffstatic {data-lang=kotlin}
-val client = FieldAudioClient()
+import kotlinx.coroutines.*
+import kotlinx.coroutines.future.await
+
+val client = cached { FieldAudioClient() }
 val sourcePattern = "*sonic-pi-study*" // use audio you have the rights to transcribe
 val sync = "muscriptor-example"
 
-client.assetByFilename(sourcePattern).thenCompose { source ->
-    val audio = source.representations.firstOrNull { it.role == "canonical_project" }
-        ?: source.representations.first { it.mediaType in setOf("audio/wav", "audio/x-wav") }
-    val duration = requireNotNull(audio.durationSeconds)
-    val region = AssetRegion(source.id, 0.0, duration)
+prop<AnalysisResult>(transcriptionResult)
+go {
+    try {
+        val source = client.assetByFilename(sourcePattern).await()
+        val audio =
+            source.representations.firstOrNull { it.role == "canonical_project" }
+                ?: source.representations.first { it.mediaType in setOf("audio/wav", "audio/x-wav") }
+        val duration = requireNotNull(audio.durationSeconds)
+        val region = AssetRegion(source.id, 0.0, duration)
 
-    display("source", audio.audioVisualizerHtml(
-        label = sourcePattern,
-        options = AudioVisualizerOptions(
-            width = 1100, waveformHeight = 145,
-            initialDurationSeconds = minOf(20.0, duration), syncGroup = sync,
-        ),
-    ))
-
-    client.submit(musicTranscriptionAnalysis(
-        region,
-        backend = MuscriptorBackend.SMALL,
-        instruments = emptyList(), // or hard-constrain the expected instrument groups
-        tempoDetection = MuscriptorTempoDetection.BEST_EFFORT,
-        requestedBy = "field:my-document/transcription",
-    )).thenCompose { accepted ->
-        display("job", fieldAudioJobStatusHtml(accepted))
-        client.watch(accepted.jobId,
-            onEvent = { event -> display("job", fieldAudioJobStatusHtml(accepted, event)) },
-            onError = { error -> display("stream", error.message ?: error.toString()) },
+        display(
+            "source",
+            audio.audioVisualizerHtml(
+                label = sourcePattern,
+                options = AudioVisualizerOptions(
+                    width = 1100,
+                    waveformHeight = 145,
+                    initialDurationSeconds = minOf(20.0, duration),
+                    syncGroup = sync,
+                ),
+            ),
         )
-        client.awaitAnalysis(accepted)
+        val result =
+            client
+                .trackAnalysis(
+                    musicTranscriptionAnalysis(
+                        region,
+                        backend = MuscriptorBackend.SMALL,
+                        instruments = emptyList(), // or hard-constrain the expected instrument groups
+                        tempoDetection = MuscriptorTempoDetection.BEST_EFFORT,
+                        requestedBy = "field:my-document/transcription",
+                    ),
+                    onAccepted = { display("job", fieldAudioJobStatusHtml(it)) },
+                    onProgress = { job, event -> display("job", fieldAudioJobStatusHtml(job, event)) },
+                    onCompleted = { display("job", fieldAudioJobStatusHtml(it)) },
+                    onError = {}, // Report failure once through the surrounding coroutine.
+                )
+                .await()
+        display("score", analysisVisualizationHtml(result, width = 1100, height = 420, syncGroup = sync))
+        transcriptionResult = result
+        val performanceMidi = result.musicTranscriptionMidi()
+        val quantizedMidi = result.musicTranscriptionQuantizedMidiOrNull()
+        display(
+            "artifacts",
+            "performance MIDI: ${performanceMidi.id}; quantized: ${quantizedMidi?.id ?: "not produced"}",
+        )
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (failure: Throwable) {
+        markdown("MuScriptor error", "Operation failed: ${(failure.message ?: failure.toString()).md}")
     }
-}.thenAccept { result ->
-    display("score", analysisVisualizationHtml(
-        result, width = 1100, height = 420, syncGroup = sync,
-    ))
-    val performanceMidi = result.musicTranscriptionMidi()
-    val quantizedMidi = result.musicTranscriptionQuantizedMidiOrNull()
-    display("artifacts", "performance MIDI: ${performanceMidi.id}; quantized: ${quantizedMidi?.id ?: "not produced"}")
-}.exceptionally { error ->
-    display("error", error.cause?.message ?: error.message ?: error.toString())
-    null
 }
 ```
 
@@ -119,14 +145,25 @@ The waveform and piano roll share Field's general time bus. Playback moves the s
 click-to-seek, wheel zoom, and drag pan work in either view and are reflected in the other. Notes are
 coloured by instrument group, and the lower lane shows active polyphony against onset count.
 
-To use the notes in code, `client.musicTranscription(result)` downloads the compact
+To use the notes in code, After the transcription finishes, run the next fragment in the same box. The typed
+`transcriptionResult` property retains its durable result; `client.musicTranscription(transcriptionResult)` downloads the compact
 MessagePack artifact and returns typed `MusicTranscriptionNote` values, so ordinary Field code can
 filter, group, transform, or feed the recovered notes into other music systems without parsing JSON:
 
 ```diffstatic {data-lang=kotlin}
-client.musicTranscription(result).thenAccept { transcription ->
-    val cello = transcription.notes.filter { it.instrument == "cello" }
-    display("cello notes", cello.joinToString("<br>"))
+import kotlinx.coroutines.*
+import kotlinx.coroutines.future.await
+
+go {
+    try {
+        val transcription = client.musicTranscription(transcriptionResult).await()
+        val cello = transcription.notes.filter { it.instrument == "cello" }
+        display("cello notes", cello.joinToString("<br>"))
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (failure: Throwable) {
+        markdown("MuScriptor error", "Operation failed: ${(failure.message ?: failure.toString()).md}")
+    }
 }
 ```
 
