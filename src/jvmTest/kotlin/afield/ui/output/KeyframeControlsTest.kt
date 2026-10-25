@@ -32,19 +32,23 @@ class KeyframeControlsTest {
     }
 
     /** One run of a box body: a fresh scope and fresh delegates, as a rerun makes. */
-    private class Run(box: Box, val changes: MutableList<String> = mutableListOf()) {
+    private class Run(box: Box, val changes: MutableList<String> = mutableListOf(), sizeRange: ClosedFloatingPointRange<Double> = 0.1..1.0) {
+        init { Box.context.set(box) }
         val keys = KeyframeScope()
-        var size by keys.slider(0.4, 0.1..1.0)
+        var size by keys.slider(0.4, sizeRange)
         var gain by keys.slider(0.35f, 0.0..4.0, label = "light gain")
         var offset by keys.vec2(Vector2f(0f, 0f))
         var tint by keys.color(Vector4f(0.2f, 0.6f, 1f, 1f))
         var ring by keys.checkbox(false)
         var title by keys.text("calm")
         val atDeclaration = size
+        val ringAtDeclaration = ring
+        val offsetAtDeclaration = Vector2f(offset)
 
         init {
             keys.onChange { changes += it }
             box.controlGroup("look") { keys.controls() }
+            Box.context.remove()
         }
     }
 
@@ -67,9 +71,51 @@ class KeyframeControlsTest {
         assertEquals(listOf("size"), first.changes)
 
         val second = Run(box)
-        assertEquals(0.4, second.atDeclaration, "before controls() the initializer is all there is")
-        assertEquals(0.8, second.size, "controls() restores the panel's value")
-        assertTrue("size" in second.changes, "and tells onChange, so the picture follows")
+        assertEquals(0.8, second.atDeclaration, "the declaration already holds the panel's value")
+        assertEquals(0.8, second.size)
+        assertEquals(0.8, live(box).getValue("size").value)
+        assertEquals(emptyList(), second.changes, "a rerun restoring a value is not a change")
+    }
+
+    @Test
+    fun aFirstRunStartsFromTheInitializer() {
+        val run = Run(newBox())
+        assertEquals(0.4, run.atDeclaration)
+        assertEquals(emptyList(), run.changes)
+    }
+
+    @Test
+    fun aNarrowedRangeClampsTheRestoredValueAtDeclaration() {
+        val box = newBox()
+        Run(box)
+        box.gesture("size") { it.copy(value = 0.8) }
+        val narrowed = Run(box, sizeRange = 0.1..0.6)
+        assertEquals(0.6, narrowed.atDeclaration)
+        assertEquals(0.6, live(box).getValue("size").value)
+    }
+
+    @Test
+    fun twoBoxesWithTheSameNamesRestoreIndependently() {
+        val a = newBox()
+        val b = newBox()
+        Run(a)
+        Run(b)
+        a.gesture("size") { it.copy(value = 0.8) }
+        assertEquals(0.8, Run(a).atDeclaration)
+        assertEquals(0.4, Run(b).atDeclaration)
+    }
+
+    @Test
+    fun aRenamedLocalStartsFromItsInitializer() {
+        val box = newBox()
+        Run(box)
+        box.gesture("size") { it.copy(value = 0.8) }
+        Box.context.set(box)
+        val keys = KeyframeScope()
+        val width by keys.slider(0.4, 0.1..1.0)
+        val read = width
+        Box.context.remove()
+        assertEquals(0.4, read)
     }
 
     @Test
@@ -95,8 +141,14 @@ class KeyframeControlsTest {
         assertEquals(0.4, run.size, 1e-9)
         assertEquals(false, run.ring)
 
+        run.keys.interpolate(a, b, 0.5)()
+        assertEquals(0.7, Run(box).atDeclaration, 1e-9, "a morphed value is read at declaration on a rerun")
+
         b()
         val again = Run(box)
+        assertEquals(1.0, again.atDeclaration, "read at the declaration, before controls()")
+        assertEquals(true, again.ringAtDeclaration)
+        assertEquals(Vector2f(1f, -1f), again.offsetAtDeclaration)
         assertEquals(1.0, again.size, "a recalled key is what the next run starts from")
         assertEquals(true, again.ring)
         assertEquals(Vector2f(1f, -1f), again.offset)
@@ -110,9 +162,10 @@ class KeyframeControlsTest {
         var size by keys.slider(0.4, 0.1..1.0)
         var bar: PresetBar? = null
         box.controlGroup("look") { keys.controls(); bar = presetBar(keys, dir) }
-        bar!!.store("small")
+        val strip = bar!!
+        strip.store("small")
         size = 0.9
-        assertTrue(bar!!.recall("small"))
+        assertTrue(strip.recall("small"))
         assertEquals(0.4, size)
         assertEquals(0.4, live(box).getValue("size").value)
     }

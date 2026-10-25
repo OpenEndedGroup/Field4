@@ -1136,9 +1136,9 @@ class KeyframeScope(val schemaVersion: Int = 0) {
 
     /**
      * Call [listener] with the key name whenever a control declared with `by keys.slider(...)` (and the
-     * other [KeyframeControl] kinds) changes from outside the code: a hand on the control, a recalled
-     * or morphed key, or the panel restoring its value when the box runs again. Assigning the local in
-     * code does not call it.
+     * other [KeyframeControl] kinds) changes from outside the code: a hand on the control, or a recalled
+     * or morphed key. Assigning the local in code does not call it, and neither does a rerun: the local
+     * already holds the panel's last value from its declaration, so the body that follows sees it.
      */
     fun onChange(listener: (name: String) -> Unit) {
         controlChangeListeners += listener

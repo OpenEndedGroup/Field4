@@ -2044,6 +2044,26 @@ private fun Box.cachedControlGroupValue(cacheKey: String, id: String): Controlle
     return control
 }
 
+/**
+ * What the control group last held for the [ordinal]-th control of [type] and [label] on [box], in
+ * whichever channel shows it. A delegated keyframe control (`var size by keys.slider(...)`) reads this
+ * when it is declared, before any `controlGroup { }` of the run has named its channel. It is the same
+ * cache `controlGroup` restores from, so the value is stored once.
+ *
+ * Null when nothing is stored, and when two channels of the box each hold such a control: the channel
+ * is then ambiguous, and the value is restored once `controlGroup` names it.
+ */
+internal fun lastControlGroupValue(box: Box, type: String, label: String, ordinal: Int): ControllerControl? {
+    val keys = LinkedHashSet<String>()
+    box.existingControlGroupCache()?.keys?.let { keys += it }
+    keys += box.controlGroupValues().keys
+    val cacheKey = keys.filter {
+        val parts = it.split('\u0000')
+        parts.size == 4 && parts[1] == type && parts[2] == label && parts[3] == ordinal.toString()
+    }.singleOrNull() ?: return null
+    return box.cachedControlGroupValue(cacheKey, stableControlId(type, box.id, cacheKey))
+}
+
 private fun Box.storeControlGroupValue(cacheKey: String, control: ControllerControl) {
     controlGroupCache()[cacheKey] = control
     val values = controlGroupValues()
