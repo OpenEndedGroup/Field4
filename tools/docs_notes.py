@@ -104,6 +104,8 @@ REQUEST_KINDS = ("note", DRAFT_KIND)
 DRAFT_CACHE_FILE = "generated_completion_docs.json"
 DRAFT_DECLINED_FILE = "generated_completion_docs.declined.json"
 FILESTORE_ENV = "AFIELD_FILESTORE_DIR"
+# One file for the drafts cache, the rest of the filestore untouched; `GENERATED_COMPLETION_DOCS_ENV` in Kotlin.
+DRAFT_CACHE_ENV = "AFIELD_COMPLETION_DRAFTS_FILE"
 
 ENTRY_KINDS = ("comment", "memory", "question", "reply", "resolution", "reopen", "run", "handoff", "blocked", "unblocked")
 HANDOFF_DIR = "dev_docs/handoffs"
@@ -1069,9 +1071,11 @@ _DECLARATION_KEYWORDS = r"(?:fun|val|var|class|interface|object|typealias|enum\s
 
 
 def draft_cache_path(git: Git, explicit: str | None = None) -> Path:
-    """Where Field keeps the drafts: `$AFIELD_FILESTORE_DIR`, else `.field/filestore/` in the checkout."""
+    """Where Field keeps the drafts: `$AFIELD_COMPLETION_DRAFTS_FILE`, else in `$AFIELD_FILESTORE_DIR`, else `.field/filestore/` in the checkout."""
     if explicit:
         return Path(explicit).expanduser().resolve()
+    if os.environ.get(DRAFT_CACHE_ENV, "").strip():
+        return Path(os.environ[DRAFT_CACHE_ENV].strip()).expanduser().resolve()
     configured = os.environ.get(FILESTORE_ENV, "").strip()
     base = Path(configured).expanduser() if configured else git.root / ".field" / "filestore"
     return (base / DRAFT_CACHE_FILE).resolve()
@@ -1178,6 +1182,19 @@ def draft_note_id(key: str) -> str:
     return "draft-" + key[:24]
 
 
+def relocate_moved_source(git: Git, path: str, name: str) -> str | None:
+    """Where a draft's file went when *path* is gone: the one tracked file of the same name under
+    `src/` that still declares *name*. The cache keeps the path completion saw, so a package move
+    (the October hierarchy cutover moved most of `src/`) would otherwise turn every draft "outside"."""
+    basename = path.rsplit("/", 1)[-1]
+    found = []
+    for candidate in git.run("ls-files", "--", f"src/*/{basename}", check=False).split("\n"):
+        candidate = candidate.strip()
+        if candidate.endswith("/" + basename) and locate_declaration(git.show(None, candidate) or "", name, 0) is not None:
+            found.append(candidate)
+    return found[0] if len(found) == 1 else None
+
+
 def import_drafts(store: Store, git: Git, cache: Path, *, limit: int = 0,
                   log: Callable[[str], None] = lambda _m: None) -> dict[str, int]:
     """Add a `kdoc-draft` note for every cached draft that is ours to edit and not yet a note."""
@@ -1193,6 +1210,11 @@ def import_drafts(store: Store, git: Git, cache: Path, *, limit: int = 0,
         path, documentation = str(record.get("sourcePath", "")), str(record.get("documentation", "")).strip()
         if not documentation:
             continue
+        if in_our_tree(path) and not (git.root / path).is_file():
+            moved = relocate_moved_source(git, path, simple_name(str(record.get("sourceName", ""))))
+            if moved:
+                log(f"  moved: {path} is now {moved}")
+                path = moved
         if not in_our_tree(path) or not source_page_url(path) or not (git.root / path).is_file():
             counts["outside"] += 1
             continue
