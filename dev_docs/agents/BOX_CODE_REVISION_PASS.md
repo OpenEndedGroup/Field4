@@ -16,12 +16,36 @@ checked and improved, and what an agent revising it is asked.
   `document.md` mirror, lessons, and docs fences. A demo's `backups/` and `operations.yaml` are
   history and are skipped. `--fix` on a demo also rewrites its `document.md` fences and digests;
   `./gradlew regenerateAgentDemos -Ponly=<demo>` then refreshes `metadata.edn`.
-- `./gradlew checkBoxCodeCompiles` compiles, without evaluating, the Kotlin of every transcript
-  it is pointed at, through `DemoTranscriptExecSmokeTest`'s compile-only path.
+- `./gradlew checkBoxCodeCompiles` checks top-level transcripts through
+  `DemoTranscriptExecSmokeTest`'s existing classification: `COMPILE_ONLY` compiles without
+  evaluation, `EXECUTE` replays the transcript (later boxes may need evaluated declarations),
+  and `KOTLINJS` compiles for its head. It does not check arbitrary sidecars, docs fences or GLSL.
 - Landing runs both over the files the landing changes only (`AFIELD_GUARD_CHANGED_PATHS_FILE`),
-  so the existing debt does not block anyone, and any file a landing touches has to come out
-  clean and compile. Running the code, GPU work and docs captures stay with the smoke catalog
-  and the docs runner (the nightly).
+  so the existing debt does not block anyone: touched corpus files must pass the idiom checker,
+  and touched top-level transcripts must pass the compile/replay guard. Broader execution,
+  GPU work and docs captures stay with the smoke catalog and the docs runner (the nightly).
+
+## Census and rehearsal
+
+`uv run --project . --group backdoor python tools/inventory_box_code.py --out build/box-code-revision/inventory`
+reads tracked teaching sources and writes `report.md`, `targets.tsv` and `inventory.json`.
+The manifest records box/property locations, content hashes, document groups, exact content
+matches, language declarations, generated copies, inline fallbacks and historical exclusions.
+Code in YAML fences and metadata-only properties is included. Review counts are occurrences,
+not unique programs or promises that every docs snippet executes on its own.
+
+The [first rehearsal](box_code_revision_pilot/README.md) records three review outcomes and real
+runtime evidence, including an Alt-Enter declaration/assignment comparison. It also records
+the limits of the current census and the verification needed before a larger pass.
+
+The [second rehearsal](box_code_revision_batch_2/README.md) applies existing drawing helpers,
+revises lifecycle and fragment comments, and records a formatter repair discovered by replay.
+
+The [first helper-adoption batch](box_code_adoption_batch_1/README.md) starts the editing sweep
+after helper implementation: four representative transcripts with native graphics, lifecycle,
+mesh and Loris verification. Its checkpoint lists completed and deferred work explicitly.
+The [second-pass checkpoint](box_code_second_pass/README.md) tracks addressed finding IDs and
+remaining work as further batches land.
 
 ## Imports
 
@@ -56,9 +80,27 @@ fragment, and see the result soon? In particular:
 - **Rerunnable.** Running it twice works without hand-unregistering whatever the first run
   registered. Cleanup comes from Field's lifecycle (`RunScope` ownership, a module replaced on
   re-run), not from a teardown block the user has to maintain.
+- **Teach the normal API.** `setPropertyRaw` is an escape hatch, and almost always a code
+  smell in teaching code. Declare a typed property with `prop<T>(name)`, assign it by name,
+  and let children read the inherited property directly. Raw reads and writes need a specific
+  reason to remain. Shortening a raw call is not a successful revision. If a normal task
+  requires an escape hatch, report the missing API or convention as a helper idea.
 - **The creative values are on top.** A number someone will want to change (a speed, a colour,
   a count) is a named `var` near the top of the box, or a control, and not a literal buried in
   a lambda deep inside the code.
+- **Useful lines can run alone.** A declaration and a later assignment to the same value can
+  deliberately have the same initial value. In `var x = 10; x = 10; frames { x++; print(x) }`,
+  the assignment is a live reset point: change its `10` to `11` and Alt-Enter that line to
+  update the variable the running loop captured. Re-executing the declaration creates a new
+  variable while the loop keeps the old one. Preserve these reset points, and identify which
+  lines can change a running example without rebuilding its setup. Judge an edit by the time
+  to find the creative value, get feedback and rerun confidently; line count is only a clue.
+- **Collection literals.** House style uses `[a, b, c]` where a collection literal can express
+  the intended type, including list arguments, loop inputs and chained collection operations.
+  Prefer it to `listOf(...)`; check inference/overloads in the actual box compiler. Keep a factory
+  when its type, mutability or construction behavior is part of the example.
+  Run `uv run python tools/check_box_idioms.py --collection-literals --paths <edited files>`
+  for every batch; the ordinary landing default still excludes this deferred corpus debt.
 - **Terse.** We are trying to convince the user that this is code they can a) discover, b) bear
   to type and c) bear to change. Ceremony counts against it: explicit types the context already
   supplies, defensive lookups of things that are inherited, null checks with nothing to recover

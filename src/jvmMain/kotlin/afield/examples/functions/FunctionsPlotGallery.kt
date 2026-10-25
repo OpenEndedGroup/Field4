@@ -1,9 +1,9 @@
 package afield.examples.functions
 
-import afield.niceTicks
-import afield.stdlib.Functions
-import afield.stdlib.fitGradient
-import afield.tickLabels
+import afield.ui.visualization.niceTicks
+import afield.math.functions.Functions
+import afield.math.functions.fitGradient
+import afield.ui.visualization.tickLabels
 import java.awt.BasicStroke
 import java.awt.Color
 import java.awt.Font
@@ -32,7 +32,7 @@ expect:
 */
 
 /**
- * Headless **plot-capture harness** for the `afield.stdlib.Functions` library — the honest
+ * Headless **plot-capture harness** for the `afield.math.functions.Functions` library — the honest
  * vehicle RectSL/StackSL already had and Functions lacked. It renders `Functions.Fn` results
  * (differentiable-fit before→after, waveshaper transfer curves, waveshaping on a sine, and a
  * composed pipeline) to REAL raster PNGs.
@@ -229,7 +229,7 @@ object FunctionsPlotGallery {
         // Gridlines + tick labels.
         g.font = Font(Font.SANS_SERIF, Font.PLAIN, 11)
         g.stroke = BasicStroke(1f)
-        // Tick selection and labelling come from `afield.charts` rather than from a private copy
+        // Tick selection and labelling come from `charts.kt` (`afield.ui.visualization`) rather than from a private copy
         // here. There were five of those copies in the repo; this one also did not snap its values,
         // so `k * step` drift was only invisible because the old `fmt` rounded to two decimals — a
         // finer axis would have printed 0.30000000000000004. `tickLabels` also gives the whole axis

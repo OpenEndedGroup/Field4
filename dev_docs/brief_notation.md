@@ -25,12 +25,12 @@ number, and the number is visible in the answer.
 
 | where | what |
 | --- | --- |
-| the compiler | `src/jvmMain/kotlin/afield/brief/Brief.kt` — lexer, parser, AST, diagnostics, vocabulary |
-| resolve + lower + solve | `src/jvmMain/kotlin/afield/brief/BriefLowering.kt` |
-| the editor extension | `src/commonMain/resources/brief.js`, `src/jvmMain/kotlin/afield/brief/BriefEditorExtension.kt` |
+| the compiler | `src/jvmMain/kotlin/afield/lang/brief/Brief.kt` — lexer, parser, AST, diagnostics, vocabulary |
+| resolve + lower + solve | `src/jvmMain/kotlin/afield/lang/brief/BriefLowering.kt` |
+| the editor extension | `src/commonMain/resources/brief.js`, `src/jvmMain/kotlin/afield/lang/brief/BriefEditorExtension.kt` |
 | analytic checks, real Ceres | `src/jvmMain/kotlin/afield/examples/brief/BriefSolveSmoke.kt` (`./gradlew smokeBrief`) |
 | the node probe | `src/jvmMain/kotlin/afield/examples/brief/BriefEditorExtensionWorkout.kt` |
-| the guards | `src/jvmTest/kotlin/afield/brief/BriefCoverageTest.kt`, `BriefTest.kt`, `BriefEditorExtensionTest.kt` |
+| the guards | `src/jvmTest/kotlin/afield/lang/brief/BriefCoverageTest.kt`, `BriefTest.kt`, `BriefEditorExtensionTest.kt` |
 | the demo | `public/docs/assets/brief_house_demo/metadata.edn` |
 
 It is a **Route A** language in the sense of `dev_docs/small_language_anatomy.md`: a `#brief`-tagged
@@ -336,7 +336,7 @@ The box needs the native solver once: `./gradlew buildCeresRedistributable`.
 | what | how | status |
 | --- | --- | --- |
 | the notation's *meaning*, against closed forms, through real Ceres | `./gradlew smokeBrief -PceresLibrary=…` | 8 analytic assertions pass |
-| parse / resolve / diagnose / lower | `./gradlew jvmTest --tests 'afield.brief.*'` | 39 tests pass, no native library needed |
+| parse / resolve / diagnose / lower | `./gradlew jvmTest --tests 'afield.lang.brief.*'` | 39 tests pass, no native library needed |
 | the coverage ratchet | same | 31/37, floor 82% |
 | `brief.js` ↔ `BriefVerbs`, both directions | same | 9 word sets, exact set equality |
 | `brief.js` executed for real | `python3 tools/run_field_tests.py --id brief.editor-extension.workout` | pass |

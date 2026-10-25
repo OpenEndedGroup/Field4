@@ -24,6 +24,7 @@ internal fun featureOptions(
     rustErrors: List<String> = paintToolchainErrors(),
     rustup: Boolean = commandWorks("rustup", "show", "active-toolchain"),
     winget: Boolean = false,
+    solidcraftErrors: List<String> = solidcraftToolchainErrors(),
 ): List<FeatureOption> = extrasCatalog.mapIndexedNotNull { index, extra ->
     // Keep catalog numbers stable even when a platform-specific feature is omitted.
     if (platform !in extra.platforms || extra.id == "syphon") return@mapIndexedNotNull null
@@ -35,6 +36,11 @@ internal fun featureOptions(
     if (extra.id == "paint" && rustErrors.isNotEmpty()) {
         listOf("cargo", "rustc").filter { name -> rustErrors.any { it.startsWith(name) } }.forEach { name ->
             if (name !in missing) missing += "$name >=1.85"
+        }
+    }
+    if (extra.id == "solidcraft" && solidcraftErrors.isNotEmpty()) {
+        listOf("cargo", "rustc").filter { name -> solidcraftErrors.any { it.startsWith(name) } }.forEach { name ->
+            if (name !in missing) missing += "$name >=1.95"
         }
     }
     FeatureOption(index + 1, extra, tools + if (gpu) listOf("NVIDIA") else emptyList(), missing,

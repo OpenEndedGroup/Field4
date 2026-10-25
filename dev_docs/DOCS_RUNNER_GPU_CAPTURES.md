@@ -196,7 +196,7 @@ When such a capture comes out empty, find out which side is failing before you t
   failing once; the figure showed no note at all.
 - **Call the server side directly** from a probe box connected beneath `agent_graphics_context` in the
   same backdoor invocation (`new-box`, `connect agent_graphics_context @last`, `run @last --file …`).
-  Find the target box by walking `thisBox.parents.flatMap { it.children }`. `afield.box(id)` returns
+  Find the target box by walking `thisBox.parents.flatMap { it.children }`. `afield.document.graph.box(id)` returns
   null from box code.
 - **Box code runs on the main thread.** Anything that waits for a renderer frame (the StackSL GPU
   rasterizer) must run on a `Thread` that writes its result to a file, which a later `wait-file`
@@ -273,10 +273,10 @@ important mechanics (all verified by reading the hook + logs):
    `moduleHere()` generates one Kotlin class per uniform block, capitalising the block's
    name (`shaders.kt`, `replaceFirstChar { uppercase() }`), straight into the box's
    preamble. So a GLSL `uniform camera { … }` makes the box declare its own `Camera`,
-   and a declaration in the box beats *any* import — including the `afield.four.util.*`
-   every box already gets, and including an explicit `import afield.four.util.Camera`.
+   and a declaration in the box beats *any* import — including the `afield.graphics.vulkan.util.*`
+   every box already gets, and including an explicit `import afield.graphics.vulkan.util.Camera`.
    Symptom: `Unresolved reference 'at' on receiver of type
-   'Docs_…__preamble__2.Camera'`. Fix: fully-qualify (`afield.four.util.Camera()`, as
+   'Docs_…__preamble__2.Camera'`. Fix: fully-qualify (`afield.graphics.vulkan.util.Camera()`, as
    `afield_four_graphics.md` §1b does — that verbosity is load-bearing, don't "tidy" it)
    or rename the uniform block.
 

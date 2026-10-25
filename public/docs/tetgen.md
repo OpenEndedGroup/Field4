@@ -11,15 +11,15 @@ that surface exactly. In a box, `Tetgen.tetrahedralize` takes a closed `TriMesh`
 `TetMesh`. This one fills an L-shaped part built with Manifold:
 
 ```diffstatic {data-lang=kotlin}
-import afield.manifold.*
-import afield.tetgen.*
+import afield.geometry.mesh.tetgen.*
+import afield.geometry.solid.manifold.*
 
-val part = Solid.cube(80.0, 40.0, 15.0) + Solid.cube(15.0, 40.0, 70.0)   // an L, 30 triangles
+val part = Solid.cube(80.0, 40.0, 15.0) + Solid.cube(15.0, 40.0, 70.0) // an L, 30 triangles
 val mesh = Tetgen.tetrahedralize(part.toTriMesh(), targetEdgeLength = 5.0)
 
-mesh.nodeCount     // 2287
-mesh.cellCount     // 10093
-mesh.volume()      // 81000.00000000007, against Manifold's exact 81000.0
+mesh.nodeCount // 2287
+mesh.cellCount // 10093
+mesh.volume() // 81000.00000000007, against Manifold's exact 81000.0
 ```
 
 Every public declaration carries KDoc, browsable on the [Simulation](reference/simulation.md)
@@ -44,34 +44,35 @@ shows both.
 
 A tetrahedral mesh is awkward to look at, which is a real obstacle to trusting one. Render it
 naively and you see the boundary — the surface you already had — while everything the mesher
-actually did stays hidden. `afield.tetgen` has three answers, and the figure below is all three:
+actually did stays hidden. The `afield.geometry.mesh.tetgen` package has three answers, and the figure below is all three:
 `boundary()` for the skin, `filtered()` with a half-space test for a cutaway, and
 `toTriMesh(shrink = …)` for the view where each element stands slightly apart from its neighbours.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/tetgen/cutaway.png" alt="three views of the same bent bracket, side by side. 'the closed surface TetGen is given - 618 triangles' is a smooth flat-shaded grey solid with two cylindrical bores, its faces so large that the flat panels are single triangles. 'half the elements, skinned - 18523 tetrahedra' is the same shape cut in half lengthways and re-drawn from the tetrahedra, so the cut face is a crust of small facets and the mesh visibly tightens into a dense collar around each bore. 'the same half, elements shrunk to 0.72 - colour is radius ratio, dark is worse' pulls every element back from its neighbours so the interior shows as separated tetrahedra, coloured yellow through teal: yellow over most of the bulk, and the darker teal concentrated in the collars around the bores and along the cut" wait="10" capture="box" open-outputs="true" padding="20" requires="tetgen,manifold" name="cutaway" embed=true}
 :::static
-import afield.manifold.*
-import afield.tetgen.*
+import afield.geometry.mesh.tetgen.*
+import afield.geometry.solid.manifold.*
 
 // An L-bracket: two blocks, three bores. Sharp edges from the L, curved surfaces from the bores.
 // This part is used for every measurement on this page.
 val part = Solid.scope {
     val foot = Solid.cube(80.0, 40.0, 15.0)
     val post = Solid.cube(15.0, 40.0, 70.0)
-    val bolts = listOf(12.0, 28.0).map {
+    val bolts = [12.0, 28.0].map {
         Solid.cylinder(40.0, 5.0, segments = 48).translated(55.0, it, -5.0)
     }
-    val eye = Solid.cylinder(60.0, 6.0, segments = 48)
-        .rotated(0.0, 90.0, 0.0).translated(-20.0, 20.0, 52.0)
+    val eye = Solid.cylinder(60.0, 6.0, segments = 48).rotated(0.0, 90.0, 0.0).translated(-20.0, 20.0, 52.0)
     ((foot + post) - Solid.union(bolts + eye)).copy()
 }
 
 val surface = part.toTriMesh()
 val mesh = Tetgen.tetrahedralize(surface, targetEdgeLength = 5.0)
 
-// The cutaway: keep the elements whose centroid is behind y = 20, then take that half's skin.
-// The newly exposed cut face is in it, which is what makes the picture read as a slice through a
-// body rather than as a pile of loose triangles.
+/*
+The cutaway: keep the elements whose centroid is behind y = 20, then take that half's skin.
+The newly exposed cut face is in it, which is what makes the picture read as a slice through a
+body rather than as a pile of loose triangles.
+*/
 val centroid = mesh.centroids()
 val half = mesh.filtered { centroid[3 * it + 1] < 20.0 }
 
@@ -79,23 +80,30 @@ val half = mesh.filtered { centroid[3 * it + 1] < 20.0 }
 val quality = half.qualities()
 val colors = FloatArray(3 * half.cellCount)
 for (t in 0 until half.cellCount) {
-    val c = afield.Colormaps.sample("viridis", quality[t])
-    colors[3 * t] = c.r.toFloat(); colors[3 * t + 1] = c.g.toFloat(); colors[3 * t + 2] = c.b.toFloat()
+    val c = afield.graphics.color.Colormaps.sample("viridis", quality[t])
+    colors[3 * t] = c.r.toFloat()
+    colors[3 * t + 1] = c.g.toFloat()
+    colors[3 * t + 2] = c.b.toFloat()
 }
 :::fold measure it, then draw the three views
 println("Manifold  ${"%.4f".format(part.volume)} mm³, ${part.triangleCount} triangles, genus ${part.genus}")
 // The surface's own digest, printed because the element count below depends on it and on nothing
 // else — see "the count moves between sessions" under Sizing.
-println("surface   ${surface.vertexCount} vertices, ${surface.triangleCount} triangles, " +
-    "digest ${surface.positions.contentHashCode()}/${surface.indices.contentHashCode()}")
+println(
+    "surface   ${surface.vertexCount} vertices, ${surface.triangleCount} triangles, " +
+        "digest ${surface.positions.contentHashCode()}/${surface.indices.contentHashCode()}",
+)
 println("TetGen    $mesh")
 println("          volume ${"%.4f".format(mesh.volume())} mm³")
 println("          inverted elements ${mesh.volumes().count { it <= 0.0 }}")
 println()
-println("cutaway   ${half.cellCount} of ${mesh.cellCount} elements, " +
-    "${half.boundary().triangleCount} boundary triangles")
-println("quality   min ${"%.4f".format(quality.min())}, median " +
-    "${"%.4f".format(quality.sorted()[quality.size / 2])}")
+println(
+    "cutaway   ${half.cellCount} of ${mesh.cellCount} elements, " +
+        "${half.boundary().triangleCount} boundary triangles",
+)
+println(
+    "quality   min ${"%.4f".format(quality.min())}, median " + "${"%.4f".format(quality.sorted()[quality.size / 2])}",
+)
 
 // Pitch well over the horizon, because the cut plane is horizontal in this frame and a low camera
 // shows the skin instead of the slice.
@@ -123,12 +131,11 @@ takes, a maximum element volume: `h³ / (6 sqrt 2)`, the volume of a regular tet
 
 The input surface sets the coarsest mesh you can get. TetGen keeps every triangle it is given, and
 this bracket's 618 triangles are already about 10 mm across, so asking for larger elements than that
-changes nothing and gives no warning. Check `cellCount` rather than assuming the size you passed
-took effect.
+changes nothing, and `tetrahedralize` logs a warning saying so.
 
 Finer requests work as expected. Cost grows roughly in proportion to the element count, about
 11–14 µs per element, so a 36,000-element mesh takes about half a second: fast enough to re-mesh on
-every geometry edit. `afield.tetgen` has no way to update a mesh in place, so re-meshing is how you
+every geometry edit. The `afield.geometry.mesh.tetgen` package has no way to update a mesh in place, so re-meshing is how you
 follow an edit. The measured sweep is under [Measurements](#measurements).
 
 ## Into Kratos
@@ -158,14 +165,15 @@ axial-extension control, and why landing just under 100% is right.
 ```diffstatic {data-lang=kotlin}
 val linear = Tetgen.tetrahedralize(surface, targetEdgeLength = 5.0)
 val quadratic = Tetgen.tetrahedralize(surface, targetEdgeLength = 5.0, order = 2)
+
 // equivalently, from a mesh already in hand: linear.quadratic()
 
-linear.nodeCount        // 8279
-quadratic.nodeCount     // 57495 — 6.94x, one new node per distinct edge
-quadratic.cellCount     // 36475, the same tetrahedra
-quadratic.nodesPerCell  // 10
-quadratic.volume()      // 76958.90896392865 — linear.volume() to the last bit
-quadratic.corners()     // the 4-node view back, sharing the same node array
+linear.nodeCount // 8279
+quadratic.nodeCount // 57495 — 6.94x, one new node per distinct edge
+quadratic.cellCount // 36475, the same tetrahedra
+quadratic.nodesPerCell // 10
+quadratic.volume() // 76958.90896392865 — linear.volume() to the last bit
+quadratic.corners() // the 4-node view back, sharing the same node array
 ```
 
 The shape does not change. The six new nodes sit at the exact midpoints of straight edges, so the
@@ -225,19 +233,18 @@ ratio.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/tetgen/quality.png" alt="two stacked output panels. The upper one plots 'radius ratio over 66489 elements' as a histogram, x axis '3 r_in / r_circ' from 0 to about 1, y axis 'elements' to 6000: a long flat tail hugging zero from 0.05 up to about 0.5, then a steep climb to a peak just under 7000 elements around 0.9, and a sharp drop in the last bin. Almost the whole population sits in the good half of the axis. The lower panel, 'the 400 worst elements, in place', draws those elements alone against black, so they hang in space as a few hundred slivers and flat wedges holding the silhouette of the bracket; they are thickest in two dense knots where the bores are and thin everywhere else. Its footer reads 1459 verts, 1584 tris, extent 80.000 x 40.000 x 70.000, chi=709, open (0 boundary loops), and 'radius ratio 0.0362 to 0.2886 - densest around the three bores, and scattered everywhere else'" wait="12" capture="box" open-outputs="true" padding="20" requires="tetgen,manifold" name="quality" embed=true}
 :::static
-import afield.manifold.*
-import afield.tetgen.*
+import afield.geometry.mesh.tetgen.*
+import afield.geometry.solid.manifold.*
 
 // The same bracket as the figure above, built in the same order — which matters more than it
 // looks like it should. See "the same solid, built in a different order" under Sizing.
 val part = Solid.scope {
     val foot = Solid.cube(80.0, 40.0, 15.0)
     val post = Solid.cube(15.0, 40.0, 70.0)
-    val bolts = listOf(12.0, 28.0).map {
+    val bolts = [12.0, 28.0].map {
         Solid.cylinder(40.0, 5.0, segments = 48).translated(55.0, it, -5.0)
     }
-    val eye = Solid.cylinder(60.0, 6.0, segments = 48)
-        .rotated(0.0, 90.0, 0.0).translated(-20.0, 20.0, 52.0)
+    val eye = Solid.cylinder(60.0, 6.0, segments = 48).rotated(0.0, 90.0, 0.0).translated(-20.0, 20.0, 52.0)
     ((foot + post) - Solid.union(bolts + eye)).copy()
 }
 val surface = part.toTriMesh()
@@ -252,35 +259,49 @@ val slivers = mesh.filtered { it in worst }
 :::fold the distribution, and where the tail lives
 val sorted = quality.sorted()
 println("${mesh.cellCount} elements at targetEdgeLength = 3.0")
-println("radius ratio     min ${"%.4f".format(sorted.first())}  " +
-    "1st pct ${"%.4f".format(sorted[sorted.size / 100])}  " +
-    "median ${"%.4f".format(sorted[sorted.size / 2])}  max ${"%.4f".format(sorted.last())}")
+println(
+    "radius ratio     min ${"%.4f".format(sorted.first())}  " +
+        "1st pct ${"%.4f".format(sorted[sorted.size / 100])}  " +
+        "median ${"%.4f".format(sorted[sorted.size / 2])}  max ${"%.4f".format(sorted.last())}",
+)
 println("below 0.05       ${sorted.count { it < 0.05 }}   (slivers)")
 println("below 0.10       ${sorted.count { it < 0.10 }}")
 println()
-println("radius-edge      min ${"%.4f".format(radiusEdge.min())}  " +
-    "(the regular tetrahedron's floor is ${"%.4f".format(Math.sqrt(6.0) / 4.0)})")
-println("                 max ${"%.4f".format(radiusEdge.max())}, " +
-    "${radiusEdge.count { it > 1.2 }} above the 1.2 bound that was asked for")
+println(
+    "radius-edge      min ${"%.4f".format(radiusEdge.min())}  " +
+        "(the regular tetrahedron's floor is ${"%.4f".format(Math.sqrt(6.0) / 4.0)})",
+)
+println(
+    "                 max ${"%.4f".format(radiusEdge.max())}, " +
+        "${radiusEdge.count { it > 1.2 }} above the 1.2 bound that was asked for",
+)
 println()
 // The point of printing these together: the two measures do not rank the same elements. The worst
 // element by radius-edge is a perfectly usable one, and most of the bad ones are inside the bound.
-println("worst by radius-edge: ${"%.4f".format(radiusEdge.max())}, whose radius ratio is " +
-    "${"%.4f".format(quality[radiusEdge.indices.maxBy { radiusEdge[it] }])} — a fine element")
+println(
+    "worst by radius-edge: ${"%.4f".format(radiusEdge.max())}, whose radius ratio is " +
+        "${"%.4f".format(quality[radiusEdge.indices.maxBy { radiusEdge[it] }])} — a fine element",
+)
 val inBound = quality.indices.filter { radiusEdge[it] <= 1.2 }
-println("of the ${inBound.size} elements inside the bound, ${inBound.count { quality[it] < 0.10 }} " +
-    "are below radius ratio 0.10; the worst is ${"%.5f".format(inBound.minOf { quality[it] })}")
+println(
+    "of the ${inBound.size} elements inside the bound, ${inBound.count { quality[it] < 0.10 }} " +
+        "are below radius ratio 0.10; the worst is ${"%.5f".format(inBound.minOf { quality[it] })}",
+)
 
 showChart(
-    Chart(title = "radius ratio over ${mesh.cellCount} elements",
-          xLabel = "3 r_in / r_circ", yLabel = "elements")
+    Chart(
+            title = "radius ratio over ${mesh.cellCount} elements",
+            xLabel = "3 r_in / r_circ",
+            yLabel = "elements",
+        )
         .histogram("elements", quality.toList(), bins = 40),
 )
 showMesh(
     slivers.boundary(),
     title = "the 400 worst elements, in place",
-    caption = "radius ratio ${"%.4f".format(sorted.first())} to ${"%.4f".format(sorted[399])} · " +
-        "densest around the three bores, and scattered everywhere else",
+    caption =
+        "radius ratio ${"%.4f".format(sorted.first())} to ${"%.4f".format(sorted[399])} · " +
+            "densest around the three bores, and scattered everywhere else",
     view = MeshView(yawDegrees = 34.0, pitchDegrees = 22.0, width = 760, height = 420),
 )
 part.close()
@@ -331,23 +352,8 @@ against `Solid.volume` before you trust a result.
     normally TetGen calls `exit()` there, which inside a live Field session ends the session. The
     wrapper is compiled with `TETLIBRARY`, which makes TetGen throw an `int` instead, and
     [`field_tetgen.cpp`](https://github.com/OpenEndedGroup/Field4/blob/main/native/field-tetgen/src/field_tetgen.cpp) catches it: letting a C++ exception unwind through FFM's downcall frames
-    aborts the VM. `TetgenTest.anOpenSurfaceIsRefusedWithoutTakingTheProcessDown` guards that the
-    process survives — though note that on this build the five-faced cube it uses comes back through
-    the *empty mesh* path rather than the throw, so the two inputs that genuinely exercise the catch
-    are the self-intersecting pair and the degenerate one.
-
-    TetGen also writes to the process's stdout on that path — `Exception: All vertices are (nearly)
-    collinear (Tol = 1e-08).` — despite the `Q` (quiet) switch. The message reaching Kotlin is the
-    wrapper's; the line in your terminal is TetGen's.
-
-!!! warning "A refused surface leaves two files in your working directory"
-    Refusing a self-intersecting surface leaves `tetgen-tmpfile_skipped.node` and
-    `tetgen-tmpfile_skipped.face` in the **process's current working directory**, holding the facets
-    it gave up on. `Q` does not suppress it and `TETLIBRARY` does not redirect it. In a live Field
-    session that directory is wherever the server was launched from.
-
-    They are TetGen's own debugging aid: the pair from a failed Boolean is a Medit-readable dump of
-    exactly which facets tangled. Delete them when you are done with them.
+    aborts the VM. `TetgenTest.aFatalSurfaceIsRefusedWithoutTakingTheProcessDown` feeds it both
+    inputs and checks the process survives.
 
 ## Installing it
 
@@ -364,10 +370,10 @@ it straight into the wrapper. There is nothing to `find_package`: TetGen is two 
 dependencies, which is why there is a C++ wrapper here at all and why it is only 320 lines.
 
 ```diffstatic {data-lang=kotlin}
-import afield.tetgen.*
+import afield.geometry.mesh.tetgen.*
 
-TetgenLibrary.isAvailable       // cheap enough to branch on in a box
-TetgenLibrary.describe()        // "TetGen wrapper at /…/libfield_tetgen_jvm.dylib (TetGen 1.6.0)"
+TetgenLibrary.isAvailable // cheap enough to branch on in a box
+TetgenLibrary.describe() // "TetGen wrapper at /…/libfield_tetgen_jvm.dylib (TetGen 1.6.0)"
 ```
 
 `-Dafield.tetgen.library=<path>` or `AFIELD_TETGEN_LIBRARY` point it at a build of your own.
@@ -522,17 +528,15 @@ an edge, and measures how far the result sits from the true surface.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/tetgen/sharp_edge.png" alt="two stacked plots. The upper, 'the corner at (1.0, 1.5), in a 0.24 x 0.24 window', zooms far enough in to see one corner four times over: the orange 'exact, and TetGen's' outline turns a true right angle at x=1, y=1.5, while the three marched outlines cut it off short, the red h=0.4 lowest and flattest, the green h=0.2 above it, the blue h=0.1 nearly on the orange but still parting from it as it approaches the corner. Captioned 'halving h halves the bite the level set takes out of the corner'. The lower, 'worst boundary error against cell size', is a log-log plot of worst distance from the true surface against cell size h at 0.05, 0.1, 0.2 and 0.4: two straight lines of different slope, blue 'box - first order' running from about 0.003 to 0.03, green 'sphere - second order' from about 0.0002 to 0.01 and so steeper. Captioned 'log-log. The box halves when h halves; the sphere quarters.'" wait="14" capture="box" open-outputs="true" padding="20" requires="tetgen,manifold" name="sharp_edge" embed=true}
 :::static
-import afield.manifold.*
-import afield.tetgen.*
-import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.sqrt
+import afield.geometry.mesh.tetgen.*
+import afield.geometry.solid.manifold.*
 
 // The exact distance to the surface of a 2 x 3 x 4 box centred on the origin, and to a sphere.
 // One has edges, the other does not; that is the whole experiment.
 fun boxDistance(x: Double, y: Double, z: Double): Double {
-    val dx = abs(x) - 1.0; val dy = abs(y) - 1.5; val dz = abs(z) - 2.0
+    val dx = abs(x) - 1.0
+    val dy = abs(y) - 1.5
+    val dz = abs(z) - 2.0
     val out = sqrt(max(dx, 0.0) * max(dx, 0.0) + max(dy, 0.0) * max(dy, 0.0) + max(dz, 0.0) * max(dz, 0.0))
     return out + min(max(dx, max(dy, dz)), 0.0)
 }
@@ -551,24 +555,27 @@ fun worstError(xyz: DoubleArray, distance: (Double, Double, Double) -> Double): 
 }
 fun coordinates(m: TriMesh) = DoubleArray(m.positions.size) { m.positions[it].toDouble() }
 :::fold march both bodies at four resolutions, then plot the corner and the convergence
-val sizes = listOf(0.4, 0.2, 0.1, 0.05)
+val sizes = [0.4, 0.2, 0.1, 0.05]
 val boxError = mutableListOf<Double>()
 val sphereError = mutableListOf<Double>()
 val corners = mutableListOf<Pair<String, List<Vec2>>>()
 
 println("h      box, worst error        sphere, worst error")
 for (h in sizes) {
-    val b = Solid.levelSet(bounds, h, parallel = true) { x, y, z -> -boxDistance(x, y, z) }
-    val s = Solid.levelSet(bounds, h, parallel = true) { x, y, z -> -sphereDistance(x, y, z) }
+    val b = Solid.levelSet(bounds, h) { x, y, z -> -boxDistance(x, y, z) }
+    val s = Solid.levelSet(bounds, h) { x, y, z -> -sphereDistance(x, y, z) }
     boxError += worstError(coordinates(b.toTriMesh()), ::boxDistance)
     sphereError += worstError(coordinates(s.toTriMesh()), ::sphereDistance)
-    println("${"%.2f".format(h)}   ${"%.6f".format(boxError.last())} = " +
-        "${"%.4f".format(boxError.last() / h)} h    " +
-        "${"%.6f".format(sphereError.last())} = ${"%.4f".format(sphereError.last() / h)} h")
+    println(
+        "${"%.2f".format(h)}   ${"%.6f".format(boxError.last())} = " +
+            "${"%.4f".format(boxError.last() / h)} h    " +
+            "${"%.6f".format(sphereError.last())} = ${"%.4f".format(sphereError.last() / h)} h",
+    )
     // A real cross section through the marched body, at z = 0. The rounding is 1.5% of the body at
     // h = 0.4: plain in a cross section, invisible in a render of the whole box.
     if (h >= 0.1) corners += "marched, h = $h" to b.slice(0.0).toPolygons().first()
-    b.close(); s.close()
+    b.close()
+    s.close()
 }
 
 // The same box through TetGen, which is handed Manifold's exact triangulation and constrains its
@@ -578,77 +585,73 @@ val tet = Tetgen.tetrahedralize(exactBox.toTriMesh(), targetEdgeLength = 0.25)
 println()
 println("TetGen at h = 0.25: ${tet.cellCount} elements, volume ${tet.volume()}")
 // Only outward error counts here: an interior node is *supposed* to be inside the box.
-println("  worst node outside the true box: " +
-    worstError(tet.positions) { x, y, z -> max(boxDistance(x, y, z), 0.0) })
+println(
+    "  worst node outside the true box: " + worstError(tet.positions) { x, y, z -> max(boxDistance(x, y, z), 0.0) },
+)
 
-// One corner of the true cross section, magnified. The exact outline is what TetGen is given and
-// what its boundary reproduces; each level set is a different rounded approximation of it.
-//
-// A Chart clips its marks to its own axes, so a figure written today does not need the hand
-// clipping below. `dev_docs/stdlib_behaviour_changes.md` records when that changed.
-val xLo = 0.82; val xHi = 1.06; val yLo = 1.32; val yHi = 1.56
-fun clippedToWindow(loop: List<Vec2>): Pair<List<Double>, List<Double>> {
-    val xs = mutableListOf<Double>()
-    val ys = mutableListOf<Double>()
-    for (i in loop.indices) {
-        val a = loop[i]
-        val b = loop[(i + 1) % loop.size]
-        val ax = a.x.toDouble(); val ay = a.y.toDouble()
-        val dx = b.x.toDouble() - ax; val dy = b.y.toDouble() - ay
-        // Liang–Barsky: the parameter interval of this segment that lies inside the window.
-        val edge = doubleArrayOf(-dx, dx, -dy, dy)
-        val slack = doubleArrayOf(ax - xLo, xHi - ax, ay - yLo, yHi - ay)
-        var t0 = 0.0
-        var t1 = 1.0
-        var outside = false
-        for (k in 0..3) {
-            if (edge[k] == 0.0) { if (slack[k] < 0.0) outside = true }
-            else {
-                val t = slack[k] / edge[k]
-                if (edge[k] < 0.0 && t > t0) t0 = t
-                if (edge[k] > 0.0 && t < t1) t1 = t
-            }
-        }
-        if (outside || t0 > t1) continue
-        if (xs.isNotEmpty()) { xs += Double.NaN; ys += Double.NaN }
-        xs += ax + t0 * dx; ys += ay + t0 * dy
-        xs += ax + t1 * dx; ys += ay + t1 * dy
-    }
-    return xs to ys
+/*
+One corner of the true cross section, magnified. The exact outline is what TetGen is given and
+what its boundary reproduces; each level set is a different rounded approximation of it.
+
+Pass the complete, explicitly closed contours to Chart; its axes clip the visible segments.
+*/
+val xLo = 0.82
+val xHi = 1.06
+val yLo = 1.32
+val yHi = 1.56
+fun closedCoordinates(loop: List<Vec2>): Pair<List<Double>, List<Double>> {
+    val closed = loop.toMutableList()
+    if (closed.isNotEmpty()) closed.add(closed.first())
+    return closed.map { it.x.toDouble() } to closed.map { it.y.toDouble() }
 }
-
-val exactCorner = clippedToWindow(exactBox.slice(0.0).toPolygons().first())
-// This note had to be short by hand. The one it started with ran to 142 characters, 1197 px against
-// 711 px of room, and it drew the whole figure at 63% of its declared size. A note wraps to the
-// figure width now, so its length is a matter of taste again rather than of layout.
-val corner = Chart(title = "the corner at (1.0, 1.5), in a 0.24 x 0.24 window",
-                   xLabel = "x", yLabel = "y",
-                   note = "halving h halves the bite the level set takes out of the corner")
-corner.width = 780.0; corner.height = 440.0
+val exactCorner = closedCoordinates(exactBox.slice(0.0).toPolygons().first())
+val corner = Chart(
+    title = "the corner at (1.0, 1.5), in a 0.24 x 0.24 window",
+    xLabel = "x",
+    yLabel = "y",
+    note = "halving h halves the bite the level set takes out of the corner",
+)
+corner.width = 780.0
+corner.height = 440.0
 corner.xDomain = xLo to xHi
 corner.yDomain = yLo to yHi
-corner.line("exact, and TetGen's", exactCorner.first, exactCorner.second,
-    color = vec(1.0, 0.72, 0.35, 1.0), thickness = 3.0)
+corner.line(
+    "exact, and TetGen's",
+    exactCorner.first,
+    exactCorner.second,
+    color = vec(1.0, 0.72, 0.35, 1.0),
+    thickness = 3.0,
+)
 // Coarsest red through finest blue, explicitly. The default palette gives three of these four
 // series a warm colour and the figure becomes four orange lines.
-val byResolution = listOf(
-    vec(0.95, 0.45, 0.45, 1.0), vec(0.55, 0.95, 0.55, 1.0), vec(0.45, 0.85, 1.0, 1.0))
+val byResolution = [
+    vec(0.95, 0.45, 0.45, 1.0),
+    vec(0.55, 0.95, 0.55, 1.0),
+    vec(0.45, 0.85, 1.0, 1.0),
+]
 corners.forEachIndexed { i, (label, points) ->
-    val clipped = clippedToWindow(points)
-    corner.line(label, clipped.first, clipped.second, color = byResolution[i], thickness = 2.0)
+    val contour = closedCoordinates(points)
+    corner.line(label, contour.first, contour.second, color = byResolution[i], thickness = 2.0)
 }
 
 // And the convergence, which is the actual finding: slope 1 on the box, slope 2 on the sphere.
-val rate = Chart(title = "worst boundary error against cell size",
-                 xLabel = "cell size h", yLabel = "worst distance from the true surface",
-                 note = "log-log. The box halves when h halves; the sphere quarters.")
-rate.width = 780.0; rate.height = 440.0
-rate.xKind = ScaleKind.LOG; rate.yKind = ScaleKind.LOG
+val rate = Chart(
+    title = "worst boundary error against cell size",
+    xLabel = "cell size h",
+    yLabel = "worst distance from the true surface",
+    note = "log-log. The box halves when h halves; the sphere quarters.",
+)
+rate.width = 780.0
+rate.height = 440.0
+rate.xKind = ScaleKind.LOG
+rate.yKind = ScaleKind.LOG
 val blue = vec(0.45, 0.85, 1.0, 1.0)
 val green = vec(0.55, 0.95, 0.55, 1.0)
-rate.line("box — first order", sizes, boxError, color = blue, thickness = 2.4)
+rate
+    .line("box — first order", sizes, boxError, color = blue, thickness = 2.4)
     .points("box — first order", sizes, boxError, color = blue, size = 4.5)
-rate.line("sphere — second order", sizes, sphereError, color = green, thickness = 2.4)
+rate
+    .line("sphere — second order", sizes, sphereError, color = green, thickness = 2.4)
     .points("sphere — second order", sizes, sphereError, color = green, size = 4.5)
 
 // Two channels, not two displays on one: a second display on the same channel replaces the first.

@@ -1,5 +1,5 @@
-import afield.graphics.*
-import afield.stdlib.*
+
+
 
 three(name="features",width=760,height=500) {
     camera(yaw=0.0,pitch=0.0,distance=2.4)

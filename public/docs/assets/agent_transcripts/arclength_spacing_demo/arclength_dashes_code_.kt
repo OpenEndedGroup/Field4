@@ -1,8 +1,10 @@
-// Two curves. `bent` is an ordinary S-shaped cubic — its control points are far off the
-// chord, so the old flatness criterion always subdivided it and its spacing was already
-// fine. `straight` has its control points exactly ON the chord but bunched at the far
-// end: geometrically a straight line, parameterised so that t = 0.5 is 82% of the way
-// along. Its flatness is exactly 0.0, so no tolerance could ever force a subdivision.
+/*
+Two curves. `bent` is an ordinary S-shaped cubic — its control points are far off the
+chord, so the old flatness criterion always subdivided it and its spacing was already
+fine. `straight` has its control points exactly ON the chord but bunched at the far
+end: geometrically a straight line, parameterised so that t = 0.5 is 82% of the way
+along. Its flatness is exactly 0.0, so no tolerance could ever force a subdivision.
+*/
 val bent = fline {
     moveTo(20, 40)
     cubicTo(90, 200, 330, -80, 400, 90)
@@ -16,9 +18,11 @@ val straight = fline {
 val dash = 22f
 val gap = 13f
 
-// What a one-leaf mapping produced: t marched in equal steps, each dash a straight chord
-// between its two ends. Reproduced explicitly rather than remembered, so the comparison
-// is computed here and now on both sides.
+/*
+What a one-leaf mapping produced: t marched in equal steps, each dash a straight chord
+between its two ends. Reproduced explicitly rather than remembered, so the comparison
+is computed here and now on both sides.
+*/
 val byParameter = { line: FLine ->
     val c = line.cursor()
     val span = (line.nodes.size - 1).toFloat()
@@ -54,8 +58,7 @@ val paint = { dashes: List<FLine> ->
 // whatever length is left over at the end of the curve.
 val spread = { dashes: List<FLine> ->
     val lengths = dashes.dropLast(1).map(drawnLength).filter { it > 0.0 }
-    if (lengths.isEmpty()) "no dashes"
-    else "asked $dash, drew %.1f .. %.1f".format(lengths.min(), lengths.max())
+    if (lengths.isEmpty()) "no dashes" else "asked $dash, drew %.1f .. %.1f".format(lengths.min(), lengths.max())
 }
 
 val bentOld = paint(byParameter(bent))

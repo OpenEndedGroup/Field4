@@ -4,7 +4,7 @@ From the Kotlin 2.5.0-Beta1 uplift (`d0569e108`) an incremental `compileKotlinJs
 ordinary edit, while a clean build of the same source was green:
 
     e: org.jetbrains.kotlin.backend.common.CompilationException: Back-end: Please report this problem
-    …/src/jsMain/kotlin/afield/Main.kt:-1:-1
+    …/src/jsMain/kotlin/afield/app/client/Main.kt:-1:-1
     Details: Internal error in file lowering: java.lang.IllegalStateException:
       IrClassSymbolImpl is unbound. Signature: kotlin/Unit|null[0]
 

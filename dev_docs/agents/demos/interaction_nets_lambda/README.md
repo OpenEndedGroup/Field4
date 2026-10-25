@@ -34,7 +34,7 @@ Which way that comparison goes depends on the term. `church-mul-2-3` finishes at
 
 ## Where the code is
 
-- `src/jvmMain/kotlin/afield/stdlib/lambdaterms.kt` — the front end, the oracle and the corpus
-- `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt` — `Lambda.rules()`, including `fan-fan`, and the `Reducer` that chases wires through a vanishing pair
+- `src/jvmMain/kotlin/afield/lang/lambda/lambdaterms.kt` — the front end, the oracle and the corpus
+- `src/jvmMain/kotlin/afield/data/graph/interactionnets.kt` — `Lambda.rules()`, including `fan-fan`, and the `Reducer` that chases wires through a vanishing pair
 - `dev_docs/INTERACTION_NETS_LAMBDA.md` — what was built, what is verified and how, and what is not
 - `public/docs/interaction_nets_examples.md` — the published page, with the committed figure

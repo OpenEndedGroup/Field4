@@ -1,8 +1,8 @@
 # A polytope, cut open, and traced
 
-One shape passes through three parts of Field here. `afield.stdlib.polytope` builds polyhedra
-with Conway operators and remembers where each face came from. `afield.manifold` does exact Booleans
-on closed solids. `afield.four.fabricated` runs a GPU path tracer. The three are independent, and
+One shape passes through three parts of Field here. `afield.geometry.polytope` builds polyhedra
+with Conway operators and remembers where each face came from. `afield.geometry.solid.manifold` does exact Booleans
+on closed solids. `afield.graphics.scene.fabricated` runs a GPU path tracer. The three are independent, and
 the page shows what to pass from one to the next.
 
 The shape is `bD`: bevel of the dodecahedron, better known as the truncated icosidodecahedron. It has
@@ -44,15 +44,18 @@ val gold = scene.material(PathTraceMaterial.metal(1.0f, 0.73f, 0.31f, 0.32f))
 val glass = scene.material(PathTraceMaterial.thinGlass(1.52f, Vector3f(0.9f, 0.97f, 0.94f)))
 val plastic = scene.material(PathTraceMaterial.plastic(0.05f, 0.09f, 0.34f, 0.3f))
 
-scene.importTriMesh(geometry.mesh, { t ->
-    // Bevel sends every output face back to exactly one element of the seed, so `single()` is
-    // safe here and throws the moment that stops being true.
-    when (chain.sourceElements(geometry.sourceFace(t)).single().rank) {
-        2 -> gold
-        1 -> glass
-        else -> plastic
-    }
-})
+scene.importTriMesh(
+    geometry.mesh,
+    { t ->
+        // Bevel sends every output face back to exactly one element of the seed, so `single()` is
+        // safe here and throws the moment that stops being true.
+        when (chain.sourceElements(geometry.sourceFace(t)).single().rank) {
+            2 -> gold
+            1 -> glass
+            else -> plastic
+        }
+    },
+)
 ```
 
 !!! note "Thin glass rather than solid glass, for the thirty squares"
@@ -72,36 +75,39 @@ CPU work.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_polytope_render/readout.png" wait="8" capture="box" open-outputs="true" w="1060" h="240" padding="18" timeout="120" name="chain-polytope-readout" embed=true}
 :::static
-import afield.manifold.*
-import afield.stdlib.*
-import afield.stdlib.polytope.*
+import afield.geometry.solid.manifold.*
 
-val thickness = 0.09   // wall thickness, in the polytope's own units; the shape spans about 2
+val thickness = 0.09 // wall thickness, in the polytope's own units; the shape spans about 2
 
 val chain = canonicalConway("bD")
 val geometry = chain.polyhedron.triangulate(normals = NormalPolicy.Flat)
 
-// The triangulator cuts each polygon on its own, so a corner shared by three faces comes out as
-// three vertices. Weld before handing it over: being a manifold is a property of the indices, and
-// unwelded vertices describe the same surface while sharing an edge nowhere.
+/*
+The triangulator cuts each polygon on its own, so a corner shared by three faces comes out as
+three vertices. Weld before handing it over: being a manifold is a property of the indices, and
+unwelded vertices describe the same surface while sharing an edge nowhere.
+*/
 val plain = geometry.mesh.weld(1e-6)
 
 :::fold measure every hop, then lay the numbers out
 val topology = chain.polyhedron.topology
 val byRank = topology.elements(2).groupBy { chain.sourceElements(it.id).single().rank }
-val censusRows = byRank.keys.sortedDescending().joinToString("\n") { rank ->
-    val group = byRank.getValue(rank)
-    val sides = group.map { topology.faceCycle(it.id).size }.distinct().sorted()
-    val seed = listOf("a vertex", "an edge", "a pentagon").getOrElse(rank) { "?" }
-    "| rank $rank, $seed | ${group.size} | ${sides.joinToString(", ")} |"
-}
+val censusRows =
+    byRank.keys.sortedDescending().joinToString("\n") { rank ->
+        val group = byRank.getValue(rank)
+        val sides = group.map { topology.faceCycle(it.id).size }.distinct().sorted()
+        val seed = ["a vertex", "an edge", "a pentagon"].getOrElse(rank) { "?" }
+        "| rank $rank, $seed | ${group.size} | ${sides.joinToString(", ")} |"
+    }
 
 Solid.scope {
     val solid = plain.toSolid()
 
-    // Erode by a ball, then subtract. What is left is the set of points within `thickness` of the
-    // surface, so the wall is that thick everywhere. Scaling the solid down instead gives a wall
-    // thicker at the vertices than at the face centres, which looks similar and is a different shape.
+    /*
+    Erode by a ball, then subtract. What is left is the set of points within `thickness` of the
+    surface, so the wall is that thick everywhere. Scaling the solid down instead gives a wall
+    thicker at the vertices than at the face centres, which looks similar and is a different shape.
+    */
     val ball = Solid.sphere(thickness, segments = 24)
     val wall = solid - solid.minkowskiDifference(ball)
     val cut = wall.trimByPlane(0.0, -1.0, 0.0, 0.0).checked("cut shell")
@@ -111,7 +117,9 @@ Solid.scope {
 
     // Content at column zero, because `$censusRows` is several lines that begin there: an indented
     // block plus trimIndent would leave the rest indented far enough to read as code.
-    markdown("chain", """
+    markdown(
+        "chain",
+        """
 #### `canonicalConway("bD")`, and where each face came from
 
 | the seed element a face descends from | faces | sides each |
@@ -142,7 +150,9 @@ They are ${"%.2e".format(volumeGap)} apart on the volume.
 | wall genus | ${wall.genus} |
 | wall triangles | ${wall.triangleCount} |
 | cut open | genus ${cut.genus}, volume ${"%.4f".format(cut.volume)} |
-""", width = 860)
+""",
+        width = 860,
+    )
     Unit
 }
 ```
@@ -187,17 +197,8 @@ val added = scene.importTriMesh(shaded, body)
 println("${added.triangleCount} triangles appended, ${added.degenerateCount} dropped")
 ```
 
-The dropped count is not zero. Manifold's output of a Boolean followed by a plane trim contains a
-few triangles of zero area, and `PathTraceScene.triangle` rejects those outright, which would abort
-the whole scene. `importTriMesh` skips them instead and reports how many it skipped, so use it rather
-than feeding triangles to `PathTraceScene` yourself.
-
-## One mesh to measure, another to draw
-
-`normals = true` splits a vertex per face at every hard edge so each face can carry its own normal.
-That is what makes a render read as facets, and it is also why that mesh shares no edges and reports
-the wrong genus. Measure on the plain mesh and render the split one. Asking either to do the other's
-job gets you a true statement about a different mesh rather than an error.
+Manifold's output of a Boolean followed by a plane trim contains a few triangles of zero area; the
+scene skips them, and `degenerateCount` says how many.
 
 ## Where each piece is documented
 

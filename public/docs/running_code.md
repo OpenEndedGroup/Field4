@@ -4,11 +4,12 @@ This page is about what Field does behind the scenes when you run a box. You do 
 start writing boxes. It is for when something that looks like an ordinary call turns out not to be
 one, or when a child box cannot see a value its parent set.
 
-- **Running versus launching.** `alt-enter` runs a selection, a line, or its outer enclosing block;
-  `alt-0` runs everything in the box; `alt-click` and `alt-up` *launch* it. Running evaluates and
+- **Running versus launching.** `alt/option-enter` runs a selection, a line, or its outer enclosing block;
+  `alt/option-0` runs everything in the box; `alt/option-click` and `alt/option-up` *launch* it, and `alt/option-1` relaunches
+  just the code `alt/option-enter` would run, without rerunning the rest of the box. Running evaluates and
   stops. Launching gives the code a
   chance to put something into the animation loop and keep going. The keys themselves, the `?`
-  cheat sheet and the `F1` palette are in the [Survival Guide](survivalGuide.md).
+  cheat sheet and the `ctrl/command-shift-P` palette are in the [Survival Guide](survivalGuide.md).
 - **What happens between the keystroke and the compiler** — fragments, macro expansion, the
   preamble, inheritance from parent boxes, `@exported` — is the rest of this page.
 - **What happens after the last line evaluates**, when what you returned is a `Frames`, is
@@ -20,13 +21,13 @@ one, or when a child box cannot see a value its parent set.
 
 For a friendly tour of `connect` / `prop` / `once` in use, rather than in mechanism, read the
 [Feature Overview](funFeatures.md); for the graphics-box API on top of all this, see
-[afield.four Graphics](afield_four_graphics.md). This page is the layer underneath both.
+[Field 4 Graphics](afield_four_graphics.md). This page is the layer underneath both.
 
 ---
 
 ## Running code around the cursor
 
-In the code editor, **Alt+Enter** runs the selected text if you have a selection. With no
+In the code editor, **alt/option-Enter** runs the selected text if you have a selection. With no
 selection, it runs the line under the cursor. If that line is inside a `{ … }` block, it runs the
 **outer enclosing block**, from its opening line through its closing line. This includes the whole
 outer block when the cursor is inside a nested block:
@@ -39,15 +40,42 @@ repeat(2) {
 }
 ```
 
-Select just the inner lines when you want to run less. **Alt+0** runs the whole box, regardless of
+Select just the inner lines when you want to run less. **alt/option-0** runs the whole box, regardless of
 the cursor position.
+
+**alt/option-1** is for relaunching part of a box you have already run. It picks out the same code
+as alt/option-Enter (the selection, or the line, or its outer enclosing block) and *launches* just
+that, so the setup at the top of the box is not run again. The fragment sees the variables earlier
+runs left behind: below, the box has been run once, and Alt+1 inside the `loop` relaunches the loop
+with the `count` the top part already made. Launched from a box that has never been run, the same
+fragment fails with `Unresolved reference 'count'`. The striped green bar in the margin marks the
+lines that were launched while they keep running:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1000x500" clip-selector=".monaco-editor-container" screenshot="assets/running_code/launch-fragment.png" transcript="../../dev_docs/agents/transcripts/docs_capture/launch_fragment.yaml" padding="0" wait="0" timeout="120" embed=true hidden=true name="running-code-launch-fragment" alt="Field's editor with the cursor inside a loop block after Alt+1. A striped green bar in the left margin spans the five lines of the loop, lines 4 to 8, and not the two lines above it. Beside print(count) the running count reads 475."}
+ui.openEditor("launch_fragment")
+ui.eval("""
+    const c = document.querySelector(".monaco-editor-container")
+    Object.assign(c.style, {width:"560px", height:"260px", top:"20px", right:"20px", left:"auto", bottom:"auto", transform:"none"})
+    window.globalEditor.layout()
+    window.globalEditor.setPosition({lineNumber: 6, column: 5})
+    window.globalEditor.focus()
+    return true
+""".trimIndent())
+ui.press("Alt+1")
+ui.pause(1500)
+ui.eval("""
+    const bars = document.querySelectorAll(".monaco-editor .margin [class*='execution-marker-']")
+    if (bars.length == 0) throw new Error("no execution marker in the margin")
+    return true
+""".trimIndent())
+```
 
 To tune a value while watching its effect, put the cursor on a numeric literal and use **Increment
 number under cursor and rerun** or **Decrement number under cursor and rerun**. The shortcuts are
-**Command+Option+K/J** on Mac and **Ctrl+Alt+K/J** elsewhere (K increments, J decrements). Each
-command changes that number and then performs the same run as Alt+Enter, so a number inside a block
+**ctrl/command-alt/option-K/J** (K increments, J decrements). Each
+command changes that number and then performs the same run as alt/option-Enter, so a number inside a block
 reruns the outer enclosing block. Integers change by one; decimal numbers use a step scaled to the
-value and keep their decimal precision. You can also find both commands by name in the **F1**
+value and keep their decimal precision. You can also find both commands by name in the **ctrl/command-shift-P**
 palette.
 
 ---
@@ -59,7 +87,7 @@ reply while the rest of Field keeps running. From ordinary box code, put these c
 
 ```diffstatic {data-lang=kotlin}
 go {
-    kotlinx.coroutines.delay(100)
+    delay(100)
     println("done")
 }
 ```
@@ -71,13 +99,41 @@ context, so Field's usual box-scoped values and output work there. Stopping the 
 running `go` block at its next suspension. Use `go { }` when a box needs to start a suspend
 operation; an `aiTool { action { ... } }` can call suspend functions directly.
 
+While a `go` block is still running, the box shows it: a striped square in its top-right corner
+holds the number of `go` blocks that have not finished, and the box is not drawn as launched. If
+you started the block with Alt+1, its margin marker stays on until the block ends too. Stopping the
+box (Alt+Down) cancels them and clears both. Inside `go { }`, `delay(ms)` waits without holding up
+the rest of Field:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1000x420" clip="40,40,940,330" screenshot="assets/running_code/go-jobs-badge.png" transcript="../../dev_docs/agents/transcripts/docs_capture/go_jobs_badge.yaml" padding="0" wait="0" timeout="120" embed=true hidden=true name="running-code-go-jobs-badge" alt="A box named counting with a small striped square holding the number 1 in its top-right corner. Beside it, Field's editor shows the box's go block with the cursor inside it after Alt+1: a striped bar in the margin spans the go block, and the count printed beside print(ticks) reads 3."}
+ui.openEditor("go_jobs_badge")
+ui.eval("""
+    const c = document.querySelector(".monaco-editor-container")
+    Object.assign(c.style, {width:"560px", height:"280px", top:"45px", right:"60px", left:"auto", bottom:"auto", transform:"none"})
+    window.globalEditor.layout()
+    window.globalEditor.setPosition({lineNumber: 4, column: 9})
+    window.globalEditor.focus()
+    return true
+""".trimIndent())
+ui.press("Alt+1")
+ui.pause(1800)
+ui.eval("""
+    const box = [...document.querySelectorAll(".box")].find(b => b.uid === "go_jobs_badge")
+    const badge = box && box.querySelector(":scope > .go-jobs-badge")
+    if (!badge || badge.textContent.trim() !== "1") throw new Error("go badge missing or wrong: " + (badge && badge.textContent))
+    if (box.classList.contains("running")) throw new Error("the box is drawn as launched")
+    if (!document.querySelector(".monaco-editor .margin [class*='execution-marker-']")) throw new Error("no margin marker")
+    return true
+""".trimIndent())
+```
+
 ---
 
 ## The pipeline, in five steps
 
 When you run a box, Field does **not** hand your text straight to the Kotlin compiler. It:
 
-1. splits the code into **fragments** (on `//%-` lines),
+1. splits the code into **fragments** (on `//%-` lines, and before a `moduleHere` that follows a shader seed),
 2. **macro-expands** each fragment (rewriting some calls and injecting generated glue),
 3. prepends a **preamble** gathered from the box *and its parents* in the graph,
 4. compiles and evaluates the fragment,
@@ -106,7 +162,8 @@ They are intercepted before the compiler sees them. Most have a bare declaration
 ```diffstatic {data-lang=kotlin}
 fun <T> Box.prop(name: String) {
     throw MacroRegistry.MacroNotExpandedException(
-        "prop should not be callable directly, but should be expanded as a macro")
+        "prop should not be callable directly, but should be expanded as a macro",
+    )
 }
 ```
 
@@ -130,8 +187,8 @@ compiled again later, so the code still works when the box that wrote it has not
 
 ```diffstatic {data-lang=kotlin}
 val answer = sourceBlock { 6 * 7 }
-println(answer())          // 42
-println(answer.source)     // 6 * 7
+println(answer()) // 42
+println(answer.source) // 6 * 7
 ```
 
 The keyframer and code blends save blocks this way. A block loaded back from a saved file has no
@@ -149,11 +206,12 @@ its shape when the definition has not run yet (it comes later in the box, or you
 because Field compiles the saved source instead. See [Your own key types](keyframe_editor.md#your-own-key-types)
 for what the lambda can use.
 
-!!! warning "Don't call a saved block from its own box's code"
-    Compiling a saved block in its box runs that box's code again — which calls the block again.
-    Call a block that came from a file from another box, a frame loop or a control callback. A block
-    made by `sourceBlock` in this run already has its lambda and is safe to call at once. (Field
-    stops the loop after one repeat, with an error saying so.)
+!!! warning "Call a saved block from a frame loop, a callback or another box"
+    A block that came from a file compiles its saved source in its own box, and doing that while the
+    box's code is running would run that code again. So it is an error: calling such a block from its
+    own box's code stops with a message naming the box, before anything runs twice. Call it from a
+    frame loop or a control callback, after the code has finished, or from another box. A block made by
+    `sourceBlock` in this run already has its lambda and is safe to call at once.
 
 ---
 
@@ -196,7 +254,7 @@ window and renderer to its children:
 prop<Window>(window)
 prop<Renderer>(renderer)
 
-once.renderer {                       // runs on the first run only
+once.renderer { // runs on the first run only
     window = Window("My sketch")
     Renderer(window)
 }
@@ -227,9 +285,6 @@ loop — and keeps them all. Two calls with the *same* type and keys share one v
 `"left"` to keep them apart. `cached` needs no `prop` first, and its value is not visible to child
 boxes: return it into a `prop` if children should see it.
 
-`T` should be a library type. A class declared in the box's own code is a new class each time the
-box compiles, so a `cached` of it never finds the previous value.
-
 ### `aside`: code an ordinary run skips
 
 `once` and `cached` run their block on the first full run. Sometimes you want the opposite: code
@@ -243,13 +298,13 @@ aside("reset") {
 }
 ```
 
-Running the whole box skips the block. Put the cursor inside it and press Alt+Enter to run
+Running the whole box skips the block. Put the cursor inside it and press alt/option-Enter to run
 just that block. (Running a selection that includes it runs it too.) The name is only a label for
 you; it changes nothing. It saves keeping that code commented out and uncommenting it each time.
 
 ### `flipbox`: a block with a checkbox
 
-A `flipbox` sits between `once` and `aside`: a block you switch on and off with a checkbox. Press Cmd+Shift+. to insert a marker (drawn
+A `flipbox` sits between `once` and `aside`: a block you switch on and off with a checkbox. Press ctrl/command-shift-. to insert a marker (drawn
 as a single rune), then write `.flipbox(true) { … }` after it:
 
 ```diffstatic {data-lang=kotlin}
@@ -261,7 +316,7 @@ __m("Zk3q-a1").flipbox(true) {
 The editor draws the `true` as a checkbox. The block runs when the box runs with the box ticked,
 and each run unticks it. With `true` it starts ticked, so it runs on the first run like `once`, and
 later runs skip it. Click the checkbox to run the block again, without running the box, like
-Alt+Enter on an `aside`. With `false` it runs only when you click. The tick is not saved
+alt/option-Enter on an `aside`. With `false` it runs only when you click. The tick is not saved
 with the document, so `true` applies again after Field restarts.
 
 ### What lasts how long
@@ -303,8 +358,8 @@ Two things have to be true for a child to use a parent's value:
 1. **The typed accessor must exist in the child's compilation scope.** Accessors travel through the preamble. When a box is about to run, its *effective* preamble is regathered from its own preamble plus, from each ancestor, the `import` lines and any line ending in the ` /**/` marker:
 
     ```diffstatic {data-lang=kotlin}
-    // in the child's gathered preamble, pulled down from the parent:
-    var Box.savemarker by Inheritance<Int>() /**/
+// in the child's gathered preamble, pulled down from the parent:
+var Box.savemarker by Inheritance<Int>() /**/
     ```
 
     That ` /**/` suffix is exactly why `prop` (and `@exported`) tag their generated lines with it: it is the "inherit me into descendants" marker.
@@ -313,6 +368,13 @@ Two things have to be true for a child to use a parent's value:
 
 2. **The value is fetched at read time** by the `Inheritance` delegate's walk up `parents`. The preamble only carries the *accessor*; the *value* stays on whichever box set it.
 
+The dependency layer (palette: **Toggle Dependency Layer**) draws those reads on the canvas. Below,
+Tempo holds `bpm` and `key`, and Accent, two levels down, reads both straight from it:
+
+![Four boxes: Tempo at the top, Beat and Harmony beneath it, Accent beneath Beat. Arrows run from Tempo to Beat labelled bpm, to Harmony labelled key, and past Beat to Accent labelled with both names.](assets/reactive_properties/layer.png)
+
+[Reactive properties](reactive_properties.md#seeing-who-reads-what) has the layer in more detail.
+
 ### Which box is whose parent decides what is visible
 
 Both the preamble gather and the value walk follow `parents`. Connecting a child under a parent (`parent.connect(child)`, or selecting the parent and pressing `g` in the UI) is what puts the parent into the child's ancestor chain.
@@ -320,6 +382,8 @@ Both the preamble gather and the value walk follow `parents`. Connecting a child
 This is the commonest graphics mistake: a freshly created box whose only parent is the document root is a **sibling** of the renderer box, not a descendant. It will *not* inherit `renderer`: the accessor never gathers into it, and the value walk never reaches it. Only after you connect it **beneath the renderer box** does the next run gather the accessor and resolve the live `Renderer`. (The [RectSL examples](rectsl_examples.md) are built this way: one `window + renderer` box, with every example connected beneath it.)
 
 When a value comes from a box you did not expect, [Why does this value resolve here?](why.md) shows how to ask Field which box supplied it, by what path, and which other boxes it shadowed.
+
+A child sees a changed value the next time it runs. To have Field rerun the readers when the value changes, or run the supplier when a read finds nothing, declare it with `propDown`, `propUp` or `propUpDown`: [Properties that re-run boxes](reactive_properties.md).
 
 The preamble is regenerated **on run**: Field recomputes the gathered preamble, diffs it against the cached copy, and executes only the newly-added segments, so adding a `prop` in a parent and re-running a child is enough to make the new accessor appear.
 
@@ -358,7 +422,7 @@ That makes `@rootExported`/`@metarootExported` the tidy way to define a helper o
 
 ## Generated GLSL accessors: `moduleHere { }`
 
-A shader box's GLSL is also the **contract that shapes the box's Kotlin API**. `moduleHere { }` is a macro: at expansion it introspects the box's vertex/fragment (or compute) shaders and generates typed Kotlin accessors into the preamble, then rewrites itself to the real runtime builder. (The [afield.four Graphics](afield_four_graphics.md) page covers using these from a user's point of view; here we show what is actually generated.)
+A shader box's GLSL also decides what Kotlin you can write against it. `moduleHere { }` is a macro: at expansion it reads the box's vertex and fragment (or compute) shaders, writes typed Kotlin accessors into the preamble, then replaces itself with the real runtime builder. (The [Field 4 Graphics](afield_four_graphics.md) page covers using these from a user's point of view; here we show what is actually generated.)
 
 For a vertex shader with `layout(location = 0) in vec3 pos;` and a push-constant block, expansion generates lines like:
 
@@ -370,7 +434,8 @@ val Mesh.pos by FromInput()
 // (generated MappedStructure with a FloatBuffer per input + an IntBuffer `tri`)
 
 // per push-constant / UBO member — typed, two ways to reach it:
-var Mesh.worldToClip by Mesh.BoundFromStructure<afield.stdlib.linalg.Matrix4f>()
+var Mesh.worldToClip by Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>()
+
 // ...or the untyped map form, which needs no generated accessor:
 //   m.push["worldToClip"] = ...
 ```
@@ -378,9 +443,10 @@ var Mesh.worldToClip by Mesh.BoundFromStructure<afield.stdlib.linalg.Matrix4f>()
 A GLSL `struct` (or a `buffer_reference` buffer) becomes a generated Kotlin class mirroring its layout, with nested structs emitted recursively:
 
 ```diffstatic {data-lang=kotlin}
-class Params(/* layout members */) : Structure(/* ... */) {
-    var resolution_time_samples by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    val P: Params get() = childStructure("P") { m, b, p, r -> Params(m, b, p, r) }   // nested
+class Params(/* layout members */ ) : Structure(/* ... */ ) {
+    var resolution_time_samples by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    val P: Params
+        get() = childStructure("P") { m, b, p, r -> Params(m, b, p, r) } // nested
 }
 fun ParamsByteSize(): Long = 464L
 fun HasBuffer.asParams(): Params = asStructure(Params(), ParamsLayoutMembers())
@@ -395,7 +461,7 @@ once.vertex { RECT_ANIMATION_VERTEX_SHADER }
 once.fragment { myMaterial.exampleFragmentShader }
 ```
 
-`once.vertex` runs at *runtime*, though, and `moduleHere` reads the property at *expansion time*. Getting that order right is what the next section is about.
+`once.vertex` runs at *runtime* and `moduleHere` reads the property at *expansion time*, so Field starts a new fragment before a top-level `moduleHere` that follows a `once.vertex` or `once.fragment`, as if you had written the `//%-` described next.
 
 ---
 
@@ -411,27 +477,12 @@ useThe(a)
 
 Fragments are **partially-editable chunks**, and they run in order with **expand → compile → evaluate interleaved per fragment**: fragment N+1 is macro-expanded only *after* fragment N has finished running. Between fragments, the preamble/setup blocks are re-run too.
 
-That ordering matters because macro expansion is not pure (see **Macros** above): sometimes a later fragment's macro needs a value an earlier fragment set at runtime. The usual case is seeding a shader for `moduleHere`:
+That ordering matters because macro expansion is not pure (see **Macros** above): a later
+fragment's macro can read state an earlier fragment set at runtime. Seeding a shader before
+`moduleHere` is the common case, and Field inserts that break for you; the DataFrame case below
+needs it written.
 
-```diffstatic {data-lang=kotlin}
-once.vertex   { RECT_ANIMATION_VERTEX_SHADER }
-once.fragment { myMaterial.exampleFragmentShader }
-
-//%-
-
-val module = moduleHere {           // reads the box's vertex/fragment PROPERTIES
-    blend = true
-    depthTest = false
-    primitiveType = triangles
-}
-```
-
-What happens in each case:
-
-- **Without** the `//%-`, both are one compilation unit. All of its macros expand first, then it runs. So `moduleHere` expands — reading the box's shaders, finding none, seeding the **default `in vec3 pos`** shader and generating accessors for *that* — *before* `once.vertex` has ever run. The result: the module uses the wrong shader (and, for RectSL, the mesh's vertex attributes won't match the shader's inputs).
-- **With** the `//%-`, fragment 1 runs first: `once.vertex`/`once.fragment` set the box's real shader source. Then fragment 2 is expanded, and `moduleHere` now sees the shader you supplied and generates the correct accessors and module.
-
-So `//%-` is how you set some state and then run a macro that reads it. A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by fragment; mixed-language launch groups do not promise the same first-frame ordering across boxes.
+A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by fragment; mixed-language launch groups do not promise the same first-frame ordering across boxes.
 
 The preamble and setup blocks also re-run between fragments, so a fragment that *writes* to the box's preamble at runtime has published a real source declaration by the time the next fragment is compiled. That is how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution; see [DataFrames in a Box](dataframe.md#fragment-marker).
 
@@ -443,9 +494,9 @@ The preamble and setup blocks also re-run between fragments, so a fragment that 
 - **Macros** (`prop`, `moduleHere`, …) rewrite calls *before* compilation and inject glue into the **preamble**; some also mutate box state or compile shaders during expansion.
 - **`@exported`** promotes declarations into the preamble *after* a run.
 - **`once`** and **`cached`** keep a value across runs; `cached` keeps one per type and key, and closes the old one when a key changes (see **What lasts how long**).
-- **`aside { }`** is the reverse: a block a full run skips, run by hand with Alt+Enter.
+- **`aside { }`** is the reverse: a block a full run skips, run by hand with alt/option-Enter.
 - The **preamble** is the shared glue layer: a box's effective preamble is gathered from itself plus its ancestors' `import` and ` /**/`-tagged lines — which is how typed accessors from `prop`/`@exported` reach child boxes. `moduleHere`'s generated shader accessors are *not* tagged, so they stay in the box whose shader declared them.
 - **Property inheritance** resolves values by walking *up the box graph*, so **connecting boxes** (topology) decides what a box can see — the reason a graphics box must be a child of its renderer.
 
-See also: [Feature Overview](funFeatures.md) (user-level `prop`/`connect`/`once`), [afield.four Graphics](afield_four_graphics.md) (graphics API), [StackSL Examples](stacksl_examples.md) (`stack.auto`), [RectSL Examples](rectsl_examples.md), [Why Does This Value Resolve Here?](why.md) (which box a
+See also: [Feature Overview](funFeatures.md) (user-level `prop`/`connect`/`once`), [Field 4 Graphics](afield_four_graphics.md) (graphics API), [StackSL Examples](stacksl_examples.md) (`stack.auto`), [RectSL Examples](rectsl_examples.md), [Why Does This Value Resolve Here?](why.md) (which box a
 value came from), and the [Kotlin Overview](kotlin_overview.md).

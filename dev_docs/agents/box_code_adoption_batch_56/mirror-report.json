@@ -1,0 +1,10 @@
+{
+  "files": 15,
+  "retainedDrift": [
+    {
+      "mirror": "dev_docs/agents/demos/interaction_nets_lambda/document.md",
+      "sidecar": "lambda-oracle_code_.kt",
+      "reason": "pre-existing mirror drift"
+    }
+  ]
+}

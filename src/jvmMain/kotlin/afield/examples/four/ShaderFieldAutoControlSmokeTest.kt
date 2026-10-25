@@ -1,19 +1,19 @@
 package afield.examples.four
 
-import afield.Box
-import afield.four.Renderer
-import afield.four.modules.ShaderKind
-import afield.four.util.FIELD_PROBE_BUFFER_NAME
-import afield.four.util.Options
-import afield.four.util.GpuProbe
-import afield.four.util.Window
-import afield.stdlib.AdaptiveDistributionController
-import afield.stdlib.ControllerConfig
-import afield.stdlib.ShaderProbeAutoControlConfig
-import afield.stdlib.UniformQuantileFeatureExtractor
-import afield.stdlib.fieldProbeAutoControl
-import afield.stdlib.fieldProbeHere
-import afield.stdlib.preprocess
+import afield.document.graph.Box
+import afield.graphics.vulkan.Renderer
+import afield.graphics.shader.ShaderKind
+import afield.graphics.vulkan.util.FIELD_PROBE_BUFFER_NAME
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.GpuProbe
+import afield.graphics.vulkan.util.Window
+import afield.math.control.AdaptiveDistributionController
+import afield.math.control.ControllerConfig
+import afield.graphics.shader.ShaderProbeAutoControlConfig
+import afield.math.control.UniformQuantileFeatureExtractor
+import afield.graphics.shader.fieldProbeAutoControl
+import afield.graphics.shader.fieldProbeHere
+import afield.graphics.shader.preprocess
 import kotlin.math.abs
 
 class ShaderFieldAutoControlSmokeTest {
@@ -57,7 +57,7 @@ class ShaderFieldAutoControlSmokeTest {
                         float skew;
                     } controls;
 
-                    {% include "fieldProbe" %}
+                    {% property "fieldProbe" %}
 
                     const float PI = 3.14159265358979323846;
 

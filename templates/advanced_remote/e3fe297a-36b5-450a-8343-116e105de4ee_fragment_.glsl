@@ -22,6 +22,6 @@ void main()
 
     // in Javascript we'd call this 'vec'
     // but here we have to say vec4
-    // this is our translucent red
+    // Use the interpolated vertex RGB with opaque alpha.
     gl_FragColor = vec4(vColor.rgb,1);
 }

@@ -52,7 +52,7 @@ thisBox.setPropertyRaw("notes", """
 """.trimIndent())
 display("ai-chat", "<<ai>>\n[Open the fragment from chat](field://box/$guideUid?property=fragment&line=3)\n\n[Run from chat](field://macro/guide_link_demo?scope=document)")
 for ((macroName, scope) in listOf("guide_link_demo" to "document", "guide_link_scope_demo" to "workspace")) {
-    check(afield.OperationTranscript.writeMacro(inside.filename, macroName, """
+    check(afield.tools.automation.OperationTranscript.writeMacro(inside.filename, macroName, """
 name: $macroName
 operations:
   - execute:

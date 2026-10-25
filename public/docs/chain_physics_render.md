@@ -18,31 +18,30 @@ The document that makes this figure is a starting point:
 
 ## From the cloth to the tracer
 
-`afield.four.physics` runs the simulation, `afield.manifold` welds, and `afield.four.fabricated`
+`afield.simulation.physics` runs the simulation, `afield.geometry.solid.manifold` welds, and `afield.graphics.scene.fabricated`
 traces. Positions come out of the cloth as `cloth.position(col, row)`, and the welded solid goes into
 the scene as a `TriMesh`. Nothing else passes between them.
 
 ```diffstatic {data-lang=kotlin}
 val sim = SimdVerlet(SimdVerlet.State3.empty())
 val cloth = sim.addCloth(
-    width = side, height = side, spacing = spacing,
-    stiffness = 60f, curvatureStrength = 20f,
+    width = side,
+    height = side,
+    spacing = spacing,
+    stiffness = 60f,
+    curvatureStrength = 20f,
     position = { c, r -> vec((c - (side - 1) * 0.5f) * spacing, 0f, (r - (side - 1) * 0.5f) * spacing) },
     pinned = { _, _ -> false },
 )
 val world = sim.addColliders(
-    SphereCollider(0f, 0.78f, 0f, radius = 0.52f).also { it.friction = 0.8f; it.margin = 0.01f },
-    PlaneCollider(0f, -1f, 0f, offset = -1.28f).also { it.friction = 0.9f },
+    SphereCollider(0f, -0.78f, 0f, radius = 0.52f).also {
+        it.friction = 0.8f
+        it.margin = 0.01f
+    },
+    PlaneCollider(0f, 1f, 0f, offset = -1.28f).also { it.friction = 0.9f },
 )
-repeat(settleFrames) { cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = 9.8f, iterations = 16) }
+repeat(settleFrames) { cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = -9.8f, iterations = 16) }
 ```
-
-!!! warning "The two subsystems disagree about which way is up"
-
-    Gravity is **+y** in `SimdVerlet`, which is why the sphere sits at `y = 0.78` *below* a sheet laid
-    out at `y = 0`, and why the floor is a plane with normal `-y`. The path tracer has +y up. Negate
-    `y` once, where the positions are read out, rather than mirroring the camera and the floor to
-    compensate: a mirrored camera reverses the winding of everything it sees.
 
 ## A capsule is the hull of two balls
 
@@ -77,9 +76,11 @@ solid. So the genus of the union has to equal the sheet's quad count, and the bo
 for you:
 
 ```diffstatic {data-lang=kotlin}
-println("genus $netGenus against $quads quads in the sheet; " +
-    if (netGenus == quads) "they agree, so no two rods have been welded by contact"
-    else "they differ by ${quads - netGenus}, so that many cycles have been closed by folds touching")
+println(
+    "genus $netGenus against $quads quads in the sheet; " +
+        if (netGenus == quads) "they agree, so no two rods have been welded by contact"
+        else "they differ by ${quads - netGenus}, so that many cycles have been closed by folds touching",
+)
 ```
 
 The two can legitimately differ. A drape tight enough for one fold to touch

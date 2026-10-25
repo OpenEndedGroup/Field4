@@ -1,6 +1,6 @@
-# A solid, written down: `afield.solidsl`
+# A solid, written down: `afield.lang.solidsl`
 
-In `afield.solidsl` a shape is a **value**. Subtracting a cylinder from a cuboid builds an expression
+In `afield.lang.solidsl` a shape is a **value**. Subtracting a cylinder from a cuboid builds an expression
 tree, and from that one tree you can march a mesh, build an exact CSG solid, emit GLSL, or simplify
 it. A document you can open and run is [at the bottom of the page](#open-this); the KDoc for
 `SolidExpr`, `Profile`, `SolidLowering` and `SolidTemplate` covers every declaration used here.
@@ -18,15 +18,16 @@ lambda cannot be printed, compared, serialized, rewritten, or emitted as GLSL.
 same in three dimensions. Here is one part, and the four things you can ask of it:
 
 ```diffstatic {data-lang=kotlin}
-val part = (cuboid(4, 2.6, 0.7) + cylinder(1.4, 0.8)) -
-    cylinder(3.0, 0.42) -
-    Profile.rect(2.9, 0.85).offset(0.22).extruded(3.0).at(0, 1.05, -1.5)
+val part =
+    (cuboid(4, 2.6, 0.7) + cylinder(1.4, 0.8)) -
+        cylinder(3.0, 0.42) -
+        Profile.rect(2.9, 0.85).offset(0.22).extruded(3.0).at(0, 1.05, -1.5)
 
-part.toScalarField()   // (Vec3) -> Float — marchable, and everything mesh_sdf.kt does
-part.exactSolid()      // Manifold's exact CSG — a guaranteed-closed Solid, or a stated refusal
-part.toGlsl()          // float sdSolid(vec3 p) — a real-time raymarch of the same source
-part.simplified()      // a smaller expression that means the same thing
-println(part)          // Difference(children=[Union(children=[Cuboid(x=4.0, …
+part.toScalarField() // (Vec3) -> Float — marchable, and everything mesh_sdf.kt does
+part.exactSolid() // Manifold's exact CSG — a guaranteed-closed Solid, or a stated refusal
+part.toGlsl() // float sdSolid(vec3 p) — a real-time raymarch of the same source
+part.simplified() // a smaller expression that means the same thing
+println(part) // Difference(children=[Union(children=[Cuboid(x=4.0, …
 ```
 
 ## The vocabulary
@@ -75,13 +76,15 @@ one primitive with no exact form — see [refusals](#refusals-are-in-the-type).
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/vocabulary.png" wait="8.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 // Every panel frames its own bounds, so the small shapes are not lost beside the large ones.
 val q = SolidQuality(segments = 64, edgeLengthFraction = 1.0 / 55.0)
-fun mesh(e: SolidExpr) = e.buildSolid(q).let { b ->
-    val m = b.solid.toTriMesh(normals = true); b.close(); m
-}
+// toTriMesh copies the geometry before the native build closes.
+fun mesh(e: SolidExpr) =
+    e.buildSolid(q).use { build ->
+        build.solid.toTriMesh(normals = true)
+    }
 
 threeGrid(
     "sphere(1.0)" to mesh(sphere(1.0)),
@@ -90,7 +93,9 @@ threeGrid(
     "cone(1.6, 0.8)" to mesh(cone(1.6, 0.8)),
     "torus(1.0, 0.32)" to mesh(torus(1.0, 0.32)),
     "star(6).extruded(twist 90)" to mesh(Profile.star(6, 0.9, 0.45).extruded(1.2, twistDegrees = 90.0)),
-    channel = "vocab", columns = 3, height = 470,
+    channel = "vocab",
+    columns = 3,
+    height = 470,
     view = MeshView(width = 300, height = 210, yawDegrees = 32.0, pitchDegrees = 16.0, wireframe = true),
 )
 ```
@@ -104,7 +109,7 @@ cross-section at every resolution, and is wrong in a different way instead.
 
 ## Two lowerings of one source
 
-A `SolidExpr` lowers two ways, and [`afield.manifold`](manifold.md) supplies the second of them.
+A `SolidExpr` lowers two ways, and [`afield.geometry.solid.manifold`](manifold.md) supplies the second of them.
 Neither is a superset of the other, so which one you want depends on what you are going to do next:
 
 <div class="field-data-table" markdown>
@@ -165,7 +170,7 @@ tree, and `exactRefusal()` answers the yes-or-no.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/refusals.png" wait="8.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 val q = SolidQuality(segments = 64, edgeLengthFraction = 1.0 / 70.0)
 
@@ -177,7 +182,7 @@ val shellCut = sphere(0.9).shelled(0.08) - cuboid(1.2, 1.2, 1.2).at(0.9, 0.0, 0.
 // The gyroid has no window of its own and borrows the cuboid's, which is the bounds story below.
 val gyr = gyroid(6.0, 0.30) and cuboid(2.6, 2.6, 2.6)
 
-listOf("blend" to blend, "rounded" to rounded, "shell" to shellCut, "gyroid" to gyr).forEach { (n, e) ->
+["blend" to blend, "rounded" to rounded, "shell" to shellCut, "gyroid" to gyr].forEach { (n, e) ->
     println("%-8s refuses=%s".format(n, e.exactRefusal() != null))
 }
 
@@ -186,7 +191,9 @@ threeGrid(
     "cuboid.rounded(0.18)" to rounded.marchedMesh(q),
     "sphere.shelled(0.08), cut open" to shellCut.marchedMesh(q),
     "gyroid(6.0) and cuboid(2.6)" to gyr.marchedMesh(q),
-    channel = "refusals", columns = 2, height = 540,
+    channel = "refusals",
+    columns = 2,
+    height = 540,
     view = MeshView(width = 330, height = 250, yawDegrees = 24.0, pitchDegrees = 8.0, wireframe = true),
 )
 ```
@@ -205,8 +212,10 @@ no. One smooth blend anywhere then buys a hundred-thousand-triangle approximatio
 was perfectly exact. `buildSolid` walks down instead.
 
 ```diffstatic {data-lang=kotlin}
-val build = (plate + smoothUnion(ball, post, k = 0.28)).buildSolid()
-println(build.report())
+(plate + smoothUnion(ball, post, k = 0.28)).buildSolid().use { build ->
+    println(build.report())
+}
+
 // hybrid: 1 subtree(s) marched, the rest exact (39552 triangles, genus 4)
 //   marched SmoothUnion at edgeLength 0.0416 — a smooth blend's fillet surface lies on neither operand…
 ```
@@ -229,14 +238,16 @@ them side by side:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/hybrid.png" wait="8.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 val q = SolidQuality(segments = 96, edgeLengthFraction = 1.0 / 80.0)
 
 val plate = cuboid(3.2, 2.2, 0.42)
-val bores = unionOf(listOf(-1.1 to -0.7, 1.1 to -0.7, -1.1 to 0.7, 1.1 to 0.7).map { (x, y) ->
-    cylinder(2.0, 0.30, segments = 96).at(x, y, 0.0)
-})
+val bores = unionOf(
+    [-1.1 to -0.7, 1.1 to -0.7, -1.1 to 0.7, 1.1 to 0.7].map { (x, y) ->
+        cylinder(2.0, 0.30, segments = 96).at(x, y, 0.0)
+    },
+)
 val boss = smoothUnion(
     sphere(0.42, segments = 96).at(0.0, 0.0, 0.62),
     cylinder(1.1, 0.26, segments = 96).at(0.0, 0.0, 0.30),
@@ -244,18 +255,20 @@ val boss = smoothUnion(
 )
 val part = (plate - bores) + boss
 
-val build = part.buildSolid(q)
-println(build.report())
-val naive = part.marchedMesh(q)
-println("hybrid ${build.solid.triangleCount} triangles, naive ${naive.triangleCount}")
+part.buildSolid(q).use { build ->
+    println(build.report())
+    val naive = part.marchedMesh(q)
+    println("hybrid ${build.solid.triangleCount} triangles, naive ${naive.triangleCount}")
 
-threeGrid(
-    "buildSolid — exact plate, marched boss" to build.solid.toTriMesh(normals = true),
-    "marchedMesh — everything approximated" to naive,
-    channel = "hybrid", columns = 2, height = 360,
-    view = MeshView(width = 360, height = 300, yawDegrees = 34.0, pitchDegrees = 24.0, wireframe = true),
-)
-build.close()
+    threeGrid(
+        "buildSolid — exact plate, marched boss" to build.solid.toTriMesh(normals = true),
+        "marchedMesh — everything approximated" to naive,
+        channel = "hybrid",
+        columns = 2,
+        height = 360,
+        view = MeshView(width = 360, height = 300, yawDegrees = 34.0, pitchDegrees = 24.0, wireframe = true),
+    )
+}
 ```
 
 ![Two panels of the same part: a rectangular plate with four corner holes and a domed boss blended into its centre. The left panel, the hybrid build, draws the plate as a handful of large flat triangles with long diagonals and the bores as clean swept strips, while only the central boss carries a fine mesh. The right panel, fully marched, is uniformly finely triangulated everywhere including the flat faces](assets/solid_notation/hybrid.png)
@@ -270,8 +283,8 @@ window of its own and borrows its parent's.
 Two calls turn an expression into GLSL:
 
 ```diffstatic {data-lang=kotlin}
-val emitted = scene.toGlsl()          // GlslSolid(sdSolid, 174 statements, stepScale 0.4, 2 notes)
-println(scene.toRaymarchFragment())   // sphere tracing, a normal, two lights, ready to paste
+val emitted = scene.toGlsl() // GlslSolid(sdSolid, 174 statements, stepScale 0.4, 2 notes)
+println(scene.toRaymarchFragment()) // sphere tracing, a normal, two lights, ready to paste
 ```
 
 `toRaymarchFragment()` hands back a whole fragment shader, with the normal taken from the field's
@@ -306,6 +319,7 @@ level-set fallback and onto the exact path:
 
 ```diffstatic {data-lang=kotlin}
 println(smoothUnion(a, b, k = 0.0).simplificationReport())
+
 // nodes 3 -> 1, GLSL 19 -> 10 statements, path level set -> exact
 ```
 
@@ -318,9 +332,9 @@ does not always come back out as three angles), reassociating `SmoothUnion`, reo
 A tree you can read is also a tree you can differentiate, and that is the third thing you can do with
 one source. Declare which numbers in a shape are free, hand over some samples of the shape you
 actually want, and a gradient finds them — the 3D version of what
-[`afield.rectsl.RectSLFn`](rectsl_inverse_animation.md) does for 2D tracks.
+[RectSL's inverse animation](rectsl_inverse_animation.md) (`RectSLFn.kt` in `afield.lang.rectsl`) does for 2D tracks.
 
-The machinery is `afield.stdlib.AD`, reverse-mode automatic differentiation over `Double`:
+The machinery is `afield.math.autodiff.AD`, reverse-mode automatic differentiation over `Double`:
 `SolidGradient.kt` is `SolidField.kt`'s `toField3` transposed line for line into `AD` arithmetic.
 Reverse mode because the objective is one scalar loss over many sample points and a handful of
 parameters, so one forward pass and one backward sweep give every parameter derivative at once. The
@@ -336,19 +350,26 @@ bound instead to a **structural address**:
 val part = smoothUnion(sphere(0.45), cylinder(1.90, 0.16), k = 0.18)
 
 part.numericSlots()
-// SmoothUnion/a/Sphere.radius = 0.45
-// SmoothUnion/b/Cylinder.height = 1.9
-// SmoothUnion/b/Cylinder.radiusLow = 0.16
-// SmoothUnion/b/Cylinder.radiusHigh = 0.16
-// SmoothUnion.k = 0.18
 
-val template = part.parameterize {
-    param("sphereRadius", "SmoothUnion/a/Sphere.radius")
-    param("barHeight", "SmoothUnion/b/Cylinder.height")
-    param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }   // both, tied
-}.orThrow()
+/*
+SmoothUnion/a/Sphere.radius = 0.45
+SmoothUnion/b/Cylinder.height = 1.9
+SmoothUnion/b/Cylinder.radiusLow = 0.16
+SmoothUnion/b/Cylinder.radiusHigh = 0.16
+SmoothUnion.k = 0.18
+*/
+
+val template =
+    part
+        .parameterize {
+            param("sphereRadius", "SmoothUnion/a/Sphere.radius")
+            param("barHeight", "SmoothUnion/b/Cylinder.height")
+            param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") } // both, tied
+        }
+        .orThrow()
 
 template.gradientAt(0.9, 0.0, 0.0, template.seed)
+
 // value 0.450000  dPos 1.000, 0.000, 0.000  dParam -1.000, 0.000, 0.000
 ```
 
@@ -415,14 +436,17 @@ val target = template.withValues(doubleArrayOf(0.45, 1.90, 0.16)).sampleField(co
 val fit = template.fitParameters(target, start = doubleArrayOf(0.26, 1.05, 0.34))
 
 fit.report()
-// fit 3 parameter(s) in 14 iterations (gradient)
-//   sphereRadius       0.260000  ->      0.450000
-//   barHeight          1.050000  ->      1.900000
-//   barRadius          0.340000  ->      0.160000
-//   loss           2.140904e-02  ->  4.609346e-22
-//   improvement    4.645e+19x
 
-fit.fitted        // an ordinary SolidExpr again: marchable, GLSL-able, printable
+/*
+fit 3 parameter(s) in 14 iterations (gradient)
+  sphereRadius       0.260000  ->      0.450000
+  barHeight          1.050000  ->      1.900000
+  barRadius          0.340000  ->      0.160000
+  loss           2.140904e-02  ->  4.609346e-22
+  improvement    4.645e+19x
+*/
+
+fit.fitted // an ordinary SolidExpr again: marchable, GLSL-able, printable
 ```
 
 The parameters come back to about `1e-10`, and `fit.fitted` is an ordinary expression you can use
@@ -433,18 +457,21 @@ measured for it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/inverse.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 // The model, and the three numbers to be solved for. `barRadius` drives BOTH of the cylinder's
 // radii, which is how "the bar is a cylinder, not a frustum" gets written down.
-val template = smoothUnion(sphere(0.45), cylinder(1.90, 0.16), k = 0.18).parameterize {
-    param("sphereRadius", "SmoothUnion/a/Sphere.radius")
-    param("barHeight", "SmoothUnion/b/Cylinder.height")
-    param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
-}.orThrow()
+val template =
+    smoothUnion(sphere(0.45), cylinder(1.90, 0.16), k = 0.18)
+        .parameterize {
+            param("sphereRadius", "SmoothUnion/a/Sphere.radius")
+            param("barHeight", "SmoothUnion/b/Cylinder.height")
+            param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
+        }
+        .orThrow()
 
 val truth = doubleArrayOf(0.45, 1.90, 0.16)
-val seed = doubleArrayOf(0.26, 1.05, 0.34)          // wrong by 42%, 45% and 112%
+val seed = doubleArrayOf(0.26, 1.05, 0.34) // wrong by 42%, 45% and 112%
 
 // The target is a bag of points with a signed distance at each. Nothing below sees `truth` again.
 val target = template.withValues(truth).sampleField(count = 2400, seed = 91)
@@ -459,7 +486,9 @@ threeGrid(
     "seed  ·  loss %.3e".format(fit.initialLoss) to m(template.withValues(seed)),
     "fitted  ·  loss %.3e  (%.2gx)".format(fit.loss, fit.improvementFactor) to m(fit.fitted),
     "target  ·  the shape the samples came from" to m(template.withValues(truth)),
-    channel = "inverse", columns = 3, height = 300,
+    channel = "inverse",
+    columns = 3,
+    height = 300,
     view = MeshView(width = 320, height = 250, yawDegrees = 32.0, pitchDegrees = 22.0, wireframe = true),
 )
 ```
@@ -482,15 +511,18 @@ so its numbers are recoverable. The cube is being asked to be a sphere, and no s
 that.
 
 ```diffstatic {data-lang=kotlin}
-val truth  = sphere(0.62) + cylinder(2.20, 0.28)
+val truth = sphere(0.62) + cylinder(2.20, 0.28)
 val target = truth.sampleField(count = 3000, seed = 17)
 
-val model = (cuboid(1.0) + cylinder(1.0, 1.0).turned(y = 1.0)).parameterize {
-    param("cubeSize")  { it.node == "Cuboid" }                                  // one number, all three extents
-    param("barHeight") { it.node == "Cylinder" && it.field == "height" }
-    param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
-    param("barTilt")   { it.node == "Rotate" && it.field == "y" }               // an ANGLE, in degrees
-}.orThrow()
+val model =
+    (cuboid(1.0) + cylinder(1.0, 1.0).turned(y = 1.0))
+        .parameterize {
+            param("cubeSize") { it.node == "Cuboid" } // one number, all three extents
+            param("barHeight") { it.node == "Cylinder" && it.field == "height" }
+            param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
+            param("barTilt") { it.node == "Rotate" && it.field == "y" } // an ANGLE, in degrees
+        }
+        .orThrow()
 
 val fit = model.fitParameters(
     target,
@@ -498,51 +530,63 @@ val fit = model.fitParameters(
     SolidFitOptions(method = OptimizeMethod.ADAM, iterations = 6000, learningRate = 0.015),
 )
 
-fit.report()
-// fit 4 parameter(s) in 4176 iterations (gradient)
-//   cubeSize           1.350000  ->      0.855279
-//   barHeight          1.600000  ->      2.197225
-//   barRadius          0.420000  ->      0.281335
-//   barTilt           25.000000  ->     -0.009525
-//   loss           7.044887e-02  ->  3.766267e-03
-//   rms distance   2.654221e-01  ->  6.136992e-02
-//   improvement    18.71x
+fit
+    .report()
+
+/*
+             fit 4 parameter(s) in 4176 iterations (gradient)
+               cubeSize           1.350000  ->      0.855279
+               barHeight          1.600000  ->      2.197225
+               barRadius          0.420000  ->      0.281335
+               barTilt           25.000000  ->     -0.009525
+               loss           7.044887e-02  ->  3.766267e-03
+               rms distance   2.654221e-01  ->  6.136992e-02
+               improvement    18.71x
+             */
 ```
 
 Marched, the seed, the fit and the target:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/partial.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 // A sphere and a cylinder. The model below gets a CUBE and a cylinder.
 val truth = sphere(0.62) + cylinder(2.20, 0.28)
 val target = truth.sampleField(count = 3000, seed = 17)
 
-val model = (cuboid(1.0) + cylinder(1.0, 1.0).turned(y = 1.0)).parameterize {
-    param("cubeSize") { it.node == "Cuboid" }
-    param("barHeight") { it.node == "Cylinder" && it.field == "height" }
-    param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
-    param("barTilt") { it.node == "Rotate" && it.field == "y" }
-}.orThrow()
+val model =
+    (cuboid(1.0) + cylinder(1.0, 1.0).turned(y = 1.0))
+        .parameterize {
+            param("cubeSize") { it.node == "Cuboid" }
+            param("barHeight") { it.node == "Cylinder" && it.field == "height" }
+            param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
+            param("barTilt") { it.node == "Rotate" && it.field == "y" }
+        }
+        .orThrow()
 
 val seed = doubleArrayOf(1.35, 1.60, 0.42, 25.0)
 val fit = model.fitParameters(
-    target, seed,
+    target,
+    seed,
     SolidFitOptions(method = OptimizeMethod.ADAM, iterations = 6000, learningRate = 0.015),
 )
 println(fit.report())
 
-// `margin` is not decoration here. `march`'s window defaults to the shape's OWN bounding box, and
-// a cuboid's faces lie exactly ON that boundary — the outermost grid samples sit at the zero
-// crossing, the side faces never close, and the cube renders as a flat sheet. A sphere only touches
-// its box tangentially, at six points, which is why the fit above gets away with the default.
+/*
+`margin` is not decoration here. `march`'s window defaults to the shape's OWN bounding box, and
+a cuboid's faces lie exactly ON that boundary — the outermost grid samples sit at the zero
+crossing, the side faces never close, and the cube renders as a flat sheet. A sphere only touches
+its box tangentially, at six points, which is why the fit above gets away with the default.
+*/
 fun m(e: SolidExpr) = e.march(resolution = 104, margin = 0.06)
 threeGrid(
     "model at the seed  ·  loss %.3e".format(fit.initialLoss) to m(model.withValues(seed)),
     "fitted  ·  loss %.3e  (%.1fx)".format(fit.loss, fit.improvementFactor) to m(fit.fitted),
     "target  ·  a SPHERE and a cylinder" to m(truth),
-    channel = "partial", columns = 3, height = 300,
+    channel = "partial",
+    columns = 3,
+    height = 300,
     view = MeshView(width = 320, height = 250, yawDegrees = 32.0, pitchDegrees = 22.0, wireframe = true),
 )
 ```
@@ -560,36 +604,45 @@ shows something the two ends cannot: *when* each parameter stops moving.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/converging.png" wait="14.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 val truth = sphere(0.62) + cylinder(2.20, 0.28)
 val target = truth.sampleField(count = 3000, seed = 17)
 
-val model = (cuboid(1.0) + cylinder(1.0, 1.0).turned(y = 1.0)).parameterize {
-    param("cubeSize") { it.node == "Cuboid" }
-    param("barHeight") { it.node == "Cylinder" && it.field == "height" }
-    param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
-    param("barTilt") { it.node == "Rotate" && it.field == "y" }
-}.orThrow()
+val model =
+    (cuboid(1.0) + cylinder(1.0, 1.0).turned(y = 1.0))
+        .parameterize {
+            param("cubeSize") { it.node == "Cuboid" }
+            param("barHeight") { it.node == "Cylinder" && it.field == "height" }
+            param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
+            param("barTilt") { it.node == "Rotate" && it.field == "y" }
+        }
+        .orThrow()
 
 val fit = model.fitParameters(
-    target, doubleArrayOf(1.35, 1.60, 0.42, 25.0),
+    target,
+    doubleArrayOf(1.35, 1.60, 0.42, 25.0),
     SolidFitOptions(method = OptimizeMethod.ADAM, iterations = 6000, learningRate = 0.015),
 )
 
-// `run.trajectory` is the parameter vector at every recorded iteration, indexed exactly like
-// `run.losses`. `shapeAt` substitutes one back into the template, so these are the shapes the
-// optimizer really held -- not six descents truncated at six different caps.
-val frames = listOf(0, 150, 500, 1200, 2400, fit.run.trajectory.lastIndex)
+/*
+`run.trajectory` is the parameter vector at every recorded iteration, indexed exactly like
+`run.losses`. `shapeAt` substitutes one back into the template, so these are the shapes the
+optimizer really held -- not six descents truncated at six different caps.
+*/
+val frames = [0, 150, 500, 1200, 2400, fit.run.trajectory.lastIndex]
 val tilt = model.names.indexOf("barTilt")
 
 threeGrid(
-    *frames.map { i ->
-        "iter %d  ·  tilt %.1f deg  ·  loss %.2e"
-            .format(i, fit.run.trajectory[i][tilt], fit.run.losses[i]) to
-            fit.shapeAt(i).march(resolution = 88, margin = 0.06)
-    }.toTypedArray(),
-    channel = "converging", columns = 6, height = 210,
+    *frames
+        .map { i ->
+            "iter %d  ·  tilt %.1f deg  ·  loss %.2e".format(i, fit.run.trajectory[i][tilt], fit.run.losses[i]) to
+                fit.shapeAt(i).march(resolution = 88, margin = 0.06)
+        }
+        .toTypedArray(),
+    channel = "converging",
+    columns = 6,
+    height = 210,
     view = MeshView(width = 190, height = 170, yawDegrees = 32.0, pitchDegrees = 22.0, wireframe = true),
 )
 ```
@@ -642,15 +695,8 @@ of the target, so read the report with that in mind.
     reaches the same loss in 36 iterations. The figures use ADAM because its small steps make a
     readable filmstrip ([`dev_docs/SOLIDSL_OPTIMIZER_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/SOLIDSL_OPTIMIZER_MEASUREMENTS.md)).
 
-!!! note "A cube hidden inside the bar gets zero gradient"
-
-    Seed `cubeSize` at `0.40` against a bar of radius `0.55` and the fit reports
-    `cubeSize 0.400000 -> 0.400000` after 372 iterations. `Union` is `min`, so
-    a child that is never the nearest surface at any sample point receives **exactly** zero
-    gradient, and a cube small enough to sit wholly inside the bar is never the nearest surface
-    anywhere. `fit.deadParameters` reports `none` here, because it only looks at the gradient at
-    the seed, and there the cube is invisible to the loss rather than stationary in it. [What makes a parameter refuse to move](#what-makes-a-parameter-refuse-to-move)
-    is the same failure mode arriving by a different route.
+A cube small enough to sit wholly inside the bar never moves at all: seeded at `0.40` against a bar
+of radius `0.55`, `cubeSize` comes back `0.400000` and `fit.deadParameters` names it.
 
 ### What makes a parameter refuse to move
 
@@ -661,14 +707,15 @@ from every sample, and a descent on its radius stops immediately because the gra
 zero.
 
 ```diffstatic {data-lang=kotlin}
-unionOf(listOf(sphere(1.0), sphere(0.25))).parameterize { … }
+unionOf([sphere(1.0), sphere(0.25)]).parameterize { … }
     .fitParameters(target, …).deadParameters      // [inner]
 
 smoothUnion(sphere(1.0), sphere(0.25), k = 0.9).parameterize { … }
     .fitParameters(target, …).deadParameters      // []
 ```
 
-`SolidFit.deadParameters` names the parameters whose gradient was exactly zero at the start. It is
+`SolidFit.deadParameters` names the parameters whose gradient was exactly zero at the start, and
+those the descent never moved off their seed. It is
 reported rather than thrown, because a legitimately dead parameter is a fine thing to have in a
 vector — a fit over six holes where one is genuinely irrelevant — and it is the *unexpectedly* dead
 one that looks like a success.
@@ -704,26 +751,27 @@ start, so a fit with `iterations = 0` reports it before the descent takes a sing
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/one_sided.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
-import afield.stdlib.TriMesh
+import afield.lang.solidsl.*
 
 // Three lobes on the X axis with independent radii.
-val template = smoothUnion(
-    smoothUnion(sphere(0.50), sphere(0.35).at(-0.80, 0.0, 0.0), 0.25),
-    sphere(0.42).at(0.80, 0.0, 0.0),
-    0.25,
-).parameterize {
-    param("middle", "SmoothUnion/a/SmoothUnion/a/Sphere.radius")
-    param("left", "SmoothUnion/a/SmoothUnion/b/Translate/Sphere.radius")
-    param("right", "SmoothUnion/b/Translate/Sphere.radius")
-}.orThrow()
+val template =
+    smoothUnion(
+            smoothUnion(sphere(0.50), sphere(0.35).at(-0.80, 0.0, 0.0), 0.25),
+            sphere(0.42).at(0.80, 0.0, 0.0),
+            0.25,
+        )
+        .parameterize {
+            param("middle", "SmoothUnion/a/SmoothUnion/a/Sphere.radius")
+            param("left", "SmoothUnion/a/SmoothUnion/b/Translate/Sphere.radius")
+            param("right", "SmoothUnion/b/Translate/Sphere.radius")
+        }
+        .orThrow()
 
 val truth = doubleArrayOf(0.50, 0.35, 0.42)
 val seed = doubleArrayOf(0.30, 0.56, 0.20)
 
 // The view from one side: everything right of x = 0.10 is never seen.
-val cloud = template.withValues(truth).samplePointCloud(count = 4000, seed = 4)
-    .filter { x, _, _ -> x < 0.10 }
+val cloud = template.withValues(truth).samplePointCloud(count = 4000, seed = 4).filter { x, _, _ -> x < 0.10 }
 
 // Before the descent: zero iterations, so this is only the gradient at the seed.
 val before = template.fitToPointCloud(cloud, seed, SolidFitOptions(iterations = 0))
@@ -738,9 +786,10 @@ fun dots(c: SolidPointCloud, r: Float = 0.014f): TriMesh {
     val faces = intArrayOf(0, 2, 4, 2, 1, 4, 1, 3, 4, 3, 0, 4, 2, 0, 5, 1, 2, 5, 3, 1, 5, 0, 3, 5)
     val idx = IntArray(c.size * 24)
     for (i in 0 until c.size) {
-        val x = c.xs[i].toFloat(); val y = c.ys[i].toFloat(); val z = c.zs[i].toFloat()
-        floatArrayOf(x + r, y, z, x - r, y, z, x, y + r, z, x, y - r, z, x, y, z + r, x, y, z - r)
-            .copyInto(pos, i * 18)
+        val x = c.xs[i].toFloat()
+        val y = c.ys[i].toFloat()
+        val z = c.zs[i].toFloat()
+        floatArrayOf(x + r, y, z, x - r, y, z, x, y + r, z, x, y - r, z, x, y, z + r, x, y, z - r).copyInto(pos, i * 18)
         for (k in faces.indices) idx[i * 24 + k] = i * 6 + faces[k]
     }
     return TriMesh(pos, idx)
@@ -753,8 +802,12 @@ threeGrid(
     "seed  ·  right = %.2f".format(seed[right]) to m(template.withValues(seed)),
     "fitted  ·  right = %.6f".format(fit.values[right]) to m(fit.fitted),
     "truth  ·  right = %.2f".format(truth[right]) to m(template.withValues(truth)),
-    channel = "one_sided", columns = 4, height = 230,
-    view = MeshView(width = 250, height = 190, yawDegrees = 0.0, pitchDegrees = 30.0, distance = 3.6, wireframe = false),
+    channel = "one_sided",
+    columns = 4,
+    height = 230,
+    view =
+        MeshView(width = 250, height = 190, yawDegrees = 0.0, pitchDegrees = 30.0, distance = 3.6, wireframe = false),
+    padding = 1.41,
 )
 ```
 
@@ -771,25 +824,13 @@ Primitives are centred on the origin. Everything else follows Manifold's convent
 
 - `cylinder` runs along **Z**.
 - `Profile.extruded(h)` runs from `z = 0` to `z = h` — *not* centred, because `Section.extruded` is not.
-- `Profile.revolved()` turns about **Z**, profile at `x ≥ 0`, counter-clockwise from `+X`.
+- `Profile.revolved()` turns about **Z**, profile at `x ≥ 0`, counter-clockwise from `+X`. The mesh
+  lathe `revolveMesh` defaults to Y; pass `axis = RevolveAxis.Z` to get the same solid from it.
 - `turned(x, y, z)` is in **degrees**, applied X then Y then Z.
 
 There is no `Torus` node:
 `torus(R, r)` is a function that builds `Profile.circle(r).translated(R, 0).revolved()`, which is
 what a torus is.
-
-!!! warning "Two lathes, ninety degrees apart"
-
-    Field has two of these and they do not agree. Check which one you have before you port a
-    profile between them.
-
-    | | axis | profile |
-    |---|---|---|
-    | `afield.stdlib.revolveMesh` | **Y** | `(radius, y)` |
-    | `afield.manifold.Section.revolved`, and therefore `Profile.revolved` | **Z** | `(radius, z)` |
-
-    Porting a profile one way or the other means swapping its `y` and `z`, or rotating the result.
-    `Profile.revolved` takes no axis argument, because Manifold's revolve has none.
 
 ## Open this {#open-this}
 

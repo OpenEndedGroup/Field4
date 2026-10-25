@@ -1,0 +1,107 @@
+{
+  "baseline": "f8cd87437",
+  "sources": [
+    {
+      "path": "dev_docs/assets/headless_browser/headless_browser_table.yaml",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/checks/runtime.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/document.md",
+      "kotlinBodies": 2,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/function_source_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/metadata.edn",
+      "kotlinBodies": 0,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/studies/function_source/r1-8f83d79e35c9.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/studies/function_source/r2-8f83d79e35c9.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/studies/function_source/r3-66fd67f6fe7c.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/studies/function_source/r4-f7f9ef4f2f47.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/studies/function_source/r5-2aa6023ddfca.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/studies/function_source/r6-deb1b1738cb0.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/studies/function_source/r7-ebc54198e3ae.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/studies/function_source/r8-e4aea058bc8b.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/studies/function_source/r9-82456e1e48ac.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "tools/inventory_box_code.py",
+      "kotlinBodies": 0,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "tools/package_stackauto_conversation.py",
+      "kotlinBodies": 0,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "tools/test_inventory_box_code.py",
+      "kotlinBodies": 0,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

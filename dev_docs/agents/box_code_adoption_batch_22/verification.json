@@ -1,0 +1,23 @@
+{
+  "baseline": "5895a5b9e",
+  "sources": [
+    {
+      "path": "dev_docs/agents/demos/direct_lighting/example.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/learned_from_module/example.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/direct_lighting.md",
+      "kotlinBodies": 2,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

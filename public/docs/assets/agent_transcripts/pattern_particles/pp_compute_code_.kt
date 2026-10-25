@@ -1,8 +1,6 @@
-import afield.four.buffers.FrameBufferGroup
-
 val N = 24000
 // How hard each band energy pushes its ring (radius, thickness, particle size).
-val gain = 2.4
+var gain = 2.4 // Edit this value and Alt+Enter its declaration to change all four running bands.
 
 // One compute dispatch per frame, registered under a name so a rerun replaces it.
 var particles = computeModuleHere {}

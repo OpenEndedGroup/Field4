@@ -1,7 +1,5 @@
-import afield.four.modules.fromContextWithNameOrNull
-import afield.four.targets.*
-import kotlinx.serialization.json.Json
 import java.io.File
+import kotlinx.serialization.json.Json
 
 // Attach this temporary verification box to flow_resources in an isolated demo.
 val reset = fromContextWithNameOrNull<SimulationReset>("resetFlow")!!
@@ -28,7 +26,8 @@ frames {
         check(simulation.modules.keys == modules)
     }
     println("RESET_PASS: 32 resets, maximum $maxFrames rendered frames; same resources and hooks")
-    File(folder, "reset.txt").writeText("32 resets; maximum $maxFrames rendered frames; same resources, modules and hooks\n")
+    File(folder, "reset.txt")
+        .writeText("32 resets; maximum $maxFrames rendered frames; same resources, modules and hooks\n")
     travel.set(true)
     try {
         repeat(2) { pass ->
@@ -36,7 +35,7 @@ frames {
             while (frame() && reset.completed < ticket) {}
             val warm = renderer.frameCounter
             while (frame() && renderer.frameCounter - warm < 60) {}
-            CoroutineProfiles.request(thisBox.inside.filename, CoroutineProfileRequest("start", 30.0, stacks=true))
+            CoroutineProfiles.request(thisBox.inside.filename, CoroutineProfileRequest("start", 30.0, stacks = true))
             val start = renderer.frameCounter
             while (frame() && renderer.frameCounter - start < 180) {}
             var result = CoroutineProfiles.request(thisBox.inside.filename, CoroutineProfileRequest("stop"))
@@ -48,7 +47,8 @@ frames {
             check(result.stackState != "failed") { result.stackError }
             check(result.frameRecords.size >= 170) { "Missing render-frame intervals: ${result.frameRecords.size}" }
             check(result.frameRecords.all { it.cpuMs >= 0 && it.allocatedBytes >= 0 })
-            File(folder, "profile-$pass.json").writeText(Json.encodeToString(CoroutineProfileSnapshot.serializer(), result))
+            File(folder, "profile-$pass.json")
+                .writeText(Json.encodeToString(CoroutineProfileSnapshot.serializer(), result))
             println("PROFILE_PASS $pass: ${result.frameRecords.size} measured intervals")
         }
     } finally {

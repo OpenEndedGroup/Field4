@@ -7,7 +7,8 @@ container adapters, content hashes and a recovery journal. It never runs box cod
 The current engine provides **syntax evidence**, not compiler binding equivalence. A ready change
 is a mechanically applicable rewrite, not proof that the destination API exists or that the result
 compiles. This is the first working layer of the [package refactor proposal](../../dev_docs/PACKAGE_REFACTOR_PROPOSAL.md).
-The public-preview package migration itself has not been applied.
+The repository package relocation is implemented; the [migration recipe](../../refactors/preview-packages-v1/README.md)
+is the entry point for migrating external workspaces.
 
 ## Build once, before moving packages
 
@@ -124,6 +125,26 @@ that every script receives Field's default imports.
 ### Comments, Markdown and contextual review
 
 `"rewriteComments": true` enables exact qualified-name replacement in Kotlin comments and KDoc.
+`retainedFindings` records narrowly reviewed historical exceptions. Each entry has an exact
+root-relative `path`, extracted `unit`, `kind`, `detail`, SHA-256 `codeSha256` of the decoded
+UTF-8 unit, and a human-readable `reason`. Only unmapped imports and prose/comment/string
+references qualify. The exception releases that finding only while the entire unit remains
+unchanged and the engine proposes no rewrite to it. New occurrences, changed units, and
+structural errors still require review. Retained findings remain in the audit report; other
+edits in the document can proceed. This does not assert that historical code compiles.
+
+Set `parseErrorPolicy: "retain"` when existing incomplete or invalid Kotlin units should
+remain diagnostic evidence rather than block this migration. The default is `"hold"`.
+Only `parse-error` findings from unchanged units are retained; the parser does not rewrite
+those units. Independent edits in the same document can proceed. Rewrite parse failures,
+container errors, sidecar drift and all other findings still block. Retained errors remain
+in `findings.json` and are counted in `report.md`; this policy does not waive delivery checks.
+
+Generated bundle filenames `afield.mjs` and `afield.mjs.map` are preserved in text and do not produce package-reference findings.
+Field URLs (`afield:/...` and `afield://...`) are likewise opaque identifiers: the scheme,
+path and query are preserved and excluded from package-reference findings in logs, prose,
+comments and strings. A real qualified name elsewhere on the same line is still inspected.
+Hyphenated root labels such as `afield-stacksl-token-comment` are also preserved; they are resource names, not Kotlin packages.
 `"markdownProse": ["public/docs/*.md"]` enables the same operation in selected Markdown prose;
 patterns match paths relative to each root (`*` can span directories). Kotlin fences still use
 the parser, and other fenced languages are excluded from prose rewriting.
@@ -214,6 +235,17 @@ own declarations, not automatically to every descendant package. This avoids tre
 child such as `afield.math.gp` as part of a split of the root `afield` package. Unknown qualified
 names remain findings.
 
+A name ending in `Kt` (`afield.stdlib.StdlibKt`, `ImagingKt`, `afield.tools.refactor.MainKt`)
+names the class kotlinc generates for a file's top-level declarations — the file facade of
+`stdlib.kt`, `imaging.kt`, `Main.kt` — not a declaration in the inventory. Map it by its file:
+it goes to the package that the file's top-level declarations move to, and keeps its name only
+while the file keeps its name and has no `@file:JvmName`. When a file splits across packages, the
+old facade has no single destination. Each new file gets its own facade, so a `Class.forName`,
+`hostClass` or `run-jvm-main` string that names the old one has to name the file holding the
+member it uses. Do not invent a symbol rule for a `...Kt` name or treat it as unknown. The
+`symbol-map` step should derive these facade rules from the file assignments and report the split
+files; once it does, this paragraph can go.
+
 Review the generated recipe, copy it to the session's `recipe.json`, then replan. This step does
 not move declarations out of mixed files, add same-package imports, or resolve split star imports.
 Those remain held until extraction and binding-aware repair are done. Do not treat an empty
@@ -221,6 +253,10 @@ unassigned list as proof of equivalent JVM names, overload resolution or script 
 
 ## Containers and document boundaries
 
+- `dependencies.edn`: Field dependency telemetry version 1 is a separate container from box
+  metadata. `FROM_CONTEXT` edge names are mapped when they contain literal qualified class names.
+  Property names, box IDs, counts, timestamps and other edge fields are preserved.
+  Unsupported versions, nested-class binary names and array descriptors remain review findings.
 - Kotlin source and scripts: PSI edits preserve import aliases, comments, LF/CRLF and Unicode offsets.
 - Markdown: fenced Kotlin, including attributed, nested and tilde fences. Selected prose can use
   explicit qualified-name replacement; other prose references are findings. Field's `diffstatic`,
@@ -340,6 +376,14 @@ ignored pointer. Keep the host server in that checkout while working in the sess
    so it releases the writer lease, then replan. Decisions remain review records; they never alter
    the immutable plan. Preserve permits an intentional unchanged reference at delivery only if
    that group has no proposed edits. Held edits must be resolved in source or by an adapter.
+   **Review all unresolved** opens a keyboard review round across batches, with the previous
+   decision and its reason above the source. **P** preserves the remaining references, **E**
+   records a Needs edit instruction (a `question` for the batch agent), **N** skips, and **B**
+   goes back. An optional note replaces the standard reason. Save success advances immediately;
+   a failed save stays on the current group. Shortcuts are inactive while typing. Preservation
+   is unavailable for stale source or groups with proposed edits. Needs edit and skipped groups
+   remain unresolved: run the relevant batch agent, then replan. The default list hides resolved
+   Preserve groups; choose All decisions to inspect them. Quick review does not apply patches.
    Large agent batches should write dispositions as a JSON array of
    `{"item":"ITEM_ID","state":"patch","reason":"What changed"}` records, then run
    `tools/refactor_pass.py decide-many --file /absolute/path/to/decisions.json` once.
@@ -440,3 +484,20 @@ Declaration IDs include source path and declaration signature, not line numbers:
 or changing the intro does not discard ownership decisions. Inventories still check complete file
 hashes before generation, so refresh the inventory after any source edit. Renamed or moved
 declarations and changed signatures need refreshed assignments.
+
+### Screenshot for public documentation
+
+Marc selected [this refactor review screenshot](../../public/docs/assets/refactoring/refactor-pass-review.png) on 2026-10-14 for the future public documentation. It is the original, unmodified capture of the live review UI (Plan 23), including the session copies, replan controls, review batches, and red/green attention indicators. Use it when documenting this workflow; the counts describe that session, not a completed or verified migration.
+
+### Recorded prose rules and exported preambles
+
+`proseReplacements` records exact qualified-name replacements in selected Markdown prose
+and Kotlin comments (with `rewriteComments` enabled), for example
+`"proseReplacements": {"afield.four": "Field 4"}`. It does not rename executable
+imports, qualified descendants, wildcard package references, or string values. Rules must
+be idempotent. Kotlin comments inside typed EDN/YAML/document units use the same rule.
+
+Field's exported `text [field-property box="…" name="preamble"]` fences are recognized
+as Kotlin box preambles, with the recipe's box imports and split-package rules. Ordinary
+text fences and other non-Kotlin properties remain untouched. The exported fence and
+its attributes are preserved.

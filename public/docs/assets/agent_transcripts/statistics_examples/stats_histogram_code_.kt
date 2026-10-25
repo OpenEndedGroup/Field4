@@ -55,7 +55,7 @@ println(
         "knows nothing but n, so it is ${hBimodal.bins.size} bins for any 500-point sample.",
 )
 
-val svgs = listOf(
+val svgs = [
     histogramToSvg(hSkewed, widthPx = 380, heightPx = 230, padTop = 26, title = "exp(0.6 g), n=500", decimals = 3),
     histogramToSvg(
         hBimodal,
@@ -65,5 +65,5 @@ val svgs = listOf(
         title = "two modes at -2 and +2, n=500",
         decimals = 3,
     ),
-)
+]
 showRow("histograms", svgs)

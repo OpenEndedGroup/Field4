@@ -5,10 +5,10 @@ This file is the *why*, for whoever changes the code next.
 
 | file | what is in it |
 |---|---|
-| `src/jvmMain/kotlin/afield/stdlib/typography.kt` | the values: `Typeface`, `Glyph`, `GlyphContour`, `TextLayout`, `PlacedGlyph`; the `PathIterator` walk; layout; `onCurve`; word wrap |
-| `src/jvmMain/kotlin/afield/stdlib/typography_field.kt` | the bridges: → `FLine`, → `TriMesh`, → `ScalarField3D`, → `Img`, → points; the two figure helpers |
+| `src/jvmMain/kotlin/afield/graphics/text/typography.kt` | the values: `Typeface`, `Glyph`, `GlyphContour`, `TextLayout`, `PlacedGlyph`; the `PathIterator` walk; layout; `onCurve`; word wrap |
+| `src/jvmMain/kotlin/afield/graphics/text/typography_field.kt` | the bridges: → `FLine`, → `TriMesh`, → `ScalarField3D`, → `Img`, → points; the two figure helpers |
 | `src/jvmMain/kotlin/afield/examples/stdlib/TypographyGallery.kt` | `FIELD_TEST stdlib.typography.gallery`, twelve PNG panels, four of them control-armed pairs |
-| `src/jvmTest/kotlin/afield/stdlib/TypographyTest.kt` | 38 assertions, cross-representation or control-armed |
+| `src/jvmTest/kotlin/afield/graphics/text/TypographyTest.kt` | 38 assertions, cross-representation or control-armed |
 | `dev_docs/agents/transcripts/typography_worked_example.yaml` | eight-box loadable demo, in `DemoTranscriptExecSmokeTest.EXECUTE` |
 | `public/docs/assets/typography_examples/*.png`, `kinetic.mp4` | the public page's figures — **not** committed by hand: nine `diffstatic_runner` fences that the docs build executes in a live Field (`uv run --group docs python tools/build_zensical_docs.py --page typography_examples.md`) |
 
@@ -51,7 +51,7 @@ is what lets `onCurve` return a copy.
 ## Why the `PathIterator` walk is hand-rolled
 
 `FLinesAndJavaShapes.javaShapeToFLine(Shape, AffineTransform?)`
-(`src/jvmMain/kotlin/afield/graphics/FLinesAndJavaShapes.kt:2188`) already converts a Java2D shape to
+(`src/jvmMain/kotlin/afield/geometry/path/java2d/FLinesAndJavaShapes.kt:2188`) already converts a Java2D shape to
 an `FLine`, and it is not enough: it flattens the **whole** shape into one `FLine` with no per-ring
 handle, so there is nowhere to compute nesting depth and no way to reverse a single contour without
 touching the others. Winding control is the entire point, so `ringsOf` parses the iterator into
@@ -131,7 +131,7 @@ sun.font.CFontManager.loadFonts <- sun.font.SunFontManager.findFont2D <- java.aw
 
 `CFontManager.loadFonts` dispatches to the process's **first** thread and waits. macOS GLFW requires
 `-XstartOnFirstThread`, so `requiredAgentJvmArgs` passes it to every jvm-main child
-(`src/jvmMain/kotlin/afield/agent_backdoor.kt:856`) — and a child that opens no window never services
+(`src/jvmMain/kotlin/afield/app/server/agent_backdoor.kt:856`) — and a child that opens no window never services
 that dispatch.
 
 > A JVM that wants glyph outlines and passes `-XstartOnFirstThread` must also pass
@@ -186,7 +186,7 @@ passes `strict = true` to `named()`, which is the same question in disguise.
 | what | how | result |
 |---|---|---|
 | module compile | `./gradlew compileKotlinJvm compileTestKotlinJvm` | clean, no new warnings |
-| structure | `./gradlew jvmTest --tests afield.stdlib.TypographyTest` | 38 / 38 |
+| structure | `./gradlew jvmTest --tests afield.graphics.text.TypographyTest` | 38 / 38 |
 | pixels | `python3 tools/run_field_tests.py --id stdlib.typography.gallery --port 952x` | 12 / 12 panels, all inspected by eye |
 | the demo, through the real engine | `python3 tools/run_field_tests.py --id examples.demo-transcript.exec --port 952x` | `PASS typography_worked_example (applied=16, output lines=32)`; 31 demos green |
 | the loadable document | `python3 tools/run_field_tests.py --id examples.agent-transcripts.materialize --port 952x` | green after regenerating `public/docs/assets/agent_transcripts/typography_worked_example/` |

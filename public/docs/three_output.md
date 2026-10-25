@@ -24,7 +24,7 @@ val view = three(name = "foo", width = 760, height = 440) {
     camera(yaw = 34.0, pitch = 24.0)
     background("#080b0c")
     caption("Drag to orbit · Pick to annotate · ruler to measure")
-    inspect(units = "mm", groups = listOf("Block"))
+    inspect(units = "mm", groups = ["Block"])
 }
 ```
 
@@ -32,8 +32,8 @@ val view = three(name = "foo", width = 760, height = 440) {
 
 `three` is a function on the current Field box. The block has a `ThreeSceneBuilder` receiver:
 `mesh`, `lines`, `camera` and the other operations below describe the scene. The graphics and
-mesh APIs are imported in ordinary Field boxes; in Kotlin source, import `afield.graphics.*`
-and `afield.stdlib.*` and call `three` on a `Box`.
+mesh APIs are imported in ordinary Field boxes; in Kotlin source, import `afield.graphics.three.*`
+and `afield.geometry.mesh.*` and call `three` on a `Box`.
 
 ### Viewer name, channel and size
 
@@ -164,20 +164,23 @@ use. On a contact sheet every panel turns together, each about its own centre, a
 drag. This sheet shows six shapes in a three-by-two grid and turns them at 15° a second:
 
 ```diffstatic {data-lang=kotlin}
-val shapes = listOf(
+val shapes = [
     "block" to boxMesh(1.2, 0.8, 0.6),
     "tower" to boxMesh(0.5, 1.6, 0.5),
     "slab" to boxMesh(1.6, 0.3, 0.9),
     "cone" to coneMesh(segments = 7, radius = 0.6, height = 1.2),
     "can" to cylinderMesh(segments = 6, radius = 0.5, height = 1.0),
     "ring" to torusMesh(majorSegments = 12, minorSegments = 6),
-)
+]
 three(name = "sheet", width = 900, height = 560) {
     columns(3)
     shapes.forEachIndexed { i, (label, shape) ->
         mesh(shape, label = label, panel = i)
-        panel(title = label, camera = ThreeCameraSpec(yawDegrees = 30.0, pitchDegrees = 20.0),
-            bounds = shape.toThreeBounds())
+        panel(
+            title = label,
+            camera = ThreeCameraSpec(yawDegrees = 30.0, pitchDegrees = 20.0),
+            bounds = shape.toThreeBounds(),
+        )
     }
     turntable(degreesPerSecond = 15.0)
 }
@@ -244,6 +247,32 @@ the receiving viewer. Inspector units `mm`, `cm`, `m`, `in` and `ft` convert to 
 An unspecified or other unit label leaves coordinates unchanged, with the label retained
 in the scene metadata.
 
+With gltfpack installed, **Export GLB** compresses the file before it downloads, and the status
+line shows both sizes. gltfpack quantizes the buffers and meshopt-compresses them, keeping node and
+material names. It is optional: pick **gltfpack** in `./field.sh --setup`, or run
+`./gradlew prepareGltfpack`, which fetches a pinned, checksummed build. Without it the export stays
+uncompressed. Box code can use the same tool through `Gltfpack.compress(bytes)`. A compressed file
+uses `EXT_meshopt_compression`, which three.js, Blender 4.2 and later, and most web viewers read.
+
+### A studio look
+
+`studio()` lights a scene for a model you look at, rather than for a technical figure. It adds ACES
+tone mapping, a key light that casts soft shadows, a sky fill and a cool rim, ambient occlusion in
+creases, and a dark ground with a faint grid. Give a mesh a material to go with it:
+
+```diffstatic {data-lang=kotlin}
+three {
+    mesh(vase, wireframe = false, cullBackFaces = false,
+        material = ThreeSurfaceMaterial(roughness = 0.4f, metalness = 0.6f))
+    studio(groundY = -1.25)
+    background("#060807")
+}
+```
+
+`studio()` switches off the reference grid and axis tripod. Ambient occlusion draws in a single
+view. A contact sheet and X-ray draw without it, and `studio(ambientOcclusion = false)` turns it off.
+`geometry { }` uses this look for its models; see the `madp_geometry` starting point.
+
 ### One scene, two kinds of thing
 
 A gyroid marched inside a finite box is an **open** surface: it runs out of the sampling window
@@ -253,27 +282,27 @@ ring per hole, and this example draws those rings in the same scene as the solid
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/scene.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// FIELD_DOCS_EXPECT_SVG: false — the docs runner reads a bare `lines(` as Box.lines's 2D SVG path
-// and then demands an <svg>. The `lines(rims)` below is the scene builder's and emits an iframe.
-//
-// A gyroid is a triply-periodic minimal surface. Marched inside a finite box it is OPEN: the
-// surface leaves the sampling window rather than closing inside it, and every place it does that
-// is a boundary loop. `open(20)` in the printed summary is the claim; the picture is the evidence.
+/*
+A gyroid is a triply-periodic minimal surface. Marched inside a finite box it is OPEN: the
+surface leaves the sampling window rather than closing inside it, and every place it does that
+is a boundary loop. `open(20)` in the printed summary is the claim; the picture is the evidence.
+*/
 val surface = marchingCubes(sdfGyroid(4.0, 0.3), boundsAround(radius = 1.0), 72)
 println(surface.summary())
 
 // The rim, as FLines, in the mesh's own coordinates. One closed ring per hole.
-val rims = surface.toFLines(MeshLines.BOUNDARY).map { ring ->
-    ring.color = vec(1.0, 0.45, 0.12, 1.0)
-    ring.thickness = 2.6
-    ring
-}
+val rims =
+    surface.toFLines(MeshLines.BOUNDARY).map { ring ->
+        ring.color = vec(1.0, 0.45, 0.12, 1.0)
+        ring.thickness = 2.6
+        ring
+    }
 println("open boundary loops: " + rims.size)
 
 three(channel = "gyroid", height = 470, width = 760) {
     mesh(surface, wireframe = false)
     lines(rims)
-    camera(yaw = 32.0, pitch = 20.0, distance = 2.05)
+    camera(yaw = 32.0, pitch = 20.0, padding = 1.02)
     title("marched gyroid, with its " + rims.size + " open boundary loops drawn in the same scene")
     caption("the solid and the annotation are one scene in model space, so orbiting moves both")
 }
@@ -305,33 +334,17 @@ CPU rasterizer's camera:
 - **`yawDegrees`** — orbit around `+y`. `0` looks straight down `−z`.
 - **`pitchDegrees`** — lift above the horizon. Positive looks down on the geometry.
 - **`distance`** — in multiples of the bounding-sphere radius, so one spec frames a 2 cm mesh and a
-  2 m one.
+  2 m one. The rasterizer uses it; the viewer zooms to fit instead.
+- **`padding`** — the viewer's margin around the shape's outline when it zooms to fit: `1.0`
+  touches the frame's edges, the default `1.06` leaves a little air. The rasterizer ignores it.
 - **`fieldOfViewDegrees`** — vertical. Smaller is a longer lens and less perspective.
 
 The names and meanings match, so one camera can be handed to either renderer.
 
-??? aside "In the viewer, `distance` is a padding factor"
-    The preset supplies the camera's **direction**; the viewer supplies its own distance. Having
-    placed the eye, it runs a zoom-to-fit (`fitCameraToBounds`) that slides the eye along the view
-    direction until the geometry's sampled points fit the frame the viewer was actually given — a box
-    output is as wide as its column, and a figure written for a 560 × 420 canvas arrives in a much
-    wider band.
-
-    So `distance` reaches the viewer as `max(1.02, distance / 2.7 × 1.06)`. Below about 2.6 that
-    clamps to the floor and every value frames identically; above it, raising `distance` shrinks the
-    mesh in the frame.
-
-    It is also why one figure is a different composition on the two renderers at an identical
-    viewpoint: the rasterizer frames the bounding *sphere* in a canvas it chose, the viewer fits the
-    real points to the frame it was handed, so the subject comes out noticeably larger. The toy car
-    in [Geometry from disk](geometry_from_disk.md#a-real-glb-in-a-real-output-area) is the case to
-    look at.
-
 ## Contact sheets
 
-For a custom contact sheet, `panel(...)` declares viewports in order and `mesh(..., panel = n)`
-assigns geometry to them. Calling `panel` does not change which viewport the next mesh goes into:
-the default stays `0`. FLine content is shared between viewports. This example builds a sheet by
+For a custom contact sheet, `panel(...)` declares viewports in order, and a `mesh(...)` goes into
+the panel declared most recently, or the one `panel = n` names. FLine content is shared between viewports. This example builds a sheet by
 hand:
 
 ```diffstatic {data-lang=kotlin}
@@ -345,8 +358,9 @@ three(name = "comparison", channel = "comparison", width = 760, height = 320) {
 }
 ```
 
-`threeGrid` and `threeTurntable` below build common layouts for you. Feature annotation currently
-requires a single viewport, so use a separate single-view scene to review a mesh from a sheet.
+`threeGrid` and `threeTurntable` below build common layouts for you. Pick and Save note work on a
+sheet: a pick uses the panel under the pointer, and the note remembers that panel, so loading it
+selects the feature there again and its images are of that panel. Rectangle needs a single viewport.
 
 ### One WebGL context, several panels
 
@@ -365,9 +379,11 @@ This example lays four unrelated shapes out in a two-by-two sheet, with a fact l
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/grid.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// Four unrelated shapes. Each panel frames its OWN bounds, so the small one is not lost beside the
-// large one — that is the difference between a grid and a turntable, and only the Kotlin side knows
-// which of the two it is building.
+/*
+Four unrelated shapes. Each panel frames its OWN bounds, so the small one is not lost beside the
+large one — that is the difference between a grid and a turntable, and only the Kotlin side knows
+which of the two it is building.
+*/
 val ball = marchingCubes(sdfSphere(1.0), boundsAround(radius = 1.3), 40)
 val drilled = marchingCubes(sdfSubtract(sdfSphere(1.0), sdfCylinder(0.34, 4.0)), boundsAround(radius = 1.3), 64)
 val twisted = marchingCubes(sdfBox(vec(1.2, 1.8, 0.4)).twisted(0.35), boundsAround(radius = 1.2), 72)
@@ -392,16 +408,16 @@ threeGrid(
 Each panel has its own camera, and carries the fact line `TriMesh.threeFacts()` computes, the
 same line `toFigureHtml` writes under a rasterized figure.
 
-`facts = true` is **off by default**, and `showMeshGrid` does not turn it on. If you want the numbers
-under each panel, either call `threeGrid` directly as above, or use the `List<ThreeMeshPanel>`
-overload, for a gallery that has something specific to say about each cell:
+`showMeshGrid` prints the fact line by default and forwards `facts` to `threeGrid`; `threeGrid`
+called directly leaves it off unless asked, as above. For a gallery that has something specific to
+say about each cell, use the `List<ThreeMeshPanel>` overload:
 
 ```diffstatic {data-lang=kotlin}
 threeGrid(
-    listOf(
+    [
         ThreeMeshPanel("cuboctahedron", solid, facts = "12 vertices · 24 edges · 14 faces (8 triangles, 6 squares)"),
         ThreeMeshPanel("…kis'd", kissed, facts = "38 vertices · 84 edges · 48 faces (all triangles)"),
-    ),
+    ],
     columns = 2,
 )
 ```
@@ -448,13 +464,9 @@ Every entry in the `showMesh` family takes a `renderer`, and the default is the 
 
 </div>
 
-Two size knobs that are easy to confuse:
-
-* `MeshView.width` / `MeshView.height` size the **raster** on the CPU path, and on the GPU path
-  `view.width` becomes the iframe's width in pixels;
-* `showMesh`'s own `height` parameter, default `430`, sizes the **iframe**, and `MeshView.height` is
-  ignored on that path. To get a GPU figure the same shape as a CPU one, pass `height = view.height`
-  explicitly.
+`MeshView.width` and `MeshView.height` size the figure on both paths: the raster on the CPU path,
+the iframe on the GPU path. Pass `height` to `showMesh` only to make the Three.js iframe a different
+height from the view.
 
 Give the width in pixels. The output panel sizes itself from the iframe's pixel width, and a
 percentage leaves the panel at whatever width it already had. That suits an FLine viewer filling
@@ -468,14 +480,14 @@ lists them all, and what each is for:
 
 | path | what it draws | where the pixels are made | reach for it when |
 |---|---|---|---|
-| `three`, `threeGrid`, `threeTurntable`, `threeLines`, `threeInspect` — `afield/graphics/Three.kt`, `ThreeJsViewer.kt` | FLines and `TriMesh`es together, in 3D | **WebGL** (three.js r184, vendored) in a `/threejs` iframe inside the box output | you want to turn it; you want a solid and its annotations in one scene. The default for the whole `showMesh` family |
-| `renderPng`, `renderPixels`, `toFigureHtml`, `toHTML`, `showMeshDiagnosis`, `MeshRenderer.CPU` — `afield/graphics/VisionGeometryPreview.kt` | one `TriMesh`, fixed camera, still | **CPU z-buffer in the JVM**, AWT-free, encoded by `PngEncoder` | you need the same pixels twice (see below); there is no WebGL context to spare; you want a pixel buffer to composite by hand |
-| `lines`, `l`, `drawToSVG`, `inspect` — `afield/graphics/someSkiko.kt` | FLines, **2D only** | **SVG text** emitted by a Skia recording canvas; the browser rasterizes it | 2D figures: crisp at any zoom, tiny payload, headless-safe |
+| `three`, `threeGrid`, `threeTurntable`, `threeLines`, `threeInspect` — `afield/graphics/three/Three.kt`, `ThreeJsViewer.kt` | FLines and `TriMesh`es together, in 3D | **WebGL** (three.js r184, vendored) in a `/threejs` iframe inside the box output | you want to turn it; you want a solid and its annotations in one scene. The default for the whole `showMesh` family |
+| `renderPng`, `renderPixels`, `toFigureHtml`, `toHTML`, `showMeshDiagnosis`, `MeshRenderer.CPU` — `afield/graphics/visionos/VisionGeometryPreview.kt` | one `TriMesh`, fixed camera, still | **CPU z-buffer in the JVM**, AWT-free, encoded by `PngEncoder` | you need the same pixels twice (see below); there is no WebGL context to spare; you want a pixel buffer to composite by hand |
+| `lines`, `l`, `drawToSVG`, `inspect` — `afield/ui/visualization/someSkiko.kt` | FLines, **2D only** | **SVG text** emitted by a Skia recording canvas; the browser rasterizes it | 2D figures: crisp at any zoom, tiny payload, headless-safe |
 | `lines(editable = true)`, and the automatic upgrade when an FLine has `onClick` or `hoverColor` — `FLineEditableSvg.kt` | the same, plus click / hover / drag / freehand | SVG in the browser, plus a server-side edit session | direct manipulation of control points; a figure you can click to name |
 | `moduleHere`, `Renderer`, `RenderToTexture`, and `StandardRenderer` / Fabricate on top of them — `afield/four/` | arbitrary real-time scenes, Gaussian splats, hardware ray tracing | **Vulkan on the desktop GPU**, in a GLFW window (offscreen targets still need the window) | real-time work, hot-reloaded shaders, hundreds of thousands of primitives, OpenXR |
-| `visionMetal` — `afield/graphics/VisionMetal.kt` | your live Metal shader plus its geometry | **Metal, on the Vision Pro** | headset live-coding ([Apple Vision Pro](vision.md), [geometry in the headset](vision_geometry.md)). Its desktop stand-in is `previewVisionGeometry`, which is the CPU rasterizer again |
+| `visionMetal` — `afield/graphics/visionos/VisionMetal.kt` | your live Metal shader plus its geometry | **Metal, on the Vision Pro** | headset live-coding ([Apple Vision Pro](vision.md), [geometry in the headset](vision_geometry.md)). Its desktop stand-in is `previewVisionGeometry`, which is the CPU rasterizer again |
 | the visionOS native FLine viewer — `native/field-visionos/Field4Vision/FLine/` | whatever `threeLines` / `three` published | **RealityKit / Metal on the headset** | you want an existing 3D figure in the volume ([Apple Vision Pro](vision.md)). It subscribes to the same `__threejs__` channel; there is no second API |
-| `remoteAr` — `afield/outputs.kt`, `RemoteArKotlinJs.kt` | *your Kotlin, compiled to JS*, in a WebXR page | **WebGL in the browser or headset** | AR/VR where the code runs in the head rather than on the desktop ([RemoteJS and WebXR](ar_reference.md)) |
+| `remoteAr` — `afield/ui/output/outputs.kt`, `afield/lang/remotejs/RemoteArKotlinJs.kt` | *your Kotlin, compiled to JS*, in a WebXR page | **WebGL in the browser or headset** | AR/VR where the code runs in the head rather than on the desktop ([RemoteJS and WebXR](ar_reference.md)) |
 | `rasterizeFLines`, `Img`, `showImg`, `rasterizeText`, `heatmapImage`, `RectSLFitFigure` | 2D marks into a pixel buffer, no projection and no depth | **CPU in the JVM**, `PngEncoder` | measurement rasters, image pipelines, figures that have to be identical in a test |
 
 Two entries in that table are commonly misread:
@@ -489,7 +501,7 @@ perspective, either project first with `FLine.byPerspectiveProjecting(...)` or r
 `threeLines`.
 
 **The ray tracer is not a separate renderer.** [Ray tracing examples](ray_tracing_examples.md) is
-`VK_KHR_ray_tracing_pipeline` inside `afield.four`, and Fabricate's `StandardRenderer` is a deferred
+`VK_KHR_ray_tracing_pipeline` inside Field 4, and Fabricate's `StandardRenderer` is a deferred
 g-buffer / shadow / AO / composite stack built on the same primitives. One Vulkan renderer, three
 front ends.
 
@@ -521,14 +533,26 @@ This example draws one marched solid twice, with the same `MeshView`, once on ea
 // to see with the two side by side.
 val solid = marchingCubes(
     sdfSmoothUnion(sdfSphere(0.78), sdfBox(vec(2.1, 0.32, 0.32)), k = 0.28),
-    boundsAround(radius = 1.35), 64,
+    boundsAround(radius = 1.35),
+    64,
 )
 val view = MeshView(width = 520, height = 400, wireframe = true)
 
-showMesh(solid, channel = "three.js — the default", view = view, height = view.height,
-         renderer = MeshRenderer.GPU, title = "MeshRenderer.GPU — MeshStandardMaterial, orbitable")
-showMesh(solid, channel = "the CPU rasterizer", view = view,
-         renderer = MeshRenderer.CPU, title = "MeshRenderer.CPU — two-light lambert, deterministic, still")
+showMesh(
+    solid,
+    channel = "three.js — the default",
+    view = view,
+    height = view.height,
+    renderer = MeshRenderer.GPU,
+    title = "MeshRenderer.GPU — MeshStandardMaterial, orbitable",
+)
+showMesh(
+    solid,
+    channel = "the CPU rasterizer",
+    view = view,
+    renderer = MeshRenderer.CPU,
+    title = "MeshRenderer.CPU — two-light lambert, deterministic, still",
+)
 ```
 
 ![The same marched solid — a ball with a bar smoothly unioned through it — drawn twice in one box. The upper output channel is the Three.js viewer: cool grey, soft falloff, fine wireframe, and the subject nearly fills the frame. The lower channel is the CPU rasterizer: warmer white, harder terminator, denser-looking wireframe, and the subject fills about half the frame. Both carry the identical fact line, 8494 verts, 16984 tris, chi=2 genus 0, watertight, volume 2.0857](assets/three_output/renderers.png)
@@ -538,8 +562,8 @@ The same mesh, `MeshView` and 520 × 400 frame give two visibly different pictur
 - **Shading differs, and is not meant to match.** The rasterizer is a simple two-light Lambert
   model over the vertex colours. The viewer is three.js's `MeshStandardMaterial` under an ambient,
   key and rim light.
-- **Framing differs**, as the camera aside above explains. The viewer zooms to fit; the rasterizer
-  places the eye exactly where the camera says.
+- **Framing differs**: the rasterizer places the eye at `distance`; the viewer zooms to fit with
+  `padding`.
 - **The input is the same.** Both renderers compute missing normals with `shadedNormals` at a 35°
   crease angle, so hard edges stay hard, and both use `TriMesh.colors` or the same default grey.
 - **Back-face culling is the same**, which matters for diagnosis; the next section shows it.
@@ -561,7 +585,9 @@ var reversed = 0
 for (t in 0 until ball.triangleCount) {
     val cy = (ball.position(ball.ia(t)).y + ball.position(ball.ib(t)).y + ball.position(ball.ic(t)).y) / 3.0
     if (cy > 0.30) {
-        val b = idx[t * 3 + 1]; idx[t * 3 + 1] = idx[t * 3 + 2]; idx[t * 3 + 2] = b
+        val b = idx[t * 3 + 1]
+        idx[t * 3 + 1] = idx[t * 3 + 2]
+        idx[t * 3 + 2] = b
         reversed++
     }
 }
@@ -572,10 +598,21 @@ println("volume  %.4f  ->  %.4f".format(ball.signedVolume(), holed.signedVolume(
 println("consistently oriented: " + holed.topology().isConsistentlyOriented)
 
 val view = MeshView(width = 460, height = 380, yawDegrees = 18.0, pitchDegrees = 38.0, wireframe = true)
-showMesh(holed, channel = "three.js", view = view, height = view.height, renderer = MeshRenderer.GPU,
-         title = "the band is GONE, not dark")
-showMesh(holed, channel = "the CPU rasterizer", view = view,
-         renderer = MeshRenderer.CPU, title = "…and gone here too, which is the whole point")
+showMesh(
+    holed,
+    channel = "three.js",
+    view = view,
+    height = view.height,
+    renderer = MeshRenderer.GPU,
+    title = "the band is GONE, not dark",
+)
+showMesh(
+    holed,
+    channel = "the CPU rasterizer",
+    view = view,
+    renderer = MeshRenderer.CPU,
+    title = "…and gone here too, which is the whole point",
+)
 ```
 
 ![The same sphere with a reversed band drawn twice in one box. In both output channels a wide ragged band across the upper half of the sphere is simply absent — you look straight through the shell to the inside of its far side. In the upper, Three.js panel the wireframe of the missing triangles is still drawn across the hole; in the lower, CPU panel the hole is bare. Both carry the identical fact line, 642 verts, 1280 tris, chi=2 genus 0, watertight, volume 0.8112](assets/three_output/winding.png)
@@ -610,12 +647,11 @@ of the solid to an annotation beside it, as in this example:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/section.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// FIELD_DOCS_EXPECT_SVG: false — `lines(datum)` below is the scene builder's, not Box.lines.
-//
 // A block with a bore drilled down through it, and a datum line standing beside it.
 val part = marchingCubes(
     sdfSubtract(sdfBox(vec(2.0, 1.2, 1.2)), sdfCylinder(0.35, 2.0)),
-    boundsAround(radius = 1.3), 72,
+    boundsAround(radius = 1.3),
+    72,
 )
 val datum = fline {
     moveTo(1.4, -0.6, 0.0)
@@ -632,13 +668,13 @@ three(name = "section", channel = "section", width = 760, height = 460) {
         // Cut halfway through along z, so the plane runs straight down the bore.
         section = ThreeSection(enabled = true, normal = floatArrayOf(0f, 0f, 1f), fraction = 0.5),
         // From the block's +x face, on the cut plane, to the datum beside it: 1.4 - 1.0 = 0.4.
-        measurements = listOf(
+        measurements = [
             ThreeMeasurement(
                 ThreeMeasureElement.point(1.0, 0.0, 0.0),
                 ThreeMeasureElement.segment(1.4, -0.6, 0.0, 1.4, 0.6, 0.0),
-                "clear "
-            )
-        )
+                "clear ",
+            ),
+        ],
     )
 }
 ```
@@ -673,10 +709,12 @@ its part name. Folder labels do not change geometry IDs or invalidate annotation
 three(name = "vehicle") {
     mesh(boxMesh(120, 60, 40), id = "body", wireframe = false)
     mesh(boxMesh(20, 20, 20), id = "wheel", wireframe = false)
-    inspect(partPaths = mapOf(
-        "body" to listOf("Vehicle", "Bodywork"),
-        "wheel" to listOf("Vehicle", "Running gear")
-    ))
+    inspect(
+        partPaths = mapOf(
+            "body" to ["Vehicle", "Bodywork"],
+            "wheel" to ["Vehicle", "Running gear"],
+        ),
+    )
 }
 ```
 
@@ -743,11 +781,15 @@ This small example adds a reference-axis toggle:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/tools.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// FIELD_DOCS_EXPECT_SVG: false — `lines(...)` below is the scene builder's, not Box.lines.
 three(name = "tools-example") {
     tools("/threejs_tools_demo.js")
-    lines(fline { moveTo(0.0, 0.0, 0.0); lineTo(2.0, 1.0, 0.0) })
-    helpers(false)  // so the grid's own tripod is not mistaken for the tool's axes
+    lines(
+        fline {
+            moveTo(0.0, 0.0, 0.0)
+            lineTo(2.0, 1.0, 0.0)
+        },
+    )
+    helpers(false) // so the grid's own tripod is not mistaken for the tool's axes
 }
 ```
 
@@ -777,20 +819,15 @@ it never imports a module from the note. Older views reset tools to their initia
 Validation must reject invalid input without mutation; restoration should not fail
 once validation has accepted it.
 
-Agents can use `FieldViewer.tools.register(descriptor)` or
-`await FieldViewer.tools.load("/path/to/tool.js")` in their capture browser. Both return
-an idempotent disposal function. `FieldViewer.tools.ids()` lists installed tools.
-After direct registration, `await FieldViewer.tools.ready()` waits for initialization.
-`FieldViewer.captureStatus()` reports readiness, the geometry revision and any startup error;
-readiness includes the tools and a rendered frame, not just a loaded HTML document.
-Use the same source geometry revision when restoring a note. An application owns its
-modules and their behavior; registration does not validate geometry produced by a tool.
-
-??? aside "If you write a fence like these"
-    The runner's output validator treats a bare `lines(` in the code as a call to `Box.lines(...)`, the 2D
-    SVG path, and then fails the capture because no `<svg>` appeared. Inside `three { }`, `lines(…)` is the
-    scene builder's and emits an iframe — `// FIELD_DOCS_EXPECT_SVG: false` in the fence is the escape
-    hatch, and the first figure on this page carries it.
+??? aside "Agents: loading tools in a capture browser"
+    Use `FieldViewer.tools.register(descriptor)` or
+    `await FieldViewer.tools.load("/path/to/tool.js")` in a capture browser. Both return
+    an idempotent disposal function. `FieldViewer.tools.ids()` lists installed tools.
+    After direct registration, `await FieldViewer.tools.ready()` waits for initialization.
+    `FieldViewer.captureStatus()` reports readiness, the geometry revision and any startup error;
+    readiness includes the tools and a rendered frame, not just a loaded HTML document.
+    Use the same source geometry revision when restoring a note. An application owns its
+    modules and their behavior; registration does not validate geometry produced by a tool.
 
 ## Data colours and late viewers
 

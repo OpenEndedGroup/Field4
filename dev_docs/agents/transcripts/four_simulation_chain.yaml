@@ -4,14 +4,11 @@ description: |
   and a jump flood distance transform of a shape you move around. Four boxes — a renderer, a bundle,
   and one declaration each.
 
-  These are the companion to [four_pass_chain](#four_pass_chain), and they exist because that one
-  could not express them. A pass chain used to be strictly feed-forward over one frame — the planner
-  says so in as many words, *"a chain may only read backwards"* — and a fluid's velocity field this
-  frame is a function of the velocity field **last** frame. No ordering of passes within a frame
-  produces that.
-
-  So a pass may now declare itself `persistent`: its target becomes a ping-pong pair, and any pass
-  can bind a sampler to its *previous* frame. In the fluid box, `fluid-advect` is the **first** pass
+  These are the companion to [four_pass_chain](#four_pass_chain). Within one frame a chain may only
+  read backwards — a pass reads passes declared before it — but a fluid's velocity this frame is a
+  function of its velocity **last** frame. A pass that declares itself `persistent` covers that: its
+  target becomes a ping-pong pair, and any pass can bind a sampler to its *previous* frame, which
+  already exists when the frame starts. In the fluid box, `fluid-advect` is the **first** pass
   in the list and it reads `fluid-velocity`, which is the second to last — a reference pointing
   forwards, and exactly as legal as any other read of a value that already exists when the frame
   starts.
@@ -34,12 +31,12 @@ description: |
       divergence creates and destroys mass.
     - `dyeDissipation` at the top of the `sim_fluid` box, from `0.99f` down to `0.9f` for trails that fade fast, or up to `1.0f` for dye
       that never leaves.
-    - `println(chain.plan.report())`. The two `x2 (ping-pong)` slots at the bottom are the state; the
+    - `println(fluid.plan.report())`. The two `x2 (ping-pong)` slots at the bottom are the state; the
       twenty pressure iterates alternate between two slots, which is a ping-pong the planner
       *discovered* rather than was told about.
 
-  **The distance box: move the shape.** A mask pass draws a disc and a bar, then thirteen passes
-  flood it into a signed distance field, and a bands pass makes it visible — blue inside, orange out,
+  **The distance box: move the shape.** A mask pass draws a disc and a bar, then the jump-flood passes
+  turn it into a signed distance field, and a bands pass makes it visible — blue inside, orange out,
   a dark isoline exactly on the edge, with evenly spaced contours either side. Even spacing is the
   check: a field whose bands crowd or stretch is not a distance.
 
@@ -50,19 +47,23 @@ description: |
 
   Things worth trying in the distance box:
 
-    - `maskCentre` and `maskRadius`. The whole field re-floods every frame from scratch, so the
+    - `sdf["centre"]` and `sdf["radius"]`. The whole field re-floods every frame from scratch, so the
       contours track the shape with no history and no settling.
     - `signed = false` in the `jumpFloodDistance(...)` call. The interior goes flat — an unsigned
       transform measures distance to the *shape*, so everything inside it is zero.
-    - `spacing` on the bands pass, down to `0.01f`. Thirty-odd contours instead of ten, and they stay
+    - `sdf["spacing"]` on the bands pass, down to `0.01f`. Thirty-odd contours instead of ten, and they stay
       evenly spaced, which is what makes this a distance field rather than a glow.
-    - `resolution = 512`. Fifteen passes instead of thirteen — the stride sequence is the halvings of
-      the resolution, so the pass count is `1 + log2(N)` and the planner derives it for you.
+    - `resolution = 512` in `jumpFloodDistance(...)`. Doubling resolution adds one halving-stride
+      flood round. Seed, JFA+1 and distance passes are additional; inspect `sdf.plan.report()`
+      for the complete chain, including the mask, bands and inset passes.
 
   `dev_docs/FOUR_PASS_CHAIN.md` is the write-up, and
   `tools/run_field_tests.py --id four.simulation-chain.smoke` is the same two chains driven headlessly
   with assertions on the pixels — including the jump flood checked against *exact* ground truth, and
   the one assertion a plan cannot make: with the input switched off, the picture must keep changing.
+docs:
+  - page: reference/renderers.md
+    why: "Reference for pass chains, including fluid and jump flood passes."
 operations:
   # 1. the renderer: owns the Window and pumps the loop. Run this one first.
   - create:
@@ -71,7 +72,7 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.util.Options
+          import afield.graphics.vulkan.util.Options
 
           prop<Window>(window)
           prop<Renderer>(renderer)
@@ -92,10 +93,9 @@ operations:
       frame: { x: 380.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
-          import afield.four.fabricated.StandardRenderer
-          import afield.four.fabricated.applyScenePlan
-          import afield.stdlib.linalg.Vector3f
+          // `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
+          import afield.graphics.scene.fabricated.StandardRenderer
+          import afield.graphics.scene.fabricated.applyScenePlan
 
           prop<StandardRenderer.Bundle>(bundle)
 
@@ -129,13 +129,11 @@ operations:
       frame: { x: 720.0, y: 40.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.fabricated.FabricatePassChain
-          import afield.four.fabricated.FabricatePassLibrary
-          import afield.four.fabricated.addPassChain
-          import afield.four.util.MouseEvent
-          import afield.four.util.MouseEvents
+          import afield.graphics.scene.fabricated.FabricatePassChain
+          import afield.graphics.scene.fabricated.FabricatePassLibrary
+          import afield.graphics.scene.fabricated.addPassChain
 
-          prop<afield.four.fabricated.FabricateBuiltChain>(fluid)
+          prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(fluid)
 
           // The knobs. A new `resolution` starts an empty fluid; the rest keep the one you painted.
           val resolution = 256
@@ -229,14 +227,14 @@ operations:
       frame: { x: 1060.0, y: 40.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.fabricated.FabricatePassChain
-          import afield.four.fabricated.FabricatePassInput
-          import afield.four.fabricated.FabricatePassLibrary
-          import afield.four.fabricated.FabricatePassSize
-          import afield.four.fabricated.FabricatePassSpec
-          import afield.four.fabricated.addPassChain
+          import afield.graphics.scene.fabricated.FabricatePassChain
+          import afield.graphics.scene.fabricated.FabricatePassInput
+          import afield.graphics.scene.fabricated.FabricatePassLibrary
+          import afield.graphics.scene.fabricated.FabricatePassSize
+          import afield.graphics.scene.fabricated.FabricatePassSpec
+          import afield.graphics.scene.fabricated.addPassChain
 
-          prop<afield.four.fabricated.FabricateBuiltChain>(sdf)
+          prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(sdf)
 
           // The mask: a disc and a bar, in every channel. A chain head that synthesises its own
           // input is self-contained however the chains before it ended up looking.
@@ -289,17 +287,17 @@ operations:
           // Declared every run, like the fluid: `addPassChain` replaces by name. Nothing here is
           // persistent, so the whole field simply re-floods from scratch on the next frame.
           sdf = bundle.addPassChain(
-              listOf(
+              [
                   FabricatePassSpec(
                       name = "mask",
                       fragment = maskFragment,
                       size = FabricatePassSize.Absolute(256, 256),
                       source = FabricatePassChain.CHAIN_INPUT,
                   ),
-              ) +
+              ] +
                   FabricatePassLibrary.jumpFloodDistance(
                       /*
-                      Seed, nine flood rounds at halving stride, JFA+1, then the distance — and
+                      Seed, flood rounds at halving stride, JFA+1, then the distance — and
                       `signed`, which seeds the *boundary* rather than the interior, so one flood
                       gives a field that is negative inside and positive out.
                       */
@@ -320,7 +318,7 @@ operations:
                       // sampling the 256x256 field. That combination is the whole point of the layer.
                       size = FabricatePassSize.MatchSource,
                       source = FabricatePassChain.CHAIN_INPUT,
-                      extraInputs = listOf(FabricatePassInput("bandsTex", "sdf-bands")),
+                      extraInputs = [FabricatePassInput("bandsTex", "sdf-bands")],
                   ),
               printReport = true,
           )

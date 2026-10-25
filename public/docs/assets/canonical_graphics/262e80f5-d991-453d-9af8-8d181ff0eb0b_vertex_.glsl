@@ -22,7 +22,6 @@ const vec3[6] part = {
     vec3(0,1,0)
 };
 
-
 void main()
 {
     float scale = 1.0 * pc.inData.pos[gl_VertexIndex/6].w;

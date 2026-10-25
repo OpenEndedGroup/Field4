@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="mqtt-plot" index="0" -->
 
 ```edn [field-box id="mqtt-plot" role="properties"]
-{"id" "mqtt-plot" "index" 0 "name" "3. Plot the recent values (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Plot the recent values (launch)" "_tombstone" false "frame" #afield/rect [60.0 220.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mqtt-plot_code_.kt" "lines" 16 "characters" 670 "sha256" "82bedc90d7de8c4c0d091a2e04a483b788ea3fd83c5157ee43c4289aa70c4680"}]}
+{"id" "mqtt-plot" "index" 0 "name" "3. Plot the recent values (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Plot the recent values (launch)" "_tombstone" false "frame" #afield/rect [60.0 220.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mqtt-plot_code_.kt" "lines" 22 "characters" 747 "sha256" "ed3fa8cfcdec2ea42fb9c60079b932867ba42b6c1b3a105689f18af886fe3a3e"}]}
 ```
 
 ```kotlin [field-property box="mqtt-plot" name="code" path="mqtt-plot_code_.kt"]
-import afield.mqtt.*
+import afield.io.mqtt.*
 
 // Keep the latest value and recent history of everything under sensors/, and plot it twice a second.
 // `series` holds the last 512 numbers per topic; `number(topic, "temp")` reads a field out of JSON.
@@ -27,8 +27,14 @@ loop {
         "garden" to mqtt.series("sensors/garden/env", "temp"),
         title = "Temperatures (°C)",
     )
-    markdown("info", "garden: %.1f °C, %.0f %% humidity".format(
-        mqtt.number("sensors/garden/env", "temp"), mqtt.number("sensors/garden/env", "humidity")))
+    markdown(
+        "info",
+        "garden: %.1f °C, %.0f %% humidity"
+            .format(
+                mqtt.number("sensors/garden/env", "temp"),
+                mqtt.number("sensors/garden/env", "humidity"),
+            ),
+    )
     delay(500)
 }
 ```
@@ -38,18 +44,20 @@ loop {
 <!-- field-box id="mqtt-retained" index="1" -->
 
 ```edn [field-box id="mqtt-retained" role="properties"]
-{"id" "mqtt-retained" "index" 1 "name" "4. Retained scene message (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4. Retained scene message (run)" "_tombstone" false "frame" #afield/rect [980.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mqtt-retained_code_.kt" "lines" 10 "characters" 472 "sha256" "90af8383cd0349db33d20c8194b8da116d3bfd6e127e8f6005a21571893abb0f"}]}
+{"id" "mqtt-retained" "index" 1 "name" "4. Retained scene message (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4. Retained scene message (run)" "_tombstone" false "frame" #afield/rect [980.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mqtt-retained_code_.kt" "lines" 12 "characters" 490 "sha256" "b289a098f969ee7bfb7383d582f708e13381930d3607f234e6de9b010070ff88"}]}
 ```
 
 ```kotlin [field-property box="mqtt-retained" name="code" path="mqtt-retained_code_.kt"]
-import afield.mqtt.*
+import afield.io.mqtt.*
 
 // A retained message stays on the broker: anything that subscribes later gets it straight away.
 // This is how a device learns the current scene when it boots.
 mqtt.publish("installation/scene", mapOf("name" to "dusk", "brightness" to 0.4), qos = 1, retain = true)
 
 mqtt.subscribe("installation/#") { topic, message ->
-    markdown("`$topic`: **${message.string("name")}** at ${message.number("brightness")} (retained: ${message.retained})")
+    markdown(
+        "`$topic`: **${message.string("name")}** at ${message.number("brightness")} (retained: ${message.retained})",
+    )
 }
 mqtt
 ```
@@ -59,15 +67,17 @@ mqtt
 <!-- field-box id="mqtt-listen" index="2" -->
 
 ```edn [field-box id="mqtt-listen" role="properties"]
-{"id" "mqtt-listen" "index" 2 "name" "2. Listen: sensors/+/temp (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2. Listen: sensors/+/temp (run)" "_tombstone" false "frame" #afield/rect [520.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mqtt-listen_code_.kt" "lines" 10 "characters" 432 "sha256" "f5f49dde55bc88735173ea095943c51ca0c2abbb436c805e5b98abbe12b872f9"}]}
+{"id" "mqtt-listen" "index" 2 "name" "2. Listen: sensors/+/temp (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2. Listen: sensors/+/temp (run)" "_tombstone" false "frame" #afield/rect [520.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mqtt-listen_code_.kt" "lines" 12 "characters" 432 "sha256" "8e27e688afeae9b29e1470d6994fd7f35156c2a53325158515ac4c503ec7fcbd"}]}
 ```
 
 ```kotlin [field-property box="mqtt-listen" name="code" path="mqtt-listen_code_.kt"]
-import afield.mqtt.*
+import afield.io.mqtt.*
 
-// Every temperature, whichever room it comes from: `+` stands for one level of the topic.
-// The callback runs on Field's main loop, so it can update outputs directly.
-// Re-running this box replaces the callback rather than adding a second one.
+/*
+Every temperature, whichever room it comes from: `+` stands for one level of the topic.
+The callback runs on Field's main loop, so it can update outputs directly.
+Re-running this box replaces the callback rather than adding a second one.
+*/
 var count = 0
 mqtt.subscribe("sensors/+/temp") { topic, message ->
     count++
@@ -80,15 +90,17 @@ mqtt.subscribe("sensors/+/temp") { topic, message ->
 <!-- field-box id="mqtt-sensors" index="3" -->
 
 ```edn [field-box id="mqtt-sensors" role="properties"]
-{"id" "mqtt-sensors" "index" 3 "name" "1. Pretend sensors (launch first)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Pretend sensors (launch first)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mqtt-sensors_code_.kt" "lines" 13 "characters" 643 "sha256" "36f569aa1e14155bf800beb7321be00ae73ae064b75cd59cfad59415fe8d06cc"}]}
+{"id" "mqtt-sensors" "index" 3 "name" "1. Pretend sensors (launch first)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Pretend sensors (launch first)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mqtt-sensors_code_.kt" "lines" 15 "characters" 643 "sha256" "0474e4d28d9b973528ccd08047ab05fd6333a821e5095acfac212f67ec421d15"}]}
 ```
 
 ```kotlin [field-property box="mqtt-sensors" name="code" path="mqtt-sensors_code_.kt"]
-import afield.mqtt.*
+import afield.io.mqtt.*
 
-// Three pretend sensors publishing to the embedded broker ten times a second.
-// The kitchen and hall send plain numbers; the garden sends JSON, as many ESP32 sketches do.
-// Point real devices at this machine's broker instead and delete this box.
+/*
+Three pretend sensors publishing to the embedded broker ten times a second.
+The kitchen and hall send plain numbers; the garden sends JSON, as many ESP32 sketches do.
+Point real devices at this machine's broker instead and delete this box.
+*/
 val start = AnimationClock.nowSeconds()
 loop {
     val t = AnimationClock.nowSeconds() - start

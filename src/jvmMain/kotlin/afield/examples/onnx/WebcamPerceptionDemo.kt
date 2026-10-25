@@ -1,11 +1,11 @@
 package afield.examples.onnx
 
-import afield.onnx.ClipImage
-import afield.onnx.ClipText
-import afield.onnx.ClipVector
-import afield.onnx.DepthAnythingWorker
-import afield.onnx.OnnxRuntime
-import afield.util.PngEncoder
+import afield.ai.inference.onnx.ClipImage
+import afield.ai.inference.onnx.ClipText
+import afield.ai.inference.onnx.ClipVector
+import afield.ai.inference.onnx.DepthAnythingWorker
+import afield.ai.inference.onnx.OnnxRuntime
+import afield.media.image.util.PngEncoder
 import org.bytedeco.javacv.OpenCVFrameConverter
 import org.bytedeco.javacv.OpenCVFrameGrabber
 import org.bytedeco.opencv.global.opencv_imgproc.COLOR_BGR2RGBA
@@ -39,7 +39,7 @@ import kotlin.math.roundToInt
  * There is no Vulkan here on purpose. `WebcamTexture` needs a `Renderer`, and the point of this demo is
  * the perception, not the presentation — the CPU frame buffer a camera produces is exactly what the
  * models want, which is the same observation that made
- * [afield.four.texture.video.WebcamTexture.withLatestFrame] worth adding.
+ * [afield.graphics.texture.video.WebcamTexture.withLatestFrame] worth adding.
  */
 object WebcamPerceptionDemo {
 

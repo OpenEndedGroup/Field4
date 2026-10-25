@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "target": "ES2022", "lib": ["ES2022", "DOM"], "module": "ESNext",
+    "moduleResolution": "Bundler", "jsx": "react-jsx", "jsxImportSource": "@motion-canvas/2d/lib",
+    "allowImportingTsExtensions": true, "noEmit": true, "strict": true, "skipLibCheck": true,
+    "types": ["vite/client", "@motion-canvas/core/project"]
+  },
+  "include": ["src"]
+}

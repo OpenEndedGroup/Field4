@@ -9,12 +9,12 @@ Added 2026-09-28 (nightly branch `nightly/2026-09-28/3-chain-scene-to-light`). T
 
 | file | what |
 | --- | --- |
-| `src/jvmMain/kotlin/afield/rectsl/RectSLImg.kt` | `RectSLImager` / `rectSLImage`: a scene at time t as an `Img` (new bridge) |
-| `src/jvmMain/kotlin/afield/dmx/Patch.kt` | `Fixture.decode` — slots back to the look, inverse of `writeInto` (new) |
-| `src/jvmMain/kotlin/afield/dmx/DmxVisual.kt` | `Patch.receivedToFLines`, `Box.showReceived` — a received universe in the rig's layout (new) |
-| `src/jvmMain/kotlin/afield/dmx/SceneOnARig.kt` | the worked chain and its three measurements (`roundTrip`, `aliasing`, `timing`, `decodeErrors`) |
-| `src/jvmTest/kotlin/afield/dmx/SceneOnARigTest.kt` | pins the measurements; one test decodes E1.31 datagrams by hand from a bare socket |
-| `src/jvmTest/kotlin/afield/dmx/SceneOnARigDemoBundleTest.kt` | the starting point parses; inline fallbacks match; the sender's scene is `SceneOnARig.SCENE` |
+| `src/jvmMain/kotlin/afield/lang/rectsl/RectSLImg.kt` | `RectSLImager` / `rectSLImage`: a scene at time t as an `Img` (new bridge) |
+| `src/jvmMain/kotlin/afield/io/dmx/Patch.kt` | `Fixture.decode` — slots back to the look, inverse of `writeInto` (new) |
+| `src/jvmMain/kotlin/afield/io/dmx/DmxVisual.kt` | `Patch.receivedToFLines`, `Box.showReceived` — a received universe in the rig's layout (new) |
+| `src/jvmMain/kotlin/afield/io/dmx/SceneOnARig.kt` | the worked chain and its three measurements (`roundTrip`, `aliasing`, `timing`, `decodeErrors`) |
+| `src/jvmTest/kotlin/afield/io/dmx/SceneOnARigTest.kt` | pins the measurements; one test decodes E1.31 datagrams by hand from a bare socket |
+| `src/jvmTest/kotlin/afield/io/dmx/SceneOnARigDemoBundleTest.kt` | the starting point parses; inline fallbacks match; the sender's scene is `SceneOnARig.SCENE` |
 
 ## Decisions
 
@@ -69,7 +69,7 @@ a time, and changing them would only churn committed captures.
 
 ## Verification record
 
-- `./gradlew jvmTest --tests 'afield.dmx.*'`: DmxServicesTest 17/17, DmxProtocolTest 11/11,
+- `./gradlew jvmTest --tests 'afield.io.dmx.*'`: DmxServicesTest 17/17, DmxProtocolTest 11/11,
   SceneOnARigTest 7/7 (incl. an Art-Net + ArtSync leg), DmxLightingDemoBundleTest 2/2; SceneOnARigDemoBundleTest 3/3.
 - Demo: a fresh copy of the bundle opened through the backdoor (`open … --must-exist`, 3 boxes) on
   port 9550; `scene-sender` launched, `rig-receiver` launched, window screenshot shows sent and

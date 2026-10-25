@@ -1,6 +1,6 @@
-import afield.graphics.*
-import afield.stdlib.*
-import afield.button
+
+
+import afield.ui.output.button
 
 val reviewView = three(name="mixed-review",width=760,height=500) { helpers(false) }
 val panelPositions = floatArrayOf(-80f,-50f,0f,-20f,-50f,0f,-20f,50f,0f,-80f,50f,0f)

@@ -1,7 +1,9 @@
-// onCurve does not distort a glyph. It looks its advance-box centre up at that distance
-// along the path with FLine.cursor()'s arc-length table — the same machinery
-// sampleByDistance and byDashing use — and then sets that glyph's rotation and pivot. So the
-// letters stay letters, and the spacing is even in DISTANCE rather than in curve parameter.
+/*
+onCurve does not distort a glyph. It looks its advance-box centre up at that distance
+along the path with FLine.cursor()'s arc-length table — the same machinery
+sampleByDistance and byDashing use — and then sets that glyph's rotation and pivot. So the
+letters stay letters, and the spacing is even in DISTANCE rather than in curve parameter.
+*/
 val face = typeface("SansSerif", 78.0)
 val ring = layoutText("AROUND AND AROUND", face, tracking = 7.0)
 
@@ -10,7 +12,9 @@ val ring = layoutText("AROUND AND AROUND", face, tracking = 7.0)
 val circle = textCircle(radius = ring.advanceWidth / (2 * Math.PI))
 val onCircle = ring.onCurve(circle, align = TextAlign.CENTER)
 println("circle circumference ${"%.1f".format(circle.arcLength())} vs layout width ${"%.1f".format(ring.advanceWidth)}")
-println("${onCircle.glyphs.count { kotlin.math.abs(it.rotation) > 0.05 }} of ${onCircle.glyphs.size} glyphs turned with the curve")
+println(
+    "${onCircle.glyphs.count { kotlin.math.abs(it.rotation) > 0.05 }} of ${onCircle.glyphs.size} glyphs turned with the curve",
+)
 
 val wave = fline {
     moveTo(0.0, 0.0)
@@ -24,11 +28,20 @@ println("the original layout is untouched: ${ring.glyphs.all { it.isUntransforme
 showImgGrid(
     "on a circle" to rasterizeText(onCircle, 620, 620),
     "on a cubic" to rasterizeText(onWave, 900, 420),
-    columns = 2, cellSide = 430
+    columns = 2,
+    cellSide = 430,
 )
 displayOpen("paths")
 showPlaneGrid(
     "the paths, and the letters as outlines" to
-        (listOf(circle.copy { color = vec(0.4, 0.6, 0.8, 0.5); thickness = 1.0 }) + onCircle.toFLines(thickness = 1.0)),
-    channel = "paths", columns = 1, cellWidth = 420, cellHeight = 420
+        ([
+            circle.copy {
+                color = vec(0.4, 0.6, 0.8, 0.5)
+                thickness = 1.0
+            },
+        ] + onCircle.toFLines(thickness = 1.0)),
+    channel = "paths",
+    columns = 1,
+    cellWidth = 420,
+    cellHeight = 420,
 )

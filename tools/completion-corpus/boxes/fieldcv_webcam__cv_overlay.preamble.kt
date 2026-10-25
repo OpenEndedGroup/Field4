@@ -1,10 +1,13 @@
-import afield.four.Renderer
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
 import java.nio.*
 import arrow.core.right
 import arrow.core.left
-import afield.four.modules.*
-import afield.four.buffers.*
+import afield.graphics.shader.*
+import afield.graphics.scene.*
+import afield.graphics.render.*
+import afield.document.context.*
+import afield.graphics.vulkan.buffers.*
 /*graphics-input:col*/ val Mesh.col by FromInput()
 /*graphics-input:pos*/ val Mesh.pos by FromInput()
 /*supermap*/ class MappedStructure {;             lateinit var tri : IntBuffer; lateinit var col : FloatBuffer; lateinit var pos : FloatBuffer; ;         };         fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;             this.resize(numVert, numTriangle);             val mesh = this;             MappedStructure().apply {;                  mesh.write("pos") { pos = this ; mesh.write("col") { col = this ; mesh.t?.mapAndWrite_ints { tri = this ; builder() } } } ;            };         }

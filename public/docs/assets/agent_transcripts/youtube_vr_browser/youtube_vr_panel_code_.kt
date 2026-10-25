@@ -1,11 +1,11 @@
-import afield.four.Target
-import afield.four.browser.FieldUiBrowserTexture
-import afield.four.browser.PuppetBrowserVrPanel
-import afield.four.browser.PuppetBrowserWindowInput
-import afield.four.targets.SideBySideStereoTarget
+import afield.graphics.vulkan.Target
+import afield.media.browser.FieldUiBrowserTexture
+import afield.media.browser.PuppetBrowser
+import afield.media.browser.PuppetBrowserVrPanel
+import afield.media.browser.PuppetBrowserWindowInput
 
-// prop declarations are lifted into Field's preamble before ordinary imports are applied.
-prop<afield.four.browser.PuppetBrowser>(browserControl)
+// Publish browser controls to connected boxes.
+prop<PuppetBrowser>(browserControl)
 
 // The producer is a full Chromium page, not an embed: consent, account state, player,
 // navigation and audio all behave as they do in an ordinary browser.
@@ -15,13 +15,14 @@ val browser = FieldUiBrowserTexture(
     width = 1280,
     height = 720,
     // Linux: Chromium's shared-texture export never fills the buffer (electron#53271).
-    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired
+    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired,
 )
 browserControl = browser
 
 // Import the newest cross-process frame before either eye samples the resident texture.
-renderer.renderList.preTargets["youtube-browser-upload"] =
-    Target { command, _ -> browser.prepareSampledImagesFor(command) }
+renderer.renderList.preTargets["youtube-browser-upload"] = Target { command, _ ->
+    browser.prepareSampledImagesFor(command)
+}
 
 val stereo = SideBySideStereoTarget(renderer, openXR = renderer.openXRHmdTarget)
 val panel = PuppetBrowserVrPanel(
@@ -30,7 +31,7 @@ val panel = PuppetBrowserVrPanel(
     browser = browser,
     widthMeters = 1.6f,
     distanceMeters = 1.7f,
-    name = "youtube-browser-panel"
+    name = "youtube-browser-panel",
 )
 panel.build()
 panel.enableDesktopInteraction()
@@ -44,19 +45,22 @@ keyboard.takeFocus()
 stereo.packed.blitToScreen(
     renderer = renderer,
     target = renderer.renderList,
-    name = "youtube-stereo-screen"
+    name = "youtube-stereo-screen",
 )
 
 var announced = false
 loop {
     if (!announced && browser.pageReady) {
         announced = true
-        println("YouTube is live on a ${browser.spec.width}x${browser.spec.height} " +
-            "texture; trigger accepts consent and controls playback")
+        println(
+            "YouTube is live on a ${browser.spec.width}x${browser.spec.height} " +
+                "texture; trigger accepts consent and controls playback",
+        )
     }
     frame()
-}.end {
-    renderer.renderList.preTargets.remove("youtube-browser-upload")
-    keyboard.close()
-    browser.close()
 }
+    .end {
+        renderer.renderList.preTargets.remove("youtube-browser-upload")
+        keyboard.close()
+        browser.close()
+    }

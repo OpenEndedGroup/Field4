@@ -1,0 +1,265 @@
+{
+  "branch": "codex/box-code-helpers",
+  "tests": [
+    {
+      "name": "InterpolantsTest[jvm]",
+      "tests": "16",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "RenderedAudioSeamTest[jvm]",
+      "tests": "22",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "TrackedAnalysisTest[jvm]",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "LorisAsyncCancellationTest[jvm]",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "BoxCodeHelpersTest[jvm]",
+      "tests": "5",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "SampleSlicesTest[jvm]",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "OscHandlerLifecycleTest[jvm]",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "OscLoopbackTest[jvm]",
+      "tests": "11",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "OscPortInUseTest[jvm]",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "OscRunOwnedHandlerTest[jvm]",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "SyphonTest[jvm]",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "AsyncOperationTest[jvm]",
+      "tests": "8",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "TimingTest[jvm]",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    }
+  ],
+  "test_total": 80,
+  "failures": 0,
+  "skips": 0,
+  "commands": [
+    {
+      "command": "new-box --name Helper-API-Check --w 1240",
+      "ok": true,
+      "timedOut": false,
+      "captureWarnings": [],
+      "imagePixelWidth": null,
+      "imagePixelHeight": null
+    },
+    {
+      "command": "run @last --file /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/helpers/rehearsal/api-check.kt",
+      "ok": true,
+      "timedOut": false,
+      "captureWarnings": [],
+      "imagePixelWidth": null,
+      "imagePixelHeight": null
+    },
+    {
+      "command": "stop @last",
+      "ok": true,
+      "timedOut": false,
+      "captureWarnings": [],
+      "imagePixelWidth": null,
+      "imagePixelHeight": null
+    },
+    {
+      "command": "new-box --name Interaction-1 --w 1240 --y 3000",
+      "ok": true,
+      "timedOut": false,
+      "captureWarnings": [],
+      "imagePixelWidth": null,
+      "imagePixelHeight": null
+    },
+    {
+      "command": "run @last --file /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/helpers/rehearsal/interaction-1.kt",
+      "ok": true,
+      "timedOut": false,
+      "captureWarnings": [],
+      "imagePixelWidth": null,
+      "imagePixelHeight": null
+    },
+    {
+      "command": "screenshot-box @last /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/helpers/rehearsal/interaction-final-1.png",
+      "ok": true,
+      "timedOut": false,
+      "captureWarnings": [],
+      "imagePixelWidth": 2166,
+      "imagePixelHeight": 1748
+    },
+    {
+      "command": "new-box --name Interaction-2 --w 1240 --y 6000",
+      "ok": true,
+      "timedOut": false,
+      "captureWarnings": [],
+      "imagePixelWidth": null,
+      "imagePixelHeight": null
+    },
+    {
+      "command": "run @last --file /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/helpers/rehearsal/interaction-2.kt",
+      "ok": true,
+      "timedOut": false,
+      "captureWarnings": [],
+      "imagePixelWidth": null,
+      "imagePixelHeight": null
+    },
+    {
+      "command": "screenshot-box @last /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/helpers/rehearsal/interaction-final-2.png",
+      "ok": true,
+      "timedOut": false,
+      "captureWarnings": [],
+      "imagePixelWidth": 2166,
+      "imagePixelHeight": 1880
+    },
+    {
+      "command": "new-box --name Interaction-3 --w 1240 --y 9000",
+      "ok": true,
+      "timedOut": false,
+      "captureWarnings": [],
+      "imagePixelWidth": null,
+      "imagePixelHeight": null
+    },
+    {
+      "command": "run @last --file /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/helpers/rehearsal/interaction-3.kt",
+      "ok": true,
+      "timedOut": false,
+      "captureWarnings": [],
+      "imagePixelWidth": null,
+      "imagePixelHeight": null
+    },
+    {
+      "command": "screenshot-box @last /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/helpers/rehearsal/interaction-final-3.png",
+      "ok": true,
+      "timedOut": false,
+      "captureWarnings": [],
+      "imagePixelWidth": 2166,
+      "imagePixelHeight": 1722
+    },
+    {
+      "command": "new-box --name Interaction-4 --w 1240 --y 12000",
+      "ok": true,
+      "timedOut": false,
+      "captureWarnings": [],
+      "imagePixelWidth": null,
+      "imagePixelHeight": null
+    },
+    {
+      "command": "run @last --file /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/helpers/rehearsal/interaction-4.kt",
+      "ok": true,
+      "timedOut": false,
+      "captureWarnings": [],
+      "imagePixelWidth": null,
+      "imagePixelHeight": null
+    },
+    {
+      "command": "screenshot-box @last /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/helpers/rehearsal/interaction-final-4.png",
+      "ok": true,
+      "timedOut": false,
+      "captureWarnings": [],
+      "imagePixelWidth": 2166,
+      "imagePixelHeight": 1722
+    },
+    {
+      "command": "new-box --name Interaction-5 --w 1240 --y 15000",
+      "ok": true,
+      "timedOut": false,
+      "captureWarnings": [],
+      "imagePixelWidth": null,
+      "imagePixelHeight": null
+    },
+    {
+      "command": "run @last --file /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/helpers/rehearsal/interaction-5.kt",
+      "ok": true,
+      "timedOut": false,
+      "captureWarnings": [],
+      "imagePixelWidth": null,
+      "imagePixelHeight": null
+    },
+    {
+      "command": "screenshot-box @last /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/helpers/rehearsal/interaction-final-5.png",
+      "ok": true,
+      "timedOut": false,
+      "captureWarnings": [],
+      "imagePixelWidth": 2262,
+      "imagePixelHeight": 2038
+    }
+  ],
+  "source_hashes": {
+    "src/jvmMain/kotlin/afield/io/osc/osc.kt": "b5c035e34e514cbe79d2c960b1d8ca07240f91fbf4fe6dac0ca2098368f8fcff",
+    "src/jvmMain/kotlin/afield/io/syphon/Syphon.kt": "66ad6b56cde3acb8011f4c7864bcee471241c7a245b4de2d0760a220db444c58",
+    "src/jvmMain/kotlin/afield/runtime/lifecycle/Timing.kt": "4b49c6ac024e1a16a3dd39fa87dd4901e5e2c399181e6ad5e21010df2be16e70",
+    "src/jvmMain/kotlin/afield/runtime/lifecycle/Phased.kt": "6babe15ecfe1119d23a358bc741fe196f69979252f1962dd42bba8575159f1c2",
+    "src/jvmMain/kotlin/afield/runtime/lifecycle/AsyncOperation.kt": "d77cbe0d14019c3b0696d3e7d476749048364647fe76309abd4191c8ed58185b",
+    "src/jvmMain/kotlin/afield/animation/interpolation/interpolants.kt": "f6fe4a83914f92671f10709ef8578569cdd1b8b216dc771dfe5309b22020e34b",
+    "src/jvmMain/kotlin/afield/lang/rectsl/RectSL.kt": "aa26323a4eb7e489d2fb0c65ecfc3750293404985c7dd8aa2b15fa2e8ca8ddee",
+    "src/jvmMain/kotlin/afield/audio/synth/FaustPattern.kt": "6e6fbc682a3f3d5bec3e9c7bbea4ed00380ac085a5a0a7e2f1f4aa987b16c34f",
+    "src/jvmMain/kotlin/afield/audio/ai/TrackedAnalysis.kt": "7dc7489f72bbb209228299c28b722221decceb7a195cddf1ab07f11f10c15d7f",
+    "src/jvmMain/kotlin/afield/audio/analysis/loris/Loris.kt": "df800a54e1db0386e3a6449e2785499a10e0cf67c551cbf72eadc98a0776fd92",
+    "src/jvmMain/kotlin/afield/geometry/solid/manifold/Solid.kt": "0fed4a34d6ef53d24a3431a32ebba539a10006fac6d8faf3906cd28c0e6c86fc",
+    "src/jvmMain/kotlin/afield/graphics/render/StandardDrawing.kt": "35b8ad0f317d704546d87552b7ede71324f3e9c65990e6c3691c8804f05b93ca",
+    "src/jvmMain/kotlin/afield/data/graph/interactionnets.kt": "df44f755955bcbaa6ee2908fa060786f93ed100d965a4e01e79096d50016c51f"
+  },
+  "visual_inspection": "All five final interaction screenshots inspected; isolated scratch boxes; real docs programs with new layout helper. Separate headless browser, not the user Electron view.",
+  "external_model_inference_exercised": false,
+  "native_syphon_exercised": true,
+  "native_loris_child_cancellation_exercised": true,
+  "native_manifold_slicing_exercised": true
+}

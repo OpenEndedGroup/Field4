@@ -1,13 +1,13 @@
 package afield.examples
 
-import afield.AaCompletionClient
-import afield.Box
-import afield.Completion
-import afield.CompletionRequest
-import afield.CompletionResult
-import afield.graphics.RemoteArKotlinJs
-import afield.graphics.VisionMetalKotlinJs
-import afield.remotejs.KotlinJsExecution
+import afield.runtime.completion.AaCompletionClient
+import afield.document.graph.Box
+import afield.app.protocol.Completion
+import afield.app.protocol.CompletionRequest
+import afield.runtime.kotlin.CompletionResult
+import afield.lang.remotejs.RemoteArKotlinJs
+import afield.graphics.visionos.VisionMetalKotlinJs
+import afield.lang.remotejs.KotlinJsExecution
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import java.util.concurrent.CountDownLatch

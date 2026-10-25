@@ -94,14 +94,14 @@ JEP embeds CPython *in-process*, so java.lang -- and anything else on Field's
 classpath -- is just another module, and this cell can reach its own Box.
 
 ```edn [field-box id="python_interop" role="properties"]
-{"id" "python_interop" "index" 3 "name" "the JVM is importable" "parents" ["root" "python_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "python_root"} "name" "the JVM is importable" "_tombstone" false "frame" #afield/rect [60.0 3040.0 340.0 100.0] "code_language" "Python"} "blockProperties" [{"name" "code" "language" "python" "path" "python_interop_code_.kt" "lines" 11 "characters" 370 "sha256" "37da8371909602b59bb8e4aa2ecfe5a033e0a4c11ddb7aae02ed7e2a2bf2fe4f"}]}
+{"id" "python_interop" "index" 3 "name" "the JVM is importable" "parents" ["root" "python_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "python_root"} "name" "the JVM is importable" "_tombstone" false "frame" #afield/rect [60.0 3040.0 340.0 100.0] "code_language" "Python"} "blockProperties" [{"name" "code" "language" "python" "path" "python_interop_code_.kt" "lines" 11 "characters" 375 "sha256" "dbaeb46b5a73226b6d82c094a2a5fd185b65628561b3b4d27b8766aea9eb221d"}]}
 ```
 
 ```python [field-property box="python_interop" name="code" path="python_interop_code_.kt"]
 # JEP embeds CPython *in-process*, so java.lang -- and anything else on Field's
 # classpath -- is just another module, and this cell can reach its own Box.
 from java.lang import System
-from afield.python import PythonInterface
+from afield.lang.python import PythonInterface
 
 box = PythonInterface.thisBox
 

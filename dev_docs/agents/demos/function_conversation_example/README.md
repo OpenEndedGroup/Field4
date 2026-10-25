@@ -3,7 +3,7 @@
 A working Field/AI4 experiment: seven real Astra conversations turn three flat
 channels into an editable one-hour function, then reshape it without losing the
 rest. The function is ordinary Kotlin returning `Functions.Fn` values, in a function study box whose
-AI4 chat has the study tools (`afield.stdlib.FunctionStudyTools`). The recorded turns used an
+AI4 chat has the study tools (`afield.math.functions.FunctionStudyTools`). The recorded turns used an
 earlier arrangement in which those tools were a box of this document.
 
 Open the function_conversation_example folder as a Field document. For a fresh

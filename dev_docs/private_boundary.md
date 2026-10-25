@@ -31,7 +31,7 @@ Three costs, in the order they matter:
    named packages that existed on one machine. That is a correctness bug for every other reader.
 2. **A citation nobody can follow.** Prose that cites a private path offers evidence no reader can
    open. It also creates bookkeeping: before this guard,
-   `src/jvmTest/kotlin/afield/graphics/CloseNodeCitationDriftTest.kt` carried an exemption list
+   `src/jvmTest/kotlin/afield/geometry/path/CloseNodeCitationDriftTest.kt` carried an exemption list
    naming three private files purely to record that CI could not check them.
 3. **A general tool promoting one artwork.** The intent is to study private work for the *general*
    lesson, and a lesson that arrives carrying the name of the piece it came from has not been
@@ -41,7 +41,7 @@ Three costs, in the order they matter:
 
 ## The assertions
 
-Eight `@Test` methods, in `src/jvmTest/kotlin/afield/docs/PersonalBoundaryTest.kt`. Assertions 1, 2
+Eight `@Test` methods, in `src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt`. Assertions 1, 2
 and 7 are the rule, 8 proves the diff handling on a fixture, 3 is the population they reason over, 4
 and 5 keep the ledger honest, and 6 does not run outside the author's machine. They are numbered in
 the order they were written; 7 belongs beside 1, being the same inverted allowlist asked of a
@@ -118,8 +118,8 @@ Naming the root is legal. Reaching inside it is not. `git grep -l "src/personal"
 tracked files, **26** of them under `src/`, and they are all mechanism: Field offers
 `src/personal/kotlin` as an optional source root, from `KotlinSourceIndex` to the completion sidecar.
 Two of them name it in order to *exclude* it, both as an `EXCLUDED_ROOTS` list —
-`src/jvmMain/kotlin/afield/docs/KDocAttachmentGuard.kt:128#private val EXCLUDED_ROOTS` and
-`src/jvmMain/kotlin/afield/docs/SourcePartitionGuard.kt:70#private val EXCLUDED_ROOTS`. Depth is the
+`src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt:128#private val EXCLUDED_ROOTS` and
+`src/jvmMain/kotlin/afield/tools/docs/SourcePartitionGuard.kt:70#private val EXCLUDED_ROOTS`. Depth is the
 discriminator: a root reference survives the directory being absent, a path inside it does not.
 
 `PersonalBoundaryTest.kt:231#private val DEEP_PERSONAL_RE` is the root plus **two** more segments.
@@ -249,10 +249,10 @@ line.
 
 It found three files on the day it was ported to this tree (2026-10-07):
 
-- `src/jvmTest/kotlin/afield/graphics/FLineBuilderSyntaxTest.kt`, a committed test of the terser
+- `src/jvmTest/kotlin/afield/geometry/path/FLineBuilderSyntaxTest.kt`, a committed test of the terser
   `FLine` construction surface. Every import in it was `afield.*` or `kotlin.*`; its package, and the
   directory it sat in, were one of the nineteen private ones. No other assertion could see it, because
-  its imports were clean and it cited no path. It moved to `afield.graphics`, which made its
+  its imports were clean and it cited no path. It moved to `afield.geometry.path`, which made its
   `FLine` import redundant. Nothing referenced the old fully-qualified name.
 - Two test fixtures, a Kotlin source held in a raw string with the placeholder package `fixture`, in
   `GeneratedCompletionDocSweepTest.kt` and `KotlinSourcePartitionTest.kt`. Not private, but not a
@@ -356,7 +356,7 @@ checkouts of the same commit.**
 
 ## When it runs
 
-`PersonalBoundaryTest` is in `citationGates`, declared at `build.gradle.kts:1617#"afield.docs.PersonalBoundaryTest"`,
+`PersonalBoundaryTest` is in `citationGates`, declared at `build.gradle.kts:1617#"afield.tools.docs.PersonalBoundaryTest"`,
 and excluded from the broad `jvmTest` task. That is not about speed. `citationGates` is the only task
 that declares Markdown and the three box-code forms as **inputs**, so it is the only one that cannot
 go `UP-TO-DATE` after an edit that touches no Kotlin. A guard that can pass stale is worse than no
@@ -415,14 +415,14 @@ the next person does not restore the citation thinking it was an oversight.
 **Two of the three private imports were dead.** `canonical_graphics/072074d3`'s entire body was
 `import euclid.*` and nothing else. `de832c1f`'s `import splat.*` bought it nothing:
 `readPlyAsFloatTable` and `subsetFloatBufferColumns` are both in
-`src/jvmMain/kotlin/afield/four/modules/LoadPly.kt`, the box constructs no private types, and the
+`src/jvmMain/kotlin/afield/graphics/scene/LoadPly.kt`, the box constructs no private types, and the
 private tree does not shadow the function. Both leaks had been there long enough to look load-bearing
 and were not.
 
 The last three were one dependency: `organic.ShaderDlaSystem`, which section 8 of
 `public/docs/afield_four_graphics.md` teaches `installInto()` through. Moving it was the right call
 rather than dropping the section, because the lesson is general and the vehicle was incidental. It is
-now `afield.stdlib.ShaderDlaSystem` in `src/jvmMain/kotlin/afield/stdlib/alife_dla.kt`, and the tell
+now `afield.simulation.agents.ShaderDlaSystem` in `src/jvmMain/kotlin/afield/simulation/agents/alife_dla.kt`, and the tell
 that this is where it belonged is that three of its imports became redundant on arrival: `Vec4`,
 `attachShader` and `vec` are `afield.stdlib` members. The private file became a two-line typealias
 shim so that a live box saying `import organic.*` still opens. Private code depending on public code
@@ -443,7 +443,7 @@ others.
 
 Two synthetic files under `dev_docs/agents/`, against a package that exists nowhere: a ten-line
 `.patch` whose header names a file under the private root and whose added lines declare and import
-that package, and a `.kt` declaring the package while importing only `afield.graphics.FLine`.
+that package, and a `.kt` declaring the package while importing only `afield.geometry.path.FLine`.
 
 ```text
 PersonalBoundaryTest > no committed file declares a package outside the public roots FAILED
@@ -574,7 +574,7 @@ Stated so that a green run is not read as more than it is.
 - **A private path written without its prefix.** `DEEP_PERSONAL_RE` keys on the literal string
   `src/personal/`. A path relative to the private source root does not carry it and is invisible.
   There is a live instance, and it is inside another guard:
-  `src/jvmMain/kotlin/afield/docs/KDocAttachmentGuard.kt:123#Scanning it made` explains why it
+  `src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt:123#Scanning it made` explains why it
   excludes the private tree by reciting three files it found there, as `kiwi/MapType.kt`,
   `organic/fakeDivs.kt` and `pattern/polyheadra.kt`. Three private paths, in a tracked file, past a
   green guard. Harmless here, because the point of the passage is that those files could not be

@@ -3,7 +3,7 @@ layout(location = 0) out vec4 uFragColor;
 layout(location = 0) in vec2 tc;
 layout(location = 1) in float ring;
 
-// One colour per ring, and these four are `afield.visualization.signalPalette` in its own
+// One colour per ring, and these four are `afield.ui.visualization.signalPalette` in its own
 // order, so a ring here and a trace on a showSignals plot of the same band are the same
 // colour. #7ad9ff #ff9e4a #8fff9a #ffe066.
 const vec3[4] tint = {

@@ -10,12 +10,13 @@ The box below draws one frame, lights the rig from it, sends it over sACN, and d
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_scene_to_light/chain.png" wait="10" capture="box" open-outputs="true" w="1180" h="620" padding="18" timeout="180" name="chain-scene-to-light-chain" embed=true alt="Three panels: the RectSL frame at one second, an orange square tilted on a navy wall with a thin white line and a blue band along the bottom; the 16 by 8 rig of discs lit from it, showing a blocky orange square, two columns of pale discs where the line straddles them, and four washes along the bottom; and the same rig lit by the universes that came back over sACN, indistinguishable from the one sent"}
 :::static
-import afield.dmx.*
-import afield.rectsl.*
+import afield.io.dmx.*
+import afield.lang.rectsl.*
 
 // The scene, drawn on the CPU: 256 x 128 pixels of a 16 x 8 wall, at one second in.
 val scene = RectSLImager(SceneOnARig.SCENE)
 val frame = scene.frame(1.0, 256, 128)
+showImg(frame, channel = "scene")
 
 // A 16 x 8 grid of RGB pixels in universe 1 and four RGBWA washes in universe 2, coloured from
 // the frame shrunk to one pixel per fixture.
@@ -23,21 +24,20 @@ val rig = SceneOnARig.Rig()
 rig.show(frame)
 
 :::fold send it as sACN to this machine, receive it, and draw both
-// Plain objects rather than the box helpers, so every socket is closed before the box ends.
-val out = DmxOutput(DmxProtocol.SACN, host = "127.0.0.1", port = 35692, autoStart = false, discovery = false)
-val node = DmxInput(DmxProtocol.SACN, port = 35692, bindAddress = "127.0.0.1")
-try {
-    rig.patch.render(out)
-    out.flush()
-    val until = System.currentTimeMillis() + 2000
-    while ((node.version(1) == 0L || node.version(2) == 0L) && System.currentTimeMillis() < until) Thread.sleep(5)
-
-    showImg(frame.upscaleNearest(2), channel = "scene", maxSide = 540, caption = "the scene at t = 1 s, as RectSLImager draws it")
-    showPatch(rig.patch, channel = "sent", w = 540.0, h = 330.0)
-    showReceived(rig.patch, node, channel = "received", w = 540.0, h = 330.0)
-} finally {
-    out.close()
-    node.close()
+// Nested scopes close the sender even if receiver construction fails.
+val port = 35692
+DmxOutput(DmxProtocol.SACN, host = "127.0.0.1", port = port, autoStart = false, discovery = false).use { out ->
+    DmxInput(DmxProtocol.SACN, port = port, bindAddress = "127.0.0.1").use { node ->
+        rig.patch.render(out)
+        out.flush()
+        val deadline = System.nanoTime() + 2_000_000_000L
+        while ((node.version(1) == 0L || node.version(2) == 0L) && System.nanoTime() < deadline) Thread.sleep(5)
+        check(node.version(1) > 0L && node.version(2) > 0L) {
+            "Incomplete sACN frame on port $port after 2 seconds: universe 1=${node.version(1)}, universe 2=${node.version(2)}. Check sender address/port."
+        }
+        showPatch(rig.patch, channel = "sent", w = 540.0, h = 330.0)
+        showReceived(rig.patch, node, channel = "received", w = 540.0, h = 330.0)
+    }
 }
 :::endfold
 ```
@@ -74,13 +74,6 @@ In RectSL it reads:
 ;
 ```
 
-!!! note "Why the line moves with `linear`"
-
-    A quoted track such as `'( 0=-8  4=8 ) ->x` eases in and out by default. The CPU rasterizer
-    takes one sample per pixel centre and counts a centre exactly on an edge as inside, so an eased
-    edge that lands on a centre draws a line one pixel wider than it is. `linear` keeps the edges
-    off the centres in this scene.
-
 The second panel is the rig in its sent colours. The third is the same rig lit only by what the
 receiver decoded from the two universes that came back. The wall is 16 units by 8, which gives one
 fixture per unit, and the frame is drawn at 16 pixels per unit, so each fixture stands for a
@@ -96,8 +89,8 @@ context is involved, so the lights keep running on a machine whose display is as
 
 ```diffstatic {data-lang=kotlin}
 val scene = RectSLImager(source)
-val img = scene.frame(1.5, 256, 128)          // colours as typed: 0x808080 is 0.502
-val light = scene.frame(1.5, 256, 128, linear = true)   // the light that stands for: 0.216
+val img = scene.frame(1.5, 256, 128) // colours as typed: 0x808080 is 0.502
+val light = scene.frame(1.5, 256, 128, linear = true) // the light that stands for: 0.216
 ```
 
 There are two choices of value. A frame holds colours *as typed* by default, which is what the
@@ -116,7 +109,7 @@ colour, then runs the scene on the sender's own 44 Hz clock for three seconds an
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_scene_to_light/readout.png" wait="14" capture="box" open-outputs="true" w="1120" h="480" padding="18" timeout="240" name="chain-scene-to-light-readout" embed=true alt="Three tables: the round trip of nine frames of 132 fixtures, with no slot byte changed and pixels and washes both within half a level; the frame cost and the receiver's frame spacing over three seconds at 44 Hz; and the worst decode error of six fixture profiles over random colours, largest for RGBWA"}
 :::static
-import afield.dmx.*
+import afield.io.dmx.*
 
 val trip = SceneOnARig.roundTrip(port = 35693)
 val timing = SceneOnARig.timing(port = 35694, seconds = 3.0)
@@ -124,7 +117,9 @@ val floor = SceneOnARig.decodeErrors()
 
 :::fold the readout
 fun f(v: Double, d: Int = 2) = "%.${d}f".format(v)
-markdown("roundtrip", """
+markdown(
+    "roundtrip",
+    """
 #### ${trip.frames} frames, ${trip.fixtures} fixtures, two universes, sACN to 127.0.0.1 and back
 
 | | |
@@ -150,7 +145,9 @@ ${timing.ticks} looks computed; ${timing.arrivalMillis.size + 1} frames of unive
 | profile | ${floor.keys.joinToString(" | ") { it.name }} |
 |---|${floor.keys.joinToString("") { "---|" }}
 | worst error, levels | ${floor.values.joinToString(" | ") { f(it, 3) }} |
-""", width = 1000)
+""",
+    width = 1000,
+)
 :::endfold
 ```
 
@@ -183,8 +180,8 @@ the full frame, and the frame shrunk to 16 × 8 by area averaging (`Img.resize`)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_scene_to_light/aliasing.png" wait="14" capture="box" open-outputs="true" w="1180" h="700" padding="18" timeout="240" name="chain-scene-to-light-aliasing" embed=true alt="A plot of the total light on the rig over three seconds: the point-sampled route is zero most of the time with tall spikes each time the line passes a column of sample points, and the area-averaged route is a flat line at two fixtures' worth, the light the line carries; below, two rigs at the same instant, the point-sampled one dark and the area-averaged one with two dim columns"}
 :::static
-import afield.dmx.*
-import afield.rectsl.*
+import afield.io.dmx.*
+import afield.lang.rectsl.*
 
 val (point, area) = SceneOnARig.aliasing()
 
@@ -210,12 +207,16 @@ showPatch(rig.patch, channel = "point samples at t = ${"%.3f".format(times[k])} 
 rig.show(frame, area = true)
 showPatch(rig.patch, channel = "area average at t = ${"%.3f".format(times[k])} s", w = 540.0, h = 300.0)
 
-markdown("counts", """
+markdown(
+    "counts",
+    """
 | route | frames with the rig dark | light on the rig, min – max | mean over the sweep | (max − min) / mean |
 |---|---|---|---|---|
 | point samples | ${point.darkFrames} of ${point.total.size} | ${"%.2f".format(point.min)} – ${"%.2f".format(point.max)} | ${"%.3f".format(point.mean)} | ${"%.2f".format(point.flicker)} |
 | area average | ${area.darkFrames} of ${area.total.size} | ${"%.3f".format(area.min)} – ${"%.3f".format(area.max)} | ${"%.3f".format(area.mean)} | ${"%.4f".format(area.flicker)} |
-""", width = 1000)
+""",
+    width = 1000,
+)
 :::endfold
 ```
 
@@ -234,7 +235,7 @@ flickering.
 That is why `SceneOnARig.Rig.show` shrinks the frame first:
 
 ```diffstatic {data-lang=kotlin}
-patch.mapImage(frame.resize(16, 8))      // one pixel per fixture, each the mean of its cell
+patch.mapImage(frame.resize(16, 8)) // one pixel per fixture, each the mean of its cell
 ```
 
 This works exactly because `resize` averages whole 16 × 16 blocks, and the image size then matches

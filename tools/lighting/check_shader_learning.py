@@ -11,7 +11,7 @@ ROOT=Path(__file__).resolve().parents[2]
 parser=argparse.ArgumentParser();parser.add_argument('--port',type=int,required=True);parser.add_argument('--server-log',type=Path,required=True)
 a=parser.parse_args();work=ROOT/'build/neural-tools';work.mkdir(parents=True,exist_ok=True)
 marker=ROOT/'build/shader-learning/latest-model.txt';marker.unlink(missing_ok=True)
-script=work/'check-module.kt';script.write_text('afield.four.neural.ShaderLearningChecks.run(lab)')
+script=work/'check-module.kt';script.write_text('afield.graphics.shader.learning.ShaderLearningChecks.run(lab)')
 start=a.server_log.stat().st_size
 click={'action':'clickSelector','selector':'.field-button:has-text("Capture shader and train") button'}
 commands=['macro write learn --file dev_docs/agents/transcripts/learned_from_module.yaml','macro run learn','sleep 2',

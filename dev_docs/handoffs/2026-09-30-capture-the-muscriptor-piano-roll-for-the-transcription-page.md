@@ -34,7 +34,7 @@ both pages should embed the same asset.
 ## Evidence
 
 - A model-free renderer exists: `analysisPreviewVisualizationHtml(preview: AnalysisPreview, ...)`
-  in `src/jvmMain/kotlin/afield/stdlib/noir/audioai/AnalysisVisualization.kt` ("Render a
+  in `src/jvmMain/kotlin/afield/audio/ai/AnalysisVisualization.kt` ("Render a
   deterministic or already-fetched preview without contacting the service").
 - `AnalysisNote` has `instrument: String?` ("MuScriptor instrument group"), and `AnalysisPreview`'s
   KDoc says `analysis.transcribe_music` fills instrument-labelled notes plus active-note and

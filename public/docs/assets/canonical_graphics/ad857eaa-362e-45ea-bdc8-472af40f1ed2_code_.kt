@@ -8,22 +8,21 @@ var m = ComputeMesh()
 module += "mainMesh" to m
 renderer += "module" to module
 
+// N changes buffer allocation. Stop the draw child first; rerun compute, then draw.
 val N = 100000
-var inData = defaultBuffer { 
+var inData = defaultBuffer {
     size = N.vec4s
-}.buffer
+}
+    .buffer
 
 var outData = defaultBuffer {
     size = N.vec4s
-}.buffer
-
-m.inData = {
-    inData
 }
+    .buffer
 
-m.outData = {
-    outData
-}
+m.inData = { inData }
+
+m.outData = { outData }
 
 var x = 0.0
 
@@ -32,8 +31,12 @@ m.something = {
     x.f
 }
 prop<FrameBufferGroup>(outputPositions) = outData
+prop<Int>(particleCount) = N
 
-m.x = N / 64
+// uint push members accept Int lambdas; the shader checks the tail group.
+m.count = { N }
+
+m.x = (N + 63) / 64
 
 m.y = 1
 

@@ -2,8 +2,8 @@
 
 Authoring examples are in the annotations section of `public/docs/interactive_guides.md`. Builder
 signatures and defaults belong on `annotate`, `annotateToLine`, and `note` in
-`src/jvmMain/kotlin/afield/SlideShow.kt`. Rendering behavior is documented at the top of
-`src/jsMain/kotlin/afield/slideshowSupport.kt`.
+`src/jvmMain/kotlin/afield/ui/slides/SlideShow.kt`. Rendering behavior is documented at the top of
+`src/jsMain/kotlin/afield/app/client/slideshowSupport.kt`.
 
 Implementation invariants:
 

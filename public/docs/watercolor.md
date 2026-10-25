@@ -18,8 +18,6 @@ the sky had dried:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/watercolor/first.png" alt="a small watercolour study on off-white cold-pressed paper. The top is a sky of four overlapping horizontal brushstrokes of blue that have run together into one band, deeper above and paler below, with a fine grain where a little more pigment gathered in the hollows of the paper's texture. Below, two broad wavy strokes of warm grey-brown for the hills, with the same fine grain and crisp edges and a little white paper left between them" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="first" embed=true}
 :::static
-import afield.paint.*
-
 val sheet = PaintCanvas.paper(700, aspect = 1.5, paper = Paper.ColdPress, sizeMm = 200.0, seed = 3)
 val brush = sheet.waterBrush(width = 70.0)
 
@@ -33,8 +31,8 @@ sheet.wash(FLine().moveTo(60, 180).lineTo(940, 180).moveTo(940, 225).lineTo(60, 
 sheet.dry()
 brush.load(Watercolors.burntSienna * 3.0 + Watercolors.ultramarine * 2.0)
 val hills = FLine().moveTo(40, 420).cubicTo(250, 300, 450, 420, 960, 340)
-sheet.wash(hills, brush, pressure = listOf(1.0), speed = 30.0)
-sheet.wash(FLine().moveTo(40, 470).lineTo(960, 450), brush, pressure = listOf(1.0), speed = 30.0)
+sheet.wash(hills, brush, pressure = [1.0], speed = 30.0)
+sheet.wash(FLine().moveTo(40, 470).lineTo(960, 450), brush, pressure = [1.0], speed = 30.0)
 sheet.dry()
 
 display("main", sheet.png())
@@ -63,14 +61,13 @@ long fibres; blotting paper takes it in quickly and softens its edge.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/watercolor/papers.png" alt="five squares of paper side by side, each with one dried drop of black ink in the middle. On cold press, hot press and rough paper the drop is a small, crisp, round black dot, a little ragged on the rough sheet. On xuan paper the ink has spread into a much larger, soft grey disc that feathers out into the paper in fine radial streaks. On blotting paper it is a round black dot a little larger than the first three, with a soft edge" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="papers" embed=true}
 :::static
-import afield.paint.*
-
-val sheets = Paper.entries.map { paper ->
-    PaintCanvas.paper(220, aspect = 1.0, paper = paper, sizeMm = 50.0, seed = 2).also { sheet ->
-        sheet.drop(500.0, 500.0, Watercolors.sumi * 3.0, volumeMm3 = 15.0)
-        sheet.dry()
+val sheets =
+    Paper.entries.map { paper ->
+        PaintCanvas.paper(220, aspect = 1.0, paper = paper, sizeMm = 50.0, seed = 2).also { sheet ->
+            sheet.drop(500.0, 500.0, Watercolors.sumi * 3.0, volumeMm3 = 15.0)
+            sheet.dry()
+        }
     }
-}
 display("main", pngRow(sheets))
 ```
 
@@ -97,22 +94,22 @@ stopped: a backrun, with a pale middle and a dark, frilled edge.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/watercolor/blooms.png" alt="two passages side by side on cold-pressed paper. Left: on dampened paper, three blue and two rose drops, each a dense, rounded blot of strong colour surrounded by a pale, soft halo where its colour spread into the damp paper, the rose halos larger and feathered at their edges. Right: a flat light-brown wash with a fine grain and a small pale patch in its middle, outlined by a thin, darker, frilled line where the clean water pushed the pigment out" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="blooms" embed=true}
 :::static
-import afield.paint.*
-
-fun rect(x0: Double, y0: Double, x1: Double, y1: Double) =
-    FLine().moveTo(x0, y0).lineTo(x1, y0).lineTo(x1, y1).lineTo(x0, y1).lineTo(x0, y0)
+fun rectBetween(x0: Double, y0: Double, x1: Double, y1: Double) = FLine().rect(x0, y0, x1 - x0, y1 - y0)
 
 val sheet = PaintCanvas.paper(700, aspect = 1.6, paper = Paper.ColdPress, sizeMm = 160.0, seed = 3)
 
 // wet in wet: clean water, then drops of colour into it at once
-sheet.wet(rect(60.0, 80.0, 460.0, 540.0), microns = 40.0)
-for ((x, y) in listOf(150.0 to 180.0, 330.0 to 260.0, 200.0 to 420.0))
-    sheet.drop(x, y, Watercolors.ultramarine * 15.0, volumeMm3 = 4.0)
-for ((x, y) in listOf(260.0 to 160.0, 380.0 to 440.0))
-    sheet.drop(x, y, Watercolors.quinacridoneRose * 12.0, volumeMm3 = 4.0)
+sheet.wet(rectBetween(60.0, 80.0, 460.0, 540.0), microns = 40.0)
+for ((x, y) in [150.0 to 180.0, 330.0 to 260.0, 200.0 to 420.0]) sheet.drop(
+    x,
+    y,
+    Watercolors.ultramarine * 15.0,
+    volumeMm3 = 4.0,
+)
+for ((x, y) in [260.0 to 160.0, 380.0 to 440.0]) sheet.drop(x, y, Watercolors.quinacridoneRose * 12.0, volumeMm3 = 4.0)
 
 // a backrun: a wash left until damp, then clean water into it
-sheet.wet(rect(540.0, 80.0, 940.0, 540.0), microns = 110.0, paint = Watercolors.burntSienna * 2.5)
+sheet.wet(rectBetween(540.0, 80.0, 940.0, 540.0), microns = 110.0, paint = Watercolors.burntSienna * 2.5)
 sheet.waitSeconds(240.0)
 sheet.drop(740.0, 310.0, WaterPaint.Clear, volumeMm3 = 25.0)
 sheet.dry()
@@ -131,9 +128,7 @@ bottom of the sheet: its colour drains with the water into the bead, and the bea
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/watercolor/tilt.png" alt="on smooth white paper, a rectangle of lilac wash in the upper part of the sheet, palest at its top and deepening downwards to its lower edge. From that edge many thin, straight violet drips run down the rest of the sheet to the bottom, where a dark violet line has dried along the edge of the paper" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="tilt" embed=true}
 :::static
-import afield.paint.*
-
-val wash = FLine().moveTo(200, 150).lineTo(800, 150).lineTo(800, 600).lineTo(200, 600).lineTo(200, 150)
+val wash = FLine().rect(200, 150, 600, 450)
 val sheet = PaintCanvas.paper(400, aspect = 0.75, paper = Paper.HotPress, sizeMm = 120.0, seed = 4)
 sheet.tilt(15.0, 90.0)
 sheet.wet(wash, microns = 60.0, paint = Watercolors.ultramarine * 2.0 + Watercolors.quinacridoneRose * 1.2)
@@ -158,16 +153,23 @@ only the nearly dry one breaks up.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/watercolor/drybrush.png" alt="two sheets side by side, each with three horizontal brown strokes. On the left, rough paper with a coarse texture: the top stroke is a band of dark brown blots gathered in the paper's hollows over a paler tint; the middle one is a broken row of small pale marks; the bottom one is only a few tiny specks. On the right, smooth hot-pressed paper: the top stroke is a solid dark band with a fine texture, the middle one an even pale band, and the bottom one a pale band broken up into specks" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="drybrush" embed=true}
 :::static
-import afield.paint.*
-
-val sheets = listOf(Paper.Rough, Paper.HotPress).map { paper ->
-    val sheet = PaintCanvas.paper(420, aspect = 1.3, paper = paper, sizeMm = 120.0, seed = 5)
-    for ((i, fill) in listOf(1.0, 0.3, 0.1).withIndex()) {
-        val brush = sheet.waterBrush(90.0).load(Watercolors.burntSienna * 40.0 + Watercolors.ultramarine * 20.0, fill = fill)
-        sheet.wash(FLine().moveTo(60, 130.0 + i * 230).lineTo(940, 130.0 + i * 230), brush, pressure = listOf(0.3), speed = 200.0)
+val sheets =
+    [Paper.Rough, Paper.HotPress].map { paper ->
+        val sheet = PaintCanvas.paper(420, aspect = 1.3, paper = paper, sizeMm = 120.0, seed = 5)
+        for ((i, fill) in [1.0, 0.3, 0.1].withIndex()) {
+            val brush =
+                sheet
+                    .waterBrush(90.0)
+                    .load(Watercolors.burntSienna * 40.0 + Watercolors.ultramarine * 20.0, fill = fill)
+            sheet.wash(
+                FLine().moveTo(60, 130.0 + i * 230).lineTo(940, 130.0 + i * 230),
+                brush,
+                pressure = [0.3],
+                speed = 200.0,
+            )
+        }
+        sheet.dry()
     }
-    sheet.dry()
-}
 display("main", pngRow(sheets))
 ```
 
@@ -179,14 +181,11 @@ and lifts back nearly to white, while phthalo blue has stained the fibres and ba
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/watercolor/lift.png" alt="two dried rectangles of blue wash side by side on cold-pressed paper, a mid ultramarine on the left and an intense phthalo blue on the right. A horizontal band has been scrubbed across both with a damp brush: through the ultramarine it is a clearly paler stripe, lifted most of the way to the paper; through the phthalo it is barely visible" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="lift" embed=true}
 :::static
-import afield.paint.*
-
-fun rect(x0: Double, y0: Double, x1: Double, y1: Double) =
-    FLine().moveTo(x0, y0).lineTo(x1, y0).lineTo(x1, y1).lineTo(x0, y1).lineTo(x0, y0)
+fun rectBetween(x0: Double, y0: Double, x1: Double, y1: Double) = FLine().rect(x0, y0, x1 - x0, y1 - y0)
 
 val sheet = PaintCanvas.paper(600, aspect = 1.5, paper = Paper.ColdPress, sizeMm = 150.0, seed = 6)
-sheet.wet(rect(100.0, 100.0, 460.0, 560.0), microns = 120.0, paint = Watercolors.ultramarine * 3.0)
-sheet.wet(rect(540.0, 100.0, 900.0, 560.0), microns = 120.0, paint = Watercolors.phthaloBlue * 1.0)
+sheet.wet(rectBetween(100.0, 100.0, 460.0, 560.0), microns = 120.0, paint = Watercolors.ultramarine * 3.0)
+sheet.wet(rectBetween(540.0, 100.0, 900.0, 560.0), microns = 120.0, paint = Watercolors.phthaloBlue * 1.0)
 sheet.dry()
 
 // scrub a band across both: wet the brush, scrub, squeeze it out, scrub again, six times
@@ -194,9 +193,9 @@ val brush = sheet.waterBrush(50.0)
 val band = FLine().moveTo(150, 330).lineTo(850, 330)
 repeat(6) {
     brush.load(WaterPaint.Clear, fill = 0.6)
-    sheet.wash(band, brush, pressure = listOf(0.9), speed = 120.0)
+    sheet.wash(band, brush, pressure = [0.9], speed = 120.0)
     brush.load(WaterPaint.Clear, fill = 0.05)
-    sheet.wash(band, brush, pressure = listOf(0.9), speed = 120.0)
+    sheet.wash(band, brush, pressure = [0.9], speed = 120.0)
 }
 sheet.dry()
 display("main", sheet.png())
@@ -229,16 +228,16 @@ phthalo has soaked into its fibres and stained them, which is why it would not l
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/watercolor/pigments.png" alt="three dried rectangles of blue wash side by side on cold-pressed paper, each with a soft, fine grain from the paper's texture. Left, ultramarine alone: a mid violet-blue. Middle, phthalo blue alone: an intense greenish blue. Right, the two mixed: a deeper, stronger blue" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="pigments" embed=true}
 :::static
-import afield.paint.*
-
-fun rect(x0: Double, y0: Double, x1: Double, y1: Double) =
-    FLine().moveTo(x0, y0).lineTo(x1, y0).lineTo(x1, y1).lineTo(x0, y1).lineTo(x0, y0)
+fun rectBetween(x0: Double, y0: Double, x1: Double, y1: Double) = FLine().rect(x0, y0, x1 - x0, y1 - y0)
 
 val sheet = PaintCanvas.paper(700, aspect = 2.0, paper = Paper.ColdPress, sizeMm = 160.0, seed = 7)
 val u = Watercolors.ultramarine * 3.0
 val p = Watercolors.phthaloBlue * 0.8
-for ((i, paint) in listOf(u, p, u + p).withIndex())
-    sheet.wet(rect(60.0 + i * 310, 70.0, 320.0 + i * 310, 430.0), microns = 120.0, paint = paint)
+for ((i, paint) in [u, p, u + p].withIndex()) sheet.wet(
+    rectBetween(60.0 + i * 310, 70.0, 320.0 + i * 310, 430.0),
+    microns = 120.0,
+    paint = paint,
+)
 sheet.dry()
 display("main", sheet.png(relief = 0.4))
 ```
@@ -254,19 +253,16 @@ oil.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/watercolor/oil.png" alt="on cold-pressed paper, a horizontal band of dried blue watercolour across the top, crossed by two vertical strokes of thick cream oil paint that run down the whole sheet. Across the lower half a band of brown watercolour soaks into the paper between the oil strokes and stops at them, leaving the cream paint clean" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="oil" embed=true}
 :::static
-import afield.paint.*
-
-fun rect(x0: Double, y0: Double, x1: Double, y1: Double) =
-    FLine().moveTo(x0, y0).lineTo(x1, y0).lineTo(x1, y1).lineTo(x0, y1).lineTo(x0, y0)
+fun rectBetween(x0: Double, y0: Double, x1: Double, y1: Double) = FLine().rect(x0, y0, x1 - x0, y1 - y0)
 
 val sheet = PaintCanvas.paper(600, aspect = 1.5, paper = Paper.ColdPress, sizeMm = 150.0, seed = 7)
-sheet.wet(rect(100.0, 100.0, 900.0, 300.0), microns = 120.0, paint = Watercolors.ultramarine * 2.5)
+sheet.wet(rectBetween(100.0, 100.0, 900.0, 300.0), microns = 120.0, paint = Watercolors.ultramarine * 2.5)
 sheet.dry()
 
 val oil = sheet.brush(BrushKind.HogFlat, 60.0).load(rgb(0.9, 0.85, 0.7), hiding = 0.6)
 sheet.stroke(FLine().moveTo(300, 80).lineTo(300, 620).moveTo(650, 80).lineTo(650, 620), oil)
 
-sheet.wet(rect(100.0, 400.0, 900.0, 560.0), microns = 120.0, paint = Watercolors.burntSienna * 2.5)
+sheet.wet(rectBetween(100.0, 400.0, 900.0, 560.0), microns = 120.0, paint = Watercolors.burntSienna * 2.5)
 sheet.dry()
 display("main", sheet.png())
 ```
@@ -285,21 +281,25 @@ paper (the stroke still puddled, the wash already sinking in), and the water in 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/watercolor/maps.png" alt="three panels of the same sheet. Left, the picture: a pale blue wash with a darker blue stroke curving through it, the paper still looking wet. Middle, a black and white map of the water standing on the paper: the stroke is bright, the wash around it a dim grey, the dry paper black. Right, a map of the water in the paper: the whole wash is a fairly even grey with brighter spots, sharp-edged against the dry black paper" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="maps" embed=true}
 :::static
-import afield.paint.*
 import java.util.Base64
 
-fun rect(x0: Double, y0: Double, x1: Double, y1: Double) =
-    FLine().moveTo(x0, y0).lineTo(x1, y0).lineTo(x1, y1).lineTo(x0, y1).lineTo(x0, y0)
+fun rectBetween(x0: Double, y0: Double, x1: Double, y1: Double) = FLine().rect(x0, y0, x1 - x0, y1 - y0)
 fun img(png: ByteArray) = "<img width='300' src='data:image/png;base64,${Base64.getEncoder().encodeToString(png)}'>"
 
 val sheet = PaintCanvas.paper(300, aspect = 1.0, paper = Paper.ColdPress, sizeMm = 80.0, seed = 8)
-sheet.wet(rect(100.0, 100.0, 900.0, 900.0), microns = 80.0, paint = Watercolors.ultramarine * 1.0)
+sheet.wet(rectBetween(100.0, 100.0, 900.0, 900.0), microns = 80.0, paint = Watercolors.ultramarine * 1.0)
 val brush = sheet.waterBrush(80.0).load(Watercolors.ultramarine * 4.0)
 sheet.wash(FLine().moveTo(200, 250).cubicTo(500, 100, 500, 900, 800, 750), brush, speed = 40.0)
 sheet.waitSeconds(20.0)
 
-display("main", img(sheet.png(wet = true)) + " " + img(sheet.waterMapPng(WaterMap.SurfaceWater)) + " " +
-    img(sheet.waterMapPng(WaterMap.AbsorbedWater)))
+display(
+    "main",
+    img(sheet.png(wet = true)) +
+        " " +
+        img(sheet.waterMapPng(WaterMap.SurfaceWater)) +
+        " " +
+        img(sheet.waterMapPng(WaterMap.AbsorbedWater)),
+)
 ```
 
 ## The books
@@ -321,9 +321,7 @@ What is on the sheet always equals what was added less what left, to rounding, a
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/watercolor/books.png" alt="a box output showing two small tables. The first gives the water in cubic millimetres: how much was added, how much evaporated and how much ran off the bottom edge, none left on or in the sheet, and an imbalance of a small fraction of a cubic millimetre. The second lists the two pigments, ultramarine and quinacridone rose, in micrograms: how much was added, how much ran off, and how much is glued, bound or deposited on the sheet" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="books" embed=true}
 :::static
-import afield.paint.*
-
-val wash = FLine().moveTo(200, 150).lineTo(800, 150).lineTo(800, 600).lineTo(200, 600).lineTo(200, 150)
+val wash = FLine().rect(200, 150, 600, 450)
 val sheet = PaintCanvas.paper(400, aspect = 0.75, paper = Paper.HotPress, sizeMm = 120.0, seed = 4)
 sheet.tilt(15.0, 90.0)
 sheet.wet(wash, microns = 60.0, paint = Watercolors.ultramarine * 2.0 + Watercolors.quinacridoneRose * 1.2)
@@ -331,16 +329,21 @@ sheet.dry()
 
 val w = sheet.water!!
 fun f(x: Double) = "%.2f".format(x)
-markdown("""
+markdown(
+    """
 | water, mm³ | added | evaporated | run off | on the sheet | imbalance |
 | --- | --- | --- | --- | --- | --- |
 | | ${f(w.addedMm3)} | ${f(w.evaporatedMm3)} | ${f(w.runoffMm3)} | ${f(w.surfaceMm3 + w.absorbedMm3)} | ${"%.1e".format(w.imbalanceMm3)} |
 
 | pigment, µg | added | run off | glued | bound | deposited | imbalance |
 | --- | --- | --- | --- | --- | --- | --- |
-""".trimIndent() + "\n" + w.pigments.joinToString("\n") { p ->
-    "| ${p.name} | ${f(p.added)} | ${f(p.runoff)} | ${f(p.glued)} | ${f(p.bound)} | ${f(p.deposited)} | ${"%.1e".format(p.imbalance)} |"
-})
+"""
+        .trimIndent() +
+        "\n" +
+        w.pigments.joinToString("\n") { p ->
+            "| ${p.name} | ${f(p.added)} | ${f(p.runoff)} | ${f(p.glued)} | ${f(p.bound)} | ${f(p.deposited)} | ${"%.1e".format(p.imbalance)} |"
+        },
+)
 ```
 
 ## The sheet, the air and time

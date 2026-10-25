@@ -1,5 +1,7 @@
 # Geometry from disk
 
+<!-- capture-sources: src/jvmMain/kotlin/afield/graphics/scene/MeshFromDisk.kt src/jvmMain/kotlin/afield/geometry/mesh/mesh_io.kt -->
+
 You have a mesh file, and you want to see it in Field and then compute with it. For every format,
 that is one line:
 
@@ -46,9 +48,11 @@ rather than baked into the vertices:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/geometry_from_disk/toycar.png" wait="14.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// The same file public/docs/fabricate_renderer.md renders with full PBR — here through the plain
-// Three.js viewer instead, which is `showMesh`'s default and gives you a solid you can orbit.
-// `renderer = MeshRenderer.CPU` for the static z-buffer figure, which needs no GPU at all.
+/*
+The same file public/docs/fabricate_renderer.md renders with full PBR — here through the plain
+Three.js viewer instead, which is `showMesh`'s default and gives you a solid you can orbit.
+`renderer = MeshRenderer.CPU` for the static z-buffer figure, which needs no GPU at all.
+*/
 val glb = java.io.File("public/docs/assets/fabricate_demo/ToyCar.glb")
 println("${glb.name}: ${glb.length()} bytes on disk")
 
@@ -57,8 +61,14 @@ println(car.summary())
 
 // Three mesh/material buckets, assembled by node transform rather than heaped at the origin.
 val b = car.bounds()
-println("assembled extent %.4f x %.4f x %.4f metres".format(
-    b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z))
+println(
+    "assembled extent %.4f x %.4f x %.4f metres"
+        .format(
+            b.max.x - b.min.x,
+            b.max.y - b.min.y,
+            b.max.z - b.min.z,
+        ),
+)
 :::fold draw it
 showMesh(
     car,
@@ -169,12 +179,17 @@ val welded = viaStl.weld(1e-5)
 // A lambda rather than a local `fun`, because inside a box `println` is rewritten onto the box's own
 // receiver and a nested function does not have it.
 val row = { label: String, m: TriMesh ->
-    "%-16s %5d verts  %5d tris  normals=%-5s colours=%-5s chi=%-5d %s  volume %.6f".format(
-        label, m.vertexCount, m.triangleCount, m.hasNormals, m.hasColors,
-        m.topology().eulerCharacteristic,
-        if (m.isWatertight()) "watertight" else "open      ",
-        m.signedVolume(),
-    )
+    "%-16s %5d verts  %5d tris  normals=%-5s colours=%-5s chi=%-5d %s  volume %.6f"
+        .format(
+            label,
+            m.vertexCount,
+            m.triangleCount,
+            m.hasNormals,
+            m.hasColors,
+            m.topology().eulerCharacteristic,
+            if (m.isWatertight()) "watertight" else "open      ",
+            m.signedVolume(),
+        )
 }
 println(row("source", source))
 println(row("via .obj", viaObj))
@@ -241,9 +256,11 @@ your model:
 
 ```diffstatic {data-lang=kotlin}
 icosphereMesh(3).summary()
+
 // 642 verts, 1280 tris, extent 2.0000 …, chi=2, genus 0, watertight, area 12.5065, volume 4.1527, …
 
 stlToTriMesh(icosphereMesh(3).toStlBinary()).summary()
+
 // 3840 verts, 1280 tris, extent 2.0000 …, chi=1280, genus 0, open(1280), area 12.5065, …
 ```
 
@@ -297,23 +314,30 @@ file.writeText(
     0 1 0 255 235 40
     3 0 1 2
     3 0 2 3
-    """.trimIndent() + "\n"
+    """
+        .trimIndent() + "\n",
 )
 
 // The loader is PlySupport — no renderer, no Vulkan, no Box context needed.
 val model = PlySupport.loadPly(file.path)
 val b = model.buffers
-println("vertices ${b.vertexCount}, indices ${b.indexCount}, colours ${b.hasColors}, " +
-    "normals in the file ${b.hasNormals}, point cloud ${b.isPointCloud}")
-println("packed as ${b.vertexData.capacity() / (b.vertexCount * 4)} floats per vertex: " +
-    "[pos.xyz][normal.xyz][color.rgba]")
+println(
+    "vertices ${b.vertexCount}, indices ${b.indexCount}, colours ${b.hasColors}, " +
+        "normals in the file ${b.hasNormals}, point cloud ${b.isPointCloud}",
+)
+println(
+    "packed as ${b.vertexData.capacity() / (b.vertexCount * 4)} floats per vertex: " +
+        "[pos.xyz][normal.xyz][color.rgba]",
+)
 
 // ...and the bridge into a TriMesh keeps the colours.
 val mesh = model.toTriMesh()
 println("as a TriMesh: ${mesh.summary()}")
 println("colours survived: ${mesh.hasColors}, vertex 0 is ${mesh.color(0)}")
-println("normals dropped: ${!mesh.hasNormals} — the file had none, and the loader's " +
-    "invented (0,0,1) would shade the whole thing as if it faced you")
+println(
+    "normals dropped: ${!mesh.hasNormals} — the file had none, and the loader's " +
+        "invented (0,0,1) would shade the whole thing as if it faced you",
+)
 :::fold draw it flat on, then clean up
 showMesh(
     mesh,
@@ -354,7 +378,7 @@ per-vertex colours only; `assimpToTriMesh` drops the material. For a textured, r
 no CPU point-cloud type, no surface reconstruction, and no downsampling. `convexHullMesh` over the
 positions and `voronoi3d` are what there is.
 
-**Gaussian splats** are better served. `SplatRaster` ([`SplatRaster.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/four/modules/SplatRaster.kt)) renders a
+**Gaussian splats** are better served. `SplatRaster` ([`SplatRaster.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/graphics/render/SplatRaster.kt)) renders a
 splat cloud on the CPU into PNG bytes, matching the GPU renderer's framing for the same `Config`.
 `SplatContactSheet` puts a whole capture in one image, and `SplatCloud` lets you crop, filter,
 decimate, transform and merge a cloud and write a `.compressed.ply` back out.
@@ -376,19 +400,14 @@ Most of these show up in `summary()`, so print it before you draw anything.
 
 | symptom | cause | what to do |
 |---|---|---|
-| a blank black panel | an empty mesh | A file whose *contents* are not what its extension says parses to `TriMesh.empty` with **no exception at all**. `println(mesh.summary())` — an empty one prints exactly `TriMesh(empty)`. |
+| `contains no obj geometry` | the file is not what its extension says | A ZIP, a glTF or an HTML error page saved as `thing.obj`: the message says what it looks like. `meshFromAnyFile` reads most formats by their contents. |
 | holes, or whole faces missing | inside-out winding, open mesh | Back faces are culled exactly as a GPU culls them, so a wrongly-wound patch is not dark, it is *gone*. `fixWinding()`, then check `topology().isConsistentlyOriented`. |
 | looks fine, every measurement negative | inside-out winding, closed solid | The silhouette is unchanged and both renderers flip inward normals rather than shading them black, so the picture is no help at all. `signedVolume() < 0` is the only tell; `fixWinding()` is the fix. |
-| flat, faceted or oddly uniform shading | no normals, or invented ones | A mesh with *none* is crease-shaded for you; one with wrong ones is not. Recompute with `shadedNormals(35.0)`. To drop them, `withoutAttributes()` — note that `copy(normals = null)` **keeps** them, because `null` there means "unchanged". |
+| flat, faceted or oddly uniform shading | no normals, or invented ones | A mesh with *none* is crease-shaded for you; one with wrong ones is not. Recompute with `shadedNormals(35.0)`. To drop them, `copy(normals = null)`, or `withoutAttributes()` for every attribute. |
 | `isWatertight()` false on a closed solid | it came through STL | Or it was `flatShaded()` before it was written. `weld(1e-5)` recovers the topology, and `meanEdgeLength()` is the scale that tells you 1e-5 is safe rather than a guess. |
 | the vertex count is exactly 3× | STL, or `flatShaded()` | Both un-weld every triangle, and the reader on the other side will not weld it back. `weld`, then `shadedNormals` if you want the hard edges again. |
 
 </div>
-
-The first row is the easiest to lose time on: a file called `thing.obj` that is actually a ZIP, a
-glTF, or an HTML error page parses to zero vertices and zero triangles and raises nothing.
-`meshFromFile` throws for a *missing* file and for an extension it does not read, but not for a file
-whose contents make no sense.
 
 ## From a file on disk to a solid you can cut
 
@@ -398,9 +417,9 @@ that is not. Two calls do the repair automatically. `diagnose()` says what is wr
 
 ```diffstatic {data-lang=kotlin}
 val mesh = meshFromAnyFile("scan.glb")
-println(mesh.diagnose().report())          // why, worst first
+println(mesh.diagnose().report()) // why, worst first
 val fixed = mesh.repairToSolid()
-println(fixed.report())                    // what was done, and what was not
+println(fixed.report()) // what was done, and what was not
 if (fixed.isSolid) display(fixed.mesh.toSolid() - drill)
 ```
 
@@ -424,8 +443,9 @@ others it accepts, though some of them still deserve a look.
 | `UNREFERENCED_VERTEX` | informational | vertices no triangle uses |
 
 The dangerous *suspicious* row is `INVERTED_ORIENTATION`: an inside-out closed mesh is a legal
-manifold, and Manifold hands back a **negative volume** without throwing. The boolean you do next
-computes the complement of what you meant.
+manifold, and Manifold hands back a **negative volume** without throwing, after which a boolean
+computes the complement of what you meant. `toSolid()` refuses it for that reason (pass
+`check = false` to take it anyway); `fixWinding()` flips it.
 
 `UNWALKABLE_BOUNDARY` usually means inconsistent winding rather than anything exotic. Tracing a
 boundary into a ring follows directed half-edges, so a wrongly wound patch breaks the trace and an
@@ -538,16 +558,20 @@ val idx = broken.indices.copyOf()
 for (k in 0..2) {
     val v = broken.indices[k]
     val d = (broken.vertexCount + k) * 3
-    pos[d] = broken.x(v); pos[d + 1] = broken.y(v); pos[d + 2] = broken.z(v)
+    pos[d] = broken.x(v)
+    pos[d + 1] = broken.y(v)
+    pos[d + 2] = broken.z(v)
     idx[k] = broken.vertexCount + k
 }
 broken = TriMesh(pos, idx)
 
 println(broken.diagnose().report())
 :::fold draw it
-// No `view` argument, and that is the point: the camera aims itself at the worst defect. The hole
-// is on the far side from the default three-quarter view, so without that this figure would be a
-// photograph of an apparently perfect sphere captioned "4 faces removed".
+/*
+No `view` argument, and that is the point: the camera aims itself at the worst defect. The hole
+is on the far side from the default three-quarter view, so without that this figure would be a
+photograph of an apparently perfect sphere captioned "4 faces removed".
+*/
 showMeshDiagnosis(broken, title = "4 faces removed, plus one unwelded face")
 :::endfold
 ```
@@ -604,9 +628,9 @@ Three calls cover the export formats:
 
 ```diffstatic {data-lang=kotlin}
 // java.io is not in a box's default imports, hence the qualified names.
-mesh.saveObj(java.io.File("/tmp/thing.obj"))     // keeps normals and uvs; loses colours
-mesh.saveStl(java.io.File("/tmp/thing.stl"))     // binary; positions only; every slicer reads it
-java.io.File("/tmp/thing.stl").writeText(mesh.toStlAscii())   // ~5x larger, human-readable
+mesh.saveObj(java.io.File("/tmp/thing.obj")) // keeps normals and uvs; loses colours
+mesh.saveStl(java.io.File("/tmp/thing.stl")) // binary; positions only; every slicer reads it
+java.io.File("/tmp/thing.stl").writeText(mesh.toStlAscii()) // ~5x larger, human-readable
 ```
 
 **Write the un-shaded mesh**: `flatShaded()` triples the vertex count and un-welds the surface, and
@@ -615,20 +639,13 @@ consistently-oriented but inside-out solid looks completely normal in a render (
 unchanged and the rasterizer flips inward normals rather than shading them black) and reports a
 negative volume. `fixWinding()` is the fix.
 
-??? aside "Where the pictures and counts come from"
+??? aside "Agents: where the pictures and counts come from"
 
     Each figure is a box's own output area, captured by the docs build running the fence above it.
     The ToyCar figure reads the committed `assets/fabricate_demo/ToyCar.glb`; replace that file and
     the page's counts describe a different car. The counts are pinned in
-    `src/jvmTest/kotlin/afield/stdlib/MeshFromDiskTest.kt`, and `MeshIoTest.kt` covers the reader
+    `src/jvmTest/kotlin/afield/geometry/mesh/MeshFromDiskTest.kt`, and `MeshIoTest.kt` covers the reader
     behaviour they rest on.
-
-??? aside "Forcing these captures to re-run"
-    A fence is re-executed only when the build decides its capture is stale, from a digest over the runner
-    machinery plus the **stdlib** source files the fence's code names. `MeshFromDisk.kt` is in
-    `afield.four`, not `afield.stdlib`, so editing *it* does not invalidate these captures on its own.
-    Force them with `FIELD_DOCS_RUNNER_MODE=always` after changing the bridges.
-    [`mesh_examples.md`](mesh_examples.md) carries the same caveat.
 
 ## Trying it yourself
 
@@ -644,13 +661,13 @@ Four separate pieces of code read geometry off disk:
 
 | loader | source | reads | produces |
 |---|---|---|---|
-| stdlib mesh I/O | `afield/stdlib/mesh_io.kt` | OBJ, STL | `TriMesh` |
-| PLY | `afield/four/modules/simplePLYSupport.kt` | PLY, meshes and point clouds | packed 10-float GPU buffer |
-| Assimp / glTF | `afield/four/modules/simpleGLTFSupport.kt` | glTF, GLB, FBX, DAE, 3DS, OBJ, STL, PLY, … | packed 12-float GPU buffer + materials |
-| Fabricate | `afield/four/fabricated/FabricateGltfBridge.kt` | the Assimp model above | [`FabricateScene`](reference/renderers.md#fabricatescene-kt-fabricatescene) for the PBR [`StandardRenderer`](fabricate_renderer.md) |
+| stdlib mesh I/O | `afield/geometry/mesh/mesh_io.kt` | OBJ, STL | `TriMesh` |
+| PLY | `afield/graphics/scene/simplePLYSupport.kt` | PLY, meshes and point clouds | packed 10-float GPU buffer |
+| Assimp / glTF | `afield/graphics/scene/simpleGLTFSupport.kt` | glTF, GLB, FBX, DAE, 3DS, OBJ, STL, PLY, … | packed 12-float GPU buffer + materials |
+| Fabricate | `afield/graphics/scene/fabricated/FabricateGltfBridge.kt` | the Assimp model above | [`FabricateScene`](reference/renderers.md#fabricatescene-kt-fabricatescene) for the PBR [`StandardRenderer`](fabricate_renderer.md) |
 
 The PLY and Assimp loaders produce ordinary host memory rather than Vulkan allocations, so their
-*buffers* need no renderer even though their *textures* do. `afield/four/modules/MeshFromDisk.kt`
+*buffers* need no renderer even though their *textures* do. `afield/graphics/scene/MeshFromDisk.kt`
 turns them into a `TriMesh`: `PlyModel.toTriMesh()`, `assimpToTriMesh(path)`, the `meshFromAnyFile`
 dispatcher, and the `showMesh(path)` overload at the top of this page. A box calls all of these with
 no import. The CPU renderer is `VisionGeometryPreview`, a z-buffer whose output is deterministic.
@@ -790,7 +807,7 @@ Register geometry locations with Field’s AI tools so it can resolve and inspec
 Two lines turn everything on this page into something the AI can use:
 
 ```diffstatic {data-lang=kotlin}
-GeometryAgentTools.addSearchRoot(File(System.getProperty("user.home"), "scans"))
+GeometryAgentTools.addSearchRoot(java.io.File(System.getProperty("user.home"), "scans"))
 GeometryAgentTools.register()
 ```
 
@@ -804,7 +821,7 @@ and shows the schema and the picture the model receives.
 
 Related pages: [Meshes and 3D geometry](mesh_examples.md) for everything you can *do* with a mesh
 once you have one; [the Fabricate renderer](fabricate_renderer.md) for textured PBR rendering of the
-same files; [afield.four graphics](afield_four_graphics.md) for the module/shader layer the GPU
+same files; [Field 4 graphics](afield_four_graphics.md) for the module/shader layer the GPU
 loaders plug into; [FLine examples](fline_examples.md) for `toFLines`, the route from a mesh back into
 Field's drawing. Developer notes: [`dev_docs/MESH_GEOMETRY.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/MESH_GEOMETRY.md) and
 [`dev_docs/ply_loader.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/ply_loader.md).

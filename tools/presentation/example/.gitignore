@@ -1,0 +1,8 @@
+node_modules/
+*.meta
+*.meta.lock
+**/backups/
+**/history_metrics.edn
+**/transcript.edn
+**/history_screenshots/
+.afield-local/

@@ -12,32 +12,42 @@ This box defines one slow stage. It estimates π from sixty billion random point
 a billion, and reports its progress after each batch:
 
 ```diffstatic {data-lang=kotlin}
-val builds = studyBuilds("estimate", listOf(
-    StudyBuildStage("pi", "Estimate π", "pi-v1") { context ->
-        val random = java.util.SplittableRandom(4)
-        val batches = 60
-        val perBatch = 1_000_000_000
-        var inside = 0L
-        for (batch in 1..batches) {
-            repeat(perBatch) {
-                val x = random.nextDouble()
-                val y = random.nextDouble()
-                if (x * x + y * y < 1.0) inside++
+val builds = studyBuilds(
+    "estimate",
+    [
+        StudyBuildStage("pi", "Estimate π", "pi-v1") { context ->
+            val random = java.util.SplittableRandom(4)
+            val batches = 60
+            val perBatch = 1_000_000_000
+            var inside = 0L
+            for (batch in 1..batches) {
+                repeat(perBatch) { sample ->
+                    // Check within the batch so Stop need not wait for a billion samples.
+                    if (sample % 65_536 == 0) context.checkCancelled()
+                    val x = random.nextDouble()
+                    val y = random.nextDouble()
+                    if (x * x + y * y < 1.0) inside++
+                }
+                context.checkCancelled()
+                context.progress(batch / batches.toDouble(), "$batch of $batches batches")
             }
-            context.checkCancelled()
-            context.progress(batch / batches.toDouble(), "$batch of $batches batches")
-        }
-        val samples = batches.toLong() * perBatch
-        val estimate = 4.0 * inside / samples
-        context.file("estimate.txt").writeText("$estimate\n")
-        StudyBuildProduct(listOf("estimate.txt"),
-            facts = mapOf("samples" to samples, "estimate" to estimate, "error" to Math.abs(estimate - Math.PI)))
+            val samples = batches.toLong() * perBatch
+            val estimate = 4.0 * inside / samples
+            context.file("estimate.txt").writeText("$estimate\n")
+            StudyBuildProduct(
+                ["estimate.txt"],
+                facts =
+                    mapOf("samples" to samples, "estimate" to estimate, "error" to Math.abs(estimate - Math.PI)),
+            )
+        },
+    ],
+) {
+        emptyMap()
     }
-)) { emptyMap() }
 showStudyBuilds("estimate")
 ```
 
-Run the box to get its build card, open the box's AI4 chat (`command/ctrl-4`), and ask for the
+Run the box to get its build card, open the box's AI4 chat (`ctrl/command-4`), and ask for the
 build:
 
 > Run the π estimate build on this box. It takes a few minutes; tell me what it finds.
@@ -72,7 +82,10 @@ next turn with it. The chat labels it **Field**, since you did not write it. For
 - a failure's message and suggestions;
 - the facts the stage returned in its `StudyBuildProduct`;
 - the stage's [result notes](studies.md#build-derived-results-without-blocking-edits), when it has a
-  `resultNotes` adapter.
+  `resultNotes` adapter, or for a failure, a `failureNotes` adapter;
+- a picture of each view a note names, at most three: Field draws the view, captures the box that
+  shows it and attaches the picture to the message, so the agent looks at the result as well as
+  reading about it.
 
 When the time limit passes first, the message says how many jobs are still running; they go on
 running. The waiting row stays in the chat, folded, as a record of the wait. The agent carries on

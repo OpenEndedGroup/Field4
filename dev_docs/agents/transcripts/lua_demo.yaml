@@ -20,6 +20,9 @@ description: |
     - **sequencer** — Lua picks eight notes from a scale; `field.render` shows and measures them
       offline, and `play` loops them through Field's pattern voice until the box stops.
     - **line notes** (Kotlin) — prints the notes Field keeps for **hello**; run **hello** first.
+docs:
+  - page: lua.md
+    why: "Explains Lua boxes over LuaJIT and their line notes."
 operations:
   - create:
       box: lua_root
@@ -30,7 +33,7 @@ operations:
         isLuaRoot: true
         code: |
           // This root stays Kotlin; its `mainLanguage` makes the boxes under it Lua.
-          println(afield.lua.LuaLibrary.describe())
+          println(afield.lang.lua.LuaLibrary.describe())
   - create:
       box: lua_hello
       name: "hello"
@@ -194,7 +197,7 @@ operations:
           val hello = root.children.first { it.name == "hello" }
           val code = hello.getPropertyRaw("code") as String
           code.lines().forEachIndexed { i, _ ->
-              afield.stdlib.LineNotes.note(hello, "code", code, i + 1)?.let { println("line ${i + 1}: ${it.caption}") }
+              afield.ui.output.LineNotes.note(hello, "code", code, i + 1)?.let { println("line ${i + 1}: ${it.caption}") }
           }
   - connect: { parent: lua_root, child: lua_hello }
   - connect: { parent: lua_root, child: lua_thisbox }

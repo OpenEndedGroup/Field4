@@ -13,8 +13,9 @@ Useful evidence should come from the paths that already exercise Field semantica
 - Docs runner captures, especially examples using `graphics-context=true`, because those validate real renderer topology rather than pasted screenshots.
 - `FIELD_TEST` catalog runs through `tools/run_field_tests.py`.
 - User-reported workflows converted into small transcript examples under `dev_docs/agents/transcripts/`.
+- Real AI4 conversations: `tools/ai4_conversation_review.py` reads the per-turn tool I/O logs and reports tool failures, lookup runs, context pressure and the person's corrections, each with where its fix belongs (`dev_docs/ai/AI4_FIRST_LOCAL_CONVERSATION.md`).
 
-When possible, examples should preserve graph topology. For `afield.four`, that means launching a renderer parent, waiting until it is running, connecting child boxes beneath it, and resolving `Renderer` through `fromContext()` before async work starts.
+When possible, examples should preserve graph topology. For Field 4, that means launching a renderer parent, waiting until it is running, connecting child boxes beneath it, and resolving `Renderer` through `fromContext()` before async work starts.
 
 ## Improvement Loop
 
@@ -57,7 +58,7 @@ An agent-generated improvement suggestion should be specific enough to review:
 
 Examples:
 
-- A graphics docs block failed with `must pass in a value for context parameter afield.four.Renderer`; fix the transcript topology or the docs runner's `graphics-context=true` setup.
+- A graphics docs block failed with `must pass in a value for context parameter afield.graphics.vulkan.Renderer`; fix the transcript topology or the docs runner's `graphics-context=true` setup.
 - Several captures used fixed sleeps only to wait for display output; add or use an event wait such as `wait-output`.
 - A native screenshot was black even though the window existed; prefer Field's renderer-owned screenshot path and report renderer frame progress in the failure bundle.
 

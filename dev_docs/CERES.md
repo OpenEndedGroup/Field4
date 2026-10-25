@@ -6,7 +6,7 @@ as a *program* — a `DoubleArray` of opcodes and operands — and the native si
 into a `ceres::Problem` and then solves it repeatedly against changing point data.
 
 This document is what a tire-kicking pass over that stack found, what changed, and what is still
-open. Two things motivated it: the polyhedron realizer in `afield.stdlib.polytope` wanted a
+open. Two things motivated it: the polyhedron realizer in `afield.geometry.polytope` wanted a
 second-order solver, and the wrapper looked like it should be general infrastructure rather than a
 one-off for architectural constraint editing.
 
@@ -720,16 +720,16 @@ tell you to:
 |---|---|
 | `native/ken-ceres/` | wrapper source and CMake build |
 | `native/ken-ceres/build_redistributable.sh` | the shippable build: pinned Ceres/Eigen, static, quiet, self-containment asserted |
-| `afield.stdlib.ceres.CeresGeometry` | constraint vocabulary, program encoding, options, summary |
-| `afield.stdlib.ceres.FfmCeresBackend` | the FFM binding, ABI detection, feature gating |
-| `afield.stdlib.polytope.CeresRealization` | `RelaxationPlan` → `CeresProgram`, `relaxWithCeres` |
+| `afield.math.optimization.ceres.CeresGeometry` | constraint vocabulary, program encoding, options, summary |
+| `afield.math.optimization.ceres.FfmCeresBackend` | the FFM binding, ABI detection, feature gating |
+| `afield.geometry.polytope.CeresRealization` | `RelaxationPlan` → `CeresProgram`, `relaxWithCeres` |
 | `afield.examples.ceres.CeresSolverOptionsSmoke` | options, summary, loss and midsphere constraints against a closed-form answer |
 | `afield.examples.ceres.CeresPolytopeRealizerComparison` | the timing table above |
 | `afield.examples.ceres.CeresPlaneFormulationStudy` | the plane-parameterisation sweep |
 | `afield.examples.ceres.CeresCanonicalVerification` | the canonical-conditions check on the kk family |
 | `afield.examples.ceres.CeresRealizerDiagnostic` | parameter and residual counts per solid |
 | `afield.examples.ceres.CeresRealizerCacheCost` | where a `relaxWithCeres` call goes, and why the program cache stays per-call |
-| `afield.stdlib.ceres.CeresExpression` | the expression DAG, its compiler, the register program, free variables and manifolds |
+| `afield.math.optimization.ceres.CeresExpression` | the expression DAG, its compiler, the register program, free variables and manifolds |
 | `afield.examples.ceres.CeresExpressionSmoke` | equivalence, sharing, validation, Thomson |
 | `afield.examples.ceres.CeresExpressionCost` | the two cost tables above |
 | `afield.examples.ceres.CeresExpressionVariablesSmoke` | `PLANAR_HESSE` re-derived in Kotlin, the manifold fits, malformed input |

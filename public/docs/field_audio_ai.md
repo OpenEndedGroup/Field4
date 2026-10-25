@@ -39,27 +39,46 @@ This box takes four and a half seconds of a recording, asks MusicGen-Style for e
 twelve-second variations, one per seed, and shows them as a candidate board when they arrive:
 
 ```diffstatic {data-lang=kotlin}
-val client = FieldAudioClient()
-val source = client.assetByFilename("*Nancy*").get()
-val region = AssetRegion(source.id, startSeconds = 18.0, durationSeconds = 4.5)
+val client = cached { FieldAudioClient() }
+runAsync(
+    onResult = { result: CandidateSet ->
+        display("candidates", candidateBoardHtml(result))
+    },
+    onError = { failure ->
+        markdown("generation error", "Generation failed: ${(failure.message ?: failure.toString()).md}")
+    },
+) {
+    val lookup = client.assetByFilename("*Nancy*")
+    onCancel { lookup.cancel(false) }
+    lookup.thenCompose { source ->
+        if (future.isDone) throw java.util.concurrent.CancellationException("run ended")
+        val region = AssetRegion(source.id, startSeconds = 18.0, durationSeconds = 4.5)
 
-val request = styleCandidates(
-    source = region,
-    prompt = "sparse suspended orchestral tension",
-    durationSeconds = 12.0,
-    seeds = 0L until 8L,
-    controls = MusicGenStyleControls(
-        temperature = 1.1,
-        topK = 180,
-        cfg = 3.2,
-        styleQuantization = 2,
-    ),
-)
+        val request = styleCandidates(
+            source = region,
+            prompt = "sparse suspended orchestral tension",
+            durationSeconds = 12.0,
+            seeds = 0L until 8L,
+            controls = MusicGenStyleControls(
+                temperature = 1.1,
+                topK = 180,
+                cfg = 3.2,
+                styleQuantization = 2,
+            ),
+        )
 
-client.submit(request)
-    .thenCompose(client::awaitCandidates)
-    .thenAccept { display("candidates", candidateBoardHtml(it)) }
+        val submitted = client.submit(request)
+        onCancel { submitted.cancel(false) }
+        submitted.thenCompose { accepted ->
+            if (future.isDone) throw java.util.concurrent.CancellationException("run ended")
+            client.awaitCandidates(accepted).also { polling -> onCancel { polling.cancel(false) } }
+        }
+    }
+}
 ```
+
+Stop or rerun cancels this box’s lookup and local polling, and suppresses obsolete output.
+The durable service job and cached shared client remain available.
 
 The source window, text, seed family, sampling temperature, top-k/top-p filtering, guidance balance,
 and style bottleneck are direct MusicGen-Style controls. They are global controls: this checkpoint
@@ -78,9 +97,7 @@ twelve-second window of the source:
 ```diffstatic {data-lang=kotlin}
 import java.nio.file.Path
 
-val client = FieldAudioClient()
-val source = client.assetByFilename("*Nancy*").get()
-val region = AssetRegion(source.id, startSeconds = 12.0, durationSeconds = 12.0)
+val client = cached { FieldAudioClient() }
 val loraRoot = Path.of(requireNotNull(System.getenv("FIELD_AUDIO_UNDERFIT_LORA_ROOT")))
 val lora = UnderfitLoraCheckpoint.fromFile(
     loraRoot.resolve("orchestra/10000.safetensors"),
@@ -89,19 +106,40 @@ val lora = UnderfitLoraCheckpoint.fromFile(
     intervalMax = 0.92,
 )
 
-client.submit(underfitCandidates(
-    source = region,
-    prompt = "sparse suspended orchestral tension",
-    durationSeconds = 30.0,
-    checkpoints = listOf(lora),
-    model = UnderfitModel.SMALL_MUSIC,
-    controls = UnderfitGenerationControls(
-        steps = 8,
-        cfg = 1.5,
-        initNoiseLevel = 0.65,
-    ),
-)).thenCompose(client::awaitCandidates)
-  .thenAccept { display("underfit", candidateBoardHtml(it)) }
+runAsync(
+    onResult = { result: CandidateSet ->
+        display("underfit", candidateBoardHtml(result))
+    },
+    onError = { failure ->
+        markdown("generation error", "Generation failed: ${(failure.message ?: failure.toString()).md}")
+    },
+) {
+    val lookup = client.assetByFilename("*Nancy*")
+    onCancel { lookup.cancel(false) }
+    lookup.thenCompose { source ->
+        if (future.isDone) throw java.util.concurrent.CancellationException("run ended")
+        val region = AssetRegion(source.id, startSeconds = 12.0, durationSeconds = 12.0)
+        val submitted = client.submit(
+            underfitCandidates(
+                source = region,
+                prompt = "sparse suspended orchestral tension",
+                durationSeconds = 30.0,
+                checkpoints = [lora],
+                model = UnderfitModel.SMALL_MUSIC,
+                controls = UnderfitGenerationControls(
+                    steps = 8,
+                    cfg = 1.5,
+                    initNoiseLevel = 0.65,
+                ),
+            ),
+        )
+        onCancel { submitted.cancel(false) }
+        submitted.thenCompose { accepted ->
+            if (future.isDone) throw java.util.concurrent.CancellationException("run ended")
+            client.awaitCandidates(accepted).also { polling -> onCancel { polling.cancel(false) } }
+        }
+    }
+}
 ```
 
 Hear the source, matched no-LoRA baseline and actual LoRA take in the

@@ -27,8 +27,8 @@ the output already was. That is what makes a run of stages an envelope rather th
 unrelated ramps, and it is why the output never jumps when one stage hands over to the next.
 
 ```diffstatic {data-lang=kotlin}
-rampTo(0.9, duration = 0.5)            // slew to 0.9 over half a cycle
-holdAt(0.4, duration = 2.0)            // step to 0.4 and stay for two
+rampTo(0.9, duration = 0.5) // slew to 0.9 over half a cycle
+holdAt(0.4, duration = 2.0) // step to 0.4 and stay for two
 oscTo(0.7, duration = 1.0, cycles = 3) // three oscillations toward 0.7 and back
 curveTo(0.2, duration = 0.25, amount = 4.0)
 stage(0.5, duration = 1.0, curve = MarfCurve.Smooth)
@@ -54,10 +54,10 @@ Stage length is patterned like everything else, and the stages that come out are
 
 ```diffstatic {data-lang=kotlin}
 val env = marf(
-    value    = pat("<0 .5 .2 1>").nums(),
+    value = pat("<0 .5 .2 1>").nums(),
     duration = pat("<1 4 .25 2>").nums(),
-    curve    = curves("<linear exp hold osc>"),
-    fields   = MarfFieldClock.STAGES
+    curve = curves("<linear exp hold osc>"),
+    fields = MarfFieldClock.STAGES,
 )
 ```
 
@@ -85,8 +85,11 @@ readers, which is the property worth borrowing from the hardware.
 
 ```diffstatic {data-lang=kotlin}
 val b = marfBank(
-    rampTo(0.1, 1.0), rampTo(0.9, 0.5), holdAt(0.4, 2.0),
-    oscTo(0.7, 1.0, cycles = 3.0), curveTo(0.2, 0.25, amount = 4.0)
+    rampTo(0.1, 1.0),
+    rampTo(0.9, 0.5),
+    holdAt(0.4, 2.0),
+    oscTo(0.7, 1.0, cycles = 3.0),
+    curveTo(0.2, 0.25, amount = 4.0),
 )
 
 val a = b.read(pat("<0 1 2 1 3 4>").nums(), fields = MarfFieldClock.STAGES)
@@ -118,9 +121,9 @@ does the work that a list of traversal modes would otherwise have to.
 
 ```diffstatic {data-lang=kotlin}
 val steps = MarfFieldClock.STEPS
-b.read(pat("0 1 2 3").nums(), duration = constant(0.25), fields = steps)                    // forward
+b.read(pat("0 1 2 3").nums(), duration = constant(0.25), fields = steps) // forward
 b.read(pat("0 1 2 3").nums().every(4) { it.rev() }, duration = constant(0.25), fields = steps) // periodic reversal
-b.read(pat("0 1 2 3 2 1").nums(), duration = constant(1.0 / 6.0), fields = steps)           // ping-pong
+b.read(pat("0 1 2 3 2 1").nums(), duration = constant(1.0 / 6.0), fields = steps) // ping-pong
 b.read(struct(euclid(5, 8), pat("0 4 2 3").nums()), duration = constant(0.125), fields = steps)
 ```
 
@@ -171,9 +174,7 @@ without knowing what it is.
 
 ```diffstatic {data-lang=kotlin}
 // Two readers of one bank as two parameters of one voice.
-val voice = pat("bd*8")
-    .with(gain(c.signal().range(0.25, 1.0)))
-    .with(pan(d.signal()))
+val voice = pat("bd*8").with(gain(c.signal().range(0.25, 1.0))).with(pan(d.signal()))
 
 // And the same temporal structure as pulses: one event per stage, spanning that stage.
 a.triggers().respond(cps = 1.0) { event ->
@@ -197,16 +198,16 @@ val y = b.read(pat("<0 2 4 1 3>").nums().slow(3), fields = MarfFieldClock.STAGES
 
 // The path those two readers trace together over eight cycles.
 val path = fline {
+    breakNext()
     for (i in 0..800) {
         val t = i / 100.0
-        if (i == 0) moveTo(x.at(t).value * 300.0, y.at(t).value * 300.0)
-        else lineTo(x.at(t).value * 300.0, y.at(t).value * 300.0)
+        lineTo(x.at(t).value * 300.0, y.at(t).value * 300.0)
     }
     stroked = true
     thickness = 1.0
     color = vec(1.0, 1.0, 1.0, 0.7)
 }
-lines(listOf(path), w = 320.0, h = 170.0, fitToSize = true)
+lines(path, w = 320.0, h = 170.0, fitToSize = true)
 ```
 
 Two readers of one bank as two coordinates. The path stays coherent without the coordinates being
@@ -228,16 +229,18 @@ there. The curve is still a single number from 0 to 1. It says how far through t
 and that fraction is the same for every component of the vector.
 
 ```diffstatic {data-lang=kotlin}
-val path = marfBankIn(
-    MarfVector3f,
-    stageTo(Vector3f(0f, 0f, 0f), 1.0),
-    stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth),
-    stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0)),
-    stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0))
-).read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES)
+val path =
+    marfBankIn(
+            MarfVector3f,
+            stageTo(Vector3f(0f, 0f, 0f), 1.0),
+            stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth),
+            stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0)),
+            stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0)),
+        )
+        .read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES)
 
-path.at(3.5).value               // a Vector3f
-path.signal { it.x.toDouble() }  // any component, as an ordinary signal
+path.at(3.5).value // a Vector3f
+path.signal { it.x.toDouble() } // any component, as an ordinary signal
 ```
 
 ![one Vector3f reader drawn as its three components, sharing one stage structure](assets/marf/marf-vector-stages.svg)
@@ -252,15 +255,10 @@ scalar nearly everywhere: each component is a `PatPattern<Double>`, so `gain`, `
 `marf(...)` and `marfBank(...)` are the scalar spellings; `marfIn` and `marfBankIn` take a space.
 Instances for `Vector2f`, `Vector3f` and `Vector4f` ship with it.
 
-!!! warning "Watch for mutation in your own space"
-
-    In Field's generated linalg, `add(other)`, `sub(other)`, `mul(scalar)` and `normalize()` are
-    in-place members that return the receiver, and `/` resolves to the mutating member operator
-    rather than the allocating extension. A stage target lives in a bank and is read once per stage
-    for as long as the reader runs, so one in-place write does not give you a wrong frame: it
-    rewrites the material. Write yours with the out-parameter forms, as the shipped instances do
-    (`a.add(b, Vector3f())`), and read your bank twice: a mutating implementation gives you a
-    different answer the second time, and nothing in the type signature will have warned you.
+A space whose arithmetic writes into its arguments, an in-place `a.add(b)` on a mutable vector,
+would rewrite the bank's material as it is read. `marfBankIn` tries each operation once on the
+targets and refuses such a space by name; write yours with the out-parameter forms, as the shipped
+instances do (`a.add(b, Vector3f())`).
 
 `MarfSpace` is a vector space, which rules out the types that are not one. A quaternion
 interpolates by `slerp` and a hue wraps, so neither is expressible as add-and-scale and neither has
@@ -275,8 +273,8 @@ and nothing samples it in between; these give it a value everywhere, so it can b
 an `x` coordinate or a radius.
 
 ```diffstatic {data-lang=kotlin}
-pat("0 .5 1 .25").nums().hold()                   // sample and hold
-pat("0 .5 1 .25").nums().ramp()                   // linear between onsets
+pat("0 .5 1 .25").nums().hold() // sample and hold
+pat("0 .5 1 .25").nums().ramp() // linear between onsets
 pat("0 .5 1 .25").nums().interp(MarfCurve.Smooth) // any curve between onsets
 ```
 
@@ -382,8 +380,8 @@ you which clock it ended up with:
 
 ```diffstatic {data-lang=kotlin}
 val r = b.read(pat("<0 3> 1").nums())
-r.fieldClock          // STEPS — AUTO saw discrete events
-b.read(saw()).fieldClock   // CYCLES — AUTO saw none
+r.fieldClock // STEPS — AUTO saw discrete events
+b.read(saw()).fieldClock // CYCLES — AUTO saw none
 ```
 
 Watch for one case: `AUTO` decides from the **leading** field, so a stepped address with a

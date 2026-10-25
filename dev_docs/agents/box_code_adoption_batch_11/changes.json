@@ -1,0 +1,132 @@
+[
+  {
+    "path": "public/docs/afield_four_graphics.md",
+    "old": "m.x = numVec4 / localSize",
+    "new": "// Include a partial final group; the shader guards both buffer lengths.\nm.x = (numVec4 + localSize - 1) / localSize",
+    "why": "ceil descriptor workgroups"
+  },
+  {
+    "path": "public/docs/afield_four_graphics.md",
+    "old": "    if (idx < 256)\n        outData[idx] = inData[idx] * vec4(1,1,1,1) +\n            vec4(3 + idx * 1, -(idx * 21.0), idx * 3, idx * 4);",
+    "new": "    // Array lengths reflect the actual SSBO allocation, including edited element counts.\n    if (idx >= uint(min(inData.length(), outData.length()))) return;\n    outData[idx] = inData[idx] * vec4(1,1,1,1) +\n        vec4(3 + idx * 1, -(idx * 21.0), idx * 3, idx * 4);",
+    "why": "bound the descriptor buffers"
+  },
+  {
+    "path": "public/docs/afield_four_graphics.md",
+    "old": "prop<FrameBufferGroup>(outputPositions) = outData",
+    "new": "prop<FrameBufferGroup>(outputPositions) = outData\nprop<Int>(particleCount) = N\n\n// uint push members accept Int lambdas; the shader checks the tail group.\nm.count = { N }",
+    "why": "publish count and bind uint push member"
+  },
+  {
+    "path": "public/docs/afield_four_graphics.md",
+    "old": "m.x = N / 64",
+    "new": "m.x = (N + 63) / 64",
+    "why": "ceil buffer-reference workgroups"
+  },
+  {
+    "path": "public/docs/assets/canonical_graphics/ad857eaa-362e-45ea-bdc8-472af40f1ed2_code_.kt",
+    "old": "prop<FrameBufferGroup>(outputPositions) = outData",
+    "new": "prop<FrameBufferGroup>(outputPositions) = outData\nprop<Int>(particleCount) = N\n\n// uint push members accept Int lambdas; the shader checks the tail group.\nm.count = { N }",
+    "why": "publish count and bind uint push member"
+  },
+  {
+    "path": "public/docs/assets/canonical_graphics/ad857eaa-362e-45ea-bdc8-472af40f1ed2_code_.kt",
+    "old": "m.x = N / 64",
+    "new": "m.x = (N + 63) / 64",
+    "why": "ceil buffer-reference workgroups"
+  },
+  {
+    "path": "public/docs/afield_four_graphics.md",
+    "old": "    float something;\n} pc;",
+    "new": "    float something;\n    uint count;\n} pc;",
+    "why": "declare element bound"
+  },
+  {
+    "path": "public/docs/afield_four_graphics.md",
+    "old": "    uint idx = gl_GlobalInvocationID.x;\n    pc.outData.a[idx].x",
+    "new": "    uint idx = gl_GlobalInvocationID.x;\n    // Ceiling dispatch includes extra lanes; none may access the particle buffers.\n    if (idx >= pc.count) return;\n    pc.outData.a[idx].x",
+    "why": "bound every reference access"
+  },
+  {
+    "path": "public/docs/assets/canonical_graphics/ad857eaa-362e-45ea-bdc8-472af40f1ed2_compute_.glsl",
+    "old": "    float something;\n} pc;",
+    "new": "    float something;\n    uint count;\n} pc;",
+    "why": "declare element bound"
+  },
+  {
+    "path": "public/docs/assets/canonical_graphics/ad857eaa-362e-45ea-bdc8-472af40f1ed2_compute_.glsl",
+    "old": "    uint idx = gl_GlobalInvocationID.x;\n    pc.outData.a[idx].x",
+    "new": "    uint idx = gl_GlobalInvocationID.x;\n    // Ceiling dispatch includes extra lanes; none may access the particle buffers.\n    if (idx >= pc.count) return;\n    pc.outData.a[idx].x",
+    "why": "bound every reference access"
+  },
+  {
+    "path": "public/docs/afield_four_graphics.md",
+    "old": "m.inData = { outputPositions }\n\nval N = 100000",
+    "new": "m.inData = { outputPositions }\n\n// Inherit the count from the same parent that owns the buffers.\nval N = particleCount",
+    "why": "match draw count to the producer"
+  },
+  {
+    "path": "public/docs/assets/canonical_graphics/262e80f5-d991-453d-9af8-8d181ff0eb0b_code_.kt",
+    "old": "m.inData = { outputPositions }\n\nval N = 100000",
+    "new": "m.inData = { outputPositions }\n\n// Inherit the count from the same parent that owns the buffers.\nval N = particleCount",
+    "why": "match draw count to the producer"
+  },
+  {
+    "path": "public/docs/afield_four_graphics.md",
+    "old": "import afield.four.stream.FieldRTTStreamer",
+    "new": "import afield.media.stream.FieldRTTStreamer",
+    "why": "current streamer package"
+  },
+  {
+    "path": "public/docs/afield_four_graphics.md",
+    "why": "return the streamer from once initializer",
+    "pattern": "^\\s*= FieldRTTStreamer("
+  },
+  {
+    "path": "public/docs/afield_four_graphics.md",
+    "old": "@exported\nval target = streamer.start().first()",
+    "new": "prop<RenderToTexture>(target) = streamer.start().first()",
+    "why": "publish typed target"
+  },
+  {
+    "path": "public/docs/assets/canonical_graphics/8323570b-87db-4623-95a2-bd61c7d0f6f7_code_.kt",
+    "old": "import afield.four.stream.FieldRTTStreamer",
+    "new": "import afield.media.stream.FieldRTTStreamer",
+    "why": "current streamer package"
+  },
+  {
+    "path": "public/docs/assets/canonical_graphics/8323570b-87db-4623-95a2-bd61c7d0f6f7_code_.kt",
+    "why": "return the streamer from once initializer",
+    "pattern": "^\\s*= FieldRTTStreamer("
+  },
+  {
+    "path": "public/docs/assets/canonical_graphics/8323570b-87db-4623-95a2-bd61c7d0f6f7_code_.kt",
+    "old": "@exported\nval target = streamer.start().first()",
+    "new": "prop<RenderToTexture>(target) = streamer.start().first()",
+    "why": "publish typed target"
+  },
+  {
+    "path": "public/docs/assets/canonical_graphics/8323570b-87db-4623-95a2-bd61c7d0f6f7_code_.kt",
+    "old": "    true\n}",
+    "new": "}",
+    "why": "loop uses Unit"
+  },
+  {
+    "path": "public/docs/assets/canonical_graphics/262e80f5-d991-453d-9af8-8d181ff0eb0b_fragment_.glsl",
+    "old": "#version 450\nlayout(location = 0) out vec4 uFragColor;\nlayout(location = 0) in vec2 tc;\nvoid main()\n{\n    float d = max(0.0, 0.5-length(tc-vec2(0.5)));\n    float w = fwidth(d);\n    d = smoothstep(0.1, 0.1+w, d)*smoothstep(0.14+w, 0.14, d);\n    uFragColor = vec4(1.0, 0.8, 0.4, d*0.2);\n    if (d<0.01) discard;\n}",
+    "new": "#version 450\nlayout(location = 0) out vec4 uFragColor;\nlayout(location = 0) in vec2 tc;\nvoid main()\n{\n    float d = max(0.0, 0.5-length(tc-vec2(0.5)));\n    // A positive pixel feather keeps both smoothstep intervals well defined.\n    float w = max(fwidth(d), 1e-6);\n    // d increases inward: enter the outer rim, then fade into the inner hole.\n    float coverage = smoothstep(0.1, 0.1+w, d) *\n        (1.0 - smoothstep(0.14, 0.14+w, d));\n    uFragColor = vec4(1.0, 0.8, 0.4, coverage*0.2);\n    if (coverage<0.01) discard;\n}",
+    "why": "Use ascending smoothstep edges, positive derivative width and a separate coverage value"
+  },
+  {
+    "path": "public/docs/afield_four_graphics.md",
+    "old": "val N = 100000",
+    "new": "// N changes buffer allocation. Stop the draw child first; rerun compute, then draw.\nval N = 100000",
+    "why": "Explain the safe rebuild gesture beside the allocation count"
+  },
+  {
+    "path": "public/docs/assets/canonical_graphics/ad857eaa-362e-45ea-bdc8-472af40f1ed2_code_.kt",
+    "old": "val N = 100000",
+    "new": "// N changes buffer allocation. Stop the draw child first; rerun compute, then draw.\nval N = 100000",
+    "why": "Explain the safe rebuild gesture beside the allocation count"
+  }
+]

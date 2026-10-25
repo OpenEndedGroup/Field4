@@ -1,9 +1,13 @@
 package afield.ai.agent
 
-import afield.ai.core.aiToolMapper
+import afield.ai.tools.aiToolMapper
 import com.fasterxml.jackson.databind.JsonNode
 import java.io.File
 import java.time.Instant
+
+/**
+ * Lessons AI4 distils from its own eval runs, kept in a reviewable Markdown file and added to the instructions of every turn that has the graph tools.
+ */
 
 /**
  * What AI4 has learned from its own evals, as a file a person reviews with `git diff`.
@@ -21,7 +25,7 @@ import java.time.Instant
  *
  * `agent-eval --distil` rewrites the file's `## Distilled` section and bumps its `version:`. The
  * `## Curated` section is for people and is never rewritten. [instructionText] is what
- * [afield.ai.core.buildDynamicInstructions] adds to every AI4 turn that has the graph tools, capped at
+ * [afield.ai.conversation.buildDynamicInstructions] adds to every AI4 turn that has the graph tools, capped at
  * [MAX_INSTRUCTION_CHARS].
  *
  * # Switches

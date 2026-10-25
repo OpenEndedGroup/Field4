@@ -139,7 +139,7 @@ is populated differs, because surface *ownership* is reversed from Mac:
   backing memory made exportable (`VK_KHR_external_memory_fd`, `VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT`
   — the NVIDIA-Vulkan-to-NVIDIA-CUDA same-GPU handle type, not the generic cross-vendor
   `VK_EXT_external_memory_dma_buf`, which would need a DRM format modifier this same-vendor path
-  doesn't). See `afield.four.texture.VulkanExternalMemory` / `Image.exportOpaqueFd()`.
+  doesn't). See `afield.graphics.texture.VulkanExternalMemory` / `Image.exportOpaqueFd()`.
 
 So on Linux, `open` carries an `fdSocket` path and `surfaces` is an array of `{size,rowPitch}`
 objects (no fd/pid in the JSON at all — see below for why):
@@ -173,7 +173,7 @@ semantically unrelated to the original memory object — `cuImportExternalMemory
 what's behind it, which is why it's the mechanism actually used, at the cost of needing a small
 JNI shim on the JVM side (`native/field-fdpass/`) since Java has no standard-library
 `sendmsg`/ancillary-data support. That JNI class is deliberately kept off Field4's main jvmMain
-classpath — see `afield.four.texture.UnixFdPass`'s doc comment — because a class declaring a
+classpath — see `afield.graphics.texture.UnixFdPass`'s doc comment — because a class declaring a
 native method breaks Field4's live box/REPL execution if it's ever loaded from that classpath.
 
 The Vulkan-side memory allocation must also be *dedicated*

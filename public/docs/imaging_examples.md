@@ -1,6 +1,6 @@
 # Imaging and computer vision
 
-`afield.stdlib` can look at a picture as well as make one. Its CPU imaging and computer-vision
+`afield.media.image` can look at a picture as well as make one. Its CPU imaging and computer-vision
 family has a single value type, `Img`, and around it a set of operations that turn a raster into
 structure, from convolution and gradients up through edges, corners, lines, blobs, pyramids, warps
 and motion. It is the raster counterpart to the time-domain
@@ -44,9 +44,9 @@ Three choices change what the numbers mean:
 Build one from a function, a file, a `BufferedImage`, PNG bytes or a plain `FloatArray`:
 
 ```diffstatic {data-lang=kotlin}
-val ramp   = Img.generate(64, 64) { x, _ -> x / 63f }
-val photo  = imgFromFile("cat.png")            // javax.imageio under the hood
-val fromGl = floatsToImg(heights, w, h)        // a heightfield, a spectrogram, any scalar grid
+val ramp = Img.generate(64, 64) { x, _ -> x / 63f }
+val photo = imgFromFile("cat.png") // javax.imageio under the hood
+val fromGl = floatsToImg(heights, w, h) // a heightfield, a spectrogram, any scalar grid
 ```
 
 ## Basics — resample, luma, HSV, threshold
@@ -59,23 +59,24 @@ than making you guess a number.
 :::static
 // An Img is width x height x channels floats, interleaved, origin top-left.
 // Build one straight from a function of (x, y) — the usual way to make a test image.
-val card = Img.generateRGB(240, 180) { x, y ->
-    val u = x / 239f
-    val v = y / 179f
-    val disc = if (hypot(x - 60.0, y - 60.0) <= 34.0) 1f else 0f
-    val bar = if (y in 130..142 && x in 20..219) 1f else 0f
-    Triple(
-        (0.15f + 0.7f * u * (1f - disc) + disc * 0.9f + bar).coerceIn(0f, 1f),
-        (0.15f + 0.6f * v + disc * 0.25f + bar).coerceIn(0f, 1f),
-        (0.55f - 0.4f * u + disc * 0.1f + bar).coerceIn(0f, 1f)
-    )
-}
+val card =
+    Img.generateRGB(240, 180) { x, y ->
+        val u = x / 239f
+        val v = y / 179f
+        val disc = if (hypot(x - 60.0, y - 60.0) <= 34.0) 1f else 0f
+        val bar = if (y in 130..142 && x in 20..219) 1f else 0f
+        Triple(
+            (0.15f + 0.7f * u * (1f - disc) + disc * 0.9f + bar).coerceIn(0f, 1f),
+            (0.15f + 0.6f * v + disc * 0.25f + bar).coerceIn(0f, 1f),
+            (0.55f - 0.4f * u + disc * 0.1f + bar).coerceIn(0f, 1f),
+        )
+    }
 
-val gray = card.luma()                 // BT.709 perceptual grayscale
-val hsv = card.rgbToHsv()              // h, s, v each in 0..1
-val small = card.resize(60, 45)        // area-averaged (anti-aliased) downsample
-val backUp = small.resize(240, 180)    // bilinear upsample: the detail is really gone
-val t = gray.otsuThreshold()           // computed, not guessed
+val gray = card.luma() // BT.709 perceptual grayscale
+val hsv = card.rgbToHsv() // h, s, v each in 0..1
+val small = card.resize(60, 45) // area-averaged (anti-aliased) downsample
+val backUp = small.resize(240, 180) // bilinear upsample: the detail is really gone
+val t = gray.otsuThreshold() // computed, not guessed
 
 showImgGrid(
     "source RGB (${card.width}x${card.height})" to card,
@@ -87,8 +88,10 @@ showImgGrid(
     columns = 3,
     cellSide = 260,
 )
-println("Img ${card.width}x${card.height} x${card.channels} ch, mean ${"%.3f".format(card.mean())}, " +
-    "otsu ${"%.3f".format(t)}, foreground ${gray.threshold(t).data.count { it > 0.5f }} px")
+println(
+    "Img ${card.width}x${card.height} x${card.channels} ch, mean ${"%.3f".format(card.mean())}, " +
+        "otsu ${"%.3f".format(t)}, foreground ${gray.threshold(t).data.count { it > 0.5f }} px",
+)
 ```
 
 ![](assets/imaging_examples/basics.png)
@@ -109,21 +112,22 @@ far away in *range* and so keeps its own weight.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/imaging_examples/filters.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
 // A clean synthetic source, and the same source with 4% salt-and-pepper corruption.
-val clean = Img.generate(240, 180) { x, y ->
-    var v = 0.12f + 0.10f * (y / 180f)
-    if (hypot(x - 60.0, y - 70.0) <= 34.0) v = 0.85f
-    if (x in 120..185 && y in 30..95) v = 0.65f
-    if (y in 135..142 && x in 20..219) v = 0.95f
-    v
-}
+val clean =
+    Img.generate(240, 180) { x, y ->
+        var v = 0.12f + 0.10f * (y / 180f)
+        if (hypot(x - 60.0, y - 70.0) <= 34.0) v = 0.85f
+        if (x in 120..185 && y in 30..95) v = 0.65f
+        if (y in 135..142 && x in 20..219) v = 0.95f
+        v
+    }
 val rng = kotlin.random.Random(11)
 val noisy = clean.copy()
 repeat((noisy.pixelCount * 0.04).toInt()) {
     noisy.data[rng.nextInt(noisy.pixelCount)] = if (rng.nextBoolean()) 0f else 1f
 }
 
-val gauss = noisy.gaussianBlur(2.0)     // separable, normalised: preserves the image mean
-val med = noisy.median(2)               // the right tool for impulse noise
+val gauss = noisy.gaussianBlur(2.0) // separable, normalised: preserves the image mean
+val med = noisy.median(2) // the right tool for impulse noise
 val bil = noisy.bilateral(sigmaSpace = 3.0, sigmaRange = 0.12)
 val sharp = clean.gaussianBlur(2.0).unsharpMask(sigma = 2.0, amount = 1.4)
 
@@ -140,7 +144,7 @@ showImgGrid(
 println(
     "residual vs clean — gaussian ${"%.4f".format(gauss.meanAbsDiff(clean))}, " +
         "median ${"%.4f".format(med.meanAbsDiff(clean))}, " +
-        "bilateral ${"%.4f".format(bil.meanAbsDiff(clean))}"
+        "bilateral ${"%.4f".format(bil.meanAbsDiff(clean))}",
 )
 ```
 
@@ -160,19 +164,21 @@ becomes a handful of straight runs.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/imaging_examples/edges.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
-val src = Img.generate(240, 180) { x, y ->
-    var v = 0.12f + 0.08f * (y / 180f)
-    if (hypot(x - 62.0, y - 70.0) <= 34.0) v = 0.85f
-    if (x in 120..185 && y in 30..95) v = 0.68f
-    val tx = x - 210.0; val ty = y - 40.0
-    if (ty in 0.0..60.0 && kotlin.math.abs(tx) <= ty * 0.5) v = 0.95f
-    v
-}
+val src =
+    Img.generate(240, 180) { x, y ->
+        var v = 0.12f + 0.08f * (y / 180f)
+        if (hypot(x - 62.0, y - 70.0) <= 34.0) v = 0.85f
+        if (x in 120..185 && y in 30..95) v = 0.68f
+        val tx = x - 210.0
+        val ty = y - 40.0
+        if (ty in 0.0..60.0 && kotlin.math.abs(tx) <= ty * 0.5) v = 0.95f
+        v
+    }
 
 // Sobel here is scaled to true units-per-pixel: a unit step edge integrates to 1.
 val grad = src.sobel()
 val edges = src.canny(low = 0.05, high = 0.11, sigma = 1.2)
-val auto = src.cannyAuto()          // thresholds derived from this image's own gradients
+val auto = src.cannyAuto() // thresholds derived from this image's own gradients
 
 // Edges are geometry, and geometry in Field is an FLine.
 val flines = edges.toContourFLines(minPerimeter = 12, simplifyTolerance = 1.2)
@@ -190,7 +196,7 @@ showImgGrid(
 println(
     "|grad| max ${"%.3f".format(grad.magnitude().max())}; " +
         "canny ${edges.data.count { it > 0.5f }} px, cannyAuto ${auto.data.count { it > 0.5f }} px; " +
-        "${flines.size} FLines, ${flines.sumOf { it.nodes.size }} nodes total"
+        "${flines.size} FLines, ${flines.sumOf { it.nodes.size }} nodes total",
 )
 ```
 
@@ -261,10 +267,11 @@ Felzenszwalb–Huttenlocher two-pass algorithm, not a chamfer approximation).
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/imaging_examples/morphology.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
 // Three disjoint discs of known radius, then noise on top of them.
-val discs = listOf(Triple(55.0, 60.0, 28.0), Triple(150.0, 55.0, 20.0), Triple(110.0, 135.0, 14.0))
-val clean = Img.generate(220, 180) { x, y ->
-    if (discs.any { (cx, cy, r) -> hypot(x - cx, y - cy) <= r }) 0.85f else 0.15f
-}
+val discs = [Triple(55.0, 60.0, 28.0), Triple(150.0, 55.0, 20.0), Triple(110.0, 135.0, 14.0)]
+val clean =
+    Img.generate(220, 180) { x, y ->
+        if (discs.any { (cx, cy, r) -> hypot(x - cx, y - cy) <= r }) 0.85f else 0.15f
+    }
 val rng = kotlin.random.Random(3)
 val noisy = clean.copy()
 repeat((noisy.pixelCount * 0.03).toInt()) {
@@ -287,10 +294,14 @@ showImgGrid(
     cellSide = 250,
 )
 println("${cc.count} components after cleaning (planted ${discs.size} discs):")
-cc.components.sortedByDescending { it.area }.forEach {
-    println("  area=${it.area} centroid=(${"%.1f".format(it.centroidX)}, ${"%.1f".format(it.centroidY)}) " +
-        "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${"%.2f".format(it.fillRatio)}")
-}
+cc.components
+    .sortedByDescending { it.area }
+    .forEach {
+        println(
+            "  area=${it.area} centroid=(${"%.1f".format(it.centroidX)}, ${"%.1f".format(it.centroidY)}) " +
+                "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${"%.2f".format(it.fillRatio)}",
+        )
+    }
 println("distance-transform peak ${"%.1f".format(dt.max())} (largest planted radius ${discs.maxOf { it.third }})")
 ```
 
@@ -349,21 +360,27 @@ a single level cannot recover comes back to within half a pixel with four.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/imaging_examples/motion.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
 :::static
 // Two frames related by a transform we choose, so the answer is known in advance.
-val a = Img.generate(200, 200) { x, y ->
-    (0.5 + 0.24 * kotlin.math.sin(x * 0.21) * kotlin.math.cos(y * 0.17) +
-        0.16 * kotlin.math.sin((x + y) * 0.11)).toFloat().coerceIn(0f, 1f)
-}
+val a =
+    Img.generate(200, 200) { x, y ->
+        (0.5 + 0.24 * kotlin.math.sin(x * 0.21) * kotlin.math.cos(y * 0.17) + 0.16 * kotlin.math.sin((x + y) * 0.11))
+            .toFloat()
+            .coerceIn(0f, 1f)
+    }
 val planted = Affine2D.rotationAbout(0.05, 100.0, 100.0).compose(Affine2D.translation(5.0, -3.0))
 val b = a.warpAffine(planted, border = Border.CLAMP)
 
 // Seed only where the 2x2 tracking system is well conditioned.
-val seeds = a.goodFeaturesToTrack(maxCount = 200, minDistance = 9)
-    .filter { it.x in 24.0..176.0 && it.y in 24.0..176.0 }
-    .map { it.toVec2() }
+val seeds =
+    a.goodFeaturesToTrack(maxCount = 200, minDistance = 9)
+        .filter { it.x in 24.0..176.0 && it.y in 24.0..176.0 }
+        .map { it.toVec2() }
 val flow = opticalFlowLK(a, b, seeds, windowRadius = 8, levels = 3)
 val fit = findHomographyRansac(
-    flow.sourcePoints(), flow.targetPoints(),
-    threshold = 1.5, iterations = 1200, seed = 3L
+    flow.sourcePoints(),
+    flow.targetPoints(),
+    threshold = 1.5,
+    iterations = 1200,
+    seed = 3L,
 )
 
 // How far is the recovered model from the one we planted, in pixels, on a probe grid?
@@ -383,8 +400,10 @@ showImgGrid(
     cellSide = 280,
 )
 val (mdx, mdy) = flow.medianDisplacement()
-println("${flow.tracked().size}/${seeds.size} tracked; median displacement " +
-    "(${"%.2f".format(mdx)}, ${"%.2f".format(mdy)}) px")
+println(
+    "${flow.tracked().size}/${seeds.size} tracked; median displacement " +
+        "(${"%.2f".format(mdx)}, ${"%.2f".format(mdy)}) px",
+)
 println("RANSAC ${fit.inlierCount} inliers of ${flow.tracked().size} after ${fit.iterations} iterations")
 println("recovered model agrees with the planted transform to ${"%.3f".format(worst)} px over the probe grid")
 println(fit.homography.toString())
@@ -427,7 +446,7 @@ The [`imaging_cv_examples`](agent_transcripts.md#imaging_cv_examples) starting p
 examples on this page as live boxes. Change a sigma, a threshold or the planted motion, re-run the
 box, and watch the picture update.
 
-??? aside "Where the figures come from"
+??? aside "Agents: where the figures come from"
     The images under the code fences are those boxes' own output, captured by the docs build. The
     figures without a fence come from the `imaging.gallery` FIELD_TEST
     (`python3 tools/run_field_tests.py --id imaging.gallery`), which builds each one from real `Img`
@@ -726,7 +745,7 @@ Turn analysis results into Field geometry or output panels.
 | `fun FlowField.toFLines(scale: Double = 1.0, minMagnitude: Double = 0.25, headSize: Double = 3.0, z: Number = 0): List<FLine>` | Draw a sparse optical-flow field as one arrow `FLine` per tracked point — shaft plus a two-stroke arrowhead, so direction is visible and not just magnitude. [API](reference/imaging.md#imaging-field-kt). |
 | `fun Img.isoContourFLines(iso: Double, cells: Int = max(width, height), z: Number = 0): List<FLine>` | Extract smooth iso-contours at `iso` through Field's existing marching-squares extractor and return them as `FLine`s. Unlike `toContourFLines` (which traces the pixel boundary of a binary mask) this interpolates between samples, so the contour is sub-pixel smooth — the right tool for a distance transform, a blurred response or a height field. [API](reference/imaging.md#imaging-field-kt). |
 | `fun Img.asScalarField2D(border: Border = Border.CLAMP): ScalarField2D` | Adapt this 1-channel image to the `ScalarField2D` that `contours.kt` marches — the image becomes a bilinearly-interpolated continuous field over `[0, width-1] x [0, height-1]`. [API](reference/imaging.md#imaging-field-kt). |
-| `fun Img.colormap(name: String = "viridis", lo: Float? = null, hi: Float? = null): Img` | Colour-map a 1-channel image through one of Field's [`Colormaps`](reference/visualization.md#colormaps-kt-colormaps) ramps (`viridis`, `magma`, `inferno`, `plasma`, `turbo`, `coolwarm`, `grayscale`), returning a 3-channel RGB image. [API](reference/imaging.md#imaging-field-kt). |
+| `fun Img.colormap(name: String = "viridis", lo: Float? = null, hi: Float? = null): Img` | Colour-map a 1-channel image through one of Field's [`Colormaps`](reference/graphics.md#colormaps-kt-colormaps) ramps (`viridis`, `magma`, `inferno`, `plasma`, `turbo`, `coolwarm`, `grayscale`), returning a 3-channel RGB image. [API](reference/imaging.md#imaging-field-kt). |
 | `fun Img.colormapDiverging(name: String = "coolwarm"): Img` | Colour-map with a symmetric range around zero — the correct default for a **signed** image (a Laplacian, a difference of Gaussians, a gradient component), where the meaningful thing is which side of zero a pixel is on. Pair with a diverging map like `coolwarm`. [API](reference/imaging.md#imaging-field-kt). |
 | `fun Img.maskToRGBA(color: Color4 = Color4(1.0, 0.35, 0.15), alpha: Double = 1.0): Img` | Tint a binary mask a single colour over a transparent background — for overlaying a detection on the original picture with `overlay`. [API](reference/imaging.md#imaging-field-kt). |
 | `fun Img.overlay(top: Img, opacity: Double = 1.0): Img` | Alpha-composite `top` (RGBA, or RGB treated as opaque) over this image, returning RGB. The standard way to show a mask/overlay on top of the source picture. [API](reference/imaging.md#imaging-field-kt). |
@@ -741,4 +760,4 @@ Turn analysis results into Field geometry or output panels.
 
 </div>
 
-Source: [`imaging.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/imaging.kt), [`imaging_filters.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/imaging_filters.kt), [`imaging_features.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/imaging_features.kt), [`imaging_geometry.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/imaging_geometry.kt), [`imaging_field.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/imaging_field.kt) in `src/jvmMain/kotlin/afield/stdlib/`.
+Source: [`imaging.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/media/image/imaging.kt), [`imaging_filters.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/media/image/imaging_filters.kt), [`imaging_features.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/media/image/imaging_features.kt), [`imaging_geometry.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/media/image/imaging_geometry.kt), [`imaging_field.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/media/image/imaging_field.kt) in `src/jvmMain/kotlin/afield/media/image/`.

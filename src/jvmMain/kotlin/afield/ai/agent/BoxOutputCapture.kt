@@ -1,16 +1,16 @@
 package afield.ai.agent
 
-import afield.BoxScreenshotRequest
-import afield.ExpectedOutputs
-import afield.SCREENSHOT_PREP_STALLED
-import afield.SessionInformation
-import afield.buildPlaywrightDocumentUrl
-import afield.ensureSharedPlaywrightBrowser
-import afield.logger.lprintln
-import afield.playwrightDispatcher
-import afield.playwrightSessionReadyScript
-import afield.requestBoxScreenshot
-import afield.ai.core.aiToolMapper
+import afield.app.protocol.BoxScreenshotRequest
+import afield.app.protocol.ExpectedOutputs
+import afield.tools.docs.SCREENSHOT_PREP_STALLED
+import afield.app.server.SessionInformation
+import afield.app.server.buildPlaywrightDocumentUrl
+import afield.app.server.ensureSharedPlaywrightBrowser
+import afield.app.diagnostics.logging.lprintln
+import afield.app.server.playwrightDispatcher
+import afield.app.server.playwrightSessionReadyScript
+import afield.tools.docs.requestBoxScreenshot
+import afield.ai.tools.aiToolMapper
 import com.fasterxml.jackson.core.type.TypeReference
 import com.microsoft.playwright.Browser
 import com.microsoft.playwright.BrowserContext
@@ -32,6 +32,13 @@ import java.util.concurrent.TimeUnit
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
+
+/**
+ * Pictures of a box's output area for the agent, taken from a headless Playwright page on the box's document, with simple statistics about what the picture contains.
+ *
+ * [BoxOutputCapture] owns the pages and their release; [BoxOutputShot] is one capture, and
+ * [PictureStats] summarises its pixels: how much differs from the background, and the dominant colours.
+ */
 
 /**
  * One captured picture of a box's output area, or the reason there is none.
@@ -196,7 +203,7 @@ internal fun jpegDataUrl(image: BufferedImage, maxSide: Int = 1200, quality: Flo
  *
  * # Why a page of its own
  *
- * The backdoor and the docs runner share one global page ([afield.globalPlaywriteContext]) and navigate
+ * The backdoor and the docs runner share one global page ([afield.app.server.globalPlaywriteContext]) and navigate
  * it wherever their current session is. AI4 capturing through it would drag it to another document in
  * the middle of someone else's capture sequence. So this opens its own context in the same Chromium
  * ([ensureSharedPlaywrightBrowser]) and navigates only that.
@@ -206,14 +213,14 @@ internal fun jpegDataUrl(image: BufferedImage, maxSide: Int = 1200, quality: Flo
  * One page per document, keyed by `SessionInformation.filename` (a second capture of the same document
  * reuses it; a keyed map self-replaces). At most [MAX_PAGES]; the least recently used is closed to make
  * room. A page is released:
- *  - by [release], which [afield.closeHeadlessDocument] calls *before* it decides whether the document
+ *  - by [release], which [afield.app.server.closeHeadlessDocument] calls *before* it decides whether the document
  *    still has clients — otherwise this page's own websocket would keep every headless task document
  *    alive for ever;
  *  - after [IDLE_RELEASE_MS] without a capture, **unless** it is the only client of an ephemeral
  *    document: detaching the last client of a scratch document retires it (cleanupDetachedSession), and
  *    a headless task can easily spend two minutes between looks. Those are released by their owner;
  *  - by [capture]'s retry, when a capture on it fails outright, including a prep that stalled or that
- *    the Playwright driver timed out ([afield.evaluateWithin]). All of the capture pages and the
+ *    the Playwright driver timed out ([afield.tools.docs.evaluateWithin]). All of the capture pages and the
  *    backdoor share one Playwright thread, so a page that cannot answer must not be asked again.
  *
  * A late panel is not a problem: a page that attaches after a box ran asks for `replay-output-areas`
@@ -258,7 +265,7 @@ object BoxOutputCapture {
      * thread (it marshals onto the latter, and the page needs the former to answer its websocket).
      */
     fun capture(info: SessionInformation, uid: String, settleMs: Int = 300): BoxOutputShot {
-        check(!afield.Runloop.isMainThread) { "BoxOutputCapture.capture blocks; call it off the Runloop" }
+        check(!afield.runtime.lifecycle.Runloop.isMainThread) { "BoxOutputCapture.capture blocks; call it off the Runloop" }
         val box = info.boxes[uid] ?: return BoxOutputShot.failed("No box '$uid' in ${info.documentName}.")
         val channels = box.output.retainedAreas.channels()
         if (channels.isEmpty()) return BoxOutputShot.failed(
@@ -283,9 +290,9 @@ object BoxOutputCapture {
 
     /** Close [info]'s capture page, if one is open. Safe from any thread. */
     fun release(info: SessionInformation) {
-        if (afield.Runloop.isMainThread) {
+        if (afield.runtime.lifecycle.Runloop.isMainThread) {
             // Never block the Runloop on the Playwright thread; closing can wait a moment.
-            afield.playwrightScope.launch { dropHeld(info.filename) }
+            afield.app.server.playwrightScope.launch { dropHeld(info.filename) }
             return
         }
         runBlocking(playwrightDispatcher) { dropHeld(info.filename) }

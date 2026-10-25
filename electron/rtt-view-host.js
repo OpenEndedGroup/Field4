@@ -1,4 +1,4 @@
-// Main-process half of the RTT view: afield.four render targets drawn straight into a box's output
+// Main-process half of the RTT view: Field 4 render targets drawn straight into a box's output
 // area, with no readback and no encode.
 //
 // Electron owns the pixels. For each view it allocates a ring of BGRA IOSurfaces, imports each into

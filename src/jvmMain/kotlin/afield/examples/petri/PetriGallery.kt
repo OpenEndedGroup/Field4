@@ -1,37 +1,37 @@
 package afield.examples.petri
 
-import afield.four.synth.PatArc
-import afield.four.synth.PatPattern
-import afield.four.synth.PatQ
-import afield.petri.PETRI_LABEL_LIMIT
-import afield.petri.PETRI_STATE_DRAW_LIMIT
-import afield.petri.PetriCombinators
-import afield.petri.PetriConflict
-import afield.petri.PetriHalt
-import afield.petri.PetriNet
-import afield.petri.PetriTiming
-import afield.petri.cyc
-import afield.petri.deadTransitions
-import afield.petri.deadlockMarking
-import afield.petri.emits
-import afield.petri.frame
-import afield.petri.frameAt
-import afield.petri.pattern
-import afield.petri.pInvariants
-import afield.petri.period
-import afield.petri.petri
-import afield.petri.petriLabelsRenderable
-import afield.petri.petriParse
-import afield.petri.report
-import afield.petri.settle
-import afield.petri.stateSpace
-import afield.petri.summaryHtml
-import afield.petri.tInvariants
-import afield.petri.toFLines
-import afield.petri.toSvg
-import afield.petri.tooDenseToDraw
-import afield.petri.unfold
-import afield.petri.willDeadlock
+import afield.audio.synth.PatArc
+import afield.audio.synth.PatPattern
+import afield.audio.synth.PatQ
+import afield.simulation.petri.PETRI_LABEL_LIMIT
+import afield.simulation.petri.PETRI_STATE_DRAW_LIMIT
+import afield.simulation.petri.PetriCombinators
+import afield.simulation.petri.PetriConflict
+import afield.simulation.petri.PetriHalt
+import afield.simulation.petri.PetriNet
+import afield.simulation.petri.PetriTiming
+import afield.simulation.petri.cyc
+import afield.simulation.petri.deadTransitions
+import afield.simulation.petri.deadlockMarking
+import afield.simulation.petri.emits
+import afield.simulation.petri.frame
+import afield.simulation.petri.frameAt
+import afield.simulation.petri.pattern
+import afield.simulation.petri.pInvariants
+import afield.simulation.petri.period
+import afield.simulation.petri.petri
+import afield.simulation.petri.petriLabelsRenderable
+import afield.simulation.petri.petriParse
+import afield.simulation.petri.report
+import afield.simulation.petri.settle
+import afield.simulation.petri.stateSpace
+import afield.simulation.petri.summaryHtml
+import afield.simulation.petri.tInvariants
+import afield.simulation.petri.toFLines
+import afield.simulation.petri.toSvg
+import afield.simulation.petri.tooDenseToDraw
+import afield.simulation.petri.unfold
+import afield.simulation.petri.willDeadlock
 import java.io.File
 import java.nio.file.Files
 
@@ -541,8 +541,8 @@ object PetriGallery {
      * refuse it.
      *
      * The three of them are the three regimes, and they are here rather than in a unit test because
-     * they go through the same call the boxes and the docs page do — [afield.petri.toSvg], which is
-     * [afield.petri.toFLines] — so a change that only breaks the *drawing* rather than the numbers
+     * they go through the same call the boxes and the docs page do — [afield.simulation.petri.toSvg], which is
+     * [afield.simulation.petri.toFLines] — so a change that only breaks the *drawing* rather than the numbers
      * still fails something.
      */
     private class StateFigure(

@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chain_renderer" index="0" -->
 
 ```edn [field-box id="chain_renderer" role="properties"]
-{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["petri_sculpture_trace"] "properties" {"children" #{#afield/box "petri_sculpture_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 227 "sha256" "816b77214788d6c50f993e600de3408b650476c2faf6d6f26f6eed39a443d771"}]}
+{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["petri_sculpture_trace"] "properties" {"children" #{#afield/box "petri_sculpture_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 10 "characters" 239 "sha256" "18c095049275ac2b94b06f0cdad31e1b0a10e05eb3cd036cda62bacf21f9654f"}]}
 ```
 
 ```kotlin [field-property box="chain_renderer" name="code" path="chain_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,21 +32,18 @@ start(renderer::run)
 <!-- field-box id="petri_sculpture_trace" index="1" -->
 
 ```edn [field-box id="petri_sculpture_trace" role="properties"]
-{"id" "petri_sculpture_trace" "index" 1 "name" "a deadlock, sculpted and traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a deadlock, sculpted and traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_sculpture_trace_code_.kt" "lines" 172 "characters" 7256 "sha256" "a4f76e086c448f30a39a99ff8d253dd3db13744eb901634d93b3c2eea0d88aee"}]}
+{"id" "petri_sculpture_trace" "index" 1 "name" "a deadlock, sculpted and traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a deadlock, sculpted and traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_sculpture_trace_code_.kt" "lines" 195 "characters" 7507 "sha256" "d99897c84465b61b07bc7a2f9569d5c16cf834fdc6644a25443f35c8b6669836"}]}
 ```
 
 ```kotlin [field-property box="petri_sculpture_trace" name="code" path="petri_sculpture_trace_code_.kt"]
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.fabricated.importTriMesh
-import afield.four.util.Camera
-import afield.petri.*
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.importTriMesh
+import afield.graphics.vulkan.util.Camera
+import afield.simulation.petri.*
 import java.io.File
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 prop<PathTracingRenderer>(tracer)
 
@@ -55,36 +53,52 @@ fun table(seats: Int) = petri {
     for (i in 0 until seats) {
         val left = i
         val right = (i + 1) % seats
-        t("grab.$i") { from("fork.$left"); to("holding.$i") }
-        t("eat.$i") { from("holding.$i"); from("fork.$right"); to("eating.$i") }
-        t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+        t("grab.$i") {
+            from("fork.$left")
+            to("holding.$i")
+        }
+        t("eat.$i") {
+            from("holding.$i")
+            from("fork.$right")
+            to("eating.$i")
+        }
+        t("done.$i") {
+            from("eating.$i")
+            to("fork.$left")
+            to("fork.$right")
+        }
     }
 }
 val seats = 5
 val full = table(seats).stateSpace()
 val reduced = table(seats).stateSpace(reduction = PetriReduction.STUBBORN)
 
-// ---- layout: depth is height, the marking decides where on the floor plan ------
-// Each philosopher has a seat on a circle. Holding one fork pulls a marking halfway
-// towards that seat, eating pulls it all the way, and the pulls add.
+/*
+---- layout: depth is height, the marking decides where on the floor plan ------
+Each philosopher has a seat on a circle. Holding one fork pulls a marking halfway
+towards that seat, eating pulls it all the way, and the pulls add.
+*/
 fun seat(i: Int) = Vec3(cos(2 * PI * i / seats).toFloat(), 0f, sin(2 * PI * i / seats).toFloat())
 val layer = 0.62f
 
 fun layout(graph: PetriStateGraph, offsetX: Float): List<Vec3> {
-    val raw = graph.states.indices.map { id ->
-        val m = graph.states[id]
-        val p = Vec3(offsetX, -layer * graph.depth(id), 0f)
-        for (i in 0 until seats) {
-            val pull = 0.5f * m.count("holding.$i") + 1.0f * m.count("eating.$i")
-            p.add(Vec3(seat(i)).mul(pull))
+    val raw =
+        graph.states.indices.map { id ->
+            val m = graph.states[id]
+            val p = Vec3(offsetX, -layer * graph.depth(id), 0f)
+            for (i in 0 until seats) {
+                val pull = 0.5f * m.count("holding.$i") + 1.0f * m.count("eating.$i")
+                p.add(Vec3(seat(i)).mul(pull))
+            }
+            p
         }
-        p
-    }
     // Markings that land on the same spot (the pulls can cancel) are fanned out on a
     // small ring, so every marking stays its own bead.
     val placed = raw.map { Vec3(it) }
-    raw.indices.groupBy { "%.3f %.3f %.3f".format(raw[it].x, raw[it].y, raw[it].z) }
-        .values.filter { it.size > 1 }
+    raw.indices
+        .groupBy { "%.3f %.3f %.3f".format(raw[it].x, raw[it].y, raw[it].z) }
+        .values
+        .filter { it.size > 1 }
         .forEach { group ->
             group.forEachIndexed { k, id ->
                 val a = 2 * PI * k / group.size + 0.4
@@ -145,9 +159,13 @@ fun sculpt(graph: PetriStateGraph, offsetX: Float) {
         val radius = if (edge in lit) 0.026 else 0.011
         val added = scene.importTriMesh(
             tubeMesh(arc(at[edge.from], at[edge.to], axis), radius = radius, sides = 10),
-            material, warning = {},
+            material,
+            warning = {},
         )
-        if (added.triangleCount > 0) { lo.min(added.boundsMin); hi.max(added.boundsMax) }
+        if (added.triangleCount > 0) {
+            lo.min(added.boundsMin)
+            hi.max(added.boundsMax)
+        }
     }
     at.forEachIndexed { id, p ->
         when {
@@ -161,10 +179,14 @@ fun sculpt(graph: PetriStateGraph, offsetX: Float) {
 sculpt(full, offsetX = 0f)
 sculpt(reduced, offsetX = 3.4f)
 
-println("full graph: ${full.stateCount} markings, ${full.edgeCount} firings, " +
-    "deadlock after ${full.deadlockTrace()!!.length}: ${full.deadlockTrace()!!.transitions}")
-println("stubborn-set graph: ${reduced.stateCount} markings, ${reduced.edgeCount} firings, " +
-    "deadlock after ${reduced.deadlockTrace()!!.length}: ${reduced.deadlockTrace()!!.transitions}")
+println(
+    "full graph: ${full.stateCount} markings, ${full.edgeCount} firings, " +
+        "deadlock after ${full.deadlockTrace()!!.length}: ${full.deadlockTrace()!!.transitions}",
+)
+println(
+    "stubborn-set graph: ${reduced.stateCount} markings, ${reduced.edgeCount} firings, " +
+        "deadlock after ${reduced.deadlockTrace()!!.length}: ${reduced.deadlockTrace()!!.transitions}",
+)
 
 // ---- floor, camera, tracer -----------------------------------------------------
 val middle = Vec3(lo).add(hi).mul(0.5f)
@@ -204,7 +226,9 @@ tracer.fogBackground = true
 tracer.blitToScreen()
 println("${tracer.backend}: ${tracer.triangleCount} triangles")
 frames {
-    while (tracer.samples < 900) { frame() }
+    while (tracer.samples < 900) {
+        frame()
+    }
     println("petri sculpture converged: ${tracer.samples} samples")
 }
 ```

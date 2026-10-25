@@ -60,6 +60,9 @@ description: |
 
   `tools/run_field_tests.py --id four.shader-boids.smoke` grades both rules against a CPU brute
   force, and `--id four.neighbour-grid.smoke` grades the search underneath them.
+docs:
+  - page: neural_particles.md
+    why: "Explains training an interaction rule and running it as a flock."
 operations:
   - create:
       box: lb_renderer
@@ -67,8 +70,8 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.util.Options
-
+          import afield.graphics.vulkan.util.Options
+          
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -86,11 +89,7 @@ operations:
       frame: { x: 380.0, y: 40.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.DeepSetsOptions
-          import afield.stdlib.InteractionExample
-          import afield.stdlib.trainEquivariant
-
-          prop<afield.stdlib.EquivariantWeights>(learnedRule)
+          prop<afield.ai.learning.EquivariantWeights>(learnedRule)
 
           val radius = 2f / 64f
           val minSeparation = radius * 0.05f
@@ -191,11 +190,9 @@ operations:
       frame: { x: 740.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.physics.ShaderBoids
-          import afield.four.util.GpuNeighbourGrid
-          import afield.stdlib.linalg.Vector2f
+          import afield.simulation.physics.ShaderBoids
 
-          prop<afield.four.physics.ShaderBoids>(written)
+          prop<afield.simulation.physics.ShaderBoids>(written)
 
           // Built once: GPU buffers, neighbour grid and draw pass. Everything below is live.
           once.written {
@@ -276,15 +273,15 @@ operations:
       frame: { x: 1080.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.physics.ShaderBoids
-          import afield.four.util.GpuNeighbourGrid
-          import afield.stdlib.linalg.Vector2f
+          import afield.simulation.physics.ShaderBoids
 
-          // `learnedRule` is the trained network from the parent box. The only difference from
-          // the written flock is this argument.
-          //
-          // A flock compiles its rule into its shaders, so it is cached on the rule: retrain the
-          // parent and the next run builds a new flock, releasing the old one.
+          /*
+          `learnedRule` is the trained network from the parent box. The only difference from
+          the written flock is this argument.
+
+          A flock compiles its rule into its shaders, so it is cached on the rule: retrain the
+          parent and the next run builds a new flock, releasing the old one.
+          */
           val learned = cached<ShaderBoids>(learnedRule, renderer) {
               val grid = GpuNeighbourGrid(
                   capacity = 12000,

@@ -1,0 +1,23 @@
+{
+  "baseline": "6da129f4fb4fe52d21d5fbc480f29490f680cbd1",
+  "sources": [
+    {
+      "path": "public/docs/qualified_sources.md",
+      "kotlinBodies": 6,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/assets/transcripts/qualified_sources_approval.yaml",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/staged_project.yaml",
+      "kotlinBodies": 5,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

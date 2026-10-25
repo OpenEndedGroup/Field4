@@ -1,7 +1,9 @@
-// Every PlacedGlyph carries mutable handles — offset, rotation, scale, pivot — and the
-// pivot defaults to the glyph's own visual centre, so a bare `rotation = 0.3` spins each
-// letter about itself. These handles are the API rather than an afterthought: this whole box
-// is one layout, computed once, and a function of elapsed seconds written into it.
+/*
+Every PlacedGlyph carries mutable handles — offset, rotation, scale, pivot — and the
+pivot defaults to the glyph's own visual centre, so a bare `rotation = 0.3` spins each
+letter about itself. These handles are the API rather than an afterthought: this whole box
+is one layout, computed once, and a function of elapsed seconds written into it.
+*/
 val face = typeface("SansSerif", 150.0)
 val layout = layoutText("KINETIC", face, tracking = 16.0)
 
@@ -9,19 +11,32 @@ val layout = layoutText("KINETIC", face, tracking = 16.0)
 // a still frame instead of the frame breathing around them.
 val window = run {
     val probe = layoutText("KINETIC", face, tracking = 16.0)
-    probe.eachGlyph { i -> rotation = 0.5; scale = vec(1.3, 1.3); offset = vec(0.0, 34.0) }
+    probe.eachGlyph { i ->
+        rotation = 0.5
+        scale = vec(1.3, 1.3)
+        offset = vec(0.0, 34.0)
+    }
     val a = probe.bounds
-    probe.eachGlyph { i -> rotation = -0.5; scale = vec(1.3, 1.3); offset = vec(0.0, -34.0) }
+    probe.eachGlyph { i ->
+        rotation = -0.5
+        scale = vec(1.3, 1.3)
+        offset = vec(0.0, -34.0)
+    }
     a.union(probe.bounds)
 }
 
 val started = AnimationClock.nowSeconds()
+val displayFps = 20.0
+var nextDisplay = 0.0
 
 // The line you would change: elapsed seconds in, a travelling wave out.
 fun waveAt(elapsed: Double, i: Int): Double = 1.7 * elapsed + i * 0.7
 
 animate {
     val elapsed = AnimationClock.nowSeconds() - started
+    // Keep motion tied to elapsed time; cap the expensive raster and output work.
+    if (elapsed < nextDisplay) return@animate
+    nextDisplay = elapsed + 1.0 / displayFps
     layout.eachGlyph { i ->
         val w = waveAt(elapsed, i)
         rotation = 0.42 * kotlin.math.sin(w)
@@ -31,6 +46,7 @@ animate {
     }
     showImgGrid(
         "t = %.1fs".format(elapsed) to rasterizeText(layout, 1100, 420, window = window),
-        columns = 1, cellSide = 820
+        columns = 1,
+        cellSide = 820,
     )
 }

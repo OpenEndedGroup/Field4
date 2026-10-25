@@ -1,7 +1,7 @@
 name: keybindings_inspect
 description: >
   One box that asks Field what its shortcuts currently are, reading the same resolved bindings the
-  keypresses themselves use (afield.UserKeybindingsManager.resolved). Backs the "Asking Field
+  keypresses themselves use (afield.app.settings.UserKeybindingsManager.resolved). Backs the "Asking Field
   directly" capture on public/docs/keybindings.md, and is worth running on its own when a shortcut
   is not doing what a keybindings.yaml says it should. The box code here is exactly what that page
   shows.
@@ -21,25 +21,32 @@ operations:
         code: |
           // Point the watcher at ~/.afield/keybindings.yaml — a no-op unless something moved it,
           // which the rebinding figure further up this page does.
-          afield.UserKeybindingsManager.watchFile(null)
+          afield.app.settings.UserKeybindingsManager.watchFile(null)
 
-          val live = afield.UserKeybindingsManager.resolved
-          val ids = listOf("new-box", "open-command-palette", "show-cheatsheet", "execute-fragment", "connect")
+          val live = afield.app.settings.UserKeybindingsManager.resolved
+          val ids = ["new-box", "open-command-palette", "show-cheatsheet", "execute-fragment", "connect"]
           // A command with no binding yet is the interesting row, so it says so in a role rather than
           // looking like any other cell.
-          val bound = Table(listOf("command", "bound to"))
-              .rows(ids.map { id ->
-                  listOf(id, (live.effective[id] ?: live.bindings[id])?.joinToString(" or ") ?: "not registered yet")
-              })
-              .roleBy("bound to") { if (it == "not registered yet") CellRole.WARN else null }
+          val bound =
+              Table(["command", "bound to"])
+                  .rows(
+                      ids.map { id ->
+                          [id, (live.effective[id] ?: live.bindings[id])?.joinToString(" or ") ?: "not registered yet"]
+                      },
+                  )
+                  .roleBy("bound to") { if (it == "not registered yet") CellRole.WARN else null }
 
-          markdown("main", """
+          markdown(
+              "main",
+              """
               {muted:${live.path.md}}
 
               {muted:${live.problems.size} problem(s) in it}
 
               ${bound.h}
-          """, width = 560)
+          """,
+              width = 560,
+          )
   - execute:
       box: agent_keybindings_inspect
       property: code

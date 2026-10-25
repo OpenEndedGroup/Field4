@@ -1,24 +1,24 @@
 package afield.examples.four
 
-import afield.Box
-import afield.four.Renderer
-import afield.four.TexturePreviewCache
-import afield.four.fabricated.FabricateBuiltChain
-import afield.four.fabricated.FabricatePassChain
-import afield.four.fabricated.FabricatePassInput
-import afield.four.fabricated.FabricatePassLibrary
-import afield.four.fabricated.FabricatePassSize
-import afield.four.fabricated.FabricatePassSpec
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.addPassChain
-import afield.four.fabricated.applyScenePlan
-import afield.four.fabricated.setPushBinding
-import afield.four.targets.FrameHistory
-import afield.four.targets.RenderToTexture
-import afield.four.util.Options
-import afield.four.util.Window
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
+import afield.document.graph.Box
+import afield.graphics.vulkan.Renderer
+import afield.graphics.render.TexturePreviewCache
+import afield.graphics.scene.fabricated.FabricateBuiltChain
+import afield.graphics.scene.fabricated.FabricatePassChain
+import afield.graphics.scene.fabricated.FabricatePassInput
+import afield.graphics.scene.fabricated.FabricatePassLibrary
+import afield.graphics.scene.fabricated.FabricatePassSize
+import afield.graphics.scene.fabricated.FabricatePassSpec
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.addPassChain
+import afield.graphics.scene.fabricated.applyScenePlan
+import afield.graphics.scene.fabricated.setPushBinding
+import afield.graphics.vulkan.targets.FrameHistory
+import afield.graphics.vulkan.targets.RenderToTexture
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.Window
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R16G16B16A16_SFLOAT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
@@ -106,7 +106,7 @@ expect:
  * tools/run_field_tests.py --id four.reprojection.smoke --args=--keep
  * ```
  *
- * Needs a GPU and a window: `afield.four` has no headless mode, so offscreen targets still need a
+ * Needs a GPU and a window: Field 4 has no headless mode, so offscreen targets still need a
  * `Window` for the device to exist.
  */
 object FabricateReprojectionDemo {

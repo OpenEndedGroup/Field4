@@ -27,31 +27,46 @@ circuit's own logic depth. Blue dots are input ports, orange are outputs.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/family.png" wait="34.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.morpho.*
+import afield.lang.morpho.*
 
-// Each panel gets its OWN window: these are four different circuits at four different sizes, and a
-// shared frame would shrink the shifter to a speck to fit the multiplier. Where a shared frame IS
-// required -- the two adders below, the three projections further down -- it is used and said so.
-val designs = listOf(
+/*
+Each panel gets its OWN window: these are four different circuits at four different sizes, and a
+shared frame would shrink the shifter to a speck to fit the multiplier. Where a shared frame IS
+required -- the two adders below, the three projections further down -- it is used and said so.
+*/
+val designs = [
     Triple("ripple_adder", intArrayOf(16, 16, 1), "carry chain"),
     Triple("brent_kung_adder", intArrayOf(16, 16, 1), "prefix tree"),
     Triple("right_shifter", intArrayOf(32, 5, 1), "mux cascade"),
-    Triple("wallace_multiplier", intArrayOf(8, 8), "compression tree")
-)
+    Triple("wallace_multiplier", intArrayOf(8, 8), "compression tree"),
+]
 
 val panels = designs.map { (design, sig, kind) ->
     val c = morphoCircuit(design, *sig)
     c.growFully(relaxSteps = 220)
-    println("%-20s %4d gates  depth %2d  z/xy %.2f  (%s)".format(
-        design, c.netlist.gateCount, c.depth.toInt(), c.layout.flatness(), kind))
+    println(
+        "%-20s %4d gates  depth %2d  z/xy %.2f  (%s)"
+            .format(
+                design,
+                c.netlist.gateCount,
+                c.depth.toInt(),
+                c.layout.flatness(),
+                kind,
+            ),
+    )
     "%s(%s) — %d gates, depth %d".format(design, sig.joinToString(","), c.netlist.gateCount, c.depth.toInt()) to
         c.flines(fit = true)
 }
 
 // fit = true normalises each panel into the unit square, which is the only way showPlaneGrid can
 // frame four differently-sized circuits independently: it takes one window for the whole grid.
-showPlaneGrid(*panels.toTypedArray(), columns = 2, cellWidth = 430, cellHeight = 430,
-    window = morphoUnitWindow())
+showPlaneGrid(
+    *panels.toTypedArray(),
+    columns = 2,
+    cellWidth = 430,
+    cellHeight = 430,
+    window = morphoUnitWindow(),
+)
 ```
 
 ![four MorphoHDL circuits drawn as vector line figures: a ripple adder as a long thin carry chain, a Brent-Kung adder as a symmetrical prefix tree, a right shifter as a cascade of multiplexer stages, and a Wallace multiplier as a dense compression tree](assets/morpho_examples/family.png)
@@ -126,7 +141,7 @@ morpho box entirely and compile from Kotlin:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/from-kotlin.png" wait="26.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.morpho.*
+import afield.lang.morpho.*
 
 val c = morphoCircuit("wallace_multiplier", 16, 16)
 c.growFully(relaxSteps = 250)
@@ -139,9 +154,13 @@ val product = c.evaluateOne(a, b)[0]
 val check = "%d x %d = %d %s".format(a, b, product, if (product == a * b) "(Kotlin agrees)" else "WRONG")
 
 // Put the check in the panel's title, next to the circuit it is about.
-showPlaneGrid("${c.summary()}  |  $check" to c.flines(),
-    columns = 1, cellWidth = 620, cellHeight = 620,
-    window = morphoPlaneWindow(c.planeBounds()))
+showPlaneGrid(
+    "${c.summary()}  |  $check" to c.flines(),
+    columns = 1,
+    cellWidth = 620,
+    cellHeight = 620,
+    window = morphoPlaneWindow(c.planeBounds()),
+)
 ```
 
 ![a 16 by 16 bit Wallace multiplier drawn as a dense compression tree, titled with its cell and gate counts and a multiplication checked against Kotlin's own arithmetic](assets/morpho_examples/from-kotlin.png)
@@ -156,7 +175,7 @@ included.
 To watch it grow instead:
 
 ```diffstatic {data-lang=kotlin}
-import afield.morpho.*
+import afield.lang.morpho.*
 
 val c = morphoCircuit("medusa", 36, 8)
 var window: DoubleArray? = null
@@ -191,7 +210,7 @@ and drops upstream's browser rendering:
 | `viewer.js`, `layout_renderer.js`, `swissgl.js`, `hex_layout.js`, `bloom.js`, `figures.js`, `demo.js`, `article.js`, `presets.js` | ~2900 | canvas/WebGL rendering, DOM | **dropped** |
 
 Field's side of the bridge is in
-[`src/jvmMain/kotlin/afield/morpho/`](https://github.com/OpenEndedGroup/Field4/tree/main/src/jvmMain/kotlin/afield/morpho),
+[`src/jvmMain/kotlin/afield/lang/morpho/`](https://github.com/OpenEndedGroup/Field4/tree/main/src/jvmMain/kotlin/afield/lang/morpho),
 and the vendored upstream tree, with a `PROVENANCE.md` saying what was left out, is under
 [`src/jvmMain/resources/morpho/`](https://github.com/OpenEndedGroup/Field4/tree/main/src/jvmMain/resources/morpho).
 
@@ -224,24 +243,36 @@ together), the difference stops being a table:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/depth.png" wait="26.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.morpho.*
+import afield.lang.morpho.*
 
-// Same width, same colormap, same window, same everything except the algorithm. Colour is arrival
-// time normalised PER PANEL, so each shows its own critical path end to end -- the comparison is the
-// shape of the gradient, not its absolute value, which the depth numbers in the titles carry.
+/*
+Same width, same colormap, same window, same everything except the algorithm. Colour is arrival
+time normalised PER PANEL, so each shows its own critical path end to end -- the comparison is the
+shape of the gradient, not its absolute value, which the depth numbers in the titles carry.
+*/
 val ripple = morphoCircuit("ripple_adder", 32, 32, 1)
 val bk = morphoCircuit("brent_kung_adder", 32, 32, 1)
-listOf(ripple, bk).forEach { it.growFully(relaxSteps = 260) }
+[ripple, bk].forEach { it.growFully(relaxSteps = 260) }
 
-listOf("ripple_adder" to ripple, "brent_kung_adder" to bk).forEach { (name, c) ->
-    println("%-18s %3d gates  depth %2d  %d nets".format(
-        name, c.netlist.gateCount, c.depth.toInt(), c.netlist.nNets))
+["ripple_adder" to ripple, "brent_kung_adder" to bk].forEach { (name, c) ->
+    println(
+        "%-18s %3d gates  depth %2d  %d nets"
+            .format(
+                name,
+                c.netlist.gateCount,
+                c.depth.toInt(),
+                c.netlist.nNets,
+            ),
+    )
 }
 
 showPlaneGrid(
     "ripple_adder(32,32,1) — 64 gates, depth ${ripple.depth.toInt()}" to ripple.flines(fit = true),
     "brent_kung_adder(32,32,1) — 190 gates, depth ${bk.depth.toInt()}" to bk.flines(fit = true),
-    columns = 2, cellWidth = 470, cellHeight = 470, window = morphoUnitWindow()
+    columns = 2,
+    cellWidth = 470,
+    cellHeight = 470,
+    window = morphoUnitWindow(),
 )
 ```
 
@@ -266,31 +297,29 @@ is that loop, recorded straight off a box's output area, one `FLine` per wire, e
 
 ```diffstatic_runner {data-lang=kotlin video="assets/morpho_examples/growth.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="14" fps="20" timeout="360" w="1000" name="morpho-growth-video" alt="two MorphoHDL circuits unfolding from a single cell: a Brent-Kung adder resolving into a symmetrical prefix tree, and a triangle cell growing into a nested recursive shell, both re-laying-out continuously as they expand"}
 :::static
-import afield.morpho.*
+import afield.lang.morpho.*
 
 // Two designs growing on the same clock. Both start as ONE unexpanded cell -- everything you see
 // arrive is morpho's compiler dividing a cell and rewiring what it divided.
 val adder = morphoCircuit("brent_kung_adder", 32, 32, 1)
 val shell = morphoCircuit("triangle", 32)
 
-// The frame only ever grows (morphoWindowUnion), because a window recomputed per frame around an
-// expanding circuit jitters on every single step. New cells are seeded at their parent's position,
-// so a subtree unfolds from where it came from rather than teleporting in.
-var wAdder: DoubleArray? = null
-var wShell: DoubleArray? = null
+// Each panel fits its current geometry into the unit square. As the circuit grows, its scale
+// changes too. New cells start at their parent's position before layout relaxation separates them.
 
 loop {
     adder.step(grow = 2, relax = 5)
     shell.step(grow = 12, relax = 5)
-    wAdder = morphoWindowUnion(wAdder, adder.planeBounds(padFraction = 0.10))
-    wShell = morphoWindowUnion(wShell, shell.planeBounds(padFraction = 0.10))
 
     showPlaneGrid(
         "brent_kung_adder — %d gates, %d expansions".format(adder.netlist.gateCount, adder.expansions) to
             adder.flines(fit = true),
         "triangle(32) — %d gates, %d expansions".format(shell.netlist.gateCount, shell.expansions) to
             shell.flines(fit = true),
-        columns = 2, cellWidth = 470, cellHeight = 470, window = morphoUnitWindow()
+        columns = 2,
+        cellWidth = 470,
+        cellHeight = 470,
+        window = morphoUnitWindow(),
     )
     frame()
 }
@@ -333,11 +362,13 @@ where the camera is:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/projections.png" wait="24.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.morpho.*
+import afield.lang.morpho.*
 
-// One circuit, one layout, three cameras. XY is the view morpho's own renderer is restricted to,
-// because force_layout.js pins z. XZ looks straight down the axis XY drops: if the layout really
-// were planar, THAT panel would be a horizontal line and nothing else.
+/*
+One circuit, one layout, three cameras. XY is the view morpho's own renderer is restricted to,
+because force_layout.js pins z. XZ looks straight down the axis XY drops: if the layout really
+were planar, THAT panel would be a horizontal line and nothing else.
+*/
 val c = morphoCircuit("brent_kung_adder", 32, 32, 1)
 c.growFully(relaxSteps = 300)
 
@@ -349,7 +380,10 @@ showPlaneGrid(
     "XY — what morpho's own renderer sees" to c.flines(projection = MorphoProjection.XY, fit = true),
     "XZ — down the axis XY discards" to c.flines(projection = MorphoProjection.XZ, fit = true),
     "isometric" to c.flines(projection = MorphoProjection.ISOMETRIC, fit = true),
-    columns = 3, cellWidth = 340, cellHeight = 340, window = morphoUnitWindow()
+    columns = 3,
+    cellWidth = 340,
+    cellHeight = 340,
+    window = morphoUnitWindow(),
 )
 ```
 
@@ -363,7 +397,7 @@ completely static; only the azimuth changes.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/morpho_examples/orbit.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="12" fps="20" timeout="360" w="820" name="morpho-orbit-video" alt="a fully grown 32-bit Brent-Kung adder rotating slowly about its vertical axis, never flattening into a line at any angle, showing that the force-directed layout occupies three dimensions"}
 :::static
-import afield.morpho.*
+import afield.lang.morpho.*
 
 // NOTHING about the circuit changes in this clip -- it is grown before the loop starts and never
 // stepped again. Every frame re-projects the same fixed 3D positions from a new angle.
@@ -382,10 +416,15 @@ var azimuth = 0.0
 loop {
     azimuth += 0.026
     showPlaneGrid(
-        "brent_kung_adder(32,32,1) — %d gates, azimuth %3d°".format(
-            c.netlist.gateCount, Math.round(Math.toDegrees(azimuth)) % 360) to
-            c.flines(projection = morphoOrbit(azimuth)),
-        columns = 1, cellWidth = 700, cellHeight = 700, window = viewWindow
+        "brent_kung_adder(32,32,1) — %d gates, azimuth %3d°"
+            .format(
+                c.netlist.gateCount,
+                Math.round(Math.toDegrees(azimuth)) % 360,
+            ) to c.flines(projection = morphoOrbit(azimuth)),
+        columns = 1,
+        cellWidth = 700,
+        cellHeight = 700,
+        window = viewWindow,
     )
     frame()
 }

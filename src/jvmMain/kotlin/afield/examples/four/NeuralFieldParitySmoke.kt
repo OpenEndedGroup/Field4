@@ -1,21 +1,22 @@
 package afield.examples.four
 
-import afield.Box
-import afield.four.Renderer
-import afield.four.modules.ShaderKind
-import afield.four.util.GpuProbe
-import afield.four.util.gpuProbe
-import afield.four.util.Options
-import afield.four.util.Window
-import afield.stdlib.FlowMatchOptions
-import afield.stdlib.MlpActivation
-import afield.stdlib.MlpAgreement
-import afield.stdlib.MlpWeights
-import afield.stdlib.VectorMLP
-import afield.stdlib.flowMatch
-import afield.stdlib.glsl
-import afield.stdlib.preprocess
-import afield.stdlib.vec
+import afield.document.graph.Box
+import afield.graphics.vulkan.Renderer
+import afield.graphics.shader.ShaderKind
+import afield.graphics.vulkan.util.GpuProbe
+import afield.graphics.vulkan.util.gpuProbe
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.Window
+import afield.ai.learning.FlowMatchOptions
+import afield.simulation.particles.MlpActivation
+import afield.simulation.particles.MlpAgreement
+import afield.simulation.particles.MlpWeights
+import afield.ai.learning.VectorMLP
+import afield.ai.learning.flowMatch
+import afield.ai.learning.glsl
+import afield.simulation.particles.glsl
+import afield.graphics.shader.preprocess
+import afield.math.linalg.vec
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
@@ -80,7 +81,7 @@ expect:
  * tools/run_field_tests.py --id four.neural-field-parity.smoke
  * ```
  *
- * Needs a GPU and a window: `afield.four` has no headless mode, so a compute-only dispatch still
+ * Needs a GPU and a window: Field 4 has no headless mode, so a compute-only dispatch still
  * needs a `Window` for the device to exist.
  */
 object NeuralFieldParitySmoke {

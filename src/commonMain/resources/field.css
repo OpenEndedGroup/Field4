@@ -844,6 +844,25 @@ pre code {
     white-space: pre-wrap;
 }
 
+/* Math (aiChatMath.js, KaTeX). KaTeX sizes itself from the surrounding font, which the fence preview
+   sets small for diagram labels. */
+.ai-math-fence {
+    font-size: 15px;
+}
+
+.ai-math-display {
+    display: block;
+    margin: 0.6em 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    text-align: center;
+}
+
+.ai-math-error {
+    color: #e9a2a2;
+    white-space: pre-wrap;
+}
+
 .ai-chat-window {
     /* Rhymes with the history panel: a black shell, an editor-grey well for
        the input, cyan for Field's own voice and orange for yours. */
@@ -1747,7 +1766,10 @@ body {
 }
 
 .field-main-viewport {
-    --field-vignette-background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cdefs%3E%3Cfilter id='v' x='-25%25' y='-25%25' width='150%25' height='150%25' color-interpolation-filters='sRGB'%3E%3CfeGaussianBlur in='SourceGraphic' stdDeviation='5.2' result='blur'/%3E%3CfeTurbulence type='fractalNoise' baseFrequency='3.15' numOctaves='4' seed='71' result='noise'/%3E%3CfeColorMatrix in='noise' type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .36 .36 .36 0 -.14' result='noiseAlpha'/%3E%3CfeComposite in='noiseAlpha' in2='blur' operator='in' result='edgeNoise'/%3E%3CfeComposite in='blur' in2='edgeNoise' operator='arithmetic' k2='.88' k3='.46' k4='0' result='dithered'/%3E%3CfeColorMatrix in='dithered' type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .72 0'/%3E%3C/filter%3E%3Cfilter id='d' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='6.4' numOctaves='3' seed='137' stitchTiles='stitch' result='grain'/%3E%3CfeColorMatrix in='grain' type='saturate' values='0' result='mono'/%3E%3CfeComposite in='SourceGraphic' in2='mono' operator='arithmetic' k2='1' k3='.085' k4='-.0425'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23d)'%3E%3Crect width='100' height='100' fill='%23181818'/%3E%3Crect x='-10' y='-10' width='120' height='120' fill='none' stroke='%23000' stroke-width='16' opacity='.66' filter='url(%23v)'/%3E%3C/g%3E%3C/svg%3E");
+    /* Fallback for the WebGL backdrop (fieldWebglBackground.js): same centre (#181818) and edge
+       darkening (28% toward #020202), no grain. An SVG feTurbulence grain here was generated on a
+       100-unit viewBox and stretched to the window, so it read as coarse speckle. */
+    --field-vignette-background: radial-gradient(farthest-corner at center, #181818 55%, #121212 100%);
     position: relative;
     z-index: 0;
     /* clip, not hidden: a hidden box is still a scroll container, and scrollIntoView or a focus() inside an
@@ -1757,6 +1779,18 @@ body {
 }
 
 .field-webgl-background {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    display: block;
+    pointer-events: none;
+}
+
+/* Living strokes (eachStroke): a world-space 2D canvas above the background and below the boxes,
+   drawn by strokeLayer.kt. */
+.field-stroke-layer {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -3177,40 +3211,27 @@ body.field-pane-resizing-h * {
     background: var(--field-surface);
 }
 
-.macro-recorder-panel {
+/* The Macro Recorder is a FieldPanel (`.field-panel`): shell, buttons, text inputs and toggles
+   come from there. These rules only place it (bottom-left, wide) and lay out its body. */
+.field-panel.macro-recorder-panel {
+    top: auto;
+    right: auto;
     left: 10px;
     bottom: 10px;
     width: min(960px, calc(100vw - 20px));
-    height: min(520px, calc(100vh - 20px));
+    height: min(560px, calc(100vh - 20px));
     min-width: min(760px, calc(100vw - 20px));
     min-height: 300px;
-    position: fixed;
-    border: 5px solid var(--field-border);
-    border-radius: 5px;
-    background: #000000;
-    color: #d8d8d8;
-    z-index: 12060;
-    display: none;
-    flex-direction: column;
-    gap: 6px;
-    padding: 8px;
-    box-sizing: border-box;
-    font-family: var(--field-font);
-    overflow: hidden;
 }
 
-.macro-recorder-panel *:focus,
-.macro-recorder-panel *:focus-visible {
-    outline: none !important;
-}
-
-.macro-recorder-panel.is-visible {
-    display: flex;
-}
-
-.macro-recorder-panel.is-dragging-file {
+.field-panel.macro-recorder-panel.is-dragging-file {
     border-color: #555555;
     background: #050505;
+}
+
+.macro-recorder-body {
+    flex: 1 1 auto;
+    gap: 6px;
 }
 
 .macro-recorder-panel textarea,
@@ -3231,31 +3252,15 @@ body.field-pane-resizing-h * {
     height: 0;
 }
 
-.macro-recorder-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    min-height: 28px;
-}
-
-.macro-recorder-title {
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0;
-    line-height: 1;
-}
-
-.macro-recorder-status,
 .macro-recorder-meta,
 .macro-recorder-list-title,
 .macro-recorder-empty,
 .macro-recorder-feedback {
-    color: #8a8a8a;
+    color: var(--fp-muted);
     font-size: 10.2px;
 }
 
-.macro-recorder-status.is-recording {
+.field-panel-status.macro-recorder-status.is-recording {
     color: rgb(var(--field-accent-rgb));
 }
 
@@ -3266,12 +3271,37 @@ body.field-pane-resizing-h * {
 
 .macro-recorder-controls {
     display: grid;
-    grid-template-columns: minmax(160px, 1fr) 120px repeat(5, auto);
+    grid-template-columns: minmax(160px, 1fr) 120px repeat(6, auto);
     gap: 6px;
     align-items: center;
 }
 
-.macro-recorder-controls input,
+.macro-recorder-replay {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.macro-recorder-replay .macro-recorder-list-title {
+    margin-bottom: 0;
+}
+
+.macro-recorder-offset {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--fp-muted);
+}
+
+.field-panel .macro-recorder-offset input[type="text"] {
+    width: 54px;
+}
+
+.field-panel.macro-recorder-panel input[type="text"] {
+    border-color: #2b2b2b;
+}
+
 .macro-recorder-controls select,
 .macro-recorder-panel textarea {
     border: 1px solid #2b2b2b;
@@ -3284,58 +3314,51 @@ body.field-pane-resizing-h * {
     box-shadow: none;
 }
 
-.macro-recorder-controls input,
 .macro-recorder-controls select {
     height: 28px;
     padding: 0 7px;
 }
 
-.macro-recorder-controls input:focus,
 .macro-recorder-controls select:focus,
 .macro-recorder-panel textarea:focus {
     border-color: #464646;
 }
 
-.macro-recorder-controls button,
-.macro-recorder-transcript-actions button,
-.macro-recorder-list button,
-.macro-recorder-icon {
-    border: 1px solid #2b2b2b;
-    background: #050505;
-    color: #8a8a8a;
-    border-radius: 6px;
-    font-family: var(--field-font);
-    font-size: 10.2px;
-    min-height: 28px;
-    padding: 0 8px;
-    cursor: pointer;
-    box-shadow: none;
+.macro-recorder-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    gap: 3px;
+    align-items: center;
 }
 
-.macro-recorder-controls button:hover:not(:disabled),
-.macro-recorder-transcript-actions button:hover:not(:disabled),
-.macro-recorder-list button:hover,
-.macro-recorder-icon:hover {
-    border-color: #464646;
-    background: #101010;
-    color: #f0f0f0;
+.field-panel .macro-recorder-item button {
+    min-height: 24px;
+    padding: 0 6px;
 }
 
-.macro-recorder-controls button:disabled,
-.macro-recorder-transcript-actions button:disabled {
-    opacity: 0.38;
-    cursor: default;
-    color: #6a6a6a;
-    border-color: #1c1c1c;
+.field-panel .macro-recorder-item .macro-recorder-item-name {
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.macro-recorder-icon {
-    width: 26px;
-    height: 26px;
-    min-height: 26px;
-    padding: 0;
-    font-size: 17px;
-    line-height: 1;
+.field-panel .macro-recorder-item.is-active .macro-recorder-item-name {
+    color: rgb(var(--field-accent-rgb));
+    border-color: rgba(var(--field-accent-rgb), 0.45);
+}
+
+.field-panel input[type="text"].macro-recorder-rename {
+    min-width: 0;
+    height: 24px;
+}
+
+.macro-recorder-op.is-stepped {
+    opacity: 0.45;
+}
+
+.macro-recorder-op.is-next {
+    box-shadow: inset 2px 0 0 rgb(var(--field-accent-rgb));
 }
 
 .macro-recorder-panel textarea {
@@ -3478,22 +3501,6 @@ body.field-pane-resizing-h * {
     justify-content: flex-end;
     gap: 5px;
     flex-wrap: wrap;
-}
-
-.macro-recorder-transcript-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: #8a8a8a;
-    font-size: 10.2px;
-    white-space: nowrap;
-}
-
-.macro-recorder-transcript-toggle input {
-    width: 11px;
-    height: 11px;
-    margin: 0;
-    accent-color: rgb(var(--field-accent-rgb));
 }
 
 .macro-recorder-transcript-actions button {
@@ -3759,17 +3766,16 @@ body.field-pane-resizing-h * {
     gap: 8px;
     flex: 0 0 auto;
     min-height: 0;
-    max-height: 82px;
+    max-height: 132px;
     overflow: hidden;
 }
 
 .macro-recorder-list {
     display: flex;
-    flex-wrap: wrap;
-    align-content: flex-start;
-    gap: 5px;
-    min-height: 31px;
-    max-height: 54px;
+    flex-direction: column;
+    gap: 3px;
+    min-height: 27px;
+    max-height: 112px;
     overflow: auto;
     padding-top: 4px;
 }
@@ -3781,16 +3787,16 @@ body.field-pane-resizing-h * {
         max-width: none;
     }
 
-    .macro-recorder-panel {
+    .field-panel.macro-recorder-panel {
         min-width: 0;
         width: calc(100vw - 20px);
     }
 
     .macro-recorder-controls {
-        grid-template-columns: minmax(0, 1fr) 108px repeat(4, auto);
+        grid-template-columns: minmax(0, 1fr) 108px repeat(3, auto);
     }
 
-    .macro-recorder-controls button:nth-of-type(n + 5) {
+    .macro-recorder-controls button:nth-of-type(n + 4) {
         display: none;
     }
 }
@@ -3870,6 +3876,17 @@ body.field-pane-resizing-h * {
     pointer-events: none;
 }
 
+/* A hit area reaching a constant 8 screen px past the box edge at any canvas zoom (`--canvas-zoom`
+   is set by CanvasCamera.applyTransforms). It is a descendant of the .box, so a press on it reaches
+   interact.js, whose 20 px edge margin, measured against the box's own rect, then picks the resize
+   edge. z-index -1 keeps it under the box's content; the child selector outranks `.box *`. */
+.box > .box-resize-halo {
+    position: absolute;
+    inset: calc(-8px / var(--canvas-zoom, 1));
+    z-index: -1;
+    pointer-events: auto;
+}
+
 .closeBox + .hoverable {
     margin-left: 4.8px;
 }
@@ -3947,17 +3964,42 @@ body::-webkit-scrollbar {
 }
 
 .file-proxy-path {
+    display: flex;
     max-width: calc(100% - 10px);
     margin-top: -4px;
     padding: 0 5px 5px;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
     color: var(--field-fg-dim);
     font-family: var(--field-font-code);
     font-size: 10px;
     line-height: 1.2;
     pointer-events: none;
+}
+
+.file-proxy-path-head {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* The head gives way first; the tail ellipsizes only once it alone is wider than the box. */
+.file-proxy-path-tail {
+    flex: 0 0 auto;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Box.tint, set from code to show state (the score playhead's "this box is playing"): the colour at its
+   own alpha washes the box (an inset shadow sits over the running stripes and under the title), and the
+   same colour made nearly opaque edges it and glows. Never saved; a blank tint removes the class. */
+.box.tinted {
+    box-shadow: inset 0 0 0 100vmax var(--box-tint),
+        0 0 0 1.5px rgb(from var(--box-tint) r g b / 0.95),
+        0 0 18px rgb(from var(--box-tint) r g b / 0.4);
+    transition: box-shadow 0.08s linear;
 }
 
 .box.provisional {
@@ -4046,6 +4088,33 @@ body::-webkit-scrollbar {
     display: flex;
 }
 
+/* A box with `go { }` blocks still running: the launch stripe, inset 3px inside the upper-right
+   quadrant at half its size, holding the count (setGoJobsBadge in Main.kt). */
+.box > .go-jobs-badge {
+    position: absolute !important;
+    top: 3px;
+    right: 3px;
+    width: calc(25% - 3px);
+    height: calc(25% - 3px);
+    border-top-right-radius: 6px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--field-font);
+    font-weight: 700;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 2;
+    animation: running-stripe-drift 100s linear infinite;
+}
+
+/* The count inverts the stripe under it. */
+.box > .go-jobs-badge > span {
+    color: white;
+    mix-blend-mode: difference;
+}
+
 .box > .selection-order-badge {
     position: absolute !important;
 }
@@ -4126,6 +4195,7 @@ body::-webkit-scrollbar {
 .running-launching,
 .running-continued,
 .running-ending,
+.go-jobs-badge,
 .markingHover {
     background-color: rgb(var(--field-black-rgb));
     background-repeat: repeat;
@@ -4133,6 +4203,7 @@ body::-webkit-scrollbar {
 }
 
 .running,
+.go-jobs-badge,
 .markingHover {
     background-position: 0 0;
     background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'17'%20height%3D'17'%20viewBox%3D'0%200%2017%2017'%3E%3Crect%20width%3D'17'%20height%3D'17'%20fill%3D'black'%2F%3E%3Cpath%20d%3D'M7%200H17L0%2017V7ZM17%207V17H7Z'%20fill%3D'rgb(150%2C255%2C208)'%20fill-opacity%3D'.3'%2F%3E%3C%2Fsvg%3E");
@@ -4827,6 +4898,24 @@ kbd {
     opacity: 0;
     transform: translateY(8px);
     transition: opacity 180ms ease-out, transform 180ms ease-out, border-color 180ms ease-out;
+}
+
+/* While a canvas flight is filmed (CanvasFlightClient), frames show the flight and nothing else that
+   moves: no toasts, no CSS animation or transition finishing between captures, no blinking caret. */
+body.canvas-flight-recording .bubble.field-toast,
+body.canvas-flight-recording .field-toast {
+    visibility: hidden !important;
+}
+
+body.canvas-flight-recording *,
+body.canvas-flight-recording *::before,
+body.canvas-flight-recording *::after {
+    animation: none !important;
+    transition: none !important;
+}
+
+body.canvas-flight-recording .monaco-editor .cursor {
+    visibility: hidden !important;
 }
 
 .bubble.field-toast-visible,
@@ -5616,7 +5705,7 @@ body.mode-editor-only .field-toast {
     display: none !important;
 }
 
-/* Drawing layer (src/jsMain/kotlin/afield/drawingLayer.kt): an Excalidraw scene over the canvas.
+/* Drawing layer (src/jsMain/kotlin/afield/app/canvas/drawingLayer.kt): an Excalidraw scene over the canvas.
    Inactive, it is visible but inert and shows none of Excalidraw's UI. */
 .field-drawing-layer {
     position: fixed;

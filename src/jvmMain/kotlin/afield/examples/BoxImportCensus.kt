@@ -1,13 +1,13 @@
 package afield.examples
 
-import afield.BoxImport
-import afield.ImportResolution
-import afield.ImportVerdict
-import afield.analyzeBoxImports
-import afield.boxImports
-import afield.intro
-import afield.k2ImportEvidence
-import afield.referencedNames
+import afield.runtime.kotlin.BoxImport
+import afield.runtime.kotlin.ImportResolution
+import afield.runtime.kotlin.ImportVerdict
+import afield.runtime.kotlin.analyzeBoxImports
+import afield.runtime.kotlin.boxImports
+import afield.document.graph.intro
+import afield.runtime.kotlin.k2ImportEvidence
+import afield.runtime.kotlin.referencedNames
 import java.io.File
 import kotlin.system.exitProcess
 

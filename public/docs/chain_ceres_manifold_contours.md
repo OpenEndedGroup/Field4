@@ -1,9 +1,9 @@
 # A polytope, canonicalised, and sliced into layers
 
 This page builds a polytope from Conway notation, makes it canonical, turns it into a closed solid,
-and slices it into the layers a 3D printer would print. `afield.stdlib.polytope` holds the Conway
+and slices it into the layers a 3D printer would print. `afield.geometry.polytope` holds the Conway
 operator algebra and the two ways of making a form canonical (an iteration, and a solver built on
-Ceres). `afield.manifold` does exact geometry on closed solids. `Solid.slice` cuts a solid with a
+Ceres). `afield.geometry.solid.manifold` does exact geometry on closed solids. `Solid.slice` cuts a solid with a
 plane and returns the 2D contours.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/stack.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="layer_stack_trace study converged" embed=true hidden=true timeout="300" requires="manifold" name="elsewhere-layer_stack_trace" alt="Forty-eight extruded slices of canonical `gC`, scaled to volume one. Colour follows height; the small gaps make the individual layers visible." macro-file="../../dev_docs/agents/transcripts/polytope_layer_stack_path_trace.yaml" capture-box="layer_stack_trace" capture-profile="linux-nvidia"}
@@ -26,7 +26,7 @@ cutting plane is exactly a face plane, exactly a vertex, or exactly the top of t
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/degenerate.png" wait="8" capture="box" open-outputs="true" w="1100" h="560" padding="16" timeout="180" name="chain-contours-degenerate" requires="manifold" alt="A thirteen-row table of cuts: each named cut with its z to nine decimals, the area the slice returned, and how many contours it had" embed=true}
 :::static
-import afield.manifold.Solid
+import afield.geometry.solid.manifold.Solid
 
 // Geometry with closed-form answers only, so nothing below rests on a tolerance.
 val rows = mutableListOf<List<Any?>>()
@@ -34,26 +34,25 @@ fun cut(what: String, solid: Solid, z: Double) {
     solid.slice(z).use { s ->
         // Nine decimals, because two of these cuts are one part in a billion apart and a
         // table that printed both as 1.000000 would read as a contradiction.
-        rows += listOf(what, "%.9f".format(z), if (s.isEmpty) "—" else "%.4f".format(s.area), s.contourCount)
+        rows += [what, "%.9f".format(z), if (s.isEmpty) "—" else "%.4f".format(s.area), s.contourCount]
     }
 }
 
 Solid.scope {
-    val cube = Solid.cube(2.0, 2.0, 2.0, center = true)     // faces at z = ±1
+    val cube = Solid.cube(2.0, 2.0, 2.0, center = true) // faces at z = ±1
     cut("2×2×2 cube, through the middle", cube, 0.0)
     cut("… exactly on the bottom face plane", cube, -1.0)
     cut("… exactly on the top face plane", cube, 1.0)
     cut("… one part in a billion below the top", cube, 1.0 - 1e-9)
     cut("… one part in a billion above it", cube, 1.0 + 1e-9)
 
-    val onBed = Solid.cube(2.0, 2.0, 2.0)                   // the same cube, sitting on z = 0
+    val onBed = Solid.cube(2.0, 2.0, 2.0) // the same cube, sitting on z = 0
     cut("the same cube on the bed, at z = 0", onBed, 0.0)
     cut("… at z equal to its own height", onBed, 2.0)
 
     // A 4×4×1 slab with a 2×2×1 block on top of it. z = 1 is the slab's top face *and* the
     // block's bottom face, so it is the case that separates the two possible rules.
-    val step = (Solid.cube(4.0, 4.0, 1.0) + Solid.cube(2.0, 2.0, 1.0).translated(1.0, 1.0, 1.0))
-        .checked("step")
+    val step = (Solid.cube(4.0, 4.0, 1.0) + Solid.cube(2.0, 2.0, 1.0).translated(1.0, 1.0, 1.0)).checked("step")
     cut("a 4×4 slab with a 2×2 block on it, just below the step", step, 0.999999)
     cut("… exactly on the step", step, 1.0)
 
@@ -63,24 +62,31 @@ Solid.scope {
     cut("a tetrahedron, exactly on its topmost edge", tet, tet.bounds.max.z.toDouble())
     cut("… and on its lowest edge", tet, tet.bounds.min.z.toDouble())
 
-    // The prediction. Two unit cubes touching along one edge at z = 0.5: the lower one ends
-    // there, the upper one begins there. If only material above the plane answers, exactly one
-    // square comes back, and it is the upper cube's — centred at x = 1 rather than x = 0.
-    val pair = Solid.compose(listOf(
-        Solid.cube(1.0, 1.0, 1.0, center = true),
-        Solid.cube(1.0, 1.0, 1.0, center = true).translated(1.0, 0.0, 1.0),
-    ))
+    /*
+    The prediction. Two unit cubes touching along one edge at z = 0.5: the lower one ends
+    there, the upper one begins there. If only material above the plane answers, exactly one
+    square comes back, and it is the upper cube's — centred at x = 1 rather than x = 0.
+    */
+    val pair = Solid.compose(
+        [
+            Solid.cube(1.0, 1.0, 1.0, center = true),
+            Solid.cube(1.0, 1.0, 1.0, center = true).translated(1.0, 0.0, 1.0),
+        ],
+    )
     pair.slice(0.5).use { s ->
         val centre = (s.bounds.first.x + s.bounds.second.x) / 2.0
-        rows += listOf(
-            "two unit cubes meeting along one edge, cut on it",
-            "0.500000000", "%.4f".format(s.area) + " centred at x = %.4f".format(centre), s.contourCount,
-        )
+        rows +=
+            [
+                "two unit cubes meeting along one edge, cut on it",
+                "0.500000000",
+                "%.4f".format(s.area) + " centred at x = %.4f".format(centre),
+                s.contourCount,
+            ]
     }
     Unit
 }
 
-markdown("cuts", Table(listOf("the cut", "z", "area", "contours")).rows(rows).h, width = 1040)
+markdown("cuts", Table(["the cut", "z", "area", "contours"]).rows(rows).h, width = 1040)
 ```
 
 The cuts all follow one rule:
@@ -120,19 +126,20 @@ cuts both forms comparably.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/gyro.png" wait="14" capture="box" open-outputs="true" w="1240" h="980" padding="16" timeout="360" name="chain-contours-gyro" requires="manifold" alt="Two plan views of a 48-layer stack seen from overhead: on the left one orange square, because all of raw gC's layers are the same square; on the right the canonical form's forty-eight nested rings twisting from cyan at the bed to orange at the top. Below them a table of the four forms and a plot of layer area against height, in which gC raw is a flat line at 1 and the other three are domes peaking near 1.25" embed=true}
 :::static
-import afield.manifold.Solid
-import afield.manifold.toSolid
-import afield.util.PngEncoder
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.solid.manifold.toSolid
+import afield.media.image.util.PngEncoder
 
 val LAYERS = 48
 val PANEL = 600
 
 :::fold the chain, the bed gauge, the layer stack, and a plan-view rasteriser
-// Conway notation to a Manifold solid. The triangulator cuts each polygon on its own, so a
-// corner shared by three faces arrives as three vertices; weld before handing it over,
-// because being a manifold is a property of the indices.
-fun solidOf(p: PolyhedralObject): Solid =
-    p.triangulate(normals = NormalPolicy.Flat).mesh.weld(1e-6).toSolid()
+/*
+Conway notation to a Manifold solid. The triangulator cuts each polygon on its own, so a
+corner shared by three faces arrives as three vertices; weld before handing it over,
+because being a manifold is a property of the indices.
+*/
+fun solidOf(p: PolyhedralObject): Solid = p.triangulate(normals = NormalPolicy.Flat).mesh.weld(1e-6).toSolid()
 
 // Enclosed volume exactly 1, lowest point at z = 0, centred in x and y. Without this,
 // every area below would be a statement about the canonicaliser's scale gauge.
@@ -142,27 +149,17 @@ fun onTheBed(s: Solid): Solid {
     return k.translated(-b.center.x.toDouble(), -b.center.y.toDouble(), -b.min.z.toDouble())
 }
 
-fun cutHeights(s: Solid, n: Int): List<Double> {
-    val low = s.bounds.min.z.toDouble()
-    val h = s.bounds.max.z.toDouble() - low
-    return (0 until n).map { low + h * (it + 0.5) / n }
-}
-
-fun contoursOf(s: Solid, n: Int): List<List<List<Vec2>>> =
-    cutHeights(s, n).map { z -> s.slice(z).use { it.toPolygons() } }
-
-fun areasOf(s: Solid, n: Int): List<Double> =
-    cutHeights(s, n).map { z -> s.slice(z).use { it.area } }
-
 fun centroidOf(v: List<Vec3>): Triple<Double, Double, Double> = Triple(
     v.sumOf { it.x.toDouble() } / v.size,
     v.sumOf { it.y.toDouble() } / v.size,
     v.sumOf { it.z.toDouble() } / v.size,
 )
 
-// The largest and mean angle any vertex's direction from the centroid turns through.
-// Canonicalisation keeps the vertex indexing, so this is a true per-vertex comparison
-// rather than a shape descriptor that might agree by accident.
+/*
+The largest and mean angle any vertex's direction from the centroid turns through.
+Canonicalisation keeps the vertex indexing, so this is a true per-vertex comparison
+rather than a shape descriptor that might agree by accident.
+*/
 fun directionTurn(a: PolyhedralObject, b: PolyhedralObject): Pair<Double, Double> {
     val p = a.realization!!.vertexCoordinates
     val q = b.realization!!.vertexCoordinates
@@ -226,55 +223,84 @@ fun plan(stacks: List<List<List<List<Vec2>>>>): ByteArray {
                 for (j in ring.indices) {
                     val a = ring[j]
                     val b = ring[(j + 1) % ring.size]
-                    segment(px, w, ox + a.x * k, PANEL / 2.0 - a.y * k,
-                        ox + b.x * k, PANEL / 2.0 - b.y * k, colour)
+                    segment(
+                        px,
+                        w,
+                        ox + a.x * k,
+                        PANEL / 2.0 - a.y * k,
+                        ox + b.x * k,
+                        PANEL / 2.0 - b.y * k,
+                        colour,
+                    )
                 }
             }
         }
     }
     return PngEncoder.encode(px, w, PANEL)
 }
+
 :::
 
 val rows = mutableListOf<List<Any?>>()
 val profiles = mutableListOf<Pair<String, List<Number>>>()
 val panels = mutableListOf<List<List<List<Vec2>>>>()
 
-for (expression in listOf("gC", "gD")) {
+for (expression in ["gC", "gD"]) {
     val raw = conway(expression).polyhedron
     val canonical = raw.canonicalize().polyhedron
     val turn = directionTurn(raw, canonical)
 
     Solid.scope {
-        for (label in listOf("raw", "canonical")) {
+        for (label in ["raw", "canonical"]) {
             val solid = onTheBed(solidOf(if (label == "raw") raw else canonical))
             val height = solid.bounds.max.z.toDouble()
-            val a = areasOf(solid, LAYERS)
-            val layers = contoursOf(solid, LAYERS)
+            // Copy area and contours while the native section is open; it closes after each callback.
+            val sampled = solid.sampleSlices(LAYERS) { _, section -> section.area to section.toPolygons() }
+            val a = sampled.map { it.first }
+            val layers = sampled.map { it.second }
             profiles.add("$expression $label" to a)
             if (expression == "gC") panels.add(layers)
-            rows.add(listOf(
-                "$expression, $label",
-                "%.6f".format(height),
-                "%.6f".format(solid.surfaceArea),
-                "%.6f".format(a.sumOf { it } * height / LAYERS),
-                layers.sumOf { it.size },
-                "%.6f".format(a.min()),
-                "%.6f".format(a.max()),
-                if (label == "raw") "" else "%.2f° / %.2f°".format(turn.first, turn.second),
-            ))
+            rows.add(
+                [
+                    "$expression, $label",
+                    "%.6f".format(height),
+                    "%.6f".format(solid.surfaceArea),
+                    "%.6f".format(a.sumOf { it } * height / LAYERS),
+                    layers.sumOf { it.size },
+                    "%.6f".format(a.min()),
+                    "%.6f".format(a.max()),
+                    if (label == "raw") "" else "%.2f° / %.2f°".format(turn.first, turn.second),
+                ],
+            )
         }
         Unit
     }
 }
 
 display("plan", plan(panels))
-markdown("forms", Table(listOf(
-    "form", "height", "surface", "Σ area·h/n", "contours over $LAYERS layers",
-    "smallest layer", "largest layer", "vertex turn, worst / mean",
-)).rows(rows).h, width = 1180)
+markdown(
+    "forms",
+    Table(
+            [
+                "form",
+                "height",
+                "surface",
+                "Σ area·h/n",
+                "contours over $LAYERS layers",
+                "smallest layer",
+                "largest layer",
+                "vertex turn, worst / mean",
+            ],
+        )
+        .rows(rows)
+        .h,
+    width = 1180,
+)
 showSignals(
-    profiles[0], profiles[1], profiles[2], profiles[3],
+    profiles[0],
+    profiles[1],
+    profiles[2],
+    profiles[3],
     x = (0 until LAYERS).map { (it + 0.5) / LAYERS },
     channel = "profile",
     xTitle = "height, as a fraction of the object's own",
@@ -314,22 +340,28 @@ Every form above sums correctly. `kkC` (kis applied twice to the cube) is a poly
 [Polytopes & the Conway Algebra](polytope_examples.md) uses it as its counter-example. The Ceres
 solver, `relaxWithCeres`, does reach a canonical form. This box tries both and slices each result.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/kkc.png" wait="14" capture="box" open-outputs="true" w="1240" h="820" padding="16" timeout="360" name="chain-contours-kkc" requires="ceres,manifold" alt="A three-row table of the kkC embeddings and a convergence plot. The plot has two traces against layer count: kkC as built climbing to 1.00000, and relaxWithCeres() flattening out at 0.90029 and staying there" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/kkc.png" wait="14" capture="box" open-outputs="true" w="1240" h="820" padding="16" timeout="360" name="chain-contours-kkc" requires="ceres,manifold" alt="A three-row table of the kkC embeddings, with what canonicalDiagnostics() says of each, and a convergence plot. The plot has two traces against layer count: kkC as built climbing to 1.00000, and relaxWithCeres() flattening out at 0.90029 and staying there" embed=true}
 :::static
-import afield.manifold.FillRule
-import afield.manifold.Solid
-import afield.manifold.toSolid
+import afield.geometry.solid.manifold.FillRule
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.solid.manifold.toSolid
 
 // relaxWithCeres needs the native wrapper: ./gradlew buildCeresRedistributable
 val seed = conway("kkC").polyhedron
 val iterated = seed.canonicalize().polyhedron
-val solved = seed.relaxWithCeres(
-    RelaxationPlan.canonicalConditions(), CeresRelaxationOptions(maxIterations = 500),
-).realization.polyhedron
+val solved =
+    seed
+        .relaxWithCeres(
+            RelaxationPlan.canonicalConditions(),
+            CeresRelaxationOptions(maxIterations = 500),
+        )
+        .realization
+        .polyhedron
 
 :::fold the same chain, plus a convergence sweep and a fill-rule comparison
+// Keep invalid winding here so the table can report its signed volume and status.
 fun solidOf(p: PolyhedralObject): Solid =
-    p.triangulate(normals = NormalPolicy.Flat).mesh.weld(1e-6).toSolid()
+    p.triangulate(normals = NormalPolicy.Flat).mesh.weld(1e-6).toSolid(check = false)
 
 fun onTheBed(s: Solid): Solid {
     val k = s.scaled(1.0 / Math.cbrt(s.volume))
@@ -339,63 +371,95 @@ fun onTheBed(s: Solid): Solid {
 
 // Σ area·h/n over n layers, at the layer midpoints.
 fun riemann(s: Solid, n: Int): Double {
-    val low = s.bounds.min.z.toDouble()
-    val h = s.bounds.max.z.toDouble() - low
-    return (0 until n).sumOf { i -> s.slice(low + h * (i + 0.5) / n).use { it.area } } * h / n
+    val h = s.bounds.max.z.toDouble() - s.bounds.min.z.toDouble()
+    return s.sampleSlices(n) { _, section -> section.area }.sum() * h / n
 }
 
 // POSITIVE unions overlapping same-wound contours; EVEN_ODD punches their overlap out. Equal
 // areas on every layer means the contours do not overlap, and a gap is twice the overlap.
 fun overlap(s: Solid, n: Int = 192): Pair<Int, Double> {
-    val low = s.bounds.min.z.toDouble()
-    val h = s.bounds.max.z.toDouble() - low
+    val h = s.bounds.max.z.toDouble() - s.bounds.min.z.toDouble()
+    val positive = s.sampleSlices(n, FillRule.POSITIVE) { _, section -> section.area }
+    val evenOdd = s.sampleSlices(n, FillRule.EVEN_ODD) { _, section -> section.area }
     var disagreeing = 0
     var gap = 0.0
-    for (i in 0 until n) {
-        val z = low + h * (i + 0.5) / n
-        val p = s.slice(z, FillRule.POSITIVE).use { it.area }
-        val e = s.slice(z, FillRule.EVEN_ODD).use { it.area }
+    for ((p, e) in positive.zip(evenOdd)) {
         if (abs(p - e) > 1e-9 * maxOf(1.0, p)) disagreeing++
         gap += p - e
     }
     return disagreeing to gap * h / n / 2.0
 }
 
-val SWEEP = listOf(12, 24, 48, 96, 192, 384, 768)
+val SWEEP = [12, 24, 48, 96, 192, 384, 768]
 :::
 
 val rows = mutableListOf<List<Any?>>()
 val sweeps = mutableListOf<Pair<String, List<Number>>>()
 
 Solid.scope {
-    for ((label, p) in listOf("kkC as built" to seed, "canonicalize()" to iterated, "relaxWithCeres()" to solved)) {
+    for ((label, p) in ["kkC as built" to seed, "canonicalize()" to iterated, "relaxWithCeres()" to solved]) {
         val d = p.canonicalDiagnostics()
+        val verdict = when {
+            d.isEmbedded -> "a solid"
+            d.signedVolume <= 0.0 -> "inside out"
+            else -> "${d.selfIntersectingFacePairs} face pairs cross"
+        }
         val bare = solidOf(p)
-        // A non-positive signed volume is not a printable body, and scaling it onto the bed
-        // would mirror it into looking like one. So it is reported rather than rescued.
-        if (bare.volume <= 0.0) {
-            rows += listOf(label, "%.3e".format(d.tangencyRadiusSpread), "${bare.status}", bare.genus,
-                "%.4f".format(bare.volume), "—", "—", "inside out")
+        // Scaling an inside-out body onto the bed would mirror it into looking like one.
+        if (d.signedVolume <= 0.0) {
+            rows +=
+                [
+                    label,
+                    "%.3e".format(d.tangencyRadiusSpread),
+                    verdict,
+                    "${bare.status}",
+                    bare.genus,
+                    "%.4f".format(bare.volume),
+                    "—",
+                    "—",
+                    "—",
+                ]
             continue
         }
         val solid = onTheBed(bare)
         val sweep = SWEEP.map { riemann(solid, it) }
         val (disagreeing, over) = overlap(solid)
         sweeps += label to sweep
-        rows += listOf(
-            label, "%.3e".format(d.tangencyRadiusSpread), "${bare.status}", bare.genus,
-            "%.4f".format(bare.volume), "%.5f".format(sweep.last()),
-            "$disagreeing / 192, %.6f".format(over),
-            "%.5f".format(1.0 - 2.0 * over),
-        )
+        rows +=
+            [
+                label,
+                "%.3e".format(d.tangencyRadiusSpread),
+                verdict,
+                "${bare.status}",
+                bare.genus,
+                "%.4f".format(bare.volume),
+                "%.5f".format(sweep.last()),
+                "$disagreeing / 192, %.6f".format(over),
+                "%.5f".format(1.0 - 2.0 * over),
+            ]
     }
     Unit
 }
 
-markdown("kkc", Table(listOf(
-    "embedding", "tangency spread", "Manifold status", "genus", "signed volume",
-    "Σ area·h/n at 768 layers", "layers where POSITIVE ≠ EVEN_ODD, overlap", "1 − 2·overlap",
-)).rows(rows).h, width = 1180)
+markdown(
+    "kkc",
+    Table(
+            [
+                "embedding",
+                "tangency spread",
+                "canonicalDiagnostics()",
+                "Manifold status",
+                "genus",
+                "signed volume",
+                "Σ area·h/n at 768 layers",
+                "layers where POSITIVE ≠ EVEN_ODD, overlap",
+                "1 − 2·overlap",
+            ],
+        )
+        .rows(rows)
+        .h,
+    width = 1180,
+)
 showSignals(
     *sweeps.map { (k, v) -> k to v }.toTypedArray(),
     x = SWEEP,
@@ -407,12 +471,13 @@ showSignals(
 
 In the middle row, `canonicalize()` turns `kkC` inside out: its signed volume goes negative.
 Manifold still reports `NO_ERROR` and genus 0, because a surface that passes through itself can
-still be a valid manifold as far as `status` is concerned. A negative volume is reason enough to
-refuse the result, so the box does.
+still be a valid manifold as far as `status` is concerned. `canonicalDiagnostics()` reports the
+negative `signedVolume`, so `isEmbedded` is false and the box does not slice it.
 
 In the bottom row, `relaxWithCeres(RelaxationPlan.canonicalConditions())` converges in a few
-milliseconds and returns a positive volume, `NO_ERROR` and genus 0. Every canonical diagnostic
-reports success, but the layer stack does not agree:
+milliseconds to a positive volume with every canonical condition met, and `canonicalDiagnostics()`
+still says it is not a solid: `selfIntersectingFacePairs` counts the faces that pass through each
+other. The layer stack agrees:
 
 * The Riemann sum levels off below 1 and stays there as the layers get thinner. A sum that is short
   only because the layers are coarse keeps climbing, as `kkC` as built does in the same plot.
@@ -420,10 +485,9 @@ reports success, but the layer stack does not agree:
   this page they agree on every layer.
 * The overlap the fill rules imply accounts exactly for the missing volume.
 
-So the surface passes through itself. `volume` integrates over the boundary and counts the
-overlapping region twice; the slicer resolves each layer into a region and counts it once. The
-`riemann` and `overlap` lines in the box are a self-intersection test you can run on any solid,
-which the canonical diagnostics do not include.
+`volume` integrates over the boundary and counts the overlapping region twice; the slicer resolves
+each layer into a region and counts it once. The `riemann` and `overlap` lines in the box are the
+same test done with slices, and they work on any solid, not only a polytope.
 
 !!! note "A Boolean will not find the crossings for you"
 

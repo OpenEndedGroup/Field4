@@ -15,7 +15,7 @@ import time
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 try:
     from .field_python_env import ensure_repo_python
@@ -50,6 +50,13 @@ LOCAL_SITE_CAPTURE = re.compile(r"<!--\s*docs-capture-needs-local-site:\s*([a-zA
 ZENSICAL_STALL_ENV = "FIELD_DOCS_ZENSICAL_STALL_SEC"
 ZENSICAL_STALL_SECONDS = 120.0
 STALL_CPU_SECONDS = 1.0
+# A wedge with no file changing under zensical is the machine, not the tree: on 2026-10-24 three lander
+# builds in a row sat at "Build started" at 0% CPU in the eleven minutes after the Mac woke from
+# hibernate on a flat battery, with nothing written under the watched dirs, and the same build passed
+# by hand minutes later and in the lander from then on. Such a wedge is tried again this many times,
+# after ZENSICAL_STALL_RETRY_PAUSE seconds. A wedge with files changing is a writer and fails at once.
+ZENSICAL_STALL_RETRIES = 1
+ZENSICAL_STALL_RETRY_PAUSE = 30.0
 
 # A site missing more than this share of its pages is refused rather than installed.
 MAX_MISSING_PAGE_FRACTION = 0.01
@@ -60,7 +67,7 @@ FAILURE_PREFIX = "docs build failed: "
 
 
 def ceres_library_path(repo_root: Path) -> Path:
-    """Where `afield.stdlib.ceres.CeresNativeLibrary.defaultPath` will look, from Python.
+    """Where `afield.math.optimization.ceres.CeresNativeLibrary.defaultPath` will look, from Python.
 
     Kept deliberately in step with that object: the override properties, the three
     platform file names, and the `build/ken-ceres-redistributable` default are the
@@ -83,7 +90,7 @@ def ceres_library_path(repo_root: Path) -> Path:
 
 
 def manifold_library_path(repo_root: Path) -> Path:
-    """Where `afield.manifold.ManifoldLibrary` will look, from Python.
+    """Where `afield.geometry.solid.manifold.ManifoldLibrary` will look, from Python.
 
     Deliberately shaped differently from [ceres_library_path], because the two
     optional native dependencies are: the Ceres wrapper is built into `build/` by a
@@ -112,8 +119,37 @@ def manifold_library_path(repo_root: Path) -> Path:
     return next((c for c in candidates if c.exists()), candidates[0])
 
 
+def solidcraft_library_path(repo_root: Path) -> Path:
+    """The optional Rust bridge built by ``buildSolidCraftNative``."""
+    override = os.environ.get("AFIELD_SOLIDCRAFT_LIBRARY", "").strip()
+    if override:
+        return Path(override).expanduser()
+    name = ("field_solidcraft_jvm.dll" if sys.platform.startswith("win") else
+            "libfield_solidcraft_jvm.dylib" if sys.platform == "darwin" else
+            "libfield_solidcraft_jvm.so")
+    return repo_root / "build" / "native" / "solidcraft" / name
+
+
+def native_geometry_library_path(module: str, target: str, env: str):
+    """A path function for one of the optional native geometry libraries
+    (`tools/build_native_geometry.py <module>`), shaped like [tetgen_library_path]: the
+    environment override, then `build/field-<module>/build[/Release]/`."""
+
+    def resolve(repo_root: Path) -> Path:
+        override = os.environ.get(env, "").strip()
+        if override:
+            return Path(override)
+        name = (f"{target}.dll" if sys.platform.startswith("win") else
+                f"lib{target}.dylib" if sys.platform == "darwin" else f"lib{target}.so")
+        base = repo_root / "build" / f"field-{module}" / "build"
+        choices = [base / name, base / "Release" / name]
+        return next((c for c in choices if c.exists()), choices[0])
+
+    return resolve
+
+
 def tetgen_library_path(repo_root: Path) -> Path:
-    """Where `afield.tetgen.TetgenLibrary.resolvedPath` will look, from Python.
+    """Where `afield.geometry.mesh.tetgen.TetgenLibrary.resolvedPath` will look, from Python.
 
     Shaped like [ceres_library_path] rather than [manifold_library_path], because TetGen
     is the same kind of dependency as Ceres: nothing packages it, so `TetgenLibrary`
@@ -141,7 +177,7 @@ def tetgen_library_path(repo_root: Path) -> Path:
 
 
 def paint_library_path(repo_root: Path) -> Path:
-    """Where `afield.paint.PaintLibrary.resolvedPath` will look, from Python.
+    """Where `afield.graphics.paint.PaintLibrary.resolvedPath` will look, from Python.
 
     One candidate, where `./gradlew buildPaintNative` writes (cargo's `--target-dir`
     `build/field-paint`, release profile). As with TetGen only the environment override
@@ -160,7 +196,7 @@ def paint_library_path(repo_root: Path) -> Path:
 
 
 def libpd_library_path(repo_root: Path) -> Path:
-    """Where `afield.pd.PdLibrary.resolvedPath` will look, from Python.
+    """Where `afield.audio.pd.PdLibrary.resolvedPath` will look, from Python.
 
     TetGen's shape again: `tools/build_libpd_native.py` builds the multi-instance libpd into
     this repo's `build/`, with a `Release/` variant for CMake's multi-config layout on
@@ -184,7 +220,7 @@ def libpd_library_path(repo_root: Path) -> Path:
 
 
 def csound_library_path(repo_root: Path) -> Path:
-    """Where `afield.csound.CsoundLibrary.resolvedPath` will look, from Python.
+    """Where `afield.audio.csound.CsoundLibrary.resolvedPath` will look, from Python.
 
     libpd's shape: `tools/build_csound_native.py` builds libcsound into this repo's `build/`
     (a framework on macOS), and an installed Csound is the fallback. Only the environment override
@@ -208,7 +244,7 @@ def csound_library_path(repo_root: Path) -> Path:
 
 
 def luajit_library_path(repo_root: Path) -> Path:
-    """Where `afield.lua.LuaLibrary.resolvedPath` will look, from Python.
+    """Where `afield.lang.lua.LuaLibrary.resolvedPath` will look, from Python.
 
     Manifold's shape: LuaJIT comes from a package manager (`brew install luajit`), so this walks
     the same directories and file names `LuaLibrary` does and returns the first hit, falling back
@@ -433,7 +469,20 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "loris": (loris_executable_path, "./gradlew buildLorisNative"),
     "ceres": (ceres_library_path, "./gradlew buildCeresRedistributable"),
     "manifold": (manifold_library_path, "brew install manifold"),
+    "solidcraft": (solidcraft_library_path, "./gradlew buildSolidCraftNative"),
     "tetgen": (tetgen_library_path, "./gradlew buildTetgenNative"),
+    "morse-smale": (
+        native_geometry_library_path("morse-smale", "field_morse_smale", "AFIELD_MORSE_SMALE_LIBRARY"),
+        "./gradlew buildMorseSmaleNative",
+    ),
+    "principal-curves": (
+        native_geometry_library_path("principal-curves", "field_principal_curves", "AFIELD_PRINCIPAL_CURVES_LIBRARY"),
+        "./gradlew buildPrincipalCurvesNative",
+    ),
+    "polyvector": (
+        native_geometry_library_path("polyvector", "field_polyvector", "AFIELD_POLYVECTOR_LIBRARY"),
+        "brew install opencv boost eigen (apt install libopencv-dev libboost-dev libeigen3-dev), then ./gradlew buildPolyvectorNative",
+    ),
     "paint": (paint_library_path, "./gradlew buildPaintNative"),
     "libpd": (libpd_library_path, "./gradlew buildLibpdNative"),
     "csound": (csound_library_path, "./gradlew buildCsoundNative"),
@@ -451,6 +500,50 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
 }
 
 REQUIRES_ATTR_RE = re.compile(r'(?m)^```\w*_?runner\b[^\n]*?\brequires="([^"]*)"')
+
+
+# The task a remedy ends in: `./gradlew buildPaintNative`, or `brew install ..., then ./gradlew buildPolyvectorNative`.
+GRADLE_PREREQUISITE_RE = re.compile(r"(?:^|, then )\./gradlew (\w+)$")
+
+
+def refresh_native_prerequisites(repo_root: Path, needed: dict[str, list[str]]) -> None:
+    """Run the Gradle task behind each needed native artifact, so a stale one is rebuilt.
+
+    The existence check below cannot see staleness: a `libfield_paint_jvm.dylib` built before
+    `field_paint_stroke_noise` existed passes it, and the capture that first calls the new entry
+    point fails with an UnsatisfiedLinkError an hour into the build. The tasks declare their
+    sources as inputs, so a current artifact costs Gradle's up-to-date check and nothing more.
+    A failure here (no cargo, no network) is left to the existence check, which already decides
+    whether a missing artifact is a warning or an error in this mode.
+    `FIELD_DOCS_REFRESH_NATIVES=0` skips it.
+    """
+    if os.environ.get("FIELD_DOCS_REFRESH_NATIVES", "1").strip() == "0":
+        return
+    gradlew = repo_root / "gradlew"
+    if not gradlew.is_file():
+        return
+    tasks = sorted({
+        match.group(1)
+        for key in needed
+        if key in NATIVE_PREREQUISITES
+        and (match := GRADLE_PREREQUISITE_RE.search(NATIVE_PREREQUISITES[key][1]))
+    })
+    if not tasks:
+        return
+    started = time.monotonic()
+    from verification_runtime import pinned_graalvm_args  # noqa: PLC0415
+    result = subprocess.run(
+        [str(gradlew), *pinned_graalvm_args(repo_root), "--no-daemon", "-q", "--continue", *tasks],
+        cwd=repo_root,
+        check=False,
+    )
+    if result.returncode != 0:
+        print(
+            f"Refreshing native prerequisites ({', '.join(tasks)}) failed; checking what exists.",
+            file=sys.stderr,
+        )
+        return
+    print(f"Native prerequisites current ({', '.join(tasks)}) in {time.monotonic() - started:.1f}s")
 
 
 def check_native_prerequisites(
@@ -495,6 +588,8 @@ def check_native_prerequisites(
                 needed.setdefault(key, [])
                 if relative.as_posix() not in needed[key]:
                     needed[key].append(relative.as_posix())
+
+    refresh_native_prerequisites(repo_root, needed)
 
     missing: list[str] = []
     python = resolve_jep_python() if any(key.startswith("python:") for key in needed) else None
@@ -724,7 +819,7 @@ def generate_source_pages(*, repo_root: Path, generated_docs: Path, enabled: boo
     """Render the source pages into the docs tree, and return the anchor index if it worked.
 
     These are the only generated docs pages that are *not* committed, because a source mirror moves
-    whenever any line of its source moves; see `afield.docs.SourcePageGenerator` for the argument.
+    whenever any line of its source moves; see `afield.tools.docs.SourcePageGenerator` for the argument.
     That makes them a build step, and a build step that needs a compiled Kotlin tree — which a
     docs-only contributor may not have. So a failure here is a warning rather than an error: the
     citation linker in `docs_hooks` links a citation only when its page was generated, so the site
@@ -1035,6 +1130,7 @@ class ZensicalRun:
     finished: bool = False  # Printed "Build finished in ...".
     interrupted: bool = False  # Printed "Received interrupt, exiting".
     stalled: str | None = None  # Why run_zensical stopped it.
+    changed: int = 0  # Files changed under the watched dirs while it ran, counted when it stalled.
 
     def failure(self) -> str | None:
         """Why this run is not a complete build, or None if it is."""
@@ -1094,6 +1190,20 @@ def files_changed_since(roots: list[Path], since: float, *, limit: int = 8) -> t
     return count, found
 
 
+def seconds_since_wake() -> float | None:
+    """Seconds since macOS last woke from sleep (`kern.waketime`), or None elsewhere or if unknown."""
+    if sys.platform != "darwin":
+        return None
+    try:
+        out = subprocess.run(["sysctl", "-n", "kern.waketime"], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    match = re.search(r"sec = (\d+)", out)
+    if not match or int(match.group(1)) == 0:
+        return None
+    return max(0.0, time.time() - int(match.group(1)))
+
+
 def run_zensical(command: list[str], *, cwd: Path, watched: list[Path], stall_seconds: float) -> ZensicalRun:
     """Run zensical, echoing its output, and stop it if it wedges.
 
@@ -1147,7 +1257,10 @@ def run_zensical(command: list[str], *, cwd: Path, watched: list[Path], stall_se
             break
     if run.stalled:
         count, changed = files_changed_since(watched, started_wall)
+        run.changed = count
         print(f"\nzensical has stalled: {run.stalled}.")
+        if (woke := seconds_since_wake()) is not None:
+            print(f"The machine last woke from sleep {woke / 60:.0f} min ago.")
         if count:
             print(f"{count} file(s) changed under directories zensical watches since it started. A process "
                   "that keeps writing there holds zensical's build open; the first of them:")
@@ -1163,6 +1276,28 @@ def run_zensical(command: list[str], *, cwd: Path, watched: list[Path], stall_se
     if proc.stdout is not None and not reader.is_alive():
         proc.stdout.close()
     return run
+
+
+def run_zensical_retrying_idle_wedges(
+    run: Callable[[], ZensicalRun],
+    *,
+    before_retry: Callable[[], bool],
+    retries: int = ZENSICAL_STALL_RETRIES,
+    pause: float = ZENSICAL_STALL_RETRY_PAUSE,
+) -> ZensicalRun | None:
+    """[run], and again up to [retries] times while it wedges with nothing changing under it (see
+    ZENSICAL_STALL_RETRIES). None if [before_retry] (clearing the staging dir) fails."""
+    result = run()
+    for attempt in range(retries):
+        if not (result.stalled and result.changed == 0):
+            break
+        print(f"Nothing changed under the watched dirs, so this wedge is the machine, not the tree; "
+              f"trying again in {pause:.0f} s (retry {attempt + 1} of {retries}).", flush=True)
+        time.sleep(pause)
+        if not before_retry():
+            return None
+        result = run()
+    return result
 
 
 def page_output(relative: Path) -> Path:
@@ -1346,8 +1481,18 @@ def run(args: argparse.Namespace) -> int:
     if args.strict:
         command.append("--strict")
     stall_seconds = float(os.environ.get(ZENSICAL_STALL_ENV) or ZENSICAL_STALL_SECONDS)
-    zensical = run_zensical(command, cwd=public_dir, watched=[generated_docs, public_dir / "overrides"],
-                            stall_seconds=stall_seconds)
+    watched = [generated_docs, public_dir / "overrides"]
+
+    def clear_staging() -> bool:
+        return not staging.exists() or remove_tree(staging)
+
+    zensical = run_zensical_retrying_idle_wedges(
+        lambda: run_zensical(command, cwd=public_dir, watched=watched, stall_seconds=stall_seconds),
+        before_retry=clear_staging,
+    )
+    if zensical is None:
+        print(f"{FAILURE_PREFIX}could not clear the staging site dir {staging}", file=sys.stderr)
+        return 1
     sys.stdout.flush()
     failure = zensical.failure()
     if failure:

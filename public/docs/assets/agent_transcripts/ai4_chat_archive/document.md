@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chat-lens-viewer" index="0" -->
 
 ```edn [field-box id="chat-lens-viewer" role="properties"]
-{"id" "chat-lens-viewer" "index" 0 "name" "chat-lens-viewer" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chat-lens-viewer" "_tombstone" false "frame" #afield/rect [520.0 240.0 420.0 60.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chat-lens-viewer_code_.kt" "lines" 6 "characters" 231 "sha256" "9a5a7570af6f9a4ae9254513544d3e6c8b21a33cfddae7a827e1edc196464166"}]}
+{"id" "chat-lens-viewer" "index" 0 "name" "chat-lens-viewer" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chat-lens-viewer" "_tombstone" false "frame" #afield/rect [520.0 240.0 420.0 60.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chat-lens-viewer_code_.kt" "lines" 6 "characters" 247 "sha256" "82cc6fa89627b06791e7a0470d8f4f11299998bd27ec07ac0afa8a8b5874bc99"}]}
 ```
 
 ```kotlin [field-property box="chat-lens-viewer" name="code" path="chat-lens-viewer_code_.kt"]
-import afield.chatlog.*
+import afield.ai.conversation.chatlog.*
 import java.io.File
 
 val assets = File("public/docs/assets/ai4_chat_archive")
@@ -28,11 +28,11 @@ showChatLens("harbour", "storyline", height = 600)
 <!-- field-box id="chat-archive-outline" index="1" -->
 
 ```edn [field-box id="chat-archive-outline" role="properties"]
-{"id" "chat-archive-outline" "index" 1 "name" "chat-archive-outline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chat-archive-outline" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 60.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chat-archive-outline_code_.kt" "lines" 6 "characters" 290 "sha256" "caf90a9eb40eb60bddd4dae89c7d5da51824895bf6b5847da164fb126240b332"}]}
+{"id" "chat-archive-outline" "index" 1 "name" "chat-archive-outline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chat-archive-outline" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 60.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chat-archive-outline_code_.kt" "lines" 6 "characters" 306 "sha256" "63f3f1f0e49c836d29d5cea4940a3349b7f3f8623942f9d54bf984df5362f3cb"}]}
 ```
 
 ```kotlin [field-property box="chat-archive-outline" name="code" path="chat-archive-outline_code_.kt"]
-import afield.chatlog.*
+import afield.ai.conversation.chatlog.*
 import java.io.File
 
 val harbour = File("public/docs/assets/ai4_chat_archive/chats/harbour")
@@ -45,11 +45,11 @@ display("outline", "<pre style='margin:8px'>" + ChatLogViews.outline(tree).repla
 <!-- field-box id="chat-archive-read" index="2" -->
 
 ```edn [field-box id="chat-archive-read" role="properties"]
-{"id" "chat-archive-read" "index" 2 "name" "chat-archive-read" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chat-archive-read" "_tombstone" false "frame" #afield/rect [520.0 40.0 420.0 60.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chat-archive-read_code_.kt" "lines" 7 "characters" 365 "sha256" "3ec01f9a8914c9a90ec69b05783cd31a4504c4f29e16659452b531925718b30f"}]}
+{"id" "chat-archive-read" "index" 2 "name" "chat-archive-read" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chat-archive-read" "_tombstone" false "frame" #afield/rect [520.0 40.0 420.0 60.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chat-archive-read_code_.kt" "lines" 7 "characters" 381 "sha256" "879c4dc88f0b0db0eb5946916fd02fa0f37a498f70b79316fbf94ed05539701e"}]}
 ```
 
 ```kotlin [field-property box="chat-archive-read" name="code" path="chat-archive-read_code_.kt"]
-import afield.chatlog.*
+import afield.ai.conversation.chatlog.*
 import java.io.File
 
 val harbour = File("public/docs/assets/ai4_chat_archive/chats/harbour")
@@ -63,17 +63,17 @@ display("night", "<pre style='margin:8px'>" + page.text.replace("<", "&lt;") + "
 <!-- field-box id="chat-archive-lens-stats" index="3" -->
 
 ```edn [field-box id="chat-archive-lens-stats" role="properties"]
-{"id" "chat-archive-lens-stats" "index" 3 "name" "chat-archive-lens-stats" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chat-archive-lens-stats" "_tombstone" false "frame" #afield/rect [40.0 240.0 420.0 60.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chat-archive-lens-stats_code_.kt" "lines" 9 "characters" 530 "sha256" "b6d564678150f6cade045c5985c540a873187a5a906c57ff72f6b2969f374e8d"}]}
+{"id" "chat-archive-lens-stats" "index" 3 "name" "chat-archive-lens-stats" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chat-archive-lens-stats" "_tombstone" false "frame" #afield/rect [40.0 240.0 420.0 60.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chat-archive-lens-stats_code_.kt" "lines" 9 "characters" 540 "sha256" "9e3c788268234a4be8c05639265675c9be9b8d91587116ff6ce230d259cae7c4"}]}
 ```
 
 ```kotlin [field-property box="chat-archive-lens-stats" name="code" path="chat-archive-lens-stats_code_.kt"]
-import afield.chatlog.*
+import afield.ai.conversation.chatlog.*
 import java.io.File
 
 val assets = File("public/docs/assets/ai4_chat_archive")
 val tree = ChatArchive.tree(ChatArchive.chats(File(assets, "chats/harbour")).single())
 val lens = File(assets, "lenses/harbour/storyline.md").readText()
-val problems = ChatLogViews.lensProblems(tree, lens).ifEmpty { listOf("none") }
+val problems = ChatLogViews.lensProblems(tree, lens).ifEmpty { ["none"] }
 val stats = ChatLogViews.lensStats(tree, lens).entries.joinToString("\n") { (k, v) -> "$k: $v" }
 display("lens", "<pre style='margin:8px'>problems: ${problems.joinToString("; ")}\n$stats</pre>")
 ```

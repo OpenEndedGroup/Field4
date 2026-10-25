@@ -8,6 +8,9 @@ description: >
   after a round trip through Syphon; change the name to bring in another application's video. macOS
   only; needs the optional library (`./gradlew buildSyphonNative`, Xcode), and without it the two
   Syphon boxes say how to build it and stop.
+docs:
+  - page: syphon.md
+    why: "Explains Syphon, including publishing from the Vulkan renderer."
 operations:
   - create:
       box: syphon_gpu_renderer
@@ -15,7 +18,8 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.util.Options
+          import afield.graphics.vulkan.util.Options
+
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -32,17 +36,17 @@ operations:
       frame: { x: 40.0, y: 480.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          import afield.syphon.*
-
+          import afield.io.syphon.*
+          
           // without the library this stops here and says how to build it
           check(Syphon.isAvailable) { Syphon.describe() }
-
+          
           prop<RenderToTexture>(syphonTarget) = RenderToTexture {
               width = 640
               height = 360
           }
           renderer.renderList += "syphonTarget" to syphonTarget
-
+          
           // a quad over the whole target, coloured by its texture coordinates
           val module = moduleHere()
           val quad = Mesh()
@@ -54,7 +58,7 @@ operations:
               tri.add(0, 1, 2)
               tri.add(0, 2, 3)
           }
-
+          
           // every frame syphonTarget renders goes to Syphon, copied on the GPU
           syphonServer("Field GPU").followOnGpu(syphonTarget)
         vertex: |
@@ -80,15 +84,15 @@ operations:
       frame: { x: 40.0, y: 920.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          import afield.syphon.*
-
+          import afield.io.syphon.*
+          
           // without the library this stops here and says how to build it
           check(Syphon.isAvailable) { Syphon.describe() }
-
+          
           // a server's name, app name or uuid
           val inp = syphonClient("Field GPU")
           prop<SyphonTexture>(syphonIn) = inp.texture()
-
+          
           val module = moduleHere()
           val quad = Mesh()
           module += "quad" to quad

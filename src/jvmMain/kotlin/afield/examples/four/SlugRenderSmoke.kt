@@ -1,14 +1,17 @@
 package afield.examples.four
 
-import afield.four.Renderer
-import afield.four.buffers.bindPushConstant
-import afield.four.modules.*
-import afield.four.targets.RenderToTexture
-import afield.four.util.Options
-import afield.four.util.Window
-import afield.graphics.FLine
-import afield.graphics.slug.*
-import afield.stdlib.linalg.*
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.buffers.bindPushConstant
+import afield.document.context.*
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import afield.graphics.vulkan.targets.RenderToTexture
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.Window
+import afield.geometry.path.FLine
+import afield.graphics.text.slug.*
+import afield.math.linalg.*
 import org.lwjgl.vulkan.VK10.*
 import java.io.File
 import java.nio.ByteBuffer
@@ -58,7 +61,7 @@ object SlugRenderSmoke {
             renderer.renderList.preTargets["slug"] = target
             val module = Module(parameters(renderer) {
                 vertex = SlugShaders.vertex; fragment = SlugShaders.fragment
-                target.apply(); depthTest = false; depthWrite = false
+                +target; depthTest = false; depthWrite = false
                 srcAlpha = VK_BLEND_FACTOR_ONE
             }).pointer()
             check(module.current.valid)
@@ -107,11 +110,14 @@ object SlugRenderSmoke {
             val replaced = read()
             near(alpha(replaced, 32, 64), 0f)
             near(alpha(replaced, 104, 64), 0.5f)
-            module.current.meshes.clear()
+            // Closed while its mesh is still bound: the mesh draws nothing, and nothing throws.
             data.close(); data.close()
-            check(runCatching { data.getBuffer() }.isFailure)
+            val closed = read()
+            check(closed.indices.none { it % 4 == 3 && closed[it] > 0.001f }) { "A closed SlugBuffer still drew coverage" }
+            check(runCatching { data.replace(replacement) }.isFailure) { "a closed SlugBuffer must refuse replace" }
+            module.current.meshes.clear()
             repeat(40) { frame() }
-            println("Slug rendering PASSED: hole, edges, alpha, scale, replacement, close")
+            println("Slug rendering PASSED: hole, edges, alpha, scale, replacement, close before or after the mesh")
         } finally { renderer.cleanup(); window.cleanup() }
         exitProcess(0)
     }

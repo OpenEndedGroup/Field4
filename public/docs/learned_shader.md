@@ -48,8 +48,9 @@ val source = RenderToTexture(renderer) {
     useDepth = false
     format = VK_FORMAT_R32G32B32A32_SFLOAT
 }
-val teacher = moduleHere { source.apply() }
+val teacher = moduleHere { +source }
 source += "teacher" to teacher
+
 // Add your existing meshes to teacher as usual.
 ```
 
@@ -64,10 +65,12 @@ val setTime: (Float) -> Unit = { seconds ->
     mesh.push["time"] = seconds
 }
 val dataset = ShaderTraining.capture(
-    renderer, source, File("build/my-shader/capture-001"),
+    renderer,
+    source,
+    File("build/my-shader/capture-001"),
     parameterRange = 0f..10f,
     fixedState = "Camera A; texture version 3; color controls unchanged",
-    setParameter = setTime
+    setParameter = setTime,
 )
 ```
 
@@ -81,8 +84,11 @@ Start training in the background from the captured dataset:
 
 ```diffstatic {data-lang=kotlin}
 val trainingJob = ShaderTraining.trainAsync(
-    dataset, File("build/my-shader/model-001"), steps = 12000
+    dataset,
+    File("build/my-shader/model-001"),
+    steps = 12000,
 )
+
 // Poll trainingJob.result.isDone in a frames loop; trainingJob.log contains progress.
 // Once done, trainingJob.result.join() returns the model directory or throws its diagnostic.
 ```
@@ -100,11 +106,15 @@ The dataset has separate training and validation **parameter slices**. Validatio
 For the comparison and replacement interface used by the Starting Point:
 
 ```diffstatic {data-lang=kotlin}
-val comparison = ShaderLearningView(renderer, source,
-    setSourceParameter = setTime)
+val comparison = ShaderLearningView(
+    renderer,
+    source,
+    setSourceParameter = setTime,
+)
 comparison.load(File("build/my-shader/model-001"))
-comparison.parameter = 4.5f  // original parameter units: seconds in this example
-comparison.view = 2         // source / learned / error
+comparison.parameter = 4.5f // original parameter units: seconds in this example
+comparison.view = 2 // source / learned / error
+
 // comparison.view = 1      // learned only: source pass is skipped
 ```
 
@@ -113,10 +123,12 @@ comparison.view = 2         // source / learned / error
 If you only want the learned texture in an existing pipeline:
 
 ```diffstatic {data-lang=kotlin}
-val learned = LearnedShader(renderer,
+val learned = LearnedShader(
+    renderer,
     weightsFile = File("build/my-shader/model-001/weights.f16"),
     manifestFile = File("build/my-shader/model-001/weights.json"),
-    attach = false)
+    attach = false,
+)
 learned.setParameter(4.5f)
 // Schedule learned as a pre-target before consumers of learned.output.
 renderer.renderList.preTargets["learned function"] = learned
@@ -233,13 +245,17 @@ learned.view = 1
 learned.setParameter(.25f)
 prop<RenderToTexture>(learnedImage) = learned.output
 
-val material = moduleHere { depthTest = false; depthWrite = false; blend = false }
+val material = moduleHere {
+    depthTest = false
+    depthWrite = false
+    blend = false
+}
 // The Starting point supplies the full-screen mesh and cleanup.
 renderer.renderList.preTargets["editable learned material"] = learned
 renderer.renderList.modules["editable learned material"] = material
 ```
 
-This is that box's actual **fragment** property. Edit `.65`, change the channel order, or change the stripes while it runs, then use **Reload Shader (Alt-R)**:
+This is that box's actual **fragment** property. Edit `.65`, change the channel order, or change the stripes while it runs, then use **Reload Shader (alt/option-R)**:
 
 ```diffstatic {data-lang=glsl}
 #version 460
@@ -278,8 +294,8 @@ The original combines 48 weak waves into RGB. Sixteen input features feed two 32
 
 ```diffstatic {data-lang=kotlin}
 val function = LearnedShader(renderer, cooperative = true)
-function.view = 2       // original / learned / error × 8
-function.time = .25f    // training domain: −1 … 1
+function.view = 2 // original / learned / error × 8
+function.time = .25f // training domain: −1 … 1
 ```
 
 The training script is `tools/lighting/train_shader.py`. For this older analytic example only, change its `target` function and the corresponding `original` function in `src/jvmMain/resources/afield/four/neural/learned.slang`, then retrain and rebuild. Keep the feature encoding and declared architecture consistent. Press **Reload trained weights** to replace the view at a frame boundary; a failed replacement preserves the previous view.

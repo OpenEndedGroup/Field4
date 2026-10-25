@@ -9,9 +9,13 @@ import unittest
 from unittest.mock import patch
 
 from tools import refactor_pass as passes
-from tools.refactoring.core import RefactorError, make_plan, save_json, load_plan
+from tools.refactoring.core import RefactorError, make_plan, save_json, load_plan, affected_pattern
 from tools.test_refactor import RECIPE, ENGINE
 from tools.refactoring.diffs import unified_text, compact_changes
+from tools.git_isolation import scrub_process_env  # noqa: E402
+
+# This module builds scratch git repositories; an inherited GIT_DIR would redirect them.
+scrub_process_env()
 
 
 class ReviewDiffTest(unittest.TestCase):
@@ -25,6 +29,29 @@ class ReviewDiffTest(unittest.TestCase):
                 result = subprocess.run(['patch', '-s', '-p0'], cwd=root, input=rendered, text=True, capture_output=True)
                 self.assertEqual(0, result.returncode, result.stdout + result.stderr)
                 self.assertEqual(after, (root / 'example').read_text())
+
+    def test_reference_context_uses_scanner_matches_and_merges_overlapping_windows(self):
+        recipe = dict(copy.deepcopy(RECIPE), splitPackages=['old'])
+        pattern = affected_pattern(recipe)
+        source = '\n'.join(['src/jvmMain/kotlin/old'] * 12 + [
+            'context one', 'context two', 'context three', 'run old.pkg.First', 'run old.pkg.Second',
+            'new.pkg.Current', 'old.Unknown'])
+        excerpt = passes.reference_excerpt(source, pattern)
+        self.assertNotIn('src/jvmMain/kotlin/old', excerpt)
+        self.assertEqual(1, excerpt.count('run old.pkg.First'))
+        self.assertEqual(1, excerpt.count('run old.pkg.Second'))
+        references = passes.excerpt_references(excerpt, recipe, pattern)
+        self.assertEqual(['old.pkg.First', 'old.pkg.Second', 'old.Unknown'], [r['name'] for r in references])
+        self.assertEqual(['new.pkg.First', 'new.pkg.Second', None], [r['destination'] for r in references])
+
+    def test_highlight_offsets_follow_browser_utf16_and_ignore_path_context(self):
+        recipe = dict(copy.deepcopy(RECIPE), splitPackages=['old'])
+        source = '🎹 src/jvmMain/kotlin/old new.pkg.Type old.pkg.Thing'
+        refs = passes.excerpt_references(source, recipe, affected_pattern(recipe))
+        self.assertEqual(1, len(refs))
+        ref = refs[0]
+        self.assertEqual('old.pkg.Thing', source.encode('utf-16-le')[ref['start'] * 2:ref['end'] * 2].decode('utf-16-le'))
+        self.assertEqual('new.pkg.Thing', ref['destination'])
 
     def test_compact_multiline_edn_with_long_code_property(self):
         before = '{:version 2\n :code "' + ('unchanged ' * 120) + 'import afield.Color4' + '"}\n'

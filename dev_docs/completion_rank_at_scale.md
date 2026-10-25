@@ -69,7 +69,7 @@ vocabulary is a decision and not a measurement."
     tools/scrape_completion_corpus.py --wide --out tools/completion-corpus/rank-carets.tsv
     ./gradlew -p tools/code-use-semantic-sidecar run --args="--port <p> --workspace $PWD"
     python3 tools/record_rank_corpus.py --port <p>
-    ./gradlew jvmTest --tests 'afield.FieldSuggestPresentationTest'
+    ./gradlew jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'
 
 1. **Harvest.** For `expr.member` in code a human wrote and shipped in a doc, the member they wrote
    *is* the label — free, large and unarguable. The harvest was 22 carets from 8 named docs; 70 of the
@@ -95,7 +95,7 @@ vocabulary is a decision and not a measurement."
 
 The recording is checked in: `src/jvmTest/resources/fieldSuggest/rank-corpus.tsv.gz`, 39 221 payload
 rows over 6 679 distinct ones, 191 KB. 101 distinct receivers, `kotlin.collections.List` 41 times,
-`java.lang.Math` 12, `afield.graphics.FLine` 10.
+`java.lang.Math` 12, `afield.geometry.path.FLine` 10.
 
 It carries one field the 7-case fixture never has: **`proximity`**. `fieldSuggest.js` scores
 `own`/`supertype`/`universal` at 0 / −20 / −85, its largest negative term, and `rank-payloads.json`
@@ -232,7 +232,9 @@ gain completely: the pre-fix run reported 0.000. This is not an MRR rounding arg
 foreign-receiver answers cross the 80-row visibility cliff. The harness remains sensitive in the other
 direction too: R1's larger weights lower bare contested recall slightly, so magnitude still matters.
 
-That makes R2 a credible candidate, not an automatic shipment. Its exposure remains 14.4% because
+**Shipped 2026-10-16** (handoff dbf0117a), extended to every category the server sends: `internal` and `generic` get an explicit 0, and `FieldSuggestPresentationTest` fails when a category has no row. The hand-cut `List bare dot` case went off-screen (77 → past 80) under it; its note records why that was accepted.
+
+Before it shipped, R2 was a credible candidate, not an automatic shipment. Its exposure remains 14.4% because
 `other` and uncategorised rows are still unweighted; eliminating exposure is not itself the objective.
 More importantly, the same table raises foreign recall while worsening the median rank among answers
 that remain visible. The next decision should therefore be made on the split below, not on one global
@@ -352,7 +354,7 @@ recomputed rather than described as bounded by the old 1.0% figure.
 ## What this says to do instead
 
 The shipped bare dot's real number is **0.420 recall on a receiver this tree cannot annotate**, against
-0.918 on one it can — the prior is a source annotation (`afield/util.kt#annotation class CommonMembers`), so a
+0.918 on one it can — the prior is a source annotation (`runtime/completion/util_completion.kt:60#annotation class CommonMembers`), so a
 type this repo does not own has nowhere to carry one. R2 closes 0.120 of that gap without lowering owned contested recall, but makes the
 median visible foreign answer later. That measured trade-off is now the next ranking decision. Beyond it:
 

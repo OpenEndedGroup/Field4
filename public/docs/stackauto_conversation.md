@@ -18,6 +18,11 @@ That is the recorded document running in Field, two cycles of its window capture
 is the same kind of conversation as [Talking a shader into existence](stacksl_conversation.md), with
 the StackSL living inside your own graphics code instead of in a window of its own.
 
+??? aside "Agents: listing spelling"
+    Kotlin listings on this page use Field’s current `[…]` spelling for single-line
+    list constructors. Saved conversations, source revisions and downloadable documents
+    keep their recorded spelling; the listings were re-rendered, not re-run.
+
 ## Two slots in one box
 
 The box `polytope_source` builds the mesh in Kotlin and draws it with its own `vertex` and `fragment`
@@ -26,7 +31,7 @@ shaders. The vertex shader asks one slot where each face goes:
 <!-- stackauto-study-source:starter-vertex -->
 ```diffstatic {data-lang=glsl}
 // explode(vec4(face centre xyz, time)): .x pushes the face out along its normal,
-// .y shrinks it about its own centre (0 keeps it whole, 1 shrinks it to a point).
+// .y shrinks about the face centre: 0 keeps it whole; values >= 0.95 leave 5% size.
 {{ stack.auto.explode }}
 
 void main() {
@@ -56,13 +61,15 @@ The two programs are strings at the end of the box's Kotlin, and both start iner
 <!-- stackauto-study-source:starter-slots -->
 ```diffstatic {data-lang=kotlin}
 // The vertex shader's slot: where each face goes. Talk to it in this box's AI4 chat.
-module.explode = """
+module.explode =
+    """
 # (start) every face where it belongs: pushed nowhere, shrunk not at all
 [0,0,0,0]
 """
 
 // The fragment shader's slot: each face's colour, and where it burns through.
-module.face_decay = """
+module.face_decay =
+    """
 # (start) one warm grey on every face, nothing burned
 [0.75,0.72,0.68,1]
 """
@@ -80,7 +87,7 @@ intact, and open it. It has two boxes:
 | Box | What it is |
 | --- | --- |
 | **renderer — launch me first** | Opens the window. Select it and choose **Launch Box**. |
-| **the polytope — talk here (AI4)** | The mesh, its shaders and the two slots. Run it (**command/ctrl-return**) once the window is open, then press **command/ctrl-4** for AI4 chat. |
+| **the polytope — talk here (AI4)** | The mesh, its shaders and the two slots. Run it (**ctrl/command-return**) once the window is open, then press **ctrl/command-4** for AI4 chat. |
 
 Configure an AI provider through Field's welcome page if you have not already; see
 [AI features](aiFeatures.md). In a document of your own, any box whose shader has a
@@ -302,11 +309,15 @@ void main() {
             val n = solid.faceNormal(face.id)
             val ring = topology.faceCycle(face.id).map { xyz[topology.vertexMap.getValue(it)] }
             for (k in ring.indices) {
-                for ((p, r) in listOf(c to 0f, ring[k] to 1f, ring[(k + 1) % ring.size] to 1f)) {
-                    pos.add(p.x, p.y, p.z); nrm.add(n.x, n.y, n.z); cen.add(c.x, c.y, c.z)
-                    fid.add(face.id.value.toFloat()); faceRadius.add(r)
+                for ((p, r) in [c to 0f, ring[k] to 1f, ring[(k + 1) % ring.size] to 1f]) {
+                    pos.add(p.x, p.y, p.z)
+                    nrm.add(n.x, n.y, n.z)
+                    cen.add(c.x, c.y, c.z)
+                    fid.add(face.id.value.toFloat())
+                    faceRadius.add(r)
                 }
-                tri.add(3 * t, 3 * t + 1, 3 * t + 2); t++
+                tri.add(3 * t, 3 * t + 1, 3 * t + 2)
+                t++
             }
         }
     }
@@ -393,7 +404,7 @@ max
 ## The tools
 
 A box whose code binds a slot has these in its AI4 chat, from
-[`afield.stacksl.study`](assets/stackauto_conversation/StackAutoStudyTools.kt):
+[`afield.lang.stacksl.study`](assets/stackauto_conversation/StackAutoStudyTools.kt):
 
 | Tool | What it does |
 | --- | --- |
@@ -451,8 +462,6 @@ polytope box's AI4 chat. Opening the chat does not call a model.
   only rebind the slots.
 - A sheet is sampled in real time: its frames are as far apart as the window was when they were read
   back, and each is labelled with when it was taken.
-- On macOS the shader is translated to Metal, and a function named like one of Metal's types (`decay`,
-  `array`) will not build there. A slot with such a name is refused before it is compiled.
 
 ??? aside "How this page was recorded and checked"
 

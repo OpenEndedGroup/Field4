@@ -1,5 +1,5 @@
      {
-      "asset": {"version": "2.0", "generator": "afield.four.modules.RiggedFixture"},
+      "asset": {"version": "2.0", "generator": "afield.graphics.scene.RiggedFixture"},
       "scene": 0,
       "scenes": [{"nodes": [0, 1]}],
       "nodes": [

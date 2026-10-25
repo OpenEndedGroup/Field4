@@ -1,6 +1,6 @@
 # Petri notation cheatsheet
 
-*The code is `afield.petri.*`: the model and DSL in `PetriNets.kt`, this notation's parser in
+*The code is `afield.simulation.petri.*`: the model and DSL in `PetriNets.kt`, this notation's parser in
 `PetriNotation.kt`. The worked examples are on [Petri nets](petri_nets.md).*
 
 The `#petri` notation is the short way to write a net: a whole net fits on screen and one arc is one
@@ -177,6 +177,5 @@ The Kotlin calls that build, play and analyse a net.
 | `live.play(cps = 2.0) { … }` | plays a live net in a box, on the beat |
 | `box.showPetriNet(net, layout = …)` | `AUTO` (the default), `RING`, `FORCE`, `LAYERED`, `TALA` |
 | `PetriLayout.TALA` | d2's diagram engine, via the optional `native/field-d2-layout`; draws with `FORCE` when it is absent |
-| `clearPetriLayoutCache()` | re-solve, after building that helper under a running Field |
 
 </div>

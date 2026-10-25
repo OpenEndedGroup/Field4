@@ -70,9 +70,6 @@ println(1)
 """
 
 EDITABLE_LINES_SNIPPET = """\
-import afield.graphics.*
-import afield.stdlib.*
-
 val foo = fline {
     color = vec(0.2, 0.8, 1.0, 1.0)
     thickness = 2.0
@@ -84,9 +81,6 @@ lines(foo, editable = true)
 """
 
 STATIC_LINES_SNIPPET = """\
-import afield.graphics.*
-import afield.stdlib.*
-
 val staticLine = fline {
     color = vec(1.0, 0.55, 0.2, 1.0)
     thickness = 3.0
@@ -99,9 +93,6 @@ lines(staticLine, w = 360.0, h = 220.0, fitToSize = true)
 """
 
 SHOW_PLANE_INTERACTIVE_SNIPPET = """\
-import afield.graphics.*
-import afield.stdlib.*
-
 val ring = fline {
     color = vec(0.42, 0.78, 1.0, 1.0)
     thickness = 2.0
@@ -269,8 +260,8 @@ try {
 """
 
 CONTROLLER_CONTROL_GROUP_SNIPPET = """\
-import afield.stdlib.linalg.Vector2f
-import afield.stdlib.linalg.Vector4f
+import afield.math.linalg.Vector2f
+import afield.math.linalg.Vector4f
 
 var gain = 0.35
 var enabled = true
@@ -629,7 +620,7 @@ display("main", \"\"\"
 \"\"\".trimIndent())
 """
 
-# `afield.morpho` is not in Field's REPL intro, so `MorphoCircuit` is an unresolved reference that the
+# `afield.lang.morpho` is not in Field's REPL intro, so `MorphoCircuit` is an unresolved reference that the
 # error panel can genuinely fix with an import (see COMPLETION_OWN_IMPORT_SNIPPET for the other half of
 # that property). The constructor is private, so the fixture only names the type.
 ERROR_FIX_IMPORT_SNIPPET = """\
@@ -650,7 +641,7 @@ if (!ed) return { ok: false, reason: "globalEditor missing" };
 const model = ed.getModel();
 if (!model) return { ok: false, reason: "editor has no model" };
 
-const FQN = "afield.morpho.MorphoCircuit";
+const FQN = "afield.lang.morpho.MorphoCircuit";
 const TARGET = "val c: MorphoCircuit? = null";
 
 const fixRows = () => Array.from(document.querySelectorAll(".field-fix-suggestions .field-fix-row"));
@@ -994,7 +985,7 @@ displayOpen("explorer")
 VIEWER_PANEL_SIZING_SNIPPET = r"""// A viewer that declares a size. `three` writes a pixel width on the iframe AND passes
 // frameWidth/frameHeight into the payload, which threejs_viewer.html republishes as
 // `afield-iframe-size`. The panel should end up at that size; today it opens at DEFAULT_W.
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 val f = FLine().moveTo(vec(0.0, 0.0, 0.0)).lineTo(vec(1.0, 0.6, 0.3))
 f.color = vec(0.4, 0.8, 1.0, 0.9)
 f.pointed = true
@@ -1131,6 +1122,68 @@ try {
 }
 """
 
+VALUE_VIEWER_PANEL_SIZING_SNIPPET = """\
+val values = (1..400).map { it * 3 }
+display("values", values.h)
+displayOpen("values")
+"""
+
+# The value-viewer frame (`upsertLazyValueViewer` in Outputs.kt) is a fill frame whose width lives in
+# a CSS class, so it takes the bounding-rect fallback; this is the geometry check it never had.
+VALUE_VIEWER_PANEL_SIZING_JS = r"""
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const errors = [];
+const onError = (event) => errors.push(String(event.error && (event.error.stack || event.error.message) || event.message || event));
+window.addEventListener("error", onError);
+const waitFor = async (predicate, timeoutMs = 12000) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) { const value = predicate(); if (value) return value; await delay(100); }
+  return predicate();
+};
+try {
+  const box = [...document.querySelectorAll(".box")]
+    .find((candidate) => String(candidate.textContent || "").includes("ValueViewerPanelSizingRegression"))
+    || [...document.querySelectorAll(".box")].at(-1);
+  if (!box) return { ok: false, reason: "box not found", errors };
+  const link = await waitFor(() => box.querySelector("a[data-afield-view-src]"), 12000);
+  if (!link) return { ok: false, reason: "the .h output offered no output-area viewer link", errors };
+  window.afieldOpenLazyValueInOutputArea(link);
+  const frame = await waitFor(() => box.querySelector("iframe.value-viz-output-viewer-frame"), 12000);
+  if (!frame) return { ok: false, reason: "value-viewer iframe never appeared", errors };
+  const panel = frame.closest(".disclosure");
+  await waitFor(() => {
+    const width = frame.getBoundingClientRect().width;
+    return width > 0 && Math.abs(panel.getBoundingClientRect().width - box.getBoundingClientRect().width) < 40;
+  }, 12000);
+  await delay(400);
+  const boxRect = box.getBoundingClientRect();
+  const panelRect = panel.getBoundingClientRect();
+  const frameRect = frame.getBoundingClientRect();
+  const result = {
+    boxWidth: Math.round(boxRect.width),
+    panelWidth: Math.round(panelRect.width),
+    frameWidth: Math.round(frameRect.width),
+    frameHeight: Math.round(frameRect.height),
+    panelOverflowRight: Math.round(panelRect.right - boxRect.right),
+    fillFrame: typeof window.fieldIsFillWidthIframe === "function" && window.fieldIsFillWidthIframe(frame),
+    errors,
+  };
+  result.panelTracksBox = result.panelWidth >= result.boxWidth - 24 && result.panelOverflowRight <= 2;
+  // LAZY_VIEWER_HEIGHT_PX in Outputs.kt; a frame that sized to itself opened as a one-line sliver.
+  result.frameHasHeight = result.frameHeight >= 200;
+  result.ok = result.fillFrame && result.panelTracksBox && result.frameHasHeight && result.errors.length === 0;
+  if (!result.ok) {
+    result.reason = !result.fillFrame ? "the value-viewer frame is not recognised as a fill frame"
+      : !result.panelTracksBox ? `panel ${result.panelWidth}px does not track box ${result.boxWidth}px`
+      : !result.frameHasHeight ? `frame is a ${result.frameHeight}px sliver`
+      : "unexpected value-viewer geometry";
+  }
+  return result;
+} finally {
+  window.removeEventListener("error", onError);
+}
+"""
+
 H2_DOMAIN_EXPLORER_SNIPPET = """\
 data class Trail(val id: Int, val x: Double, val y: Double, val label: String, val closed: Boolean)
 
@@ -1252,8 +1305,8 @@ try {
 # first had found. This snippet opens the browser at `??` on purpose, so the regression starts from
 # the state that failed.
 KEYFRAME_BROWSER_DISCOVERY_SNIPPET = """\
-import afield.stdlib.KeyframeScope
-import afield.four.buffers.Structure
+import afield.animation.keyframes.KeyframeScope
+import afield.graphics.vulkan.buffers.Structure
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("ui-regression-keyframe-discovery")
@@ -2302,10 +2355,15 @@ try {
   const selectedBefore = getComputedStyle(target, "::before");
   const beforeBorderWidthPx = Number.parseFloat(selectedBefore.borderTopWidth || selectedBefore.borderWidth || "0") || 0;
   const boxStyle = getComputedStyle(target);
+  const head = target.querySelector(".file-proxy-path-head");
+  const tail = target.querySelector(".file-proxy-path-tail");
   const result = {
     selected: target.classList.contains("selected"),
     fileProxyBox: target.classList.contains("file-proxy-box"),
     pathText,
+    tailText: tail?.textContent || "",
+    headTruncated: !!head && head.scrollWidth > head.clientWidth,
+    tailWhole: !!tail && tail.clientWidth > 0 && tail.scrollWidth <= tail.clientWidth,
     beforeBorderColor: selectedBefore.borderColor,
     beforeBorderWidth: selectedBefore.borderWidth,
     beforeBorderWidthPx,
@@ -2317,6 +2375,9 @@ try {
   result.ok = result.selected &&
     result.fileProxyBox &&
     !!result.pathText &&
+    result.tailText === "/scenes/regression.txt" &&
+    result.headTruncated &&
+    result.tailWhole &&
     result.boxIsSelectedColor &&
     !result.beforeIsSelectedColor &&
     result.beforeBorderWidthPx >= 4 &&
@@ -2910,6 +2971,126 @@ try {
 }
 """
 
+MACRO_RECORDER_ROUNDTRIP_JS = r"""
+// Record through the Macro Recorder panel, save, and replay the recording as a copy: the copy
+// must be the recorded boxes again (names, code, sizes, connection), shifted by the offset.
+// Then Step replays one operation alone. Real canvas paths: newBox(), set-string, -connect, set-rect.
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const errors = [];
+const onError = (event) => errors.push(String(event.error && (event.error.stack || event.error.message) || event.message || event));
+window.addEventListener("error", onError);
+const waitFor = async (predicate, timeoutMs = 12000) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const value = predicate();
+    if (value) return value;
+    await delay(100);
+  }
+  return predicate();
+};
+try {
+  const m = await import("/afield.mjs");
+  const liveBoxes = () => [...document.querySelectorAll(".box")].filter((b) => b.uid && b.uid !== "root");
+  const uids = () => new Set(liveBoxes().map((b) => b.uid));
+  // A box is placed by a translate transform; its frame is kept on the element as data_x/y/w/h.
+  const frameOf = (b) => ({ x: Math.round(b.data_x), y: Math.round(b.data_y), w: Math.round(b.data_w), h: Math.round(b.data_h) });
+  window.macroTranscriptPanel();
+  const panel = await waitFor(() => {
+    const node = document.querySelector("#macro-recorder-panel.field-panel.is-visible");
+    return node && getComputedStyle(node).display !== "none" ? node : null;
+  }, 5000);
+  if (!panel) return { ok: false, reason: "panel did not open as a FieldPanel", errors };
+  panel.querySelector("[data-action='start']").click();
+  await waitFor(() => panel.querySelector("[data-role='status']").classList.contains("is-recording"), 5000);
+
+  const before = uids();
+  m.newBox({ name: "RoundTripSource", frame: { x: 140, y: 140, w: 180, h: 80 }, code: "println(\"source\")" });
+  const a = await waitFor(() => [...uids()].find((u) => !before.has(u)), 5000);
+  const afterA = uids();
+  m.newBox({ name: "RoundTripSink", frame: { x: 380, y: 140, w: 180, h: 80 } });
+  const b = await waitFor(() => [...uids()].find((u) => !afterA.has(u)), 5000);
+  if (!a || !b) return { ok: false, reason: "boxes were not created", errors };
+  await delay(300);
+  m.send("set-string", { uid: b, property: "code", value: "println(\"sink\")" });
+  await delay(300);
+  m.send("perform-action", { uid_currentSelection: [a, b], uid_action: "-connect", uid_property: "code" });
+  await delay(300);
+  m.send("set-rect", { uid: b, property: "frame", value: { x: 400, y: 220, w: 180, h: 80 } });
+  await delay(800);
+
+  const name = panel.querySelector("[data-role='name']");
+  name.value = "ui-roundtrip";
+  name.dispatchEvent(new Event("input", { bubbles: true }));
+  panel.querySelector("[data-action='save']").click();
+  const yaml = await waitFor(() => {
+    const text = panel.querySelector("[data-role='content']").value || "";
+    return text.includes("ui-roundtrip") && text.includes("operations:") ? text : "";
+  }, 8000);
+  const verbs = [...String(yaml).matchAll(/^  - ([a-z-]+):/gm)].map((match) => match[1]).filter((v) => v !== "wait");
+  const row = await waitFor(() => panel.querySelector("[data-role='document-list'] .macro-recorder-item[data-macro-row='ui-roundtrip']"), 8000);
+  const previewText = panel.querySelector("[data-role='preview']").textContent || "";
+
+  // Replay as a copy, 300 below.
+  panel.querySelector("[data-role='as-copy']").checked = true;
+  panel.querySelector("[data-role='offset-y']").value = "300";
+  const beforeCopy = uids();
+  panel.querySelector("[data-action='run']").click();
+  const copyFeedback = await waitFor(() => {
+    const text = panel.querySelector("[data-role='feedback']").textContent || "";
+    return text.includes("Ran macro 'ui-roundtrip'") ? text : "";
+  }, 12000);
+  await waitFor(() => [...uids()].filter((u) => !beforeCopy.has(u)).length >= 2, 5000);
+  await delay(600);
+  const byUid = new Map(liveBoxes().map((box) => [box.uid, box]));
+  const copies = [...uids()].filter((u) => !beforeCopy.has(u)).map((u) => byUid.get(u));
+  const title = (box) => String(box.name || "").trim();
+  const matchCopy = (uid) => {
+    const original = byUid.get(uid);
+    const f = frameOf(original);
+    const copy = copies.find((c) => title(c) === title(original));
+    if (!copy) return { found: false };
+    const g = frameOf(copy);
+    return { found: true, sameSize: g.w === f.w && g.h === f.h, dx: g.x - f.x, dy: g.y - f.y };
+  };
+  const sourceCopy = matchCopy(a);
+  const sinkCopy = matchCopy(b);
+
+  // Step: one operation replays alone (as a copy: one more box).
+  const beforeStep = uids().size;
+  panel.querySelector("[data-action='step-reset']").click();
+  await delay(100);
+  panel.querySelector("[data-action='step']").click();
+  const stepFeedback = await waitFor(() => {
+    const text = panel.querySelector("[data-role='feedback']").textContent || "";
+    return text.includes("step 1 of") ? text : "";
+  }, 8000);
+  await waitFor(() => uids().size === beforeStep + 1, 4000);
+  const afterStep = uids().size;
+  const stepStatus = panel.querySelector("[data-role='step-status']").textContent || "";
+
+  const result = {
+    a, b, verbs, previewText: previewText.slice(0, 300),
+    rowHasActions: !!(row && row.querySelector("[data-row-action='run']") && row.querySelector("[data-row-action='rename']") && row.querySelector("[data-row-action='delete']")),
+    copyFeedback, sourceCopy, sinkCopy, stepFeedback, beforeStep, afterStep, stepStatus, errors,
+  };
+  // The sink's move lands after the connect, or folds into the sink's create when the server
+  // handles it first; either way the recording ends as the same document.
+  const verbsOk = JSON.stringify(verbs) === JSON.stringify(["create", "create", "connect"]) ||
+    JSON.stringify(verbs) === JSON.stringify(["create", "create", "connect", "move"]);
+  result.ok = verbsOk &&
+    result.previewText.includes("create") &&
+    result.rowHasActions &&
+    !!copyFeedback && copyFeedback.includes("errors=0") &&
+    sourceCopy.found && sourceCopy.sameSize && sourceCopy.dx === 0 && sourceCopy.dy === 300 &&
+    sinkCopy.found && sinkCopy.sameSize && sinkCopy.dx === 0 && sinkCopy.dy === 300 &&
+    !!stepFeedback && afterStep === beforeStep + 1 && stepStatus.includes("step 2") &&
+    errors.length === 0;
+  return result;
+} finally {
+  window.removeEventListener("error", onError);
+}
+"""
+
 INLINE_VISUALIZERS_JS = r"""
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const errors = [];
@@ -3327,7 +3508,7 @@ def backdoor_command_prefix() -> list[str]:
     return [sys.executable]
 
 
-# `afield.morpho` is not in Field's REPL intro, so the box's own `import` is what makes `MorphoCircuit`
+# `afield.lang.morpho` is not in Field's REPL intro, so the box's own `import` is what makes `MorphoCircuit`
 # resolve — the only place in the suite where that is true. It is also as close to the reported bug as
 # checked-in code gets: `MorphoCircuit.flines` is a top-level extension named exactly like the
 # `SentenceDiagram.flines` that went missing, reached through the same `fl` prefix, which collides with
@@ -3344,7 +3525,7 @@ def backdoor_command_prefix() -> list[str]:
 #     AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL=http://127.0.0.1:17969 \
 #       python3 tools/run_ui_regressions.py --port 9490 --id completion-box-own-import
 COMPLETION_OWN_IMPORT_SNIPPET = """\
-import afield.morpho.*
+import afield.lang.morpho.*
 val c: MorphoCircuit = TODO()
 c.fl
 c.sign
@@ -3601,7 +3782,7 @@ return result;
 """.replace("__MAX_PING_MS__", str(COMPLETION_KOTLINJS_MAX_PING_MS))
 
 
-# The live counterpart to the headless popup cover (afield.FieldSuggestPresentationTest, wired into
+# The live counterpart to the headless popup cover (afield.runtime.completion.FieldSuggestPresentationTest, wired into
 # `check`; see dev_docs/completion_popup_cover.md). That one stages fieldSuggest.js under node against
 # a canned server reply; this one asks the real editor, over a real payload, in a real browser — the
 # only place the whole hop is on the hook, CSS and Monaco and transport included.
@@ -3620,7 +3801,7 @@ return result;
 # KotlinCompletionSupport.classifyMetadata whichever engine produced the candidate, so this is about
 # presentation and grades K1 and AA alike. The `loaded` and non-empty checks are what keep it honest.
 COMPLETION_CATEGORY_HEADERS_SNIPPET = """\
-import afield.stdlib.noir.audioai.*
+import afield.audio.ai.*
 lenia
 fieldAudio
 """
@@ -3664,7 +3845,7 @@ def write_generated_file(relative: str, text: str) -> Path:
     return path
 
 
-MONACO_PROPERTY_NAMES_SOURCE = REPO_ROOT / "src/jsMain/kotlin/afield/BootstrapMonacoInit.kt"
+MONACO_PROPERTY_NAMES_SOURCE = REPO_ROOT / "src/jsMain/kotlin/afield/app/editor/BootstrapMonacoInit.kt"
 
 
 def monaco_property_names() -> list[str]:
@@ -3734,6 +3915,8 @@ def prepare_generated_files() -> dict[str, Path]:
         "output_area_basics_js": write_generated_file("output-area-basics.js", OUTPUT_AREA_BASICS_JS),
         "h2_panel_sizing_snippet": write_generated_file("h2-panel-sizing.kt", H2_PANEL_SIZING_SNIPPET),
         "h2_panel_sizing_js": write_generated_file("h2-panel-sizing.js", H2_PANEL_SIZING_JS),
+        "value_viewer_panel_sizing_snippet": write_generated_file("value-viewer-panel-sizing.kt", VALUE_VIEWER_PANEL_SIZING_SNIPPET),
+        "value_viewer_panel_sizing_js": write_generated_file("value-viewer-panel-sizing.js", VALUE_VIEWER_PANEL_SIZING_JS),
         "viewer_panel_sizing_snippet": write_generated_file("viewer-panel-sizing.kt", VIEWER_PANEL_SIZING_SNIPPET),
         "viewer_panel_sizing_js": write_generated_file("viewer-panel-sizing.js", VIEWER_PANEL_SIZING_JS),
         "h2_domain_explorer_snippet": write_generated_file("h2-domain-explorer.kt", H2_DOMAIN_EXPLORER_SNIPPET),
@@ -3757,6 +3940,7 @@ def prepare_generated_files() -> dict[str, Path]:
         "history_panel_close_js": write_generated_file("history-panel-close.js", HISTORY_PANEL_CLOSE_JS),
         "visionos_shared_history_panel_js": write_generated_file("visionos-shared-history-panel.js", VISIONOS_SHARED_HISTORY_PANEL_JS),
         "macro_transcript_panel_js": write_generated_file("macro-transcript-panel.js", MACRO_TRANSCRIPT_PANEL_JS),
+        "macro_recorder_roundtrip_js": write_generated_file("macro-recorder-roundtrip.js", MACRO_RECORDER_ROUNDTRIP_JS),
         "inline_visualizers_js": write_generated_file("inline-visualizers.js", INLINE_VISUALIZERS_JS),
         "focus_keyboard_contract_js": write_generated_file("focus-keyboard-contract.js", FOCUS_KEYBOARD_CONTRACT_JS),
         "focus_keyboard_setup_js": write_generated_file("focus-keyboard-setup.js", FOCUS_KEYBOARD_SETUP_JS),
@@ -3771,10 +3955,21 @@ def prepare_generated_files() -> dict[str, Path]:
     }
 
 
+SLIDE_EDITOR_SHOT = ["--uid", "@slide_target", "--with-editor", "--preserve-selection", "--no-pan"]
+
+
 def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegression]:
     pw_timeout = str(max(timeout, PLAYWRIGHT_TIMEOUT))
     timeout_text = str(timeout)
     return [
+        UiRegression(
+            id="welcome-local-ai",
+            description="Local AI settings retain drafts through refresh and provider switches, validate the model, and report an unreachable server.",
+            commands=[
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/welcome-local-ai.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
         UiRegression(
             id="three-idle-rendering",
             description="Static geometry sleeps and redraws for visibility, lighting, section, insertion, camera and resize.",
@@ -3792,6 +3987,40 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 "new-box --name IdleRenderingRegression",
                 shell_join(["launch", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-idle-animation.kt")]),
                 shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-idle-animation.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="kotlin-line-notes",
+            description="A Kotlin box's run leaves a line note on each top-level val or var, with its value.",
+            commands=[
+                "new-box --name KotlinLineNotes",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/kotlin-line-notes.kt")]),
+                "new-box --name KotlinLineNotesCheck",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/kotlin-line-notes-check.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/kotlin-line-notes.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="stacksl-slot-colour",
+            description="A string assigned to a box's stack.auto slot is coloured as StackSL without a #stacksl header, and stays coloured while it is edited.",
+            commands=[
+                "new-box --name StackSLSlotColour",
+                shell_join(["set", "@last", "fragment", "--file", str(TOOLS_ROOT / "ui_regressions/stacksl-slot-colour.glsl")]),
+                shell_join(["set", "@last", "code", "--file", str(TOOLS_ROOT / "ui_regressions/stacksl-slot-colour.kt")]),
+                "editor-open @last --property code",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/stacksl-slot-colour.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-editor", "@last", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="keyframe-linked-simplify",
+            description="The keyframe editor's Simplify slider simplifies lanes that share key times to the same times, and leaves other lanes alone.",
+            commands=[
+                "new-box --name KeyframeLinkedSimplify",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/keyframe-linked-simplify.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/keyframe-linked-simplify.js"), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
@@ -3864,6 +4093,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 "new-box --name MixedReviewRegression",
                 shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-mixed-review.kt")]),
                 shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-mixed-review.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="three-sheet-review",
+            description="Pick and Save note on a Three.js contact sheet use the panel under the pointer, record it, and restore it.",
+            commands=[
+                "new-box --name SheetReviewRegression",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-sheet-review.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-sheet-review.js"), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
@@ -3998,6 +4237,17 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["run", "@last", "--file", str(files["h2_panel_sizing_snippet"]), "--timeout", timeout_text]),
                 "sleep 1.5",
                 shell_join(["page-eval", "--body", "--file", str(files["h2_panel_sizing_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="value-viewer-panel-sizing",
+            description="A value opened into the output area from a .h listing is a fill frame: its panel takes the box's width and the frame keeps its height.",
+            commands=[
+                "new-box --name ValueViewerPanelSizingRegression --w 1040 --h 200",
+                shell_join(["run", "@last", "--file", str(files["value_viewer_panel_sizing_snippet"]), "--timeout", timeout_text]),
+                "sleep 1.5",
+                shell_join(["page-eval", "--body", "--file", str(files["value_viewer_panel_sizing_js"]), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
@@ -4232,11 +4482,11 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
         ),
         UiRegression(
             id="selection-highlight-file-proxy",
-            description="Selected file-proxy boxes keep the visible selection ring on the box outline even with a subtitle.",
+            description="Selected file-proxy boxes keep the visible selection ring on the box outline even with a subtitle, whose long path truncates in the middle.",
             commands=[
                 "new-box --name SelectionSubtitleRegression --w 260 --h 110",
                 shell_join(["set", "@last", "file_proxy_mode", "absolute"]),
-                shell_join(["set", "@last", "file_proxy_path", "/tmp/selection-subtitle-regression.txt"]),
+                shell_join(["set", "@last", "file_proxy_path", "/private/tmp/selection-subtitle-regression/src/scenes/regression.txt"]),
                 "sleep 0.5",
                 shell_join(["page-eval", "--body", "--file", str(files["selection_subtitle_box_js"]), "--timeout", pw_timeout]),
             ],
@@ -4316,7 +4566,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
         ),
         UiRegression(
             id="ai-chat-fence-renderers",
-            description="AI4 chat renders registered fences, loads Mermaid, and keeps source visible when a diagram fails.",
+            description="AI4 chat renders registered fences, loads Mermaid and KaTeX math, and keeps source visible when a diagram or equation fails.",
             document=f"ui-regression-chat-fences-{int(time.time())}",
             commands=[
                 "new-box --name FenceRenderers --x 40 --y 40",
@@ -4367,6 +4617,49 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-camera.js"), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="canvas-flight",
+            description="A filmed canvas flight through three bookmarks has one frame per 1/fps, reaches each bookmark exactly where restoring it does, turns the three.js sheet at 8 degrees a second, and gives the sheet its camera back.",
+            document=f"ui-regression-canvas-flight-{int(time.time())}",
+            commands=[
+                "viewport 1280x720",
+                "new-box --name FlightTitle --x 60 --y 60",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-flight-title.kt")]),
+                "new-box --name FlightPlan --x 1000 --y 120",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-flight-plan.kt")]),
+                "new-box --name FlightModel --x 360 --y 760",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-flight-model.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-flight-setup.js"), "--timeout", pw_timeout]),
+                shell_join([
+                    "canvas-flight", "overview", "plan", "close-ups", "--leg", "1.5", "--hold", "0.5", "--fps", "10",
+                    "--size", "640x360", "--pixel-ratio", "0.5", "--expect-frames", "45",
+                    "--record", str(BUILD_ROOT / "scratch" / "canvas-flight.mp4"),
+                ]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-flight-check.js"), "--timeout", pw_timeout]),
+                "viewport default",
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="slideshow-annotation-zoom",
+            description="A slideshow annotation starts on its note and ends on its target editor line after a pan and at canvas zoom 0.5 and 2.",
+            document=f"ui-regression-slideshow-zoom-{int(time.time())}",
+            commands=[
+                "new-box --name SlideTarget --alias slide_target --x 160 --y 160",
+                shell_join(["run", "@slide_target", "--file", str(TOOLS_ROOT / "ui_regressions/slideshow-annotation-target.kt")]),
+                "new-box --name SlideHost --alias slide_host --x 160 --y 420",
+                "connect @slide_host @slide_target",
+                shell_join(["run", "@slide_host", "--file", str(TOOLS_ROOT / "ui_regressions/slideshow-annotation-zoom.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/slideshow-annotation-zoom.js"), "--timeout", pw_timeout]),
+                shell_join(["screenshot-window", str(BUILD_ROOT / "scratch" / "slideshow-annotation-zoom-z0.5.png"), *SLIDE_EDITOR_SHOT, "--timeout", pw_timeout]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/slideshow-annotation-zoom.js"), "--timeout", pw_timeout]),
+                shell_join(["screenshot-window", str(BUILD_ROOT / "scratch" / "slideshow-annotation-zoom-z1.png"), *SLIDE_EDITOR_SHOT, "--timeout", pw_timeout]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/slideshow-annotation-zoom.js"), "--timeout", pw_timeout]),
+                shell_join(["screenshot-window", str(BUILD_ROOT / "scratch" / "slideshow-annotation-zoom-z2.png"), *SLIDE_EDITOR_SHOT, "--timeout", pw_timeout]),
+            ],
+            # A plain screenshot-window deselects, which closes the editor and hides the arrow.
+            screenshot=shell_join(["screenshot-window", "{screenshot}", *SLIDE_EDITOR_SHOT, "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="canvas-split",
@@ -4484,6 +4777,15 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 "editor-open @last --property code",
                 "sleep 1.0",
                 shell_join(["page-eval", "--body", "--file", str(files["macro_transcript_panel_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="macro-recorder-roundtrip",
+            description="Macro Recorder (a FieldPanel) records canvas actions as create/connect/move, saves them, replays them as an offset copy that matches the originals, and steps one operation.",
+            document=f"ui-regression-macro-roundtrip-{int(time.time())}",
+            commands=[
+                shell_join(["page-eval", "--body", "--file", str(files["macro_recorder_roundtrip_js"]), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),

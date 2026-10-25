@@ -1,6 +1,6 @@
 // The lens viewer: a lens (a shorter chat written over a longer one) beside the chat it summarizes, every
 // column drawn by the chat panel's own renderer, with bands from each lens block to the stretch it stands for.
-// A lens over a lens shows the whole chain, top level first. The server side is afield.chatlog.ChatLensViewer;
+// A lens over a lens shows the whole chain, top level first. The server side is afield.ai.conversation.chatlog.ChatLensViewer;
 // a box shows one with showChatLens(chat, lens). Behaviour (bands, follow, hover) is chatLensWire.js, which a
 // saved viewer carries with it.
 import { aiChatHistoryToHtml } from "./afield.mjs";

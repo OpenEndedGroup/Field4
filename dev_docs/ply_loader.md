@@ -7,7 +7,7 @@ page is the developer note for the PLY loader specifically.
 
 ## Where it lives, and what it produces
 
-`src/jvmMain/kotlin/afield/four/modules/simplePLYSupport.kt` — `object PlySupport`, ~1170 lines, no
+`src/jvmMain/kotlin/afield/graphics/scene/simplePLYSupport.kt` — `object PlySupport`, ~1170 lines, no
 dependency beyond LWJGL's `memAlloc` and (for the point-cloud quad path) an HNSW index.
 
 `loadPly(path)` returns a `PlyModel` whose `buffers: PlyMeshBuffers` hold **off-heap host memory**:
@@ -70,9 +70,9 @@ properties (including per-face colour), and the ASCII/binary hybrids some tools 
 
 ## Tests
 
-`src/jvmMain/kotlin/afield/four/modules/PlyLoaderUnitTest.kt` and
+`src/jvmMain/kotlin/afield/graphics/scene/PlyLoaderUnitTest.kt` and
 `src/jvmMain/kotlin/afield/examples/four/PlyLoaderTest.kt` cover the parser.
-`src/jvmTest/kotlin/afield/stdlib/MeshFromDiskTest.kt` covers the `TriMesh` bridge — the ten-float
+`src/jvmTest/kotlin/afield/geometry/mesh/MeshFromDiskTest.kt` covers the `TriMesh` bridge — the ten-float
 layout, colour survival, normal dropping, and the point-cloud refusal — and every number the public
 page quotes.
 

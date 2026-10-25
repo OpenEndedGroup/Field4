@@ -137,6 +137,52 @@
             font-family: "Iosevka Web", monospace;
             color: #7fd4ff;
         }
+
+        /* Every document on this site, from offline-gallery.json (written by tools/sync_offline_assets.py). */
+        .all-documents h2 {
+            color: #48c9ff;
+            font-weight: 400;
+            font-size: 24px;
+            margin: 56px 0 8px 0;
+        }
+
+        .all-documents .filter {
+            width: 100%;
+            max-width: 420px;
+            padding: 8px 12px;
+            font: inherit;
+            font-size: 14px;
+            color: #e0e0e0;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(72, 201, 255, 0.3);
+            border-radius: 8px;
+            margin: 8px 0 0 0;
+        }
+
+        .doc-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 14px;
+            margin-top: 20px;
+        }
+
+        .doc-card {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(72, 201, 255, 0.18);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .doc-card:hover { border-color: rgba(72, 201, 255, 0.6); }
+        .doc-card .thumb { height: 120px; background: #111 center / cover no-repeat; }
+        .doc-card .thumb[hidden] { display: none; }
+        .doc-card .body { padding: 10px 12px; }
+        .doc-card .name { color: #48c9ff; font-size: 14px; word-break: break-word; }
+        .doc-card .meta { font-size: 11px; color: #7fd4ff; opacity: 0.75; margin-top: 4px; }
+        .doc-count { font-size: 13px; color: #a9e6ff; opacity: 0.7; }
     </style>
 </head>
 <body>
@@ -209,6 +255,76 @@
             </a>
             -->
         </div>
+
+        <div class="all-documents" id="all-documents" hidden>
+            <h2>Every document here</h2>
+            <div class="doc-count" id="doc-count"></div>
+            <input class="filter" id="doc-filter" type="search" placeholder="Filter by name" aria-label="Filter documents by name">
+            <div class="doc-grid" id="doc-grid"></div>
+        </div>
     </div>
+    <script>
+    // Lists offline-gallery.json, which tools/sync_offline_assets.py writes beside this page from the
+    // documents under assets/. Without it (a page opened on its own) only the cards above show.
+    (async () => {
+        let index;
+        try {
+            const response = await fetch('offline-gallery.json');
+            if (!response.ok) return;
+            index = await response.json();
+        } catch (_) {
+            return;
+        }
+        const docs = (index && index.documents) || [];
+        if (!docs.length) return;
+        const section = document.getElementById('all-documents');
+        const grid = document.getElementById('doc-grid');
+        const filter = document.getElementById('doc-filter');
+        const count = document.getElementById('doc-count');
+        const plural = (n, word) => `${n} ${word}${n === 1 ? '' : (word.endsWith('x') ? 'es' : 's')}`;
+        // Documents with a screenshot first, then those with notes or a drawing, then by name.
+        docs.sort((a, b) => (!!b.image - !!a.image) || ((b.notes || b.drawing ? 1 : 0) - (a.notes || a.drawing ? 1 : 0)) ||
+            a.name.localeCompare(b.name));
+        const cards = docs.map(doc => {
+            const a = document.createElement('a');
+            a.className = 'doc-card';
+            a.href = 'offline.html?file=' + encodeURIComponent(doc.file).replace(/%2F/g, '/');
+            const thumb = document.createElement('div');
+            thumb.className = 'thumb';
+            if (doc.image) thumb.style.backgroundImage = `url("${doc.image}")`;
+            else thumb.hidden = true;
+            const body = document.createElement('div');
+            body.className = 'body';
+            const name = document.createElement('div');
+            name.className = 'name';
+            name.textContent = doc.name.replace(/_/g, ' ');
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            const parts = [plural(doc.boxes, 'box')];
+            if (doc.notes) parts.push(`${doc.notes} with notes`);
+            if (doc.drawing) parts.push(`drawing (${doc.drawing})`);
+            meta.textContent = parts.join(' · ');
+            body.append(name, meta);
+            a.append(thumb, body);
+            a.title = doc.file;
+            a.dataset.search = (doc.name + ' ' + doc.file).toLowerCase();
+            grid.appendChild(a);
+            return a;
+        });
+        const update = () => {
+            const q = filter.value.trim().toLowerCase();
+            let shown = 0;
+            cards.forEach(c => {
+                const on = !q || c.dataset.search.includes(q);
+                c.style.display = on ? '' : 'none';
+                if (on) shown++;
+            });
+            count.textContent = q ? `${shown} of ${plural(docs.length, 'document')}` : plural(docs.length, 'document');
+        };
+        filter.addEventListener('input', update);
+        update();
+        section.hidden = false;
+    })();
+    </script>
 </body>
 </html>

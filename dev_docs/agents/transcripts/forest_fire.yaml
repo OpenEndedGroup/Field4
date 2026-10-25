@@ -1,0 +1,117 @@
+name: forest_fire
+description: >
+  A forest fire on the GPU: a fixed scatter of trees and four kinds of fire that compete for
+  them. Three boxes: a renderer box, a fire box that builds a ShaderForestFireSystem and publishes
+  it as the prop `fire`, and a fire-starter box beneath it whose fragment shader draws two
+  permanent ignition points, one red and one green, into the fire's ignition texture. Burnt trees
+  recover, so each point sends out a train of rings, and where the trains meet one kind takes
+  over. The same two boxes are lessons 11 and 11b of canonical_graphics. Requires a GPU/Vulkan
+  window; capture it with a follow-on `native-screenshot <path>` backdoor command.
+docs:
+  - page: afield_four_graphics.md
+    why: "Includes the GPU forest fire walkthrough this document builds."
+operations:
+  - create:
+      box: fire_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          // once: re-running this box keeps the existing window and renderer
+          once.renderer {
+              window = Window("Forest fire", initialDimensions = Rect(80.0, 80.0, 768.0, 768.0))
+              Renderer(window)
+          }
+          println("renderer ready")
+          // the frame loop runs as this box's coroutine; stopping the box stops rendering
+          start(renderer::run)
+  - create:
+      box: fire_forest
+      name: forest
+      frame: { x: 340.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // A forest fire: a fixed scatter of trees, and four kinds of fire (red, green, blue,
+          // magenta) that compete for them. Burnt trees recover, so a fire front can be
+          // followed by another. Nothing burns until something is lit; the box beneath this
+          // one lights it.
+          // The forest is 768 trees high and as wide as the window's shape needs, so it fills
+          // the window without being stretched.
+          val treesHigh = 768
+          prop<ShaderForestFireSystem>(fire) = ShaderForestFireSystem() {
+              height = treesHigh
+              width = treesHigh * window.width / window.height
+              treeDensity = 0.6f
+          }
+
+          // this installs the editable spreading rule in this box's fragment tab
+          fire.installInto()
+  - create:
+      box: fire_starter
+      name: fire starter
+      frame: { x: 340.0, y: 160.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // Draws into the fire's ignition texture: two points that burn for ever, one red
+          // and one green. Each relights its neighbourhood as soon as the trees recover, so
+          // each sends out a train of rings, and where the trains meet one kind takes over.
+          fire.clearFireInput()
+          fire.clearState()
+
+          var module = moduleHere(fire.fireInputParameters("starter"))
+          fire.addFireInput("starter", module)
+
+          val quad = fullscreenTriangle(module)
+          module += "quad" to quad
+
+          // positions are in trees, so place them as fractions of the forest's size
+          val w = fire.settings.width.toFloat()
+          val h = fire.settings.height.toFloat()
+          quad.red = { vec(w * 0.33f, h * 0.5f) }
+          quad.green = { vec(w * 0.68f, h * 0.5f) }
+          quad.radius = { 4f }
+        vertex: |
+          #version 450
+
+          // one triangle that covers the whole target; positions come from the vertex index
+          vec2 fullscreenVertex(uint index) {
+              if (index == 0u) return vec2(-1.0, -1.0);
+              if (index == 1u) return vec2(3.0, -1.0);
+              return vec2(-1.0, 3.0);
+          }
+
+          void main() {
+              gl_Position = vec4(fullscreenVertex(uint(gl_VertexIndex)), 0.0, 1.0);
+          }
+        fragment: |
+          #version 450
+
+          layout(push_constant) uniform Push {
+              vec2 red;
+              vec2 green;
+              float radius;
+          } push;
+
+          layout(location = 0) out vec4 outColor;
+
+          // one kind of fire per channel; additive, so writing 1 into a channel lights that kind here
+          void main() {
+              vec2 p = gl_FragCoord.xy;
+              outColor = vec4(0.0);
+              if (distance(p, push.red) < push.radius) outColor.r = 1.0;
+              if (distance(p, push.green) < push.radius) outColor.g = 1.0;
+          }
+  - connect: { parent: fire_renderer, child: fire_forest }
+  - connect: { parent: fire_forest, child: fire_starter }
+  - launch: { box: fire_renderer, property: code, strand: renderer }  # renderer first — it owns the loop
+  - await: {}
+  - launch: { box: fire_forest, property: code }
+  - await: {}
+  - launch: { box: fire_starter, property: code }
+  - await: {}

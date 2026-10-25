@@ -7,7 +7,7 @@ reach. This page builds that graph as an object: each marking is a glass bead, e
 metal tube, and the shortest route to the deadlock is a tube that glows. The GPU path tracer
 renders the result.
 
-`afield.petri` searches the state space, `tubeMesh` sweeps each firing into geometry, and
+`afield.simulation.petri` searches the state space, `tubeMesh` sweeps each firing into geometry, and
 `PathTraceScene` lights it. None of the three knows about the others.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_petri_sculpture/sculpture.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="petri sculpture converged" embed=true hidden=true timeout="400" name="chain-petri-sculpture" alt="Two cage-like sculptures of thin curved tubes in blue, teal and violet, hung over a dark reflective floor that fades into black. Each starts at a silver bead at the top and spreads downward through layers of small glass beads. In each, one thicker tube glows orange from the top bead down to a bright red bead. The left sculpture is dense; the right one has far fewer tubes" macro-file="../../dev_docs/agents/transcripts/petri_state_space_sculpture.yaml" capture-box="petri_sculpture_trace"}
@@ -37,7 +37,7 @@ to the deadlock.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_petri_sculpture/readout.png" wait="4" capture="box" open-outputs="true" w="1100" padding="18" timeout="180" name="chain-petri-sculpture-readout" embed=true alt="Two tables. The first compares the full and the stubborn-set state space of the five-philosopher table: markings, firings, deepest layer, and the deadlock route, five grabs in both, each replayed through the net. The second lists how many markings sit on each breadth-first layer of each graph"}
 :::static
-import afield.petri.*
+import afield.simulation.petri.*
 
 :::fold the five-philosopher table
 fun table(seats: Int) = petri {
@@ -45,18 +45,29 @@ fun table(seats: Int) = petri {
     for (i in 0 until seats) {
         val left = i
         val right = (i + 1) % seats
-        t("grab.$i") { from("fork.$left"); to("holding.$i") }
-        t("eat.$i") { from("holding.$i"); from("fork.$right"); to("eating.$i") }
-        t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+        t("grab.$i") {
+            from("fork.$left")
+            to("holding.$i")
+        }
+        t("eat.$i") {
+            from("holding.$i")
+            from("fork.$right")
+            to("eating.$i")
+        }
+        t("done.$i") {
+            from("eating.$i")
+            to("fork.$left")
+            to("fork.$right")
+        }
     }
 }
+
 :::endfold
 
 val full = table(5).stateSpace()
 val reduced = table(5).stateSpace(reduction = PetriReduction.STUBBORN)
 
-fun layers(graph: PetriStateGraph) =
-    graph.states.indices.groupingBy { graph.depth(it) }.eachCount().toSortedMap()
+fun layers(graph: PetriStateGraph) = graph.states.indices.groupingBy { graph.depth(it) }.eachCount().toSortedMap()
 
 fun row(name: String, graph: PetriStateGraph): String {
     val trace = graph.deadlockTrace()!!
@@ -67,7 +78,9 @@ fun row(name: String, graph: PetriStateGraph): String {
 val fullLayers = layers(full)
 val reducedLayers = layers(reduced)
 
-markdown("main", """
+markdown(
+    "main",
+    """
 #### Five philosophers, searched two ways
 
 | | markings | firings | deepest layer | route to the deadlock | checked |
@@ -81,7 +94,9 @@ ${row("stubborn sets", reduced)}
 |---|${fullLayers.keys.joinToString("") { "---|" }}
 | full | ${fullLayers.values.joinToString(" | ")} |
 | stubborn sets | ${fullLayers.keys.joinToString(" | ") { "${reducedLayers[it] ?: ""}" }} |
-""", width = 1040)
+""",
+    width = 1040,
+)
 ```
 
 Both searches find the deadlock, and `verify()` replays each route through the net to confirm it.

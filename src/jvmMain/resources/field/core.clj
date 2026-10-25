@@ -3,16 +3,16 @@
 
   Every Clojure box gets this namespace `require`d and `refer`red into it, so the names below are
   just there — no `:require`, no aliasing. See `initNsIfNeeded` in
-  `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt`.
+  `src/jvmMain/kotlin/afield/lang/clojure/ClojureInterface.kt`.
 
   It is small on purpose. Clojure's Java interop already reaches all of Field: `(.getChildren (box))`
-  walks the document, `(afield.graphics.FLine.)` makes a line, `(.moveTo f 0 0 0)` builds it. What
+  walks the document, `(afield.geometry.path.FLine.)` makes a line, `(.moveTo f 0 0 0)` builds it. What
   interop is bad at is Kotlin's two favourite shapes — an extension function, whose class name is a
   file name, and a default argument, which is not a default at all from outside Kotlin. Those are
   what this wraps. If a verb reads well as raw interop, it is deliberately not here."
-  (:import [afield Box]
-           [afield.clojure ClojureInterface]
-           [afield.graphics FLine]))
+  (:import [afield.document.graph Box]
+           [afield.lang.clojure ClojureInterface]
+           [afield.geometry.path FLine]))
 
 (defn ^Box box
   "The Box this code is running in, or nil outside a box.
@@ -100,3 +100,37 @@
   looking at. Properties survive a save: this is how a box keeps state between runs."
   ([name value] (prop! (box) name value))
   ([^Box b name value] (.setPropertyRaw b ^String name value true) value))
+
+(defn slider
+  "A slider in this box's output that calls `on-change` with each new value. Returns the start value.
+
+  `on-change` is a fn of one argument, or an atom, which is `reset!` to the value. The controls a run
+  asks for are drawn together when the run ends, one panel per `:channel` (default `controls`). Run
+  the box again and a slider that was moved keeps its value, and `on-change` hears it again.
+
+      (def speed (atom 1.0))
+      (slider \"speed\" speed :min 0 :max 5 :step 0.1 :value 1.0)"
+  [label on-change & {:keys [min max step value channel]
+                      :or {min 0.0 max 1.0 step 0.01 channel "controls"}}]
+  (let [v (if (some? value) value (/ (+ min max) 2.0))]
+    (ClojureInterface/slider (box) (str label) (double min) (double max) (double step) (double v)
+                             (str channel) on-change)))
+
+(defn checkbox
+  "A checkbox in this box's output that calls `on-change` with true or false. See `slider`."
+  [label on-change & {:keys [value channel] :or {value false channel "controls"}}]
+  (ClojureInterface/checkbox (box) (str label) (boolean value) (str channel) on-change))
+
+(defn context
+  "The nearest value this box can see: on itself, then on its parents, generation by generation.
+
+  Give a name (string or keyword) to read a property a parent exports, or the Kotlin variable a
+  parent box defines by that name. Give a class to find the nearest value of that type, the way
+  `fromContext<T>()` does in a Kotlin box. Returns `not-found` (default nil) when nothing matches.
+
+      (context :speed 1.0)
+      (context afield.graphics.vulkan.Renderer)"
+  ([q] (context q nil))
+  ([q not-found]
+   (let [v (ClojureInterface/context (box) q)]
+     (if (nil? v) not-found v))))

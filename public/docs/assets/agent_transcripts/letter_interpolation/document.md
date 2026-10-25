@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="li_renderer" index="0" -->
 
 ```edn [field-box id="li_renderer" role="properties"]
-{"id" "li_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["li_fields"] "properties" {"children" #{#afield/box "li_fields"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_renderer_code_.kt" "lines" 11 "characters" 260 "sha256" "d28cd606359d20ae167a81a4d2b9e2472caf7092f4cfa7a90be93f4ab25e6dfb"}]}
+{"id" "li_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["li_fields"] "properties" {"children" #{#afield/box "li_fields"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_renderer_code_.kt" "lines" 12 "characters" 272 "sha256" "00106986b913e0fdc66ecd33fec4c3dcfa7b1fcd1a748b48572ff52830fe3d32"}]}
 ```
 
 ```kotlin [field-property box="li_renderer" name="code" path="li_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -33,25 +34,22 @@ start(renderer::run)
 <!-- field-box id="li_fields" index="1" -->
 
 ```edn [field-box id="li_fields" role="properties"]
-{"id" "li_fields" "index" 1 "name" "train both letters" "parents" ["root" "li_renderer"] "children" ["li_sweep"] "properties" {"children" #{#afield/box "li_sweep"} "parents" #{#afield/box "root" #afield/box "li_renderer"} "name" "train both letters" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_fields_code_.kt" "lines" 65 "characters" 3021 "sha256" "245b178fa4d7a7fa9efe3344c7d19c52862298403533be43bd0c4a3083f7214c"}]}
+{"id" "li_fields" "index" 1 "name" "train both letters" "parents" ["root" "li_renderer"] "children" ["li_sweep"] "properties" {"children" #{#afield/box "li_sweep"} "parents" #{#afield/box "root" #afield/box "li_renderer"} "name" "train both letters" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_fields_code_.kt" "lines" 76 "characters" 3030 "sha256" "b25269e6ad36441565b7225531216db9038f16da47f6fb6656e12b1d670b021c"}]}
 ```
 
 ```kotlin [field-property box="li_fields" name="code" path="li_fields_code_.kt"]
-import afield.stdlib.FlowCoupling
-import afield.stdlib.FlowMatchOptions
-import afield.stdlib.contourComponents
-import afield.stdlib.flowMatch
-
-prop<afield.stdlib.FlowMatchExport>(fieldA)
-prop<afield.stdlib.FlowMatchExport>(fieldB)
+prop<afield.simulation.particles.FlowMatchExport>(fieldA)
+prop<afield.simulation.particles.FlowMatchExport>(fieldB)
 
 val LETTERS = "C" to "S"
 val N = 512
 
-// Both fields must start from the *same* cloud. That is what gives a particle one start
-// point and two destinations, and it is also what makes the two normalisation frames
-// agree -- `blendWith` refuses to mix two coordinate systems, so sharing the cloud is a
-// requirement and not a tidiness.
+/*
+Both fields must start from the *same* cloud. That is what gives a particle one start
+point and two destinations, and it is also what makes the two normalisation frames
+agree -- `blendWith` refuses to mix two coordinate systems, so sharing the cloud is a
+requirement and not a tidiness.
+*/
 val source = (0 until N).map {
     val a = 2 * Math.PI * it / N
     vec(Math.cos(a), Math.sin(a), 0.0)
@@ -61,7 +59,10 @@ val source = (0 until N).map {
 // that both letters live in the same frame as the circle.
 fun glyph(ch: String): List<Vec3> {
     val parts = contourComponents(layoutText(ch, typeface("Helvetica", 300.0)).toFLines(), total = N, seed = 3)
-    if (parts.size != 1) error("'$ch' has ${parts.size} closed contours; this scene pairs one circle with one contour, so pick a letter like C, S, E, F, L, T, V or Z")
+    if (parts.size != 1)
+        error(
+            "'$ch' has ${parts.size} closed contours; this scene pairs one circle with one contour, so pick a letter like C, S, E, F, L, T, V or Z",
+        )
     val p = parts[0]
     val cx = p.map { it.x.toDouble() }.average()
     val cy = p.map { it.y.toDouble() }.average()
@@ -69,24 +70,30 @@ fun glyph(ch: String): List<Vec3> {
     return p.map { vec((it.x - cx) / rms, (it.y - cy) / rms, 0.0) }
 }
 
-// Rotate and if necessary reverse the contour so index i starts near circle index i.
-// Without this each letter carries an arbitrary rotation relative to the circle, and --
-// worse for this scene -- a *different* one, so the two fields would disagree about
-// which part of the circle becomes which part of the glyph and the interpolation would
-// be comparing nothing.
+/*
+Rotate and if necessary reverse the contour so index i starts near circle index i.
+Without this each letter carries an arbitrary rotation relative to the circle, and --
+worse for this scene -- a *different* one, so the two fields would disagree about
+which part of the circle becomes which part of the glyph and the interpolation would
+be comparing nothing.
+*/
 fun align(contour: List<Vec3>): List<Vec3> {
     var best = contour
     var bestCost = Double.MAX_VALUE
-    for (reversed in listOf(false, true)) {
+    for (reversed in [false, true]) {
         val base = if (reversed) contour.reversed() else contour
         for (shift in 0 until N) {
             var cost = 0.0
             for (i in 0 until N) {
-                val q = base[(i + shift) % N]; val s = source[i]
+                val q = base[(i + shift) % N]
+                val s = source[i]
                 cost += (q.x - s.x) * (q.x - s.x) + (q.y - s.y) * (q.y - s.y)
                 if (cost > bestCost) break
             }
-            if (cost < bestCost) { bestCost = cost; best = List(N) { base[(it + shift) % N] } }
+            if (cost < bestCost) {
+                bestCost = cost
+                best = List(N) { base[(it + shift) % N] }
+            }
         }
     }
     return best
@@ -94,14 +101,19 @@ fun align(contour: List<Vec3>): List<Vec3> {
 
 // The same seed in both calls. Smile's Xavier initialisation is drawn from a generator
 // that `flowMatch` reseeds, so this really is the same starting point twice.
-fun train(target: List<Vec3>) = flowMatch(
-    target, source,
-    FlowMatchOptions(steps = 9000, coupling = FlowCoupling.PAIRED, seed = 7, hidden = intArrayOf(64, 64)),
-).export()
+fun train(target: List<Vec3>) =
+    flowMatch(
+            target,
+            source,
+            FlowMatchOptions(steps = 9000, coupling = FlowCoupling.PAIRED, seed = 7, hidden = intArrayOf(64, 64)),
+        )
+        .export()
 
 fieldA = train(align(glyph(LETTERS.first)))
 fieldB = train(align(glyph(LETTERS.second)))
-println("${LETTERS.first} and ${LETTERS.second}: ${fieldA.network.parameterCount} parameters each, one source of ${fieldA.sourceCount} points")
+println(
+    "${LETTERS.first} and ${LETTERS.second}: ${fieldA.network.parameterCount} parameters each, one source of ${fieldA.sourceCount} points",
+)
 ```
 
 ## 3. the middle
@@ -109,25 +121,25 @@ println("${LETTERS.first} and ${LETTERS.second}: ${fieldA.network.parameterCount
 <!-- field-box id="li_sweep" index="2" -->
 
 ```edn [field-box id="li_sweep" role="properties"]
-{"id" "li_sweep" "index" 2 "name" "the middle" "parents" ["root" "li_fields"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "li_fields"} "name" "the middle" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_sweep_code_.kt" "lines" 42 "characters" 1924 "sha256" "48b418a995fe48f3c8ac25f5c21f9e8c482c992e8e95e363d1217c58926feda9"}]}
+{"id" "li_sweep" "index" 2 "name" "the middle" "parents" ["root" "li_fields"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "li_fields"} "name" "the middle" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_sweep_code_.kt" "lines" 37 "characters" 1492 "sha256" "913ab051aca9946f46c156e2de2895648dd66d7d213147a8f86829e9588cd4db"}]}
 ```
 
 ```kotlin [field-property box="li_sweep" name="code" path="li_sweep_code_.kt"]
-import afield.stdlib.ShaderNeuralParticles
-import afield.stdlib.blendWith
-
-prop<afield.stdlib.ShaderNeuralParticles>(particles)
+prop<afield.simulation.particles.ShaderNeuralParticles>(particles)
 
 once.particles {
     ShaderNeuralParticles(fieldA, renderer) {
-        particleCount = 200_000
-        stepsPerCycle = 150
-        // Low, on purpose. A high dwell shows the *distribution* a field settles on,
-        // which is the right choice for reading a word and the wrong one here: the
-        // interesting thing is a shape that is continuously becoming another, so the
-        // stream between the shapes has to stay visible.
-        dwellCycles = 1.2f
-    }.also { it.installInto() }
+            particleCount = 200_000
+            stepsPerCycle = 150
+            /*
+            Low, on purpose. A high dwell shows the *distribution* a field settles on,
+            which is the right choice for reading a word and the wrong one here: the
+            interesting thing is a shape that is continuously becoming another, so the
+            stream between the shapes has to stay visible.
+            */
+            dwellCycles = 1.2f
+        }
+        .also { it.installInto() }
 }
 
 particles.settings.intensity = 1.1f
@@ -137,17 +149,12 @@ particles.settings.viewScale = 3.4f
 particles.settings.sourceColor = vec(0.15, 0.45, 1.0, 1.0)
 particles.settings.targetColor = vec(1.0, 0.62, 0.22, 1.0)
 
-val PERIOD = 2400.0    // frames for a full there-and-back: forty seconds at sixty
+val PERIOD = 2400.0 // frames for a full there-and-back: forty seconds at sixty
 
 frames {
     while (true) {
-        // A plain triangle wave -- constant speed, every value of t given the same
-        // time. An earlier version cubed this about the centre to linger at t = 0.5,
-        // on the assumption that the middle was the interesting part. Captured frame
-        // by frame it is not: t = 0.5 is a clean closed ring, the tidiest and least
-        // ambiguous form in the whole sweep, and the shapes worth watching are the
-        // buckling ones either side of it at roughly 0.2-0.3 and 0.7-0.9. Easing
-        // towards the centre parks on the dullest frame. Slow everywhere beats clever.
+        // A constant-speed triangle wave gives every interpolation value equal time,
+        // including the buckling shapes on either side of the clean middle ring.
         val cycle = (renderer.frameCounter % PERIOD.toLong()) / PERIOD
         val t = (if (cycle < 0.5) cycle * 2 else 2 - cycle * 2).toFloat()
         // The whole idea, once a frame: a field that was never trained on anything.

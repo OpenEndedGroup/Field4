@@ -59,7 +59,7 @@ showSignals(
     channel = "dial",
     title = "A step goal, two dampers and a critically damped spring",
     xTitle = "frame at 60 fps",
-    marks = listOf("one half-life" to 41, "two" to 53),
+    marks = ["one half-life" to 41, "two" to 53],
     markColor = "#9aa4b2",
 )
 
@@ -125,9 +125,12 @@ val lag = Springs.halflifeToLag(halflife)
 val n = 240
 
 var goal = 0f
-var px = 0f; var pv = 0f
-var ax = 0f; var av = 0f
-var ex = 0f; var ev = 0f
+var px = 0f
+var pv = 0f
+var ax = 0f
+var av = 0f
+var ex = 0f
+var ev = 0f
 
 val goals = FloatArray(n)
 val plain = FloatArray(n)
@@ -135,11 +138,20 @@ val aimed = FloatArray(n)
 val eager = FloatArray(n)
 for (i in 0 until n) {
     goal += goalSpeed * dt
-    val p = Springs.spring(px, pv, goal, halflife, dt); px = p.x; pv = p.v
+    val p = Springs.spring(px, pv, goal, halflife, dt)
+    px = p.x
+    pv = p.v
     // Aim at where the goal will be one lag from now. `goalSpeed * lag` is that distance.
-    val a = Springs.spring(ax, av, goal + goalSpeed * lag, halflife, dt); ax = a.x; av = a.v
-    val e = Springs.spring(ex, ev, goal + 1.5f * goalSpeed * lag, halflife, dt); ex = e.x; ev = e.v
-    goals[i] = goal; plain[i] = px; aimed[i] = ax; eager[i] = ex
+    val a = Springs.spring(ax, av, goal + goalSpeed * lag, halflife, dt)
+    ax = a.x
+    av = a.v
+    val e = Springs.spring(ex, ev, goal + 1.5f * goalSpeed * lag, halflife, dt)
+    ex = e.x
+    ev = e.v
+    goals[i] = goal
+    plain[i] = px
+    aimed[i] = ax
+    eager[i] = ex
 }
 
 showSignals(
@@ -188,9 +200,11 @@ a plain spring has no way to know that:
 val dt = 1f / 60f
 val n = 90
 
-var x = 3f; var v = 0f
+var x = 3f
+var v = 0f
 var unwrapped = 3.0
-var plainX = 3f; var plainV = 0f
+var plainX = 3f
+var plainV = 0f
 val short = DoubleArray(n)
 val long = DoubleArray(n)
 for (i in 0 until n) {
@@ -198,9 +212,11 @@ for (i in 0 until n) {
     // springAngle reports its answer near the *goal*, so the raw number jumps by 2π on the
     // step where the short way crosses ±π. Accumulate wrapped increments to plot the travel.
     unwrapped += Springs.wrapAngle(step.x - x).toDouble()
-    x = step.x; v = step.v
+    x = step.x
+    v = step.v
     val naive = Springs.spring(plainX, plainV, -3f, 0.12f, dt)
-    plainX = naive.x; plainV = naive.v
+    plainX = naive.x
+    plainV = naive.v
     short[i] = unwrapped
     long[i] = plainX.toDouble()
 }
@@ -211,25 +227,37 @@ showSignals(
     channel = "shortway",
     title = "3 radians to −3: 0.283 radians the short way, 6.0 the long way",
     xTitle = "frame at 60 fps",
-    yTitle = "radians travelled from 3",
+    yTitle = "angle in radians (short path unwrapped)",
 )
 
-// A single spring leaves at once when the goal jumps, which reads as a flick. Two in series,
-// each on half the half-life, removes it: the visible spring chases something that is itself
-// accelerating.
-var sx = 0f; var sv = 0f
-var dx = 0f; var dv = 0f; var ix = 0f; var iv = 0f
+/*
+A single spring leaves at once when the goal jumps, which reads as a flick. Two in series,
+each on half the half-life, removes it: the visible spring chases something that is itself
+accelerating.
+*/
+var sx = 0f
+var sv = 0f
+var dx = 0f
+var dv = 0f
+var ix = 0f
+var iv = 0f
 val single = DoubleArray(n)
 val double = DoubleArray(n)
 val singleRate = DoubleArray(n)
 val doubleRate = DoubleArray(n)
 for (i in 0 until n) {
     val one = Springs.springAngle(sx, sv, goal = 1f, halflife = 0.25f, dt = dt)
-    sx = one.x; sv = one.v
+    sx = one.x
+    sv = one.v
     val two = Springs.doubleSpringAngle(dx, dv, ix, iv, goal = 1f, halflife = 0.25f, dt = dt)
-    dx = two.x; dv = two.v; ix = two.intermediateX; iv = two.intermediateV
-    single[i] = sx.toDouble(); double[i] = dx.toDouble()
-    singleRate[i] = sv.toDouble(); doubleRate[i] = dv.toDouble()
+    dx = two.x
+    dv = two.v
+    ix = two.intermediateX
+    iv = two.intermediateV
+    single[i] = sx.toDouble()
+    double[i] = dx.toDouble()
+    singleRate[i] = sv.toDouble()
+    doubleRate[i] = dv.toDouble()
 }
 
 showSignals(
@@ -245,7 +273,9 @@ showSignals(
 
 ![springAngle turning the short way where a plain spring goes the long way, and a double spring removing the flick](assets/movement_examples/angle_short_way.png)
 
-The top panel is the wrapping. The bottom panel is the other angle function:
+The top panel is the wrapping. Both curves are absolute angles in radians, the `springAngle` one
+unwrapped: it climbs from 3 through π and settles at about 3.28, which is −3 plus 2π, while the plain
+spring falls all the way to −3. The bottom panel is the other angle function:
 `doubleSpringAngle` runs two `springAngle`s in series, each on half the half-life,
 and the visible one chases the intermediate one rather than the goal. Its rate
 starts at 0.05 rad/s where the single spring's is already at 0.45, so the turn
@@ -255,11 +285,6 @@ behind, then overtakes: peak rate 2.48 rad/s at frame 14 against 2.04 at frame 9
 and a slightly earlier arrival, because two springs on half a half-life each
 settle faster than one on the whole.
 
-!!! warning "`springAngle` reports its answer near the goal"
-    The returned number can jump by 2π on the step where the short way crosses
-    ±π, even though the angle does not. Feed it to `cos`/`sin` or a rotation and
-    that is invisible. Compare it against a previous value, as the plot above has
-    to, and take the difference through `wrapAngle` first.
 
 ## A character following a moving target
 
@@ -321,28 +346,33 @@ for (i in 0 until frames) {
 }
 
 val targetPath = fline {
+    breakNext()
     for (i in 0..600) {
         val p = target(i / 600.0 * period)
-        if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
+        lineTo(p.x, p.y)
     }
     color = vec(1, 1, 1, 0.22)
     thickness = 1.6
 }
 
 val walked = fline {
-    path.forEachIndexed { i, p -> if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y) }
+    breakNext()
+    path.forEach { p -> lineTo(p.x, p.y) }
     color = vec(0.48, 0.85, 1.0, 0.95)
     thickness = 2.6
 }
 
-lines(listOf(targetPath, walked) + marks, channel = "chase", w = 1080.0, h = 560.0, fitToSize = true)
+lines([targetPath, walked] + marks, channel = "chase", w = 1080.0, h = 560.0, fitToSize = true)
 :::fold render the colour key
-markdown("legend", """
+markdown(
+    "legend",
+    """
     <span style='color:#9a9a9a'>grey</span>: the target's figure-eight;
     <span style='color:#7ad9ff'>blue</span>: where the character actually went;
     <span style='color:#ffb85a'>orange</span>: its facing;
     <span style='color:#ff6b85'>pink</span>: the chord out to the target
-""")
+""",
+)
 :::endfold
 ```
 
@@ -396,7 +426,7 @@ showSignals(
     title = "Two laps of it, measured",
     xTitle = "frame at 60 fps",
     yTitle = "units, and units/second",
-    marks = listOf("second lap" to frames / 2),
+    marks = ["second lap" to frames / 2],
     markColor = "#9aa4b2",
 )
 ```
@@ -437,15 +467,33 @@ val dt = 1f / 60f
 val up = 48
 val across = 130
 
-// Four MovementParams, and a colour each. The two dials are the first two arguments.
-// The colours are signalPalette's first four, in order, so they mean the same thing here
-// as in the showSignals plot below.
-val runs = listOf(
-    Triple("straight at the error, loose turn", MovementParams(directionalAcceleration = 0f, turnStrength = 1f), vec(0.478, 0.851, 1.0, 0.95)),
-    Triple("straight at the error, hard turn", MovementParams(directionalAcceleration = 0f, turnStrength = 16f), vec(1.0, 0.620, 0.290, 0.95)),
-    Triple("along the input, loose turn", MovementParams(directionalAcceleration = 1f, turnStrength = 1f), vec(0.561, 1.0, 0.604, 0.95)),
-    Triple("along the input, hard turn", MovementParams(directionalAcceleration = 1f, turnStrength = 16f), vec(1.0, 0.878, 0.400, 0.95))
-)
+/*
+Four MovementParams, and a colour each. The two dials are the first two arguments.
+The colours are signalPalette's first four, in order, so they mean the same thing here
+as in the showSignals plot below.
+*/
+val runs = [
+    Triple(
+        "straight at the error, loose turn",
+        MovementParams(directionalAcceleration = 0f, turnStrength = 1f),
+        vec(0.478, 0.851, 1.0, 0.95),
+    ),
+    Triple(
+        "straight at the error, hard turn",
+        MovementParams(directionalAcceleration = 0f, turnStrength = 16f),
+        vec(1.0, 0.620, 0.290, 0.95),
+    ),
+    Triple(
+        "along the input, loose turn",
+        MovementParams(directionalAcceleration = 1f, turnStrength = 1f),
+        vec(0.561, 1.0, 0.604, 0.95),
+    ),
+    Triple(
+        "along the input, hard turn",
+        MovementParams(directionalAcceleration = 1f, turnStrength = 16f),
+        vec(1.0, 0.878, 0.400, 0.95),
+    ),
+]
 
 // y grows downwards in the output, so "up" is negative and the origin sits at the bottom left.
 fun sx(v: Float) = 100.0 + v
@@ -455,11 +503,18 @@ val drawn = mutableListOf<FLine>()
 for ((_, params, rgba) in runs) {
     val character = MovementState()
     val trace = mutableListOf<Vector2f>()
-    repeat(up) { character.update(Vector2f(0f, -400f), dt, params); trace += Vector2f(character.position) }
-    repeat(across) { character.update(Vector2f(400f, 0f), dt, params); trace += Vector2f(character.position) }
+    repeat(up) {
+        character.update(Vector2f(0f, -400f), dt, params)
+        trace += Vector2f(character.position)
+    }
+    repeat(across) {
+        character.update(Vector2f(400f, 0f), dt, params)
+        trace += Vector2f(character.position)
+    }
 
     drawn += fline {
-        trace.forEachIndexed { i, p -> if (i == 0) moveTo(sx(p.x), sy(p.y)) else lineTo(sx(p.x), sy(p.y)) }
+        breakNext()
+        trace.forEach { p -> lineTo(sx(p.x), sy(p.y)) }
         color = rgba
         thickness = 2.6
     }
@@ -479,19 +534,32 @@ for ((_, params, rgba) in runs) {
     }
 }
 
-val corner = listOf(
-    fline { moveTo(sx(0f), sy(0f)); lineTo(sx(940f), sy(0f)); color = vec(1, 1, 1, 0.18); thickness = 1.2 },
-    fline { moveTo(sx(0f), sy(0f)); lineTo(sx(0f), sy(-500f)); color = vec(1, 1, 1, 0.18); thickness = 1.2 }
-)
+val corner = [
+    fline {
+        moveTo(sx(0f), sy(0f))
+        lineTo(sx(940f), sy(0f))
+        color = vec(1, 1, 1, 0.18)
+        thickness = 1.2
+    },
+    fline {
+        moveTo(sx(0f), sy(0f))
+        lineTo(sx(0f), sy(-500f))
+        color = vec(1, 1, 1, 0.18)
+        thickness = 1.2
+    },
+]
 
 lines(corner + drawn, channel = "paths", w = 1080.0, h = 560.0, fitToSize = true)
 :::fold render the colour key
-markdown("legend", """
+markdown(
+    "legend",
+    """
     <span style='color:#7ad9ff'>blue</span>: straight at the error, loose turn;
     <span style='color:#ff9e4a'>orange</span>: straight at the error, hard turn;
     <span style='color:#8fff9a'>green</span>: along the input, loose turn;
     <span style='color:#ffe066'>yellow</span>: along the input, hard turn
-""")
+""",
+)
 :::endfold
 ```
 
@@ -513,18 +581,24 @@ val dt = 1f / 60f
 val up = 48
 val across = 130
 
-val runs = listOf(
+val runs = [
     "straight at the error, loose turn" to MovementParams(directionalAcceleration = 0f, turnStrength = 1f),
     "straight at the error, hard turn" to MovementParams(directionalAcceleration = 0f, turnStrength = 16f),
     "along the input, loose turn" to MovementParams(directionalAcceleration = 1f, turnStrength = 1f),
-    "along the input, hard turn" to MovementParams(directionalAcceleration = 1f, turnStrength = 16f)
-)
+    "along the input, hard turn" to MovementParams(directionalAcceleration = 1f, turnStrength = 16f),
+]
 
 val speeds = runs.map { (label, params) ->
     val character = MovementState()
     val speed = mutableListOf<Number>()
-    repeat(up) { character.update(Vector2f(0f, -400f), dt, params); speed += character.speed }
-    repeat(across) { character.update(Vector2f(400f, 0f), dt, params); speed += character.speed }
+    repeat(up) {
+        character.update(Vector2f(0f, -400f), dt, params)
+        speed += character.speed
+    }
+    repeat(across) {
+        character.update(Vector2f(400f, 0f), dt, params)
+        speed += character.speed
+    }
     label to speed.toList()
 }
 
@@ -534,7 +608,7 @@ showSignals(
     title = "What each pair of dials did to the speed through the corner",
     xTitle = "frame at 60 fps",
     yTitle = "units/second",
-    marks = listOf("the input turns" to up),
+    marks = ["the input turns" to up],
     markColor = "#9aa4b2",
 )
 ```

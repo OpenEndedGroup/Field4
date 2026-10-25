@@ -1,15 +1,18 @@
-// RectSL data-visualization demo.
-//
-// The #rectsl program draws a viridis colour-bar legend (array + colormap)
-// and a bar chart bound to a data list (data / normalize / bars), animated in
-// with a staggered eased `->alpha`. Edit `rectsl` and re-run to change it live.
-// See rectsl_cheatsheet.md ("Data visualization") / rectsl_examples.md.
-import afield.rectsl.RectAnimationOracle
-import afield.rectsl.rectMaterialShaderCode
-import afield.rectsl.writeFrameToMesh
-import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
+/*
+RectSL data-visualization demo.
 
-val rectsl = """
+The #rectsl program draws a viridis colour-bar legend (array + colormap)
+and a bar chart bound to a data list (data / normalize / bars), animated in
+with a staggered eased `->alpha`. Edit `rectsl` and re-run to change it live.
+See rectsl_cheatsheet.md ("Data visualization") / rectsl_examples.md.
+*/
+import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
+import afield.lang.rectsl.RectAnimationOracle
+import afield.lang.rectsl.rectMaterialShaderCode
+import afield.lang.rectsl.writeFrameToMesh
+
+val rectsl =
+    """
 #rectsl
 ->wall 20 10 meters
 ->duration 6
@@ -27,13 +30,15 @@ val rectsl = """
 """
 
 val program = RectAnimationOracle.compile(rectsl).program!!
-val shader  = rectMaterialShaderCode(program)
+val shader = rectMaterialShaderCode(program)
 
-// Seed this box's shader-source properties before `moduleHere {}` runs; the
-// `//%-` fragment break makes this fragment execute first (see the playground
-// transcript for the why).
+/*
+Refresh the generated fragment on every run before `moduleHere {}`; the
+`//%-` fragment break makes this fragment execute first (see the playground
+transcript for the why).
+*/
 once.vertex { RECT_ANIMATION_VERTEX_SHADER }
-once.fragment { shader.exampleFragmentShader!! }
+fragment = shader.exampleFragmentShader!!
 
 //%-
 
@@ -48,7 +53,7 @@ renderer += "rectsl-dataviz" to module
 
 val ww = program.wall.width.toFloat()
 val wh = program.wall.height.toFloat()
-m.push["worldToClip"] = afield.stdlib.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
+m.push["worldToClip"] = afield.math.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
 m.push["wallWidth"] = ww
 m.push["wallHeight"] = wh
 

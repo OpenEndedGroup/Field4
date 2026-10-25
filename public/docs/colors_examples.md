@@ -19,17 +19,10 @@ Stepping evenly round the hue wheel is the obvious way to ask for ten distinguis
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/colors_examples/hsl_okhsl_sets.png" wait="1.0" capture="box"}
 :::static
-import afield.graphics.FLine
-
 fun swatchRow(y0: Double, colors: List<Vec4>, h: Double): List<FLine> = colors.mapIndexed { i, c ->
     val x0 = 40.0 + i * 90.0
-    val x1 = x0 + 78.0
     fline {
-        moveTo(x0, y0)
-        lineTo(x1, y0)
-        lineTo(x1, y0 + h)
-        lineTo(x0, y0 + h)
-        close()
+        rect(x0, y0, 78.0, h)
         filled = true
         stroked = true
         color = c
@@ -45,7 +38,7 @@ lines(
     channel = "colors-hues",
     w = 1000.0,
     h = 560.0,
-    fitToSize = true
+    fitToSize = true,
 )
 ```
 
@@ -61,18 +54,17 @@ A palette can look fine in isolation and fail against a real background. The col
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/colors_examples/palette_background_paths.png" wait="1.0" capture="box" open-outputs="true"}
 :::static
-import afield.graphics.FLine
-
 val bg = rgb(0.06, 0.08, 0.11, 1.0)
 val palette = paletteForBackground(bg, count = 7, saturation = 0.78, lightness = 0.63, minContrast = 3.5)
 
 fun ring(radius: Double, phase: Double, color: Vec4): FLine = fline {
     val n = 260
+    breakNext()
     for (i in 0..n) {
         val t = i / n.toDouble() * PI * 2.0
         val x = 540.0 + cos(t + phase) * radius
         val y = 340.0 + sin(t + phase * 1.4) * radius * 0.55
-        if (i == 0) moveTo(x, y) else lineTo(x, y)
+        lineTo(x, y)
     }
     stroked = true
     filled = false

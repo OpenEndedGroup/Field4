@@ -1,10 +1,13 @@
 name: smpte_timecode
 description: >
-  SMPTE timecode in Field (`afield.timecode`): drop-frame arithmetic, LTC rendered to audio,
+  SMPTE timecode in Field (`afield.io.timecode`): drop-frame arithmetic, LTC rendered to audio,
   degraded (gain, DC offset, noise, a 0.9x-to-1.1x speed ramp) and decoded back with a plot of
   decoded frame and measured speed against playback time, MIDI Time Code (a full-frame locate
   then running quarter frames) into a `TimecodeClock`, and a clock following LTC fed in
   audio-sized blocks. Pure CPU, no audio device, no MIDI port. Docs page: public/docs/smpte_timecode.md.
+docs:
+  - page: smpte_timecode.md
+    why: "Explains reading and generating SMPTE timecode."
 operations:
   - create:
       box: tc_arithmetic
@@ -12,17 +15,20 @@ operations:
       frame: { x: 60.0, y: 60.0, w: 400.0, h: 140.0 }
       properties:
         code: |
-          import afield.timecode.*
+          import afield.io.timecode.*
 
           val t = Timecode.parse("00:00:59;29")
-          markdown("main", "`$t` + 1 frame = `${t + 1}`  \n`${Timecode.parse("00:09:59;29")}` + 1 frame = `${Timecode.parse("00:09:59;29") + 1}`  \nan hour of drop-frame labels is ${"%.3f".format(Timecode.parse("01:00:00;00").totalSeconds)} s of wall time")
+          markdown(
+              "main",
+              "`$t` + 1 frame = `${t + 1}`  \n`${Timecode.parse("00:09:59;29")}` + 1 frame = `${Timecode.parse("00:09:59;29") + 1}`  \nan hour of drop-frame labels is ${"%.3f".format(Timecode.parse("01:00:00;00").totalSeconds)} s of wall time",
+          )
   - create:
       box: tc_ltc_roundtrip
       name: 2 - LTC encode, mangle, decode
       frame: { x: 520.0, y: 60.0, w: 400.0, h: 140.0 }
       properties:
         code: |
-          import afield.timecode.*
+          import afield.io.timecode.*
 
           // Four seconds of 29.97 drop-frame LTC across the one-minute boundary.
           val start = Timecode.parse("00:00:58;00")
@@ -42,12 +48,18 @@ operations:
           val frames = LtcDecoder(48000, TimecodeRate.FPS_2997_DF).decodeAll(played.toFloatArray())
 
           // Decoded frame number against playback time, and the speed the decoder measured.
-          val w = 640.0; val h = 220.0
+          val w = 640.0
+          val h = 220.0
           val tMax = played.size / 48000.0
           val fMax = frames.maxOf { it.timecode - start }.toDouble()
-          val pts = frames.joinToString(" ") { "%.1f,%.1f".format(it.sampleStart / 48000 / tMax * w, h - (it.timecode - start) / fMax * h) }
-          val spd = frames.joinToString(" ") { "%.1f,%.1f".format(it.sampleStart / 48000 / tMax * w, h - (it.speed - 0.8) / 0.4 * h) }
-          display("main", """<svg width="${w + 60}" height="${h + 40}" style="font: 12px sans-serif">
+          val pts = frames.joinToString(" ") {
+              "%.1f,%.1f".format(it.sampleStart / 48000 / tMax * w, h - (it.timecode - start) / fMax * h)
+          }
+          val spd =
+              frames.joinToString(" ") { "%.1f,%.1f".format(it.sampleStart / 48000 / tMax * w, h - (it.speed - 0.8) / 0.4 * h) }
+          display(
+              "main",
+              """<svg width="${w + 60}" height="${h + 40}" style="font: 12px sans-serif">
             <g transform="translate(40,10)">
               <rect width="$w" height="$h" fill="none" stroke="#999"/>
               <polyline points="$pts" fill="none" stroke="#2a7" stroke-width="2"/>
@@ -55,17 +67,21 @@ operations:
               <text x="4" y="14" fill="#2a7">decoded frame (0 … ${fMax.toInt()})</text>
               <text x="4" y="${h - 6}" fill="#c52">measured speed (0.8 … 1.2)</text>
               <text x="${w / 2 - 40}" y="${h + 22}" fill="#999">playback time, s (0 … ${"%.2f".format(tMax)})</text>
-            </g></svg>""")
-          markdown("info", "decoded **${frames.size}** frames, ${frames.first().timecode} … ${frames.last().timecode}; " +
-              "consecutive: ${frames.zipWithNext().all { (a, b) -> a.timecode + 1 == b.timecode }}; " +
-              "across the minute: ${frames.map { it.timecode.toString() }.filter { it.startsWith("00:00:59;2") || it.startsWith("00:01:00;0") }}")
+            </g></svg>""",
+          )
+          markdown(
+              "info",
+              "decoded **${frames.size}** frames, ${frames.first().timecode} … ${frames.last().timecode}; " +
+                  "consecutive: ${frames.zipWithNext().all { (a, b) -> a.timecode + 1 == b.timecode }}; " +
+                  "across the minute: ${frames.map { it.timecode.toString() }.filter { it.startsWith("00:00:59;2") || it.startsWith("00:01:00;0") }}",
+          )
   - create:
       box: tc_mtc
       name: 3 - MIDI Time Code into a clock
       frame: { x: 60.0, y: 260.0, w: 400.0, h: 140.0 }
       properties:
         code: |
-          import afield.timecode.*
+          import afield.io.timecode.*
 
           // A locate, then two seconds of running MTC at 25 fps, decoded as it would be on the far end of a cable.
           val decoder = MtcDecoder()
@@ -74,19 +90,22 @@ operations:
           var tc = Timecode.parse("09:59:58:00", TimecodeRate.FPS_25)
           decoder.accept(Mtc.fullFrameMessage(tc))
           val afterLocate = clock.now()
-          repeat(25) {                      // 25 cycles of 8 quarter frames = 50 frames
+          repeat(25) { // 25 cycles of 8 quarter frames = 50 frames
               Mtc.quarterFrameMessages(tc).forEach { decoder.accept(it) }
               tc += 2
           }
-          markdown("main", "full frame: `${Mtc.fullFrame(Timecode.parse("09:59:58:00", TimecodeRate.FPS_25)).joinToString(" ") { "%02X".format(it) }}`  \n" +
-              "clock after the locate: `$afterLocate`  \nclock after 50 frames of quarter frames: `${clock.now()}` (locked: ${clock.locked})")
+          markdown(
+              "main",
+              "full frame: `${Mtc.fullFrame(Timecode.parse("09:59:58:00", TimecodeRate.FPS_25)).joinToString(" ") { "%02X".format(it) }}`  \n" +
+                  "clock after the locate: `$afterLocate`  \nclock after 50 frames of quarter frames: `${clock.now()}` (locked: ${clock.locked})",
+          )
   - create:
       box: tc_follow_ltc
       name: 4 - A clock following LTC
       frame: { x: 520.0, y: 260.0, w: 400.0, h: 140.0 }
       properties:
         code: |
-          import afield.timecode.*
+          import afield.io.timecode.*
 
           // Follow LTC delivered in audio-sized blocks, and read the clock between blocks, as a draw loop would.
           val clock = TimecodeClock(TimecodeRate.FPS_24).followLtc(48000)
@@ -94,8 +113,9 @@ operations:
           val readings = ArrayList<String>()
           for (i in ltc.indices step 512) {
               clock.feedLtc(ltc, i, minOf(512, ltc.size - i))
-              Thread.sleep(10)              // ~ the real duration of 512 samples
-              if (clock.locked && i % (512 * 16) == 0) readings += "${clock.now()} (${clock.source}, speed ${"%.2f".format(clock.speed)})"
+              Thread.sleep(10) // ~ the real duration of 512 samples
+              if (clock.locked && i % (512 * 16) == 0)
+                  readings += "${clock.now()} (${clock.source}, speed ${"%.2f".format(clock.speed)})"
           }
           markdown("main", readings.joinToString("  \n"))
   - execute:

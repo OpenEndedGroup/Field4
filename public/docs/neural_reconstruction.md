@@ -85,19 +85,21 @@ rejected; create a new scene for that change. A successful compatible edit reset
 The reusable scene is also a small piece of ordinary Field code:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.reconstruction.*
+import afield.media.reconstruction.*
 
 val experiment = ReconstructionDemo(
     renderer,
     ReconstructionMode.DLAA,
-    ReconstructionSize(1920, 1080)
+    ReconstructionSize(1920, 1080),
 )
 experiment.abstractScene = true
 experiment.reset("material edit")
-// experiment.close() when replacing it
+
+// The constructing box run owns this view; Stop or rerun closes it.
 ```
 
-`renderer` comes from the parent renderer box. `mode = null` selects Source. The example contains the
+`ReconstructionDemo` registers with the constructing box run immediately. Stop or rerun
+detaches its exact view and releases its resources. `renderer` comes from the parent renderer box. `mode = null` selects Source. The example contains the
 controls and shader properties needed to keep editing, rather than requiring a separate launch script.
 
 For Ultra Performance in your own experiment:
@@ -126,9 +128,20 @@ Each input must follow these conventions:
 | Jitter | Projection displacement in input pixels, matching the rendered image |
 | Reset | Camera cuts, live edits, new resources, skipped frames and context recreation |
 
-Field's direct-lighting motion texture stores current-minus-previous **UV** displacement, so it needs
-both a sign and unit conversion before this adapter can use it. Merely passing that texture through
-would produce incorrect history.
+For Field's direct-lighting motion texture, declare its current-minus-previous UV convention:
+
+```diffstatic {data-lang=kotlin}
+ReconstructionInputs(
+    color,
+    depth,
+    motion,
+    motionCurrentMinusPrevious = true,
+    motionInPixels = false,
+)
+```
+
+The adapter supplies the sign and input dimensions to NGX for both Super Resolution and Ray
+Reconstruction. The motion texture stays on the GPU and needs no conversion pass.
 
 ??? aside "Inspect the input guides"
 

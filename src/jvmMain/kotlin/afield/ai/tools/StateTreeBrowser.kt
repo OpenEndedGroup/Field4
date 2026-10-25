@@ -1,0 +1,161 @@
+package afield.ai.tools
+
+import afield.ai.conversation.AiSessionTree
+import afield.ai.agent.*
+import afield.ai.conversation.*
+import afield.ai.tools.*
+import afield.animation.gesture.*
+import afield.animation.interpolation.*
+import afield.animation.keyframes.*
+import afield.app.diagnostics.*
+import afield.app.notifications.*
+import afield.app.protocol.*
+import afield.app.server.*
+import afield.app.settings.*
+import afield.audio.synth.*
+import afield.data.table.*
+import afield.document.context.*
+import afield.document.graph.*
+import afield.document.history.*
+import afield.document.persistence.*
+import afield.document.properties.*
+import afield.document.workspace.*
+import afield.graphics.color.*
+import afield.graphics.paint.*
+import afield.graphics.vulkan.*
+import afield.math.functions.*
+import afield.media.capture.*
+import afield.media.stream.*
+import afield.media.video.*
+import afield.runtime.completion.*
+import afield.runtime.execution.*
+import afield.runtime.kotlin.*
+import afield.runtime.lifecycle.*
+import afield.tools.automation.*
+import afield.tools.docs.*
+import afield.ui.controls.*
+import afield.ui.layout.*
+import afield.ui.notation.*
+import afield.ui.output.*
+import afield.ui.output.templates.*
+import afield.ui.slides.*
+import afield.ui.visualization.*
+import afield.study.source.SourceStudy
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+
+/**
+ * The States browser of AI4: how a box exposes a saved history with [stateTree], and the read-only view of it shared by the browser and by chat references.
+ *
+ * A provider supplies a snapshot, a reader for one saved state and, optionally, a fork callback.
+ * [StateTreeBrowser] pages and bounds the text it shows, and never restores a state.
+ */
+
+/**
+ * Expose an existing history to AI4's States browser. Callbacks only read saved data; they must not
+ * restore state or run admission checks. [read] returns metadata; [inspect] reads one exact saved ID.
+ * Optional [fork] creates a named saved child and returns its ID without activation or restoration.
+ * Leave it null for histories that cannot safely retain branches.
+ * Re-running replaces this named provider and the run's lifecycle owns its registration.
+ */
+fun Box.stateTree(name: String, label: String, read: () -> StateTreeSnapshot, inspect: (String) -> String, fork: ((String, String) -> String)?) {
+    require(name.matches(Regex("[A-Za-z0-9_-]{1,80}"))) { "Use a simple state tree name" }
+    val key = "_stateTree:$name"
+    val binding = StateTreeBinding(this, name, label, read, inspect, fork)
+    properties[key] = binding
+    LifecycleLedger.claim("state-tree", "${id}:$name", slot = LedgerSlot(properties, key), owner = this,
+        scope = RunScope.currentFor(this), live = { properties[key] === binding },
+        policy = ReleasePolicy.ACCUMULATING, release = { if (properties[key] === binding) properties.remove(key) })
+}
+
+/** Read-only provider overload; keeps the inspector usable as a trailing lambda. */
+fun Box.stateTree(name: String, label: String, read: () -> StateTreeSnapshot, inspect: (String) -> String) =
+    stateTree(name, label, read, inspect, null)
+
+/** Browse a SourceStudy without invoking its compiler or candidate checks. */
+fun Box.stateTree(name: String, label: String, study: SourceStudy<*>) = stateTree(name, label, {
+    StateTreeSnapshot(study.allRevisions().map { StateTreeNode(it.id, listOfNotNull(it.parent), it.description,
+        "source", it.created.orEmpty()) }, study.currentId(), "Saved source revisions; live edits may differ.")
+}, study::savedSource, study::forkSaved)
+
+internal class StateTreeBinding(val owner: Box, val name: String, val label: String,
+    val read: () -> StateTreeSnapshot, val inspect: (String) -> String, val fork: ((String, String) -> String)? = null)
+
+/** Read-only projection shared by the browser and its chat references. No navigation or restoration. */
+object StateTreeBrowser {
+    private const val PAGE_SIZE = 400
+    private fun JsonObject.str(key: String) = (this[key] as? JsonPrimitive)?.contentOrNull
+
+    /** Bound text before it reaches either the browser or a model; never inline image blobs. */
+    internal fun excerpt(text: String, limit: Int): String {
+        val cleaned = text.replace(Regex("data:[^\\s)]*"), "[image omitted]")
+            .replace(Regex("ai4img:[^\\s)]*"), "[saved image]")
+        return if (cleaned.length <= limit) cleaned else cleaned.take(limit) + "\n[Excerpt; ${cleaned.length} characters total]"
+    }
+
+    private fun conversation(box: Box): StateTreeBinding = StateTreeBinding(box, "conversation", "Conversation", {
+        val s = AiSessionTree.load(box)
+        val nodes = s.nodes().values.map { n -> StateTreeNode(n.str("id").orEmpty(), listOfNotNull(n.str("parent")),
+            excerpt(n.str("branchName") ?: n.str("user")?.takeIf { it.isNotBlank() } ?: AiSessionTree.userText(n.str("markdown").orEmpty())
+                .ifBlank { "${n.str("t")} transcript" }, 180), n.str("t").orEmpty(), n.str("at").orEmpty()) }
+        StateTreeSnapshot(nodes, s.head(), "Conversation history and registered snapshots. This is not a complete document backup.")
+    }, { id ->
+        val s = AiSessionTree.load(box)
+        val node = requireNotNull(s.nodes()[id]) { "This conversation state is no longer available. Refresh the tree." }
+        val snapshots = linkedMapOf<String, String>()
+        s.path(id).forEach { n -> ((n["branch"] as? JsonObject)?.get("after") as? JsonObject)?.forEach { (k, v) ->
+            snapshots[k] = (v as? JsonPrimitive)?.contentOrNull.orEmpty()
+        } }
+        buildString {
+            appendLine("Conversation state: $id")
+            appendLine("Parents: ${node.str("parent") ?: "none"}")
+            appendLine("Registered state snapshots: ${if (snapshots.isEmpty()) "none recorded" else snapshots.entries.joinToString { "${it.key}=${it.value}" }}")
+            appendLine("This records a conversation position; it does not assert a complete document snapshot.")
+            appendLine("\nSaved conversation transcript:\n${s.renderRaw(id)}")
+        }
+    }, { id, name -> AiSessionTree.fork(box, id, name) })
+
+    private fun hasBranchState(box: Box): Boolean =
+        AgentExtensionRegistry.hooksFor(documentKeyFor(box)).any { it is AgentExtensionRegistry.BranchStateHook } ||
+            AiSessionTree.load(box).nodes().values.any { node ->
+                (node["branch"] as? JsonObject)?.values?.any { (it as? JsonObject)?.isNotEmpty() == true } == true
+            }
+
+    internal fun bindings(boxes: Collection<Box>): Map<String, StateTreeBinding> = boxes.distinct().flatMap { box ->
+        val providers = box.properties.values.filterIsInstance<StateTreeBinding>().filter { it.owner === box }
+        if ((box.getPropertyRaw(AiSessionTree.PROPERTY) as? String).isNullOrBlank() &&
+            AgentExtensionRegistry.hooksFor(documentKeyFor(box)).none { it is AgentExtensionRegistry.BranchStateHook && it.box === box }) providers
+        else listOf(conversation(box)) + providers
+    }.associateBy { "${it.owner.id}/${it.name}" }
+
+    internal fun label(b: StateTreeBinding) = "${b.owner.getPropertyRaw("name") ?: b.owner.id} · ${b.label}".take(200)
+
+    fun read(boxes: Collection<Box>, request: StateTreeRequest): StateTreeReply = runCatching {
+        require(boxes.any { it.id == request.uid }) { "Chat box no longer exists." }
+        val indexed = bindings(boxes)
+        val sources = indexed.map { (id, b) -> StateTreeSource(id, label(b), b.name != "conversation" || hasBranchState(b.owner)) }
+        if (request.source.isEmpty()) return@runCatching StateTreeReply(sources = sources)
+        val binding = requireNotNull(indexed[request.source]) { "History provider is unavailable. Run its box, then refresh." }
+        val snapshot = binding.read()
+        require(snapshot.nodes.map { it.id }.distinct().size == snapshot.nodes.size) { "History provider returned duplicate state IDs." }
+        if (request.node.isNotEmpty()) {
+            val n = requireNotNull(snapshot.nodes.find { it.id == request.node }) { "Saved state is no longer available. Refresh the tree." }
+            val detail = excerpt(binding.inspect(n.id), 10000)
+            val label = sources.first { it.id == request.source }.label
+            // Canonical identity only. AI4 retrieves contents through StateReadRequest on demand.
+            val reference = "State reference: ${excerpt(n.title, 180)}\n" +
+                "StateReadRequest(history=${aiToolMapper.writeValueAsString(request.source)}, state=${aiToolMapper.writeValueAsString(n.id)})\n" +
+                "History: $label\nSelected for discussion only; no state was restored."
+            StateTreeReply(source = request.source, detail = detail, reference = reference)
+        } else {
+            val offset = request.offset.coerceIn(0, snapshot.nodes.size)
+            val end = (snapshot.nodes.size - offset).coerceAtLeast(0)
+            val page = snapshot.nodes.subList((end - PAGE_SIZE).coerceAtLeast(0), end).map {
+                it.copy(title = excerpt(it.title, 180), created = it.created.take(80))
+            }
+            StateTreeReply(source = request.source, tree = snapshot.copy(nodes = page, note = excerpt(snapshot.note, 1000)),
+                total = snapshot.nodes.size, offset = offset)
+        }
+    }.getOrElse { StateTreeReply(error = it.message ?: "Could not read this state history.") }
+}

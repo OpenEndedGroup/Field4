@@ -1,0 +1,8 @@
+{
+  "twoActualTermsAgreeWithOracle": true,
+  "bothTermsReducedToCompletion": true,
+  "realStageOutputCaptured": true,
+  "inheritedRendererActualNrAvailability": true,
+  "actualPathTracerOffscreenConvergence": true,
+  "limits": "Real authored path-tracer scene at 96\u00d764 with four target samples. NVIDIA NR image processing is unavailable on this macOS host; only its real availability branch was exercised. No public captures changed."
+}

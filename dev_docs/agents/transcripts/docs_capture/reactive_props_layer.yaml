@@ -1,0 +1,46 @@
+name: reactive_props_layer
+description: |
+  Setup for `public/docs/reactive_properties.md`, "Seeing who reads what" (and the figure in
+  `running_code.md`'s property-inheritance section). Tempo, at the top, supplies `bpm` and `key`;
+  Beat and Harmony sit beneath it and read one each; Accent sits beneath Beat and reads both, so its
+  `key` comes from its grandparent. Every box runs once, top down; the fence then turns on the
+  dependency layer and captures the window.
+operations:
+  - create:
+      box: rpl_tempo
+      name: Tempo
+      frame: { x: 260.0, y: 40.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          propDown<Int>(bpm) = 120
+          prop<String>(key) = "D minor"
+  - create:
+      box: rpl_beat
+      name: Beat
+      frame: { x: 80.0, y: 200.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          println("a beat every ${60000 / bpm} ms")
+  - create:
+      box: rpl_harmony
+      name: Harmony
+      frame: { x: 440.0, y: 200.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          println("in $key")
+  - create:
+      box: rpl_accent
+      name: Accent
+      frame: { x: 80.0, y: 360.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          println("accent every 4 beats at $bpm bpm, in $key")
+  - connect: { parent: rpl_tempo, child: rpl_beat }
+  - connect: { parent: rpl_tempo, child: rpl_harmony }
+  - connect: { parent: rpl_beat, child: rpl_accent }
+  - execute: { box: rpl_tempo, property: code }
+  - await: {}
+  - execute: { box: rpl_beat, property: code }
+  - execute: { box: rpl_harmony, property: code }
+  - execute: { box: rpl_accent, property: code }
+  - await: {}

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build `field_tetgen_jvm` — TetGen behind a flat C ABI — on macOS, Linux or Windows.
 
-TetGen turns the closed triangle surface `afield.manifold.Solid.toTriMesh()` produces into a
+TetGen turns the closed triangle surface `afield.geometry.solid.manifold.Solid.toTriMesh()` produces into a
 conforming tetrahedral mesh, preserving the surface's sharp edges exactly. That last property is
 why it is here rather than a level-set remesher; `dev_docs/TETGEN.md` has the measurement.
 
@@ -102,6 +102,36 @@ def extract(archive: Path, into: Path) -> Path:
     return into
 
 
+# Edits to the pinned TetGen 1.6.0 source, applied after every extract. Each one names the exact text
+# it replaces and fails the build if that text is not there exactly once, so a version bump that
+# moves it is a loud error rather than a patch that silently stopped applying.
+SOURCE_PATCHES = [
+    (
+        # A refused self-intersecting surface dumps tetgen-tmpfile_skipped.node/.face into the
+        # process's working directory, and neither Q nor TETLIBRARY stops it. A library has no
+        # business writing there (TetgenWorkingDirectoryLitterTest), so the dump is compiled out.
+        "void tetgenmesh::out_intersected_facets()\n{\n",
+        "void tetgenmesh::out_intersected_facets()\n{\n#ifdef TETLIBRARY\n  return; // field-tetgen: no files in the cwd\n#endif\n",
+    ),
+    (
+        # Printed to stdout despite Q, ahead of the wrapper's own message for the same refusal.
+        "      printf(\"Exception:  All vertices are (nearly) collinear (Tol = %g).\\n\",\n",
+        "      if (!b->quiet) printf(\"Exception:  All vertices are (nearly) collinear (Tol = %g).\\n\",\n",
+    ),
+]
+
+
+def patch_source(source: Path) -> None:
+    path = source / "tetgen.cxx"
+    text = path.read_text(encoding="latin-1")
+    for before, after in SOURCE_PATCHES:
+        count = text.count(before)
+        if count != 1:
+            raise SystemExit(f"[field-tetgen] patch target found {count} times in {path}: {before!r}")
+        text = text.replace(before, after)
+    path.write_text(text, encoding="latin-1")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 4)
@@ -119,6 +149,7 @@ def main() -> int:
     seed_from_legacy_cache(LEGACY_DOWNLOADS / archive.name, archive, TETGEN_SHA256)
     fetch(TETGEN_URL, TETGEN_SHA256, archive)
     source = extract(archive, WORK / "tetgen-src")
+    patch_source(source)
 
     defines = {
         "CMAKE_BUILD_TYPE": "Release",

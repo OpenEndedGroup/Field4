@@ -1,0 +1,41 @@
+{
+  "baseline": "6147d3463",
+  "sources": [
+    {
+      "path": "public/docs/chain_scene_to_light.md",
+      "kotlinBodies": 5,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/rtp_midi.md",
+      "kotlinBodies": 6,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/rtp_midi_demo.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/assets/rtp_midi_demo/rtpm-session_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/assets/rtp_midi_demo/rtpm-peer_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/assets/rtp_midi_demo/rtpm-play_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

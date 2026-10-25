@@ -1,9 +1,69 @@
 package afield.ai.agent
 
-import afield.Box
-import afield.SessionInformation
-import afield.ai.core.*
-import afield.stdlib.*
+import afield.document.graph.Box
+import afield.app.server.SessionInformation
+import afield.ai.completion.*
+import afield.ai.conversation.*
+import afield.ai.diagnostics.*
+import afield.ai.models.*
+import afield.ai.tools.*
+import afield.runtime.languages.*
+import afield.ai.learning.*
+import afield.ai.retrieval.*
+import afield.animation.interpolation.*
+import afield.animation.keyframes.*
+import afield.animation.motion.*
+import afield.app.commands.*
+import afield.app.diagnostics.*
+import afield.audio.analysis.*
+import afield.audio.synth.*
+import afield.data.collections.*
+import afield.data.formats.*
+import afield.data.graph.*
+import afield.data.sorting.*
+import afield.document.context.*
+import afield.document.graph.*
+import afield.document.properties.*
+import afield.document.workspace.*
+import afield.geometry.mesh.*
+import afield.geometry.path.*
+import afield.geometry.spatial.*
+import afield.graphics.color.*
+import afield.graphics.interaction.*
+import afield.graphics.render.*
+import afield.graphics.shader.*
+import afield.graphics.text.*
+import afield.graphics.vulkan.buffers.*
+import afield.io.osc.*
+import afield.io.process.*
+import afield.lang.lambda.*
+import afield.lang.python.*
+import afield.lang.remotejs.*
+import afield.lang.stacksl.*
+import afield.math.autodiff.*
+import afield.math.control.*
+import afield.math.estimation.*
+import afield.math.functions.*
+import afield.math.linalg.*
+import afield.math.optimization.*
+import afield.math.statistics.*
+import afield.math.units.*
+import afield.media.image.*
+import afield.media.video.*
+import afield.runtime.execution.*
+import afield.runtime.lifecycle.*
+import afield.simulation.agents.*
+import afield.simulation.automata.*
+import afield.simulation.particles.*
+import afield.study.build.*
+import afield.study.evidence.*
+import afield.study.search.*
+import afield.study.source.*
+import afield.study.ui.*
+import afield.tools.testing.*
+import afield.ui.controls.*
+import afield.ui.output.*
+import afield.ui.visualization.*
 import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -279,6 +339,35 @@ class StudyBuildToolsTest {
             assertContains(aiToolMapper.writeValueAsString(call(info, InspectStudyBuildsRequest(box.id, "study", job.id))), "2 contacts remain")
             assertFalse(events.any { it.title.contains("Checks passed", ignoreCase = true) })
             assertEquals(2, builds.job(job.id).facts["contacts"])
+        }
+    }
+
+    @Test fun aFailedAttemptsFailureNotesReachTheAgentWithoutMakingItCurrent() {
+        val info = session()
+        val box = Box("source").also { info.boxes[it.id] = it }
+        val events = java.util.concurrent.CopyOnWriteArrayList<LlmProgressUpdate>()
+        StudyBuilds(Files.createTempDirectory("failure-notes-wait").toFile(), listOf(
+            StudyBuildStage("routes", "Relax service routes", "v1",
+                failureNotes = { job -> listOf(StudyBuildNotice("Held routes: ${job.problem?.details?.get("held")}.", StudyBuildNoticeKind.ERROR,
+                    StudyBuildView("held-routes", "each held route"))) }) {
+                throw StudyBuildFailure(StudyBuildProblem("routes-held", "2 routes were held.", details = mapOf("held" to "r3, r7")))
+            }), { emptyMap() }).use { builds ->
+            box.properties["_studyBuilds:study"] = BoxStudyBuildBinding(box, "study", builds)
+            val job = builds.start("routes", builds.stages().single().fingerprint!!)
+            val ctx = ToolExecutionContext(fieldGraph = FieldGraphTools(info, host), reportProgress = { events += it })
+            val q = WaitStudyBuildRequest(box.id, "study", job.id, waitSeconds = 600.0)
+            val result = registry.executeByName(ctx, q.javaClass.simpleName, aiToolMapper.writeValueAsString(q)) as StudyBuildToolResult
+            assertEquals(true, result.details["terminal"])
+            assertEquals("Relax service routes · Check failed", events.last().title)
+            assertContains(events.last().body, "Held routes: r3, r7.")
+            assertContains(aiToolMapper.writeValueAsString(result.details["resultNotes"]), "each held route")
+            assertEquals(false, (result.details["currency"] as Map<*, *>)["isCurrent"])
+            val stage = aiToolMapper.writeValueAsString(call(info, InspectStudyBuildsRequest(box.id, "study")))
+            assertContains(stage, "\"failureNotes\":[{")
+            assertContains(stage, "Held routes: r3, r7.")
+            assertNull(builds.stages().single().current)
+            assertTrue(builds.stages().single().resultNotes.isEmpty())
+            assertContains(aiToolMapper.writeValueAsString(call(info, InspectStudyBuildsRequest(box.id, "study", job.id))), "Held routes: r3, r7.")
         }
     }
 

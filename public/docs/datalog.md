@@ -6,7 +6,7 @@ does nothing feed into, which two boxes both write the same property. `graphPath
 ([Querying Object Graphs](graph_query.md)) can address a slot by pattern, but it cannot follow an
 edge and then follow it again.
 
-`afield.datalog` can. It is a small deductive database: you state facts, you write rules that
+`afield.data.query.datalog` can. It is a small deductive database: you state facts, you write rules that
 derive more facts from them, and the engine runs the rules to exhaustion. Recursion is the normal
 case rather than a special one, so transitive closure is two lines. Facts can come from Datalog
 text, from Kotlin collections, or from the document you have open.
@@ -32,7 +32,8 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/modules.png" alt="the Kotlin box in the editor with two inline output strips wedged between its lines: one under the first println reading 'app needs log, store, ui, util', one under the last carrying 'modules that need log: 4' and 'does app need log? true'. Inside the triple-quoted string the #datalog marker is gold, rule heads are blue and the variables A, B and C are orange" capture="editor" outputs="inline" wait="4" padding="10" timeout="180" embed=true name="datalog-modules" w="900" h="420"}
 :::static
 val d = Datalog()
-d.add("""
+d.add(
+    """
     #datalog
     % which module pulls in which
     imports(app, ui).    imports(app, store).
@@ -40,7 +41,8 @@ d.add("""
 
     needs(A, B) :- imports(A, B).
     needs(A, C) :- needs(A, B), imports(B, C).
-""")
+""",
+)
 
 println("app needs " + d.query("needs(app, X)").column("X").joinToString(", "))
 println("does app need log? " + d.ask("needs(app, log)"))
@@ -74,12 +76,14 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/fixpoint.png" alt="the main output channel: a heading reading '16 facts in 2 relations' over a three-column table of relation, arity and rows, listing edge at arity 2 with 4 rows and path at arity 2 with 12" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="datalog-fixpoint" w="760" h="260"}
 :::static
 val d = Datalog()
-d.add("""
+d.add(
+    """
     #datalog
     edge(a, b). edge(b, c). edge(c, d). edge(d, b).
     path(X, Y) :- edge(X, Y).
     path(X, Z) :- path(X, Y), edge(Y, Z).
-""")
+""",
+)
 
 display("main", d.solve())
 ```
@@ -107,12 +111,14 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/why.png" alt="a derivation tree headed 'why path(a, d)', indented by arrow glyphs: path(a, d) from the recursive clause, then path(a, c) from the same clause, then path(a, b) from the base clause, and at the leaves edge(a, b), edge(b, c) and edge(c, d), each tagged [fact]. Every interior node carries the rule that fired it in brackets" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="datalog-why" w="760" h="260"}
 :::static
 val d = Datalog()
-d.add("""
+d.add(
+    """
     #datalog
     edge(a, b). edge(b, c). edge(c, d). edge(d, b).
     path(X, Y) :- edge(X, Y).
     path(X, Z) :- path(X, Y), edge(Y, Z).
-""")
+""",
+)
 
 display("main", d.why("path(a, d)"))
 ```
@@ -190,23 +196,28 @@ expect:
 :::static
 data class Take(val clip: String, val shot: String, val seconds: Int, val rating: Int)
 
-val takes = listOf(
-    Take("a017", "wide",   42, 5), Take("a018", "wide",   38, 2),
-    Take("a021", "close",  19, 4), Take("a022", "close",  22, 3),
-    Take("a030", "insert",  8, 2), Take("a031", "insert", 11, 1),
-)
+val takes = [
+    Take("a017", "wide", 42, 5),
+    Take("a018", "wide", 38, 2),
+    Take("a021", "close", 19, 4),
+    Take("a022", "close", 22, 3),
+    Take("a030", "insert", 8, 2),
+    Take("a031", "insert", 11, 1),
+]
 
 val d = Datalog()
-d.facts("take", takes) { listOf(it.clip, it.shot, it.seconds, it.rating) }
-d.facts("shot", listOf(listOf("wide"), listOf("close"), listOf("insert")))
-d.add("""
+d.facts("take", takes) { [it.clip, it.shot, it.seconds, it.rating] }
+d.facts("shot", [["wide"], ["close"], ["insert"]])
+d.add(
+    """
     #datalog
     covered(S) :- take(_, S, _, R), R >= 4.
     reshoot(S) :- shot(S), !covered(S).
     footage(S, Total, Best) :- shot(S),
         Total = sum Sec : { take(_, S, Sec, _) },
         Best  = max R   : { take(_, S, _, R) }.
-""")
+""",
+)
 
 display("main", d.query("footage(S, Total, Best)"))
 display("reshoot", d.query("reshoot(S)"))
@@ -263,25 +274,30 @@ expect:
 fun boxNamed(id: String, name: String, parent: Box?): Box {
     val b = Box(id)
     b.name = name
-    if (parent != null) { parent.children.add(b); b.parents.add(parent) }
+    if (parent != null) {
+        parent.children.add(b)
+        b.parents.add(parent)
+    }
     return b
 }
 
-val root   = boxNamed("root", "document", null)
+val root = boxNamed("root", "document", null)
 val loader = boxNamed("loader", "loader", root)
-val mesh   = boxNamed("mesh", "mesh", loader)
+val mesh = boxNamed("mesh", "mesh", loader)
 val shader = boxNamed("shader", "shader", loader)
-val draw   = boxNamed("draw", "draw", mesh)
-val notes  = boxNamed("notes", "notes", root)
+val draw = boxNamed("draw", "draw", mesh)
+val notes = boxNamed("notes", "notes", root)
 
 val d = Datalog()
 d.addBoxGraph(root)
-d.add("""
+d.add(
+    """
     #datalog
     downstream(A, B) :- child(A, B).
     downstream(A, C) :- downstream(A, B), child(B, C).
     leaf(X) :- box(X), !child(X, _).
-""")
+""",
+)
 
 display("main", d.query("downstream(loader, X), name(X, N)"))
 display("leaves", d.query("leaf(X), name(X, N)"))
@@ -361,16 +377,18 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/reachability.png" alt="seven yellow diamond nodes numbered 0 to 6 around an ellipse. Eight thick yellow lines are the stated edges, the ring 0-1-2-3-4 back to 0, plus the branch 1-5-6 rejoining at 2. Behind them a dense haze of thin blue-grey lines joins almost every other pair of nodes: the implied edges, outnumbering the stated ones four to one" wait="1.5" capture="box" open-outputs="true" embed=true name="datalog-reachability" w="760" h="430"}
 :::static
-val links = listOf(0 to 1, 1 to 2, 2 to 3, 3 to 4, 4 to 0, 1 to 5, 5 to 6, 6 to 2)
+val links = [0 to 1, 1 to 2, 2 to 3, 3 to 4, 4 to 0, 1 to 5, 5 to 6, 6 to 2]
 
 val d = Datalog()
-d.facts("edge", links.map { listOf(it.first, it.second) })
-d.add("""
+d.facts("edge", links.map { [it.first, it.second] })
+d.add(
+    """
     #datalog
     path(X, Y) :- edge(X, Y).
     path(X, Z) :- path(X, Y), edge(Y, Z).
     implied(X, Y) :- path(X, Y), !edge(X, Y), X != Y.
-""")
+""",
+)
 
 val n = 7
 fun at(i: Int): Vec2 {
@@ -378,33 +396,41 @@ fun at(i: Int): Vec2 {
     return vec(340.0 + 300.0 * cos(a), 170.0 + 135.0 * sin(a))
 }
 fun link(a: Int, b: Int, c: Vec4, t: Double) = fline {
-    val p = at(a); val q = at(b)
+    val p = at(a)
+    val q = at(b)
     moveTo(p.x, p.y)
     lineTo(q.x, q.y)
     color = c
     thickness = t
 }
 fun dot(i: Int) = fline {
-    val p = at(i); val r = 5.0
-    moveTo(p.x - r, p.y); lineTo(p.x, p.y - r); lineTo(p.x + r, p.y); lineTo(p.x, p.y + r)
+    val p = at(i)
+    val r = 5.0
+    moveTo(p.x - r, p.y)
+    lineTo(p.x, p.y - r)
+    lineTo(p.x + r, p.y)
+    lineTo(p.x, p.y + r)
     close()
     filled = true
     color = vec(0.98, 0.86, 0.30, 1.0)
 }
 // Node numbers, set just outside the ring so an edge never runs through one. Glyphs move with
 // FLine.transform, which carries the cubic handles; nudging a node's point alone smears the letter.
-fun label(i: Int): List<FLine> = runCatching {
+fun label(i: Int): List<FLine> {
     val a = i * 2.0 * PI / n - PI / 2
     val p = at(i)
     val layout = layoutText("$i", typeface("Monospaced", 22.0))
     val dx = p.x + 26.0 * cos(a) - layout.advanceWidth / 2.0
     val dy = p.y + 26.0 * sin(a) + 8.0
-    layout.toFLines(color = vec(0.72, 0.78, 0.86, 1.0), thickness = 0.0, filled = true, stroked = false)
-        .map { line -> line.transform { q -> vec(q.x + dx, q.y + dy, q.z) } }
-}.getOrElse { emptyList() }
+    return layout.toFLines(color = vec(0.72, 0.78, 0.86, 1.0), thickness = 0.0, filled = true, stroked = false).map {
+        line ->
+        line.transform { q -> vec(q.x + dx, q.y + dy, q.z) }
+    }
+}
 
-val implied = d.query("implied(X, Y)").rows
-    .map { link((it[0] as Long).toInt(), (it[1] as Long).toInt(), vec(0.45, 0.70, 0.98, 0.20), 1.0) }
+val implied = d.query("implied(X, Y)").rows.map {
+    link((it[0] as Long).toInt(), (it[1] as Long).toInt(), vec(0.45, 0.70, 0.98, 0.20), 1.0)
+}
 val direct = links.map { link(it.first, it.second, vec(0.98, 0.86, 0.30, 1.0), 2.0) }
 
 println("${links.size} stated edges, ${implied.size} implied by them")
@@ -462,20 +488,22 @@ hovering a predicate reports its arity and how many clauses define it. Completio
 program's own predicates first, then the builtins and the box-graph relations.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" screenshot="assets/datalog/region.png" alt="eleven lines of Kotlin in the editor, the middle eight of them inside a triple-quoted string that opens with a gold #datalog. Within the region the rule heads needs, busy and orphan are blue while the same imports predicate is blue where it heads a fact and plain white inside a rule body; variables are orange, constants white, and the aggregate keyword count is violet" wait="0" timeout="120" embed=true hidden=true name="datalog-region"}
-ui.eval("var s=document.createElement('style');s.textContent='.tick_text.ok{display:none !important}';document.head.appendChild(s);return 'setup';")
+ui.eval(
+    "var s=document.createElement('style');s.textContent='.tick_text.ok{display:none !important}';document.head.appendChild(s);return 'setup';",
+)
 ui.openEditor(id)
 ui.pause(700)
 // Set the model rather than typing it: the region only exists once its closing triple quote does,
 // and a half-typed literal has nothing to highlight.
 ui.eval(
     "var q = String.fromCharCode(34).repeat(3);" +
-    "var code = ['val d = Datalog()', 'd.add(' + q, '#datalog'," +
-    " '% which module pulls in which', 'imports(app, ui).  imports(ui, util).'," +
-    " 'needs(A, B) :- imports(A, B).', 'needs(A, C) :- needs(A, B), imports(B, C).'," +
-    " 'busy(M, N) :- imports(M, _), N = count : { needs(M, _) }.'," +
-    " 'orphan(M) :- imports(_, M), !imports(M, _).', q + ')'," +
-    " 'display(' + q.slice(0,1) + 'main' + q.slice(0,1) + ', d.query(' + q.slice(0,1) + 'needs(app, X)' + q.slice(0,1) + '))'].join('\\n');" +
-    "window.globalEditor.getModel().setValue(code); return 'set';"
+        "var code = ['val d = Datalog()', 'd.add(' + q, '#datalog'," +
+        " '% which module pulls in which', 'imports(app, ui).  imports(ui, util).'," +
+        " 'needs(A, B) :- imports(A, B).', 'needs(A, C) :- needs(A, B), imports(B, C).'," +
+        " 'busy(M, N) :- imports(M, _), N = count : { needs(M, _) }.'," +
+        " 'orphan(M) :- imports(_, M), !imports(M, _).', q + ')'," +
+        " 'display(' + q.slice(0,1) + 'main' + q.slice(0,1) + ', d.query(' + q.slice(0,1) + 'needs(app, X)' + q.slice(0,1) + '))'].join('\\n');" +
+        "window.globalEditor.getModel().setValue(code); return 'set';",
 )
 ui.pause(1500)
 ```
@@ -520,4 +548,4 @@ variables are bound nowhere else. A predicate used at two different arities. Neg
 aggregation inside a recursive cycle, which it reports with the cycle named rather than picking an
 evaluation order.
 
-**Source.** `src/jvmMain/kotlin/afield/datalog/`.
+**Source.** `src/jvmMain/kotlin/afield/data/query/datalog/`.

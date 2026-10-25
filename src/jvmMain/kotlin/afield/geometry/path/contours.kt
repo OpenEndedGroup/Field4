@@ -1,0 +1,1111 @@
+@file:afield.runtime.completion.CompletionCategory("Graphics")
+
+package afield.geometry.path
+
+import afield.data.collections.invoke
+import afield.data.collections.m
+import afield.data.collections.times
+import afield.document.context.why
+import afield.document.graph.minusAssign
+import afield.document.graph.plusAssign
+import afield.document.properties.clear
+import afield.document.properties.compareTo
+import afield.document.workspace.file
+import afield.document.workspace.path
+import afield.geometry.mesh.march
+import afield.geometry.mesh.marchingCubes
+import afield.geometry.mesh.rounded
+import afield.geometry.mesh.scaled
+import afield.graphics.render.circle
+import afield.graphics.render.color
+import afield.graphics.render.cubicTo
+import afield.graphics.render.fline
+import afield.graphics.render.lineTo
+import afield.graphics.render.moveTo
+import afield.graphics.render.rangeTo
+import afield.math.autodiff.clamp
+import afield.math.autodiff.compareTo
+import afield.math.autodiff.div
+import afield.math.autodiff.minus
+import afield.math.autodiff.plus
+import afield.math.autodiff.round
+import afield.math.autodiff.sign
+import afield.math.autodiff.times
+import afield.math.linalg.ab
+import afield.math.linalg.d
+import afield.math.linalg.f
+import afield.math.linalg.invoke
+import afield.math.linalg.remAssign
+import afield.math.linalg.set
+import afield.math.linalg.times
+import afield.math.statistics.noise
+import afield.math.units.div
+import afield.math.units.minus
+import afield.math.units.plus
+import afield.math.units.times
+import afield.media.image.Img
+import afield.media.image.close
+import afield.media.image.isoContourFLines
+import afield.media.image.open
+import afield.runtime.execution.cell
+import afield.runtime.execution.go
+import afield.runtime.lifecycle.once
+import afield.simulation.agents.step
+import afield.simulation.automata.step
+
+import afield.animation.keyframes.h
+import afield.audio.synth.*
+import afield.data.collections.get
+import afield.data.collections.s
+import afield.data.graph.Node
+import afield.document.properties.Delegation
+import afield.geometry.mesh.bounds
+import afield.graphics.render.seg
+import afield.graphics.vulkan.buffers.add
+import afield.lang.stacksl.h
+import afield.math.linalg.i
+import afield.math.linalg.v2
+import afield.math.linalg.v3
+import afield.math.linalg.x
+import afield.media.image.pad
+import afield.runtime.execution.end
+import afield.runtime.execution.start
+import afield.ui.output.h
+import afield.app.protocol.Rect
+import afield.geometry.path.FLine
+import afield.geometry.path.cubicSplineFrom
+import afield.geometry.path.polylineFrom
+import afield.math.linalg.Vec2
+import afield.math.linalg.vec
+import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.sqrt
+
+/**
+ * Marching-squares iso-contours for 2D scalar fields, plus the scalar field most callers want to
+ * contour.
+ *
+ * A field is just a [ScalarField2D], `(Double, Double) -> Double`. [pointEdgeScalarField2D] builds
+ * one from points and edges — or from a 2D `FLine` — as the union of weighted discs and capsules,
+ * signed so that `iso = 0.0` is the tube boundary; it re-reads the supplied point list on every
+ * sample, so mutating those `Vec2`s moves the field live. [generateIsoContours] samples a field on
+ * an `nx` by `ny` grid and returns stitched polylines, [generateIsoContoursWithStep] takes a target
+ * cell size instead, and the `FLine` overloads choose the sampling window from the line's 2D bounds
+ * grown by the tube radius.
+ *
+ * [smoothIsoContours] and [generateSmoothIsoContours] fit cubic splines through the polylines,
+ * treating a contour that ends on the sampling bounds as open and the rest as closed loops.
+ *
+ * # Varying the radius along the line — weights
+ *
+ * A tube of one radius is `pointRadius`/`edgeRadius`. To make it *taper*, weight the primitives:
+ * every function that builds a point/edge field takes a **weight callback** rather than a list of
+ * weights. On an explicit graph that is [PointEdgeWeight], `(index, point) -> Double`, indexed the
+ * same way as the `points` you passed in. On an `FLine` it is [FLinePointWeight],
+ * `(nodeIndex, point) -> Double`, where `nodeIndex` is the *fractional* drawing-instruction index of
+ * the flattened point — integral at a `moveTo`/`lineTo`, and interpolated across a `cubicTo`, which
+ * is the same quantity `FLine.uniform_linearize` hands its callback and `linesOut` uses to look up
+ * per-node colour. [FLine.isoWeights] is the stock implementation: it reads a per-node property and
+ * interpolates between the nodes that set it.
+ *
+ * It is a callback rather than a list of weights because on the `FLine` overloads there is no count
+ * a caller could size a list against: the points and edges belong to [pointEdgeGraph2D]'s internal
+ * flattening, and its edge count depends on the line's geometry as well as its instructions.
+ *
+ * An edge's weight is always the **minimum** of its two endpoints'. A capsule has one radius for its
+ * whole length and so cannot taper: the taper comes from the union of densely sampled discs, and the
+ * edges only bridge the gaps between them. Taking the *maximum* would let a capsule bulge past the
+ * disc envelope exactly where the weight changes fastest; the minimum fills the gap without ever
+ * fattening it.
+ *
+ * # The sign convention
+ *
+ * A grid corner is *inside* iff its sample is **strictly below** `iso`; a sample exactly *at* `iso`
+ * counts as outside. The test is two-valued rather than three-way, because under a three-way test —
+ * `below` at one end of an edge, `above` at the other, so "equal" is neither — a sample sitting
+ * exactly on `iso` suppresses the crossing on every edge out of its corner, and the contour
+ * vanishes or shatters into arcs. Samples land exactly on `iso` for ordinary input: any grid that
+ * samples a linear field at its own zero level puts a whole column there, and a unit circle
+ * contoured at `iso = 0` passes through a grid corner at plenty of resolutions, `nx = ny = 16` over
+ * `[-2, 2]` among them.
+ *
+ * A crossing that lands on a corner is pushed off it by [ISO_CROSSING_EPSILON], which moves it by
+ * at most a thousandth of the cell edge it lies on — an analytic bound, since it is a `coerceIn` on
+ * the interpolation parameter. `marchingCubes` in `mesh_sdf.kt` is the 3D marcher and uses the same
+ * convention for the same reason.
+ *
+ * # The saddle cell
+ *
+ * A cell with four crossings is resolved by the *asymptotic decider*: the sign of the cell's
+ * bilinear saddle value decides which diagonal pair of corners the centre of the cell belongs to.
+ * It is a pure function of the cell's own four corner values, so two cells sharing an edge cannot
+ * disagree about the crossing on it, which is what the stitcher needs. The ambiguity itself does
+ * not go away: when the saddle value is exactly `iso` the two pairings are equally correct and the
+ * decider has nothing to go on. [SADDLE_TIE_RELATIVE_EPSILON] settles that case in the code rather
+ * than leaving it to the direction a multiplication rounded — which matters because every bilinear
+ * field lands there exactly.
+ *
+ * The segment stitcher is O(m^2) in the number of segments, so very high grid resolutions get
+ * expensive.
+ */
+
+private data class Vec2Segment(val a: Vec2, val b: Vec2)
+
+/**
+ * A 2D `FLine` flattened into the point/edge graph that [pointEdgeScalarField2D] contours, plus the
+ * provenance of each point.
+ *
+ * [nodeIndex] is one fractional drawing-instruction index per entry of [points]: `i` exactly for the
+ * point contributed by `nodes[i]` when that node is a `moveTo` or a `lineTo`, and
+ * `(i - 1) + k / samplesPerCubic` for sample `k` of a `cubicTo`, so it runs from just after the
+ * previous instruction up to `i` at the cubic's end point. That is the same quantity
+ * `FLine.uniform_linearize` hands its callback, and it is what makes any per-node quantity
+ * interpolable across the flattening — see [FLinePointWeight]. Unlike `uniform_linearize`'s it is
+ * never negative: there is no subpath-break sentinel here, because the edge list already says what
+ * is connected to what.
+ *
+ * [edges] indexes into [points]. It is *not* recoverable from the node counts: [pointEdgeGraph2D]
+ * drops the edge between two samples that land on top of each other, so the count depends on the
+ * line's geometry and not only on its instructions.
+ */
+data class PointEdgeGraph2D(
+    val points: List<Vec2>,
+    val edges: List<Pair<Int, Int>>,
+    val nodeIndex: List<Double>
+)
+
+/**
+ * Per-point weight for a field built from an explicit point/edge graph — a multiplier on
+ * `pointRadius` for the disc around `points[index]`.
+ *
+ * Must return `>= 0`. See the file overview for why there is no matching edge callback: an edge's
+ * weight is the minimum of its endpoints'.
+ */
+typealias PointEdgeWeight = (index: Int, point: Vec2) -> Double
+
+/**
+ * Per-point weight for a field built from an `FLine` — a multiplier on `pointRadius` for the disc
+ * around one *flattened* sample of the line.
+ *
+ * `nodeIndex` is that sample's fractional drawing-instruction index, as described on
+ * [PointEdgeGraph2D]: integral at a `moveTo`/`lineTo`, interpolated across a `cubicTo`. So
+ * `{ ni, _ -> 1.0 - 0.8 * ni / (line.nodes.size - 1.0) }` tapers smoothly along the whole line
+ * whatever mix of instructions it is made of, and [FLine.isoWeights] does the same from properties
+ * set on the nodes themselves.
+ *
+ * Must return `>= 0`.
+ */
+typealias FLinePointWeight = (nodeIndex: Double, point: Vec2) -> Double
+
+/**
+ * Default property name that [FLine.isoWeights] reads a per-node weight from.
+ */
+const val FLINE_ISO_WEIGHT_KEY = "isoWeight"
+
+/**
+ * Read a per-node weight property off this line's instructions and interpolate it into an
+ * [FLinePointWeight], for [generateIsoContours] and friends.
+ *
+ * ```
+ * val stroke = fline { moveTo(0, 0); here.isoWeight = 1.0; cubicTo(...); here.isoWeight = 0.2 }
+ * generateSmoothIsoContours(stroke, radius = 14.0, spatialStep = 2.0, pointWeight = stroke.isoWeights())
+ * ```
+ *
+ * # Keyframes, not carry-forward
+ *
+ * A node that does not set [key] is **not** a keyframe: the weight ramps linearly, in fractional
+ * node index, between the nodes that do, and holds flat before the first and after the last. This is
+ * *not* the convention of `FLine.colorsPer`/`pointSizePer`, which carry the previous
+ * node's value forward — under carry-forward, setting the weight on only the first and last node of
+ * a ten-node stroke would give you nine nodes at the first value and a step at the tenth, which is
+ * the one thing a taper must not be.
+ *
+ * Falls back to the line-level property and then to `1.0`, so a line with no weights anywhere is a
+ * tube of constant radius. The properties are read *now*, when this function is called — unlike the
+ * point positions, which [pointEdgeScalarField2D] re-reads on every sample.
+ */
+fun FLine.isoWeights(key: String = FLINE_ISO_WEIGHT_KEY): FLinePointWeight {
+    val keyframes = mutableListOf<Pair<Double, Double>>()
+    nodes.forEachIndexed { index, node ->
+        (node.properties[key] as? Number)?.let { keyframes += index.toDouble() to it.toDouble() }
+    }
+    val lineLevel = (properties[key] as? Number)?.toDouble() ?: 1.0
+    if (keyframes.isEmpty()) return { _, _ -> lineLevel }
+    if (keyframes.size == 1) {
+        val only = keyframes[0].second
+        return { _, _ -> only }
+    }
+    return { nodeIndex, _ ->
+        when {
+            nodeIndex <= keyframes.first().first -> keyframes.first().second
+            nodeIndex >= keyframes.last().first -> keyframes.last().second
+            else -> {
+                var upper = 1
+                while (upper < keyframes.size - 1 && keyframes[upper].first < nodeIndex) upper++
+                val (i0, w0) = keyframes[upper - 1]
+                val (i1, w1) = keyframes[upper]
+                val t = if (i1 == i0) 0.0 else (nodeIndex - i0) / (i1 - i0)
+                w0 + t * (w1 - w0)
+            }
+        }
+    }
+}
+
+/**
+ * Per-node tube weight — a multiplier on `pointRadius` at this instruction, which
+ * [FLine.isoWeights] interpolates into an [FLinePointWeight]. `null`, the default, means "this node
+ * is not a keyframe".
+ *
+ * Nullable and *not* defaulted on read, unlike `FLine.color`: a delegate that materialises its
+ * default would make merely *reading* `node.isoWeight` pin that node to 1.0, which would silently
+ * turn it into a keyframe and flatten the taper either side of it.
+ */
+var FLine.Node.isoWeight by Delegation<Double?>(null)
+
+/** Line-wide fallback weight, used for every node when no node sets an [isoWeight] of its own. */
+var FLine.isoWeight by Delegation<Double?>(null)
+
+/**
+ * How far a marched crossing is kept from a grid corner, as a fraction of the cell edge.
+ *
+ * With the strictly-below inside test a corner whose sample is *exactly* `iso` is outside, so an
+ * edge out of it does cross — but it crosses at `t = 0` or `t = 1`, i.e. exactly *on* that corner.
+ * Every such edge would then interpolate to the same point, the segments between them would be
+ * zero-length, and the stitcher would fuse parts of the contour that only touch. Pushing the
+ * crossing a thousandth of a cell inwards keeps each crossing on its own edge. The displacement is
+ * far below the marcher's own O(h^2) accuracy, and it is symmetric — the two cells sharing a grid
+ * edge clamp to `t` and `1 - t`, so they still agree on where the crossing is.
+ *
+ * `mesh_sdf.kt`'s `EDGE_CROSSING_EPSILON` is the same constant for the same reason, one dimension up.
+ */
+private const val ISO_CROSSING_EPSILON = 1e-3
+
+/**
+ * When the asymptotic decider's saddle value counts as sitting *exactly on* `iso`, relative to the
+ * size of the terms that produced it.
+ *
+ * The decider tests the sign of the cell's bilinear saddle value, `(s0*s2 - s1*s3) / (s0+s2-s1-s3)`.
+ * If that numerator is zero the saddle is exactly at `iso`, the level set through the cell is an X
+ * meeting at a point, and the two pairings are *equally correct* — marching squares cannot draw an X
+ * and has to break the crossing one way. Neither answer is wrong.
+ *
+ * The trap is that this tie is not rare: it is exactly what happens for any field that is *itself*
+ * bilinear over the cell. For `f(x, y) = x * y` the numerator is `(ab)(cd) - (cb)(ad)`, which is zero
+ * in exact arithmetic and `±1e-20` in doubles — so without this tolerance the pairing is chosen by
+ * which way the last bit of a multiplication rounded. Measured on `f = x*y` over
+ * `[-1.05, 1.03] x [-1.02, 1.07]` before this tolerance existed, the numerator and the pairing came
+ * out as:
+ *
+ * ```
+ * nx =   4   numerator = -2.71e-20   pairing Q
+ * nx =   5   numerator =  0.00e+00   pairing P
+ * nx =   8   numerator = -1.69e-21   pairing Q
+ * nx =  32   numerator =  0.00e+00   pairing P
+ * nx =  64   numerator = +6.62e-24   pairing P
+ * nx = 128   numerator = -8.27e-25   pairing Q
+ * ```
+ *
+ * — noise, and it moved two segments by a full cell each time it flipped. With the tolerance the tie
+ * resolves to `P` at every resolution, which is the pairing the pre-decider code always used, so a
+ * tie now behaves exactly as it did before the decider was added.
+ */
+private const val SADDLE_TIE_RELATIVE_EPSILON = 1e-9
+
+/**
+ * Scalar field f(x, y) -> value.
+ * You can use a lambda or method reference, e.g. rbf::interpolate2D.
+ */
+typealias ScalarField2D = (Double, Double) -> Double
+
+/**
+ * Build a live scalar field from a graph of 2D points plus edges between them.
+ *
+ * Each point contributes a weighted disc term and each edge contributes a
+ * weighted capsule term. The field is the union of those primitives:
+ *
+ * `max(pointRadius * pointWeight_i - distanceToPoint_i,
+ *      edgeRadius * edgeWeight_j - distanceToSegment_j)`
+ *
+ * Positive values are inside the graph "tube", `0.0` is the boundary, and
+ * negative values are outside. This makes `iso = 0.0` the natural choice for
+ * [generateIsoContours].
+ *
+ * [pointWeight] scales each disc; an edge's capsule takes the *minimum* of its two endpoints'
+ * weights, for the reason set out in the file overview. Weights are resolved once, here. The point
+ * *positions* are not: the returned field reads the supplied [points] list each time it is sampled,
+ * so mutating those `Vec2`s updates the field live.
+ */
+fun pointEdgeScalarField2D(
+    points: List<Vec2>,
+    edges: List<Pair<Int, Int>>,
+    pointRadius: Double,
+    edgeRadius: Double,
+    pointWeight: PointEdgeWeight? = null
+): ScalarField2D {
+    require(pointRadius >= 0.0) { "pointRadius must be >= 0" }
+    require(edgeRadius >= 0.0) { "edgeRadius must be >= 0" }
+    edges.forEachIndexed { index, (a, b) ->
+        require(a in points.indices) { "edge $index references missing point index $a" }
+        require(b in points.indices) { "edge $index references missing point index $b" }
+    }
+
+    if (points.isEmpty() && edges.isEmpty()) return { _, _ -> Double.NEGATIVE_INFINITY }
+
+    val pointWeights = pointWeight?.let { weightOf ->
+        DoubleArray(points.size) { index ->
+            val w = weightOf(index, points[index])
+            require(w >= 0.0) { "pointWeight returned $w for point $index; weights must be >= 0" }
+            w
+        }
+    }
+    val edgeWeights = pointWeights?.let { pw ->
+        DoubleArray(edges.size) { index ->
+            val (a, b) = edges[index]
+            min(pw[a], pw[b])
+        }
+    }
+
+    return { x, y ->
+        var best = Double.NEGATIVE_INFINITY
+
+        points.forEachIndexed { index, point ->
+            val weight = pointWeights?.get(index) ?: 1.0
+            val value = pointRadius * weight - distanceToPoint(x, y, point)
+            if (value > best) best = value
+        }
+
+        edges.forEachIndexed { index, (a, b) ->
+            val weight = edgeWeights?.get(index) ?: 1.0
+            val value = edgeRadius * weight - distanceToSegment(x, y, points[a], points[b])
+            if (value > best) best = value
+        }
+
+        best
+    }
+}
+
+fun pointEdgeScalarField2D(
+    points: List<Vec2>,
+    edges: List<Pair<Int, Int>>,
+    radius: Double,
+    pointWeight: PointEdgeWeight? = null
+): ScalarField2D = pointEdgeScalarField2D(
+    points = points,
+    edges = edges,
+    pointRadius = radius,
+    edgeRadius = radius,
+    pointWeight = pointWeight
+)
+
+/**
+ * Flatten a 2D [FLine] into a point/edge graph and build the union-of-discs-and-capsules field
+ * around it. See [FLinePointWeight] and [FLine.isoWeights] for the taper.
+ */
+fun pointEdgeScalarField2D(
+    line: FLine,
+    pointRadius: Double,
+    edgeRadius: Double,
+    samplesPerCubic: Int = 24,
+    pointWeight: FLinePointWeight? = null
+): ScalarField2D {
+    val graph = pointEdgeGraph2D(line, samplesPerCubic)
+    return pointEdgeScalarField2D(
+        points = graph.points,
+        edges = graph.edges,
+        pointRadius = pointRadius,
+        edgeRadius = edgeRadius,
+        pointWeight = graph.perPoint(pointWeight)
+    )
+}
+
+fun pointEdgeScalarField2D(
+    line: FLine,
+    radius: Double,
+    samplesPerCubic: Int = 24,
+    pointWeight: FLinePointWeight? = null
+): ScalarField2D = pointEdgeScalarField2D(
+    line = line,
+    pointRadius = radius,
+    edgeRadius = radius,
+    samplesPerCubic = samplesPerCubic,
+    pointWeight = pointWeight
+)
+
+/**
+ * Re-key an [FLinePointWeight] onto this graph's own point indices, by looking up each point's
+ * fractional node index. `null` in, `null` out — an absent weight stays absent rather than becoming
+ * a constant `1.0`, so the field can skip the per-primitive multiply entirely.
+ */
+private fun PointEdgeGraph2D.perPoint(weight: FLinePointWeight?): PointEdgeWeight? =
+    weight?.let { w -> { index, point -> w(nodeIndex[index], point) } }
+
+/**
+ * Generate iso-contours for a scalar field using marching squares.
+ *
+ * [field] is sampled once per grid corner, i.e. `(nx + 1) * (ny + 1)` times, and never again. A
+ * corner is treated as *inside* iff its sample is strictly below [iso] — a sample exactly equal to
+ * [iso] is outside — and the saddle cell is resolved by the asymptotic decider. See the file
+ * overview for why both of those matter.
+ *
+ * The polylines come back in no particular order and with no particular orientation. A closed loop
+ * arrives as a cycle whose first and last points are *adjacent*, not equal, so drawing it needs a
+ * closing segment: `polylineFrom(contour, closed = true)`, or let [smoothIsoContours] decide.
+ *
+ * @param field    function f(x, y) returning a scalar value
+ * @param xMin     left bound of domain
+ * @param xMax     right bound of domain
+ * @param yMin     bottom bound of domain
+ * @param yMax     top bound of domain
+ * @param nx       number of cells in x (>= 1)
+ * @param ny       number of cells in y (>= 1)
+ * @param iso      iso-value to extract
+ *
+ * @return list of polylines; each polyline is a List<Vec2>.
+ */
+fun generateIsoContours(
+    field: ScalarField2D,
+    xMin: Double,
+    xMax: Double,
+    yMin: Double,
+    yMax: Double,
+    nx: Int,
+    ny: Int,
+    iso: Double
+): List<List<Vec2>> {
+    require(nx >= 1 && ny >= 1) { "nx and ny must be >= 1" }
+
+    // Grid spacing
+    val dx = (xMax - xMin) / nx.toDouble()
+    val dy = (yMax - yMin) / ny.toDouble()
+
+    // We'll store actual doubles separately for clarity
+    val scalar = Array(nx + 1) { DoubleArray(ny + 1) }
+
+    for (i in 0..nx) {
+        val x = xMin + i * dx
+        for (j in 0..ny) {
+            val y = yMin + j * dy
+            scalar[i][j] = field(x, y)
+        }
+    }
+
+    val segments = mutableListOf<Vec2Segment>()
+
+    /**
+     * Which side of the iso level a corner is on: strictly below is *inside*.
+     *
+     * A corner sample exactly equal to [iso] is therefore outside. Both halves of that sentence
+     * matter — see the file overview. The one thing this must not be is a three-way answer.
+     */
+    fun inside(v: Double): Boolean = v < iso
+
+    // An edge carries a crossing iff its two ends disagree about which side they are on. With a
+    // two-valued `inside` there is no third case, so this cannot silently drop one.
+    fun crosses(v1: Double, v2: Double): Boolean = inside(v1) != inside(v2)
+
+    // Linear interpolation along an edge, clamped off the endpoints — see [ISO_CROSSING_EPSILON].
+    fun interp(p1: Vec2, p2: Vec2, v1: Double, v2: Double): Vec2 {
+        val denom = (v2 - v1)
+        val raw = if (denom == 0.0) 0.5 else (iso - v1) / denom
+        val t = raw.coerceIn(ISO_CROSSING_EPSILON, 1.0 - ISO_CROSSING_EPSILON)
+        return Vec2(
+            (p1.x + t * (p2.x - p1.x)).toFloat(),
+             (p1.y + t * (p2.y - p1.y)).toFloat()
+        )
+    }
+
+    // March over cells
+    for (i in 0 until nx) {
+        val x0 = xMin + i * dx
+        val x1 = x0 + dx
+        for (j in 0 until ny) {
+            val y0 = yMin + j * dy
+            val y1 = y0 + dy
+
+            // Vertex positions (counter-clockwise):
+            // v0: (x0, y0) bottom-left
+            // v1: (x1, y0) bottom-right
+            // v2: (x1, y1) top-right
+            // v3: (x0, y1) top-left
+            val v0 = scalar[i][j]
+            val v1 = scalar[i + 1][j]
+            val v2 = scalar[i + 1][j + 1]
+            val v3 = scalar[i][j + 1]
+
+            val p0 = vec(x0, y0)
+            val p1 = vec(x1, y0)
+            val p2 = vec(x1, y1)
+            val p3 = vec(x0, y1)
+
+            // Collect intersections along edges in a consistent order:
+            // bottom (p0-p1), right (p1-p2), top (p2-p3), left (p3-p0)
+            val pts = mutableListOf<Vec2>()
+
+            if (crosses(v0, v1)) pts += interp(p0, p1, v0, v1)
+            if (crosses(v1, v2)) pts += interp(p1, p2, v1, v2)
+            if (crosses(v2, v3)) pts += interp(p2, p3, v2, v3)
+            if (crosses(v3, v0)) pts += interp(p3, p0, v3, v0)
+
+            when (pts.size) {
+                0 -> {
+                    // No contour through this cell
+                }
+                2 -> {
+                    // Single segment through cell
+                    segments += Vec2Segment(pts[0], pts[1])
+                }
+                4 -> {
+                    // The saddle cell: the four corners alternate inside/outside, so the two
+                    // crossings on either side of an isolated corner could be joined two ways.
+                    // `pts` is [bottom, right, top, left], so the two candidate pairings are
+                    //   P: (bottom, right) + (top, left)  — isolates the two corners v1 and v3
+                    //   Q: (bottom, left)  + (right, top)  — isolates the two corners v0 and v2
+                    //
+                    // Choose with the *asymptotic decider*: the cell's bilinear interpolant has one
+                    // saddle, whose value is (s0*s2 - s1*s3) / (s0 + s2 - s1 - s3) with every s
+                    // measured from `iso`. Whichever diagonal pair shares a side with that saddle
+                    // is the pair the centre of the cell connects. This is a pure function of the
+                    // four corner values, so the neighbour cell that shares an edge always agrees.
+                    val s0 = v0 - iso
+                    val s1 = v1 - iso
+                    val s2 = v2 - iso
+                    val s3 = v3 - iso
+                    val numerator = s0 * s2 - s1 * s3
+                    val denominator = s0 + s2 - s1 - s3
+                    // A tie is either "no saddle" (the bilinear is degenerate along one direction) or
+                    // "the saddle is exactly on iso" (the level set is an X). Both are genuinely
+                    // undecidable, and the second one is *common* — it is every bilinear field. Left
+                    // to round-off it flips with resolution, so it is settled here instead, on the
+                    // historical pairing. See [SADDLE_TIE_RELATIVE_EPSILON].
+                    val tie = denominator == 0.0 ||
+                        abs(numerator) <= SADDLE_TIE_RELATIVE_EPSILON * max(abs(s0 * s2), abs(s1 * s3))
+                    val pairingP = if (tie) {
+                        true
+                    } else {
+                        val saddle = numerator / denominator
+                        (saddle < 0.0) == (s0 < 0.0)
+                    }
+                    if (pairingP) {
+                        segments += Vec2Segment(pts[0], pts[1])
+                        segments += Vec2Segment(pts[2], pts[3])
+                    } else {
+                        segments += Vec2Segment(pts[0], pts[3])
+                        segments += Vec2Segment(pts[1], pts[2])
+                    }
+                }
+                else -> {
+                    // Unreachable: `inside` is two-valued, so walking the four edges of the cell
+                    // changes side an even number of times. 1 and 3 cannot happen. Kept as a
+                    // deliberate no-op rather than a silent sequential pairing, so that if the
+                    // classification is ever made three-valued again this is a visible hole and not
+                    // a plausible-looking wrong answer.
+                    error("marching squares: ${pts.size} crossings in one cell is impossible")
+                }
+            }
+        }
+    }
+
+    // Now stitch segments into polylines
+    return stitchSegmentsIntoPolylines(segments, max(dx, dy))
+}
+
+/**
+ * Convenience overload taking approximate spatial resolution instead of nx, ny.
+ *
+ * @param spatialStep target cell size (same in x and y); will be rounded so that
+ *             nx,ny are integers.
+ */
+fun generateIsoContoursWithStep(
+    field: ScalarField2D,
+    xMin: Double,
+    xMax: Double,
+    yMin: Double,
+    yMax: Double,
+    spatialStep: Double,
+    value: Double
+): List<List<Vec2>> {
+    require(spatialStep > 0.0) { "step must be > 0" }
+    val nx = max(1, ceil((xMax - xMin) / spatialStep).toInt())
+    val ny = max(1, ceil((yMax - yMin) / spatialStep).toInt())
+    return generateIsoContours(field, xMin, xMax, yMin, yMax, nx, ny, value)
+}
+
+/**
+ * Convenience overload that turns a 2D [FLine] into a point/edge scalar field,
+ * expands its bounds by the effective tube radius, and extracts contours.
+ *
+ * [pointWeight] tapers the tube — see [FLinePointWeight] and [FLine.isoWeights]. It also widens the
+ * sampling window, which is grown by the largest weighted radius rather than the nominal one.
+ */
+fun generateIsoContours(
+    line: FLine,
+    pointRadius: Double,
+    edgeRadius: Double,
+    spatialStep: Double,
+    iso: Double = 0.0,
+    padding: Double? = null,
+    samplesPerCubic: Int = 24,
+    pointWeight: FLinePointWeight? = null
+): List<List<Vec2>> {
+    if (line.nodes.isEmpty()) return emptyList()
+    val tube = isoTube(line, pointRadius, edgeRadius, spatialStep, padding, samplesPerCubic, pointWeight)
+    return generateIsoContoursWithStep(
+        field = tube.field,
+        xMin = tube.bounds.x,
+        xMax = tube.bounds.x + tube.bounds.w,
+        yMin = tube.bounds.y,
+        yMax = tube.bounds.y + tube.bounds.h,
+        spatialStep = spatialStep,
+        value = iso
+    )
+}
+
+fun generateIsoContours(
+    line: FLine,
+    radius: Double,
+    spatialStep: Double,
+    iso: Double = 0.0,
+    padding: Double? = null,
+    samplesPerCubic: Int = 24,
+    pointWeight: FLinePointWeight? = null
+): List<List<Vec2>> = generateIsoContours(
+    line = line,
+    pointRadius = radius,
+    edgeRadius = radius,
+    spatialStep = spatialStep,
+    iso = iso,
+    padding = padding,
+    samplesPerCubic = samplesPerCubic,
+    pointWeight = pointWeight
+)
+
+/**
+ * Smooth marching-squares polylines into cubic curves.
+ *
+ * Contours that terminate on the sampling bounds are treated as open; the rest
+ * are assumed to be closed loops.
+ */
+fun smoothIsoContours(
+    contours: List<List<Vec2>>,
+    xMin: Double,
+    xMax: Double,
+    yMin: Double,
+    yMax: Double,
+    tension: Float = 1f,
+    boundaryEpsilon: Double = 1e-6
+): List<FLine> {
+    return contours.map { contour ->
+        val closed = isoContourClosed(contour, xMin, xMax, yMin, yMax, boundaryEpsilon)
+        when {
+            contour.isEmpty() -> FLine()
+            contour.size < 3 -> polylineFrom(contour, closed = closed)
+            else -> cubicSplineFrom(contour, closed = closed, tension = tension)
+        }
+    }
+}
+
+/**
+ * The whole `FLine` in, smooth outline out path. See [FLinePointWeight] and [FLine.isoWeights] to
+ * taper it.
+ */
+fun generateSmoothIsoContours(
+    line: FLine,
+    pointRadius: Double,
+    edgeRadius: Double,
+    spatialStep: Double,
+    iso: Double = 0.0,
+    padding: Double? = null,
+    samplesPerCubic: Int = 24,
+    pointWeight: FLinePointWeight? = null,
+    tension: Float = 1f,
+    boundaryEpsilon: Double = spatialStep * 0.75
+): List<FLine> {
+    if (line.nodes.isEmpty()) return emptyList()
+    // One graph, one field, one set of bounds: this used to flatten the line and grow the bounds
+    // twice over, once here and once inside generateIsoContours.
+    val tube = isoTube(line, pointRadius, edgeRadius, spatialStep, padding, samplesPerCubic, pointWeight)
+    val xMin = tube.bounds.x
+    val xMax = tube.bounds.x + tube.bounds.w
+    val yMin = tube.bounds.y
+    val yMax = tube.bounds.y + tube.bounds.h
+    val contours = generateIsoContoursWithStep(
+        field = tube.field,
+        xMin = xMin,
+        xMax = xMax,
+        yMin = yMin,
+        yMax = yMax,
+        spatialStep = spatialStep,
+        value = iso
+    )
+    return smoothIsoContours(
+        contours = contours,
+        xMin = xMin,
+        xMax = xMax,
+        yMin = yMin,
+        yMax = yMax,
+        tension = tension,
+        boundaryEpsilon = boundaryEpsilon
+    )
+}
+
+fun generateSmoothIsoContours(
+    line: FLine,
+    radius: Double,
+    spatialStep: Double,
+    iso: Double = 0.0,
+    padding: Double? = null,
+    samplesPerCubic: Int = 24,
+    pointWeight: FLinePointWeight? = null,
+    tension: Float = 1f,
+    boundaryEpsilon: Double = spatialStep * 0.75
+): List<FLine> = generateSmoothIsoContours(
+    line = line,
+    pointRadius = radius,
+    edgeRadius = radius,
+    spatialStep = spatialStep,
+    iso = iso,
+    padding = padding,
+    samplesPerCubic = samplesPerCubic,
+    pointWeight = pointWeight,
+    tension = tension,
+    boundaryEpsilon = boundaryEpsilon
+)
+
+/* ==========================
+   Segment stitching
+   ========================== */
+
+/**
+ * Turn disjoint line segments into polylines by greedily joining endpoints
+ * that are closer than a small epsilon.
+ *
+ * This is O(m^2) in the number of segments, which is fine for
+ * moderate grids. If you crank resolution way up and it becomes
+ * a bottleneck, a spatial hash / k-d tree would fix it.
+ */
+private fun stitchSegmentsIntoPolylines(
+    segments: List<Vec2Segment>,
+    gridScale: Double
+): List<List<Vec2>> {
+    if (segments.isEmpty()) return emptyList()
+
+    val unused = segments.toMutableList()
+    val contours = mutableListOf<MutableList<Vec2>>()
+
+    // Epsilon scaled to grid size
+    val eps = gridScale * 1e-6
+
+    fun pointsClose(a: Vec2, b: Vec2): Boolean {
+        val dx = a.x - b.x
+        val dy = a.y - b.y
+        return dx * dx + dy * dy <= eps * eps
+    }
+
+    while (unused.isNotEmpty()) {
+        val seg = unused.removeLast()
+        val poly = mutableListOf(seg.a, seg.b)
+
+        var extended = true
+        while (extended) {
+            extended = false
+            var i = unused.size - 1
+            while (i >= 0) {
+                val s = unused[i]
+                val start = poly.first()
+                val end = poly.last()
+
+                when {
+                    pointsClose(s.a, end) -> {
+                        poly.add(s.b)
+                        unused.removeAt(i)
+                        extended = true
+                    }
+                    pointsClose(s.b, end) -> {
+                        poly.add(s.a)
+                        unused.removeAt(i)
+                        extended = true
+                    }
+                    pointsClose(s.a, start) -> {
+                        poly.add(0, s.b)
+                        unused.removeAt(i)
+                        extended = true
+                    }
+                    pointsClose(s.b, start) -> {
+                        poly.add(0, s.a)
+                        unused.removeAt(i)
+                        extended = true
+                    }
+                }
+                i--
+            }
+        }
+
+        // If the curve is closed, drop duplicated endpoint
+        if (poly.size > 2 && pointsClose(poly.first(), poly.last())) {
+            poly.removeAt(poly.size - 1)
+        }
+
+        contours += poly
+    }
+
+    return contours
+}
+
+private fun distanceToPoint(x: Double, y: Double, point: Vec2): Double {
+    val dx = x - point.x.toDouble()
+    val dy = y - point.y.toDouble()
+    return sqrt(dx * dx + dy * dy)
+}
+
+private fun distanceToSegment(x: Double, y: Double, a: Vec2, b: Vec2): Double {
+    val ax = a.x.toDouble()
+    val ay = a.y.toDouble()
+    val bx = b.x.toDouble()
+    val by = b.y.toDouble()
+
+    val abx = bx - ax
+    val aby = by - ay
+    val ab2 = abx * abx + aby * aby
+    if (ab2 <= 1e-12) return distanceToPoint(x, y, a)
+
+    val apx = x - ax
+    val apy = y - ay
+    val t = ((apx * abx + apy * aby) / ab2).coerceIn(0.0, 1.0)
+    val px = ax + t * abx
+    val py = ay + t * aby
+    val dx = x - px
+    val dy = y - py
+    return sqrt(dx * dx + dy * dy)
+}
+
+/**
+ * Flatten a 2D [FLine] into the points and edges that [pointEdgeScalarField2D] turns into a field:
+ * one point per `moveTo`/`lineTo`, [samplesPerCubic] per `cubicTo`, and an edge for every pair of
+ * consecutive points — including the wrap-around edge of a `close`.
+ *
+ * Public because the point and edge *counts* are the answer to "how big is a weight list", which is
+ * the question the weight callbacks exist to avoid asking; if you want to reason about the flattening
+ * directly, or attach your own per-point data to it, this is the flattening the contour functions
+ * use. [PointEdgeGraph2D.nodeIndex] says which instruction each point came from.
+ *
+ * Near-coincident consecutive samples are joined by no edge at all — a zero-length `lineTo`, a
+ * `close` on an already-closed subpath, or a cubic whose control points coincide all lose one — so
+ * `edges.size` is a function of the line's geometry and not just of its instruction list.
+ */
+fun pointEdgeGraph2D(line: FLine, samplesPerCubic: Int = 24): PointEdgeGraph2D {
+    require(samplesPerCubic >= 1) { "samplesPerCubic must be >= 1" }
+    if (line.nodes.isEmpty()) return PointEdgeGraph2D(emptyList(), emptyList(), emptyList())
+
+    val points = mutableListOf<Vec2>()
+    val edges = mutableListOf<Pair<Int, Int>>()
+    val nodeIndices = mutableListOf<Double>()
+    var currentIndex: Int? = null
+    var subpathStartIndex: Int? = null
+    var currentPoint: Vec2? = null
+
+    fun addPoint(point: Vec2, nodeIndex: Double): Int {
+        points += Vec2(point)
+        nodeIndices += nodeIndex
+        return points.lastIndex
+    }
+
+    fun connect(from: Int, to: Int) {
+        if (from == to) return
+        if (pointsAlmostEqual(points[from], points[to])) return
+        edges += from to to
+    }
+
+    line.nodes.forEachIndexed { ordinal, node ->
+        when (node) {
+            is FLine.MoveTo -> {
+                val point = vec(node.to.x, node.to.y)
+                val index = addPoint(point, ordinal.toDouble())
+                currentIndex = index
+                subpathStartIndex = index
+                currentPoint = point
+            }
+
+            is FLine.LineTo -> {
+                val point = vec(node.to.x, node.to.y)
+                val index = addPoint(point, ordinal.toDouble())
+                val previous = currentIndex
+                if (previous != null) connect(previous, index)
+                else subpathStartIndex = index
+                currentIndex = index
+                currentPoint = point
+            }
+
+            is FLine.CubicTo -> {
+                val start = currentPoint
+                val previous = currentIndex
+                if (start == null || previous == null) {
+                    val point = vec(node.to.x, node.to.y)
+                    val index = addPoint(point, ordinal.toDouble())
+                    currentIndex = index
+                    subpathStartIndex = index
+                    currentPoint = point
+                } else {
+                    var lastIndex: Int = previous
+                    for (sampleIndex in 1..samplesPerCubic) {
+                        val t = sampleIndex / samplesPerCubic.toDouble()
+                        val point = cubicPoint2D(
+                            a = start,
+                            c1 = vec(node.c1.x, node.c1.y),
+                            c2 = vec(node.c2.x, node.c2.y),
+                            b = vec(node.to.x, node.to.y),
+                            t = t
+                        )
+                        // The fractional instruction index, lerped from the previous instruction to
+                        // this one exactly as FLine.uniform_linearize_cubic does it, so per-node data
+                        // interpolates across the flattening the same way in both.
+                        val index = addPoint(point, (ordinal - 1) + t)
+                        connect(lastIndex, index)
+                        lastIndex = index
+                    }
+                    currentIndex = lastIndex
+                    currentPoint = points[lastIndex]
+                }
+            }
+
+            is FLine.Close -> {
+                val start = subpathStartIndex
+                val end = currentIndex
+                if (start != null && end != null) connect(end, start)
+                currentIndex = start
+                currentPoint = start?.let { points[it] }
+            }
+        }
+    }
+
+    return PointEdgeGraph2D(points = points, edges = edges, nodeIndex = nodeIndices)
+}
+
+/** A tapered tube's field and the window to march it over, built together from one flattening. */
+private class IsoTube(val field: ScalarField2D, val bounds: Rect)
+
+private fun isoTube(
+    line: FLine,
+    pointRadius: Double,
+    edgeRadius: Double,
+    spatialStep: Double,
+    padding: Double?,
+    samplesPerCubic: Int,
+    pointWeight: FLinePointWeight?
+): IsoTube {
+    val graph = pointEdgeGraph2D(line, samplesPerCubic)
+    val perPoint = graph.perPoint(pointWeight)
+    val field = pointEdgeScalarField2D(
+        points = graph.points,
+        edges = graph.edges,
+        pointRadius = pointRadius,
+        edgeRadius = edgeRadius,
+        pointWeight = perPoint
+    )
+    // The window has to clear the *widest* disc, so the weights have to be evaluated to grow it. Free
+    // here: the graph is already flattened, and the field will evaluate them again on exactly these
+    // points. An edge is never wider than its endpoints, so one maximum covers both primitives.
+    val maxWeight = perPoint?.let { weightOf ->
+        graph.points.indices.maxOfOrNull { weightOf(it, graph.points[it]) } ?: 1.0
+    } ?: 1.0
+    val bounds = expandedIsoBounds(
+        line = line,
+        pointRadius = pointRadius,
+        edgeRadius = edgeRadius,
+        spatialStep = spatialStep,
+        padding = padding,
+        maxWeight = maxWeight
+    )
+    return IsoTube(field, bounds)
+}
+
+private fun expandedIsoBounds(
+    line: FLine,
+    pointRadius: Double,
+    edgeRadius: Double,
+    spatialStep: Double,
+    padding: Double?,
+    maxWeight: Double
+): Rect {
+    val base = line.fast2DBounds()
+    val maxExtent = max(pointRadius, edgeRadius) * maxWeight
+    val pad = padding ?: (2.0 * maxExtent) + spatialStep
+    return Rect(
+        x = base.x - pad,
+        y = base.y - pad,
+        w = base.w + pad * 2.0,
+        h = base.h + pad * 2.0
+    )
+}
+
+/**
+ * Does this marching-squares contour close on itself, or does it run out of the sampling window?
+ *
+ * [generateIsoContours] returns a closed loop as a *cycle* whose first and last points are adjacent
+ * rather than equal, so "is it closed" cannot be answered by comparing the endpoints — they are one
+ * grid cell apart either way. What distinguishes the two is where the ends *are*: a contour that
+ * genuinely ran off the edge of the sampling window has both ends sitting on that window's boundary.
+ *
+ * Drawing a contour needs the answer, because a closed loop wants the segment from its last point
+ * back to its first and an open one does not — `polylineFrom(contour, closed = isoContourClosed(...))`.
+ * [smoothIsoContours] asks this for you; [Img.isoContourFLines] asks it per contour.
+ *
+ * @param boundaryEpsilon how near the window a point has to be to count as *on* it. Use something on
+ *   the order of the cell size — `spatialStep * 0.75` is what [generateSmoothIsoContours] defaults to
+ *   — because a crossing lands wherever the field says, not exactly on the boundary.
+ */
+fun isoContourClosed(
+    contour: List<Vec2>,
+    xMin: Double,
+    xMax: Double,
+    yMin: Double,
+    yMax: Double,
+    boundaryEpsilon: Double = 1e-6
+): Boolean {
+    if (contour.size < 3) return false
+    val first = contour.first()
+    val last = contour.last()
+    return !pointOnBounds(first, xMin, xMax, yMin, yMax, boundaryEpsilon) &&
+        !pointOnBounds(last, xMin, xMax, yMin, yMax, boundaryEpsilon)
+}
+
+private fun pointOnBounds(
+    point: Vec2,
+    xMin: Double,
+    xMax: Double,
+    yMin: Double,
+    yMax: Double,
+    epsilon: Double
+): Boolean {
+    val x = point.x.toDouble()
+    val y = point.y.toDouble()
+    return kotlin.math.abs(x - xMin) <= epsilon ||
+        kotlin.math.abs(x - xMax) <= epsilon ||
+        kotlin.math.abs(y - yMin) <= epsilon ||
+        kotlin.math.abs(y - yMax) <= epsilon
+}
+
+private fun pointsAlmostEqual(a: Vec2, b: Vec2, epsilon: Double = 1e-9): Boolean {
+    val dx = a.x.toDouble() - b.x.toDouble()
+    val dy = a.y.toDouble() - b.y.toDouble()
+    return dx * dx + dy * dy <= epsilon * epsilon
+}
+
+private fun cubicPoint2D(a: Vec2, c1: Vec2, c2: Vec2, b: Vec2, t: Double): Vec2 {
+    val omt = 1.0 - t
+    val omt2 = omt * omt
+    val omt3 = omt2 * omt
+    val t2 = t * t
+    val t3 = t2 * t
+    return vec(
+        a.x.toDouble() * omt3 +
+            3.0 * c1.x.toDouble() * t * omt2 +
+            3.0 * c2.x.toDouble() * t2 * omt +
+            b.x.toDouble() * t3,
+        a.y.toDouble() * omt3 +
+            3.0 * c1.y.toDouble() * t * omt2 +
+            3.0 * c2.y.toDouble() * t2 * omt +
+            b.y.toDouble() * t3
+    )
+}

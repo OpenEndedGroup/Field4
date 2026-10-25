@@ -1,11 +1,11 @@
 package afield.examples
 
-import afield.stdlib.linalg.Vector3d
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.linalg.arena.FrameArena
-import afield.stdlib.linalg.storage.SegmentVec3Buffer
-import afield.stdlib.linalg.storage.Vec3StorageLayout
-import afield.stdlib.vec
+import afield.math.linalg.Vector3d
+import afield.math.linalg.Vector3f
+import afield.math.linalg.arena.FrameArena
+import afield.math.linalg.storage.SegmentVec3Buffer
+import afield.math.linalg.storage.Vec3StorageLayout
+import afield.math.linalg.vec
 import java.lang.management.ManagementFactory
 import java.nio.ByteBuffer
 

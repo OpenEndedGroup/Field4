@@ -16,27 +16,27 @@ Take a small attractor, map rising edges to pitches, and render the result as a 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/noteprocess_roll.png" wait="1.0" capture="box"}
 :::static
-import afield.four.synth.*
-
 data class Candidate(val seed: Int, val net: BooleanNetwork, val attr: Attractor)
 
 val chosen =
-    (0..80).mapNotNull { seed ->
-        val net = kauffmanNetwork(n = 5, k = 2, seed = seed.toLong())
-        val attr = net.findAttractors().filter { it.period >= 6 }.maxByOrNull { it.period } ?: return@mapNotNull null
-        Candidate(seed, net, attr)
-    }.first()
+    (0..80)
+        .mapNotNull { seed ->
+            val net = kauffmanNetwork(n = 5, k = 2, seed = seed.toLong())
+            val attr =
+                net.findAttractors().filter { it.period >= 6 }.maxByOrNull { it.period } ?: return@mapNotNull null
+            Candidate(seed, net, attr)
+        }
+        .first()
 
-val pitches = listOf(36, 43, 48, 55, 60)
-val labels = listOf("C2", "G2", "C3", "G3", "C4")
-val colors = listOf("#63b3ff", "#ff9b54", "#6df0a7", "#f67bff", "#ffe46b")
+val pitches = [36, 43, 48, 55, 60]
+val labels = ["C2", "G2", "C3", "G3", "C4"]
+val colors = ["#63b3ff", "#ff9b54", "#6df0a7", "#f67bff", "#ffe46b"]
 
-val process =
-    chosen.net.asNoteProcess(
-        initialState = chosen.attr.cycle.first(),
-        stepDuration = 0.25,
-        steps = 24,
-    ) { step ->
+val process = chosen.net.asNoteProcess(
+    initialState = chosen.attr.cycle.first(),
+    stepDuration = 0.25,
+    steps = 24,
+) { step ->
         step.lanes(BooleanTriggerMode.RISING_EDGE).map { lane ->
             note(
                 pitch = pitches[lane],
@@ -52,14 +52,17 @@ val process =
 val preview = process.notesBetween(0.0, 2.5).take(8).joinToString("\n")
 
 :::fold render the piano roll and the first notes
-markdown("main", """
+markdown(
+    "main",
+    """
     #### seed ${chosen.seed} · period ${chosen.attr.period} · initial ${chosen.attr.cycle.first().joinToString("") { if (it) "1" else "0" }}
     ${process.pianoRollSvg(widthPx = 860, heightPx = 210, pastSeconds = 0.0, futureSeconds = 6.0, title = "Boolean attractor -> NoteProcess")}
 
     ~~~
 $preview
     ~~~
-""")
+""",
+)
 :::endfold
 ```
 
@@ -71,8 +74,9 @@ The same 24 steps as sound. Each note plays the Tidal `arpy` sample, pitched the
 sample, by playback speed, so C3 is the sample as recorded and C2 an octave down at half speed. The
 period-6 attractor is a figure that comes round every 1.5 seconds, four times.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/boolean_network_music_examples/attractor-roll.wav" audio-spec="attractor-roll" audio-renderer="afield.four.synth.BooleanNetworkSoundDocs" requires="dirt-samples" embed=true hidden=true name="boolean-network-attractor-roll-audio"}
-// Offline-rendered by BooleanNetworkSoundDocs.renderWav("attractor-roll"): the fence's notes, through real Dirt-Samples.
+```diffstatic_runner {data-lang=kotlin audio="assets/boolean_network_music_examples/attractor-roll.wav" audio-spec="attractor-roll" audio-renderer="afield.audio.synth.BooleanNetworkSoundDocs" requires="dirt-samples" embed=true hidden=true name="boolean-network-attractor-roll-audio"}
+// Offline-rendered by BooleanNetworkSoundDocs.renderWav("attractor-roll"): the fence's notes, through real
+// Dirt-Samples.
 ```
 
 ## Previewing Dirt tokens before playback
@@ -81,19 +85,16 @@ The same timing layer can carry Dirt sample labels instead of note names. Swap t
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/dirt_token_roll.png" wait="1.0" capture="box"}
 :::static
-import afield.four.synth.*
-
 val net = kauffmanNetwork(n = 5, k = 2, seed = 27L)
 val attr = net.findAttractors().maxByOrNull { it.period }!!
-val tokens = listOf("bd:3", "sn:1", "hh:4", "cp:0", "perc:5")
-val colors = listOf("#69b8ff", "#ff8e5a", "#c4ff5f", "#ff6cc4", "#ffe36e")
+val tokens = ["bd:3", "sn:1", "hh:4", "cp:0", "perc:5"]
+val colors = ["#69b8ff", "#ff8e5a", "#c4ff5f", "#ff6cc4", "#ffe36e"]
 
-val preview =
-    net.asNoteProcess(
-        initialState = attr.cycle.first(),
-        stepDuration = 0.25,
-        steps = 32,
-    ) { step ->
+val preview = net.asNoteProcess(
+    initialState = attr.cycle.first(),
+    stepDuration = 0.25,
+    steps = 32,
+) { step ->
         step.lanes(BooleanTriggerMode.RISING_EDGE).map { lane ->
             note(
                 pitch = 42 + lane * 3,
@@ -107,10 +108,13 @@ val preview =
     }
 
 :::fold render the Dirt-token piano roll
-markdown("main", """
+markdown(
+    "main",
+    """
     #### seed 27 · longest attractor period ${attr.period} · labels are direct Dirt tokens
     ${preview.pianoRollSvg(widthPx = 860, heightPx = 210, pastSeconds = 0.0, futureSeconds = 8.0, title = "Boolean attractor -> Dirt token preview")}
-""")
+""",
+)
 :::endfold
 ```
 
@@ -122,7 +126,7 @@ And the tokens played. The attractor has two states, so kick and hat alternate, 
 quarter-second step, for eight seconds. There is one `perc` hit at the very start, from the lane
 that was on at step zero and never again.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/boolean_network_music_examples/dirt-tokens.wav" audio-spec="dirt-tokens" audio-renderer="afield.four.synth.BooleanNetworkSoundDocs" requires="dirt-samples" embed=true hidden=true name="boolean-network-dirt-tokens-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/boolean_network_music_examples/dirt-tokens.wav" audio-spec="dirt-tokens" audio-renderer="afield.audio.synth.BooleanNetworkSoundDocs" requires="dirt-samples" embed=true hidden=true name="boolean-network-dirt-tokens-audio"}
 // Offline-rendered by BooleanNetworkSoundDocs.renderWav("dirt-tokens"): the fence's notes, through real Dirt-Samples.
 ```
 
@@ -132,8 +136,6 @@ This example braids three Boolean attractors at different temporal resolutions: 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/braided_rhythm.png" wait="1.0" capture="box"}
 :::static
-import afield.four.synth.*
-
 fun <T> Iterator<T>.collectAll(): List<T> {
     val out = mutableListOf<T>()
     while (hasNext()) out += next()
@@ -153,58 +155,87 @@ data class Layer(
 
 data class Chosen(val layer: Layer, val seed: Long, val net: BooleanNetwork, val attr: Attractor)
 
-val layers =
-    listOf(
-        Layer(seed = 27L, stepDuration = 0.125, steps = 64, mode = BooleanTriggerMode.RISING_EDGE, basePitch = 36, label = "bd", color = "#69b8ff", velocity = 0.98),
-        Layer(seed = 11L, stepDuration = 0.1875, steps = 48, mode = BooleanTriggerMode.CHANGE, basePitch = 50, label = "sn", color = "#ff8e5a", velocity = 0.76),
-        Layer(seed = 42L, stepDuration = 0.0625, steps = 128, mode = BooleanTriggerMode.ACTIVE, basePitch = 74, label = "hh", color = "#c4ff5f", velocity = 0.42),
-    )
+val layers = [
+    Layer(
+        seed = 27L,
+        stepDuration = 0.125,
+        steps = 64,
+        mode = BooleanTriggerMode.RISING_EDGE,
+        basePitch = 36,
+        label = "bd",
+        color = "#69b8ff",
+        velocity = 0.98,
+    ),
+    Layer(
+        seed = 11L,
+        stepDuration = 0.1875,
+        steps = 48,
+        mode = BooleanTriggerMode.CHANGE,
+        basePitch = 50,
+        label = "sn",
+        color = "#ff8e5a",
+        velocity = 0.76,
+    ),
+    Layer(
+        seed = 42L,
+        stepDuration = 0.0625,
+        steps = 128,
+        mode = BooleanTriggerMode.ACTIVE,
+        basePitch = 74,
+        label = "hh",
+        color = "#c4ff5f",
+        velocity = 0.42,
+    ),
+]
 
-val chosen =
-    layers.map { layer ->
-        // The first seed from the layer's own whose network has an attractor of period 4 or more:
-        // a fixed point never changes, so a CHANGE layer on one would fire once and stop.
-        (layer.seed until layer.seed + 80).firstNotNullOf { seed ->
-            val net = kauffmanNetwork(n = 5, k = 2, seed = seed)
-            net.findAttractors().filter { it.period >= 4 }.maxByOrNull { it.period }?.let { Chosen(layer, seed, net, it) }
-        }
+val chosen = layers.map { layer ->
+    // The first seed from the layer's own whose network has an attractor of period 4 or more:
+    // a fixed point never changes, so a CHANGE layer on one would fire once and stop.
+    (layer.seed until layer.seed + 80).firstNotNullOf { seed ->
+        val net = kauffmanNetwork(n = 5, k = 2, seed = seed)
+        net.findAttractors().filter { it.period >= 4 }.maxByOrNull { it.period }?.let { Chosen(layer, seed, net, it) }
     }
+}
 
-val notes =
-    buildList {
-        chosen.forEach { ch ->
-            addAll(
-                ch.net.scheduledNotes(
+val notes = buildList {
+    chosen.forEach { ch ->
+        addAll(
+            ch.net
+                .scheduledNotes(
                     initialState = ch.attr.cycle.first(),
                     stepDuration = ch.layer.stepDuration,
                     steps = ch.layer.steps,
                 ) { step ->
-                    val lanes =
-                        when (ch.layer.mode) {
-                            BooleanTriggerMode.ACTIVE ->
-                                step.state.indices.filter { lane -> step.isActive(lane) && (lane + step.stepIndex.toInt()) % 2 == 0 }.take(2)
-                            else -> step.lanes(ch.layer.mode)
-                        }
+                    val lanes = when (ch.layer.mode) {
+                        BooleanTriggerMode.ACTIVE ->
+                            step.state.indices
+                                .filter { lane -> step.isActive(lane) && (lane + step.stepIndex.toInt()) % 2 == 0 }
+                                .take(2)
+                        else -> step.lanes(ch.layer.mode)
+                    }
 
                     lanes.map { lane ->
                         note(
                             pitch = ch.layer.basePitch + lane * 2,
-                            duration = if (ch.layer.mode == BooleanTriggerMode.ACTIVE) step.duration * 0.42 else step.duration * 0.78,
+                            duration =
+                                if (ch.layer.mode == BooleanTriggerMode.ACTIVE) step.duration * 0.42
+                                else step.duration * 0.78,
                             start = step.start,
                             velocity = (ch.layer.velocity - lane * 0.04).coerceAtLeast(0.2),
                             label = "${ch.layer.label}:$lane",
                             color = ch.layer.color,
                         )
                     }
-                }.collectAll()
-            )
-        }
-    }.sortedWith(compareBy<ScheduledNote> { it.start }.thenBy { it.pitch })
-
-val process =
-    noteProcess(defaultPastSeconds = 0.0, defaultFutureSeconds = 8.0) {
-        for (scheduled in notes) emit(scheduled)
+                }
+                .collectAll(),
+        )
     }
+}
+    .sortedWith(compareBy<ScheduledNote> { it.start }.thenBy { it.pitch })
+
+val process = noteProcess(defaultPastSeconds = 0.0, defaultFutureSeconds = 8.0) {
+    for (scheduled in notes) emit(scheduled)
+}
 
 val summary =
     chosen.joinToString("\n") { ch ->
@@ -212,14 +243,17 @@ val summary =
     }
 
 :::fold render the braided piano roll and the layer summary
-markdown("main", """
+markdown(
+    "main",
+    """
     #### Three attractors, three clocks, one shared note space
     ${process.pianoRollSvg(widthPx = 900, heightPx = 260, pastSeconds = 0.0, futureSeconds = 8.0, title = "Braided Boolean rhythm")}
 
     ~~~
 $summary
     ~~~
-""")
+""",
+)
 :::endfold
 ```
 
@@ -229,7 +263,7 @@ Played through Dirt-Samples, the kick and snare carry the rhythm for the whole e
 shimmer is a wash rather than a ticking hat, because in Dirt-Samples `hh:1` to `hh:4` are a crash and
 three long hits.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/boolean_network_music_examples/braid.wav" audio-spec="braid" audio-renderer="afield.four.synth.BooleanNetworkSoundDocs" requires="dirt-samples" embed=true hidden=true name="boolean-network-braid-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/boolean_network_music_examples/braid.wav" audio-spec="braid" audio-renderer="afield.audio.synth.BooleanNetworkSoundDocs" requires="dirt-samples" embed=true hidden=true name="boolean-network-braid-audio"}
 // Offline-rendered by BooleanNetworkSoundDocs.renderWav("braid"): the fence's notes, through real Dirt-Samples.
 ```
 
@@ -239,24 +273,21 @@ The driven scheduling helpers let something outside the network write into its s
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/oscillator_driven.png" wait="1.0" capture="box"}
 :::static
-import afield.four.synth.*
-
 fun <T> Iterator<T>.collectAll(): List<T> {
     val out = mutableListOf<T>()
     while (hasNext()) out += next()
     return out
 }
 
-val net =
-    BooleanNetwork(
-        listOf(
-            BoolNode("clk", "external", emptyList()) { s -> s[0] },
-            BoolNode("kick", "clk XOR clap", listOf(0, 3)) { s -> s[0] xor s[3] },
-            BoolNode("snare", "kick OR hat", listOf(1, 4)) { s -> s[1] || s[4] },
-            BoolNode("clap", "snare AND NOT clk", listOf(2, 0)) { s -> s[2] && !s[0] },
-            BoolNode("hat", "kick XOR snare", listOf(1, 2)) { s -> s[1] xor s[2] },
-        )
-    )
+val net = BooleanNetwork(
+    [
+        BoolNode("clk", "external", emptyList()) { s -> s[0] },
+        BoolNode("kick", "clk XOR clap", [0, 3]) { s -> s[0] xor s[3] },
+        BoolNode("snare", "kick OR hat", [1, 4]) { s -> s[1] || s[4] },
+        BoolNode("clap", "snare AND NOT clk", [2, 0]) { s -> s[2] && !s[0] },
+        BoolNode("hat", "kick XOR snare", [1, 2]) { s -> s[1] xor s[2] },
+    ],
+)
 
 val driver = { stepIndex: Long, _: Double, _: Double, state: BooleanArray ->
     state[0] = sin(2.0 * PI * stepIndex.toDouble() / 12.0) > 0.0
@@ -264,23 +295,23 @@ val driver = { stepIndex: Long, _: Double, _: Double, state: BooleanArray ->
 
 val steps =
     net.scheduledDrivenSteps(
-        initialState = BooleanArray(net.size),
-        stepDuration = 0.125,
-        steps = 64,
-        driver = driver,
-    ).collectAll()
+            initialState = BooleanArray(net.size),
+            stepDuration = 0.125,
+            steps = 64,
+            driver = driver,
+        )
+        .collectAll()
 
-val labels = listOf("clk", "bd", "sn", "cp", "hh")
-val pitches = listOf(30, 36, 50, 57, 74)
-val colors = listOf("#5fa8ff", "#69b8ff", "#ff8e5a", "#ff6cc4", "#c4ff5f")
+val labels = ["clk", "bd", "sn", "cp", "hh"]
+val pitches = [30, 36, 50, 57, 74]
+val colors = ["#5fa8ff", "#69b8ff", "#ff8e5a", "#ff6cc4", "#c4ff5f"]
 
-val process =
-    net.asDrivenNoteProcess(
-        initialState = BooleanArray(net.size),
-        stepDuration = 0.125,
-        steps = 64,
-        driver = driver,
-    ) { step ->
+val process = net.asDrivenNoteProcess(
+    initialState = BooleanArray(net.size),
+    stepDuration = 0.125,
+    steps = 64,
+    driver = driver,
+) { step ->
         step.lanes(BooleanTriggerMode.RISING_EDGE).map { lane ->
             note(
                 pitch = pitches[lane],
@@ -302,10 +333,13 @@ lines(
 )
 
 :::fold render the driven piano roll
-markdown("main", """
+markdown(
+    "main",
+    """
     #### lane 0 is a sine-derived square wave; lanes 1-4 are the network's response
     ${process.pianoRollSvg(widthPx = 900, heightPx = 220, pastSeconds = 0.0, futureSeconds = 8.0, title = "Oscillator-driven Boolean network")}
-""")
+""",
+)
 :::endfold
 ```
 
@@ -317,7 +351,7 @@ Heard, the forced lane is the quiet `click`, and the network's
 answer comes in bursts of kick, snare, clap and hat that repeat every 1.5 seconds, twelve steps,
 the oscillator's period. Each cycle has a gap of about half a second in which nothing fires.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/boolean_network_music_examples/driven.wav" audio-spec="driven" audio-renderer="afield.four.synth.BooleanNetworkSoundDocs" requires="dirt-samples" embed=true hidden=true name="boolean-network-driven-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/boolean_network_music_examples/driven.wav" audio-spec="driven" audio-renderer="afield.audio.synth.BooleanNetworkSoundDocs" requires="dirt-samples" embed=true hidden=true name="boolean-network-driven-audio"}
 // Offline-rendered by BooleanNetworkSoundDocs.renderWav("driven"): the fence's notes, through real Dirt-Samples.
 ```
 
@@ -326,31 +360,30 @@ the oscillator's period. Each cycle has a gap of about half a second in which no
 `respondAhead(...)` clocks the network in real time and calls back with `BooleanNetworkStep` values, enough to drive a `DirtSamplePlayer` directly. It does not start anything itself: it builds a `BooleanNetworkResponseSpec`, and a registered return-value handler launches that spec when it turns up as the box's last expression. So the responder runs because the fence *ends* with it, and the job it starts belongs to the box. Stop the box and the sound stops.
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.synth.*
-
 val clock = musicClock().reset(started = true)
 val net = kauffmanNetwork(n = 5, k = 2, seed = 27L)
 val attr = net.findAttractors().maxByOrNull { it.period }!!
-val tokens = listOf("bd:3", "sn:1", "hh:4", "cp:0", "perc:5")
+val tokens = ["bd:3", "sn:1", "hh:4", "cp:0", "perc:5"]
 
 val lib = dirt("/absolute/path/to/Dirt-Samples", preload = false)
 val kit = dirtPlayer(library = lib, voices = 24, gain = 0.22.p)
 
 audio { kit } +
     net.respondAhead(
-        initialState = attr.cycle.first(),
-        ahead = 0.05,
-        stepDuration = 0.25,
-        clock = clock,
-    ) { step ->
-        step.lanes(BooleanTriggerMode.RISING_EDGE).forEach { lane ->
-            kit.trigger(
-                token = tokens[lane],
-                gain = if (lane == 0) 1.15f else 0.82f,
-                pan = (lane - 2) * 0.18f,
-            )
+            initialState = attr.cycle.first(),
+            ahead = 0.05,
+            stepDuration = 0.25,
+            clock = clock,
+        ) { step ->
+            step.lanes(BooleanTriggerMode.RISING_EDGE).forEach { lane ->
+                kit.trigger(
+                    token = tokens[lane],
+                    gain = if (lane == 0) 1.15f else 0.82f,
+                    pan = (lane - 2) * 0.18f,
+                )
+            }
         }
-    }.onBeat(every = 1.0, clock = clock)
+        .onBeat(every = 1.0, clock = clock)
 ```
 
 For the underlying state-space pictures, continue with [Boolean networks examples](boolean_networks_examples.md). For piano-roll and synth display tooling, see [Visualizers & Controls](visualizers.md).

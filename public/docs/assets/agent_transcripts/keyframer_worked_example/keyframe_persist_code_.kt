@@ -3,9 +3,6 @@ saveKey writes pretty JSON — and, every single time, ALSO appends a numbered c
 <file>.versions directory with a manifest. Nothing prunes it, so a hundred saves leave a
 hundred files. What survives the trip is a closed set; everything else is dropped silently.
 */
-import afield.stdlib.KeyframeScope
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.stackSLString
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("keyframer-demo")
@@ -41,7 +38,7 @@ val lossy = scope.Key(
     mutableMapOf(
         "gain" to 0.90f,
         "enabled" to true, // a Boolean is outside the union
-        "taps" to listOf(1, 2, 3), // so is a list
+        "taps" to [1, 2, 3], // so is a list
         "absent" to null, // and a null is dropped too
     ),
 )

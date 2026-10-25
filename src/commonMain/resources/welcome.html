@@ -15,6 +15,10 @@
             font-style: normal;
             src: url("/woff2/iosevka-semicondensedlight.woff2") format("woff2");
         }
+        #ai-settings-details [hidden] { display: none !important; }
+        #local-ai-controls input { width: 100%; box-sizing: border-box; }
+        #local-ai-controls .ai-settings-field { margin: 10px 0; }
+        #local-ai-status, #ai-environment-overrides { font-size: .85em; line-height: 1.45; overflow-wrap: anywhere; }
     </style>
     <link rel="stylesheet" href="/iosevka.css">
 
@@ -373,6 +377,13 @@
             line-height: 1.35;
         }
 
+        .ai-settings-hint {
+            margin: 6px 0;
+            color: var(--field-text-soft);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
         .ai-settings-models {
             display: grid;
             grid-template-columns: 1fr;
@@ -542,6 +553,8 @@
         #openai-platform-key,
         #openrouter-api-key,
         #openrouter-base-url,
+        #local-ai-base-url,
+        #local-ai-api-key,
         #ai-flagship-model,
         #ai-fast-model,
         #ai-fallback-model,
@@ -575,6 +588,8 @@
         #openai-platform-key::placeholder,
         #openrouter-api-key::placeholder,
         #openrouter-base-url::placeholder,
+        #local-ai-base-url::placeholder,
+        #local-ai-api-key::placeholder,
         #ai-flagship-model::placeholder,
         #ai-fast-model::placeholder,
         #ai-fallback-model::placeholder,
@@ -601,6 +616,8 @@
         #openai-platform-key:focus,
         #openrouter-api-key:focus,
         #openrouter-base-url:focus,
+        #local-ai-base-url:focus,
+        #local-ai-api-key:focus,
         #ai-flagship-model:focus,
         #ai-fast-model:focus,
         #ai-fallback-model:focus,
@@ -1393,7 +1410,7 @@
         }
 
         /* History-screenshot thumbnails live in the LEFT GUTTER, outside the list panel — one row
-           each, canvas (electron-window) capture nearest the panel and the afield.four renderer
+           each, canvas (electron-window) capture nearest the panel and the Field 4 renderer
            capture one thumbnail over (further left), in two fixed columns so they line up across
            rows. To reach the gutter without breaking the vertical scroll, the scroll container is
            extended left (negative margin + matching padding) so the gutter is inside its scroll
@@ -1421,7 +1438,7 @@
                 overflow-x: clip;
             }
 
-            /* Two thumbnail columns in the gutter: col 1 the afield.four render, col 2 the canvas
+            /* Two thumbnail columns in the gutter: col 1 the Field 4 render, col 2 the canvas
                capture nearest the panel. Right-anchored so the canvas column sits 5px left of the
                list's black border (20px = 15px panel border+padding + 5px gap); the container is
                auto-width and grows leftward as the thumbnails scale. It carries the same 1px black
@@ -1970,6 +1987,7 @@
     .welcome-source-view { margin-top: 6px; }
     .welcome-source-view-head { font-size: 10px; opacity: 0.6; margin-bottom: 2px; font-family: ui-monospace, monospace; }
     </style>
+<link rel="stylesheet" href="/kit-library.css">
 </head>
 <body class="field-webgl-page">
 <script src="/fieldWebglBackground.js"></script>
@@ -2052,6 +2070,24 @@
                 </div>
                 <div id="recent-list"></div>
                 <div id="starting-points-dock"></div>
+                <details class="starting-points-section" id="kit-library" aria-label="Kits">
+                    <summary class="starting-points-summary">
+                        <span class="starting-points-title">Kits</span>
+                        <span class="starting-points-count" data-kit-count>0</span>
+                        <span class="kit-meta" data-kit-restart-summary hidden>Restart needed</span>
+                    </summary>
+                    <div class="kit-library-body">
+                        <header><button data-kit-restart hidden>Restart Field</button></header>
+                        <p class="kit-meta">Reusable tools, runtime code and document starting points.</p>
+                        <div class="kit-add"><input data-kit-path aria-label="Kit folder" placeholder="Kit folder · contains field-kit.json"><button data-kit-browse hidden>Browse…</button><button data-kit-add>Add kit</button></div>
+                        <div data-kit-bundled></div>
+                        <input class="kit-search" data-kit-search type="search" aria-label="Find kit" placeholder="Find a kit">
+                        <p data-kit-status role="status"></p>
+                        <div data-kit-list></div>
+                        <dialog aria-label="Kit guide"><button data-kit-close>Close guide</button><iframe sandbox title="Kit guide"></iframe></dialog>
+                        <dialog data-kit-update-dialog aria-label="Kit update"><button data-kit-close>Close</button><pre></pre><button data-kit-apply>Apply update to closed document</button></dialog>
+                    </div>
+                </details>
             </section>
         </div>
 
@@ -2186,6 +2222,27 @@
                         </div>
                     </div>
                 </details>
+                <details id="geometry-extensions-details">
+                    <summary>
+                        <span>Geometry extensions</span>
+                        <span id="geometry-extensions-summary" class="changelog-count">checking</span>
+                    </summary>
+                    <div class="vulkan-body">
+                        <p>Optional native libraries that turn images and point clouds into geometry. Field runs without them; each is built once, here in this checkout.</p>
+                        <div id="geometry-extensions-grid" class="runtime-info-grid"></div>
+                        <div class="vulkan-actions">
+                            <button id="geometry-extensions-recheck" type="button">Check again</button>
+                            <span id="geometry-extensions-status" aria-live="polite"></span>
+                        </div>
+                        <div class="segmented-control vulkan-os-tabs" role="tablist" aria-label="Operating system">
+                            <button class="segmented-button" type="button" data-geometry-os="macos">macOS</button>
+                            <button class="segmented-button" type="button" data-geometry-os="windows">Windows</button>
+                            <button class="segmented-button" type="button" data-geometry-os="linux">Linux</button>
+                        </div>
+                        <div id="geometry-extensions-guide"></div>
+                        <p>Or run <code>./field.sh --setup</code> and pick them from the list of optional features; it installs the packages and builds them for you.</p>
+                    </div>
+                </details>
                 <details id="python-settings-details">
                     <summary>
                         <span>Python</span>
@@ -2224,25 +2281,36 @@
                             <span class="ai-settings-label">Provider</span>
                             <span id="ai-settings-state">checking</span>
                         </div>
-                        <div class="ai-settings-provider" role="group" aria-label="AI provider">
+                        <div class="ai-settings-provider" style="flex-wrap:wrap" role="group" aria-label="AI provider">
                             <button class="segmented-button ai-provider-button" type="button" data-ai-provider="openai" aria-pressed="true">OpenAI</button>
                             <button class="segmented-button ai-provider-button" type="button" data-ai-provider="openrouter" aria-pressed="false">OpenRouter</button>
                             <button class="segmented-button ai-provider-button" type="button" data-ai-provider="anthropic" aria-pressed="false">Anthropic (Claude)</button>
+                            <button class="segmented-button ai-provider-button" type="button" data-ai-provider="local" aria-pressed="false">Local</button>
                         </div>
-                        <div class="ai-settings-hint" style="opacity:0.75;font-size:0.85em;margin:4px 0;">Anthropic (Claude) authenticates with your <code>ant auth login</code> credential — no API key needed. Save to switch; run <code>ant auth login</code> first if you haven't.</div>
+                        <div id="anthropic-ai-hint" class="ai-settings-hint" style="opacity:0.75;font-size:0.85em;margin:4px 0;">Anthropic (Claude) authenticates with your <code>ant auth login</code> credential — no API key needed. Save to switch; run <code>ant auth login</code> first if you haven't.</div>
                         <div class="ai-settings-controls">
                             <input id="openai-platform-key" type="password" autocomplete="off" placeholder="OPENAI_PLATFORM_KEY">
-                            <button id="save-ai-settings" type="button">Save</button>
                         </div>
                         <div class="ai-settings-controls">
                             <input id="openrouter-api-key" type="password" autocomplete="off" placeholder="OPENROUTER_API_KEY">
                             <input id="openrouter-base-url" type="text" autocomplete="off" placeholder="https://openrouter.ai/api/v1">
+                        </div>
+                        <div id="local-ai-controls" hidden>
+                            <p class="ai-settings-hint">Run AI on this computer or another machine you own. Enter the address that the Field backend can reach. <a href="/field-docs/local_ai/" target="_blank" rel="noopener">Set up local AI</a></p>
+                            <label class="ai-settings-field" for="local-ai-base-url"><span>API base URL</span><input id="local-ai-base-url" type="url" autocomplete="off" placeholder="http://gpu-host:8081/v1"></label>
+                            <label class="ai-settings-field" for="local-ai-api-key"><span>API key (optional)</span><input id="local-ai-api-key" type="password" autocomplete="off" placeholder="Leave blank if your server needs no key"></label>
+                            <div class="ai-settings-controls"><button id="check-local-ai" type="button">Check connection</button></div>
+                            <div id="local-ai-status" role="status" aria-live="polite"></div>
+                            <datalist id="local-ai-models"></datalist>
                         </div>
                         <div class="ai-settings-models">
                             <label class="ai-settings-field" for="ai-flagship-model"><span>agent</span><input id="ai-flagship-model" type="text" autocomplete="off" placeholder="gpt-6-astra or openai/gpt-5.6-sol"></label>
                             <label class="ai-settings-field" for="ai-fast-model"><span>fast</span><input id="ai-fast-model" type="text" autocomplete="off" placeholder="gpt-6-luna or openai/gpt-6-luna"></label>
                             <label class="ai-settings-field" for="ai-fallback-model"><span>fallback</span><input id="ai-fallback-model" type="text" autocomplete="off" placeholder="gpt-5.4 or openai/gpt-5.4"></label>
                         </div>
+                        <div class="ai-settings-controls"><button id="save-ai-settings" type="button">Save</button></div>
+                        <div id="ai-settings-status" aria-live="polite"></div>
+                        <div id="ai-environment-overrides" class="ai-settings-hint" hidden></div>
                         <div class="ai-docs-panel">
                             <div class="ai-docs-header">
                                 <span class="ai-docs-label">KDoc drafts</span>
@@ -2331,7 +2399,6 @@
                             <div id="semantic-search-progress" aria-hidden="true"></div>
                             <div id="semantic-search-status" aria-live="polite"></div>
                         </div>
-                        <div id="ai-settings-status" aria-live="polite"></div>
                     </div>
                 </details>
                 <details id="preferences-details">
@@ -2413,7 +2480,7 @@
                             </div>
                             <label class="osc-settings-field">
                                 <span>UDP port</span>
-                                <input id="osc-editor-port" type="number" min="1" max="65535" step="1" autocomplete="off" placeholder="9000">
+                                <input id="osc-editor-port" type="number" min="1" max="65535" step="1" autocomplete="off" placeholder="9001">
                             </label>
                             <label class="osc-settings-field">
                                 <span>debounce ms</span>
@@ -2614,7 +2681,7 @@
             autoOpenLastDocumentInDesktop: false,
             editorPropertyStickiness: "none",
             oscEditorEnabled: false,
-            oscEditorPort: 9000,
+            oscEditorPort: 9001,
             oscEditorFloatAddress: "/field/float",
             oscEditorLaunchAddress: "/field/launch",
             oscEditorStopAddress: "/field/stop",
@@ -3135,16 +3202,33 @@
         const fallbackModel = document.getElementById("ai-fallback-model");
         const button = document.getElementById("save-ai-settings");
         const settings = state.aiSettings || {};
-        const provider = (settings.provider === "openrouter" || settings.provider === "anthropic") ? settings.provider : "openai";
+        const provider = ["openrouter", "anthropic", "local"].includes(settings.provider) ? settings.provider : "openai";
         const providerModels = settings.modelsByProvider?.[provider] || {
             flagshipModel: settings.flagshipModel || "",
             fastModel: settings.fastModel || "",
             fallbackModel: settings.fallbackModel || ""
         };
-        const configured = provider === "anthropic" ? true : provider === "openrouter" ? !!settings.hasOpenRouterApiKey : !!settings.hasOpenAiPlatformKey;
+        const configured = provider === "local" ? !!providerModels.flagshipModel : provider === "anthropic" ? true : provider === "openrouter" ? !!settings.hasOpenRouterApiKey : !!settings.hasOpenAiPlatformKey;
+        const local = provider === "local";
+        document.getElementById("local-ai-controls").hidden = !local;
+        document.getElementById("anthropic-ai-hint").hidden = provider !== "anthropic";
+        openAiInput.closest(".ai-settings-controls").hidden = provider !== "openai";
+        openRouterInput.closest(".ai-settings-controls").hidden = provider !== "openrouter";
+        const localUrl = document.getElementById("local-ai-base-url");
+        const localKey = document.getElementById("local-ai-api-key");
+        localUrl.disabled = localKey.disabled = state.savingAiSettings;
+        localKey.placeholder = settings.hasLocalApiKey ? "Key saved; leave blank to keep for this endpoint" : "Leave blank if your server needs no key";
+        document.getElementById("check-local-ai").disabled = state.savingAiSettings || !!state.testingLocalAi;
+        flagshipModel.setAttribute("list", local ? "local-ai-models" : "");
+        flagshipModel.placeholder = local ? "Model ID, e.g. qwen3.8-27b" : "gpt-6-astra or openai/gpt-5.6-sol";
+        fastModel.placeholder = local ? "Use agent model" : "gpt-6-luna or openai/gpt-6-luna";
+        fallbackModel.placeholder = local ? "Use agent model" : "gpt-5.4 or openai/gpt-5.4";
+        const overrides = document.getElementById("ai-environment-overrides");
+        overrides.hidden = !(settings.environmentOverrides || []).length;
+        overrides.textContent = `Environment overrides: ${(settings.environmentOverrides || []).join(", ")}. Remove these and restart Field to use saved settings.`;
 
-        if (summary) summary.textContent = configured ? provider : "missing key";
-        if (stateNode) stateNode.textContent = provider === "anthropic" ? "anthropic (ant auth login)" : configured ? `${provider} configured` : `missing ${provider === "openrouter" ? "OPENROUTER_API_KEY" : "OPENAI_PLATFORM_KEY"}`;
+        if (summary) summary.textContent = local && state.aiSettingsEditing ? "unsaved" : configured ? provider : (local ? "choose model" : "missing key");
+        if (stateNode) stateNode.textContent = local ? (state.aiSettingsEditing ? "local settings not saved" : configured ? "local endpoint configured" : "enter endpoint and model") : provider === "anthropic" ? "anthropic (ant auth login)" : configured ? `${provider} configured` : `missing ${provider === "openrouter" ? "OPENROUTER_API_KEY" : "OPENAI_PLATFORM_KEY"}`;
         document.querySelectorAll("[data-ai-provider]").forEach((providerButton) => {
             const active = providerButton.getAttribute("data-ai-provider") === provider;
             providerButton.setAttribute("aria-pressed", active ? "true" : "false");
@@ -3157,6 +3241,7 @@
             openRouterBaseUrl.disabled = state.savingAiSettings;
         }
         if (state._renderedAiProvider !== provider) {
+            if (local) localUrl.value = settings.localBaseUrl || "http://127.0.0.1:8081/v1";
             if (openRouterBaseUrl) openRouterBaseUrl.value = provider === "openrouter" ? (settings.openRouterBaseUrl || settings.baseUrl || "") : "";
             if (flagshipModel) flagshipModel.value = providerModels.flagshipModel || "";
             if (fastModel) fastModel.value = providerModels.fastModel || "";
@@ -3654,6 +3739,57 @@
         if (scroll) requestAnimationFrame(() => details.scrollIntoView({ behavior: "smooth", block: "start" }));
     }
 
+    // The optional native geometry libraries: availability from /api/native-geometry-status, and
+    // per-OS install steps that the library objects themselves declare (NativeGeometryCapability).
+    function renderGeometryExtensions() {
+        const list = state.geometryExtensions;
+        const summary = document.getElementById("geometry-extensions-summary");
+        const grid = document.getElementById("geometry-extensions-grid");
+        const guide = document.getElementById("geometry-extensions-guide");
+        if (!grid || !guide) return;
+        if (!list) {
+            if (summary) summary.textContent = "checking";
+            return;
+        }
+        const present = list.filter((m) => m.available).length;
+        if (summary) summary.textContent = `${present} of ${list.length} built`;
+        grid.innerHTML = list.map((m) =>
+            `<div class="runtime-info-label"><a href="/field-docs/${escapeHtml(m.docsPage.replace(/\.md$/, ""))}/" target="_blank" rel="noopener">${escapeHtml(m.title)}</a></div>` +
+            `<div class="runtime-info-value">${m.available ? "built" : `<span class="vulkan-missing">not built</span>`} · <code>${escapeHtml(m.description)}</code></div>`
+        ).join("");
+        const os = state.geometryOs || guessVulkanOs();
+        document.querySelectorAll("[data-geometry-os]").forEach((b) => b.classList.toggle("active", b.dataset.geometryOs === os));
+        guide.innerHTML = list.filter((m) => !m.available).map((m) => {
+            const steps = m.install[os] || [];
+            const body = steps.length
+                ? steps.map((c) => `<pre class="vulkan-cmd" title="click to copy">${escapeHtml(c)}</pre>`).join("")
+                : `<p>Not yet buildable on this platform.</p>`;
+            return `<p><b>${escapeHtml(m.title)}</b></p>${body}`;
+        }).join("") || "<p>All of them are built.</p>";
+        guide.querySelectorAll(".vulkan-cmd").forEach((pre) =>
+            pre.addEventListener("click", () => navigator.clipboard?.writeText(pre.textContent || "")));
+    }
+
+    async function loadGeometryExtensions(refresh = false) {
+        const statusNode = document.getElementById("geometry-extensions-status");
+        try {
+            const response = await fetch("/api/native-geometry-status", { cache: "no-store" });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            state.geometryExtensions = await response.json();
+            if (statusNode) statusNode.textContent = refresh ? "checked" : "";
+        } catch (error) {
+            console.error("Failed to load geometry extension status", error);
+            if (statusNode) statusNode.textContent = "Could not ask the server about the geometry extensions.";
+        }
+        renderGeometryExtensions();
+    }
+
+    function installGeometryExtensionHandlers() {
+        document.getElementById("geometry-extensions-recheck")?.addEventListener("click", () => loadGeometryExtensions(true));
+        document.querySelectorAll("[data-geometry-os]").forEach((button) =>
+            button.addEventListener("click", () => { state.geometryOs = button.dataset.geometryOs; renderGeometryExtensions(); }));
+    }
+
     function renderPythonSettings() {
         const settings = state.pythonSettings || {};
         const summary = document.getElementById("python-settings-summary");
@@ -3772,12 +3908,12 @@
         if (stateNode) {
             const mode = prefs.oscEditorDeltaMode ? "delta" : "absolute";
             const label = prefs.oscEditorEnabled
-                ? `UDP ${prefs.oscEditorPort || 9000} · ${mode} · ${prefs.oscEditorFloatAddress || "/field/float"}`
+                ? `UDP ${prefs.oscEditorPort || 9001} · ${mode} · ${prefs.oscEditorFloatAddress || "/field/float"}`
                 : "disabled";
             stateNode.textContent = label;
         }
         if (enabled) enabled.checked = !!prefs.oscEditorEnabled;
-        if (port) port.value = String(prefs.oscEditorPort || 9000);
+        if (port) port.value = String(prefs.oscEditorPort || 9001);
         if (floatAddress) floatAddress.value = prefs.oscEditorFloatAddress || "/field/float";
         if (launchAddress) launchAddress.value = prefs.oscEditorLaunchAddress || "/field/launch";
         if (stopAddress) stopAddress.value = prefs.oscEditorStopAddress || "/field/stop";
@@ -3819,7 +3955,7 @@
             autoOpenLastDocumentInDesktop: !!document.getElementById("pref-auto-open-last")?.checked,
             editorPropertyStickiness: document.querySelector(".stickiness-segment.active")?.getAttribute("data-stickiness-value") || "none",
             oscEditorEnabled: !!document.getElementById("osc-editor-enabled")?.checked,
-            oscEditorPort: Number.parseInt(document.getElementById("osc-editor-port")?.value || "9000", 10) || 9000,
+            oscEditorPort: Number.parseInt(document.getElementById("osc-editor-port")?.value || "9001", 10) || 9001,
             oscEditorFloatAddress: String(document.getElementById("osc-editor-float-address")?.value || "/field/float").trim(),
             oscEditorLaunchAddress: String(document.getElementById("osc-editor-launch-address")?.value || "/field/launch").trim(),
             oscEditorStopAddress: String(document.getElementById("osc-editor-stop-address")?.value || "/field/stop").trim(),
@@ -4072,7 +4208,7 @@
     }
 
     // Renders the left-gutter thumbnail layer for a document row: two fixed columns so captures
-    // line up across rows — column 1 is the afield.four renderer (further from the panel), column 2
+    // line up across rows — column 1 is the Field 4 renderer (further from the panel), column 2
     // is the canvas/electron-window capture (nearest the panel). A missing capture leaves an empty
     // cell so the columns still align. Search-result rows can be missing the thumbnail fields, so
     // we fall back to the canonical document entry in state.documents.
@@ -5008,6 +5144,7 @@
     }
 
     async function loadWelcomeDocs() {
+        const aiSettingsRevisionAtRequest = state.aiSettingsEditRevision || 0;
         try {
             const response = await fetch("/api/welcome-docs", { cache: "no-store" });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -5022,7 +5159,10 @@
             state.allTags = Array.isArray(payload.allTags) ? payload.allTags : [];
             state.currentWorkspace = payload.currentWorkspace || state.currentWorkspace || "";
             state.defaultWorkspace = payload.defaultWorkspace || state.defaultWorkspace || "";
-            state.aiSettings = payload.aiSettings || state.aiSettings;
+            if (!state.aiSettingsEditing && !state.savingAiSettings &&
+                aiSettingsRevisionAtRequest === (state.aiSettingsEditRevision || 0)) {
+                state.aiSettings = payload.aiSettings || state.aiSettings;
+            }
             state.completionDocDrafts = payload.completionDocDrafts || state.completionDocDrafts;
             state.aiToolUseImprovement = payload.aiToolUseImprovement || state.aiToolUseImprovement;
             state.codeUse = payload.codeUse || state.codeUse;
@@ -5064,7 +5204,7 @@
             state.codeUse = {
                 ...(state.codeUse || {}),
                 enabled: false,
-                message: "Could not load code-use telemetry state."
+                message: "Could not load local code-use history state."
             };
             state.semanticSearch = {
                 ...(state.semanticSearch || {}),
@@ -5667,9 +5807,46 @@
         }
     }
 
+    async function checkLocalAiConnection() {
+        const status = document.getElementById("local-ai-status");
+        state.testingLocalAi = true;
+        renderAiSettings();
+        status.textContent = "Checking from the Field backend…";
+        try {
+            const response = await fetch("/api/ai-local-connection", {
+                method: "POST", headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    baseUrl: document.getElementById("local-ai-base-url").value.trim(),
+                    apiKey: document.getElementById("local-ai-api-key").value.trim(),
+                    model: document.getElementById("ai-flagship-model").value.trim()
+                })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+            if (state.aiSettings.provider !== "local") return;
+            const choices = document.getElementById("local-ai-models");
+            choices.replaceChildren(...(result.models || []).map((id) => {
+                const option = document.createElement("option"); option.value = id; return option;
+            }));
+            const model = document.getElementById("ai-flagship-model");
+            if (!model.value.trim() && result.models?.length === 1) {
+                model.value = result.models[0];
+                state.aiSettings.modelsByProvider.local = {
+                    ...(state.aiSettings.modelsByProvider.local || {}), flagshipModel: model.value
+                };
+            }
+            status.textContent = result.message + (result.models?.length ? ` Available models: ${result.models.join(", ")}.` : "");
+        } catch (error) {
+            status.textContent = error.message || "Could not reach the local server.";
+        } finally {
+            state.testingLocalAi = false;
+            renderAiSettings();
+        }
+    }
+
     async function saveAiSettings() {
         const rawProvider = state.aiSettings?.provider;
-        const provider = (rawProvider === "openrouter" || rawProvider === "anthropic") ? rawProvider : "openai";
+        const provider = ["openrouter", "anthropic", "local"].includes(rawProvider) ? rawProvider : "openai";
         const openAiInput = document.getElementById("openai-platform-key");
         const openRouterInput = document.getElementById("openrouter-api-key");
         const openRouterBaseUrl = document.getElementById("openrouter-base-url");
@@ -5678,12 +5855,16 @@
         const fallbackModel = document.getElementById("ai-fallback-model");
         const openAiKey = String(openAiInput?.value || "").trim();
         const openRouterKey = String(openRouterInput?.value || "").trim();
-        const hasSelectedKey = provider === "anthropic" ? true : provider === "openrouter" ? (openRouterKey || state.aiSettings.hasOpenRouterApiKey) : (openAiKey || state.aiSettings.hasOpenAiPlatformKey);
+        const hasSelectedKey = (provider === "anthropic" || provider === "local") ? true : provider === "openrouter" ? (openRouterKey || state.aiSettings.hasOpenRouterApiKey) : (openAiKey || state.aiSettings.hasOpenAiPlatformKey);
         if (!hasSelectedKey) {
             setAiSettingsStatus(`Enter ${provider === "openrouter" ? "an OpenRouter API key" : "an OpenAI Platform key"}.`, true);
             return;
         }
 
+        if (provider === "local" && (!document.getElementById("local-ai-base-url").value.trim() || !flagshipModel.value.trim())) {
+            setAiSettingsStatus("Enter the local API base URL and model ID.", true);
+            return;
+        }
         state.savingAiSettings = true;
         renderAiSettings();
         setAiSettingsStatus("Saving...");
@@ -5695,8 +5876,10 @@
                 cache: "no-store",
                 body: JSON.stringify({
                     provider,
-                    openAiPlatformKey: openAiKey,
-                    openRouterApiKey: openRouterKey,
+                    openAiPlatformKey: provider === "openai" ? openAiKey : "",
+                    openRouterApiKey: provider === "openrouter" ? openRouterKey : "",
+                    localBaseUrl: document.getElementById("local-ai-base-url").value.trim(),
+                    localApiKey: provider === "local" ? document.getElementById("local-ai-api-key").value.trim() : "",
                     openRouterBaseUrl: String(openRouterBaseUrl?.value || "").trim(),
                     flagshipModel: String(flagshipModel?.value || "").trim(),
                     fastModel: String(fastModel?.value || "").trim(),
@@ -5708,7 +5891,12 @@
                 throw new Error(payload.error || `HTTP ${response.status}`);
             }
 
+            state.aiSettingsEditing = false;
+            state.aiSettingsEditRevision = (state.aiSettingsEditRevision || 0) + 1;
             state.aiSettings = {
+                localBaseUrl: payload.localBaseUrl || state.aiSettings.localBaseUrl || "",
+                hasLocalApiKey: !!payload.hasLocalApiKey,
+                environmentOverrides: payload.environmentOverrides || [],
                 hasOpenAiPlatformKey: !!payload.hasOpenAiPlatformKey,
                 hasOpenRouterApiKey: !!payload.hasOpenRouterApiKey,
                 provider: payload.provider || provider,
@@ -5729,6 +5917,8 @@
                     }
                 }
             };
+            document.getElementById("local-ai-api-key").value = "";
+            state._renderedAiProvider = null;
             if (openAiInput) openAiInput.value = "";
             if (openRouterInput) openRouterInput.value = "";
             setAiSettingsStatus(payload.message || "AI settings saved.");
@@ -6058,7 +6248,7 @@
 
     async function learnOscAddress(targetId) {
         const target = document.getElementById(targetId);
-        const port = Number.parseInt(document.getElementById("osc-editor-port")?.value || "9000", 10) || 9000;
+        const port = Number.parseInt(document.getElementById("osc-editor-port")?.value || "9001", 10) || 9001;
         if (!target) return;
         const preferenceKeys = {
             "osc-editor-float-address": "oscEditorFloatAddress",
@@ -6481,6 +6671,18 @@
 
         aiProviderButtons.forEach((button) => {
             button.addEventListener("click", () => {
+                state.aiSettingsEditing = true;
+                state.aiSettingsEditRevision = (state.aiSettingsEditRevision || 0) + 1;
+                const previous = state.aiSettings.provider;
+                state.aiSettings.modelsByProvider = {
+                    ...(state.aiSettings.modelsByProvider || {}),
+                    [previous]: {
+                        flagshipModel: document.getElementById("ai-flagship-model").value,
+                        fastModel: document.getElementById("ai-fast-model").value,
+                        fallbackModel: document.getElementById("ai-fallback-model").value
+                    }
+                };
+                if (previous === "local") state.aiSettings.localBaseUrl = document.getElementById("local-ai-base-url").value;
                 state.aiSettings = {
                     ...(state.aiSettings || {}),
                     provider: button.getAttribute("data-ai-provider") || "openai"
@@ -6490,6 +6692,14 @@
             });
         });
 
+        document.getElementById("check-local-ai")?.addEventListener("click", checkLocalAiConnection);
+        ["openai-platform-key", "openrouter-api-key", "openrouter-base-url", "local-ai-base-url",
+            "local-ai-api-key", "ai-flagship-model", "ai-fast-model", "ai-fallback-model"].forEach((id) => {
+            document.getElementById(id)?.addEventListener("input", () => {
+                state.aiSettingsEditing = true;
+                state.aiSettingsEditRevision = (state.aiSettingsEditRevision || 0) + 1;
+            });
+        });
         saveAiSettingsButton?.addEventListener("click", saveAiSettings);
         choosePythonPathButton?.addEventListener("click", choosePythonPath);
         installPythonJepButton?.addEventListener("click", installJep);
@@ -6872,6 +7082,8 @@
     installHandlers();
     installVulkanHandlers();
     loadVulkanStatus();
+    installGeometryExtensionHandlers();
+    loadGeometryExtensions();
     // Stream documents in for an immediate first paint, then fetch the full payload (settings,
     // projects, tags) which reconciles state against a now-warm server-side cache.
     streamWelcomeDocs().finally(() => loadWelcomeDocs());
@@ -6882,5 +7094,10 @@
     runSplashAnimation();
 </script>
 
+<script src="/kit-library.js"></script>
+<script type="module">
+    import { mountLocalAiFeedback } from "/localAiFeedback.js";
+    mountLocalAiFeedback(document.getElementById("local-ai-controls"));
+</script>
 </body>
 </html>

@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="gs_renderer" index="0" -->
 
 ```edn [field-box id="gs_renderer" role="properties"]
-{"id" "gs_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["gs_sim"] "properties" {"children" #{#afield/box "gs_sim"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gs_renderer_code_.kt" "lines" 11 "characters" 249 "sha256" "cb663790768b9b9d82b5859aa0d6a9178d777df8c51f8b6ba93017b50cf3c29b"}]}
+{"id" "gs_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["gs_sim"] "properties" {"children" #{#afield/box "gs_sim"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gs_renderer_code_.kt" "lines" 12 "characters" 261 "sha256" "781081b9e03128bac9268cc6a143de6bf86ef0abab75e89d548bb3d01401f3d8"}]}
 ```
 
 ```kotlin [field-property box="gs_renderer" name="code" path="gs_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -33,7 +34,7 @@ start(renderer::run)
 <!-- field-box id="gs_sim" index="1" -->
 
 ```edn [field-box id="gs_sim" role="properties"]
-{"id" "gs_sim" "index" 1 "name" "simulate" "parents" ["root" "gs_renderer"] "children" ["gs_draw"] "properties" {"children" #{#afield/box "gs_draw"} "parents" #{#afield/box "root" #afield/box "gs_renderer"} "name" "simulate" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "gs_sim_compute_.glsl" "lines" 53 "characters" 2045 "sha256" "2bb3bf4bc9c01e071f28cc2ef3c884a32f5d331d62a0d0f1b8ce56a803e009fb"} {"name" "code" "language" "kotlin" "path" "gs_sim_code_.kt" "lines" 107 "characters" 5188 "sha256" "596fd834b67573b3c07bc271c293d32f7cacb88990e5d91c4cb968db5f7d64b7"}]}
+{"id" "gs_sim" "index" 1 "name" "simulate" "parents" ["root" "gs_renderer"] "children" ["gs_draw"] "properties" {"children" #{#afield/box "gs_draw"} "parents" #{#afield/box "root" #afield/box "gs_renderer"} "name" "simulate" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "gs_sim_compute_.glsl" "lines" 58 "characters" 1856 "sha256" "0a4d10ae493ee9e931ba3192ec6988cd7fd89ed350fd5863486ab9e6b0acbd01"} {"name" "code" "language" "kotlin" "path" "gs_sim_code_.kt" "lines" 128 "characters" 5080 "sha256" "35d919970c4b8c7d2c47079f1bee4753973fe3e2013dffa8ad47cf12bcda7905"}]}
 ```
 
 ```glsl [field-property box="gs_sim" name="compute" path="gs_sim_compute_.glsl"]
@@ -41,25 +42,30 @@ start(renderer::run)
 #extension GL_EXT_buffer_reference : require
 layout(local_size_x = 64) in;
 
-layout(std430, buffer_reference) buffer State   { vec4 a[]; };
-layout(std430, buffer_reference) buffer Anchors { vec4 a[]; };
-layout(std430, buffer_reference) buffer Heat    { vec4 a[]; };
+layout(std430, buffer_reference) buffer State {
+    vec4 a[];
+};
+layout(std430, buffer_reference) buffer Anchors {
+    vec4 a[];
+};
+layout(std430, buffer_reference) buffer Heat {
+    vec4 a[];
+};
 
-{% include "fieldProbe" %}
+{% property "fieldProbe" %}
 
 layout(push_constant) uniform dat {
-    State   state;        // this frame's half of the ping-pong — written
-    State   prevState;    // last frame's half — read
-    Anchors anchors;      // written once, read every frame, device-local
-    Heat    heat;         // zero-initialised, device-local, shader-owned
-    vec4    knobs;        // .x seconds, .y force gain
-    uint    count;
-    float   dt;
+    State state; // this frame's half of the ping-pong — written
+    State prevState; // last frame's half — read
+    Anchors anchors; // written once, read every frame, device-local
+    Heat heat; // zero-initialised, device-local, shader-owned
+    vec4 knobs; // .x seconds, .y force gain
+    uint count;
+    float dt;
 } pc;
 
-// The live slot, and it goes AFTER the push block, not before: a program is free to read
-// `?pc.knobs`, and the generated function is emitted exactly where this line is. Put it above
-// and glslang says `'pc' : undeclared identifier` on a line number inside generated code.
+// The live slot. Field emits the generated function after the push block wherever this line
+// sits, so a program is free to read `?pc.knobs`.
 // Until Kotlin binds it this is `vec4 force(vec4 force_in) { return vec4(0.0); }`, so the
 // shader still compiles and the field simply sits still.
 {{ stack.auto.force }}
@@ -76,8 +82,8 @@ void main() {
     // force. Everything else here is fixed, so editing that one string is the whole knob.
     vec3 f = force(vec4(anchor, pc.knobs.x)).xyz * pc.knobs.y;
 
-    f += -(p0.xyz - anchor) * 4.0;   // a linear pull home: critically boring, and what keeps
-    f += -v0.xyz * 0.9;              // the rest stable
+    f += -(p0.xyz - anchor) * 4.0; // a linear pull home: critically boring, and what keeps
+    f += -v0.xyz * 0.9; // the rest stable
 
     vec3 v = v0.xyz + f * pc.dt;
     vec3 p = p0.xyz + v * pc.dt;
@@ -85,7 +91,7 @@ void main() {
     float speed = length(v);
     pc.heat.a[i].x = mix(pc.heat.a[i].x, speed, 0.04);
 
-    pc.state.a[i * 2u]      = vec4(p, p0.w + pc.dt);
+    pc.state.a[i * 2u] = vec4(p, p0.w + pc.dt);
     pc.state.a[i * 2u + 1u] = vec4(v, v0.w);
 
     fieldProbe(speed);
@@ -100,17 +106,27 @@ renderer += "gpu-state-sim" to simModule
 
 val N = 40000
 
-// ---- four buffers, four different answers to "who writes this, and how often" ----------
-//
-// State is host-visible: written once below, then written by the compute shader every frame.
-// Staging it would be a lie about the access pattern.
-var stateA  = defaultBuffer { size = (N * 2).vec4s }.buffer
-var stateB  = defaultBuffer { size = (N * 2).vec4s }.buffer
+/*
+---- four buffers, four different answers to "who writes this, and how often" ----------
+
+State is host-visible: written once below, then written by the compute shader every frame.
+Staging it would be a lie about the access pattern.
+*/
+var stateA = defaultBuffer { size = (N * 2).vec4s }.buffer
+var stateB = defaultBuffer { size = (N * 2).vec4s }.buffer
 // Anchors are writeOnce(): written here, read by every invocation of every frame, which is
 // exactly what device-local memory is for.
-var anchors = defaultBuffer { size = N.vec4s; writeOnce() }.buffer
+var anchors = defaultBuffer {
+    size = N.vec4s
+    writeOnce()
+}
+    .buffer
 // Heat is zeroInit(): never uploaded at all. The device zeroes it and the shader owns it.
-var heat    = defaultBuffer { size = N.vec4s; zeroInit() }.buffer
+var heat = defaultBuffer {
+    size = N.vec4s
+    zeroInit()
+}
+    .buffer
 
 // One list of home positions, used for the anchors and for both halves of the state, so the
 // simulation starts exactly at rest rather than nearly at rest.
@@ -125,55 +141,64 @@ anchors.write { for (h in home) put(vec(h.first, h.second, h.third, 0.0)) }
 
 // BOTH halves of the ping-pong. The shader reads one and writes the other from frame one, so
 // an unwritten second buffer means the first frame integrates from zeroes.
-for (target in listOf(stateA, stateB)) {
+for (target in [stateA, stateB]) {
     target.write {
         for (h in home) {
-            put(vec(h.first, h.second, h.third, 0.0))   // position, age
-            put(vec(0.0, 0.0, 0.0, 0.0))                // velocity
+            put(vec(h.first, h.second, h.third, 0.0)) // position, age
+            put(vec(0.0, 0.0, 0.0, 0.0)) // velocity
         }
     }
 }
 
-// ---- bindings. Lambdas, evaluated once per dispatch, so they go in once, here. ----------
-//
-// Parity comes from renderer.frameCounter and nothing else: it is constant for the whole of
-// one frame's recording, so this box and the draw box agree without either depending on
-// which one's loop ran first.
-sim.state     = { if (renderer.frameCounter % 2L == 0L) stateA else stateB }
-sim.prevState = { if (renderer.frameCounter % 2L == 0L) stateB else stateA }
-sim.anchors   = { anchors }
-sim.heat      = { heat }
-sim.count     = { N.toUInt() }
-sim.dt        = { 1f / 60f }        // FIXED, not measured: stability depends on it
-// The clock comes off the same counter as the parity, and not off the wall: a fixed dt
-// integrator that walks its force field at wall-clock speed is two different timebases in
-// one loop. A slow frame should slow the field, not tear it — and a frame-synchronous docs
-// capture of this scene then looks like the scene.
-sim.knobs     = { vec(renderer.frameCounter / 60.0, 1.0, 0.0, 0.0) }
+/*
+---- bindings. Lambdas, evaluated once per dispatch, so they go in once, here. ----------
 
-// ---- the live slot. On the MODULE, not the mesh. ----------------------------------------
-//
-// `sim.force = ...` would be a receiver-type mismatch naming both ModulePointer overloads,
-// which is a confusing way to learn that a stack.auto slot is a property of the compiled
-// shader while the mesh only carries push constants.
-//
-// StackSL's plain `fbm` is two-dimensional: it lowers to fbm(vec2) over
-// coord.xy + coord.zw * 0.07, so feeding it a 3D position gives a field in (x, y) with z
-// entering at a fourteenth of the weight of x, which is a shear and not a third dimension.
-// fbm4 is the volumetric family's four-dimensional member and reads the whole vec4 as a
-// coordinate. The shader hands this program vec4(anchor, seconds) — StackSL's own input
-// convention — so one componentwise multiply sets the spatial scale and the rate the field
-// evolves at, and time being an axis of the noise rather than an offset into it means the
-// volume changes in place instead of sliding past.
-//
-// Three offsets into one scalar field make a three-channel one. Every fractal word in the
-// 3D/4D family divides its accumulated amplitude sum out at runtime, so each fbm4 is exactly
-// 0..1 and `0.5 -` is unbiased; the 2D words sum to 0.96875 and would need a correction.
-//
-// `>c` and not `=c`: a definition must consume its input and leave its result. `=name` copies
-// (a -- a) and `>name` moves (a --), so opening with `=c` leaves the input under the result
-// and every call pushes two values. Try it and read the box's stack.auto channel.
-simModule.force = """
+Parity comes from renderer.frameCounter and nothing else: it is constant for the whole of
+one frame's recording, so this box and the draw box agree without either depending on
+which one's loop ran first.
+*/
+sim.state = { if (renderer.frameCounter % 2L == 0L) stateA else stateB }
+sim.prevState = { if (renderer.frameCounter % 2L == 0L) stateB else stateA }
+sim.anchors = { anchors }
+sim.heat = { heat }
+sim.count = { N.toUInt() }
+sim.dt = {
+    1f / 60f
+} // FIXED, not measured: stability depends on it
+/*
+The clock comes off the same counter as the parity, and not off the wall: a fixed dt
+integrator that walks its force field at wall-clock speed is two different timebases in
+one loop. A slow frame should slow the field, not tear it — and a frame-synchronous docs
+capture of this scene then looks like the scene.
+*/
+sim.knobs = { vec(renderer.frameCounter / 60.0, 1.0, 0.0, 0.0) }
+
+/*
+---- the live slot. On the MODULE, not the mesh. ----------------------------------------
+
+`sim.force = ...` would be a receiver-type mismatch naming both ModulePointer overloads,
+which is a confusing way to learn that a stack.auto slot is a property of the compiled
+shader while the mesh only carries push constants.
+
+StackSL's plain `fbm` is two-dimensional: it lowers to fbm(vec2) over
+coord.xy + coord.zw * 0.07, so feeding it a 3D position gives a field in (x, y) with z
+entering at a fourteenth of the weight of x, which is a shear and not a third dimension.
+fbm4 is the volumetric family's four-dimensional member and reads the whole vec4 as a
+coordinate. The shader hands this program vec4(anchor, seconds) — StackSL's own input
+convention — so one componentwise multiply sets the spatial scale and the rate the field
+evolves at, and time being an axis of the noise rather than an offset into it means the
+volume changes in place instead of sliding past.
+
+Three offsets into one scalar field make a three-channel one. Every fractal word in the
+3D/4D family divides its accumulated amplitude sum out at runtime, so each fbm4 is exactly
+0..1 and `0.5 -` is unbiased; the 2D words sum to 0.96875 and would need a correction.
+
+`>c` and not `=c`: a definition must consume its input and leave its result. `=name` copies
+(a -- a) and `>name` moves (a --), so opening with `=c` leaves the input under the result
+and every call pushes two values. Try it and read the box's stack.auto channel.
+*/
+simModule.force =
+    """
     : vfield
       >c
       <c                     fbm4
@@ -186,7 +211,9 @@ simModule.force = """
     0.5 - 6.0 *
 """
 
-sim.x = N / 64; sim.y = 1; sim.z = 1
+sim.x = N / 64
+sim.y = 1
+sim.z = 1
 
 // A GPU-side histogram of per-particle speed, reservoir-sampled in the shader and reduced on
 // the card. No readback of the state buffers, and no CPU work per particle.
@@ -197,7 +224,7 @@ displayOpen("probe")
 // has to ask the same parity question this box just asked.
 prop<FrameBufferGroup>(gsStateA) = stateA
 prop<FrameBufferGroup>(gsStateB) = stateB
-prop<FrameBufferGroup>(gsHeat)   = heat
+prop<FrameBufferGroup>(gsHeat) = heat
 
 println("simulation launched, N=" + N)
 ```
@@ -207,28 +234,32 @@ println("simulation launched, N=" + N)
 <!-- field-box id="gs_draw" index="2" -->
 
 ```edn [field-box id="gs_draw" role="properties"]
-{"id" "gs_draw" "index" 2 "name" "draw" "parents" ["root" "gs_sim"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "gs_sim"} "name" "draw" "_tombstone" false "frame" #afield/rect [640.0 40.0 300.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "gs_draw_vertex_.glsl" "lines" 32 "characters" 852 "sha256" "9070f90741b585315a0d6434434d612aa719f91ebe440a279ad96af673217865"} {"name" "fragment" "language" "glsl" "path" "gs_draw_fragment_.glsl" "lines" 14 "characters" 424 "sha256" "b75dc03bd68870d1d195ed7ed012d29b65775b3abcd6524b196b1c7b7b679564"} {"name" "code" "language" "kotlin" "path" "gs_draw_code_.kt" "lines" 19 "characters" 824 "sha256" "18a82d744a6c7ee27107c75ef23b448878cd0d3ac568ebd6a319762ca3cb8439"}]}
+{"id" "gs_draw" "index" 2 "name" "draw" "parents" ["root" "gs_sim"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "gs_sim"} "name" "draw" "_tombstone" false "frame" #afield/rect [640.0 40.0 300.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "gs_draw_vertex_.glsl" "lines" 36 "characters" 850 "sha256" "ddb47bea01e9fd71cb79cebc2a9db89ef4a9d33057a043ddf050bd599110dbde"} {"name" "fragment" "language" "glsl" "path" "gs_draw_fragment_.glsl" "lines" 15 "characters" 544 "sha256" "82878b1ed0c0ae537f9b51a51e37a82aa358d524cf638fa399eb1f23bd66e8ed"} {"name" "code" "language" "kotlin" "path" "gs_draw_code_.kt" "lines" 21 "characters" 820 "sha256" "6a25d82459347ed43f834db09906ee99bf661a39c229d92184259cb3981bb9d9"}]}
 ```
 
 ```glsl [field-property box="gs_draw" name="vertex" path="gs_draw_vertex_.glsl"]
 #version 450
 #extension GL_EXT_buffer_reference : require
 
-layout(std430, buffer_reference) buffer State { vec4 a[]; };
-layout(std430, buffer_reference) buffer Heat  { vec4 a[]; };
+layout(std430, buffer_reference) buffer State {
+    vec4 a[];
+};
+layout(std430, buffer_reference) buffer Heat {
+    vec4 a[];
+};
 
 layout(location = 0) out vec2 tc;
 layout(location = 1) out float warmth;
 
 layout(push_constant) uniform push {
     State state;
-    Heat  heat;
+    Heat heat;
     float aspectRatio;
 } pc;
 
 const vec3[6] corner = vec3[6](
-    vec3(0,0,0), vec3(1,0,0), vec3(1,1,0),
-    vec3(0,0,0), vec3(1,1,0), vec3(0,1,0)
+vec3(0,0,0), vec3(1,0,0), vec3(1,1,0),
+vec3(0,0,0), vec3(1,1,0), vec3(0,1,0)
 );
 
 void main() {
@@ -252,13 +283,14 @@ layout(location = 0) in vec2 tc;
 layout(location = 1) in float warmth;
 
 void main() {
-    float d = length(tc - vec2(0.5));
-    float a = smoothstep(0.5, 0.12, d);
-    if (a < 0.02) discard;
+    float radius = length(tc - vec2(0.5));
+    // Ordered edges define a soft disc: full centre coverage, fading to zero at radius 0.5.
+    float alpha = 1.0 - smoothstep(0.12, 0.5, radius);
+    if (alpha < 0.02) discard;
     vec3 cold = vec3(0.16, 0.40, 0.95);
-    vec3 hot  = vec3(1.00, 0.78, 0.30);
+    vec3 hot = vec3(1.00, 0.78, 0.30);
     vec3 c = mix(cold, hot, clamp(warmth * 5.5, 0.0, 1.0));
-    uFragColor = vec4(c, a * 0.30);
+    uFragColor = vec4(c, alpha * 0.30);
 }
 ```
 
@@ -270,11 +302,13 @@ renderer += "gpu-state-draw" to drawModule
 
 val N = 40000
 
-// The same parity question the sim box asked, asked the same way and from the same source.
-// Read the OTHER half and the picture is one frame stale; ask a private counter instead and
-// the two boxes disagree whenever their loops start in different frames.
+/*
+The same parity question the sim box asked, asked the same way and from the same source.
+Read the OTHER half and the picture is one frame stale; ask a private counter instead and
+the two boxes disagree whenever their loops start in different frames.
+*/
 quads.state = { if (renderer.frameCounter % 2L == 0L) gsStateA else gsStateB }
-quads.heat  = { gsHeat }
+quads.heat = { gsHeat }
 quads.aspectRatio = { window.width / window.height.toFloat() }
 
 // Six vertices per particle with an empty writer: the vertex shader synthesizes each quad's

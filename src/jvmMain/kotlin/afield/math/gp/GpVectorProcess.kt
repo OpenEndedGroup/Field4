@@ -1,7 +1,17 @@
-@file:afield.CompletionCategory("Math")
+@file:afield.runtime.completion.CompletionCategory("Math")
 package afield.math.gp
 
 import kotlin.math.abs
+
+/**
+ * Vector-valued Gaussian processes with separable covariance, for fitting curves and fields whose outputs are several coordinates.
+ *
+ * [GpVectorProcess] lifts each observation to (input, output index) and reuses the exact scalar
+ * [GaussianProcess], so cost is cubic in observations times output dimensions. With a
+ * [GpDifferentiableKernel] it trains on and answers derivatives through
+ * [GpVectorDerivativeObservation] and `derivativePosterior`. [GpVectorJoint] is the joint posterior
+ * over a set of points, with per-point means, covariances and samples.
+ */
 
 /** A measured vector derivative ∂f/∂x[axis] (every output coordinate) at [point]. */
 class GpVectorDerivativeObservation(point: DoubleArray, val axis: Int, value: DoubleArray, val noiseStd: Double = 0.0) {

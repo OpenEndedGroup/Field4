@@ -34,8 +34,8 @@ async def verify(port: int, workspace: str):
                 uid = box["box"]["uid"]
                 other = await client.create_box(name="Independent conversation", x=850, y=40, w=300, h=70, timeout=30)
                 other_uid = other["box"]["uid"]
-                code = ('val owner = afield.Box.context.get()!!\n'
-                        'afield.ai.core.AiBoxConversation.write(owner, ' + json.dumps(transcript) + ')\n')
+                code = ('val owner = afield.document.graph.Box.context.get()!!\n'
+                        'afield.ai.conversation.AiBoxConversation.write(owner, ' + json.dumps(transcript) + ')\n')
                 result, _, timed_out = await client.run_box(uid, property_name="code", value=code, timeout=90)
                 assert not timed_out and not result.get("errors"), result
                 await client.set_string(other_uid, "ai4_chat_history", "<<you>>\nOther box only.")

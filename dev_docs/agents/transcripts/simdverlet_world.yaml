@@ -29,6 +29,9 @@ description: >
   The written-up version, with the design argument for why a collider is a projection and not a force,
   is `dev_docs/physics/SIMDVERLET_5_WORLD.md`. Replayed end to end in CI: launch each box, run real
   runloop frames, stop.
+docs:
+  - page: physics.md
+    why: "Explains SimdVerlet cloth, colliders and forces."
 operations:
   - create:
       box: world_drape
@@ -36,8 +39,7 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 420.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.physics.*
-          import afield.stdlib.vec
+          import afield.simulation.physics.*
 
           /*
           A cloth, and something for it to land on.
@@ -100,8 +102,7 @@ operations:
       frame: { x: 500.0, y: 40.0, w: 420.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.physics.*
-          import afield.stdlib.vec
+          import afield.simulation.physics.*
 
           /*
           Tearing, with something doing the tearing: a sphere pushed through a sheet that is pinned
@@ -161,9 +162,7 @@ operations:
       frame: { x: 40.0, y: 190.0, w: 420.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.physics.*
-          import afield.graphics.FLine
-          import afield.stdlib.vec
+          import afield.simulation.physics.*
 
           // A flag. It lies in the x/y plane and flaps in z, which is why the view at the bottom is
           // from ABOVE: seen from the front this is a rectangle standing perfectly still.
@@ -226,8 +225,7 @@ operations:
       frame: { x: 500.0, y: 190.0, w: 420.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.physics.*
-          import afield.stdlib.vec
+          import afield.simulation.physics.*
 
           /*
           Everything at once, and one knob.
@@ -330,7 +328,6 @@ operations:
                           "${world.contacts} contacts · ${sim.liveEdgeCount()} edges left",
               )
           }
-
   # Every box here is a frame loop, so — like cloth_simdverlet_start — CI launches rather than
   # executes: a `loop { }` cannot run to completion. All four are launched together on purpose,
   # because the thing worth regression-testing is four independent SimdVerlet worlds stepping in the

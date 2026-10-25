@@ -1,13 +1,13 @@
 package afield.examples.stacksl
 
-import afield.Box
-import afield.four.modules.ShaderKind
-import afield.stdlib.preprocess
-import afield.stdlib.stackAutoShaderReport
-import afield.stdlib.stackAutoShaderSources
-import afield.stacksl.StackSLCompileOptions
-import afield.stacksl.StackSLCompiler
-import afield.stacksl.StackSLSeverity
+import afield.document.graph.Box
+import afield.graphics.shader.ShaderKind
+import afield.graphics.shader.preprocess
+import afield.graphics.shader.stackAutoShaderReport
+import afield.graphics.shader.stackAutoShaderSources
+import afield.lang.stacksl.StackSLCompileOptions
+import afield.lang.stacksl.StackSLCompiler
+import afield.lang.stacksl.StackSLSeverity
 
 /*
 FIELD_TEST
@@ -74,7 +74,7 @@ object StackSLSmokeTest {
         val result = StackSLCompiler.compile(
             """
             : warp
-              uv 8 * time + sin
+              drop uv 8 * time + sin
               fbm palette saturate
             ;
 
@@ -316,7 +316,7 @@ object StackSLSmokeTest {
             : ring
               0-> 0.982 *
               p length 0.42 0.035 pulse 0.08 *
-              +
+              + nip
             ;
 
             drop
@@ -810,9 +810,9 @@ object StackSLSmokeTest {
         )
 
         require(result.ok) { result.diagnostics.joinToString("\n") }
-        require("pc.foo * vec4(0.5)" in result.glsl) { result.glsl }
-        require("+ pc.inData.p[idx].posvel.Z" in result.glsl) { result.glsl }
-        require("+ pc.bar" in result.glsl) { result.glsl }
+        require("host_asVec4(pc.foo) * vec4(0.5)" in result.glsl) { result.glsl }
+        require("+ host_asVec4(pc.inData.p[idx].posvel.Z)" in result.glsl) { result.glsl }
+        require("+ host_asVec4(pc.bar)" in result.glsl) { result.glsl }
         require(Regex("""pc\.foo = _host_v\d+;""").containsMatchIn(result.glsl)) { result.glsl }
         require(Regex("""pc\.inData\.p\[idx]\.posvel\.Z = _host_v\d+;""").containsMatchIn(result.glsl)) { result.glsl }
     }
@@ -839,13 +839,11 @@ object StackSLSmokeTest {
             input half
         """.trimIndent()
 
+        // Since 2026-10-16 the compiler refuses it outright, naming the definition and the fix.
         val bad = stackAutoShaderReport(unbalanced, "noiseForce")
-        require(bad.compiled) { "the unbalanced program should still compile; that is the whole problem" }
+        require(!bad.compiled) { "an unbalanced called definition is a compile error: $bad" }
         require(!bad.quiet) { "an unbalanced definition must not be reported as clean: $bad" }
-        require(bad.problems.size == 1) { "expected exactly one problem, got ${bad.problems}" }
-        require("`half`" in bad.problems[0]) { "the problem should name the definition: ${bad.problems[0]}" }
-        require("2 values" in bad.problems[0]) { "the problem should state the depth: ${bad.problems[0]}" }
-        require(">mark" in bad.problems[0]) { "the problem should name the fix: ${bad.problems[0]}" }
+        require(bad.problems.any { "half" in it && ">mark" in it }) { "the problem should name the definition and the fix: ${bad.problems}" }
         // And it renders, because an output area is where this is actually read.
         require("problem" in bad.toHTML()) { bad.toHTML() }
 
@@ -913,7 +911,7 @@ object StackSLSmokeTest {
     }
 
     private fun compilesDocsGalleryPrograms() {
-        val gallery = afield.four.fabricated.StackSLGalleryHarness
+        val gallery = afield.graphics.scene.fabricated.StackSLGalleryHarness
         val examples = gallery.loadExamples()
         require(examples.isNotEmpty()) { "StackSL docs gallery has no examples" }
 
@@ -968,15 +966,15 @@ object StackSLSmokeTest {
         // the offline viewer.
         val edn = java.io.File(
             System.getProperty("user.dir"),
-            "${afield.four.fabricated.StackSLGalleryHarness.WORKSPACE_DIR}/metadata.edn"
+            "${afield.graphics.scene.fabricated.StackSLGalleryHarness.WORKSPACE_DIR}/metadata.edn"
         )
         require(edn.exists()) { "gallery workspace metadata.edn missing: ${edn.absolutePath}" }
 
-        val transfers = afield.SavingContext().readEdnTransfersFromString(edn.readText())
+        val transfers = afield.document.persistence.SavingContext().readEdnTransfersFromString(edn.readText())
         // Exclude the window/renderer parent box: it owns the graphics context the
         // example boxes inherit and carries no stackSL of its own.
         val boxes = transfers.filter { it.id != "root" && it.id != "renderer" }
-        val expected = afield.four.fabricated.StackSLGalleryHarness.loadExamples().map { it.name }.toSet()
+        val expected = afield.graphics.scene.fabricated.StackSLGalleryHarness.loadExamples().map { it.name }.toSet()
         val boxIds = boxes.map { it.id }.toSet()
         require(boxIds.containsAll(expected)) {
             "metadata.edn is missing boxes for workspace examples: ${expected - boxIds}"
@@ -989,12 +987,12 @@ object StackSLSmokeTest {
         // Field runs the loose sidecar and the offline viewer shows the inline copy, so the
         // two can disagree without either one failing. Hold them equal, and hold the file to
         // what the codec writes, so a refresh on a clean tree changes nothing.
-        val saving = afield.SavingContext()
+        val saving = afield.document.persistence.SavingContext()
         val dir = edn.parentFile
         val stale = saving.readInlineFileSnapshots(dir.absolutePath)
             .filter { java.io.File(dir, it.path).readText() != it.inline }
             .map { it.path }
-        val refresh = "refresh with afield.SavingContext().refreshInlineFilesFromDisk(\"${dir.path}\")"
+        val refresh = "refresh with afield.document.persistence.SavingContext().refreshInlineFilesFromDisk(\"${dir.path}\")"
         require(stale.isEmpty()) { "metadata.edn inline copies differ from their sidecars: $stale; $refresh" }
         require(edn.readText() == saving.canonicalInlineMetadata(dir.absolutePath).metadataEdn) {
             "metadata.edn is not what Field's EDN codec writes; $refresh"

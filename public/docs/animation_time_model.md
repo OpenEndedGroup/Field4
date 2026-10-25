@@ -4,12 +4,12 @@ To animate something from a box, end the box with a `loop { }`. The code above i
 you run the box. The block runs again every frame, until you stop the box or run it again:
 
 ```diffstatic {data-lang=kotlin}
-var n = 0                           // runs once
+var n = 0 // runs once
 
-loop {                              // runs every frame
+loop { // runs every frame
     n++
     display("main", "<h2>$n</h2>")
-    delay(100)                      // wait 100 ms; this counts as the pass's frame
+    delay(100) // wait 100 ms; this counts as the pass's frame
 }
 ```
 
@@ -17,8 +17,8 @@ The `loop { }` has to be the box's last expression, because what Field launches 
 returns. Put anything after it and nothing animates:
 
 ```diffstatic {data-lang=kotlin}
-loop { n++ }                        // not the last expression …
-println("set up")                   // … so this is the box's value, and nothing runs
+loop { n++ } // not the last expression …
+println("set up") // … so this is the box's value, and nothing runs
 ```
 
 Here is a longer one, recorded frame by frame. The disc's position comes from
@@ -32,25 +32,28 @@ stopped animation, not the end of the recording.
 :::fold the fixed frame and the two shapes — geometry only, no animation in here
 val W = 980.0
 val H = 300.0
-val FRAMES = 160      // frames in the clip: 8 s at 20 fps. The tick row is scaled to fill it.
+val FRAMES = 160 // frames in the clip: 8 s at 20 fps. The tick row is scaled to fill it.
 
-// A border drawn every frame. Without a fixed extent, fitToSize rescales the view to whatever the
-// dot is doing and the motion cancels itself out — the lesson rasterizeFLinesFramed in
-// alife_animate.kt records, and it applies to lines() just as much.
+/*
+A border drawn every frame. Without a fixed extent, fitToSize rescales the view to whatever the
+dot is doing and the motion cancels itself out — the lesson rasterizeFLinesFramed in
+alife_animate.kt records, and it applies to lines() just as much.
+*/
 fun border(rgba: Vec4) = fline {
-    moveTo(6.0, 6.0); lineTo(W - 6.0, 6.0); lineTo(W - 6.0, H - 6.0); lineTo(6.0, H - 6.0); close()
-    color = rgba; thickness = 1.4; stroked = true; filled = false
+    rect(6.0, 6.0, W - 12.0, H - 12.0)
+    color = rgba
+    thickness = 1.4
+    stroked = true
+    filled = false
 }
 
 fun disc(cx: Double, cy: Double, r: Double, rgba: Vec4) = fline {
-    (0..28).forEach { i ->
-        val a = i / 28.0 * 2.0 * kotlin.math.PI
-        val px = cx + r * kotlin.math.cos(a)
-        val py = cy + r * kotlin.math.sin(a)
-        if (i == 0) moveTo(px, py) else lineTo(px, py)
-    }
-    close(); color = rgba; filled = true; stroked = false
+    circle(cx, cy, r, segments = 28)
+    color = rgba
+    filled = true
+    stroked = false
 }
+
 :::endfold
 
 val started = AnimationClock.nowSeconds()
@@ -60,27 +63,35 @@ val stopAfter = 4.5
 // clock, not against frameNumber, so it means the same thing live and under capture.
 fun dotX(elapsed: Double) = 110.0 + 760.0 * (0.5 - 0.5 * kotlin.math.cos(elapsed * 0.9))
 
-// A lambda, not a named `fun`: a named function that captures the script's implicit Box receiver —
-// which `lines(...)` needs, since it is a Box extension — is something K2 cannot currently codegen.
-val draw: (Double, Int, Boolean) -> Unit = { elapsed, frames, stopped ->
+fun draw(elapsed: Double, frames: Int, stopped: Boolean) {
     val accent = if (stopped) vec(1.0, 0.28, 0.30, 1.0) else vec(0.48, 0.85, 1.0, 1.0)
     val quiet = if (stopped) vec(1.0, 0.28, 0.30, 0.55) else vec(0.55, 0.62, 0.72, 0.7)
     val track = fline {
-        moveTo(110.0, 105.0); lineTo(870.0, 105.0)
-        color = quiet; thickness = 1.4
+        moveTo(110.0, 105.0)
+        lineTo(870.0, 105.0)
+        color = quiet
+        thickness = 1.4
     }
     // One tick per four frames reached. The row grows with frameNumber; the disc moves with the
     // clock. Every fourth, not every one: at this scale 160 adjacent ticks merge into a solid bar.
     val tickRow = fline {
         for (i in 0 until frames.coerceAtMost(FRAMES) step 4) {
             val x = 110.0 + 760.0 * (i.toDouble() / FRAMES)
-            moveTo(x, 190.0); lineTo(x, 250.0)
+            moveTo(x, 190.0)
+            lineTo(x, 250.0)
         }
-        color = accent; thickness = 2.4
+        color = accent
+        thickness = 2.4
     }
     lines(
-        border(quiet), track, tickRow, disc(dotX(elapsed), 105.0, 15.0, accent),
-        channel = "main", w = W, h = H, fitToSize = true,
+        border(quiet),
+        track,
+        tickRow,
+        disc(dotX(elapsed), 105.0, 15.0, accent),
+        channel = "main",
+        w = W,
+        h = H,
+        fitToSize = true,
     )
 }
 
@@ -88,14 +99,15 @@ loop {
     val elapsed = AnimationClock.nowSeconds() - started
     draw(elapsed, frameNumber, false)
     if (elapsed >= stopAfter) end()
-}.end {
-    // Runs on cancellation, in a NonCancellable scope that still carries the box context — so it can
-    // still draw, and still get frames. Two of them, so the stopped state is definitely painted.
-    repeat(2) {
-        draw(AnimationClock.nowSeconds() - started, frameNumber, true)
-        frame()
-    }
 }
+    .end {
+        // Runs on cancellation, in a NonCancellable scope that still carries the box context — so it can
+        // still draw, and still get frames. Two of them, so the stopped state is definitely painted.
+        repeat(2) {
+            draw(AnimationClock.nowSeconds() - started, frameNumber, true)
+            frame()
+        }
+    }
 ```
 
 Two habits in that code are worth copying. Motion is a function of the clock, not of how many frames
@@ -130,7 +142,7 @@ var x = 0.0
 forever {
     x += 0.01
     display("main", "<h2>%.2f</h2>".format(x))
-    x < 1.0                         // false ends it
+    x < 1.0 // false ends it
 }
 ```
 
@@ -171,9 +183,11 @@ Live, the rate is whatever the machine can manage. Here is a frame body that doe
 the clock, for two seconds, with the gaps between the stamps plotted:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/cadence.png" execution="launch" wait="4.0" wait-output="true" capture="box" open-outputs="true" w="1100" timeout="90" name="animation-cadence"}
-// One wall-clock reading per frame for two seconds, then plot the gaps between them. Nothing here
-// is frame-indexed: a screenshot capture leaves AnimationClock on monotonic real time, unlike the
-// frame-synchronous video recorder.
+/*
+One wall-clock reading per frame for two seconds, then plot the gaps between them. Nothing here
+is frame-indexed: a screenshot capture leaves AnimationClock on monotonic real time, unlike the
+frame-synchronous video recorder.
+*/
 val t0 = AnimationClock.nowSeconds()
 val stamps = ArrayList<Double>(400_000)
 
@@ -181,29 +195,37 @@ loop {
     val now = AnimationClock.nowSeconds()
     stamps += now
     if (now - t0 >= 2.0) end()
-}.end {
-    val gapsUs = (1 until stamps.size).map { (stamps[it] - stamps[it - 1]) * 1_000_000.0 }
-    val elapsed = stamps.last() - stamps.first()
-
-    // A 100-frame running mean, so the trend is readable under the spikes.
-    val window = 100
-    val smooth = gapsUs.indices.map { i ->
-        val lo = maxOf(0, i - window + 1)
-        gapsUs.subList(lo, i + 1).average()
-    }
-
-    val perSecond = gapsUs.size / elapsed
-    val median = gapsUs.sorted()[gapsUs.size / 2]
-    showSignals(
-        "gap between frames (µs)" to gapsUs,
-        "100-frame running mean" to smooth,
-        channel = "main",
-        title = "%,d frames in %.2f s — %,.0f a second, median gap %,.0f µs".format(
-            gapsUs.size, elapsed, perSecond, median),
-        xTitle = "frame",
-        yTitle = "µs",
-    )
 }
+    .end {
+        val gapsUs = (1 until stamps.size).map { (stamps[it] - stamps[it - 1]) * 1_000_000.0 }
+        val elapsed = stamps.last() - stamps.first()
+
+        // A 100-frame running mean, so the trend is readable under the spikes.
+        val window = 100
+        val smooth =
+            gapsUs.indices.map { i ->
+                val lo = maxOf(0, i - window + 1)
+                gapsUs.subList(lo, i + 1).average()
+            }
+
+        val perSecond = gapsUs.size / elapsed
+        val median = gapsUs.sorted()[gapsUs.size / 2]
+        showSignals(
+            "gap between frames (µs)" to gapsUs,
+            "100-frame running mean" to smooth,
+            channel = "main",
+            title =
+                "%,d frames in %.2f s — %,.0f a second, median gap %,.0f µs"
+                    .format(
+                        gapsUs.size,
+                        elapsed,
+                        perSecond,
+                        median,
+                    ),
+            xTitle = "frame",
+            yTitle = "µs",
+        )
+    }
 ```
 
 ![A per-frame interval plot titled 1,407 frames in 1.95 s. A dense band of gaps filling everything between zero and about 1,700 microseconds, five spikes reaching 2,500 to 3,500, and a 100-frame running mean that wanders between 1,200 and 1,500 rather than holding any constant value](assets/animation_time_model/cadence.png)
@@ -231,7 +253,7 @@ val started = AnimationClock.nowSeconds()
 loop {
     val t = AnimationClock.nowSeconds() - started
     display("main", "<h2>%.1f s</h2>".format(t))
-    if (t > 5.0) end()              // stop after five seconds
+    if (t > 5.0) end() // stop after five seconds
 }
 ```
 
@@ -247,9 +269,10 @@ though not until the frame after you press stop:
 var x = 0
 loop {
     x++
-}.end {
-    x = 20
 }
+    .end {
+        x = 20
+    }
 ```
 
 The end block is a frame body in its own right, so it can take frames of its own:
@@ -258,13 +281,14 @@ The end block is a frame body in its own right, so it can take frames of its own
 var x = 0
 loop {
     x++
-}.end {
-    x = 20
-    10 {
-        frame()
-        x = 30 + it
-    }
 }
+    .end {
+        x = 20
+        10 {
+            frame()
+            x = 30 + it
+        }
+    }
 ```
 
 which stops at `x == 39`, eleven frames after the button. Draw from there rather than only
@@ -304,17 +328,19 @@ clock too, which is why the drag here is driven by the step count and not by `no
 
 ```diffstatic_runner {data-lang=kotlin video="assets/animation_time_model/cloth_loop.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="960" h="120" embed=true name="animation-cloth-loop" alt="a wireframe cloth of 20 by 10 particles hanging from five red pins along its top edge, drawn as cyan constraint segments with pale dots at the particles and short green velocity whiskers; an invisible hand drags its bottom-right corner in a slow loop, and the sheet stretches, swings and folds after it while the caption counts frames upward"}
 :::static
-import afield.four.physics.*
+import afield.simulation.physics.*
 
 // The physics system. State3 is the SoA particle store; the simulation owns it and grows it as
 // things are added, so it starts empty.
 val sim = SimdVerlet(SimdVerlet.State3.empty())
 
-// 20 wide, 10 tall. addCloth appends the particles to whatever is already in `sim`, wires the
-// four-slot distance constraints, pins what `pinned` selects, and registers the curvature force.
-//
-// The plane view has y growing DOWN the screen, so the sheet hangs from row 0 and gravity is +y.
-// Every fourth column of that row is a nail; the rest of it swings.
+/*
+20 wide, 10 tall. addCloth appends the particles to whatever is already in `sim`, wires the
+four-slot distance constraints, pins what `pinned` selects, and registers the curvature force.
+
+The plane view has y growing DOWN the screen, so the sheet hangs from row 0 and gravity is +y.
+Every fourth column of that row is a nail; the rest of it swings.
+*/
 val cloth = sim.addCloth(
     width = 20,
     height = 10,
@@ -334,9 +360,11 @@ val view = Rect(-1.5, -1.0, 13.5, 9.0)
 
 var frames = 0
 loop {
-    // One frame of physics for the whole simulation: gravity, the per-particle force generators,
-    // the registered bulk forces (the cloth's curvature pass), then `iterations` passes of the
-    // constraint solve, then Verlet integration.
+    /*
+    One frame of physics for the whole simulation: gravity, the per-particle force generators,
+    the registered bulk forces (the cloth's curvature pass), then `iterations` passes of the
+    constraint solve, then Verlet integration.
+    */
     cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = 2f, iterations = 16)
     frames++
 
@@ -385,9 +413,11 @@ history are ordinary local variables, kept alive across steps by the suspension 
 a state object anyone has to declare:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/generator_pid.png" wait="2.0" capture="box" open-outputs="true" wait-output="true" w="1100" name="animation-generator-pid"}
-// The same shape SimdVerlet.addPidPositionController uses, reduced to one axis so it plots.
-// Everything the controller remembers — position, velocity, the error integral, the previous error
-// — is a local. `yield` hands out the current position and hands back the next target.
+/*
+The same shape SimdVerlet.addPidPositionController uses, reduced to one axis so it plots.
+Everything the controller remembers — position, velocity, the error integral, the previous error
+— is a local. `yield` hands out the current position and hands back the next target.
+*/
 data class Tick(val target: Double, val dt: Double)
 
 fun controller(kp: Double, ki: Double, kd: Double) = generator2<Tick, Double> {
@@ -447,9 +477,11 @@ being a pipeline. Here are three of them building one signal in four stages, eac
 the one before:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/generator_pipeline.png" wait="2.0" capture="box" open-outputs="true" wait-output="true" w="1100" name="animation-generator-pipeline"}
-// `generator { }` is the output-only shape: the input type is Unit, so `yield(v)` returns Unit.
-// This one climbs from `from` to `to` over n steps and then simply returns — a generator that
-// completes rather than running forever.
+/*
+`generator { }` is the output-only shape: the input type is Unit, so `yield(v)` returns Unit.
+This one climbs from `from` to `to` over n steps and then simply returns — a generator that
+completes rather than running forever.
+*/
 fun ramp(from: Double, to: Double, n: Int) = generator<Double> {
     for (i in 0 until n) yield(from + (to - from) * i / (n - 1.0))
 }
@@ -460,9 +492,11 @@ fun envelope() = ramp(0.0, 1.0, 90) + ramp(1.0, 0.15, 210)
 // `map` transforms the output values as they come past.
 fun shaped() = envelope().map { it * it }
 
-// `pipe` feeds one generator's output in as another's input. A one-pole smoother is the natural
-// thing to put on the right: it needs the previous output, which is exactly the state a generator
-// keeps for free.
+/*
+`pipe` feeds one generator's output in as another's input. A one-pole smoother is the natural
+thing to put on the right: it needs the previous output, which is exactly the state a generator
+keeps for free.
+*/
 fun smoother(alpha: Double) = generator2<Double, Double> {
     var y = 0.0
     var x = yield(0.0)
@@ -484,9 +518,11 @@ fun drive(g: Generator<Unit, Double>, cap: Int): List<Number> {
 }
 
 val cap = 300
-// The bare `ramp(0 -> 1, 90)` is deliberately not plotted: it is pixel-identical to the first 90
-// steps of `a + b`, so drawing it only puts an invisible series in the legend. Its length is the
-// interesting part, and you can read that off where the orange trace turns.
+/*
+The bare `ramp(0 -> 1, 90)` is deliberately not plotted: it is pixel-identical to the first 90
+steps of `a + b`, so drawing it only puts an invisible series in the legend. Its length is the
+interesting part, and you can read that off where the orange trace turns.
+*/
 showSignals(
     "a + b — attack then decay" to drive(envelope(), cap),
     ".map { it * it }" to drive(shaped(), cap),
@@ -516,7 +552,8 @@ val mean = generator2<Double, Double> {
     var n = 0
     var x = yield(0.0)
     while (true) {
-        sum += x; n++
+        sum += x
+        n++
         x = yield(sum / n)
     }
 }
@@ -545,7 +582,8 @@ while (i < input.size) {
     val step = pair ?: break
     means += step.first
     peaks += step.second
-    pair = both.next(input[i]); i++
+    pair = both.next(input[i])
+    i++
 }
 
 // `gather { }` consumes and reports nothing useful — the work is the side effect. Note the bare
@@ -587,12 +625,12 @@ write an animation.
 
 ### The Runloop
 
-`Runloop.start()`, in [`src/jvmMain/kotlin/afield/Runloop.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/Runloop.kt), is the whole scheduler:
+`Runloop.start()`, in [`src/jvmMain/kotlin/afield/runtime/lifecycle/Runloop.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/runtime/lifecycle/Runloop.kt), is the whole scheduler:
 
 ```diffstatic {data-lang=kotlin}
 while (true) {
     preRun.update()
-    main.frame()          // ← every Frames in the document advances here
+    main.frame() // ← every Frames in the document advances here
     postRun.update()
     frame++
     if (shouldSleep) schedulingState.idle()
@@ -631,7 +669,7 @@ as the value of your box. `ReturnValueRegistry.registerFramesReturnValue` sees a
 dispatches `frames.body()` onto `Runloop.runLoop.main` inside `Box.withBoxContext(box)`, registers
 the coroutine in `box.jobs`, and starts reporting `is-running` for the box.
 
-None of the builders is syntax or a rewrite. `animate` is three lines in `stdlib.kt`:
+None of the builders is syntax or a rewrite. `animate` is three lines in `stdlib_execution.kt`:
 
 ```diffstatic {data-lang=kotlin}
 fun animate(block: suspend Frames.() -> Unit): Frames = eachFrame(block)
@@ -659,28 +697,39 @@ fun trace(pumps: Int, build: (() -> Unit) -> Frames): Pair<List<Int>, Int> {
     val framer = Framer()
     val job = CoroutineScope(framer).launch { runCatching { f.body() } }
     val perPump = mutableListOf<Int>()
-    repeat(pumps) { framer.frame(); perPump += calls }
+    repeat(pumps) {
+        framer.frame()
+        perPump += calls
+    }
     job.cancel()
     return perPump to f.frameNumber
 }
 
 val pumps = 8
-val builders = listOf(
+val builders = [
     "frames { while (frame()) … }" to trace(pumps) { body -> frames { while (frame()) body() } },
     "eachFrame { } — and so animate { }" to trace(pumps) { body -> eachFrame { body() } },
     "loop { }" to trace(pumps) { body -> loop { body() } },
-    "forever { … ; true }" to trace(pumps) { body -> forever { body(); true } },
-)
+    "forever { … ; true }" to
+        trace(pumps) { body ->
+            forever {
+                body()
+                true
+            }
+        },
+]
 
-// The claim this figure makes is `expect`, not the footnote: a frameNumber that broke it would
-// colour itself and the footnote would count it, rather than waiting for a reader to check the
-// arithmetic by eye.
+/*
+The claim this figure makes is `expect`, not the footnote: a frameNumber that broke it would
+colour itself and the footnote would count it, rather than waiting for a reader to check the
+arithmetic by eye.
+*/
 val figure = showTable(
     Table(
-        listOf("after pump #") + (1..pumps).map { "$it" } + "frameNumber",
-        note = "cells are cumulative body calls",
-    )
-        .rows(builders.map { (label, r) -> listOf(label) + r.first + r.second })
+            ["after pump #"] + (1..pumps).map { "$it" } + "frameNumber",
+            note = "cells are cumulative body calls",
+        )
+        .rows(builders.map { (label, r) -> [label] + r.first + r.second })
         .accent("frameNumber")
         .expect("frameNumber", because = "one frame per pump") { it == pumps - 1 },
     channel = "main",
@@ -746,8 +795,8 @@ One frame per pump throughout: the frame *rate* is the Runloop's, never the buil
     so a child is fenced exactly as the parent is and a re-run stops each child in its own right
     rather than only via the parent's `finally`.
 
-    One rough edge is left, and it is cosmetic: all three end phases of `(a.end + b.end).end` route
-    through the same hook pair, so the box can report `"ending"` more than once for one stop.
+    All three end phases of `(a.end + b.end).end` route through the same hook pair, and the launcher
+    counts them, so the box reports `"ending"` once per stop.
     [`dev_docs/frames_stop_end_phase.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/frames_stop_end_phase.md) records the rest.
 
 ### How a stop reaches the body
@@ -791,9 +840,11 @@ import kotlinx.coroutines.launch
 
 class Result(val how: String, val extraBodyCalls: Int, val endBlockRan: Boolean, val note: String)
 
-// Each probe runs a frame body for three pumps, requests a stop, then pumps six more times and
-// reports what the body did afterwards. These are the stops box code can stage for itself; the
-// `Box.stop` case needs the box's launch epoch, which is internal to Field — see below.
+/*
+Each probe runs a frame body for three pumps, requests a stop, then pumps six more times and
+reports what the body did afterwards. These are the stops box code can stage for itself; the
+`Box.stop` case needs the box's launch epoch, which is internal to Field — see below.
+*/
 fun probe(
     how: String,
     note: String,
@@ -813,26 +864,63 @@ fun probe(
     return Result(how, calls - atRequest, cleaned, note)
 }
 
-val results = listOf(
-    probe("shouldend flips — what re-running does", "the generation fence is read at the top of frame()",
-        { c -> eachFrame { c() } }, { f, _ -> f.shouldend = { true } }),
-    probe("the Job is cancelled directly", "the pending yield() throws immediately",
-        { c -> eachFrame { c() } }, { _, job -> job.cancel() }),
-    probe("end() from inside the body", "requested during a body call, so nothing follows it",
-        { c -> eachFrame { c(); end() } }, { _, _ -> }),
+val results = [
+    probe(
+        "shouldend flips — what re-running does",
+        "the generation fence is read at the top of frame()",
+        { c -> eachFrame { c() } },
+        { f, _ -> f.shouldend = { true } },
+    ),
+    probe(
+        "the Job is cancelled directly",
+        "the pending yield() throws immediately",
+        { c -> eachFrame { c() } },
+        { _, job -> job.cancel() },
+    ),
+    probe(
+        "end() from inside the body",
+        "requested during a body call, so nothing follows it",
+        { c ->
+            eachFrame {
+                c()
+                end()
+            }
+        },
+        { _, _ -> },
+    ),
     // `throw`, not `error("boom")`: in a box the script's implicit Box receiver is still in scope,
     // so `error(...)` resolves to Box.error and reports a box error instead of throwing.
-    probe("the body throws", ".end { } is not a finally",
-        { c -> eachFrame { c(); throw IllegalStateException("boom") } }, { _, _ -> }),
-    probe("the body returns normally", "there is no cancellation to catch",
-        { c -> frames { repeat(2) { c(); frame() } } }, { _, _ -> }),
-)
+    probe(
+        "the body throws",
+        ".end { } is not a finally",
+        { c ->
+            eachFrame {
+                c()
+                throw IllegalStateException("boom")
+            }
+        },
+        { _, _ -> },
+    ),
+    probe(
+        "the body returns normally",
+        "there is no cancellation to catch",
+        { c ->
+            frames {
+                repeat(2) {
+                    c()
+                    frame()
+                }
+            }
+        },
+        { _, _ -> },
+    ),
+]
 
 // `roleBy` rather than a hex literal: OK/BAD are the same `--field-*` tokens `markdown()`'s
 // `{ok:…}` spans use, so this column agrees with every other "ran / did not run" in the docs.
 showTable(
-    Table(listOf("how the Frames stopped", "further body calls", ".end { } ran", "why"))
-        .rows(results.map { listOf(it.how, it.extraBodyCalls, it.endBlockRan, it.note) })
+    Table(["how the Frames stopped", "further body calls", ".end { } ran", "why"])
+        .rows(results.map { [it.how, it.extraBodyCalls, it.endBlockRan, it.note] })
         .accent("further body calls")
         .color("why", TABLE_MUTED)
         // WARN, not BAD: two of these rows are correct completion behaviour, not errors — the
@@ -863,8 +951,11 @@ exception does not go through that path, and neither does one that simply return
 
 When both are present and a cancellation arrives, `.end { }` runs before the body's `finally`:
 `frame()` calls it from inside its own `catch`, before rethrowing, so the cancellation has not yet
-unwound the body. `FramesSemanticsTest.theEndBlockRunsBeforeTheBodysOwnFinally` holds that order in
-place.
+unwound the body.
+
+??? aside "Agents: what pins this order"
+    `FramesSemanticsTest.theEndBlockRunsBeforeTheBodysOwnFinally` holds the `.end { }`-before-`finally`
+    order in place; change the two together.
 
 When `atEnd` does run, `frame()` re-enters through `withContext(NonCancellable)` on a fresh `Job`
 that inherits the dispatcher and the box context, so the end block still gets frames and can still
@@ -906,7 +997,6 @@ Every public name in `Phased.kt`, grouped by what it is for.
 | Name | What it is |
 | --- | --- |
 | `type Frames` | A frame-based animation: a suspend `body`, a `frameNumber`, and the hooks a launcher installs on it. |
-| `type EndedException` | A bare `Throwable` subclass declared alongside `Frames`. Nothing in the tree throws or catches it. |
 | `type Framer` | The `CoroutineDispatcher` whose queue-drain *is* the frame boundary. `Runloop.runLoop.main` is one. |
 | `type GeneratorScope` | The receiver inside `generator { }` — it exists to provide `yield`. |
 | `type Generator` | A pull-driven coroutine: `start()`, then `next(input)` per step. |
@@ -941,9 +1031,9 @@ Every public name in `Phased.kt`, grouped by what it is for.
 | `frames` | The lowest level: the body runs once and calls `frame()` itself. |
 | `eachFrame` | Advance, then run the body, while `frame()` returns true. `animate { }` is an alias for this. |
 | `loop` | Run the body, then advance — unless the body advanced already. |
-| `forever` | `loop`, but the body returns a `Boolean` and `false` ends it. No callers in the tree. |
+| `forever` | `loop`, but the body returns a `Boolean` and `false` ends it. |
 | `Frames.end` | Chain a cleanup block onto `atEnd`. Written `.end { }`, and distinct from the `end()` member. |
-| `Frames.plus` | Run two frame programs in parallel under one parent, forwarding the parent's stop fences to both children. No callers in the tree. |
+| `Frames.plus` | Run two frame programs in parallel under one parent, forwarding the parent's stop fences to both children. |
 | `Box.launchFrames` | Launch a `Frames` on the Runloop against a box, without returning it. Two overloads. |
 | `then` | Sequence two plain suspend lambdas into one. |
 
@@ -987,17 +1077,18 @@ Every public name in `Phased.kt`, grouped by what it is for.
 
 | what | file |
 | --- | --- |
-| `Frames`, the builders, `Framer`, the generator layer | [`src/jvmMain/kotlin/afield/Phased.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/Phased.kt) |
-| the Runloop and `AnimationClock` | [`src/jvmMain/kotlin/afield/Runloop.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/Runloop.kt) |
-| `animate`, `start` | [`src/jvmMain/kotlin/afield/stdlib/stdlib.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/stdlib.kt) — listed in [Workspace](reference/workspace.md) |
-| what happens when a box returns a `Frames` | [`src/jvmMain/kotlin/afield/ReturnValueRegistry.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ReturnValueRegistry.kt) |
-| stop, generations and launch epochs | [`src/jvmMain/kotlin/afield/Boxes.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/Boxes.kt) |
-| the non-coroutine per-frame layers | [`src/jvmMain/kotlin/afield/four/util/MapOfSequences.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/four/util/MapOfSequences.kt) |
-| the behaviour on this page, as tests | [`src/jvmTest/kotlin/afield/FramesSemanticsTest.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmTest/kotlin/afield/FramesSemanticsTest.kt) |
+| `Frames`, the builders, `Framer`, the generator layer | [`src/jvmMain/kotlin/afield/runtime/lifecycle/Phased.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/runtime/lifecycle/Phased.kt) |
+| the Runloop and `AnimationClock` | [`src/jvmMain/kotlin/afield/runtime/lifecycle/Runloop.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/runtime/lifecycle/Runloop.kt) |
+| `animate`, `start` | [`src/jvmMain/kotlin/afield/runtime/execution/stdlib_execution.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/runtime/execution/stdlib_execution.kt) — listed in [Workspace](reference/workspace.md#stdlib-execution-kt) |
+| what happens when a box returns a `Frames` | [`src/jvmMain/kotlin/afield/runtime/execution/ReturnValueRegistry.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/runtime/execution/ReturnValueRegistry.kt) |
+| stop, generations and launch epochs | [`src/jvmMain/kotlin/afield/document/graph/Boxes.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/document/graph/Boxes.kt) |
+| the non-coroutine per-frame layers | [`src/jvmMain/kotlin/afield/graphics/vulkan/util/MapOfSequences.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/graphics/vulkan/util/MapOfSequences.kt) |
+| the behaviour on this page, as tests | [`src/jvmTest/kotlin/afield/runtime/lifecycle/FramesSemanticsTest.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmTest/kotlin/afield/runtime/lifecycle/FramesSemanticsTest.kt) |
 
-`Phased.kt` is not part of the [codebase reference](reference/index.md): that is generated from
-`afield.stdlib`, `afield.visualization` and `afield.four.synth`, and `Phased.kt` sits in `afield`
-itself, one layer below. This page is its reference instead.
+The [codebase reference](reference/index.md) lists every declaration in `Phased.kt` under
+[Workspace](reference/workspace.md#phased-kt); this page explains how they fit together.
 
 To see it running, open the [`frames_lifecycle`](agent_transcripts.md#frames_lifecycle) starting
 point from the welcome screen. Its four boxes start, stop, re-run and clean up a frame loop.
+
+Next on the Tour, [Drawing with FLines](fline_examples.md) builds the lines and shapes a loop like these can move.

@@ -1,8 +1,8 @@
-import afield.four.synth.*
 import java.nio.file.Path
 
 val client = FieldAudioClient()
-val ruby = """
+val ruby =
+    """
     use_bpm 92
     live_loop :analysis_drums do
       sample :bd_haus, amp: 0.55
@@ -15,24 +15,32 @@ val ruby = """
       play (scale :e3, :minor_pentatonic).tick, release: 0.7, amp: 0.35
       sleep 1
     end
-""".trimIndent()
+"""
+        .trimIndent()
 
 recordSonicPiWav(
-    sonicPi(),
-    Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "sonic-pi-study.wav"),
-    ruby, seconds = 18.0, workspace = "field_audio_analysis",
-    provenance = mapOf("field_box" to "analyse_sonic_pi_recording", "bpm" to "92"),
-).thenCompose { render ->
-    display("render", "recorded ${render.path}")
-    client.analyzeRenderedAudio(
-        render,
-        requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/sonic-pi") },
-        onAccepted = { named, accepted -> display("${named.label} job", fieldAudioJobStatusHtml(accepted)) },
-        onProgress = { named, accepted, event -> display("${named.label} job", fieldAudioJobStatusHtml(accepted, event)) },
+        sonicPi(),
+        Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "sonic-pi-study.wav"),
+        ruby,
+        seconds = 18.0,
+        workspace = "field_audio_analysis",
+        provenance = mapOf("field_box" to "analyse_sonic_pi_recording", "bpm" to "92"),
     )
-}.thenAccept { completed ->
-    display("synchronized result", completed.visualizationHtml(width = 1040, panelHeight = 230))
-}.exceptionally { error ->
-    display("analysis error", error.cause?.message ?: error.message ?: error.toString())
-    null
-}
+    .thenCompose { render ->
+        display("render", "recorded ${render.path}")
+        client.analyzeRenderedAudio(
+            render,
+            requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/sonic-pi") },
+            onAccepted = { named, accepted -> display("${named.label} job", fieldAudioJobStatusHtml(accepted)) },
+            onProgress = { named, accepted, event ->
+                display("${named.label} job", fieldAudioJobStatusHtml(accepted, event))
+            },
+        )
+    }
+    .thenAccept { completed ->
+        display("synchronized result", completed.visualizationHtml(width = 1040, panelHeight = 230))
+    }
+    .exceptionally { error ->
+        display("analysis error", error.cause?.message ?: error.message ?: error.toString())
+        null
+    }

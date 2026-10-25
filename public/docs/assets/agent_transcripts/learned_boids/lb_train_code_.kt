@@ -1,8 +1,4 @@
-import afield.stdlib.DeepSetsOptions
-import afield.stdlib.InteractionExample
-import afield.stdlib.trainEquivariant
-
-prop<afield.stdlib.EquivariantWeights>(learnedRule)
+prop<afield.ai.learning.EquivariantWeights>(learnedRule)
 
 val radius = 2f / 64f
 val minSeparation = radius * 0.05f

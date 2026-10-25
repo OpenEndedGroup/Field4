@@ -62,8 +62,7 @@ at 2304 × 832 including headings; each panel is 768 × 768.
 
 Open the [open_dlss_nr_cubes](agent_transcripts.md#open_dlss_nr_cubes) starting point.
 Run **renderer**, then **neural cubes** and turn on **Animate source**. Edit either shader property
-and press **Reload edited shaders**; an invalid edit retains the working scene. Stop the child boxes
-before the renderer. Source and grading still work when the optional NR backend is unavailable.
+and press **Reload edited shaders**; an invalid edit retains the working scene. Source and grading still work when the optional NR backend is unavailable.
 
 The network processes each frame independently with a fixed seed, so this is an image effect in
 motion rather than temporal reconstruction. Look at the checkers, moving
@@ -78,59 +77,73 @@ testing and draws 3 + 39 × 36 vertices: one background triangle and 39 boxes (g
 36 thin bars), all generated in the vertex shader.
 
 ```diffstatic {data-lang=kotlin}
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.neuralrendering.*
+import afield.graphics.render.neural.*
 
 val owner = renderer
 prop<OpenDlssNrStudy>(lab)
-(thisBox.getPropertyRaw("lab") as? OpenDlssNrStudy)?.close()
-lab = OpenDlssNrStudy(owner, size=768, name="nr-cubes", geometry=true,
-    vertex=thisBox.getPropertyRaw("vertex") as String,
-    fragment=thisBox.getPropertyRaw("fragment") as String)
+lab = OpenDlssNrStudy(
+    owner,
+    size = 768,
+    name = "nr-cubes",
+    geometry = true,
+    vertex = requireNotNull(vertex) { "Missing vertex shader on this box or its parents" },
+    fragment = requireNotNull(fragment) { "Missing fragment shader on this box or its parents" },
+)
 println(lab.availability.reason)
 :::fold the controls: network style, tone, structure, intensity and grade
-var style=1
-var tone=0f
-var structure=10f
-var intensity=1f
-var animate=false
-var reload=false
-var red=.65f
-var green=1.1f
-var blue=1.4f
+var style = 1
+var tone = 0f
+var structure = 10f
+var intensity = 1f
+var animate = false
+var reload = false
+var red = .65f
+var green = 1.1f
+var blue = 1.4f
 controlGroup("neural cubes") {
-    if(lab.availability.ready) {
-        slider("Network style",min=0.0,max=2.0,step=1.0,initialValue=1.0) {style=it.toInt()}
-        slider("Tone",min=-10.0,max=30.0,initialValue=0.0) {tone=it.toFloat()}
-        slider("Structure",min=-10.0,max=30.0,initialValue=10.0) {structure=it.toFloat()}
-        slider("NR intensity (0 = source)",min=0.0,max=1.0,initialValue=1.0) {intensity=it.toFloat()}
+    if (lab.availability.ready) {
+        slider("Network style", min = 0.0, max = 2.0, step = 1.0, initialValue = style.toDouble()) {
+            style = it.toInt()
+        }
+        slider("Tone", min = -10.0, max = 30.0, initialValue = tone.toDouble()) { tone = it.toFloat() }
+        slider("Structure", min = -10.0, max = 30.0, initialValue = structure.toDouble()) { structure = it.toFloat() }
+        slider("NR intensity (0 = source)", min = 0.0, max = 1.0, initialValue = intensity.toDouble()) {
+            intensity = it.toFloat()
+        }
     }
-    checkbox("Animate source",initialValue=false) {animate=it}
-    slider("Grade red",min=0.0,max=2.0,initialValue=.65) {red=it.toFloat()}
-    slider("Grade green",min=0.0,max=2.0,initialValue=1.1) {green=it.toFloat()}
-    slider("Grade blue",min=0.0,max=2.0,initialValue=1.4) {blue=it.toFloat()}
-    button("Reload edited shaders") {if(it)reload=true}
+    checkbox("Animate source", initialValue = animate) { animate = it }
+    slider("Grade red", min = 0.0, max = 2.0, initialValue = red.toDouble()) { red = it.toFloat() }
+    slider("Grade green", min = 0.0, max = 2.0, initialValue = green.toDouble()) { green = it.toFloat() }
+    slider("Grade blue", min = 0.0, max = 2.0, initialValue = blue.toDouble()) { blue = it.toFloat() }
+    button("Reload edited shaders") { if (it) reload = true }
 }
 displayOpen("neural cubes")
 :::endfold
-println("SOURCE | NR | GRADE · 768 × 768 per panel. Edit fragment, then reload. Run record clip for six seconds of GPU frames.")
-val owned=lab
+println(
+    "SOURCE | NR | GRADE · 768 × 768 per panel. Edit fragment, then reload. Run record clip for six seconds of GPU frames.",
+)
+val owned = lab
 frames {
     try {
-        while(!owner.isClosed) {
-            owned.controls=OpenDlssNrControls(style=style,tone=tone,structure=structure,intensity=intensity)
-            owned.grade=Vector4f(red,green,blue,1f)
-            owned.animate=animate && !owned.recording
-            if(reload) {
-                owned.reload(thisBox.getPropertyRaw("vertex") as String,
-                    thisBox.getPropertyRaw("fragment") as String)
-                    .onFailure {println("Keeping working shaders: ${it.message}")}
-                reload=false
+        while (!owner.isClosed) {
+            owned.controls =
+                OpenDlssNrControls(style = style, tone = tone, structure = structure, intensity = intensity)
+            owned.grade = Vector4f(red, green, blue, 1f)
+            owned.animate = animate && !owned.recording
+            if (reload) {
+                owned
+                    .reload(
+                        requireNotNull(vertex) { "Missing vertex shader on this box or its parents" },
+                        requireNotNull(fragment) { "Missing fragment shader on this box or its parents" },
+                    )
+                    .onFailure { println("Keeping working shaders: ${it.message}") }
+                reload = false
             }
             frame()
         }
-    } finally {owned.close()}
+    } finally {
+        owned.close()
+    }
 }
 ```
 
@@ -139,49 +152,98 @@ seconds; `sizeJitter.xy` is the source resolution. The source uses no projection
 
 ```diffstatic {data-lang=glsl}
 #version 460
-layout(push_constant) uniform Scene { vec4 sizeJitter; vec4 times; vec4 settings; } pc;
+layout(push_constant) uniform Scene {
+    // xy = input pixels; zw = raster jitter in pixels (Y down).
+    vec4 sizeJitter;
+    // xy = current/previous scene seconds; zw = horizontal shifts in pixels.
+    vec4 times;
+    // x = appearance stress flag; y = camera orbit flag; zw unused.
+    vec4 settings;
+} pc;
 layout(location=0) out vec3 world;
 layout(location=1) out vec3 normal;
 layout(location=2) out vec4 nowClip;
 layout(location=3) out vec4 oldClip;
 layout(location=4) flat out int objectId;
+layout(location=5) flat out vec3 cameraEye;
 const int indices[36]=int[](0,2,1,1,2,3,4,5,6,5,7,6,0,1,4,1,5,4,2,6,3,3,6,7,0,4,2,2,4,6,1,3,5,3,7,5);
-vec3 corner(int i){return vec3((i&1)==0?-1:1,(i&2)==0?-1:1,(i&4)==0?-1:1);}
-vec3 objectPoint(int id,vec3 p,float time){
-    if(id>=39){float k=float(id-39);return p*(pc.settings.x==1?.035:0)+vec3(sin(k*2.4+time)*3,1.4+sin(k*.8+time*.7),cos(k*1.7+time)*2);}
+vec3 corner(int i) {
+    return vec3((i&1)==0?-1:1,(i&2)==0?-1:1,(i&4)==0?-1:1);
+}
+vec3 objectPoint(int id,vec3 p,float time) {
+    if(id>=39) {
+        float k=float(id-39);
+        return p*(pc.settings.x==1?.035:0)+vec3(sin(k*2.4+time)*3,1.4+sin(k*.8+time*.7),cos(k*1.7+time)*2);
+    }
     if(id==0)return p*vec3(5,.06,4)+vec3(0,-.08,0);
-    if(id==1){
+    if(id==1) {
         float a=time*.55;
         p.xz=mat2(cos(a),sin(a),-sin(a),cos(a))*p.xz;
         return p*vec3(.85,.7,.85)+vec3(-1.5,.7,-.5);
     }
-    if(id==2){
+    if(id==2) {
         float a=-time*.4;
         p.xz=mat2(cos(a),sin(a),-sin(a),cos(a))*p.xz;
         return p*vec3(.7,.9,.7)+vec3(1.4+sin(time)*.6,.9,-.4);
     }
     int n=id-3;
-    if(n<18){p*=vec3(.015,1.2,.015);p.xy=mat2(.8,.6,-.6,.8)*p.xy;return p+vec3(float(n)*.19-1.7,1.7,1.4);}
-    p*=vec3(.015,1.2,.015);p.xy=mat2(.8,-.6,.6,.8)*p.xy;return p+vec3(float(n-18)*.19-1.7,1.7,1.45);
-}
-vec4 project(vec3 p,float t){
-    float a=pc.settings.y==1?t*.18:0;
-    vec3 eye=vec3(5*sin(a)+5*cos(a),3.7,5*cos(a)-5*sin(a));
-    vec3 f=normalize(vec3(0,.8,0)-eye),r=normalize(cross(f,vec3(0,1,0))),u=cross(r,f);
-    vec3 q=p-eye;float z=dot(q,f);float near=.1,far=100;
-    return vec4(dot(q,r)*1.9*pc.sizeJitter.y/pc.sizeJitter.x,dot(q,u)*1.9,far/(far-near)*z-far*near/(far-near),z);
-}
-void main(){
-    if(gl_VertexIndex<3){
-        vec2 xy=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2)*2-1;
-        gl_Position=vec4(xy,.999999,1);objectId=-1;world=vec3(0);normal=vec3(0,1,0);nowClip=oldClip=gl_Position;return;
+    if(n<18) {
+        p*=vec3(.015,1.2,.015);
+        p.xy=mat2(.8,.6,-.6,.8)*p.xy;
+        return p+vec3(float(n)*.19-1.7,1.7,1.4);
     }
-    objectId=(gl_VertexIndex-3)/36;int v=(gl_VertexIndex-3)%36;
+    p*=vec3(.015,1.2,.015);
+    p.xy=mat2(.8,-.6,.6,.8)*p.xy;
+    return p+vec3(float(n-18)*.19-1.7,1.7,1.45);
+}
+// Orbit in world space; share the current eye with fragment lighting.
+vec3 cameraPosition(float time) {
+    float angle = pc.settings.y == 1 ? time * .18 : 0;
+    return vec3(5 * sin(angle) + 5 * cos(angle), 3.7, 5 * cos(angle) - 5 * sin(angle));
+}
+
+// Positive view depth maps the near plane to Z=0 and the far plane to Z=W.
+vec4 project(vec3 worldPosition, float time) {
+    vec3 eye = cameraPosition(time);
+    vec3 forward = normalize(vec3(0, .8, 0) - eye);
+    vec3 right = normalize(cross(forward, vec3(0, 1, 0)));
+    vec3 up = cross(right, forward);
+    vec3 viewOffset = worldPosition - eye;
+    float depth = dot(viewOffset, forward);
+    float near = .1;
+    float far = 100;
+    return vec4(
+        dot(viewOffset, right) * 1.9 * pc.sizeJitter.y / pc.sizeJitter.x,
+        dot(viewOffset, up) * 1.9,
+        far / (far - near) * depth - far * near / (far - near),
+        depth
+    );
+}
+void main() {
+    cameraEye = cameraPosition(pc.times.x);
+    // First triangle fills the background; remaining triangles form the objects.
+    if(gl_VertexIndex<3) {
+        vec2 xy=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2)*2-1;
+        gl_Position=vec4(xy,.999999,1);
+        objectId=-1;
+        world=vec3(0);
+        normal=vec3(0,1,0);
+        nowClip=oldClip=gl_Position;
+        return;
+    }
+    // Recover object/face IDs, then transform the triangle into world space.
+    objectId=(gl_VertexIndex-3)/36;
+    int v=(gl_VertexIndex-3)%36;
     float t=pc.times.x,old=pc.times.y;
-    vec3 p=corner(indices[v]);world=objectPoint(objectId,p,t);
-    int tri=(v/3)*3;vec3 a=objectPoint(objectId,corner(indices[tri]),t),b=objectPoint(objectId,corner(indices[tri+1]),t),c=objectPoint(objectId,corner(indices[tri+2]),t);
+    vec3 p=corner(indices[v]);
+    world=objectPoint(objectId,p,t);
+    int tri=(v/3)*3;
+    vec3 a = objectPoint(objectId, corner(indices[tri]), t);
+    vec3 b = objectPoint(objectId, corner(indices[tri + 1]), t);
+    vec3 c = objectPoint(objectId, corner(indices[tri + 2]), t);
     normal=normalize(cross(b-a,c-a));
-    nowClip=project(world,t);oldClip=project(objectPoint(objectId,p,old),old);
+    nowClip=project(world,t);
+    oldClip=project(objectPoint(objectId,p,old),old);
     nowClip.x+=2*pc.times.z/pc.sizeJitter.x*nowClip.w;
     oldClip.x+=2*pc.times.w/pc.sizeJitter.x*oldClip.w;
     gl_Position=nowClip;
@@ -190,26 +252,47 @@ void main(){
 ```
 
 The fragment shader writes linear LDR color, which is also what the SOURCE panel displays.
+The vertex stage passes its current world-space camera position to the fragment for lighting.
+Keep both stages together when changing their interface; adding or removing a varying needs
+a full box rerun rather than the shader reload button.
 
 ```diffstatic {data-lang=glsl}
 #version 460
-layout(push_constant) uniform Scene { vec4 sizeJitter; vec4 times; vec4 settings; } pc;
+layout(push_constant) uniform Scene {
+    // xy = input pixels; zw = raster jitter in pixels (Y down).
+    vec4 sizeJitter;
+    // xy = current/previous scene seconds; zw = horizontal shifts in pixels.
+    vec4 times;
+    // x = appearance stress flag; y = camera orbit flag; zw unused.
+    vec4 settings;
+} pc;
 layout(location=0) in vec3 world;
 layout(location=1) in vec3 normal;
 layout(location=2) in vec4 nowClip;
 layout(location=3) in vec4 oldClip;
 layout(location=4) flat in int objectId;
+layout(location=5) flat in vec3 cameraEye;
 layout(location=0) out vec4 color;
-void main(){
-    if(objectId<0){color=vec4(.014,.022,.04,1);return;}
+void main() {
+    if(objectId<0) {
+        color=vec4(.014,.022,.04,1);
+        return;
+    }
     vec3 n=normalize(normal);
     vec3 base=objectId==0?vec3(.23):objectId==1?vec3(.05,.27,.65):objectId==2?vec3(.8,.14,.045):vec3(.9,.68,.21);
-    if(objectId<3){vec2 st=world.xz*9;float checkers=mod(floor(st.x)+floor(st.y),2);base*=mix(.22,1,checkers);}
+    if(objectId<3) {
+        vec2 st=world.xz*9;
+        float checkers=mod(floor(st.x)+floor(st.y),2);
+        base*=mix(.22,1,checkers);
+    }
     vec3 light=normalize(vec3(sin(pc.times.x)*4,5,3)-world);
     float diffuse=.2+.8*abs(dot(n,light));
-    float specular=pow(max(0,abs(dot(n,normalize(light+normalize(vec3(5,3.7,5)-world))))),96);
+    // Lighting and the view vector use the same world-space eye as projection.
+    vec3 viewDirection = normalize(cameraEye - world);
+    vec3 halfDirection = normalize(light + viewDirection);
+    float specular = pow(max(0, abs(dot(n, halfDirection))), 96);
     color=vec4(clamp(base*diffuse+specular*1.8,0,1),1);
-    if(pc.settings.x==1){
+    if(pc.settings.x==1) {
         color.rgb=objectId==0?vec3(.04,.08,.16):base;
         // Deliberately changing appearance has no geometric correspondence. It is visible in
         // comparisons, but not represented as fictional velocity or an undocumented vendor mask.
@@ -225,7 +308,7 @@ With **neural cubes** running at its defaults, run **record clip**. It uses the 
 shown below, with the output folder changed to:
 
 ```diffstatic {data-lang=kotlin}
-val folder=Path.of("build/opendlssnr-cubes/clip").toAbsolutePath().also {it.createDirectories()}
+val folder = Path.of("build/opendlssnr-cubes/clip").toAbsolutePath().also { it.createDirectories() }
 ```
 
 Don't change controls or reload shaders while recording. Encode the resulting GPU frames with:
@@ -250,20 +333,20 @@ brush-loop shader below. Each study has its own starting point and recorder outp
 
 The starting point has three boxes. **renderer** owns the Vulkan renderer. **neural ink** is connected
 beneath it and owns the source target, NR pass and display. **record clip** is connected beneath
-neural ink and reads the same study. Stop the child boxes before stopping the renderer.
+neural ink and reads the same study.
 
 The renderer box is complete:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.util.Options
-import afield.Rect
+import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
-Options.enableVR=false
-Options.enableHDR=false
-Options.profiling=false
+Options.enableVR = false
+Options.enableHDR = false
+Options.profiling = false
 once.renderer {
-    window=Window("Field · neural ink", initialDimensions=Rect(40.0,40.0,2304.0,832.0))
+    window = Window("Field · neural ink", initialDimensions = Rect(40.0, 40.0, 2304.0, 832.0))
     Renderer(window)
 }
 start(renderer::run)
@@ -275,62 +358,75 @@ source → NR → comparison in that order in the caller's command buffer, befor
 Its [comparison shader](assets/opendlssnr/compare.frag) implements the headings and grade.
 
 ```diffstatic {data-lang=kotlin}
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.neuralrendering.*
+import afield.graphics.render.neural.*
 
 val owner = renderer
 prop<OpenDlssNrStudy>(lab)
-(thisBox.getPropertyRaw("lab") as? OpenDlssNrStudy)?.close()
 // Leave null for the editable fragment shader; try the bundled drawing or your own image.
 val imagePath: String? = null
 // val imagePath: String? = "public/docs/assets/opendlssnr/ink-input.png"
-lab = OpenDlssNrStudy(owner, size=768, imagePath=imagePath,
-    vertex=thisBox.getPropertyRaw("vertex") as String,
-    fragment=thisBox.getPropertyRaw("fragment") as String)
+lab = OpenDlssNrStudy(
+    owner,
+    size = 768,
+    imagePath = imagePath,
+    vertex = requireNotNull(vertex) { "Missing vertex shader on this box or its parents" },
+    fragment = requireNotNull(fragment) { "Missing fragment shader on this box or its parents" },
+)
 println(lab.availability.reason)
 :::fold the controls: network style, tone, structure, intensity and grade
-var style=1
-var tone=0f
-var structure=10f
-var intensity=1f
-var animate=false
-var reload=false
-var red=.65f
-var green=1.1f
-var blue=1.4f
+var style = 1
+var tone = 0f
+var structure = 10f
+var intensity = 1f
+var animate = false
+var reload = false
+var red = .65f
+var green = 1.1f
+var blue = 1.4f
 controlGroup("neural ink") {
-    if(lab.availability.ready) {
-        slider("Network style",min=0.0,max=2.0,step=1.0,initialValue=1.0) {style=it.toInt()}
-        slider("Tone",min=-10.0,max=30.0,initialValue=0.0) {tone=it.toFloat()}
-        slider("Structure",min=-10.0,max=30.0,initialValue=10.0) {structure=it.toFloat()}
-        slider("NR intensity (0 = source)",min=0.0,max=1.0,initialValue=1.0) {intensity=it.toFloat()}
+    if (lab.availability.ready) {
+        slider("Network style", min = 0.0, max = 2.0, step = 1.0, initialValue = style.toDouble()) {
+            style = it.toInt()
+        }
+        slider("Tone", min = -10.0, max = 30.0, initialValue = tone.toDouble()) { tone = it.toFloat() }
+        slider("Structure", min = -10.0, max = 30.0, initialValue = structure.toDouble()) { structure = it.toFloat() }
+        slider("NR intensity (0 = source)", min = 0.0, max = 1.0, initialValue = intensity.toDouble()) {
+            intensity = it.toFloat()
+        }
     }
-    checkbox("Animate source",initialValue=false) {animate=it}
-    slider("Grade red",min=0.0,max=2.0,initialValue=.65) {red=it.toFloat()}
-    slider("Grade green",min=0.0,max=2.0,initialValue=1.1) {green=it.toFloat()}
-    slider("Grade blue",min=0.0,max=2.0,initialValue=1.4) {blue=it.toFloat()}
-    button("Reload edited shaders") {if(it)reload=true}
+    checkbox("Animate source", initialValue = animate) { animate = it }
+    slider("Grade red", min = 0.0, max = 2.0, initialValue = red.toDouble()) { red = it.toFloat() }
+    slider("Grade green", min = 0.0, max = 2.0, initialValue = green.toDouble()) { green = it.toFloat() }
+    slider("Grade blue", min = 0.0, max = 2.0, initialValue = blue.toDouble()) { blue = it.toFloat() }
+    button("Reload edited shaders") { if (it) reload = true }
 }
 displayOpen("neural ink")
 :::endfold
-println("SOURCE | NR | GRADE · 768 × 768 per panel. Edit fragment, then reload. Run record clip for six seconds of GPU frames.")
-val owned=lab
+println(
+    "SOURCE | NR | GRADE · 768 × 768 per panel. Edit fragment, then reload. Run record clip for six seconds of GPU frames.",
+)
+val owned = lab
 frames {
     try {
-        while(!owner.isClosed) {
-            owned.controls=OpenDlssNrControls(style=style,tone=tone,structure=structure,intensity=intensity)
-            owned.grade=Vector4f(red,green,blue,1f)
-            owned.animate=animate && !owned.recording
-            if(reload) {
-                owned.reload(thisBox.getPropertyRaw("vertex") as String,
-                    thisBox.getPropertyRaw("fragment") as String)
-                    .onFailure {println("Keeping working shaders: ${it.message}")}
-                reload=false
+        while (!owner.isClosed) {
+            owned.controls =
+                OpenDlssNrControls(style = style, tone = tone, structure = structure, intensity = intensity)
+            owned.grade = Vector4f(red, green, blue, 1f)
+            owned.animate = animate && !owned.recording
+            if (reload) {
+                owned
+                    .reload(
+                        requireNotNull(vertex) { "Missing vertex shader on this box or its parents" },
+                        requireNotNull(fragment) { "Missing fragment shader on this box or its parents" },
+                    )
+                    .onFailure { println("Keeping working shaders: ${it.message}") }
+                reload = false
             }
             frame()
         }
-    } finally {owned.close()}
+    } finally {
+        owned.close()
+    }
 }
 ```
 
@@ -361,7 +457,9 @@ scales or stroke widths and reload:
 #version 460
 layout(location=0) in vec2 uv;
 layout(location=0) out vec4 color;
-layout(push_constant) uniform Study { vec4 frame; } pc;
+layout(push_constant) uniform Study {
+    vec4 frame;
+} pc;
 
 float hash(vec2 p) {
     return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);
@@ -370,7 +468,7 @@ float noise(vec2 p) {
     vec2 i=floor(p), f=fract(p);
     f=f*f*(3-2*f);
     return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),
-               mix(hash(i+vec2(0,1)),hash(i+vec2(1)),f.x),f.y);
+    mix(hash(i+vec2(0,1)),hash(i+vec2(1)),f.x),f.y);
 }
 vec3 linearize(vec3 c) {
     return mix(c/12.92,pow((c+.055)/1.055,vec3(2.4)),step(vec3(.04045),c));
@@ -428,12 +526,16 @@ That file is the original, unprocessed drawing. The following capture loads it i
 and runs the same comparison at tone 0 / structure 10:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/opendlssnr/image-study.png" capture="native-window" capture-profile="linux-nvidia" macro-file="../../dev_docs/agents/demos/opendlssnr/image-study.yaml" capture-box="open_dlss_nr" wait-output=true wait-output-kind="all" wait-output-contains="NR Vulkan features enabled" wait="1" native-wait-frames="10" timeout="300" name="nr-image-study" embed=true alt="The original ink drawing, the tone-zero structure-ten Field NR result, and the same output graded cyan"}
-import afield.four.neuralrendering.OpenDlssNrStudy
-val study=OpenDlssNrStudy(renderer, imagePath="public/docs/assets/opendlssnr/ink-input.png")
-study.animate=false
+import afield.graphics.render.neural.OpenDlssNrStudy
+
+val study = OpenDlssNrStudy(renderer, imagePath = "public/docs/assets/opendlssnr/ink-input.png")
+study.animate = false
 frames {
-    try { while(true)frame() }
-    finally {study.close()}
+    try {
+        while (true) frame()
+    } finally {
+        study.close()
+    }
 }
 ```
 
@@ -449,34 +551,35 @@ or readback changes capture time, not the animation's 30 fps clock. Don't change
 records. The record box contains all of this code:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.neuralrendering.OpenDlssNrStudy
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 
 // Run beneath the live study box. The scene remains editable after recording.
-val study=lab
-check(study.availability.ready) {study.availability.reason}
-check(!study.recording) {"A recording is already running"}
-val folder=Path.of("build/opendlssnr-study/clip").toAbsolutePath().also {it.createDirectories()}
-val controls=study.controls.copy()
-val grade=study.grade.toString()
-val previousTime=study.time
-study.recording=true
-study.animate=false
+val study = lab
+check(study.availability.ready) { study.availability.reason }
+check(!study.recording) { "A recording is already running" }
+val folder = Path.of("build/opendlssnr-study/clip").toAbsolutePath().also { it.createDirectories() }
+val controls = study.controls.copy()
+val grade = study.grade.toString()
+val previousTime = study.time
+study.recording = true
+study.animate = false
 frames {
     try {
-        for(i in 0 until 180) {
-            check(study.controls==controls && study.grade.toString()==grade) {"Controls changed during capture; record again"}
-            study.time=i/30f
-            val saved=study.saveFrame(folder.resolve("frame-%03d.png".format(i)))
-            while(!saved.isDone)frame()
+        for (i in 0 until 180) {
+            check(study.controls == controls && study.grade.toString() == grade) {
+                "Controls changed during capture; record again"
+            }
+            study.time = i / 30f
+            val saved = study.saveFrame(folder.resolve("frame-%03d.png".format(i)))
+            while (!saved.isDone) frame()
             saved.join()
-            if(i%30==0)println("Recorded $i / 180")
+            if (i % 30 == 0) println("Recorded $i / 180")
         }
         println("NR STUDY RECORD DONE: 180 frames at 30 fps, 2304 × 832; $folder")
     } finally {
-        study.time=previousTime
-        study.recording=false
+        study.time = previousTime
+        study.recording = false
     }
 }
 ```
@@ -501,12 +604,17 @@ Create a pass at your source dimensions. In a `Target`, after the source produce
 render pass, record the network and sample its output in a later shader:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.neuralrendering.*
-val pass=OpenDlssNrPass(renderer, width, height)
-pass.controls=OpenDlssNrControls(style=1, tone=0f, structure=10f)
+import afield.graphics.render.neural.*
+
+val pass = OpenDlssNrPass(renderer, width, height)
+pass.controls = OpenDlssNrControls(style = 1, tone = 0f, structure = 10f)
 // Inside Target.render(command, index), after rendering color:
-pass.evaluate(command, OpenDlssNrInputs(color, OpenDlssNrColorEncoding.LINEAR_LDR),
-    OpenDlssNrFrame(frameIndex))
+pass.evaluate(
+    command,
+    OpenDlssNrInputs(color, OpenDlssNrColorEncoding.LINEAR_LDR),
+    OpenDlssNrFrame(frameIndex),
+)
+
 // pass.output is a sampled linear RGBA16F texture. Close the pass when its owner stops.
 ```
 
@@ -541,7 +649,7 @@ depth; the cube study writes color and uses its depth buffer for rasterization, 
 motion or depth textures to NR. Temporal input needs those textures from its producer; the pass
 does not infer motion.
 
-??? aside "Implementation verification and capture provenance"
+??? aside "Agents: verification and capture provenance"
 
     The still at the top is generated by this page's `diffstatic_runner` from `open_dlss_nr.yaml`.
     The cube video uses `open_dlss_nr_cubes.yaml` and its **record clip** box; both animations

@@ -21,7 +21,7 @@ val bundle = StandardRenderer.build(renderer)
 val material = FabricateMaterial(
     baseColor = Vector4f(0.83f, 0.58f, 0.28f, 1f),
     metallic = 0.18f,
-    roughness = 0.36f
+    roughness = 0.36f,
 )
 
 val node = bundle.sceneGraph.mesh(name = "torus", material = material) {
@@ -56,13 +56,13 @@ Drop down to raw `Module`, `Mesh`, `RenderToTexture`, or push constants when you
 The current built-in frame graph is:
 
 ```diffstatic {data-lang=kotlin}
-std-gbuffer
-std-shadow
-std-ao
-std-lighting
-std-transparency
-std-motion-blur
-std-aa
+std - gbuffer
+std - shadow
+std - ao
+std - lighting
+std - transparency
+std - motion - blur
+std - aa
 ```
 
 Inspect or edit that order before attaching it:
@@ -89,7 +89,11 @@ bundle.addBloom()
 
 // Bind every built-in pass (and the post effects above) to editable boxes.
 val boxes = bundle.bindShadersToBoxes()
-println(boxes.keys) // std-gbuffer, std-shadow, std-ao, std-lighting, std-transparency, std-motion-blur, std-aa, std-post/bloom-composite, std-post/tonemap, ...
+println(
+    boxes.keys,
+) // std-gbuffer, std-shadow, std-ao, std-lighting, std-transparency, std-motion-blur, std-aa, std-post/bloom-composite,
+
+// std-post/tonemap, ...
 
 // Or hack on a single pass:
 bundle.bindShaderToBox("std-lighting", bundle.lightingModule)
@@ -99,7 +103,7 @@ Reloads reuse the pass's existing `Parameters`, so the renderer's texture bindin
 
 ## Scene graph and transforms
 
-Fabricate has a small scene layer on top of `afield.four`: nodes, local transforms, world transforms, render intent, animation samples, and draw-list ordering. The scene graph is pure Kotlin; renderer modules consume it through bound model matrices.
+Fabricate has a small scene layer on top of Field 4: nodes, local transforms, world transforms, render intent, animation samples, and draw-list ordering. The scene graph is pure Kotlin; renderer modules consume it through bound model matrices.
 
 ```diffstatic {data-lang=kotlin}
 val bundle = StandardRenderer.build(renderer)
@@ -112,11 +116,11 @@ val parent = bundle.sceneGraph.node("pivot") {
 val glass = bundle.sceneGraph.mesh(
     name = "glass",
     parent = parent,
-    material = FabricateMaterial(Vector4f(0.45f, 0.70f, 1.0f, 0.35f)).transparent(0.35f)
+    material = FabricateMaterial(Vector4f(0.45f, 0.70f, 1.0f, 0.35f)).transparent(0.35f),
 ) {
-    transform.position.set(0.4f, 0f, -0.45f)
-    transform.scale.set(0.7f, 0.7f, 0.7f)
-}
+        transform.position.set(0.4f, 0f, -0.45f)
+        transform.scale.set(0.7f, 0.7f, 0.7f)
+    }
 
 bundle.sceneGraph.updateWorldTransforms()
 val worldMatrix = Matrix4f(glass.worldMatrix)
@@ -131,12 +135,8 @@ println(lists.transparent.map { it.node.name })
 println(lists.shadowCasters.map { it.node.name })
 ```
 
-For moving transparent objects, call:
-
-```diffstatic {data-lang=kotlin}
-bundle.sceneGraph.advance(1f / 60f)
-bundle.sortTransparentMeshes()
-```
+Once the bundle is attached, it re-sorts transparent meshes for the camera every frame, so moving
+transparent objects stay in order without a call.
 
 ## Render planning
 
@@ -219,13 +219,11 @@ for (row in 0 until 10) {
         val light = (row + col) % 2 == 0
         val material = FabricateMaterial(
             baseColor = if (light) Vector4f(0.57f, 0.57f, 0.61f, 1f) else Vector4f(0.22f, 0.22f, 0.24f, 1f),
-            roughness = 0.9f
+            roughness = 0.9f,
         )
         val node = bundle.sceneGraph.mesh(name = "tile-$row-$col", material = material) {
             transform.set(
-                Matrix4f()
-                    .translate((col - 4.5f) * 0.52f, -1.0f, (row - 4.5f) * 0.52f)
-                    .scale(0.26f, 0.02f, 0.26f)
+                Matrix4f().translate((col - 4.5f) * 0.52f, -1.0f, (row - 4.5f) * 0.52f).scale(0.26f, 0.02f, 0.26f),
             )
             renderable?.userData = "tile-$row-$col"
         }
@@ -275,10 +273,12 @@ Nothing changes between the two halves except `camera.at` and `camera.target`:
 ```diffstatic {data-lang=kotlin}
 bundle.scene.camera.at.set(-1.55f, 0.72f, -1.75f)
 bundle.scene.camera.target.set(-0.95f, -0.2f, 0.95f)
+
 // capture the near framing
 
 bundle.scene.camera.at.set(1.45f, 0.78f, -3.35f)
 bundle.scene.camera.target.set(0.95f, -0.15f, -1.35f)
+
 // capture the far framing
 ```
 
@@ -320,13 +320,11 @@ The mesh is one scaled cube. Fabricate owns the transform/material intent; the c
 ```diffstatic {data-lang=kotlin}
 val material = FabricateMaterial(
     baseColor = Vector4f(0.58f, 0.58f, 0.62f, 1f),
-    roughness = 0.9f
+    roughness = 0.9f,
 )
 val node = bundle.sceneGraph.mesh(name = "shader-floor", material = material) {
     transform.set(
-        Matrix4f()
-            .translate(0f, -1.0f, 0f)
-            .scale(3.2f, 0.02f, 3.2f)
+        Matrix4f().translate(0f, -1.0f, 0f).scale(3.2f, 0.02f, 3.2f),
     )
     renderable?.userData = "shader-floor"
 }
@@ -374,26 +372,27 @@ The scene graph supplies the ordering; the transparency pass supplies the blendi
 ```diffstatic {data-lang=kotlin}
 val node = bundle.sceneGraph.mesh(
     name = "near-glass",
-    material = FabricateMaterial(Vector4f(1.0f, 0.78f, 0.38f, 0.38f)).transparent(0.38f)
+    material = FabricateMaterial(Vector4f(1.0f, 0.78f, 0.38f, 0.38f)).transparent(0.38f),
 ) {
-    transform.set(Matrix4f().translate(0.42f, -0.28f, -0.38f).scale(0.66f))
-    renderable?.userData = "near-glass"
-}
+        transform.set(Matrix4f().translate(0.42f, -0.28f, -0.38f).scale(0.66f))
+        renderable?.userData = "near-glass"
+    }
 
 val glass = bundle.registerTransparentPullingMesh(
     name = "near-glass",
     maxVertices = 32 * 32 * 6,
-    renderer = renderer
+    renderer = renderer,
 )
 
 StandardShapes.sphere(
-    positions = glass.position,
-    normals = glass.normal,
-    radius = 1f,
-    slices = 32,
-    stacks = 32,
-    config = StandardShapes.WriteConfig(append = false)
-).also { glass.setVertexCount(it.writtenVertices) }
+        positions = glass.position,
+        normals = glass.normal,
+        radius = 1f,
+        slices = 32,
+        stacks = 32,
+        config = StandardShapes.WriteConfig(append = false),
+    )
+    .also { glass.setVertexCount(it.writtenVertices) }
 
 glass.bindModel { Matrix4f(node.worldMatrix) }
 glass.applyFabricateMaterial(node.renderable!!.material)
@@ -428,12 +427,12 @@ expect:
 
 The scene graph carries a Three.js-style light list: one shadow-casting directional key light, plus point and spot lights up to `bundle.maxLights`, which is 64, all evaluated in the deferred lighting pass. It can also draw the loaded environment map as the scene background instead of a flat colour.
 
-Lights are pure scene state; `bundle.syncLights()` uploads them to the lighting pass (call it after changing lights, or once per frame if they move — the same explicit-sync idiom as `sortTransparentMeshes()`). The first shadow-casting directional light becomes the key light that drives the shadow map, or the first directional light of any kind if none of them cast shadows; every other light is shaded without shadows, and `syncLights()` takes only the first `maxLights` of them. `bundle.showEnvironmentBackground()` turns the equirect environment into the backdrop.
+Lights are pure scene state; an attached bundle uploads them to the lighting pass on the next frame after any change (`bundle.syncLights()` does it at once). The first shadow-casting directional light becomes the key light that drives the shadow map, or the first directional light of any kind if none of them cast shadows; every other light is shaded without shadows, and `syncLights()` takes only the first `maxLights` of them. `bundle.showEnvironmentBackground()` turns the equirect environment into the backdrop.
 
 ```diffstatic {data-lang=kotlin}
 val bundle = StandardRenderer.build(
     renderer,
-    StandardRenderer.Config(environmentTexture = environment, environmentStrength = 0.85f)
+    StandardRenderer.Config(environmentTexture = environment, environmentStrength = 0.85f),
 )
 
 // Environment as backdrop (Three.js scene.background = envMap).
@@ -441,8 +440,17 @@ bundle.showEnvironmentBackground(true)
 
 // One shadowed key light + coloured point lights that pool on the floor.
 bundle.addLight(FabricateLight.directional(Vector3f(-0.4f, -1f, -0.3f), intensity = 1.7f, castShadow = true))
-bundle.addLight(FabricateLight.point(Vector3f(-1.7f, 0.15f, -1.2f), color = Vector3f(1f, 0.22f, 0.25f), intensity = 10f, range = 5.5f))
-bundle.addLight(FabricateLight.point(Vector3f(1.7f, 0.1f, -1.0f), color = Vector3f(0.25f, 0.5f, 1f), intensity = 10f, range = 5.5f))
+bundle.addLight(
+    FabricateLight.point(
+        Vector3f(-1.7f, 0.15f, -1.2f),
+        color = Vector3f(1f, 0.22f, 0.25f),
+        intensity = 10f,
+        range = 5.5f,
+    ),
+)
+bundle.addLight(
+    FabricateLight.point(Vector3f(1.7f, 0.1f, -1.0f), color = Vector3f(0.25f, 0.5f, 1f), intensity = 10f, range = 5.5f),
+)
 bundle.addLight(FabricateLight.spot(Vector3f(0f, 2f, 0f), Vector3f(0f, -1f, 0f), intensity = 12f, range = 8f))
 bundle.syncLights()
 ```
@@ -482,7 +490,9 @@ println(bundle.postStack.output()) // the texture bundle.present(...) will use
 Append a fullscreen shader effect with `addShaderEffect`. The fragment shader receives the previous stack output as `sourceTex`; the new pass becomes the stack output.
 
 ```diffstatic {data-lang=kotlin}
-bundle.addShaderEffect("vignette-warmth", """
+bundle.addShaderEffect(
+    "vignette-warmth",
+    """
     #version 450
     layout(location = 0) in vec2 vUv;
     layout(set = 0, binding = 0) uniform sampler2D sourceTex;
@@ -497,7 +507,10 @@ bundle.addShaderEffect("vignette-warmth", """
         vec3 graded = mix(c.rgb, lifted, 0.72) * mix(0.38, 1.22, vignette);
         outColor = vec4(graded, c.a);
     }
-""".trimIndent(), renderer = renderer)
+"""
+        .trimIndent(),
+    renderer = renderer,
+)
 
 bundle.present(renderer = renderer)
 ```
@@ -527,7 +540,7 @@ expect:
 
 Deferred lighting runs in HDR, so raw output clips bright highlights to white. Tone mapping compresses HDR into a displayable range, and bloom bleeds the brightest regions into a soft glow.
 
-`bundle.setToneMapping(...)` appends a tone-map pass that always runs last (options: `NONE`, `REINHARD`, `FILMIC`, `ACES`, `AGX`, plus an `exposure` multiplier). `bundle.addBloom(...)` inserts a bright-pass, separable blur, and additive composite ahead of the tone-map pass, so bloom accumulates on HDR values before they are compressed. Both modify the post stack, so re-attach the frame graph afterwards.
+`bundle.setToneMapping(...)` appends a tone-map pass that always runs last (options: `NONE`, `REINHARD`, `FILMIC`, `ACES`, `AGX`, plus an `exposure` multiplier). `bundle.addBloom(...)` inserts a bright-pass, separable blur, and additive composite ahead of the tone-map pass, so bloom accumulates on HDR values before they are compressed. Both modify the post stack, and a bundle already attached to a renderer picks the change up itself.
 
 ```diffstatic {data-lang=kotlin}
 bundle.addBloom(threshold = 1.0f, intensity = 0.85f, radius = 3.2f)
@@ -563,7 +576,7 @@ expect:
 
 The GLTF path uses the existing Assimp-backed loader, then imports mesh instances into the Fabricate scene graph. Opaque meshes go to the g-buffer/shadow pair. Alpha materials go to the blended transparency pass.
 
-The example below loads the Khronos ToyCar sample: three mesh/material buckets, 77k vertices, 326k indices, and texture slots for base/diffuse, normal, emissive, packed occlusion/roughness/metalness, and clearcoat inputs. The `StandardRenderer` material bridge consumes base-color textures, UVs, glTF tangent frames, alpha/transmission classification, metalness, roughness, tangent-space normal maps, packed metal/roughness maps, occlusion, emissive maps, clearcoat factors/maps, shadows, AO, and equirectangular image-based lighting from float EXR environments with GGX-prefiltered radiance mips. The headlamp lens ridges depend on the normal map being sampled in the model's tangent basis. It does not yet handle texture transforms, physical transmission/refraction, sheen, BRDF LUT integration, cubemap PMREM, or clearcoat roughness/normal texture variants.
+The example below loads the Khronos ToyCar sample: three mesh/material buckets, 77k vertices, 326k indices, and texture slots for base/diffuse, normal, emissive, packed occlusion/roughness/metalness, and clearcoat inputs. The `StandardRenderer` material bridge consumes base-color textures, UVs, glTF tangent frames, alpha/transmission classification, metalness, roughness, tangent-space normal maps, packed metal/roughness maps, occlusion, emissive maps, clearcoat factors/maps, shadows, AO, and equirectangular image-based lighting from float EXR environments with GGX-prefiltered radiance mips. The headlamp lens ridges depend on the normal map being sampled in the model's tangent basis. Texture transforms (`KHR_texture_transform`) are applied as one offset and scale per material: the cloth's base colour and normal map repeat three times while its occlusion map does not, as the file specifies. A rotated transform, or two different ones in one material, is logged and sampled with the first. It does not yet handle physical transmission/refraction, sheen, BRDF LUT integration, cubemap PMREM, or clearcoat roughness/normal texture variants. `registerGltf` logs which of a file's glTF extensions it did not evaluate; for ToyCar that is transmission and sheen.
 
 ??? aside "Comparing the ToyCar capture with three.js"
     The reference for this capture is Don McCurdy's glTF Viewer with the same ToyCar model and Venice Sunset environment, used for exposure, contrast, fabric detail, and material readability. Its baseline settings are:
@@ -586,16 +599,18 @@ The example below loads the Khronos ToyCar sample: three mesh/material buckets, 
 Loading it into a bundle:
 
 ```diffstatic {data-lang=kotlin}
-// A repository-relative path, because this page's asset ships with the docs and the capture runs
-// from the repository root. In a document of your own, name the asset and let Field resolve it:
-//     val toyCarPath = "ToyCar.glb".absolutePath
-// which looks inside the document folder first and the workspace project second. See
-// "Where Field looks for a file" under Working in a Document.
+/*
+A repository-relative path, because this page's asset ships with the docs and the capture runs
+from the repository root. In a document of your own, name the asset and let Field resolve it:
+    val toyCarPath = "ToyCar.glb".absolutePath
+which looks inside the document folder first and the workspace project second. See
+"Where Field looks for a file" under Working in a Document.
+*/
 val toyCarPath = File("public/docs/assets/fabricate_demo/ToyCar.glb").absolutePath
 val loaded = bundle.registerGltf(
     path = toyCarPath,
     namePrefix = "robot",
-    renderer = renderer
+    renderer = renderer,
 )
 
 // The imported nodes carry bind-pose transforms and any sampled TRS animation.
@@ -650,15 +665,17 @@ The environment asset is already local. Load the EXR directly when the environme
 // and ask for it by name: "venice_sunset_1k.exr".absolutePath.
 val veniceExr = File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath
 
-val environment = LoadedTexture.fromExrFile(
-    veniceExr,
-    renderer,
-    requestedMipLevels = 0,
-    prefilterEnvironment = true
-).also {
-    it.setDefaultSampler()
-    it.transferNow()
-}
+val environment =
+    LoadedTexture.fromExrFile(
+            veniceExr,
+            renderer,
+            requestedMipLevels = 0,
+            prefilterEnvironment = true,
+        )
+        .also {
+            it.setDefaultSampler()
+            it.transferNow()
+        }
 
 val bundle = StandardRenderer.build(
     renderer,
@@ -667,8 +684,8 @@ val bundle = StandardRenderer.build(
         environmentStrength = 1.35f,
         environmentRotation = 0.42f,
         // Linear renderer input for a #191919-style sRGB background.
-        backgroundColor = Vector3f(0.0093f, 0.0093f, 0.0093f)
-    )
+        backgroundColor = Vector3f(0.0093f, 0.0093f, 0.0093f),
+    ),
 )
 ```
 
@@ -721,9 +738,11 @@ bundle.scene.ambientColor.set(0.015f, 0.015f, 0.018f)
 bundle.scene.lightIntensity = 1.35f
 
 bundle.scene.shadowStrength = 0f
+
 // capture the unshadowed scene
 
 bundle.scene.shadowStrength = 1f
+
 // capture the shadowed scene
 ```
 
@@ -758,9 +777,11 @@ AO is also just a scene parameter in this harness:
 val originalAoStrength = bundle.scene.aoStrength
 
 bundle.scene.aoStrength = 0f
+
 // capture the AO-off scene
 
 bundle.scene.aoStrength = originalAoStrength
+
 // capture the AO-on scene
 ```
 

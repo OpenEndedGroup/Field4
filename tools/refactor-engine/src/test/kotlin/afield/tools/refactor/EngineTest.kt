@@ -29,6 +29,23 @@ class EngineTest {
     private val recipe = Recipe(mapOf("afield.old" to "afield.newplace"),
         mapOf("afield.mixed.Thing" to "afield.model.Thing"), setOf("afield.mixed"))
 
+    @Test fun fieldUrlsStayOpaqueInCommentsAndStrings() = Engine().use { engine ->
+        val r = recipe.copy(splitPackages = setOf("afield"), rewriteComments = true)
+        val urls = listOf("afield:/document/box/code", "afield://document/box/code",
+            "afield://document/afield.old.Thing?type=afield.old.Other", "AFIELD:/document/afield.old.Thing")
+        for (url in urls) {
+            val source = "// `$url`\nval key = \"$url\""
+            val result = engine.rewrite(source, true, r)
+            assertEquals(source, result.code)
+            assertTrue(result.findings.isEmpty(), result.findings.toString())
+        }
+        val mixed = "// `afield:/document/afield.old.Thing` then afield.old.Thing\nval x = 1"
+        assertEquals(mixed.replace(" then afield.old.Thing", " then afield.newplace.Thing"),
+            engine.rewrite(mixed, true, r).code)
+        assertTrue(r.affectedText("afield: Value"))
+        assertTrue(r.affectedText("package afield"))
+    }
+
     @Test fun declarationInventoryKeepsOverloadsButNotMembersOrLocals() = Engine().use { engine ->
         val result = engine.declarations("package sample\r\nclass Thing { fun member() {} }\r\n" +
             "fun String.convert(x: Int) { fun local() {} }\r\nfun convert(x: Double) = x\r\nprivate val hidden = 2")
@@ -61,6 +78,42 @@ class EngineTest {
             "// afield.older.Thing and host.afield.old.Thing stay.\r\nval name = \"afield.old.Thing\"\r\n", result.code)
         assertEquals(listOf("string-reference"), result.findings.map { it.kind })
         assertEquals(result.code, engine.rewrite(result.code, true, recipe.copy(rewriteComments = true)).code)
+    }
+
+    @Test fun brandingRulesOnlyRewriteExactNamesInComments() = Engine().use { engine ->
+        val r = Recipe(mapOf("afield.four.buffers" to "afield.graphics.vulkan.buffers"), emptyMap(), setOf("afield.four"),
+            rewriteComments = true, proseReplacements = mapOf("afield.four" to "Field 4"))
+        val source = "// Use `afield.four` itself. afield.four.buffers.Buffer\nval name = \"afield.four\"\n"
+        val result = engine.rewrite(source, true, r)
+        assertEquals("// Use `Field 4` itself. afield.graphics.vulkan.buffers.Buffer\nval name = \"afield.four\"\n", result.code)
+        assertEquals(result.code, engine.rewrite(result.code, true, r).code)
+        assertEquals("afield.four.*", r.rewriteText("afield.four.*"))
+    }
+
+    @Test fun hyphenatedNamespaceLabelsStayInCommentsAndStrings() = Engine().use { engine ->
+        val r = Recipe(emptyMap(), mapOf("afield.Thing" to "moved.Thing"), setOf("afield"), rewriteComments = true)
+        val source = "// afield-token-* and afield-\nval css = \"afield-stacksl-token-comment\"\n"
+        val result = engine.rewrite(source, true, r)
+        assertEquals(source, result.code)
+        assertTrue(result.findings.isEmpty())
+        assertTrue(r.affectedText("afield.Unknown"))
+        assertTrue(r.affectedText("package afield"))
+        assertTrue(r.affectedText("afield.Thing-other"))
+        assertEquals("moved.Thing-other", r.rewriteText("afield.Thing-other"))
+        assertTrue(engine.rewrite("import afield.Unknown", true, r).findings.any { it.kind == "unmapped-import" })
+    }
+
+    @Test fun javascriptBundleFilenamesStayInCommentsAndStrings() = Engine().use { engine ->
+        val r = Recipe(mapOf("afield" to "moved"), emptyMap(), emptySet(), rewriteComments = true)
+        val source = "// afield.mjs and afield.mjs.map\nval bundle = \"./afield.mjs?v=2\"\n"
+        val result = engine.rewrite(source, true, r)
+        assertEquals(source, result.code)
+        assertTrue(result.findings.isEmpty())
+        assertTrue(r.affectedText("afield.mjsHelper"))
+        assertTrue(r.affectedText("afield.mjs.Factory"))
+        assertEquals("moved.Server", r.rewriteText("afield.Server"))
+        // The exception applies to text, not actual Kotlin imports/types.
+        assertEquals("import moved.mjs.Factory", engine.rewrite("import afield.mjs.Factory", true, r).code)
     }
 
     @Test fun unmappedAndPathLikeCommentsStayReviewFindings() = Engine().use { engine ->
@@ -194,6 +247,12 @@ class EngineTest {
         assertTrue(engine.rewrite(source, false, rules).findings.any { it.kind == "split-star" })
         val broken = "import afield.mixed.*\nval x = ("
         assertEquals(broken, engine.rewrite(broken, true, rules).code)
+    }
+
+    @Test fun currentExplicitImportsSurviveHostImportDeduplication() = Engine().use { engine ->
+        val rules = recipe.copy(scriptImports = setOf("afield.lang.python.*", "afield.lang.remotejs.*", "afield.newplace.Thing"))
+        val source = "import afield.lang.python.*\nimport afield.lang.remotejs.*\nimport afield.newplace.Thing\nisPythonRoot = true\n"
+        assertEquals(source, engine.rewrite(source, true, rules).code)
     }
 
     @Test fun identicalIntroImportsAreDroppedOnlyInScripts() = Engine().use { engine ->

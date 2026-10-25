@@ -33,6 +33,9 @@ HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
 # Markdown link targets: `](#slug)` and `](page.md#slug)`. Bare `<a name>` anchors are also
 # honoured as definitions, since a few pages plant them by hand.
 LINK = re.compile(r"\]\(([^)\s]*)#([^)\s]+)\)")
+# A link demonstrated inside a code span is literal text. Match the entire backtick
+# delimiter so double-backtick spans can themselves contain a single backtick.
+INLINE_CODE = re.compile(r"(?<!`)(`+)(?!`)(.*?)(?<!`)\1(?!`)")
 EXPLICIT_ANCHOR = re.compile(r"""<a\s+(?:name|id)=["']([^"']+)["']""")
 # Attribute lists: `## Heading {#custom-slug}` overrides the derived slug. The generated
 # `reference/` pages write these as `## pf.kt { #pf-kt }`, with spaces inside the braces, and
@@ -99,7 +102,7 @@ def links_of(path):
             continue
         if in_fence:
             continue
-        for target, slug in LINK.findall(ln):
+        for target, slug in LINK.findall(INLINE_CODE.sub("", ln)):
             out.append((i, target, slug))
     return out
 
@@ -124,6 +127,8 @@ def main(argv):
         for lineno, target, slug in links_of(page):
             if target == "":
                 where, label = page, "this page"
+            elif "://" in target:
+                continue   # an absolute URL (a GitHub blob link ending in `.md` included); not ours to check
             elif target.endswith(".md"):
                 where, label = (page.parent / target).resolve(), target
             else:

@@ -11,14 +11,16 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="onnx_webcam" index="0" -->
 
 ```edn [field-box id="onnx_webcam" role="properties"]
-{"id" "onnx_webcam" "index" 0 "name" "Webcam perception" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Webcam perception" "_tombstone" false "frame" #afield/rect [80.0 80.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "onnx_webcam_code_.kt" "lines" 114 "characters" 5308 "sha256" "390065f4d018fd10e8759f1c3db2db0d46dabcbcc9fc7d3049cb290d6433ff5e"}]}
+{"id" "onnx_webcam" "index" 0 "name" "Webcam perception" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Webcam perception" "_tombstone" false "frame" #afield/rect [80.0 80.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "onnx_webcam_code_.kt" "lines" 121 "characters" 5387 "sha256" "5fd26bdc0a49a7e30a14c58bbd31ac219d58b630c3d322143d240e80a69609dc"}]}
 ```
 
 ```kotlin [field-property box="onnx_webcam" name="code" path="onnx_webcam_code_.kt"]
-import afield.onnx.ClipImage
-import afield.onnx.clipEncode
-import afield.onnx.DepthAnything
-import afield.util.PngEncoder
+import afield.ai.inference.onnx.ClipImage
+import afield.ai.inference.onnx.DepthAnything
+import afield.ai.inference.onnx.clipEncode
+import afield.media.image.util.PngEncoder
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import org.bytedeco.javacv.OpenCVFrameConverter
 import org.bytedeco.javacv.OpenCVFrameGrabber
 import org.bytedeco.opencv.global.opencv_imgproc.COLOR_BGR2RGBA
@@ -27,16 +29,14 @@ import org.bytedeco.opencv.global.opencv_imgproc.COLOR_GRAY2RGBA
 import org.bytedeco.opencv.global.opencv_imgproc.cvtColor
 import org.bytedeco.opencv.opencv_core.Mat
 import org.lwjgl.system.MemoryUtil
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 // Encoded once, here, into a val: the text tower is not in the per-frame path. First call in
 // a session loads the 242MB encoder; after that each prompt is a few milliseconds.
 val prompts = mapOf(
     "a person at a desk" to clipEncode("a person sitting at a desk"),
-    "an empty room"      to clipEncode("an empty room"),
-    "a close-up face"    to clipEncode("a close-up of a face"),
-    "a hand up close"    to clipEncode("a hand held up to the camera")
+    "an empty room" to clipEncode("an empty room"),
+    "a close-up face" to clipEncode("a close-up of a face"),
+    "a hand up close" to clipEncode("a hand held up to the camera"),
 )
 
 val grabber = OpenCVFrameGrabber(0)
@@ -61,9 +61,11 @@ try {
         else -> cvtColor(m, rgbaMat, COLOR_GRAY2RGBA)
     }
     val bytes = w * h * 4
-    // JavaCPP leaves Mat.data()'s capacity unset, so asByteBuffer() hands back an EMPTY
-    // buffer and a bounds-checked copy silently moves nothing -- which looks exactly like a
-    // black camera. Wrap the raw address instead, as WebcamTexture.copyMatToBuffer does.
+    /*
+    JavaCPP leaves Mat.data()'s capacity unset, so asByteBuffer() hands back an EMPTY
+    buffer and a bounds-checked copy silently moves nothing -- which looks exactly like a
+    black camera. Wrap the raw address instead, as WebcamTexture.copyMatToBuffer does.
+    */
     val src = MemoryUtil.memByteBuffer(rgbaMat.data().address(), bytes)
     val rgba = ByteBuffer.allocateDirect(bytes).order(ByteOrder.nativeOrder())
     rgba.put(src.duplicate())
@@ -99,8 +101,7 @@ try {
         val sy = (y.toDouble() / outH * depth.height).toInt().coerceIn(0, depth.height - 1)
         for (x in 0 until depthOutW) {
             val sx = (x.toDouble() / depthOutW * depth.width).toInt().coerceIn(0, depth.width - 1)
-            val t = ai.onnxruntime.platform.Fp16Conversions
-                .fp16ToFloat(d.get(sy * depth.width + sx)).coerceIn(0f, 1f)
+            val t = ai.onnxruntime.platform.Fp16Conversions.fp16ToFloat(d.get(sy * depth.width + sx)).coerceIn(0f, 1f)
             val r = (255 * (t * 1.6f).coerceIn(0f, 1f)).toInt()
             val g = (255 * ((t - 0.25f) * 1.6f).coerceIn(0f, 1f)).toInt()
             val b = (255 * ((t - 0.6f) * 2.2f).coerceIn(0f, 1f)).toInt()
@@ -111,20 +112,26 @@ try {
 
     // `bar(max = 1.0)` so the bars read as "of the whole", not "of the best one this
     // frame" — a top-1 at 12% should look like 12%, not like a full bar.
-    val top = Table(listOf("label", "confidence"))
-        .rows(ranked.map { (label, p) -> listOf(label, p) })
-        .role("confidence", CellRole.ACCENT)
-        .bar("confidence", max = 1.0, width = 180)
-        .format("confidence") { "%.1f%%".format((it as Number).toDouble() * 100) }
+    val top =
+        Table(["label", "confidence"])
+            .rows(ranked.map { (label, p) -> [label, p] })
+            .role("confidence", CellRole.ACCENT)
+            .bar("confidence", max = 1.0, width = 180)
+            .format("confidence") { "%.1f%%".format((it as Number).toDouble() * 100) }
 
-    markdown("main", """
+    markdown(
+        "main",
+        """
         <img src="data:image/png;base64,$b64" style="width:100%;border-radius:3px"/>
 
         {muted:${w}x$h · depth ${depth.lastInferenceMs}ms, raw [${"%.2f".format(stats.rawMin)}, ${"%.2f".format(stats.rawMax)}] · brighter = nearer}
 
         ${top.h}
-    """)
-    println("depth ${depth.lastInferenceMs}ms  best=${ranked.first().first} ${"%.1f".format(ranked.first().second * 100)}%")
+    """,
+    )
+    println(
+        "depth ${depth.lastInferenceMs}ms  best=${ranked.first().first} ${"%.1f".format(ranked.first().second * 100)}%",
+    )
 } finally {
     runCatching { grabber.stop() }
     runCatching { grabber.release() }

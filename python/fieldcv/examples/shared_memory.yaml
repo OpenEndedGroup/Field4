@@ -85,28 +85,31 @@ operations:
         layout(location = 0) in vec3 pos;
         layout(location = 1) in vec2 tc;
         layout(location = 0) out vec2 ftc;
-        void main() { ftc = tc; gl_Position = vec4(pos, 1); }
+        void main() {
+            ftc = tc;
+            gl_Position = vec4(pos, 1);
+        }
       fragment: |
         #version 450
         layout(location = 0) in vec2 ftc;
         layout(location = 0) out vec4 uFragColor;
         layout(set = 0, binding = 0) uniform sampler2D camera;
-        void main() { uFragColor = vec4(texture(camera, ftc).rgb, 1.0); }
+        void main() {
+            uFragColor = vec4(texture(camera, ftc).rgb, 1.0);
+        }
       code: |
-        import afield.python.NumpyShared
-
         prop<LoadedTexture>(camera) = NumpyShared.image("camera").texture()
 
-        var module = moduleHere { }
+        var module = moduleHere {}
         var m = Mesh()
         module += m named "camera quad"
         renderer += module
 
         // the image fills the window. Field's NDC is y-up, image v is y-down: v = 0 is the top edge
         m.set(4, 6) {
-            pos.add(-1, -1, 0.9,  1, -1, 0.9,  1, 1, 0.9,  -1, 1, 0.9)
-            tc.add(0, 1,  1, 1,  1, 0,  0, 0)
-            tri.add(0, 1, 2,  0, 2, 3)
+            pos.add(-1, -1, 0.9, 1, -1, 0.9, 1, 1, 0.9, -1, 1, 0.9)
+            tc.add(0, 1, 1, 1, 1, 0, 0, 0)
+            tri.add(0, 1, 2, 0, 2, 3)
         }
 - connect:
     parent: agent_graphics_context
@@ -116,20 +119,18 @@ operations:
     property: code
     type: fragment
     code: |
-      import afield.python.NumpyShared
-
       prop<LoadedTexture>(camera) = NumpyShared.image("camera").texture()
 
-      var module = moduleHere { }
+      var module = moduleHere {}
       var m = Mesh()
       module += m named "camera quad"
       renderer += module
 
       // the image fills the window. Field's NDC is y-up, image v is y-down: v = 0 is the top edge
       m.set(4, 6) {
-          pos.add(-1, -1, 0.9,  1, -1, 0.9,  1, 1, 0.9,  -1, 1, 0.9)
-          tc.add(0, 1,  1, 1,  1, 0,  0, 0)
-          tri.add(0, 1, 2,  0, 2, 3)
+          pos.add(-1, -1, 0.9, 1, -1, 0.9, 1, 1, 0.9, -1, 1, 0.9)
+          tc.add(0, 1, 1, 1, 1, 0, 0, 0)
+          tri.add(0, 1, 2, 0, 2, 3)
       }
 - create:
     box: cv_overlay_lines
@@ -145,32 +146,40 @@ operations:
         layout(location = 0) in vec3 pos;
         layout(location = 1) in vec4 col;
         layout(location = 0) out vec4 fcol;
-        void main() { fcol = col; gl_Position = vec4(pos, 1); }
+        void main() {
+            fcol = col;
+            gl_Position = vec4(pos, 1);
+        }
       fragment: |
         #version 450
         layout(location = 0) in vec4 fcol;
         layout(location = 0) out vec4 uFragColor;
-        void main() { uFragColor = fcol; }
+        void main() {
+            uFragColor = fcol;
+        }
       code: |
-        import afield.python.NumpyShared
-
         val tracks = NumpyShared.lines("tracks")
         val skeleton = NumpyShared.lines("skeleton")
 
-        var module = moduleHere { }
+        var module = moduleHere {}
         var m = Mesh()
         module += m named "overlay"
         renderer += module
 
-        val width = 0.004   // half the line's width, in NDC: about two pixels across a 1000-pixel window
+        val width = 0.004 // half the line's width, in NDC: about four pixels across a 1000-pixel window
 
         fun segments(l: List<FLine>) = l.flatMap { it.nodes.zipWithNext() }
 
         frames {
             while (frame()) {
-                val segs = segments(tracks.lines()).map { it to vec(0.2, 1.0, 0.3, 1.0) } +
-                           segments(skeleton.lines()).map { it to vec(1.0, 0.3, 0.8, 1.0) }
-                if (segs.isEmpty()) continue
+                val segs =
+                    segments(tracks.lines()).map { it to vec(0.2, 1.0, 0.3, 1.0) } +
+                        segments(skeleton.lines()).map { it to vec(1.0, 0.3, 0.8, 1.0) }
+                if (segs.isEmpty()) {
+                    // Empty detections must clear the previous frame's overlay.
+                    m.resize(0, 0)
+                    continue
+                }
                 // each segment is a thin quad, two triangles, since GPU lines are a single pixel wide
                 m.set(4 * segs.size, 2 * segs.size) {
                     for ((i, s) in segs.withIndex()) {
@@ -183,9 +192,13 @@ operations:
                         val len = maxOf(Math.hypot((bx - ax).toDouble(), (by - ay).toDouble()), 1e-6)
                         val nx = -(by - ay) / len * width
                         val ny = (bx - ax) / len * width
-                        pos.add(ax + nx, ay + ny, 0.1, ax - nx, ay - ny, 0.1, bx - nx, by - ny, 0.1, bx + nx, by + ny, 0.1)
+                        pos.add(ax + nx, ay + ny, 0.1)
+                        pos.add(ax - nx, ay - ny, 0.1)
+                        pos.add(bx - nx, by - ny, 0.1)
+                        pos.add(bx + nx, by + ny, 0.1)
                         4 { col.add(c.x, c.y, c.z, c.w) }
-                        tri.add(4 * i, 4 * i + 1, 4 * i + 2, 4 * i, 4 * i + 2, 4 * i + 3)
+                        tri.add(4 * i, 4 * i + 1, 4 * i + 2)
+                        tri.add(4 * i, 4 * i + 2, 4 * i + 3)
                     }
                 }
             }
@@ -198,25 +211,28 @@ operations:
     property: code
     strand: overlay
     code: |
-      import afield.python.NumpyShared
-
       val tracks = NumpyShared.lines("tracks")
       val skeleton = NumpyShared.lines("skeleton")
 
-      var module = moduleHere { }
+      var module = moduleHere {}
       var m = Mesh()
       module += m named "overlay"
       renderer += module
 
-      val width = 0.004   // half the line's width, in NDC: about two pixels across a 1000-pixel window
+      val width = 0.004 // half the line's width, in NDC: about four pixels across a 1000-pixel window
 
       fun segments(l: List<FLine>) = l.flatMap { it.nodes.zipWithNext() }
 
       frames {
           while (frame()) {
-              val segs = segments(tracks.lines()).map { it to vec(0.2, 1.0, 0.3, 1.0) } +
-                         segments(skeleton.lines()).map { it to vec(1.0, 0.3, 0.8, 1.0) }
-              if (segs.isEmpty()) continue
+              val segs =
+                  segments(tracks.lines()).map { it to vec(0.2, 1.0, 0.3, 1.0) } +
+                      segments(skeleton.lines()).map { it to vec(1.0, 0.3, 0.8, 1.0) }
+              if (segs.isEmpty()) {
+                  // Empty detections must clear the previous frame's overlay.
+                  m.resize(0, 0)
+                  continue
+              }
               // each segment is a thin quad, two triangles, since GPU lines are a single pixel wide
               m.set(4 * segs.size, 2 * segs.size) {
                   for ((i, s) in segs.withIndex()) {
@@ -229,9 +245,13 @@ operations:
                       val len = maxOf(Math.hypot((bx - ax).toDouble(), (by - ay).toDouble()), 1e-6)
                       val nx = -(by - ay) / len * width
                       val ny = (bx - ax) / len * width
-                      pos.add(ax + nx, ay + ny, 0.1, ax - nx, ay - ny, 0.1, bx - nx, by - ny, 0.1, bx + nx, by + ny, 0.1)
+                      pos.add(ax + nx, ay + ny, 0.1)
+                      pos.add(ax - nx, ay - ny, 0.1)
+                      pos.add(bx - nx, by - ny, 0.1)
+                      pos.add(bx + nx, by + ny, 0.1)
                       4 { col.add(c.x, c.y, c.z, c.w) }
-                      tri.add(4 * i, 4 * i + 1, 4 * i + 2, 4 * i, 4 * i + 2, 4 * i + 3)
+                      tri.add(4 * i, 4 * i + 1, 4 * i + 2)
+                      tri.add(4 * i, 4 * i + 2, 4 * i + 3)
                   }
               }
           }

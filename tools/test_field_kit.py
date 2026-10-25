@@ -1,7 +1,7 @@
 """tools/field_kit.py: the manifest commands on real files and git, the document commands against a fake Field.
 
 The fake keeps a document as boxes, properties and files, and inspects it with the same three-way rule
-`afield.stdlib.Kits.inspect` applies (KitsTest pins that rule on the JVM side). What these tests pin is
+`afield.document.workspace.Kits.inspect` applies (KitsTest pins that rule on the JVM side). What these tests pin is
 what the commands do with an inspection: what they refuse, what they write, and in which order.
 """
 
@@ -20,6 +20,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import field_kit as fk  # noqa: E402
+from tools.git_isolation import scrub_process_env  # noqa: E402
+
+# This module builds scratch git repositories; an inherited GIT_DIR would redirect them.
+scrub_process_env()
 
 
 def sha(text: str) -> str:

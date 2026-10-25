@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| the seam | `src/jvmMain/kotlin/afield/ai/core/AgentToolExtensions.kt` |
-| the registry it feeds | `src/jvmMain/kotlin/afield/ai/core/Tools.kt` (`ToolRegistry`) |
-| where core calls it | `src/jvmMain/kotlin/afield/ai/core/AgentToolRegistrations.kt:17` |
-| the worked example | `src/jvmMain/kotlin/afield/four/modules/GeometryAgentTools.kt` |
-| the tests | `src/jvmTest/kotlin/afield/ai/AgentToolExtensionsTest.kt`, `GeometryAgentToolsTest.kt` |
+| the seam | `src/jvmMain/kotlin/afield/ai/tools/AgentToolExtensions.kt` |
+| the registry it feeds | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt` (`ToolRegistry`) |
+| where core calls it | `src/jvmMain/kotlin/afield/ai/tools/AgentToolRegistrations.kt:17` |
+| the worked example | `src/jvmMain/kotlin/afield/graphics/render/GeometryAgentTools.kt` |
+| the tests | `src/jvmTest/kotlin/afield/ai/tools/AgentToolExtensionsTest.kt`, `GeometryAgentToolsTest.kt` |
 | the evidence generator | `src/jvmMain/kotlin/afield/examples/AgentToolDemoEvidence.kt` |
 | the committed evidence | `public/docs/assets/ai_tool_demo/` |
 | the loadable demo | `public/docs/assets/ai_tool_demo/metadata.edn` |
@@ -66,7 +66,7 @@ state instead, which is fine.
 ## The document-side face: `aiTool { }`
 
 `AgentToolExtensions.register` needs a request class, which box code can declare but rarely wants
-to. The `aiTool` DSL (`src/jvmMain/kotlin/afield/ai/core/BoxAiTools.kt`, in the box `intro`
+to. The `aiTool` DSL (`src/jvmMain/kotlin/afield/ai/tools/BoxAiTools.kt`, in the box `intro`
 imports) is the lighter face for a document:
 
 ```kotlin
@@ -100,7 +100,7 @@ studio set (`rectsl.check`, `rectsl.run`) built on it.
 ## Studies: one registrar for the standard verbs
 
 A study's standard verbs — Inspect, Edit, Patch, SetNumbers, Observe, Compare, Sweep, TryVariants,
-AdoptVariant, Restore — are wired once, in `src/jvmMain/kotlin/afield/stdlib/LiveStudy.kt`:
+AdoptVariant, Restore — are wired once, in `src/jvmMain/kotlin/afield/study/source/LiveStudy.kt`:
 
 - A library study keeps its request classes (their names are the tool names, their fields and
   descriptions the schemas; `StudyToolSchemaPinTest` pins all of them), makes each implement the

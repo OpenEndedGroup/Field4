@@ -1,5 +1,8 @@
 name: optical_flow
 description: Hardware image motion, cost inspection and feedback advection from a pair of Field images.
+docs:
+  - page: optical_flow.md
+    why: "Explains the hardware optical flow call and its motion texture."
 operations:
 - create:
     box: agent_graphics_context
@@ -10,17 +13,45 @@ operations:
       w: 300.0
       h: 100.0
     properties:
-      code: "import afield.four.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR\
-        \ = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"\
-        Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+      code: |-
+        import afield.graphics.vulkan.util.Options
+
+        prop<Window>(window)
+        prop<Renderer>(renderer)
+
+        Options.enableVR = false
+        Options.enableHDR = false
+        Options.profiling = false
+
+        once.renderer {
+            window = Window("Field")
+            Renderer(window)
+        }
+
+        println("agent graphics renderer ready")
+        start(renderer::run)
 - launch:
     box: agent_graphics_context
     property: code
     type: code
     strand: renderer
-    code: "import afield.four.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR\
-      \ = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"\
-      Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+    code: |-
+      import afield.graphics.vulkan.util.Options
+
+      prop<Window>(window)
+      prop<Renderer>(renderer)
+
+      Options.enableVR = false
+      Options.enableHDR = false
+      Options.profiling = false
+
+      once.renderer {
+          window = Window("Field")
+          Renderer(window)
+      }
+
+      println("agent graphics renderer ready")
+      start(renderer::run)
 - wait:
     frames: 3
 - create:
@@ -32,22 +63,60 @@ operations:
       w: 420.0
       h: 100.0
     properties:
-      code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.vision.*\nimport afield.four.modules.fromContextWithNameOrNull\n\
-        \nprop<OpticalFlowDemo>(lab)\nfromContextWithNameOrNull<OpticalFlowDemo>(\"lab\")?.close()\n// AUTO: the\
-        \ VK_NV_optical_flow engine where the device has one, portable pyramidal Lucas–Kanade everywhere else.\n\
-        lab=OpticalFlowDemo(renderer,backend=OpticalFlowBackend.AUTO)\nprintln(\"Optical flow backend: ${lab.flow.backend}\"\
-        )\nvar gain=1f\nvar damping=.98f\n// The two backends report cost on different scales, so the rejection\
-        \ threshold starts at the demo's per-backend default.\nvar cost=lab.costThreshold\nvar deform=true\nvar\
-        \ reset=false\ncontrolGroup(\"optical flow\") {\n    slider(\"Advection gain\",min=0.0,max=3.0,initialValue=1.0)\
-        \ { gain=it.toFloat() }\n    slider(\"Feedback retention\",min=0.0,max=.995,initialValue=.98) { damping=it.toFloat()\
-        \ }\n    slider(\"Reject cost above\",min=0.0,max=6.0*lab.costDisplayRange,initialValue=lab.costThreshold.toDouble())\
-        \ { cost=it.toFloat() }\n    checkbox(\"Consecutive-frame wiggle\",initialValue=true) { deform=it;reset=true\
-        \ }\n    button(\"Reset feedback and motion hints\") { if(it)reset=true }\n}\ndisplayOpen(\"optical flow\"\
-        )\nprintln(\"Top: consecutive frames. Below: motion/cost and advected feedback. Turn off wiggle for the\
-        \ (+12, -8) translation check.\")\nframes {\n    var time=0f\n    while(true) {\n        lab.dx=if(deform)0f\
-        \ else 12f;lab.dy=if(deform)0f else -8f;lab.displayRange=if(deform)3f else 20f;lab.gain=gain;lab.damping=damping;lab.costThreshold=cost;lab.deformation=deform\n\
-        \        lab.update(time,reset);reset=false;time+=lab.pairStep\n        frame()\n    }\n}.end { lab.close()\
-        \ }\n"
+      code: |
+        import afield.media.vision.*
+
+        prop<OpticalFlowDemo>(lab)
+        val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
+        // AUTO: the VK_NV_optical_flow engine where the device has one, portable pyramidal Lucas–Kanade everywhere else.
+        val ownedLab = runScope.own(OpticalFlowDemo(renderer, backend = OpticalFlowBackend.AUTO))
+        lab = ownedLab
+        println("Optical flow backend: ${ownedLab.flow.backend}")
+        var gain = 1f
+        var damping = .98f
+        // The two backends report cost on different scales, so the rejection threshold starts at the demo's per-backend
+        // default.
+        var cost = ownedLab.costThreshold
+        var deform = true
+        var reset = false
+        controlGroup("optical flow") {
+            slider("Advection gain", min = 0.0, max = 3.0, initialValue = 1.0) { gain = it.toFloat() }
+            slider("Feedback retention", min = 0.0, max = .995, initialValue = .98) { damping = it.toFloat() }
+            slider(
+                "Reject cost above",
+                min = 0.0,
+                max = 6.0 * ownedLab.costDisplayRange,
+                initialValue = ownedLab.costThreshold.toDouble(),
+            ) {
+                cost = it.toFloat()
+            }
+            checkbox("Consecutive-frame wiggle", initialValue = true) {
+                deform = it
+                reset = true
+            }
+            button("Reset feedback and motion hints") { if (it) reset = true }
+        }
+        displayOpen("optical flow")
+        println(
+            "Top: consecutive frames. Below: motion/cost and advected feedback. Turn off wiggle for the (+12, -8) translation check.",
+        )
+        frames {
+            var time = 0f
+            while (true) {
+                ownedLab.dx = if (deform) 0f else 12f
+                ownedLab.dy = if (deform) 0f else -8f
+                ownedLab.displayRange = if (deform) 3f else 20f
+                ownedLab.gain = gain
+                ownedLab.damping = damping
+                ownedLab.costThreshold = cost
+                ownedLab.deformation = deform
+                ownedLab.update(time, reset)
+                reset = false
+                time += ownedLab.pairStep
+                frame()
+            }
+        }
+            .end { ownedLab.close() }
 - connect:
     parent: agent_graphics_context
     child: optical_flow
@@ -56,20 +125,59 @@ operations:
     property: code
     type: code
     strand: scene
-    code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.vision.*\nimport afield.four.modules.fromContextWithNameOrNull\n\
-      \nprop<OpticalFlowDemo>(lab)\nfromContextWithNameOrNull<OpticalFlowDemo>(\"lab\")?.close()\n// AUTO: the VK_NV_optical_flow\
-      \ engine where the device has one, portable pyramidal Lucas–Kanade everywhere else.\nlab=OpticalFlowDemo(renderer,backend=OpticalFlowBackend.AUTO)\n\
-      println(\"Optical flow backend: ${lab.flow.backend}\")\nvar gain=1f\nvar damping=.98f\n// The two backends\
-      \ report cost on different scales, so the rejection threshold starts at the demo's per-backend default.\n\
-      var cost=lab.costThreshold\nvar deform=true\nvar reset=false\ncontrolGroup(\"optical flow\") {\n    slider(\"\
-      Advection gain\",min=0.0,max=3.0,initialValue=1.0) { gain=it.toFloat() }\n    slider(\"Feedback retention\"\
-      ,min=0.0,max=.995,initialValue=.98) { damping=it.toFloat() }\n    slider(\"Reject cost above\",min=0.0,max=6.0*lab.costDisplayRange,initialValue=lab.costThreshold.toDouble())\
-      \ { cost=it.toFloat() }\n    checkbox(\"Consecutive-frame wiggle\",initialValue=true) { deform=it;reset=true\
-      \ }\n    button(\"Reset feedback and motion hints\") { if(it)reset=true }\n}\ndisplayOpen(\"optical flow\"\
-      )\nprintln(\"Top: consecutive frames. Below: motion/cost and advected feedback. Turn off wiggle for the (+12,\
-      \ -8) translation check.\")\nframes {\n    var time=0f\n    while(true) {\n        lab.dx=if(deform)0f else\
-      \ 12f;lab.dy=if(deform)0f else -8f;lab.displayRange=if(deform)3f else 20f;lab.gain=gain;lab.damping=damping;lab.costThreshold=cost;lab.deformation=deform\n\
-      \        lab.update(time,reset);reset=false;time+=lab.pairStep\n        frame()\n    }\n}.end { lab.close()\
-      \ }\n"
+    code: |
+      import afield.media.vision.*
+
+      prop<OpticalFlowDemo>(lab)
+      val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
+      // AUTO: the VK_NV_optical_flow engine where the device has one, portable pyramidal Lucas–Kanade everywhere else.
+      val ownedLab = runScope.own(OpticalFlowDemo(renderer, backend = OpticalFlowBackend.AUTO))
+      lab = ownedLab
+      println("Optical flow backend: ${ownedLab.flow.backend}")
+      var gain = 1f
+      var damping = .98f
+      // The two backends report cost on different scales, so the rejection threshold starts at the demo's per-backend
+      // default.
+      var cost = ownedLab.costThreshold
+      var deform = true
+      var reset = false
+      controlGroup("optical flow") {
+          slider("Advection gain", min = 0.0, max = 3.0, initialValue = 1.0) { gain = it.toFloat() }
+          slider("Feedback retention", min = 0.0, max = .995, initialValue = .98) { damping = it.toFloat() }
+          slider(
+              "Reject cost above",
+              min = 0.0,
+              max = 6.0 * ownedLab.costDisplayRange,
+              initialValue = ownedLab.costThreshold.toDouble(),
+          ) {
+              cost = it.toFloat()
+          }
+          checkbox("Consecutive-frame wiggle", initialValue = true) {
+              deform = it
+              reset = true
+          }
+          button("Reset feedback and motion hints") { if (it) reset = true }
+      }
+      displayOpen("optical flow")
+      println(
+          "Top: consecutive frames. Below: motion/cost and advected feedback. Turn off wiggle for the (+12, -8) translation check.",
+      )
+      frames {
+          var time = 0f
+          while (true) {
+              ownedLab.dx = if (deform) 0f else 12f
+              ownedLab.dy = if (deform) 0f else -8f
+              ownedLab.displayRange = if (deform) 3f else 20f
+              ownedLab.gain = gain
+              ownedLab.damping = damping
+              ownedLab.costThreshold = cost
+              ownedLab.deformation = deform
+              ownedLab.update(time, reset)
+              reset = false
+              time += ownedLab.pairStep
+              frame()
+          }
+      }
+          .end { ownedLab.close() }
 - wait:
     frames: 12

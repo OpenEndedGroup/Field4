@@ -38,16 +38,23 @@ line at beat 4½, in the middle of the glissando:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_drawn_score/score.png" capture="window" embed=true open-outputs="false" clip="0,0,1080,470" w="180" h="50" wait="3.0" timeout="90" name="chain-drawn-score-score" alt="A frame labelled 'score' holding seven blue rectangles in a rising and falling piano roll, a red curve climbing steeply through the middle, a green level line to its right and an orange vertical playhead crossing the red curve, beside the box's readout of the cut and the notes read"}
 notation { drawnScore() }
-val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0)   // eight beats; MIDI 84 at the top
+val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0) // eight beats; MIDI 84 at the top
 val playhead = 4.5
-notation("playhead") { stroke = "#f08c00"; line(listOf(score.toWorld(playhead, 85.0), score.toWorld(playhead, 47.0))) }
+notation("playhead") {
+    stroke = "#f08c00"
+    line([score.toWorld(playhead, 85.0), score.toWorld(playhead, 47.0)])
+}
 
 :::fold what the playhead cuts, and every note the score reads as
 val cut = score.vertical(playhead).filter { !it.isSpan }
 val notes = score.notes()
 val from = { kind: MarkType -> notes.count { it.event.mark.kind == kind } }
-markdown("reading", (cut.map { "at beat $playhead: ${it.mark.name}  \nMIDI %.2f, rising %.1f/beat".format(it.value, it.slope) } +
-    "${notes.size} notes: ${from(MarkType.RECTANGLE)} from  \nrectangles, ${from(MarkType.STROKE)} from strokes").joinToString("  \n"))
+markdown(
+    "reading",
+    (cut.map { "at beat $playhead: ${it.mark.name}  \nMIDI %.2f, rising %.1f/beat".format(it.value, it.slope) } +
+            "${notes.size} notes: ${from(MarkType.RECTANGLE)} from  \nrectangles, ${from(MarkType.STROKE)} from strokes")
+        .joinToString("  \n"),
+)
 :::endfold
 ```
 
@@ -75,20 +82,20 @@ eight beats at a quarter of a cycle a second is 120 beats a minute.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_drawn_score/read.png" wait="3" capture="box" open-outputs="true" w="1180" h="460" padding="18" timeout="90" name="chain-drawn-score-read" embed=true alt="A piano roll of the score as read, one cycle of eight beats: the rectangles as long notes, the glissando as a rising run of short steps, and the held note"}
 notation { drawnScore() }
-val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0)   // eight beats; MIDI 84 at the top
-val glideStep = 0.125                                                 // how finely a moving stroke is read
+val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0) // eight beats; MIDI 84 at the top
+val glideStep = 0.125 // how finely a moving stroke is read
 
 val notes = mutableListOf<TimedNote>()
 for (e in score.events) {
     val kind = e.mark.kind
-    if (kind == MarkType.TEXT || kind == MarkType.FRAME || kind == MarkType.ARROW) continue   // labels, not notes
-    if (e.end <= e.start) continue                                                           // no width, no time
+    if (kind == MarkType.TEXT || kind == MarkType.FRAME || kind == MarkType.ARROW) continue // labels, not notes
+    if (e.end <= e.start) continue // no width, no time
     val moving = (kind == MarkType.STROKE || kind == MarkType.LINE) && kotlin.math.abs(e.endValue - e.value) > 0.5
-    if (!moving) {                                                  // a rectangle, or a level line: one note
+    if (!moving) { // a rectangle, or a level line: one note
         notes += TimedNote(e.start, e.end, e.value)
         continue
     }
-    var t = e.start                                                 // a glissando: cut it every glideStep
+    var t = e.start // a glissando: cut it every glideStep
     while (t < e.end - 1e-9) {
         val hit = score.vertical(t).firstOrNull { it.mark.id == e.mark.id && !it.isSpan }
         if (hit != null) notes += TimedNote(t, minOf(t + glideStep, e.end), hit.value, hit.pressure ?: 1.0)
@@ -111,7 +118,7 @@ The voice is short and detached: each note holds for 40% of its length and its t
 later, so the glissando's steps are separate strikes you can count, and so the onset detector
 further down can find each one. Two cycles:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_score/drawn-score.wav" audio-spec="drawn-score" audio-renderer="afield.four.synth.DrawnScoreDocs" embed=true hidden=true name="chain-drawn-score-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_score/drawn-score.wav" audio-spec="drawn-score" audio-renderer="afield.audio.synth.DrawnScoreDocs" embed=true hidden=true name="chain-drawn-score-audio"}
 // Offline-rendered by DrawnScoreDocs.renderWav("drawn-score").
 ```
 
@@ -126,24 +133,31 @@ lands on the pitch the last one did is held rather than struck again:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_drawn_score/pentatonic.png" wait="3" capture="box" open-outputs="true" w="1180" h="460" padding="18" timeout="90" name="chain-drawn-score-pentatonic" embed=true alt="Two piano rolls of the same drawing, one above the other: the reading as drawn, and the same notes snapped to C minor pentatonic, where the glissando becomes fewer, longer steps through the scale"}
 notation { drawnScore() }
-val notes = DrawnScoreDocs.interpret(notation.space("score", x = 0.0..8.0, y = 84.0..48.0))   // the loop above
+val notes = DrawnScoreDocs.interpret(notation.space("score", x = 0.0..8.0, y = 84.0..48.0)) // the loop above
 
-val minorPentatonic = setOf(0, 3, 5, 7, 10)                                // C Eb F G Bb
+val minorPentatonic = setOf(0, 3, 5, 7, 10) // C Eb F G Bb
 val inScale = (24..108).filter { it % 12 in minorPentatonic }
 val snap = { midi: Double -> inScale.minBy { kotlin.math.abs(it - midi) }.toDouble() }
 val tuned = mutableListOf<TimedNote>()
 for (n in notes.map { it.copy(note = snap(it.note)) }) {
     val last = tuned.lastOrNull()
-    if (last != null && last.note == n.note && last.end == n.start) tuned[tuned.size - 1] = last.copy(end = n.end)   // same pitch: hold it
+    if (last != null && last.note == n.note && last.end == n.start)
+        tuned[tuned.size - 1] = last.copy(end = n.end) // same pitch: hold it
     else tuned += n
 }
-showPatRollOf("read" to patTimed(notes, beats = 8.0), "C minor pentatonic" to patTimed(tuned, beats = 8.0),
-    title = "one drawing, two readings", subtitle = "${notes.size} notes, then ${tuned.size}", cycles = 1, pitched = true)
+showPatRollOf(
+    "read" to patTimed(notes, beats = 8.0),
+    "C minor pentatonic" to patTimed(tuned, beats = 8.0),
+    title = "one drawing, two readings",
+    subtitle = "${notes.size} notes, then ${tuned.size}",
+    cycles = 1,
+    pitched = true,
+)
 ```
 
 The pentatonic reading, two cycles:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_score/drawn-score-pentatonic.wav" audio-spec="drawn-score-pentatonic" audio-renderer="afield.four.synth.DrawnScoreDocs" embed=true hidden=true name="chain-drawn-score-pentatonic-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_score/drawn-score-pentatonic.wav" audio-spec="drawn-score-pentatonic" audio-renderer="afield.audio.synth.DrawnScoreDocs" embed=true hidden=true name="chain-drawn-score-pentatonic-audio"}
 // Offline-rendered by DrawnScoreDocs.renderWav("drawn-score-pentatonic").
 ```
 
@@ -161,22 +175,28 @@ middle, and the table is the measurement:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_drawn_score/heard.png" wait="8" capture="box" open-outputs="true" w="1180" h="300" padding="18" timeout="120" name="chain-drawn-score-heard" embed=true alt="Two traces of MIDI pitch against seconds over two cycles, the drawn pitch and the heard pitch lying on top of each other through the piano roll, the sixteen-step glissando staircase and the held note, above a table of onset and pitch errors"}
 notation { drawnScore() }
-val notes = DrawnScoreDocs.interpret(notation.space("score", x = 0.0..8.0, y = 84.0..48.0))   // the loop above
+val notes = DrawnScoreDocs.interpret(notation.space("score", x = 0.0..8.0, y = 84.0..48.0)) // the loop above
 val voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.004, sustain = 0.4)
 val audio = patRenderStereo(patTimed(notes, beats = 8.0), cycles = 2, cps = 0.25, voice = voice)
 val heard = DrawnScoreDocs.listen(audio, notes)
-notation.clear()   // read and played: take the marks down so they do not lie over the plot
+notation.clear() // read and played: take the marks down so they do not lie over the plot
 
 :::fold plot it, and compare it with the published clip's reading
 val trace = heard.trace()
 showSignals(
-    "drawn" to trace.map { it.third }, "heard" to trace.map { it.second },
-    x = trace.map { it.first }, title = "pitch, drawn and heard", xTitle = "seconds", yTitle = "MIDI",
+    "drawn" to trace.map { it.third },
+    "heard" to trace.map { it.second },
+    x = trace.map { it.first },
+    title = "pitch, drawn and heard",
+    xTitle = "seconds",
+    yTitle = "MIDI",
     channel = "pitch",
 )
 // The .wav above is rendered from a document the renderer draws for itself; this is the same reading.
 val same = DrawnScoreDocs.sceneNotes("drawn-score") == notes
-markdown("measured", """
+markdown(
+    "measured",
+    """
 | | |
 |---|---|
 | notes scheduled, two cycles | ${heard.scheduled} |
@@ -186,7 +206,9 @@ markdown("measured", """
 | notes with a voiced pitch | ${heard.pitched} |
 | worst pitch error | ${"%.3f".format(heard.maxPitchError)} semitones |
 | the published clip reads the same notes | $same |
-""", width = 1000)
+""",
+    width = 1000,
+)
 :::endfold
 ```
 
@@ -206,7 +228,7 @@ and that window starts before the strike.
 
 Open [drawn_score](agent_transcripts.md#drawn_score) from the welcome screen's starting points: `score`, `read`, `play`,
 `pentatonic` and `listen back`, run in that order. `play` holds the reading loop from this page, so
-that is the box to change. Then press `alt-d` and draw into the frame: `r` for a rectangle (a note),
+that is the box to change. Then press `alt/option-d` and draw into the frame: `r` for a rectangle (a note),
 `p` for a pen stroke (a glissando if it moves, a held note if it does not). Run the boxes after
 `score` again, and they read what you drew along with what the code drew.
 

@@ -19,13 +19,15 @@ exactly one event, sampled at the arc's exact rational midpoint. Nothing plays a
 continuous pattern directly — you discretise it, and segment(n) is how.
 
 ```edn [field-box id="pat_demo_signals" role="properties"]
-{"id" "pat_demo_signals" "index" 0 "name" "1 — continuous signals" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — continuous signals" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_signals_code_.kt" "lines" 24 "characters" 1150 "sha256" "675cf9b2144f2e1d071da4927a78a8b9d562f7dd46ef2af8abaaa0c3ffe0a291"}]}
+{"id" "pat_demo_signals" "index" 0 "name" "1 — continuous signals" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — continuous signals" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_signals_code_.kt" "lines" 29 "characters" 1150 "sha256" "d654cee4fe35fb718d6614c795c119f1b72161850ae1217726eee4a4871aee78"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_signals" name="code" path="pat_demo_signals_code_.kt"]
-// A signal is not a new type: it is a PatPattern<Double> that answers EVERY arc with
-// exactly one event, sampled at the arc's exact rational midpoint. Nothing plays a
-// continuous pattern directly — you discretise it, and segment(n) is how.
+/*
+A signal is not a new type: it is a PatPattern<Double> that answers EVERY arc with
+exactly one event, sampled at the arc's exact rational midpoint. Nothing plays a
+continuous pattern directly — you discretise it, and segment(n) is how.
+*/
 showPatRoll("signals-segment")
 
 // The same renderer, live, on whatever you feel like editing:
@@ -38,15 +40,18 @@ showPatRollOf(
     cycles = 2,
     channel = "live",
 )
-displayOpen("main"); displayOpen("live")
+displayOpen("main")
+displayOpen("live")
 
 // Exactness, not floating point: the midpoint of 3/7 .. 5/7 is exactly 4/7.
 val arc = PatArc(PatQ.of(3, 7), PatQ.of(5, 7))
 println("midpoint of $arc = ${patArcMidpoint(arc)}")
-println("segment(4) arcs = " + sine().segment(4)
-    .events(PatArc(PatQ.ZERO, PatQ.ONE)).map { "${it.arc}" })
-println("segment(4) values = " + sine().segment(4)
-    .events(PatArc(PatQ.ZERO, PatQ.ONE)).map { "%.4f".format(it.value) })
+println(
+    "segment(4) arcs = " + sine().segment(4).events(PatArc(PatQ.ZERO, PatQ.ONE)).map { "${it.arc}" },
+)
+println(
+    "segment(4) values = " + sine().segment(4).events(PatArc(PatQ.ZERO, PatQ.ONE)).map { "%.4f".format(it.value) },
+)
 ```
 
 ## 2. 2 — whose rhythm survives
@@ -61,7 +66,7 @@ When two patterns meet, one of three things happens to the rhythm. The bars say 
 the structure comes from, exactly as in Tidal.
 
 ```edn [field-box id="pat_demo_structure" role="properties"]
-{"id" "pat_demo_structure" "index" 1 "name" "2 — whose rhythm survives" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — whose rhythm survives" "_tombstone" false "frame" #afield/rect [820.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_structure_code_.kt" "lines" 25 "characters" 1299 "sha256" "8eb0976d9384eb59d1740791b53ea5efd509aa23967e411c45133cdc9b6ceb32"}]}
+{"id" "pat_demo_structure" "index" 1 "name" "2 — whose rhythm survives" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — whose rhythm survives" "_tombstone" false "frame" #afield/rect [820.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_structure_code_.kt" "lines" 31 "characters" 1366 "sha256" "7963adb8e47748cccea5727a381ec0f70b6f150dddf05dee4e9139fc118cc3b3"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_structure" name="code" path="pat_demo_structure_code_.kt"]
@@ -76,20 +81,26 @@ displayOpen("main")
 // A lambda, not a named `fun`: K2 cannot codegen a named function inside a box that
 // captures the script's implicit Box receiver (which `println` needs).
 val table = { label: String, p: PatPattern<Double> ->
-    val events = p.events(PatArc(PatQ.ZERO, PatQ.ONE))
-        .sortedBy { it.arc.start.toDouble() }
-    println("%-10s %d events  %s".format(label, events.size,
-        events.joinToString(" ") { "[${it.arc.start}..${it.arc.end}]=${patFormatNumber(it.value)}" }))
+    val events = p.events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
+    println(
+        "%-10s %d events  %s"
+            .format(
+                label,
+                events.size,
+                events.joinToString(" ") { "[${it.arc.start}..${it.arc.end}]=${patFormatNumber(it.value)}" },
+            ),
+    )
 }
-table("|+| both", twos.`|+|`(threes))   // 4 events: the intersection grid
-table("|+ left", twos.`|+`(threes))     // 2 events: exactly the left's
-table("+| right", twos.`+|`(threes))    // 3 events: exactly the right's
+table("|+| both", twos.`|+|`(threes)) // 4 events: the intersection grid
+table("|+ left", twos.`|+`(threes)) // 2 events: exactly the left's
+table("+| right", twos.`+|`(threes)) // 3 events: exactly the right's
 
 // `/`, `<` and `>` are illegal in a Kotlin identifier, so division is `|over|` and the
 // take-value family spells the arrow as an L or an R. The bar keeps its Tidal meaning.
 table("|over|", twos.`|over|`(threes))
-println("bd sd `#` x y z w = " + (pat("bd sd").`#`(pat("x y z w")))
-    .events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value })
+println(
+    "bd sd `#` x y z w = " + (pat("bd sd").`#`(pat("x y z w"))).events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value },
+)
 ```
 
 ## 3. 6 — playground (edit me)
@@ -104,7 +115,7 @@ A little piece. Change any string or any number and re-run this box: the roll an
 audio player both come from the same pattern, so they can never disagree.
 
 ```edn [field-box id="pat_demo_playground" role="properties"]
-{"id" "pat_demo_playground" "index" 2 "name" "6 — playground (edit me)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — playground (edit me)" "_tombstone" false "frame" #afield/rect [820.0 1020.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_playground_code_.kt" "lines" 35 "characters" 1653 "sha256" "87d5c6178bb3e907f444fcbb9eedf4aab421cd196868b67fac573b55fed84bed"}]}
+{"id" "pat_demo_playground" "index" 2 "name" "6 — playground (edit me)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — playground (edit me)" "_tombstone" false "frame" #afield/rect [820.0 1020.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_playground_code_.kt" "lines" 51 "characters" 1703 "sha256" "c1ff61d7114400e54443eb74aa45b698944dd83e69a0543cb06078e18f5b3050"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_playground" name="code" path="pat_demo_playground_code_.kt"]
@@ -116,8 +127,7 @@ val hats = pat("hh*16?0.3") with gain(sine().range(0.1, 0.55))
 val drums = stack(kick, snare, hats).off(1, 16) { it with gain(0.18) }
 
 // A bass line spelled in a scale, with a filter that opens across two cycles.
-val bass = run(8).scale("minPent", root = 36).texts()
-    .with(sustain(0.5), cutoff(saw().rangex(200, 2400)))
+val bass = run(8).scale("minPent", root = 36).texts().with(sustain(0.5), cutoff(saw().rangex(200, 2400)))
 
 // A chord pad, voice-led so it does not leap, arpeggiated up.
 val pad = chords("<c'min7 a'maj7> f'maj7").voiceLead(center = 67).arpeggiate().texts()
@@ -132,13 +142,30 @@ showPatRollOf(
 )
 displayOpen("main")
 
-showPatAudio(drums, cycles = 4, cps = 2.0,
-    voice = patVoice(decay = 0.01, sustain = 0.08), channel = "drums")
-showPatAudio(bass, cycles = 4, cps = 2.0,
-    voice = patVoice(wave = PatWave.SAW, decay = 0.03, sustain = 0.5), channel = "bass")
-showPatAudio(pad, cycles = 4, cps = 2.0,
-    voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.05, sustain = 0.6), channel = "pad")
-displayOpen("drums"); displayOpen("bass"); displayOpen("pad")
+showPatAudio(
+    drums,
+    cycles = 4,
+    cps = 2.0,
+    voice = patVoice(decay = 0.01, sustain = 0.08),
+    channel = "drums",
+)
+showPatAudio(
+    bass,
+    cycles = 4,
+    cps = 2.0,
+    voice = patVoice(wave = PatWave.SAW, decay = 0.03, sustain = 0.5),
+    channel = "bass",
+)
+showPatAudio(
+    pad,
+    cycles = 4,
+    cps = 2.0,
+    voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.05, sustain = 0.6),
+    channel = "pad",
+)
+displayOpen("drums")
+displayOpen("bass")
+displayOpen("pad")
 
 println("drums: ${drums.events(PatArc(PatQ.ZERO, PatQ.ONE)).size} events/cycle")
 println("bass : ${bass.events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value }}")
@@ -157,35 +184,47 @@ Spelled from each chord's own root, a progression makes the hand leap. voiceLead
 picks each chord's inversion and octave to minimise how far the voices have to move.
 
 ```edn [field-box id="pat_demo_voice_leading" role="properties"]
-{"id" "pat_demo_voice_leading" "index" 3 "name" "5 — voice leading" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — voice leading" "_tombstone" false "frame" #afield/rect [60.0 1020.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_voice_leading_code_.kt" "lines" 29 "characters" 1303 "sha256" "195480d7d0a0fdcb5c7f2e487a97f08ab2e945b042c8001c5aa322f295626229"}]}
+{"id" "pat_demo_voice_leading" "index" 3 "name" "5 — voice leading" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — voice leading" "_tombstone" false "frame" #afield/rect [60.0 1020.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_voice_leading_code_.kt" "lines" 41 "characters" 1414 "sha256" "3e0cd79f88f73264062b6ca9d77c3149e69b78bdb524517d2094753ff4c0794e"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_voice_leading" name="code" path="pat_demo_voice_leading_code_.kt"]
 // Spelled from each chord's own root, a progression makes the hand leap. voiceLead()
 // picks each chord's inversion and octave to minimise how far the voices have to move.
 val progression = chords("c'maj7 a'min7 d'min7 g'dom7")
-val asWritten = progression.events(PatArc(PatQ.ZERO, PatQ.ONE))
-    .sortedBy { it.arc.start.toDouble() }.map { it.value }
-val voiceLed = progression.voiceLead(center = 60).events(PatArc(PatQ.ZERO, PatQ.ONE))
-    .sortedBy { it.arc.start.toDouble() }.map { it.value }
+val asWritten = progression.events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }.map { it.value }
+val voiceLed =
+    progression
+        .voiceLead(center = 60)
+        .events(PatArc(PatQ.ZERO, PatQ.ONE))
+        .sortedBy { it.arc.start.toDouble() }
+        .map { it.value }
 
 showPatRoll("voice-leading")
 displayOpen("main")
 
 println("as written : $asWritten")
 println("voice-led  : $voiceLed")
-println("movement   : %.0f semitones as written, %.0f voice-led".format(
-    patTotalVoiceMovement(asWritten), patTotalVoiceMovement(voiceLed)))
-println("harmony unchanged: " + asWritten.zip(voiceLed).all { (a, b) ->
-    a.map { Math.floorMod(it, 12) }.toSortedSet() == b.map { Math.floorMod(it, 12) }.toSortedSet()
-})
+println(
+    "movement   : %.0f semitones as written, %.0f voice-led"
+        .format(
+            patTotalVoiceMovement(asWritten),
+            patTotalVoiceMovement(voiceLed),
+        ),
+)
+println(
+    "harmony unchanged: " +
+        asWritten.zip(voiceLed).all { (a, b) ->
+            a.map { Math.floorMod(it, 12) }.toSortedSet() == b.map { Math.floorMod(it, 12) }.toSortedSet()
+        },
+)
 
 // Hear both: two cycles as written, two voice-led.
 val arped = progression.arpeggiate().texts()
 val led = progression.voiceLead(center = 60).arpeggiate().texts()
 showPatAudio(
     arped.whenCycle({ it >= 2 }) { led },
-    cycles = 4, cps = 1.0,
+    cycles = 4,
+    cps = 1.0,
     voice = patVoice(wave = PatWave.SINE, decay = 0.02, sustain = 0.45),
     channel = "sound",
 )
@@ -205,33 +244,44 @@ pattern: one literal per note, typed by hand. Now a parameter can be a FUNCTION,
 the note count does not change when you read it.
 
 ```edn [field-box id="pat_demo_parameter" role="properties"]
-{"id" "pat_demo_parameter" "index" 4 "name" "3 — a parameter, not a staircase" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a parameter, not a staircase" "_tombstone" false "frame" #afield/rect [60.0 520.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_parameter_code_.kt" "lines" 27 "characters" 1222 "sha256" "cfbd4b6bea20a14089fe8bfc51a65195f380501aa27c2bba31e84c66a970ae35"}]}
+{"id" "pat_demo_parameter" "index" 4 "name" "3 — a parameter, not a staircase" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a parameter, not a staircase" "_tombstone" false "frame" #afield/rect [60.0 520.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_parameter_code_.kt" "lines" 38 "characters" 1309 "sha256" "38c303533a34b4afc1dec55be7feafbaa8bda3f815988483198fd07fba3fe2bd"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_parameter" name="code" path="pat_demo_parameter_code_.kt"]
-// Before tonight the only way to attach a value to an atom was zip(...) with a string
-// pattern: one literal per note, typed by hand. Now a parameter can be a FUNCTION, and
-// the note count does not change when you read it.
+/*
+Before tonight the only way to attach a value to an atom was zip(...) with a string
+pattern: one literal per note, typed by hand. Now a parameter can be a FUNCTION, and
+the note count does not change when you read it.
+*/
 showPatRoll("continuous-parameter")
 displayOpen("main")
 
 val curve = sine().rangex(300, 6000)
-for (n in listOf(4, 8, 16)) {
-    val notes = (pat("45*$n") with cutoff(curve))
-        .events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
-    println("bd*%-2d -> %2d notes, cutoff %s".format(n, notes.size,
-        notes.joinToString(" ") { "%.0f".format(it.num("cutoff")) }))
+for (n in [4, 8, 16]) {
+    val notes =
+        (pat("45*$n") with cutoff(curve)).events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
+    println(
+        "bd*%-2d -> %2d notes, cutoff %s"
+            .format(
+                n,
+                notes.size,
+                notes.joinToString(" ") { "%.0f".format(it.num("cutoff")) },
+            ),
+    )
 }
 // appBoth is the other choice: it intersects both sides, so a 16-step sweep cuts
 // each note where the curve steps:
-println("appBoth against a 16-step sweep -> " +
-    pat("45*4").appBoth(curve.segment(16)) { a, _ -> a }
-        .events(PatArc(PatQ.ZERO, PatQ.ONE)).size + " events")
+println(
+    "appBoth against a 16-step sweep -> " +
+        pat("45*4").appBoth(curve.segment(16)) { a, _ -> a }.events(PatArc(PatQ.ZERO, PatQ.ONE)).size +
+        " events",
+)
 
 // Hear it: a 110 Hz saw whose filter follows the curve, one value latched per note.
 showPatAudio(
     pat("45*16") with cutoff(curve) with gain(0.7),
-    cycles = 4, cps = 2.0,
+    cycles = 4,
+    cps = 2.0,
     voice = patVoice(wave = PatWave.SAW, baseHz = 110.0, decay = 0.012, sustain = 0.3),
     channel = "sound",
 )
@@ -250,7 +300,7 @@ swing() is exact rational time, not a nudge in milliseconds: every off-beat land
 third of a subdivision late and the pattern stays exactly quantised.
 
 ```edn [field-box id="pat_demo_groove" role="properties"]
-{"id" "pat_demo_groove" "index" 5 "name" "7 — groove and substitution" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — groove and substitution" "_tombstone" false "frame" #afield/rect [60.0 1560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_groove_code_.kt" "lines" 33 "characters" 1435 "sha256" "aa3d6d76090e9b58ec4ed50779e84481ca5d1beb4e139297fe4d9e8fdf2abad5"}]}
+{"id" "pat_demo_groove" "index" 5 "name" "7 — groove and substitution" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — groove and substitution" "_tombstone" false "frame" #afield/rect [60.0 1560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_groove_code_.kt" "lines" 46 "characters" 1554 "sha256" "0bcd975f952b2813b2d54ff972c273fdbda9788813eef8531c59d6c45748b5f8"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_groove" name="code" path="pat_demo_groove_code_.kt"]
@@ -261,19 +311,31 @@ showPatRoll("groove")
 displayOpen("main")
 
 println("straight : " + hats.events(PatArc(PatQ.ZERO, PatQ.ONE)).map { "${it.arc.start}" })
-println("swing(4) : " + hats.swing(4).events(PatArc(PatQ.ZERO, PatQ.ONE))
-    .sortedBy { it.arc.start.toDouble() }.map { "${it.arc.start}" })
+println(
+    "swing(4) : " +
+        hats
+            .swing(4)
+            .events(PatArc(PatQ.ZERO, PatQ.ONE))
+            .sortedBy { it.arc.start.toDouble() }
+            .map { "${it.arc.start}" },
+)
 
 // squeeze replaces each event with a whole pattern, compressed into that event's arc —
 // mini-notation nesting, over Kotlin values. Compare `join`, which does not rescale.
 val nested = pat("a b").squeeze { if (it == "a") pat("1 2 3") else pat("4 5") }
-println("squeeze  : " + nested.events(PatArc(PatQ.ZERO, PatQ.ONE))
-    .sortedBy { it.arc.start.toDouble() }.map { "${it.value}@${it.arc.start}" })
+println(
+    "squeeze  : " +
+        nested
+            .events(PatArc(PatQ.ZERO, PatQ.ONE))
+            .sortedBy { it.arc.start.toDouble() }
+            .map { "${it.value}@${it.arc.start}" },
+)
 
 // Two cycles straight, then two swung. This is the one to listen to.
 showPatAudio(
     hats.whenCycle({ it >= 2 }) { hats.swing(4) },
-    cycles = 4, cps = 2.0,
+    cycles = 4,
+    cps = 2.0,
     voice = patVoice(wave = PatWave.NOISE, decay = 0.008, sustain = 0.06),
     channel = "swing",
 )
@@ -282,7 +344,8 @@ displayOpen("swing")
 // And a full bar from one Euclidean figure: bd on the onsets, hh on everything else.
 showPatAudio(
     euclidFull(3, 8, pat("bd"), pat("hh") with gain(0.35)),
-    cycles = 4, cps = 2.0,
+    cycles = 4,
+    cps = 2.0,
     voice = patVoice(decay = 0.012, sustain = 0.1),
     channel = "euclid",
 )
@@ -302,13 +365,15 @@ this instead", so the first half of the file is what the old surface could expre
 the second half is the identical pattern with the gain following a sine.
 
 ```edn [field-box id="pat_demo_gain" role="properties"]
-{"id" "pat_demo_gain" "index" 6 "name" "4 — hear the difference" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — hear the difference" "_tombstone" false "frame" #afield/rect [820.0 520.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_gain_code_.kt" "lines" 29 "characters" 1304 "sha256" "7e7b11b372e7a91039ca54b8687ddb425980dfdf54b22161f3162a218031912a"}]}
+{"id" "pat_demo_gain" "index" 6 "name" "4 — hear the difference" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — hear the difference" "_tombstone" false "frame" #afield/rect [820.0 520.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_gain_code_.kt" "lines" 34 "characters" 1313 "sha256" "f11221866c5a2999fcc57c2e0676883a9fc54c52738ed854bb2270544fdf0ec1"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_gain" name="code" path="pat_demo_gain_code_.kt"]
-// Sixteen hats a cycle. `whenCycle` is the existing operator for "from cycle 2 on, play
-// this instead", so the first half of the file is what the old surface could express and
-// the second half is the identical pattern with the gain following a sine.
+/*
+Sixteen hats a cycle. `whenCycle` is the existing operator for "from cycle 2 on, play
+this instead", so the first half of the file is what the old surface could express and
+the second half is the identical pattern with the gain following a sine.
+*/
 val hats = pat("hh*16")
 val demo = hats.whenCycle({ it >= 2 }) { hats with gain(sine().range(0.08, 1.0)) }
 
@@ -317,12 +382,15 @@ showPatRollOf(
     "gain(sine()) (cycles 2-3)" to (hats with gain(sine().range(0.08, 1.0))),
     title = "the same sixteen hats, before and after",
     subtitle = "rectangle height is the gain each note latched",
-    cycles = 2, paramKey = "gain",
+    cycles = 2,
+    paramKey = "gain",
 )
 displayOpen("main")
 
 val audio = showPatAudio(
-    demo, cycles = 4, cps = 2.0,
+    demo,
+    cycles = 4,
+    cps = 2.0,
     voice = patVoice(wave = PatWave.NOISE, decay = 0.006, sustain = 0.05),
     channel = "sound",
 )
@@ -350,32 +418,42 @@ below must come out arc-for-arc identical — and the roll draws them one above 
 so you can check by eye as well as by assertion.
 
 ```edn [field-box id="pat_demo_mini_notation" role="properties"]
-{"id" "pat_demo_mini_notation" "index" 7 "name" "8 — mini-notation markers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — mini-notation markers" "_tombstone" false "frame" #afield/rect [820.0 1560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_mini_notation_code_.kt" "lines" 37 "characters" 1811 "sha256" "910e66c79a53c38827207abde7073903730c2923962b1732ff2d4f19d8397ac1"}]}
+{"id" "pat_demo_mini_notation" "index" 7 "name" "8 — mini-notation markers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — mini-notation markers" "_tombstone" false "frame" #afield/rect [820.0 1560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_mini_notation_code_.kt" "lines" 48 "characters" 1865 "sha256" "348ba57e316d71fe9fad0e0a9d3843e2b04354794f5de6ce5c2948000af04275"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_mini_notation" name="code" path="pat_demo_mini_notation_code_.kt"]
-// Three standalone step markers. Each is shorthand for a bracketed form, so each pair
-// below must come out arc-for-arc identical — and the roll draws them one above the other
-// so you can check by eye as well as by assertion.
+/*
+Three standalone step markers. Each is shorthand for a bracketed form, so each pair
+below must come out arc-for-arc identical — and the roll draws them one above the other
+so you can check by eye as well as by assertion.
+*/
 showPatRoll("mini-notation")
 displayOpen("main")
 
-val pairs = listOf(
-    "bd sd . hh hh hh" to "[bd sd] [hh hh hh]",   // `.` groups
-    "bd _ _ sd" to "bd@3 sd",                     // `_` extends
-    "bd ! ! sd" to "bd!3 sd",                     // bare `!` repeats
-)
+val pairs = [
+    "bd sd . hh hh hh" to "[bd sd] [hh hh hh]", // `.` groups
+    "bd _ _ sd" to "bd@3 sd", // `_` extends
+    "bd ! ! sd" to "bd!3 sd", // bare `!` repeats
+]
 for ((shorthand, bracketed) in pairs) {
     val a = pat(shorthand).events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
     val b = pat(bracketed).events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
     val same = a.map { it.arc } == b.map { it.arc } && a.map { it.value } == b.map { it.value }
-    println("%-20s == %-22s : %s   %s".format(shorthand, bracketed, same,
-        a.joinToString(" ") { "${it.value}@${it.arc.start}" }))
+    println(
+        "%-20s == %-22s : %s   %s"
+            .format(
+                shorthand,
+                bracketed,
+                same,
+                a.joinToString(" ") { "${it.value}@${it.arc.start}" },
+            ),
+    )
 }
 
 // A `.` inside a token is still part of the token — decimals and sample payloads are safe.
-println("0.5 1.25 -> " + pat("0.5 1.25").nums()
-    .events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value })
+println(
+    "0.5 1.25 -> " + pat("0.5 1.25").nums().events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value },
+)
 println("my_atom  -> " + pat("my_atom b").events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value })
 
 // A sample-index suffix becomes an `n` parameter without changing the atom.
@@ -386,7 +464,8 @@ pat("bd:3 sd 808:12").events(PatArc(PatQ.ZERO, PatQ.ONE)).forEach {
 // Hear the dot: two cycles of five even notes, then the same five notes grouped.
 showPatAudio(
     pat("bd sd hh hh hh").whenCycle({ it >= 2 }) { pat("bd sd . hh hh hh") },
-    cycles = 4, cps = 1.0,
+    cycles = 4,
+    cps = 1.0,
     voice = patVoice(decay = 0.012, sustain = 0.12),
     channel = "dot",
 )

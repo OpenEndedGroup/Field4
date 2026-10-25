@@ -45,23 +45,24 @@ val source = RenderToTexture(renderer) {
     height = inputSize.height
     useDepth = true
     colorAttachments = 3
-    colorFormats = listOf(
+    colorFormats = [
         VK_FORMAT_R16G16B16A16_SFLOAT, // opaque linear HDR color
-        VK_FORMAT_R32_SFLOAT,         // sampled projected depth
-        VK_FORMAT_R32G32_SFLOAT       // current → previous motion, input pixels
-    )
+        VK_FORMAT_R32_SFLOAT, // sampled projected depth
+        VK_FORMAT_R32G32_SFLOAT, // current → previous motion, input pixels
+    ]
 }
 val sceneModule = moduleHere {
-    source.apply()
+    +source
     depthTest = true
     depthWrite = true
     blend = false
 }
 source += "scene" to sceneModule
+
 // Add your meshes to sceneModule as usual.
 ```
 
-`renderer` is inherited from the parent renderer box. `source.apply()` configures the module's attachments and render pass. The corresponding fragment outputs are:
+`renderer` is inherited from the parent renderer box. `+source` configures the module's attachments and render pass. The corresponding fragment outputs are:
 
 ```diffstatic {data-lang=glsl}
 layout(location=0) out vec4 color;
@@ -92,13 +93,13 @@ The sample's vertex shader projects each point at the current and previous camer
 ```diffstatic {data-lang=glsl}
 gl_Position = nowClip;
 gl_Position.xy += vec2(2*jitter.x/inputWidth, -2*jitter.y/inputHeight)
-                  * gl_Position.w;
+* gl_Position.w;
 ```
 
 The Y sign here follows Field's Vulkan viewport convention. The fragment shader converts the unjittered positions into top-left-origin UVs, then input-pixel displacement:
 
 ```diffstatic {data-lang=glsl}
-vec2 nowUV  = nowClip.xy / nowClip.w * vec2(.5, -.5) + .5;
+vec2 nowUV = nowClip.xy / nowClip.w * vec2(.5, -.5) + .5;
 vec2 prevUV = oldClip.xy / oldClip.w * vec2(.5, -.5) + .5;
 motion = (prevUV - nowUV) * inputSize;
 depth = gl_FragCoord.z;
@@ -113,24 +114,29 @@ A shader can change color without moving a surface. Motion vectors cannot descri
 The starting point installs one `Target` in `renderer.renderList.preTargets`. Its `render` method owns the sequence:
 
 ```diffstatic {data-lang=kotlin}
-source.render(command, index)
-neural.evaluate(command,
+neural.evaluate(
+    command,
+    index,
+    source,
     ReconstructionInputs(
         source.imageViewArray[0],
         source.imageViewArray[1],
-        source.imageViewArray[2]
+        source.imageViewArray[2],
     ),
-    ReconstructionFrame(frameIndex, jitter, revision = sceneRevision)
+    ReconstructionFrame(frameIndex, jitter, revision = sceneRevision),
 )
 ```
 
-`source.render` ends its render pass and leaves the attachments available for sampled reads. `evaluate` runs **outside** a render pass, on the same graphics queue, and handles the NGX output's storage/read transitions. It validates sizes, formats, sampled usage and the single mip/layer contract. Its output is an ordinary Field `RenderToTexture`:
+This overload of `evaluate` renders `source` first, then reconstructs its completed attachments on
+the same graphics queue. It rejects a source independently registered in `preTargets`, so that the
+source is rendered once. Evaluation handles the NGX output's storage/read transitions and validates
+sizes, formats, sampled usage and the single mip/layer contract. Its output is an ordinary Field `RenderToTexture`:
 
 ```diffstatic {data-lang=kotlin}
 neural.output.blitToScreen(name = "finished image")
 ```
 
-To use the output in another module, bind it through the usual `fromViews` texture resolver and schedule that consumer after evaluation. Keep tone mapping, UI and later compositing there. Do not also register `source` independently in `preTargets`: that would render it twice. Likewise, binding `neural.output` alone will not call `evaluate` for you.
+To use the output in another module, bind it through the usual `fromViews` texture resolver and schedule that consumer after evaluation. Keep tone mapping, UI and later compositing there.
 
 Advance the frame index and previous transforms when this target actually records a frame. A coroutine tick while a window is minimized is not a new rendered observation.
 
@@ -152,15 +158,21 @@ The source is the **raw** RTXDI output. The conversion module samples surface da
 scene.bundle.gBuffer.render(command, index)
 scene.lighting.render(command, index)
 guides.render(command, index)
-rr.evaluate(command,
-    ReconstructionInputs(scene.lighting.output,
-        guides.imageViewArray[0], guides.imageViewArray[1]),
+rr.evaluate(
+    command,
+    ReconstructionInputs(
+        scene.lighting.output,
+        guides.imageViewArray[0],
+        guides.imageViewArray[1],
+    ),
     ReconstructionFrame(frameIndex, jitter, revision = sceneRevision),
     RayReconstructionGuides(
-        guides.imageViewArray[2], guides.imageViewArray[3], guides.imageViewArray[4],
+        guides.imageViewArray[2],
+        guides.imageViewArray[3],
+        guides.imageViewArray[4],
         scene.bundle.scene.camera.modelView(),
-        scene.bundle.scene.projection.evaluateUniform()
-    )
+        scene.bundle.scene.projection.evaluateUniform(),
+    ),
 )
 ```
 

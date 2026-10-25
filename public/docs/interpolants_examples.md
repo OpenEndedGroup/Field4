@@ -30,34 +30,36 @@ when the next one arrives.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interpolants_examples/smooth_family.png" wait="1.5" capture="box" open-outputs="true" name="interpolants-family"}
 :::static
-import afield.stdlib.NeedsStartingValue
-
 val n = 300
 // A target that jumps to a new set-point every 60 evaluations — the value to chase.
 val setPoints = floatArrayOf(0.20f, 0.90f, 0.35f, 0.78f, 0.15f)
 fun targetAt(i: Int) = setPoints[(i / 60).coerceAtMost(setPoints.size - 1)]
 
 var goal = setPoints[0]
-fun chaser(steps: Int) = smoothTo<Float>(steps = steps) { goal }
-    .also { (it as NeedsStartingValue<Float>).startAt(goal) }
+fun chaser(steps: Int) = smoothTo<Float>(steps = steps) { goal }.also { it.startAt(goal) }
 
-val snappy  = chaser(20)   // locks on fast
-val medium  = chaser(60)   // arrives about when the next jump lands
-val glacial = chaser(160)  // always leaning toward the last set-point
+val snappy = chaser(20) // locks on fast
+val medium = chaser(60) // arrives about when the next jump lands
+val glacial = chaser(160) // always leaning toward the last set-point
 
-val tgt = FloatArray(n); val a = FloatArray(n); val b = FloatArray(n); val c = FloatArray(n)
+val tgt = FloatArray(n)
+val a = FloatArray(n)
+val b = FloatArray(n)
+val c = FloatArray(n)
 var prev = goal
 for (i in 0 until n) {
     goal = targetAt(i)
     if (goal != prev) {
         // Retarget: re-aim each interpolant from its current value toward the new set-point.
-        (snappy  as NeedsStartingValue<Float>).startAt(a[i - 1])
-        (medium  as NeedsStartingValue<Float>).startAt(b[i - 1])
-        (glacial as NeedsStartingValue<Float>).startAt(c[i - 1])
+        snappy.startAt(a[i - 1])
+        medium.startAt(b[i - 1])
+        glacial.startAt(c[i - 1])
         prev = goal
     }
     tgt[i] = goal
-    a[i] = snappy(); b[i] = medium(); c[i] = glacial()
+    a[i] = snappy()
+    b[i] = medium()
+    c[i] = glacial()
 }
 
 showSignals(
@@ -66,7 +68,7 @@ showSignals(
     "steps = 60" to b.toList(),
     "steps = 160 (glacial)" to c.toList(),
     channel = "main",
-    title = "smoothTo re-aiming at a moving target — steps sets the responsiveness",
+    title = "smoothTo following a moving target",
     xTitle = "evaluation",
 )
 ```
@@ -87,62 +89,74 @@ partway through:
 
 ```diff_runner {data-lang=kotlin screenshot="assets/interpolants_examples/smooth_duration.png" wait="1.0" capture="box" open-outputs="true"}
 :::before
-import afield.graphics.FLine
-import afield.stdlib.NeedsStartingValue
-
 val q = smoothTo<Float>(steps = 140) { 1.0f }
-(q as NeedsStartingValue<Float>).startAt(0.0f)
+q.startAt(0.0f)
 val y = List(180) { q() }
 
 val f = fline {
+    breakNext()
     y.forEachIndexed { i, v ->
         val x = 40.0 + i.toDouble() / (y.size - 1).toDouble() * 980.0
         val yy = 560.0 - v * 420.0
-        if (i == 0) moveTo(x, yy) else lineTo(x, yy)
+        lineTo(x, yy)
     }
     color = vec(1.0, 0.72, 0.35, 0.95)
     thickness = 2.2
 }
 lines(f, channel = "interpolants-diff", w = 1080.0, h = 640.0, fitToSize = true)
 :::after
-import afield.graphics.FLine
-import afield.stdlib.NeedsStartingValue
-
 data class Sample(val elapsed: Double, val byStep: Float, val byTime: Float)
 
 val byStep = smoothTo<Float>(steps = 140) { 1.0f }
-(byStep as NeedsStartingValue<Float>).startAt(0.0f)
+byStep.startAt(0.0f)
 
 var elapsed = 0.0
-val byTime = smoothTo<Float>(time = 1.2, steps = null, clock = { elapsed }) { 1.0f }
-(byTime as NeedsStartingValue<Float>).startAt(0.0f)
+val duration = 1.2
+val byTime = smoothTo<Float>(time = duration, steps = null, clock = { elapsed }) { 1.0f }
+byTime.startAt(0.0f)
 
-val samples = List(220) { i ->
-    val sample = Sample(elapsed, byStep(), byTime())
-    elapsed += if (i < 150) 0.002 else 0.018
-    sample
-}
+val samples =
+    List(220) { i ->
+        val sample = Sample(elapsed, byStep(), byTime())
+        elapsed += if (i < 150) 0.002 else 0.018
+        sample
+    }
 
 val maxTime = 1.6
-val duration = 1.2
 fun x(t: Double) = 40.0 + (t / maxTime).coerceIn(0.0, 1.0) * 980.0
 fun y(v: Float) = 560.0 - v * 420.0
 
 fun trace(values: List<Pair<Double, Float>>, rgba: Vec4, width: Double) = fline {
-    values.forEachIndexed { i, (t, v) ->
+    breakNext()
+    values.forEach { (t, v) ->
         val xx = x(t)
         val yy = y(v)
-        if (i == 0) moveTo(xx, yy) else lineTo(xx, yy)
+        lineTo(xx, yy)
     }
     color = rgba
     thickness = width
 }
 
-val guides = listOf(
-    fline { moveTo(40, 560); lineTo(1020, 560); color = vec(1,1,1,0.22); thickness = 1.2 },
-    fline { moveTo(40, 140); lineTo(1020, 140); color = vec(1,1,1,0.14); thickness = 1.0 },
-    fline { moveTo(x(duration), 110); lineTo(x(duration), 580); color = vec(1,1,1,0.18); thickness = 1.0 }
-)
+val guides = [
+    fline {
+        moveTo(40, 560)
+        lineTo(1020, 560)
+        color = vec(1, 1, 1, 0.22)
+        thickness = 1.2
+    },
+    fline {
+        moveTo(40, 140)
+        lineTo(1020, 140)
+        color = vec(1, 1, 1, 0.14)
+        thickness = 1.0
+    },
+    fline {
+        moveTo(x(duration), 110)
+        lineTo(x(duration), 580)
+        color = vec(1, 1, 1, 0.18)
+        thickness = 1.0
+    },
+]
 
 val stepLine = trace(samples.map { it.elapsed to it.byStep }, vec(1.0, 0.72, 0.35, 0.95), 2.6)
 val timeLine = trace(samples.map { it.elapsed to it.byTime }, vec(0.56, 1.0, 0.68, 0.95), 3.0)
@@ -151,11 +165,14 @@ lines(guides + stepLine + timeLine, channel = "interpolants-diff", w = 1080.0, h
 :::fold render the colour key
 // The two colours name the trace colours above, so they stay as spans. The card around
 // them does not need spelling out.
-markdown("legend", """
+markdown(
+    "legend",
+    """
     <span style='color:#ffb85a'>orange</span>: fixed 140 calls;
-    <span style='color:#8fffad'>green</span>: 1.2 seconds;
+    <span style='color:#8fffad'>green</span>: $duration seconds;
     vertical guide = requested duration
-""")
+""",
+)
 :::endfold
 ```
 
@@ -187,8 +204,6 @@ around it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interpolants_examples/inertial_family.png" wait="1.5" capture="box" open-outputs="true" name="interpolants-inertial"}
 :::static
-import afield.stdlib.NeedsStartingValue
-
 val n = 320
 // The set-point jumps every 45 evaluations, which is less than the 64-evaluation blend,
 // so every jump interrupts a blend that is still running.
@@ -197,7 +212,7 @@ fun targetAt(i: Int) = setPoints[(i / 45).coerceAtMost(setPoints.size - 1)]
 
 var goal = setPoints[0]
 val linear = smoothTo<Float>(steps = 64) { goal }
-(linear as NeedsStartingValue<Float>).startAt(goal)
+linear.startAt(goal)
 val restarted = inertialTo<Float>(steps = 64) { goal }
 val carried = inertialTo<Float>(steps = 64) { goal }
 
@@ -209,8 +224,8 @@ var previous = goal
 for (i in 0 until n) {
     goal = targetAt(i)
     if (goal != previous) {
-        (linear as NeedsStartingValue<Float>).startAt(a[i - 1])
-        (restarted as NeedsStartingValue<Float>).startAt(b[i - 1])
+        linear.startAt(a[i - 1])
+        restarted.startAt(b[i - 1])
         previous = goal
     }
     tgt[i] = goal
@@ -278,14 +293,14 @@ incoming speeds instead:
 :::static
 // One unit of distance still to go, five different speeds of arrival at it. Velocity is
 // per blend time, not per second: a 0.4s blend on something moving 5 units/second is v = 2.
-val speeds = listOf(0.0, 1.0, 3.0, 8.0, 20.0)
-val shades = listOf(
+val speeds = [0.0, 1.0, 3.0, 8.0, 20.0]
+val shades = [
     vec(0.48, 0.85, 1.0, 0.95),
     vec(0.55, 0.95, 0.80, 0.95),
     vec(0.75, 1.00, 0.55, 0.95),
     vec(1.00, 0.85, 0.40, 0.95),
-    vec(1.00, 0.62, 0.42, 0.95)
-)
+    vec(1.00, 0.62, 0.42, 0.95),
+]
 
 fun x(u: Double, from: Double) = 40.0 + (u - from) / (1.3 - from) * 1000.0
 fun y(v: Double, span: Double) = 560.0 - v / span * 400.0
@@ -294,42 +309,51 @@ fun curve(v: Double, overshoot: Double, rgba: Vec4, from: Double, span: Double, 
     val solved = InertialEasing.solve(x = 1.0, v = v, overshoot = overshoot)
     val base = InertialEasing.smoothstep(solved.t, solved.s)
     return fline {
+        breakNext()
         for (i in 0..600) {
             val u = solved.t + (1.3 - solved.t) * i / 600.0
             val value = InertialEasing.smoothstep(u, solved.s) - base
-            if (i == 0) moveTo(x(u, from), y(value, span)) else lineTo(x(u, from), y(value, span))
+            lineTo(x(u, from), y(value, span))
         }
         color = rgba
         thickness = width
     }
 }
 
-fun guides(from: Double, span: Double, at: List<Double>) = at.map { v ->
-    fline {
-        moveTo(x(from, from), y(v, span)); lineTo(x(1.3, from), y(v, span))
-        color = vec(1, 1, 1, if (v == 0.0 || v == 1.0) 0.22 else 0.10); thickness = 1.2
-    }
-} + listOf(
-    fline {
-        moveTo(x(0.0, from), y(-0.06 * span, span)); lineTo(x(0.0, from), y(span * 1.04, span))
-        color = vec(1, 1, 1, 0.16); thickness = 1.0
-    },
-    fline {
-        moveTo(x(1.0, from), y(-0.06 * span, span)); lineTo(x(1.0, from), y(span * 1.04, span))
-        color = vec(1, 1, 1, 0.16); thickness = 1.0
-    }
-)
+fun guides(from: Double, span: Double, at: List<Double>) =
+    at.map { v ->
+        fline {
+            moveTo(x(from, from), y(v, span))
+            lineTo(x(1.3, from), y(v, span))
+            color = vec(1, 1, 1, if (v == 0.0 || v == 1.0) 0.22 else 0.10)
+            thickness = 1.2
+        }
+    } +
+        fline {
+            moveTo(x(0.0, from), y(-0.06 * span, span))
+            lineTo(x(0.0, from), y(span * 1.04, span))
+            color = vec(1, 1, 1, 0.16)
+            thickness = 1.0
+        } +
+        fline {
+            moveTo(x(1.0, from), y(-0.06 * span, span))
+            lineTo(x(1.0, from), y(span * 1.04, span))
+            color = vec(1, 1, 1, 0.16)
+            thickness = 1.0
+        }
 
 val family = speeds.mapIndexed { i, v -> curve(v, 0.05, shades[i], -0.05, 1.1, 2.6) }
-lines(guides(-0.05, 1.1, listOf(0.0, 1.0)) + family, channel = "family", w = 1080.0, h = 540.0, fitToSize = true)
+lines(guides(-0.05, 1.1, [0.0, 1.0]) + family, channel = "family", w = 1080.0, h = 540.0, fitToSize = true)
 
 // Past v = 21.3 × the distance left, `solve` prefers the negative root: the curve is entered
 // before its own zero crossing, which flies past the target and comes back.
 val jolt = curve(26.0, 0.0, vec(0.55, 0.72, 0.95, 0.9), -0.6, 6.4, 2.2)
 val past = curve(26.0, 0.05, vec(1.00, 0.62, 0.42, 0.95), -0.6, 6.4, 2.8)
-lines(guides(-0.6, 6.4, listOf(0.0, 1.0)) + jolt + past, channel = "overshoot", w = 1080.0, h = 540.0, fitToSize = true)
+lines(guides(-0.6, 6.4, [0.0, 1.0]) + jolt + past, channel = "overshoot", w = 1080.0, h = 540.0, fitToSize = true)
 :::fold render the colour key
-markdown("legend", """
+markdown(
+    "legend",
+    """
     top, incoming speed per blend time:
     <span style='color:#7ad9ff'>0</span>,
     <span style='color:#8cf2cc'>1</span>,
@@ -339,7 +363,8 @@ markdown("legend", """
     guides at t = 0 and t = 1.
     bottom, v = 26: <span style='color:#8cb8f2'>overshoot = 0.0</span> stops inside the blend,
     <span style='color:#ff9e6b'>the default 0.05</span> flies past and returns.
-""")
+""",
+)
 :::endfold
 ```
 
@@ -370,45 +395,44 @@ the `pos` vector eases linearly, and the `voice` code steps:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interpolants_examples/keyframe_morph.png" wait="1.0" capture="box" open-outputs="true" name="interpolants-keyframe"}
 :::static
-import afield.graphics.FLine
-import afield.stdlib.KeyframeScope
-import afield.stdlib.stackSLString
-import afield.stdlib.linalg.Vector2f
-
 val scope = KeyframeScope()
-val a = scope.Key(mutableMapOf(
-    "gain"  to 0.12,
-    "pos"   to Vector2f(80f, 500f),
-    "voice" to stackSLString("saw 110 *")
-))
-val b = scope.Key(mutableMapOf(
-    "gain"  to 0.94,
-    "pos"   to Vector2f(960f, 150f),
-    "voice" to stackSLString("sin 220 * fold")
-))
+val a = scope.Key(
+    "gain" to 0.12,
+    "pos" to Vector2f(80f, 500f),
+    "voice" to stackSLString("saw 110 *"),
+)
+val b = scope.Key(
+    "gain" to 0.94,
+    "pos" to Vector2f(960f, 150f),
+    "voice" to stackSLString("sin 220 * fold"),
+)
 
 // Ease only the gain with a smoothstep; pos stays linear.
-scope.remap["gain"] = { t -> t * t * (3.0 - 2.0 * t) }
+scope.remap["gain"] = { t ->
+    t * t * (3.0 - 2.0 * t)
+}
 
 val steps = 220
 val gain = fline {
+    breakNext()
     for (i in 0..steps) {
         val t = i.toDouble() / steps
         val g = (scope.interpolate(a, b, t)["gain"] as Number).toDouble()
         val x = 60.0 + t * 960.0
         val y = 560.0 - g * 460.0
-        if (i == 0) moveTo(x, y) else lineTo(x, y)
+        lineTo(x, y)
     }
     color = vec(0.55, 0.92, 1.0, 0.95)
     thickness = 2.8
 }
 
-// The position vector traces an eased path across the frame.
+// The position vector traces a linear path across the frame.
 val path = fline {
+    breakNext()
     for (i in 0..steps) {
         val t = i.toDouble() / steps
         val p = scope.interpolate(a, b, t)["pos"] as Vector2f
-        if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
+        lineTo(p.x, p.y)
     }
     color = vec(1.0, 0.70, 0.32, 0.55)
     thickness = 2.0
@@ -417,25 +441,29 @@ val path = fline {
 // The code value is discrete: it stays "a" until t reaches 1, then snaps to "b".
 // Draw that as a step trace to contrast it with the smooth gain.
 val code = fline {
+    breakNext()
     for (i in 0..steps) {
         val t = i.toDouble() / steps
         val isEnd = scope.interpolate(a, b, t)["voice"] == b["voice"]
         val x = 60.0 + t * 960.0
         val y = if (isEnd) 120.0 else 540.0
-        if (i == 0) moveTo(x, y) else lineTo(x, y)
+        lineTo(x, y)
     }
     color = vec(0.65, 1.0, 0.55, 0.95)
     thickness = 2.2
 }
 
-lines(listOf(path, gain, code), channel = "keyframe-morph", w = 1080.0, h = 640.0, fitToSize = true)
+lines(path, gain, code, channel = "keyframe-morph", w = 1080.0, h = 640.0, fitToSize = true)
 :::fold render the colour key
 // As above: the three colours are the trace colours, the card around them is not.
-markdown("keys", """
+markdown(
+    "keys",
+    """
     <span style='color:#8fe6ff'>blue</span>: gain, eased (smoothstep);
     <span style='color:#ffb185'>orange</span>: pos, linear path;
     <span style='color:#a6ff8c'>green</span>: voice code — one discrete switch at the end
-""")
+""",
+)
 :::endfold
 ```
 
@@ -467,15 +495,16 @@ val rollingXi = RollingXiCorrelation(windowSize = 60)
 // (linear), then it becomes independent noise, then it is a nonlinear function of x.
 val n = 420
 val xs = DoubleArray(n) { sin(it / n.toDouble() * 2.0 * PI * 3.0) }
-val ys = DoubleArray(n) { i ->
-    when {
-        i < 140 -> xs[i] + (-0.05 + random() * 0.10)                    // linear dependence
-        i < 280 -> -0.9 + random() * 1.8                               // independent noise
-        else    -> 2.0 * xs[i] * xs[i] - 1.0 + (-0.05 + random() * 0.10) // nonlinear dependence
+val ys =
+    DoubleArray(n) { i ->
+        when {
+            i < 140 -> xs[i] + (-0.05 + random() * 0.10) // linear dependence
+            i < 280 -> -0.9 + random() * 1.8 // independent noise
+            else -> 2.0 * xs[i] * xs[i] - 1.0 + (-0.05 + random() * 0.10) // nonlinear dependence
+        }
     }
-}
 val dcor = DoubleArray(n) { rollingD.push(xs[it], ys[it]) ?: 0.0 }
-val xi   = DoubleArray(n) { rollingXi.push(xs[it], ys[it]) ?: 0.0 }
+val xi = DoubleArray(n) { rollingXi.push(xs[it], ys[it]) ?: 0.0 }
 
 showSignals(
     "x (driver)" to xs.toList(),
@@ -484,7 +513,7 @@ showSignals(
     "rolling xi" to xi.toList(),
     title = "Dependence coming in and out: linear → noise → nonlinear",
     xTitle = "sample",
-    marks = listOf("noise" to 140, "nonlinear" to 280),
+    marks = ["noise" to 140, "nonlinear" to 280],
     markColor = "#9aa4b2",
 )
 ```
@@ -509,7 +538,6 @@ then the metrics as bars:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/correlations_examples/metric_profile.png" wait="1.0" capture="box" open-outputs="true"}
 :::static
-import afield.darkMode
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 
@@ -522,18 +550,41 @@ val metrics = mapOf(
     "spearman" to StatsDependence.spearman(xs, ys),
     "kendall" to StatsDependence.kendallTauB(xs, ys),
     "xi" to StatsDependence.xi(xs, ys),
-    "dcor" to StatsDependence.distanceCorrelation(xs, ys)
+    "dcor" to StatsDependence.distanceCorrelation(xs, ys),
 )
 
-display("source", Plotly.plot {
-    scatter { mode = ScatterMode.markers; x.set(xs); y.set(ys); marker { size = 4 } }
-    layout { title = "The source cloud: y = x² + noise"; xaxis { title = "x" }; yaxis { title = "y" } }
-}.darkMode())
+display(
+    "source",
+    Plotly.plot {
+            scatter {
+                mode = ScatterMode.markers
+                x.set(xs)
+                y.set(ys)
+                marker { size = 4 }
+            }
+            layout {
+                title = "The source cloud: y = x² + noise"
+                xaxis { title = "x" }
+                yaxis { title = "y" }
+            }
+        }
+        .darkMode(),
+)
 
-display("metrics", Plotly.plot {
-    bar { x.set(metrics.keys.toList()); y.set(metrics.values.toList()) }
-    layout { title = "…and five dependence metrics on it"; yaxis { title = "correlation" } }
-}.darkMode())
+display(
+    "metrics",
+    Plotly.plot {
+            bar {
+                x.set(metrics.keys.toList())
+                y.set(metrics.values.toList())
+            }
+            layout {
+                title = "…and five dependence metrics on it"
+                yaxis { title = "correlation" }
+            }
+        }
+        .darkMode(),
+)
 ```
 
 ![Five dependence metrics on one nonlinear dataset, drawn as bars](assets/correlations_examples/metric_profile.png)

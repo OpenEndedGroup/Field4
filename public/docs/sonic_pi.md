@@ -29,7 +29,8 @@ it, keeping its line numbers in step with the box's.
 
 ```diffstatic {data-lang=kotlin}
 :::static
-sonicPi("""
+sonicPi(
+    """
 #sonicpi
 live_loop :bikes do
   with_synth :dsaw do
@@ -40,7 +41,8 @@ live_loop :bikes do
   end
   sleep 8
 end
-""")
+""",
+)
 ```
 
 Returning the result as the box's last expression is what ties the music to the box. The box stays lit
@@ -61,7 +63,8 @@ Consider a typo that Ruby is happy to parse:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-sonicPi("""
+sonicPi(
+    """
 #sonicpi
 live_loop :bikes do
   start_note = chord(:e1, :minor).choose
@@ -69,7 +72,8 @@ live_loop :bikes do
   play start_note, note: final_note
   sleep 8
 end
-""")
+""",
+)
 ```
 
 `final_no te` is not a syntax error. Ruby reads it as `final_no(te = …)`, a call to a method that does
@@ -105,7 +109,9 @@ The same reports are available from code. `activity()` counts triggers per line,
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val music = sonicPi("""
+val music =
+    sonicPi(
+        """
 #sonicpi
 live_loop :drums do
   sample :bd_haus, amp: 0.4
@@ -117,10 +123,11 @@ live_loop :bass do
   play :e1, release: 0.4, amp: 0.4
   sleep 1
 end
-""")
+""",
+    )
 
 // which lines have triggered sound, and how often
-music.activity()          // {2=13, 3=13, 5=13, 7=7, 9=7, 11=7}
+music.activity() // {2=13, 3=13, 5=13, 7=7, 9=7, 11=7}
 music.sonicPi.activeLines(withinMs = 500)
 ```
 
@@ -221,9 +228,8 @@ Three even hits inside a quarter of a bar fall at twelfths, which no decimal hol
 rounded `sleep` would drift out of time over a long `live_loop`. So a duration is written as a
 decimal when it has one that ends (halves, quarters, fifths) and as a Ruby `Rational` otherwise.
 
-Choose `cycles` with care. A pattern that varies per cycle (`<a b>`,
-`.every(4)`, `.iter`) needs a loop long enough to contain the variation, or the emitted program
-plays cycle 0 for ever.
+Leave `cycles` out and the loop is as long as the pattern takes to repeat (`<a b>` gives 2,
+`.every(4)` gives 4, up to 16). Give fewer and the program's header lists the layers it cuts short.
 
 ### How words in a pattern become instruments
 
@@ -260,7 +266,7 @@ sonicPiProgram(
     sonicPiLayer("drums", pat("bd ~ [bd bd bd] bd")),
     sonicPiLayer("bass", pat("<e3 g3> ~ e4 ~") with cutoff(700.0), synth = "tb303"),
     cps = 0.5,
-    cycles = 4
+    cycles = 4,
 )
 ```
 
@@ -274,10 +280,12 @@ runtime error in the middle of a performance. This layer runs through reverb and
 :::static
 sonicPiProgram(
     sonicPiLayer(
-        "bass", pat("e3 ~ [e4 g3] ~") with cutoff(700.0), synth = "tb303",
-        fx = listOf(sonicPiFx("reverb", "room" to 0.8), sonicPiFx("echo", "phase" to 0.25, "decay" to 4))
+        "bass",
+        pat("e3 ~ [e4 g3] ~") with cutoff(700.0),
+        synth = "tb303",
+        fx = [sonicPiFx("reverb", "room" to 0.8), sonicPiFx("echo", "phase" to 0.25, "decay" to 4)],
     ),
-    cps = 0.5
+    cps = 0.5,
 )
 ```
 
@@ -312,8 +320,7 @@ continuous signal is sampled at every note, which a compiled loop cannot do.
 
 ```diffstatic {data-lang=kotlin}
 :::static
-(pat("bd*4, [~ cp]*2, hh*8") with gain(sine().range(0.15, 0.5)))
-    .sonicPiLive(cps = 0.5)
+(pat("bd*4, [~ cp]*2, hh*8") with gain(sine().range(0.15, 0.5))).sonicPiLive(cps = 0.5)
 ```
 
 The cost is timing. Each note travels as a network message and then waits for Sonic Pi's own
@@ -347,19 +354,23 @@ The first box, a pattern turned into a Sonic Pi program, needs nothing installed
 
 ```diffstatic {data-lang=kotlin}
 :::static
-// Pat plays Sonic Pi — the program, before you hear it.
-//
-// Field's pattern algebra keeps musical structure exact in rational cycle space. Sonic Pi has 66
-// synths, 42 FX, 206 samples and a sample-accurate scheduler. This is the join: a pattern is
-// lowered to ordinary Sonic Pi source that you can read, paste into a #sonicpi region, and edit.
-//
-//   public/docs/sonic_pi.md — "Field patterns as a Sonic Pi sequencer"
-//
-// Nothing here needs Sonic Pi installed. It is a text transformation.
+/*
+Pat plays Sonic Pi — the program, before you hear it.
 
-// A triplet inside a binary bar — three even hits inside the third quarter. This is exactly where
-// a lowering that wrote `sleep 0.333` would start drifting, and it is why the emitter writes
-// Rational(1, 3) instead.
+Field's pattern algebra keeps musical structure exact in rational cycle space. Sonic Pi has 66
+synths, 42 FX, 206 samples and a sample-accurate scheduler. This is the join: a pattern is
+lowered to ordinary Sonic Pi source that you can read, paste into a #sonicpi region, and edit.
+
+  public/docs/sonic_pi.md — "Field patterns as a Sonic Pi sequencer"
+
+Nothing here needs Sonic Pi installed. It is a text transformation.
+*/
+
+/*
+A triplet inside a binary bar — three even hits inside the third quarter. This is exactly where
+a lowering that wrote `sleep 0.333` would start drifting, and it is why the emitter writes
+Rational(1, 3) instead.
+*/
 val groove = pat("bd ~ [bd bd bd] bd")
 
 println(groove.sonicPiSource(cps = 0.5, cycles = 1, name = "groove"))
@@ -372,7 +383,7 @@ println(groove.sonicPiSource(cps = 0.5, cycles = 1, name = "groove"))
 println()
 println(SonicPiVocabulary)
 val kit = SonicPiInstruments()
-listOf("bd", "hh", "bd_tek", "tb303", "c4", "60", "nonesuch").forEach {
+["bd", "hh", "bd_tek", "tb303", "c4", "60", "nonesuch"].forEach {
     println("  %-10s -> %s".format(it, kit.resolve(it) ?: "NOTHING — this atom would be silent"))
 }
 ```
@@ -381,36 +392,40 @@ The second box plays it. Turn your volume down first.
 
 ```diffstatic {data-lang=kotlin}
 :::static
-// Hear it.
-//
-// The same lowering, played. Sonic Pi 5 has to be installed; Field starts it itself — owned mode,
-// so there is no Sonic Pi window and this box is the buffer. The box stays lit while the music
-// runs, and the stop button stops it.
-//
-// Turn your volume down before you run this.
+/*
+Hear it.
 
-// Three things a layer can carry beyond its pattern: which synth its bare notes play on, an FX
-// chain wrapped around its live_loop, and parameters from the pattern algebra. Every FX name and
-// every FX opt below is checked against the installed vocabulary when the layer is built — Sonic
-// Pi's answer to `with_fx :revreb` is a runtime error on the loop's own thread, minutes in.
-//
-// Field's octave numbering puts middle C at c5 = 60, one octave below Sonic Pi's :c4. That is why
-// the lowering emits MIDI numbers rather than :symbols — the number the pattern meant survives.
+The same lowering, played. Sonic Pi 5 has to be installed; Field starts it itself — owned mode,
+so there is no Sonic Pi window and this box is the buffer. The box stays lit while the music
+runs, and the stop button stops it.
+
+Turn your volume down before you run this.
+*/
+
+/*
+Three things a layer can carry beyond its pattern: which synth its bare notes play on, an FX
+chain wrapped around its live_loop, and parameters from the pattern algebra. Every FX name and
+every FX opt below is checked against the installed vocabulary when the layer is built — Sonic
+Pi's answer to `with_fx :revreb` is a runtime error on the loop's own thread, minutes in.
+
+Field's octave numbering puts middle C at c5 = 60, one octave below Sonic Pi's :c4. That is why
+the lowering emits MIDI numbers rather than :symbols — the number the pattern meant survives.
+*/
 sonicPiPattern(
     sonicPiLayer("drums", pat("bd ~ [bd bd bd] bd")),
     sonicPiLayer(
         "hats",
         pat("[hh hh hh hh]").degradeBy(0.35, salt = 4) with gain(0.35),
-        fx = listOf(sonicPiFx("echo", "phase" to 0.125, "decay" to 2, "mix" to 0.3))
+        fx = [sonicPiFx("echo", "phase" to 0.125, "decay" to 2, "mix" to 0.3)],
     ),
     sonicPiLayer(
         "bass",
         pat("<e3 g3> ~ e4 ~").every(4) { it.rev() } with cutoff(700.0),
         synth = "tb303",
-        fx = listOf(sonicPiFx("reverb", "room" to 0.7, "mix" to 0.4))
+        fx = [sonicPiFx("reverb", "room" to 0.7, "mix" to 0.4)],
     ),
     cps = 0.5,
-    cycles = 4
+    cycles = 4,
 )
 ```
 
@@ -418,17 +433,18 @@ The third box keeps time in Field and lets Sonic Pi play the notes:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-// The other direction: Field's clock is the sequencer, Sonic Pi is the instrument.
-//
-// One /run-code per event instead of a live_loop. Slightly less accurate — a UDP hop of jitter per
-// note, measured at a few milliseconds — and completely live: edit the pattern below, re-run, and
-// the next event goes out changed, with no live_loop to redefine.
-//
-// The thing a compiled loop cannot do is on the last line: a continuous signal sampled once per
-// note, so the hats breathe.
+/*
+The other direction: Field's clock is the sequencer, Sonic Pi is the instrument.
 
-(pat("bd*4, [~ cp]*2, hh*8") with gain(sine().range(0.15, 0.5)))
-    .sonicPiLive(cps = 0.5)
+One /run-code per event instead of a live_loop. Slightly less accurate — a UDP hop of jitter per
+note, measured at a few milliseconds — and completely live: edit the pattern below, re-run, and
+the next event goes out changed, with no live_loop to redefine.
+
+The thing a compiled loop cannot do is on the last line: a continuous signal sampled once per
+note, so the hats breathe.
+*/
+
+(pat("bd*4, [~ cp]*2, hh*8") with gain(sine().range(0.15, 0.5))).sonicPiLive(cps = 0.5)
 ```
 
 ## Streaming Field's audio into Sonic Pi
@@ -520,8 +536,8 @@ Field sends `/daemon/keep-alive` every 1.2 s and asks the daemon to exit when Fi
 dies instead, the daemon shuts down its audio server by itself, but only after about 90 s (Sonic Pi's
 `daemon.rb` says 3 s; its `KillSwitch` waits much longer).
 
-Until then the abandoned daemon holds the cue port, so the next boot gets a random one. If
-`oscCues` is not 4560, look for a leftover Sonic Pi process.
+Until then the abandoned daemon holds the cue port. Field records the PID of each daemon it starts,
+so the next boot ends one an earlier Field left behind before starting its own, and keeps 4560.
 
 Stopping a box takes about a second and a half to go quiet. Sonic Pi has already scheduled the next
 moment of audio, and that drains after the stop.

@@ -14,9 +14,9 @@ that are easy to misunderstand. It is not a second command reference.
   `FieldBackdoor.ensure_server()` in the same file; the startup budget is
   `ManagedStartupWatch` in `tools/verification_runtime.py`.
 - Server RPC handlers used by Playwright, native captures, and JVM entrypoints:
-  `src/jvmMain/kotlin/afield/Server.kt`.
+  `src/jvmMain/kotlin/afield/app/server/Server.kt`.
 - Semantic document operations and their guarantees:
-  `src/jvmMain/kotlin/afield/operation_transcript.kt` and
+  `src/jvmMain/kotlin/afield/tools/automation/operation_transcript.kt` and
   [`OPERATION_TRANSCRIPT.md`](OPERATION_TRANSCRIPT.md).
 - Smoke catalog runner: `tools/run_field_tests.py`.
 - Browser regression runner: `tools/run_ui_regressions.py`.
@@ -315,6 +315,17 @@ EOF
 The process reads stdin once and reuses it if multiple commands name
 `--file -`.
 
+A `--value` (and `set`'s literal value) is sent as written: `\n` stays a backslash and an `n`,
+which is what keeps `println(\"a\nb\")` working. For a short multi-line snippet on one line,
+add `--value-escapes`, which decodes `\n`, `\t`, `\r` and `\\` first (write `\\\\n` in a
+double-quoted command for a Kotlin string's own `\n`):
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 \
+  --command 'new-box --name Lines' \
+  --command 'run @last --value-escapes --value "val a = 2\nprintln(a * 21)"'
+```
+
 An empty `output`/`peer-output` packet with `kind=error` and `line=-1` is Field's
 wire representation for *clearing* an editor error. The backdoor tracks it as state
 removal: it is neither returned as ordinary output nor allowed to abort `wait-output`
@@ -368,6 +379,8 @@ asymmetry is the other easy mistake: the `-window` commands take the box through
 | `record-window` | `path` | `--uid --property --with-editor --open-outputs --expect-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
 | `record-editor` | `uid path` | `--property --padding --open-outputs --expect-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
 | `record-box` | `uid path` | `--property --padding --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
+| `canvas-flight` | `stops` | `--leg --hold --orbit --record --fps --size --pixel-ratio --expect-frames --timeout` |
+| `film-page` | `url path` | `--duration --fps --size --pixel-ratio --setup-file --frame-file --settle-ms --load-timeout-ms --drag --drag-from --preroll-frames --expect-frames --timeout` |
 <!-- END CAPTURE SIGNATURES -->
 
 ```bash
@@ -390,6 +403,18 @@ What each family actually captures:
 - `page-eval`: JSON-serializable DOM probes. Use `--file` for anything with
   meaningful quoting; `--body` needs an explicit JavaScript `return` (without one the
   result carries a `warnings` entry and a stderr line, since it will be null).
+
+- `canvas-flight`: flies the canvas through bookmarks (names or slots), live in the document's
+  windows, or with `--record <mp4>` filmed frame by frame: the flight's clock is set per frame and
+  each painted frame goes to ffmpeg, so nothing drops under load (`public/docs/filming_the_canvas.md`).
+  The reply lists each stop's arrival frame and the camera filmed there; `--expect-frames N` fails
+  unless ffprobe counts `N` frames in the file.
+- `film-page`: films any URL the same way, in a capture context of its own: `--setup-file` holds an
+  `async () => ...` run once, `--frame-file` a `(t, i, n) => ...` run before every frame, and
+  `--drag DX,DY` drags the real mouse that far per frame (orbits a three.js page);
+  `--preroll-frames` runs frames before the first one filmed, so clips can continue one another.
+- `viewport WxH` sizes the capture page (`default` restores it), for saving bookmarks in a window
+  shaped like the film.
 
 `record-window`, `record-editor`, and `record-box` accept `--frame-synchronous`.
 In that mode the recorder captures one painted browser image per completed Field
@@ -757,7 +782,7 @@ builds a three-box graph with a tie and a shadowed ancestor and checks all three
 
 ```bash
 uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9877 \
-  --command 'why Child _speed' --command 'why Child --type afield.four.Renderer'
+  --command 'why Child _speed' --command 'why Child --type afield.graphics.vulkan.Renderer'
 ```
 
 ## Suite runner details

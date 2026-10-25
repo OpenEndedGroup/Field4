@@ -5,6 +5,9 @@ description: >
   one key of each type. `smoothed` draws a smoothed overlay of the curve and keeps it up to date as
   the curve is edited, with `onChange`. CI launches `brightness`, executes the other two, advances
   90 frames and stops.
+docs:
+  - page: keyframe_editor.md
+    why: "Explains drawing, editing and reading keyframe curves."
 operations:
   - create:
       box: kf_brightness
@@ -14,7 +17,7 @@ operations:
         code: |
           // Launch this box to play the curve: the playhead sweeps it every four seconds and the
           // meter shows its value. Edit the curve while it plays; your edits are saved with the box.
-          val brightness = keyframes(name = "brightness", defaults = listOf(vec(0.0, 0.1), vec(1.0, 0.9), vec(2.5, 0.4), vec(4.0, 0.1)))
+          val brightness = keyframes(name = "brightness", defaults = [vec(0.0, 0.1), vec(1.0, 0.9), vec(2.5, 0.4), vec(4.0, 0.1)])
 
           lateinit var level: MeterHandle
           controlGroup("level") { level = meter("brightness") }
@@ -33,14 +36,17 @@ operations:
       properties:
         code: |
           // Run this box: one key of each type. Right-click a key to change its type.
-          val shape = keyframes(name = "shape", keys = listOf(
-              Keyframe(0.0, 0.1, "linear"),
-              Keyframe(1.0, 0.8, "hold"),
-              Keyframe(2.0, 0.3, "bezierFlat"),
-              Keyframe(3.0, 0.9, "bezierContinuous"),
-              Keyframe(4.0, 0.5, "bezierFree"),
-              Keyframe(5.0, 0.2, "linear"),
-          ))
+          val shape = keyframes(
+              name = "shape",
+              keys = [
+                  Keyframe(0.0, 0.1, "linear"),
+                  Keyframe(1.0, 0.8, "hold"),
+                  Keyframe(2.0, 0.3, "bezierFlat"),
+                  Keyframe(3.0, 0.9, "bezierContinuous"),
+                  Keyframe(4.0, 0.5, "bezierFree"),
+                  Keyframe(5.0, 0.2, "linear"),
+              ],
+          )
   - create:
       box: kf_smoothed
       name: smoothed
@@ -49,9 +55,16 @@ operations:
         code: |
           // Run this box, then edit the curve: the dashed overlay is a smoothed copy of it, and
           // onChange redraws it after every edit.
-          val wobble = keyframes(name = "wobble", defaults = listOf(
-              vec(0.0, 0.2), vec(0.5, 0.9), vec(1.0, 0.1), vec(1.5, 0.8), vec(2.0, 0.3)
-          ))
+          val wobble = keyframes(
+              name = "wobble",
+              defaults = [
+                  vec(0.0, 0.2),
+                  vec(0.5, 0.9),
+                  vec(1.0, 0.1),
+                  vec(1.5, 0.8),
+                  vec(2.0, 0.3),
+              ],
+          )
 
           val smooth = { keys: List<Keyframe> -> with(Functions) { gaussianSmooth(fromKeyframeEditor(keys), sigma = 0.15) } }
           wobble.setOverlay(smooth(wobble.getKeyframes()))
@@ -62,9 +75,11 @@ operations:
       frame: { x: 760.0, y: 520.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // Run this box: three key types written in Kotlin. Each returns the curve's value across a
-          // segment; u runs 0 to 1, lerp(f) is "f of the way from this key's value to the next".
-          // Right-click a key and they are in the menu, after the five built in.
+          /*
+          Run this box: three key types written in Kotlin. Each returns the curve's value across a
+          segment; u runs 0 to 1, lerp(f) is "f of the way from this key's value to the next".
+          Right-click a key and they are in the menu, after the five built in.
+          */
           interpolant("overshoot") { lerp(1 + 2.7 * (u - 1).pow(3) + 1.7 * (u - 1).pow(2)) }
           interpolant("wobble") { lerp(u) + 0.08 * sin(u * 6 * PI) * (1 - u) }
           // Deterministic chaos: the logistic map, seeded by where we are, and pinned to both keys.
@@ -74,12 +89,15 @@ operations:
               lerp(u) + 0.25 * sin(PI * u) * (x - 0.5)
           }
 
-          val custom = keyframes(name = "custom", keys = listOf(
-              Keyframe(0.0, 0.1, "overshoot"),
-              Keyframe(1.5, 0.8, "wobble"),
-              Keyframe(3.0, 0.3, "chaos"),
-              Keyframe(4.5, 0.6, "linear"),
-          ))
+          val custom = keyframes(
+              name = "custom",
+              keys = [
+                  Keyframe(0.0, 0.1, "overshoot"),
+                  Keyframe(1.5, 0.8, "wobble"),
+                  Keyframe(3.0, 0.3, "chaos"),
+                  Keyframe(4.5, 0.6, "linear"),
+              ],
+          )
   - launch: { box: kf_brightness, property: code }
   - execute: { box: kf_shape, property: code }
   - execute: { box: kf_smoothed, property: code }

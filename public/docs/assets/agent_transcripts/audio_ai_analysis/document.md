@@ -11,83 +11,52 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="analysis_guide" index="0" -->
 
 ```edn [field-box id="analysis_guide" role="properties"]
-{"id" "analysis_guide" "index" 0 "name" "1 · analysis guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · analysis guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_guide_code_.kt" "lines" 9 "characters" 1004 "sha256" "fecd2d3655e66e40d984c334b2584cfc6e3d6583dab6e2f44df0d0ecd7c9362c"}]}
+{"id" "analysis_guide" "index" 0 "name" "1 · analysis guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · analysis guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_guide_code_.kt" "lines" 12 "characters" 1082 "sha256" "377776ef5289a305a91e5c49cebe86261ee43dbb55c10cb1c26be594db66705c"}]}
 ```
 
 ```kotlin [field-property box="analysis_guide" name="code" path="analysis_guide_code_.kt"]
-
-display("guide", """
-<section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">
-  <h2 style="margin:0 0 8px;color:#7fcbd7">Beat and pitch analysis</h2>
-  <p><b>librosa</b> supplies the onset envelope, multi-scale tempograms, beat grid and monophonic pYIN track. <b>Basic Pitch</b> supplies polyphonic note events, activations, pitch bends and MIDI. Essentia is not loaded by this worker.</p>
-  <p>Run box 2 for a model-free visualizer tour. Run box 3 for the complete live path: filename lookup → source window → three submitted jobs → WebSocket progress → durable results → synchronized analysis board. The source player and every analysis lane share hover, zoom and playback time; click any plot to seek the recording. Re-running unchanged requests is a cache hit.</p>
-</section>
-""".trimIndent())
+display(
+    "guide",
+    """
+    <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">
+      <h2 style="margin:0 0 8px;color:#7fcbd7">Beat and pitch analysis</h2>
+      <p><b>librosa</b> supplies the onset envelope, multi-scale tempograms, beat grid and monophonic pYIN track. <b>Basic Pitch</b> supplies polyphonic note events, activations, pitch bends and MIDI. Essentia is not loaded by this worker.</p>
+      <p>Run box 2 for real cached beat and pitch previews of Nancy from 18–42 seconds. Run box 3 for the complete live path: filename lookup → source window → three submitted jobs → WebSocket progress → durable results → synchronized analysis board. The source player and every analysis lane share hover, zoom and playback time; click any plot to seek the recording. Re-running unchanged requests is a cache hit.</p>
+    </section>
+    """
+        .trimIndent(),
+)
 display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
 ```
 
-## 2. 2 · synchronized visualizer gallery
+## 2. 2 · real cached beat and pitch results
 
 <!-- field-box id="analysis_visualizer_gallery" index="1" -->
 
 ```edn [field-box id="analysis_visualizer_gallery" role="properties"]
-{"id" "analysis_visualizer_gallery" "index" 1 "name" "2 · synchronized visualizer gallery" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · synchronized visualizer gallery" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_visualizer_gallery_code_.kt" "lines" 53 "characters" 2788 "sha256" "0d7cc4c6c90d6d879e68f8b1cbc538c5c9fe5393039188e714598f0da6e0af71"}]}
+{"id" "analysis_visualizer_gallery" "index" 1 "name" "2 · real cached beat and pitch results" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · real cached beat and pitch results" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_visualizer_gallery_code_.kt" "lines" 19 "characters" 556 "sha256" "7c33ba1fbee777015e8c388988f2347ac28547ecf8b14023c30bb028d24a81bd"}]}
 ```
 
 ```kotlin [field-property box="analysis_visualizer_gallery" name="code" path="analysis_visualizer_gallery_code_.kt"]
-import afield.stdlib.*
+import java.io.File
 
-val gallerySync = "analysis-gallery"
-val galleryRate = 8_000
-val galleryAudio = FloatArray(galleryRate * 18) { i ->
-    val t = i / galleryRate.toDouble()
-    val pulse = 0.32 * kotlin.math.exp(-18.0 * (t % 0.5))
-    (0.38 * kotlin.math.sin(2.0 * Math.PI * (174.0 + 22.0 * kotlin.math.sin(t * 0.34)) * t) + pulse).toFloat()
-}
-display("source", AudioVisualizer.renderSamplesHtml(
-    galleryAudio, galleryRate,
-    AudioVisualizerOptions(width = 1100, waveformHeight = 105, syncGroup = gallerySync),
-    label = "model-free synchronized source · play or seek here",
-))
-
-val times = (0..180).map { it / 10.0 }
-fun series(name: String, label: String, values: List<Double>, unit: String? = null) =
-    AnalysisSeries(name, label, unit, times.map { it as Double? }, values.map { it as Double? })
-
-val onset = times.map { t -> 0.08 + 0.82 * Math.pow(kotlin.math.max(0.0, kotlin.math.sin(t * 2.4)), 8.0) }
-val beats = (1..35).map { it * 0.5 }
-val beatPreview = AnalysisPreview(
-    operation = "analysis.beats", durationSeconds = 18.0,
-    series = listOf(
-        series("onset_strength", "onset strength", onset),
-        series("tempo_0_bpm", "tempo · 2 s", times.map { 116.0 + 13.0 * kotlin.math.sin(it * 0.72) }, "bpm"),
-        series("tempo_1_bpm", "tempo · 8 s", times.map { 112.0 + 5.0 * kotlin.math.sin(it * 0.23) }, "bpm"),
-        series("tempo_0_confidence", "confidence · 2 s", times.map { 0.45 + 0.35 * kotlin.math.sin(it * 0.41) }),
-        series("tempo_1_confidence", "confidence · 8 s", times.map { 0.72 + 0.16 * kotlin.math.sin(it * 0.19) }),
-    ), beatTimesSeconds = beats,
-)
-val monoPreview = AnalysisPreview(
-    operation = "analysis.pitch_mono", durationSeconds = 18.0,
-    series = listOf(
-        series("frequency_hz", "pYIN F0", times.map { 174.0 * Math.pow(2.0, (7.0 * kotlin.math.sin(it * 0.34) + 3.0 * kotlin.math.sin(it * 1.1)) / 12.0) }, "Hz"),
-        series("voiced_probability", "voiced probability", times.map { 0.55 + 0.42 * kotlin.math.sin(it * 0.57) }),
+val folder = File("public/docs/assets/audio_ai_analysis")
+val previews =
+    ["beats", "pitch_mono", "pitch_poly"].map { label ->
+        FieldAudioClient.json.decodeFromString<AnalysisPreview>(
+            File(folder, "$label-preview.json").readText(),
+        )
+    }
+markdown("source", "Nancy · 18–42 s · saved librosa and Basic Pitch results")
+display(
+    "analysis board",
+    analysisPreviewDashboardHtml(
+        previews,
+        width = 1040,
+        panelHeight = 250,
+        syncGroup = "nancy-cached-analysis",
     ),
 )
-val notes = (0 until 28).map { i ->
-    val start = i * 0.62
-    AnalysisNote(start, start + 0.34 + (i % 4) * 0.13, 48 + (i * 5) % 25, 0.42 + (i % 6) * 0.09)
-}
-val polyPreview = AnalysisPreview(
-    operation = "analysis.pitch_poly", durationSeconds = 18.0,
-    series = listOf(
-        series("maximum_note_activation", "maximum note activation", times.map { 0.38 + 0.5 * kotlin.math.abs(kotlin.math.sin(it * 1.7)) }),
-        series("active_pitch_count", "active pitch count", times.map { 1.0 + kotlin.math.floor(4.0 * kotlin.math.abs(kotlin.math.sin(it * 0.52))) }),
-    ), notes = notes,
-)
-display("analysis board", analysisPreviewDashboardHtml(
-    listOf(beatPreview, monoPreview, polyPreview),
-    width = 1100, panelHeight = 230, syncGroup = gallerySync,
-))
 ```
 
 ## 3. 3 · submit, monitor, await, visualize Nancy
@@ -95,63 +64,85 @@ display("analysis board", analysisPreviewDashboardHtml(
 <!-- field-box id="analyse_nancy" index="2" -->
 
 ```edn [field-box id="analyse_nancy" role="properties"]
-{"id" "analyse_nancy" "index" 2 "name" "3 · submit, monitor, await, visualize Nancy" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · submit, monitor, await, visualize Nancy" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_nancy_code_.kt" "lines" 54 "characters" 2458 "sha256" "1d6c04fbf99133d1e6292b2ea725775b99d8fce63945252d6ef5bc3c818772a3"}]}
+{"id" "analyse_nancy" "index" 2 "name" "3 · submit, monitor, await, visualize Nancy" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · submit, monitor, await, visualize Nancy" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_nancy_code_.kt" "lines" 76 "characters" 3190 "sha256" "d752cde1c2e13c2b80ed718cf3a3491d5b2b85f0321bbc74521e0522b9f827d2"}]}
 ```
 
 ```kotlin [field-property box="analyse_nancy" name="code" path="analyse_nancy_code_.kt"]
-import afield.stdlib.AudioVisualizerOptions
+import java.util.concurrent.CancellationException
 import java.util.concurrent.CompletableFuture
 
-val client = FieldAudioClient()
+val client = cached { FieldAudioClient() }
 val start = 18.0
 val duration = 24.0
 val timeSync = "nancy-analysis"
-display("job monitor", fieldAudioJobMonitor(heightPixels = 330))
+display("all jobs", fieldAudioJobMonitor(heightPixels = 330))
 
-client.assetByFilename("*Nancy*").thenCompose { source ->
-    val region = AssetRegion(source.id, startSeconds = start, durationSeconds = duration)
-    val canonical = source.representations.first { it.role == "canonical_project" }
-    display("source", canonical.audioVisualizerHtml(
-        label = "Henry Mancini · Nancy · analysis window",
-        options = AudioVisualizerOptions(
-            width = 1040, waveformHeight = 150,
-            initialStartSeconds = start, initialDurationSeconds = duration,
-            initialPositionSeconds = start,
-            syncGroup = timeSync,
-        ),
-    ))
+runAsync(
+    onResult = { results: List<AnalysisResult> ->
+        displayClear("all jobs")
+        for (label in ["beats", "monophonic pitch", "polyphonic pitch"]) displayClear("$label job")
+        displayOpen("source")
+        display(
+            "analysis",
+            analysisDashboardHtml(
+                results,
+                width = 1040,
+                panelHeight = 250,
+                syncGroup = timeSync,
+                timeOffsetSeconds = start,
+            ),
+        )
+        displayOpen("analysis")
+    },
+    onError = { failure ->
+        markdown("analysis error", "Analysis failed: ${(failure.message ?: failure.toString()).md}")
+    },
+) {
+    val showSource = progress<String> { display("source", it) }
+    // HTTP continuations run elsewhere; every analysis still belongs to this box run.
+    val run = RunScope.current()
+    val lookup = client.assetByFilename("*Nancy*")
+    onCancel { lookup.cancel(true) }
+    lookup.thenCompose { source ->
+        if (future.isDone) throw CancellationException("run ended")
 
-    val requests = listOf(
-        "beats" to multiScaleBeatAnalysis(region, requestedBy = "field:audio-analysis/nancy"),
-        "monophonic pitch" to monophonicPitchAnalysis(region, requestedBy = "field:audio-analysis/nancy"),
-        "polyphonic pitch" to polyphonicPitchAnalysis(region, requestedBy = "field:audio-analysis/nancy"),
-    )
-    val results = requests.map { (label, request) ->
-        client.submit(request).thenCompose { accepted ->
-            display("$label job", fieldAudioJobStatusHtml(accepted))
-            client.watch(
-                accepted.jobId,
-                onEvent = { event -> display("$label job", fieldAudioJobStatusHtml(accepted, event)) },
-                onError = { error -> display("$label job stream", "progress stream: ${error.message}") },
-            )
-            client.awaitAnalysis(accepted).thenApply { result ->
-                client.inspect(accepted.jobId).thenAccept { job -> display("$label job", fieldAudioJobStatusHtml(job)) }
-                result
-            }
+        val region = AssetRegion(source.id, start, duration)
+        val canonical =
+            source.representations.firstOrNull { it.role == "canonical_project" }
+                ?: source.representations.first { it.mediaType in ["audio/wav", "audio/x-wav"] }
+        showSource(
+            canonical.audioVisualizerHtml(
+                label = "Nancy · 18–42 s",
+                options = AudioVisualizerOptions(
+                    width = 1040,
+                    waveformHeight = 110,
+                    initialStartSeconds = start,
+                    initialDurationSeconds = duration,
+                    initialPositionSeconds = start,
+                    syncGroup = timeSync,
+                ),
+            ),
+        )
+
+        val requests = [
+            "beats" to multiScaleBeatAnalysis(region, requestedBy = "field:analysis-example"),
+            "monophonic pitch" to monophonicPitchAnalysis(region, requestedBy = "field:analysis-example"),
+            "polyphonic pitch" to polyphonicPitchAnalysis(region, requestedBy = "field:analysis-example"),
+        ]
+        val analyses = requests.map { (label, request) ->
+            RunScope.withCurrent(run) {
+                    client.trackAnalysis(
+                        request,
+                        onAccepted = { display("$label job", fieldAudioJobStatusHtml(it)) },
+                        onProgress = { job, event -> display("$label job", fieldAudioJobStatusHtml(job, event)) },
+                        onCompleted = { display("$label job", fieldAudioJobStatusHtml(it)) },
+                        onError = {}, // The outer operation reports failure once.
+                    )
+                }
+                .also { pending -> onCancel { pending.cancel(true) } }
         }
+        CompletableFuture.allOf(*analyses.toTypedArray()).thenApply { analyses.map { it.join() } }
     }
-    CompletableFuture.allOf(*results.toTypedArray()).thenApply {
-        results.map { it.join() }
-    }
-}.thenAccept { results ->
-    display("synchronized analysis", analysisDashboardHtml(
-        results, width = 1040, panelHeight = 250,
-        syncGroup = timeSync, timeOffsetSeconds = start,
-    ))
-}.exceptionally { error ->
-    val message = error.cause?.message ?: error.message ?: error.toString()
-    display("analysis error", """<pre style="color:#f1aaaa;background:#28191b;padding:12px;white-space:pre-wrap">$message</pre>""")
-    null
 }
 ```
 

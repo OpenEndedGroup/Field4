@@ -1,0 +1,22 @@
+name: go_jobs_badge
+description: A box whose go { } loop running_code.md relaunches with Alt+1, to show the go badge and margin marker.
+operations:
+  - create:
+      box: go_jobs_badge
+      name: counting
+      frame: { x: 60.0, y: 60.0, w: 160.0, h: 160.0 }
+      properties:
+        code: |
+          var ticks = 0
+
+          go {
+              while (true) {
+                  delay(500)
+                  ticks++
+                  print(ticks)
+              }
+          }
+  - execute: { box: go_jobs_badge, property: code }
+  - wait:
+      millis: 300
+  - stop: { box: go_jobs_badge }

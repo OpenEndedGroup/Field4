@@ -1,7 +1,7 @@
 {
   "date": "2026-09-25",
   "quality": {
-    "command": "run-jvm-main afield.four.lighting.DirectLightingQualitySmoke --arg=--clip --timeout 840",
+    "command": "run-jvm-main afield.graphics.render.lighting.DirectLightingQualitySmoke --arg=--clip --timeout 840",
     "ok": true,
     "exitCode": 0,
     "validationVuidCount": 0,
@@ -9,14 +9,14 @@
   },
   "regressions": [
     {
-      "command": "run-jvm-main afield.four.lighting.DirectLightingSmoke --arg=--fallback --timeout 360",
+      "command": "run-jvm-main afield.graphics.render.lighting.DirectLightingSmoke --arg=--fallback --timeout 360",
       "ok": true,
       "exitCode": 0,
       "validationVuidCount": 0,
       "completionMarker": "DIRECT LIGHTING CHECK DONE"
     },
     {
-      "command": "run-jvm-main afield.four.lighting.RtxdiLightingSmoke --timeout 540",
+      "command": "run-jvm-main afield.graphics.render.lighting.RtxdiLightingSmoke --timeout 540",
       "ok": true,
       "exitCode": 0,
       "validationVuidCount": 0,

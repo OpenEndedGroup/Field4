@@ -9,7 +9,7 @@ The examples on this page read a chat that ships with the docs, `harbour`, from 
 `ChatArchive.chats(folder)` finds every box in a document folder that has a saved chat. `ChatArchive.tree(chat)` reads one as a tree of turns. It only reads files, so you can point it at a document that is open in another Field. `ChatLogViews.outline(tree)` gives the tree as text, the way an agent first sees it. This box shows it in an output panel:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/ai4_chat_archive/outline.png" embed=true w="760" h="50" wait="1.5" timeout="90" name="chat-archive-outline" alt="The outline of the harbour chat: the dusk and storm turns on the current branch, each request, each reply as its first line and each run of tool calls as one round line with its count and time, then the rewound night and first-storm branches listed after them"}
-import afield.chatlog.*
+import afield.ai.conversation.chatlog.*
 import java.io.File
 
 val harbour = File("public/docs/assets/ai4_chat_archive/chats/harbour")
@@ -22,7 +22,7 @@ Each block has an **address**, `<turn>.b<index>`, such as `t-5e7076a8-acf.b8`. A
 To read a stretch in full, give `ChatLogViews.read` its first and last address. `detail = "full"` includes each tool block's text as well. This box reads the start of the rewound night turn, where a glaze turned the canvas almost black and the agent said so:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/ai4_chat_archive/read.png" embed=true w="760" h="50" wait="1.5" timeout="90" name="chat-archive-read" alt="The start of the rewound night turn read in full, each block headed by its address: the plan, the round of three tool calls with each call's text, and the reply saying the glaze went much darker than intended"}
-import afield.chatlog.*
+import afield.ai.conversation.chatlog.*
 import java.io.File
 
 val harbour = File("public/docs/assets/ai4_chat_archive/chats/harbour")
@@ -44,13 +44,13 @@ The first glaze turned the canvas almost black. It lifted the blues back, restat
 A block can cite several stretches, separated by commas: this lens's storm request cites both times it was asked. Pictures from the chat can be reused by their `ai4img:` reference. The only check is that every address exists, since a band can't be drawn to a missing block. Nothing checks whether a summary is accurate. `ChatLogViews.lensProblems` lists the bad citations (here there are none), and `lensStats` says how much of the chat the lens covers and how much shorter it is:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/ai4_chat_archive/stats.png" embed=true w="760" h="50" wait="1.5" timeout="90" name="chat-archive-lens-stats" alt="The box's output: no problems, then the lens's statistics: 6 blocks citing 71 of the chat's 103 blocks, 44.7 times shorter than what it cites"}
-import afield.chatlog.*
+import afield.ai.conversation.chatlog.*
 import java.io.File
 
 val assets = File("public/docs/assets/ai4_chat_archive")
 val tree = ChatArchive.tree(ChatArchive.chats(File(assets, "chats/harbour")).single())
 val lens = File(assets, "lenses/harbour/storyline.md").readText()
-val problems = ChatLogViews.lensProblems(tree, lens).ifEmpty { listOf("none") }
+val problems = ChatLogViews.lensProblems(tree, lens).ifEmpty { ["none"] }
 val stats = ChatLogViews.lensStats(tree, lens).entries.joinToString("\n") { (k, v) -> "$k: $v" }
 display("lens", "<pre style='margin:8px'>problems: ${problems.joinToString("; ")}\n$stats</pre>")
 ```
@@ -62,7 +62,7 @@ The lens is 1,016 characters standing for 45,459. The 32 blocks it does not cite
 Lenses are meant to be written by talking to AI4. Run this once in a box, and the document's AI4 agents can read the chats under the folders you name and save lenses:
 
 ```diffstatic {data-lang=kotlin}
-import afield.chatlog.*
+import afield.ai.conversation.chatlog.*
 import java.io.File
 
 registerChatlogTools(File("/path/to/a/workspace"))
@@ -89,7 +89,7 @@ Then ask, in that box's AI4 chat, for the lens you want, for example: "write a s
 `showChatLens(chat, lens)` shows a lens beside its chat in the box's `lens` output channel. The box's document needs to have run `registerChatlogTools` first, which this box does itself:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/ai4_chat_archive/viewer.png" capture="window" embed=true w="900" h="50" wait="4.0" timeout="120" name="chat-lens-viewer" clip="0,0,2210,1460" alt="The lens viewer: the storyline lens on the left, the harbour chat on the right with its tool calls folded into round lines, and curved bands between them joining each lens block to the stretch of the chat it summarizes"}
-import afield.chatlog.*
+import afield.ai.conversation.chatlog.*
 import java.io.File
 
 val assets = File("public/docs/assets/ai4_chat_archive")

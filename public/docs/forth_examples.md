@@ -82,7 +82,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/variables_and_output_channels.png" alt="two output panels. The one labelled output holds the sentence Forth can emit HTML into Field output areas, wrapped in the literal markup for bold with its angle brackets shown as text rather than applied, and the one labelled debug holds count = 6.0. The first line is not what the code beside it produces: this capture predates the change that stopped the example asking display to emit HTML, and a re-render is owed. See docs_capture_staleness in dev_docs" wait="1.0" capture="box" trim=true embed=true name="forth-output-channels"}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/variables_and_output_channels.png" alt="Two output panels: the one labelled output holds the sentence ForthField writes straight into a Field output area., and the one labelled debug holds count = 6.0" wait="1.0" capture="box" trim=true embed=true name="forth-output-channels"}
 :::static
 variable count
 0 count !
@@ -318,9 +318,7 @@ The host bridge goes the other direction too. Kotlin can inject new words when F
 
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.forth.ForthInterpreter
-import afield.four.buffers.DynamicallyWriteable
-import afield.stdlib.Vec4
+import afield.lang.forth.ForthInterpreter
 
 val forth = ForthInterpreter()
 
@@ -390,4 +388,4 @@ turn shows as a changing slope, and the `debug` panel counts the ticks.
 
 Use `see name` to check that the word running is the definition you think it is, and read the error before adding prints: it already names the failing token, the stack and the chain of word calls.
 
-Builtins and your own words share one dictionary, and `:` overwrites without warning, so `: dup ... ;` replaces the real `dup` for the rest of the run. `forget` will remove your replacement, but that leaves no `dup` at all; it does not bring the builtin back.
+Builtins and your own words share one dictionary, so `: dup ... ;` replaces the real `dup` for the rest of the run, with a warning in the output; `forget dup` brings the builtin back.

@@ -18,30 +18,31 @@ Example animated fence:
 lines.clear()
 
 loop {
-  var f = FLine()
+    var f = FLine()
 
-  while (stereo.controllerState().triggerValue > 0.0) {
-    val at = stereo.controllerState().position
-    f.lineTo(at)
-    lines["ourLine"] = f
+    while (stereo.controllerState().triggerValue > 0.0) {
+        val at = stereo.controllerState().position
+        f.lineTo(at)
+        lines["ourLine"] = f
+        frame()
+    }
+
     frame()
-  }
-
-  frame()
 }
 :::after
 lines.clear()
 
 loop {
-  var f = FLine()
+    var f = FLine()
 
-  while (stereo.controllerState().triggerValue > 0.0) {
-    val at = stereo.controllerState().position
-    f.lineTo(at + vec(0, 0, 0.1))
-    lines["ourLine"] = f
-  }
+    while (stereo.controllerState().triggerValue > 0.0) {
+        val at = stereo.controllerState().position
+        f.lineTo(at + vec(0, 0, 0.1))
+        lines["ourLine"] = f
+        frame() // Yield while held, so input updates and Stop can be processed.
+    }
 
-  frame()
+    frame()
 }
 ```
 
@@ -50,7 +51,7 @@ Example static fence:
 ```diffstatic {data-lang=kotlin}
 :::static
 fun greet() {
-  println("hello")
+    println("hello")
 }
 ```
 
@@ -60,36 +61,37 @@ fun greet() {
 lines.clear() // clear the list of lines to draw
 
 loop { // do this forever (or until we stop this box)
-  var f = FLine()    // make a new line for our drawing
+    var f = FLine() // make a new line for our drawing
 
-  while(stereo.controllerState().triggerValue > 0.0) { // while the trigger is down
-    var at = stereo.controllerState().position // get its position
-    f.lineTo(at) // extend the drawing to this position
-    lines["ourLine"] = f // put this line onto the screen under the name "ourLine"
-    frame() // WAIT for a frame to come out of the screen
-  }
+    while (stereo.controllerState().triggerValue > 0.0) { // while the trigger is down
+        var at = stereo.controllerState().position // get its position
+        f.lineTo(at) // extend the drawing to this position
+        lines["ourLine"] = f // put this line onto the screen under the name "ourLine"
+        frame() // WAIT for a frame to come out of the screen
+    }
 
-  while(stereo.controllerState().triggerValue <= 0.0) { // while the trigger isn't down
-    frame() // WAIT for a frame to come out of the screen
-  }
+    while (stereo.controllerState().triggerValue <= 0.0) { // while the trigger isn't down
+        frame() // WAIT for a frame to come out of the screen
+    }
 }
 :::after
 lines.clear() // clear the list of lines to draw
 
 loop { // do this forever (or until we stop this box)
-  var f = FLine()    // make a new line for our drawing
+    var f = FLine() // make a new line for our drawing
 
-  while(stereo.controllerState().triggerValue > 0.0) { // while the trigger is down
-    var at = stereo.controllerState().position // get its position
-    f.lineTo(at + vec(0,0,0.1)) // extend the drawing to this position
-    lines["ourLine"] = f // put this line onto the screen under the name "ourLine"
-  }
+    while (stereo.controllerState().triggerValue > 0.0) { // while the trigger is down
+        var at = stereo.controllerState().position // get its position
+        f.lineTo(at + vec(0, 0, 0.1)) // extend the drawing to this position
+        lines["ourLine"] = f // put this line onto the screen under the name "ourLine"
+        frame() // WAIT while held so controller updates and Stop can be processed
+    }
 
-  while(stereo.controllerState().triggerValue <= 0.0) { // while the trigger isn't down
+    while (stereo.controllerState().triggerValue <= 0.0) { // while the trigger isn't down
+        frame() // WAIT for a frame to come out of the screen
+    }
+
     frame() // WAIT for a frame to come out of the screen
-  }
-
-  frame() // WAIT for a frame to come out of the screen
 }
 ```
 
@@ -109,7 +111,7 @@ expect:
 ```diffstatic {data-lang=kotlin}
 :::static
 val greet = { name: String ->
-  println("Hello, $name")
+    println("Hello, $name")
 }
 
 greet("Field4")
@@ -158,7 +160,7 @@ Runner attributes, by what they decide. Hyphenated names also answer to an under
 
 - `capture="box"` — the default: just the box that ran the code.
 - `capture="window"`, `capture="window-editor"`, `capture="editor"` — the browser window, with or without the editor pane, or the editor pane alone.
-- `capture="native-window"` — an `afield.four` renderer window.
+- `capture="native-window"` — an Field 4 renderer window.
 - `capture="ui"` — runs the fence body as a `drive` transcript scripting the live editor through Playwright.
 - `region="window-editor"` — what a `ui` capture is clipped to: `box`, `window`, `window-editor` (the default) or `editor`.
 - `clip-selector="#some-id"` — clips a `ui` capture to a CSS selector instead, for an overlay that no box owns. A selector that matches nothing fails the capture.
@@ -200,7 +202,7 @@ Reach for `capture="editor"` when the subject is the Monaco pane itself: inline 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/editor-inline-histogram.png" wait="1.0" capture="editor" outputs="inline"}
 :::static
 val hist = __m("docs-hist")
-listOf(0.14, 0.36, 0.49, 0.81, 0.63, 0.52, 0.27, 0.71, 0.58).forEach { value ->
+[0.14, 0.36, 0.49, 0.81, 0.63, 0.52, 0.27, 0.71, 0.58].forEach { value ->
     hist.histogram(value, dur = 24)
 }
 println("inline histogram ready")

@@ -1,10 +1,8 @@
-import afield.four.fabricated.FabricatePassChain
-import afield.four.fabricated.FabricatePassLibrary
-import afield.four.fabricated.addPassChain
-import afield.four.util.MouseEvent
-import afield.four.util.MouseEvents
+import afield.graphics.scene.fabricated.FabricatePassChain
+import afield.graphics.scene.fabricated.FabricatePassLibrary
+import afield.graphics.scene.fabricated.addPassChain
 
-prop<afield.four.fabricated.FabricateBuiltChain>(fluid)
+prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(fluid)
 
 // The knobs. A new `resolution` starts an empty fluid; the rest keep the one you painted.
 val resolution = 256

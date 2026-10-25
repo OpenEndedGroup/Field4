@@ -11,10 +11,10 @@ Domains matter because arithmetic intersects them. Add two functions and the sum
 A `Domain` is a closed interval `min..max`, with a few well-known values:
 
 ```diffstatic {data-lang=kotlin}
-Domain.DEFAULT   // 0.0..1.0 — the everyday unit interval (also Domain.UNIT)
-Domain.ALL       // (-inf, +inf) — genuinely unbounded
-Domain.EMPTY     // nothing; length 0, contains no point
-Domain.point(x)  // a single point, min == max
+Domain.DEFAULT // 0.0..1.0 — the everyday unit interval (also Domain.UNIT)
+Domain.ALL // (-inf, +inf) — genuinely unbounded
+Domain.EMPTY // nothing; length 0, contains no point
+Domain.point(x) // a single point, min == max
 ```
 
 Unless a constructor says otherwise, a fresh `Fn` starts at `Domain.DEFAULT`. You set the construction interval with `domain = ...`, relabel or place an existing function with `over (...)`, and declare "this really is unbounded" with `/ all`.
@@ -26,15 +26,15 @@ You rarely read a domain out by hand. It decides where a curve is drawn, where a
 When you combine two functions, the result is defined on the intersection of their domains:
 
 ```diffstatic {data-lang=kotlin}
-val a = ramp(0.0, 1.0, domain = 0.0..2.0)   // defined on 0..2
-val b = hannWindow(1.0..3.0)                 // defined on 1..3
-val c = a + b                                // defined on 1..2  (the overlap)
+val a = ramp(0.0, 1.0, domain = 0.0..2.0) // defined on 0..2
+val b = hannWindow(1.0..3.0) // defined on 1..3
+val c = a + b // defined on 1..2  (the overlap)
 ```
 
 Numbers are the exception. A literal like `0.6`, or any argument passed as a `Number`, becomes a constant `Fn` whose domain is `Domain.ALL`. Intersecting with `ALL` changes nothing, so scaling and offsetting never accidentally narrow a function:
 
 ```diffstatic {data-lang=kotlin}
-val d = hannWindow(1.0..3.0) * 0.6 + 0.2     // still defined on 1..3
+val d = hannWindow(1.0..3.0) * 0.6 + 0.2 // still defined on 1..3
 ```
 
 So a bare literal never narrows anything, while an *explicit* finite domain, or a genuinely finite-domain operand like a window, still constrains the result.
@@ -47,9 +47,10 @@ Give one a finite domain instead and it clamps every expression it enters:
 
 ```diffstatic {data-lang=kotlin}
 // Old behavior — the trap.
-val rising = identity(0.0..3.0) * 0.6         // a slow rise across 0..3
-val tone   = sin(2.0)                          // used to carry domain 0..1
-val stack  = tone + rising                     // 0..1  ∩  0..3  ==  0..1  (!)
+val rising = identity(0.0..3.0) * 0.6 // a slow rise across 0..3
+val tone = sin(2.0) // used to carry domain 0..1
+val stack = tone + rising // 0..1  ∩  0..3  ==  0..1  (!)
+
 // Plot `stack` over 0..3 and it just stops a third of the way across.
 ```
 
@@ -60,8 +61,9 @@ With the default `Domain.ALL`, the oscillator contributes nothing to the interse
 ```diffstatic {data-lang=kotlin}
 // New behavior.
 val rising = identity(0.0..3.0) * 0.6
-val tone   = sin(2.0)                          // Domain.ALL
-val stack  = tone + rising                     // ALL ∩ 0..3  ==  0..3  ✔
+val tone = sin(2.0) // Domain.ALL
+val stack = tone + rising // ALL ∩ 0..3  ==  0..3  ✔
+
 // Plot `stack` over 0..3 and the oscillation rides the ramp the whole way.
 ```
 
@@ -69,8 +71,6 @@ The picture below runs both versions on one box, plotted over the same `0.0..3.0
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions/oscillator-domain-clamp-before-after.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" timeout="120" name="functions-oscillator-domain-clamp-before-after"}
 :::static
-import afield.stdlib.Functions
-
 with(Functions) {
     // A gentle rise defined across the whole 0..3 window.
     val rising = identity(0.0..3.0) * 0.6
@@ -88,14 +88,14 @@ with(Functions) {
         domain(0.0..3.0),
         title = "BEFORE — sin(domain = 0..1) + rising  → clamped to 0..1",
         yDomain = domain((-1.2)..2.6),
-        heightPx = 170
+        heightPx = 170,
     )
     after.plot(
         "after",
         domain(0.0..3.0),
         title = "AFTER — sin() is Domain.ALL + rising  → full 0..3",
         yDomain = domain((-1.2)..2.6),
-        heightPx = 170
+        heightPx = 170,
     )
 }
 ```
@@ -117,8 +117,8 @@ So a bounded function samples over exactly the interval you would expect, while 
 Give a plot or sampler an explicit window when you have one, and rely on the fallback only for a quick look:
 
 ```diffstatic {data-lang=kotlin}
-sin(3.0).plot("tone", domain(0.0..2.0))   // explicit window — samples 0..2
-sin(3.0).toFLine()                          // no window — previews the fallback
+sin(3.0).plot("tone", domain(0.0..2.0)) // explicit window — samples 0..2
+sin(3.0).toFLine() // no window — previews the fallback
 ```
 
 ??? aside "Serialization keeps the declared domain"
@@ -129,8 +129,8 @@ sin(3.0).toFLine()                          // no window — previews the fallba
 Not every generator is periodic. `gaussian` is a localized bump: it has meaningful value near its center and falls away to nothing on either side. It is *not* defined on all of ℝ in any useful sense, so it keeps `Domain.DEFAULT`:
 
 ```diffstatic {data-lang=kotlin}
-val bump = gaussian()          // Domain.DEFAULT — a local feature, not a signal
-val wave = sin()               // Domain.ALL — genuinely everywhere
+val bump = gaussian() // Domain.DEFAULT — a local feature, not a signal
+val wave = sin() // Domain.ALL — genuinely everywhere
 ```
 
 The question a constructor has to answer is whether its function is defined everywhere or only somewhere. A signal that oscillates forever answers *everywhere* and takes `Domain.ALL`. A shape that lives in a region, a window or a bump or a ramp, answers *somewhere* and carries a finite domain, which constrains any expression it enters.

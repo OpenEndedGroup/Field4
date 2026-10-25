@@ -1,6 +1,6 @@
 // Run in a child of sim_fluid after four_simulation_chain has launched.
 // This supplies a continuous drag to the real GPU fluid; it draws no pixels itself.
-import afield.frames
+import afield.runtime.lifecycle.frames
 import kotlin.math.sin
 import kotlin.math.cos
 

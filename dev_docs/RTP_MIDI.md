@@ -19,7 +19,7 @@ Demo: `public/docs/assets/rtp_midi_demo/`.
   (journal skipped by LEN), 1–4-byte deltas, running status on encode and decode, real-time bytes
   that leave running status alone, system common that cancels it, whole SysEx, and segmented SysEx
   (F0..F0, F7..F0, F7..F7, F7..F4 cancel) reassembled per peer.
-- Bonjour via the existing `afield.oscquery.Mdns` (`_apple-midi._udp`, control port).
+- Bonjour via the existing `afield.io.osc.query.Mdns` (`_apple-midi._udp`, control port).
 
 ## Not implemented
 
@@ -29,7 +29,7 @@ Demo: `public/docs/assets/rtp_midi_demo/`.
 
 ## Verification (2026-10-09)
 
-- `./gradlew jvmTest --tests 'afield.rtpmidi.*'`: 12 tests, 0 failures (`RtpMidiCodecTest` 6,
+- `./gradlew jvmTest --tests 'afield.io.midi.rtp.*'`: 12 tests, 0 failures (`RtpMidiCodecTest` 6,
   `RtpMidiLoopbackTest` 6). The loopback CK test asserts |offset| ≤ 2 ms and RTT ≤ 20 ms; both
   sessions share the process clock origin, so the true offset is 0.
 - Demo document loaded fresh and its three boxes run through the backdoor: box 2 reported the peer

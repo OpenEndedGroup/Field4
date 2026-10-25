@@ -25,7 +25,7 @@ val browser = FieldUiBrowserTexture(
     width = 1280,
     height = 720,
     // Linux: Chromium's shared-texture export never fills the buffer (electron#53271).
-    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired
+    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired,
 )
 
 val screen = PuppetBrowserWindowPanel(renderer, browser)
@@ -50,16 +50,15 @@ The copy exists so that Chromium can reuse its buffer; it happens on the GPU. No
 encoded frame or pixel array travels between Electron and the shader. The resident image is imported as sRGB, so ordinary page
 colour survives the trip into the renderer correctly.
 
-On macOS the transferred object is an IOSurface sent through a Mach port and imported by MoltenVK.
-The Windows receiver imports a duplicated D3D11 NT handle; the Linux receiver imports dma-buf file
-descriptors and their DRM modifier layout. The macOS producer-to-renderer path is the currently
-live-tested implementation. Windows and Linux retain their compile-reviewed receivers while their
-Electron handle-transfer bridges and native validation are completed.
+On macOS the transferred object is an IOSurface sent through a Mach port. MoltenVK backs a Vulkan
+image with it; KosmicKrisp, the default driver on recent Apple silicon, maps its pages as a buffer
+and copies them into an image on the GPU. On Windows and Linux the GPU transfer is refused with a
+message, and `cpuBitmapFallback = true` reads frames back instead.
 
 ## The other half: `PuppetBrowser`
 
 The texture comes with a control plane. `FieldUiBrowserTexture` implements
-`PuppetBrowser` (`src/jvmMain/kotlin/afield/four/browser/PuppetBrowser.kt`),
+`PuppetBrowser` (`src/jvmMain/kotlin/afield/media/browser/PuppetBrowser.kt`),
 so a neighbouring Field box can keep the browser as a property and operate it without reaching for
 a desktop or exposing an Electron window.
 
@@ -85,23 +84,27 @@ remote object in Chromium for later CDP work, or report the page's actual except
 silently returning `undefined`:
 
 ```diffstatic {data-lang=kotlin}
-browserControl.evaluate(
-    "document.querySelector('video')?.play()",
-    userGesture = true,
-    timeoutMillis = 15_000
-).whenComplete { result, error ->
-    if (error != null) println("page rejected playback: ${error.message}")
-    else println("Chromium returned ${result.value}")
-}
+browserControl
+    .evaluate(
+        "document.querySelector('video')?.play()",
+        userGesture = true,
+        timeoutMillis = 15_000,
+    )
+    .whenComplete { result, error ->
+        if (error != null) println("page rejected playback: ${error.message}")
+        else println("Chromium returned ${result.value}")
+    }
 
-browserControl.evaluate(
-    "window.applicationState",
-    world = BrowserJavascriptWorld.ISOLATED,
-    returnMode = BrowserJavascriptReturnMode.HANDLE
-).thenAccept { remote ->
-    println("remote object: ${remote.objectId}")
-    remote.objectId?.let(browserControl::releaseJavascriptObject)
-}
+browserControl
+    .evaluate(
+        "window.applicationState",
+        world = BrowserJavascriptWorld.ISOLATED,
+        returnMode = BrowserJavascriptReturnMode.HANDLE,
+    )
+    .thenAccept { remote ->
+        println("remote object: ${remote.objectId}")
+        remote.objectId?.let(browserControl::releaseJavascriptObject)
+    }
 ```
 
 `userGesture = true` matters for the same things it matters for in an ordinary browser: media
@@ -114,18 +117,19 @@ A docked DevTools window is not required to get at the useful machinery undernea
 available directly:
 
 ```diffstatic {data-lang=kotlin}
-browserControl.addEventListener { event ->
-    if (event.name == "console" || event.name == "javascript-exception")
-        println("${event.name}: ${event.payload}")
+browserControl.addEventListener("console diagnostics") { event ->
+    if (event.name == "console" || event.name == "javascript-exception") println("${event.name}: ${event.payload}")
 }
 
 browserControl.cdp("Network.enable")
 browserControl.cdp("Performance.enable")
-browserControl.cdp("Performance.getMetrics")
-    .thenAccept { println(it) }
+browserControl.cdp("Performance.getMetrics").thenAccept { println(it) }
 
 browserControl.forwardCdpEvents(true)
 ```
+
+The named listener replaces its predecessor on this browser; Stop or rerun of the registering
+box removes it.
 
 The normal event stream already includes state changes, navigation, load failures, page titles,
 console messages, cursor changes, context menus, audio state, pop-up attempts, permission requests,
@@ -141,12 +145,14 @@ The preload exposes only two JSON-cloning operations—`window.fieldPuppet.emit`
 request names it will accept:
 
 ```diffstatic {data-lang=kotlin}
-val removeBridge = browserControl.onPageRequest("selected-point") { payload ->
-    println("page selected $payload")
-    CompletableFuture.completedFuture(
-        buildJsonObject { put("accepted", true) }
-    )
-}
+val removeBridge =
+    browserControl.onPageRequest("selected-point") { payload ->
+        println("page selected $payload")
+        CompletableFuture.completedFuture(
+            buildJsonObject { put("accepted", true) },
+        )
+    }
+requireNotNull(RunScope.current()).own { removeBridge() }
 ```
 
 ```diffstatic {data-lang=javascript}
@@ -164,7 +170,7 @@ keyboard and CDP paths remain available for every other site.
 Everything in the table above is about the *tab*, not about its pixels, and none of it needs a
 Vulkan image view, a window or a GPU.
 `PuppetBrowserControl`, in the same file, is the control plane on its own, and
-`HeadlessPuppetBrowser` (`src/jvmMain/kotlin/afield/four/browser/HeadlessPuppetBrowser.kt`)
+`HeadlessPuppetBrowser` (`src/jvmMain/kotlin/afield/media/browser/HeadlessPuppetBrowser.kt`)
 implements it with no renderer, no Vulkan surface, no native handle bridge and no readback socket.
 The Electron producer has a third frame mode in which the paints are dropped at the source.
 
@@ -198,14 +204,14 @@ equally on a headless browser and on a `FieldUiBrowserTexture` already in your s
 ```diffstatic {data-lang=kotlin}
 val readings = browser.table("#readings").get(10, TimeUnit.SECONDS)
 
-readings.header                       // [station, depth, count]
-readings.column("station")            // [alpha, beta, gamma]
-readings.numbers("depth")             // [12.0, 48.0, 93.0]
+readings.header // [station, depth, count]
+readings.column("station") // [alpha, beta, gamma]
+readings.numbers("depth") // [12.0, 48.0, 93.0]
 
-browser.text("h1")                    // the first heading, or null
-browser.texts("p.note")               // every match, in document order
-browser.attribute("#link", "href")    // the markup's value, not the resolved URL
-browser.count("#readings tbody tr")   // 3
+browser.text("h1") // the first heading, or null
+browser.texts("p.note") // every match, in document order
+browser.attribute("#link", "href") // the markup's value, not the resolved URL
+browser.count("#readings tbody tr") // 3
 browser.waitFor("document.readyState === 'complete'")
 ```
 
@@ -220,7 +226,7 @@ wants: labels down one and values down another.
 
 ## How desktop events land on the page
 
-`PuppetBrowserWindowInput` (`src/jvmMain/kotlin/afield/four/browser/PuppetBrowserInteraction.kt`)
+`PuppetBrowserWindowInput` (`src/jvmMain/kotlin/afield/media/browser/PuppetBrowserInteraction.kt`)
 turns Field window events into Chromium input:
 
 1. the panel's aspect-correct viewport hit-tests the native cursor;
@@ -247,7 +253,7 @@ val panel = PuppetBrowserVrPanel(
     stereo = stereo,
     browser = browser,
     widthMeters = 1.6f,
-    distanceMeters = 1.7f
+    distanceMeters = 1.7f,
 )
 panel.build()
 panel.enableDesktopInteraction()
@@ -282,7 +288,7 @@ val browser = FieldUiBrowserTexture(
     width = 1280,
     height = 720,
     // Linux: Chromium's shared-texture export never fills the buffer (electron#53271).
-    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired
+    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired,
 )
 ```
 
@@ -301,7 +307,7 @@ val shards = PuppetBrowserKaleidoscope(
     renderer = renderer,
     browser = browser,
     columns = 14,
-    rows = 8
+    rows = 8,
 )
 shards.motion = 1.0f
 shards.facets = 5.0f

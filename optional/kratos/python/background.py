@@ -119,7 +119,7 @@ class SuppliedMesh:
     It has no `classify`: there is no level set, and a formulation that asks for one is confused
     about which half of the bridge it is in.
 
-    Cells are 4 or 10 nodes wide. The 10-node case comes from `afield.tetgen.TetMesh.quadratic` on
+    Cells are 4 or 10 nodes wide. The 10-node case comes from `afield.geometry.mesh.tetgen.TetMesh.quadratic` on
     the JVM side, already in Kratos's `Tetrahedra3D10` node order -- corners first, then the
     midpoints of edges (0,1), (1,2), (0,2), (0,3), (1,3), (2,3). Nothing here re-derives that order;
     the check below is only that the extra nodes really are those midpoints, which is cheap and

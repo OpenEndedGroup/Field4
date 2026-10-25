@@ -1,19 +1,19 @@
 package afield.examples.graphics
 
-import afield.graphics.FLine
-import afield.graphics.buildInteractiveSVG
-import afield.stdlib.Vec3
-import afield.stdlib.color
-import afield.stdlib.filled
-import afield.stdlib.fline
-import afield.stdlib.hoverColor
-import afield.stdlib.label
-import afield.stdlib.lineTo
-import afield.stdlib.moveTo
-import afield.stdlib.onClick
-import afield.stdlib.stroked
-import afield.stdlib.thickness
-import afield.stdlib.vec
+import afield.geometry.path.FLine
+import afield.ui.visualization.buildInteractiveSVG
+import afield.math.linalg.Vec3
+import afield.graphics.render.color
+import afield.graphics.render.filled
+import afield.graphics.render.fline
+import afield.graphics.render.hoverColor
+import afield.graphics.render.label
+import afield.graphics.render.lineTo
+import afield.graphics.render.moveTo
+import afield.graphics.render.onClick
+import afield.graphics.render.stroked
+import afield.graphics.render.thickness
+import afield.math.linalg.vec
 import java.io.File
 
 /*
@@ -104,7 +104,7 @@ object FLineHitInspectorFigure {
     }
 
     /** The interactive SVG for [panelWall], with a click callback on every line. */
-    fun svg(onHit: (afield.stdlib.FLineIntersection) -> Unit = {}): String {
+    fun svg(onHit: (afield.graphics.render.FLineIntersection) -> Unit = {}): String {
         val lines = panelWall()
         lines.forEach { it.onClick = onHit }
         return buildInteractiveSVG(lines.map { it to it }, WIDTH, HEIGHT, null)

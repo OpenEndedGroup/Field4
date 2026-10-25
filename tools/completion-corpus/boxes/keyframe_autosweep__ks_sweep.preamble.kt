@@ -1,12 +1,11 @@
-import afield.four.Renderer
-import afield.four.util.Window
-import afield.stdlib.KeyframeScope
-import afield.four.fabricated.StandardRenderer
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.graphics.scene.fabricated.StandardRenderer
 var Box.bundle by Inheritance<StandardRenderer.Bundle>() /*from:ks_rig*/ /**/
 val Once.bundle by Onceing<StandardRenderer.Bundle>() /*from:ks_rig*/ /**/
 val Why.bundle by Whying() /*from:ks_rig*/ /**/
-var Box.keys by Inheritance<afield.stdlib.KeyframeScope>() /*from:ks_rig*/ /**/
-val Once.keys by Onceing<afield.stdlib.KeyframeScope>() /*from:ks_rig*/ /**/
+var Box.keys by Inheritance<afield.animation.keyframes.KeyframeScope>() /*from:ks_rig*/ /**/
+val Once.keys by Onceing<afield.animation.keyframes.KeyframeScope>() /*from:ks_rig*/ /**/
 val Why.keys by Whying() /*from:ks_rig*/ /**/
 var Box.window by Inheritance<Window>() /*from:ks_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:ks_renderer*/ /**/

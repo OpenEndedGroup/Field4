@@ -53,9 +53,9 @@ def drive_script(scratch: Path) -> str:
             "ui.pause(4000)",
             f'val scratch = java.io.File("{path}")',
             "scratch.delete()",
-            "afield.UserKeybindingsManager.watchFile(scratch)",
+            "afield.app.settings.UserKeybindingsManager.watchFile(scratch)",
             "ui.pause(500)",
-            "afield.UserKeybindingsManager.watchFile(null)",
+            "afield.app.settings.UserKeybindingsManager.watchFile(null)",
             'println("keybindings-table: wrote " + scratch.length() + " bytes")',
         ]
     )
@@ -183,9 +183,12 @@ def render_table(rows: list[dict[str, str]]) -> str:
     out: list[str] = []
     bound = sum(1 for r in rows if format_specs(r["value"]) != "*(none)*")
     out.append(
-        f"**{len(rows)} rebindable commands**, {bound} of them with a shortcut out of the box. "
-        f"Regenerate this table against a running Field with `tools/keybindings_defaults_table.py`."
+        f"**{len(rows)} rebindable commands**, {bound} of them with a shortcut out of the box."
     )
+    out.append("")
+    out.append('??? aside "Agents: regenerating this table"')
+    out.append("")
+    out.append("    Regenerate this table against a running Field with `tools/keybindings_defaults_table.py`.")
     out.append("")
     for group in order + [g for g in sorted(by_group) if g not in order]:
         group_rows = by_group.get(group)

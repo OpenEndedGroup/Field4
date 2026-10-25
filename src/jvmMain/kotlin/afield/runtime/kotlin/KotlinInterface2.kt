@@ -1,0 +1,3638 @@
+package afield.runtime.kotlin
+
+import afield.animation.keyframes.Handles
+import afield.app.diagnostics.named
+import afield.app.protocol.Completion
+import afield.app.protocol.Message
+import afield.app.server.app
+import afield.app.server.sessions
+import afield.data.table.div
+import afield.data.table.minus
+import afield.data.table.plus
+import afield.data.table.ref
+import afield.data.table.rem
+import afield.data.table.times
+import afield.document.graph.attic
+import afield.document.graph.makeKI
+import afield.document.workspace.Entry
+import afield.runtime.completion.CompletionAaE2EProbe
+import afield.runtime.execution.plus
+import afield.runtime.lifecycle.Framer
+import afield.runtime.lifecycle.forever
+import afield.runtime.lifecycle.plugins
+import afield.runtime.lifecycle.plus
+import afield.runtime.lifecycle.rem
+import afield.runtime.lifecycle.then
+import afield.ui.notation.Mark
+import afield.ui.notation.string
+import afield.ui.output.history
+import afield.ui.output.logs
+import afield.ui.output.tree
+import afield.ui.visualization.typed
+
+import afield.app.diagnostics.CodeUseTelemetryService
+import afield.app.diagnostics.LatencySpans
+import afield.app.diagnostics.ProfileExempt
+import afield.app.notifications.notify
+import afield.app.protocol.put
+import afield.app.settings.PersonalLayer
+import afield.app.settings.needsRerun
+import afield.audio.synth.*
+import afield.data.table.get
+import afield.document.graph.Box
+import afield.document.graph.HasProperties
+import afield.document.graph.box
+import afield.document.graph.doResync
+import afield.document.graph.intro
+import afield.document.graph.introImports
+import afield.document.graph.metaroot
+import afield.document.graph.preamble
+import afield.graphics.vulkan.*
+import afield.media.stream.*
+import afield.media.video.*
+import afield.runtime.completion.AaCompletionClient
+import afield.runtime.lifecycle.Runloop
+import afield.runtime.lifecycle.map
+import afield.ui.output.templates.filter
+import afield.ui.output.update
+import afield.runtime.completion.KotlinSourceIndex
+import afield.app.diagnostics.logging.formatMillis
+import afield.app.diagnostics.logging.lblock
+import afield.app.diagnostics.logging.lprintln
+import afield.runtime.macros.ContainingFunction
+import afield.runtime.macros.Insert
+import afield.runtime.macros.MacroRegistry
+import afield.runtime.macros.PatternRewrite
+import afield.runtime.macros.gatherPreambleUpwards
+import afield.runtime.macros.searchUpwards
+import afield.runtime.macros.resolvePatternRewriteAi
+import afield.graphics.shader.applyInsertToPreamble
+import afield.graphics.shader.normalizePreambleText
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import org.jetbrains.kotlin.backend.common.pop
+import org.jetbrains.kotlin.cli.common.CompilerSystemProperties
+import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
+import org.jetbrains.kotlin.com.intellij.lang.Language
+import org.jetbrains.kotlin.com.intellij.openapi.Disposable
+import org.jetbrains.kotlin.com.intellij.openapi.util.Disposer
+import org.jetbrains.kotlin.com.intellij.psi.PsiElement
+import org.jetbrains.kotlin.com.intellij.psi.PsiFileFactory
+import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.endOffset
+import org.jetbrains.kotlin.psi.psiUtil.forEachDescendantOfType
+import org.jetbrains.kotlin.psi.psiUtil.startOffset
+import org.jetbrains.kotlin.scripting.compiler.plugin.impl.K2ReplCompiler
+import org.jetbrains.kotlin.scripting.compiler.plugin.impl.K2ReplEvaluator
+import org.jetbrains.kotlin.scripting.compiler.plugin.impl.ScriptDiagnosticsMessageCollector
+import org.jetbrains.kotlin.scripting.compiler.plugin.services.FirReplHistoryProviderImpl
+import org.jetbrains.kotlin.scripting.compiler.plugin.services.firReplHistoryProvider
+import org.jetbrains.kotlin.scripting.compiler.plugin.services.isReplSnippetSource
+import java.io.PrintWriter
+import java.io.StringWriter
+import java.lang.reflect.Field
+import java.lang.reflect.Modifier
+import java.lang.reflect.Proxy
+import java.net.URL
+import java.net.URLClassLoader
+import java.util.Collections
+import java.util.IdentityHashMap
+import java.util.WeakHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.reflect.*
+import kotlin.reflect.full.companionObject
+import kotlin.reflect.full.declaredFunctions
+import kotlin.reflect.full.memberProperties
+import kotlin.reflect.full.primaryConstructor
+import kotlin.reflect.jvm.isAccessible
+import kotlin.reflect.jvm.kotlinFunction
+import kotlin.reflect.jvm.kotlinProperty
+import kotlin.script.experimental.api.*
+import kotlin.script.experimental.dependencies.*
+import kotlin.script.experimental.dependencies.maven.MavenDependenciesResolver
+import kotlin.script.experimental.host.with
+import kotlin.script.experimental.impl._languageVersion
+import kotlin.script.experimental.jvm.*
+import kotlin.script.experimental.jvm.util.determineSep
+import kotlin.script.experimental.jvm.util.toSourceCodePosition
+import kotlin.script.experimental.util.LinkedSnippet
+import kotlin.system.measureNanoTime
+
+
+/**
+ * The K2 implementation of [KotlinScriptEngine]: the engine that compiles and runs a box's Kotlin.
+ *
+ * Each box gets its own [KotlinInterface2], with its own REPL history and snippet classloader. It
+ * compiles snippets with the K2 compiler, evaluates them, tracks the variables and functions they
+ * declare, and answers completion requests in the editor. Redeclaring a plain `var` resets older
+ * mutable bindings of the same name and Kotlin type after evaluation; captured `val`s stay fixed.
+ */
+
+class KotlinInterface2(
+    val propertyClasses: Map<String, KClass<*>> = emptyMap(),
+    val properties: Map<String, Any?> = emptyMap(),
+    override val implicitReceivers: List<KotlinType> = emptyList(),
+    override var classLoader: ClassLoader? = null,
+    val filePrefix: String = "EVAL_"
+) : KotlinScriptEngine {
+
+    override val compilationDispatcher get() = Dispatchers.Default
+    override var sourceProperty: String = "code"
+
+    internal inner class SourceCodeImpl(number: Int, override val text: String) : SourceCode {
+        override val name: String? = fieldSourceName(filePrefix, sourceProperty, number)
+        override val locationId: String? = "LOCATION_$number"
+
+        override fun equals(other: Any?): Boolean {
+            // `this === other`, not `==`: `==` is a call to this same equals, and the self-call
+            // recursed until the stack ran out. Latent until a compiler that compares SourceCode
+            // instances came along (2.4.20 does), and then EVERY compile died in here.
+            return this === other || (other as? SourceCodeImpl)?.let { text == it.text } == true
+        }
+
+        override fun hashCode(): Int {
+            return text.hashCode()
+        }
+    }
+
+    var evaluator: K2ReplEvaluator
+    var compiler: K2ReplCompiler
+    override var compilerConfig: ScriptCompilationConfiguration
+    val contextUpdater: ContextUpdater
+    override val context: KotlinContext
+
+    // Reference to the box this KotlinInterface is associated with (for @exported support)
+    override var associatedBox: Any? = null
+
+    // Disposable for the K2 REPL compilation state
+    private val rootDisposable: Disposable = Disposer.newDisposable("K2ReplCompilationState")
+
+    // Message collector for the K2 REPL compiler
+    private val messageCollector = ScriptDiagnosticsMessageCollector(null)
+
+    // The K2 compilation state (holds FIR sessions, project environment, etc.)
+    private val compilationState: org.jetbrains.kotlin.scripting.compiler.plugin.impl.K2ReplCompilationState
+
+    // PSI project reused from the K2 compiler's environment (compilerContext is internal, so accessed via reflection)
+    private val psiProject by lazy {
+        val field = compilationState::class.java.getDeclaredField("compilerContext")
+        field.isAccessible = true
+        val ctx = field.get(compilationState)
+        val envField = ctx::class.java.getDeclaredField("environment")
+        envField.isAccessible = true
+        val env = envField.get(ctx) as KotlinCoreEnvironment
+        env.project
+    }
+
+    // K2 can compile different REPL states concurrently, but a single
+    // K2ReplCompilationState is not safe to enter from overlapping snippets.
+    private val compileMutex = Mutex()
+
+    // Readiness gate: open once the stdlib intro has evaluated. Every ordinary
+    // [exec]/[evaluate] awaits this first, so no snippet evaluates before the intro that
+    // defines the K2 REPL `ReplState` — the launch setup's inherited preamble, box code,
+    // the execute path, connect-triggered re-execs, etc. all funnel through here regardless
+    // of which thread or caller drives them.
+    //
+    // It starts *open*: an engine created and driven directly (tests, ad-hoc snippets) has no
+    // async bootstrap and must not block. [makeKI] calls [armBootstrapGate] to make it pending
+    // before scheduling the async intro; [bootstrap] and [releaseBootstrapGate] open it again.
+    //
+    // Awaiting is deadlock-free: the bootstrap itself uses the *Internal variants to bypass
+    // the gate, and eval-time re-entry into the engine (sourceBlock / function-rewrite / ai
+    // macro compile, or a re-entrant exec) happens after the gate is open, so await returns
+    // immediately.
+    @Volatile
+    private var bootstrapReady: CompletableDeferred<Unit> = CompletableDeferred<Unit>().apply { complete(Unit) }
+
+    private val codeUseSnippetIds = Collections.synchronizedMap(WeakHashMap<Any, String>())
+
+    private val resolver = CompoundDependenciesResolver(FileSystemDependenciesResolver(), MavenDependenciesResolver())
+
+    init {
+        assert(properties.size == propertyClasses.size)
+        assert(properties.keys.containsAll(propertyClasses.keys))
+        if (classLoader == null) classLoader = Thread.currentThread().contextClassLoader
+
+        if (sharedClassLoader == null) {
+            // Parent through [PersonalLayer] so src/personal is visible to box code even though it
+            // isn't on the app -cp. Both sides come along for free: execution by ordinary parent
+            // delegation, and compilation because dependenciesFromClassloader(wholeClasspath) below
+            // walks this chain and picks up the layer's URLs. A no-op when there is no personal code.
+            sharedClassLoader = URLClassLoader(arrayOf(), PersonalLayer.wrap(classLoader!!))
+        }
+
+        classLoader = sharedClassLoader
+        MavenClasspathManager.attachResolvedTo(classLoader)
+
+        val myHostConfiguration = defaultJvmScriptingHostConfiguration.with {
+            jvm {
+                baseClassLoader(classLoader!!)
+            }
+            repl {
+                firReplHistoryProvider(FirReplHistoryProviderImpl())
+                isReplSnippetSource { _, _ -> true }
+            }
+        }
+
+        // EXPERIMENT: locate the Wither compiler-plugin jar on the classpath so we can hand it
+        // to the REPL compiler via -Xplugin. Loading it registers Wither's FIR receiver-injection
+        // + IR extensions into the CompilerConfiguration at createCompilationState time — the same
+        // config that both the compile path and resolveTypesViaFir read registrars back out of.
+        compilerConfig = ScriptCompilationConfiguration {
+            defaultImports(DependsOn::class, Repository::class, exported::class, rootExported::class, metarootExported::class)
+            hostConfiguration.update {
+                myHostConfiguration
+            }
+            this@KotlinInterface2.implicitReceivers.forEach { implicitReceivers.append(it) }
+
+            jvm {
+                jvmTarget.put("24")
+                _languageVersion.put(fieldKotlinLanguageVersion)
+                // Every independent K2 compilation state needs the plugin argument, but locating
+                // the process-wide jar (and announcing it) only needs to happen once per JVM.
+                compilerOptions.put(fieldKotlinJvmCompilerOptions + compilerPluginArgs)
+
+                dependenciesFromClassloader(
+                    classLoader = classLoader!!, wholeClasspath = true, unpackJarCollections = true
+                )
+                providedProperties(*propertyClasses.map { it.key to it.value }.toTypedArray())
+            }
+
+            refineConfiguration {
+                onAnnotations(DependsOn::class, Repository::class, handler = ::configureMavenDepsOnAnnotations)
+            }
+        }
+
+        // Create K2 REPL compilation state
+        compilationState = K2ReplCompiler.createCompilationState(
+            messageCollector,
+            rootDisposable,
+            compilerConfig,
+            myHostConfiguration
+        )
+
+        compiler = K2ReplCompiler(compilationState)
+        evaluator = K2ReplEvaluator()
+
+        context = KotlinContext()
+        contextUpdater = ContextUpdater(context, evaluator, this)
+    }
+
+    fun configureMavenDepsOnAnnotations(context: ScriptConfigurationRefinementContext): ResultWithDiagnostics<ScriptCompilationConfiguration> {
+        notify("configuring dependencies in script", "execution")
+        val annotations =
+            context.collectedData?.get(ScriptCollectedData.collectedAnnotations)?.takeIf { it.isNotEmpty() }
+                ?: return context.compilationConfiguration.asSuccess()
+        return runBlocking {
+            notify("running resolver for dependencies", "execution")
+            resolver.resolveFromScriptSourceAnnotations(annotations)
+        }.onSuccess {
+            notify("finished running resolver", "execution")
+            context.compilationConfiguration.with {
+                try {
+                    it.forEach {
+                        val target = (classLoader!! as URLClassLoader)
+                        lprintln("warning,kotlin", "sketchy url classloader front running ${it}")
+                        val m = URLClassLoader::class.java.getDeclaredMethod("addURL", URL::class.java)
+                        m.isAccessible = true
+                        m.invoke(target, it.toURI().toURL())
+                    }
+                } catch (e: Throwable) {
+                    lprintln("error,kotlin", "sketchy url classloader front running threw")
+                    e.printStackTrace()
+                }
+
+                jvm {
+                    dependenciesFromClassloader(
+                        classLoader = classLoader!!, wholeClasspath = true, unpackJarCollections = true
+                    )
+                }
+            }.asSuccess()
+        }
+    }
+
+    var id = 0
+
+    /** Compile once, re-evaluate on rerun; see [RerunCompileCache] for what it refuses and why. */
+    internal val rerunCache = RerunCompileCache()
+
+    /** Snippets this engine has really compiled — each one grows the compiler's REPL history. */
+    @Volatile
+    var compileCount = 0
+        private set
+
+    /** Total wall time of those compiles, in nanoseconds. */
+    @Volatile
+    var compileNanos = 0L
+        private set
+
+    /** Reruns served by [rerunCache] instead of a compile. */
+    val rerunCacheHits: Int get() = rerunCache.hits
+
+    /**
+     * [compile], except that an exact rerun of a source this engine already compiled — same
+     * expanded text, source property and implicit receivers, nothing it binds to redeclared since —
+     * returns the snippet it already has. Only [execInternal] uses this: [compile] itself, and
+     * [compileSnippet]'s prepared snippets, always compile.
+     */
+    private suspend fun compileOrReuse(s: String, implicits: List<Any>): ResultWithDiagnostics<LinkedSnippet<CompiledScript>> {
+        if (!KotlinEngineConfig.rerunCompileCache || !rerunCache.cacheable(s)) return compile(s)
+        val key = sourceProperty + "\u0000" + implicits.joinToString(",") { it.javaClass.name } + "\u0000" + s
+        return compileMutex.withLock {
+            usingCompilationState(onDisposed = { compileAfterDisposal(s) }) {
+                var reuse = rerunCache.lookup(key)
+                if (reuse != null && evaluator.lastEvaluatedSnippet?.get()?.compiledSnippet === reuse.snippet.get()) {
+                    // Measured: re-evaluating the snippet evaluated last reuses its loaded class, and the body does not run.
+                    rerunCache.refuse(key, "it is the snippet evaluated last")
+                    reuse = null
+                }
+                if (reuse != null) {
+                    val hitAt = System.nanoTime()
+                    LatencySpans.record("kotlin.compile.cacheHit", hitAt, hitAt, box = (associatedBox as? Box)?.id, detail = sourceProperty)
+                    lprintln(
+                        "info,kotlin,perf",
+                        "\t\t compile cache hit engine=KotlinInterface2 filePrefix=$filePrefix property=$sourceProperty hits=${rerunCache.hits} misses=${rerunCache.misses} compiles=$compileCount preview=${compileSnippetPreview(s)}"
+                    )
+                    ResultWithDiagnostics.Success(reuse.snippet)
+                } else {
+                    lprintln(
+                        "info,kotlin,perf",
+                        "\t\t compile cache miss reason=${rerunCache.lastMissReason} filePrefix=$filePrefix property=$sourceProperty"
+                    )
+                    compileLocked(s, cacheKey = key)
+                }
+            }
+        }
+    }
+
+    private fun compileSnippetKind(s: String): String {
+        return when {
+            s == intro -> "field-startup-imports"
+            s.isBlank() -> "blank"
+            s.trimStart().startsWith("import ") -> "imports-or-preamble"
+            else -> "user-code"
+        }
+    }
+
+    private fun compileSnippetPreview(s: String, maxLength: Int = 120): String {
+        val compact = s.lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .take(3)
+            .joinToString(" | ")
+        return if (compact.length <= maxLength) compact else compact.take(maxLength) + "..."
+    }
+
+    private fun resolveBoxContext(implicits: List<Any> = emptyList()): Box? {
+        val fromImplicits = implicits.firstOrNull { it is Box } as? Box
+        if (fromImplicits != null) return fromImplicits
+        val fromAssociated = associatedBox as? Box
+        if (fromAssociated != null) return fromAssociated
+        return Box.context.get()
+    }
+
+    private fun Throwable.causeChain(): List<Throwable> {
+        val out = mutableListOf<Throwable>()
+        val seen = Collections.newSetFromMap(IdentityHashMap<Throwable, Boolean>())
+        var current: Throwable? = this
+        while (current != null && seen.add(current)) {
+            out += current
+            current = current.cause
+        }
+        return out
+    }
+
+    private fun firstMessageLine(throwable: Throwable): String {
+        return throwable.message
+            ?.lineSequence()
+            ?.firstOrNull { it.isNotBlank() }
+            ?.trim()
+            ?: throwable::class.qualifiedName
+            ?: throwable.javaClass.name
+    }
+
+    private fun compilerExceptionDiagnostic(throwable: Throwable): ScriptDiagnostic {
+        val chain = throwable.causeChain()
+        val root = chain.lastOrNull() ?: throwable
+        val hasImplicitReceiverFailure = chain.any {
+            it.message?.contains("SCRIPT_IMPLICIT_RECEIVER") == true ||
+                    it.message?.contains("\$script_receiver_") == true
+        }
+
+        val message = buildString {
+            append("Kotlin compiler exception: ")
+            append(throwable::class.qualifiedName ?: throwable.javaClass.name)
+            append(": ")
+            append(firstMessageLine(throwable))
+
+            if (root !== throwable) {
+                append("\nCaused by: ")
+                append(root::class.qualifiedName ?: root.javaClass.name)
+                append(": ")
+                append(firstMessageLine(root))
+            }
+
+            if (hasImplicitReceiverFailure) {
+                append("\n\nK2 could not codegen a named function that captures the script's implicit Box receiver. ")
+                append("Make that receiver explicit, for example `fun Box.show() { ... }`, ")
+                append("or pass the Box explicitly.")
+            }
+        }
+
+        return ScriptDiagnostic(
+            ScriptDiagnostic.unspecifiedException,
+            message,
+            ScriptDiagnostic.Severity.ERROR,
+            null,
+            null,
+            throwable
+        )
+    }
+
+    suspend fun compile(s: String): ResultWithDiagnostics<LinkedSnippet<CompiledScript>> {
+        return compileMutex.withLock {
+            usingCompilationState(onDisposed = { compileAfterDisposal(s) }) { compileLocked(s) }
+        }
+    }
+
+    // Caller holds [compileMutex] and a [usingCompilationState] lease.
+    private suspend fun compileLocked(s: String, cacheKey: String? = null): ResultWithDiagnostics<LinkedSnippet<CompiledScript>> {
+        compileCount++
+        val code = SourceCodeImpl(id++, s)
+        val snippetId = CodeUseTelemetryService.newSnippetKey()
+        val snippetKind = compileSnippetKind(s)
+        val telemetryContext = CodeUseTelemetryService.captureBoxContext(
+            associatedBox as? Box,
+            property = sourceProperty,
+            mode = "compile:$snippetKind"
+        )
+        val snapshot = context.debugScripts.recordCompile(code.name ?: "snippet_${id - 1}", s)
+
+        lprintln(
+            "info,kotlin,perf",
+            "\t\t compile request engine=KotlinInterface2 filePrefix=$filePrefix source=${code.name} kind=${
+                snippetKind
+            } length=${s.length} preview=${compileSnippetPreview(s)}"
+        )
+        lprintln("info,kotlin,perf", "\t\t compile code $s")
+
+        // Clear diagnostics from previous snippet. The collector is shared by this K2 REPL state.
+        messageCollector.clear()
+
+        var r: ResultWithDiagnostics<LinkedSnippet<CompiledScript>>? = null
+        val compileStart = System.nanoTime()
+        val ns = measureNanoTime {
+            try {
+                if (KotlinEngineConfig.offloadCompilation) {
+                    // Offload the expensive compiler work, but keep this REPL state single-entered.
+                    r = withContext(compilationDispatcher) {
+                        compiler.compile(code, compilerConfig)
+                    }
+                } else {
+                    r = compiler.compile(code, compilerConfig)
+                }
+            } catch (t: Throwable) {
+                context.debugScripts.discard(snapshot)
+                lprintln("error,kotlin", "compiler exception while compiling snippet")
+                lprintln("error,kotlin", t.stackTraceToString())
+                r = ResultWithDiagnostics.Failure(compilerExceptionDiagnostic(t))
+            }
+        }
+        compileNanos += ns
+        LatencySpans.record("kotlin.compile", compileStart, compileStart + ns, box = (associatedBox as? Box)?.id, detail = "$snippetKind length=${s.length}")
+        lprintln("info,kotlin,compile", "compile=${formatMillis(ns)}")
+        if (r is ResultWithDiagnostics.Failure) {
+            context.debugScripts.discard(snapshot)
+        }
+        val result = r!!
+        if (result is ResultWithDiagnostics.Success) {
+            codeUseSnippetIds[result.value] = snippetId
+            // Every successful compile is registered, cached or not: its declarations may shadow a cached entry's.
+            try {
+                rerunCache.recordCompile(cacheKey, s, result.value)
+            } catch (t: Throwable) {
+                lprintln("warning,kotlin", "rerun compile cache could not index snippet: $t")
+            }
+        }
+        CodeUseTelemetryService.recordCompileResult(
+            snippetId = snippetId,
+            source = s,
+            sourceName = code.name ?: "",
+            context = telemetryContext,
+            success = result is ResultWithDiagnostics.Success,
+            diagnostics = result.reports.map { "${it.severity}: ${it.message} ${it.location ?: ""}".trim() },
+            elapsedMs = ns / 1_000_000.0
+        )
+
+        return result
+    }
+
+
+    suspend fun evaluate(
+        e: LinkedSnippet<out CompiledScript>, updateContext: Boolean = false
+    ): ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>> {
+        return Box.withBoxContext(resolveBoxContext()) {
+            var r: ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>>
+            var runtimeClass = ""
+            var returnType = ""
+            var exception: Throwable? = null
+            val evalStart = System.nanoTime()
+            val ns = measureNanoTime {
+
+                val evalConfig = ScriptEvaluationConfiguration {
+                    jvm {
+                        baseClassLoader(classLoader!!)
+                    }
+                }
+
+                r = evaluator.eval(e, evalConfig)
+                if (r is ResultWithDiagnostics.Success) {
+                    val evalResult = r.value.get().result
+                    val scriptInstance = evalResult.scriptInstance
+                    returnType = runtimeReturnType(evalResult)
+                    if (evalResult is ResultValue.Error) exception = evalResult.error
+                    runtimeClass = scriptInstance?.javaClass?.name ?: evalResult.javaClass.name
+                    context.debugScripts.attachLatestRuntimeClass(scriptInstance?.javaClass?.name)
+                }
+                if (updateContext) contextUpdater.update(
+                    when (val evaluated = r) {
+                        is ResultWithDiagnostics.Success -> evaluated.value.get().result
+                        else -> null
+                    }
+                )
+            }
+            lprintln("info,kotlin,evaluate", "evaluate=${formatMillis(ns)}")
+            LatencySpans.record("kotlin.eval", evalStart, evalStart + ns, box = (associatedBox as? Box)?.id)
+            val success = r is ResultWithDiagnostics.Success && r.value.get().result !is ResultValue.Error
+            CodeUseTelemetryService.recordEvaluationResult(
+                snippetId = codeUseSnippetIds[e] ?: CodeUseTelemetryService.newSnippetKey(),
+                context = CodeUseTelemetryService.captureBoxContext(associatedBox as? Box, property = sourceProperty, mode = "evaluate"),
+                success = success,
+                runtimeClass = runtimeClass,
+                returnType = returnType,
+                exception = exception,
+                diagnostics = r.reports.map { "${it.severity}: ${it.message} ${it.location ?: ""}".trim() },
+                elapsedMs = ns / 1_000_000.0
+            )
+            r
+        }
+    }
+
+    suspend fun evaluate(
+        e: LinkedSnippet<out CompiledScript>, updateContext: Boolean = true, implicits: List<Any>
+    ): ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>> {
+        // Never evaluate before the stdlib intro has (see [bootstrapReady]).
+        bootstrapReady.await()
+        return evaluateInternal(e, updateContext, implicits)
+    }
+
+    // Caller is responsible for the bootstrap gate. Used directly by [bootstrap] (to run the
+    // intro without waiting on itself) and by [execInternal] (which has already gated in [exec]).
+    private suspend fun evaluateInternal(
+        e: LinkedSnippet<out CompiledScript>, updateContext: Boolean, implicits: List<Any>
+    ): ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>> {
+        return Box.withBoxContext(resolveBoxContext(implicits)) {
+            var r: ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>>
+            var runtimeClass = ""
+            var returnType = ""
+            var exception: Throwable? = null
+            val evalStart = System.nanoTime()
+            val ns = measureNanoTime {
+
+                val evalConfig = ScriptEvaluationConfiguration {
+                    implicits.forEach { implicitReceivers.append(it) }
+                    jvm {
+                        baseClassLoader(classLoader!!)
+                    }
+                }
+
+                r = evaluator.eval(e, evalConfig)
+                if (r is ResultWithDiagnostics.Success) {
+                    val evalResult = r.value.get().result
+                    val scriptInstance = evalResult.scriptInstance
+                    returnType = runtimeReturnType(evalResult)
+                    if (evalResult is ResultValue.Error) exception = evalResult.error
+                    runtimeClass = scriptInstance?.javaClass?.name ?: evalResult.javaClass.name
+                    context.debugScripts.attachLatestRuntimeClass(scriptInstance?.javaClass?.name)
+                }
+                if (updateContext) contextUpdater.update(
+                    when (val evaluated = r) {
+                        is ResultWithDiagnostics.Success -> evaluated.value.get().result
+                        else -> null
+                    }
+                )
+            }
+            lprintln("info,kotlin,evaluate", "evaluate=${formatMillis(ns)}")
+            LatencySpans.record("kotlin.eval", evalStart, evalStart + ns, box = (associatedBox as? Box)?.id)
+            val boxContext = (implicits.firstOrNull { it is Box } as? Box) ?: associatedBox as? Box
+            val success = r is ResultWithDiagnostics.Success && r.value.get().result !is ResultValue.Error
+            CodeUseTelemetryService.recordEvaluationResult(
+                snippetId = codeUseSnippetIds[e] ?: CodeUseTelemetryService.newSnippetKey(),
+                context = CodeUseTelemetryService.captureBoxContext(boxContext, property = sourceProperty, mode = "evaluate"),
+                success = success,
+                runtimeClass = runtimeClass,
+                returnType = returnType,
+                exception = exception,
+                diagnostics = r.reports.map { "${it.severity}: ${it.message} ${it.location ?: ""}".trim() },
+                elapsedMs = ns / 1_000_000.0
+            )
+            r
+        }
+    }
+
+    private fun runtimeReturnType(value: ResultValue?): String =
+        when (value) {
+            is ResultValue.Value -> value.type.ifBlank { value.value?.javaClass?.name.orEmpty() }
+            is ResultValue.Unit -> "kotlin.Unit"
+            is ResultValue.Error -> value.error.javaClass.name
+            is ResultValue.NotEvaluated -> "not-evaluated"
+            null -> ""
+        }
+
+    fun String.findNthSubstring(s: String, n: Int, start: Int = 0): Int {
+        if (n < 1 || start == -1) return -1
+
+        var i = start
+
+        for (k in 1..n) {
+            i = indexOf(s, i)
+            if (i == -1) return -1
+            i += s.length
+        }
+
+        return i - s.length
+    }
+
+
+    fun Int.toSourceCodePositionWithNewAbsolute(code: SourceCode, newCode: SourceCode): SourceCode.Position? {
+        val pos = toSourceCodePosition(code)
+        val sep = code.text.determineSep()
+        val absLineStart = if (pos.line == 1) 0
+        else newCode.text.findNthSubstring(sep, pos.line - 1) + sep.length
+
+        var nextNewLinePos = newCode.text.indexOf(sep, absLineStart)
+        if (nextNewLinePos == -1) nextNewLinePos = newCode.text.length
+
+        val abs = absLineStart + pos.col - 1
+        if (abs > nextNewLinePos) return null
+
+        return SourceCode.Position(pos.line, abs - absLineStart + 1, abs)
+    }
+
+
+    /**
+     * Which backend actually served the most recent [complete] call, and the [AaCompletionClient.Outcome]
+     * detail that decided it. [complete] already logs both; this makes them ASSERTABLE, which a test that
+     * means to exercise the AA chain needs: a K1 fallback answers a name position with thousands of names,
+     * so "the candidate I wanted is in the list" can be satisfied entirely by the fallback and still read
+     * as a green AA result. `CompletionAaE2EProbe` is what this exists for.
+     */
+    @Volatile
+    var lastCompletionBackend: KotlinEngineConfig.CompletionBackend? = null
+        private set
+
+    @Volatile
+    var lastCompletionDetail: String = ""
+        private set
+
+    /**
+     * Completion intentionally delegates to the K1 IDE-services path.
+     * K2 remains the execution backend, but autocomplete needs compiler-grade
+     * language semantics rather than partial handwritten Analysis API coverage.
+     */
+    override suspend fun complete(s: String, cursor: Int): CompletionResult {
+        // Stage C: when the AA completion backend is selected, generate candidates out-of-process on the
+        // K2 Analysis API (sidecar /complete), supplying the box's inherited preamble + implicit receivers
+        // so completion resolves against the same REPL context K1 sees. Any failure/timeout/absent-sidecar/
+        // empty result falls through to the compiler-grade K1 delegate — K1 stays the safety net.
+        // Every request logs which backend actually served it (channel "completion") so the source of a
+        // given completion is never a mystery.
+        val box = resolveBoxContext()
+        val boxLabel = box?.let { "'${it.name.ifBlank { "Untitled" }}'(${it.id})" } ?: "none"
+        if (KotlinEngineConfig.activeCompletionBackend == KotlinEngineConfig.CompletionBackend.AA) {
+            val completionPreamble = box?.let { normalizePreambleText(gatherPreambleUpwards(it)) }.orEmpty()
+            val receiverTypes = implicitReceivers.map { it.typeName }
+            val startNs = System.nanoTime()
+            val outcome = withContext(Dispatchers.IO) {
+                // `introImports` is the scope every box gets for free. The sidecar analyses the snippet
+                // in another process and cannot see it, so it must be told; before this it fell back to
+                // its own hand-written copy, which had drifted. See the KDoc on `introImports`.
+                AaCompletionClient.complete(
+                    s, cursor, completionPreamble, receiverTypes, replImports = introImports,
+                )
+            }
+            val ms = (System.nanoTime() - startNs) / 1_000_000
+            if (outcome.served) {
+                lastCompletionBackend = KotlinEngineConfig.CompletionBackend.AA
+                lastCompletionDetail = outcome.detail
+                lprintln("info,completion", "completion backend=AA box=$boxLabel ${ms}ms (${outcome.detail})")
+                return outcome.result!!
+            }
+            lastCompletionBackend = KotlinEngineConfig.CompletionBackend.K1
+            lastCompletionDetail = "AA→K1: ${outcome.detail}"
+            lprintln("info,completion", "completion backend=K1 box=$boxLabel ${ms}ms (AA→K1: ${outcome.detail})")
+        } else {
+            lastCompletionBackend = KotlinEngineConfig.CompletionBackend.K1
+            lastCompletionDetail = "backend=k1"
+            lprintln("info,completion", "completion backend=K1 box=$boxLabel (backend=k1)")
+        }
+        return k1CompletionDelegate().complete(s, cursor)
+    }
+
+    /**
+     * Build the K1 completion delegate ahead of the first real completion. The bootstrap is a
+     * full intro+preamble compile (~seconds, longer the colder the JVM's K1 infra). If it instead
+     * fires lazily from inside a runloop-pumping wait it re-enters the K1 engine mid-compile and
+     * corrupts its analysis state (a "Rewrite at slice PACKAGE_TO_FILES" error). Warming here, on
+     * the non-reentrant runloop before any such wait, keeps every later completion light and safe.
+     */
+    override suspend fun warmCompletion() {
+        k1CompletionDelegate()
+    }
+
+    /**
+     * Poll the AA sidecar with the real request shape until it actually serves, so the next completion
+     * is the one a user gets rather than the K1 fallback.
+     *
+     * One request is not enough: the sidecar builds its Analysis-API session in the background and, until
+     * it exists, returns success-with-no-candidates and the message "session building (warming up; using
+     * K1 meanwhile)" — which [complete] correctly treats as a fall-through to K1. That is right for a
+     * keystroke and wrong for a docs capture, which would otherwise photograph the fallback. Deliberately
+     * routed through [AaCompletionClient] with this box's own preamble, receivers and imports, so what is
+     * warmed is the session [complete] will hit and not a differently-shaped neighbour.
+     */
+    override suspend fun warmCompletionBackend(timeoutMs: Long): String {
+        if (KotlinEngineConfig.activeCompletionBackend != KotlinEngineConfig.CompletionBackend.AA) {
+            return "backend=k1 (nothing to warm)"
+        }
+        // The box's preamble and receivers are read on the runloop, the way [complete] reads them — this
+        // is called from off-runloop callers (the docs `drive` op) and walking a box's parents while the
+        // main thread edits them is not a race worth taking for a warm-up.
+        //
+        // …but only when there is a runloop to hop onto, and when we are not already on it. `Framer` only
+        // queues; `Runloop.start()` drains it, and `Runloop.start()` is the sole writer of
+        // [Runloop.mainThread] — so a null there means nothing will EVER run the dispatched block. A
+        // `run-jvm-main` subprocess is exactly that case: it constructs a Runloop and never starts one, so
+        // this hopped into a queue with no consumer and suspended for good. `CompletionAaE2EProbe` hit it
+        // and the symptom was thoroughly misleading — the probe hung at the warm-up until the runner's
+        // timeout killed it, which reads as a sidecar that never finished building its session. Being on
+        // the runloop thread already is the same trap one step in: a `runBlocking` caller there blocks the
+        // very frame that would have run the block.
+        val readPreambleHere = Runloop.mainThread.let { it == null || it == Thread.currentThread() }
+        val completionPreamble = if (readPreambleHere) {
+            resolveBoxContext()?.let { normalizePreambleText(gatherPreambleUpwards(it)) }.orEmpty()
+        } else withContext(Runloop.runLoop.main) {
+            resolveBoxContext()?.let { normalizePreambleText(gatherPreambleUpwards(it)) }.orEmpty()
+        }
+        val receiverTypes = implicitReceivers.map { it.typeName }
+        // A receiver whose members exist on any classpath, so "served" means the session works rather
+        // than that this particular type resolved.
+        val snippet = "val __warm = \"\"\nval __warmed = __warm."
+        val deadline = System.nanoTime() + timeoutMs.coerceAtLeast(0) * 1_000_000
+        var attempts = 0
+        while (true) {
+            attempts++
+            val outcome = withContext(Dispatchers.IO) {
+                AaCompletionClient.complete(
+                    snippet, snippet.length, completionPreamble, receiverTypes, replImports = introImports,
+                )
+            }
+            val detail = outcome.detail
+            if (outcome.served) return "served after $attempts attempt(s) ($detail)"
+            // A missing sidecar or an unreachable one will not become reachable by asking again.
+            if (detail == "no-sidecar-url" || detail == "no-classpath" || detail.startsWith("error ")) {
+                return "gave up after $attempts attempt(s) ($detail)"
+            }
+            if (System.nanoTime() >= deadline) return "timed out after $attempts attempt(s) ($detail)"
+            delay(500)
+        }
+    }
+
+    @Volatile
+    private var completionWarmInFlight = false
+
+    /**
+     * Schedule [warmCompletion] on the main runloop (the same non-reentrant dispatcher [complete]
+     * uses) so the ~1s K1 bootstrap is paid ahead of the first real completion/error-suggestion
+     * request instead of stalling it. The [completionWarmInFlight] guard collapses the burst of
+     * edit events into a single scheduled warm; once warm for the current preamble, [warmCompletion]
+     * returns near-instantly (mutex + fingerprint check), and it re-bootstraps automatically when
+     * the preamble changes.
+     */
+    @OptIn(DelicateCoroutinesApi::class)
+    override fun warmCompletionAsync() {
+        if (completionWarmInFlight) return
+        completionWarmInFlight = true
+        GlobalScope.launch(Runloop.runLoop.main) {
+            try {
+                warmCompletion()
+            } catch (t: Throwable) {
+                lprintln(
+                    "warning,completion",
+                    "background warmCompletion failed: ${t.javaClass.simpleName}: ${t.message}"
+                )
+            } finally {
+                completionWarmInFlight = false
+            }
+        }
+    }
+
+    private var k1CompletionDelegate: KotlinInterface? = null
+    private var k1CompletionDelegateBootstrapped = false
+    private var k1CompletionDelegatePreambleFingerprint: Int? = null
+    private val k1CompletionDelegateMutex = Mutex()
+
+    private suspend fun k1CompletionDelegate(): KotlinInterface {
+        return k1CompletionDelegateMutex.withLock {
+            val existing = k1CompletionDelegate
+            val box = resolveBoxContext()
+            val completionPreamble = box?.let { normalizePreambleText(gatherPreambleUpwards(it)) }.orEmpty()
+            val preambleFingerprint = completionPreamble.hashCode()
+            if (existing != null &&
+                k1CompletionDelegateBootstrapped &&
+                k1CompletionDelegatePreambleFingerprint == preambleFingerprint
+            ) {
+                existing.associatedBox = associatedBox
+                return@withLock existing
+            }
+
+            val boxLabel = box?.let { "'${it.name.ifBlank { "Untitled" }}' (${it.id})" } ?: "none"
+            val resetReason = when {
+                existing == null -> "create"
+                !k1CompletionDelegateBootstrapped -> "bootstrap"
+                else -> "preamble changed"
+            }
+            lprintln(
+                "info,ki,startup",
+                "request K1 completion delegate for K2 filePrefix=$filePrefix box=$boxLabel reason=$resetReason preambleLength=${completionPreamble.length}"
+            )
+
+            existing?.dispose()
+            val created = KotlinInterface(
+                propertyClasses = propertyClasses,
+                properties = properties,
+                implicitReceivers = implicitReceivers,
+                classLoader = classLoader,
+                filePrefix = "${filePrefix}_completion"
+            )
+            created.associatedBox = associatedBox
+            k1CompletionDelegate = created
+            k1CompletionDelegateBootstrapped = false
+
+            if (!k1CompletionDelegateBootstrapped) {
+                val implicits = if (box != null) listOf(box) else emptyList()
+                lprintln(
+                    "info,ki,startup",
+                    "bootstrap K1 completion delegate filePrefix=${filePrefix}_completion box=$boxLabel introLength=${intro.length} preambleLength=${completionPreamble.length}"
+                )
+                val completionSetupCompileError: (List<ScriptDiagnostic>) -> Unit = { diagnostics ->
+                    diagnostics.forEach {
+                        lprintln("warning,completion", "K1 completion setup compile: ${it.message} ${it.location}")
+                    }
+                }
+                val completionSetupEvalError: (List<ScriptDiagnostic>) -> Unit = { diagnostics ->
+                    diagnostics.forEach {
+                        lprintln("warning,completion", "K1 completion setup eval: ${it.message} ${it.location}")
+                    }
+                }
+                val completionSetupEvalException: (Throwable) -> Unit = { throwable ->
+                    lprintln(
+                        "warning,completion",
+                        "K1 completion setup exception: ${throwable.javaClass.simpleName}: ${throwable.message}"
+                    )
+                }
+                // The editor's interpreter, not the box's code: keep it out of the box's profile lanes.
+                withContext(ProfileExempt) {
+                    if (box != null) {
+                        Box.withBoxContext(box) {
+                            created.exec(
+                                intro,
+                                onCompileError = completionSetupCompileError,
+                                onEvalError = completionSetupEvalError,
+                                onEvalException = completionSetupEvalException,
+                                implicits = implicits
+                            )
+                            if (completionPreamble.isNotBlank()) {
+                                created.exec(
+                                    completionPreamble,
+                                    onCompileError = completionSetupCompileError,
+                                    onEvalError = completionSetupEvalError,
+                                    onEvalException = completionSetupEvalException,
+                                    implicits = implicits
+                                )
+                            }
+                        }
+                    } else {
+                        created.exec(
+                            intro,
+                            onCompileError = completionSetupCompileError,
+                            onEvalError = completionSetupEvalError,
+                            onEvalException = completionSetupEvalException
+                        )
+                    }
+                }
+                k1CompletionDelegateBootstrapped = true
+                k1CompletionDelegatePreambleFingerprint = preambleFingerprint
+            }
+
+            created
+        }
+    }
+
+    /**
+     * Build a source text suitable for FIR analysis: prepend REPL imports and
+     * insert a dummy identifier at the cursor so incomplete expressions parse cleanly.
+     */
+    private fun buildFirSourceText(s: String, cursor: Int): String {
+        // Extract import lines from the REPL intro preamble so FIR can resolve stdlib symbols
+        val introImports = intro.lines()
+            .filter { it.trimStart().startsWith("import ") }
+            .joinToString("\n")
+
+        // Insert a dummy identifier at cursor to make incomplete expressions valid for parsing.
+        // e.g. "q." becomes "q.COMPLETION_PLACEHOLDER" which is syntactically valid.
+        val patched = StringBuilder(s).insert(cursor, "COMPLETION_PLACEHOLDER").toString()
+
+        return introImports + "\n" + patched
+    }
+
+    private fun buildFirReceiverContextSource(s: String, cursor: Int): String {
+        val introImports = intro.lines()
+            .filter { it.trimStart().startsWith("import ") }
+            .joinToString("\n")
+
+        val prefix = extractPrefix(s, cursor)
+        val beforePrefix = cursor - prefix.length
+        val dotOffset = if (beforePrefix >= 2 && s[beforePrefix - 1] == '.' && s[beforePrefix - 2] == '?') {
+            beforePrefix - 2
+        } else if (beforePrefix >= 1 && s[beforePrefix - 1] == '.') {
+            beforePrefix - 1
+        } else {
+            cursor
+        }
+        val context = s.substring(0, dotOffset.coerceIn(0, s.length))
+        return introImports + "\n" + context
+    }
+
+    private fun computeK2Completion(s: String, cursor: Int): List<SourceCodeCompletionVariant> {
+        val results = mutableListOf<SourceCodeCompletionVariant>()
+
+        // Parse the completion site to determine what kind of completion we need
+        val completionSite = parseCompletionSite(s, cursor)
+
+        // Build FIR-friendly source text with imports and a dummy at cursor
+        val firSource = buildFirSourceText(s, cursor)
+        val receiverFirSource by lazy { buildFirReceiverContextSource(s, cursor) }
+
+        val nameFilter: (String) -> Boolean = { name ->
+            completionSite.prefix.isEmpty() || name.startsWith(completionSite.prefix, ignoreCase = true)
+        }
+
+        fun resolveCompletionReceiver(receiverText: String): KClass<*>? {
+            val simpleResolved = resolveReceiverType(receiverText, receiverFirSource)
+            if (simpleResolved != null && simpleResolved != Any::class) return simpleResolved
+            val probeResolved = resolveExpressionTypeViaFir(receiverText, s, cursor)
+            return probeResolved ?: simpleResolved
+        }
+
+        when (completionSite) {
+            is CompletionSite.DotCompletion -> {
+                val receiverType = resolveCompletionReceiver(completionSite.receiverText)
+                if (receiverType != null) {
+                    addMembersFromClass(receiverType, completionSite.prefix, results)
+                }
+                addStaticMembersIfPackageOrClass(completionSite.receiverText, completionSite.prefix, results)
+            }
+
+            is CompletionSite.SafeDotCompletion -> {
+                val receiverType = resolveCompletionReceiver(completionSite.receiverText)
+                if (receiverType != null) {
+                    addMembersFromClass(receiverType, completionSite.prefix, results)
+                }
+            }
+
+            is CompletionSite.NameCompletion -> {
+                // Variables from REPL context
+                for ((name, info) in context.vars) {
+                    if (!nameFilter(name)) continue
+                    if (name.contains("$")) continue
+                    val type = try {
+                        shortenType(info.descriptor.returnType.toString())
+                    } catch (_: Exception) {
+                        "Any?"
+                    }
+                    val kind = if (info.descriptor is KMutableProperty<*>) "var" else "val"
+                    results.add(
+                        SourceCodeCompletionVariant(
+                            text = name, displayText = "$kind $name", tail = ": $type",
+                            icon = kind,
+                        )
+                    )
+                }
+
+                // Functions from REPL context — with full parameter signatures
+                for ((name, info) in context.functions) {
+                    if (!nameFilter(name)) continue
+                    if (name.contains("$") || name == "main") continue
+                    val params = info.function.parameters.filter { it.kind == KParameter.Kind.VALUE }
+                    val paramsStr = formatKotlinParams(params)
+                    val returnType = try {
+                        shortenType(info.function.returnType.toString())
+                    } catch (_: Exception) {
+                        "Any?"
+                    }
+                    results.add(
+                        SourceCodeCompletionVariant(
+                            text = name, displayText = "fun $name$paramsStr", tail = ": $returnType",
+                            icon = "method",
+                        )
+                    )
+                }
+
+                // Members from implicit receivers (e.g., Box members are callable as top-level in the REPL)
+                for (kotlinType in implicitReceivers) {
+                    val klass = try {
+                        kotlinType.fromClass
+                    } catch (_: Exception) {
+                        null
+                    } ?: continue
+                    addMembersFromClass(klass, completionSite.prefix, results)
+                }
+
+                // Members from lambda receiver types (e.g., inside `fline { }`, FLine methods are available)
+                for (receiverClass in detectLambdaReceiverTypes(s, cursor)) {
+                    addMembersFromClass(receiverClass, completionSite.prefix, results)
+                }
+
+                // Keywords
+                val keywords = listOf(
+                    "val", "var", "fun", "class", "object", "interface", "if", "else", "when",
+                    "for", "while", "do", "return", "break", "continue", "throw", "try", "catch",
+                    "finally", "import", "package", "is", "as", "in", "true", "false", "null",
+                    "this", "super", "data", "sealed", "enum", "abstract", "open", "override",
+                    "private", "protected", "internal", "public", "companion", "lateinit", "lazy",
+                    "suspend", "inline", "infix", "operator", "tailrec", "external", "annotation",
+                    "crossinline", "noinline", "reified", "typealias", "typeof", "by", "where",
+                )
+                for (kw in keywords) {
+                    if (nameFilter(kw)) {
+                        results.add(
+                            SourceCodeCompletionVariant(
+                                text = kw,
+                                displayText = kw,
+                                tail = "",
+                                icon = "keyword"
+                            )
+                        )
+                    }
+                }
+
+                // Declarations from the current editor text that haven't been executed yet (via FIR resolution)
+                addFirSourceDeclarations(firSource, nameFilter, results)
+
+                // Top-level functions and extension functions on implicit receivers from imported packages
+                val existingNames = results.map { it.text }.toSet()
+                addImportedTopLevelFunctions(completionSite.prefix, results, existingNames)
+
+                // Class names from classpath — provides constructor completion for types like FLine, Vec3, etc.
+                if (completionSite.prefix.length >= 2) {
+                    addClasspathClasses(completionSite.prefix, results)
+                }
+            }
+        }
+
+        return results.distinctBy { it.text }.sortedWith(completionComparator(completionSite.prefix))
+    }
+
+    /**
+     * Sort completions: exact case-prefix match first, then by sortGroup,
+     * then shorter names first, then alphabetical.
+     */
+    private fun completionComparator(prefix: String) = compareBy<SourceCodeCompletionVariant>(
+        { if (prefix.isNotEmpty() && it.text.startsWith(prefix)) 0 else 1 },
+        { (it.extraInfo.get("sortGroup") as? Int) ?: 0 },
+        { it.text.length },
+        { it.text.lowercase() }
+    )
+
+    // --- Kotlin parameter formatting helpers ---
+
+    private fun formatKotlinParams(params: List<KParameter>): String {
+        if (params.isEmpty()) return "()"
+        return "(${params.joinToString(", ") { p -> formatKotlinParam(p) }})"
+    }
+
+    private fun formatKotlinParam(param: KParameter): String {
+        val name = param.name
+        val type = try {
+            shortenType(param.type.toString())
+        } catch (_: Exception) {
+            "Any?"
+        }
+        val sb = StringBuilder()
+        if (param.isVararg) sb.append("vararg ")
+        // If the name is null or synthetic (arg0, p0, etc.), show just the type
+        if (name != null && !name.matches(Regex("^(arg|p)\\d+$"))) {
+            sb.append("$name: $type")
+        } else {
+            sb.append(type)
+        }
+        if (param.isOptional) sb.append(" = ...")
+        return sb.toString()
+    }
+
+    private fun formatJavaMethodParams(method: java.lang.reflect.Method): String {
+        val kfunc = try {
+            method.kotlinFunction
+        } catch (_: Exception) {
+            null
+        }
+        if (kfunc != null) {
+            val valueParams = kfunc.parameters.filter { it.kind == KParameter.Kind.VALUE }
+            return formatKotlinParams(valueParams)
+        }
+        // Fallback to Java reflection
+        val params = method.parameters
+        if (params.isEmpty()) return "()"
+        return "(${
+            params.joinToString(", ") { p ->
+                val name = p.name
+                val type = shortenType(p.type.kotlin.simpleName ?: p.type.simpleName)
+                // If the name is synthetic (arg0, p0, etc.), show just the type
+                if (name.matches(Regex("^(arg|p)\\d+$"))) type else "$name: $type"
+            }
+        })"
+    }
+
+    private fun formatMethodReturnType(method: java.lang.reflect.Method): String {
+        val kfunc = try {
+            method.kotlinFunction
+        } catch (_: Exception) {
+            null
+        }
+        return try {
+            kfunc?.let { shortenType(it.returnType.toString()) }
+                ?: shortenType(method.returnType.kotlin.simpleName ?: method.returnType.simpleName)
+        } catch (_: Exception) {
+            "Any?"
+        }
+    }
+
+    private fun isDeprecated(method: java.lang.reflect.Method): DeprecationLevel? {
+        if (method.isAnnotationPresent(Deprecated::class.java)) return DeprecationLevel.WARNING
+        val kfunc = try {
+            method.kotlinFunction
+        } catch (_: Exception) {
+            null
+        }
+        if (kfunc?.annotations?.any { it is Deprecated } == true) return DeprecationLevel.WARNING
+        return null
+    }
+
+    // --- Completion site parsing ---
+
+    private sealed class CompletionSite {
+        abstract val prefix: String
+
+        data class NameCompletion(override val prefix: String) : CompletionSite()
+        data class DotCompletion(val receiverText: String, override val prefix: String) : CompletionSite()
+        data class SafeDotCompletion(val receiverText: String, override val prefix: String) : CompletionSite()
+    }
+
+    private fun parseCompletionSite(s: String, cursor: Int): CompletionSite {
+        // Extract the prefix (identifier being typed at cursor)
+        val prefix = extractPrefix(s, cursor)
+        val beforePrefix = cursor - prefix.length
+
+        if (beforePrefix <= 0) return CompletionSite.NameCompletion(prefix)
+
+        // Check for ?. (safe call)
+        val isSafeDot = beforePrefix >= 2 && s[beforePrefix - 1] == '.' && s[beforePrefix - 2] == '?'
+        val isDot = !isSafeDot && s[beforePrefix - 1] == '.'
+
+        if (!isDot && !isSafeDot) return CompletionSite.NameCompletion(prefix)
+
+        // Extract receiver text (everything before the dot, going back through chained expressions)
+        val dotPos = if (isSafeDot) beforePrefix - 2 else beforePrefix - 1
+        val receiverText = extractReceiverExpression(s, dotPos)
+
+        return if (isSafeDot) CompletionSite.SafeDotCompletion(receiverText, prefix)
+        else CompletionSite.DotCompletion(receiverText, prefix)
+    }
+
+    private fun extractReceiverExpression(s: String, endPos: Int): String {
+        // Walk backwards from endPos to find the start of the receiver expression
+        // Handles: simple names, chained dots (a.b.c), function calls (a.foo()), indexing (a[0])
+        var pos = endPos - 1
+        var parenDepth = 0
+        var bracketDepth = 0
+
+        while (pos >= 0) {
+            val c = s[pos]
+            when {
+                c == ')' -> {
+                    parenDepth++; pos--
+                }
+
+                c == '(' && parenDepth > 0 -> {
+                    parenDepth--; pos--
+                }
+
+                c == ']' -> {
+                    bracketDepth++; pos--
+                }
+
+                c == '[' && bracketDepth > 0 -> {
+                    bracketDepth--; pos--
+                }
+
+                parenDepth > 0 || bracketDepth > 0 -> pos--
+                c.isLetterOrDigit() || c == '_' || c == '.' || c == '?' -> pos--
+                else -> break
+            }
+        }
+        return s.substring(pos + 1, endPos).trim()
+    }
+
+    // --- FIR-based type resolution for un-executed code ---
+
+    /**
+     * Cache of FIR-resolved types from the last analysis run.
+     * Maps variable/function name -> resolved KClass.
+     * Invalidated when source text changes.
+     */
+    private var firTypeCache: Map<String, KClass<*>> = emptyMap()
+    private var firFunctionCache: Map<String, KClass<*>> = emptyMap()
+    private var firCacheSourceHash: Int = 0
+
+    /**
+     * Resolve types from source code using the K2 compiler's FIR pipeline.
+     *
+     * This mirrors the first half of K2ReplCompiler.compileImpl:
+     * 1. Create a KtFile from the source text
+     * 2. Create a temporary FIR source session
+     * 3. Build raw FIR from the KtFile
+     * 4. Run full type resolution on the FIR
+     * 5. Walk the resolved FIR tree to extract variable/function types
+     * 6. Clean up: remove the temporary module data from history
+     *
+     * Returns a pair of (variableTypes, functionReturnTypes) where each maps name -> KClass.
+     */
+    private fun resolveTypesViaFir(sourceText: String): Pair<Map<String, KClass<*>>, Map<String, KClass<*>>> {
+        val hash = sourceText.hashCode()
+        if (hash == firCacheSourceHash && firTypeCache.isNotEmpty()) {
+            return firTypeCache to firFunctionCache
+        }
+
+        try {
+            // Access compilation state internals via reflection
+            val stateClass = compilationState::class.java
+
+            val moduleDataProvider = stateClass.getDeclaredField("moduleDataProvider").let {
+                it.isAccessible = true; it.get(compilationState)
+            }
+            val sessionFactoryContext = stateClass.getDeclaredField("sessionFactoryContext").let {
+                it.isAccessible = true; it.get(compilationState)
+            }
+            val sharedLibrarySession = stateClass.getDeclaredField("sharedLibrarySession").let {
+                it.isAccessible = true; it.get(compilationState)
+            }
+            val compilerContext = stateClass.getDeclaredField("compilerContext").let {
+                it.isAccessible = true; it.get(compilationState)
+            }
+
+            // Get CompilerConfiguration from the environment
+            val environment = compilerContext::class.java.getMethod("getEnvironment").invoke(compilerContext)
+            val compilerConfiguration = environment::class.java.getMethod("getConfiguration").invoke(environment)
+            val configCopy = compilerConfiguration::class.java.getMethod("copy").invoke(compilerConfiguration)
+
+            // Create KtFile from the source text via getScriptKtFile
+            val project = psiProject
+            val sourceCode = SourceCodeImpl(id, sourceText)
+
+            val getScriptKtFileMethod = Class.forName(
+                "org.jetbrains.kotlin.scripting.compiler.plugin.impl.JvmCompilationUtilKt"
+            ).getMethod(
+                "getScriptKtFile",
+                Class.forName("kotlin.script.experimental.api.SourceCode"),
+                Class.forName("kotlin.script.experimental.api.ScriptCompilationConfiguration"),
+                Class.forName("org.jetbrains.kotlin.com.intellij.openapi.project.Project"),
+                Class.forName("org.jetbrains.kotlin.scripting.compiler.plugin.impl.ScriptDiagnosticsMessageCollector")
+            )
+
+            val ktFileResult = getScriptKtFileMethod.invoke(null, sourceCode, compilerConfig, project, messageCollector)
+
+            // Extract KtFile from ResultWithDiagnostics<KtFile>
+            val ktFile = if (ktFileResult is ResultWithDiagnostics.Success<*>) {
+                ktFileResult.value as KtFile
+            } else {
+                lprintln("debug,kotlin", "FIR analysis: failed to create KtFile: $ktFileResult")
+                return emptyMap<String, KClass<*>>() to emptyMap()
+            }
+
+            // Mark script as REPL snippet
+            ktFile.script?.let { script ->
+                try {
+                    val markMethod = script::class.java.getMethod("markAsReplSnippet")
+                    markMethod.invoke(script)
+                } catch (_: Exception) {
+                }
+            }
+
+            // Get extension registrars from compiler configuration
+            val firExtensionRegistrarCompanion = Class.forName(
+                "org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar"
+            ).getDeclaredField("Companion").get(null)
+            val getExtensionsMethod = Class.forName(
+                "org.jetbrains.kotlin.compiler.plugin.FirExtensionRegistrarConfigurationUtilKt"
+            ).methods.first { it.name == "getCompilerExtensions" }
+            val extensionRegistrars =
+                getExtensionsMethod.invoke(null, configCopy, firExtensionRegistrarCompanion) as List<*>
+
+            // Record the module data history size before we add our temporary entry
+            val moduleDataHistory = moduleDataProvider::class.java.getMethod("getModuleDataHistory")
+                .invoke(moduleDataProvider) as MutableList<*>
+            val historySize = moduleDataHistory.size
+
+            // Create temporary module data
+            val nameClass = Class.forName("org.jetbrains.kotlin.name.Name")
+            val nameSpecial = nameClass.getMethod("special", String::class.java)
+            val snippetName = nameSpecial.invoke(null, "<completion-analysis>")
+
+            val addSnippetMethod = moduleDataProvider::class.java.getMethod("addNewSnippetModuleData", nameClass)
+            val moduleData = addSnippetMethod.invoke(moduleDataProvider, snippetName)
+
+            try {
+                // Create source session via FirJvmSessionFactory.INSTANCE.createSourceSession(...)
+                val sessionFactoryClass = Class.forName("org.jetbrains.kotlin.fir.session.FirJvmSessionFactory")
+                val factoryInstance = sessionFactoryClass.getDeclaredField("INSTANCE").get(null)
+
+                // Get EMPTY search scope
+                val emptyScope = Class.forName(
+                    "org.jetbrains.kotlin.fir.session.environment.AbstractProjectFileSearchScope\$EMPTY"
+                ).getDeclaredField("INSTANCE").get(null)
+
+                // Null-returning lambda for incremental compilation providers
+                val incrementalProvidersLambda = java.lang.reflect.Proxy.newProxyInstance(
+                    classLoader,
+                    arrayOf(kotlin.Function1::class.java)
+                ) { _, _, _ -> null }
+
+                // No-op lambda for session configurator init
+                val initLambda = java.lang.reflect.Proxy.newProxyInstance(
+                    classLoader,
+                    arrayOf(kotlin.Function1::class.java)
+                ) { _, _, _ -> kotlin.Unit }
+
+                // The method signature is:
+                // createSourceSession(moduleData, scope, incrementalProviders, extensionRegistrars,
+                //                     config, context, needRegisterJavaElementFinder, isForLeafHmppModule, init)
+                // All 9 params are explicit in the bytecode (Kotlin default param generates a separate $default bridge)
+                val createSourceSessionMethod = sessionFactoryClass.methods.firstOrNull {
+                    it.name == "createSourceSession" && it.parameterCount == 9
+                } ?: sessionFactoryClass.methods.first {
+                    // Fallback: try the $default synthetic bridge if present
+                    it.name == "createSourceSession" && it.parameterCount > 0
+                }
+
+                val sourceSession = if (createSourceSessionMethod.parameterCount == 9) {
+                    createSourceSessionMethod.invoke(
+                        factoryInstance,
+                        moduleData,                // FirModuleData
+                        emptyScope,                // AbstractProjectFileSearchScope
+                        incrementalProvidersLambda, // Function1<FirSession, FirJvmIncrementalCompilationSymbolProviders?>
+                        extensionRegistrars,       // List<FirExtensionRegistrar>
+                        configCopy,                // CompilerConfiguration
+                        sessionFactoryContext,     // FirJvmSessionFactory.Context
+                        true,                      // needRegisterJavaElementFinder
+                        false,                     // isForLeafHmppModule
+                        initLambda                 // Function1<FirSessionConfigurator, Unit>
+                    )
+                } else {
+                    // Unexpected param count — try best effort
+                    createSourceSessionMethod.invoke(
+                        factoryInstance, moduleData, emptyScope, incrementalProvidersLambda,
+                        extensionRegistrars, configCopy, sessionFactoryContext, true, false
+                    )
+                }
+
+                if (sourceSession == null) {
+                    lprintln("debug,kotlin", "FIR analysis: createSourceSession returned null")
+                    return emptyMap<String, KClass<*>>() to emptyMap()
+                }
+
+                // Build FIR from KtFile: FirUtilsKt.buildFirFromKtFiles(session, listOf(ktFile))
+                val buildFirMethod = Class.forName("org.jetbrains.kotlin.fir.pipeline.FirUtilsKt")
+                    .getMethod(
+                        "buildFirFromKtFiles",
+                        Class.forName("org.jetbrains.kotlin.fir.FirSession"),
+                        Collection::class.java
+                    )
+                val rawFir = buildFirMethod.invoke(null, sourceSession, listOf(ktFile)) as List<*>
+
+                lprintln("debug,kotlin", "FIR analysis: buildFirFromKtFiles returned ${rawFir.size} files")
+
+                // Run resolution: AnalyseKt.runResolution(session, rawFir)
+                val runResolutionMethod = Class.forName("org.jetbrains.kotlin.fir.pipeline.AnalyseKt")
+                    .getMethod(
+                        "runResolution",
+                        Class.forName("org.jetbrains.kotlin.fir.FirSession"),
+                        List::class.java
+                    )
+                val result = runResolutionMethod.invoke(null, sourceSession, rawFir) as kotlin.Pair<*, *>
+                val firFiles = result.second as List<*>
+
+                lprintln("debug,kotlin", "FIR analysis: runResolution returned ${firFiles.size} files")
+
+                // Walk resolved FIR tree to extract types
+                val varTypes = mutableMapOf<String, KClass<*>>()
+                val funcTypes = mutableMapOf<String, KClass<*>>()
+                extractTypesFromFir(firFiles, varTypes, funcTypes)
+
+                lprintln("debug,kotlin", "FIR analysis: extracted ${varTypes.size} var types: ${varTypes.keys}")
+                lprintln("debug,kotlin", "FIR analysis: extracted ${funcTypes.size} func types: ${funcTypes.keys}")
+
+                firTypeCache = varTypes
+                firFunctionCache = funcTypes
+                firCacheSourceHash = hash
+
+                return varTypes to funcTypes
+            } finally {
+                // Clean up: remove the temporary module data from history
+                if (moduleDataHistory.size > historySize) {
+                    moduleDataHistory.removeAt(moduleDataHistory.size - 1)
+                }
+            }
+        } catch (e: Exception) {
+            lprintln("warning,kotlin", "FIR type resolution failed: ${e::class.simpleName}: ${e.message}")
+            if (e.cause != null) {
+                lprintln("debug,kotlin", "  caused by: ${e.cause?.message}")
+            }
+            return emptyMap<String, KClass<*>>() to emptyMap()
+        }
+    }
+
+    /**
+     * Walk the resolved FIR tree to extract variable types, function return types,
+     * and lambda parameter types (like implicit `it`).
+     * FirFile → FirScript → declarations → FirProperty / FirNamedFunction
+     * Also walks into property initializers to find FirAnonymousFunction parameters.
+     */
+    private fun extractTypesFromFir(
+        firFiles: List<*>,
+        varTypes: MutableMap<String, KClass<*>>,
+        funcTypes: MutableMap<String, KClass<*>>
+    ) {
+        val firScriptClass = Class.forName("org.jetbrains.kotlin.fir.declarations.FirScript")
+        val firPropertyClass = Class.forName("org.jetbrains.kotlin.fir.declarations.FirProperty")
+        val firNamedFunctionClass = Class.forName("org.jetbrains.kotlin.fir.declarations.FirNamedFunction")
+        val firResolvedTypeRefClass = Class.forName("org.jetbrains.kotlin.fir.types.FirResolvedTypeRef")
+        val coneClassLikeTypeClass = Class.forName("org.jetbrains.kotlin.fir.types.ConeClassLikeType")
+        val firAnonymousFunctionClass = try {
+            Class.forName("org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction")
+        } catch (_: Exception) {
+            null
+        }
+        val firAnonymousFunctionExpressionClass = try {
+            Class.forName("org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression")
+        } catch (_: Exception) {
+            null
+        }
+        val firValueParameterClass = try {
+            Class.forName("org.jetbrains.kotlin.fir.declarations.FirValueParameter")
+        } catch (_: Exception) {
+            null
+        }
+
+        for (firFile in firFiles) {
+            if (firFile == null) continue
+            val fileDecls = firFile::class.java.getMethod("getDeclarations").invoke(firFile) as? List<*> ?: continue
+
+            lprintln("debug,kotlin", "FIR walk: FirFile has ${fileDecls.size} top-level declarations")
+
+            for (decl in fileDecls) {
+                if (decl == null) continue
+
+                lprintln("debug,kotlin", "FIR walk: top-level decl type: ${decl::class.java.simpleName}")
+
+                if (firScriptClass.isInstance(decl)) {
+                    val scriptDecls = firScriptClass.getMethod("getDeclarations").invoke(decl) as? List<*> ?: continue
+
+                    lprintln("debug,kotlin", "FIR walk: FirScript has ${scriptDecls.size} declarations")
+
+                    for (scriptDecl in scriptDecls) {
+                        if (scriptDecl == null) continue
+
+                        lprintln("debug,kotlin", "FIR walk: script decl type: ${scriptDecl::class.java.simpleName}")
+
+                        processDeclaration(
+                            scriptDecl, firPropertyClass, firNamedFunctionClass,
+                            firResolvedTypeRefClass, coneClassLikeTypeClass, varTypes, funcTypes
+                        )
+
+                        // Walk into property initializers to extract lambda parameters (e.g. `it`)
+                        if (firPropertyClass.isInstance(scriptDecl) && firAnonymousFunctionClass != null) {
+                            extractLambdaParameters(
+                                scriptDecl, firAnonymousFunctionClass,
+                                firAnonymousFunctionExpressionClass, firValueParameterClass,
+                                firResolvedTypeRefClass, coneClassLikeTypeClass, varTypes
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Walk into a FirProperty's initializer to find FirAnonymousFunction value parameters.
+     * This handles cases like: `var q : (Vec3) -> Unit = { it. }` where `it` is an
+     * implicit lambda parameter that needs to be available for completion.
+     */
+    private fun extractLambdaParameters(
+        property: Any,
+        firAnonymousFunctionClass: Class<*>,
+        firAnonymousFunctionExpressionClass: Class<*>?,
+        firValueParameterClass: Class<*>?,
+        firResolvedTypeRefClass: Class<*>,
+        coneClassLikeTypeClass: Class<*>,
+        varTypes: MutableMap<String, KClass<*>>
+    ) {
+        try {
+            val initializer = property::class.java.getMethod("getInitializer").invoke(property) ?: return
+
+            // The initializer might be a FirAnonymousFunctionExpression wrapping a FirAnonymousFunction
+            val anonFunction = when {
+                firAnonymousFunctionClass.isInstance(initializer) -> initializer
+                firAnonymousFunctionExpressionClass != null && firAnonymousFunctionExpressionClass.isInstance(
+                    initializer
+                ) ->
+                    firAnonymousFunctionExpressionClass.getMethod("getAnonymousFunction").invoke(initializer)
+
+                else -> null
+            } ?: return
+
+            val valueParams = firAnonymousFunctionClass.getMethod("getValueParameters").invoke(anonFunction) as? List<*>
+                ?: return
+
+            for (param in valueParams) {
+                if (param == null || firValueParameterClass == null) continue
+                if (!firValueParameterClass.isInstance(param)) continue
+
+                val name = firValueParameterClass.getMethod("getName").invoke(param)
+                val nameStr = name?.toString() ?: continue
+                if (nameStr.startsWith("<")) continue  // skip synthetic names
+
+                val klass = extractKClassFromReturnType(param, firResolvedTypeRefClass, coneClassLikeTypeClass)
+                if (klass != null) {
+                    lprintln("debug,kotlin", "FIR walk: lambda param '$nameStr' -> ${klass.simpleName}")
+                    varTypes[nameStr] = klass
+                }
+            }
+        } catch (e: Exception) {
+            lprintln("debug,kotlin", "FIR walk: error extracting lambda params: ${e.message}")
+        }
+    }
+
+    /**
+     * Process a single FIR declaration and extract its type.
+     */
+    private fun processDeclaration(
+        decl: Any,
+        firPropertyClass: Class<*>,
+        firNamedFunctionClass: Class<*>,
+        firResolvedTypeRefClass: Class<*>,
+        coneClassLikeTypeClass: Class<*>,
+        varTypes: MutableMap<String, KClass<*>>,
+        funcTypes: MutableMap<String, KClass<*>>
+    ) {
+        try {
+            if (firPropertyClass.isInstance(decl)) {
+                val name = firPropertyClass.getMethod("getName").invoke(decl)
+                val nameStr = name?.toString() ?: return
+                if (nameStr.contains("$") || nameStr.startsWith("<")) return
+
+                val klass = extractKClassFromReturnType(decl, firResolvedTypeRefClass, coneClassLikeTypeClass)
+                lprintln("debug,kotlin", "FIR walk: property '$nameStr' -> ${klass?.simpleName ?: "UNRESOLVED"}")
+                if (klass != null) {
+                    varTypes[nameStr] = klass
+                }
+            } else if (firNamedFunctionClass.isInstance(decl)) {
+                val name = firNamedFunctionClass.getMethod("getName").invoke(decl)
+                val nameStr = name?.toString() ?: return
+                if (nameStr.contains("$") || nameStr == "main" || nameStr.startsWith("<")) return
+
+                val klass = extractKClassFromReturnType(decl, firResolvedTypeRefClass, coneClassLikeTypeClass)
+                if (klass != null) {
+                    funcTypes[nameStr] = klass
+                }
+            }
+        } catch (e: Exception) {
+            lprintln("debug,kotlin", "Error extracting type from FIR declaration: ${e.message}")
+        }
+    }
+
+    /**
+     * Extract a KClass from a FIR declaration's return type ref.
+     * Chain: decl.returnTypeRef → FirResolvedTypeRef.coneType → ConeClassLikeType.lookupTag.classId → Class.forName
+     */
+    private fun extractKClassFromReturnType(
+        decl: Any,
+        firResolvedTypeRefClass: Class<*>,
+        coneClassLikeTypeClass: Class<*>
+    ): KClass<*>? {
+        val returnTypeRef = decl::class.java.getMethod("getReturnTypeRef").invoke(decl) ?: run {
+            lprintln("debug,kotlin", "FIR type: returnTypeRef is null")
+            return null
+        }
+        if (!firResolvedTypeRefClass.isInstance(returnTypeRef)) {
+            lprintln(
+                "debug,kotlin",
+                "FIR type: returnTypeRef is ${returnTypeRef::class.java.simpleName}, not FirResolvedTypeRef"
+            )
+            return null
+        }
+
+        val coneType = firResolvedTypeRefClass.getMethod("getConeType").invoke(returnTypeRef) ?: return null
+        if (!coneClassLikeTypeClass.isInstance(coneType)) {
+            lprintln("debug,kotlin", "FIR type: coneType is ${coneType::class.java.simpleName}, not ConeClassLikeType")
+            return null
+        }
+
+        val lookupTag = coneClassLikeTypeClass.getMethod("getLookupTag").invoke(coneType) ?: return null
+        val classId = lookupTag::class.java.getMethod("getClassId").invoke(lookupTag) ?: return null
+        val fqName = classId::class.java.getMethod("asFqNameString").invoke(classId) as? String ?: return null
+
+        // Convert slash-separated FQ name to dot-separated: "kotlin/Int" -> "kotlin.Int"
+        val dotName = fqName.replace('/', '.')
+
+        lprintln("debug,kotlin", "FIR type: resolved to '$dotName'")
+
+        return resolveTypeName(dotName)
+    }
+
+    // --- FIR-based expression type resolution for complex receivers ---
+
+    /**
+     * Resolve the type of an arbitrary expression by synthesizing a probe variable
+     * and running FIR type resolution on it.
+     *
+     * This handles cases where the receiver is a complex expression like
+     * `(a + b)`, `if (c) x else y`, `listOf(1,2,3).map { ... }`, etc.
+     * that can't be resolved by simple name/chain lookup in [resolveReceiverType].
+     *
+     * The approach:
+     * 1. Take the original code up to the dot as context (variable/function declarations)
+     * 2. Add synthetic declarations for REPL context variables not in the current code
+     * 3. Append `val __completion_probe__ = <receiverExpression>`
+     * 4. Run FIR resolution and read the type of `__completion_probe__`
+     */
+    private fun resolveExpressionTypeViaFir(receiverText: String, s: String, cursor: Int): KClass<*>? {
+        try {
+            val introImports = intro.lines()
+                .filter { it.trimStart().startsWith("import ") }
+                .joinToString("\n")
+
+            // Find the dot position: cursor is after any typed prefix, dot is just before that
+            val prefix = extractPrefix(s, cursor)
+            val beforePrefix = cursor - prefix.length
+            // Determine if safe dot (?.) or regular dot (.)
+            val dotOffset = if (beforePrefix >= 2 && s[beforePrefix - 1] == '.' && s[beforePrefix - 2] == '?')
+                beforePrefix - 2
+            else
+                beforePrefix - 1
+
+            // Code context: everything before the dot (includes receiver expr and prior declarations)
+            val codeContext = if (dotOffset > 0) s.substring(0, dotOffset) else ""
+
+            // Include synthetic declarations for REPL context variables not declared in current code
+            val contextDecls = buildContextDeclarationsForFir(codeContext)
+
+            val probeSource = "$introImports\n$contextDecls\n$codeContext\nval __completion_probe__ = $receiverText\n"
+
+            lprintln("debug,kotlin", "FIR expression probe for receiver '$receiverText'")
+
+            val (varTypes, _) = resolveTypesViaFir(probeSource)
+            val resolved = varTypes["__completion_probe__"]
+            if (resolved != null) {
+                lprintln("debug,kotlin", "FIR expression probe resolved: ${resolved.simpleName}")
+            }
+            return resolved
+        } catch (e: Exception) {
+            lprintln("debug,kotlin", "FIR expression type resolution failed: ${e.message}")
+            return null
+        }
+    }
+
+    /**
+     * Detect lambda receiver types at the cursor position using a FIR probe.
+     *
+     * When the cursor is inside a lambda with a receiver (e.g. `fline { moveTo^ }`),
+     * the compiler resolves `this` to the receiver type of the lambda.
+     * We synthesize `val __this_probe__ = this` at the cursor and run FIR resolution
+     * to discover what `this` refers to.
+     *
+     * Returns a list of KClass receiver types that should contribute members
+     * to name completion (excluding the REPL-level implicit receivers which are
+     * already handled separately).
+     */
+    private fun detectLambdaReceiverTypes(s: String, cursor: Int): List<KClass<*>> {
+        try {
+            val introImports = intro.lines()
+                .filter { it.trimStart().startsWith("import ") }
+                .joinToString("\n")
+
+            // Code context: everything before the cursor
+            val codeContext = s.substring(0, cursor)
+
+            // Include synthetic declarations for REPL context variables
+            val contextDecls = buildContextDeclarationsForFir(codeContext)
+
+            // Insert a probe that captures `this` — if we're inside a receiver lambda,
+            // FIR will resolve `this` to the lambda's receiver type
+            val probeSource =
+                "$introImports\n$contextDecls\n${codeContext}val __this_probe__ = this\n${s.substring(cursor)}\n"
+
+            val (varTypes, _) = resolveTypesViaFir(probeSource)
+            val resolved = varTypes["__this_probe__"] ?: return emptyList()
+
+            // Filter out the REPL-level implicit receivers since they're already included
+            val implicitReceiverClasses = implicitReceivers.mapNotNull { kotlinType ->
+                try {
+                    kotlinType.fromClass
+                } catch (_: Exception) {
+                    null
+                }
+            }.toSet()
+
+            if (resolved in implicitReceiverClasses) return emptyList()
+
+            // Skip uninteresting types
+            if (resolved == Any::class || resolved == Nothing::class || resolved == Unit::class) return emptyList()
+
+            lprintln("debug,kotlin", "Detected lambda receiver type: ${resolved.simpleName}")
+            return listOf(resolved)
+        } catch (e: Exception) {
+            lprintln("debug,kotlin", "Lambda receiver detection failed: ${e.message}")
+            return emptyList()
+        }
+    }
+
+    /**
+     * Build synthetic `val` declarations for REPL context variables that are not
+     * already declared in the given code text. This allows FIR to resolve expressions
+     * that reference variables defined in earlier REPL evaluations.
+     */
+    private fun buildContextDeclarationsForFir(codeContext: String): String {
+        val sb = StringBuilder()
+        for ((name, info) in context.vars) {
+            if (name.contains("$") || name.startsWith("<")) continue
+            // Skip if already declared in the current code context
+            if (Regex("""\b(val|var)\s+${Regex.escape(name)}\b""").containsMatchIn(codeContext)) continue
+            val type = try {
+                val t = info.descriptor.returnType.toString()
+                // Skip internal/error types
+                if (t.contains("$") || t.contains("<error>") || t.contains("<unresolved>")) continue
+                t
+            } catch (_: Exception) {
+                // Fallback to runtime class name
+                info.value?.let { it::class.qualifiedName ?: it::class.java.name } ?: continue
+            }
+            sb.appendLine("val $name: $type = TODO()")
+        }
+        // Also emit function declarations for REPL context functions
+        for ((name, info) in context.functions) {
+            if (name.contains("$") || name == "main" || name.startsWith("<")) continue
+            if (Regex("""\bfun\s+${Regex.escape(name)}\b""").containsMatchIn(codeContext)) continue
+            try {
+                val params = info.function.parameters.filter { it.kind == KParameter.Kind.VALUE }
+                val paramsDecl = params.joinToString(", ") { p ->
+                    val pName = p.name ?: "p${p.index}"
+                    val pType = try {
+                        p.type.toString()
+                    } catch (_: Exception) {
+                        "Any?"
+                    }
+                    "$pName: $pType"
+                }
+                val returnType = try {
+                    info.function.returnType.toString()
+                } catch (_: Exception) {
+                    "Any?"
+                }
+                if (returnType.contains("$") || returnType.contains("<error>")) continue
+                sb.appendLine("fun $name($paramsDecl): $returnType = TODO()")
+            } catch (_: Exception) { /* skip functions we can't introspect */
+            }
+        }
+        return sb.toString()
+    }
+
+    // --- Receiver type resolution (reflection-based + FIR fallback) ---
+
+    private fun resolveReceiverType(receiverText: String, sourceText: String = ""): KClass<*>? {
+        // Split chained access: "foo.bar.baz" -> ["foo", "bar", "baz"]
+        val chain = splitDotChain(receiverText)
+        if (chain.isEmpty()) return null
+
+        // Resolve root element type
+        val rootElement = chain[0]
+        var currentValue: Any? = null
+        var currentType: KClass<*>? = null
+        val isCall = rootElement.contains("(")
+
+        if (isCall) {
+            val funcName = rootElement.substringBefore("(").trim()
+            if (funcName.isEmpty()) return null
+
+            // Constructor call: starts with uppercase
+            if (funcName.first().isUpperCase()) {
+                currentType = resolveTypeName(funcName)
+            } else {
+                // Function call: check runtime context first
+                val funcInfo = context.functions[funcName]
+                if (funcInfo != null) {
+                    currentType = try {
+                        funcInfo.function.returnType.classifier as? KClass<*>
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+                // Fallback: FIR-resolved function return types
+                if (currentType == null && sourceText.isNotEmpty()) {
+                    val (_, funcTypes) = resolveTypesViaFir(sourceText)
+                    currentType = funcTypes[funcName]
+                }
+            }
+        } else {
+            // Simple name: check runtime context first
+            val varInfo = context.vars[rootElement]
+            if (varInfo != null) {
+                currentValue = varInfo.value
+                currentType = currentValue?.let { it::class }
+                    ?: runCatching { varInfo.descriptor.returnType.classifier as? KClass<*> }.getOrNull()
+            }
+            // Fallback: FIR-resolved variable types
+            if (currentType == null && sourceText.isNotEmpty()) {
+                val (varTypes, _) = resolveTypesViaFir(sourceText)
+                currentType = varTypes[rootElement]
+            }
+        }
+
+        if (currentType == null) return null
+
+        // Walk the chain, resolving each step via reflection
+        for (i in 1 until chain.size) {
+            val step = chain[i]
+            val memberName = step.removeSuffix("?").let {
+                if (it.contains("(")) it.substringBefore("(") else it
+            }
+            if (memberName.isEmpty()) continue
+            val isStepCall = step.contains("(")
+
+            // Try property first
+            val prop = currentType!!.memberProperties.firstOrNull { it.name == memberName }
+            if (prop != null) {
+                if (currentValue != null) {
+                    prop.isAccessible = true
+                    currentValue = runCatching { prop.getter.call(currentValue) }.getOrNull()
+                    currentType = currentValue?.let { it::class }
+                        ?: runCatching { prop.returnType.classifier as? KClass<*> }.getOrNull()
+                } else {
+                    currentType = runCatching { prop.returnType.classifier as? KClass<*> }.getOrNull()
+                    currentValue = null
+                }
+                if (currentType == null) return null
+                continue
+            }
+
+            // Try as a method call
+            if (isStepCall) {
+                val method = currentType.java.methods.firstOrNull { it.name == memberName }
+                if (method != null) {
+                    currentType = try {
+                        method.returnType.kotlin
+                    } catch (_: Exception) {
+                        null
+                    }
+                    currentValue = null
+                    if (currentType == null) return null
+                    continue
+                }
+            }
+
+            // No property or method found — can't resolve further
+            return null
+        }
+
+        return currentType
+    }
+
+    // --- Resolve a type name to KClass ---
+
+    private fun resolveTypeName(typeName: String): KClass<*>? {
+        if (typeName.isEmpty()) return null
+        val baseName = typeName.substringBefore('<').trim()
+        if (baseName.isEmpty()) return null
+
+        // Built-in Kotlin types
+        when (baseName) {
+            "Int", "kotlin.Int" -> return Int::class
+            "Long", "kotlin.Long" -> return Long::class
+            "Double", "kotlin.Double" -> return Double::class
+            "Float", "kotlin.Float" -> return Float::class
+            "Boolean", "kotlin.Boolean" -> return Boolean::class
+            "String", "kotlin.String" -> return String::class
+            "Char", "kotlin.Char" -> return Char::class
+            "Byte", "kotlin.Byte" -> return Byte::class
+            "Short", "kotlin.Short" -> return Short::class
+            "Unit", "kotlin.Unit" -> return Unit::class
+            "Any", "kotlin.Any" -> return Any::class
+            "Nothing", "kotlin.Nothing" -> return Nothing::class
+            "List", "MutableList",
+            "kotlin.collections.List", "kotlin.collections.MutableList" -> return List::class
+
+            "Set", "MutableSet",
+            "kotlin.collections.Set", "kotlin.collections.MutableSet" -> return Set::class
+
+            "Map", "MutableMap",
+            "kotlin.collections.Map", "kotlin.collections.MutableMap" -> return Map::class
+
+            "Array", "kotlin.Array" -> return Array::class
+            "IntArray", "kotlin.IntArray" -> return IntArray::class
+            "DoubleArray", "kotlin.DoubleArray" -> return DoubleArray::class
+            "FloatArray", "kotlin.FloatArray" -> return FloatArray::class
+            "LongArray", "kotlin.LongArray" -> return LongArray::class
+            "BooleanArray", "kotlin.BooleanArray" -> return BooleanArray::class
+            "Pair", "kotlin.Pair" -> return Pair::class
+            "Triple", "kotlin.Triple" -> return Triple::class
+            "Regex", "kotlin.text.Regex" -> return Regex::class
+            "IntRange", "kotlin.ranges.IntRange" -> return IntRange::class
+            "LongRange", "kotlin.ranges.LongRange" -> return LongRange::class
+        }
+
+        // Direct classloader lookup
+        try {
+            return classLoader?.loadClass(baseName)?.kotlin
+        } catch (_: Exception) {
+        }
+
+        // Try common packages
+        val commonPackages = listOf(
+            "kotlin.", "kotlin.collections.", "kotlin.ranges.", "kotlin.text.",
+            "java.lang.", "java.util.", "java.io.",
+        ) + introImports.mapNotNull { statement ->
+            statement.removePrefix("import ").takeIf { it.endsWith(".*") }?.removeSuffix("*")
+        }
+        for (pkg in commonPackages) {
+            try {
+                return classLoader?.loadClass("$pkg$baseName")?.kotlin
+            } catch (_: Exception) {
+            }
+        }
+
+        return null
+    }
+
+    /**
+     * Add variable, function, and class declarations from the current source text
+     * that aren't yet in the runtime context, using FIR resolution for type info.
+     */
+    private fun addFirSourceDeclarations(
+        sourceText: String,
+        nameFilter: (String) -> Boolean,
+        results: MutableList<SourceCodeCompletionVariant>
+    ) {
+        val existingNames = results.map { it.text }.toSet()
+
+        // Use FIR resolution to get typed declarations
+        val (varTypes, funcReturnTypes) = resolveTypesViaFir(sourceText)
+
+        // Also do a lightweight PSI scan for declaration names and structure (params, var/val)
+        // that FIR resolution doesn't easily give us without more tree walking
+        try {
+            val factory = PsiFileFactory.getInstance(psiProject)
+            val lang = Language.findLanguageByID("kotlin")!!
+            val ktFile = factory.createFileFromText("_decl_scan_.kts", lang, sourceText) as KtFile
+
+            // Variables
+            ktFile.forEachDescendantOfType<KtProperty> { prop ->
+                val name = prop.name ?: return@forEachDescendantOfType
+                if (!nameFilter(name) || name in existingNames || name.contains("$")) return@forEachDescendantOfType
+
+                val typeStr = varTypes[name]?.simpleName
+                    ?: prop.typeReference?.text
+                    ?: "?"
+                val kind = if (prop.isVar) "var" else "val"
+                results.add(
+                    SourceCodeCompletionVariant(
+                        text = name, displayText = "$kind $name", tail = ": $typeStr",
+                        icon = kind,
+                    )
+                )
+            }
+
+            // Functions
+            ktFile.forEachDescendantOfType<KtNamedFunction> { func ->
+                val name = func.name ?: return@forEachDescendantOfType
+                if (!nameFilter(name) || name in existingNames || name.contains("$") || name == "main") return@forEachDescendantOfType
+
+                val params = func.valueParameters.joinToString(", ") { p ->
+                    "${p.name ?: "p"}: ${p.typeReference?.text ?: "?"}"
+                }
+                val returnType = funcReturnTypes[name]?.simpleName
+                    ?: func.typeReference?.text
+                    ?: "?"
+                results.add(
+                    SourceCodeCompletionVariant(
+                        text = name, displayText = "fun $name($params)", tail = ": $returnType",
+                        icon = "method",
+                    )
+                )
+            }
+
+            // Classes
+            ktFile.forEachDescendantOfType<KtClass> { cls ->
+                val name = cls.name ?: return@forEachDescendantOfType
+                if (!nameFilter(name) || name in existingNames || name.contains("$")) return@forEachDescendantOfType
+
+                val kind = when {
+                    cls.isData() -> "data class"
+                    cls.isEnum() -> "enum class"
+                    cls.isSealed() -> "sealed class"
+                    cls.isInterface() -> "interface"
+                    else -> "class"
+                }
+                results.add(
+                    SourceCodeCompletionVariant(
+                        text = name, displayText = "$kind $name", tail = "",
+                        icon = "class",
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            lprintln("debug,kotlin", "FIR source declaration scan failed: ${e.message}")
+        }
+    }
+
+    private fun splitDotChain(text: String): List<String> {
+        // Split on dots, but respect parentheses: "foo.bar(x).baz" -> ["foo", "bar(x)", "baz"]
+        val parts = mutableListOf<String>()
+        var current = StringBuilder()
+        var parenDepth = 0
+        var bracketDepth = 0
+        for (c in text) {
+            when {
+                c == '(' -> {
+                    parenDepth++; current.append(c)
+                }
+
+                c == ')' -> {
+                    parenDepth--; current.append(c)
+                }
+
+                c == '[' -> {
+                    bracketDepth++; current.append(c)
+                }
+
+                c == ']' -> {
+                    bracketDepth--; current.append(c)
+                }
+
+                c == '.' && parenDepth == 0 && bracketDepth == 0 -> {
+                    if (current.isNotEmpty()) parts.add(current.toString())
+                    current = StringBuilder()
+                }
+
+                c == '?' && parenDepth == 0 -> { /* skip safe-call ? */
+                }
+
+                else -> current.append(c)
+            }
+        }
+        if (current.isNotEmpty()) parts.add(current.toString())
+        return parts
+    }
+
+    // --- Member enumeration from a KClass (reflection-based) ---
+
+    /**
+     * Add class names from the classpath that match [prefix], with constructor parameter info.
+     * This makes typing "FLine" or "FLin" produce constructor suggestions.
+     */
+    private fun addClasspathClasses(prefix: String, results: MutableList<SourceCodeCompletionVariant>) {
+        val existingNames = results.map { it.text }.toHashSet()
+        val added = mutableSetOf<String>()
+        val maxResults = 40
+
+        val classCache = afield.runtime.kotlin.cache // classpath name cache from importHelp.kt
+        for (entry in classCache.entries) {
+            if (added.size >= maxResults) break
+            val simpleName = entry.key
+            val fqNames: List<String> = entry.value
+            if (!simpleName.startsWith(prefix, ignoreCase = true)) continue
+            if (simpleName in existingNames || !added.add(simpleName)) continue
+            if (simpleName.contains("$")) continue
+            // Skip lowercase-starting names (packages, not classes)
+            if (simpleName.firstOrNull()?.isUpperCase() != true) continue
+
+            // Try to load the class and get constructor info
+            var fqName: String? = null
+            for (n in fqNames) {
+                if (afield.runtime.kotlin.isImportableClassName(n)) {
+                    fqName = n; break
+                }
+            }
+            if (fqName == null) continue
+            val constructorInfo = try {
+                val klass = classLoader?.loadClass(fqName)?.kotlin ?: Class.forName(fqName).kotlin
+                val primary = klass.primaryConstructor ?: klass.constructors.firstOrNull()
+                if (primary != null) {
+                    val valueParams = primary.parameters.filter { it.kind == KParameter.Kind.VALUE }
+                    val paramsStr = formatKotlinParams(valueParams)
+                    paramsStr
+                } else "()"
+            } catch (_: Exception) {
+                null
+            }
+
+            val displayText = if (constructorInfo != null) "$simpleName$constructorInfo" else simpleName
+            results.add(
+                SourceCodeCompletionVariant(
+                    text = simpleName, displayText = displayText, tail = fqName,
+                    icon = "class",
+                )
+            )
+        }
+    }
+
+    /**
+     * Lazy index of Kotlin file-level classes (ending in "Kt") per package from the classpath.
+     * These classes contain top-level functions and extension functions.
+     */
+    private val kotlinFileClassesByPackage: Map<String, List<String>> by lazy {
+        val result = mutableMapOf<String, MutableList<String>>()
+        for ((_, fqNames) in afield.runtime.kotlin.cache) {
+            for (fqName in fqNames) {
+                val simpleName = fqName.substringAfterLast('.')
+                if (simpleName.endsWith("Kt") && !simpleName.contains('$')) {
+                    val pkg = fqName.substringBeforeLast('.', "")
+                    result.getOrPut(pkg) { mutableListOf() }.add(fqName)
+                }
+            }
+        }
+        result
+    }
+
+    /**
+     * Add top-level functions and extension functions on implicit receiver types
+     * from the imported packages (parsed from the intro preamble).
+     * This enables completion of functions like lines(), display(), etc. that are
+     * accessible as top-level calls in the REPL due to implicit receiver scope.
+     */
+    private fun addImportedTopLevelFunctions(
+        prefix: String,
+        results: MutableList<SourceCodeCompletionVariant>,
+        existingNames: Set<String>
+    ) {
+        val nameFilter: (String) -> Boolean = { name ->
+            prefix.isEmpty() || name.startsWith(prefix, ignoreCase = true)
+        }
+        val seen = existingNames.toMutableSet()
+
+        // Get implicit receiver classes to identify extension functions callable as top-level
+        val implicitReceiverClasses = implicitReceivers.mapNotNull { kotlinType ->
+            try {
+                kotlinType.fromClass?.java
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        // Parse star-import packages from intro
+        val starImportPackages = intro.lines()
+            .map { it.trim() }
+            .filter { it.startsWith("import ") && it.endsWith(".*") }
+            .map { it.removePrefix("import ").removeSuffix(".*").trim() }
+
+        for (pkg in starImportPackages) {
+            val fileClasses = kotlinFileClassesByPackage[pkg] ?: continue
+            for (fqClassName in fileClasses) {
+                val javaClass = try {
+                    classLoader?.loadClass(fqClassName) ?: continue
+                } catch (_: Exception) {
+                    continue
+                }
+
+                for (method in javaClass.declaredMethods) {
+                    if (!Modifier.isPublic(method.modifiers) || !Modifier.isStatic(method.modifiers)) continue
+                    val name = method.name
+                    if (name.contains('$') || name.contains('-')) continue // skip internal/mangled names
+                    if (!nameFilter(name) || !seen.add(name)) continue
+
+                    val kfunc = try {
+                        method.kotlinFunction
+                    } catch (_: Exception) {
+                        null
+                    }
+
+                    if (kfunc != null) {
+                        // Use Kotlin reflection — reliable extension receiver detection
+                        val extensionReceiver =
+                            kfunc.parameters.firstOrNull { it.kind == KParameter.Kind.EXTENSION_RECEIVER }
+                        if (extensionReceiver != null) {
+                            // Extension function — only include if receiver matches an implicit receiver
+                            val receiverClass = try {
+                                extensionReceiver.type.classifier as? KClass<*>
+                            } catch (_: Exception) {
+                                null
+                            }
+                            val matchesImplicit = receiverClass != null &&
+                                    implicitReceiverClasses.any { it.isAssignableFrom(receiverClass.java) }
+                            if (!matchesImplicit) continue  // skip extension on unrelated type
+
+                            val valueParams = kfunc.parameters.filter { it.kind == KParameter.Kind.VALUE }
+                            val paramsStr = formatKotlinParams(valueParams)
+                            val returnTypeStr = try {
+                                shortenType(kfunc.returnType.toString())
+                            } catch (_: Exception) {
+                                "Any?"
+                            }
+                            val variant = SourceCodeCompletionVariant(
+                                text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
+                                icon = "method",
+                            )
+                            // Embed KDoc for later use in documentation building
+                            val qualifiedName = receiverClass.simpleName?.let { "$it.$name" } ?: name
+                            val kdoc = try {
+                                KotlinSourceIndex.getKDocForSymbol(qualifiedName) ?: KotlinSourceIndex.getKDocForSymbol(
+                                    name
+                                )
+                            } catch (_: Exception) {
+                                null
+                            }
+                            if (kdoc != null) variant.extraInfo = mapOf("kdoc" to kdoc)
+                            results.add(variant)
+                        } else {
+                            // Plain top-level function
+                            val valueParams = kfunc.parameters.filter { it.kind == KParameter.Kind.VALUE }
+                            val paramsStr = formatKotlinParams(valueParams)
+                            val returnTypeStr = try {
+                                shortenType(kfunc.returnType.toString())
+                            } catch (_: Exception) {
+                                "Any?"
+                            }
+                            val variant = SourceCodeCompletionVariant(
+                                text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
+                                icon = "method",
+                            )
+                            val kdoc = try {
+                                KotlinSourceIndex.getKDocForSymbol(name)
+                            } catch (_: Exception) {
+                                null
+                            }
+                            if (kdoc != null) variant.extraInfo = mapOf("kdoc" to kdoc)
+                            results.add(variant)
+                        }
+                    } else {
+                        // Java fallback — can't detect extension receivers, include as top-level
+                        val params = method.parameters
+                        val paramsStr = formatJavaParams(params.toList())
+                        val returnTypeStr =
+                            shortenType(method.returnType.kotlin.simpleName ?: method.returnType.simpleName)
+                        val variant = SourceCodeCompletionVariant(
+                            text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
+                            icon = "method",
+                        )
+                        val kdoc = try {
+                            KotlinSourceIndex.getKDocForSymbol(name)
+                        } catch (_: Exception) {
+                            null
+                        }
+                        if (kdoc != null) variant.extraInfo = mapOf("kdoc" to kdoc)
+                        results.add(variant)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun formatJavaParams(params: List<java.lang.reflect.Parameter>): String {
+        if (params.isEmpty()) return "()"
+        return "(${
+            params.joinToString(", ") { p ->
+                val name = p.name
+                val type = shortenType(p.type.kotlin.simpleName ?: p.type.simpleName)
+                if (name.matches(Regex("^(arg|p)\\d+$"))) type else "$name: $type"
+            }
+        })"
+    }
+
+    private fun addMembersFromClass(
+        klass: KClass<*>,
+        prefix: String,
+        results: MutableList<SourceCodeCompletionVariant>
+    ) {
+        val nameFilter: (String) -> Boolean = { name ->
+            prefix.isEmpty() || name.startsWith(prefix, ignoreCase = true)
+        }
+        val seen = mutableSetOf<String>()
+        val receiverName = klass.simpleName ?: "Unknown"
+
+        fun tagExtra(variant: SourceCodeCompletionVariant, sortGroup: Int): SourceCodeCompletionVariant {
+            variant.extraInfo = mapOf(
+                "sortGroup" to sortGroup,
+                "receiverType" to receiverName,
+                "receiverQualifiedName" to (klass.qualifiedName ?: receiverName)
+            )
+            return variant
+        }
+
+        // Properties (including inherited)
+        try {
+            for (prop in klass.memberProperties) {
+                val name = prop.name
+                if (!nameFilter(name) || name.contains("$") || !seen.add(name)) continue
+                val typeStr = try {
+                    shortenType(prop.returnType.toString())
+                } catch (_: Exception) {
+                    "Any?"
+                }
+                val kind = if (prop is KMutableProperty<*>) "var" else "val"
+                val deprecated = if (prop.annotations.any { it is Deprecated }) DeprecationLevel.WARNING else null
+                results.add(
+                    tagExtra(
+                        SourceCodeCompletionVariant(
+                            text = name, displayText = "$kind $name", tail = ": $typeStr",
+                            icon = kind, deprecationLevel = deprecated,
+                        ), 0
+                    )
+                )
+            }
+        } catch (_: Exception) {
+        }
+
+        // Extension properties from kotlin stdlib
+        addCommonExtensions(klass, prefix, results, seen)
+
+        // Functions — try Kotlin reflection first (gives proper parameter names for Kotlin-compiled classes),
+        // then fall back to Java reflection for anything missed
+        val kotlinFuncsSeen = mutableSetOf<String>()
+        try {
+            for (func in klass.members) {
+                if (func !is KFunction<*>) continue
+                val name = func.name
+                if (!nameFilter(name) || name.contains("$")) continue
+                if (name.startsWith("get") && func.parameters.count { it.kind == KParameter.Kind.VALUE } == 0 && name.length > 3) continue
+                if (name.startsWith("set") && func.parameters.count { it.kind == KParameter.Kind.VALUE } == 1 && name.length > 3) continue
+                if (name in setOf("hashCode", "equals", "toString", "notify", "notifyAll", "wait", "getClass")) continue
+                if (!seen.add(name)) continue
+                kotlinFuncsSeen.add(name)
+
+                val valueParams = func.parameters.filter { it.kind == KParameter.Kind.VALUE }
+                val paramsStr = formatKotlinParams(valueParams)
+                val returnTypeStr = try {
+                    shortenType(func.returnType.toString())
+                } catch (_: Exception) {
+                    "Any?"
+                }
+                val deprecated = if (func.annotations.any { it is Deprecated }) DeprecationLevel.WARNING else null
+
+                results.add(
+                    tagExtra(
+                        SourceCodeCompletionVariant(
+                            text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
+                            icon = "method", deprecationLevel = deprecated,
+                        ), 0
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            lprintln("debug,kotlin", "Kotlin reflection memberFunctions failed for ${klass.simpleName}: ${e.message}")
+        }
+        // Fall back to Java reflection for any functions not covered by Kotlin reflection
+        try {
+            for (method in klass.java.methods) {
+                val name = method.name
+                if (!nameFilter(name) || name.contains("$") || name in kotlinFuncsSeen || !seen.add(name)) continue
+                if (name.startsWith("get") && method.parameterCount == 0 && name.length > 3) continue
+                if (name.startsWith("set") && method.parameterCount == 1 && name.length > 3) continue
+                if (name in setOf("hashCode", "equals", "toString", "notify", "notifyAll", "wait", "getClass")) continue
+
+                val paramsStr = formatJavaMethodParams(method)
+                val returnTypeStr = formatMethodReturnType(method)
+                val deprecated = isDeprecated(method)
+
+                results.add(
+                    tagExtra(
+                        SourceCodeCompletionVariant(
+                            text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
+                            icon = "method", deprecationLevel = deprecated,
+                        ), 0
+                    )
+                )
+            }
+        } catch (_: Exception) {
+        }
+
+        // Also add toString/hashCode/equals explicitly since they're commonly used
+        if (!seen.contains("toString") && nameFilter("toString")) {
+            results.add(
+                tagExtra(
+                    SourceCodeCompletionVariant(
+                        text = "toString",
+                        displayText = "fun toString()",
+                        tail = ": String",
+                        icon = "method"
+                    ), 3
+                )
+            )
+            seen.add("toString")
+        }
+        if (!seen.contains("hashCode") && nameFilter("hashCode")) {
+            results.add(
+                tagExtra(
+                    SourceCodeCompletionVariant(
+                        text = "hashCode",
+                        displayText = "fun hashCode()",
+                        tail = ": Int",
+                        icon = "method"
+                    ), 3
+                )
+            )
+            seen.add("hashCode")
+        }
+        if (!seen.contains("equals") && nameFilter("equals")) {
+            results.add(
+                tagExtra(
+                    SourceCodeCompletionVariant(
+                        text = "equals",
+                        displayText = "fun equals(other: Any?)",
+                        tail = ": Boolean",
+                        icon = "method"
+                    ), 3
+                )
+            )
+            seen.add("equals")
+        }
+    }
+
+    private fun addCommonExtensions(
+        klass: KClass<*>,
+        prefix: String,
+        results: MutableList<SourceCodeCompletionVariant>,
+        seen: MutableSet<String>
+    ) {
+        val nameFilter: (String) -> Boolean = { prefix.isEmpty() || it.startsWith(prefix, ignoreCase = true) }
+
+        // Collection-like extensions
+        val isIterable = Iterable::class.java.isAssignableFrom(klass.java)
+        val isCollection = Collection::class.java.isAssignableFrom(klass.java)
+        val isList = List::class.java.isAssignableFrom(klass.java)
+        val isMap = Map::class.java.isAssignableFrom(klass.java)
+        val isArray = klass.java.isArray
+        val isString = klass == String::class
+        val isComparable = Comparable::class.java.isAssignableFrom(klass.java)
+
+        val receiverName = klass.simpleName ?: "Unknown"
+
+        fun addExt(name: String, params: String, returnType: String, icon: String = "method", sortGroup: Int = 1) {
+            if (nameFilter(name) && seen.add(name)) {
+                val display = if (icon == "val" || icon == "var") "$icon $name" else "fun $name$params"
+                val tail = ": $returnType"
+                val variant = SourceCodeCompletionVariant(text = name, displayText = display, tail = tail, icon = icon)
+                variant.extraInfo = mapOf(
+                    "sortGroup" to sortGroup,
+                    "receiverType" to receiverName,
+                    "receiverQualifiedName" to (klass.qualifiedName ?: receiverName)
+                )
+                results.add(variant)
+            }
+        }
+
+        if (isIterable || isArray) {
+            addExt("filter", "(predicate: (T) -> Boolean)", "List<T>")
+            addExt("map", "(transform: (T) -> R)", "List<R>")
+            addExt("flatMap", "(transform: (T) -> Iterable<R>)", "List<R>")
+            addExt("forEach", "(action: (T) -> Unit)", "Unit")
+            addExt("forEachIndexed", "(action: (Int, T) -> Unit)", "Unit")
+            addExt("any", "(predicate: (T) -> Boolean)", "Boolean")
+            addExt("all", "(predicate: (T) -> Boolean)", "Boolean")
+            addExt("none", "(predicate: (T) -> Boolean)", "Boolean")
+            addExt("first", "()", "T")
+            addExt("firstOrNull", "()", "T?")
+            addExt("last", "()", "T")
+            addExt("lastOrNull", "()", "T?")
+            addExt("find", "(predicate: (T) -> Boolean)", "T?")
+            addExt("count", "()", "Int")
+            addExt("sortedBy", "(selector: (T) -> R)", "List<T>")
+            addExt("sortedByDescending", "(selector: (T) -> R)", "List<T>")
+            addExt("groupBy", "(keySelector: (T) -> K)", "Map<K, List<T>>")
+            addExt("associate", "(transform: (T) -> Pair<K, V>)", "Map<K, V>")
+            addExt("associateBy", "(keySelector: (T) -> K)", "Map<K, T>")
+            addExt("toList", "()", "List<T>")
+            addExt("toSet", "()", "Set<T>")
+            addExt("toMutableList", "()", "MutableList<T>")
+            addExt("joinToString", "(separator: String)", "String")
+            addExt("take", "(n: Int)", "List<T>")
+            addExt("drop", "(n: Int)", "List<T>")
+            addExt("zip", "(other: Iterable<R>)", "List<Pair<T, R>>")
+            addExt("distinct", "()", "List<T>")
+            addExt("distinctBy", "(selector: (T) -> K)", "List<T>")
+            addExt("flatten", "()", "List<T>")
+            addExt("reversed", "()", "List<T>")
+            addExt("shuffled", "()", "List<T>")
+            addExt("maxByOrNull", "(selector: (T) -> R)", "T?")
+            addExt("minByOrNull", "(selector: (T) -> R)", "T?")
+            addExt("sumOf", "(selector: (T) -> Int)", "Int")
+            addExt("withIndex", "()", "Iterable<IndexedValue<T>>")
+            addExt("mapIndexed", "(transform: (Int, T) -> R)", "List<R>")
+            addExt("filterNot", "(predicate: (T) -> Boolean)", "List<T>")
+            addExt("filterNotNull", "()", "List<T>")
+            addExt("partition", "(predicate: (T) -> Boolean)", "Pair<List<T>, List<T>>")
+            addExt("chunked", "(size: Int)", "List<List<T>>")
+            addExt("windowed", "(size: Int)", "List<List<T>>")
+        }
+        if (isList || isArray) {
+            addExt("indices", "", "IntRange", "val")
+            addExt("lastIndex", "", "Int", "val")
+            addExt("getOrNull", "(index: Int)", "T?")
+            addExt("getOrElse", "(index: Int, defaultValue: (Int) -> T)", "T")
+        }
+        if (isCollection) {
+            addExt("isNotEmpty", "()", "Boolean")
+            addExt("isNullOrEmpty", "()", "Boolean")
+            addExt("orEmpty", "()", "Collection<T>")
+        }
+        if (isMap) {
+            addExt("getOrDefault", "(key: K, defaultValue: V)", "V")
+            addExt("getOrElse", "(key: K, defaultValue: () -> V)", "V")
+            addExt("mapValues", "(transform: (Map.Entry<K, V>) -> R)", "Map<K, R>")
+            addExt("mapKeys", "(transform: (Map.Entry<K, V>) -> R)", "Map<R, V>")
+            addExt("filterKeys", "(predicate: (K) -> Boolean)", "Map<K, V>")
+            addExt("filterValues", "(predicate: (V) -> Boolean)", "Map<K, V>")
+            addExt("toList", "()", "List<Pair<K, V>>")
+            addExt("toMutableMap", "()", "MutableMap<K, V>")
+        }
+        if (isString) {
+            addExt("lines", "()", "List<String>")
+            addExt("trim", "()", "String")
+            addExt("trimEnd", "()", "String")
+            addExt("trimStart", "()", "String")
+            addExt("split", "(delimiter: String)", "List<String>")
+            addExt("substringBefore", "(delimiter: String)", "String")
+            addExt("substringAfter", "(delimiter: String)", "String")
+            addExt("removePrefix", "(prefix: String)", "String")
+            addExt("removeSuffix", "(suffix: String)", "String")
+            addExt("toIntOrNull", "()", "Int?")
+            addExt("toDoubleOrNull", "()", "Double?")
+            addExt("isBlank", "()", "Boolean")
+            addExt("isNotBlank", "()", "Boolean")
+            addExt("isNullOrBlank", "()", "Boolean")
+            addExt("repeat", "(n: Int)", "String")
+            addExt("padStart", "(length: Int)", "String")
+            addExt("padEnd", "(length: Int)", "String")
+            addExt("lowercase", "()", "String")
+            addExt("uppercase", "()", "String")
+            addExt("capitalize", "()", "String")
+            addExt("decapitalize", "()", "String")
+            addExt("toRegex", "()", "Regex")
+        }
+        if (isComparable) {
+            addExt("coerceIn", "(min: T, max: T)", "T")
+            addExt("coerceAtLeast", "(minimumValue: T)", "T")
+            addExt("coerceAtMost", "(maximumValue: T)", "T")
+        }
+
+        // Universal extensions (available on Any/Any?) — sort after type-specific extensions
+        addExt("let", "(block: (T) -> R)", "R", sortGroup = 2)
+        addExt("also", "(block: (T) -> Unit)", "T", sortGroup = 2)
+        addExt("apply", "(block: T.() -> Unit)", "T", sortGroup = 2)
+        addExt("run", "(block: T.() -> R)", "R", sortGroup = 2)
+        addExt("takeIf", "(predicate: (T) -> Boolean)", "T?", sortGroup = 2)
+        addExt("takeUnless", "(predicate: (T) -> Boolean)", "T?", sortGroup = 2)
+        addExt("to", "(that: B)", "Pair<A, B>", sortGroup = 2)
+    }
+
+    private fun addStaticMembersIfPackageOrClass(
+        receiverText: String,
+        prefix: String,
+        results: MutableList<SourceCodeCompletionVariant>
+    ) {
+        // Try to resolve as a class name (supports short names like "Math" → java.lang.Math)
+        val klass = resolveTypeName(receiverText) ?: return
+
+        val nameFilter: (String) -> Boolean = { name ->
+            prefix.isEmpty() || name.startsWith(prefix, ignoreCase = true)
+        }
+        val seen = mutableSetOf<String>()
+
+        // Add companion object members (Kotlin classes)
+        try {
+            val companion = klass.companionObject
+            if (companion != null) {
+                for (prop in companion.memberProperties) {
+                    val name = prop.name
+                    if (!nameFilter(name) || name.contains("$") || !seen.add(name)) continue
+                    val typeStr = try {
+                        shortenType(prop.returnType.toString())
+                    } catch (_: Exception) {
+                        "Any?"
+                    }
+                    val kind = if (prop is KMutableProperty<*>) "var" else "val"
+                    val deprecated = if (prop.annotations.any { it is Deprecated }) DeprecationLevel.WARNING else null
+                    results.add(
+                        SourceCodeCompletionVariant(
+                            text = name, displayText = "$kind $name", tail = ": $typeStr",
+                            icon = kind, deprecationLevel = deprecated,
+                        )
+                    )
+                }
+                for (func in companion.declaredFunctions) {
+                    val name = func.name
+                    if (!nameFilter(name) || name.contains("$") || !seen.add(name)) continue
+                    val paramsStr = formatKotlinParams(func.parameters.filter { it.kind == KParameter.Kind.VALUE })
+                    val returnTypeStr = try {
+                        shortenType(func.returnType.toString())
+                    } catch (_: Exception) {
+                        "Any?"
+                    }
+                    val deprecated = if (func.annotations.any { it is Deprecated }) DeprecationLevel.WARNING else null
+                    results.add(
+                        SourceCodeCompletionVariant(
+                            text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
+                            icon = "method", deprecationLevel = deprecated,
+                        )
+                    )
+                }
+            }
+        } catch (_: Exception) {
+        }
+
+        // Add Java static methods and fields (e.g., Math.random(), Math.PI)
+        try {
+            val javaClass = klass.java
+            for (method in javaClass.methods) {
+                if (!Modifier.isStatic(method.modifiers)) continue
+                val name = method.name
+                if (!nameFilter(name) || name.contains("$") || !seen.add(name)) continue
+                if (name in setOf("getClass", "wait", "notify", "notifyAll")) continue
+                val paramsStr = formatJavaMethodParams(method)
+                val returnTypeStr = formatMethodReturnType(method)
+                val deprecated = isDeprecated(method)
+                results.add(
+                    SourceCodeCompletionVariant(
+                        text = name, displayText = "fun $name$paramsStr", tail = ": $returnTypeStr",
+                        icon = "method", deprecationLevel = deprecated,
+                    )
+                )
+            }
+            for (field in javaClass.fields) {
+                if (!Modifier.isStatic(field.modifiers)) continue
+                val name = field.name
+                if (!nameFilter(name) || name.contains("$") || !seen.add(name)) continue
+                val typeStr = try {
+                    shortenType(field.type.kotlin.simpleName ?: field.type.simpleName)
+                } catch (_: Exception) {
+                    "Any?"
+                }
+                val kind = if (Modifier.isFinal(field.modifiers)) "val" else "var"
+                results.add(
+                    SourceCodeCompletionVariant(
+                        text = name, displayText = "$kind $name", tail = ": $typeStr",
+                        icon = kind,
+                    )
+                )
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun extractPrefix(s: String, cursor: Int): String {
+        if (cursor <= 0 || cursor > s.length) return ""
+        var start = cursor - 1
+        while (start >= 0 && (s[start].isLetterOrDigit() || s[start] == '_')) {
+            start--
+        }
+        return s.substring(start + 1, cursor)
+    }
+
+    override fun completeAndWait(s: String, cursor: Int): CompletionResult {
+        return runBlocking { complete(s, cursor) }
+    }
+
+    override fun applyMacros(box: Box, s: String, skipMacros: Set<String>, previewOnly: Boolean): String {
+        // Pattern-rewrite layer: expand user-authored `rewrite { … }` rules (and blank the rule
+        // blocks out of the source) before the builtin identifier macros run below, so a rule's
+        // `to {}` output can still trigger the builtin macros. Pure PSI. See [PatternRewrite].
+        // Procedural `unquote {}`: compile+evaluate the snippet in this box's REPL context and
+        // return its String result. Blocking, fail-soft, and side-effect-free (updateContext=false);
+        // disabled in editor-preview expansions where running user code is unwanted.
+        val evalUnquote: ((String) -> String?)? = if (previewOnly) null else { snippet ->
+            try {
+                // Compile+eval the snippet exactly as ordinary box code is run — with the box as the
+                // implicit receiver (box engines are built with one `Box` receiver, so snippets
+                // expect one at eval; passing none fails with "wrong number of arguments"). The
+                // snippet binds its metavars as `String` vals and runs against the box's REPL state
+                // (stdlib + top-level decls + box-scoped members). updateContext=false keeps it
+                // side-effect-free.
+                val result = compileSnippetAndWait(snippet, implicits = listOf(box)) { diags ->
+                    lprintln("warning,macros", "rewrite unquote {} did not compile: ${diags.joinToString { it.message }}")
+                }?.evalAndWait(updateContext = false, implicits = listOf(box))
+                when (result) {
+                    is ResultValue.Value -> result.value?.toString()
+                    is ResultValue.Error -> {
+                        lprintln("warning,macros", "rewrite unquote {} threw at expansion time: ${result.error.message}")
+                        null
+                    }
+                    else -> null
+                }
+            } catch (t: Throwable) {
+                lprintln("warning,macros", "rewrite unquote {} eval failed: ${t.message}")
+                null
+            }
+        }
+        // Ambient rules: `rewrite {}` rules declared in a box apply to that box's own code AND every
+        // descendant box's code. We read each box's source `code` directly (so a rule is ambient the
+        // moment it is *written* — the box need not have run). searchUpwards visits this box first,
+        // then all ancestors (nearest first). We INCLUDE this box so its own rules also apply to a
+        // *fragment* run from it (where `s` is only the selected snippet and does not itself contain
+        // the rule block). For a full-box run `s` already carries the rule (collected + blanked); the
+        // duplicate is harmless — a rewrite makes its target no longer match, and guards fail closed.
+        // The `"rewrite" in code` pre-filter skips parsing code that declares no rules.
+        val ambientRuleSources = mutableListOf<String>()
+        searchUpwards(box, "code") { code ->
+            if (code != null && "rewrite" in code) ambientRuleSources += code
+        }
+
+        val expansion = PatternRewrite.expand(
+            s,
+            parse = { txt ->
+                PsiFileFactory.getInstance(psiProject)
+                    .createFileFromText(Language.findLanguageByID("kotlin")!!, txt) as KtFile
+            },
+            evalUnquote = evalUnquote,
+            ambientRuleSources = ambientRuleSources,
+            onDiagnostic = { msg -> lprintln("warning,macros", msg) },
+        )
+        if (!previewOnly) {
+            // `provide {}` clauses → stably-keyed, deduplicating preamble segments (see the
+            // /*prefix*/ "stack mark" idempotency mechanism); routed through the existing merge.
+            expansion.preambleBlocks.forEach { applyInsertToPreamble(box, Insert(preambleAfterImports = it)) }
+            // `ai("…")` clauses → cached AI generation into the box attic (once per stable key).
+            expansion.aiRequests.forEach { box.resolvePatternRewriteAi(it) }
+        }
+        var rewritten = expansion.text
+        val needsRerun = false
+        lblock("debug,kotlin", "rewriting AST analysis") {
+            do {
+                val factory = PsiFileFactory.getInstance(psiProject)
+                val lang = Language.findLanguageByID("kotlin")!!
+                val instance = factory.createFileFromText(lang, rewritten)
+
+                val edits = mutableListOf<Pair<Pair<Int, Int>, String>>()
+
+                instance.forEachDescendantOfType<PsiElement> { expression ->
+                    when (expression) {
+                        is KtCallExpression -> {
+                            expression.children.forEach {
+                                when (it) {
+                                    is KtNameReferenceExpression -> {
+                                        if (it.text in skipMacros) return@forEach
+
+                                        lprintln(
+                                            "debug,kotlin",
+                                            "child (named): ${it} ${it.text} ${it.javaClass} ${it.startOffset} -> ${it.endOffset} ${it.reference}"
+                                        )
+
+                                        var ns = it.nextSibling
+                                        val t = mutableListOf<String>()
+                                        while (ns != null) {
+                                            t.add(ns.text)
+                                            ns = ns.nextSibling
+                                        }
+
+                                        val containingFunction =
+                                            PsiTreeUtil.getParentOfType(expression, KtNamedFunction::class.java)
+                                        val containingFunctionName = containingFunction?.name
+                                        val valueParameterList = containingFunction?.valueParameterList?.text
+                                        val returnParameterText = containingFunction?.typeReference?.text
+
+                                        val containingFunctionInfo =
+                                            if (containingFunctionName != null && valueParameterList != null && returnParameterText != null)
+                                                ContainingFunction(
+                                                    containingFunctionName,
+                                                    valueParameterList,
+                                                    returnParameterText
+                                                )
+                                            else null
+
+                                        val e = MacroRegistry.rewrite(box, it.text, t, containingFunctionInfo)
+
+                                        if (e != null) {
+                                            if (!previewOnly) {
+                                                if (e.start.length > 0) {
+                                                    edits.add((0 to 0) to e.preamble)
+                                                }
+                                                if (e.afterImports.length > 0) {
+                                                    val a = findLastImport(rewritten)
+                                                    edits.add((a to a) to e.afterImports)
+                                                }
+                                            }
+
+                                            val replacement =
+                                                if (expression.parent is KtBlockExpression || expression.parent is KtScriptInitializer)
+                                                    e.standaloneHere ?: e.here
+                                                else
+                                                    e.here
+                                            edits.add((expression.startOffset to expression.endOffset) to replacement)
+
+                                            if (!previewOnly) {
+                                                if (e.preamble.isNotBlank() || e.preambleAfterImports.isNotBlank()) {
+                                                    applyInsertToPreamble(box, e)
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    else -> {
+                                    }
+                                }
+                            }
+                        }
+
+                        is KtNameReferenceExpression -> {
+                        }
+                    }
+                }
+                while (edits.size > 0) {
+                    lprintln("debug,kotlin", "applying edits")
+                    val e = edits.pop()
+                    rewritten = rewritten.replaceRange(e.first.first, e.first.second, e.second)
+                    val shrink = (e.first.second - e.first.first) - e.second.length
+                    edits.forEachIndexed { index, it ->
+                        val a = if (it.first.first > e.first.first) it.first.first - shrink else it.first.first
+                        val b = if (it.first.second > e.first.first) it.first.second - shrink else it.first.second
+                        edits[index] = (a to b) to it.second
+                    }
+                }
+            } while (needsRerun)
+
+            lprintln("debug,kotlin", "final string is:\n$rewritten")
+        }
+        // Surface the exact post-expansion source handed to the compiler (execute path only, and
+        // only when macro expansion actually changed the code), to aid debugging rewrite/unquote/
+        // builtin-macro output. Toggle with -Dafield.macros.logExpanded=false.
+        if (!previewOnly && KotlinEngineConfig.logExpandedMacros && rewritten != s) {
+            lprintln(
+                "info,macros",
+                "macro-expanded source for box '${box.name.ifBlank { box.id }}' (sent to the Kotlin compiler):\n" +
+                        "┌────────────────────────────────────────────────────────────\n" +
+                        rewritten.lines().joinToString("\n") { "│ $it" } +
+                        "\n└────────────────────────────────────────────────────────────"
+            )
+        }
+        return rewritten
+    }
+
+
+    override fun findLastImport(s: String): Int {
+        if (s.contains("import ")) {
+            val m = s.findLastAnyOf(listOf("import "))!!.first
+            val m2 = s.findAnyOf(listOf("\n"), startIndex = m)
+            if (m2 == null) return s.length
+            else return m2.first + 1
+        } else return 0
+    }
+
+    override fun parseAndRewrite(s: String, rules: List<(PsiElement, String) -> String>): String {
+        return s;
+    }
+
+    override var execNumber = 0
+    override suspend fun exec(
+        s: String,
+        onCompileError: (List<ScriptDiagnostic>) -> Unit,
+        onEvalError: (List<ScriptDiagnostic>) -> Unit,
+        onEvalException: (Throwable) -> Unit,
+        implicits: List<Any>,
+    ): ResultValue? {
+        // Never evaluate before the stdlib intro has (see [bootstrapReady]). The bootstrap
+        // itself uses [execInternal] to avoid waiting on itself.
+        LatencySpans.time("engine.bootstrapWait", box = (associatedBox as? Box)?.id) { bootstrapReady.await() }
+        return execInternal(s, onCompileError, onEvalError, onEvalException, implicits)
+    }
+
+    /**
+     * Run the stdlib bootstrap (intro) without the [bootstrapReady] gate — it is what opens
+     * the gate — and release the gate afterwards, whatever happened, so nothing waits forever.
+     */
+    override suspend fun bootstrap(
+        s: String,
+        implicits: List<Any>,
+        onCompileError: (List<ScriptDiagnostic>) -> Unit,
+        onEvalError: (List<ScriptDiagnostic>) -> Unit,
+        onEvalException: (Throwable) -> Unit,
+    ): ResultValue? {
+        try {
+            return execInternal(s, onCompileError, onEvalError, onEvalException, implicits)
+        } finally {
+            bootstrapReady.complete(Unit)
+        }
+    }
+
+    override fun armBootstrapGate() {
+        bootstrapReady = CompletableDeferred()
+    }
+
+    override fun releaseBootstrapGate() {
+        bootstrapReady.complete(Unit)
+    }
+
+    private suspend fun execInternal(
+        s: String,
+        onCompileError: (List<ScriptDiagnostic>) -> Unit,
+        onEvalError: (List<ScriptDiagnostic>) -> Unit,
+        onEvalException: (Throwable) -> Unit,
+        implicits: List<Any>,
+    ): ResultValue? {
+
+        return when (val r = compileOrReuse(s, implicits)) {
+            is ResultWithDiagnostics.Success -> {
+                when (val r2 = evaluateInternal(r.value, updateContext = true, implicits = implicits)) {
+                    is ResultWithDiagnostics.Success -> {
+                        when (val e = r2.value.get().result) {
+                            is ResultValue.Error -> {
+                                lprintln("error,kotlin", "Evaluation Error ${e.error} / ${e.error.javaClass}")
+                                onEvalException(translateKotlinEvalException(e.error, s))
+                                e
+                            }
+
+                            is ResultValue.NotEvaluated -> {
+                                lprintln("warning,kotlin", "not evaluated for ${r2.reports}")
+                                onEvalError(r2.reports)
+                                e
+                            }
+
+                            else -> {
+                                execNumber++
+                                e
+                            }
+                        }
+                    }
+
+                    is ResultWithDiagnostics.Failure -> {
+                        lprintln("error,kotlin", "evaluator error ${r2}")
+                        onEvalError(r2.reports)
+                        null
+                    }
+                }
+            }
+
+            is ResultWithDiagnostics.Failure -> {
+                lprintln("error,kotlin", "compiler error ${r}")
+                onCompileError(r.reports)
+                null
+            }
+        }
+    }
+
+    override fun execAndWait(
+        s: String,
+        onCompileError: (List<ScriptDiagnostic>) -> Unit,
+        onEvalError: (List<ScriptDiagnostic>) -> Unit,
+        onEvalException: (Throwable) -> Unit,
+        implicits: List<Any>
+    ): ResultValue? {
+        return runBlocking {
+            exec(s, onCompileError, onEvalError, onEvalException, implicits)
+        }
+    }
+
+    /** K2 implementation of [PreparedSnippet]; see that interface for the evaluation contract. */
+    inner class K2PreparedSnippet internal constructor(
+        private val compiled: LinkedSnippet<out CompiledScript>,
+        private val defaultImplicits: List<Any>
+    ) : afield.runtime.kotlin.PreparedSnippet {
+        override suspend fun eval(
+            updateContext: Boolean,
+            implicits: List<Any>,
+            onEvalError: (List<ScriptDiagnostic>) -> Unit,
+            onEvalException: (Throwable) -> Unit
+        ): ResultValue? {
+            return when (val r = evaluate(compiled, updateContext, implicits.ifEmpty { defaultImplicits })) {
+                is ResultWithDiagnostics.Success -> {
+                    when (val e = r.value.get().result) {
+                        is ResultValue.Error -> {
+                            lprintln("error,kotlin", "Evaluation Error ${e.error} / ${e.error.javaClass}")
+                            onEvalException(translateKotlinEvalException(e.error))
+                            e
+                        }
+
+                        is ResultValue.NotEvaluated -> {
+                            lprintln("warning,kotlin", "not evaluated for ${r.reports}")
+                            onEvalError(r.reports)
+                            e
+                        }
+
+                        else -> {
+                            execNumber++
+                            e
+                        }
+                    }
+                }
+
+                is ResultWithDiagnostics.Failure -> {
+                    lprintln("error,kotlin", "evaluator error ${r}")
+                    onEvalError(r.reports)
+                    null
+                }
+            }
+        }
+
+        override fun evalAndWait(
+            updateContext: Boolean,
+            implicits: List<Any>,
+            onEvalError: (List<ScriptDiagnostic>) -> Unit,
+            onEvalException: (Throwable) -> Unit
+        ): ResultValue? {
+            return runBlocking {
+                eval(updateContext, implicits, onEvalError, onEvalException)
+            }
+        }
+    }
+
+    override suspend fun compileSnippet(
+        s: String,
+        implicits: List<Any>,
+        onCompileError: (List<ScriptDiagnostic>) -> Unit
+    ): K2PreparedSnippet? {
+        return when (val r = compile(s)) {
+            is ResultWithDiagnostics.Success -> {
+                K2PreparedSnippet(r.value, implicits)
+            }
+
+            is ResultWithDiagnostics.Failure -> {
+                lprintln("error,kotlin", "compiler error ${r}")
+                onCompileError(r.reports)
+                null
+            }
+        }
+    }
+
+    override fun compileSnippetAndWait(
+        s: String,
+        implicits: List<Any>,
+        onCompileError: (List<ScriptDiagnostic>) -> Unit
+    ): K2PreparedSnippet? {
+        return runBlocking {
+            compileSnippet(s, implicits, onCompileError)
+        }
+    }
+
+
+    /**
+     * Dispose the underlying K2 REPL compilation state.
+     * Call this when the KotlinInterface is no longer needed.
+     *
+     * It is called from any thread, whatever the engine is doing: a document's last websocket
+     * leaving retires its boxes from a Ktor IO thread while a box's stdlib imports may still be
+     * queued on the runloop or compiling on [compilationDispatcher]. So the state is released only
+     * once nothing is using it ([usingCompilationState]), and a compile that starts after this is
+     * refused ([compileAfterDisposal]) instead of run.
+     *
+     * Releasing the state under a compile used to break more than that compile. `rootDisposable` is
+     * this engine's compiler project, and when it is the last one in the JVM the compiler disposes
+     * the shared IntelliJ application with it, so `ApplicationManager.getApplication()` returns
+     * null. The compile then died with an NPE in `LanguageUtil.matchingMetaLanguages`; when it was
+     * the JVM's first compile, the NPE was thrown inside `FileSizeLimit`'s static initializer, and
+     * every later compile in that JVM failed with `Could not initialize class …FileSizeLimit`.
+     * Measured 2026-10-04 by aborting a backdoor socket just after `agent-create-box` replied.
+     */
+    override fun dispose() {
+        disposed = true
+        if (compilationStateUsers.get() == 0) releaseCompilationState()
+    }
+
+    @Volatile
+    private var disposed = false
+
+    override val isDisposed: Boolean get() = disposed
+
+    private val compilationStateUsers = AtomicInteger(0)
+    private val compilationStateReleased = AtomicBoolean(false)
+
+    /**
+     * Run [body] with the compilation state held live, or [onDisposed] once [dispose] has run.
+     *
+     * [dispose] writes `disposed` and then reads the count; the last lease out decrements the count
+     * and then reads `disposed`. Whichever of the two comes second sees the other's write and
+     * releases the state, and [releaseCompilationState] makes sure that happens once.
+     */
+    private inline fun <T> usingCompilationState(onDisposed: () -> T, body: () -> T): T {
+        compilationStateUsers.incrementAndGet()
+        try {
+            return if (disposed) onDisposed() else body()
+        } finally {
+            if (compilationStateUsers.decrementAndGet() == 0 && disposed) releaseCompilationState()
+        }
+    }
+
+    private fun releaseCompilationState() {
+        if (compilationStateReleased.compareAndSet(false, true)) Disposer.dispose(rootDisposable)
+    }
+
+    private fun compileAfterDisposal(s: String): ResultWithDiagnostics<LinkedSnippet<CompiledScript>> {
+        lprintln(
+            "info,kotlin",
+            "compile skipped: engine filePrefix=$filePrefix was disposed before this snippet compiled, preview=${compileSnippetPreview(s)}"
+        )
+        return ResultWithDiagnostics.Failure(
+            ScriptDiagnostic(
+                ScriptDiagnostic.unspecifiedError,
+                "This box's Kotlin engine was disposed before the code compiled: its document was closed, or the box was deleted or reset.",
+                ScriptDiagnostic.Severity.ERROR,
+                null,
+                null,
+                null
+            )
+        )
+    }
+
+
+    companion object {
+
+        init {
+            // Keep the compiler's shared IntelliJ application alive after the last compilation state
+            // in the JVM is disposed, as the Kotlin compile daemon does. Without it, disposing the
+            // last engine (closing the only open document is enough) disposes the application and
+            // nulls `ApplicationManager`, and any PSI work still in flight on another thread fails —
+            // fatally for the whole JVM when that work is the first compile (see [dispose]). It also
+            // saves rebuilding the application for the next document. An explicit
+            // `-Dkotlin.environment.keepalive` wins.
+            if (CompilerSystemProperties.KOTLIN_COMPILER_ENVIRONMENT_KEEPALIVE_PROPERTY.value == null) {
+                CompilerSystemProperties.KOTLIN_COMPILER_ENVIRONMENT_KEEPALIVE_PROPERTY.value = "true"
+            }
+        }
+
+        var sharedClassLoader: ClassLoader? = null
+
+        /**
+         * Every `-Xplugin=` argument this JVM's K2 compilation states get.
+         *
+         * The two plugins are located differently on purpose. Wither's jar is *on* the app classpath
+         * — it carries annotations that box code names, so it has to be — and is found there. The
+         * DataFrame plugin's jar deliberately is not: it vendors ~1000 classes of the DataFrame
+         * runtime, which alongside the real `dataframe-core` dependency would put two copies of
+         * `DataFrame` in front of box code. `-Xplugin` loads it in the compiler's own plugin
+         * classloader, so only the compiler ever sees it.
+         */
+        val compilerPluginArgs: List<String> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+            witherPluginArgs + dataFramePluginArgs
+        }
+
+        /**
+         * The DataFrame compiler plugin, from `libs/` rather than the classpath (see
+         * [compilerPluginArgs]). Disable with `-Dafield.dataframePlugin=false`; override the jar
+         * location with `-Dafield.dataframePlugin.jar=<path>`.
+         *
+         * Its extension point (`FirFunctionCallRefinementExtension`) is documented in the compiler
+         * as "highly unstable and not recommended to use", and it generates *local* classes at
+         * body-resolve, so what it can and cannot do across a REPL snippet boundary is a live
+         * question — see `DataFramePluginSpike`.
+         */
+        private val dataFramePluginArgs: List<String> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+            if (System.getProperty("afield.dataframePlugin", "true") != "true") {
+                lprintln("kotlin", "dataframe: plugin disabled by -Dafield.dataframePlugin=false")
+                return@lazy emptyList()
+            }
+            val override = System.getProperty("afield.dataframePlugin.jar")?.let { java.io.File(it) }
+            val candidates = listOfNotNull(
+                override,
+                java.io.File("libs/dataframe-plugin.jar"),
+                java.io.File(System.getProperty("user.dir"), "libs/dataframe-plugin.jar"),
+            )
+            candidates.firstOrNull { it.exists() }
+                ?.absoluteFile
+                ?.let {
+                    lprintln("kotlin", "dataframe: enabling DataFrame compiler plugin from ${it.path}")
+                    listOf("-Xplugin=${it.path}")
+                }
+                ?: emptyList<String>().also {
+                    lprintln("kotlin", "dataframe: plugin jar not found in libs/; not enabled")
+                }
+        }
+
+        private val witherPluginArgs: List<String> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+            System.getProperty("java.class.path").orEmpty()
+                .split(java.io.File.pathSeparatorChar)
+                .firstOrNull { it.endsWith("wither-plugin.jar") }
+                ?.let { java.io.File(it).absoluteFile }
+                ?.takeIf { it.exists() }
+                ?.let {
+                    lprintln("kotlin", "wither: enabling Wither compiler plugin from ${it.path}")
+                    listOf("-Xplugin=${it.path}")
+                }
+                ?: emptyList<String>().also {
+                    lprintln("kotlin", "wither: plugin jar not found on classpath; not enabled")
+                }
+        }
+
+        // multi-threaded compilation broken in current kotlin compiler.
+        // Daemon-threaded so this shared compile dispatcher never keeps a JVM alive.
+        var compilationThread = Executors.newFixedThreadPool(1) { runnable ->
+            Thread(runnable, "afield-ki2-compile").apply { isDaemon = true }
+        }.asCoroutineDispatcher()
+
+        fun functionSignature(function: KFunction<*>) = afield.runtime.kotlin.functionSignature(function)
+
+        fun shortenType(name: String) = afield.runtime.kotlin.shortenType(name)
+
+        fun getTokenBounds(buf: String, cursor: Int) = afield.runtime.kotlin.getTokenBounds(buf, cursor)
+
+        fun getResult(
+            code: String, cursor: Int, completions: List<SourceCodeCompletionVariant>
+        ) = getCompletionResult(code, cursor, completions)
+    }
+
+    class ContextUpdater(
+        val context: KotlinContext,
+        private val evaluator: K2ReplEvaluator,
+        private val ki: KotlinInterface2
+    ) {
+
+        private val processedSnippets =
+            Collections.newSetFromMap(IdentityHashMap<LinkedSnippet<KJvmEvaluatedSnippet>, Boolean>())
+
+        private class MutableBinding(val field: Field, val owner: Any, val type: KType) {
+            fun matches(field: Field, owner: Any): Boolean =
+                this.field == field && (Modifier.isStatic(field.modifiers) || this.owner === owner)
+        }
+
+        private val mutableBindings = mutableMapOf<String, MutableList<MutableBinding>>()
+
+        // Track exported declarations by alias for idempotent preamble updates
+        private val exportedDeclarations = mutableMapOf<String, String>()
+
+        fun update(evaluated: ResultValue? = null) {
+            try {
+                var lastSnippet = evaluator.lastEvaluatedSnippet
+                val newSnippets = mutableListOf<Any>()
+                // A cached evaluation can return to an older node. Do not replay that node's
+                // ancestors and propagate their stale fields over the just-evaluated initializer.
+                while (lastSnippet != null && processedSnippets.add(lastSnippet)) {
+                    val result = lastSnippet.get().result
+                    val line = result.scriptInstance
+                    // A failed initializer must leave the running code's values alone.
+                    if (line != null && result !is ResultValue.Error) newSnippets.add(line)
+                    lastSnippet = lastSnippet.previous
+                }
+                newSnippets.reverse()
+                val hasNewDeclarations = newSnippets.isNotEmpty()
+                // Cached evaluation can reuse its history node and still rerun an initializer.
+                val current = evaluated?.takeUnless { it is ResultValue.Error }?.scriptInstance
+                if (current != null && newSnippets.none { it === current }) newSnippets.add(current)
+                refreshVariables(newSnippets, current)
+                refreshMethods(newSnippets)
+                if (hasNewDeclarations) {
+                    context.generation++
+                }
+
+            } catch (e: ReflectiveOperationException) {
+                lprintln("error,kotlin", "Exception updating current variables $e")
+            } catch (e: NullPointerException) {
+                lprintln("error,kotlin", "Exception updating current variables $e")
+            }
+        }
+
+        private fun refreshMethods(lines: List<Any>) {
+            for (line in lines) {
+                val methods = line.javaClass.methods
+                for (method in methods) {
+                    if (objectMethods.contains(method) || method.name == "main") {
+                        continue
+                    }
+                    val function = method.kotlinFunction ?: continue
+                    context.functions[function.name] = KotlinFunctionInfo(function, line)
+
+                    val exportTargets = exportTargetsForFunction(method)
+                    if (exportTargets.isNotEmpty()) {
+                        processExportedFunction(function, line, exportTargets)
+                    }
+                }
+            }
+        }
+
+        private enum class ExportTarget {
+            Local,
+            Root,
+            Metaroot
+        }
+
+        private fun exportTargetsForFunction(method: java.lang.reflect.Method): Set<ExportTarget> {
+            val targets = linkedSetOf<ExportTarget>()
+            if (method.isAnnotationPresent(exported::class.java)) targets += ExportTarget.Local
+            if (method.isAnnotationPresent(rootExported::class.java)) targets += ExportTarget.Root
+            if (method.isAnnotationPresent(metarootExported::class.java)) targets += ExportTarget.Metaroot
+            return targets.withLocalExport()
+        }
+
+        private fun exportTargetsForProperty(field: Field?, descriptor: KProperty<*>): Set<ExportTarget> {
+            val targets = linkedSetOf<ExportTarget>()
+            val annotations = descriptor.annotations + descriptor.getter.annotations
+            if (field?.isAnnotationPresent(exported::class.java) == true ||
+                annotations.any { it.annotationClass == exported::class }
+            ) targets += ExportTarget.Local
+            if (field?.isAnnotationPresent(rootExported::class.java) == true ||
+                annotations.any { it.annotationClass == rootExported::class }
+            ) targets += ExportTarget.Root
+            if (field?.isAnnotationPresent(metarootExported::class.java) == true ||
+                annotations.any { it.annotationClass == metarootExported::class }
+            ) targets += ExportTarget.Metaroot
+            return targets.withLocalExport()
+        }
+
+        private fun Set<ExportTarget>.withLocalExport(): Set<ExportTarget> =
+            if (isEmpty() || contains(ExportTarget.Local)) this else this + ExportTarget.Local
+
+        private fun boxesForExportTargets(targets: Set<ExportTarget>): List<Box> {
+            val box = ki.associatedBox as? Box ?: return emptyList()
+            return targets.mapNotNull {
+                when (it) {
+                    ExportTarget.Local -> box
+                    ExportTarget.Root -> box.root
+                    ExportTarget.Metaroot -> metaroot
+                }
+            }.distinctBy { it.id }
+        }
+
+        private fun processExportedFunction(function: KFunction<*>, line: Any, targets: Set<ExportTarget>) {
+            try {
+                val exportedName = exportedAlias(function.name)
+                val declaration = generateFunctionDeclaration(function, exportedName)
+
+                boxesForExportTargets(targets).forEach { box ->
+                    try {
+                        val functionReference = createBoundFunctionReference(function, line)
+                        box.ki.context.functions[function.name] = KotlinFunctionInfo(function, line)
+                        box.setPropertyRaw(exportedName, functionReference, doResync = false)
+                        upsertExportedDeclaration(box, exportedName, declaration)
+                    } catch (e: Exception) {
+                        lprintln("error,kotlin", "Failed to export @exported function '${function.name}': ${e.message}")
+                    }
+                }
+            } catch (e: Exception) {
+                lprintln("error,kotlin", "Failed to process @exported function: ${e.message}")
+            }
+        }
+
+        private fun generateFunctionDeclaration(function: KFunction<*>, exportedName: String): String {
+            val params = function.parameters.filter { it.kind != kotlin.reflect.KParameter.Kind.INSTANCE }
+            val paramTypes = params.joinToString(", ") { param ->
+                ExportedTypeNames.render(param.type, ki.classLoader)
+            }
+            val returnType = ExportedTypeNames.render(function.returnType, ki.classLoader)
+
+            val functionType = if (params.isEmpty()) {
+                "() -> $returnType"
+            } else {
+                "($paramTypes) -> $returnType"
+            }
+
+            return "val Box.$exportedName by InheritanceFromContext<$functionType>() /*from:self*/ /**/"
+        }
+
+        private fun processExportedProperty(
+            name: String,
+            descriptor: KProperty<*>,
+            value: Any?,
+            line: Any,
+            targets: Set<ExportTarget>
+        ) {
+            try {
+                val exportedName = exportedAlias(name)
+                val declaration = generatePropertyDeclaration(descriptor, exportedName)
+
+                boxesForExportTargets(targets).forEach { box ->
+                    try {
+                        box.ki.context.vars[name] = KotlinVariableInfo(value, descriptor, line)
+                        box.ki.context.exportedVariables += name
+                        if (value != null) {
+                            box.setPropertyRaw(exportedName, value, doResync = true)
+                        }
+                        upsertExportedDeclaration(box, exportedName, declaration)
+                    } catch (e: Exception) {
+                        lprintln("error,kotlin", "Failed to export @exported property '$name': ${e.message}")
+                    }
+                }
+            } catch (e: Exception) {
+                lprintln("error,kotlin", "Failed to process @exported property '$name': ${e.message}")
+            }
+        }
+
+        private fun generatePropertyDeclaration(property: KProperty<*>, exportedName: String): String {
+            val keyword = if (property is KMutableProperty<*>) "var" else "val"
+            val typeName = ExportedTypeNames.render(property.returnType, ki.classLoader)
+            return "$keyword Box.$exportedName by InheritanceFromContext<$typeName>() /*from:self*/ /**/"
+        }
+
+        private fun exportedAlias(name: String): String {
+            return if (name.startsWith("_")) name else "_$name"
+        }
+
+        private fun upsertExportedDeclaration(box: HasProperties, exportedName: String, declaration: String) {
+            val currentPreamble = box.getPropertyRaw("preamble", "") as? String ?: ""
+            val currentLines = currentPreamble
+                .lines()
+                .map { it.trimEnd() }
+                .filter { it.isNotBlank() }
+
+            val filteredLines = currentLines.filterNot {
+                isExportedDeclarationLineFor(it, exportedName)
+            }
+            val nextLines = filteredLines + declaration
+            val newPreamble = nextLines.joinToString("\n")
+
+            val previous = exportedDeclarations[exportedName]
+            if (newPreamble != currentPreamble || previous != declaration) {
+                box.setPropertyRaw("preamble", newPreamble, doResync = true)
+                exportedDeclarations[exportedName] = declaration
+                lprintln("info,kotlin", "Added @exported declaration to preamble: $declaration")
+            }
+        }
+
+        private fun isExportedDeclarationLineFor(line: String, exportedName: String): Boolean {
+            val withoutPrefixComment = line.trim()
+                .replaceFirst(Regex("""^\s*/\*.*?\*/\s*"""), "")
+                .trim()
+            if (!withoutPrefixComment.endsWith("/**/")) return false
+
+            val nameEscaped = Regex.escape(exportedName)
+            val patterns = listOf(
+                Regex("""^(val|var)\s+Box\.$nameEscaped\b.*\bby\b.*$"""),
+                Regex("""^(val|var)\s+$nameEscaped\b.*\bby\b.*$"""),
+                Regex("""^(val|var)\s+Box\.$nameEscaped\b\s*:\s*.*$"""),
+                Regex("""^(val|var)\s+$nameEscaped\b\s*:\s*.*$""")
+            )
+            return patterns.any { it.matches(withoutPrefixComment) }
+        }
+
+        private fun createBoundFunctionReference(function: KFunction<*>, line: Any): Any {
+            val arity = function.parameters.count { it.kind != KParameter.Kind.INSTANCE }
+            val functionInterface = when (arity) {
+                0 -> kotlin.Function0::class.java
+                1 -> kotlin.Function1::class.java
+                2 -> kotlin.Function2::class.java
+                3 -> kotlin.Function3::class.java
+                4 -> kotlin.Function4::class.java
+                5 -> kotlin.Function5::class.java
+                6 -> kotlin.Function6::class.java
+                7 -> kotlin.Function7::class.java
+                8 -> kotlin.Function8::class.java
+                9 -> kotlin.Function9::class.java
+                10 -> kotlin.Function10::class.java
+                11 -> kotlin.Function11::class.java
+                12 -> kotlin.Function12::class.java
+                13 -> kotlin.Function13::class.java
+                14 -> kotlin.Function14::class.java
+                15 -> kotlin.Function15::class.java
+                16 -> kotlin.Function16::class.java
+                17 -> kotlin.Function17::class.java
+                18 -> kotlin.Function18::class.java
+                19 -> kotlin.Function19::class.java
+                20 -> kotlin.Function20::class.java
+                21 -> kotlin.Function21::class.java
+                22 -> kotlin.Function22::class.java
+                else -> throw IllegalArgumentException("Cannot export function '${function.name}': arity $arity is not supported")
+            }
+
+            return Proxy.newProxyInstance(
+                line.javaClass.classLoader,
+                arrayOf(functionInterface)
+            ) { proxy, method, args ->
+                when (method.name) {
+                    "invoke" -> {
+                        val values = args?.toList() ?: emptyList()
+                        val callArgs = ArrayList<Any?>(function.parameters.size)
+                        var valueIndex = 0
+                        for (parameter in function.parameters) {
+                            when (parameter.kind) {
+                                KParameter.Kind.INSTANCE -> callArgs.add(line)
+                                else -> {
+                                    if (valueIndex >= values.size) {
+                                        throw IllegalArgumentException(
+                                            "Missing argument ${valueIndex + 1} for @exported function '${function.name}'"
+                                        )
+                                    }
+                                    callArgs.add(values[valueIndex++])
+                                }
+                            }
+                        }
+                        function.call(*callArgs.toTypedArray())
+                    }
+
+                    "toString" -> functionSignature(function)
+                    "hashCode" -> System.identityHashCode(proxy)
+                    "equals" -> proxy === args?.getOrNull(0)
+                    else -> throw UnsupportedOperationException(
+                        "Unsupported proxy method '${method.name}' for @exported function '${function.name}'"
+                    )
+                }
+            }
+        }
+
+        @Throws(ReflectiveOperationException::class)
+        private fun refreshVariables(lines: List<Any>, current: Any?) {
+            for (line in lines) {
+                val seen = mutableSetOf<String>()
+                val fields = line.javaClass.declaredFields
+                findVariables(fields, line, seen, line === current)
+                findKotlinProperties(line, seen)
+            }
+        }
+
+        @Throws(IllegalAccessException::class)
+        private fun findVariables(fields: Array<Field>, o: Any, seen: MutableSet<String>, reset: Boolean) {
+            for (field in fields) {
+                val fieldName = field.name
+                if (fieldName.contains("$\$implicitReceiver") || fieldName.contains("script$") || fieldName.endsWith("\$delegate")) {
+                    continue
+                }
+
+                field.isAccessible = true
+                val value = field.get(o)
+                val descriptor = field.kotlinProperty
+                if (descriptor != null) {
+                    resetOlderMutableBindings(field, descriptor, o, value, reset)
+                    context.vars[descriptor.name] = KotlinVariableInfo(value, descriptor, o)
+                    seen += descriptor.name
+                    val exportTargets = exportTargetsForProperty(field, descriptor)
+                    if (exportTargets.isNotEmpty()) {
+                        processExportedProperty(descriptor.name, descriptor, value, o, exportTargets)
+                    } else {
+                        // redeclared without the annotation: no longer this box's export
+                        context.exportedVariables -= descriptor.name
+                    }
+                }
+            }
+        }
+
+        /**
+         * A declaration rerun resets older mutable slots used by existing closures. This happens once
+         * after evaluation; it does not turn the snippets' fields into shared storage. Immutable
+         * snapshots, delegates and differently typed declarations keep their normal behavior.
+         */
+        private fun resetOlderMutableBindings(field: Field, descriptor: KProperty<*>, owner: Any, value: Any?, reset: Boolean) {
+            if (descriptor !is KMutableProperty<*>) return
+            if (descriptor.isLateinit && value == null) return
+            val type = descriptor.returnType
+            val bindings = mutableBindings.getOrPut(descriptor.name) { mutableListOf() }
+            for (older in bindings) {
+                if (reset && !older.matches(field, owner) && older.type == type) older.field.set(older.owner, value)
+            }
+            if (bindings.none { it.matches(field, owner) }) {
+                bindings.add(MutableBinding(field, owner, type))
+            }
+        }
+
+        private fun findKotlinProperties(o: Any, seen: MutableSet<String>) {
+            for (descriptor in o::class.memberProperties) {
+                val name = descriptor.name
+                if (name in seen || name.contains("$\$implicitReceiver") || name.contains("script$")) continue
+                if (descriptor.parameters.size != 1) continue
+
+                val value = runCatching {
+                    descriptor.isAccessible = true
+                    descriptor.getter.call(o)
+                }.getOrNull() ?: continue
+
+                context.vars[name] = KotlinVariableInfo(value, descriptor, o)
+                seen += name
+
+                val exportTargets = exportTargetsForProperty(null, descriptor)
+                if (exportTargets.isNotEmpty()) {
+                    processExportedProperty(name, descriptor, value, o, exportTargets)
+                } else {
+                    context.exportedVariables -= name
+                }
+            }
+        }
+
+        companion object {
+            private val objectMethods = HashSet(listOf(*Any::class.java.methods))
+        }
+    }
+}

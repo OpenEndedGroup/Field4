@@ -33,26 +33,23 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 480.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.synth.Param
-          import afield.four.synth.SineOsc
-          import afield.stdlib.noir.audioai.FieldAudioClient
-          import afield.stdlib.noir.audioai.FieldAudioTransportException
-          import afield.stdlib.noir.audioai.RenderedAudioFile
-          import afield.stdlib.noir.audioai.analyzeRenderedAudio
-          import afield.stdlib.noir.audioai.renderDoughWav
           import java.nio.file.Path
           import java.util.concurrent.CompletionException
 
           // A real render: Dough writes real RIFF bytes, faster than real time.
           val rendered = renderDoughWav(
               Path.of(System.getProperty("java.io.tmpdir"), "field-audio-demo", "tone.wav"),
-              SineOsc(Param(220f)), seconds = 1.0,
+              SineOsc(Param(220f)),
+              seconds = 1.0,
           )
-          // Re-wrapped through `existing`, so the sample rate, channels and duration printed below
-          // are read back out of the file's own header rather than restated by the renderer that
-          // already knew them. Before 2026-08-14 all three of them came back null here.
+          /*
+          Re-wrapped through `existing`, so the sample rate, channels and duration printed below
+          are read back out of the file's own header rather than restated by the renderer that
+          already knew them. Before 2026-08-14 all three of them came back null here.
+          */
           val render = RenderedAudioFile.existing(
-              rendered.path, "Dough",
+              rendered.path,
+              "Dough",
               provenance = mapOf("field_box" to "audio_absent_service"),
           )
           display(
@@ -65,7 +62,8 @@ operations:
           val client = FieldAudioClient()
           display("service", "asking ${client.baseUri}")
 
-          client.analyzeRenderedAudio(render)
+          client
+              .analyzeRenderedAudio(render)
               .thenAccept { completed ->
                   display(
                       "what a box sees",
@@ -87,7 +85,6 @@ operations:
                   )
                   null
               }
-
   - execute: { box: audio_absent_service }
   # The refusal lands on the client's own executor a few milliseconds after the fragment returns,
   # so give the `exceptionally` branch time to display before anything asks for the output.

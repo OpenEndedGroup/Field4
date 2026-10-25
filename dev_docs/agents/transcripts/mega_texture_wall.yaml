@@ -37,8 +37,8 @@ operations:
               // Two triangles from six vertices and no vertex buffer at all: every quad is an
               // instance, and where it goes is arithmetic on gl_InstanceIndex.
               vec2 corner[6] = vec2[6](
-                  vec2(0.0, 0.0), vec2(1.0, 0.0), vec2(1.0, 1.0),
-                  vec2(0.0, 0.0), vec2(1.0, 1.0), vec2(0.0, 1.0));
+              vec2(0.0, 0.0), vec2(1.0, 0.0), vec2(1.0, 1.0),
+              vec2(0.0, 0.0), vec2(1.0, 1.0), vec2(0.0, 1.0));
               vec2 c = corner[gl_VertexIndex % 6];
 
               uint id = uint(gl_InstanceIndex);
@@ -52,17 +52,17 @@ operations:
               vec2 pitch = vec2(wallSpacing, wallSpacing / rowAspect);
 
               vec2 cell = vec2(
-                  float(id % columns) - float(columns) * 0.5,
-                  float(rows) * 0.5 - float(id / columns)) * pitch;
+              float(id % columns) - float(columns) * 0.5,
+              float(rows) * 0.5 - float(id / columns)) * pitch;
 
               // Fit this picture inside its row without distorting it.
               float aspect = megaAspect(id);
               vec2 size = (aspect >= rowAspect)
-                  ? vec2(1.0, 1.0 / aspect)
-                  : vec2(aspect / rowAspect, 1.0 / rowAspect);
+              ? vec2(1.0, 1.0 / aspect)
+              : vec2(aspect / rowAspect, 1.0 / rowAspect);
 
               fid = id;
-              ftc = vec2(c.x, 1.0 - c.y);   // page row 0 is the top of the picture
+              ftc = vec2(c.x, 1.0 - c.y); // page row 0 is the top of the picture
               gl_Position = pc.p * pc.m * vec4(cell + (c - 0.5) * size, 0.0, 1.0);
           }
         fragment: |
@@ -93,21 +93,23 @@ operations:
               outColor = vec4(colour.rgb, 1.0);
           }
         code: |
-          // Scan the directory, build the atlas, and register the {{ mega.* }} shader slots.
-          // Queues every image's base page so the wall fills in without being looked at.
-          //
-          // sourcePage names the shape of the set, and gets full resolution for free: the top
-          // level becomes exactly one frame and each level below it is that halved — 960x399,
-          // 480x200, 240x100, down to 15x7. Nothing is padded, which for film is the difference
-          // between 10 full-resolution frames resident and 4: a 1920x798 frame in the square
-          // 2048x2048 page it would otherwise need is 63% empty, at every level.
-          //
-          // For your own set, say its frame size and how many levels you want between the base
-          // and it. Eight from 1920x798 puts the base at 15x7, which is 105 texels an image —
-          // small enough that all 1639 base pages fit one atlas layer and the wall is never bare.
-          //
-          // Pages fade in rather than snapping — over the page they replace, or over the image's
-          // own mean colour when there was none. Set crossfadeFrames to 0 to compare.
+          /*
+          Scan the directory, build the atlas, and register the {{ mega.* }} shader slots.
+          Queues every image's base page so the wall fills in without being looked at.
+
+          sourcePage names the shape of the set, and gets full resolution for free: the top
+          level becomes exactly one frame and each level below it is that halved — 960x399,
+          480x200, 240x100, down to 15x7. Nothing is padded, which for film is the difference
+          between 10 full-resolution frames resident and 4: a 1920x798 frame in the square
+          2048x2048 page it would otherwise need is 63% empty, at every level.
+
+          For your own set, say its frame size and how many levels you want between the base
+          and it. Eight from 1920x798 puts the base at 15x7, which is 105 texels an image —
+          small enough that all 1639 base pages fit one atlas layer and the wall is never bare.
+
+          Pages fade in rather than snapping — over the page they replace, or over the image's
+          own mean colour when there was none. Set crossfadeFrames to 0 to compare.
+          */
           val mega = megaTextureHere {
               folder("/Users/marc/Movies/blade/scenes/allBlade")
               config.sourcePage(1920, 798)
@@ -117,9 +119,11 @@ operations:
               config.crossfadeFrames = 10
           }
 
-          // An execution break. moduleHere compiles this box's shaders when its macro expands,
-          // which is before any code in the next fragment runs — so the slots have to be
-          // registered here, in an earlier fragment, or {{ mega.all }} has nothing to resolve to.
+          /*
+          An execution break. moduleHere compiles this box's shaders when its macro expands,
+          which is before any code in the next fragment runs — so the slots have to be
+          registered here, in an earlier fragment, or {{ mega.all }} has nothing to resolve to.
+          */
           //%-
           // `renderer` is inherited from the `agent_graphics_context` parent this box is connected under.
           val camera = Camera()
@@ -135,10 +139,12 @@ operations:
           // republish the page table. Recorded into this module's own command buffer.
           mega.attach(module)
 
-          // The two matrices the vertex shader's `matrices` push block declares, by the names it
-          // declares them under. Assigning the camera's `HasUniform` rather than calling it —
-          // `camera.p()` — is what makes them live: `Structure` re-evaluates a HasUniform every
-          // time it writes the push buffer, so the wall tracks `keyCamera` with nothing per frame.
+          /*
+          The two matrices the vertex shader's `matrices` push block declares, by the names it
+          declares them under. Assigning the camera's `HasUniform` rather than calling it —
+          `camera.p()` — is what makes them live: `Structure` re-evaluates a HasUniform every
+          time it writes the push buffer, so the wall tracks `keyCamera` with nothing per frame.
+          */
           m.push["p"] = camera.p
           m.push["m"] = camera.m
 

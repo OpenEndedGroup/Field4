@@ -1,10 +1,13 @@
-import afield.four.Renderer
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
 import arrow.core.right
 import arrow.core.left
-import afield.four.modules.*
-import afield.four.buffers.*
-import afield.four.buffers.FrameBufferGroup
+import afield.graphics.shader.*
+import afield.graphics.scene.*
+import afield.graphics.render.*
+import afield.document.context.*
+import afield.graphics.vulkan.buffers.*
+import afield.graphics.vulkan.buffers.FrameBufferGroup
 /*start*/
 /*compute-structure-type:Spins:Spins*/
 class Spins(
@@ -76,7 +79,7 @@ class FieldProbeBuffer(
     var maxOrderedY by Structure.FromStructure<UInt>()
     var maxOrderedZ by Structure.FromStructure<UInt>()
     var maxOrderedW by Structure.FromStructure<UInt>()
-    var samples by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var samples by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun FieldProbeBufferByteSize(): Long = 4194384L
 fun FieldProbeBufferLayoutMembers(): List<Introspected.Member> =
@@ -109,20 +112,20 @@ fun BufferParameters.asFieldProbeBuffer(): FieldProbeBuffer =
     buffer.asFieldProbeBuffer()
 /*end*/
 /*compute-pc-structure:spins*/ var Structure.spins by Structure.FromStructure<Any>()
-/*compute-pc-binding:spins*/ var ComputeMesh.spins by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*compute-pc-binding-group:spins*/ var ComputeMeshGroup.spins by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*compute-pc-binding:spins*/ var ComputeMesh.spins by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-pc-binding-group:spins*/ var ComputeMeshGroup.spins by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*compute-pc-structure:jRight*/ var Structure.jRight by Structure.FromStructure<Any>()
-/*compute-pc-binding:jRight*/ var ComputeMesh.jRight by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*compute-pc-binding-group:jRight*/ var ComputeMeshGroup.jRight by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*compute-pc-binding:jRight*/ var ComputeMesh.jRight by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-pc-binding-group:jRight*/ var ComputeMeshGroup.jRight by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*compute-pc-structure:jDown*/ var Structure.jDown by Structure.FromStructure<Any>()
-/*compute-pc-binding:jDown*/ var ComputeMesh.jDown by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*compute-pc-binding-group:jDown*/ var ComputeMeshGroup.jDown by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*compute-pc-binding:jDown*/ var ComputeMesh.jDown by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-pc-binding-group:jDown*/ var ComputeMeshGroup.jDown by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*compute-pc-structure:L*/ var Structure.L by Structure.FromStructure<Any>()
-/*compute-pc-binding:L*/ var ComputeMesh.L by ComputeMesh.BoundFromStructure<UInt>()
-/*compute-pc-binding-group:L*/ var ComputeMeshGroup.L by ComputeMeshGroup.BoundFromStructure<UInt>()
+/*compute-pc-binding:L*/ var ComputeMesh.L by ComputeMesh.BoundFromStructure<Any>()
+/*compute-pc-binding-group:L*/ var ComputeMeshGroup.L by ComputeMeshGroup.BoundFromStructure<Any>()
 /*compute-pc-structure:field*/ var Structure.field by Structure.FromStructure<Any>()
-/*compute-pc-binding:field*/ var ComputeMesh.field by ComputeMesh.BoundFromStructure<Float>()
-/*compute-pc-binding-group:field*/ var ComputeMeshGroup.field by ComputeMeshGroup.BoundFromStructure<Float>()
+/*compute-pc-binding:field*/ var ComputeMesh.field by ComputeMesh.BoundFromStructure<Number>()
+/*compute-pc-binding-group:field*/ var ComputeMeshGroup.field by ComputeMeshGroup.BoundFromStructure<Number>()
 /*compute-ssbo:FieldProbeBuffer*/ val ComputeModulePointer.FieldProbeBuffer by ComputeMesh.FromUniform()
 var Box.sgL by Inheritance<Int>() /*from:sg_update*/ /**/
 val Once.sgL by Onceing<Int>() /*from:sg_update*/ /**/

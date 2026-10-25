@@ -1,91 +1,102 @@
 package afield.examples.stdlib
 
-import afield.stdlib.BoidFlock
-import afield.stdlib.BoidParams
-import afield.stdlib.CYCLIC_EXCITABLE
-import afield.stdlib.CYCLIC_LABYRINTH
-import afield.stdlib.GRAY_SCOTT_HOLES
-import afield.stdlib.GRAY_SCOTT_MAZE
-import afield.stdlib.GRAY_SCOTT_MITOSIS
-import afield.stdlib.GRAY_SCOTT_SPOTS
-import afield.stdlib.GRAY_SCOTT_WORMS
-import afield.stdlib.GrayScottParams
-import afield.stdlib.Img
-import afield.stdlib.IntGrid
-import afield.stdlib.IntVolume
-import afield.stdlib.LIFE
-import afield.stdlib.LIFE3D_CLOUDS
-import afield.stdlib.LSYSTEM_ALGAE
-import afield.stdlib.LSYSTEM_BUSH
-import afield.stdlib.LSYSTEM_DRAGON
-import afield.stdlib.LSYSTEM_KOCH_SNOWFLAKE
-import afield.stdlib.LSYSTEM_SIERPINSKI_ARROWHEAD
-import afield.stdlib.LSYSTEM_STOCHASTIC_PLANT
-import afield.stdlib.LeniaPhase
-import afield.stdlib.LeniaPresets
-import afield.stdlib.PhysarumParams
-import afield.stdlib.PhysarumSwarm
-import afield.stdlib.TurtleParams
-import afield.stdlib.Vec2
-import afield.stdlib.annulusAttractors
-import afield.stdlib.arrivalOrderImg
-import afield.stdlib.blobShapes
-import afield.stdlib.crop
-import afield.stdlib.centerColumn
-import afield.stdlib.centeredOn
-import afield.stdlib.colormap
-import afield.stdlib.correlationLength
-import afield.stdlib.radialAutocorrelation
-import afield.stdlib.cyclicAdvanceFraction
-import afield.stdlib.cyclicPalette
-import afield.stdlib.depthProjection
-import afield.stdlib.diffuseTimes
-import afield.stdlib.dilate
-import afield.stdlib.discAttractors
-import afield.stdlib.discMaskImg
-import afield.stdlib.dlaCluster
-import afield.stdlib.drawLSystem
-import afield.stdlib.edenCluster
-import afield.stdlib.elementaryCa
-import afield.stdlib.eulerCharacteristic
-import afield.stdlib.fieldMaxAbsDiff
-import afield.stdlib.filmstrip
-import afield.stdlib.flineSignedArea
-import afield.stdlib.flineTotalLength
-import afield.stdlib.grayScottSeed
-import afield.stdlib.isWatertight
-import afield.stdlib.isoContourFLines
-import afield.stdlib.leniaFromLifeRule
-import afield.stdlib.leniaRun
-import afield.stdlib.leniaSeed
-import afield.stdlib.leniaTimes
-import afield.stdlib.lifeRule
-import afield.stdlib.longestRunLength
-import afield.stdlib.massRadiusDimension
-import afield.stdlib.montage
-import afield.stdlib.morphology
-import afield.stdlib.normalized
-import afield.stdlib.resize
-import afield.stdlib.quantileOf
-import afield.stdlib.rasterizeFLines
-import afield.stdlib.runUntilCycle
-import afield.stdlib.savePng
-import afield.stdlib.sierpinskiReference
-import afield.stdlib.slice
-import afield.stdlib.spaceColonization
-import afield.stdlib.sprinkleCluster
-import afield.stdlib.stateEntropyBits
-import afield.stdlib.step
-import afield.stdlib.stepTimes
-import afield.stdlib.threshold
-import afield.stdlib.toImg
-import afield.stdlib.toIntGrid
-import afield.stdlib.toMesh
-import afield.stdlib.topShare
-import afield.stdlib.totalMass
-import afield.stdlib.translationBetween
-import afield.stdlib.upscaleNearest
-import afield.stdlib.withLabel
+import afield.simulation.agents.BoidFlock
+import afield.simulation.agents.BoidParams
+import afield.simulation.automata.CYCLIC_EXCITABLE
+import afield.simulation.automata.CYCLIC_LABYRINTH
+import afield.simulation.agents.GRAY_SCOTT_HOLES
+import afield.simulation.agents.GRAY_SCOTT_MAZE
+import afield.simulation.agents.GRAY_SCOTT_MITOSIS
+import afield.simulation.agents.GRAY_SCOTT_SPOTS
+import afield.simulation.agents.GRAY_SCOTT_WORMS
+import afield.simulation.agents.GrayScottParams
+import afield.media.image.Img
+import afield.simulation.agents.IntGrid
+import afield.simulation.automata.IntVolume
+import afield.simulation.automata.LIFE
+import afield.simulation.automata.LIFE3D_CLOUDS
+import afield.simulation.agents.LSYSTEM_ALGAE
+import afield.simulation.agents.LSYSTEM_BUSH
+import afield.simulation.agents.LSYSTEM_DRAGON
+import afield.simulation.agents.LSYSTEM_KOCH_SNOWFLAKE
+import afield.simulation.agents.LSYSTEM_SIERPINSKI_ARROWHEAD
+import afield.simulation.agents.LSYSTEM_STOCHASTIC_PLANT
+import afield.simulation.agents.LeniaPhase
+import afield.simulation.agents.LeniaPresets
+import afield.simulation.agents.PhysarumParams
+import afield.simulation.agents.PhysarumSwarm
+import afield.simulation.agents.TurtleParams
+import afield.math.linalg.Vec2
+import afield.simulation.agents.annulusAttractors
+import afield.simulation.agents.arrivalOrderImg
+import afield.simulation.agents.blobShapes
+import afield.media.image.crop
+import afield.simulation.automata.centerColumn
+import afield.simulation.automata.centeredOn
+import afield.media.image.colormap
+import afield.simulation.agents.correlationLength
+import afield.simulation.agents.radialAutocorrelation
+import afield.simulation.automata.cyclicAdvanceFraction
+import afield.simulation.agents.cyclicPalette
+import afield.simulation.automata.depthProjection
+import afield.simulation.agents.diffuseTimes
+import afield.media.image.dilate
+import afield.simulation.agents.discAttractors
+import afield.simulation.agents.discMaskImg
+import afield.simulation.agents.dlaCluster
+import afield.simulation.agents.drawLSystem
+import afield.simulation.agents.edenCluster
+import afield.simulation.automata.elementaryCa
+import afield.geometry.mesh.eulerCharacteristic
+import afield.simulation.agents.fieldMaxAbsDiff
+import afield.simulation.agents.filmstrip
+import afield.simulation.agents.flineSignedArea
+import afield.simulation.agents.flineTotalLength
+import afield.simulation.agents.grayScottSeed
+import afield.geometry.mesh.isWatertight
+import afield.media.image.isoContourFLines
+import afield.simulation.agents.leniaFromLifeRule
+import afield.simulation.agents.leniaRun
+import afield.simulation.agents.leniaRuleFromCatalogue
+import afield.simulation.agents.fieldCentroid
+import afield.simulation.agents.leniaSeed
+import afield.simulation.agents.leniaTimes
+import afield.simulation.automata.lifeRule
+import afield.simulation.automata.longestRunLength
+import afield.simulation.agents.massRadiusDimension
+import afield.media.image.montage
+import afield.simulation.agents.morphology
+import afield.geometry.mesh.normalized
+import afield.media.image.normalized
+import afield.media.image.resize
+import afield.simulation.agents.quantileOf
+import afield.simulation.agents.rasterizeFLines
+import afield.simulation.automata.runUntilCycle
+import afield.media.image.savePng
+import afield.simulation.automata.savePng
+import afield.simulation.automata.sierpinskiReference
+import afield.simulation.automata.slice
+import afield.simulation.agents.spaceColonization
+import afield.simulation.agents.sprinkleCluster
+import afield.simulation.agents.stateEntropyBits
+import afield.simulation.agents.step
+import afield.simulation.automata.step
+import afield.simulation.agents.stepTimes
+import afield.simulation.automata.stepTimes
+import afield.media.image.threshold
+import afield.graphics.text.toImg
+import afield.lang.stacksl.evolution.toImg
+import afield.media.image.toImg
+import afield.simulation.agents.toImg
+import afield.simulation.automata.toImg
+import afield.simulation.agents.toIntGrid
+import afield.graphics.text.toMesh
+import afield.simulation.automata.toMesh
+import afield.simulation.agents.topShare
+import afield.simulation.agents.totalMass
+import afield.simulation.agents.translationBetween
+import afield.media.image.upscaleNearest
+import afield.media.image.withLabel
 import java.io.File
 import kotlin.math.E
 import kotlin.math.PI
@@ -385,7 +396,7 @@ object AlifeGallery {
         // exactly the radius enclosing i points. So this is an oracle for any real D, not just for the
         // two integers a disc and a line give.
         val targets = doubleArrayOf(1.00, 1.2619, 1.71, 2.00)
-        val recovered = ArrayList<afield.stdlib.MassRadiusFit>()
+        val recovered = ArrayList<afield.simulation.agents.MassRadiusFit>()
         for ((k, d) in targets.withIndex()) {
             val pts = powerLawPoints(60_000, d, 400.0, Vec2(512f, 512f), seed = 100L + k)
             val fit = massRadiusDimension(pts, Vec2(512f, 512f), rMin = 12.0, rMax = 300.0, samples = 24)
@@ -481,9 +492,9 @@ object AlifeGallery {
         return true
     }
 
-    /** Colormap [name] at [t], packed the way [afield.stdlib.colormap] quantises it. */
+    /** Colormap [name] at [t], packed the way [afield.media.image.colormap] quantises it. */
     private fun ramp(name: String, t: Double): Int {
-        val c = afield.Colormaps.sample(name, t)
+        val c = afield.graphics.color.Colormaps.sample(name, t)
         fun q(v: Double) = (v.coerceIn(0.0, 1.0) * 255.0 + 0.5).toInt().coerceIn(0, 255)
         return (q(c.r) shl 16) or (q(c.g) shl 8) or q(c.b)
     }
@@ -513,7 +524,7 @@ object AlifeGallery {
      */
     private fun figureInlineView(outDir: File) {
         // --- IntGrid: one pixel per cell, and the palette the caption promises ---
-        val glider = afield.stdlib.LifePatterns.glider.centeredOn(12, 12, wrap = true)
+        val glider = afield.simulation.automata.LifePatterns.glider.centeredOn(12, 12, wrap = true)
         val gridPanels = decodePanels(glider.toHTML())
         check(
             gridPanels.size == 1 && gridPanels[0].width == 12 && gridPanels[0].height == 12,
@@ -649,7 +660,7 @@ object AlifeGallery {
      */
     private fun figureLife(outDir: File) {
         // --- a glider translates by exactly (1, 1) every 4 generations ---
-        val glider = afield.stdlib.LifePatterns.glider.centeredOn(40, 40, wrap = true)
+        val glider = afield.simulation.automata.LifePatterns.glider.centeredOn(40, 40, wrap = true)
         val after4 = glider.stepTimes(LIFE, 4)
         val t = translationBetween(glider, after4)
         check(
@@ -673,22 +684,22 @@ object AlifeGallery {
         )
 
         // --- still lifes are bit-identical after a step; oscillators are not ---
-        val block = afield.stdlib.LifePatterns.block.centeredOn(20, 20)
+        val block = afield.simulation.automata.LifePatterns.block.centeredOn(20, 20)
         check(
             block.step(LIFE).sameCellsAs(block),
             "life: the block is bit-identical after one generation (a still life)"
         )
-        val beehive = afield.stdlib.LifePatterns.beehive.centeredOn(20, 20)
+        val beehive = afield.simulation.automata.LifePatterns.beehive.centeredOn(20, 20)
         check(
             beehive.step(LIFE).sameCellsAs(beehive),
             "life: so is the beehive — the block is not a lucky special case"
         )
-        val blinker = afield.stdlib.LifePatterns.blinker.centeredOn(20, 20)
+        val blinker = afield.simulation.automata.LifePatterns.blinker.centeredOn(20, 20)
         check(
             !blinker.step(LIFE).sameCellsAs(blinker) && blinker.stepTimes(LIFE, 2).sameCellsAs(blinker),
             "life CONTROL: the blinker is NOT identical after 1 generation but IS after 2 (period 2)"
         )
-        val toad = afield.stdlib.LifePatterns.toad.centeredOn(20, 20)
+        val toad = afield.simulation.automata.LifePatterns.toad.centeredOn(20, 20)
         check(
             toad.runUntilCycle(LIFE, 40).period == 2,
             "life: the toad's detected period is 2 (found by exact state hashing, not by population)"
@@ -725,8 +736,8 @@ object AlifeGallery {
             "23/3" to LIFE,
             "b3/s23" to LIFE,
             "S23/B3" to LIFE,
-            "B2/S" to afield.stdlib.SEEDS,
-            "B3678/S34678" to afield.stdlib.DAY_AND_NIGHT
+            "B2/S" to afield.simulation.automata.SEEDS,
+            "B3678/S34678" to afield.simulation.automata.DAY_AND_NIGHT
         )
         check(
             accepted.all { (spec, want) ->
@@ -741,7 +752,7 @@ object AlifeGallery {
         // it also accepts lost the first count of each list. Note the unlabelled order is
         // **survive/birth**, as in 2-D — this check was first written expecting birth/survive and caught
         // its own author, which is the same trap the 2-D list above documents.
-        val r3 = afield.stdlib.lifeRule3D("13,14/13,14,15")
+        val r3 = afield.simulation.automata.lifeRule3D("13,14/13,14,15")
         check(
             r3.survive == setOf(13, 14) && r3.birth == setOf(13, 14, 15),
             "3d-ca: the UNLABELLED 3-D rule form parses every count and reads survive/birth — survive " +
@@ -749,12 +760,12 @@ object AlifeGallery {
                 "unconditionally, so this silently became survive {4,15} / birth {4} with the first " +
                 "count of each list eaten"
         )
-        val r3labelled = afield.stdlib.lifeRule3D("S13,14/B13,14,15")
+        val r3labelled = afield.simulation.automata.lifeRule3D("S13,14/B13,14,15")
         check(
             r3labelled.birth == r3.birth && r3labelled.survive == r3.survive,
             "3d-ca: and labelling it explicitly as S13,14/B13,14,15 gives the identical rule"
         )
-        val r3swapped = afield.stdlib.lifeRule3D("B13,14/S13,14,15")
+        val r3swapped = afield.simulation.automata.lifeRule3D("B13,14/S13,14,15")
         check(
             r3swapped.birth == setOf(13, 14) && r3swapped.survive == setOf(13, 14, 15),
             "3d-ca: while B13,14/S13,14,15 is the OTHER rule (birth ${r3swapped.birth}, survive " +
@@ -808,7 +819,7 @@ object AlifeGallery {
                 (worstMismatch?.let { " (first mismatch: $it)" } ?: "")
         )
 
-        val strip = afield.stdlib.LifePatterns.glider.centeredOn(16, 16).let { g ->
+        val strip = afield.simulation.automata.LifePatterns.glider.centeredOn(16, 16).let { g ->
             (0..4).map { "gen $it" to g.stepTimes(LIFE, it).toImg(2).upscaleNearest(14) }
         }
         montage(strip, columns = 5, cellSide = 240).savePng(File(outDir, "alife-life-glider.png").absolutePath)
@@ -819,7 +830,7 @@ object AlifeGallery {
      * that [figureLife]'s fast-path check is a comparison between two pieces of code rather than a
      * function agreeing with itself. Indexes explicitly and resolves the border by hand.
      */
-    private fun naiveLifeStep(g: IntGrid, rule: afield.stdlib.LifeRule): IntGrid {
+    private fun naiveLifeStep(g: IntGrid, rule: afield.simulation.automata.LifeRule): IntGrid {
         val out = IntArray(g.width * g.height)
         for (y in 0 until g.height) for (x in 0 until g.width) {
             var n = 0
@@ -855,7 +866,7 @@ object AlifeGallery {
         // needs room, not walls. 620x620 gives every glider more than the 1103/4 ≈ 276 cells it can
         // travel, and [liveBounds] is asserted to confirm nothing ever reached an edge — which is what
         // makes a finite board a legitimate stand-in for an infinite one rather than an assumption.
-        val big = afield.stdlib.LifePatterns.rPentomino.centeredOn(620, 620, wrap = false)
+        val big = afield.simulation.automata.LifePatterns.rPentomino.centeredOn(620, 620, wrap = false)
         var g = big
         var peak = 0
         var peakAt = 0
@@ -898,7 +909,7 @@ object AlifeGallery {
         // The same seed on a board with WALLS is a different system, and reporting the difference is the
         // point: the gliders are destroyed at the edge, so it reaches an exactly periodic state (which
         // the unbounded version never does, because the gliders fly forever) at a lower population.
-        val walled = afield.stdlib.LifePatterns.rPentomino.centeredOn(250, 250, wrap = false)
+        val walled = afield.simulation.automata.LifePatterns.rPentomino.centeredOn(250, 250, wrap = false)
         val report = walled.runUntilCycle(LIFE, 1400)
         println("[alife-gallery]     bounded 250x250 board: $report")
         check(
@@ -1125,7 +1136,7 @@ object AlifeGallery {
         // vacuously because nothing ever got near an edge.
         val seedField = discMaskImg(96, 96, 40.0)
         val m0 = seedField.totalMass()
-        val wrapped = seedField.diffuseTimes(500, 0.25, afield.stdlib.Border.WRAP)
+        val wrapped = seedField.diffuseTimes(500, 0.25, afield.media.image.Border.WRAP)
         val relWrap = abs(wrapped.totalMass() - m0) / m0
         check(
             relWrap < 1e-5,
@@ -1135,14 +1146,14 @@ object AlifeGallery {
         // CLAMP is a *reflecting* (zero-flux Neumann) boundary, so it conserves mass too. Stated as a
         // positive claim rather than left as a surprise: the first version of this figure asserted the
         // opposite and was wrong.
-        val clamped = seedField.diffuseTimes(500, 0.25, afield.stdlib.Border.CLAMP)
+        val clamped = seedField.diffuseTimes(500, 0.25, afield.media.image.Border.CLAMP)
         val relClamp = abs(clamped.totalMass() - m0) / m0
         check(
             relClamp < 1e-5,
             "diffusion: and a CLAMP border also conserves it (${"%.3e".format(relClamp)}) — clamping is " +
                 "a reflecting, zero-flux boundary, which is worth knowing rather than discovering"
         )
-        val zeroed = seedField.diffuseTimes(500, 0.25, afield.stdlib.Border.ZERO)
+        val zeroed = seedField.diffuseTimes(500, 0.25, afield.media.image.Border.ZERO)
         val relZero = abs(zeroed.totalMass() - m0) / m0
         check(
             relZero > 0.01 && relZero > relWrap * 1000,
@@ -1176,7 +1187,7 @@ object AlifeGallery {
             "holes 0.039/0.058" to GRAY_SCOTT_HOLES
         )
         val panels = ArrayList<Pair<String, Img>>()
-        val reports = LinkedHashMap<String, afield.stdlib.MorphologyReport>()
+        val reports = LinkedHashMap<String, afield.simulation.agents.MorphologyReport>()
         for ((label, prm) in presets) {
             val end = grayScottSeed(side, side, patches = 6, patchSize = 14, seed = 11L).stepTimes(prm, steps)
             val m = end.v.morphology()
@@ -1306,7 +1317,7 @@ object AlifeGallery {
     private fun figureTuring(outDir: File) {
         val scales = doubleArrayOf(0.3, 0.6, 1.2)
         val fields = scales.map {
-            afield.stdlib.turingPattern(128, 128, scale = it, steps = 6000, rho = 0.010, seed = 5L)
+            afield.simulation.agents.turingPattern(128, 128, scale = it, steps = 6000, rho = 0.010, seed = 5L)
         }
         val lengths = fields.map { it.correlationLength(maxLag = 40) }
         scales.forEachIndexed { i, sc ->
@@ -1386,8 +1397,8 @@ object AlifeGallery {
      *
      * **A correction to what this file used to claim.** The first version of this KDoc said the two
      * "share no code" and were "two independently written steppers". That is not true, and it overstates
-     * the evidence. [leniaFromLifeRule] closes over the *same* [afield.stdlib.LifeRule.birth] and
-     * [afield.stdlib.LifeRule.survive] sets that [afield.stdlib.step] uses, so a wrong `B3/S23` table
+     * the evidence. [leniaFromLifeRule] closes over the *same* [afield.simulation.automata.LifeRule.birth] and
+     * [afield.simulation.automata.LifeRule.survive] sets that [afield.simulation.automata.step] uses, so a wrong `B3/S23` table
      * would produce two wrong steppers that agree perfectly. What this check actually cross-validates is
      * the two **update mechanisms** — float convolution, additive `A + dt*G(K*A)`, `Math.round(u*8)`
      * quantisation, clamping to `0..1`, toroidal borders and the `Img`/[IntGrid] bridges on one side
@@ -1404,7 +1415,7 @@ object AlifeGallery {
                 "(${discreteRule.taps.size} taps)"
         )
 
-        var grid = afield.stdlib.LifePatterns.glider.centeredOn(32, 32, wrap = true)
+        var grid = afield.simulation.automata.LifePatterns.glider.centeredOn(32, 32, wrap = true)
         var field = grid.toImg(2)
         var worstDiff = 0.0
         for (g in 1..20) {
@@ -1423,7 +1434,7 @@ object AlifeGallery {
         )
         val leniaGrid = field.toIntGrid(0.5f, wrap = true)
         check(
-            translationBetween(afield.stdlib.LifePatterns.glider.centeredOn(32, 32, wrap = true), leniaGrid)
+            translationBetween(afield.simulation.automata.LifePatterns.glider.centeredOn(32, 32, wrap = true), leniaGrid)
                 == (5 to 5),
             "lenia: and the glider the float stepper carried is a rigid (5, 5) translate after 20 " +
                 "generations — 20/4 = 5 steps of (1, 1)"
@@ -1431,7 +1442,7 @@ object AlifeGallery {
 
         // Control: shift the growth window by one neighbour count. Nothing else changes.
         val wrongLimit = leniaFromLifeRule(lifeRule("B4/S234"))
-        val wrongField = afield.stdlib.LifePatterns.glider.centeredOn(32, 32).toImg(2)
+        val wrongField = afield.simulation.automata.LifePatterns.glider.centeredOn(32, 32).toImg(2)
             .leniaTimes(wrongLimit, 20)
         check(
             fieldMaxAbsDiff(wrongField, grid.toImg(2)) > 0.5,
@@ -1469,14 +1480,84 @@ object AlifeGallery {
             "lenia: the bounded cells hold ${bounded.joinToString(", ") { "${it.second.blobCount}" }} " +
                 "localised feature(s) at mean field ${bounded.joinToString(", ") { f(it.second.finalMass, 2) }} " +
                 "— neither empty nor a filled field. NOTE these are fine-grained self-maintaining " +
-                "textures, not the named solitons of the Lenia literature; this family does not ship a " +
-                "published initial pattern and so does not claim one"
+                "textures, not a lifeform; the named creature is Orbium, checked below from its published cells"
         )
         val dead = runs.filter { it.second.phase == LeniaPhase.DEATH }
         check(
             dead.isNotEmpty() && dead.all { it.second.finalMass < 0.005 },
             "lenia CONTROL: the death cells (mu = ${dead.joinToString(", ") { "${it.first}" }}) end at " +
                 "mass < 0.005 from the identical seed — the bounded cells are a property of mu"
+        )
+
+        // --- Orbium: the published creature, its shuffled-cells control, and its band of mu ---
+        val orbium = LeniaPresets.orbium()
+        check(orbium.cells.width == 20 && orbium.cells.height == 20, "lenia: Orbium's catalogue array is 20x20")
+        val start = orbium.seed(64, 64)
+        val glide = leniaRun(start, orbium.rule, steps = 300)
+        println("[alife-gallery]     orbium -> $glide")
+        check(
+            glide.phase == LeniaPhase.BOUNDED && glide.blobCount == 1 &&
+                abs(glide.finalMass / start.mean() - 1.0) < 0.05,
+            "lenia: Orbium under its own rule keeps one piece and its mass (start ${f(start.mean().toDouble(), 4)}, " +
+                "300 steps ${f(glide.finalMass, 4)}, ${glide.blobCount} blob(s))"
+        )
+        // Speed from a TOROIDAL centroid (the circular mean of each axis), because a plain centroid of a
+        // creature straddling the seam lands in the middle of the board and jumps.
+        fun torusCentroid(img: Img): Pair<Double, Double> {
+            var sx = 0.0; var cx = 0.0; var sy = 0.0; var cy = 0.0
+            for (y in 0 until img.height) for (x in 0 until img.width) {
+                val v = img.data[y * img.width + x].toDouble()
+                val ax = 2 * Math.PI * x / img.width
+                val ay = 2 * Math.PI * y / img.height
+                sx += v * kotlin.math.sin(ax); cx += v * kotlin.math.cos(ax)
+                sy += v * kotlin.math.sin(ay); cy += v * kotlin.math.cos(ay)
+            }
+            return kotlin.math.atan2(sx, cx) * img.width / (2 * Math.PI) to kotlin.math.atan2(sy, cy) * img.height / (2 * Math.PI)
+        }
+        fun speedAt(every: Int): Double {
+            var moving = start
+            var c0 = torusCentroid(moving)
+            var travelled = 0.0
+            repeat(300 / every) {
+                moving = moving.leniaTimes(orbium.rule, every)
+                val c1 = torusCentroid(moving)
+                fun wd(a: Double, b: Double) = (b - a + 32.0).mod(64.0) - 32.0
+                travelled += kotlin.math.hypot(wd(c0.first, c1.first), wd(c0.second, c1.second))
+                c0 = c1
+            }
+            return travelled / 300.0
+        }
+        val speed = speedAt(5)
+        val speedFine = speedAt(1)
+        println("[alife-gallery]     orbium speed ${f(speed, 4)} cells per step sampled every 5 steps, ${f(speedFine, 4)} every step")
+        check(
+            speed in 0.58..0.66 && abs(speedFine - speed) < 0.02,
+            "lenia: Orbium glides at the 0.62 cells per step the page quotes, the same whether its toroidal " +
+                "centroid is sampled every step or every five (${f(speedFine, 3)}, ${f(speed, 3)})"
+        )
+        val shuffledDeaths = (1L..6L).count { s ->
+            leniaRun(orbium.shuffled(s).seed(64, 64), orbium.rule, steps = 300).phase == LeniaPhase.DEATH
+        }
+        check(
+            shuffledDeaths == 6,
+            "lenia CONTROL: the same 400 cell values shuffled into a random arrangement die under the " +
+                "same rule ($shuffledDeaths of 6 shuffles died)"
+        )
+        fun atMu(mu: Double) = leniaRun(start, leniaRuleFromCatalogue(radius = 13, t = 10.0, mu = mu, sigma = 0.015), steps = 300)
+        val band = [0.13, 0.16].map { atMu(it) }
+        val burst = [0.11, 0.12].map { atMu(it) }
+        val dies = [0.17, 0.18].map { atMu(it) }
+        (band + burst + dies).zip(listOf(0.13, 0.16, 0.11, 0.12, 0.17, 0.18)).forEach { (r, mu) ->
+            println("[alife-gallery]     orbium cells at mu=$mu -> $r")
+        }
+        check(
+            // A lone creature is ~0.018 of a 64x64 field; blobCount is not toroidal, so a creature on the
+            // seam counts twice and the band is checked by mass instead.
+            band.all { it.phase == LeniaPhase.BOUNDED && it.finalMass < 0.03 } &&
+                burst.all { it.blobCount >= 20 && it.finalMass > 0.1 } &&
+                dies.all { it.phase == LeniaPhase.DEATH },
+            "lenia: Orbium lives for mu 0.13..0.16, bursts into fragments at 0.12 and below " +
+                "(${burst.joinToString { "${it.blobCount}" }} blobs) and dies at 0.17 and above"
         )
 
         val panels = ArrayList<Pair<String, Img>>()
@@ -1505,7 +1586,7 @@ object AlifeGallery {
         val n = 400
         val domain = 260.0
         val start = BoidFlock.random(n, domain, domain, speed = 1.4, seed = 4L)
-        val baseline = afield.stdlib.randomPolarizationBaseline(n)
+        val baseline = afield.simulation.agents.randomPolarizationBaseline(n)
         val p0 = start.order()
         check(
             p0 < baseline * 4.0,
@@ -1796,7 +1877,7 @@ object AlifeGallery {
         val step = 1.0
         val tp = TurtleParams(angle = Math.PI / 3.0, step = step)
         val results = (0..5).map { drawLSystem(LSYSTEM_KOCH_SNOWFLAKE, it, tp) }
-        val closures = results.map { afield.stdlib.turtleClosureError(it, step) }
+        val closures = results.map { afield.simulation.agents.turtleClosureError(it, step) }
         // FLine stores coordinates as single-precision floats, and generation 5 spans 3^5 = 243 steps, so
         // "exact" here means to float precision. Stated rather than papered over with a loose tolerance.
         check(
@@ -1834,9 +1915,9 @@ object AlifeGallery {
         // Control: one wrong turn and none of that holds.
         val wrongAngle = drawLSystem(LSYSTEM_KOCH_SNOWFLAKE, 4, tp.copy(angle = Math.PI / 3.0 + 0.01))
         check(
-            afield.stdlib.turtleClosureError(wrongAngle, step) > 1.0,
+            afield.simulation.agents.turtleClosureError(wrongAngle, step) > 1.0,
             "l-system CONTROL: perturbing the turn angle by 0.01 rad leaves the path open by " +
-                "${f(afield.stdlib.turtleClosureError(wrongAngle, step), 1)} steps — the closure test has teeth"
+                "${f(afield.simulation.agents.turtleClosureError(wrongAngle, step), 1)} steps — the closure test has teeth"
         )
 
         // Stochastic productions really do change topology, not merely coordinates.
@@ -1920,7 +2001,7 @@ object AlifeGallery {
     // ==========================================================================================
 
     /**
-     * Verifies the `Img` -> [afield.stdlib.isoContourFLines] -> `FLine` bridge, which the public page and
+     * Verifies the `Img` -> [afield.media.image.isoContourFLines] -> `FLine` bridge, which the public page and
      * the shipped transcript both *use* and which nothing asserted until now: they printed
      * "195 iso-contour FLine(s)" and a picture, and 195 is not a number a reader can check.
      *
@@ -2165,8 +2246,8 @@ object AlifeGallery {
         return out.withLabel("max ${"%.0f".format(mx)}", 4, 4, 1)
     }
 
-    /** A log–log scatter of several [afield.stdlib.MassRadiusFit]s, one intensity band each. */
-    private fun plotLogLog(fits: List<afield.stdlib.MassRadiusFit>, w: Int, h: Int): Img {
+    /** A log–log scatter of several [afield.simulation.agents.MassRadiusFit]s, one intensity band each. */
+    private fun plotLogLog(fits: List<afield.simulation.agents.MassRadiusFit>, w: Int, h: Int): Img {
         val out = Img.zeros(w, h, 1)
         val all = fits.flatMap { it.points }
         if (all.isEmpty()) return out
@@ -2207,7 +2288,7 @@ object AlifeGallery {
      * A depth image of a mesh by orthographic z-buffering — enough to see that a marched automaton has
      * the shape claimed, without a renderer or a GPU.
      */
-    private fun meshDepthImg(mesh: afield.stdlib.TriMesh, side: Int): Img {
+    private fun meshDepthImg(mesh: afield.geometry.mesh.TriMesh, side: Int): Img {
         val out = Img.zeros(side, side, 1)
         if (mesh.vertexCount == 0) return out
         val depth = FloatArray(side * side) { Float.MAX_VALUE }

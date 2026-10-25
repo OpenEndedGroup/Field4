@@ -15,7 +15,7 @@ registration.
 ## A graph, addressed
 
 Give `graphPaths` a pattern and it hands back a `PathSet`: an ordered collection
-of *live lenses*: each one is an address plus a getter, and a setter too if the
+of *live lenses*. Each one is an address plus a getter, and a setter too if the
 slot is mutable. Nothing is copied, so if the value changes between two reads,
 the second read sees the change.
 
@@ -71,9 +71,7 @@ or a custom `descendInto`, call `graphPaths` and pass a `GraphWalkOptions`.
     `/` is defined on `Any?`, but ordinary division is untouched: a member `div`
     always beats an extension, so numbers, vectors, quaternions and signals keep
     their own arithmetic, and `kotlin.io.path`'s `path / "sub"` still joins a
-    path. The one new case is a `String` on the right: `"a" / "b"` type-checks and
-    returns an empty `PathSet`, so a mistyped `/` shows up a step later than a
-    compile error would.
+    path.
 
 ## Patterns and predicates
 
@@ -124,13 +122,16 @@ whatever your graph is made of.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/lenses.png" alt="an output panel holding a LensSet of Mode with 2 rows, and a third column beyond path and value: lamp/mode is a Mode and writable, strip/mode is a Mode and writable" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-lenses" w="760" h="300"}
 :::static
-enum class Mode { OFF, ON }
+enum class Mode {
+    OFF,
+    ON,
+}
 class Light(var name: String, var on: Boolean, var mode: Mode, var level: Float)
 class Room(val lamp: Light, val strip: Light)
 
 val room = Room(
     Light("lamp", true, Mode.ON, 0.4f),
-    Light("strip", false, Mode.OFF, 0.9f)
+    Light("strip", false, Mode.OFF, 0.9f),
 )
 
 // flip every boolean in the graph, then read back the enums
@@ -157,9 +158,22 @@ var reads = 0
 class Node(val label: String) : LiveGraphInspectable {
     val kids = linkedMapOf<String, Node>()
     var leaf: Float = 1f
+
     override fun liveGraphChildren(): Iterable<LiveGraphEdge> =
-        kids.map { (name, child) -> LiveGraphEdge(name) { reads++; child } } +
-            LiveGraphEdge("leaf", { reads++; leaf }, { v -> leaf = (v as Number).toFloat() })
+        kids.map { (name, child) ->
+            LiveGraphEdge(name) {
+                reads++
+                child
+            }
+        } +
+            LiveGraphEdge(
+                "leaf",
+                {
+                    reads++
+                    leaf
+                },
+                { v -> leaf = (v as Number).toFloat() },
+            )
 }
 
 fun build(depth: Int, breadth: Int): Node {
@@ -178,8 +192,10 @@ reads = 0
 val all = root.graphPaths("**")
 val everything = reads
 
-display("main", "naming a path: $named edge reads — " +
-        "walking all ${all.size} slots: $everything edge reads")
+display(
+    "main",
+    "naming a path: $named edge reads — " + "walking all ${all.size} slots: $everything edge reads",
+)
 ```
 
 A within-segment glob (`"osc*"`), a literal spelled in a different case from the
@@ -239,7 +255,7 @@ on their own. `clearModulation()` and `clearSuppliers()` detach them again.
 
 ## Notes on traversal
 
-Some behaviours to know about before you point this at something large:
+What the walk does on a large or unusual graph:
 
 - **Descent stops at the obvious leaves** — numbers, strings, booleans, enums,
   primitive arrays, functions, class objects — and at anything in the JDK's own

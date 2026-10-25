@@ -1,22 +1,22 @@
 package afield.examples.four
 
-import afield.Box
-import afield.four.Renderer
-import afield.four.TexturePreviewCache
-import afield.four.fabricated.FabricateBuiltChain
-import afield.four.fabricated.FabricatePassChain
-import afield.four.fabricated.FabricatePassInput
-import afield.four.fabricated.FabricatePassLibrary
-import afield.four.fabricated.FabricatePassSize
-import afield.four.fabricated.FabricatePassSpec
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.addPassChain
-import afield.four.fabricated.applyScenePlan
-import afield.four.targets.RenderToTexture
-import afield.four.util.Options
-import afield.four.util.Window
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
+import afield.document.graph.Box
+import afield.graphics.vulkan.Renderer
+import afield.graphics.render.TexturePreviewCache
+import afield.graphics.scene.fabricated.FabricateBuiltChain
+import afield.graphics.scene.fabricated.FabricatePassChain
+import afield.graphics.scene.fabricated.FabricatePassInput
+import afield.graphics.scene.fabricated.FabricatePassLibrary
+import afield.graphics.scene.fabricated.FabricatePassSize
+import afield.graphics.scene.fabricated.FabricatePassSpec
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.addPassChain
+import afield.graphics.scene.fabricated.applyScenePlan
+import afield.graphics.vulkan.targets.RenderToTexture
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.Window
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R16G16B16A16_SFLOAT
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_UNORM
 import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
@@ -49,7 +49,7 @@ expect:
  * ### What it asserts, and why each one needs a GPU
  *
  * - **The chain reaches the screen through the production consumer.** The passes are appended with
- *   [addPassChain] onto a real [StandardRenderer] bundle's [afield.four.fabricated.FabricatePostStack],
+ *   [addPassChain] onto a real [StandardRenderer] bundle's [afield.graphics.scene.fabricated.FabricatePostStack],
  *   scheduled by `FabricateFrameGraph.attachTo` into `RenderTarget.preTargets`, and read back from the
  *   target the frame graph actually rendered. No private path, no harness-only shortcut.
  * - **High-frequency energy collapses, with the counterfactual measured in the same run.** A blur is
@@ -78,7 +78,7 @@ expect:
  * tools/run_field_tests.py --id four.pass-chain.smoke
  * ```
  *
- * Needs a GPU and, because `afield.four` has no headless mode — `Renderer` requires a `Window` and
+ * Needs a GPU and, because Field 4 has no headless mode — `Renderer` requires a `Window` and
  * `Window` requires a primary monitor — a display. The window it opens is incidental; everything
  * measured here is rendered offscreen.
  */

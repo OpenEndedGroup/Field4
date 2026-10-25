@@ -1,0 +1,365 @@
+package afield.app.server
+
+import afield.ai.agent.*
+import afield.ai.conversation.*
+import afield.ai.tools.*
+import afield.animation.gesture.*
+import afield.animation.interpolation.*
+import afield.animation.keyframes.*
+import afield.app.diagnostics.*
+import afield.app.notifications.*
+import afield.app.protocol.*
+import afield.app.server.*
+import afield.app.settings.*
+import afield.audio.synth.*
+import afield.data.table.*
+import afield.document.context.*
+import afield.document.graph.*
+import afield.document.history.*
+import afield.document.persistence.*
+import afield.document.properties.*
+import afield.document.workspace.*
+import afield.graphics.color.*
+import afield.graphics.paint.*
+import afield.graphics.vulkan.*
+import afield.math.functions.*
+import afield.media.capture.*
+import afield.media.stream.*
+import afield.media.video.*
+import afield.runtime.completion.*
+import afield.runtime.execution.*
+import afield.runtime.kotlin.*
+import afield.runtime.lifecycle.*
+import afield.tools.automation.*
+import afield.tools.docs.*
+import afield.ui.controls.*
+import afield.ui.layout.*
+import afield.ui.notation.*
+import afield.ui.output.*
+import afield.ui.output.templates.*
+import afield.ui.slides.*
+import afield.ui.visualization.*
+import io.ktor.http.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
+
+/** One bound for every Markdown the viewer carries, whether it comes from a file or a box property. */
+private const val MAX_BYTES = 1024 * 1024
+
+private fun revision(bytes: ByteArray) = java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))
+
+/** The title shown in the viewer's list: the first level-one heading, if the Markdown offers one. */
+private fun headingTitle(lines: Sequence<String>): String? =
+    lines.take(128).firstOrNull { it.startsWith("# ") }?.removePrefix("# ")?.trim()?.take(160)?.ifBlank { null }
+
+/**
+ * A guide that is a pointer into the Field documentation: front matter naming the page,
+ *
+ * ```
+ * ---
+ * docs: drawing_and_notation/#reading-a-region
+ * ---
+ * # Drawing and notation
+ * One paragraph saying why this page matters here.
+ * ```
+ *
+ * The viewer opens [page] in the docs pane (`/field-docs/`, which serves the local build or
+ * openendedgroup.com/field4) rather than rendering the file.
+ */
+internal data class DocsRedirect(val page: String, val title: String?, val summary: String)
+
+/** The front matter's `docs:` value as a docs-relative page, or null when it is not one. */
+internal fun docsPage(value: String): String? {
+    var v = value.trim().removeSurrounding("\"").removeSurrounding("'").trim()
+    Regex("^https?://(www\\.)?openendedgroup\\.com/field4/?", RegexOption.IGNORE_CASE).find(v)?.let { v = v.substring(it.range.last + 1) }
+    v = v.removePrefix("/field-docs/").removePrefix("/")
+    if (v.isEmpty() || v.length > 512 || Regex("^[a-z][a-z\\d+.-]*:", RegexOption.IGNORE_CASE).containsMatchIn(v) ||
+        v.any { it.isWhitespace() || it == '\\' || it.code < 32 }) return null
+    val hash = v.substringAfter('#', "").let { if (it.isEmpty()) "" else "#$it" }
+    var path = v.substringBefore('#')
+    if (path.split('/').any { it == ".." || it == "." }) return null
+    // Authors think in source pages; the built site serves `page.md` as `page/`.
+    path = path.removeSuffix(".md").let { if (it.isEmpty() || it.endsWith("/") || it.endsWith(".html")) it else "$it/" }
+    return path + hash
+}
+
+internal fun docsRedirect(text: String): DocsRedirect? {
+    val lines = text.removePrefix("\uFEFF").lines()
+    if (lines.firstOrNull()?.trim() != "---") return null
+    val end = lines.drop(1).indexOfFirst { it.trim() == "---" }.takeIf { it >= 0 }?.plus(1) ?: return null
+    val page = lines.subList(1, end).firstNotNullOfOrNull { line ->
+        line.substringAfter("docs:", "").takeIf { line.trimStart().startsWith("docs:") }
+    }?.let(::docsPage) ?: return null
+    val body = lines.drop(end + 1)
+    val summary = body.dropWhile { it.isBlank() || it.startsWith("#") }.takeWhile { it.isNotBlank() }
+        .joinToString(" ") { it.trim() }.take(400)
+    return DocsRedirect(page, headingTitle(body.asSequence()), summary)
+}
+
+/** Files remain authoritative: no copied Markdown property or hidden box is needed to read a guide. */
+internal class DocumentGuideFiles(root: File) {
+    private val root = root.canonicalFile
+
+    fun resolve(path: String): File {
+        require(path.isNotBlank() && !File(path).isAbsolute) { "Expected a document-relative path" }
+        val file = File(root, path).canonicalFile
+        require(file.toPath().startsWith(root.toPath()) && file.isFile) { "File is missing or outside this document" }
+        return file
+    }
+
+    fun list(): List<DocumentGuideEntry> {
+        // Keep this bounded and predictable. Don't descend into histories, dependencies or nested documents.
+        val files = root.listFiles().orEmpty().filter { it.isFile }.toMutableList()
+        for (name in listOf("docs", "guides")) {
+            val directory = File(root, name)
+            if (directory.isDirectory) files += directory.walkTopDown().maxDepth(4)
+                .onEnter { !it.name.startsWith('.') && !File(it, "metadata.edn").exists() && it.canonicalFile.toPath().startsWith(root.toPath()) }
+                .filter { it.isFile }.take(256).toList()
+        }
+        return files.asSequence().filter { isGuideName(it.name) }.mapNotNull { file ->
+            runCatching {
+                val path = root.toPath().relativize(file.toPath()).toString()
+                val target = resolve(path)
+                require(target.length() <= MAX_BYTES)
+                val redirect = if (target.length() <= 16 * 1024) docsRedirect(target.readText()) else null
+                val title = redirect?.title ?: target.bufferedReader().use { headingTitle(it.lineSequence()) }
+                    ?: file.nameWithoutExtension.replace('_', ' ')
+                // Older Fields seeded this README into every workspace. It describes the on-disk
+                // format for agents (now in AGENTS.md); listing it made it read as the document's docs.
+                if (path.equals("README.md", true) && title == SEEDED_WORKSPACE_README_TITLE) null
+                else if (redirect != null) DocumentGuideEntry(path, title, kind = "docs", docs = redirect.page, summary = redirect.summary)
+                else DocumentGuideEntry(path, title)
+            }.getOrNull()
+        }.sortedWith(compareBy<DocumentGuideEntry> { !it.path.equals("README.md", true) }.thenBy { it.path.lowercase() })
+            .take(128).toList()
+    }
+
+    fun read(path: String): DocumentGuideFile {
+        val file = guideTarget(path)
+        require(file.isFile) { "Guide is missing: $path" }
+        require(file.length() <= MAX_BYTES) { "Guide exceeds the 1 MiB limit" }
+        val bytes = file.readBytes()
+        require(bytes.size <= MAX_BYTES) { "Guide exceeds the 1 MiB limit" }
+        return DocumentGuideFile(path, bytes.toString(Charsets.UTF_8), revision(bytes))
+    }
+
+    /**
+     * Refuse a write in a read-only session, loudly.
+     *
+     * `ReadOnlyDocuments.refuseWrite` is the channel the other document-directory writers use, so a
+     * refused guide edit lands in `SaveReloadLog` next to them rather than being a silent no-op that
+     * only shows up as an error string in the panel. Throwing (rather than returning) keeps the
+     * contract that a returned [DocumentGuideFile] describes bytes that are actually on disk.
+     */
+    private fun refuseIfReadOnly(operation: String, path: String, readOnly: Boolean) {
+        if (!readOnly) return
+        ReadOnlyDocuments.refuseWrite("document-guide-$operation", File(root, path).path)
+        error("This document is read-only")
+    }
+
+    fun save(path: String, expected: String, contents: String, readOnly: Boolean): DocumentGuideFile = synchronized(writeLock) {
+        refuseIfReadOnly("save", path, readOnly)
+        val bytes = contents.toByteArray(Charsets.UTF_8)
+        require(bytes.size <= MAX_BYTES) { "Guide exceeds the 1 MiB limit" }
+        val current = read(path)
+        if (current.revision != expected) throw GuideConflict()
+        val target = resolve(path).toPath()
+        val temporary = Files.createTempFile(target.parent, ".guide-", ".tmp")
+        try {
+            Files.write(temporary, bytes)
+            // Recheck after writing the temporary file: an external editor may have saved meanwhile.
+            if (read(path).revision != expected) throw GuideConflict()
+            runCatching { Files.setPosixFilePermissions(temporary, Files.getPosixFilePermissions(target)) }
+            Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        } finally {
+            Files.deleteIfExists(temporary)
+        }
+        DocumentGuideFile(path, contents, revision(bytes))
+    }
+
+    /** The same namespace for discovery, reader and tools; assets use the broader [resolve]. */
+    private fun guideTarget(path: String): File {
+        val parts = path.split('/')
+        require(path.length <= 512 && !path.contains('\\') && parts.all { it.isNotBlank() && it != "." && it != ".." && !it.startsWith('.') }) {
+            "Expected a relative guide path without hidden or parent directories"
+        }
+        require(isGuideName(parts.last()) && (parts.size == 1 || (parts.first() in setOf("docs", "guides") && parts.size <= 5))) {
+            "Use a Markdown guide in the document root, docs/ or guides/; instruction files and property sidecars are excluded"
+        }
+        val file = File(root, path).canonicalFile
+        require(file.toPath().startsWith(root.toPath())) { "Guide is outside this document" }
+        var parent = File(root, path).parentFile
+        while (parent != root && parent != null) {
+            require(!File(parent, "metadata.edn").exists()) { "Nested documents have their own guides" }
+            parent = parent.parentFile
+        }
+        return file
+    }
+
+    /** Publish a complete new file, atomically, only if the name is still absent. */
+    fun create(path: String, contents: String, readOnly: Boolean): DocumentGuideFile = synchronized(writeLock) {
+        refuseIfReadOnly("create", path, readOnly)
+        val target = guideTarget(path).toPath()
+        val bytes = contents.toByteArray(Charsets.UTF_8)
+        require(bytes.size <= MAX_BYTES) { "Guide exceeds the 1 MiB limit" }
+        if (Files.exists(target, java.nio.file.LinkOption.NOFOLLOW_LINKS)) throw GuideConflict()
+        Files.createDirectories(target.parent)
+        val temporary = Files.createTempFile(target.parent, ".guide-", ".tmp")
+        try {
+            Files.write(temporary, bytes)
+            // A hard link gives no-clobber publication; ATOMIC_MOVE may replace an existing target.
+            try { Files.createLink(target, temporary) }
+            catch (_: java.nio.file.FileAlreadyExistsException) { throw GuideConflict() }
+        } finally { Files.deleteIfExists(temporary) }
+        DocumentGuideFile(path, contents, revision(bytes))
+    }
+
+    fun patch(path: String, expected: String, oldText: String, newText: String, readOnly: Boolean): DocumentGuideFile = synchronized(writeLock) {
+        refuseIfReadOnly("patch", path, readOnly)
+        val current = read(path)
+        if (current.revision != expected) throw GuideConflict()
+        require(oldText.isNotEmpty()) { "oldText must identify one existing passage" }
+        val at = current.contents.indexOf(oldText)
+        require(at >= 0 && current.contents.indexOf(oldText, at + 1) < 0) { "oldText must match exactly once; read more context and retry" }
+        save(path, expected, current.contents.replaceRange(at, at + oldText.length, newText), readOnly)
+    }
+
+    fun append(path: String, expected: String, text: String, readOnly: Boolean): DocumentGuideFile = synchronized(writeLock) {
+        refuseIfReadOnly("append", path, readOnly)
+        val current = read(path)
+        if (current.revision != expected) throw GuideConflict()
+        save(path, expected, current.contents + text, readOnly)
+    }
+
+    companion object {
+        private val writeLock = Any()
+        /** The heading of the `README.md` older Fields seeded into every workspace they opened. */
+        internal const val SEEDED_WORKSPACE_README_TITLE = "A Field workspace"
+
+        internal fun isGuideName(name: String): Boolean =
+            name.substringAfterLast('.', "").lowercase() in setOf("md", "markdown") &&
+                !name.startsWith('.') && !name.substringBeforeLast('.').endsWith('_') &&
+                name.lowercase() !in setOf("agents.md", "claude.md", "gemini.md", "document.md")
+    }
+}
+
+internal class GuideConflict : IllegalStateException("The file changed on disk. Your draft is preserved; reload the disk version or copy your draft before merging.")
+
+/**
+ * A document's `notes` properties, collected as read-only companions to the Markdown files.
+ *
+ * `notes` is already Markdown — it persists as a `_notes_.md` sidecar and has its own preview in
+ * the box editor — and it is where humans and agents leave intent in prose, so the viewer is the
+ * natural place to read all of a document's notes at once. Writing them stays with the box, which
+ * keeps one write path (and one transcript entry) for the property.
+ */
+internal class DocumentGuideNotes(private val boxes: Collection<Box>) {
+    fun list(): List<DocumentGuideEntry> = boxes.asSequence()
+        .mapNotNull { box -> text(box)?.let { box to it } }
+        .map { (box, notes) ->
+            DocumentGuideEntry(documentGuideNotePath(box.id), title(box, notes), kind = "note", uid = box.id)
+        }
+        .sortedBy { it.title.lowercase() }
+        .take(128).toList()
+
+    fun read(path: String): DocumentGuideFile {
+        val uid = documentGuideNoteUid(path) ?: error("Expected a box note path")
+        val box = boxes.firstOrNull { it.id == uid } ?: error("Box '$uid' is not in this document")
+        val notes = text(box) ?: error("Box '${box.name.ifBlank { uid }}' has no notes")
+        return DocumentGuideFile(path, notes, revision(notes.toByteArray(Charsets.UTF_8)), kind = "note", uid = uid)
+    }
+
+    private fun text(box: Box): String? {
+        if (box.getPropertyRaw("_tombstone").isTrue()) return null
+        val notes = box.getPropertyRaw("notes") as? String ?: return null
+        // The bound the files honour, for the same reason: past a megabyte this is a document, not a note.
+        return notes.takeIf { it.isNotBlank() && it.toByteArray(Charsets.UTF_8).size <= MAX_BYTES }
+    }
+
+    private fun title(box: Box, notes: String): String =
+        headingTitle(notes.lineSequence()) ?: box.name.ifBlank { null } ?: box.id
+}
+
+@RunsAt(installHandlers)
+fun documentGuideHandlers() {
+    handlers["document-guide"] = mutableSetOf({ message, reply ->
+        // A reconnecting page polls for guides before its session is re-established; answer so it retries.
+        val info: SessionInformation? = thisSessionInfo.get()
+        if (info == null) {
+            reply(Message(message.replyTo ?: "document-guide").payload(DocumentGuideResponse(ok = false, error = "This page has no document session yet")))
+            return@mutableSetOf Handled.yes
+        }
+        val readOnly = ReadOnlyDocuments.blocksWritesFromCurrentSession()
+        val result = try {
+            val request = Json.decodeFromJsonElement<DocumentGuideRequest>(message.payload!!)
+            val files = DocumentGuideFiles(File(info.filename))
+            val notes = DocumentGuideNotes(info.boxes.values.toList())
+            // Notes are read here and written on their box, so every writing action refuses one.
+            val isNote = documentGuideNoteUid(request.path) != null
+            val onTheBox = "Box notes are edited on the box itself"
+            when (request.action) {
+                "list" -> DocumentGuideResponse(entries = files.list() + notes.list())
+                "read" -> DocumentGuideResponse(file = if (isNote) notes.read(request.path) else files.read(request.path))
+                "save" -> {
+                    check(!isNote) { onTheBox }
+                    val saved = files.save(request.path, request.revision, request.contents, readOnly)
+                    refreshFileProxyBoxes(info)
+                    DocumentGuideResponse(file = saved)
+                }
+                "create" -> {
+                    check(!isNote) { onTheBox }
+                    val created = files.create(request.path, request.contents, readOnly)
+                    DocumentGuideResponse(file = created, entries = files.list() + notes.list())
+                }
+                "pin" -> {
+                    // Pinning adds a file-proxy box bound to a path inside the document, which
+                    // `createProxyTarget` would refuse anyway; refusing here keeps the box off the
+                    // canvas and puts the refusal in the same log as the guide writes above.
+                    if (readOnly) {
+                        ReadOnlyDocuments.refuseWrite("document-guide-pin", File(info.filename, request.path).path)
+                        error("This document is read-only")
+                    }
+                    check(!isNote) { "$onTheBox; it is already on the canvas" }
+                    files.read(request.path)
+                    val target = files.resolve(request.path)
+                    val existing = info.boxes.values.firstOrNull {
+                        it.getPropertyRaw("file_proxy_mode") == "document" &&
+                            it.getPropertyRaw("file_proxy_path") == request.path && it.getPropertyRaw("_tombstone") != true
+                    }
+                    val uid = existing?.id ?: createFileProxyBox(CreateFileProxyBox(
+                        mode = "document", path = target.absolutePath, fileName = target.name, x = request.x, y = request.y
+                    )).uid
+                    DocumentGuideResponse(uid = uid)
+                }
+                else -> error("Unknown guide operation")
+            }
+        } catch (e: Exception) {
+            DocumentGuideResponse(ok = false, error = e.message ?: "Could not open guide", conflict = e is GuideConflict)
+        }
+        reply(Message(message.replyTo ?: "document-guide").payload(result.copy(document = info.filename, readOnly = readOnly)))
+        Handled.yes
+    })
+}
+
+/** Assets are served only from an already-open document, with the same canonical-path boundary as reads. */
+fun Route.installDocumentGuideRoutes() {
+    get("/api/document-guide-asset") {
+        val key = call.request.queryParameters["document"]
+        val info = documents.values.firstOrNull { it.filename == key }
+        val path = call.request.queryParameters["path"].orEmpty()
+        val file = info?.let { runCatching { DocumentGuideFiles(File(it.filename)).resolve(path) }.getOrNull() }
+        if (file == null || file.extension.lowercase() !in setOf("png", "jpg", "jpeg", "gif", "webp", "svg", "avif") || file.length() > 20 * 1024 * 1024) {
+            call.respond(HttpStatusCode.NotFound)
+        } else {
+            call.response.headers.append("Content-Security-Policy", "sandbox; default-src 'none'; style-src 'unsafe-inline'")
+            call.response.headers.append("X-Content-Type-Options", "nosniff")
+            call.respondFile(file)
+        }
+    }
+}

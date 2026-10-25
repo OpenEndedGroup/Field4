@@ -22,6 +22,7 @@ from build_zensical_docs import (  # noqa: E402
     jep_python_candidates,
     resolve_jep_python,
     loris_executable_path,
+    solidcraft_library_path,
 )
 
 FENCE = (
@@ -126,6 +127,42 @@ class PythonPrerequisiteTests(unittest.TestCase):
             self.assertEqual(resolve_jep_python(), (Path("/resolved/python"), Path("/resolved/libjep")))
 
 
+class RefreshNativePrerequisiteTests(unittest.TestCase):
+    """A stale artifact passes the existence check, so the needed Gradle tasks run first."""
+
+    def setUp(self):
+        self.stack = contextlib.ExitStack()
+        self.addCleanup(self.stack.close)
+        self.docs = FakeDocs(self.stack, {"p.md": FENCE.replace('requires="ceres"', 'requires="ceres,paint,manifold,polyvector"')})
+        (self.docs.repo_root / "gradlew").touch()
+        self.stack.enter_context(patch("verification_runtime.pinned_graalvm_args", return_value=[]))
+        self.run = self.stack.enter_context(
+            patch("build_zensical_docs.subprocess.run", return_value=subprocess.CompletedProcess([], 0)))
+        self.stack.enter_context(contextlib.redirect_stderr(io.StringIO()))
+        self.stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
+
+    def check(self):
+        check_native_prerequisites(public_dir=self.docs.public_dir, repo_root=self.docs.repo_root,
+                                   runner_mode="incremental", page_filters=())
+
+    def test_runs_the_gradle_task_of_each_needed_prerequisite_once(self):
+        self.check()
+        argv = self.run.call_args.args[0]
+        # manifold's remedy is `brew install` alone, so it has no task; polyvector's ends in one.
+        self.assertEqual(argv[-3:], ["buildCeresRedistributable", "buildPaintNative", "buildPolyvectorNative"])
+        self.assertEqual(self.run.call_count, 1)
+
+    def test_opt_out(self):
+        with patch.dict(os.environ, {"FIELD_DOCS_REFRESH_NATIVES": "0"}):
+            self.check()
+        self.run.assert_not_called()
+
+    def test_without_a_gradlew_nothing_runs(self):
+        (self.docs.repo_root / "gradlew").unlink()
+        self.check()
+        self.run.assert_not_called()
+
+
 class FakeDocs:
     """A throwaway public/ tree with one page, so the scan has something to find."""
 
@@ -156,7 +193,7 @@ class CeresLibraryPathTests(unittest.TestCase):
 class TetgenLibraryPathTests(unittest.TestCase):
     """The same two properties for TetGen, whose resolver is Ceres' with a second candidate.
 
-    Kept in step with `afield.tetgen.TetgenLibrary.searchedPaths` by hand, so the point of
+    Kept in step with `afield.geometry.mesh.tetgen.TetgenLibrary.searchedPaths` by hand, so the point of
     these is to make a drift between the two a test failure rather than a docs build that
     reports "no artifact" while the JVM happily finds one a directory away.
     """
@@ -181,9 +218,21 @@ class TetgenLibraryPathTests(unittest.TestCase):
         self.assertEqual("./gradlew buildTetgenNative", how_to_build)
 
 
+class SolidCraftLibraryPathTests(unittest.TestCase):
+    def test_capture_uses_the_optional_build_artifact_or_override(self):
+        os.environ.pop("AFIELD_SOLIDCRAFT_LIBRARY", None)
+        resolved = solidcraft_library_path(Path("/repo"))
+        self.assertEqual(resolved.parent, Path("/repo/build/native/solidcraft"))
+        self.assertIn("field_solidcraft_jvm", resolved.name)
+        os.environ["AFIELD_SOLIDCRAFT_LIBRARY"] = "/custom/solidcraft.so"
+        self.addCleanup(os.environ.pop, "AFIELD_SOLIDCRAFT_LIBRARY", None)
+        self.assertEqual(solidcraft_library_path(Path("/repo")), Path("/custom/solidcraft.so"))
+        self.assertEqual(NATIVE_PREREQUISITES["solidcraft"][1], "./gradlew buildSolidCraftNative")
+
+
 class PaintLibraryPathTests(unittest.TestCase):
     """TetGen's three properties for the paint wrapper, kept in step with
-    `afield.paint.PaintLibrary.searchedPaths` by hand."""
+    `afield.graphics.paint.PaintLibrary.searchedPaths` by hand."""
 
     def test_the_environment_override_wins(self):
         os.environ["AFIELD_PAINT_LIBRARY"] = "/somewhere/libfield_paint_jvm.dylib"
@@ -203,7 +252,7 @@ class PaintLibraryPathTests(unittest.TestCase):
 
 
 class LibpdLibraryPathTests(unittest.TestCase):
-    """TetGen's two properties for libpd, kept in step with `afield.pd.PdLibrary.searchedPaths`."""
+    """TetGen's two properties for libpd, kept in step with `afield.audio.pd.PdLibrary.searchedPaths`."""
 
     def test_the_environment_override_wins(self):
         os.environ["AFIELD_PD_LIBRARY"] = "/somewhere/libpd-multi.dylib"
@@ -223,7 +272,7 @@ class LibpdLibraryPathTests(unittest.TestCase):
 
 
 class CsoundLibraryPathTests(unittest.TestCase):
-    """libpd's properties for libcsound, kept in step with `afield.csound.CsoundLibrary.searchedPaths`."""
+    """libpd's properties for libcsound, kept in step with `afield.audio.csound.CsoundLibrary.searchedPaths`."""
 
     def test_the_environment_override_wins(self):
         os.environ["AFIELD_CSOUND_LIBRARY"] = "/somewhere/libcsound64.so"

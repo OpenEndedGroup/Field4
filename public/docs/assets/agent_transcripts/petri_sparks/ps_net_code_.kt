@@ -1,12 +1,14 @@
-import afield.petri.PetriNet
-import afield.petri.PetriRun
-import afield.petri.petri
+import afield.simulation.petri.PetriNet
+import afield.simulation.petri.PetriRun
+import afield.simulation.petri.petri
 
 // Inherited by the box below, which is all it takes for the particles to hear the net.
 prop<PetriNet>(sparkNet)
 prop<PetriRun>(sparkRun)
 
-sparkNet = petri("""
+sparkNet =
+    petri(
+        """
     #petri
     !grid 1/8
 
@@ -34,7 +36,8 @@ sparkNet = petri("""
     // four kicks fill charge, and emptying it is a clap
     charge : 0 ^4
     4*charge -[ clap : cp ]->
-""")
+""",
+    )
 
 // One run, shared: a run remembers the steps it has taken, so every query below reuses them.
 sparkRun = sparkNet.run()

@@ -14,9 +14,9 @@ Both were found by a person reading the files. This is that reading, as a test, 
 one is found by CI: for every `create` op that sets a `code` property, the script's text must be
 byte-for-byte the box's committed `<box>_code_.kt` sidecar.
 
-Two known-stale demos are listed in `KNOWN_STALE` with the boxes that have drifted. The list is
-exact rather than per-demo — a *new* drift in `logging_layer` still fails — and the test also
-fails when a listed box has been repaired, so an exception cannot outlive its reason.
+Both were repaired on 2026-10-15 by copying the saved documents' code back into their scripts
+(the document was the truth), and the `KNOWN_STALE` exception list that had excused their five
+boxes was deleted with them. Every script is now held to its document with no exceptions.
 
 The corpus count moved 19 -> 20 on 2026-09-19 when `skinned_characters` landed from a sibling
 branch on the same night. That is what this assertion is for and it did its job: the two branches
@@ -137,6 +137,11 @@ CORPUS = {
     "path_tracing_emitters",
     "path_tracing_medium",
     "pattern_condense",
+    # 2026-10-18: the Clojure counterpart of python_box_parity.
+    "clojure_box_parity",
+    # 2026-10-24: the RemoteJS counterpart.
+    "remotejs_box_parity",
+    "python_box_parity",
     "python_cells",
     "read_only_session",
     "skinned_characters",
@@ -158,22 +163,6 @@ CORPUS = {
     "stackauto_conversation_polytope",
     "stackauto_conversation",
 }
-
-# demo -> {box: why this one is allowed to differ}. Measured 2026-09-19 on the tree at
-# 9d8bc0248; each of these is a document edited in Field after its build script was written.
-KNOWN_STALE: dict[str, dict[str, str]] = {
-    "frame_history_reprojection": {
-        "rp_bundle": "Build script has 40 lines against the document's 52; found by ad06001ac.",
-        "rp_chain": "Build script has 42 lines against the document's 108; found by ad06001ac.",
-    },
-    "logging_layer": {
-        "log_channels": "Build script has 23 lines against the document's 27; the older code "
-        "lost an import and does not compile (ad06001ac).",
-        "log_mute_is_console_only": "Build script has 26 lines against the document's 27.",
-        "log_blocks": "Build script has 47 lines against the document's 48.",
-    },
-}
-
 
 def _coded_boxes(build_yaml: Path) -> dict[str, str]:
     """Every box the script creates with a `code` property, in the order it creates them."""
@@ -236,7 +225,7 @@ class DemoBuildScriptTest(unittest.TestCase):
             set(),
             CORPUS - demos,
             f"demo document(s) {sorted(CORPUS - demos)} are named in CORPUS but are not on disk; "
-            "if they were removed or renamed, update CORPUS, KNOWN_STALE and "
+            "if they were removed or renamed, update CORPUS and "
             "dev_docs/DEMO_CORPUS_AUDIT.md together",
         )
         self.assertEqual(
@@ -261,23 +250,18 @@ class DemoBuildScriptTest(unittest.TestCase):
 
     def test_build_scripts_still_hold_the_documents_code(self) -> None:
         unexpected: list[str] = []
-        repaired: list[str] = []
         for script in self.scripts:
             demo = script.parent.name
-            allowed = KNOWN_STALE.get(demo, {})
             for box, code in _coded_boxes(script).items():
                 sidecar = script.parent / f"{box}_code_.kt"
                 if not sidecar.exists():
                     continue  # reported by test_every_created_box_has_a_sidecar
-                drifted = code.rstrip("\n") != sidecar.read_text().rstrip("\n")
-                if drifted and box not in allowed:
+                if code.rstrip("\n") != sidecar.read_text().rstrip("\n"):
                     unexpected.append(
                         f"{demo}/{box}: build.yaml has {len(code.rstrip(chr(10)).splitlines())} "
                         f"lines, the document has "
                         f"{len(sidecar.read_text().rstrip(chr(10)).splitlines())}"
                     )
-                if not drifted and box in allowed:
-                    repaired.append(f"{demo}/{box}")
         self.assertEqual(
             [],
             unexpected,
@@ -285,13 +269,6 @@ class DemoBuildScriptTest(unittest.TestCase):
             "edited in Field and the build script left behind. Either re-run the script to "
             "rebuild the document, or copy the box back into the script: " + str(unexpected),
         )
-        self.assertEqual(
-            [],
-            repaired,
-            "these boxes are listed in KNOWN_STALE but now match their document; remove the "
-            "entry so the exception does not outlive its reason: " + str(repaired),
-        )
-
 
 if __name__ == "__main__":
     unittest.main()

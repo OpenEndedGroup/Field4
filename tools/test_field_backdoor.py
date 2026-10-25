@@ -63,7 +63,7 @@ class McpPaintGestureTests(unittest.IsolatedAsyncioTestCase):
         server._ensure_client = mock.AsyncMock(return_value=client)  # type: ignore[method-assign]
         result = await server.tool_paint_gesture({"samples": [[0, 0, 0], [1, 0.5, 0.5]], "bake": 0.01})
         entry, args = client.run_jvm_main.call_args
-        self.assertEqual(entry[0], "afield.paint.GestureReplayMain")
+        self.assertEqual(entry[0], "afield.graphics.paint.GestureReplayMain")
         request = _json.loads(Path(args["jvm_args"][0]).read_text())
         self.assertEqual(request["samples"], [[0, 0, 0], [1, 0.5, 0.5]])
         self.assertTrue(request["lanesOut"].endswith(".json"))
@@ -492,6 +492,66 @@ class BoxReferenceTests(unittest.TestCase):
                 )
             ],
         )
+
+    def _set_through_dispatch(self, line: str) -> list:
+        from tools.field_backdoor import dispatch_command
+
+        self.client.boxes["box"] = {"uid": "box", "name": "box"}
+        calls: list = []
+
+        async def reply(name: str, payload: dict, *, timeout: float, **_kwargs) -> dict:
+            calls.append(payload["value"])
+            return {"payload": {"ok": True, "uid": payload["uid"], "property": payload["property"], "message": "saved"}}
+
+        self.client.call_for_single_reply = reply  # type: ignore[method-assign]
+        result = asyncio.run(dispatch_command(self.client, parse_command(line), line))
+        self.assertTrue(result["ok"])
+        return calls
+
+    def test_a_literal_backslash_n_in_a_value_stays_two_characters_by_default(self) -> None:
+        # Kotlin source passed on one line relies on this: `println("a\nb")` keeps its escape.
+        self.assertEqual(self._set_through_dispatch(r'set box code "val a = 1\nprintln(a)"'), ["val a = 1\\nprintln(a)"])
+
+    def test_value_escapes_turns_backslash_n_into_a_newline(self) -> None:
+        self.assertEqual(
+            self._set_through_dispatch(r'set box code "val a = 1\nprintln(\"x\\\\ny\")\tdone" --value-escapes'),
+            ['val a = 1\nprintln("x\\ny")\tdone'],
+        )
+
+    def test_value_escapes_is_accepted_by_run_launch_and_continue(self) -> None:
+        for verb in ("run", "launch", "continue"):
+            args = parse_command(rf'{verb} box --value "a\nb" --value-escapes')
+            self.assertTrue(args.value_escapes, verb)
+            self.assertEqual(args.value, "a\\nb", verb)
+
+    def test_literal_newline_warning_fires_only_outside_strings(self) -> None:
+        from tools.field_backdoor import literal_newline_warning
+
+        self.assertIsNotNone(literal_newline_warning(r"val a = 1\nprintln(a)"))
+        self.assertIsNone(literal_newline_warning(r'println("a\nb")'))
+        self.assertIsNone(literal_newline_warning(r"val c = '\n'"))
+        self.assertIsNone(literal_newline_warning("val a = 1\nprintln(\"x\\ny\")"))
+        self.assertIsNone(literal_newline_warning(None))
+
+    def test_set_without_value_escapes_reports_a_literal_newline(self) -> None:
+        import contextlib
+        import io
+
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr):
+            sent = self._set_through_dispatch(r'set box code "val a = 1\nprintln(a)"')
+        self.assertEqual(sent, ["val a = 1\\nprintln(a)"])
+        self.assertIn("--value-escapes", stderr.getvalue())
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr):
+            self._set_through_dispatch(r'set box code "val a = 1\nprintln(a)" --value-escapes')
+        self.assertNotIn("warning", stderr.getvalue())
+
+    def test_value_escapes_decoding(self) -> None:
+        from tools.field_backdoor import decode_value_escapes
+
+        self.assertEqual(decode_value_escapes(r"a\nb\tc\\n\q"), "a\nb\tc\\n\\q")
+        self.assertEqual(decode_value_escapes("trailing\\"), "trailing\\")
 
     def test_live_document_docs_require_workspace_and_document(self) -> None:
         text = (REPO_ROOT / "dev_docs" / "agents" / "FIELD_BACKDOOR.md").read_text()
@@ -1785,6 +1845,8 @@ class CaptureSignatureDocTests(unittest.TestCase):
         capture = {
             name for name in sub.choices
             if name.startswith(("screenshot-", "record-", "native-", "wait-native-"))
+            # Films, named outright: a flight through bookmarks, and any page stepped frame by frame.
+            or name in {"canvas-flight", "film-page"}
         }
         self.assertEqual(
             capture,

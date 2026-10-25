@@ -9,16 +9,17 @@ them you ask changes what the motion is about.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_speech_embeddings/learned_spaces.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-speech" alt="Real emotion2vec and WavLM learned phase portraits with voice activity, energy and novelty"}
 :::static
-import afield.four.audio.WavFloatArrayLoader
 import java.io.File
-import java.nio.file.Path
+
 val json = FieldAudioClient.json
 val folder = File("public/docs/assets/audio_ai_speech_embeddings")
-val previews = listOf("emotion2vec", "wavlm_base_plus").map {
+val previews = ["emotion2vec", "wavlm_base_plus"].map {
     json.decodeFromString<AnalysisPreview>(File(folder, "$it-preview.json").readText())
 }
-display("speech spaces", speechEmbeddingPreviewDashboardHtml(previews, width = 1040, phaseHeight = 220))
-
+display(
+    "speech spaces",
+    speechEmbeddingPreviewDashboardHtml(previews, width = 1040, phaseHeight = 220),
+)
 ```
 
 These are the two workers' landmark MDS views of `near_drowning.wav`. The workflow below fits
@@ -54,74 +55,111 @@ streams progress into replaceable cards, awaits the durable results, and gives a
 portraits the source player's time bus.
 
 ```diffstatic {data-lang=kotlin}
-import afield.Box
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.concurrent.CompletableFuture
+import kotlinx.coroutines.*
+import kotlinx.coroutines.future.await
 
-val client = FieldAudioClient()
+val client = cached { FieldAudioClient() }
 val local = Path.of(System.getProperty("user.home"), "Downloads", "near_drowning.wav")
 val sync = "near-drowning-speech"
 val projectionStart = 0.0
 val projectionDuration = 10.0
-val projectionPoolMillis = 500.0
-val projectionHopMillis = 40.0 // 25 Hz: just above a 24 fps display
+val projectionPoolMillis: Double? = 500.0
+val projectionHopMillis: Double? = 40.0 // 25 Hz: just above a 24 fps display
 display("all jobs", fieldAudioJobMonitor(heightPixels = 340))
 
-fun Box.tracked(label: String, request: ModelOperation): CompletableFuture<AnalysisResult> =
-    client.submit(request).thenCompose { accepted ->
-        display("$label job", fieldAudioJobStatusHtml(accepted))
-        client.watch(accepted.jobId) { event ->
-            display("$label job", fieldAudioJobStatusHtml(accepted, event))
+go {
+    try {
+        val matches = client.assetsByFilename("*near_drowning*").await()
+        val source = when {
+            matches.size == 1 -> matches.single()
+            matches.isEmpty() && Files.isRegularFile(local) -> client.importWav(local).await()
+            matches.isEmpty() ->
+                throw IllegalStateException("near_drowning.wav is neither imported nor present at $local")
+            else -> throw IllegalStateException("near_drowning filename matched ${matches.size} assets")
         }
-        client.awaitAnalysis(accepted)
-    }
-
-client.assetsByFilename("*near_drowning*").thenCompose { matches ->
-    when {
-        matches.size == 1 -> CompletableFuture.completedFuture(matches.single())
-        matches.isEmpty() && Files.isRegularFile(local) -> client.importWav(local)
-        else -> CompletableFuture.failedFuture(IllegalStateException("cannot resolve $local"))
-    }
-}.thenCompose { source ->
-    val audio = source.representations.firstOrNull { it.role == "canonical_project" }
-        ?: source.representations.first { it.mediaType in setOf("audio/wav", "audio/x-wav") }
-    val duration = requireNotNull(audio.durationSeconds)
-    val region = AssetRegion(source.id, 0.0, duration)
-    display("source", audio.audioVisualizerHtml(
-        options = AudioVisualizerOptions(
-            initialDurationSeconds = minOf(projectionDuration, duration), syncGroup = sync,
-        ),
-    ))
-
-    val jobs = listOf(
-        tracked("emotion2vec", emotion2VecEmbeddingAnalysis(region)),
-        tracked("WavLM Base+", wavlmBasePlusEmbeddingAnalysis(region, layer = 6)),
-    )
-    CompletableFuture.allOf(*jobs.toTypedArray()).thenApply { jobs.map { it.join() } }
-}.thenCompose { results ->
-    val previews = results.map { result ->
-        client.speechEmbeddingSmileTsnePreview(
-            result,
-            maxFrames = 600,
-            startSeconds = projectionStart,
-            durationSeconds = projectionDuration,
-            poolMillis = projectionPoolMillis,
-            hopMillis = projectionHopMillis,
-            dimensions = 4,
-            distance = SmileMdsDistance.COSINE,
-            perplexity = 30.0,
-            seed = 184921L,
-            previewPoints = 1800,
+        val audio =
+            source.representations.firstOrNull { it.role == "canonical_project" }
+                ?: source.representations.first { it.mediaType in setOf("audio/wav", "audio/x-wav") }
+        val duration = requireNotNull(audio.durationSeconds)
+        val region = AssetRegion(source.id, 0.0, duration)
+        display(
+            "source",
+            audio.audioVisualizerHtml(
+                options = AudioVisualizerOptions(
+                    initialDurationSeconds = minOf(projectionDuration, duration),
+                    syncGroup = sync,
+                ),
+            ),
         )
+        val requests = [
+            "emotion2vec" to emotion2VecEmbeddingAnalysis(region),
+            "WavLM Base+" to wavlmBasePlusEmbeddingAnalysis(region, layer = 6),
+        ]
+        val results = coroutineScope {
+            requests
+                .map { (label, request) ->
+                    async {
+                        client
+                            .trackAnalysis(
+                                request,
+                                onAccepted = { display("$label job", fieldAudioJobStatusHtml(it)) },
+                                onProgress = { job, event ->
+                                    display("$label job", fieldAudioJobStatusHtml(job, event))
+                                },
+                                onCompleted = { display("$label job", fieldAudioJobStatusHtml(it)) },
+                                onError = {}, // The surrounding coroutine reports the combined failure.
+                            )
+                            .await()
+                    }
+                }
+                .awaitAll()
+        }
+        val projectionDescription =
+            "start ${projectionStart}s · duration ${projectionDuration}s · pool ${projectionPoolMillis?.let { "${it} ms" } ?: "raw"} · hop ${projectionHopMillis?.let { "${it} ms" } ?: "native"}"
+        display("projection", "Fitting Field Smile t-SNE · $projectionDescription…")
+        val previews = coroutineScope {
+            results
+                .map { result ->
+                    async {
+                        client
+                            .speechEmbeddingSmileTsnePreview(
+                                result,
+                                maxFrames = 600,
+                                startSeconds = projectionStart,
+                                durationSeconds = projectionDuration,
+                                poolMillis = projectionPoolMillis,
+                                hopMillis = projectionHopMillis,
+                                dimensions = 4,
+                                distance = SmileMdsDistance.COSINE,
+                                perplexity = 30.0,
+                                seed = 184921L,
+                                previewPoints = 1800,
+                            )
+                            .await()
+                    }
+                }
+                .awaitAll()
+        }
+        display(
+            "speech spaces",
+            speechEmbeddingPreviewDashboardHtml(
+                previews,
+                phaseHeight = 270,
+                syncGroup = sync,
+            ),
+        )
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (failure: Throwable) {
+        markdown("speech analysis error", "Speech analysis failed: ${(failure.message ?: failure.toString()).md}")
     }
-    CompletableFuture.allOf(*previews.toTypedArray()).thenApply { previews.map { it.join() } }
-}.thenAccept { previews ->
-    display("speech spaces", speechEmbeddingPreviewDashboardHtml(
-        previews, phaseHeight = 270, syncGroup = sync,
-    ))
 }
 ```
+
+Stop or rerun cancels both local subscriptions and pending projection futures through the
+box-owned coroutine. Status captions are built from the current range, pool and hop controls.
 
 Re-running the unchanged box returns the cached neural results: source identity, exact range, model
 revision, layer, chunking, MDS parameters, and preprocessing are part of the operation hash.

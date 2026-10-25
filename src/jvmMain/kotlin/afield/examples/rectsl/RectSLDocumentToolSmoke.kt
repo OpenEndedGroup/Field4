@@ -27,8 +27,8 @@ expect:
 */
 private val DOCUMENT_TOOL_SNIPPET = """
 // example:start
-import afield.ai.core.AgentToolExtensions
-import afield.rectsl.compileRectSLWithSource
+import afield.ai.tools.AgentToolExtensions
+import afield.lang.rectsl.compileRectSLWithSource
 import com.fasterxml.jackson.annotation.JsonClassDescription
 
 @JsonClassDescription("The rectangles a RectSL scene makes, by the line that makes them.")
@@ -43,9 +43,9 @@ AgentToolExtensions.register(RectanglesOfRectSLStudy::class.java,
 // example:end
 
 thisBox.setPropertyRaw("rectSL", "\"sun\" rect 0 2 ->xy 2 ->square ;\n\"moon\" rect 5 -2 ->xy 1 ->square ;")
-val focused = afield.ai.core.ToolExecutionContext(focus = afield.ai.core.ToolFocus(document, thisBox, "rectSL"))
+val focused = afield.ai.tools.ToolExecutionContext(focus = afield.ai.tools.ToolFocus(document, thisBox, "rectSL"))
 println("rectangles " + AgentToolExtensions.execute(focused, "RectanglesOfRectSLStudy", "{}"))
-println("offered elsewhere " + AgentToolExtensions.isAvailable(afield.ai.core.ToolExecutionContext(), "RectanglesOfRectSLStudy"))
+println("offered elsewhere " + AgentToolExtensions.isAvailable(afield.ai.tools.ToolExecutionContext(), "RectanglesOfRectSLStudy"))
 AgentToolExtensions.unregister("RectanglesOfRectSLStudy", scope = document)
 println("retired " + !AgentToolExtensions.isAvailable(focused, "RectanglesOfRectSLStudy"))
 """.trimIndent()

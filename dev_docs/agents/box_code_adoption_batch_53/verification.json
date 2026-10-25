@@ -1,0 +1,17 @@
+{
+  "baseline": "8ea0e0c83",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/csound_demo.yaml",
+      "kotlinBodies": 2,
+      "collectionConversions": 2,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/csound.md",
+      "kotlinBodies": 7,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

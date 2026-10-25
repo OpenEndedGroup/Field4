@@ -1,6 +1,6 @@
 # Graphics in an Output Area
 
-An afield.four render target can draw straight into a box's output area, next to its code,
+A Field 4 render target can draw straight into a box's output area, next to its code,
 instead of into a separate render window. Frames go from the GPU to the panel without being
 copied back to the CPU or encoded, so a 640×360 view keeps up with the renderer, which is
 85 to 120 frames a second on an Apple silicon Mac.
@@ -13,19 +13,18 @@ copied back to the CPU or encoded, so a 640×360 view keeps up with the renderer
 ## A view in a box
 
 This box draws a moving, colour-shifting square into a 640×360 view and shows it in the box's
-`main` output. It sits under a renderer box, like any other afield.four box, and its `vertex` and
+`main` output. It sits under a renderer box, like any other Field 4 box, and its `vertex` and
 `fragment` properties hold the two shaders.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/four_in_output_areas/rtt-view.png" alt="a box's main output panel holding a black 640 by 360 view with a square a little left of centre, shaded from soft green at its lower left to rose at its upper right, and under the view a line of small grey text giving the frame rate, about 85 frames a second, and the time from the GPU finishing a frame to the panel showing it, under 3 milliseconds on average" capture="box" capture-profile="macos-electron" graphics-context=true wait="3" timeout="60" embed=true name="four-rtt-view" source-box="assets/four_in_output_areas/rtt-view" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.four.stream.ElectronRTTView
+```diffstatic_runner {data-lang=kotlin screenshot="assets/four_in_output_areas/rtt-view.png" alt="a box's main output panel holding a black 640 by 360 view with a square near its centre, shaded corner to corner in colours that drift as it moves, and under the view a line of small grey text giving the frame rate, over 100 frames a second, and the time from the GPU finishing a frame to the panel showing it, under 3 milliseconds on average" capture="box" capture-profile="macos-electron" graphics-context=true wait="3" timeout="60" embed=true name="four-rtt-view" source-box="assets/four_in_output_areas/rtt-view" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+import afield.media.stream.ElectronRTTView
 
 val view = ElectronRTTView(640, 360)
 
-val module = moduleHere { view.rtt.apply() }
+val module = moduleHere { +view }
 val m = Mesh()
 module += "mainMesh" to m
-view.rtt += "content" to module
-view.rtt.parameters.clearFirst = true
+view += "content" to module
 
 val camera = Camera()
 m.p = camera.p
@@ -37,15 +36,20 @@ m.finalColor = {
 
 val sc = 4.0
 m.set(4, 2) {
-    pos.add(-sc, -sc, 0); pos.add(sc, -sc, 0); pos.add(sc, sc, 0); pos.add(-sc, sc, 0)
-    tri.add(0, 1, 2); tri.add(0, 2, 3)
+    pos.add(-sc, -sc, 0)
+    pos.add(sc, -sc, 0)
+    pos.add(sc, sc, 0)
+    pos.add(-sc, sc, 0)
+    tri.add(0, 1, 2)
+    tri.add(0, 2, 3)
 }
 
 display("main", view.html())
 ```
 
-`view.rtt` is an ordinary `RenderToTexture`, so anything that renders into one renders into the
-view: attach modules to it with `+=` exactly as you would for a texture you meant to sample.
+The view stands in for the `RenderToTexture` it draws through, `view.rtt`: `+view` inside
+`moduleHere { }` points the module at it, and `view += ...` attaches modules exactly as you would to
+a texture you meant to sample.
 `view.html()` is the panel itself, a canvas plus a line of live timings, and `display` puts it in
 whichever output you name.
 
@@ -89,14 +93,14 @@ moving square, in the Linux app:
 The [verification record](assets/four_in_output_areas/linux-verification.json) has the source and
 canvas pixel counts, the exact switches, and the checks after re-running and deleting the box.
 
-See also: [afield.four Graphics](afield_four_graphics.md) for meshes, modules and
-render-to-texture.
+See also: [Field 4 Graphics](afield_four_graphics.md) for meshes, modules and
+render-to-texture, and [WebRTC Streams](webrtc.md) to publish a view as a live stream.
 
-??? aside "How the figure is captured"
+??? aside "Agents: how the figure is captured"
     The docs runner's capture browser is a plain Chromium, which cannot show these frames, so this
     page's figure is captured from the Field Electron app itself: the fence's
     `capture-profile="macos-electron"` makes the runner start this checkout's Electron with remote
     debugging on and capture through it (`playwright-open --electron` on the backdoor,
-    `afield.docs.ElectronCaptureBrowser`). Like the Linux GPU captures, it is regenerated only on a
+    `afield.tools.docs.ElectronCaptureBrowser`). Like the Linux GPU captures, it is regenerated only on a
     host that asks for it (`FIELD_DOCS_CAPTURE_PROFILES=macos-electron` on macOS), and kept
     everywhere else. The mechanism behind the view is in `dev_docs/ELECTRON_RTT_VIEW.md`.

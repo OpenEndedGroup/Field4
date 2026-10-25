@@ -1,7 +1,17 @@
-@file:afield.CompletionCategory("Math")
+@file:afield.runtime.completion.CompletionCategory("Math")
 package afield.math.gp
 
 import kotlin.math.*
+
+/**
+ * Covariance functions for Field's Gaussian processes, and the [GpKernels] catalogue of standard ones.
+ *
+ * A [GpKernel] is any pure function of two input points; kernels add, multiply and scale with `+` and
+ * `*`. A [GpDifferentiableKernel] also supplies gradients and Hessians, which derivative observations
+ * and slope queries need, and sums, products and scalings of differentiable kernels stay
+ * differentiable. [GpKernels] provides RBF, Matérn, rational quadratic, periodic and periodic
+ * mixtures, constant and linear kernels, plus `warp` for an input transform.
+ */
 
 /**
  * A covariance function. Implementations and mean functions must be pure and thread safe.

@@ -45,6 +45,12 @@ internal val extrasCatalog = listOf(
     Extra("samples", "Pinned Dirt audio samples", "Audio", "public/docs/sound_paths.md", setOf("python3"), "fetchDocsDirtSamples", advice = "Downloads and checksum-verifies Field's small pinned Dirt-Samples subset into the shared per-user cache. This is not the entire sample collection or an audio-AI model."),
     Extra("patchy-web", "Patchy layered painting editor", "Graphics", "public/docs/patchy.md", setOf("git", "python3", "cmake"), "buildPatchyWeb", advice = "Builds pinned Patchy plus Field's bridge patch in ~/.field4/patchy-web. Downloads Qt for WebAssembly and Emscripten (several GB); the Web editor is served automatically on the next Field launch. No Patchy source enters this checkout."),
     Extra("slang", "Slang shader compiler", "Graphics", "public/docs/afield_four_graphics.md", setOf("uv"), "prepareSlangCompiler", advice = "Fetches Field's pinned, checksummed slangc for live Slang boxes (vertex_fragment and friends). Field prefers it to the Vulkan SDK's and any slangc on PATH. Does not build the learned shaders."),
+    // Appended so existing numbered setup selections keep their meaning.
+    Extra("solidcraft", "SolidCraft parametric CAD", "Native libraries", "public/docs/solidcraft.md", setOf("python3", "git", "cargo", "rustc", "compiler"), "buildSolidCraftNative", advice = "Builds Field's C/FFM bridge inside a pinned SolidCraft source checkout. Needs Rust/Cargo 1.95 or newer, network on first build, and several minutes. Check with ./gradlew smokeSolidCraft; the welcome screen has a SolidCraft starting point."),
+    Extra("morse-smale", "Morse-Smale complexes", "Native libraries", "public/docs/morse_smale.md", setOf("python3", "cmake", "compiler"), "buildMorseSmaleNative", advice = "Builds Field's own Morse-Smale library (no downloads, no other dependencies) and runs its native test. Check with NativeGeometry.describe() in a box."),
+    Extra("principal-curves", "Principal curves and trees", "Native libraries", "public/docs/principal_curves.md", setOf("python3", "cmake", "compiler"), "buildPrincipalCurvesNative", advice = "Builds Field's elastic principal graph library (an ElPiGraph port; no downloads, no other dependencies) and runs its native test."),
+    Extra("polyvector", "Line-drawing vectorization (polyvector)", "Native libraries", "public/docs/polyvector.md", setOf("python3", "cmake", "compiler"), "buildPolyvectorNative", setOf("linux", "mac"), "Needs OpenCV, Boost and Eigen development packages (setup installs them with Homebrew, apt, dnf or pacman). Downloads the authors' pinned, MIT-licensed implementation on first build. Windows is not yet supported by the build."),
+    Extra("gltfpack", "gltfpack GLB compression", "Graphics", "public/docs/three_output.md", setOf("python3"), "prepareGltfpack", advice = "Fetches Field's pinned, checksummed gltfpack (meshoptimizer, MIT). Exported GLBs (the three viewer's Export GLB, GeometryScene.writeGlb) are then compressed with it; without it they are written uncompressed. Linux builds are x86-64 only."),
 )
 
 internal fun platformId(os: String): String = when {
@@ -70,12 +76,16 @@ internal fun preparationCommands(extras: Set<String>, platform: String): List<Li
 }
 
 internal fun supportsRust2024(versionOutput: String): Boolean {
-    val version = Regex("\\b(\\d+)\\.(\\d+)\\.\\d+").find(versionOutput) ?: return false
-    val major = version.groupValues[1].toInt()
-    return major > 1 || (major == 1 && version.groupValues[2].toInt() >= 85)
+    return supportsRustAtLeast(versionOutput, 85)
 }
 
-internal fun paintToolchainErrors(): List<String> = listOf("cargo", "rustc").mapNotNull { tool ->
+internal fun supportsRustAtLeast(versionOutput: String, minor: Int): Boolean {
+    val version = Regex("\\b(\\d+)\\.(\\d+)\\.\\d+").find(versionOutput) ?: return false
+    val major = version.groupValues[1].toInt()
+    return major > 1 || (major == 1 && version.groupValues[2].toInt() >= minor)
+}
+
+internal fun rustToolchainErrors(minor: Int): List<String> = listOf("cargo", "rustc").mapNotNull { tool ->
     val output = runCatching {
         val proc = ProcessBuilder(tool, "--version").redirectErrorStream(true).start()
         if (!proc.waitFor(5, TimeUnit.SECONDS)) {
@@ -85,8 +95,12 @@ internal fun paintToolchainErrors(): List<String> = listOf("cargo", "rustc").map
         check(proc.exitValue() == 0)
         proc.inputStream.bufferedReader().use { it.readText() }
     }.getOrNull()
-    if (output != null && supportsRust2024(output)) null else "$tool must support Rust 2024 (at least 1.85); install a current stable Rust toolchain."
+    if (output != null && supportsRustAtLeast(output, minor)) null
+    else "$tool must be at least 1.$minor; install a current stable Rust toolchain."
 }
+
+internal fun paintToolchainErrors(): List<String> = rustToolchainErrors(85)
+internal fun solidcraftToolchainErrors(): List<String> = rustToolchainErrors(95)
 
 internal fun extraTools(extras: Set<String>, platform: String): Set<String> = extrasCatalog
     .filter { it.id in extras && platform in it.platforms }.flatMap { it.tools }.map {
@@ -112,10 +126,15 @@ internal fun artifactCandidates(root: File, id: String, platform: String, enviro
         "ceres" -> "AFIELD_CERES_LIBRARY" to listOf("build/ken-ceres-redistributable/${library("ken_ceres_jvm")}", "build/ken-ceres/${library("ken_ceres_jvm")}")
         "tetgen" -> "AFIELD_TETGEN_LIBRARY" to listOf("build/field-tetgen/build/${library("field_tetgen_jvm")}", "build/field-tetgen/build/Release/${library("field_tetgen_jvm")}")
         "paint" -> "AFIELD_PAINT_LIBRARY" to listOf("build/field-paint/release/${library("field_paint_jvm")}")
+        "solidcraft" -> "AFIELD_SOLIDCRAFT_LIBRARY" to listOf("build/native/solidcraft/${library("field_solidcraft_jvm")}")
         "libpd" -> "AFIELD_PD_LIBRARY" to listOf("build/field-libpd/build/libs/${library("pd-multi")}", "build/field-libpd/build/libs/Release/${library("pd-multi")}")
         "syphon" -> "AFIELD_SYPHON_LIBRARY" to listOf("build/field-syphon/libfield_syphon.dylib")
         "shaders" -> "" to listOf("build/lighting/learned-shader/learned-scalar.spv")
         "slang" -> "AFIELD_SLANGC" to listOf("build/lighting/slangc.path")
+        "gltfpack" -> "AFIELD_GLTFPACK" to listOf("build/gltfpack.path")
+        "morse-smale" -> "AFIELD_MORSE_SMALE_LIBRARY" to listOf("build/field-morse-smale/build/${library("field_morse_smale")}", "build/field-morse-smale/build/Release/${library("field_morse_smale")}")
+        "principal-curves" -> "AFIELD_PRINCIPAL_CURVES_LIBRARY" to listOf("build/field-principal-curves/build/${library("field_principal_curves")}", "build/field-principal-curves/build/Release/${library("field_principal_curves")}")
+        "polyvector" -> "AFIELD_POLYVECTOR_LIBRARY" to listOf("build/field-polyvector/build/${library("field_polyvector")}")
         else -> return emptyList()
     }
     // libpd's Windows target keeps its lib prefix, unlike the other native wrappers.

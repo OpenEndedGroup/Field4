@@ -11,27 +11,29 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="cloth_start" index="0" -->
 
 ```edn [field-box id="cloth_start" role="properties"]
-{"id" "cloth_start" "index" 0 "name" "20 x 10 cloth in a SimdVerlet" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "20 x 10 cloth in a SimdVerlet" "_tombstone" false "frame" #afield/rect [80.0 80.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloth_start_code_.kt" "lines" 50 "characters" 2343 "sha256" "1ca4f931131718247c302863e61059d5b3d983d158242919cf653580dcf05463"}]}
+{"id" "cloth_start" "index" 0 "name" "20 x 10 cloth in a SimdVerlet" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "20 x 10 cloth in a SimdVerlet" "_tombstone" false "frame" #afield/rect [80.0 80.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloth_start_code_.kt" "lines" 56 "characters" 2334 "sha256" "ec690fcb3c830cd9efffc3ccae5c367b3a4f23e70aab64a591fc0985e86b4aed"}]}
 ```
 
 ```kotlin [field-property box="cloth_start" name="code" path="cloth_start_code_.kt"]
-import afield.four.physics.*
+import afield.simulation.physics.*
 
 // The physics system. State3 is the SoA particle store; the simulation owns it and grows
 // it as things are added, so it starts empty.
 val sim = SimdVerlet(SimdVerlet.State3.empty())
 
-// 20 wide, 10 tall. addCloth appends the particles to whatever is already in `sim`, wires
-// the four-slot distance constraints, and registers the curvature force.
-//
-// The plane view below has y growing DOWN the screen, so the sheet hangs from row 0 and
-// gravity is +y. Every fourth column of that row is a nail; the rest of it swings.
-//
-// stiffness x iterations is the spring constant that matters (the solve accumulates all
-// `iterations` corrections into one force). 60 x 16 holds this sheet at ~11% peak strain;
-// 150 x 16 diverges. curvatureStrength is a shape force on the same scale, so the
-// library's 0.05 default is invisible next to springs this stiff — at 100 it takes about
-// 40% of the kink out of the festoons, which is what makes it worth a knob here.
+/*
+20 wide, 10 tall. addCloth appends the particles to whatever is already in `sim`, wires
+the four-slot distance constraints, and registers the curvature force.
+
+The plane view below has y growing DOWN the screen, so the sheet hangs from row 0 and
+gravity is +y. Every fourth column of that row is a nail; the rest of it swings.
+
+stiffness x iterations is the spring constant that matters (the solve accumulates all
+`iterations` corrections into one force). 60 x 16 holds this sheet at ~11% peak strain;
+150 x 16 diverges. curvatureStrength is a shape force on the same scale, so the
+library's 0.05 default is invisible next to springs this stiff — at 100 it takes about
+40% of the kink out of the festoons, which is what makes it worth a knob here.
+*/
 val cloth = sim.addCloth(
     width = 20,
     height = 10,
@@ -49,15 +51,19 @@ println("${cloth.count} cloth particles, ${sim.size} in the simulation")
 
 var frames = 0
 loop {
-    // One frame of physics for the whole simulation: gravity, the per-particle force
-    // generators, the registered bulk forces (the cloth's curvature pass), then
-    // `iterations` of the constraint solve, then Verlet integration.
+    /*
+    One frame of physics for the whole simulation: gravity, the per-particle force
+    generators, the registered bulk forces (the cloth's curvature pass), then
+    `iterations` of the constraint solve, then Verlet integration.
+    */
     cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = 2f, iterations = 16)
     frames++
 
-    // What the solver holds, not what the scene means: a segment per distance constraint,
-    // a dot per particle, pinned particles in red, a whisker per particle's velocity.
-    // Try cloth.grabNearest(x, y) and cloth.moveGrabbed(x, y) to drag one through it.
+    /*
+    What the solver holds, not what the scene means: a segment per distance constraint,
+    a dot per particle, pinned particles in red, a whisker per particle's velocity.
+    Try cloth.grabNearest(x, y) and cloth.moveGrabbed(x, y) to drag one through it.
+    */
     showPlane(
         sim.debugLines(velocityScale = 30f),
         window = view,

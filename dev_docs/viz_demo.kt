@@ -8,7 +8,10 @@ viz("primitives", true)
 viz("primitives", "Hello, Field4!")
 
 // Very long string
-viz("long string", "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.")
+viz(
+    "long string",
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+)
 
 // Field linalg vectors
 viz("vectors", vec(1.0, 2.0))
@@ -23,7 +26,7 @@ val m = mat4()
 viz("matrix", m)
 
 // Lists
-viz("list", listOf(1, 2, 3, 4, 5))
+viz("list", [1, 2, 3, 4, 5])
 
 // Large list with numbers - shows summary stats
 val largeList = (1..100).map { it * 0.1 }
@@ -47,7 +50,7 @@ val nested = mapOf(
     "position" to vec(10.0, 20.0, 30.0),
     "rotation" to quat(0.0, vec(0, 1, 0)),
     "scale" to vec(1.0, 1.0, 1.0),
-    "children" to listOf("child1", "child2", "child3")
+    "children" to ["child1", "child2", "child3"],
 )
 viz("nested", nested)
 
@@ -60,7 +63,7 @@ registerValuePrinter<Point3D> { point ->
 }
 
 viz("custom type", Point3D(1.0, 2.0, 3.0))
-viz("custom list", listOf(Point3D(1.0, 0.0, 0.0), Point3D(0.0, 1.0, 0.0), Point3D(0.0, 0.0, 1.0)))
+viz("custom list", [Point3D(1.0, 0.0, 0.0), Point3D(0.0, 1.0, 0.0), Point3D(0.0, 0.0, 1.0)])
 
 // ToHTML interface example
 data class ComplexData(val name: String, val values: List<Double>) : ToHTML {
@@ -70,7 +73,8 @@ data class ComplexData(val name: String, val values: List<Double>) : ToHTML {
                 <div style='color: #8cf; font-weight: bold;'>${name}</div>
                 <div style='color: #888; font-size: 11px;'>${values.size} values: ${values.take(3).joinToString(", ")}...</div>
             </div>
-        """.trimIndent()
+        """
+            .trimIndent()
     }
 }
 
@@ -86,7 +90,7 @@ val node2 = Node("B")
 val node3 = Node("C")
 node1.next = node2
 node2.next = node3
-node3.next = node1  // Creates a circular reference
+node3.next = node1 // Creates a circular reference
 
 viz("circular", node1)
 
@@ -94,7 +98,7 @@ viz("circular", node1)
 val selfRefList = mutableListOf<Any>()
 selfRefList.add("item1")
 selfRefList.add("item2")
-selfRefList.add(selfRefList)  // Add itself to create circular reference
+selfRefList.add(selfRefList) // Add itself to create circular reference
 
 viz("self-ref list", selfRefList)
 

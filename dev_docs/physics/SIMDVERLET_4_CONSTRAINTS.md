@@ -2,7 +2,7 @@
 
 The API and solver contract are documented beside
 `SimdVerlet.DirectedConstraints4` in
-`src/jvmMain/kotlin/afield/four/physics/SimdVerlet.kt`. This note records only
+`src/jvmMain/kotlin/afield/simulation/physics/SimdVerlet.kt`. This note records only
 the design rationale and runnable examples.
 
 Four outgoing slots match the up/down/left/right neighborhood of an interior
@@ -18,7 +18,7 @@ particle ranges can therefore run concurrently when each worker has its own
 
 ## `Cloth`
 
-`afield.four.physics.Cloth` is the reusable consumer: `sim.addCloth(width, height)`
+`afield.simulation.physics.Cloth` is the reusable consumer: `sim.addCloth(width, height)`
 appends a grid patch to a simulation that may already hold other particles, wires
 the four slots, and hands back a handle that speaks grid coordinates
 (`cloth[col, row]`, `pin`, `teleport`, `grabNearest`, `lines`). Three things about
@@ -103,6 +103,6 @@ Runnable entry points:
 - `./gradlew runSimdVerletBulkKernelsExample`: the repository's dedicated
   `JavaExec` example task.
 
-The normal JVM run task starts `afield.Server`; passing an example class in
+The normal JVM run task starts `afield.app.server.Server`; passing an example class in
 `--args` does not select another main class. For the other entry points use
 `field_backdoor.py`'s `run-jvm-main` command or an IDE run configuration.

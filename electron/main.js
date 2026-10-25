@@ -10,6 +10,7 @@ const {
   ipcMain,
   screen,
   systemPreferences,
+  dialog,
 } = require("electron");
 
 const APP_NAME = "Field4";
@@ -161,7 +162,7 @@ process.on("unhandledRejection", (reason) => {
 });
 
 app.setName(APP_NAME);
-// A capture Electron (afield.docs.ElectronCaptureBrowser) gets its own profile, so the user's
+// A capture Electron (afield.tools.docs.ElectronCaptureBrowser) gets its own profile, so the user's
 // per-host zoom, cookies and window state never reach a docs capture, and their running Field4 app
 // keeps its profile to itself.
 if (process.env.FIELD_ELECTRON_USER_DATA) {
@@ -663,6 +664,24 @@ function installAppMenu() {
         { role: "front" },
       ],
     },
+    {
+      label: "Presentation",
+      submenu: [
+        {
+          label: "New Presentation…",
+          click: () => require("./presentation").newPresentation(),
+        },
+        {
+          label: "Present Current Guide",
+          click: () => require("./presentation").presentCurrentGuide().catch(error => dialog.showErrorBox("Could not present guide", String(error))),
+        },
+        { type: "separator" },
+        {
+          label: "Open Motion Canvas Project…",
+          click: () => require("./presentation").choosePresentation(),
+        },
+      ],
+    },
   ];
 
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
@@ -736,8 +755,22 @@ function installDockIcon() {
   app.dock.setIcon(APP_ICON_1024);
 }
 
+// The docs/backdoor capture Electron (afield.tools.docs.ElectronCaptureBrowser) sets
+// FIELD_ELECTRON_CAPTURE_SIZE=WxH: the page area is opened at exactly that size, so a capture of that
+// size needs no viewport emulation (which leaves the rest of a larger window black and flickering),
+// and the window is shown without taking focus from whatever the person is doing.
+const CAPTURE_SIZE = (() => {
+  const m = /^(\d+)x(\d+)$/.exec(process.env.FIELD_ELECTRON_CAPTURE_SIZE || "");
+  return m ? { width: Number(m[1]), height: Number(m[2]) } : null;
+})();
+
 function initialWindowBounds() {
   const { x, y, width, height } = screen.getPrimaryDisplay().workArea;
+  if (CAPTURE_SIZE) {
+    const w = CAPTURE_SIZE.width;
+    const h = CAPTURE_SIZE.height + TAB_STRIP_HEIGHT;
+    return { x: x + Math.max(0, width - w), y: y + Math.max(0, height - h), width: w, height: h, useContentSize: true };
+  }
   const windowWidth = Math.floor(width * 0.8);
   const windowHeight = Math.floor(height * 0.8);
 
@@ -752,6 +785,11 @@ function initialWindowBounds() {
 function presentWindow(win) {
   if (!win || win.isDestroyed()) return;
   if (win.isMinimized()) win.restore();
+
+  if (CAPTURE_SIZE) {
+    win.showInactive();
+    return;
+  }
 
   win.show();
 
@@ -803,7 +841,7 @@ function createMainWindow() {
 
   // The window's own webContents is never used (every page is a WebContentsView), so it never gets
   // a renderer, and a CDP client that auto-attaches to it waits forever: Playwright's
-  // connectOverCDP hangs on its Page.enable. The docs capture path (afield.docs.ElectronCaptureBrowser)
+  // connectOverCDP hangs on its Page.enable. The docs capture path (afield.tools.docs.ElectronCaptureBrowser)
   // attaches over CDP, so when remote debugging is on, give it a page that answers.
   if (app.commandLine.hasSwitch("remote-debugging-port")) {
     win.webContents.loadURL("about:blank");
@@ -1578,9 +1616,71 @@ function createMainWindow() {
     ipcMain.removeListener("field4-tabs-hide", onHideTabs);
     ipcMain.removeHandler("field4-history-capture-window");
     ipcMain.removeHandler("field4-tab-identity");
+    ipcMain.removeHandler("field4-kit-folder");
     ipcMain.removeListener("field4-renderer-diagnostic", onRendererDiagnostic);
   });
 
+  const isFieldTab = (tab) => {
+    try {
+      if (!tab) return false;
+      const url = new URL(contentsUrl(tab));
+      return url.origin === new URL(initialUrl).origin && url.pathname.endsWith('/index.html');
+    } catch (_) { return false; }
+  };
+  const presentationFieldTab = () => (isFieldTab(activeTab()) ? activeTab() : tabs.find(isFieldTab));
+  const isFieldServerTab = tab => {
+    try { return tab && new URL(contentsUrl(tab)).origin === new URL(initialUrl).origin; }
+    catch (_) { return false; }
+  };
+  const presentationServerTab = () => presentationFieldTab() ||
+    (isFieldServerTab(activeTab()) ? activeTab() : tabs.find(isFieldServerTab));
+  ipcMain.removeHandler("field4-kit-folder");
+  ipcMain.handle("field4-kit-folder", async event => {
+    const tab = tabs.find(t => liveContents(t) === event.sender);
+    if (!isFieldServerTab(tab) || !isWelcomeUrl(contentsUrl(tab))) throw new Error("Choose kits from Field Welcome");
+    const result = await dialog.showOpenDialog(win, {title: "Add a Field kit", properties: ["openDirectory"]});
+    return result.canceled ? null : result.filePaths[0];
+  });
+  const presentationHost = {
+    getFieldContents: () => { const tab = presentationFieldTab(); return tab && liveContents(tab); },
+    openDocument: name => {
+      const tab = presentationServerTab();
+      const url = new URL(tab ? contentsUrl(tab) : initialUrl);
+      url.pathname = '/index.html'; url.search = new URLSearchParams({file: name}).toString(); url.hash = '';
+      return openTab(url.href, {activate: true});
+    },
+    openPreview: (url) => openTab(url, { activate: true }),
+    getFieldUrl: () => {
+      const fieldTab = presentationFieldTab();
+      return fieldTab ? contentsUrl(fieldTab) : null;
+    },
+    getFieldInfo: async () => {
+      const fieldTab = presentationServerTab();
+      const contents = fieldTab && liveContents(fieldTab);
+      if (!contents || contents.isDestroyed()) return null;
+      return contents.executeJavaScript("fetch('/api/instance-info').then(response => response.ok ? response.json() : null)");
+    },
+    isFieldContents: (contents) => tabs.some(tab => isFieldTab(tab) && liveContents(tab) === contents),
+    enableTypeScript: (paths) => {
+      const fieldTab = presentationFieldTab();
+      const contents = fieldTab && liveContents(fieldTab);
+      if (!contents || contents.isDestroyed()) return;
+      const send = () => {
+        if (!contents.isDestroyed()) contents.send('field4-presentation-project', paths);
+      };
+      if (contents.isLoadingMainFrame()) contents.once('did-finish-load', send);
+      else send();
+    },
+    attachSources: (paths) => {
+      const fieldTab = presentationFieldTab();
+      const contents = fieldTab && liveContents(fieldTab);
+      if (!contents || contents.isDestroyed()) return false;
+      contents.send('field4-presentation-sources', paths);
+      activateTab(fieldTab.id);
+      return true;
+    },
+  };
+  require("./presentation").registerFieldHost(win, presentationHost);
   openTab(initialUrl, { activate: true });
   presentWindowOnStartup(win);
   return win;
@@ -1600,7 +1700,7 @@ async function logGpuStatus(label) {
   }
 }
 
-// A capture Electron (afield.docs.ElectronCaptureBrowser) is owned by the Field JVM that launched it,
+// A capture Electron (afield.tools.docs.ElectronCaptureBrowser) is owned by the Field JVM that launched it,
 // and a JVM that dies without running its shutdown hooks would otherwise leave it running forever.
 const ownerPid = Number(process.env.FIELD_ELECTRON_OWNER_PID || 0);
 if (ownerPid > 0) {
@@ -1620,8 +1720,14 @@ app.whenReady().then(() => {
   }
   installDockIcon();
   installAppMenu();
+  require("./presentation").install();
   require("./rtt-view-host").install();
+  require("./aaaframe-sign-in").install();
   createMainWindow();
+  if (process.env.FIELD_PRESENTATION_PROJECT) {
+    require("./presentation").openPresentation(process.env.FIELD_PRESENTATION_PROJECT)
+      .catch(error => console.error("[presentation]", error));
+  }
   if (LOG_GPU_STATUS) {
     setTimeout(() => logGpuStatus("delayed"), 2000);
   }

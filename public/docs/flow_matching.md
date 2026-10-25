@@ -17,9 +17,9 @@ squared error, so there is no adversary and nothing to diverge.
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val field = flowMatch(myCloud)                 // from a Gaussian: a generator
-val fresh = field.sample(500)                  // new points shaped like myCloud
-val threads = field.paths(80)                  // the trajectories, as FLines
+val field = flowMatch(myCloud) // from a Gaussian: a generator
+val fresh = field.sample(500) // new points shaped like myCloud
+val threads = field.paths(80) // the trajectories, as FLines
 
 val morph = flowMatch(to = cloudB, from = cloudA)
 val halfway = morph.transport(cloudA, to = 0.5) // a real intermediate distribution
@@ -65,20 +65,25 @@ val threads = field.paths(80, steps = 48, seed = 13).map {
 } + vec(330, 0, 0)
 :::fold draw both panels and report the radius
 lines(
-    listOf(
+    [
         // Target underneath at a larger point size, so it shows as a halo where the two agree.
         cloud(target, 3.0, vec(0.55, 0.55, 0.62, 0.9)),
         cloud(samples, 1.4, vec(0.44, 0.83, 0.78, 1.0)),
-    ) + threads,
-    w = 1000.0, h = 460.0, fitToSize = true,
+    ] + threads,
+    w = 1000.0,
+    h = 460.0,
+    fitToSize = true,
 )
-markdown("fit", """
+markdown(
+    "fit",
+    """
     ~~~
 generated radius   ${"%.1f".format(mean)} +/- ${"%.1f".format(sd)}   (target: 100)
 chamfer to target  ${"%.2f".format(chamferDistance(samples, target))}
 training loss      ${"%.4f".format(field.loss(200))} over ${field.parameterCount} parameters
     ~~~
-""")
+""",
+)
 :::endfold
 ```
 
@@ -139,32 +144,39 @@ fun miss(field: FlowMatchField, source: List<Vec3>): Double {
 }
 :::fold draw the two morphs side by side and report where each point landed
 fun asClosed(points: List<Vec3>, c: Vec4, t: Double): FLine = fline {
-    points.forEachIndexed { i, p -> if (i == 0) moveTo(p) else lineTo(p) }
+    if (points.isNotEmpty()) data("m l+", points)
     color = c
     thickness = t
 }
 
-// Grey is the target, purple the source at t = 0, cyan the flow between them -- the same three
-// roles, in the same three colours, as every other figure on this page. The target is drawn even
-// though the t = 1 stage lands on top of it, because otherwise there is nothing to judge against.
-fun stages(field: FlowMatchField, source: List<Vec3>): List<FLine> =
-    listOf(
-        asClosed(target, vec(0.45, 0.45, 0.52, 0.9), 3.0),
-        asClosed(source, vec(0.6, 0.42, 0.85, 1.0), 1.8),
-    ) + listOf(0.25, 0.5, 0.75, 1.0).map {
-        asClosed(field.transport(source, to = it, steps = 48), vec(0.44, 0.83, 0.78, 0.9), 1.2)
-    }
+/*
+Grey is the target, purple the source at t = 0, cyan the flow between them -- the same three
+roles, in the same three colours, as every other figure on this page. The target is drawn even
+though the t = 1 stage lands on top of it, because otherwise there is nothing to judge against.
+*/
+fun stages(field: FlowMatchField, source: List<Vec3>): List<FLine> = [
+    asClosed(target, vec(0.45, 0.45, 0.52, 0.9), 3.0),
+    asClosed(source, vec(0.6, 0.42, 0.85, 1.0), 1.8),
+] +
+        [0.25, 0.5, 0.75, 1.0].map {
+            asClosed(field.transport(source, to = it, steps = 48), vec(0.44, 0.83, 0.78, 0.9), 1.2)
+        }
 
 lines(
     stages(fromCircle, circleSource) + (stages(fromSegment, segmentSource) + vec(260, 0, 0)),
-    w = 1000.0, h = 500.0, fitToSize = true,
+    w = 1000.0,
+    h = 500.0,
+    fitToSize = true,
 )
-markdown("miss", """
+markdown(
+    "miss",
+    """
     ~~~
 closed source (circle -> ring)    mean landing error ${"%.2f".format(miss(fromCircle, circleSource))}
 open source   (segment -> ring)   mean landing error ${"%.2f".format(miss(fromSegment, segmentSource))}
     ~~~
-""")
+""",
+)
 :::endfold
 ```
 
@@ -211,7 +223,8 @@ val source = draws.map { vec(240 * (it.first - 0.5), 150 + 9 * it.second, 0.0) }
 val target = draws.map { (s, r) -> centre(s) + normal(s) * (width(s) * r) }
 
 val field = flowMatch(
-    target, source,
+    target,
+    source,
     options = FlowMatchOptions(steps = 8000, seed = 11, coupling = FlowCoupling.PAIRED),
 )
 
@@ -238,33 +251,47 @@ fun cloud(points: List<Vec3>, c: Vec4, shift: Vec3): FLine {
 
 val flowed = field.transport(source, steps = 64)
 lines(
-    listOf(
+    [
         cloud(source, vec(0.6, 0.42, 0.85, 0.85), vec(0, 0, 0)),
         cloud(field.transport(source, to = 0.35, steps = 48), vec(0.44, 0.83, 0.78, 0.85), vec(280, 0, 0)),
         cloud(field.transport(source, to = 0.7, steps = 48), vec(0.44, 0.83, 0.78, 0.85), vec(0, 360, 0)),
         cloud(target, vec(0.35, 0.35, 0.4, 0.7), vec(280, 360, 0)),
         cloud(flowed, vec(0.44, 0.83, 0.78, 0.85), vec(280, 360, 0)),
-    ),
-    w = 1000.0, h = 540.0, fitToSize = true,
+    ],
+    w = 1000.0,
+    h = 540.0,
+    fitToSize = true,
 )
 
-val rows = (0 until 8).map { bin ->
-    val lo = bin / 8.0
-    val hi = (bin + 1) / 8.0
-    val wanted = draws.indices.filter { draws[it].first >= lo && draws[it].first < hi }
-        .map { width(draws[it].first) }.average()
-    "  %.2f-%.2f   %7.2f   %10.2f   %10.2f".format(
-        lo, hi, wanted, transverseSd(target, lo, hi), transverseSd(flowed, lo, hi)
-    )
-}
-markdown("width", """
+val rows =
+    (0 until 8).map { bin ->
+        val lo = bin / 8.0
+        val hi = (bin + 1) / 8.0
+        val wanted =
+            draws.indices
+                .filter { draws[it].first >= lo && draws[it].first < hi }
+                .map { width(draws[it].first) }
+                .average()
+        "  %.2f-%.2f   %7.2f   %10.2f   %10.2f"
+            .format(
+                lo,
+                hi,
+                wanted,
+                transverseSd(target, lo, hi),
+                transverseSd(flowed, lo, hi),
+            )
+    }
+markdown(
+    "width",
+    """
     ~~~
 transverse width at t = 1, measured along the centreline normal
 
    s band     wanted   target cloud   flowed cloud
 ${rows.joinToString("\n")}
     ~~~
-""")
+""",
+)
 :::endfold
 ```
 
@@ -298,24 +325,28 @@ val source = draws.map { vec(240 * (it.first - 0.5), 150 + 9 * it.second, 0.0) }
 val target = draws.map { (s, r) -> centre(s) + normal(s) * (width(s) * r) }
 
 val field = flowMatch(
-    target, source,
+    target,
+    source,
     options = FlowMatchOptions(steps = 8000, seed = 11, coupling = FlowCoupling.PAIRED),
 )
 
-val drift = listOf(0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0).map { t ->
-    val flowed = field.transport(source, to = t, steps = 64)
-    val away = (0 until n).sumOf {
-        val exact = source[it] * (1 - t) + target[it] * t
-        hypot((flowed[it].x - exact.x).toDouble(), (flowed[it].y - exact.y).toDouble())
-    } / n
-    "  %.2f   %14.2f   %10.2f%%".format(t, away, 100 * away / 240.0)
-}
+val drift =
+    [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0].map { t ->
+        val flowed = field.transport(source, to = t, steps = 64)
+        val away = (0 until n).sumOf {
+            val exact = source[it] * (1 - t) + target[it] * t
+            hypot((flowed[it].x - exact.x).toDouble(), (flowed[it].y - exact.y).toDouble())
+        } / n
+        "  %.2f   %14.2f   %10.2f%%".format(t, away, 100 * away / 240.0)
+    }
 :::fold draw the paths over the exact straight lines
 val every = source.indices.filter { it % 16 == 0 }
 val exact = every.map { i ->
     fline {
-        moveTo(source[i]); lineTo(target[i])
-        color = vec(0.88, 0.64, 0.33, 0.7); thickness = 1.0
+        moveTo(source[i])
+        lineTo(target[i])
+        color = vec(0.88, 0.64, 0.33, 0.7)
+        thickness = 1.0
     }
 }
 val flown = field.pathsFrom(every.map { source[it] }, steps = 48).map {
@@ -325,14 +356,17 @@ val flown = field.pathsFrom(every.map { source[it] }, steps = 48).map {
 }
 
 lines(exact + flown, w = 1000.0, h = 400.0, fitToSize = true)
-markdown("drift", """
+markdown(
+    "drift",
+    """
     ~~~
 how far the integrated path is from the exact straight line
 
      t   mean deviation   of a 240-unit extent
 ${drift.joinToString("\n")}
     ~~~
-""")
+""",
+)
 :::endfold
 ```
 
@@ -364,35 +398,43 @@ val circle = (0 until n).map {
 }
 
 val field = flowMatch(
-    knot, circle,
+    knot,
+    circle,
     options = FlowMatchOptions(steps = 12000, seed = 11, coupling = FlowCoupling.PAIRED),
 )
 val landed = field.transport(circle, steps = 96)
 val miss = circle.indices.sumOf { (landed[it] - knot[it]).length().toDouble() } / n
 :::fold draw the source, the knot, and where the flow landed
 fun asLine(points: List<Vec3>, c: Vec4, t: Double): FLine = fline {
-    points.forEachIndexed { i, p -> if (i == 0) moveTo(p) else lineTo(p) }
+    if (points.isNotEmpty()) data("m l+", points)
     close()
     color = c
     thickness = t
 }
 
-// Three curves only. Intermediate stages of a self-intersecting knot, overlaid in one static
-// projection, cannot be told apart; they are worth orbiting through live but not worth printing.
-// Grey target, purple source, cyan where the flow landed.
+/*
+Three curves only. Intermediate stages of a self-intersecting knot, overlaid in one static
+projection, cannot be told apart; they are worth orbiting through live but not worth printing.
+Grey target, purple source, cyan where the flow landed.
+*/
 threeLines(
-    listOf(
+    [
         asLine(knot, vec(0.42, 0.42, 0.5, 0.9), 4.0),
         asLine(circle, vec(0.6, 0.42, 0.85, 1.0), 2.0),
         asLine(landed, vec(0.44, 0.83, 0.78, 1.0), 1.6),
-    ),
-    channel = "trefoil3d", height = 460, editable = false,
+    ],
+    channel = "trefoil3d",
+    height = 460,
+    editable = false,
 )
-markdown("knot", """
+markdown(
+    "knot",
+    """
     ~~~
 mean landing error ${"%.2f".format(miss)} on a knot about 150 units across
     ~~~
-""")
+""",
+)
 :::endfold
 ```
 
@@ -416,7 +458,8 @@ val target = picks.map { (s, a, b) ->
 }
 
 val field = flowMatch(
-    target, source,
+    target,
+    source,
     options = FlowMatchOptions(steps = 12000, seed = 11, coupling = FlowCoupling.PAIRED),
 )
 val landed = field.transport(source, steps = 96)
@@ -432,23 +475,30 @@ fun cloud(points: List<Vec3>, c: Vec4, size: Double): FLine {
 
 // A thinned set of threads over the two clouds, so the tube itself is visible and not only the
 // travel: the round source below, the swollen helical target where the threads land.
-val threads = field.pathsFrom(
-    source.indices.filter { it % 28 == 0 }.map { source[it] },
-    steps = 56,
-).map {
-    it.color = vec(0.44, 0.83, 0.78, 0.35)
-    it.thickness = 0.8
-    it
-}
+val threads =
+    field
+        .pathsFrom(
+            source.indices.filter { it % 28 == 0 }.map { source[it] },
+            steps = 56,
+        )
+        .map {
+            it.color = vec(0.44, 0.83, 0.78, 0.35)
+            it.thickness = 0.8
+            it
+        }
 
 threeLines(
-    listOf(
+    [
         cloud(source, vec(0.6, 0.42, 0.85, 0.9), 1.6),
         cloud(landed, vec(0.44, 0.83, 0.78, 0.9), 1.6),
-    ) + threads,
-    channel = "tube3d", height = 460, editable = false,
+    ] + threads,
+    channel = "tube3d",
+    height = 460,
+    editable = false,
 )
-markdown("miss3d", """
+markdown(
+    "miss3d",
+    """
     ~~~
 3D tube, ${field.dimension} dimensions inferred
 mean landing error ${"%.2f".format(
@@ -457,7 +507,8 @@ mean landing error ${"%.2f".format(
     } / n
 )} of a 200-unit extent
     ~~~
-""")
+""",
+)
 :::endfold
 ```
 
@@ -482,10 +533,6 @@ steps help, and the ring's radial spread drops from 9.2 to 3.6.
 `steps` is then the quality knob worth reaching for first, and the dominant cost: roughly 0.08 ms
 per step at the default batch, so 6000 steps is about half a second. `hidden` defaults to two layers
 of 64 units, and widening it helps much less than training longer.
-
-`momentum` should stay at zero unless `rho` is also zero. Smile applies momentum on top of the
-RMSProp-normalised gradient without the `(1 - β)` factor Adam uses, so enabling both multiplies the
-effective step by about ten and the run diverges.
 
 `FlowMatchField.losses` records every step, so a loss still falling at the end means the run was cut
 short.

@@ -55,8 +55,8 @@ IGNORED = shutil.ignore_patterns("backups", "history_screenshots", "observations
 
 # The recorder box: beneath the renderer, so the window is its context. Capturing waits for a frame the
 # main thread draws, so it runs on a thread of its own.
-RECORDER = """import afield.four.Renderer
-import afield.four.modules.fromContext
+RECORDER = """import afield.graphics.vulkan.Renderer
+import afield.document.context.fromContext
 
 val renderer: Renderer = fromContext()
 val frames = java.io.File("FRAMES")

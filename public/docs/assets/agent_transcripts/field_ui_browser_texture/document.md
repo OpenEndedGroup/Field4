@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="field_ui_texture_renderer" index="0" -->
 
 ```edn [field-box id="field_ui_texture_renderer" role="properties"]
-{"id" "field_ui_texture_renderer" "index" 0 "name" "renderer — Field UI texture" "parents" ["root"] "children" ["field_ui_texture_panel"] "properties" {"children" #{#afield/box "field_ui_texture_panel"} "parents" #{#afield/box "root"} "name" "renderer — Field UI texture" "_tombstone" false "frame" #afield/rect [140.0 180.0 350.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "field_ui_texture_renderer_code_.kt" "lines" 15 "characters" 282 "sha256" "5b0b7c04956e2b8e82b26d18494e0da6da04e4721dc109f98e48a6df9598c923"}]}
+{"id" "field_ui_texture_renderer" "index" 0 "name" "renderer — Field UI texture" "parents" ["root"] "children" ["field_ui_texture_panel"] "properties" {"children" #{#afield/box "field_ui_texture_panel"} "parents" #{#afield/box "root"} "name" "renderer — Field UI texture" "_tombstone" false "frame" #afield/rect [140.0 180.0 350.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "field_ui_texture_renderer_code_.kt" "lines" 15 "characters" 293 "sha256" "95a7fcd446443698e199da68d238487f1c74890c923133c559d17cc96f956b8c"}]}
 ```
 
 ```kotlin [field-property box="field_ui_texture_renderer" name="code" path="field_ui_texture_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -37,20 +37,20 @@ start(renderer::run)
 <!-- field-box id="field_ui_texture_panel" index="1" -->
 
 ```edn [field-box id="field_ui_texture_panel" role="properties"]
-{"id" "field_ui_texture_panel" "index" 1 "name" "Field's UI — live Chromium texture" "parents" ["root" "field_ui_texture_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "field_ui_texture_renderer"} "name" "Field's UI — live Chromium texture" "_tombstone" false "frame" #afield/rect [560.0 180.0 430.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "field_ui_texture_panel_code_.kt" "lines" 119 "characters" 4665 "sha256" "6080e91c5d98023d3984f31668220cf5209a20a70dcf42784f79a329fa62564c"} {"name" "vertex" "language" "glsl" "path" "field_ui_texture_panel_vertex_.glsl" "lines" 9 "characters" 180 "sha256" "ba17dfa14020b0511f5632daad6bb904ff815014cb1504734d7c12283faa537d"} {"name" "fragment" "language" "glsl" "path" "field_ui_texture_panel_fragment_.glsl" "lines" 8 "characters" 228 "sha256" "4a06f58cb3aac101a544fdcd7c0e0a26970362071d68fc232f1874f49598d604"}]}
+{"id" "field_ui_texture_panel" "index" 1 "name" "Field's UI — live Chromium texture" "parents" ["root" "field_ui_texture_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "field_ui_texture_renderer"} "name" "Field's UI — live Chromium texture" "_tombstone" false "frame" #afield/rect [560.0 180.0 430.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "field_ui_texture_panel_code_.kt" "lines" 142 "characters" 5061 "sha256" "76de077c35a1319b74a3871e4cab942bc4fad1feb004b337729b019312b43fef"} {"name" "vertex" "language" "glsl" "path" "field_ui_texture_panel_vertex_.glsl" "lines" 9 "characters" 180 "sha256" "ba17dfa14020b0511f5632daad6bb904ff815014cb1504734d7c12283faa537d"} {"name" "fragment" "language" "glsl" "path" "field_ui_texture_panel_fragment_.glsl" "lines" 8 "characters" 228 "sha256" "4a06f58cb3aac101a544fdcd7c0e0a26970362071d68fc232f1874f49598d604"}]}
 ```
 
 ```kotlin [field-property box="field_ui_texture_panel" name="code" path="field_ui_texture_panel_code_.kt"]
-import afield.four.browser.FieldUiBrowserTexture
-import afield.four.browser.PuppetBrowser
-import afield.four.browser.PuppetBrowserUvInput
-import afield.four.browser.PuppetBrowserWindowInput
+import afield.media.browser.FieldUiBrowserTexture
+import afield.media.browser.PuppetBrowser
+import afield.media.browser.PuppetBrowserUvInput
+import afield.media.browser.PuppetBrowserWindowInput
+import java.util.concurrent.CompletableFuture
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import java.util.concurrent.CompletableFuture
 
-prop<afield.four.browser.PuppetBrowser>(browserControl)
+prop<afield.media.browser.PuppetBrowser>(browserControl)
 val browser = FieldUiBrowserTexture(
     renderer = renderer,
     url = FieldUiBrowserTexture.fieldDocumentUrl(thisBox),
@@ -58,20 +58,23 @@ val browser = FieldUiBrowserTexture(
     height = 720,
     readyBoxUid = thisBox.id,
     // Linux: Chromium's shared-texture export never fills the buffer (electron#53271).
-    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired
+    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired,
 )
 browserControl = browser
 val interaction = PuppetBrowserWindowInput(browser, renderer.window)
 val scriptedInput = PuppetBrowserUvInput(browser)
-val removeReadyBridge = browser.onPageRequest("field-ready") { payload ->
-    println("Field UI page called Field: $payload")
-    CompletableFuture.completedFuture<JsonElement>(buildJsonObject {
-        put("accepted", true)
-        put("echo", payload)
-    })
-}
+val removeReadyBridge =
+    browser.onPageRequest("field-ready") { payload ->
+        println("Field UI page called Field: $payload")
+        CompletableFuture.completedFuture<JsonElement>(
+            buildJsonObject {
+                put("accepted", true)
+                put("echo", payload)
+            },
+        )
+    }
 renderer.renderList.preTargets["field-ui-browser-upload"] =
-    afield.four.Target { command, _ -> browser.prepareSampledImagesFor(command) }
+    afield.graphics.vulkan.Target { command, _ -> browser.prepareSampledImagesFor(command) }
 
 val material = moduleHere {
     textures("fieldUi" to browser)
@@ -82,10 +85,18 @@ renderer += "field-ui-browser-texture" to material
 
 panel.set(4, 2) {
     pos.add(
-        -0.96, -0.96, 0.0,
-         0.96, -0.96, 0.0,
-         0.96,  0.96, 0.0,
-        -0.96,  0.96, 0.0
+        -0.96,
+        -0.96,
+        0.0,
+        0.96,
+        -0.96,
+        0.0,
+        0.96,
+        0.96,
+        0.0,
+        -0.96,
+        0.96,
+        0.0,
     )
     tc.add(0, 0, 1, 0, 1, 1, 0, 1)
     tri.add(0, 1, 2, 0, 2, 3)
@@ -96,7 +107,9 @@ loop {
     if (!announced && browser.pageReady) {
         announced = true
         println("Field UI browser texture is live: ${browser.presentedFrame}")
-        browser.evaluate("""
+        browser
+            .evaluate(
+                """
             new Promise((resolve, reject) => {
                 const deadline = Date.now() + 10000
                 const prepare = () => {
@@ -118,8 +131,11 @@ loop {
                 }
                 prepare()
             })
-        """).thenCompose {
-            browser.evaluate("""
+        """,
+            )
+            .thenCompose {
+                browser.evaluate(
+                    """
             (() => {
                 const probe = document.createElement("input")
                 probe.id = "field-puppet-input-probe"
@@ -127,15 +143,19 @@ loop {
                 document.body.appendChild(probe)
                 return true
             })()
-            """)
-        }.thenCompose {
-            scriptedInput.move(40.0 / scriptedInput.cssWidth, 28.0 / scriptedInput.cssHeight)
-            scriptedInput.down()
-            scriptedInput.up()
-            browser.insertText("always available in VR")
-            browser.flushInput()
-        }.thenCompose {
-            browser.evaluate("""
+            """,
+                )
+            }
+            .thenCompose {
+                scriptedInput.move(40.0 / scriptedInput.cssWidth, 28.0 / scriptedInput.cssHeight)
+                scriptedInput.down()
+                scriptedInput.up()
+                browser.insertText("always available in VR")
+                browser.flushInput()
+            }
+            .thenCompose {
+                browser.evaluate(
+                    """
                 (() => {
                     const probe = document.getElementById("field-puppet-input-probe")
                     const input = probe.value
@@ -146,20 +166,23 @@ loop {
                         input
                     })
                 })()
-            """)
-        }.whenComplete { result, error ->
-            if (error == null) println("Puppet page/Field/JavaScript round trip: ${result.value}")
-            else error.printStackTrace()
-        }
+            """,
+                )
+            }
+            .whenComplete { result, error ->
+                if (error == null) println("Puppet page/Field/JavaScript round trip: ${result.value}")
+                else error.printStackTrace()
+            }
     }
     frame()
-}.end {
-    renderer.renderList.modules.remove("field-ui-browser-texture")
-    renderer.renderList.preTargets.remove("field-ui-browser-upload")
-    removeReadyBridge()
-    interaction.close()
-    browser.close()
 }
+    .end {
+        renderer.renderList.modules.remove("field-ui-browser-texture")
+        renderer.renderList.preTargets.remove("field-ui-browser-upload")
+        removeReadyBridge()
+        interaction.close()
+        browser.close()
+    }
 ```
 
 ```glsl [field-property box="field_ui_texture_panel" name="vertex" path="field_ui_texture_panel_vertex_.glsl"]

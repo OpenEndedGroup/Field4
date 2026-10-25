@@ -1,0 +1,29 @@
+{
+  "baseline": "242165597",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/flow_grain.yaml",
+      "kotlinBodies": 14,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/flow_grain.md",
+      "kotlinBodies": 3,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/field_probes.md",
+      "kotlinBodies": 12,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/threebox.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

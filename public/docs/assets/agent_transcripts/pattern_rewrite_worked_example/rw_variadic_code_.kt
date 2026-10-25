@@ -1,4 +1,5 @@
-import afield.macros.*
+import afield.runtime.macros.*
+
 fun sink(vararg xs: Int) = xs.sum()
 rewrite { first: Expr, rest: Vararg ->
     from { log(first, rest) }

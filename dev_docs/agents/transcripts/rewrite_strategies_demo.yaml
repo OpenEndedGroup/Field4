@@ -5,6 +5,9 @@ description: >
   own code is rewritten before it compiles. Every box prints its result and `check()`s the expected
   value, so replaying this transcript through the real engine proves each combinator fires and
   changes the output relative to the default global fixpoint. Pure compute — no Window is opened.
+docs:
+  - page: pattern_rewrite.md
+    why: "Explains rewrite rules and the strategy combinators used here."
 operations:
   # ---- baseline: NO strategy block ⇒ the historical global fixpoint (fires everywhere) ----
   - create:
@@ -15,7 +18,10 @@ operations:
         code: |
           fun p(v: Int) = v
           fun A(v: Int) = v * 10
-          rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
+          rule("p2a") { x: Expr ->
+              from { p(x) }
+              to { A(x) }
+          }
           val r = p(1) + p(2)
           println("baseline (global fixpoint): r = $r  -> both p() rewritten to A(1)+A(2)")
           check(r == 30) { "baseline expected 30, got $r" }
@@ -28,7 +34,10 @@ operations:
         code: |
           fun p(v: Int) = v
           fun A(v: Int) = v * 10
-          rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
+          rule("p2a") { x: Expr ->
+              from { p(x) }
+              to { A(x) }
+          }
           strategy { once("p2a") }
           val r = p(1) + p(2)
           println("once: r = $r  -> only the first p() rewritten: A(1) + p(2)")
@@ -44,8 +53,14 @@ operations:
           fun q(v: Int) = v
           fun A(v: Int) = v * 10
           fun B(v: Int) = v * 100
-          rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
-          rule("q2b") { x: Expr -> from { q(x) }; to { B(x) } }
+          rule("p2a") { x: Expr ->
+              from { p(x) }
+              to { A(x) }
+          }
+          rule("q2b") { x: Expr ->
+              from { q(x) }
+              to { B(x) }
+          }
           strategy { "p2a" }
           val r = p(1) + q(2)
           println("subset: r = $r  -> only p2a fires: A(1) + q(2); q2b left alone")
@@ -59,7 +74,10 @@ operations:
         code: |
           fun f(v: Int) = v * 2
           fun g(v: Int) = v + 100
-          rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+          rule("fg") { x: Expr ->
+              from { f(x) }
+              to { g(x) }
+          }
           strategy { topdown("fg") }
           val r = f(f(1))
           println("topdown: r = $r  -> outer f rewritten: g(f(1)) = g(2) = 102")
@@ -73,7 +91,10 @@ operations:
         code: |
           fun f(v: Int) = v * 2
           fun g(v: Int) = v + 100
-          rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+          rule("fg") { x: Expr ->
+              from { f(x) }
+              to { g(x) }
+          }
           strategy { bottomup("fg") }
           val r = f(f(1))
           println("bottomup: r = $r  -> inner f rewritten: f(g(1)) = f(101) = 202")
@@ -88,8 +109,14 @@ operations:
           fun p(v: Int) = v
           fun q(v: Int) = v
           fun r0(v: Int) = v * 1000
-          rule("p2q") { x: Expr -> from { p(x) }; to { q(x) } }
-          rule("q2r") { x: Expr -> from { q(x) }; to { r0(x) } }
+          rule("p2q") { x: Expr ->
+              from { p(x) }
+              to { q(x) }
+          }
+          rule("q2r") { x: Expr ->
+              from { q(x) }
+              to { r0(x) }
+          }
           strategy { "p2q" then "q2r" }
           val out = p(5)
           println("then: out = $out  -> p -> q -> r0(5) = 5000")
@@ -104,8 +131,14 @@ operations:
           fun pick(v: Int) = v
           fun X(v: Int) = v + 1
           fun Y(v: Int) = v + 2
-          rule("toX") { x: Expr -> from { pick(x) }; to { X(x) } }
-          rule("toY") { x: Expr -> from { pick(x) }; to { Y(x) } }
+          rule("toX") { x: Expr ->
+              from { pick(x) }
+              to { X(x) }
+          }
+          rule("toY") { x: Expr ->
+              from { pick(x) }
+              to { Y(x) }
+          }
           strategy { choice("toY", "toX") }
           val r = pick(10)
           println("choice: r = $r  -> prefers toY though toX is declared first: Y(10) = 12")
@@ -119,7 +152,10 @@ operations:
         code: |
           fun f(v: Int) = v * 2
           fun g(v: Int) = v + 100
-          rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+          rule("fg") { x: Expr ->
+              from { f(x) }
+              to { g(x) }
+          }
           strategy { repeat(topdown("fg"), 2) }
           val r = f(f(f(1)))
           println("repeat(topdown, 2): r = $r  -> two outer steps, inner f(1) left: g(g(f(1))) = 202")
@@ -133,7 +169,10 @@ operations:
         code: |
           fun f(v: Int) = v * 2
           fun g(v: Int) = v + 100
-          rule("fg") { x: Expr -> from { f(f(x)) }; to { g(x) } }
+          rule("fg") { x: Expr ->
+              from { f(f(x)) }
+              to { g(x) }
+          }
           strategy { repeat(topdown("fg"), 2) }
           val r = f(f(f(f(1))))
           println("nested pattern: r = $r  -> each step eats TWO f's: g(g(1)) = g(101) = 201")
@@ -146,7 +185,10 @@ operations:
       code: |
         fun p(v: Int) = v
         fun A(v: Int) = v * 10
-        rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
+        rule("p2a") { x: Expr ->
+            from { p(x) }
+            to { A(x) }
+        }
         val r = p(1) + p(2)
         println("baseline (global fixpoint): r = $r  -> both p() rewritten to A(1)+A(2)")
         check(r == 30) { "baseline expected 30, got $r" }
@@ -157,7 +199,10 @@ operations:
       code: |
         fun p(v: Int) = v
         fun A(v: Int) = v * 10
-        rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
+        rule("p2a") { x: Expr ->
+            from { p(x) }
+            to { A(x) }
+        }
         strategy { once("p2a") }
         val r = p(1) + p(2)
         println("once: r = $r  -> only the first p() rewritten: A(1) + p(2)")
@@ -171,8 +216,14 @@ operations:
         fun q(v: Int) = v
         fun A(v: Int) = v * 10
         fun B(v: Int) = v * 100
-        rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
-        rule("q2b") { x: Expr -> from { q(x) }; to { B(x) } }
+        rule("p2a") { x: Expr ->
+            from { p(x) }
+            to { A(x) }
+        }
+        rule("q2b") { x: Expr ->
+            from { q(x) }
+            to { B(x) }
+        }
         strategy { "p2a" }
         val r = p(1) + q(2)
         println("subset: r = $r  -> only p2a fires: A(1) + q(2); q2b left alone")
@@ -184,7 +235,10 @@ operations:
       code: |
         fun f(v: Int) = v * 2
         fun g(v: Int) = v + 100
-        rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+        rule("fg") { x: Expr ->
+            from { f(x) }
+            to { g(x) }
+        }
         strategy { topdown("fg") }
         val r = f(f(1))
         println("topdown: r = $r  -> outer f rewritten: g(f(1)) = g(2) = 102")
@@ -196,7 +250,10 @@ operations:
       code: |
         fun f(v: Int) = v * 2
         fun g(v: Int) = v + 100
-        rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+        rule("fg") { x: Expr ->
+            from { f(x) }
+            to { g(x) }
+        }
         strategy { bottomup("fg") }
         val r = f(f(1))
         println("bottomup: r = $r  -> inner f rewritten: f(g(1)) = f(101) = 202")
@@ -209,8 +266,14 @@ operations:
         fun p(v: Int) = v
         fun q(v: Int) = v
         fun r0(v: Int) = v * 1000
-        rule("p2q") { x: Expr -> from { p(x) }; to { q(x) } }
-        rule("q2r") { x: Expr -> from { q(x) }; to { r0(x) } }
+        rule("p2q") { x: Expr ->
+            from { p(x) }
+            to { q(x) }
+        }
+        rule("q2r") { x: Expr ->
+            from { q(x) }
+            to { r0(x) }
+        }
         strategy { "p2q" then "q2r" }
         val out = p(5)
         println("then: out = $out  -> p -> q -> r0(5) = 5000")
@@ -223,8 +286,14 @@ operations:
         fun pick(v: Int) = v
         fun X(v: Int) = v + 1
         fun Y(v: Int) = v + 2
-        rule("toX") { x: Expr -> from { pick(x) }; to { X(x) } }
-        rule("toY") { x: Expr -> from { pick(x) }; to { Y(x) } }
+        rule("toX") { x: Expr ->
+            from { pick(x) }
+            to { X(x) }
+        }
+        rule("toY") { x: Expr ->
+            from { pick(x) }
+            to { Y(x) }
+        }
         strategy { choice("toY", "toX") }
         val r = pick(10)
         println("choice: r = $r  -> prefers toY though toX is declared first: Y(10) = 12")
@@ -236,7 +305,10 @@ operations:
       code: |
         fun f(v: Int) = v * 2
         fun g(v: Int) = v + 100
-        rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+        rule("fg") { x: Expr ->
+            from { f(x) }
+            to { g(x) }
+        }
         strategy { repeat(topdown("fg"), 2) }
         val r = f(f(f(1)))
         println("repeat(topdown, 2): r = $r  -> two outer steps, inner f(1) left: g(g(f(1))) = 202")
@@ -248,7 +320,10 @@ operations:
       code: |
         fun f(v: Int) = v * 2
         fun g(v: Int) = v + 100
-        rule("fg") { x: Expr -> from { f(f(x)) }; to { g(x) } }
+        rule("fg") { x: Expr ->
+            from { f(f(x)) }
+            to { g(x) }
+        }
         strategy { repeat(topdown("fg"), 2) }
         val r = f(f(f(f(1))))
         println("nested pattern: r = $r  -> each step eats TWO f's: g(g(1)) = g(101) = 201")

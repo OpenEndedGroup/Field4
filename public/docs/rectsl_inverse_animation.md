@@ -8,78 +8,93 @@ The box below asks a rect to pass through three points at three given times. Its
 circle with six unknown numbers (an amplitude, a phase and a centre on each axis), and
 `fitParameters` solves for them. The box draws the figure beside it.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-fit-box.png" alt="an output panel labelled figure holding three stacked strips on a dark grid. The first, TARGET 3 WAYPOINTS, shows three empty white squares: upper left, upper right, and one below centre. The second, SEED WORST MISS 7.72M, adds a blurred orange blob sitting near the middle and touching none of them. The third, FITTED WORST MISS 4.7E-15M, replaces it with a trail of teal squares sweeping in an arc from the upper left, down through the bottom centre and back up to the upper right, passing through all three white squares on the way" wait="9.0" capture="box" open-outputs="true" w="1020" h="1080" padding="14" name="inverse-animation-fit-box" embed=true}
-import afield.rectsl.*
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-fit-box.png" alt="an output panel labelled figure holding three stacked strips on a dark grid. The first, TARGET 3 WAYPOINTS, shows three empty white squares: upper left, upper right, and one below centre. The second, SEED WORST MISS 7.72M, adds a blurred orange blob sitting near the middle and touching none of them. The third, FITTED WORST MISS 5.3E-12M, replaces it with a trail of teal squares sweeping in an arc from the upper left, down through the bottom centre and back up to the upper right, passing through all three white squares on the way" wait="9.0" capture="box" open-outputs="true" w="1020" h="1080" padding="14" name="inverse-animation-fit-box" embed=true}
+import afield.lang.rectsl.*
 
 val duration = 4.0
 
 :::fold build each axis as amp · trig(rate · t + phase) + centre, with amp, phase and centre unknown
 // A clamped identity in time: RectSL's way of saying "follow the clock".
-fun clock(d: Double): Track<Double> =
-    LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(d, d)))
+fun clock(d: Double): Track<Double> = LinearScalarTrack([TcbKey(0.0, 0.0), TcbKey(d, d)])
 
-fun channel(axis: String, rate: Double, op: TrackOp1): Track<Double> =
+fun channel(axis: String, rate: Double, op: TrackOp1): Track<Double> = BinaryDoubleTrack(
     BinaryDoubleTrack(
-        BinaryDoubleTrack(
-            MappedDoubleTrack(
-                BinaryDoubleTrack(
-                    BinaryDoubleTrack(clock(duration), constantTrack(rate), TrackOp2.MUL),
-                    FreeParamTrack("$axis-phase", 0.0),
-                    TrackOp2.ADD
-                ),
-                op
+        MappedDoubleTrack(
+            BinaryDoubleTrack(
+                BinaryDoubleTrack(clock(duration), constantTrack(rate), TrackOp2.MUL),
+                FreeParamTrack("$axis-phase", 0.0),
+                TrackOp2.ADD,
             ),
-            FreeParamTrack("$axis-amp", 1.0),
-            TrackOp2.MUL
+            op,
         ),
-        FreeParamTrack("$axis-centre", 0.0),
-        TrackOp2.ADD
-    )
+        FreeParamTrack("$axis-amp", 1.0),
+        TrackOp2.MUL,
+    ),
+    FreeParamTrack("$axis-centre", 0.0),
+    TrackOp2.ADD,
+)
+
 :::endfold
 
 val seedX = channel("x", 1.1, TrackOp1.COS)
 val seedY = channel("y", 1.1, TrackOp1.SIN)
 
 // Where the rect must be, and when.
-val waypoints = listOf(
+val waypoints = [
     RectSLFitFigure.Marker(0.4, -6.5, 2.6),
     RectSLFitFigure.Marker(1.8, 0.5, -2.4),
-    RectSLFitFigure.Marker(3.4, 6.2, 1.8)
-)
+    RectSLFitFigure.Marker(3.4, 6.2, 1.8),
+]
 val window = Functions.Domain(0.0, duration)
 val fitX = seedX.fitParameters(waypoints.map { TrackFitTarget(it.time, it.x) }, window, iterations = 1500)
 val fitY = seedY.fitParameters(waypoints.map { TrackFitTarget(it.time, it.y) }, window, iterations = 1500)
 
-fun miss(x: Track<Double>, y: Track<Double>): Double =
-    waypoints.maxOf { hypot(x.sample(it.time) - it.x, y.sample(it.time) - it.y) }
+fun miss(x: Track<Double>, y: Track<Double>): Double = waypoints.maxOf {
+    hypot(x.sample(it.time) - it.x, y.sample(it.time) - it.y)
+}
 
 :::fold draw the target, the seed and the fit as three strips
-display("figure", RectSLFitFigure.render(
-    bands = listOf(
-        RectSLFitFigure.Band(
-            "target", constantTrack(0.0), constantTrack(0.0),
-            Color4(0.86, 0.88, 0.91), note = "3 waypoints", strobe = false
-        ),
-        RectSLFitFigure.Band(
-            "seed", seedX, seedY, Color4(1.0, 0.42, 0.28),
-            note = "worst miss %.2fm".format(miss(seedX, seedY))
-        ),
-        RectSLFitFigure.Band(
-            "fitted", fitX.fitted, fitY.fitted, Color4(0.29, 0.83, 0.7),
-            note = "worst miss %.1em".format(miss(fitX.fitted, fitY.fitted))
-        )
+display(
+    "figure",
+    RectSLFitFigure.render(
+        bands = [
+            RectSLFitFigure.Band(
+                "target",
+                constantTrack(0.0),
+                constantTrack(0.0),
+                Color4(0.86, 0.88, 0.91),
+                note = "3 waypoints",
+                strobe = false,
+            ),
+            RectSLFitFigure.Band(
+                "seed",
+                seedX,
+                seedY,
+                Color4(1.0, 0.42, 0.28),
+                note = "worst miss %.2fm".format(miss(seedX, seedY)),
+            ),
+            RectSLFitFigure.Band(
+                "fitted",
+                fitX.fitted,
+                fitY.fitted,
+                Color4(0.29, 0.83, 0.7),
+                note = "worst miss %.1em".format(miss(fitX.fitted, fitY.fitted)),
+            ),
+        ],
+        markers = waypoints,
+        wall = WallSpec(18.0, 8.0, UnitKind.Meters),
+        rectSize = Vec2d(1.5, 1.5),
+        times = (0..32).map { it * duration / 32.0 },
     ),
-    markers = waypoints,
-    wall = WallSpec(18.0, 8.0, UnitKind.Meters),
-    rectSize = Vec2d(1.5, 1.5),
-    times = (0..32).map { it * duration / 32.0 }
-))
+)
+
 :::endfold
 
 """x: ${fitX.initialParameters} -> ${fitX.parameters}
 |   residual ${fitX.initialResidual} -> ${fitX.finalResidual}
 |y: ${fitY.initialParameters} -> ${fitY.parameters}
-|   residual ${fitY.initialResidual} -> ${fitY.finalResidual}""".trimMargin()
+|   residual ${fitY.initialResidual} -> ${fitY.finalResidual}"""
+    .trimMargin()
 ```
 
 The top band shows where the rect was asked to go: three waypoints at three instants. The middle
@@ -101,49 +116,43 @@ track, with its scale and offset left for the fitter:
 Until you fit it, a `free-param` is just its current value, so a scene with unknowns in it plays and
 renders exactly as written.
 
-From Kotlin, any track with `FreeParamTrack` leaves in it can be solved with `fitParameters`. The box
-below builds the same sweep track and fits it twice, once with the defaults and once with more
-iterations. The defaults are `iterations = 300` and `lr = 0.05`, and each step moves a parameter by
-about `lr`, so a `bias` that has to travel from 0 to −8 cannot get there in 300 steps. The default
-call stops with a residual near 0.1: much better than where it started, and still not solved. With
-2000 iterations it lands on the exact answer.
+From Kotlin, any track with `FreeParamTrack` leaves in it can be solved with `fitParameters`. It
+steps until the residual stops changing, up to `iterations = 5000` at `lr = 0.05`, and `converged`
+says whether it got there before the bound; when it is false, give it more iterations or a larger
+`lr` before trusting `parameters`. The box below builds the same sweep track and fits it with the
+defaults.
 
-!!! note "Check the residual"
-    A fit that returns has not necessarily converged. Read `finalResidual` before trusting the
-    parameters.
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-api.png" alt="an output panel labelled fit, holding two blocks of results for the same track. At the default 300 iterations the solved gain is 3.8945617454461527 and the bias -7.738554034635415, taking the residual from 3.605551275463989 down to 0.11693799822760528. At 2000 iterations the gain is 3.999999999999997 and the bias -7.999999999999994, and the residual is 2.8951074449790722E-15. The last line prints the fitted IR with those numbers substituted in" wait="5.0" capture="box" open-outputs="true" w="1000" h="360" padding="14" name="inverse-animation-api" embed=true}
-import afield.rectsl.*
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-api.png" alt="an output panel labelled fit, listing the solved gain and bias for the track, the residual before and after, whether the descent converged and in how many steps, and the fitted IR with the solved numbers substituted in" wait="5.0" capture="box" open-outputs="true" w="1000" h="360" padding="14" name="inverse-animation-api" embed=true}
+import afield.lang.rectsl.*
 
 // A sweep that follows the clock, times gain, plus bias: the same track as the scene below.
 val track = BinaryDoubleTrack(
     BinaryDoubleTrack(
-        LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(4.0, 4.0))),
+        LinearScalarTrack([TcbKey(0.0, 0.0), TcbKey(4.0, 4.0)]),
         FreeParamTrack("gain", 1.0),
-        TrackOp2.MUL
+        TrackOp2.MUL,
     ),
     FreeParamTrack("bias", 0.0),
-    TrackOp2.ADD
+    TrackOp2.ADD,
 )
 
-val targets = listOf(TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0))
+val targets = [TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0)]
 
-val quick = track.fitParameters(targets)                      // iterations = 300, lr = 0.05
-val patient = track.fitParameters(targets, iterations = 2000)
+val fit = track.fitParameters(targets)
 
-markdown("fit", """
+markdown(
+    "fit",
+    """
     ~~~
-                         default (300 iterations)
-    fit.parameters       ${quick.parameters}
-    fit.initialResidual  ${quick.initialResidual}
-    fit.finalResidual    ${quick.finalResidual}
-
-                         iterations = 2000
-    fit.parameters       ${patient.parameters}
-    fit.finalResidual    ${patient.finalResidual}
-    fit.fitted           ${patient.fitted.describe()}
+    fit.parameters       ${fit.parameters}
+    fit.initialResidual  ${fit.initialResidual}
+    fit.finalResidual    ${fit.finalResidual}
+    fit.converged        ${fit.converged} after ${fit.steps.size} steps
+    fit.fitted           ${fit.fitted.describe()}
     ~~~
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 ```
 
 The next box does the same from RectSL source. It compiles a scene with two `free-param` numbers in
@@ -152,13 +161,14 @@ authored band is what you get without fitting (`gain=1.0, bias=0.0`): the marker
 span and misses both waypoints. The solved band lands on `gain=4.0, bias=-8.0`, the exact answer for
 `t·gain + bias` through both waypoints.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-free-param.png" alt="an output panel labelled before / after, with two strips, and a fit panel below. The authored strip, in orange and headed gain 1.0, bias 0.0, worst miss 5.00M, holds a short bar that reaches the right-hand white waypoint square and leaves the left one untouched. The solved strip, in teal and headed gain 3.999999999999997, bias -7.999999999999994, worst miss 3.1E-15M, holds a long stepped bar spanning the strip and passing through both squares. Beneath them the text lists the IR before and after, the free parameters, and a residual falling from 3.605551275463989 to 2.8951074449790722E-15, with x at 1.0 and x at 3.0 landing on -4 and 4 to fifteen decimal places" wait="7.0" capture="box" open-outputs="true" w="1020" h="1240" padding="14" name="inverse-animation-free-param" embed=true}
-import afield.rectsl.*
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-free-param.png" alt="an output panel labelled before / after, with two strips, and a fit panel below. The authored strip, in orange and headed gain 1.0, bias 0.0, worst miss 5.00M, holds a short bar that reaches the right-hand white waypoint square and leaves the left one untouched. The solved strip, in teal and headed gain 3.999999999996897, bias -7.999999999992307, worst miss 4.6E-12M, holds a long stepped bar spanning the strip and passing through both squares. Beneath them the text lists the IR before and after, the free parameters, and a residual falling from 3.605551275463989 to 3.4409616317511194E-12, with x at 1.0 and x at 3.0 landing on -4 and 4 to eleven decimal places" wait="7.0" capture="box" open-outputs="true" w="1020" h="1240" padding="14" name="inverse-animation-free-param" embed=true}
+import afield.lang.rectsl.*
 
 // `free-param` marks a number to be solved for. Until it is, every backend reads it as the
 // constant it is now, so the scene plays as written.
-val program = RectAnimationOracle.compile(
-    """
+val program =
+    RectAnimationOracle.compile(
+            """
     #rectsl
     ->wall 18 8 meters
     ->duration 4
@@ -172,40 +182,53 @@ val program = RectAnimationOracle.compile(
       "sweep" track-ref 1.0 free-param gain * 0.0 free-param bias + ->x
       0x44d4b4 solid ->fill
     ;
-    """.trimIndent()
-).program
+    """
+                .trimIndent(),
+        )
+        .program
 
 val node = program.nodes.filterIsInstance<RectNode>().single()
 val x = node.x
 
 // Two waypoints and two unknowns. The sweep follows the clock, so -4 at t=1 and +4 at t=3 means
 // gain = 4 and bias = -8.
-val targets = listOf(TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0))
+val targets = [TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0)]
 val fit = x.fitParameters(targets, Functions.Domain(0.0, 4.0), iterations = 2000)
 
-fun missOf(track: Track<Double>): Double =
-    targets.maxOf { abs(track.sample(it.time) - it.value) }
+fun missOf(track: Track<Double>): Double = targets.maxOf { abs(track.sample(it.time) - it.value) }
 
 :::fold draw the scene as written and as solved; only ->x has unknowns, so both bands share the node's y
-display("before / after", RectSLFitFigure.render(
-    bands = listOf(
-        RectSLFitFigure.Band(
-            "authored", x, node.y, Color4(1.0, 0.42, 0.28),
-            note = "${x.freeParameters()} — worst miss %.2fm".format(missOf(x))
-        ),
-        RectSLFitFigure.Band(
-            "solved", fit.fitted, node.y, Color4(0.29, 0.83, 0.7),
-            note = "${fit.parameters} — worst miss %.1em".format(missOf(fit.fitted))
-        )
+display(
+    "before / after",
+    RectSLFitFigure.render(
+        bands = [
+            RectSLFitFigure.Band(
+                "authored",
+                x,
+                node.y,
+                Color4(1.0, 0.42, 0.28),
+                note = "${x.freeParameters()} — worst miss %.2fm".format(missOf(x)),
+            ),
+            RectSLFitFigure.Band(
+                "solved",
+                fit.fitted,
+                node.y,
+                Color4(0.29, 0.83, 0.7),
+                note = "${fit.parameters} — worst miss %.1em".format(missOf(fit.fitted)),
+            ),
+        ],
+        markers = targets.map { RectSLFitFigure.Marker(it.time, it.value, 0.0) },
+        wall = WallSpec(18.0, 8.0, UnitKind.Meters),
+        rectSize = Vec2d(1.4, 1.4),
+        times = (0..32).map { it * 4.0 / 32.0 },
     ),
-    markers = targets.map { RectSLFitFigure.Marker(it.time, it.value, 0.0) },
-    wall = WallSpec(18.0, 8.0, UnitKind.Meters),
-    rectSize = Vec2d(1.4, 1.4),
-    times = (0..32).map { it * 4.0 / 32.0 }
-))
+)
+
 :::endfold
 
-markdown("fit", """
+markdown(
+    "fit",
+    """
     ~~~
     IR before:   ${x.describe()}
     free params: ${x.freeParameters()}
@@ -214,12 +237,13 @@ markdown("fit", """
     residual:    ${fit.initialResidual} -> ${fit.finalResidual}
     x(1.0) = ${fit.fitted.sample(1.0)}   x(3.0) = ${fit.fitted.sample(3.0)}
     ~~~
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 ```
 
-Use `fitParameters` on a track, not `fitGradient`. `fitGradient` moves every number in the graph,
-including key times, clamp bounds and easing constants, and moving those breaks the track.
-`fitParameters` moves only the named `free-param`s.
+`fitParameters` moves only the named `free-param`s. The general `fitGradient`, which moves every
+number in a graph, refuses a track that declares free parameters and points you here.
 
 ## Unknowns inside keys
 
@@ -253,7 +277,7 @@ compared, rewritten and turned into GLSL. Each operation has three implementatio
 | --- | --- | --- |
 | `eval:` | `(Double) -> Double` | the CPU sampler |
 | `glsl:` | a shader expression | [the SDF backend](rectsl_cheatsheet.md) |
-| `fn:` | an `afield.stdlib.Functions.Fn` transform | [the exact gradient](autodiff_examples.md) |
+| `fn:` | an `afield.math.functions.Functions.Fn` transform | [the exact gradient](autodiff_examples.md) |
 
 `Fn` is Field's own function type, and Field can differentiate an `Fn` exactly. Turning a track into
 an `Fn` (lowering it) is what lets a fit take its gradient.
@@ -273,10 +297,13 @@ is evaluated at x, so a zero-frequency oscillator is a composition. The box belo
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-sin-identity.png" alt="an output panel labelled identity, comparing sin with frequency 0, phase u, amplitude 1 and offset 0 against a plain sin of u of x. It reports 4001 samples over x in the range -2 to 2, a worst difference of 0.0, and 0 samples not bit-equal" wait="4.0" capture="box" open-outputs="true" w="1000" h="330" padding="14" name="inverse-animation-sin-identity" embed=true}
 // A zero-frequency oscillator whose phase is u(x): 0 + 1·sin(2π·0·x + u) is sin(u(x)).
 val (composed, u) = with(Functions) {
-    val u = identity(Functions.Domain.ALL)                     // any inner function will do; u(x) = x
+    val u = identity(Functions.Domain.ALL) // any inner function will do; u(x) = x
     sin(
-        frequency = 0.0.c, phase = u, amplitude = 1.0.c, offset = 0.0.c,
-        domain = Functions.Domain.ALL
+        frequency = 0.0.c,
+        phase = u,
+        amplitude = 1.0.c,
+        offset = 0.0.c,
+        domain = Functions.Domain.ALL,
     ) to u
 }
 
@@ -284,14 +311,18 @@ val xs = (0..4000).map { -2.0 + it * 4.0 / 4000.0 }
 val worst = xs.maxOf { x -> abs(composed.eval(x) - sin(u.eval(x))) }
 val notBitEqual = xs.count { x -> composed.eval(x) != sin(u.eval(x)) }
 
-markdown("identity", """
+markdown(
+    "identity",
+    """
     ~~~
     sin(frequency = 0, phase = u, amplitude = 1, offset = 0)   vs   sin(u(x))
     samples:               ${xs.size} over x in [-2, 2]
     worst difference:      $worst
     samples not bit-equal: $notBitEqual
     ~~~
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 ```
 
 The two agree exactly, because `0 + 1·sin(2π·0·x + u)` involves no rounding. This identity covers
@@ -323,12 +354,14 @@ checks `clamp01(floor(x) + 1)` against the ideal step, including at the boundary
 val step = with(Functions) { identity(Functions.Domain.ALL).floor().offsetY(1.0).clamp(0.0, 1.0) }
 
 val grid = (-4000..4000).map { it / 1000.0 }
-val edges = listOf(-3.0, -2.0, -1.0, -1e-16, 0.0, 1e-16, 1.0, 2.0)
+val edges = [-3.0, -2.0, -1.0, -1e-16, 0.0, 1e-16, 1.0, 2.0]
 val xs = grid + edges
 
 val wrong = xs.filter { x -> step.eval(x) != (if (x >= 0.0) 1.0 else 0.0) }
 
-markdown("exact step", """
+markdown(
+    "exact step",
+    """
     ~~~
     clamp01(floor(x) + 1)  vs  1 where x >= 0, 0 below
     samples:           ${xs.size} (grid over [-4, 4] plus the integer boundaries)
@@ -336,7 +369,9 @@ markdown("exact step", """
     step(0.0):         ${step.eval(0.0)}
     step(-1e-16):      ${step.eval(-1e-16)}
     ~~~
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 ```
 
 The same step handles the `expo-*` and `elastic-*` easings, whose formulas do not quite reach their
@@ -357,7 +392,6 @@ take.
 | refused | closable? | why |
 | --- | --- | --- |
 | `mod` | yes | Kotlin's `%` on doubles is the exact remainder, and rebuilding it from `floor` gives a different answer for very large quotients. A `mod` of two constants still works. |
-| `bounce-*` easings | yes | possible with the clamped-ramp sum, not written yet. |
 | the pattern tracks | no | a pattern is interpreted, not an expression of fixed shape. |
 
 Division by a varying value and `smoothstep` with varying edges do lower, with a guard against

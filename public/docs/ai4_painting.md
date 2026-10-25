@@ -143,8 +143,8 @@ request.
 
 !!! note "A canvas is large"
     Each saved state of the Studio's canvas is about 28 MB on disk, kept in the document's `ai4_blobs/state`
-    folder. Every request that changes the painting adds one, and none is deleted yet. The kept tools
-    are small beside it, some 20 kB a request.
+    folder. Every request that changes the painting adds one; `pruneAiStates(dryRun = false)` frees all
+    but the latest three along each branch. The kept tools are small beside it, some 20 kB a request.
 
 ## What the box defines
 
@@ -158,9 +158,14 @@ tool("paint.dab") {
     describe("Touch the brush down at points and lift it: dabs, petals, leaves, highlights. One load for all of them.")
     effects(ToolEffect.CONTROL_RUNTIME)
     val points by param<List<Double>>("[x0, y0, x1, y1, ...]")
-    val color by param<String?>("#rrggbb, a tube name, or tubes by parts; null dabs a kept tool with what it carries", default = null)
+    val color by
+        param<String?>(
+            "#rrggbb, a tube name, or tubes by parts; null dabs a kept tool with what it carries",
+            default = null,
+        )
     val tool by param<String?>("a kept brush's name to dab with; null for a fresh brush", default = null)
-    val brush by param<String>("Round, HogFlat, Filbert, Fan, Rigger, Badger or Stippler (a fresh brush)", default = "Round")
+    val brush by
+        param<String>("Round, HogFlat, Filbert, Fan, Rigger, Badger or Stippler (a fresh brush)", default = "Round")
     val width by param<Double>("brush width in canvas units", default = 12.0)
     val pressure by param<Double>("harder makes a bigger, fuller mark", default = 0.6)
     val angle by param<Double>("a flat's wide axis, degrees", default = 0.0)
@@ -168,7 +173,10 @@ tool("paint.dab") {
         val c = canvas()
         val b = brushFor(tool(), brush(), width(), color())
         loadInto(b, color())
-        points().chunked(2).filter { it.size == 2 }.forEach { c.touch(b, it[0], it[1], pressure = pressure(), angle = rad(angle())) }
+        points()
+            .chunked(2)
+            .filter { it.size == 2 }
+            .forEach { c.touch(b, it[0], it[1], pressure = pressure(), angle = rad(angle())) }
         done("${points().size / 2} dab(s)")
     }
 }
@@ -202,15 +210,24 @@ the chat, which saves it before and after every request and restores it when the
 moves. The kept tools have a second `branchState` of their own, `PaintToolbox.save` and `load`:
 
 ```diffstatic {data-lang=kotlin}
-branchState("canvas",
+branchState(
+    "canvas",
     save = { canvas().saveState(it.path) },
-    restore = { f -> replace(f?.let { PaintCanvas.load(it.path) } ?: fresh()); show() },
-    onConflict = BranchConflict.RESTORE, resumeOnOpen = true)
+    restore = { f ->
+        replace(f?.let { PaintCanvas.load(it.path) } ?: fresh())
+        show()
+    },
+    onConflict = BranchConflict.RESTORE,
+    resumeOnOpen = true,
+)
 // and so do the kept tools, each bristle's paint and all
-branchState("tools",
+branchState(
+    "tools",
     save = { tools().save(it) },
     restore = { f -> thisBox.properties["studio.tools"] = f?.let { PaintToolbox.load(it) } ?: PaintToolbox() },
-    onConflict = BranchConflict.RESTORE, resumeOnOpen = true)
+    onConflict = BranchConflict.RESTORE,
+    resumeOnOpen = true,
+)
 ```
 
 `restore` gets `null` when the conversation has no saved canvas, which here means starting on a

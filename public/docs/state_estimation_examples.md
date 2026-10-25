@@ -33,9 +33,9 @@ with an initial guess and an initial covariance, then alternate two calls:
 
 ```diffstatic {data-lang=kotlin}
 val ukf = UnscentedKalmanFilter(
-    initialState = doubleArrayOf(1.0, 0.96, 0.92),   // your best initial guess
-    initialCovariance = diag(0.08, 0.08, 0.08),      // how unsure you are of it
-    options = UKFOptions(alpha = 0.55)
+    initialState = doubleArrayOf(1.0, 0.96, 0.92), // your best initial guess
+    initialCovariance = diag(0.08, 0.08, 0.08), // how unsure you are of it
+    options = UKFOptions(alpha = 0.55),
 )
 
 ukf.predict(processNoise = diag(0.004, 0.004, 0.004)) { state ->
@@ -45,13 +45,13 @@ ukf.predict(processNoise = diag(0.004, 0.004, 0.004)) { state ->
 
 ukf.update(
     measurement = doubleArrayOf(y),
-    measurementNoise = diag(0.05 * 0.05)
+    measurementNoise = diag(0.05 * 0.05),
 ) { state ->
     // what would this state look like through your sensor?
     doubleArrayOf(state[0])
 }
 
-val estimate = ukf.stateCopy()   // read the mean; covarianceCopy() reads p
+val estimate = ukf.stateCopy() // read the mean; covarianceCopy() reads p
 ```
 
 `predict` pushes the state forward through your `transition` lambda and inflates
@@ -61,8 +61,7 @@ lambda maps a full state to what your sensor would report; here it exposes only
 `state[0]`, so the filter estimates the other coordinates purely from the dynamics.
 
 Two constraints come straight from `pf.kt`: the **state dimension must be 1–3** and
-the **measurement dimension must be 1–3**. Both the state and the measurement can
-have their own dimension.
+the **measurement dimension must be 1–3**. The two do not have to match.
 
 ### The `UKFOptions` knobs
 
@@ -85,16 +84,10 @@ mean and covariance:
 and `alpha = 0.9`; if you ever see *"n + lambda must be positive"*, nudge `alpha`
 or `kappa` up.
 
-### A tiny helper: `diag`
+### Diagonal matrices: `diag`
 
 `Matrix` values are just arrays of arrays, so covariance matrices are easy to
-build inline. Every example defines a one-liner for diagonal matrices — there is
-no library `diag`, and one line is short enough to keep in the box:
-
-```diffstatic {data-lang=kotlin}
-fun diag(vararg values: Double): Matrix =
-    Array(values.size) { r -> DoubleArray(values.size) { c -> if (r == c) values[r] else 0.0 } }
-```
+build inline, and `diag(0.1, 0.1, 0.5)` makes a diagonal one.
 
 The Gaussian noise the examples inject comes from the standard-library
 `randomGaussian()` (a zero-mean, unit-variance draw).
@@ -109,11 +102,7 @@ only the first is ever observed.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/state_estimation_examples/ukf_mackey_glass.png" wait="1.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.darkMode
 import space.kscience.plotly.*
-
-fun diag(vararg values: Double): Matrix =
-    Array(values.size) { r -> DoubleArray(values.size) { c -> if (r == c) values[r] else 0.0 } }
 
 fun mackeyGlassStep(state: DoubleArray, beta: Double = 0.28): DoubleArray {
     val x = state[0].coerceIn(0.02, 3.0)
@@ -126,7 +115,7 @@ fun mackeyGlassStep(state: DoubleArray, beta: Double = 0.28): DoubleArray {
 val ukf = UnscentedKalmanFilter(
     initialState = doubleArrayOf(1.00, 0.96, 0.92),
     initialCovariance = diag(0.08, 0.08, 0.08),
-    options = UKFOptions(alpha = 0.55)
+    options = UKFOptions(alpha = 0.55),
 )
 
 val trueX = mutableListOf<Double>()
@@ -146,7 +135,7 @@ repeat(360) { i ->
     }
     ukf.update(
         measurement = doubleArrayOf(measurement),
-        measurementNoise = diag(0.05 * 0.05)
+        measurementNoise = diag(0.05 * 0.05),
     ) { state ->
         doubleArrayOf(state[0])
     }
@@ -157,35 +146,37 @@ repeat(360) { i ->
 }
 
 val sample = trueX.indices.toList()
-val plot = Plotly.plot {
-    trace {
-        name = "measurement"
-        x.set(sample)
-        y.set(measuredX)
-        line.width = 0.1
-    }
-    trace {
-        name = "hidden x"
-        x.set(sample)
-        y.set(trueX)
-        line.width = 0.5
-    }
-    trace {
-        name = "UKF estimate"
-        x.set(sample)
-        y.set(estimatedX)
-        line.width = 1.0
-    }
-    layout {
-        title = "UKF tracking a noisy Mackey-Glass point"
-        xaxis {
-            title = "time step"
+val plot =
+    Plotly.plot {
+            trace {
+                name = "measurement"
+                x.set(sample)
+                y.set(measuredX)
+                line.width = 0.1
+            }
+            trace {
+                name = "hidden x"
+                x.set(sample)
+                y.set(trueX)
+                line.width = 0.5
+            }
+            trace {
+                name = "UKF estimate"
+                x.set(sample)
+                y.set(estimatedX)
+                line.width = 1.0
+            }
+            layout {
+                title = "UKF tracking a noisy Mackey-Glass point"
+                xaxis {
+                    title = "time step"
+                }
+                yaxis {
+                    title = "x"
+                }
+            }
         }
-        yaxis {
-            title = "x"
-        }
-    }
-}.darkMode()
+        .darkMode()
 
 display(plot)
 ```
@@ -208,11 +199,7 @@ lets the estimate follow a trajectory that curves.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/state_estimation_examples/ukf_velocity_tracker.png" wait="1.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.darkMode
 import space.kscience.plotly.*
-
-fun diag(vararg values: Double): Matrix =
-    Array(values.size) { r -> DoubleArray(values.size) { c -> if (r == c) values[r] else 0.0 } }
 
 // State = [position, velocity]. We measure only a noisy position; velocity is
 // never observed and must be reconstructed from the dynamics.
@@ -220,7 +207,7 @@ val dt = 1.0
 val ukf = UnscentedKalmanFilter(
     initialState = doubleArrayOf(0.0, 0.0),
     initialCovariance = diag(1.0, 1.0),
-    options = UKFOptions(alpha = 0.9)
+    options = UKFOptions(alpha = 0.9),
 )
 
 val truePos = mutableListOf<Double>()
@@ -235,7 +222,7 @@ repeat(220) { i ->
     val vel = 1.2 * sin(i * 0.03)
     pos += vel * dt
 
-    val measurement = pos + 3.0 * randomGaussian()   // noisy POSITION only
+    val measurement = pos + 3.0 * randomGaussian() // noisy POSITION only
 
     // Constant-velocity model: position advances by velocity, velocity coasts.
     ukf.predict(processNoise = diag(0.01, 0.05)) { s ->
@@ -243,9 +230,9 @@ repeat(220) { i ->
     }
     ukf.update(
         measurement = doubleArrayOf(measurement),
-        measurementNoise = diag(3.0 * 3.0)
+        measurementNoise = diag(3.0 * 3.0),
     ) { s ->
-        doubleArrayOf(s[0])   // the sensor sees position, not velocity
+        doubleArrayOf(s[0]) // the sensor sees position, not velocity
     }
 
     val x = ukf.stateCopy()
@@ -258,51 +245,55 @@ repeat(220) { i ->
 
 val sample = truePos.indices.toList()
 
-val positionPlot = Plotly.plot {
-    trace {
-        name = "measured position"
-        x.set(sample)
-        y.set(measuredPos)
-        line.width = 0.3
-    }
-    trace {
-        name = "true position"
-        x.set(sample)
-        y.set(truePos)
-        line.width = 1.5
-    }
-    trace {
-        name = "UKF position"
-        x.set(sample)
-        y.set(estPos)
-        line.width = 1.0
-    }
-    layout {
-        title = "Position: measured vs true vs estimated"
-        xaxis { title = "time step" }
-        yaxis { title = "position" }
-    }
-}.darkMode()
+val positionPlot =
+    Plotly.plot {
+            trace {
+                name = "measured position"
+                x.set(sample)
+                y.set(measuredPos)
+                line.width = 0.3
+            }
+            trace {
+                name = "true position"
+                x.set(sample)
+                y.set(truePos)
+                line.width = 1.5
+            }
+            trace {
+                name = "UKF position"
+                x.set(sample)
+                y.set(estPos)
+                line.width = 1.0
+            }
+            layout {
+                title = "Position: measured vs true vs estimated"
+                xaxis { title = "time step" }
+                yaxis { title = "position" }
+            }
+        }
+        .darkMode()
 
-val velocityPlot = Plotly.plot {
-    trace {
-        name = "true velocity"
-        x.set(sample)
-        y.set(trueVel)
-        line.width = 1.5
-    }
-    trace {
-        name = "UKF velocity (never measured)"
-        x.set(sample)
-        y.set(estVel)
-        line.width = 1.0
-    }
-    layout {
-        title = "Velocity is recovered from position alone"
-        xaxis { title = "time step" }
-        yaxis { title = "velocity" }
-    }
-}.darkMode()
+val velocityPlot =
+    Plotly.plot {
+            trace {
+                name = "true velocity"
+                x.set(sample)
+                y.set(trueVel)
+                line.width = 1.5
+            }
+            trace {
+                name = "UKF velocity (never measured)"
+                x.set(sample)
+                y.set(estVel)
+                line.width = 1.0
+            }
+            layout {
+                title = "Velocity is recovered from position alone"
+                xaxis { title = "time step" }
+                yaxis { title = "velocity" }
+            }
+        }
+        .darkMode()
 
 display("position", positionPlot)
 display("velocity", velocityPlot)
@@ -323,9 +314,9 @@ of type `H` and a `logWeight`:
 
 ```diffstatic {data-lang=kotlin}
 UKFParticle(
-    ukf = UnscentedKalmanFilter(/* ... */),
+    ukf = UnscentedKalmanFilter(/* ... */ ),
     hypothesis = MackeyGlassHypothesis(beta = 0.3),
-    logWeight = 0.0
+    logWeight = 0.0,
 )
 ```
 
@@ -353,7 +344,6 @@ and the cloud has to find it again from a population that had already settled.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/state_estimation_examples/ukf_particle_filter.png" wait="1.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.darkMode
 import kotlin.random.Random
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
@@ -361,11 +351,8 @@ import space.kscience.plotly.models.ScatterMode
 data class MackeyGlassHypothesis(val beta: Double)
 data class ParticleSnapshot(
     val step: Int,
-    val beta: List<Double>
+    val beta: List<Double>,
 )
-
-fun diag(vararg values: Double): Matrix =
-    Array(values.size) { r -> DoubleArray(values.size) { c -> if (r == c) values[r] else 0.0 } }
 
 fun mackeyGlassStep(state: DoubleArray, beta: Double): DoubleArray {
     val x = state[0].coerceIn(0.02, 3.0)
@@ -377,26 +364,27 @@ fun mackeyGlassStep(state: DoubleArray, beta: Double): DoubleArray {
 
 val rng = Random(31)
 val particleCount = 96
-val particles = (0 until particleCount).map { i ->
-    val beta = 0.08 + 0.76 * i.toDouble() / (particleCount - 1).toDouble()
-    UKFParticle(
-        ukf = UnscentedKalmanFilter(
-            initialState = doubleArrayOf(
-                0.80 + 0.18 * rng.nextGaussian(),
-                0.80 + 0.18 * rng.nextGaussian(),
-                0.80 + 0.18 * rng.nextGaussian()
+val particles =
+    (0 until particleCount).map { i ->
+        val beta = 0.08 + 0.76 * i.toDouble() / (particleCount - 1).toDouble()
+        UKFParticle(
+            ukf = UnscentedKalmanFilter(
+                initialState = doubleArrayOf(
+                    0.80 + 0.18 * rng.nextGaussian(),
+                    0.80 + 0.18 * rng.nextGaussian(),
+                    0.80 + 0.18 * rng.nextGaussian(),
+                ),
+                initialCovariance = diag(0.35, 0.35, 0.35),
+                options = UKFOptions(alpha = 0.55),
             ),
-            initialCovariance = diag(0.35, 0.35, 0.35),
-            options = UKFOptions(alpha = 0.55)
-        ),
-        hypothesis = MackeyGlassHypothesis(beta),
-        logWeight = 0.0
-    )
-}
+            hypothesis = MackeyGlassHypothesis(beta),
+            logWeight = 0.0,
+        )
+    }
 
 val pf = UKFParticleFilter<MackeyGlassHypothesis>(
     initialParticles = particles,
-    copyHypothesis = { it.copy() }
+    copyHypothesis = { it.copy() },
 )
 
 fun betaEstimate(): Double {
@@ -406,10 +394,11 @@ fun betaEstimate(): Double {
 
 fun betaStdDev(mean: Double): Double {
     val weights = pf.weights()
-    val variance = pf.particles.indices.sumOf { i ->
-        val d = pf.particles[i].hypothesis.beta - mean
-        weights[i] * d * d
-    }
+    val variance =
+        pf.particles.indices.sumOf { i ->
+            val d = pf.particles[i].hypothesis.beta - mean
+            weights[i] * d * d
+        }
     return sqrt(variance)
 }
 
@@ -443,15 +432,15 @@ repeat(3200) { i ->
             val beta = if (rng.nextDouble() < broadProposalRate) {
                 0.05 + 0.85 * rng.nextDouble()
             } else {
-                hypothesis.beta + 0.0002 * rng.nextGaussian()
-            }
+                    hypothesis.beta + 0.0002 * rng.nextGaussian()
+                }
             hypothesis.copy(beta = beta.coerceIn(0.0, 1.0))
-        }
+        },
     )
     pf.update(
         measurement = doubleArrayOf(measurement, lastMeasurement, olderMeasurement),
         measurementNoise = { diag(0.010 * 0.010, 0.014 * 0.014, 0.018 * 0.018) },
-        observe = { _, state -> doubleArrayOf(state[0], state[1], state[2]) }
+        observe = { _, state -> doubleArrayOf(state[0], state[1], state[2]) },
     )
 
     olderMeasurement = lastMeasurement
@@ -460,7 +449,7 @@ repeat(3200) { i ->
     val resampled = pf.resampleIfNeeded(
         thresholdFraction = 0.55,
         random = rng,
-        roughening = RougheningOptions(factor = 0.012, minimumStdDev = 1e-5)
+        roughening = RougheningOptions(factor = 0.012, minimumStdDev = 1e-5),
     )
     if (resampled) {
         val centerBeta = betaEstimate()
@@ -478,98 +467,105 @@ repeat(3200) { i ->
     estimatedBeta += betaMean
     betaSigma += betaStdDev(betaMean)
     if (i in snapshotSteps) {
-        particleSnapshots += ParticleSnapshot(
-            step = i,
-            beta = pf.particles.map { it.hypothesis.beta }
-        )
+        particleSnapshots +=
+            ParticleSnapshot(
+                step = i,
+                beta = pf.particles.map { it.hypothesis.beta },
+            )
     }
 }
 
 val sample = trueX.indices.toList()
 
-val statePlot = Plotly.plot {
-    trace {
-        name = "measurement"
-        x.set(sample)
-        y.set(measuredX)
-        line.width = 0.75
-    }
-    trace {
-        name = "hidden x"
-        x.set(sample)
-        y.set(trueX)
-        line.width = 0.5
-    }
-    trace {
-        name = "PF estimate"
-        x.set(sample)
-        y.set(estimatedX)
-        line.width = 0.5
-    }
-}.darkMode()
-
-val betaPlot = Plotly.plot {
-    trace {
-        name = "true beta"
-        x.set(sample)
-        y.set(trueBeta)
-        line.width = 1.5
-    }
-    trace {
-        name = "particle beta estimate"
-        x.set(sample)
-        y.set(estimatedBeta)
-        line.width = 0.5
-    }
-    trace {
-        name = "estimate + weighted sd"
-        x.set(sample)
-        y.set(estimatedBeta.indices.map { estimatedBeta[it] + betaSigma[it] })
-        line.width = 0.6
-    }
-    trace {
-        name = "estimate - weighted sd"
-        x.set(sample)
-        y.set(estimatedBeta.indices.map { estimatedBeta[it] - betaSigma[it] })
-        line.width = 0.6
-    }
-}.darkMode()
-
-val particlePlot = Plotly.plot {
-    layout {
-        title = "Particle beta hypotheses over time"
-        xaxis {
-            title = "time step"
-        }
-        yaxis {
-            title = "beta hypothesis"
-        }
-    }
-    particleSnapshots.forEach { snapshot ->
-        scatter {
-            name = "t=${snapshot.step}"
-            x.set(List(snapshot.beta.size) { snapshot.step })
-            y.set(snapshot.beta)
-            mode = ScatterMode.markers
-            marker {
-                size = 4.0
-                opacity = 0.28
+val statePlot =
+    Plotly.plot {
+            trace {
+                name = "measurement"
+                x.set(sample)
+                y.set(measuredX)
+                line.width = 0.75
+            }
+            trace {
+                name = "hidden x"
+                x.set(sample)
+                y.set(trueX)
+                line.width = 0.5
+            }
+            trace {
+                name = "PF estimate"
+                x.set(sample)
+                y.set(estimatedX)
+                line.width = 0.5
             }
         }
-    }
-    trace {
-        name = "true beta"
-        x.set(sample)
-        y.set(trueBeta)
-        line.width = 2.0
-    }
-    trace {
-        name = "weighted estimate"
-        x.set(sample)
-        y.set(estimatedBeta)
-        line.width = 2.0
-    }
-}.darkMode()
+        .darkMode()
+
+val betaPlot =
+    Plotly.plot {
+            trace {
+                name = "true beta"
+                x.set(sample)
+                y.set(trueBeta)
+                line.width = 1.5
+            }
+            trace {
+                name = "particle beta estimate"
+                x.set(sample)
+                y.set(estimatedBeta)
+                line.width = 0.5
+            }
+            trace {
+                name = "estimate + weighted sd"
+                x.set(sample)
+                y.set(estimatedBeta.indices.map { estimatedBeta[it] + betaSigma[it] })
+                line.width = 0.6
+            }
+            trace {
+                name = "estimate - weighted sd"
+                x.set(sample)
+                y.set(estimatedBeta.indices.map { estimatedBeta[it] - betaSigma[it] })
+                line.width = 0.6
+            }
+        }
+        .darkMode()
+
+val particlePlot =
+    Plotly.plot {
+            layout {
+                title = "Particle beta hypotheses over time"
+                xaxis {
+                    title = "time step"
+                }
+                yaxis {
+                    title = "beta hypothesis"
+                }
+            }
+            particleSnapshots.forEach { snapshot ->
+                scatter {
+                    name = "t=${snapshot.step}"
+                    x.set(List(snapshot.beta.size) { snapshot.step })
+                    y.set(snapshot.beta)
+                    mode = ScatterMode.markers
+                    marker {
+                        size = 4.0
+                        opacity = 0.28
+                    }
+                }
+            }
+            trace {
+                name = "true beta"
+                x.set(sample)
+                y.set(trueBeta)
+                line.width = 2.0
+            }
+            trace {
+                name = "weighted estimate"
+                x.set(sample)
+                y.set(estimatedBeta)
+                line.width = 2.0
+            }
+        }
+        .darkMode()
 
 display("state tracking", statePlot)
 display("model estimate", betaPlot)

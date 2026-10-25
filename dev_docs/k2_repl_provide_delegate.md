@@ -197,8 +197,8 @@ provider — so the radius is *unbounded from Field's side* and includes user co
 Within Field's own published API the enumeration is complete and small. `operator fun
 provideDelegate` is declared by exactly two production types:
 
-- `KeyCameraDelegateProvider` — `src/jvmMain/kotlin/afield/four/util/KeyCamera.kt:331`
-- `OrbitControlsDelegateProvider` — `src/jvmMain/kotlin/afield/four/util/OrbitControls.kt:306`
+- `KeyCameraDelegateProvider` — `src/jvmMain/kotlin/afield/graphics/vulkan/util/KeyCamera.kt:331`
+- `OrbitControlsDelegateProvider` — `src/jvmMain/kotlin/afield/graphics/vulkan/util/OrbitControls.kt:306`
 
 Each is reachable through exactly one factory, and I checked explicitly for the wrapper trap that
 has bitten this project before — there is **no** `inline`, `reified`, or `typealias` wrapper around

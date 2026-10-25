@@ -96,7 +96,9 @@ frames {
             budget.measure("Update") { /* synchronous update */ }
             budget.measure("Sprites") { /* fill reusable buffers */ }
         }
-    } finally { budget.close() }
+    } finally {
+        budget.close()
+    }
 }
 ```
 
@@ -116,8 +118,8 @@ These are application intervals, not GPU presentation measurements. If your upda
 already skips repeated renderer frames, place `beginFrame()` after that guard so each
 record corresponds to one actual update.
 
-`measure` and `profileScope("name") { … }` label synchronous work. Do not suspend or move
-threads inside these scopes. Standard `launch(CoroutineName("Orbit")) { … }` labels child
+`measure` and `profileScope("name") { … }` label synchronous work: a suspension inside one does
+not compile, and a scope that ends on another thread is marked "moved threads". Standard `launch(CoroutineName("Orbit")) { … }` labels child
 lanes, including children dispatched by `SimulationClock`. A selected lane reports
 inclusive costs. All-lane totals and the overview use self costs, subtracting measured
 children so nested scopes are counted once. Parent bars still enclose child work.
@@ -236,10 +238,9 @@ background compilation and renderer execution, are outside the exact resume coun
 Optional JVM stacks cover their sampled CPU/allocation activity. GPU timings are in the
 renderer profiler; this panel does not show them.
 
-The source revision is a fingerprint of the box's `code` property captured with its
-launch context. The source button opens **current** code; it does not restore the
-captured revision. Use **Hot code** for sampled source lines. Alternate-property launches are
-identified by their strand, but the fingerprint still refers to the `code` property.
+The source revision is a fingerprint of the property that was launched, taken at launch. The
+source button opens that property as it is now, and the detail says when it has been edited
+since the capture. Use **Hot code** for sampled source lines.
 
 ## Capture limits
 
@@ -467,36 +468,51 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/frame_budget/cpuspan-window.png" capture="box" w="900" h="300" wait="2.0" timeout="180" embed=true name="frame-budget-cpuspan-window" alt="A Field box output panel labelled main, holding a five-column table titled 'one deliberate hitch, seen through a 500-sample window', headed when, n, p50 ms, p99 ms and max ms. Two rows. 'Just after the hitch (600 spans in)' reports n of 500 rather than 600, a p50 and a p99 both around a third of a millisecond, and a max of about fifty milliseconds highlighted as a warning. '500 spans later' reports n of 500 again, the same third-of-a-millisecond p50 and p99, and a max that has fallen back under one millisecond, shown as ok. A footnote states how little p99 moved against how far max fell, and that max is back among the short spans."}
 :::static
-import afield.four.CPUSpan
-
-// Drive the real CPUSpan.time 600 times under a label of my own: 599 short spans and one
-// deliberate long one. Nothing here simulates the window — WINDOW and the percentile
-// function are the renderer's own.
+/*
+Drive the real CPUSpan.time 600 times under a label of my own: 599 short spans and one
+deliberate long one. Nothing here simulates the window — WINDOW and the percentile
+function are the renderer's own.
+*/
 val label = "docs_window_probe"
 repeat(599) { CPUSpan.time(label) { Thread.sleep(0, 200_000) } }
-CPUSpan.time(label) { Thread.sleep(40) }   // a sleep is a lower bound; the span reports what elapsed
+CPUSpan.time(label) { Thread.sleep(40) } // a sleep is a lower bound; the span reports what elapsed
 val withHitch = CPUSpan.snapshot().first { it.label == label }
 
 // 500 more spans is exactly one window. At 60Hz that is eight and a third seconds.
 repeat(500) { CPUSpan.time(label) { Thread.sleep(0, 200_000) } }
 val after = CPUSpan.snapshot().first { it.label == label }
 
-val rows = listOf("just after the hitch (600 spans in)" to withHitch, "500 spans later" to after)
-display("main", Table(
-    listOf("when", "n", "p50 ms", "p99 ms", "max ms"),
-    title = "one deliberate hitch, seen through a 500-sample window",
-    note = "across those 500 spans p99 moved by " +
-        "%.2f".format(after.p99Ms - withHitch.p99Ms) + "ms while max fell by " +
-        "%.2f".format(withHitch.maxMs - after.maxMs) + "ms. Over a full window p99 is the sixth " +
-        "worst sample and there was only one bad one, so it never saw the hitch at all; max is now " +
-        (if (after.maxMs > 10) "somehow still holding it" else "back among the short spans") +
-        ". A single stutter is visible in max, for eight seconds, and nowhere else."
+val rows = ["just after the hitch (600 spans in)" to withHitch, "500 spans later" to after]
+display(
+    "main",
+    Table(
+            ["when", "n", "p50 ms", "p99 ms", "max ms"],
+            title = "one deliberate hitch, seen through a 500-sample window",
+            note =
+                "across those 500 spans p99 moved by " +
+                    "%.2f".format(after.p99Ms - withHitch.p99Ms) +
+                    "ms while max fell by " +
+                    "%.2f".format(withHitch.maxMs - after.maxMs) +
+                    "ms. Over a full window p99 is the sixth " +
+                    "worst sample and there was only one bad one, so it never saw the hitch at all; max is now " +
+                    (if (after.maxMs > 10) "somehow still holding it" else "back among the short spans") +
+                    ". A single stutter is visible in max, for eight seconds, and nowhere else.",
+        )
+        .rows(
+            rows.map { (when_, s) ->
+                [
+                    when_,
+                    s.n,
+                    "%.2f".format(s.p50Ms),
+                    "%.2f".format(s.p99Ms),
+                    "%.2f".format(s.maxMs),
+                ]
+            },
+        )
+        .role("when", CellRole.ACCENT)
+        .roleBy("max ms") { if ((it as String).toDouble() > 10) CellRole.WARN else CellRole.OK }
+        .expect("n", because = "the window is 500, so 600 and 1100 spans both report 500") { it == 500 },
 )
-    .rows(rows.map { (when_, s) -> listOf(when_, s.n,
-        "%.2f".format(s.p50Ms), "%.2f".format(s.p99Ms), "%.2f".format(s.maxMs)) })
-    .role("when", CellRole.ACCENT)
-    .roleBy("max ms") { if ((it as String).toDouble() > 10) CellRole.WARN else CellRole.OK }
-    .expect("n", because = "the window is 500, so 600 and 1100 spans both report 500") { it == 500 })
 ```
 
 Six hundred spans in, `n` is 500 rather than 600 and the hitch is sitting in `max` — at
@@ -624,7 +640,7 @@ reports overwritten history.
 `budget.measure("Collision") { … }` and `profileScope("name") { … }` bracket synchronous
 stages. Inclusive costs contain nested children; self costs subtract them. All-lane sums
 use self costs, while selecting one lane shows its inclusive cost. Adding inclusive parent
-and child values would double-count work. Do not suspend or change threads inside a scope.
+and child values would double-count work.
 Frame totals and scope totals are different populations and must not be added together.
 
 GC collection counts and collector time cover the whole JVM over the capture. With stacks
@@ -754,7 +770,7 @@ allocation samples ranked:
 
 | sampled weight | events | innermost frame |
 |---|---|---|
-| 28.87 MiB | 136 | `afield.stdlib.LinalgKt.vec` |
+| 28.87 MiB | 136 | `afield.math.linalg.LinalgKt.vec` |
 | 1.98 MiB | 9 | the vector box's own line 12 |
 | 1.92 MiB | 9 | `kotlinx.coroutines.EventLoopImplBase.scheduleResumeAfterDelay` |
 

@@ -273,7 +273,6 @@ Before optimising any of this there is one call to make
 (`VisionPose.kt:666#fun visionPoseLatencyReport(`):
 
 ```diffstatic {data-lang=kotlin}
-import afield.graphics.visionPoseLatencyReport
 println(visionPoseLatencyReport())
 ```
 
@@ -350,7 +349,7 @@ not implemented, and `StereoPoseSource` carries controllers, not hands.
 
 The pointer layer reads it. `pinchPointer` (`pointing_pointer.kt:226#fun pinchPointer`) turns a
 `HandTrackingState` into a ray plus a select value, and `OpenXRHmdTarget.handPointer`
-(`pointing_pointer.kt:294#fun afield.four.targets.OpenXRHmdTarget.handPointer`) binds it to
+(`pointing_pointer.kt:294#fun afield.graphics.vulkan.targets.OpenXRHmdTarget.handPointer`) binds it to
 `handState(hand)` directly, so a pinched hand drives the same picking layer as a mouse or a
 controller. Two cautions. The ray's **default** convention (wrist through pinch point) has no
 in-tree precedent; pass `eye` for gaze-through-pinch instead, which is the better convention
@@ -400,7 +399,7 @@ and/or `HTC eye tracker enabled` in the OpenXR log. Inspect the state in the sce
 callback: confirm valid gaze follows eye movement with the head stationary, check HTC's pupil
 and geometry validity independently, then check that observations invalidate when the session
 loses focus and recover when focus returns. Run the automated binding checks with
-`./gradlew jvmTest --tests 'afield.four.targets.OpenXREye*Test'`.
+`./gradlew jvmTest --tests 'afield.graphics.vulkan.targets.OpenXREye*Test'`.
 
 The combined-gaze contract follows the
 [Khronos extension specification](https://registry.khronos.org/OpenXR/specs/1.1/html/xrspec.html#XR_EXT_eye_gaze_interaction).
@@ -450,7 +449,7 @@ per-eye separation, controller input, and every latency span on this page.
 The pose path runs across two machines, so the table lists the Swift files on the headset beside
 the Kotlin on the Mac.
 
-??? aside "How this table is kept current"
+??? aside "Agents: how this table is kept current"
     The table is cross-checked against source on every `docsGates` run, so a rename breaks the build.
     How the list is derived, and the two things that sit outside every census it draws on, are in
     `dev_docs/vision_frontend.md`.
@@ -524,5 +523,5 @@ The architecture note behind this page, with the decisions and the full verifica
 headset](vision_geometry.md), [Kotlin in the head](kotlin_in_the_head.md), [RemoteJS and
 WebXR](ar_reference.md) for the browser-based sibling, [ImGui as a VR
 panel](imgui_vr_panel.md) for the same side-by-side stereo path on the desktop, and
-[afield.four Graphics](afield_four_graphics.md) for `FieldRTTStreamer`, the producer half of the
+[Field 4 Graphics](afield_four_graphics.md) for `FieldRTTStreamer`, the producer half of the
 streaming spine.

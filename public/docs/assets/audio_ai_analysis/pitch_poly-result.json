@@ -1,0 +1,237 @@
+{
+  "id": "analysis_9a37d6093d2d49f1afb2eb5e41c8caaa",
+  "operation_id": "op_7fe69f07f09f4b748551b6d35ae2e190",
+  "request_hash": "sha256:b5086d29f2e97316e8a2a3a8d692c11fc809296de3bc086ba117467919bd6a93",
+  "source": {
+    "start_seconds": 18.0,
+    "duration_seconds": 24.0,
+    "asset_id": "sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973"
+  },
+  "data": {
+    "id": "rep_486bfa8c7e11c76a46c0c74d",
+    "asset_id": "sha256:88ce80afe135aa451b9bfb2e7dea8cba8f3127aa4b2430024b553af7e8bab806",
+    "role": "analysis_pitch_poly",
+    "media_type": "application/x-npz",
+    "sample_rate": null,
+    "channels": null,
+    "frame_count": null,
+    "duration_seconds": null,
+    "native_sample_rate": 22050,
+    "resampling_method": "librosa_soxr_hq",
+    "binary_url": "/v1/representations/rep_486bfa8c7e11c76a46c0c74d/content",
+    "metadata": {
+      "analysis_sample_rate": 22050,
+      "arrays": {
+        "contour_activation": [
+          2064,
+          264
+        ],
+        "contour_frequency_hz": [
+          264
+        ],
+        "note_activation": [
+          2064,
+          88
+        ],
+        "note_amplitude": [
+          90
+        ],
+        "note_end_seconds": [
+          90
+        ],
+        "note_frequency_hz": [
+          88
+        ],
+        "note_midi": [
+          90
+        ],
+        "note_start_seconds": [
+          90
+        ],
+        "onset_activation": [
+          2064,
+          88
+        ],
+        "pitch_bend_offsets": [
+          91
+        ],
+        "pitch_bend_values": [
+          5672
+        ],
+        "times_seconds": [
+          2064
+        ]
+      },
+      "backend": "analysis.basic_pitch",
+      "backend_revision": "basic-pitch:0.4.0;model-sha256:3db297d54af8e01c6e5618245c956b1d71b6a2b978cb2dedb527173186552676",
+      "channel_mix": "arithmetic_mean_to_mono",
+      "frame_period_seconds": 0.011627906976744186,
+      "frame_threshold": 0.3,
+      "library": "basic-pitch",
+      "library_version": "0.4.0",
+      "maximum_frequency_hz": null,
+      "minimum_frequency_hz": null,
+      "minimum_note_length_ms": 127.7,
+      "model": "spotify/basic-pitch ICASSP 2022",
+      "model_serialization": "tflite",
+      "model_sha256": "3db297d54af8e01c6e5618245c956b1d71b6a2b978cb2dedb527173186552676",
+      "onset_threshold": 0.5,
+      "operation_id": "op_a38f338885934020b51d7ebbab5a56ec",
+      "request_hash": "sha256:09365d5fc4e2ed756246e4ba4f564f233a4e8ac6ed3ebd13b637798145c641b1",
+      "resampling": "librosa_soxr_hq",
+      "source_asset_id": "sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973",
+      "source_channels": 2,
+      "source_duration_seconds": 24.0,
+      "source_sample_rate": 48000,
+      "source_start_seconds": 18.0
+    }
+  },
+  "artifacts": [
+    {
+      "id": "rep_c466c6352d2d480ac57460ff",
+      "asset_id": "sha256:e6e54ca5d163284c3e246516baa9602b3222f5f374a35d9b8993845a32c476c3",
+      "role": "polyphonic_pitch_midi",
+      "media_type": "audio/midi",
+      "sample_rate": null,
+      "channels": null,
+      "frame_count": null,
+      "duration_seconds": null,
+      "native_sample_rate": 22050,
+      "resampling_method": null,
+      "binary_url": "/v1/representations/rep_c466c6352d2d480ac57460ff/content",
+      "metadata": {
+        "analysis_sample_rate": 22050,
+        "arrays": {
+          "contour_activation": [
+            2064,
+            264
+          ],
+          "contour_frequency_hz": [
+            264
+          ],
+          "note_activation": [
+            2064,
+            88
+          ],
+          "note_amplitude": [
+            90
+          ],
+          "note_end_seconds": [
+            90
+          ],
+          "note_frequency_hz": [
+            88
+          ],
+          "note_midi": [
+            90
+          ],
+          "note_start_seconds": [
+            90
+          ],
+          "onset_activation": [
+            2064,
+            88
+          ],
+          "pitch_bend_offsets": [
+            91
+          ],
+          "pitch_bend_values": [
+            5672
+          ],
+          "times_seconds": [
+            2064
+          ]
+        },
+        "backend": "analysis.basic_pitch",
+        "backend_revision": "basic-pitch:0.4.0;model-sha256:3db297d54af8e01c6e5618245c956b1d71b6a2b978cb2dedb527173186552676",
+        "channel_mix": "arithmetic_mean_to_mono",
+        "frame_period_seconds": 0.011627906976744186,
+        "frame_threshold": 0.3,
+        "library": "basic-pitch",
+        "library_version": "0.4.0",
+        "maximum_frequency_hz": null,
+        "minimum_frequency_hz": null,
+        "minimum_note_length_ms": 127.7,
+        "model": "spotify/basic-pitch ICASSP 2022",
+        "model_serialization": "tflite",
+        "model_sha256": "3db297d54af8e01c6e5618245c956b1d71b6a2b978cb2dedb527173186552676",
+        "onset_threshold": 0.5,
+        "operation_id": "op_a38f338885934020b51d7ebbab5a56ec",
+        "request_hash": "sha256:09365d5fc4e2ed756246e4ba4f564f233a4e8ac6ed3ebd13b637798145c641b1",
+        "resampling": "librosa_soxr_hq",
+        "source_asset_id": "sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973",
+        "source_channels": 2,
+        "source_duration_seconds": 24.0,
+        "source_sample_rate": 48000,
+        "source_start_seconds": 18.0
+      }
+    }
+  ],
+  "summary": {
+    "duration_seconds": 24.0,
+    "highest_midi": 90,
+    "lowest_midi": 47,
+    "note_count": 90,
+    "polyphonic_frame_count": 2064
+  },
+  "analysis": {
+    "analysis_sample_rate": 22050,
+    "arrays": {
+      "contour_activation": [
+        2064,
+        264
+      ],
+      "contour_frequency_hz": [
+        264
+      ],
+      "note_activation": [
+        2064,
+        88
+      ],
+      "note_amplitude": [
+        90
+      ],
+      "note_end_seconds": [
+        90
+      ],
+      "note_frequency_hz": [
+        88
+      ],
+      "note_midi": [
+        90
+      ],
+      "note_start_seconds": [
+        90
+      ],
+      "onset_activation": [
+        2064,
+        88
+      ],
+      "pitch_bend_offsets": [
+        91
+      ],
+      "pitch_bend_values": [
+        5672
+      ],
+      "times_seconds": [
+        2064
+      ]
+    },
+    "channel_mix": "arithmetic_mean_to_mono",
+    "frame_period_seconds": 0.011627906976744186,
+    "frame_threshold": 0.3,
+    "library": "basic-pitch",
+    "library_version": "0.4.0",
+    "maximum_frequency_hz": null,
+    "minimum_frequency_hz": null,
+    "minimum_note_length_ms": 127.7,
+    "model": "spotify/basic-pitch ICASSP 2022",
+    "model_serialization": "tflite",
+    "model_sha256": "3db297d54af8e01c6e5618245c956b1d71b6a2b978cb2dedb527173186552676",
+    "onset_threshold": 0.5,
+    "resampling": "librosa_soxr_hq",
+    "source_channels": 2,
+    "source_sample_rate": 48000
+  },
+  "created_at": "2026-10-17T17:50:11.279377Z"
+}

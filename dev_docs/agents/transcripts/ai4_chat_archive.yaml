@@ -5,6 +5,9 @@ description: >
   outline of a saved AI4 chat, reading one branch of it, and a storyline lens's statistics. Reads
   the example chat under public/docs/assets/ai4_chat_archive, so run Field from a checkout.
   Docs page: public/docs/ai4_chat_archive.md.
+docs:
+  - page: ai4_chat_archive.md
+    why: "Explains each box: the chat outline, reading one branch, and lens statistics."
 operations:
   - create:
       box: "chat-lens-viewer"
@@ -13,9 +16,9 @@ operations:
       properties:
         "autorun": false
         "code": |
-          import afield.chatlog.*
+          import afield.ai.conversation.chatlog.*
           import java.io.File
-
+          
           val assets = File("public/docs/assets/ai4_chat_archive")
           registerChatlogTools(File(assets, "chats"), lensDir = File(assets, "lenses"))
           showChatLens("harbour", "storyline", height = 600)
@@ -26,9 +29,9 @@ operations:
       properties:
         "autorun": false
         "code": |
-          import afield.chatlog.*
+          import afield.ai.conversation.chatlog.*
           import java.io.File
-
+          
           val harbour = File("public/docs/assets/ai4_chat_archive/chats/harbour")
           val tree = ChatArchive.tree(ChatArchive.chats(harbour).single())
           display("outline", "<pre style='margin:8px'>" + ChatLogViews.outline(tree).replace("<", "&lt;") + "</pre>")
@@ -39,9 +42,9 @@ operations:
       properties:
         "autorun": false
         "code": |
-          import afield.chatlog.*
+          import afield.ai.conversation.chatlog.*
           import java.io.File
-
+          
           val harbour = File("public/docs/assets/ai4_chat_archive/chats/harbour")
           val tree = ChatArchive.tree(ChatArchive.chats(harbour).single())
           val page = ChatLogViews.read(tree, "t-23d59848-f38.b3", "t-23d59848-f38.b8", detail = "full")
@@ -53,12 +56,12 @@ operations:
       properties:
         "autorun": false
         "code": |
-          import afield.chatlog.*
+          import afield.ai.conversation.chatlog.*
           import java.io.File
 
           val assets = File("public/docs/assets/ai4_chat_archive")
           val tree = ChatArchive.tree(ChatArchive.chats(File(assets, "chats/harbour")).single())
           val lens = File(assets, "lenses/harbour/storyline.md").readText()
-          val problems = ChatLogViews.lensProblems(tree, lens).ifEmpty { listOf("none") }
+          val problems = ChatLogViews.lensProblems(tree, lens).ifEmpty { ["none"] }
           val stats = ChatLogViews.lensStats(tree, lens).entries.joinToString("\n") { (k, v) -> "$k: $v" }
           display("lens", "<pre style='margin:8px'>problems: ${problems.joinToString("; ")}\n$stats</pre>")

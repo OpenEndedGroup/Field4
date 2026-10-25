@@ -14,6 +14,11 @@ description: >
   `score` again.
 
   Companion to public/docs/chain_drawn_score.md. Pure CPU; no Window, no Renderer, no audio device.
+docs:
+  - page: chain_drawn_score.md
+    why: "Walks through reading a drawn score as notes and playing it."
+  - page: drawing_and_notation.md
+    why: "Reference for reading the drawing as a score."
 operations:
   - create:
       box: ds_score
@@ -21,9 +26,11 @@ operations:
       frame: { x: 20.0, y: 40.0, w: 190.0, h: 60.0 }
       properties:
         code: |
-          // The score, drawn from code into the document's drawing: a frame named "score", a piano
-          // roll, a glissando and a held note. Running it again replaces these marks; anything you
-          // draw by hand in the frame is left alone and is read with them.
+          /*
+          The score, drawn from code into the document's drawing: a frame named "score", a piano
+          roll, a glissando and a held note. Running it again replaces these marks; anything you
+          draw by hand in the frame is left alone and is read with them.
+          */
           notation { drawnScore() }
           println("${notation.mine.size} marks drawn")
   - create:
@@ -34,9 +41,12 @@ operations:
         code: |
           // Eight beats across, MIDI 84 at the top down to 48 at the bottom: every mark as an event.
           val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0)
-          println(score.events.joinToString("\n") { e ->
-              "%s: beat %.3f to %.3f, MIDI %.2f to %.2f".format(e.mark.label ?: e.mark.kind.name.lowercase(), e.start, e.end, e.value, e.endValue)
-          })
+          println(
+              score.events.joinToString("\n") { e ->
+                  "%s: beat %.3f to %.3f, MIDI %.2f to %.2f"
+                      .format(e.mark.label ?: e.mark.kind.name.lowercase(), e.start, e.end, e.value, e.endValue)
+              },
+          )
   - create:
       box: ds_play
       name: play
@@ -44,20 +54,20 @@ operations:
       properties:
         code: |
           // What each mark means as music is decided here, and you can change it.
-          val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0)   // eight beats; MIDI 84 at the top
-          val glideStep = 0.125                                                 // how finely a moving stroke is read
+          val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0) // eight beats; MIDI 84 at the top
+          val glideStep = 0.125 // how finely a moving stroke is read
 
           val notes = mutableListOf<TimedNote>()
           for (e in score.events) {
               val kind = e.mark.kind
-              if (kind == MarkType.TEXT || kind == MarkType.FRAME || kind == MarkType.ARROW) continue   // labels, not notes
-              if (e.end <= e.start) continue                                                           // no width, no time
+              if (kind == MarkType.TEXT || kind == MarkType.FRAME || kind == MarkType.ARROW) continue // labels, not notes
+              if (e.end <= e.start) continue // no width, no time
               val moving = (kind == MarkType.STROKE || kind == MarkType.LINE) && kotlin.math.abs(e.endValue - e.value) > 0.5
-              if (!moving) {                                                  // a rectangle, or a level line: one note
+              if (!moving) { // a rectangle, or a level line: one note
                   notes += TimedNote(e.start, e.end, e.value)
                   continue
               }
-              var t = e.start                                                 // a glissando: cut it every glideStep
+              var t = e.start // a glissando: cut it every glideStep
               while (t < e.end - 1e-9) {
                   val hit = score.vertical(t).firstOrNull { it.mark.id == e.mark.id && !it.isSpan }
                   if (hit != null) notes += TimedNote(t, minOf(t + glideStep, e.end), hit.value, hit.pressure ?: 1.0)
@@ -66,7 +76,14 @@ operations:
           }
 
           val voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.004, sustain = 0.4)
-          showPatRollOf("read" to patTimed(notes, beats = 8.0), title = "the score, read", subtitle = "${notes.size} notes", cycles = 1, pitched = true, channel = "roll")
+          showPatRollOf(
+              "read" to patTimed(notes, beats = 8.0),
+              title = "the score, read",
+              subtitle = "${notes.size} notes",
+              cycles = 1,
+              pitched = true,
+              channel = "roll",
+          )
           showPatAudio(patTimed(notes, beats = 8.0), cycles = 2, cps = 0.25, voice = voice, channel = "audio")
   - create:
       box: ds_pentatonic
@@ -75,20 +92,28 @@ operations:
       properties:
         code: |
           // The same drawing read another way: every note snapped to C minor pentatonic.
-          val notes = DrawnScoreDocs.interpret(notation.space("score", x = 0.0..8.0, y = 84.0..48.0))   // the loop in `play`
+          val notes = DrawnScoreDocs.interpret(notation.space("score", x = 0.0..8.0, y = 84.0..48.0)) // the loop in `play`
 
-          val minorPentatonic = setOf(0, 3, 5, 7, 10)                                // C Eb F G Bb
+          val minorPentatonic = setOf(0, 3, 5, 7, 10) // C Eb F G Bb
           val inScale = (24..108).filter { it % 12 in minorPentatonic }
           val snap = { midi: Double -> inScale.minBy { kotlin.math.abs(it - midi) }.toDouble() }
           val tuned = mutableListOf<TimedNote>()
           for (n in notes.map { it.copy(note = snap(it.note)) }) {
               val last = tuned.lastOrNull()
-              if (last != null && last.note == n.note && last.end == n.start) tuned[tuned.size - 1] = last.copy(end = n.end)   // same pitch: hold it
+              if (last != null && last.note == n.note && last.end == n.start)
+                  tuned[tuned.size - 1] = last.copy(end = n.end) // same pitch: hold it
               else tuned += n
           }
 
           val voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.004, sustain = 0.4)
-          showPatRollOf("read" to patTimed(notes, beats = 8.0), "C minor pentatonic" to patTimed(tuned, beats = 8.0), title = "one drawing, two readings", cycles = 1, pitched = true, channel = "roll")
+          showPatRollOf(
+              "read" to patTimed(notes, beats = 8.0),
+              "C minor pentatonic" to patTimed(tuned, beats = 8.0),
+              title = "one drawing, two readings",
+              cycles = 1,
+              pitched = true,
+              channel = "roll",
+          )
           showPatAudio(patTimed(tuned, beats = 8.0), cycles = 2, cps = 0.25, voice = voice, channel = "audio")
   - create:
       box: ds_listen
@@ -100,11 +125,17 @@ operations:
           val notes = DrawnScoreDocs.interpret(notation.space("score", x = 0.0..8.0, y = 84.0..48.0))
           val tuned = DrawnScoreDocs.pentatonic(notes)
           val voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.004, sustain = 0.4)
-          val heard = listOf(notes, tuned).map { DrawnScoreDocs.listen(patRenderStereo(patTimed(it, beats = 8.0), cycles = 2, cps = 0.25, voice = voice), it) }
+          val heard = [notes, tuned].map {
+              DrawnScoreDocs.listen(patRenderStereo(patTimed(it, beats = 8.0), cycles = 2, cps = 0.25, voice = voice), it)
+          }
           val trace = heard[0].trace()
           showSignals(
-              "drawn" to trace.map { it.third }, "heard" to trace.map { it.second },
-              x = trace.map { it.first }, title = "pitch: drawn and heard", xTitle = "seconds", yTitle = "MIDI",
+              "drawn" to trace.map { it.third },
+              "heard" to trace.map { it.second },
+              x = trace.map { it.first },
+              title = "pitch: drawn and heard",
+              xTitle = "seconds",
+              yTitle = "MIDI",
           )
           println(heard.joinToString("\n") { it.describe() })
   - execute:

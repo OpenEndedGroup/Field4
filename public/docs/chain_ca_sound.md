@@ -30,18 +30,18 @@ Rule 30's centre column has no such formula.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/rules.png" wait="8" capture="box" open-outputs="true" w="1180" h="300" padding="18" timeout="120" name="chain-ca-rules" embed=true alt="Two black-and-white space-time diagrams, rule 90's nested Sierpinski triangles and rule 30's chaotic fan, above a two-lane piano roll of one cycle each and a table giving both bars' step count, onset count, condensed notation and compression"}
 :::static
-import afield.four.synth.CaSoundDocs
-
 // Both derivations run the real stepper. gasketBar additionally checks its row against
 // binomialParity before returning, so a wrong answer here throws rather than plays.
 val gasket = CaSoundDocs.gasketBar(20)
 val chaos = CaSoundDocs.rule30Bar(32)
 
 :::fold the two space-time diagrams, the two bars, and the two notations
-// Two showImg calls rather than one montage: montage draws its labels into the pixels with a
-// bitmap font and clips them to the cell, while showImg's `caption` is ordinary text beneath the
-// image. `toImg(2)` is the STATE COUNT, not a scale: upscaleNearest is what makes a 97-cell row
-// visible, and passing the upscale to toImg instead dims the live cells to 1/7 grey with no error.
+/*
+Two showImg calls rather than one montage: montage draws its labels into the pixels with a
+bitmap font and clips them to the cell, while showImg's `caption` is ordinary text beneath the
+image. `toImg(2)` is the STATE COUNT, not a scale: upscaleNearest is what makes a 97-cell row
+visible, and passing the upscale to toImg instead dims the live cells to 1/7 grey with no error.
+*/
 showImg(
     elementaryCa(90, 97, 24).toImg(2).upscaleNearest(9),
     channel = "rule 90",
@@ -64,7 +64,9 @@ showPatRollOf(
     channel = "bars",
 )
 
-markdown("notation", """
+markdown(
+    "notation",
+    """
 | | rule 90, row 20 | rule 30, centre column |
 |---|---|---|
 | steps | ${gasket.steps} | ${chaos.steps} |
@@ -72,7 +74,9 @@ markdown("notation", """
 | shortest notation | `${gasket.condensation.notation}` | `${chaos.condensation.notation}` |
 | against a flat spelling | ${"%.2f".format(gasket.compression)} | ${"%.2f".format(chaos.compression)} |
 | the search signed for it | ${gasket.condensation.exact} | ${chaos.condensation.exact} |
-""", width = 1000)
+""",
+    width = 1000,
+)
 :::endfold
 ```
 
@@ -87,13 +91,13 @@ denominator.
 
 Here is the rule-90 bar, four cycles at one cycle per second:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_ca_sound/gasket-bar.wav" audio-spec="gasket-bar" audio-renderer="afield.four.synth.CaSoundDocs" embed=true hidden=true name="chain-ca-gasket-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_ca_sound/gasket-bar.wav" audio-spec="gasket-bar" audio-renderer="afield.audio.synth.CaSoundDocs" embed=true hidden=true name="chain-ca-gasket-audio"}
 // Offline-rendered by CaSoundDocs.renderWav("gasket-bar").
 ```
 
 And rule 30's column, three cycles, thirty-two steps each:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_ca_sound/rule30-hats.wav" audio-spec="rule30-hats" audio-renderer="afield.four.synth.CaSoundDocs" embed=true hidden=true name="chain-ca-rule30-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_ca_sound/rule30-hats.wav" audio-spec="rule30-hats" audio-renderer="afield.audio.synth.CaSoundDocs" embed=true hidden=true name="chain-ca-rule30-audio"}
 // Offline-rendered by CaSoundDocs.renderWav("rule30-hats").
 ```
 
@@ -116,11 +120,11 @@ back to the root at every power of two and climbs through the carries in between
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/scale.png" wait="8" capture="box" open-outputs="true" w="1180" h="280" padding="18" timeout="120" name="chain-ca-scale" embed=true alt="A sawtooth-shaped trace of rule 90's row populations climbing to 32 at generation 31 and dropping back to 2 at every power of two, above a single-cycle piano roll of 32 notes on six pitches with the same shape"}
 :::static
-import afield.four.synth.CaSoundDocs
-
-// gasketPopulations counts the real space-time diagram and throws unless every row's count is
-// 2^popcount(n), so reaching the next line is the check. Plotting the formula as a second trace
-// would put it exactly under this one and show nothing.
+/*
+gasketPopulations counts the real space-time diagram and throws unless every row's count is
+2^popcount(n), so reaching the next line is the check. Plotting the formula as a second trace
+would put it exactly under this one and show nothing.
+*/
 val populations = CaSoundDocs.gasketPopulations()
 val notes = CaSoundDocs.gasketScale()
 
@@ -145,7 +149,7 @@ showPatRollOf(
 :::endfold
 ```
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_ca_sound/gasket-scale.wav" audio-spec="gasket-scale" audio-renderer="afield.four.synth.CaSoundDocs" embed=true hidden=true name="chain-ca-scale-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_ca_sound/gasket-scale.wav" audio-spec="gasket-scale" audio-renderer="afield.audio.synth.CaSoundDocs" embed=true hidden=true name="chain-ca-scale-audio"}
 // Offline-rendered by CaSoundDocs.renderWav("gasket-scale").
 ```
 
@@ -156,23 +160,26 @@ above are one row of this.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/survey.png" wait="8" capture="box" open-outputs="true" w="1180" h="300" padding="18" timeout="120" name="chain-ca-survey" embed=true alt="A four-column table of six elementary rules sorted by compression: rules 30 and 45 near 0.8 with long notations full of groupings, then rule 250 at 0.13, rule 90 at 0.10, and rules 110 and 150 at 0.06 with one-token spellings"}
 :::static
-import afield.four.synth.CaSoundDocs
-
 // The same six rules the harness surveys, so the page and the FIELD_TEST cannot disagree.
 val bars = CaSoundDocs.CONDENSATION_SURVEY.map { CaSoundDocs.centreColumnBar(it) }
 
 :::fold lay the six out, worst compression first
-val rows = CaSoundDocs.CONDENSATION_SURVEY.zip(bars)
-    .sortedByDescending { (_, bar) -> bar.compression }
-    .joinToString("\n") { (rule, bar) ->
-        "| $rule | ${bar.onsets} of ${bar.steps} | ${"%.2f".format(bar.compression)} | " +
-            "`${bar.condensation.notation}` |"
-    }
-markdown("survey", """
+val rows =
+    CaSoundDocs.CONDENSATION_SURVEY.zip(bars)
+        .sortedByDescending { (_, bar) -> bar.compression }
+        .joinToString("\n") { (rule, bar) ->
+            "| $rule | ${bar.onsets} of ${bar.steps} | ${"%.2f".format(bar.compression)} | " +
+                "`${bar.condensation.notation}` |"
+        }
+markdown(
+    "survey",
+    """
 | elementary rule | onsets | condensed / flat | the shortest notation found |
 |---|---|---|---|
 $rows
-""", width = 1080)
+""",
+    width = 1080,
+)
 :::endfold
 ```
 

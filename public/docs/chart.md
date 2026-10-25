@@ -48,8 +48,11 @@ val envelope = xs.map { exp(-it * 0.25) }
 Chart(title = "line, area and points share one frame", xLabel = "t (radians)", yLabel = "amplitude")
     .area("envelope", xs, envelope)
     .line("damped sine", xs, decay)
-    .points("samples", xs.filterIndexed { i, _ -> i % 8 == 0 },
-                       decay.filterIndexed { i, _ -> i % 8 == 0 })
+    .points(
+        "samples",
+        xs.filterIndexed { i, _ -> i % 8 == 0 },
+        decay.filterIndexed { i, _ -> i % 8 == 0 },
+    )
 ```
 
 ![Three marks in one frame: a filled envelope area, a damped sine line through it, and every eighth sample as a green dot](assets/chart_gallery/chart-marks-lines-and-points.png)
@@ -58,7 +61,7 @@ Chart(title = "line, area and points share one frame", xLabel = "t (radians)", y
 
 ```diffstatic {data-lang=kotlin}
 Chart(title = "bars put their categories on the axis", yLabel = "gates")
-    .bars("cost", listOf("xor", "maj3", "adder", "mux", "parity"), listOf(6, 11, 27, 4, 19))
+    .bars("cost", ["xor", "maj3", "adder", "mux", "parity"], [6, 11, 27, 4, 19])
 ```
 
 ![Five bars labelled xor, maj3, adder, mux and parity, with their categories written under them on the axis](assets/chart_gallery/chart-bars-categorical.png)
@@ -86,7 +89,10 @@ val n = (1..6).map { 10.0.pow(it) }
 val time = n.map { it * 1.4e-6 + 3e-4 }
 
 Chart(title = "a log axis, and decade ticks", xLabel = "n", yLabel = "seconds")
-    .also { it.xKind = ScaleKind.LOG; it.yKind = ScaleKind.LOG }
+    .also {
+        it.xKind = ScaleKind.LOG
+        it.yKind = ScaleKind.LOG
+    }
     .line("measured", n, time)
     .points("measured", n, time)
 ```
@@ -123,7 +129,9 @@ or click a point with no extra setup:
 
 ```diffstatic {data-lang=kotlin}
 val c = Chart(yLabel = "gates").bars("cost", "xor" to 6, "adder" to 27)
-c.onPick = { pick -> print("${pick.series}/${pick.category} = ${pick.y}") }
+c.onPick = { pick ->
+    print("${pick.series}/${pick.category} = ${pick.y}")
+}
 showChart(c)
 ```
 
@@ -137,11 +145,13 @@ numeric column for x if the frame has two or more, otherwise the first column as
 otherwise the row index; then every remaining numeric column as a series.
 
 ```diffstatic {data-lang=kotlin}
+import org.jetbrains.kotlinx.dataframe.api.*
+
 val people = dataFrameOf("name", "age")("Alice", 15, "Bob", 30, "Cara", 45)
 
-people.chart()             // bars: age per name
-people.chart(x = "age")    // age on the x axis
-showChart(runs)            // straight from a frame to the screen
+people.chart() // bars: age per name
+people.chart(x = "name", y = ["age"]) // choose both axes explicitly
+showChart(people) // straight from a frame to the screen
 ```
 
 Series are capped for auto-selection, because a legend stops being readable past a handful of
@@ -173,15 +183,15 @@ FLine geometry under a shared transform and want the overflow.
 `toFLines()` lowers the whole figure to `List<FLine>` in pixel space and `plotRect()` reports the
 rectangle the marks are clipped to, so the chart can go
 into the same drawing as the rest of your geometry, under one transform. `toHTML()` goes through
-`afield.graphics.linesToHTML`, the same markup `Box.lines` builds.
+`afield.ui.visualization.linesToHTML`, the same markup `Box.lines` builds.
 
 Labels are glyph outlines. On a machine with no fonts, the chart is drawn without labels.
 
-If you add text of your own as FLines, use `TextLayout.toFLines()`, one line per contour, and move
-it with `FLine.transform`. A single filled `toFLine()`, or moving each `node.to` alone, garbles the
-letters.
+Text of your own goes in as `TextLayout.toFLines()` (one line per glyph) or `toFLine()` (one for
+the whole string). Move it with `FLine.transform`, which carries each curve's control points with its
+end points.
 
-??? aside "Where the pictures come from"
+??? aside "Agents: where the pictures come from"
 
     The figures on this page are committed captures from the `visualization.chart-gallery`
     FIELD_TEST: `Chart.toFLines()` → Skia's `outputTo` on a raster surface → PNG, with no AWT, no GPU
@@ -191,17 +201,17 @@ letters.
     CHART_GALLERY_DIR=public/docs/assets/chart_gallery python3 tools/run_field_tests.py --id visualization.chart-gallery
     ```
 
-    The docs runner does not rebuild them, so re-run that command after a change. What the gallery
+    `ChartTest` fails while the committed figures differ from what the chart code draws. What the gallery
     asserts is in [`dev_docs/chart_primitive.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/chart_primitive.md);
     the clipping before/after pairs are in
     [`dev_docs/chart_clip_and_note.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/chart_clip_and_note.md). Dots are twelve-sided polygons rather than `pointed` nodes
     because Skia exports each `pointed` node to SVG as several kilobytes of curves.
 
-    The arithmetic is tested separately from the pixels. `afield.ChartTest` owns ticks, mapping, log
+    The arithmetic is tested separately from the pixels. `afield.ui.visualization.ChartTest` owns ticks, mapping, log
     refusals and expectations:
 
     ```diffstatic {data-lang=bash}
-    ./gradlew jvmTest --no-daemon --tests 'afield.ChartTest'
+    ./gradlew jvmTest --no-daemon --tests 'afield.ui.visualization.ChartTest'
     ```
 
 ## Reference

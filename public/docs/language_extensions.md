@@ -275,16 +275,19 @@ its programs live in, so any language can have them. These are the ones Field's 
 | Clojure | what each top-level form evaluated to on the last run, and its type | — |
 | Python | what each top-level statement came to on the last run: an expression's value, the name it assigned, what it defined, or just that it ran | — |
 | FieldML | the value each top-level `let` bound on the last run, and its type; the final expression's value | — |
+| Kotlin | the value each top-level `val` or `var` held when the last run finished | — |
+| Morpho | the `# main` line: the grown circuit's gates, cells and depth; a `LUT` line: the gates it became; a `def`: how many times it was expanded, at which widths, and the gates beneath it | — |
+| Nano | how many times the instruction ran on the last run, the registers after it last did, and what it output; or that it never ran | — |
 | Datalog | a rule: the facts its body derives in the box's model; a query: its answers; a fact: whether it is in the model and which rules read it | the derived rows, as a table |
 | Pd | an object: what it is fed by and feeds; an `[s]` or `[r]`: the last value through its name, live from the playing patch; a `#X connect` line: the two ends it joins | — |
 
 The [ForthField](forth_examples.md#what-each-line-left-on-the-stack) and
-[Python](python.md#what-each-line-came-to) pages show notes in the editor; the [Clojure](clojure.md) and
+[Python](python.md#what-each-line-came-to) and [Lua](lua.md#line-notes) pages show notes in the editor; the [Clojure](clojure.md) and
 [Datalog](datalog.md) pages say what theirs contain.
 
 **A note never runs your code.** StackSL and RectSL can say what part of a program does without
 running it, because a partial StackSL program is still a pure shader and a partial RectSL scene a
-pure description. Forth, Clojure, Python and FieldML programs print, draw, define things and change
+pure description. Forth, Clojure, Python, FieldML, Kotlin, Morpho and Nano programs print, draw, define things and change
 state that outlives the run, so their notes are *recorded*: as the box runs, each top-level step reports
 what it came to, and the note reads that record back. The note says so ("last run, 12 s ago"), and it
 stays with its line when you edit above it. Running the box again updates the note.
@@ -328,9 +331,9 @@ Recording costs a little for each top-level step (a Forth line, a Clojure form, 
 FieldML `let`) and nothing for each turn of a loop inside one, so a long-running loop costs no more
 than a short one.
 
-Kotlin boxes have no notes of their own yet, because only a Kotlin box's final value comes back from a
-run. Inside a Kotlin box, a `#stacksl` or `#rectsl` string still gets its language's notes. Morpho and
-Nano boxes have none.
+A Kotlin line that declares nothing, such as a `println`, has no note, because a run keeps only the
+values of what it declares. Inside a Kotlin box, a `#stacksl` or `#rectsl` string gets its own
+language's notes.
 
 A box's AI chat can read the same notes through its `ReadLineNotes` tool, which returns each line's
 note as one sentence, with its picture as an image.

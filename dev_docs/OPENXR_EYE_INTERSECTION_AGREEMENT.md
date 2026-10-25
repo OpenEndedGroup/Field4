@@ -6,7 +6,7 @@ needed a headset; a reader arriving to place a marker from gaze does not act on 
 
 ## What the tests pin
 
-`src/jvmTest/kotlin/afield/four/targets/BinocularGazeIntersectionTest.kt`, five cases:
+`src/jvmTest/kotlin/afield/graphics/vulkan/targets/BinocularGazeIntersectionTest.kt`, five cases:
 
 | test | what it establishes |
 | --- | --- |

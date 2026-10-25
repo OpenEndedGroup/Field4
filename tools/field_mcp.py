@@ -680,7 +680,7 @@ class FieldMcpServer:
         # a fresh canvas in a child JVM: no document needs to be open
         client = await self._ensure_client()
         payload = await client.run_jvm_main(
-            "afield.paint.GestureReplayMain", jvm_args=[str(request_path)], timeout=max(self.timeout, 300.0)
+            "afield.graphics.paint.GestureReplayMain", jvm_args=[str(request_path)], timeout=max(self.timeout, 300.0)
         )
         stdout = str(payload.get("stdout") or "")
         try:
@@ -751,7 +751,7 @@ class FieldMcpServer:
         else:
             # Source mode: probe any loaded class/file by name. The JDI helper matches
             # on the source basename and/or fully-qualified class name, so a repo path
-            # like "src/jvmMain/kotlin/afield/Server.kt" reduces to "Server.kt".
+            # like "src/jvmMain/kotlin/afield/app/server/Server.kt" reduces to "Server.kt".
             source_name = Path(str(file_arg)).name if file_arg else None
             class_name = str(class_arg) if class_arg else None
             payload = await client.debug_source_probe(
@@ -1058,8 +1058,8 @@ class FieldMcpServer:
                 "type, thread, resolution) plus any in-scope 'scope' symbols.\n\n"
                 "Two targeting modes (give exactly one):\n"
                 "  • Source mode — probe ANYWHERE in loaded src/ code: pass 'file' (e.g. "
-                "'Server.kt' or 'src/jvmMain/kotlin/afield/Server.kt') and/or 'class' (fully "
-                "qualified, e.g. 'afield.Server'), with 'line' the real file line.\n"
+                "'Server.kt' or 'src/jvmMain/kotlin/afield/app/server/Server.kt') and/or 'class' (fully "
+                "qualified, e.g. 'afield.app.server.Server'), with 'line' the real file line.\n"
                 "  • Box mode — probe a running box's snippet: pass 'box' (uid/name), 'line' within "
                 "the box 'property' (default 'code'); run the box first.\n\n"
                 "Preconditions: Field launches with remote debugging on by default (JDWP); the "
@@ -1083,7 +1083,7 @@ class FieldMcpServer:
                     },
                     "class": {
                         "type": "string",
-                        "description": "Source mode: fully-qualified class, e.g. 'afield.Server'.",
+                        "description": "Source mode: fully-qualified class, e.g. 'afield.app.server.Server'.",
                     },
                     "box": {
                         "type": "string",

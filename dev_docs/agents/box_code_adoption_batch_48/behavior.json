@@ -1,0 +1,15 @@
+{
+  "actualStudyBuildWorkerCancellation": true,
+  "workerExitBoundSeconds": 2,
+  "seededCompletionSamples": 200000,
+  "seededCompletionFactsEqual": true,
+  "actualPhasedAfterStates": 2,
+  "controlledInput": "Held for ten Runloop frames then released. No VR hardware or capture claimed. The line-map fixture supplies the VR-parent dependency; no VR rendering is exercised.",
+  "fullGuards": "delegated to lander",
+  "actualOutput": [
+    "actual worker exited after cancellation in 7 ms",
+    "identical seeded 200000-sample completion: {samples=200000, estimate=3.1472, error=0.0056073464102071036}",
+    "held trigger yielded: 7 points, input released",
+    "held trigger yielded: 7 points, input released"
+  ]
+}

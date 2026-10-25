@@ -1,5 +1,3 @@
-import afield.stdlib.polytope.*
-
 // A snub dodecahedron, each face with its own vertices, so the faces can fly apart whole.
 val module = moduleHere()
 val m = Mesh()
@@ -25,11 +23,15 @@ m.set(3 * fanCount, fanCount) {
         val n = solid.faceNormal(face.id)
         val ring = topology.faceCycle(face.id).map { xyz[topology.vertexMap.getValue(it)] }
         for (k in ring.indices) {
-            for ((p, r) in listOf(c to 0f, ring[k] to 1f, ring[(k + 1) % ring.size] to 1f)) {
-                pos.add(p.x, p.y, p.z); nrm.add(n.x, n.y, n.z); cen.add(c.x, c.y, c.z)
-                fid.add(face.id.value.toFloat()); faceRadius.add(r)
+            for ((p, r) in [c to 0f, ring[k] to 1f, ring[(k + 1) % ring.size] to 1f]) {
+                pos.add(p.x, p.y, p.z)
+                nrm.add(n.x, n.y, n.z)
+                cen.add(c.x, c.y, c.z)
+                fid.add(face.id.value.toFloat())
+                faceRadius.add(r)
             }
-            tri.add(3 * t, 3 * t + 1, 3 * t + 2); t++
+            tri.add(3 * t, 3 * t + 1, 3 * t + 2)
+            t++
         }
     }
 }
@@ -39,7 +41,8 @@ val started = System.nanoTime()
 m.push.bind("params") { vec((System.nanoTime() - started) / 1e9, 0, 0, 0) }
 
 // The vertex shader's slot: where each face goes.
-module.explode = """# Repeating 4.8-second phase; higher face centres lead the wave
+module.explode =
+    """# Repeating 4.8-second phase; higher face centres lead the wave
 input w
 4.8 /
 input y
@@ -63,7 +66,8 @@ smooth
 [0.65,0.25,0,0] *"""
 
 // The fragment shader's slot: heat and polygon-shaped, ragged burn-through.
-module.face_decay = """# Heat follows outward travel
+module.face_decay =
+    """# Heat follows outward travel
 input z
 0.65 /
 0 max

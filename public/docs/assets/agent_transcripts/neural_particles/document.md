@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="np_renderer" index="0" -->
 
 ```edn [field-box id="np_renderer" role="properties"]
-{"id" "np_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["np_field"] "properties" {"children" #{#afield/box "np_field"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "np_renderer_code_.kt" "lines" 11 "characters" 256 "sha256" "6e2b0ae459c7a165a0f6c40296dc07df3dddc7a428073309c233343a1a13743f"}]}
+{"id" "np_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["np_field"] "properties" {"children" #{#afield/box "np_field"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "np_renderer_code_.kt" "lines" 12 "characters" 268 "sha256" "54081b9bc6671493d222b7715f4c3e5a586f13975d00e61efb1912699265e0b3"}]}
 ```
 
 ```kotlin [field-property box="np_renderer" name="code" path="np_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -32,46 +33,46 @@ start(renderer::run)
 
 <!-- field-box id="np_field" index="1" -->
 
+### Narrative
+
+From `code`
+
+Publish the trained field for the connected particle box.
+
 ```edn [field-box id="np_field" role="properties"]
-{"id" "np_field" "index" 1 "name" "train the field" "parents" ["root" "np_renderer"] "children" ["np_particles"] "properties" {"children" #{#afield/box "np_particles"} "parents" #{#afield/box "root" #afield/box "np_renderer"} "name" "train the field" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "np_field_code_.kt" "lines" 39 "characters" 1958 "sha256" "a559bafb9581cbb5e751a0f5b78ef92d941205e59d130f44546c71e9389c52a0"}]}
+{"id" "np_field" "index" 1 "name" "train the field" "parents" ["root" "np_renderer"] "children" ["np_particles"] "properties" {"children" #{#afield/box "np_particles"} "parents" #{#afield/box "root" #afield/box "np_renderer"} "name" "train the field" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "np_field_code_.kt" "lines" 33 "characters" 1592 "sha256" "ce01c75fc777aa67f1afea356d3839d949aaae1af9f5a2ab3fbd3e5ddcbc4aa7"}]}
 ```
 
 ```kotlin [field-property box="np_field" name="code" path="np_field_code_.kt"]
-import afield.stdlib.FlowCoupling
-import afield.stdlib.FlowMatchOptions
-import afield.stdlib.flowMatch
-import afield.stdlib.contourComponents
-import afield.stdlib.mixtureSource
+// Publish the trained field for the connected particle box.
+prop<FlowMatchExport>(neuralExport)
 
-// Written out in full because `prop<>` rewrites the box's code and the rewrite does not
-// carry the snippet's own imports — the same trap the `four_simulation_chain` bundle box
-// documents.
-prop<afield.stdlib.FlowMatchExport>(neuralExport)
+/*
+A word, not a letter — and only because the source has the word's topology. A
+standard Gaussian cannot become five disjoint outlines: it measures a chamfer of
+13.1 against a floor of 0.8, and no amount of training moves it, because a flow is a
+continuous invertible map and one blob cannot tear into five.
 
-// A word, not a letter — and only because the source has the word's topology. A
-// standard Gaussian cannot become five disjoint outlines: it measures a chamfer of
-// 13.1 against a floor of 0.8, and no amount of training moves it, because a flow is a
-// continuous invertible map and one blob cannot tear into five.
-//
-// Three things get it to 5.2, and they were each worth a measurement:
-//   one ellipse per *closed subpath* (a "D" is two — outer and counter, and treating
-//   the glyph as one component costs a factor of two in landing error);
-//   each ellipse rotated into phase with the contour it becomes (without that the
-//   source is worse than a blob);
-//   and no jitter on the source, which sounds like a detail and is a factor of four —
-//   thickening the ellipse into an annulus destroys the correspondence that is doing
-//   all the work.
-//
-// `contourComponents` does the first, `mixtureSource` the second, and the third is now
-// just the default. Points come back in arc-length order and the pairing is by index,
-// which is what makes PAIRED mean anything here.
+Three things get it to 5.2, and they were each worth a measurement:
+  one ellipse per *closed subpath* (a "D" is two — outer and counter, and treating
+  the glyph as one component costs a factor of two in landing error);
+  each ellipse rotated into phase with the contour it becomes (without that the
+  source is worse than a blob);
+  and no jitter on the source, which sounds like a detail and is a factor of four —
+  thickening the ellipse into an annulus destroys the correspondence that is doing
+  all the work.
+
+`contourComponents` does the first, `mixtureSource` the second, and the third is now
+just the default. Points come back in arc-length order and the pairing is by index,
+which is what makes PAIRED mean anything here.
+*/
 val contours = layoutText("FIELD", typeface("Helvetica", 260.0)).toFLines()
 val pairing = mixtureSource(contourComponents(contours, total = 12000), seed = 5)
 
 val field = flowMatch(
     pairing.to,
     pairing.from,
-    FlowMatchOptions(steps = 20000, coupling = FlowCoupling.PAIRED, seed = 4)
+    FlowMatchOptions(steps = 20000, coupling = FlowCoupling.PAIRED, seed = 4),
 )
 neuralExport = field.export()
 
@@ -83,28 +84,31 @@ println("trained on ${pairing.size} pairs: loss ${"%.4g".format(field.loss(200))
 <!-- field-box id="np_particles" index="2" -->
 
 ```edn [field-box id="np_particles" role="properties"]
-{"id" "np_particles" "index" 2 "name" "neural particles" "parents" ["root" "np_field"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "np_field"} "name" "neural particles" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "np_particles_code_.kt" "lines" 32 "characters" 1426 "sha256" "0e0527bf836cafcbb1059153f880a7477c68dc11787b17c55b4bbf2a9d1a159d"}]}
+{"id" "np_particles" "index" 2 "name" "neural particles" "parents" ["root" "np_field"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "np_field"} "name" "neural particles" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "np_particles_code_.kt" "lines" 35 "characters" 1415 "sha256" "cd76385e99290aa1f3a710cf416e154cbe4a02a27822e0068a5d88660f86a9dd"}]}
 ```
 
 ```kotlin [field-property box="np_particles" name="code" path="np_particles_code_.kt"]
-import afield.stdlib.ShaderNeuralParticles
+prop<afield.simulation.particles.ShaderNeuralParticles>(particles)
 
-prop<afield.stdlib.ShaderNeuralParticles>(particles)
-
-// `renderer` and `neuralExport` are the parent boxes' props, visible through the
-// preamble. The `once` is real rather than habit: the shader has the network's shape
-// compiled into it, so rebuilding on every run would leak a module per keystroke.
+/*
+`renderer` and `neuralExport` are the parent boxes' props, visible through the
+preamble. The `once` is real rather than habit: the shader has the network's shape
+compiled into it, so rebuilding on every run would leak a module per keystroke.
+*/
 once.particles {
     ShaderNeuralParticles(neuralExport, renderer) {
-        particleCount = 300_000
-        stepsPerCycle = 150
-        dwellCycles = 3f
-    }.also { it.installInto() }
+            particleCount = 300_000
+            stepsPerCycle = 150
+            dwellCycles = 3f
+        }
+        .also { it.installInto() }
 }
 
-// Everything below is live. The push buffer re-reads these lambdas every frame, so
-// editing a number here and re-running changes the picture without touching the GPU
-// allocation or recompiling a shader.
+/*
+Everything below is live. The push buffer re-reads these lambdas every frame, so
+editing a number here and re-running changes the picture without touching the GPU
+allocation or recompiling a shader.
+*/
 particles.settings.intensity = 1.1f
 particles.settings.arrivalBias = 0.5f
 // Seeded slightly off the trained source so 300,000 particles are not 12,000 threads.

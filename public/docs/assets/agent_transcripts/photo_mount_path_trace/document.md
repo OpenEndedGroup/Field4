@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chain_renderer" index="0" -->
 
 ```edn [field-box id="chain_renderer" role="properties"]
-{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["photo_mount_trace"] "properties" {"children" #{#afield/box "photo_mount_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 218 "sha256" "404e4cf711b0b112a27d48dff027acff33570d440178b677fb1aa915b8c21b59"}]}
+{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["photo_mount_trace"] "properties" {"children" #{#afield/box "photo_mount_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 10 "characters" 230 "sha256" "cd02d16117491f15a2a62c54a08def286c54b722d069760cb897da7dd8bf6803"}]}
 ```
 
 ```kotlin [field-property box="chain_renderer" name="code" path="chain_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,16 +32,16 @@ start(renderer::run)
 <!-- field-box id="photo_mount_trace" index="1" -->
 
 ```edn [field-box id="photo_mount_trace" role="properties"]
-{"id" "photo_mount_trace" "index" 1 "name" "photo_mount_path_trace" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "photo_mount_path_trace" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_mount_trace_code_.kt" "lines" 35 "characters" 1553 "sha256" "fd62627bf9d4f49fbc3a8e128f93f58d8d6962c192d1b6f0b4e36edba20f7969"}]}
+{"id" "photo_mount_trace" "index" 1 "name" "photo_mount_path_trace" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "photo_mount_path_trace" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_mount_trace_code_.kt" "lines" 44 "characters" 1592 "sha256" "e7686b4f3e1d58f67289c9081557ad398ffaa35a4af7b08925955649e681ed30"}]}
 ```
 
 ```kotlin [field-property box="photo_mount_trace" name="code" path="photo_mount_trace_code_.kt"]
-import afield.four.fabricated.*
-import afield.four.util.Camera
-import afield.manifold.*
-import afield.stdlib.linalg.Vector3f
 import afield.examples.chain.PhotoToSolidChain
+import afield.geometry.solid.manifold.*
+import afield.graphics.scene.fabricated.*
+import afield.graphics.vulkan.util.Camera
 import java.io.File
+
 prop<PathTracingRenderer>(tracer)
 require(ManifoldLibrary.isAvailable) { ManifoldLibrary.describe() }
 val scene = PathTraceScene()
@@ -51,8 +52,15 @@ scene.importTriMesh(mounted.relief, relief)
 scene.importTriMesh(mounted.frame, frameMaterial)
 println(mounted.summary())
 val floor = scene.material(PathTraceMaterial.plastic(0.55f, 0.56f, 0.58f, 0.55f))
-scene.quad(Vector3f(-6f, -0.16f, -6f), Vector3f(6f, -0.16f, -6f), Vector3f(6f, -0.16f, 6f), Vector3f(-6f, -0.16f, 6f), floor)
-val environment = PathTraceEnvironment.fromFile(File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
+scene.quad(
+    Vector3f(-6f, -0.16f, -6f),
+    Vector3f(6f, -0.16f, -6f),
+    Vector3f(6f, -0.16f, 6f),
+    Vector3f(-6f, -0.16f, 6f),
+    floor,
+)
+val environment =
+    PathTraceEnvironment.fromFile(File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
 val camera = Camera(renderer).also {
     it.at.set(2.2f, 2.25f, 2.6f)
     it.target.set(0f, 0.1f, 0f)
@@ -67,7 +75,9 @@ tracer.indirectClamp = 10f
 tracer.blitToScreen()
 println("${tracer.backend}: ${tracer.triangleCount} triangles")
 frames {
-    while (tracer.samples < 900) { frame() }
+    while (tracer.samples < 900) {
+        frame()
+    }
     println("photo_mount_trace study converged: ${tracer.samples} samples")
 }
 ```

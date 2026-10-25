@@ -185,7 +185,7 @@ regenerating, say so in the commit message (`git commit --no-verify`, since the 
 `checkCodebaseReference`), and regenerate **once** after the merges. A red
 `checkCodebaseReference` on a docs-only branch is then expected, not a failure to investigate.
 5. Check your claims against the implementation. The reference is only as trustworthy as its worst
-   row, and `afield.stdlib.DocumentedBehaviourTest` exists because several of those rows were wrong
+   row, and `afield.tools.testing.DocumentedBehaviourTest` exists because several of those rows were wrong
    in ways only reading the code could reveal.
 
 ## A KDoc `[Symbol]` reference, and what a *qualified* one means
@@ -228,16 +228,17 @@ not know they existed. The obvious move — annotate them — is the one move th
 
 | fact | site |
 | --- | --- |
-| one spelling, `Internal`, makes completion **drop the candidate from the popup** | `src/jvmMain/kotlin/afield/KotlinCompletionSupport.kt:403#fun isHiddenCompletionCategory` |
-| `KotlinSourceIndex` files **every** declaration in an annotated file under that file's label, with no visibility filter | `src/jvmMain/kotlin/afield/ai/core/completion/KotlinSourceIndex.kt:766#private fun fileCompletionCategory` |
-| the symbol lookup ends in a **name-only** first-wins | `src/jvmMain/kotlin/afield/ai/core/completion/KotlinSourceIndex.kt:302#fun getCompletionCategoryForSymbol` |
+| one spelling, `Internal`, makes completion **drop the candidate from the popup** | `src/jvmMain/kotlin/afield/runtime/completion/KotlinCompletionSupport.kt:403#fun isHiddenCompletionCategory` |
+| `KotlinSourceIndex` files **every** declaration in an annotated file under that file's label, with no visibility filter | `src/jvmMain/kotlin/afield/runtime/completion/KotlinSourceIndex.kt:766#private fun fileCompletionCategory` |
+| the symbol lookup ends in a **name-only** first-wins | `src/jvmMain/kotlin/afield/runtime/completion/KotlinSourceIndex.kt:302#fun getCompletionCategoryForSymbol` |
 
 So a `@file:` line added to publish a page can change — or delete — rows in a working programmer's
-autocomplete, and can do it for a declaration in a different package that merely shares a name. The
-measured cost of the near-miss is recorded on `EXCLUDE_PREFIXES`
-(`src/jvmMain/kotlin/afield/docs/StdlibReferenceGenerator.kt:232#Excluding by path costs nothing`):
-eleven candidate files, 574 declaration names, 235 of them also declared elsewhere *and* present in
-real box code.
+autocomplete, and can do it for a declaration in a different package that merely shares a name.
+The complete JVM catalog therefore includes these files without changing their annotations.
+Documentation-only classification in
+`src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt:1054#internal fun isImplementation`
+dims recognizable implementation and verification helpers while retaining their links and source
+pages. It has no effect on completion visibility.
 
 The `Simulation` page was measured the same way in 2026-09, and the numbers are worth keeping
 because they say something the synth ones did not. Population: the **18** of that page's 26 files
@@ -267,7 +268,7 @@ diff` can be asked rather than believed.
 
 ### The mechanism actually used
 
-`CATEGORY_BY_PATH` (`src/jvmMain/kotlin/afield/docs/StdlibReferenceGenerator.kt:366#private val CATEGORY_BY_PATH`)
+`CATEGORY_BY_PATH` (`src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt:366#private val CATEGORY_BY_PATH`)
 maps a repo-relative path prefix to a page label, first match wins, and is read by the generator and
 by nothing else. It is not new machinery: the `afield/visualization/` entry in it *is* the hardcoded
 `if` it generalises, which has assigned a category by path since the reference shipped.
@@ -278,7 +279,7 @@ Two properties make it safe, and both are checked rather than argued:
   `fileCategory(text) ?: inferredCategory(rel)`, so the path map only ever fills in for a file that
   has no label. Nothing is ever moved out of the category its own source chose.
 - **`Languages` never enters the completion vocabulary.**
-  `src/jvmTest/kotlin/afield/docs/LanguagesCategoryTest.kt` rebuilds the vocabulary the popup can
+  `src/jvmTest/kotlin/afield/tools/docs/LanguagesCategoryTest.kt` rebuilds the vocabulary the popup can
   see — every `CompletionCategory("…")` literal in `src/`, plus the fixed set inside
   `KotlinCompletionSupport` — and fails if `Languages` appears in it, if any file under a
   path-labelled prefix grows an annotation, if the label ever becomes a hidden category, or if a
@@ -294,8 +295,8 @@ an existing, unrelated category the moment anything normalised it. The test pins
 
 `Simulation` (added 2026-09) is the second thing `CATEGORY_BY_PATH` files, and it is a weaker case
 than `Languages` in one way that matters. `Languages` is a label that exists nowhere but that map.
-`Simulation` is a real completion category **eight files already carry** — six in `afield.kratos`,
-two in `afield.tetgen` — so the two prefixes are not inventing a label, they are extending one the
+`Simulation` is a real completion category **eight files already carry** — six in `afield.simulation.kratos`,
+two in `afield.geometry.mesh.tetgen` — so the two prefixes are not inventing a label, they are extending one the
 source chose to the eighteen files beside it that never got annotated.
 
 That makes two of `LanguagesCategoryTest`'s assertions inapplicable rather than violated, and the
@@ -306,21 +307,21 @@ wins, so a `Simulation`-annotated file under a `Simulation` prefix is not a conf
 agreeing with the source. The three checks that *do* apply to it all pass: the label is not hidden
 from completion, its prefixes are real directories inside `SOURCE_ROOTS`, and it has a page blurb.
 
-`afield.tetgen` deliberately has **no** prefix even though it is a source root, because every file
+`afield.geometry.mesh.tetgen` deliberately has **no** prefix even though it is a source root, because every file
 it has annotates itself. A prefix there would label nothing today, and if a fourth file lands
 unannotated the `Uncategorised` build failure telling its author to add the annotation its siblings
-carry is correct advice in that package. In `afield.kratos` it would not be — two of its published
+carry is correct advice in that package. In `afield.simulation.kratos` it would not be — two of its published
 files have never had one.
 
 ### The second reference-only label: `Renderers`, and the word that could not be used
 
-`Renderers` (added 2026-09-11, for `afield.four.fabricated`) is the third thing `CATEGORY_BY_PATH`
+`Renderers` (added 2026-09-11, for `afield.graphics.scene.fabricated`) is the third thing `CATEGORY_BY_PATH`
 files and the second that is *reference-only* in the `Languages` sense: no source file anywhere in
 `src/` carries the label, and no file under the prefix carries a category annotation of any kind.
 That makes it the strong case rather than the `Simulation` case — there is no existing category
 being extended, so there is nothing to get wrong about which page a file "already" belongs on.
 
-The root qualified by the argument recorded on `SOURCE_ROOTS` for `afield.four.physics`, with every
+The root qualified by the argument recorded on `SOURCE_ROOTS` for `afield.simulation.physics`, with every
 term larger: 35 files, 14735 lines, no annotation anywhere, and **three** prose pages written about
 symbols the reference did not know existed (`fabricate_renderer.md`, `path_tracing.md`,
 `afield_four_graphics.md`) where physics had one. It is worth being precise about why it appeared in
@@ -331,7 +332,7 @@ an annotation".
 
 **The label's spelling is load-bearing, and for a different reason than `Languages`'.**
 `normalizedCompletionCategory` maps `"rendering"` onto `"Graphics"`
-(`src/jvmMain/kotlin/afield/KotlinCompletionSupport.kt:488`), so a page called `Rendering` would be
+(`src/jvmMain/kotlin/afield/runtime/completion/KotlinCompletionSupport.kt:488`), so a page called `Rendering` would be
 filed under an existing, unrelated category the moment anything normalised it — the
 `Language` → `Kotlin` trap through a different word. The same `when` branch takes `"shader"`,
 `"shaders"`, `"drawing"`, `"geometry"` and `"vulkan"`, so most of the obvious names for this page
@@ -397,13 +398,13 @@ generator emits (`## <basename> { #`) as the predicate:
 
 | package | files | label they chose |
 | --- | --- | --- |
-| `afield.solidsl` | 9 | `Graphics` |
-| `afield.petri` | 6 | `Visualization` (5), `Audio` (1) |
-| `afield.onnx` | 4 | `Machine learning` |
-| `afield.brief` | 2 | `Solvers` |
-| `afield.manifold` | 2 | `Graphics` |
+| `afield.lang.solidsl` | 9 | `Graphics` |
+| `afield.simulation.petri` | 6 | `Visualization` (5), `Audio` (1) |
+| `afield.ai.inference.onnx` | 4 | `Machine learning` |
+| `afield.lang.brief` | 2 | `Solvers` |
+| `afield.geometry.solid.manifold` | 2 | `Graphics` |
 | `afield.graphics` | 2 | `Graphics` |
-| `afield.macros` | 1 | `Workspace` |
+| `afield.runtime.macros` | 1 | `Workspace` |
 
 Denominator: 248 files in `src/jvmMain` carry a file-level `@file:CompletionCategory`; 219 sit inside
 a source root and are published; 28 do not, of which 2 say `Internal` and are correctly absent
@@ -424,13 +425,13 @@ Re-running that census on 2026-09-11 (same population: every `.kt` under `src/jv
 file-level `@file:CompletionCategory`; same predicate: the basename appears as no
 `## <basename> { #` heading on any committed page, now 19 of them) confirms the **list** exactly —
 9 `solidsl`, 6 `petri`, 4 `onnx`, 2 each `brief`, `manifold` and `afield.graphics`, 1 `macros`, 26
-files. Publishing `afield.four.fabricated` changed none of it: those files sit outside
+files. Publishing `afield.graphics.scene.fabricated` changed none of it: those files sit outside
 `SOURCE_ROOTS` and this root contained none of them.
 
 Two numbers above are wrong, though, and both were wrong when written:
 
 - **The stated predicate does not select 26. It selects 22.** The sentence says "naming a category
-  that has a page", and 4 of the 26 — all of `afield.onnx` — name `Machine learning`, which has no
+  that has a page", and 4 of the 26 — all of `afield.ai.inference.onnx` — name `Machine learning`, which has no
   page. They belong in the list, because a file with nowhere to appear is the gap whether or not its
   label has a page; it is the qualifier that does not belong. Counted strictly as written the answer
   is 22: `solidsl` (9), `petri` (6), `manifold` (2), `brief` (2), `afield.graphics` (2), `macros` (1).
@@ -449,7 +450,7 @@ published while **7** are the `Internal` ones held out by `EXCLUDE_CATEGORIES`. 
 source root and are published" is two measurements written as one: today they are 220 and 213, and
 no single count is equal to both.
 
-None of this moved because of `afield.four.fabricated`, and that is the useful part. The 23 files
+None of this moved because of `afield.graphics.scene.fabricated`, and that is the useful part. The 23 files
 that root contributed carry no annotation, so they sit outside this census's population altogether
 while raising the published total from 307 to 330 — which is as plainly as it can be shown that
 "annotated" and "published" are independent, and why a census built on the annotation could never
@@ -457,8 +458,8 @@ have found this gap. The predicate that finds it is `SOURCE_ROOTS` membership.
 
 ### Adding a source root to the reference
 
-Written for the language packages and generalised when `afield.four.physics`,
-`afield.kratos`, `afield.tetgen` and `afield.four.fabricated` went through the same seven steps.
+Written for the language packages and generalised when `afield.simulation.physics`,
+`afield.simulation.kratos`, `afield.geometry.mesh.tetgen` and `afield.graphics.scene.fabricated` went through the same seven steps.
 
 1. Add the root to `SOURCE_ROOTS`. `SourcePageGenerator` reads the same list, so its "read the
    source" pages follow automatically — that coupling exists because the reference emits those links
@@ -474,13 +475,13 @@ Written for the language packages and generalised when `afield.four.physics`,
 4. Keep harnesses out via `EXCLUDE_PREFIXES` — a FIELD_TEST runner or a docs-figure generator, and
    nothing more. The bar is deliberately low otherwise: on a page about languages a lexer, a parser
    and a bytecode VM *are* the subject. Judge a file by what calls it and not by its name: in
-   `afield.four.fabricated` two files whose names end `GpuSmoke` and `Demo` are imported by
+   `afield.graphics.scene.fabricated` two files whose names end `GpuSmoke` and `Demo` are imported by
    committed operation transcripts, and excluding them would have left a reader following those
    transcripts with nowhere to look the call up.
 5. `./gradlew generateCodebaseReference`, then read the diff on the pages you did not expect to
    change. Widening the corpus changes cross-file `[Symbol]` resolution and the `Used in:` evidence
    links, both of which are corpus-global. It does not always drift them — adding
-   `afield.four.fabricated`'s 459 public symbols left all 18 pre-existing pages byte-identical — but
+   `afield.graphics.scene.fabricated`'s 459 public symbols left all 18 pre-existing pages byte-identical — but
    that is a result to check rather than to expect.
 6. Add the page to `public/zensical.yml`, or `LanguagesCategoryTest` will tell you that you didn't.
 7. Write the floors, never pins. `LanguagesCategoryTest` holds a published-file count, a root count

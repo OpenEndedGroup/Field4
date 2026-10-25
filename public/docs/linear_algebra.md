@@ -11,8 +11,8 @@ all as *expressions* and without ceremony.
 ```diffstatic {data-lang=kotlin}
 :::static
 val position = vec(1, 2, 3)
-position.x += 1f          // now (2, 2, 3)
-position { normalize() }  // a unit copy; position itself is untouched
+position.x += 1f // now (2, 2, 3)
+position { normalize() } // a unit copy; position itself is untouched
 ```
 
 The same names behave the same way across `vec2`, `vec3`, `vec4` and both
@@ -34,9 +34,9 @@ with `f`. The number of arguments selects the arity.
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val a = vec(2, 1)                 // Vector2f
-val v = vec(1, 2, 3)              // Vector3f
-val p = vec(0.25, 0.5, 1.0, 2.0)  // Vector4f
+val a = vec(2, 1) // Vector2f
+val v = vec(1, 2, 3) // Vector3f
+val p = vec(0.25, 0.5, 1.0, 2.0) // Vector4f
 ```
 
 When the expected type is already known, Kotlin collection literals are an even
@@ -55,8 +55,7 @@ standard preamble, so you rarely type them yourself; a plain Kotlin file wants:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.stdlib.*        // vec, swizzles, invoke / %= / len
-import afield.stdlib.linalg.* // + - * / and the matrix/quaternion types
+
 ```
 
 ## Vectors are arrows (and sometimes points)
@@ -70,8 +69,8 @@ arrow to a point moves it.
 ```diffstatic {data-lang=kotlin}
 :::static
 val from = vec(2, 1, 0)
-val to   = vec(7, 4, 0)
-to - from            // vec3(5, 3, 0) — the displacement between two points
+val to = vec(7, 4, 0)
+to - from // vec3(5, 3, 0) — the displacement between two points
 (to - from).length() // 5.8309517     — how far apart they are
 ```
 
@@ -90,10 +89,10 @@ vector: `v.xy` is a `vec2`, `v.xyz` a `vec3`. The sequence is free to:
 ```diffstatic {data-lang=kotlin}
 :::static
 val v = vec(1, 2, 3)
-v.zyx   // vec3(3, 2, 1)  — reorder
-v.xy    // vec2(1, 2)     — narrow
-v.xxxx  // vec4(1, 1, 1, 1) — expand
-v.yy    // vec2(2, 2)     — repeat
+v.zyx // vec3(3, 2, 1)  — reorder
+v.xy // vec2(1, 2)     — narrow
+v.xxxx // vec4(1, 1, 1, 1) — expand
+v.yy // vec2(2, 2)     — repeat
 ```
 
 ![Read swizzles: reorder, narrow, expand and repeat](assets/vector_algebra/read_swizzles.png)
@@ -112,7 +111,7 @@ place**:
 :::static
 val target = vec(0, 0, 0, 0)
 val source = vec(1, 2, 3, 4)
-target.xy = source.zw     // target becomes vec4(3, 4, 0, 0)
+target.xy = source.zw // target becomes vec4(3, 4, 0, 0)
 ```
 
 ![Write swizzle: target.xy = source.zw copies two components in place](assets/vector_algebra/write_swizzle.png)
@@ -131,10 +130,10 @@ leaving its operands untouched.
 :::static
 val a = vec(2, 1)
 val b = vec(1, 3)
-a + b   // vec2(3, 4)   — component-wise
-a - b   // vec2(1, -2)
-a * 2   // vec2(4, 2)   — scalar broadcast (2 * a works too)
-a * b   // vec2(2, 3)   — component-wise (Hadamard) product
+a + b // vec2(3, 4)   — component-wise
+a - b // vec2(1, -2)
+a * 2 // vec2(4, 2)   — scalar broadcast (2 * a works too)
+a * b // vec2(2, 3)   — component-wise (Hadamard) product
 ```
 
 ![Component-wise and scalar arithmetic on vec2 values](assets/vector_algebra/algebra.png)
@@ -151,8 +150,8 @@ tidy way to nudge one axis:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val v = vec(3, 4)     // length 5
-v(y = 1f)             // vec2(3, 1) — copy, only y changed
+val v = vec(3, 4) // length 5
+v(y = 1f) // vec2(3, 1) — copy, only y changed
 ```
 
 Called with a block, it returns a **copy after applying the block**, leaving the
@@ -160,7 +159,7 @@ original alone. That is the shape to reach for with the mutating vector methods:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-v { normalize() }     // vec2(0.6, 0.8) — a normalized copy; v is untouched
+v { normalize() } // vec2(0.6, 0.8) — a normalized copy; v is untouched
 ```
 
 Finally, the infix `len` returns a copy **rescaled to a given length**, keeping
@@ -169,7 +168,7 @@ use `v.length()`:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-v len 2               // vec2(1.2, 1.6) — same direction, length 2
+v len 2 // vec2(1.2, 1.6) — same direction, length 2
 ```
 
 ![invoke copy-with-changes, copy-then-block, and len rescale — v stays vec2(3, 4)](assets/vector_algebra/copy_operators.png)
@@ -186,7 +185,7 @@ than allocating, `%=` copies another vector's components into it:
 :::static
 val a = vec(9, 9)
 val b = vec(1, 2)
-a %= b     // a is now vec2(1, 2); same object, new contents
+a %= b // a is now vec2(1, 2); same object, new contents
 ```
 
 ![a %= b overwrites a's components in place](assets/vector_algebra/remassign.png)
@@ -205,9 +204,9 @@ want a fresh unit copy:
 ```diffstatic {data-lang=kotlin}
 :::static
 val velocity = vec(6, 8, 0)
-velocity.length()          // 10.0
-velocity { normalize() }   // vec3(0.6, 0.8, 0) — same direction, unit length
-velocity len 4             // vec3(2.4, 3.2, 0) — direction kept, length 4
+velocity.length() // 10.0
+velocity { normalize() } // vec3(0.6, 0.8, 0) — same direction, unit length
+velocity len 4 // vec3(2.4, 3.2, 0) — direction kept, length 4
 ```
 
 The zero vector has no direction, so normalizing it produces non-finite
@@ -217,7 +216,9 @@ comparisons; they skip the square root while preserving ordering:
 ```diffstatic {data-lang=kotlin}
 :::static
 if (velocity.lengthSquared() > 1e-12f) velocity.normalize()
-if (candidate.distanceSquared(mouse) < 20f * 20f) { /* within 20 units */ }
+if (candidate.distanceSquared(mouse) < 20f * 20f) {
+    /* within 20 units */
+}
 ```
 
 For a direction that may be zero, generated extensions on the heap-vector interfaces also provide
@@ -247,8 +248,8 @@ opposed:
 ```diffstatic {data-lang=kotlin}
 :::static
 val forward = vec(0, 0, -1)
-forward.dot(vec(0, 0, -1))  //  1.0  — identical direction
-forward.dot(vec(1, 0, 0))   //  0.0  — perpendicular
+forward.dot(vec(0, 0, -1)) //  1.0  — identical direction
+forward.dot(vec(1, 0, 0)) //  0.0  — perpendicular
 vec(1, 2, 3).dot(vec(4, 5, 6)) // 32.0 — 1·4 + 2·5 + 3·6
 ```
 
@@ -268,8 +269,8 @@ area of the parallelogram the inputs span, so parallel inputs give zero:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-vec(1, 0, 0) x vec(0, 1, 0)   // vec3(0, 0, 1)  — right-hand rule
-vec(0, 1, 0) x vec(1, 0, 0)   // vec3(0, 0, -1) — order flips the sign
+vec(1, 0, 0) x vec(0, 1, 0) // vec3(0, 0, 1)  — right-hand rule
+vec(0, 1, 0) x vec(1, 0, 0) // vec3(0, 0, -1) — order flips the sign
 ```
 
 That is the standard way to find a triangle's surface normal:
@@ -287,8 +288,8 @@ val normal = ((b - a) x (c - a)) { normalize() }
 ```diffstatic {data-lang=kotlin}
 :::static
 val start = vec(0, 0, 0)
-val end   = vec(100, 40, 0)
-start.lerp(end, 0.5f, vec(0, 0, 0))  // vec3(50, 20, 0) — halfway
+val end = vec(100, 40, 0)
+start.lerp(end, 0.5f, vec(0, 0, 0)) // vec3(50, 20, 0) — halfway
 ```
 
 For the repeated “position plus direction times amount” pattern, `fma` expresses
@@ -296,7 +297,7 @@ the whole step without a temporary vector:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-position.fma(deltaSeconds, velocity)  // position += velocity * deltaSeconds
+position.fma(deltaSeconds, velocity) // position += velocity * deltaSeconds
 ```
 
 Operations either mutate the receiver or write into an explicit destination.
@@ -306,7 +307,7 @@ so both chain naturally:
 ```diffstatic {data-lang=kotlin}
 :::static
 val normal = vec(0, 0, 0)
-edgeA.cross(edgeB, normal)  // no result allocation; returns normal
+edgeA.cross(edgeB, normal) // no result allocation; returns normal
 normal.normalize()
 ```
 
@@ -334,7 +335,7 @@ first column. Read as a conventional maths matrix, that is the two rows
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val m = Matrix2d(1.0, 2.0, 3.0, 4.0)  // columns (1,2) and (3,4) → rows (1,3),(2,4)
+val m = Matrix2d(1.0, 2.0, 3.0, 4.0) // columns (1,2) and (3,4) → rows (1,3),(2,4)
 ```
 
 ![A 2×2 double matrix drawn as a labelled heatmap; header reads mat2d [1, 3 / 2, 4]](assets/matrix_algebra/construct_mat2.png)
@@ -350,9 +351,9 @@ operand in a copy constructor when you want to keep it:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val a = Matrix2d(1.0, 2.0, 3.0, 4.0)   // rows (1,3),(2,4)
-val b = Matrix2d(5.0, 6.0, 7.0, 8.0)   // rows (5,7),(6,8)
-Matrix2d(a).mul(b)                     // A·B — a fresh copy, a and b untouched
+val a = Matrix2d(1.0, 2.0, 3.0, 4.0) // rows (1,3),(2,4)
+val b = Matrix2d(5.0, 6.0, 7.0, 8.0) // rows (5,7),(6,8)
+Matrix2d(a).mul(b) // A·B — a fresh copy, a and b untouched
 ```
 
 ![The product A·B as a heatmap; header reads mat2d [23, 31 / 34, 46]](assets/matrix_algebra/multiply_mat2.png)
@@ -363,8 +364,8 @@ returns to the identity, exact at f64 scale:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-a.determinant()                        // -2.0
-Matrix2d(a).mul(Matrix2d(a).invert())  // ≈ identity
+a.determinant() // -2.0
+Matrix2d(a).mul(Matrix2d(a).invert()) // ≈ identity
 ```
 
 ![A·A⁻¹ collapses to the identity; header reads mat2d [1, 0 / 0, 1]](assets/matrix_algebra/inverse_identity_mat2.png)
@@ -381,12 +382,20 @@ header:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val m3 = Matrix3d().set(
-    2.0, 0.0, 1.0,
-    1.0, 3.0, 0.0,
-    0.0, 1.0, 4.0,
-)
-m3.determinant()   // 25.0
+val m3 =
+    Matrix3d()
+        .set(
+            2.0,
+            0.0,
+            1.0,
+            1.0,
+            3.0,
+            0.0,
+            0.0,
+            1.0,
+            4.0,
+        )
+m3.determinant() // 25.0
 ```
 
 ![A 3×3 double matrix as a labelled heatmap; header reads mat3d [det=25]](assets/matrix_algebra/linear_mat3.png)
@@ -404,7 +413,7 @@ JOML "local" convention and catches people out:
 ```diffstatic {data-lang=kotlin}
 :::static
 val t = Matrix4d().scale(2.0, 3.0, 4.0).translate(5.0, 6.0, 7.0)
-t.determinant()    // 24.0  (= 2·3·4; translation never changes the determinant)
+t.determinant() // 24.0  (= 2·3·4; translation never changes the determinant)
 ```
 
 ![A 4×4 affine matrix as a heatmap; header reads mat4d [det=24, t=(10, 18, 28)]](assets/matrix_algebra/affine_mat4.png)
@@ -424,8 +433,8 @@ pipeline. Quaternion angles are in radians.
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val r = Matrix4f().rotateY(0.6f)   // rotate about Y by 0.6 rad
-r.determinant()                    // 1.0 — a rotation preserves volume
+val r = Matrix4f().rotateY(0.6f) // rotate about Y by 0.6 rad
+r.determinant() // 1.0 — a rotation preserves volume
 ```
 
 ![A Y-rotation as a heatmap; header reads mat4 [det=1, t=(0, 0, 0)], cells show 0.83 / 0.56 / -0.56](assets/matrix_algebra/rotate_mat4f.png)
@@ -438,7 +447,7 @@ included) and returns a fresh `Vector3f`:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-Matrix4f().translation(5f, 6f, 7f) * vec(1, 2, 3)   // vec3(6, 8, 10)
+Matrix4f().translation(5f, 6f, 7f) * vec(1, 2, 3) // vec3(6, 8, 10)
 ```
 
 ![The transformed point as an isometric arrow; header reads vec3(6, 8, 10)](assets/matrix_algebra/transform_point.png)

@@ -44,7 +44,7 @@ def main():
         print(f"Passed {label}: {log}", flush=True)
 
     if args.only in ("all", "gpu"):
-        backdoor("quality-run", ["run-jvm-main afield.four.lighting.DirectLightingQualitySmoke --arg=--clip --timeout 840"])
+        backdoor("quality-run", ["run-jvm-main afield.graphics.render.lighting.DirectLightingQualitySmoke --arg=--clip --timeout 840"])
         quality = ARTIFACTS / "quality"
         for name in ("unshadowed", "shadow", "moved-light", "normals", "visibility", "rtxdi-initial",
                      "rtxdi-full", "rtxdi-reconstructed", "rtxdi-reference", "rtxdi-history-rejection",

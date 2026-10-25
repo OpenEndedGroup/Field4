@@ -10,7 +10,7 @@ checks. `dev_docs/chart_primitive.md` is the primitive's own design note; this i
 ## The mechanism
 
 A `Chart` declares a `width` × `height` frame and maps every datum it is given into pixels inside
-it. `Chart.toHTML` hands the resulting lines to `afield.graphics.linesToHTML`, which computes the
+it. `Chart.toHTML` hands the resulting lines to `afield.ui.visualization.linesToHTML`, which computes the
 geometry's **own union bounds** and stamps them on the wrapper as `data-afield-bounds-*`. A box
 output panel, and the docs capture behind it, then fit *those* bounds into the space available.
 
@@ -184,7 +184,7 @@ redundant. Removing it would mean recapturing `sharp_edge.png`, and that page's 
 
 | what | result |
 | --- | --- |
-| `jvmTest --tests afield.{Chart,Table,Heatmap,PairDisplay}Test` | 71 tests, 0 failures, 0 errors (ChartTest 20 → 24) |
+| `jvmTest --tests afield.ui.visualization.{Chart,Table,Heatmap,PairDisplay}Test` | 71 tests, 0 failures, 0 errors (ChartTest 20 → 24) |
 | `run_field_tests.py --id visualization.chart-gallery` | PASS, 4113 ms; 4 regression figures + 5 gallery figures inside their frames to within 4 px |
 | `checkSourcePartition` | ok — 23 unattributed lines against a ratchet of 32, **identical to the base** |
 | `checkAgentDemos` | ok — 10 documents, 38 inline files |

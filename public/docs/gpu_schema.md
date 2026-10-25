@@ -2,20 +2,18 @@
 
 `GpuSchema` lets one Kotlin data class define a memory layout that both the CPU and the GPU use. A schema describes bytes, and those bytes can live inline in push constants, in UBO/SSBO storage, or in any device-addressable buffer reached through a pointer.
 
-`afield.four.buffers.GpuSchema` reads an annotated data class's primary constructor, computes a deterministic std430-compatible layout, writes values and arrays into `ByteBuffer`s, and generates GLSL structs plus `GL_EXT_buffer_reference` views. The generated GLSL reaches a shader in the same box through Field's shader templates.
+`afield.graphics.vulkan.buffers.GpuSchema` reads an annotated data class's primary constructor, computes a deterministic std430-compatible layout, writes values and arrays into `ByteBuffer`s, and generates GLSL structs plus `GL_EXT_buffer_reference` views. The generated GLSL reaches a shader in the same box through Field's shader templates.
 
 ## A particle schema
 
 This example declares a `Particle` with a nested `Material`, and publishes its schema to the box's shader template:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.buffers.*
-
 @GpuStruct
 data class Material(
     val color: Vector4f,
     val roughness: Float,
-    val metallic: Float
+    val metallic: Float,
 )
 
 @GpuStruct
@@ -23,7 +21,7 @@ data class Particle(
     val position: Vector3f,
     val radius: Float,
     val material: Material,
-    val flags: UInt
+    val flags: UInt,
 )
 
 val particle = gpuSchema<Particle>()
@@ -97,15 +95,16 @@ A GLSL struct named `Particle` always gets the reference names `ParticleRef` and
 `defaultBuffer` is already host-visible, storage-capable, and device-addressable. Allocate it using the schema stride and ask the schema to pack the values:
 
 ```diffstatic {data-lang=kotlin}
-val values = listOf(
-    Particle(vec(-0.7f, -0.5f, 0f), 0.2f, Material(vec(1,0,0,1), .4f, 0f), 1u),
-    Particle(vec( 0.0f,  0.5f, 0f), 0.2f, Material(vec(0,1,0,1), .6f, 0f), 2u),
-    Particle(vec( 0.7f, -0.5f, 0f), 0.2f, Material(vec(0,0,1,1), .8f, 0f), 3u)
-)
+val values = [
+    Particle(vec(-0.7f, -0.5f, 0f), 0.2f, Material(vec(1, 0, 0, 1), 0.4f, 0f), 1u),
+    Particle(vec(0.0f, 0.5f, 0f), 0.2f, Material(vec(0, 1, 0, 1), 0.6f, 0f), 2u),
+    Particle(vec(0.7f, -0.5f, 0f), 0.2f, Material(vec(0, 0, 1, 1), 0.8f, 0f), 3u),
+]
 
 val particleBuffer = defaultBuffer {
     size = (values.size * particle.strideBytes).bytes
-}.buffer
+}
+    .buffer
 
 particleBuffer.mapAndWrite_bytes {
     particle.writeArray(values, this)
@@ -155,7 +154,7 @@ A small value can also be the entire reflected push block. `GpuSchema.writer` ad
 @GpuStruct
 data class DrawParams(
     val color: Vector4f,
-    val scale: Float
+    val scale: Float,
 )
 
 val draw = gpuSchema<DrawParams>()

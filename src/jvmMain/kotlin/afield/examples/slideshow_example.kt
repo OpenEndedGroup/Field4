@@ -2,14 +2,14 @@
 
 package afield.examples
 
-import afield.Box
-import afield.autorun
-import afield.logger.lprintln
-import afield.markdownNote
-import afield.notify
-import afield.slideShow
-import afield.stdlib.action
-import afield.stdlib.actions
+import afield.document.graph.Box
+import afield.document.graph.autorun
+import afield.app.diagnostics.logging.lprintln
+import afield.ui.slides.markdownNote
+import afield.app.notifications.notify
+import afield.ui.slides.slideShow
+import afield.app.commands.action
+import afield.app.commands.actions
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch

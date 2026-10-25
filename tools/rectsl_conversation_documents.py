@@ -4,8 +4,8 @@
 A RectSL conversation document is two boxes: a root (``rectsl_window``) whose main language is
 RectSL and which holds no Kotlin, and the scene (``rectsl_source``), its child, whose ``rectSL``
 property is the program. The scene autoruns: opening the document plays it, which opens the root's
-window (``afield.stdlib.LanguageRoots``), and the scene's AI4 chat has the study tools (they are
-library code, ``afield.rectsl.study``, not a box). Box text lives in
+window (``afield.runtime.languages.LanguageRoots``), and the scene's AI4 chat has the study tools (they are
+library code, ``afield.lang.rectsl.study``, not a box). Box text lives in
 sidecar files beside ``metadata.edn`` — ``<uid>_<property>_.<ext>`` — so an edit is a normal diff;
 this script writes the ``metadata.edn`` that makes the folder an openable Field document, in the
 bytes Field's codec writes (``checkAgentDemos`` holds that).

@@ -1,5 +1,3 @@
-import afield.stdlib.*
-
 // Biham–Middleton–Levine traffic: red cars move right, blue cars move down, in turns.
 // 0.20 flows freely, 0.45 jams; 0.32 sits near the transition between them.
 var bml = ShaderBmlSystem() {

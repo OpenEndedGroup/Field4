@@ -21,21 +21,28 @@ panel and the same conversation. Here is the result, with the Scribbler's code o
 ![the Field window. Top left, the Studio and Scribbler boxes. Below them the Studio's output: a landscape whose pale sky, blue hills and green field are made of small looping scribbles, with a dark green tree on the right; and under it the AI Chat, ending with a list of scribble calls and an inline picture of the canvas as the painter last looked at it. On the right, the code editor open on the Scribbler box, showing the aiTool("scribble") block with its describe text, its four parameters and the start of its action](assets/ai4_experiments/scribbler.jpg)
 
 The whole tool is ordinary box code. It finds the Studio's canvas, works out the scribble, strokes
-it with a paint brush, and asks the Studio to show the result:
+it with a paint brush, and asks the Studio to show the result. Studio publishes typed
+`studioCanvas` and `refreshStudio` callbacks; the canvas callback reads the current easel even
+after a conversation rewind replaces it:
 
 ```diffstatic {data-lang=kotlin}
+prop<() -> PaintCanvas>(studioCanvas)
+prop<() -> Unit>(refreshStudio)
+
 aiTool("scribble") {
-    describe("Scribble inside a region: rows of looping, wandering line that fill the outline the way a quick hand " +
-        "does. Dense scribbles read as tone, loose ones as texture; layer colours for depth.")
+    describe(
+        "Scribble inside a region: rows of looping, wandering line that fill the outline the way a quick hand " +
+            "does. Dense scribbles read as tone, loose ones as texture; layer colours for depth.",
+    )
     effects(ToolEffect.CONTROL_RUNTIME)
     val outline by param<List<Double>>("the region, [x0, y0, x1, y1, ...] in canvas units")
     val color by param<String>("#rrggbb, or a tube name")
     val density by param<Double>("rows of loops per 100 units: 1 loose .. 8 dense", default = 3.0)
     val width by param<Double>("brush width", default = 5.0)
     action {
-        val canvas = studio.properties["studio.canvas"] as PaintCanvas
+        val canvas = studio.studioCanvas()
         // ... the scribble, row by row, inside the outline ...
-        (studio.properties["studio.refresh"] as () -> Unit)()
+        studio.refreshStudio()
         "scribbled ${color()} over the region at density ${density()}"
     }
 }
@@ -136,8 +143,10 @@ work before relying on them.
 
 - A program is not a transaction. Edits made before a failure stay. They are recorded and undoable
   like any other agent edit, but nothing rolls them back.
-- State a box hands to the conversation is saved after every request that changes it, and nothing
-  deletes old copies yet. A canvas the size of the Studio's takes about 28 MB each.
+- State a box hands to the conversation is saved after every request that changes it: about 28 MB
+  each for a canvas the size of the Studio's. States no conversation refers to are deleted on their
+  own; to free the rest, `pruneAiStates(dryRun = false)` in the box keeps the latest three along every
+  branch and the state at every fork. Without `dryRun = false` it only reports what it would free.
 - A check that must hold, such as a design revision, belongs in the tool that does the work. A
   `beforeTool` guard is a second line, and it sees only calls that go through the chat's tools.
 - The chat is not a place for long jobs. A tool call waits at most as long as the program it is in

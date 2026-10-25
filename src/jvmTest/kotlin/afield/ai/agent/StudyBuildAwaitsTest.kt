@@ -1,11 +1,71 @@
 package afield.ai.agent
 
-import afield.AiAssist
-import afield.Box
-import afield.SessionInformation
-import afield.ai.core.*
-import afield.ai.core.program.NOT_CALLABLE_FROM_PROGRAMS
-import afield.stdlib.*
+import afield.app.protocol.AiAssist
+import afield.document.graph.Box
+import afield.app.server.SessionInformation
+import afield.ai.completion.*
+import afield.ai.conversation.*
+import afield.ai.diagnostics.*
+import afield.ai.models.*
+import afield.ai.tools.*
+import afield.runtime.languages.*
+import afield.ai.tools.program.NOT_CALLABLE_FROM_PROGRAMS
+import afield.ai.learning.*
+import afield.ai.retrieval.*
+import afield.animation.interpolation.*
+import afield.animation.keyframes.*
+import afield.animation.motion.*
+import afield.app.commands.*
+import afield.app.diagnostics.*
+import afield.audio.analysis.*
+import afield.audio.synth.*
+import afield.data.collections.*
+import afield.data.formats.*
+import afield.data.graph.*
+import afield.data.sorting.*
+import afield.document.context.*
+import afield.document.graph.*
+import afield.document.properties.*
+import afield.document.workspace.*
+import afield.geometry.mesh.*
+import afield.geometry.path.*
+import afield.geometry.spatial.*
+import afield.graphics.color.*
+import afield.graphics.interaction.*
+import afield.graphics.render.*
+import afield.graphics.shader.*
+import afield.graphics.text.*
+import afield.graphics.vulkan.buffers.*
+import afield.io.osc.*
+import afield.io.process.*
+import afield.lang.lambda.*
+import afield.lang.python.*
+import afield.lang.remotejs.*
+import afield.lang.stacksl.*
+import afield.math.autodiff.*
+import afield.math.control.*
+import afield.math.estimation.*
+import afield.math.functions.*
+import afield.math.linalg.*
+import afield.math.optimization.*
+import afield.math.statistics.*
+import afield.math.units.*
+import afield.media.image.*
+import afield.media.video.*
+import afield.runtime.execution.*
+import afield.runtime.lifecycle.*
+import afield.simulation.agents.*
+import afield.simulation.automata.*
+import afield.simulation.particles.*
+import afield.study.build.*
+import afield.study.evidence.*
+import afield.study.search.*
+import afield.study.source.*
+import afield.study.ui.*
+import afield.tools.testing.*
+import afield.ui.controls.*
+import afield.ui.output.*
+import afield.ui.visualization.*
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
@@ -98,7 +158,7 @@ class StudyBuildAwaitsTest {
             val saved = awaits.suspend(f.info, f.chat, suspension, "code", 24)
             assertEquals(saved, StudyBuildAwaits.read(f.chat), "saved with the chat")
             assertContains(saved.row, "Waiting for 1 build · no model calls")
-            assertTrue(afield.parseAiChatBlocks(saved.row).single().isBuildWait, "the panel shows it on its own")
+            assertTrue(afield.ai.conversation.parseAiChatBlocks(saved.row).single().isBuildWait, "the panel shows it on its own")
             assertContains(saved.row, "attempt `$job`")
             val transcript = "<<you>>\nBake the mesh\n<<ai>>\nStarted it.\n" + saved.row
             assertEquals(transcript.replace("<<progress>>", "<<progress-open>>"), awaits.shown(f.info, f.chat, transcript),
@@ -132,6 +192,117 @@ class StudyBuildAwaitsTest {
             awaits.tick()
             assertEquals(1, resumed.size, "resumed once")
         }
+    }
+
+    @Test fun aResultNoteThatNamesAViewIsShownToTheResumedChatAsAPicture() {
+        // A recipe's result note can name a view of its result (StudyBuildView): when the chat resumes, Field draws it,
+        // captures the box and attaches the picture, so the agent sees what it built, not only its counts.
+        val info = session()
+        val chat = Box("chat").also { it.name = "Chat"; info.boxes[it.id] = it }
+        val viewer = Box("viewer").also { it.name = "Clash close-ups"; info.boxes[it.id] = it }
+        val drawn = java.util.concurrent.atomic.AtomicInteger()
+        val source = Box("source").also { info.boxes[it.id] = it }
+        val builds = StudyBuilds(Files.createTempDirectory("await-view-store").toFile(), listOf(StudyBuildStage("bake", "Bake the mesh", "v1",
+            resultNotes = { r -> listOf(StudyBuildNotice("${r.facts["open"]} findings remain.",
+                view = StudyBuildView("Clash close-ups", "each remaining finding, close up") { drawn.incrementAndGet() })) }) { c ->
+            c.file("mesh.txt").writeText("baked"); StudyBuildProduct(listOf("mesh.txt"), facts = mapOf("open" to 2))
+        }), { emptyMap() })
+        source.properties["_studyBuilds:study"] = BoxStudyBuildBinding(source, "study", builds)
+        val picture = java.awt.image.BufferedImage(40, 30, java.awt.image.BufferedImage.TYPE_INT_RGB).also { g ->
+            for (x in 0 until 40) for (y in 0 until 30) g.setRGB(x, y, if (x > 20) 0xff3030 else 0x101010) }
+        val captured = mutableListOf<String>()
+        val camera = object : FieldGraphHost by LiveFieldGraphHost {
+            override fun <T> onOwner(info: SessionInformation, action: () -> T): T = action()
+            override fun captureOutput(info: SessionInformation, box: Box, settleMs: Int): BoxOutputShot {
+                captured += box.name; return BoxOutputShot(true, "captured", picture, "", listOf("main"))
+            }
+        }
+        builds.use {
+            val job = builds.start("bake", builds.stages().single().fingerprint!!).id
+            waitFor(builds, job, StudyBuildStatus.SUCCEEDED)
+            val resumed = mutableListOf<AiAssist>()
+            StudyBuildAwaits(graphFor = { FieldGraphTools(it, camera) }, resume = { _, _, a -> resumed += a; true }, pollMs = hour,
+                isOpen = { true }).use { awaits ->
+                val suspension = TurnSuspension(listOf(AwaitedBuild("source", "study", job, "bake", "Bake the mesh", builds.directory.path)),
+                    System.currentTimeMillis() + hour)
+                awaits.suspend(info, chat, suspension, "code", 24)
+                awaits.tick()
+            }
+            val continuation = resumed.single()
+            assertEquals(1, drawn.get(), "the view is drawn before it is captured")
+            assertEquals(listOf("Clash close-ups"), captured)
+            assertTrue(continuation.images.single().startsWith("data:image/jpeg;base64,"), "the picture travels with the resumed message")
+            assertContains(continuation.extraPrompt, "Attached: what `Clash close-ups` shows now (each remaining finding, close up).")
+            assertContains(continuation.extraPrompt, "2 findings remain.")
+        }
+    }
+
+    /**
+     * Run a "routes" stage that fails with two held routes, await it from a chat and return the resumed message, the
+     * boxes captured for it and the stage's notes for the failed job. [failureNotes] null leaves the stage's default.
+     */
+    private fun resumeAfterAFailedBuild(failureNotes: ((StudyBuildRecord) -> List<StudyBuildNotice>)?): Triple<AiAssist, List<String>, List<StudyBuildNotice>> {
+        val info = session()
+        val chat = Box("chat").also { it.name = "Chat"; info.boxes[it.id] = it }
+        Box("viewer").also { it.name = "Held routes"; info.boxes[it.id] = it }
+        val source = Box("source").also { info.boxes[it.id] = it }
+        // A success view the failure must not borrow: resultNotes explains successes only.
+        val successNotes = { _: StudyBuildRecord -> listOf(StudyBuildNotice("Routes relaxed.", view = StudyBuildView("Chat", "not a failure view"))) }
+        val build = { _: StudyBuildContext -> throw StudyBuildFailure(StudyBuildProblem("routes-held", "2 routes were held.",
+            details = mapOf("held" to listOf("r3", "r7")))) }
+        val stage = if (failureNotes == null) StudyBuildStage("routes", "Relax service routes", "v1", resultNotes = successNotes, build = build)
+            else StudyBuildStage("routes", "Relax service routes", "v1", resultNotes = successNotes, failureNotes = failureNotes, build = build)
+        val builds = StudyBuilds(Files.createTempDirectory("await-failure-view-store").toFile(), listOf(stage), { emptyMap() })
+        source.properties["_studyBuilds:study"] = BoxStudyBuildBinding(source, "study", builds)
+        val picture = java.awt.image.BufferedImage(40, 30, java.awt.image.BufferedImage.TYPE_INT_RGB)
+        val captured = mutableListOf<String>()
+        val camera = object : FieldGraphHost by LiveFieldGraphHost {
+            override fun <T> onOwner(info: SessionInformation, action: () -> T): T = action()
+            override fun captureOutput(info: SessionInformation, box: Box, settleMs: Int): BoxOutputShot {
+                captured += box.name; return BoxOutputShot(true, "captured", picture, "", listOf("main"))
+            }
+        }
+        return builds.use {
+            val job = builds.start("routes", builds.stages().single().fingerprint!!).id
+            waitFor(builds, job, StudyBuildStatus.FAILED)
+            assertNull(builds.stages().single().current, "a failed attempt is never the current result")
+            assertTrue(builds.stages().single().resultNotes.isEmpty(), "the current result's notes stay the current result's")
+            val resumed = mutableListOf<AiAssist>()
+            StudyBuildAwaits(graphFor = { FieldGraphTools(it, camera) }, resume = { _, _, a -> resumed += a; true }, pollMs = hour,
+                isOpen = { true }).use { awaits ->
+                awaits.suspend(info, chat, TurnSuspension(listOf(AwaitedBuild("source", "study", job, "routes", "Relax service routes",
+                    builds.directory.path)), System.currentTimeMillis() + hour), "code", 24)
+                awaits.tick()
+            }
+            Triple(resumed.single(), captured.toList(), builds.resultNotes(job))
+        }
+    }
+
+    @Test fun aFailureNoteThatNamesAViewIsShownToTheResumedChatAsAPicture() {
+        // A stage that fails because routes were held can show them: its failureNotes name a view of the held routes,
+        // and the chat that awaited the build resumes with that picture, as it would with a success's result notes.
+        val drawn = java.util.concurrent.atomic.AtomicInteger()
+        val (continuation, captured, notes) = resumeAfterAFailedBuild { r ->
+            listOf(StudyBuildNotice("Held routes: ${(r.problem?.details?.get("held") as List<*>).joinToString()}.", StudyBuildNoticeKind.ERROR,
+                StudyBuildView("Held routes", "each held route, close up") { drawn.incrementAndGet() }))
+        }
+        assertEquals("Held routes: r3, r7.", notes.single().message)
+        assertEquals(1, drawn.get(), "the view is drawn before it is captured")
+        assertEquals(listOf("Held routes"), captured)
+        assertTrue(continuation.images.single().startsWith("data:image/jpeg;base64,"), "the picture travels with the resumed message")
+        assertContains(continuation.extraPrompt, "**failed**. 2 routes were held.")
+        assertContains(continuation.extraPrompt, "Error: Held routes: r3, r7.")
+        assertContains(continuation.extraPrompt, "Attached: what `Held routes` shows now (each held route, close up).")
+        assertFalse(continuation.extraPrompt.contains("current result"), "a failure is not reported as current, or as stale")
+    }
+
+    @Test fun aStageWithoutFailureNotesGivesAFailedJobNoNotesAndNoPicture() {
+        val (continuation, captured, notes) = resumeAfterAFailedBuild(null)
+        assertTrue(notes.isEmpty(), "resultNotes explains successes only")
+        assertTrue(captured.isEmpty())
+        assertTrue(continuation.images.isEmpty())
+        assertContains(continuation.extraPrompt, "**failed**. 2 routes were held.")
+        assertFalse(continuation.extraPrompt.contains("Routes relaxed."))
     }
 
     @Test fun aRestartedFieldRearmsTheWaitSavedWithTheChat() = fixture().use { f ->

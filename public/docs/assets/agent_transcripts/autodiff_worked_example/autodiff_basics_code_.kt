@@ -24,14 +24,27 @@ showSignals(
     x = xs,
     channel = "1 derivatives",
     title = "exp(-x^2)*sin(6x), its slope and its curvature - one sweep, three orders",
-    xTitle = "x"
+    xTitle = "x",
 )
 
 // The exact Hessian, via forward-over-nothing: one Dual2 pass gives vT H v, and
 // polarisation recovers the off-diagonals. Not a finite difference of a gradient.
 val h = hessian(at) { p -> (1.0 - p[0]).sq() + 100.0 * (p[1] - p[0].sq()).sq() }
 
-"grad Rosenbrock at (-1.2, 1.0) = " + gradient(at).toList() + "\n" +
-"exact Hessian there = [[" + h[0][0] + ", " + h[0][1] + "], [" + h[1][0] + ", " + h[1][1] + "]]\n" +
-"reverse vs forward first derivative, worst of 301 samples: " + worstReverseVsForward + "\n" +
-"reverse vs central-difference oracle, worst of 301 samples: " + worstVsOracle
+"grad Rosenbrock at (-1.2, 1.0) = " +
+    gradient(at).toList() +
+    "\n" +
+    "exact Hessian there = [[" +
+    h[0][0] +
+    ", " +
+    h[0][1] +
+    "], [" +
+    h[1][0] +
+    ", " +
+    h[1][1] +
+    "]]\n" +
+    "reverse vs forward first derivative, worst of 301 samples: " +
+    worstReverseVsForward +
+    "\n" +
+    "reverse vs central-difference oracle, worst of 301 samples: " +
+    worstVsOracle

@@ -12,7 +12,7 @@ git ls-files '*metadata.edn' | wc -l        # 117 on 2026-09-05
 
 ## The producers
 
-Seven hang off `SavingContext.save`, in `src/jvmMain/kotlin/afield/saving.kt`. All but the first
+Seven hang off `SavingContext.save`, in `src/jvmMain/kotlin/afield/document/persistence/saving.kt`. All but the first
 two sit inside `if (altered)`, so one changed byte fires the whole set.
 
 | what | written by | file |
@@ -34,7 +34,7 @@ Two more do not go through `save` at all:
 - **`store-history-screenshot`** (`history.kt`), which writes
   `history_screenshots/electron-window/`. The client sends it from Electron's
   `api.captureHistoryScreenshot()`, so it never passes through `save` and the
-  `afield.history.fourScreenshots` flag does not cover it. This is the screenshot that turns up in
+  `afield.ui.output.history.fourScreenshots` flag does not cover it. This is the screenshot that turns up in
   practice; the four-window one needs a live renderer window.
 
 A first save into an empty directory therefore writes **six** files for one box, not three:
@@ -155,7 +155,7 @@ have been both narrower and wrong: `launchDocumentSessionAttach` is a coroutine 
 handler returns before the session exists. It is sent for writable sessions too, so that a
 reconnect onto a writable session *clears* a stale banner.
 
-`ReadOnlyMode` (`src/jsMain/kotlin/afield/readOnlyMode.kt`) has three surfaces, because a badge
+`ReadOnlyMode` (`src/jsMain/kotlin/afield/app/editor/readOnlyMode.kt`) has three surfaces, because a badge
 alone is the weak version of this:
 
 1. A **banner** from the moment the session attaches, saying in plain words that nothing will be

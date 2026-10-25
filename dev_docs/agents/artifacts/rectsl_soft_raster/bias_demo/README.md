@@ -45,7 +45,7 @@ there; above one it spreads coverage that is not.
 ## Provenance, honestly
 
 - The **library code** this box calls is verified: see `dev_docs/RECTSL_SOFT_RASTER.md` and
-  `src/jvmTest/kotlin/afield/rectsl/RectSLSoftRasterTest.kt` for the oracles and the numbers.
+  `src/jvmTest/kotlin/afield/lang/rectsl/RectSLSoftRasterTest.kt` for the oracles and the numbers.
 - The three PNGs in `dev_docs/assets/rectsl_soft_raster/` were produced by the same calls this box
   makes, and were opened and read.
 - **This box body itself was compile-checked but never executed in a live Field.** The night it was

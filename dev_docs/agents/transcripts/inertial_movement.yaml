@@ -15,6 +15,11 @@ description: >
 
   Replayed end to end in CI: launch all three, run 90 real runloop frames, stop.
   After Daniel Holden's "Inertial Easing" and "A New Movement Model" (theorangeduck.com).
+docs:
+  - page: movement_examples.md
+    why: "Explains springs, damping and the movement model these boxes build."
+  - page: interpolants_examples.md#inertia-re-aiming-a-blend-that-is-already-moving
+    why: "Explains inertial easing of a blend already in motion."
 operations:
   - create:
       box: inertial_hello
@@ -33,9 +38,13 @@ operations:
               goal = if ((frameNumber / 40) % 2 == 0) 1.0 else -1.0
               target += goal
               seen += eased()
+              if (target.size > 240) {
+                  target.removeAt(0)
+                  seen.removeAt(0)
+              }
               showSignals(
-                  "goal" to target.takeLast(240),
-                  "inertialTo" to seen.takeLast(240),
+                  "goal" to target,
+                  "inertialTo" to seen,
                   title = "one value, chasing a square wave",
                   xTitle = "frame",
               )
@@ -47,9 +56,11 @@ operations:
       frame: { x: 80.0, y: 900.0, w: 310.0, h: 100.0 }
       properties:
         code: |
-          // The same target and two identical interpolants. The only difference is the `startAt`
-          // line: restarting a blend throws away the speed it had, which is what any one-shot ease
-          // does every time you re-aim it. Left alone, `inertialTo` re-solves and keeps that speed.
+          /*
+          The same target and two identical interpolants. The only difference is the `startAt`
+          line: restarting a blend throws away the speed it had, which is what any one-shot ease
+          does every time you re-aim it. Left alone, `inertialTo` re-solves and keeps that speed.
+          */
           var goal = 0.0
           val carried = inertialTo<Double>(time = 0.4) { goal }
           val restarted = inertialTo<Double>(time = 0.4) { goal }
@@ -66,11 +77,16 @@ operations:
               target += goal
               reSolved += carried()
               fromRest += restarted()
+              if (target.size > 300) {
+                  target.removeAt(0)
+                  reSolved.removeAt(0)
+                  fromRest.removeAt(0)
+              }
 
               showSignals(
-                  "goal" to target.takeLast(300),
-                  "left to re-solve" to reSolved.takeLast(300),
-                  "restarted every frame" to fromRest.takeLast(300),
+                  "goal" to target,
+                  "left to re-solve" to reSolved,
+                  "restarted every frame" to fromRest,
                   title = "re-solving a blend against restarting it",
                   xTitle = "frame",
               )
@@ -97,13 +113,26 @@ operations:
           var compensation = 1.0
 
           controlGroup("movement") {
-              vec2Control("target", initialValue = pad, xRange = -1.0 to 1.0, yRange = -1.0 to 1.0,
-                          step = 0.02) { pad = it }
+              vec2Control(
+                  "target",
+                  initialValue = pad,
+                  xRange = -1.0 to 1.0,
+                  yRange = -1.0 to 1.0,
+                  step = 0.02,
+              ) {
+                  pad = it
+              }
               slider("top speed (px/s)", min = 80.0, max = 700.0, step = 10.0, initialValue = topSpeed) { topSpeed = it }
-              slider("acceleration (px/s²)", min = 200.0, max = 4000.0, step = 50.0, initialValue = acceleration) { acceleration = it }
-              slider("deceleration (px/s²)", min = 200.0, max = 6000.0, step = 50.0, initialValue = deceleration) { deceleration = it }
+              slider("acceleration (px/s²)", min = 200.0, max = 4000.0, step = 50.0, initialValue = acceleration) {
+                  acceleration = it
+              }
+              slider("deceleration (px/s²)", min = 200.0, max = 6000.0, step = 50.0, initialValue = deceleration) {
+                  deceleration = it
+              }
               slider("turn strength", min = 0.0, max = 16.0, step = 0.25, initialValue = turn) { turn = it }
-              slider("directional acceleration", min = 0.0, max = 1.0, step = 0.05, initialValue = directional) { directional = it }
+              slider("directional acceleration", min = 0.0, max = 1.0, step = 0.05, initialValue = directional) {
+                  directional = it
+              }
               slider("smoothing half-life (s)", min = 0.0, max = 0.4, step = 0.005, initialValue = halflife) { halflife = it }
               slider("lag compensation", min = 0.0, max = 2.0, step = 0.05, initialValue = compensation) { compensation = it }
           }
@@ -143,7 +172,8 @@ operations:
 
               character.update(stick(character.position, target), 1f / 60f, params)
               ghost.update(
-                  stick(ghost.position, target), 1f / 60f,
+                  stick(ghost.position, target),
+                  1f / 60f,
                   params.copy(accelerationHalflife = 0f, decelerationHalflife = 0f, accelerationCompensation = 0f),
               )
 
@@ -151,29 +181,43 @@ operations:
               while (trail.size > 240) trail.removeFirst()
 
               val path = FLine()
-              trail.forEachIndexed { i, p -> if (i == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y) }
+              path.breakNext()
+              trail.forEach { p -> path.lineTo(p.x, p.y) }
 
               showPlane(
-                  listOf(
+                  [
                       fline {
-                          moveTo(target.x - 10f, target.y); lineTo(target.x + 10f, target.y)
-                          moveTo(target.x, target.y - 10f); lineTo(target.x, target.y + 10f)
-                      }.apply { thickness = 1.5; color = vec(0.95, 0.85, 0.35, 1.0) },
-                      path.apply { thickness = 1.5; color = vec(0.35, 0.75, 0.95, 1.0) },
-                      whisker(ghost, 14f).apply { thickness = 1.0; color = vec(0.55, 0.55, 0.65, 1.0) },
-                      whisker(character, 22f).apply { thickness = 2.5; color = vec(0.35, 0.95, 0.6, 1.0) },
-                  ),
+                          moveTo(target.x - 10f, target.y)
+                          lineTo(target.x + 10f, target.y)
+                          moveTo(target.x, target.y - 10f)
+                          lineTo(target.x, target.y + 10f)
+                      }
+                          .apply {
+                              thickness = 1.5
+                              color = vec(0.95, 0.85, 0.35, 1.0)
+                          },
+                      path.apply {
+                          thickness = 1.5
+                          color = vec(0.35, 0.75, 0.95, 1.0)
+                      },
+                      whisker(ghost, 14f).apply {
+                          thickness = 1.0
+                          color = vec(0.55, 0.55, 0.65, 1.0)
+                      },
+                      whisker(character, 22f).apply {
+                          thickness = 2.5
+                          color = vec(0.35, 0.95, 0.6, 1.0)
+                      },
+                  ],
                   window = view,
                   // Inside the 520px output panel, so this box's panel does not overlap its
                   // neighbour's in the column to the right.
                   width = 500,
                   height = 300,
                   title = "drag the pad — green is the model, grey is the same model unsmoothed",
-                  caption = "%.0f px/s · %.0f px behind the target"
-                      .format(character.speed, target.distance(character.position)),
+                  caption = "%.0f px/s · %.0f px behind the target".format(character.speed, target.distance(character.position)),
               )
           }
-
   - launch: { box: inertial_hello, property: code }
   - launch: { box: inertial_vs_restarting, property: code }
   - launch: { box: movement_playground, property: code }

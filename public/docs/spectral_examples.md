@@ -20,11 +20,10 @@ val band = BandPassFilter(frequency = 5f, sampleRate = 120f, q = 0.8f)
 
 for (i in 0 until 420) {
     val t = i / 120f
-    val signal = (
-        sin(2.0 * PI * 1.2 * t).toFloat() * 0.7f +
-        sin(2.0 * PI * 4.7 * t + 0.3).toFloat() * 0.22f +
-        (-0.12f + random().toFloat() * 0.24f)
-    )
+    val signal =
+        (sin(2.0 * PI * 1.2 * t).toFloat() * 0.7f +
+            sin(2.0 * PI * 4.7 * t + 0.3).toFloat() * 0.22f +
+            (-0.12f + random().toFloat() * 0.24f))
     raw += signal
     val s = oneEuro(ema(signal))
     smooth += s
@@ -55,7 +54,13 @@ Event detectors answer a different question from the filters above: did somethin
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/timeseries_examples/distribution_events.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
 val gammaEvents = GammaEventDetector(windowSize = 64, tailProbabilityThreshold = 0.03f, influence = 0.15f)
-val betaEvents = BetaEventDetector(windowSize = 64, supportMin = -1f, supportMax = 1f, lowerTailThreshold = 0.04f, upperTailThreshold = 0.04f)
+val betaEvents = BetaEventDetector(
+    windowSize = 64,
+    supportMin = -1f,
+    supportMax = 1f,
+    lowerTailThreshold = 0.04f,
+    upperTailThreshold = 0.04f,
+)
 
 val raw = mutableListOf<Float>()
 val eg = mutableListOf<Float>()
@@ -113,23 +118,25 @@ feature helpers return frequencies you can label.
 // Synthesise a rising linear chirp + two steady tones, FFT it, draw the one-sided spectrum.
 val sampleRate = 8000.0
 val n = 2048
-val f0 = 300.0; val f1 = 3000.0
+val f0 = 300.0
+val f1 = 3000.0
 val dur = n / sampleRate
 val k = (f1 - f0) / dur
-val signal = DoubleArray(n) { i ->
-    val t = i / sampleRate
-    // Rising linear chirp (phase-integrated so instantaneous freq sweeps cleanly) + two tones.
-    0.9 * sin(2.0 * PI * (f0 * t + 0.5 * k * t * t)) +
-        0.4 * sin(2.0 * PI * 700.0 * t) +
-        0.3 * sin(2.0 * PI * 1800.0 * t)
-}
+val signal =
+    DoubleArray(n) { i ->
+        val t = i / sampleRate
+        // Rising linear chirp (phase-integrated so instantaneous freq sweeps cleanly) + two tones.
+        0.9 * sin(2.0 * PI * (f0 * t + 0.5 * k * t * t)) +
+            0.4 * sin(2.0 * PI * 700.0 * t) +
+            0.3 * sin(2.0 * PI * 1800.0 * t)
+    }
 
 val spec = fft(signal, WindowType.HANN, sampleRate)
-val mag = spec.magnitudeOneSided()   // bins 0 .. N/2
-val freqs = spec.frequencies()       // bin -> Hz
-val centroid = spec.centroid()       // magnitude-weighted mean frequency, Hz
-val rolloff = spec.rolloff(0.85)     // freq below which 85% of the energy sits
-val peak = spec.peakFrequency()      // dominant component, Hz
+val mag = spec.magnitudeOneSided() // bins 0 .. N/2
+val freqs = spec.frequencies() // bin -> Hz
+val centroid = spec.centroid() // magnitude-weighted mean frequency, Hz
+val rolloff = spec.rolloff(0.85) // freq below which 85% of the energy sits
+val peak = spec.peakFrequency() // dominant component, Hz
 
 // One call puts the magnitude curve on screen against real Hz, with the centroid and 85% rolloff
 // marked as dashed reference lines. showSignals(...) applies the dark theme + cyan/orange palette.
@@ -137,13 +144,16 @@ showSignals(
     "magnitude" to mag.toList(),
     x = freqs.toList(),
     channel = "main",
-    xTitle = "frequency (Hz)", yTitle = "magnitude",
-    marks = listOf(
+    xTitle = "frequency (Hz)",
+    yTitle = "magnitude",
+    marks = [
         "centroid ${"%.0f".format(centroid)} Hz" to centroid,
         "85% rolloff ${"%.0f".format(rolloff)} Hz" to rolloff,
-    ),
+    ],
 )
-println("peak=${"%.0f".format(peak)}Hz centroid=${"%.0f".format(centroid)}Hz rolloff=${"%.0f".format(rolloff)}Hz bins=${mag.size}")
+println(
+    "peak=${"%.0f".format(peak)}Hz centroid=${"%.0f".format(centroid)}Hz rolloff=${"%.0f".format(rolloff)}Hz bins=${mag.size}",
+)
 ```
 
 ![a cyan magnitude curve on a dark plot, frequency in Hz along the bottom out to 4000 and magnitude up the side to 400. A very narrow spike just under 700 Hz reaches almost the top of the frame; a broad low hump peaks around 70 near 1700 Hz, with a second narrow spike at about 1800 Hz standing on its right shoulder at roughly three-fifths the tall spike's height. Two dashed yellow verticals cross the whole plot, labelled in the legend as the centroid at 1621 Hz and the 85% rolloff at 2172 Hz, and both sit to the right of the tall spike](assets/spectral_examples/one_spectrum.png)
@@ -163,39 +173,55 @@ through a colormap, low frequencies at the bottom, into the box's output.
 :::static
 // --- signal: a rising linear chirp (300 -> 3000 Hz) plus two steady tones (700, 1800 Hz) ---
 val sampleRate = 8000.0
-val n = 24000                    // 3 s
-val f0 = 300.0; val f1 = 3000.0
+val n = 24000 // 3 s
+val f0 = 300.0
+val f1 = 3000.0
 val dur = n / sampleRate
 val k = (f1 - f0) / dur
-val signal = DoubleArray(n) { i ->
-    val t = i / sampleRate
-    // Phase-integrated chirp so the instantaneous frequency f0 + k*t sweeps cleanly below Nyquist.
-    0.9 * sin(2.0 * PI * (f0 * t + 0.5 * k * t * t)) +
-        0.35 * sin(2.0 * PI * 700.0 * t) +
-        0.30 * sin(2.0 * PI * 1800.0 * t)
-}
+val signal =
+    DoubleArray(n) { i ->
+        val t = i / sampleRate
+        // Phase-integrated chirp so the instantaneous frequency f0 + k*t sweeps cleanly below Nyquist.
+        0.9 * sin(2.0 * PI * (f0 * t + 0.5 * k * t * t)) +
+            0.35 * sin(2.0 * PI * 700.0 * t) +
+            0.30 * sin(2.0 * PI * 1800.0 * t)
+    }
 
 // --- STFT -> magnitude heatmap + spectral-centroid trace ---
 val spec = stft(signal, fftSize = 1024, hopSize = 256, window = WindowType.HANN, sampleRate = sampleRate)
-val mags = spec.magnitudes()                       // [frame][bin]
+val mags = spec.magnitudes() // [frame][bin]
 val maxMag = spec.maxMagnitude().coerceAtLeast(1e-9)
-val centroid = spec.centroidTrace()                // Hz per frame
+val centroid = spec.centroidTrace() // Hz per frame
 val nyquist = sampleRate / 2.0
 
 // dB relative to the peak (a useful dynamic range), as a [frame][bin] matrix.
-val dB = Array(spec.numFrames) { f ->
-    DoubleArray(spec.numBins) { b -> 20.0 * log10((mags[f][b] / maxMag).coerceAtLeast(1e-4)) }
-}
+val dB =
+    Array(spec.numFrames) { f ->
+        DoubleArray(spec.numBins) { b -> 20.0 * log10((mags[f][b] / maxMag).coerceAtLeast(1e-4)) }
+    }
 // The spectral centroid as a normalized (x, y) overlay: x = time fraction, y = fraction of Nyquist.
-val trace = centroid.indices.map { f ->
-    (f.toDouble() / (spec.numFrames - 1).coerceAtLeast(1)) to (centroid[f] / nyquist).coerceIn(0.0, 1.0)
-}
+val trace =
+    centroid.indices.map { f ->
+        (f.toDouble() / (spec.numFrames - 1).coerceAtLeast(1)) to (centroid[f] / nyquist).coerceIn(0.0, 1.0)
+    }
 
-println("frames=${spec.numFrames} bins=${spec.numBins} centroid ${"%.0f".format(centroid.first())} -> ${"%.0f".format(centroid.last())} Hz")
+println(
+    "frames=${spec.numFrames} bins=${spec.numBins} centroid ${"%.0f".format(centroid.first())} -> ${"%.0f".format(centroid.last())} Hz",
+)
 // One showHeatmap call: transpose [frame][bin] to time × frequency, low frequency at the bottom
 // (flipY), the house cyan→orange ramp over a [-80, 0] dB range, with the centroid as a bright overlay.
-showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 840, vmin = -80.0, vmax = 0.0,
-    transpose = true, flipY = true, overlay = trace, overlayThickness = 3)
+showHeatmap(
+    dB,
+    colormap = "cyanorange",
+    width = 1800,
+    height = 840,
+    vmin = -80.0,
+    vmax = 0.0,
+    transpose = true,
+    flipY = true,
+    overlay = trace,
+    overlayThickness = 3,
+)
 ```
 
 ![a dark time-by-frequency heatmap with low frequency at the bottom. One orange band with a cyan halo runs straight from the bottom-left corner to the top-right; two more lie flat across the full width, the lower about a third of the way up and the other near the middle. A thin white line climbs from the left edge, follows the diagonal for a while, and kinks downward in the last tenth of the frame](assets/spectral_examples/spectrogram.png)
@@ -219,16 +245,18 @@ the log warping.
 // --- signal: two crossing chirps, one rising (200 -> 3200 Hz) and one falling (3200 -> 200 Hz) ---
 val sampleRate = 8000.0
 val n = 24000
-val up0 = 200.0; val up1 = 3200.0
-val dn0 = 3200.0; val dn1 = 200.0
+val up0 = 200.0
+val up1 = 3200.0
+val dn0 = 3200.0
+val dn1 = 200.0
 val dur = n / sampleRate
 val ku = (up1 - up0) / dur
 val kd = (dn1 - dn0) / dur
-val signal = DoubleArray(n) { i ->
-    val t = i / sampleRate
-    0.7 * sin(2.0 * PI * (up0 * t + 0.5 * ku * t * t)) +
-        0.7 * sin(2.0 * PI * (dn0 * t + 0.5 * kd * t * t))
-}
+val signal =
+    DoubleArray(n) { i ->
+        val t = i / sampleRate
+        0.7 * sin(2.0 * PI * (up0 * t + 0.5 * ku * t * t)) + 0.7 * sin(2.0 * PI * (dn0 * t + 0.5 * kd * t * t))
+    }
 
 // --- STFT -> per-frame mel filter bank -> heatmap ---
 val spec = stft(signal, fftSize = 1024, hopSize = 256, window = WindowType.HANN, sampleRate = sampleRate)
@@ -238,14 +266,23 @@ var maxMel = 1e-9
 for (row in mel) for (v in row) if (v > maxMel) maxMel = v
 
 // dB relative to the peak, as a [frame][band] matrix.
-val dB = Array(spec.numFrames) { f ->
-    DoubleArray(numBands) { b -> 20.0 * log10((mel[f][b] / maxMel).coerceAtLeast(1e-4)) }
-}
+val dB =
+    Array(spec.numFrames) { f ->
+        DoubleArray(numBands) { b -> 20.0 * log10((mel[f][b] / maxMel).coerceAtLeast(1e-4)) }
+    }
 
 println("frames=${spec.numFrames} bands=$numBands")
 // transpose [frame][band] to time × mel-band, low band at the bottom.
-showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 720, vmin = -80.0, vmax = 0.0,
-    transpose = true, flipY = true)
+showHeatmap(
+    dB,
+    colormap = "cyanorange",
+    width = 1800,
+    height = 720,
+    vmin = -80.0,
+    vmax = 0.0,
+    transpose = true,
+    flipY = true,
+)
 ```
 
 ![a dark time-by-mel-band heatmap holding two orange bands with cyan halos that cross in a wide X near the middle of the frame. Both are noticeably curved rather than straight, and both are widest where they cross, because the mel bands are broad at the top and narrow at the bottom](assets/spectral_examples/mel_spectrogram.png)
@@ -263,29 +300,34 @@ smoothing coefficient per frequency, so high resonators settle faster than low o
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/resonator_bank.png" wait="2.5" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.four.audio.resonate
-import afield.four.audio.resonatorAlphaHeuristics
+import afield.audio.engine.resonate
+import afield.audio.engine.resonatorAlphaHeuristics
 
 // --- same rising chirp (300 -> 3000 Hz) + two tones (700, 1800 Hz), as a Float signal ---
 val sampleRate = 8000f
 val n = 24000
-val f0 = 300.0; val f1 = 3000.0
+val f0 = 300.0
+val f1 = 3000.0
 val durS = n / sampleRate.toDouble()
 val k = (f1 - f0) / durS
-val signal = FloatArray(n) { i ->
-    val t = i / sampleRate.toDouble()
-    (0.9 * sin(2.0 * PI * (f0 * t + 0.5 * k * t * t)) +
-        0.35 * sin(2.0 * PI * 700.0 * t) +
-        0.30 * sin(2.0 * PI * 1800.0 * t)).toFloat()
-}
+val signal =
+    FloatArray(n) { i ->
+        val t = i / sampleRate.toDouble()
+        (0.9 * sin(2.0 * PI * (f0 * t + 0.5 * k * t * t)) +
+                0.35 * sin(2.0 * PI * 700.0 * t) +
+                0.30 * sin(2.0 * PI * 1800.0 * t))
+            .toFloat()
+    }
 
 // --- a bank of complex resonators, log-spaced from 120 Hz to 3900 Hz ---
 val numRes = 96
-val minHz = 120.0; val maxHz = 3900.0
-val freqs = FloatArray(numRes) { i ->
-    kotlin.math.exp(ln(minHz) + (ln(maxHz) - ln(minHz)) * i / (numRes - 1)).toFloat()
-}
-val alphas = resonatorAlphaHeuristics(freqs, sampleRate)  // per-frequency smoothing / time constant
+val minHz = 120.0
+val maxHz = 3900.0
+val freqs =
+    FloatArray(numRes) { i ->
+        kotlin.math.exp(ln(minHz) + (ln(maxHz) - ln(minHz)) * i / (numRes - 1)).toFloat()
+    }
+val alphas = resonatorAlphaHeuristics(freqs, sampleRate) // per-frequency smoothing / time constant
 val hop = 256
 
 // resonate returns, per hop slice: numRes real parts then numRes imag parts.
@@ -293,21 +335,34 @@ val flat = resonate(signal, sampleRate, freqs, alphas, betas = alphas, hopLength
 val slices = flat.size / (2 * numRes)
 fun ampAt(s: Int, kk: Int): Float {
     val base = s * 2 * numRes
-    val re = flat[base + kk]; val im = flat[base + numRes + kk]
+    val re = flat[base + kk]
+    val im = flat[base + numRes + kk]
     return kotlin.math.sqrt(re * re + im * im)
 }
 var maxA = 1e-9f
-for (s in 0 until slices) for (kk in 0 until numRes) { val a = ampAt(s, kk); if (a > maxA) maxA = a }
+for (s in 0 until slices) for (kk in 0 until numRes) {
+    val a = ampAt(s, kk)
+    if (a > maxA) maxA = a
+}
 
 // dB relative to the peak, as a [slice][resonator] matrix.
-val dB = Array(slices) { s ->
-    DoubleArray(numRes) { kk -> 20.0 * log10((ampAt(s, kk).toDouble() / maxA).coerceAtLeast(1e-4)) }
-}
+val dB =
+    Array(slices) { s ->
+        DoubleArray(numRes) { kk -> 20.0 * log10((ampAt(s, kk).toDouble() / maxA).coerceAtLeast(1e-4)) }
+    }
 
 println("resonators=$numRes slices=$slices freq ${freqs.first().toInt()} -> ${freqs.last().toInt()} Hz")
 // transpose [slice][resonator] to time × resonator, low (low-Hz) resonator at the bottom.
-showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 720, vmin = -80.0, vmax = 0.0,
-    transpose = true, flipY = true)
+showHeatmap(
+    dB,
+    colormap = "cyanorange",
+    width = 1800,
+    height = 720,
+    vmin = -80.0,
+    vmax = 0.0,
+    transpose = true,
+    flipY = true,
+)
 ```
 
 ![a time-by-resonator heatmap that is bright cyan almost everywhere, with an orange band rising steeply out of the bottom-left corner and flattening off across the top right, and two more orange bands lying flat across the full width close together near the top. Dark vertical streaks hang down through the lower half](assets/spectral_examples/resonator_bank.png)
@@ -330,25 +385,33 @@ once, and the three traces are drawn stacked in the box's output.
 :::static
 // --- an input stream: a rising chirp (200 -> 2000 Hz) + a steady tone, with two onset bursts ---
 val sampleRate = 8000f
-val n = 8000                     // 1 s
-val stream = FloatArray(n) { i ->
-    val t = i / sampleRate
-    val f = 200f + 1800f * (i.toFloat() / n)     // sweep 200 -> 2000 Hz
-    var s = 0.6f * sin(2.0 * PI * f * t).toFloat() + 0.25f * sin(2.0 * PI * 900.0 * t).toFloat()
-    if (i == n / 3 || i == 2 * n / 3) s += 2.0f   // two sharp onsets for the flux detector
-    s
-}
+val n = 8000 // 1 s
+val duration = n / sampleRate.toDouble()
+val startHz = 200.0
+val endHz = 2000.0
+val chirpRate = (endHz - startHz) / duration
+val stream =
+    FloatArray(n) { i ->
+        val t = i / sampleRate.toDouble()
+        // Integrate frequency: the phase derivative is startHz + chirpRate * t.
+        val phase = 2.0 * PI * (startHz * t + 0.5 * chirpRate * t * t)
+        var s = 0.6f * sin(phase).toFloat() + 0.25f * sin(2.0 * PI * 900.0 * t).toFloat()
+        if (i == n / 3 || i == 2 * n / 3) s += 2.0f // two sharp onsets for the flux detector
+        s
+    }
 
 // The same `then` chain as the time-domain toolkit: smooth the centroid, track flux and level.
 val brightness = EMAFilter(0.1f) then SpectralCentroidFilter(fftSize = 1024, hopSize = 256, sampleRate = sampleRate)
 val onset = SpectralFluxFilter(fftSize = 1024, hopSize = 256, sampleRate = sampleRate)
 val level = RmsFilter(windowSize = 512)
 
-val cTrace = FloatArray(n); val fTrace = FloatArray(n); val rTrace = FloatArray(n)
+val cTrace = FloatArray(n)
+val fTrace = FloatArray(n)
+val rTrace = FloatArray(n)
 for (i in 0 until n) {
-    cTrace[i] = brightness(stream[i])   // spectral centroid, Hz
-    fTrace[i] = onset(stream[i])        // spectral flux (onset novelty)
-    rTrace[i] = level(stream[i])        // rolling RMS
+    cTrace[i] = brightness(stream[i]) // spectral centroid, Hz
+    fTrace[i] = onset(stream[i]) // spectral flux (onset novelty)
+    rTrace[i] = level(stream[i]) // rolling RMS
 }
 
 // The three features live on very different scales (Hz vs flux vs a 0..1 level), so normalize each
@@ -358,12 +421,15 @@ showSignals(
     "spectral flux (onset novelty)" to fTrace.toList(),
     "rolling RMS (level)" to rTrace.toList(),
     channel = "main",
-    xTitle = "sample", normalize = true,
+    xTitle = "sample",
+    normalize = true,
 )
-println("centroid ${"%.0f".format(cTrace[3000])} -> ${"%.0f".format(cTrace[n - 200])} Hz, flux peak ${"%.3f".format(fTrace.maxOrNull() ?: 0f)}")
+println(
+    "centroid ${"%.0f".format(cTrace[3000])} -> ${"%.0f".format(cTrace[n - 200])} Hz, flux peak ${"%.3f".format(fTrace.maxOrNull() ?: 0f)}",
+)
 ```
 
-![three normalized traces against sample number on a dark plot. The blue centroid climbs as a staircase from zero to about 0.7 over the first two-thirds, dips, and then steps up to the top of the frame at the right-hand edge. The orange flux sits flat on zero for the first thousand samples, jumps to about 0.92, and stays within a few percent of that for the rest of the run. The green RMS starts at the top, falls at once to about 0.87, and stays there, wobbling slightly](assets/spectral_examples/streaming_features.png)
+![Normalized streaming features: cyan spectral centroid climbs in steps, orange flux holds a high plateau after the first FFT window, and green RMS stays near its baseline with a broad peak as the chirp passes the steady tone](assets/spectral_examples/streaming_features.png)
 
 The smoothed centroid climbs with the chirp and the RMS tracks the overall level. The flux steps up
 as soon as its first window fills and then holds near the top of its range: each injected onset is a
@@ -385,17 +451,15 @@ other per-sample filter in the toolkit.
 - **Features** — `SpectralFeatures.centroid / spread / rolloff / flux / flatness / rms / energy`.
 - **Mel** — `Mel.hzToMel`, `Mel.melToHz`, and a triangular `Mel.filterBank(...)` for perceptual /
   log-frequency band energies.
-- **Resonator bank** (`afield.four.audio`) — `resonate(...)` / `ResonatorBank` for a fixed complex
+- **Resonator bank** (`afield.audio.engine`) — `resonate(...)` / `ResonatorBank` for a fixed complex
   filterbank at frequencies you choose, `trackingResonate(...)` / `TrackingResonatorBank` for
   resonators that lock onto and follow moving partials, with `resonatorAlphaHeuristics(...)` for
   per-frequency time constants.
 
 ## Open the examples as a document
 
-The five frequency-domain examples, from [One spectrum](#one-spectrum) on, are also a starting
-point: open [`spectral_examples`](agent_transcripts.md#spectral_examples) from the welcome screen
+Every example on this page is also a starting point: open [`spectral_examples`](agent_transcripts.md#spectral_examples) from the welcome screen
 and each box computes and draws its own figure with no other setup.
 
 Then edit the signal, or swap `WindowType.HANN` for `HAMMING` / `BLACKMAN`, and re-run a box to
-watch its figure change. The two time-domain examples at the top of the page are not in that
-document; paste either fence into a box to run it.
+watch its figure change.

@@ -1,10 +1,10 @@
-import afield.four.Target
-import afield.four.browser.FieldUiBrowserTexture
-import afield.four.browser.PuppetBrowserKaleidoscope
+import afield.graphics.vulkan.Target
+import afield.media.browser.FieldUiBrowserTexture
+import afield.media.browser.PuppetBrowserKaleidoscope
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
-prop<afield.four.browser.PuppetBrowser>(browserControl)
+prop<afield.media.browser.PuppetBrowser>(browserControl)
 
 val browser = FieldUiBrowserTexture(
     renderer = renderer,
@@ -12,19 +12,20 @@ val browser = FieldUiBrowserTexture(
     width = 1280,
     height = 720,
     // Linux: Chromium's shared-texture export never fills the buffer (electron#53271).
-    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired
+    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired,
 )
 browserControl = browser
 
-renderer.renderList.preTargets["youtube-kaleidoscope-upload"] =
-    Target { command, _ -> browser.prepareSampledImagesFor(command) }
+renderer.renderList.preTargets["youtube-kaleidoscope-upload"] = Target { command, _ ->
+    browser.prepareSampledImagesFor(command)
+}
 
 val shards = PuppetBrowserKaleidoscope(
     renderer = renderer,
     browser = browser,
     name = "youtube-kaleidoscope",
     columns = 14,
-    rows = 8
+    rows = 8,
 )
 shards.motion = 1.0f
 shards.facets = 5.0f
@@ -44,13 +45,20 @@ loop {
         println("Kaleidoscope online: ${shards.triangleCount} independently animated Vulkan triangles")
     }
 
-    // A userGesture JavaScript evaluation first accepts Google's EU consent page, then
-    // retries until the real HTMLVideoElement is advancing. Navigation during consent
-    // deliberately looks like a failed attempt; the next one runs in the new document.
-    if (browser.pageReady && !playbackConfirmed.get() &&
-        frameNumber >= nextAttempt.get() && requestInFlight.compareAndSet(false, true)) {
-        browser.evaluate(
-            """
+    /*
+    A userGesture JavaScript evaluation first accepts Google's EU consent page, then
+    retries until the real HTMLVideoElement is advancing. Navigation during consent
+    deliberately looks like a failed attempt; the next one runs in the new document.
+    */
+    if (
+        browser.pageReady &&
+            !playbackConfirmed.get() &&
+            frameNumber >= nextAttempt.get() &&
+            requestInFlight.compareAndSet(false, true)
+    ) {
+        browser
+            .evaluate(
+                """
             (async () => {
                 const buttons = Array.from(document.querySelectorAll('button'))
                 const consent = buttons.find(button =>
@@ -75,19 +83,21 @@ loop {
                     title: document.title
                 }
             })()
-            """.trimIndent(),
-            userGesture = true,
-            timeoutMillis = 15_000
-        ).whenComplete { result, error ->
-            requestInFlight.set(false)
-            val report = if (error == null) result.value.toString() else error.message.orEmpty()
-            if (error == null && "playing" in report) {
-                playbackConfirmed.set(true)
-                println("YouTube playback confirmed by Chromium: $report")
-            } else {
-                nextAttempt.set(frameNumber + 120L)
+            """
+                    .trimIndent(),
+                userGesture = true,
+                timeoutMillis = 15_000,
+            )
+            .whenComplete { result, error ->
+                requestInFlight.set(false)
+                val report = if (error == null) result.value.toString() else error.message.orEmpty()
+                if (error == null && "playing" in report) {
+                    playbackConfirmed.set(true)
+                    println("YouTube playback confirmed by Chromium: $report")
+                } else {
+                    nextAttempt.set(frameNumber + 120L)
+                }
             }
-        }
     }
     if (playbackConfirmed.get() && browser.state.audible && !audibleAnnounced) {
         audibleAnnounced = true
@@ -95,8 +105,9 @@ loop {
     }
     frameNumber++
     frame()
-}.end {
-    renderer.renderList.preTargets.remove("youtube-kaleidoscope-upload")
-    shards.close()
-    browser.close()
 }
+    .end {
+        renderer.renderList.preTargets.remove("youtube-kaleidoscope-upload")
+        shards.close()
+        browser.close()
+    }

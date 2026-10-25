@@ -1,8 +1,16 @@
 package afield.examples
 
-import afield.formatBoxKotlin
-import afield.formatCodeProperty
+import afield.runtime.kotlin.formatBoxKotlin
+import afield.runtime.kotlin.formatCodeProperty
+import org.yaml.snakeyaml.DumperOptions
+import org.yaml.snakeyaml.Yaml
+import org.yaml.snakeyaml.nodes.MappingNode
+import org.yaml.snakeyaml.nodes.Node
+import org.yaml.snakeyaml.nodes.ScalarNode
+import org.yaml.snakeyaml.nodes.SequenceNode
+import org.yaml.snakeyaml.nodes.Tag
 import java.io.File
+import java.io.StringReader
 import kotlin.system.exitProcess
 
 /**
@@ -23,7 +31,7 @@ object BoxCodeFormat {
     private var imports = false
     private var k2 = false
 
-    private val BLOCK_KEY = Regex("""^(\s*)(?:-\s+)?(\w+):\s*\|[-+]?\s*$""")
+    private val BLOCK_KEY = Regex("""^(\s*)(?:-\s+)?(["']?)(\w+)\2:\s*\|[-+]?\s*(?:#.*)?$""")
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -53,7 +61,7 @@ object BoxCodeFormat {
     }
 
     fun formatYaml(text: String, label: String): String {
-        val lines = text.split("\n")
+        val lines = expandQuotedCode(text, label).split("\n")
         val out = ArrayList<String>(lines.size)
         var i = 0
         while (i < lines.size) {
@@ -71,7 +79,7 @@ object BoxCodeFormat {
             if (block.isEmpty()) { out += lines.subList(end, i); continue }
             val indent = block.filter(String::isNotBlank).minOf(::indentOf)
             val body = block.joinToString("\n") { if (it.isBlank()) "" else it.substring(indent) }
-            val formatted = formatOrNull(key.groupValues[2], body, "$label:${start + 1}")
+            val formatted = formatOrNull(key.groupValues[3], body, "$label:${start + 1}")
             if (formatted == null) {
                 out += block
             } else {
@@ -81,6 +89,65 @@ object BoxCodeFormat {
             out += lines.subList(end, i)
         }
         return out.joinToString("\n")
+    }
+
+    // Older fixtures encode complete programs as escaped YAML strings. Decode those through
+    // YAML, then use the same literal-block path as authored transcripts. Metadata stays in place.
+    private fun expandQuotedCode(text: String, label: String): String {
+        val documents = try {
+            Yaml().composeAll(StringReader(text)).toList()
+        } catch (_: RuntimeException) {
+            return text // Keep the existing handling of malformed YAML; never guess at its values.
+        }
+        data class Edit(val start: Int, val end: Int, val replacement: String)
+        val edits = mutableListOf<Edit>()
+        val visited = mutableSetOf<Node>()
+        fun visit(node: Node, inFlow: Boolean) {
+            if (!visited.add(node)) return
+            when (node) {
+                is MappingNode -> {
+                    val flow = inFlow || node.flowStyle == DumperOptions.FlowStyle.FLOW
+                    for (entry in node.value) {
+                        val key = entry.keyNode as? ScalarNode
+                        val value = entry.valueNode as? ScalarNode
+                        if (key != null && value != null && value.tag == Tag.STR &&
+                            (key.value == "code" || formatCodeProperty(key.value, "") != null) &&
+                            value.scalarStyle !in setOf(DumperOptions.ScalarStyle.LITERAL, DumperOptions.ScalarStyle.FOLDED)
+                        ) {
+                            if (flow || value.anchor != null || value.startMark.index < key.endMark.index) {
+                                println("skipped $label:${key.startMark.line + 1} (${key.value}): quoted code in a flow collection or alias")
+                            } else {
+                                val formatted = formatOrNull(key.value, value.value, "$label:${key.startMark.line + 1}")
+                                if (formatted != null) {
+                                    // SnakeYAML marks count Unicode code points; JVM string offsets
+                                    // count UTF-16 units. Emoji before or inside code change the offset.
+                                    val start = text.offsetByCodePoints(0, value.startMark.index)
+                                    val end = text.offsetByCodePoints(0, value.endMark.index)
+                                    val lineEnd = text.indexOf('\n', end).let { if (it < 0) text.length else it }
+                                    val suffix = text.substring(end, lineEnd)
+                                    // Keep an inline YAML comment on the new block's header.
+                                    if (suffix.isBlank() || suffix.trimStart().startsWith("#")) {
+                                        val comment = if (suffix.isBlank()) "" else suffix.trimEnd()
+                                        val indent = " ".repeat(key.startMark.column + 2)
+                                        val body = formatted.trimEnd('\n', '\r').lineSequence()
+                                            .joinToString("\n") { if (it.isBlank()) "" else indent + it }
+                                        edits += Edit(start, lineEnd, "|-" + comment + "\n" + body)
+                                    }
+                                }
+                            }
+                        }
+                        visit(entry.valueNode, flow)
+                    }
+                }
+                is SequenceNode -> node.value.forEach { visit(it, inFlow || node.flowStyle == DumperOptions.FlowStyle.FLOW) }
+            }
+        }
+        documents.filterNotNull().forEach { visit(it, false) }
+        var result = text
+        for (edit in edits.sortedByDescending { it.start }) {
+            result = result.replaceRange(edit.start, edit.end, edit.replacement)
+        }
+        return result
     }
 
     private fun formatOrNull(property: String, code: String, label: String): String? = try {

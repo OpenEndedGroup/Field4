@@ -16,7 +16,7 @@ A guide is a `slideShow { ... }` block. Each `step("...")` is one stage of the g
 
 A guide's notes and callout lines come and go with its steps. For marks that stay on the canvas,
 such as a hand-drawn diagram beside the boxes it explains or arrows a box draws for itself, see
-[Drawing and Notation](drawing_and_notation.md), the Excalidraw layer (`alt-d`) that is saved with
+[Drawing and Notation](drawing_and_notation.md), the Excalidraw layer (`alt/option-d`) that is saved with
 the document.
 
 ## A three-step guide
@@ -26,8 +26,6 @@ its first note opens beside the box.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/three_step_tour.png" wait="8" capture="box" outputs="none" embed=true name="three-step-tour" w="560" h="140" padding="28" alt="The guide box on the left with a green running dot, and beside it the first note: the heading A three-step tour, the sentence saying the note belongs to the box on the left and to follow the link at the bottom, and a Next link."}
 :::static
-val guide = thisBox
-
 val show = slideShow {
     step("Hello") {
         markdownNote(
@@ -37,10 +35,11 @@ val show = slideShow {
             Follow the link at the bottom to move on.
 
             [[next]]
-            """.trimIndent(),
-            animated = true
+            """
+                .trimIndent(),
+            animated = true,
         )
-        selectBox(guide)
+        selectBox(thisBox)
     }
     step("The code") {
         markdownNote(
@@ -49,16 +48,18 @@ val show = slideShow {
             The editor now shows this box's code.
 
             [[back]] [[next]]
-            """.trimIndent()
+            """
+                .trimIndent(),
         )
-        selectBox(guide, property = "code", line = 5, highlight = 5)
+        selectBox(thisBox, property = "code", line = 3, highlight = 3)
     }
     step("Done") {
         markdownNote(
             """
             ## That is the whole tour
             [[home:Start again]] [[finish]]
-            """.trimIndent()
+            """
+                .trimIndent(),
         )
     }
 }
@@ -92,12 +93,10 @@ shortcuts are ordinary links to `#slideshow:next`, `#slideshow:previous`, `#slid
 From code the same moves are `show.next()`, `show.previous()`, `show.home()`, `show.stop()` and
 `show.goToStep(n)`, all called from a coroutine. `show.hasNext()` and `show.hasPrevious()` say
 whether there is anywhere to go. This guide opens on its second step, whose note uses each kind of
-link, and marks line 13, the line that writes those links:
+link, and marks line 11, the line that writes those links:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/navigation.png" wait="5" capture="window-editor" outputs="none" embed=true name="guide-navigation" w="240" h="60" padding="12" alt="The Field window. On the left the small guide box, selected, and beside it the second step's note, headed Moving between steps, ending in four links: Back, First step, Onward and Finish. On the right the editor shows the guide's code with a red mark in the gutter at line 13, the line holding the four bracket shortcuts."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/navigation.png" wait="5" capture="window-editor" outputs="none" embed=true name="guide-navigation" w="240" h="60" padding="12" alt="The Field window. On the left the small guide box, selected, and beside it the second step's note, headed Moving between steps, ending in four links: Back, First step, Onward and Finish. On the right the editor shows the guide's code with a red mark in the gutter at line 11, the line holding the four bracket shortcuts."}
 :::static
-val guide = thisBox
-
 val show = slideShow {
     step("Start") {
         markdownNote("## Step one\n[[next]]")
@@ -109,9 +108,10 @@ val show = slideShow {
             Step two of three. Each link below came from a `[[...]]` shortcut.
 
             [[back]] [[home:First step]] [[next:Onward →]] [[stop]]
-            """.trimIndent()
+            """
+                .trimIndent(),
         )
-        selectBox(guide, property = "code", line = 13, highlight = 13)
+        selectBox(thisBox, property = "code", line = 11, highlight = 11)
     }
     step("End") {
         markdownNote("## The last step\n[[back]] [[finish]]")
@@ -141,8 +141,6 @@ An interactive step uses a `#custom:name` link in the note body, a `linkCallback
 var clickCount = 3
 var userChoice = "Balanced Mode"
 val version = "1.0.0"
-val host = thisBox
-//%-
 
 println("interactive guide ready")
 
@@ -159,7 +157,8 @@ val show = slideShow {
 
             Count: **{{clickCount}}**
             Choice: **{{userChoice}}**
-            """.trimIndent()
+            """
+                .trimIndent(),
         )
 
         linkCallback("incrementCounter") {
@@ -182,7 +181,7 @@ val show = slideShow {
             notify("Selected: Quality Mode", "slideshow")
         }
 
-        selectBox(host, property = "code")
+        selectBox(thisBox, property = "code")
     }
 }
 
@@ -191,9 +190,14 @@ runBlocking {
 }
 ```
 
-A template value can come from `this.properties[...]`, from a Kotlin variable the box has already run, or from the shared template helpers the slideshow runtime exposes. A variable becomes visible to templates once the code declaring it has finished running, so the [`//%-` line](running_code.md#the-fragment-break) after the declarations matters here: it runs `version`, `clickCount` and `userChoice` as their own fragment before `show.start()` renders the first note. Without it the first note shows those slots empty.
+Run the state declarations (`clickCount`, `userChoice` and `version`) before building the show,
+so its template callbacks can read those values.
+
+A template value can come from `this.properties[...]`, from a Kotlin variable the box has already run, or from the shared template helpers the slideshow runtime exposes.
 
 When a callback changes state, call `show.goToStep(show.currentStepIndex)` to rerender the current step immediately. That updates `{{clickCount}}` and `{{userChoice}}` without leaving the slide.
+
+A value that comes from a box property or a script variable is inserted as text: `<`, `>`, `&` and quotes are escaped, so a property holding `<b>hi</b>` shows those characters rather than bold text. Put markup in the note itself, not in the value.
 
 ## Annotations and code callouts
 
@@ -204,10 +208,9 @@ Annotations let a note point at an exact target.
 
 Use them when a sentence is about one box, one property, or one line.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/annotations.png" wait="5" capture="window-editor" outputs="none" embed=true name="guide-annotations" w="240" h="60" padding="12" alt="The Field window. On the left the small guide box, selected, with a green arrowhead at its top-right corner, and beside it the note headed Annotation Lines with its two bullets. An orange dashed line runs from the note across the canvas and curves down to the editor's left edge, ending a little above line 17. On the right the editor shows the snippet, with a red mark in the gutter at line 17, the selectBox call."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/annotations.png" wait="5" capture="window-editor" outputs="none" embed=true name="guide-annotations" w="240" h="60" padding="12" alt="The Field window. On the left the small guide box, selected, with a green arrowhead at its top-right corner, and beside it the note headed Annotation Lines with its two bullets. An orange dashed line runs from the note across the canvas and curves down to the editor's left edge, ending at the top of line 17. On the right the editor shows the snippet, with a red mark in the gutter at line 17, the selectBox call."}
 :::static
-val host = thisBox
-host.name = "guide-annotations"
+name = "guide-annotations"
 
 val show = slideShow {
     step("Annotations") {
@@ -218,27 +221,28 @@ val show = slideShow {
 
             - the green line targets the box,
             - the orange dashed line targets line 17 in this guide box.
-            """.trimIndent(),
-            animated = true
+            """
+                .trimIndent(),
+            animated = true,
         )
 
-        selectBox(host, property = "code", line = 17, highlight = 17)
+        selectBox(thisBox, property = "code", line = 17, highlight = 17)
 
         annotate(
             id = "target-box",
-            targetBox = host,
+            targetBox = thisBox,
             color = "rgba(128, 255, 164, 0.8)",
-            strokeWidth = 2.5
+            strokeWidth = 2.5,
         )
 
         annotateToLine(
             id = "target-line",
-            targetBox = host,
+            targetBox = thisBox,
             property = "code",
             line = 17,
             color = "rgba(255, 180, 100, 0.8)",
             strokeWidth = 2.0,
-            dashed = true
+            dashed = true,
         )
     }
 }
@@ -261,8 +265,6 @@ A step can carry its own discussion thread.
 :::static
 println("slide chat ready")
 
-val host = thisBox
-
 val show = slideShow {
     slideshowId("docs-guide-chat")
 
@@ -275,11 +277,12 @@ val show = slideShow {
             Use `withChat(id = "templateId")` when multiple template instances should share one thread.
 
             [[back]] [[next]]
-            """.trimIndent()
+            """
+                .trimIndent(),
         )
 
         withChat(id = "templateId")
-        selectBox(host, property = "code")
+        selectBox(thisBox, property = "code")
     }
 }
 

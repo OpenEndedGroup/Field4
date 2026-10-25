@@ -21,7 +21,7 @@ RectSL is a small stack language with scene side effects. Numbers, strings, colo
 
 ## Scene words
 
-Every scene opens by saying how big the wall is, in what units, and how long the clip runs. Below: a wall 1600×900 *pixels* wide, cropped to fill whatever it is drawn into, on a near-black background, four seconds at thirty frames a second, then one gold 200-pixel square in the middle of it. Changing `pixels` to `meters` leaves the geometry as it is; the unit tells the renderer and the `afield.four` lowering what the numbers mean.
+Every scene opens by saying how big the wall is, in what units, and how long the clip runs. Below: a wall 1600×900 *pixels* wide, cropped to fill whatever it is drawn into, on a near-black background, four seconds at thirty frames a second, then one gold 200-pixel square in the middle of it. Changing `pixels` to `meters` leaves the geometry as it is; the unit tells the renderer and the Field 4 lowering what the numbers mean.
 
 ```rectsl
 #rectsl
@@ -613,7 +613,7 @@ These apply the same ideas to scene objects rather than to rhythms, which makes 
 
 ## Distribution curves (Functions bridge)
 
-Linear `mix` is rarely the shape you want across an array. RectSL borrows [`afield.stdlib.Functions`](functions_examples.md), a tested library of easings, distributions and noise defined over `[0, 1]`. That is exactly the range of the array fraction `f`. `ease` shapes a scalar/track through the full Penner family; the curve words push a reusable `Fn` value you `sample` at `f` (or any x). The curves are graph-backed, so the Functions rewrite/evolve tooling can optimise an array's distribution toward a target.
+Linear `mix` is rarely the shape you want across an array. RectSL borrows [`afield.math.functions.Functions`](functions_examples.md), a tested library of easings, distributions and noise defined over `[0, 1]`. That is exactly the range of the array fraction `f`. `ease` shapes a scalar/track through the full Penner family; the curve words push a reusable `Fn` value you `sample` at `f` (or any x). The curves are graph-backed, so the Functions rewrite/evolve tooling can optimise an array's distribution toward a target.
 
 ```rectsl
 # alpha eased across the array with an elastic overshoot

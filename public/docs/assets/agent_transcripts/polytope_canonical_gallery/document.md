@@ -10,16 +10,24 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 <!-- field-box id="polytope_canonical_gallery" index="0" -->
 
+### Narrative
+
+From `code`
+
+---- the one parameter to change -------------------------------------------------
+Conway prefix notation, read right to left, over the seeds T C O I D and the
+operators d a k t g j n z o e s m b. Try "gD", "ktC", "bD", "sD", "dkD", "tI", "eC".
+
 ```edn [field-box id="polytope_canonical_gallery" role="properties"]
-{"id" "polytope_canonical_gallery" "index" 0 "name" "Polytope — Conway expression gallery, canonicalized" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — Conway expression gallery, canonicalized" "_tombstone" false "frame" #afield/rect [80.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_canonical_gallery_code_.kt" "lines" 86 "characters" 3703 "sha256" "05375ce23ed6e0a2a0c2b4fa025478dabaf06c29536b4e62c3071cfc3547905b"}]}
+{"id" "polytope_canonical_gallery" "index" 0 "name" "Polytope — Conway expression gallery, canonicalized" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — Conway expression gallery, canonicalized" "_tombstone" false "frame" #afield/rect [80.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_canonical_gallery_code_.kt" "lines" 90 "characters" 3694 "sha256" "72558d9aac724aaf351bb10ac020e2f3be2a8c9d2c17147416482724ae2f8d6d"}]}
 ```
 
 ```kotlin [field-property box="polytope_canonical_gallery" name="code" path="polytope_canonical_gallery_code_.kt"]
-import afield.stdlib.Vec3
-
-// ---- the one parameter to change -------------------------------------------------
-// Conway prefix notation, read right to left, over the seeds T C O I D and the
-// operators d a k t g j n z o e s m b. Try "gD", "ktC", "bD", "sD", "dkD", "tI", "eC".
+/*
+---- the one parameter to change -------------------------------------------------
+Conway prefix notation, read right to left, over the seeds T C O I D and the
+operators d a k t g j n z o e s m b. Try "gD", "ktC", "bD", "sD", "dkD", "tI", "eC".
+*/
 val expression = "gD"
 // ----------------------------------------------------------------------------------
 
@@ -37,7 +45,8 @@ println(
     after:  spread ${"%.3e".format(run.finalDiagnostics.tangencyRadiusSpread)}  planarity ${"%.3e".format(run.finalDiagnostics.maxFacePlanarityError)}  centre ${"%.3e".format(run.finalDiagnostics.tangencyCentroidOffset)}
     ${run.reason} after ${run.iterations} iterations (reciprocal ${run.reciprocalIterations}, relaxation ${run.relaxationIterations}, reseeded ${run.reseeded})
     orbits: ${orbits.summary()}
-    """.trimIndent(),
+    """
+        .trimIndent(),
 )
 
 val status: (String) -> Unit = { message -> markdown("canonical face", message) }
@@ -79,14 +88,17 @@ fun PolyhedralObject.panel(label: String, dx: Float, alpha: Double) =
                 - degree: `$degree`
                 - combinatorial orbit: `$orbit of ${orbits.faceClassCount}`
                 - face-plane distance from centre: `${"%.5f".format(depth)}`
-                """.trimIndent(),
+                """
+                    .trimIndent(),
             )
         }
     }
 
-// Left: the per-operator realization the Conway transform produced. Right: its canonical
-// representative. Both are centred and scaled by the same rigid gauge, so the difference
-// on screen is shape and nothing else.
+/*
+Left: the per-operator realization the Conway transform produced. Right: its canonical
+representative. Both are centred and scaled by the same rigid gauge, so the difference
+on screen is shape and nothing else.
+*/
 val before = raw.normalize(RigidGauge.CANONICAL, reference = raw.realization)
 val faceLines = before.panel("realized", -1.4f, 0.34) + solid.panel("canonical", 1.4f, 0.86)
 
@@ -100,6 +112,6 @@ threeLines(
 )
 displayOpen("polytope")
 
-viz("diagnostics", listOf(run.initialDiagnostics, run.finalDiagnostics, orbits))
+viz("diagnostics", [run.initialDiagnostics, run.finalDiagnostics, orbits])
 ```
 

@@ -31,7 +31,7 @@ def main():
         with log.open("w") as output:
             subprocess.run([sys.executable, "tools/field_backdoor.py", "--json", "--attach-existing",
                             "--port", str(args.run), "--timeout", "900", "--command",
-                            "run-jvm-main afield.four.reconstruction.ReconstructionSmoke --arg=--clip " +
+                            "run-jvm-main afield.media.reconstruction.ReconstructionSmoke --arg=--clip " +
                             ("--arg=--stress " if args.stress else "") + "--timeout 840"],
                            cwd=ROOT, stdout=output, check=True)
     result = json.loads(log.read_text())
@@ -87,7 +87,7 @@ def main():
     destination.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(work / "measurements.json", destination / f"{prefix}measurements.json")
     shutil.copyfile(destination / f"{prefix}measurements.json", ASSETS / f"{prefix}measurements.json")
-    (destination / f"{prefix}verification.json").write_text(json.dumps({"entrypoint": "afield.four.reconstruction.ReconstructionSmoke",
+    (destination / f"{prefix}verification.json").write_text(json.dumps({"entrypoint": "afield.media.reconstruction.ReconstructionSmoke",
         "exitCode": 0, "completionMarker": True, "vulkanValidationErrors": 0, "framesPerClip": 120,
         "output": [1920, 1080], "comparisonVideo": [3840, 2160], "rayTracingEnabled": False}, indent=2) + "\n")
     print(f"Verified reconstruction captures published to {ASSETS}")

@@ -13,13 +13,26 @@ var halflife = 0.10
 var compensation = 1.0
 
 controlGroup("movement") {
-    vec2Control("target", initialValue = pad, xRange = -1.0 to 1.0, yRange = -1.0 to 1.0,
-                step = 0.02) { pad = it }
+    vec2Control(
+        "target",
+        initialValue = pad,
+        xRange = -1.0 to 1.0,
+        yRange = -1.0 to 1.0,
+        step = 0.02,
+    ) {
+        pad = it
+    }
     slider("top speed (px/s)", min = 80.0, max = 700.0, step = 10.0, initialValue = topSpeed) { topSpeed = it }
-    slider("acceleration (px/s²)", min = 200.0, max = 4000.0, step = 50.0, initialValue = acceleration) { acceleration = it }
-    slider("deceleration (px/s²)", min = 200.0, max = 6000.0, step = 50.0, initialValue = deceleration) { deceleration = it }
+    slider("acceleration (px/s²)", min = 200.0, max = 4000.0, step = 50.0, initialValue = acceleration) {
+        acceleration = it
+    }
+    slider("deceleration (px/s²)", min = 200.0, max = 6000.0, step = 50.0, initialValue = deceleration) {
+        deceleration = it
+    }
     slider("turn strength", min = 0.0, max = 16.0, step = 0.25, initialValue = turn) { turn = it }
-    slider("directional acceleration", min = 0.0, max = 1.0, step = 0.05, initialValue = directional) { directional = it }
+    slider("directional acceleration", min = 0.0, max = 1.0, step = 0.05, initialValue = directional) {
+        directional = it
+    }
     slider("smoothing half-life (s)", min = 0.0, max = 0.4, step = 0.005, initialValue = halflife) { halflife = it }
     slider("lag compensation", min = 0.0, max = 2.0, step = 0.05, initialValue = compensation) { compensation = it }
 }
@@ -59,7 +72,8 @@ loop {
 
     character.update(stick(character.position, target), 1f / 60f, params)
     ghost.update(
-        stick(ghost.position, target), 1f / 60f,
+        stick(ghost.position, target),
+        1f / 60f,
         params.copy(accelerationHalflife = 0f, decelerationHalflife = 0f, accelerationCompensation = 0f),
     )
 
@@ -67,25 +81,40 @@ loop {
     while (trail.size > 240) trail.removeFirst()
 
     val path = FLine()
-    trail.forEachIndexed { i, p -> if (i == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y) }
+    path.breakNext()
+    trail.forEach { p -> path.lineTo(p.x, p.y) }
 
     showPlane(
-        listOf(
+        [
             fline {
-                moveTo(target.x - 10f, target.y); lineTo(target.x + 10f, target.y)
-                moveTo(target.x, target.y - 10f); lineTo(target.x, target.y + 10f)
-            }.apply { thickness = 1.5; color = vec(0.95, 0.85, 0.35, 1.0) },
-            path.apply { thickness = 1.5; color = vec(0.35, 0.75, 0.95, 1.0) },
-            whisker(ghost, 14f).apply { thickness = 1.0; color = vec(0.55, 0.55, 0.65, 1.0) },
-            whisker(character, 22f).apply { thickness = 2.5; color = vec(0.35, 0.95, 0.6, 1.0) },
-        ),
+                moveTo(target.x - 10f, target.y)
+                lineTo(target.x + 10f, target.y)
+                moveTo(target.x, target.y - 10f)
+                lineTo(target.x, target.y + 10f)
+            }
+                .apply {
+                    thickness = 1.5
+                    color = vec(0.95, 0.85, 0.35, 1.0)
+                },
+            path.apply {
+                thickness = 1.5
+                color = vec(0.35, 0.75, 0.95, 1.0)
+            },
+            whisker(ghost, 14f).apply {
+                thickness = 1.0
+                color = vec(0.55, 0.55, 0.65, 1.0)
+            },
+            whisker(character, 22f).apply {
+                thickness = 2.5
+                color = vec(0.35, 0.95, 0.6, 1.0)
+            },
+        ],
         window = view,
         // Inside the 520px output panel, so this box's panel does not overlap its
         // neighbour's in the column to the right.
         width = 500,
         height = 300,
         title = "drag the pad — green is the model, grey is the same model unsmoothed",
-        caption = "%.0f px/s · %.0f px behind the target"
-            .format(character.speed, target.distance(character.position)),
+        caption = "%.0f px/s · %.0f px behind the target".format(character.speed, target.distance(character.position)),
     )
 }

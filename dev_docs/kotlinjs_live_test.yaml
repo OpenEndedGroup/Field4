@@ -36,9 +36,10 @@ operations:
           external val console: dynamic
           data class V(val x: Double, val y: Double) {
               operator fun plus(o: V) = V(x + o.x, y + o.y)
+
               operator fun times(k: Double) = V(x * k, y * k)
           }
-          val a = V(1.0, 2.0) + V(10.0, 20.0)   // real operator+, compiled to JS
+          val a = V(1.0, 2.0) + V(10.0, 20.0) // real operator+, compiled to JS
           val b = a * 0.5
           console.log("vectors: a=" + a + " b=" + b)
 
@@ -52,16 +53,19 @@ operations:
           external val console: dynamic
           data class P(val x: Double, val y: Double) {
               operator fun plus(o: P) = P(x + o.x, y + o.y)
+
               fun len() = kotlin.math.sqrt(x * x + y * y)
           }
-          fun ring(n: Int, r: Double): List<P> = (0 until n).map { i ->
-              val a = 2.0 * kotlin.math.PI * i / n
-              P(kotlin.math.cos(a) * r, kotlin.math.sin(a) * r)
-          }
+          fun ring(n: Int, r: Double): List<P> =
+              (0 until n).map { i ->
+                  val a = 2.0 * kotlin.math.PI * i / n
+                  P(kotlin.math.cos(a) * r, kotlin.math.sin(a) * r)
+              }
           val pts = ring(32, 10.0)
-          val centroid = pts.reduce { u, v -> u + v }
-          val perimeter = pts.zipWithNext { u, v -> (u + P(-v.x, -v.y)).len() }.sum()
-          console.log("ring: n=" + pts.size + " sum=(" + centroid.x + "," + centroid.y + ") perimeter=" + perimeter)
+          val sum = pts.reduce { u, v -> u + v }
+          // Include the closing edge from the final point back to the first.
+          val perimeter = (pts + pts.first()).zipWithNext { u, v -> (u + P(-v.x, -v.y)).len() }.sum()
+          console.log("ring: n=" + pts.size + " sum=(" + sum.x + "," + sum.y + ") perimeter=" + perimeter)
 
   # 4. Parent the Kotlin boxes under the kotlinjs root, let the runtime toggle settle, then run.
   - connect: {parent: kjs_root, child: kjs_vec}

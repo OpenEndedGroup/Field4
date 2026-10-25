@@ -17,7 +17,7 @@ it. Zoom into about 25 seconds to see the individual cycles. Each accepted edit 
 
 The box is a function study because its `aiStudy` property is `function`; any box whose Kotlin
 returns a `StudyComposition` can be made one with **Make a Function Study**. The study tools ship
-with Field (`afield.stdlib.FunctionStudyTools`), and `FunctionStudyGuide` returns the working guide.
+with Field (`FunctionStudyTools.kt` in `afield.math.functions`), and `FunctionStudyGuide` returns the working guide.
 
 The separate **function_conversation_example** preserves the developed one-hour composition, its
 saved conversations and its checked revisions. The public guide is **Talking a function into

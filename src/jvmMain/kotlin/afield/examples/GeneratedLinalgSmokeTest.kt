@@ -1,11 +1,11 @@
 package afield.examples
 
-import afield.FieldJson
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.linalg.closestPointOnTriangle
-import afield.stdlib.linalg.arena.FrameArena
-import afield.stdlib.linalg.arena.frameScratch
-import afield.stdlib.linalg.storage.*
+import afield.document.persistence.FieldJson
+import afield.math.linalg.Vector3f
+import afield.math.linalg.closestPointOnTriangle
+import afield.math.linalg.arena.FrameArena
+import afield.math.linalg.arena.frameScratch
+import afield.math.linalg.storage.*
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString

@@ -1,5 +1,8 @@
 # Generated from fieldml_macro_demo/metadata.edn by afield.examples.DocumentToTranscript.
 name: "fieldml_macro_demo"
+docs:
+  - page: fieldml_host_bridge.md#source-macros
+    why: "Explains FieldML source macros."
 operations:
   - create:
       box: "fieldml-macro-root"
@@ -31,7 +34,7 @@ operations:
           // this box does not change it, because the slot is no longer empty.
           let firstRun =
             once "firstRunAt" (fun ignored ->
-              hostClass "afield.AnimationClock" |> hostGet "INSTANCE" |> hostCall0 "nowSeconds"
+              hostClass "afield.runtime.lifecycle.AnimationClock" |> hostGet "INSTANCE" |> hostCall0 "nowSeconds"
             )
 
           {

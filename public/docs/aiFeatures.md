@@ -2,16 +2,16 @@
 
 Every AI feature in Field works from where you already are. The box you have
 selected and the spot your cursor sits in travel with the request; what changes
-between features is what you are asking for. `command/ctrl-4` starts a
-conversation about a box, `command/ctrl-3` asks for an edit at one place in the
+between features is what you are asking for. `ctrl/command-4` starts a
+conversation about a box, `ctrl/command-3` asks for an edit at one place in the
 editor, `ctrl-space` mixes AI candidates into ordinary completion, and
 `ai("...")` fills in a function body from its signature. None of it works until Field has a provider
-to talk to, so configure OpenAI, OpenRouter or Anthropic from
+to talk to, so configure OpenAI, OpenRouter, Anthropic or a [local model server](local_ai.md) from
 [`/welcome`](history_overview.md) or from the environment first.
 
 ## Chat about one box
 
-Select one box and press `command/ctrl-4`, or run **AI Chat (panel)** from the
+Select one box and press `ctrl/command-4`, or run **AI Chat (panel)** from the
 command palette. Field opens the `ai-chat` output area for that box. The chat
 receives the box's current code and can use the Field tools made available by
 the server to inspect or propose edits to box properties and related source.
@@ -92,19 +92,26 @@ it. These are provider-specific histories, not complete document forks.
 A document can expose an existing history without adopting a new persistence format:
 
 ```diffstatic {data-lang=kotlin}
-import afield.*
-import afield.ai.core.*
+import afield.ai.completion.*
+import afield.ai.diagnostics.*
+import afield.ai.models.*
 
 // Connect these callbacks to your existing saved-state store.
-stateTree("design", "Design", read = {
-    StateTreeSnapshot(
-        nodes = listOf(StateTreeNode("saved-1", title = "Initial design")),
-        current = "saved-1",
-        note = "Saved authored states")
-}, inspect = { id ->
-    require(id == "saved-1")
-    "Width: 6000 mm"
-})
+stateTree(
+    "design",
+    "Design",
+    read = {
+        StateTreeSnapshot(
+            nodes = [StateTreeNode("saved-1", title = "Initial design")],
+            current = "saved-1",
+            note = "Saved authored states",
+        )
+    },
+    inspect = { id ->
+        require(id == "saved-1")
+        "Width: 6000 mm"
+    },
+)
 ```
 
 The callbacks must only read saved data: no compilation, restoration or builds.
@@ -162,7 +169,7 @@ StackSL program drawn live in a window, with three recorded sessions, and
 
 ## Chat at an editor location
 
-Press `command/ctrl-3`, or run **AI Chat in editor**. With a selection, Field
+Press `ctrl/command-3`, or run **AI Chat in editor**. With a selection, Field
 marks that range as the requested rewrite; without a selection, it marks the
 cursor position. The request also identifies the current box property and line.
 
@@ -246,7 +253,7 @@ errors. A tool lets it work on *yours*. You write an ordinary Kotlin class and a
 ordinary Kotlin lambda, register the pair, and from the next turn onward the
 model can call it by name, with arguments it chose, and read what you return.
 
-The whole surface is `afield.ai.core.AgentToolExtensions`. Nothing needs to be
+The whole surface is `afield.ai.tools.AgentToolExtensions`. Nothing needs to be
 edited in Field to add a tool: the registration goes the other way.
 
 ### The smallest version
@@ -272,21 +279,18 @@ expect:
 -->
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.SummarisesForToolLog
-import afield.ai.core.ToolExecutionContext
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
-// The request class IS the schema. Its name is the tool's name, and these two
-// annotations are the only prompt this tool gets — write them for a reader who
-// cannot see the code.
+/*
+The request class IS the schema. Its name is the tool's name, and these two
+annotations are the only prompt this tool gets — write them for a reader who
+cannot see the code.
+*/
 @JsonClassDescription("Measure a rectangular room and say whether it meets a minimum floor area.")
 data class MeasureRoom(
-    @JsonPropertyDescription("The room's width in metres.")
-    val width: Double,
-    @JsonPropertyDescription("The room's depth in metres.")
-    val depth: Double,
+    @JsonPropertyDescription("The room's width in metres.") val width: Double,
+    @JsonPropertyDescription("The room's depth in metres.") val depth: Double,
     @JsonPropertyDescription("The smallest floor area, in square metres, that counts as acceptable.")
     val minimumArea: Double = 11.0,
 )
@@ -306,9 +310,12 @@ AgentToolExtensions.register(MeasureRoom::class.java) { _, request ->
 val ctx = ToolExecutionContext()
 println(AgentToolExtensions.describe(ctx).single { "MeasureRoom" in it })
 
-val answer = AgentToolExtensions.execute(
-    ctx, "MeasureRoom", """{"width": 4.2, "depth": 3.1}"""
-) as MeasureRoomResult
+val answer =
+    AgentToolExtensions.execute(
+        ctx,
+        "MeasureRoom",
+        """{"width": 4.2, "depth": 3.1}""",
+    ) as MeasureRoomResult
 println(answer.toolLogSummary())
 ```
 
@@ -321,7 +328,7 @@ The second is `13.02`, and it arrived by way of a JSON string, through the same
 Jackson call the bridge makes, so a request class whose defaults or enums do not
 survive the trip fails here rather than in the middle of a conversation.
 
-Now select any box, press `command/ctrl-4`, and ask *"is a 4.2 by 3.1 metre room
+Now select any box, press `ctrl/command-4`, and ask *"is a 4.2 by 3.1 metre room
 big enough?"*
 
 ### Live coding
@@ -349,7 +356,9 @@ each turn:
 AgentToolExtensions.register(
     MeasureRoom::class.java,
     available = { thereIsAPlanOpen() },
-) { _, request -> /* … */ }
+) { _, request ->
+    /* … */
+}
 ```
 
 A closed gate removes the tool from the list the model is shown, rather than
@@ -445,9 +454,11 @@ chat, which keeps a copy with every turn:
 
 ```diffstatic {data-lang=kotlin}
 agentExtension("studio") {
-    branchState("canvas",
+    branchState(
+        "canvas",
         save = { file -> canvas.saveState(file.path) },
-        restore = { file -> canvas = file?.let { PaintCanvas.load(it.path) } ?: PaintCanvas() })
+        restore = { file -> canvas = file?.let { PaintCanvas.load(it.path) } ?: PaintCanvas() },
+    )
 }
 ```
 
@@ -476,9 +487,8 @@ Two optional interfaces, both worth implementing:
 - `CarriesToolImages`: pictures. Both agent loops send them as real images:
   OpenAI and OpenRouter as a message following the tool output, Anthropic as
   image blocks inside the tool result itself. This is how a tool lets a model
-  *look* at what it just did. The exception is a tool called over the MCP
-  backdoor: that reply is JSON, so it carries the numbers and not the picture. Put anything the model must not miss in the
-  result as well as in the image.
+  *look* at what it just did. A tool called over the MCP bridge returns them too, as MCP image
+  content beside the JSON result (up to eight per call).
 
 ```diffstatic {data-lang=kotlin}
 data class RoomReport(
@@ -497,7 +507,7 @@ JSON is spent as text tokens: the model cannot see an image encoded in a string.
 
 ### A worked example you can run
 
-`afield.four.modules.GeometryAgentTools` is a real, public tool set built exactly
+`afield.graphics.render.GeometryAgentTools` is a real, public tool set built exactly
 this way, over the loaders in [Geometry from disk](geometry_from_disk.md). Point
 it at a directory and the model can find out what geometry you have and look at
 any of it:
@@ -557,11 +567,6 @@ expect:
 -->
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.CarriesToolImages
-import afield.ai.core.SummarisesForToolLog
-import afield.ai.core.ToolExecutionContext
-import afield.four.modules.InspectGeometryFileResult
 import java.io.File
 
 val root = File(System.getProperty("java.io.tmpdir"), "field-ai-tool-docs").also { it.mkdirs() }
@@ -574,15 +579,20 @@ GeometryAgentTools.register()
 val ctx = ToolExecutionContext()
 println(AgentToolExtensions.availableToolNames(ctx))
 
-val report = AgentToolExtensions.execute(
-    ctx, "InspectGeometryFile", """{"path": "knot.obj", "yawDegrees": 34.0}"""
-) as InspectGeometryFileResult
+val report =
+    AgentToolExtensions.execute(
+        ctx,
+        "InspectGeometryFile",
+        """{"path": "knot.obj", "yawDegrees": 34.0}""",
+    ) as InspectGeometryFileResult
 
 println((report as SummarisesForToolLog).toolLogSummary())
 
-// The picture is NOT in the JSON the model reads — see the note above. It comes
-// back on the CarriesToolImages channel, which is what the bridge turns into a
-// real image message. Here it is in the box output instead:
+/*
+The picture is NOT in the JSON the model reads — see the note above. It comes
+back on the CarriesToolImages channel, which is what the bridge turns into a
+real image message. Here it is in the box output instead:
+*/
 val image = (report as CarriesToolImages).toolImages.single()
 display("<img src='" + image.dataUrl + "' style='width:100%'/>")
 ```
@@ -603,8 +613,9 @@ search roots: it canonicalises the requested path and then walks up the parent
 chain, which refuses a `..` that escapes, a symlink that points out, and a
 sibling directory whose name merely starts with a root's name.
 
-How the two bridges (the chat and MCP) use your registration is described in
-`dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`.
+??? aside "Agents: how the chat and MCP bridges use a registration"
+    How the two bridges (the chat and MCP) use your registration is described in
+    `dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`.
 
 A tool set that edits something which draws — a program, a scene, numbers in a
 property — does not have to be written from scratch. [Studies](studies.md) shows a
@@ -670,8 +681,8 @@ setup finished. A Kotlin macro whose later steps depend on a launch stops when s
 fails, and keeps the changes made so far so you can inspect them; undoing them is up
 to you.
 
-Macros in other languages run as before, and their receipts say
-`setupVerified: false` with a message that completion was not checked.
+Macros in other languages wait (up to ten seconds) for each engine's execution verdict, so their
+receipts report completion too, and a failed execution is an error.
 The external backdoor's awaited `run`, `launch` and `continue` commands get a receipt
 from every engine, not only Kotlin. A box that printed an error comes back failed even
 when its engine reported success.

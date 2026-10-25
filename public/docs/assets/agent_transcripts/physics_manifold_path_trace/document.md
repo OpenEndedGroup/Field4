@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chain_renderer" index="0" -->
 
 ```edn [field-box id="chain_renderer" role="properties"]
-{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["physics_manifold_trace"] "properties" {"children" #{#afield/box "physics_manifold_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 218 "sha256" "012ed8443bbd6a083b44dfcd6e1745e705ebe33816199803005ea815f12cf9d3"}]}
+{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["physics_manifold_trace"] "properties" {"children" #{#afield/box "physics_manifold_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 10 "characters" 230 "sha256" "5e8da67ebadd54cb9f7ac62509c4c62d29a6a1926af3bcabe40598f0cfba82fe"}]}
 ```
 
 ```kotlin [field-property box="chain_renderer" name="code" path="chain_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,26 +32,23 @@ start(renderer::run)
 <!-- field-box id="physics_manifold_trace" index="1" -->
 
 ```edn [field-box id="physics_manifold_trace" role="properties"]
-{"id" "physics_manifold_trace" "index" 1 "name" "a draped cloth, welded into one solid, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a draped cloth, welded into one solid, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "physics_manifold_trace_code_.kt" "lines" 130 "characters" 5656 "sha256" "7433f16b888b81bdf991fc4896c9d269981ebe73fb188507491a0d13843b56af"}]}
+{"id" "physics_manifold_trace" "index" 1 "name" "a draped cloth, welded into one solid, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a draped cloth, welded into one solid, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "physics_manifold_trace_code_.kt" "lines" 141 "characters" 5557 "sha256" "ba5089d2ac2d527f2ada3781cd991dfd87193d2dabbc99698a8e50f6197609ba"}]}
 ```
 
 ```kotlin [field-property box="physics_manifold_trace" name="code" path="physics_manifold_trace_code_.kt"]
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.fabricated.importTriMesh
-import afield.four.physics.PlaneCollider
-import afield.four.physics.SimdVerlet
-import afield.four.physics.SphereCollider
-import afield.four.physics.addCloth
-import afield.four.physics.addColliders
-import afield.four.util.Camera
-import afield.manifold.ManifoldLibrary
-import afield.manifold.Solid
-import afield.stdlib.genus
-import afield.stdlib.isWatertight
-import afield.stdlib.linalg.Vector3f
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.importTriMesh
+import afield.graphics.vulkan.util.Camera
+import afield.simulation.physics.PlaneCollider
+import afield.simulation.physics.SimdVerlet
+import afield.simulation.physics.SphereCollider
+import afield.simulation.physics.addCloth
+import afield.simulation.physics.addColliders
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)
@@ -60,15 +58,17 @@ require(ManifoldLibrary.isAvailable) {
 }
 
 // ---- the knobs ------------------------------------------------------------------
-val side = 14           // particles per side; struts go as 2*side*(side-1)
-val spacing = 0.17f     // rest length between neighbours
-val rod = 0.035         // radius of the rod each strut becomes
-val settleFrames = 300  // physics frames before the geometry is taken
+val side = 14 // particles per side; struts go as 2*side*(side-1)
+val spacing = 0.17f // rest length between neighbours
+val rod = 0.035 // radius of the rod each strut becomes
+val settleFrames = 300 // physics frames before the geometry is taken
 // ---------------------------------------------------------------------------------
 
-// ---- stage one: the physics ----------------------------------------------------
-// Gravity is +y in SimdVerlet, which is why the sphere sits BELOW the sheet at y = 0.8
-// and the floor's legal side is above a plane whose normal is -y.
+/*
+---- stage one: the physics ----------------------------------------------------
++y is up, as in the path tracer: gravity is negative, the sphere sits below the sheet,
+and the floor is a plane whose normal is +y.
+*/
 val sim = SimdVerlet(SimdVerlet.State3.empty())
 val cloth = sim.addCloth(
     width = side,
@@ -80,20 +80,21 @@ val cloth = sim.addCloth(
     pinned = { _, _ -> false },
 )
 val world = sim.addColliders(
-    SphereCollider(0f, 0.78f, 0f, radius = 0.52f).also { it.friction = 0.8f; it.margin = 0.01f },
-    PlaneCollider(0f, -1f, 0f, offset = -1.28f).also { it.friction = 0.9f },
+    SphereCollider(0f, -0.78f, 0f, radius = 0.52f).also {
+        it.friction = 0.8f
+        it.margin = 0.01f
+    },
+    PlaneCollider(0f, 1f, 0f, offset = -1.28f).also { it.friction = 0.9f },
 )
 repeat(settleFrames) {
-    cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = 9.8f, iterations = 16)
+    cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = -9.8f, iterations = 16)
 }
 println("${cloth.count} particles, ${world.contacts} contacts on the last frame")
 
 // ---- stage two: 364 rods, one batched union ------------------------------------
-// The path tracer has +y up and SimdVerlet has +y down, so read the physics out with y
-// negated once, here, rather than flipping the camera and the floor to match it.
 fun at(col: Int, row: Int): Triple<Double, Double, Double> {
     val p = cloth.position(col, row)
-    return Triple(p.x.toDouble(), -p.y.toDouble(), p.z.toDouble())
+    return Triple(p.x.toDouble(), p.y.toDouble(), p.z.toDouble())
 }
 
 val struts = buildList {
@@ -105,10 +106,13 @@ val struts = buildList {
 val quads = (side - 1) * (side - 1)
 println("${struts.size} struts, ${quads} quads")
 
-val (net, netGenus) = Solid.scope {
-    // A capsule is the convex hull of two balls, so `hullOf` does the orientation and
-    // there is no basis to build. `segments = 10` keeps the triangle count of 364 of these
-    // in six figures rather than seven.
+// Copy both meshes before the scope releases the union and all intermediate rods.
+val (shaded, plain, netGenus) = Solid.scope {
+    /*
+    A capsule is the convex hull of two balls, so `hullOf` does the orientation and
+    there is no basis to build. `segments = 10` keeps the triangle count of 364 of these
+    in six figures rather than seven.
+    */
     val rods = struts.map { (a, b) ->
         Solid.hullOf(
             Solid.sphere(rod, segments = 10).translated(a.first, a.second, a.third),
@@ -118,16 +122,21 @@ val (net, netGenus) = Solid.scope {
     // One batched union rather than 363 nested ones: Manifold plans the whole set.
     val start = System.nanoTime()
     val welded = Solid.union(rods).checked("cloth net")
-    println("union of ${rods.size} rods: ${"%.0f".format((System.nanoTime() - start) / 1e6)} ms, " +
-        "${welded.triangleCount} triangles, volume ${"%.5f".format(welded.volume)}")
-    // A Pair's Solid is exempted from the scope's release, same as a bare one.
-    welded to welded.genus
+    println(
+        "union of ${rods.size} rods: ${"%.0f".format((System.nanoTime() - start) / 1e6)} ms, " +
+            "${welded.triangleCount} triangles, volume ${"%.5f".format(welded.volume)}",
+    )
+    Triple(
+        welded.toTriMesh(normals = true, minSharpAngle = 30.0),
+        welded.toTriMesh(),
+        welded.genus,
+    )
 }
-val shaded = net.toTriMesh(normals = true, minSharpAngle = 30.0)
-val plain = net.toTriMesh()
-println("genus $netGenus against $quads quads in the sheet; " +
-    if (netGenus == quads) "they agree, so no two rods have been welded by contact"
-    else "they differ by ${quads - netGenus}, so that many cycles have been closed by folds touching")
+println(
+    "genus $netGenus against $quads quads in the sheet; " +
+        if (netGenus == quads) "they agree, so no two rods have been welded by contact"
+        else "they differ by ${quads - netGenus}, so that many cycles have been closed by folds touching",
+)
 println("Field's own reckoning: watertight ${plain.isWatertight()}, genus ${plain.genus()}")
 
 // ---- stage three: the render ---------------------------------------------------
@@ -139,8 +148,10 @@ println("scene: ${added.triangleCount} triangles appended, ${added.degenerateCou
 
 val reach = 6f
 scene.quad(
-    Vector3f(-reach, -1.30f, -reach), Vector3f(reach, -1.30f, -reach),
-    Vector3f(reach, -1.30f, reach), Vector3f(-reach, -1.30f, reach),
+    Vector3f(-reach, -1.30f, -reach),
+    Vector3f(reach, -1.30f, -reach),
+    Vector3f(reach, -1.30f, reach),
+    Vector3f(-reach, -1.30f, reach),
     floor,
 )
 
@@ -160,9 +171,10 @@ tracer.environmentRotation = 2.1f
 tracer.indirectClamp = 10f
 tracer.blitToScreen()
 println("${tracer.backend}: ${tracer.triangleCount} triangles")
-net.close()
 frames {
-    while (tracer.samples < 700) { frame() }
+    while (tracer.samples < 700) {
+        frame()
+    }
     println("cloth study converged: ${tracer.samples} samples")
 }
 ```

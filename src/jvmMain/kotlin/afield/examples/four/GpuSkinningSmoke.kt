@@ -1,19 +1,19 @@
 package afield.examples.four
 
-import afield.four.Renderer
-import afield.four.buffers.FrameBufferGroup
-import afield.four.modules.ComputeMesh
-import afield.four.modules.DualQuaternionSkinning
-import afield.four.modules.GltfSkinning
-import afield.four.modules.GltfSupport
-import afield.four.modules.GpuSkinner
-import afield.four.modules.GpuSkinning
-import afield.four.modules.RiggedFixture
-import afield.four.modules.StressFixture
-import afield.four.util.GpuProbe
-import afield.four.util.Options
-import afield.four.util.Window
-import afield.stdlib.linalg.Matrix4f
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.buffers.FrameBufferGroup
+import afield.graphics.render.ComputeMesh
+import afield.graphics.scene.DualQuaternionSkinning
+import afield.graphics.scene.GltfSkinning
+import afield.graphics.scene.GltfSupport
+import afield.graphics.scene.GpuSkinner
+import afield.graphics.scene.GpuSkinning
+import afield.graphics.scene.RiggedFixture
+import afield.graphics.scene.StressFixture
+import afield.graphics.vulkan.util.GpuProbe
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.Window
+import afield.math.linalg.Matrix4f
 import kotlin.math.abs
 import kotlin.system.exitProcess
 
@@ -83,7 +83,7 @@ expect:
  * tools/run_field_tests.py --id four.gpu-skinning.smoke
  * ```
  *
- * Needs a GPU and a window: `afield.four` has no headless mode, so a compute-only dispatch still
+ * Needs a GPU and a window: Field 4 has no headless mode, so a compute-only dispatch still
  * needs a `Window` for the device to exist. It also needs an awake display.
  */
 object GpuSkinningSmoke {
@@ -164,7 +164,7 @@ object GpuSkinningSmoke {
 
     /**
      * The bind pose out of the packed 12-float vertex buffer — the same read [GpuSkinner] and
-     * [afield.four.modules.CpuSkinner] both do in their `init`.
+     * [afield.graphics.scene.CpuSkinner] both do in their `init`.
      *
      * Read here rather than borrowed from a [GpuSkinner] because constructing one allocates three
      * GPU buffers, and this is called once per fixture for the CPU oracle's benefit.
@@ -625,13 +625,13 @@ object GpuSkinningSmoke {
             "synthetic non-rigid", positions, normals,
             GltfSkinning.VertexInfluences(n, jointIndex, weight, 0, 0f), joints,
         )
-        val y = afield.stdlib.linalg.Vector3f(0f, 1f, 0f)
-        val x = afield.stdlib.linalg.Vector3f(1f, 0f, 0f)
-        fun rot(axis: afield.stdlib.linalg.Vector3f, deg: Double) = Matrix4f().rotate(Math.toRadians(deg).toFloat(), axis)
+        val y = afield.math.linalg.Vector3f(0f, 1f, 0f)
+        val x = afield.math.linalg.Vector3f(1f, 0f, 0f)
+        fun rot(axis: afield.math.linalg.Vector3f, deg: Double) = Matrix4f().rotate(Math.toRadians(deg).toFloat(), axis)
         fun pose(s: Float): List<Matrix4f> = listOf(
             Matrix4f(),
-            Matrix4f().translate(afield.stdlib.linalg.Vector3f(0.2f * s, 0f, 0f)).mul(rot(y, 170.0 * s)),
-            Matrix4f().translate(afield.stdlib.linalg.Vector3f(0f, 0.3f * s, 0f)).mul(rot(y, -170.0 * s)),
+            Matrix4f().translate(afield.math.linalg.Vector3f(0.2f * s, 0f, 0f)).mul(rot(y, 170.0 * s)),
+            Matrix4f().translate(afield.math.linalg.Vector3f(0f, 0.3f * s, 0f)).mul(rot(y, -170.0 * s)),
             rot(x, 60.0 * s).mul(Matrix4f().scale(1f + 0.5f * s, 1f, 1f - 0.3f * s)),
             Matrix4f().set(
                 1f, 0f, 0f, 0f,
@@ -848,7 +848,7 @@ object GpuSkinningSmoke {
         val columns = 8
         val x = (i % columns - (columns - 1) / 2f) * 2.2f
         val z = (i / columns - (columns - 1) / 2f) * 2.2f
-        return Matrix4f().translate(afield.stdlib.linalg.Vector3f(x, 0f, z))
+        return Matrix4f().translate(afield.math.linalg.Vector3f(x, 0f, z))
     }
 
     // ------------------------------------------------------------------------------------------

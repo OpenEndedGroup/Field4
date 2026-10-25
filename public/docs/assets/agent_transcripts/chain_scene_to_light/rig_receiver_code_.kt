@@ -1,8 +1,10 @@
-import afield.dmx.*
+import afield.io.dmx.*
 
-// Field as an sACN node on the sender's port (35690, fixed so the two boxes agree; change both
-// together). It knows where the fixtures are (the same layout),
-// and nothing else: every colour drawn here was decoded from the universes that arrived.
+/*
+Field as an sACN node on the sender's port (35690, fixed so the two boxes agree; change both
+together). It knows where the fixtures are (the same layout),
+and nothing else: every colour drawn here was decoded from the universes that arrived.
+*/
 val node = sacnIn(port = 35690)
 val layout = SceneOnARig.Rig()
 

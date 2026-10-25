@@ -1,0 +1,23 @@
+{
+  "baseline": "7910450cc",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/docs_capture/first_graphics_native.yaml",
+      "kotlinBodies": 2,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/petri_sparks.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 5,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/wfc_worked_example.yaml",
+      "kotlinBodies": 8,
+      "collectionConversions": 10,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

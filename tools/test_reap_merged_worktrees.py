@@ -27,6 +27,10 @@ from tools.reap_merged_worktrees import (
     print_policy,
     retention_families,
 )
+from tools.git_isolation import scrub_process_env  # noqa: E402
+
+# This module builds scratch git repositories; an inherited GIT_DIR would redirect them.
+scrub_process_env()
 
 TOOL = Path(__file__).resolve().parent / "reap_merged_worktrees.py"
 REPO_ROOT = TOOL.parent.parent
@@ -113,10 +117,13 @@ class PolicyTests(unittest.TestCase):
     def test_regenerable_matching_reaches_into_caches_with_their_own_gitignore(self) -> None:
         for entry in ("build/", "public/.cache/1002625795874814453", ".pytest_cache/v/",
                       ".nightly-tmp/build.log", "native/field-slug/build/", "tools/linalg-generator/build/",
-                      "src/__pycache__/", "java_pid123.hprof", "public/docs-runner-failures/editor.png.log"):
+                      "src/__pycache__/", "java_pid123.hprof", "public/docs-runner-failures/editor.png.log",
+                      ".nightly-tmp-docs.log", ".afield-local/last-workspace.txt", ".afield-local/docs8.log"):
             self.assertTrue(reaper.is_regenerable(entry), entry)
         for entry in ("src/personal/", "src/personal/Foo.kt", "dev_docs/agents/demos/x/transcript.edn",
-                      "NIGHTLY_WORKLOG.md", ".ci-check85/check.log", "MORNING.md"):
+                      "NIGHTLY_WORKLOG.md", ".ci-check85/check.log", "MORNING.md",
+                      # .afield-local as a whole is not regenerable: kept renders live there.
+                      ".afield-local/", ".afield-local/eagle-sheet1.png"):
             self.assertFalse(reaper.is_regenerable(entry), entry)
 
 
@@ -405,7 +412,7 @@ class GitBackedTests(unittest.TestCase):
 class WorkGuardTests(unittest.TestCase):
     """The guards added on 2026-10-03: ignored work, scratch, detached HEADs, submodules, archiving."""
 
-    IGNORES = "build/\npublic/.cache/\nsrc/personal/\nNIGHTLY_WORKLOG.md\n"
+    IGNORES = "build/\npublic/.cache/\nsrc/personal/\nNIGHTLY_WORKLOG.md\n.afield-local/\n.claude/\n"
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -439,6 +446,29 @@ class WorkGuardTests(unittest.TestCase):
         (path / "public/.cache/1002625795874814453").write_text("x")
         verdict = self.fx.classify(path, now=self.now)
         self.assertTrue(verdict.removable, verdict.text)
+
+    def test_an_ignored_folder_is_judged_file_by_file(self) -> None:
+        """2026-10-21: 13 merged trees refused for `.afield-local/`, which held only a 4 KB pointer.
+        git reports the folder as one entry, so the guard has to look inside it."""
+        path = self.tree("local-state")
+        (path / ".afield-local").mkdir()
+        (path / ".afield-local/last-workspace.txt").write_text("/Users/marc/house-machine/workspace\n")
+        (path / ".afield-local/docs8.log").write_text("build log\n")
+        self.assertIn(".afield-local/", reaper.ignored_paths(path), "fixture: git reports the folder whole")
+        self.assertTrue(self.fx.classify(path, now=self.now).removable)
+        # One kept render inside it, and the tree is refused, naming that file.
+        (path / ".afield-local/eagle-sheet1.png").write_bytes(b"\x89PNG")
+        verdict = self.fx.classify(path, now=self.now)
+        self.assertEqual(verdict.reason, "ignored-work")
+        self.assertIn(".afield-local/eagle-sheet1.png", verdict.text)
+
+    def test_a_preview_launch_config_is_archived_not_refused(self) -> None:
+        path = self.tree("previewed")
+        (path / ".claude").mkdir()
+        (path / ".claude/launch.json").write_text('{"configurations": []}\n')
+        self.assertTrue(self.fx.classify(path, now=self.now).removable)
+        copies = reaper.archive_precious(path, Path(self._tmp.name) / "archive")
+        self.assertEqual([c.name for c in copies], ["previewed-launch.json"])
 
     def test_a_worklog_does_not_refuse_and_is_archived_first(self) -> None:
         path = self.tree("logged")
@@ -592,6 +622,31 @@ class CleanBuildsTests(unittest.TestCase):
             self.assertIsNotNone(reaper.recently_active(path, 12, time.time()))
 
 
+class RefusalLineTests(unittest.TestCase):
+    """Which refusals a run reports, decided in one function so the CLI cannot drift from it."""
+
+    PATH = Path("/trees/x")
+
+    def verdict(self, reason: str, *, removable: bool = False) -> reaper.Verdict:
+        return reaper.Verdict(REFUSAL_LABELS.get(reason, reason), reason, removable, FAMILIES[0])
+
+    def test_every_announced_refusal_names_the_path_and_the_reason(self) -> None:
+        for reason in reaper.ANNOUNCED_REFUSALS:
+            with self.subTest(reason=reason):
+                line = reaper.refusal_line(self.PATH, self.verdict(reason))
+                self.assertEqual(line, f"keeping {self.PATH}: {REFUSAL_LABELS[reason]}")
+
+    def test_the_four_that_used_to_be_silent_are_announced(self) -> None:
+        self.assertLessEqual({"dirty", "ignored-work", "submodule", "undatable"}, reaper.ANNOUNCED_REFUSALS)
+
+    def test_unmerged_and_removable_verdicts_stay_quiet(self) -> None:
+        self.assertIsNone(reaper.refusal_line(self.PATH, self.verdict("unmerged")))
+        self.assertIsNone(reaper.refusal_line(self.PATH, self.verdict("removable", removable=True)))
+
+    def test_every_announced_reason_has_a_label(self) -> None:
+        self.assertLessEqual(reaper.ANNOUNCED_REFUSALS, set(REFUSAL_LABELS))
+
+
 class CommandLineTests(unittest.TestCase):
     """End to end, against a throwaway repo. Dry run only -- --apply is never invoked."""
 
@@ -605,6 +660,24 @@ class CommandLineTests(unittest.TestCase):
             ["python3", str(TOOL), "--repo", str(self.fx.repo), *args],
             capture_output=True, text=True, cwd=REPO_ROOT,
         )
+
+    def test_a_dry_run_names_every_refusal_it_passes_over(self) -> None:
+        """2026-10-22: two clean, merged agent checkouts were refused for ignored work and simply
+        dropped out of the dry run, so the only way to find out why was to call the classifier by
+        hand. Every refusal but "unmerged" now says what kept it."""
+        (self.fx.repo / ".gitignore").write_text(".afield-local/\n")
+        self.fx.git("add", ".gitignore")
+        self.fx.commit("ignores", "2026-01-01T00:01:00+00:00")
+        held = self.fx.add_worktree(self.fx.base, "held", "nightly/2026-01-02/held", "2026-01-02T00:00:00+00:00")
+        (held / ".afield-local").mkdir()
+        (held / ".afield-local/plan.md").write_text("a port design\n")
+        dirty = self.fx.add_worktree(self.fx.base, "dirty", "nightly/2026-01-02/dirty", "2026-01-02T00:00:00+00:00")
+        (dirty / "stray.txt").write_text("uncommitted\n")
+        result = self.run_tool("--base", str(self.fx.base))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f"keeping {held.resolve()}: holds ignored work (.afield-local/plan.md)", result.stdout)
+        self.assertIn(f"keeping {dirty.resolve()}: dirty", result.stdout)
+        self.assertIn("0 clean merged worktree(s)", result.stdout)
 
     def test_explain_policy_prints_the_table_without_scanning(self) -> None:
         result = self.run_tool("--explain-policy")

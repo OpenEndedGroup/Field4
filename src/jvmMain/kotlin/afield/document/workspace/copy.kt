@@ -1,0 +1,155 @@
+package afield.document.workspace
+
+import afield.data.table.div
+import afield.data.table.get
+import afield.data.table.minus
+import afield.data.table.plus
+import afield.data.table.rem
+import afield.data.table.times
+import afield.document.graph.box
+import afield.document.graph.nested
+import afield.runtime.execution.plus
+import afield.runtime.lifecycle.plus
+import afield.runtime.lifecycle.rem
+
+import afield.audio.synth.*
+import afield.document.graph.Box
+import afield.document.graph.collectAllNestedBoxes
+import afield.document.graph.isTrue
+import afield.document.graph.makeKI
+import afield.document.graph.needsResync
+import afield.document.graph.nestedIn
+import afield.graphics.vulkan.*
+import afield.media.stream.*
+import afield.media.video.*
+import afield.ui.output.templates.filter
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
+
+/**
+ * Duplicating boxes inside a document: [copyBox] clones one box, [copyBoxes] clones a selection and
+ * rewires its connections, and [nextCopyName] names the results.
+ *
+ * [copyBox] copies the persistent properties except the graph edges (`parents`, `children`, `nested`,
+ * `nestedIn`), gives the copy a fresh uuid, a `(copy)` or `(copy n)` name and its own engine, connects it
+ * under root, and by default offsets its frame by 80 in x and y. [copyBoxes] also takes every box nested
+ * inside the selection and skips tombstoned ones. Connections between copied boxes point at the copies;
+ * connections to boxes outside the selection are kept, so a copy stays wired to the same outside parents and
+ * children. Only the top-level boxes of the selection are offset, so nested copies keep their place inside
+ * their copied container.
+ */
+
+private val copyRegex = Regex("""^(.*) \(copy(?: (\d+))?\)$""")
+
+/**
+ * Returns the next copy-style name for [name].
+ *
+ * Existing suffixes like `" (copy)"` or `" (copy 3)"` are advanced; otherwise
+ * `" (copy)"` is appended.
+ */
+fun nextCopyName(name: String): String {
+    val match = copyRegex.matchEntire(name)
+
+    return if (match != null) {
+        val base = match.groupValues[1]
+        val numberPart = match.groupValues[2]
+
+        val nextNumber = if (numberPart.isEmpty()) {
+            2
+        } else {
+            numberPart.toInt() + 1
+        }
+
+        "$base (copy $nextNumber)"
+    } else {
+        "$name (copy)"
+    }
+}
+
+/** Copies [boxes] and everything nested in them, as described above, and returns the new boxes. */
+fun copyBoxes(boxes: List<Box>): List<Box> {
+    val sourceBoxes = collectAllNestedBoxes(
+        boxes.filter { !it.getPropertyRaw("_tombstone").isTrue() }.toSet()
+    ).filter { !it.getPropertyRaw("_tombstone").isTrue() }
+
+    if (sourceBoxes.isEmpty()) return emptyList()
+
+    val sourceSet = sourceBoxes.toSet()
+    val topLevelSources = sourceSet.filter { it.nestedIn !in sourceSet }.toSet()
+
+    val oldToNew = sourceBoxes.associateWith { source ->
+        copyBox(source, offsetFrame = source in topLevelSources)
+    }
+
+    oldToNew.entries.forEach { (older, newer) ->
+        older.parents.forEach { parent ->
+            if (parent.getPropertyRaw("_tombstone").isTrue()) return@forEach
+            when (parent) {
+                newer.root -> {}
+                in oldToNew -> {
+                    oldToNew[parent]!!.connect(newer)
+                }
+
+                else -> {
+                    parent.connect(newer)
+                }
+            }
+        }
+        older.children.forEach { child ->
+            if (child.getPropertyRaw("_tombstone").isTrue()) return@forEach
+            when (child) {
+                in oldToNew -> {
+                    newer.connect(oldToNew[child]!!)
+                }
+
+                else -> {
+                    newer.connect(child)
+                }
+            }
+        }
+    }
+
+    oldToNew.entries.forEach { (older, newer) ->
+        val oldNestedParent = older.nestedIn ?: return@forEach
+        if (oldNestedParent.getPropertyRaw("_tombstone").isTrue()) return@forEach
+        newer.nestedIn = oldToNew[oldNestedParent] ?: oldNestedParent
+    }
+
+    return oldToNew.values.toList()
+}
+
+/** A copy of [b] in the same document, offset by 80 in x and y when [offsetFrame] is true. */
+@OptIn(ExperimentalUuidApi::class)
+fun copyBox(b: Box, offsetFrame: Boolean = true): Box {
+    val newBox = Box(id = Uuid.random().toString())
+
+    val exclude = setOf("parents", "children", "nested", "nestedIn")
+    Box.ioPersistentProperties.forEach { name ->
+        if (name in b.properties && name !in exclude) {
+            newBox.properties[name] = b.properties[name]
+            if (Box.uiResyncProperties.any { it.matches(name) }) {
+                needsResync.add(newBox to name)
+            }
+        }
+    }
+
+    val newName = nextCopyName(b.name)
+    newBox.properties["name"] = newName
+    newBox.name = newName
+    newBox.inside = b.inside
+    newBox.frame = if (offsetFrame) {
+        b.frame.copy(x = b.frame.x + 80, y = b.frame.y + 80)
+    } else {
+        b.frame.copy()
+    }
+
+    b.root.connect(newBox)
+    b.inside.boxes[newBox.id] = newBox
+    // newBox's own engine: `ki` is a per-box delegate, never among the properties copied above, so
+    // nothing here can be the source box's engine.
+    newBox.replaceKi(makeKI(newBox, reason = "copyBox"))
+    newBox.name = newName
+
+
+    return newBox
+}

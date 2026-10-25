@@ -1,5 +1,8 @@
 # Generated from fieldml_host_bridge_demo/metadata.edn by afield.examples.DocumentToTranscript.
 name: "fieldml_host_bridge_demo"
+docs:
+  - page: fieldml_host_bridge.md
+    why: "Explains calling JVM methods, passing functions and types from FieldML."
 operations:
   - create:
       box: "fieldml-bridge-root"
@@ -14,8 +17,8 @@ operations:
       frame: { x: 400.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         "code": |-
-          let Img = hostClass "afield.stdlib.Img"
-          let Imaging = hostClass "afield.stdlib.Imaging_fieldKt"
+          let Img = hostClass "afield.media.image.Img"
+          let Imaging = hostClass "afield.media.image.Imaging_fieldKt"
 
           // The whole picture is this function. Change 11.0 to change the ring
           // spacing; change "viridis" below to "magma" or "coolwarm".
@@ -62,7 +65,7 @@ operations:
       frame: { x: 400.0, y: 300.0, w: 300.0, h: 100.0 }
       properties:
         "code": |-
-          let Img = hostClass "afield.stdlib.Img"
+          let Img = hostClass "afield.media.image.Img"
           let img = hostNew (8, 4, 1, tabulate (fun i -> toFloat i / 32.0) 32) Img
 
           // Try it: put the caret after the quote in hostGet "" and ask for
@@ -113,8 +116,8 @@ operations:
           // you -- so this goes through Kotlin's own reflection, and naming the arguments
           // is what makes the defaults reachable: a positional call has no way to say
           // which parameter it is skipping.
-          let Img = hostClass "afield.stdlib.Img"
-          let Imaging = hostClass "afield.stdlib.Imaging_fieldKt"
+          let Img = hostClass "afield.media.image.Img"
+          let Imaging = hostClass "afield.media.image.Imaging_fieldKt"
 
           let img = hostNew {width = 2, height = 2, channels = 3, data = [
             0.0, 0.0, 0.0,  0.0, 0.0, 0.0,
