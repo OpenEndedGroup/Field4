@@ -410,6 +410,8 @@ go { println(thisBox.sendAndAwait<String, Int>("hello")) }
 
 `src/jvmMain/kotlin/afield/runtime/execution/actors.kt` — [read the source](source/jvmMain/afield/runtime/execution/actors/)
 
+**Used in:** [A Terminal in a Box](../terminal.md)
+
 ### Top-level functions { #actors-kt-functions }
 
 | Declaration | Summary |
