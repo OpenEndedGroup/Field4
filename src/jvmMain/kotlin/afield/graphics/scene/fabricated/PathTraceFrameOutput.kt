@@ -13,6 +13,22 @@ import afield.graphics.vulkan.targets.RenderToTexture
 import afield.math.linalg.Matrix4f
 import org.lwjgl.vulkan.VK13.*
 
+/**
+ * The path tracer's per-frame image set, for reconstruction rather than for display.
+ *
+ * [PathTracingRenderer] normally accumulates samples into one progressively cleaner picture. A
+ * denoiser wants the opposite: this frame's noisy radiance on its own, together with the buffers
+ * that say what each pixel is looking at. `enableFrameOutput` on the tracer builds a
+ * [PathTraceFrameOutput], which converts the packed per-pixel records the tracer writes into
+ * seven attachments: radiance, depth, motion, diffuse and specular albedo, normal and roughness,
+ * and specular hit distance. `inputs` and `guides` hand those over in the shape
+ * [ReconstructionInputs] and [RayReconstructionGuides] expect.
+ *
+ * The images stay on the device and nothing is read back, so a consumer is a `Target` recorded
+ * after the tracer's own render. Opaque materials only, which is why the tracer refuses the call
+ * on a scene with glass in it.
+ */
+
 /** GPU-resident output of a single path-tracing dispatch, before progressive accumulation.
  * Six vec4s per pixel (96 bytes). No readback or native library is needed to produce these images.
  * The tracer owns this object; consumers borrow the images until the tracer closes.
