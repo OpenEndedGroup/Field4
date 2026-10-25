@@ -214,6 +214,8 @@ class DocumentDirectoryWriterLedgerTest {
             // owner box, while allowing an explicit export directory outside the document.
             "src/jvmMain/kotlin/afield/ai/conversation/chatlog/ChatlogTools.kt" to GATED,
             "src/jvmMain/kotlin/afield/document/history/history.kt" to GATED,
+            // The metrics save funnel and both screenshot helpers refuse read-only documents.
+            "src/jvmMain/kotlin/afield/document/history/HistoryMetrics.kt" to GATED,
             "src/jvmMain/kotlin/afield/app/server/fileproxy.kt" to GATED,
             // Reachable: the Guides panel's save and the AI4 create/patch/append tools both write
             // <doc>/*.md, <doc>/docs/** and <doc>/guides/**. Gated on the read-only predicate at
@@ -234,13 +236,6 @@ class DocumentDirectoryWriterLedgerTest {
                     "<doc>/macros/*.yaml, `reveal` mkdirs <doc>/macros/ outright, and the Macro " +
                     "Recorder's rename/delete writes <doc>/macros/ and its .deleted/ trash. Wants the same " +
                     "treatment the three writers got, red-first."
-            ),
-            "src/jvmMain/kotlin/afield/document/history/HistoryMetrics.kt" to exempt(
-                5,
-                "REACHABLE but conditional. Opening the history panel can rewrite " +
-                    "<doc>/history_metrics.edn, though recordEditStats bails unless a record for " +
-                    "that version already exists. Its screenshot writers are gated only by their " +
-                    "single callers, not by a predicate."
             ),
             "src/jvmMain/kotlin/afield/runtime/kotlin/SharedTypes.kt" to exempt(
                 1,
