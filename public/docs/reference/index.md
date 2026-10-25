@@ -495,7 +495,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - [dmx](lighting.md#artnet-kt)
 - midi
     - [rtp](networking.md#rtpmidibox-kt)
-- [mocap](io.md#bvh-kt)
+- [mocap](data.md#bvh-kt)
 - [mqtt](networking.md#mqttbox-kt)
 - *osc* — [Audio](audio.md#osc-kt) · [Data](data.md#tuio-kt) · [Networking](networking.md#mdns-kt)
     - [query](networking.md#mdns-kt)
@@ -659,7 +659,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 134 | 50 (37%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 47 | 2156 | 1522 (70%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
-| [Data](data.md) | 24 | 1001 | 429 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
+| [Data](data.md) | 25 | 1023 | 444 (43%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 317 | 7807 | 4089 (52%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 797 | 426 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
@@ -678,7 +678,6 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Workspace](workspace.md) | 229 | 3146 | 1131 (35%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 101 | 2245 | 704 (31%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
-| [IO](io.md) | 1 | 22 | 15 (68%) |  |
 | [Output](output.md) | 1 | 25 | 17 (68%) |  |
 
 ## Every file
@@ -835,7 +834,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [bspot.kt](graphics.md#bspot-kt) | Graphics | 10 | 10 | One-to-one matching between two equally sized 2D point clouds, at a million points a side, using BSP-OT: every source point gets exactly one target and every target is used exactly once, with the total squared travel distance kept small. | [A Drawn Morph, Heard](../chain_drawn_morph.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [Buf.kt](synthesis.md#buf-kt) | Synthesis | 22 | 22 | Bulk float-array arithmetic for the synthesis graph, written against the Java Vector API. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [ButtonControlHandler.kt](workspace.md#buttoncontrolhandler-kt) | Workspace · internal | 0 | 0 | The server side of `button(...)`: the `button-update` websocket command, which carries one press or release from the browser and runs the box's callback with it. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>mocap/<wbr></small> [Bvh.kt](io.md#bvh-kt) | IO | 22 | 15 | Motion capture in BVH format: a joint hierarchy and one line of channel values per frame. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>mocap/<wbr></small> [Bvh.kt](data.md#bvh-kt) | Data | 22 | 15 | Motion capture in BVH format: a joint hierarchy and one line of channel values per frame. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>lifecycle/<wbr></small> [cached.kt](workspace.md#cached-kt) | Workspace | 3 | 3 | `cached`, which hands a box back the value it made on its last run for the same keys, and closes the old value when the keys change. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Callbacks.kt](audio.md#callbacks-kt) | Audio | 17 | 15 | Callback interfaces for Steam Audio: `PathingVisualizationCallback` and `ProgressCallback` for watching pathing and baking, and `CustomSceneCallbacks` with `HitResult` for supplying your own ray tracer in place of Steam Audio's scene. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [callbacks.kt](visualization.md#callbacks-kt) | Visualization | 8 | 0 | Per-box callback tables that run when a box's frame, viewport, name or children change. |  |
