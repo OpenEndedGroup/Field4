@@ -19,6 +19,7 @@ operations:
       name: "an error on the line that raised it"
       frame: { x: 60.0, y: 700.0, w: 360.0, h: 120.0 }
       properties:
+        code_language: Javascript
         code: |
           function mean(values) {
             return values.reduce((a, b) => a + b) / values.length

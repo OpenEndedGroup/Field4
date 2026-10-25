@@ -19,6 +19,7 @@ operations:
       name: "a slider, a checkbox and display"
       frame: { x: 60.0, y: 700.0, w: 360.0, h: 120.0 }
       properties:
+        code_language: Javascript
         code: |
           const state = {speed: 3.0, outline: false}
 

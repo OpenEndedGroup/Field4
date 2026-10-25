@@ -20,6 +20,7 @@ operations:
       name: "hello from the browser"
       frame: { x: 60.0, y: 700.0, w: 360.0, h: 120.0 }
       properties:
+        code_language: Javascript
         code: |
           print("hello from the browser")
           console.log(`the head is ${window.innerWidth} pixels wide`)
