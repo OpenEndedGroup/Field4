@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17684 of 34353 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17696 of 34368 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2241 undocumented entry points** (types, top-level functions and values) and 13714 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2241 undocumented entry points** (types, top-level functions and values) and 13717 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -927,6 +927,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [GpuProbe.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/GpuProbe.kt) | Graphics | — | 0 | 2 | 94% |
 | [MqttBroker.kt](../src/jvmMain/kotlin/afield/io/mqtt/MqttBroker.kt) | Networking | — | 0 | 2 | 66% |
 | [MorphoSim.kt](../src/jvmMain/kotlin/afield/lang/morpho/MorphoSim.kt) | Languages | — | 0 | 2 | 77% |
+| [RemoteJsBoxSurface.kt](../src/jvmMain/kotlin/afield/lang/remotejs/RemoteJsBoxSurface.kt) | Languages | — | 0 | 2 | 80% |
 | [RemoteLifecycleKotlinJs.kt](../src/jvmMain/kotlin/afield/lang/remotejs/RemoteLifecycleKotlinJs.kt) | Languages | — | 0 | 2 | 33% |
 | [StackAutoStudy.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackAutoStudy.kt) | Languages | — | 0 | 2 | 92% |
 | [FfmCeresBackend.kt](../src/jvmMain/kotlin/afield/math/optimization/ceres/FfmCeresBackend.kt) | Internal | — | 0 | 2 | 66% |
@@ -989,6 +990,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ExportedAnnotationExample.kt](../src/jvmMain/kotlin/afield/examples/ExportedAnnotationExample.kt) | Examples | — | 0 | 1 | 50% |
 | [KotlinInTheHeadEvidence.kt](../src/jvmMain/kotlin/afield/examples/KotlinInTheHeadEvidence.kt) | Examples | — | 0 | 1 | 50% |
 | [KotlinJsBindingParitySmokeTest.kt](../src/jvmMain/kotlin/afield/examples/KotlinJsBindingParitySmokeTest.kt) | Examples | — | 0 | 1 | 50% |
+| [KotlinJsBoxSurfaceSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/KotlinJsBoxSurfaceSmokeTest.kt) | Examples | — | 0 | 1 | 50% |
 | [KotlinJsCompletionSpikeTest.kt](../src/jvmMain/kotlin/afield/examples/KotlinJsCompletionSpikeTest.kt) | Examples | — | 0 | 1 | 50% |
 | [KotlinJsHeadProfilesSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/KotlinJsHeadProfilesSmokeTest.kt) | Examples | — | 0 | 1 | 50% |
 | [KotlinJsLaunchStateSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/KotlinJsLaunchStateSmokeTest.kt) | Examples | — | 0 | 1 | 50% |
