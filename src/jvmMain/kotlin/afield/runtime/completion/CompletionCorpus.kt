@@ -25,6 +25,7 @@ import afield.app.server.documents
 import afield.audio.synth.*
 import afield.data.table.get
 import afield.document.graph.Box
+import afield.app.server.SessionInformation
 import afield.document.graph.box
 import afield.document.graph.doResync
 import afield.document.graph.preamble
@@ -76,6 +77,9 @@ import java.security.MessageDigest
  * is where that shows up.
  */
 object CompletionCorpus {
+
+    /** The id a document's root box has; `document.md` lists it as a parent without a record of its own. */
+    const val ROOT_ID = "root"
 
     /** Where the bundled starting points and templates live, relative to the repo root. */
     val defaultDirs: List<String> = listOf("public/docs/assets/agent_transcripts", "templates")
@@ -173,9 +177,20 @@ object CompletionCorpus {
      * `gatherPreambleUpwards` (which walks `parents` and reads `preamble`) and for macro expansion
      * (which reads `vertex`/`fragment`/… and writes `preamble`). Nothing is registered anywhere, so
      * these boxes are garbage once the caller drops them.
+     *
+     * `document.md` names `"root"` as a parent but carries no record for it, and none of these boxes was
+     * in a session, so `Box.root` (`inside.root`) threw for any box using `rootProp<T>(name)`, whose
+     * `Insert` targets the root: `demo_document/demo_timeline` was harvested with no preamble at all. The
+     * graph now has the root a live document has, and every box shares one ephemeral session.
      */
     fun boxGraph(doc: DocRec): Map<String, Box> {
-        val boxes = doc.boxes.mapValues { (id, _) -> Box(id) }
+        val boxes = doc.boxes.mapValues { (id, _) -> Box(id) }.toMutableMap()
+        val root = boxes.getOrPut(ROOT_ID) { Box(ROOT_ID) }
+        val session = SessionInformation(filename = "<corpus-${doc.name}>", documentName = doc.name, root = root, ephemeral = true)
+        boxes.forEach { (id, box) ->
+            box.inside = session
+            session.boxes[id] = box
+        }
         doc.boxes.forEach { (id, rec) ->
             rec.parents.forEach { p -> boxes[p]?.let { boxes[id]!!.parents.add(it) } }
         }
@@ -266,6 +281,9 @@ object CompletionCorpus {
     /** `var Box.window by Inheritance<Window>()` — the declaration a `prop<T>(name)` macro writes. */
     private val PROP_DECL = Regex("""\bby\s+(?:Inheritance|Onceing)<([A-Za-z_][A-Za-z0-9_.]*)""")
 
+    /** The receiver of a preamble's own extension declaration: `Box` in `var Box.petals by …`. */
+    private val PREAMBLE_RECEIVER = Regex("""\b(?:val|var)\s+([A-Z]\w*)\.\w+\s+by\b""")
+
     /**
      * The types this preamble *declares a property of* but never brings into scope.
      *
@@ -286,12 +304,17 @@ object CompletionCorpus {
             .map { it.removePrefix("import ").trim() }
         val explicit = importLines.filterNot { it.endsWith(".*") }.map { it.substringAfterLast('.') }.toSet()
         val wildcards = importLines.filter { it.endsWith(".*") }.map { it.removeSuffix(".*") }.toSet()
+        // `var Box.petals`, `val Once.petals`: every prop preamble declares on these receivers without
+        // importing them, so they are in scope wherever a preamble compiles. `rootProp<Box>(execution)`
+        // is the first corpus box whose *type argument* is one of them.
+        val receivers = PREAMBLE_RECEIVER.findAll(preamble).map { it.groupValues[1] }.toSet()
         return PROP_DECL.findAll(preamble).map { it.groupValues[1] }
             .distinct()
             .filterNot { declared ->
                 val t = declared.substringAfterLast('.')
                 '.' in declared ||
                     isDefaultImportedTypeName(t) ||
+                    t in receivers ||
                     t in explicit ||
                     Regex("""\bclass\s+$t\b""").containsMatchIn(preamble) ||
                     // Guarded: resolving a star-import means a whole-classpath scan, and a preamble

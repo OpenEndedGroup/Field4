@@ -37,6 +37,9 @@ fun BufferParameters.asInData(): InData =
 /*graphics-pc-structure:aspectRatio*/ var Structure.aspectRatio by Structure.FromStructure<Any>()
 /*graphics-pc-binding:aspectRatio*/ var Mesh.aspectRatio by Mesh.BoundFromStructure<Number>()
 /*graphics-pc-binding-group:aspectRatio*/ var MeshGroup.aspectRatio by MeshGroup.BoundFromStructure<Number>()
+var Box.execution by Inheritance<Box>() /*from:root*/ /**/
+val Once.execution by Onceing<Box>() /*from:root*/ /**/
+val Why.execution by Whying() /*from:root*/ /**/
 var Box.outputPositions by Inheritance<FrameBufferGroup>() /*from:demo_particles*/ /**/
 val Once.outputPositions by Onceing<FrameBufferGroup>() /*from:demo_particles*/ /**/
 val Why.outputPositions by Whying() /*from:demo_particles*/ /**/
