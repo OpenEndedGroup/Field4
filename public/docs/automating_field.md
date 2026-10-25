@@ -64,6 +64,10 @@ deleted macro is kept in the scope's `.deleted` folder). Click a macro's name to
 beside a readable list of its steps; edit the YAML there and **Save** to keep your version.
 **Promote** copies a macro to a wider scope.
 
+In a read-only document, existing macros remain readable and runnable, but saving, renaming or
+deleting document-scoped macros is refused. The operation transcript stays in memory. You can
+still save a macro explicitly to project or workspace scope, outside the document.
+
 Replaying a recording in a fresh document rebuilds the same document. To use a recording as a
 stamp instead, tick **as a copy**: the boxes it creates get new identities, so every run makes
 another set, shifted by the **offset** you give. **Step** replays one operation at a time and

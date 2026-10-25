@@ -196,6 +196,9 @@ class DocumentDirectoryWriterLedgerTest {
             // ---- consult the read-only predicate ----
             "src/jvmMain/kotlin/afield/app/server/Server.kt" to GATED,
             "src/jvmMain/kotlin/afield/app/server/agent_backdoor.kt" to GATED,
+            // Document macro mutators and transcript checkpoints refuse read-only documents.
+            // Workspace/project macro exports write outside the document.
+            "src/jvmMain/kotlin/afield/tools/automation/operation_transcript.kt" to GATED,
             // Arrived 2026-10-09 with propUp/propDown (`4462f1519`): the per-document dependency
             // record. Its only disk write returns early on ReadOnlyDocuments.blocksWritesTo(filename),
             // so read-only and scratch documents record in memory and never write.
@@ -230,13 +233,6 @@ class DocumentDirectoryWriterLedgerTest {
             "src/jvmMain/kotlin/afield/study/source/SourceStudy.kt" to GATED,
 
             // ---- ungated and reachable from a read-only session: the backlog ----
-            "src/jvmMain/kotlin/afield/tools/automation/operation_transcript.kt" to exempt(
-                14,
-                "REACHABLE. The macro/transcript command handler writes <doc>/operations.yaml and " +
-                    "<doc>/macros/*.yaml, `reveal` mkdirs <doc>/macros/ outright, and the Macro " +
-                    "Recorder's rename/delete writes <doc>/macros/ and its .deleted/ trash. Wants the same " +
-                    "treatment the three writers got, red-first."
-            ),
             "src/jvmMain/kotlin/afield/runtime/kotlin/SharedTypes.kt" to exempt(
                 1,
                 "REACHABLE. `Box.sharedTypes {}` publishes into <doc>/.field-shared-types/gen-N/; " +
