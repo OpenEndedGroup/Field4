@@ -665,6 +665,10 @@ class SessionInformation(
      */
     @Volatile
     var savedFingerprint: Long? = null
+
+    /** The per-property hashes behind [savedFingerprint], for the unmarked-edit tripwire. */
+    @Volatile
+    var savedFingerprintEntries: Map<Pair<String, String>, Long>? = null
     private val pendingSidecarSaveVersions = ConcurrentHashMap<Pair<String, String>, Long>()
     private val propertySyncSequences = ConcurrentHashMap<Pair<String, String>, AtomicLong>()
     private val pendingPropertySyncOrigins = ConcurrentHashMap<Pair<String, String>, PropertySyncOrigin>()

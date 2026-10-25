@@ -537,7 +537,7 @@ internal fun attachDocumentSession(
             info.root.children.removeIf { it.getPropertyRaw("_tombstone").isTrue() }
             attachRootToMetaroot(info.root)
             // What disk holds; anything box code changes from here, while still loading, differs from it.
-            info.savedFingerprint = runCatching { afield.document.persistence.PersistedFingerprint.of(info) }.getOrNull()
+            afield.document.persistence.PersistedFingerprint.record(info, runCatching { afield.document.persistence.PersistedFingerprint.entries(info) }.getOrNull())
 
             // Phase 2: Tell the frontend how many boxes to expect BEFORE the
             // slow initialization work begins.

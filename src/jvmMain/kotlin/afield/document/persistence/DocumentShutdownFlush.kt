@@ -92,9 +92,18 @@ object DocumentShutdownFlush {
     fun saveIfPending(info: SessionInformation, inline: Boolean, reason: String, log: Boolean = true): Boolean {
         if (!info.writesToDisk || info.loading) return false
         // A fingerprint that cannot be taken (a store mutated under us on the shutdown thread) counts as changed.
-        val fingerprint = runCatching { PersistedFingerprint.of(info) }.getOrNull()
+        val entries = runCatching { PersistedFingerprint.entries(info) }.getOrNull()
+        val fingerprint = entries?.values?.sum()
         val unmarked = info.savedFingerprint != null && fingerprint != info.savedFingerprint
         if (info.pendingSidecarSaves.isEmpty() && !unmarked) return false
+        if (info.savedFingerprint != null && fingerprint == info.savedFingerprint && marksAreNoOps(info)) {
+            // N1020-7: every marked edit put back a value disk already holds (a frame re-sent
+            // unchanged, a rename to the same name); rewriting metadata.edn and a backup is churn.
+            info.clearSavedSidecars(info.pendingSidecarSnapshot())
+            noOpSkips.incrementAndGet()
+            return false
+        }
+        reportUnmarked(info, entries, reason)
         if (unmarked && log) System.err.println("afield: ${info.filename} changed without a marked edit; saving on $reason")
         val started = System.nanoTime()
         return try {
@@ -102,7 +111,7 @@ object DocumentShutdownFlush {
             allBoxes.add(info.root)
             val pendingSnapshot = info.pendingSidecarSnapshot()
             // The snapshot below is taken on this thread before save returns, so this is what it writes.
-            info.savedFingerprint = fingerprint
+            PersistedFingerprint.record(info, entries)
             SavingContext().save(info.filename, allBoxes, inline = inline, onComplete = {
                 info.clearSavedSidecars(pendingSnapshot)
             })
@@ -111,10 +120,43 @@ object DocumentShutdownFlush {
             )
             true
         } catch (t: Throwable) {
-            info.savedFingerprint = null
+            PersistedFingerprint.record(info, null)
             if (log) System.err.println("afield: could not save ${info.filename} on $reason: $t")
             else lprintln("error,server", "trouble saving ${info.filename}: $t")
             false
+        }
+    }
+
+    /** How many saves [saveIfPending] skipped because the marked edits changed nothing; for tests and measurement. */
+    val noOpSkips = java.util.concurrent.atomic.AtomicLong()
+
+    /**
+     * True when the fingerprint can vouch for every marked property: its current value hashes by
+     * content, so an unchanged hash means an unchanged value. A value hashed by identity (a class
+     * with no `hashCode` of its own) could have changed in place under the same hash, so it saves.
+     */
+    private fun marksAreNoOps(info: SessionInformation): Boolean = info.pendingSidecarSaves.all { (uid, property) ->
+        val box = info.boxes[uid] ?: info.root.takeIf { it.id == uid } ?: return@all true
+        PersistedFingerprint.hashesByContent(box.properties[property])
+    }
+
+    /** Channel of the unmarked-edit tripwire's lines; one per `(box, property)` a mutator changed without marking. */
+    const val UNMARKED_CHANNEL = "warning,persistence"
+
+    /** The last tripwire report, for tests: `(box id, property)` pairs. */
+    @Volatile
+    var lastUnmarked: List<Pair<String, String>> = emptyList()
+        internal set
+
+    private fun reportUnmarked(info: SessionInformation, entries: Map<Pair<String, String>, Long>?, reason: String) {
+        val saved = info.savedFingerprintEntries ?: return
+        if (entries == null) return
+        val unmarked = PersistedFingerprint.unmarkedChanges(saved, entries, info.pendingSidecarSaves.toSet())
+        lastUnmarked = unmarked
+        for ((uid, property) in unmarked) {
+            val box = info.boxes[uid] ?: info.root.takeIf { it.id == uid }
+            val label = box?.let { runCatching { it.name }.getOrNull() } ?: "?"
+            lprintln("warning,persistence", "unmarked edit: box $uid ($label) property '$property' changed without notePersistentChange; saved on $reason")
         }
     }
 }
