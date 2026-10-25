@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17701 of 34377 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17702 of 34378 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2241 undocumented entry points** (types, top-level functions and values) and 13721 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -83,6 +83,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Renderer.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/Renderer.kt) | Graphics | open_dlss_nr, profiling_timeline | 2 | 64 | 13% |
 | [GeometryAgentTools.kt](../src/jvmMain/kotlin/afield/graphics/render/GeometryAgentTools.kt) | Graphics | geometry_from_disk | 2 | 33 | 27% |
 | [Runloop.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/Runloop.kt) | Workspace | profiling_timeline, animation_time_model | 2 | 14 | 15% |
+| [actors.kt](../src/jvmMain/kotlin/afield/runtime/execution/actors.kt) | Internal | terminal | 2 | 8 | 62% |
 | [StreamDiffusionMotion.kt](../src/jvmMain/kotlin/afield/media/video/diffusion/StreamDiffusionMotion.kt) | Video | streaming_diffusion | 2 | 3 | 44% |
 | [MatrixProfile.kt](../src/jvmMain/kotlin/afield/math/matrixprofile/MatrixProfile.kt) | Math | matrix_profile | 2 | 0 | 86% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/math/functions/Functions.kt) | Math | functions_examples | 1 | 47 | 84% |
@@ -265,6 +266,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [autodiff_optimize.kt](../src/jvmMain/kotlin/afield/math/autodiff/autodiff_optimize.kt) | Math | autodiff_examples | 0 | 2 | 94% |
 | [FunctionRewritePattern.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionRewritePattern.kt) | Function | functions_examples | 0 | 2 | 84% |
 | [GpSmile.kt](../src/jvmMain/kotlin/afield/math/gp/GpSmile.kt) | Math | gaussian_processes | 0 | 2 | 60% |
+| [terminalOutput.kt](../src/jvmMain/kotlin/afield/ui/output/terminalOutput.kt) | Visualization | terminal | 0 | 2 | 80% |
 | [keyframer.kt](../src/jvmMain/kotlin/afield/animation/keyframes/keyframer.kt) | Graphics | keyframer_examples, interpolants_examples | 0 | 1 | 98% |
 | [FnSignal.kt](../src/jvmMain/kotlin/afield/audio/synth/FnSignal.kt) | Synthesis | chain_fn_sound_roundtrip | 0 | 1 | 66% |
 | [NotationPatterns.kt](../src/jvmMain/kotlin/afield/audio/synth/NotationPatterns.kt) | Patterns | chain_drawn_score, chain_drawn_morph | 0 | 1 | 71% |
@@ -402,7 +404,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [StudyEvidence.kt](../src/jvmMain/kotlin/afield/study/evidence/StudyEvidence.kt) | Workspace | — | 2 | 11 | 65% |
 | [JdiProbeHelper.kt](../src/jvmMain/kotlin/afield/app/diagnostics/debug/JdiProbeHelper.kt) | Workspace | — | 2 | 10 | 14% |
 | [KitInstances.kt](../src/jvmMain/kotlin/afield/document/workspace/KitInstances.kt) | Workspace | — | 2 | 9 | 21% |
-| [actors.kt](../src/jvmMain/kotlin/afield/runtime/execution/actors.kt) | Internal | — | 2 | 8 | 62% |
 | [PersonalReload.kt](../src/jvmMain/kotlin/afield/app/settings/PersonalReload.kt) | Workspace | — | 2 | 5 | 42% |
 | [BooleanNetworkExplorer.kt](../src/jvmMain/kotlin/afield/examples/BooleanNetworkExplorer.kt) | Examples | — | 2 | 5 | 12% |
 | [Ai4GlslAutocomplete.kt](../src/jvmMain/kotlin/afield/ai/completion/Ai4GlslAutocomplete.kt) | Machine learning | — | 2 | 3 | 0% |
@@ -741,7 +742,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [BoxOutputLog.kt](../src/jvmMain/kotlin/afield/app/diagnostics/BoxOutputLog.kt) | Workspace | — | 0 | 7 | 46% |
 | [Scene.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/Scene.kt) | Audio | — | 0 | 7 | 73% |
 | [HarmonicPhaseTracker.kt](../src/jvmMain/kotlin/afield/audio/synth/HarmonicPhaseTracker.kt) | Synthesis | — | 0 | 7 | 74% |
-| [PropertyDependencies.kt](../src/jvmMain/kotlin/afield/document/properties/PropertyDependencies.kt) | Workspace | — | 0 | 7 | 68% |
+| [PropertyDependencies.kt](../src/jvmMain/kotlin/afield/document/properties/PropertyDependencies.kt) | Workspace | — | 0 | 7 | 69% |
 | [WorkspaceProjectScope.kt](../src/jvmMain/kotlin/afield/document/workspace/WorkspaceProjectScope.kt) | Workspace | — | 0 | 7 | 36% |
 | [FLineInstructionTrajectories.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineInstructionTrajectories.kt) | Graphics | — | 0 | 7 | 56% |
 | [FLineThickening.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineThickening.kt) | Graphics | — | 0 | 7 | 60% |
@@ -944,7 +945,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PetriSmokeTest.kt](../src/jvmMain/kotlin/afield/simulation/petri/PetriSmokeTest.kt) | Simulation | — | 0 | 2 | 33% |
 | [StudyReport.kt](../src/jvmMain/kotlin/afield/study/evidence/StudyReport.kt) | Workspace | — | 0 | 2 | 33% |
 | [StudyKnob.kt](../src/jvmMain/kotlin/afield/study/ui/StudyKnob.kt) | Workspace | — | 0 | 2 | 81% |
-| [terminalOutput.kt](../src/jvmMain/kotlin/afield/ui/output/terminalOutput.kt) | Visualization | — | 0 | 2 | 80% |
 | [ClipSmokeTest.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/ClipSmokeTest.kt) | Machine learning | — | 0 | 1 | 50% |
 | [LpipsSmokeTest.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/LpipsSmokeTest.kt) | Machine learning | — | 0 | 1 | 50% |
 | [OnnxSmokeTest.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/OnnxSmokeTest.kt) | Machine learning | — | 0 | 1 | 50% |
