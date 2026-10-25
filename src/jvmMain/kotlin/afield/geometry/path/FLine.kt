@@ -1237,18 +1237,20 @@ class FLine : HasProperties {
 
     companion object {
         /**
-         * Collection-literal constructor. The first point becomes a [moveTo], the rest [lineTo] —
-         * a polyline. Kotlin resolves a `[...]` literal in a typed context to this `operator fun of`
-         * (only one `of` overload may be `vararg`); it also works as an ordinary `FLine.of(...)` call.
+         * A polyline through the given points: the first becomes a [moveTo], the rest [lineTo].
          *
          * Elements may be any mix of [Number] runs, [Vec2] and [Vec3], packed into points by the
          * same rules as [data]'s parameter handling:
          * ```
-         * val tri:    FLine = [vec(0, 0), vec(1, 0), vec(0.5, 1)]
-         * val square: FLine = [0, 0, 1, 0, 1, 1, 0, 1]
+         * val tri = FLine.of(vec(0, 0), vec(1, 0), vec(0.5, 1))
+         * val square = FLine.of(0, 0, 1, 0, 1, 1, 0, 1)
          * ```
+         *
+         * Not an `operator`, so a `[...]` literal is never an FLine. Its elements are `Any`, so as a
+         * collection-literal constructor it accepted every literal, `[line1, line2]` included, and
+         * made `lines([line1, line2])` ambiguous between `lines(vararg FLine)` and `lines(List<FLine>)`.
          */
-        operator fun of(vararg params: Any): FLine = FLine().apply {
+        fun of(vararg params: Any): FLine = FLine().apply {
             parametersToPoints(params.asList()).forEachIndexed { i, p -> if (i == 0) moveTo(p) else lineTo(p) }
         }
     }

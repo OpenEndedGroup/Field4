@@ -898,12 +898,11 @@ The four calls above are the foundation, but for quick sketches there’s a shor
 ```diffstatic {data-lang=kotlin}
 :::static
 /*
-1) Collection literals — a `[ ... ]` in a typed context builds a polyline
-   (first point -> moveTo, the rest -> lineTo). Elements may be a mix of
-   Number runs, Vec2 and Vec3.
+1) FLine.of — a polyline through the points (first point -> moveTo, the
+   rest -> lineTo). Elements may be a mix of Number runs, Vec2 and Vec3.
 */
-val poly: FLine = [vec(0, 0), vec(1, 0), vec(1, 1)]
-val square: FLine = [0, 0, 1, 0, 1, 1, 0, 1]
+val poly = FLine.of(vec(0, 0), vec(1, 0), vec(1, 1))
+val square = FLine.of(0, 0, 1, 0, 1, 1, 0, 1)
 
 // 2) Pen operators — MEMBERS of FLine, so they only light up when an FLine is the
 //    receiver, i.e. inside `fline { }`, `copy { }`. `-v` draws, `+v` lifts the pen.
@@ -942,8 +941,8 @@ val zig = fline {
     color = vec(0.98, 0.88, 0.28, 1.0)
 }
 
-// Collection literal: first point is a moveTo, the rest lineTo.
-val tri: FLine = [vec(60, 220), vec(180, 300), vec(300, 220)]
+// FLine.of: first point is a moveTo, the rest lineTo.
+val tri = FLine.of(vec(60, 220), vec(180, 300), vec(300, 220))
 tri.apply {
     close()
     thickness = 2.0
@@ -1014,7 +1013,7 @@ fline {
 }
 ```
 
-A note on scope: the `+`/`-` pen operators and the `style`-lambda overloads only resolve when an `FLine` is the receiver, which in practice means inside `fline { }` (or `copy { }`). Collection literals, `..`, and `+=` work anywhere. And because collection literals resolve against the *expected* type, they only fire where that type is known — an assignment, argument, or return — never a bare `[ ... ]`.
+A note on scope: the `+`/`-` pen operators and the `style`-lambda overloads only resolve when an `FLine` is the receiver, which in practice means inside `fline { }` (or `copy { }`). `FLine.of`, `..`, and `+=` work anywhere.
 
 ## Multiple subpaths: `breakNext()` and `pieces()`
 
