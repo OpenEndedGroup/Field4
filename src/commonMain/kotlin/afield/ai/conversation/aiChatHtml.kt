@@ -404,7 +404,13 @@ fun aiChatHistoryHtml(history: String?, toolFamilies: AiChatToolFamilies?): Stri
                 i++
                 continue
             }
-            val end = (i until turns.size).firstOrNull { !turns[it].isProgress || turns[it].isBuildWait } ?: turns.size
+            // So does a question; only the last one in the chat is still waiting for its answer.
+            if (turn.isQuestion) {
+                html.append(renderQuestion(turn, open = turns.subList(i + 1, turns.size).none { it.role == "you" }))
+                i++
+                continue
+            }
+            val end = (i until turns.size).firstOrNull { !turns[it].isProgress || turns[it].isBuildWait || turns[it].isQuestion } ?: turns.size
             val run = turns.subList(i, end)
             html.append(if (AiChatRound.folds(run)) renderRound(run, roundOrdinal++, toolFamilies) else renderProgressRun(run))
             i = end
@@ -524,6 +530,21 @@ private fun renderProgressTurn(turn: AiChatBlock): String {
         "<summary><span>${shimmerIfLive(turn, escapeHtml(summaryTitle))}</span>$fileHtml</summary>" +
         aiChatMarkdownHtml(body) +
         "</details>"
+}
+
+/**
+ * A question the agent asked: the question, and a button per suggested answer while it is [open] (no message
+ * from the person after it). A button sends its answer as the person's message (outputareas2.js); typing in
+ * the chat box answers too.
+ */
+private fun renderQuestion(turn: AiChatBlock, open: Boolean): String {
+    val choices = turn.questionChoices
+    val buttons = if (choices.isEmpty()) "" else "<div class=\"ai-chat-question-choices\">" + choices.joinToString("") {
+        "<button type=\"button\" class=\"ai-chat-question-choice\" data-ai-answer=\"${escapeHtml(it)}\"${if (open) "" else " disabled"}>${escapeHtml(it)}</button>"
+    } + "</div>"
+    val hint = if (open) "<div class=\"ai-chat-question-hint\">${if (choices.isEmpty()) "Type your answer below." else "Pick one, or type your own answer below."}</div>" else ""
+    return "<div class=\"ai-chat-question${if (open) " open" else ""}\"${addressAttr(turn)}>" +
+        "<div class=\"ai-chat-model\">Question</div>" + aiChatMarkdownHtml(turn.questionText) + buttons + hint + "</div>"
 }
 
 /** Where a block sits in the chat it came from (`<<at:…>>`), for the lens viewer's lines; nothing for an ordinary chat. */

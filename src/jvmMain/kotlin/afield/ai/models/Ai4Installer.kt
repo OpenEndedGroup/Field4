@@ -2481,9 +2481,14 @@ fun installAi4() {
                         latestProgressOpen = false,
                         additions = additions
                     )
-                    // It ends with the waiting row, saved with the wait itself; StudyBuildAwaits resumes the chat.
-                    val next = if (suspension == null) rendered else
-                        rendered.trimEnd() + "\n" + awaits.suspend(sessionInfo, box, suspension, exec.property, exec.maxToolRounds).row
+                    // It ends with the waiting row, saved with the wait itself; StudyBuildAwaits resumes the chat. A
+                    // question needs no one to resume it: its row asks, and the person's next message is the answer.
+                    val next = if (suspension == null) rendered else buildString {
+                        append(rendered.trimEnd())
+                        if (suspension.jobs.isNotEmpty())
+                            append("\n").append(awaits.suspend(sessionInfo, box, suspension, exec.property, exec.maxToolRounds).row)
+                        suspension.question?.let { append("\n").append(afield.ai.conversation.AiChatBlock.questionRow(it.question, it.choices)) }
+                    }
                     saveHistory(next)
                     sendToPanel(next)
                     val changedEntries = provisionalDelta(provisionalBeforeAi, provisionalEntries(docPath))
@@ -2504,7 +2509,8 @@ fun installAi4() {
                             )
                         )
                     }
-                    notify(if (suspension != null) "Waiting for builds without the model; the chat carries on when they finish."
+                    notify(if (suspension?.question != null) "The AI has a question for you in the chat."
+                        else if (suspension != null) "Waiting for builds without the model; the chat carries on when they finish."
                         else "Reply ready in the chat.", "AI4")
                 } else if (editResult != null) {
                     threadByKey[conversationKey] = editResult.threadState

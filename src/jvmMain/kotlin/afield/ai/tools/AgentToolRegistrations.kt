@@ -57,6 +57,7 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
         }
         afield.ai.agent.registerGeometryReviewTools(tools)
         afield.ai.agent.registerStudyBuildTools(tools)
+        registerAskUserTools(tools)
         afield.ai.agent.registerKitTools(tools)
 
 

@@ -383,14 +383,14 @@ class AnthropicBridge(
                 roundOutputs += PendingToolOutput(use.id(), name, resultJson, isError)
             }
 
-            // A tool ended the turn (AwaitStudyBuildsRequest): no follow-up request. The results open the next
+            // A tool ended the turn (AwaitStudyBuildsRequest, AskUserQuestionRequest): no follow-up request. The results open the next
             // turn's message instead; what the person wrote meanwhile stays in the inbox for a turn of its own.
             TurnSuspension.of(roundResults)?.let { awaited ->
                 suspension = awaited
                 state.suspendedRound = SuspendedRound(roundOutputs.toList())
                 openCalls = emptyList()
                 rounds++
-                info("turn suspended after round $rounds: waiting for ${awaited.jobs.size} build job(s) without the model")
+                info("turn suspended after round $rounds: waiting for ${awaited.describe()} without the model")
                 toolIo("turn_suspended", mapOf("round" to rounds, "jobIds" to awaited.jobs.map { it.jobId },
                     "deadlineMs" to awaited.deadlineMs, "pendingCallIds" to roundOutputs.map { it.callId }))
             }
