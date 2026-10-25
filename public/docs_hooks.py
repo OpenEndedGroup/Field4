@@ -1657,14 +1657,23 @@ class RunnerState:
         # The general automation notebook also holds draft review notes made by other test
         # runners. The notes-panel capture must see only notes from this docs runner, while
         # still staying isolated from the user's real notebook.
-        server_env = automation_server_environment(
-            self.backdoor_port,
-            extra={
-                "AFIELD_DOCS_ANNOTATIONS_STORE": str(
-                    self.repo_root / "build" / "field-docs-runner-annotations.json"
-                )
-            },
-        )
+        # The KDoc drafts the ai_doc_polish captures count and import would otherwise be whatever
+        # completion cached in this checkout's .field/filestore: nothing in a fresh clone, and on
+        # one machine a draft whose file the package cutover had moved. A fresh copy of a committed
+        # cache gives every build the same real draft (test_docs_runner_inputs keeps it importable).
+        extra_env = {
+            "AFIELD_DOCS_ANNOTATIONS_STORE": str(
+                self.repo_root / "build" / "field-docs-runner-annotations.json"
+            )
+        }
+        committed_drafts = self.repo_root / "tools" / "docs_runner_inputs" / "generated_completion_docs.json"
+        if committed_drafts.is_file():
+            drafts = self.repo_root / "build" / "field-docs-runner-completion-drafts" / committed_drafts.name
+            shutil.rmtree(drafts.parent, ignore_errors=True)
+            drafts.parent.mkdir(parents=True)
+            shutil.copyfile(committed_drafts, drafts)
+            extra_env["AFIELD_COMPLETION_DRAFTS_FILE"] = str(drafts)
+        server_env = automation_server_environment(self.backdoor_port, extra=extra_env)
         sidecar_url = self._ensure_semantic_sidecar()
         if sidecar_url:
             server_env[SIDECAR_URL_ENV] = sidecar_url

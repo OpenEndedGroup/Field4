@@ -742,7 +742,7 @@ internal data class GeneratedCompletionDocCacheDb(
  * against a broken [cacheKey].
  */
 internal class GeneratedCompletionDocCache(
-    private val dbPath: Path = FilestoreDir.resolve(GENERATED_COMPLETION_DOCS_FILE)
+    private val dbPath: Path = generatedCompletionDocsPath()
 ) {
     private val mapper = OpenAiFileStoreCache.defaultMapper()
     private val lock = ReentrantReadWriteLock()
@@ -900,3 +900,15 @@ internal class GeneratedCompletionDocCache(
         }
     }
 }
+
+/**
+ * Points the drafts cache at one file, leaving the rest of the filestore where it is. The docs runner
+ * sets it to a fresh copy of a committed cache, so its captures of the drafts read the same input on
+ * every machine; `tools/docs_notes.py` (`DRAFT_CACHE_ENV`) honours it too.
+ */
+const val GENERATED_COMPLETION_DOCS_ENV = "AFIELD_COMPLETION_DRAFTS_FILE"
+
+/** The drafts cache: [GENERATED_COMPLETION_DOCS_ENV] when set, else [GENERATED_COMPLETION_DOCS_FILE] in the filestore. */
+fun generatedCompletionDocsPath(): Path =
+    System.getenv(GENERATED_COMPLETION_DOCS_ENV)?.trim()?.takeIf { it.isNotEmpty() }?.let { Paths.get(it) }
+        ?: FilestoreDir.resolve(GENERATED_COMPLETION_DOCS_FILE)
