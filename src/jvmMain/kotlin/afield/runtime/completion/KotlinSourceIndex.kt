@@ -99,6 +99,11 @@ object KotlinSourceIndex {
             .getOrNull()
     }
 
+    // A cold lookup can precede background sync. Keep its disk fallback in the same path-scoped
+    // cache, or every candidate in one completion response deserializes the whole index again.
+    private fun currentIndex(): KotlinSourceIndexDb? =
+        latestIndex ?: loadIndex()?.also { latestIndex = it }
+
     fun startBackgroundSync() {
         thread(isDaemon = true, name = "KotlinSourceIndex") {
             Thread.currentThread().priority = Thread.MIN_PRIORITY
@@ -217,7 +222,7 @@ object KotlinSourceIndex {
      * partial match (so `"Vector3f.add"` will not accidentally resolve to `"LittleHistory.add"`).
      */
     fun getKDocForSymbol(symbolName: String): String? {
-        val index = latestIndex ?: loadIndex() ?: return null
+        val index = currentIndex() ?: return null
         
         // First try exact match
         val exactMatch = index.definitions.firstOrNull { it.name == symbolName }
@@ -264,7 +269,7 @@ object KotlinSourceIndex {
         sourcePath: String? = null,
         declaredIn: String? = null
     ): String? {
-        val index = latestIndex ?: loadIndex() ?: return null
+        val index = currentIndex() ?: return null
         val simpleName = symbolName.substringAfterLast('.').trim()
         if (simpleName.isBlank()) return null
 
