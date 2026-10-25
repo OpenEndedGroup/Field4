@@ -18,7 +18,7 @@ import java.io.File
  * when tutorials such as `fline_measure` already showed how (2026-10-22).
  */
 
-@JsonClassDescription("Find Field's tutorial code: about 260 worked examples of box code, by what they do, e.g. query = `draw FLines`, `GLSL compute shader on the renderer`, `slider controls`. Returns each match's name, what it shows, the docs pages it illustrates, and its box code files: read one with AttachmentRequest(file=...) to see working box code before writing your own. Prefer this to guessing an API from Field's source.")
+@JsonClassDescription("Find Field's tutorial code: about 260 worked examples of box code, by what they do, e.g. query = `draw FLines`, `GLSL compute shader on the renderer`, `slider controls`. Returns each match's name, what it shows, the docs pages it illustrates, and its box code files: read one with AttachmentRequest(file=...) to see working box code before writing your own. If nothing matches it fails with success=false and suggests plainer words; it is unavailable when semantic search is not running. Prefer this to guessing an API from Field's source.")
 @AgentToolMeta("search", effects = [ToolEffect.FILESYSTEM_READ])
 data class TutorialCodeSearchRequest(
     @param:JsonPropertyDescription("What you want to make or learn, in plain words.")

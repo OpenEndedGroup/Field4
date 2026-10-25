@@ -93,8 +93,10 @@ object SpareEngines {
             }
             val kept = synchronized(lock) {
                 val slot = slots[box]?.takeIf { it.token == token }
-                slot?.building = null
-                slot?.spare = slot?.let { Spare(engine, classpath) }
+                if (slot != null) {
+                    slot.building = null
+                    slot.spare = Spare(engine, classpath)
+                }
                 slot != null
             }
             done.complete(Unit)
