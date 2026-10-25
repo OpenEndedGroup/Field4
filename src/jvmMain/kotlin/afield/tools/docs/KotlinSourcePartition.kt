@@ -835,7 +835,16 @@ object KotlinSourcePartition {
                         }
                         return Extent(line, bodyOpen, bodyClose)
                     }
-                    if (!needsBranch && !continues(line, hi, inEnum)) return Extent(line, bodyOpen, bodyClose)
+                    // A primary constructor may start below `class Name`. It is part of this
+                    // header, even though `constructor` normally opens a separate declaration.
+                    // Once the class body opens, constructors inside it stay separate children.
+                    val next = nextCodeLine(line + 1, hi)
+                    val primaryConstructor = head.decl.kind in setOf("class", "enum class") &&
+                        bodyOpen < 0 && !sawEquals && next != null &&
+                        headAt(next, hi)?.decl?.kind == "constructor"
+                    if (!needsBranch && !primaryConstructor && !continues(line, hi, inEnum)) {
+                        return Extent(line, bodyOpen, bodyClose)
+                    }
                 }
                 line++
             }

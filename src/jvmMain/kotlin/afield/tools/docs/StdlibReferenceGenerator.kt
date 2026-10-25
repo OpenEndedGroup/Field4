@@ -1244,7 +1244,9 @@ object StdlibReferenceGenerator {
             if (depth <= 0) {
                 val next = lines.getOrNull(index)?.trim().orEmpty()
                 val continues = next.startsWith(":") || next.startsWith(",") ||
-                    next.startsWith("where ") || builder.trim().endsWith("=")
+                    next.startsWith("where ") || builder.trim().endsWith("=") ||
+                    (kind == "class" && Regex("""^(?:(?:public|private|protected|internal)\s+)?constructor\b""")
+                        .containsMatchIn(next))
                 if (!continues) break
             }
         }
