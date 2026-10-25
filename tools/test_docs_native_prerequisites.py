@@ -133,7 +133,7 @@ class RefreshNativePrerequisiteTests(unittest.TestCase):
     def setUp(self):
         self.stack = contextlib.ExitStack()
         self.addCleanup(self.stack.close)
-        self.docs = FakeDocs(self.stack, {"p.md": FENCE.replace('requires="ceres"', 'requires="ceres,paint,manifold"')})
+        self.docs = FakeDocs(self.stack, {"p.md": FENCE.replace('requires="ceres"', 'requires="ceres,paint,manifold,polyvector"')})
         (self.docs.repo_root / "gradlew").touch()
         self.stack.enter_context(patch("verification_runtime.pinned_graalvm_args", return_value=[]))
         self.run = self.stack.enter_context(
@@ -148,8 +148,8 @@ class RefreshNativePrerequisiteTests(unittest.TestCase):
     def test_runs_the_gradle_task_of_each_needed_prerequisite_once(self):
         self.check()
         argv = self.run.call_args.args[0]
-        # manifold's remedy is `brew install`, not a task, so it is not in the list.
-        self.assertEqual(argv[-2:], ["buildCeresRedistributable", "buildPaintNative"])
+        # manifold's remedy is `brew install` alone, so it has no task; polyvector's ends in one.
+        self.assertEqual(argv[-3:], ["buildCeresRedistributable", "buildPaintNative", "buildPolyvectorNative"])
         self.assertEqual(self.run.call_count, 1)
 
     def test_opt_out(self):

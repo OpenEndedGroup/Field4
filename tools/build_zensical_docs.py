@@ -502,7 +502,8 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
 REQUIRES_ATTR_RE = re.compile(r'(?m)^```\w*_?runner\b[^\n]*?\brequires="([^"]*)"')
 
 
-GRADLE_PREREQUISITE_RE = re.compile(r"\./gradlew (\w+)")
+# The task a remedy ends in: `./gradlew buildPaintNative`, or `brew install ..., then ./gradlew buildPolyvectorNative`.
+GRADLE_PREREQUISITE_RE = re.compile(r"(?:^|, then )\./gradlew (\w+)$")
 
 
 def refresh_native_prerequisites(repo_root: Path, needed: dict[str, list[str]]) -> None:
@@ -525,7 +526,7 @@ def refresh_native_prerequisites(repo_root: Path, needed: dict[str, list[str]]) 
         match.group(1)
         for key in needed
         if key in NATIVE_PREREQUISITES
-        and (match := GRADLE_PREREQUISITE_RE.fullmatch(NATIVE_PREREQUISITES[key][1]))
+        and (match := GRADLE_PREREQUISITE_RE.search(NATIVE_PREREQUISITES[key][1]))
     })
     if not tasks:
         return
