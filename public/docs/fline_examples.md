@@ -2685,20 +2685,18 @@ fun FLineInterpolator.lineAt(
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/flineinterpolator_vanilla.png" embed=true}
 :::static
+// An S that morphs into a curl. They have different numbers of segments:
+// the interpolator resamples both so that they can be matched point for point.
 val f = fline {
-    moveTo(0, 0)
-    cubicTo(10, 20, 30, 20, 20, 40)
-    cubicTo(60, 20, 30, 20, 40, 20)
-} * 3
+    moveTo(0, 50)
+    cubicTo(30, 0, 70, 100, 100, 50)
+}
 
 val f2 = fline {
-    moveTo(10, 60)
-    cubicTo(10, 20, 30, 20, 90, 40)
-    cubicTo(60, 20, 30, 20, 20, 20)
-    cubicTo(10, 200, 30, 20, 30, 20)
-} * 3 + vec(300, 0)
-
-val ii = FLineInterpolator(f, f2)
+    moveTo(0, 90)
+    cubicTo(0, 0, 100, 0, 100, 60)
+    cubicTo(100, 100, 45, 100, 45, 65)
+}
 
 fun ink(line: FLine, tint: Vec4, thick: Double) = line.apply {
     filled = false
@@ -2707,30 +2705,24 @@ fun ink(line: FLine, tint: Vec4, thick: Double) = line.apply {
     color = tint
 }
 
-val ghosts = [
-    ink(f.copy(), vec(0.78, 0.9, 1.0, 0.20), 1.8),
-    ink(f2.copy(), vec(1.0, 0.76, 0.52, 0.20), 1.8),
-]
+// blue at t = 0, through to orange at t = 1
+fun tint(t: Float) = vec(0.4 + 0.6 * t, 0.85 - 0.25 * t, 1.0 - 0.75 * t, 1.0)
 
-val frames =
-    (0 until 10).map { i ->
-        val t = i / 9f
-        ink(
-            ii.lineAt(t),
-            vec(
-                0.28 + i * 0.06,
-                0.94 - i * 0.05,
-                1.0 - i * 0.08,
-                0.88,
-            ),
-            3.0,
-        )
-    }
+val n = 7
+val step = 140.0
 
-lines(ghosts + frames, w = 560.0, h = 360.0, fitToSize = true)
+val ii = FLineInterpolator(f, f2)
+
+// One frame per column, left to right, rather than all of them on top of each other.
+val frames = (0 until n).map { i ->
+    val t = i / (n - 1f)
+    ink(ii.lineAt(t), tint(t), 3.0) + vec(i * step, 0.0)
+}
+
+lines(frames, w = 720.0, h = 160.0, fitToSize = true)
 ```
 
-This is the basic pattern: two contours in, one reusable interpolator out, then sample `lineAt(t)` as many times as you want.
+This is the basic pattern: two contours in, one reusable interpolator out, then sample `lineAt(t)` as many times as you want. The seven frames run from t = 0 (the S, blue) to t = 1 (the curl, orange).
 
 #### Spicy 1: rotation-aware matching
 
@@ -2830,20 +2822,34 @@ Left is the default midpoint. Right pre-aligns the shapes before correspondence 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/flineinterpolator_motion_spins.png" embed=true}
 :::static
+// An S that morphs into a curl. They have different numbers of segments:
+// the interpolator resamples both so that they can be matched point for point.
 val f = fline {
-    moveTo(0, 0)
-    cubicTo(10, 20, 30, 20, 20, 40)
-    cubicTo(60, 20, 30, 20, 40, 20)
-} * 3
+    moveTo(0, 50)
+    cubicTo(30, 0, 70, 100, 100, 50)
+}
 
 val f2 = fline {
-    moveTo(10, 60)
-    cubicTo(10, 20, 30, 20, 90, 40)
-    cubicTo(60, 20, 30, 20, 20, 20)
-    cubicTo(10, 200, 30, 20, 30, 20)
-} * 3 + vec(300, 0)
+    moveTo(0, 90)
+    cubicTo(0, 0, 100, 0, 100, 60)
+    cubicTo(100, 100, 45, 100, 45, 65)
+}
 
-val ii = FLineInterpolator(
+fun ink(line: FLine, tint: Vec4, thick: Double) = line.apply {
+    filled = false
+    stroked = true
+    thickness = thick
+    color = tint
+}
+
+// blue at t = 0, through to orange at t = 1
+fun tint(t: Float) = vec(0.4 + 0.6 * t, 0.85 - 0.25 * t, 1.0 - 0.75 * t, 1.0)
+
+val n = 7
+val step = 140.0
+
+val plain = FLineInterpolator(f, f2)
+val spun = FLineInterpolator(
     f,
     f2,
     FLineInterpolationConfig(
@@ -2855,47 +2861,23 @@ val ii = FLineInterpolator(
     ),
 )
 
-val shift = vec(28, 8, 0)
+// Both rows go through the same perspective camera, looking at the middle of the shapes.
+fun seen(line: FLine) = line.byPerspectiveProjecting(cameraPos = vec(50f, 50f, -400f))
 
-fun ink(line: FLine, tint: Vec4, thick: Double) = line.apply {
-    filled = false
-    stroked = true
-    thickness = thick
-    color = tint
+// Top row: the plain morph. Bottom row: the same morph with the spin.
+val frames = (0 until n).flatMap { i ->
+    val t = i / (n - 1f)
+    val at = vec(i * step, 0.0)
+    [
+        ink(seen(plain.lineAt(t)), vec(1.0, 1.0, 1.0, 0.45), 2.0) + at,
+        ink(seen(spun.lineAt(t)), tint(t), 3.0) + at + vec(0.0, 150.0),
+    ]
 }
 
-val frames =
-    (0 until 10).map { i ->
-        val t = i / 9f
-        ink(
-            ii.lineAt(t).byPerspectiveProjecting(cameraPos = vec(180f, 90f, -620f)) + shift,
-            vec(
-                0.24 + i * 0.07,
-                0.92 - i * 0.05,
-                1.0 - i * 0.08,
-                0.9,
-            ),
-            3.0,
-        )
-    }
-
-val ghosts = [
-    ink(
-        f.copy().byPerspectiveProjecting(cameraPos = vec(180f, 90f, -620f)) + shift,
-        vec(0.78, 0.9, 1.0, 0.18),
-        1.8,
-    ),
-    ink(
-        f2.copy().byPerspectiveProjecting(cameraPos = vec(180f, 90f, -620f)) + shift,
-        vec(1.0, 0.76, 0.52, 0.18),
-        1.8,
-    ),
-]
-
-lines(ghosts + frames, w = 460.0, h = 240.0, fitToSize = true)
+lines(frames, w = 720.0, h = 300.0, fitToSize = true)
 ```
 
-This is the same base demo, but with `spatialSpinAngle = 1f` in the interpolator config and a perspective projection on the evaluated lines. The source and target still land in the same places; the extra depth only appears in the middle of the morph.
+This is the same morph with `spatialSpinAngle = 1f` in the interpolator config, and both rows go through a perspective projection. The top row is the plain morph, for comparison. In the bottom row the first and last frames still match the source and target, and the spin turns the line away from the camera only in the middle of the morph.
 
 ### Circle fitting + subdivision
 
