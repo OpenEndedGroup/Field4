@@ -171,7 +171,7 @@ class AutosaveDirtyTrackingTest {
         a.layerFrames["start"] = Rect(1.0, 1.0, 10.0, 10.0)
         DocumentShutdownFlush.flushPendingDocumentSaves()
         info.pendingSidecarSaves.clear()
-        a.layerFrames["overview"] = Rect(901.0, 902.0, 10.0, 10.0)
+        a.rawLayerFrames()["overview"] = Rect(901.0, 902.0, 10.0, 10.0)
         assertTrue(info.pendingSidecarSaves.isEmpty(), "this edit is meant to bypass marking: ${info.pendingSidecarSaves}")
         assertTrue("901" in info.afterUnmarkedShutdownFlush(), "the layer frame is not in metadata.edn")
     }
@@ -195,6 +195,61 @@ class AutosaveDirtyTrackingTest {
         info.boxes.values.forEach { it.layerFrames }
         info.boxes.getValue("a").setPropertyRaw("code_editorState", "{\"line\":9}")
         assertEquals(0, DocumentShutdownFlush.flushPendingDocumentSaves(), "an unchanged document was saved")
+    }
+
+    /** The stored map itself, bypassing the marking view `Box.layerFrames` returns: a stand-in for any in-place mutation. */
+    @Suppress("UNCHECKED_CAST")
+    private fun Box.rawLayerFrames(): MutableMap<String, Rect> = getPropertyRaw("layerFrames") as MutableMap<String, Rect>
+
+    @Test
+    fun aLayerFrameWrittenThroughTheBoxIsMarked() {
+        // Caught by the tripwire in a live session: box code's `thisBox.layerFrames[layer] = rect`.
+        val info = savedDocument("layer-frame-view")
+        val a = info.boxes.getValue("a")
+        a.layerFrames["start"] = Rect(1.0, 1.0, 10.0, 10.0)
+        assertTrue(("a" to "layerFrames") in info.pendingSidecarSaves, "an in-place layer frame write was not marked")
+        assertEquals(1, DocumentShutdownFlush.flushPendingDocumentSaves())
+        assertEquals(emptyList(), DocumentShutdownFlush.lastUnmarked)
+        assertTrue(a.getPropertyRaw("layerFrames") !is afield.document.graph.PersistentMapView<*, *>, "the view must not be stored")
+    }
+
+    @Test
+    fun theTripwireNamesTheUnmarkedProperty() {
+        // N1022-2: the save still happens, and the tripwire says which box and property bypassed marking.
+        val info = savedDocument("tripwire")
+        val a = info.boxes.getValue("a")
+        a.layerFrames["start"] = Rect(1.0, 1.0, 10.0, 10.0)
+        DocumentShutdownFlush.flushPendingDocumentSaves()
+        info.pendingSidecarSaves.clear()
+        a.rawLayerFrames()["overview"] = Rect(901.0, 902.0, 10.0, 10.0)
+        info.boxes.getValue("b").name = "renamed b" // marked: must not be reported
+        DocumentShutdownFlush.flushPendingDocumentSaves()
+        assertEquals(listOf("a" to "layerFrames"), DocumentShutdownFlush.lastUnmarked)
+    }
+
+    @Test
+    fun aMarkedEditThatChangesNothingIsNotSaved() {
+        // N1020-7: `set-string` marks a sidecar property on every message, even one carrying the text the
+        // box already has (an editor re-sending its buffer); each rewrote metadata.edn and a backup.
+        val info = savedDocument("no-op")
+        val a = info.boxes.getValue("a")
+        a.setPropertyRaw("code", "// a")
+        info.markSidecarPending("a", "code")
+        assertEquals(0, DocumentShutdownFlush.flushPendingDocumentSaves(), "an unchanged document was rewritten")
+        assertTrue(info.pendingSidecarSaves.isEmpty(), "the no-op marks should be cleared")
+        a.frame = Rect(11.0, 20.0, 100.0, 50.0)
+        assertEquals(1, DocumentShutdownFlush.flushPendingDocumentSaves(), "a real move after a skipped no-op must save")
+    }
+
+    @Test
+    fun aMarkedValueHashedByIdentityStillSaves() {
+        val info = savedDocument("identity")
+        class Opaque(var n: Int)
+        val a = info.boxes.getValue("a")
+        assertFalse(PersistedFingerprint.hashesByContent(Opaque(1)))
+        assertTrue(PersistedFingerprint.hashesByContent(listOf(Rect(0.0, 0.0, 1.0, 1.0), "x", 3)))
+        a.setPropertyRaw("autorun", true)
+        assertEquals(1, DocumentShutdownFlush.flushPendingDocumentSaves())
     }
 
     @Test

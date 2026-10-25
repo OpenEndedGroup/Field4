@@ -19,6 +19,23 @@ import org.lwjgl.assimp.AINodeAnim
 import org.lwjgl.assimp.AIScene
 
 /**
+ * Skeletal animation on the CPU: bones, joint palettes and linear blend skinning, for a rigged file
+ * loaded through Assimp.
+ *
+ * [GltfSkinning] reads the scene's node tree and its bones, samples one clip at a time, composes
+ * each joint's palette entry down the parent chain, and blends the vertices. The short way in is
+ * `skinnedGltfToTriMesh`: give it a file, a clip name and a time, and it returns the posed surface
+ * as a `TriMesh` in scene space, ready to measure, trace or write back out. [CpuSkinner] is the
+ * same maths against a live mesh, deforming into the vertex buffer the renderer uploads.
+ *
+ * [GpuSkinning] carries the palette to the GPU and blends in the vertex shader, which is what a
+ * crowd needs, and takes this file as its oracle. Where linear blending fails is a twist about a
+ * bone's own axis, which pinches the joint ring to nothing: [DualQuaternionSkinning] is the
+ * alternative blend, and [A twisted limb, weighed and traced](../chain_skinned_volume.md) weighs
+ * the difference between the two.
+ */
+
+/**
  * Skeletal animation: bones, joint palettes and linear blend skinning, on the CPU.
  *
  * [GltfSupport] has always loaded glTF through Assimp and has always sampled **per-node** TRS

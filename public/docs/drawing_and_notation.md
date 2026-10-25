@@ -4,7 +4,7 @@ Press `alt/option-D` and the canvas becomes a drawing surface. Press it again an
 
 The drawing surface is [Excalidraw](https://excalidraw.com), the open-source whiteboard ([source on GitHub](https://github.com/excalidraw/excalidraw)), running inside Field and laid over your boxes. It is the whole thing, not a sketch pad built to look like it: pens, shapes, arrows and text in its hand-drawn style, its toolbar and its keyboard shortcuts. What you draw stays where you put it, pans and zooms with the canvas, and is saved with the document.
 
-A whiteboard inside your document is already unusual. What makes it Field's is that your code can read the drawing and write to it. Every stroke is data a box can ask about, and every box can draw.
+Your code can read the drawing and write to it. Every stroke is data a box can ask about, and every box can draw.
 
 ![Field with the drawing layer switched on: Excalidraw's toolbar across the top of the window, over a score drawn by a box's code, blue rectangles, a red pen-stroke glissando, a green level line and an orange playhead, with the box that drew them to the left](assets/chain_drawn_score/hero.png)
 

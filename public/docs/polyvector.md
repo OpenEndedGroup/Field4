@@ -237,11 +237,10 @@ reuses it. Everything is plain Kotlin data.
 readily short side branches are pruned, which small holes are closed over, and the final smoothing.
 The defaults are the authors'.
 
-## What it does well, and what it does not
+## Which drawings it suits
 
 The method was designed for, and tested on, scanned pencil and ink drawings with strokes a few
-pixels wide. On those it reproduces the authors' published results exactly. Outside that range it
-has limits worth knowing:
+pixels wide. On those it reproduces the authors' published results exactly. Outside that range:
 
 - **Strokes much wider than about four pixels** can lose the stem of a T-junction. Scaling the image
   down does not reliably fix this.

@@ -782,10 +782,10 @@ first, and try the judge when you want fewer, longer phrases.
 | Says where it came from | yes: `segments`, `source` | no |
 | Speed | microseconds per sample, in the frame loop | tens to hundreds of milliseconds per replan, in the background |
 
-Use the oracle when the material is the point: phrases, gestures, a particular way of moving.
-Use Timestral when the dynamics are the point (a smooth continuation of whatever is happening
-now, or a forecast steered by a channel whose future you know), and to see how predictable a
-signal is from its band.
+Use the oracle to get the recorded material back: phrases, gestures, a particular way of moving.
+Use Timestral to continue the dynamics (a smooth continuation of whatever is happening now, or a
+forecast steered by a channel whose future you know), and to see how predictable a signal is from
+its band.
 
 
 ## See also

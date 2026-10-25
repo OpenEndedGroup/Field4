@@ -2920,9 +2920,8 @@ the icosphere shell leads; six of the demo's inserts follow, one on each of its 
 scanlines over the ToyCar model, read with `SplatSet.fromGltf` as one disc per vertex. Each launches
 into the same window with the demo's turn, size and trail controls; the gravity well starts with
 its trail on, each frame laid over a fading copy of the last. The insert runs in a compute pass
-ahead of the depth sort, so a dissolve that throws splats outward is sorted where they went:
-measured on the GPU, editing the splat vertex shader instead draws half of all neighbouring pairs
-in the wrong order.
+ahead of the depth sort, so a dissolve that throws splats outward is sorted where they went.
+Moving splats in the vertex shader instead would draw many neighbouring pairs in the wrong order.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/splat_shader_passthrough.png" capture="native-window" native-wait-frames="90" trim-native=true wait="3.0" embed=true hidden=true timeout="300" name="gallery-splat-shader" alt="The icosphere shell in the native window: a sphere of about a thousand small glowing splats on black, coloured by longitude from cyan on the left through chartreuse at the front to red and orange on the right, with the far side's violet splats showing between the near ones" macro-file="../../dev_docs/agents/transcripts/splat_shader.yaml" capture-box="splat_renderer"}
 // The transcript builds every box and launches the renderer and the passthrough.
@@ -3014,6 +3013,18 @@ The capture below is this transcript instrumented on [Field probes](field_probes
 ![100k soft-quad particles drawn as a glowing galaxy in a native Vulkan window](assets/field_probes/particles-galaxy.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/threebox/metadata.edn)
+
+### demo_document
+
+The [demo document](demo_document.md): one canvas showing most of what Field does. A palette pushes
+`petals` down to three connected boxes, one holding two nested boxes; a three.js gyroid and an editable
+FLine flower sit in output panels; a renderer streams a turning spiral into a box's panel and runs a
+compute shader a Field probe plots; a keyframe curve plays with its playhead running; a box draws inline
+visualizers when its editor is open; a time slider waits to be scrubbed across four cues; and a notes box
+draws on the drawing layer over all of it. Its film plays behind the home page, and the feel benchmark
+times the replay.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/demo_document/metadata.edn)
 
 ### four_pass_chain
 

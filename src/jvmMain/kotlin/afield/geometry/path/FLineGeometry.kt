@@ -846,6 +846,23 @@ fun FLine.byConvexHull2D(): FLine {
     // subpath it closes, already in the list, so it adds nothing to the hull — but it must not
     // throw either.
     val points = this.nodes.indices.map { val p = endPointOf(it); Vec2(p.x, p.y) }.toMutableList()
+    // A cubic bulges past its end points: sample inside each one so the hull wraps the curve.
+    val cubicSamples = 24
+    for (i in 1 until nodes.size) {
+        val n = nodes[i]
+        if (n is FLine.CubicTo) {
+            val a = endPointOf(i - 1)
+            for (k in 1 until cubicSamples) {
+                val t = k / cubicSamples.toFloat()
+                val u = 1 - t
+                val w0 = u * u * u; val w1 = 3 * u * u * t; val w2 = 3 * u * t * t; val w3 = t * t * t
+                points.add(Vec2(
+                    w0 * a.x + w1 * n.c1.x + w2 * n.c2.x + w3 * n.to.x,
+                    w0 * a.y + w1 * n.c1.y + w2 * n.c2.y + w3 * n.to.y,
+                ))
+            }
+        }
+    }
 
     if (points.size < 3) return this.copy()
 
@@ -1014,6 +1031,7 @@ fun FLine.byCreatingOsculatingCircles(samples: Int = 20, circleSegments: Int = 3
 }
 
 // ==================== BOOLEAN OPERATIONS ====================
+
 
 /**
  * Union of two curves (using Java2D Area).
@@ -1270,7 +1288,8 @@ fun FLine.byBlendingWith(
     sampler: FLineSampler? = null,
     otherSampler: FLineSampler? = sampler
 ): FLine {
-    val samples = maxOf(this.nodes.size, other.nodes.size)
+    // At least 64 samples: one per node would collapse a single cubic to two points.
+    val samples = maxOf(64, this.nodes.size, other.nodes.size)
     val points1 = this.samplePoints(samples, sampler = sampler)
     val points2 = other.samplePoints(samples, sampler = otherSampler)
     if (points1.isEmpty() || points2.isEmpty()) return FLine()
@@ -2868,6 +2887,25 @@ fun FLine.biarcTo(
         byAppendingArcByTangent(endPoint, startTan, endTan, segments.coerceAtLeast(2))
         return this
     }
+    // Default parameters: the classic biarc, which meets startTan and endTan exactly. Control
+    // points q0 = start + d·startTan and q1 = end - d·endTan with |q1 - q0| = 2d; the join is their midpoint.
+    if (j == 0.5f && joinTangentMix == 0.5f && bulge == 0f && joinTangent == null) {
+        val tt = Vec3(startTan).add(endTan)
+        val qa = 2f * (1f - startTan.dot(endTan))
+        val qb = chord.dot(tt)
+        val qc = -chord.lengthSquared()
+        val dArm = if (abs(qa) < 1e-6f) (if (abs(qb) > 1e-9f) -qc / (2 * qb) else -1f)
+        else (-qb + sqrt(max(0f, qb * qb - 4 * qa * qc))) / (2 * qa)
+        if (dArm > 0f) {
+            val q0 = Vec3(start).add(Vec3(startTan).mul(dArm))
+            val q1 = Vec3(endPoint).sub(Vec3(endTan).mul(dArm))
+            val joinPt = Vec3(q0).add(q1).mul(0.5f)
+            val totalSegs = segments.coerceAtLeast(2)
+            byAppendingArcByTangent(joinPt, startTan, endTan, totalSegs / 2)
+            byAppendingArcByTangent(endPoint, arcEndTangent(start, startTan, joinPt), endTan, totalSegs - totalSegs / 2)
+            return this
+        }
+    }
     var mid = Vec3(start).add(Vec3(chord).mul(j))
     if (bulge != 0f) {
         val n = planeNormal?.let { Vec3(it) }
@@ -2900,8 +2938,10 @@ fun FLine.biarcTo(
         return lineTo(endPoint)
     }
 
+    // Each arc is fixed by its start point, start tangent and end point; the second starts along
+    // the first's end tangent so the join is smooth (the requested join tangent only shapes `mid`).
     byAppendingArcByTangent(mid, startTan, jt, segA)
-    byAppendingArcByTangent(endPoint, jt, endTan, segB)
+    byAppendingArcByTangent(endPoint, arcEndTangent(start, startTan, mid), endTan, segB)
     return this
 }
 
@@ -3048,8 +3088,10 @@ fun arcThrough3Points(p1: Vec3, p2: Vec3, p3: Vec3, segments: Int = 32): FLine {
         return line
     }
 
-    val s = a * (b - v1.dot(v2)) / (2 * c)
-    val t = b * (a - v1.dot(v2)) / (2 * c)
+    // (center - p1) = s v1 + t v2 with (center - p1)·v1 = a/2 and (center - p1)·v2 = b/2
+    val d = v1.dot(v2)
+    val s = b * (a - d) / (2 * c)
+    val t = a * (b - d) / (2 * c)
 
     val center = Vec3(p1)
         .add(Vec3(v1).mul(s))
@@ -3057,41 +3099,36 @@ fun arcThrough3Points(p1: Vec3, p2: Vec3, p3: Vec3, segments: Int = 32): FLine {
 
     val radius = Vec3(p1).sub(center).length()
 
-    // Calculate angles for the arc
-    val toP1 = Vec3(p1).sub(center)
-    val toP2 = Vec3(p2).sub(center)
-    val toP3 = Vec3(p3).sub(center)
-
-    // Create orthonormal basis
-    val u = Vec3(toP1).normalize()
+    // Angles measured from p1, positive about `normal`; p2 and p3 sit at angles in (0, 2π).
+    val u = Vec3(p1).sub(center).normalize()
     val v = Vec3(normal).cross(u).normalize()
-
-    // Calculate angles in the plane
-    fun getAngle(vec: Vec3): Float {
-        val projected = Vec3(vec).sub(center)
-        val x = projected.dot(u)
-        val y = projected.dot(v)
-        return atan2(y, x)
+    fun angleOf(p: Vec3): Float {
+        val q = Vec3(p).sub(center)
+        val ang = atan2(q.dot(v), q.dot(u))
+        return if (ang < 0f) ang + 2 * PI.toFloat() else ang
     }
+    // Sweep positively if p2 comes before p3 that way, otherwise go the other way round.
+    val a2 = angleOf(p2)
+    val a3 = angleOf(p3)
+    val sweep = if (a2 <= a3) a3 else a3 - 2 * PI.toFloat()
 
-    val angle1 = getAngle(p1)
-    val angle2 = getAngle(p2)
-    val angle3 = getAngle(p3)
-
-    // Determine arc direction and range
-    var startAngle = angle1
-    var endAngle = angle3
-
-    // Check if we need to go the long way
-    val mid = (angle1 + angle3) / 2
-    if (abs(angle2 - mid) > PI.toFloat() / 2) {
-        endAngle += 2 * PI.toFloat()
-    }
-
-    // Generate the arc
     val result = FLine()
-    result.byAppendingArc3D(center, radius, startAngle, endAngle, normal, segments)
+    result.moveTo(p1)
+    result.appendArcPoints(center, u, v, radius, sweep, segments)
     return result
+}
+
+/** Appends `lineTo`s along the circle `center + r (cos θ u + sin θ v)` for θ in (0, sweep]. */
+private fun FLine.appendArcPoints(center: Vec3, u: Vec3, v: Vec3, radius: Float, sweep: Float, segments: Int) {
+    val n = segments.coerceAtLeast(1)
+    for (i in 1..n) {
+        val ang = sweep * i / n
+        lineTo(
+            Vec3(center)
+                .add(Vec3(u).mul(radius * cos(ang)))
+                .add(Vec3(v).mul(radius * sin(ang)))
+        )
+    }
 }
 
 /**
@@ -3134,36 +3171,35 @@ fun FLine.byAppendingArcByTangent(
     }
 
     val start = currentPoint ?: return moveTo(endPoint)
+    val chord = Vec3(endPoint).sub(start)
+    // One circle leaves `start` along a tangent and passes through `endPoint`. Use the start
+    // tangent; fall back to the end tangent (reflected through the chord) if that is degenerate.
+    val tan = if (startTangent.lengthSquared() > 1e-12f) Vec3(startTangent).normalize() else {
+        val e = Vec3(endTangent).normalize()
+        val cn = Vec3(chord).normalize()
+        Vec3(cn).mul(2 * e.dot(cn)).sub(e)
+    }
+    val normal = Vec3(tan).cross(chord)
+    if (normal.lengthSquared() < 1e-12f * max(1f, chord.lengthSquared())) return lineTo(endPoint)
+    normal.normalize()
+    // Toward the center, in the plane of the tangent and the chord.
+    val inward = Vec3(normal).cross(tan).normalize()
+    val radius = chord.lengthSquared() / (2 * chord.dot(inward))
+    val center = Vec3(start).add(Vec3(inward).mul(radius))
 
-    // Find center as intersection of perpendiculars to tangents
-    val startPerp = Vec3(startTangent).normalize()
-    val endPerp = Vec3(endTangent).normalize()
-
-    // Use midpoint and tangents to estimate center
-    val mid = Vec3(start).add(endPoint).mul(0.5f)
-    val toMid = Vec3(mid).sub(start)
-
-    // Estimate radius from distance and tangent
-    val distance = Vec3(endPoint).sub(start).length()
-    val radius = distance * 0.5f / sin(atan2(toMid.cross(startPerp, Vec3()).length(), toMid.dot(startPerp)))
-
-    // Calculate center
-    val perpToStart = Vec3(startPerp).cross(toMid).normalize()
-    val center = Vec3(start).add(perpToStart.mul(radius))
-
-    // Generate arc
-    val normal = Vec3(startPerp).cross(endPerp).normalize()
-    val startAngle = atan2(
-        Vec3(start).sub(center).dot(perpToStart),
-        Vec3(start).sub(center).dot(startPerp)
-    )
-    val endAngle = atan2(
-        Vec3(endPoint).sub(center).dot(perpToStart),
-        Vec3(endPoint).sub(center).dot(startPerp)
-    )
-
-    this.byAppendingArc3D(center, radius, startAngle, endAngle, normal, segments)
+    val u = Vec3(start).sub(center).normalize()
+    val q = Vec3(endPoint).sub(center)
+    var sweep = atan2(q.dot(tan), q.dot(u))
+    if (sweep < 0f) sweep += 2 * PI.toFloat()
+    appendArcPoints(center, u, tan, radius, sweep, segments)
     return this
+}
+
+/** The unit tangent at the end of the arc [byAppendingArcByTangent] draws from `start` along `tan`. */
+private fun arcEndTangent(start: Vec3, tan: Vec3, end: Vec3): Vec3 {
+    // A circular arc's end tangent is its start tangent reflected through the chord.
+    val cn = Vec3(end).sub(start).normalize()
+    return Vec3(cn).mul(2 * tan.dot(cn)).sub(tan).normalize()
 }
 
 // ==================== NOISE UTILITIES ====================

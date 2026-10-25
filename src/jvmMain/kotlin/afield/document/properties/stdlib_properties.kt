@@ -206,7 +206,12 @@ internal fun missingInheritedPropertyMessage(box: Box, propertyName: String, par
         return "Can't find a value for inherited property '$propertyName' in metaroot. " +
             "Metaroot is shared by open tabs/documents and has no parent boxes; this usually means the box in another open tab/document that exports '$propertyName' hasn't executed yet, or failed while executing."
     }
-    return "Can't find a value for inherited property '$propertyName' in '$boxName' or any of its $parentCount parent boxes. " +
+    val where = when (parentCount) {
+        0 -> "in '$boxName', which has no boxes above it but the document root"
+        1 -> "in '$boxName' or the 1 box above it"
+        else -> "in '$boxName' or any of the $parentCount boxes above it"
+    }
+    return "Can't find a value for inherited property '$propertyName' $where (the document root was searched too). " +
         "Are you sure the parent boxes that define '$propertyName' have been executed?"
 }
 
@@ -240,7 +245,8 @@ private fun missingContextualInheritedPropertyMessage(box: Box, propertyName: St
 fun inheritedPropertyRaw(from: Box, name: String): Any? = inheritedPropertyWalk(from, name).first
 
 /**
- * [inheritedPropertyRaw] plus the number of *ancestors examined*, which is the only other thing
+ * [inheritedPropertyRaw] plus the number of *ancestor boxes examined* (not counting the document
+ * root and metaroot, which are above every box), which is the only other thing
  * [Inheritance] needs — [missingInheritedPropertyMessage] reports it so a missing property reads as
  * the timing problem it usually is.
  */
@@ -251,7 +257,7 @@ internal fun inheritedPropertyWalk(from: Box, name: String): Pair<Any?, Int> {
         ContextResolution.Policy.INHERITANCE,
         ContextResolution.Mechanism.INHERITANCE,
     )
-    return search.resolution?.value to search.ancestorsExamined
+    return search.resolution?.value to search.boxAncestorsExamined
 }
 
 /**

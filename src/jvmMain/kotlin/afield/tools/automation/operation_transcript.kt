@@ -640,17 +640,19 @@ object OperationTranscript {
         if (session != null) thisSessionInfo.set(session)
         try {
             return activeMacroRuns.run(key) {
-                runMacroOnce(
-                    documentPath = documentPath,
-                    name = cleanName,
-                    targetBoxes = normalizedTargets,
-                    direction = normalizedDirection,
-                    strict = strict,
-                    scope = scope,
-                    projectName = projectName,
-                    initializeCreatedBoxes = initializeCreatedBoxes,
-                    replay = replay,
-                )
+                afield.app.diagnostics.LatencySpans.time("transcript.run", detail = cleanName) {
+                    runMacroOnce(
+                        documentPath = documentPath,
+                        name = cleanName,
+                        targetBoxes = normalizedTargets,
+                        direction = normalizedDirection,
+                        strict = strict,
+                        scope = scope,
+                        projectName = projectName,
+                        initializeCreatedBoxes = initializeCreatedBoxes,
+                        replay = replay,
+                    )
+                }
             }
         } finally {
             if (session != null) thisSessionInfo.remove()
@@ -743,8 +745,11 @@ object OperationTranscript {
                         index++
                     }
                     val groupDiagnostics = mutableListOf<String>()
+                    val groupBoxes = launchGroup.joinToString(",") { (op, _) -> operationBoxName(op).orEmpty() }
                     val result = runCatching {
-                        applyMacroLaunchGroup(launchGroup, boxMap, collect, groupDiagnostics)
+                        afield.app.diagnostics.LatencySpans.time("transcript.launchGroup", detail = "$cleanName: $groupBoxes") {
+                            applyMacroLaunchGroup(launchGroup, boxMap, collect, groupDiagnostics)
+                        }
                     }
                     if (result.isSuccess) {
                         val (groupApplied, groupSkipped) = result.getOrThrow()
@@ -775,7 +780,9 @@ object OperationTranscript {
                     initializeCreatedBoxes = initializeCreatedBoxes,
                 )
                 val result = runCatching {
-                    applyMacroOperation(op, boxMap, normalizedDirection, strict, context, collect)
+                    afield.app.diagnostics.LatencySpans.time("transcript.op", box = operationBoxName(op), detail = "$cleanName: $verb") {
+                        applyMacroOperation(op, boxMap, normalizedDirection, strict, context, collect)
+                    }
                 }
                 if (result.isSuccess) {
                     if (result.getOrDefault(false)) applied++ else skipped++
@@ -1077,15 +1084,19 @@ object OperationTranscript {
         }
     }
 
+    // Recorded executions name the box and where in it, not a copy of its code: a replay runs the
+    // box as it is then (MacroReplayCode). A fragment keeps its text as `recordedCode`, which the
+    // replay looks for in the box's current code; a whole-box launch keeps one only when what ran
+    // was not the box's stored code.
     fun recordExecuteFragment(box: Box, execute: Execute) {
         recordExecutionEvent(
             box,
             "execute",
-            linkedMapOf(
+            linkedMapOf<String, Any?>(
                 "box" to box.id,
                 "property" to execute.property,
                 "line" to execute.line,
-                "code" to execute.code,
+                "recordedCode" to execute.code,
                 "singleLine" to execute.singleLine,
                 "type" to execute.type
             )
@@ -1093,19 +1104,17 @@ object OperationTranscript {
     }
 
     fun recordLaunch(box: Box, execute: Execute, strand: String = execute.strand) {
-        recordExecutionEvent(
-            box,
-            "launch",
-            linkedMapOf(
-                "box" to box.id,
-                "property" to execute.property,
-                "line" to execute.line,
-                "code" to execute.code,
-                "singleLine" to execute.singleLine,
-                "type" to execute.type,
-                "strand" to strand.ifBlank { "default" }
-            )
+        val payload = linkedMapOf<String, Any?>(
+            "box" to box.id,
+            "property" to execute.property,
+            "line" to execute.line
         )
+        val stored = box.getPropertyRaw(execute.property) as? String
+        if (execute.type == "fragment" || stored?.trim() != execute.code.trim()) payload["recordedCode"] = execute.code
+        payload["singleLine"] = execute.singleLine
+        payload["type"] = execute.type
+        payload["strand"] = strand.ifBlank { "default" }
+        recordExecutionEvent(box, "launch", payload)
     }
 
     fun recordStop(box: Box) {
@@ -1879,6 +1888,12 @@ object OperationTranscript {
     private fun operationVerb(operation: Map<String, Any?>): String =
         operation.keys.firstOrNull()?.lowercase().orEmpty()
 
+    /** The box an operation names (a `connect`'s child), for its latency span; null for `wait`, `await`, `save`. */
+    private fun operationBoxName(operation: Map<String, Any?>): String? {
+        val payload = operation.values.firstOrNull() as? Map<*, *> ?: return null
+        return (payload["box"] ?: payload["uid"] ?: payload["id"] ?: payload["target"] ?: payload["child"])?.toString()
+    }
+
     private fun applyMacroOperation(
         operation: Map<String, Any?>,
         boxMap: Map<String, String>,
@@ -1988,7 +2003,7 @@ object OperationTranscript {
                 if (direction == "undo") return false
                 refreshMainLanguageRuntimes(thisSessionInfo.get().boxes.values)
                 val target = mappedBox() ?: return false
-                val exec = executeFromPayload(target.id, payload, fallbackType = "fragment")
+                val exec = executeFromPayload(verb, target.id, payload, fallbackType = "fragment")
                 // Await completion (like the launch path) so the fragment's output is
                 // captured into the run result — fire-and-forget stalls headlessly.
                 checkedMacroExecution(target, exec, collect) { reply ->
@@ -2369,7 +2384,7 @@ object OperationTranscript {
             ?: return LaunchResolution.Failed(
                 "`$verb` target box `$mapped` is not present in the document${describePresentBoxes(info)}"
             )
-        val exec = executeFromPayload(target.id, payload, fallbackType = payload["type"]?.toString() ?: "launch")
+        val exec = executeFromPayload(verb, target.id, payload, fallbackType = payload["type"]?.toString() ?: "launch")
         if (exec.code.isBlank()) {
             return LaunchResolution.Failed(
                 "`$verb` target box `$mapped` has no code to run: neither the op nor the box's " +
@@ -2529,23 +2544,18 @@ object OperationTranscript {
         )
     }
 
-    private fun executeFromPayload(uid: String, payload: Map<*, *>, fallbackType: String): Execute {
+    private fun executeFromPayload(verb: String, uid: String, payload: Map<*, *>, fallbackType: String): Execute {
         val property = (payload["property"] ?: payload["prop"] ?: "code").toString()
-        // Fall back to the box's stored property when the op carries no code, so a
-        // `create` (which sets e.g. `code`) followed by a bare `execute`/`launch`
-        // runs that stored code instead of an empty string (which silently no-ops).
-        val explicitCode = payload["code"]?.toString()
-        val code = if (!explicitCode.isNullOrEmpty()) {
-            explicitCode
-        } else {
-            runCatching { box(uid, createIfMissing = false).getPropertyRaw(property) as? String }
-                .getOrNull().orEmpty()
-        }
+        // A macro replays against the box as it is now: whole-box launches run the box's current
+        // code, recorded fragments are found again in it (MacroReplayCode has the rules).
+        val live = runCatching { box(uid, createIfMissing = false).getPropertyRaw(property) as? String }.getOrNull()
+        val resolved = MacroReplayCode.resolve(verb, payload, live)
+        resolved.note?.let { lprintln("info,operation-transcript", "macro `$verb` of `$uid`: $it") }
         return Execute(
             uid = uid,
             type = (payload["type"] ?: fallbackType).toString(),
-            line = payload["line"].asIntOrDefault(0),
-            code = code,
+            line = resolved.line,
+            code = resolved.code,
             singleLine = payload["singleLine"].asBooleanOrDefault(false),
             property = property,
             strand = (payload["strand"] ?: "default").toString().ifBlank { "default" }

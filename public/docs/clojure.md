@@ -453,4 +453,4 @@ form again, so an unrealised lazy sequence is named rather than printed. See
 - **No compile-time diagnostics.** See the note under "When something throws".
 - **Stop does not interrupt an evaluation**, only an animation.
 
-See also [Python in a Box](python.md) and [language extensions](language_extensions.md).
+See also [Python in a Box](python.md), [Lua in a Box](lua.md) and [language extensions](language_extensions.md).

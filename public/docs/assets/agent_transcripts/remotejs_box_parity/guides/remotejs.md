@@ -1,6 +1,6 @@
 ---
-docs: ar_reference/
+docs: remotejs/
 ---
-# RemoteJS and WebXR
+# Javascript in a browser tab
 
 Documents RemoteJS boxes: printing, errors, display, controls and Stop.

@@ -88,6 +88,7 @@ mutation; it is a different one.
 | route | declared in | guard |
 | --- | --- | --- |
 | `GET /api/agent-worktrees` | `Server.kt` | none |
+| `GET /api/ai-local-feedback` | `Server.kt` | none |
 | `GET /api/ai-tool-use-improvement` | `Server.kt` | none |
 | `GET /api/ai-tool-use-improvement/view` | `Server.kt` | none |
 | `GET /api/chatlog/blob` | `ChatlogRoutes.kt` | loopback + same-site |
@@ -114,6 +115,7 @@ mutation; it is a different one.
 | `GET /api/maven-classpath` | `Server.kt` | none |
 | `GET /api/maven-search` | `Server.kt` | none |
 | `GET /api/patchy-document/{binding}` | `PatchyWebStorage.kt` | same-site |
+| `GET /api/perf/spans` | `Server.kt` | none |
 | `GET /api/python-settings` | `Server.kt` | none |
 | `GET /api/semantic-search/model` | `Server.kt` | none |
 | `GET /api/semantic-search/settings` | `Server.kt` | none |

@@ -142,3 +142,24 @@ allowance of 1080–1440, would have failed it).
 - `afield/lua` is not a `StdlibReferenceGenerator` source root, so it has no reference page (adding it
   needs a reference regeneration).
 - Windows/Linux discovery paths are written and untested.
+
+## Page audit, 2026-10-24
+
+Every claim on `public/docs/lua.md` was checked against the prelude, `LuaLanguage.kt` and a probe
+document of 16 Lua boxes run through the backdoor (port 9621, LuaJIT 2.1.1788856981, Homebrew).
+Measured: `print` joins with tabs; `display(html)` alone goes to channel `output`; a missing property
+is read from a parent (`box.mainLanguage` -> `lua`); a Lua list/map/function written to a property
+reads back as a table/table/function; a Kotlin `Vec3` reads as the string `"(1.0, 2.0, 3.0)"`;
+`children`, `parents`, `id`, `code_language` are read-only; two boxes do not share globals (calling a
+function defined in another box fails with `attempt to call global`); running a box that defines
+`update` prints `(launch the box to run update(dt) every frame)`; `play` returns `true` with a device
+open; `field.render({60}, {wave="sine"})` measures 261.5 crossings/s; `require` searches LuaJIT's
+`package.path`. Not driven through the backdoor: running a selection (the backdoor has no fragment
+command; source: `LuaState.run(asExpression)`).
+
+Added to the page: `display(html)`, `field.box`, `field.describe`, `field.clock`, `Line.stroke`,
+`lines` options `channel`/`fit`, `spawn(fn, ...)` arguments, slider/checkbox defaults, `play`'s return,
+`attack`/`channel`/`show` options, how non-plain Kotlin values cross, `require`. Fixed: an error from a
+box-property write caught with `pcall` read `field:120: ...` (the prelude's `__newindex`); `box_get`
+and `box_set` now raise at level 3 (`LuaBoxTest.aReadOnlyPropertyIsALuaErrorOnTheLineThatWroteIt`).
+Not documented, deliberately: the `base` voice option (an internal base frequency).

@@ -341,9 +341,11 @@ BODY_TELLS = [
      r"|intervals overlap|can be re-?measured|so the claim can be"
      r"|noise rather than a real)\b", 7),
     # notes to self: a plan, not a limitation. A stated limitation is fine and is not matched.
+    # `a TODO` is the noun (aiFeatures: "tag every note that has a TODO") and `TODO()` is the
+    # Kotlin stdlib call; neither is a plan (2026-10-20).
     ("plan-in-docs", r"\b(the next thing to do here|next thing to do is|that is the next step|"
                      r"is the next thing|not wired up yet|for when it does|"
-                     r"is what we should|TODO|FIXME|remains to be done|"
+                     r"is what we should|(?<!\ba )TODO(?!\()|FIXME|remains to be done|"
                      r"has not been done yet|would be nice to)\b", 9),
     # the effort brag, which survives from the old scorer because it never false-positived.
     # `worth doing` was dropped on 2026-09-22 -- see RETIRED; it had a clean record only

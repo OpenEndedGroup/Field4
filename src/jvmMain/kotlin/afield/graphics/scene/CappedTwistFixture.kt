@@ -7,6 +7,22 @@ import java.nio.ByteOrder
 import java.util.Base64
 
 /**
+ * A closed, rigged tube: the fixture for measuring what a twist costs a limb in volume.
+ *
+ * [RiggedFixture]'s bending cylinder is an open tube, so it encloses nothing and Manifold will not
+ * accept it as a solid. This is the same two-bone rig with both ends capped and its rings four
+ * times as close along the bone, so a 180° twist spreads over eight blended bands rather than one
+ * and the volume that goes missing is the blend's doing rather than the triangulation's. At rest
+ * the tube is a straight prism over a regular 12-gon, so its volume has a closed form and
+ * `REST_VOLUME` is exactly 3.
+ *
+ * Nothing is committed for this rig: `locate` writes the generated text to a temporary file named
+ * after its hash, so a changed generator cannot be answered by a stale copy.
+ * [A twisted limb, weighed and traced](../chain_skinned_volume.md) is this fixture posed, weighed
+ * and path-traced.
+ */
+
+/**
  * A closed, rigged tube for measuring what skinning does to **volume**.
  *
  * [RiggedFixture]'s bending cylinder is an open tube, and an open tube encloses nothing, so it

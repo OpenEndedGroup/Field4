@@ -426,7 +426,24 @@ private fun crossSegs(a: FLineSeg, b: FLineSeg, tol: Double, out: MutableList<Tr
         if (ba[0] > bb[2] + tol || bb[0] > ba[2] + tol || ba[1] > bb[3] + tol || bb[1] > ba[3] + tol) return
         val sa = max(ba[2] - ba[0], ba[3] - ba[1]); val sb = max(bb[2] - bb[0], bb[3] - bb[1])
         if ((sa < tol && sb < tol) || depth > 48) {
-            val u = (ua + ub) / 2; val v = (va + vb) / 2
+            // Neighbouring leaves along a shallow crossing all pass the box test, so intersect the
+            // two chords and keep the hit only if the crossing falls inside this leaf: one exact
+            // point per crossing instead of a smear of midpoints.
+            val a0 = a.at(ua); val a1 = a.at(ub); val b0 = b.at(va); val b1 = b.at(vb)
+            val rx = (a1.x - a0.x).toDouble(); val ry = (a1.y - a0.y).toDouble()
+            val sx = (b1.x - b0.x).toDouble(); val sy = (b1.y - b0.y).toDouble()
+            val den = rx * sy - ry * sx
+            if (abs(den) < 1e-18) {
+                // parallel chords (a touch, or a leaf too small to have a direction): the old midpoint
+                val u = (ua + ub) / 2; val v = (va + vb) / 2
+                out.add(Triple(u, v, a.at(u))); return
+            }
+            val qx = (b0.x - a0.x).toDouble(); val qy = (b0.y - a0.y).toDouble()
+            val s0 = (qx * sy - qy * sx) / den
+            val t0 = (qx * ry - qy * rx) / den
+            val e = 1e-6
+            if (s0 < -e || s0 > 1 + e || t0 < -e || t0 > 1 + e) return
+            val u = ua + (ub - ua) * s0.coerceIn(0.0, 1.0); val v = va + (vb - va) * t0.coerceIn(0.0, 1.0)
             out.add(Triple(u, v, a.at(u))); return
         }
         val um = (ua + ub) / 2; val vm = (va + vb) / 2

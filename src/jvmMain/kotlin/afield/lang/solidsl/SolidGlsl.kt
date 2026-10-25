@@ -70,7 +70,10 @@ data class GlslSolid(
 
     val functionName: String,
 
-    /** How many `float` assignments it took — a cheap proxy for shader cost, and a regression ratchet. */
+    /**
+     * How many `float` assignments it took: a cheap proxy for shader cost, and what the simplifier
+     * compares before and after.
+     */
     val statementCount: Int,
 
     /**
@@ -122,8 +125,8 @@ fun SolidExpr.toGlsl(functionName: String = "sdSolid"): GlslSolid {
  * A complete fragment shader that draws this shape: sphere tracing, a central-difference normal, two
  * lights and a soft floor. Drop it into Field 4, or paste it into Shadertoy.
  *
- * The uniforms are deliberately few and conventional — `uResolution`, `uTime`, `uCameraDistance` —
- * so that a preview is a copy and paste rather than a plumbing exercise.
+ * It takes three conventional uniforms and no others — `uResolution`, `uTime`, `uCameraDistance` —
+ * so a preview is a copy and paste rather than a plumbing exercise.
  *
  * @param maxSteps sphere-tracing iterations before the ray gives up.
  */

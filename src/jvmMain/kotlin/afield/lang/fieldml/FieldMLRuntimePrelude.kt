@@ -682,7 +682,7 @@ object FieldMLRuntimePrelude {
      */
     private fun missingPropMessage(target: Box, name: String): String =
         "No value for inherited property '$name' in '${target.name.ifBlank { target.id }}' or any of its " +
-            "${target.parents.size} parent boxes. Has the box that writes it run yet? " +
+            "${target.parents.count { !afield.document.context.ContextResolution.isStructuralAncestor(it) }} parent boxes. Has the box that writes it run yet? " +
             "`propOr \"$name\" fallback` reads it without failing."
 
     /**

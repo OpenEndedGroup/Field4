@@ -52,6 +52,7 @@ import afield.ui.visualization.typed
 import afield.ai.tools.AiToolUseImprovementMonitor
 import afield.app.diagnostics.CodeUseSemanticAnalyzeRequest
 import afield.app.diagnostics.CodeUseTelemetryService
+import afield.app.diagnostics.LatencySpans
 import afield.app.notifications.notify
 import afield.app.protocol.AgentOpenPlaywrightResponse
 import afield.app.protocol.AllLayersResult
@@ -271,6 +272,7 @@ import afield.ai.completion.AI4_AUTO_NAME_SIGNATURE_PROPERTY
 import afield.ai.models.AiSettingsSaveRequest
 import afield.ai.models.aiProviderStatus
 import afield.ai.models.checkLocalAiConnection
+import afield.ai.models.localAiFeedback
 import afield.ai.models.aiSettingsEnvironmentOverrides
 import afield.ai.models.readLocalAiCredential
 import afield.ai.models.configuredAiBaseUrl
@@ -663,6 +665,10 @@ class SessionInformation(
      */
     @Volatile
     var savedFingerprint: Long? = null
+
+    /** The per-property hashes behind [savedFingerprint], for the unmarked-edit tripwire. */
+    @Volatile
+    var savedFingerprintEntries: Map<Pair<String, String>, Long>? = null
     private val pendingSidecarSaveVersions = ConcurrentHashMap<Pair<String, String>, Long>()
     private val propertySyncSequences = ConcurrentHashMap<Pair<String, String>, AtomicLong>()
     private val pendingPropertySyncOrigins = ConcurrentHashMap<Pair<String, String>, PropertySyncOrigin>()
@@ -4443,6 +4449,11 @@ class Server {
                             call.respond(response)
                         }
 
+                        get("/api/perf/spans") {
+                            val after = call.request.queryParameters["since"]?.toLongOrNull() ?: 0L
+                            call.respond(LatencySpans.since(after))
+                        }
+
                         get("/api/code-use/summary") {
                             call.respond(CodeUseTelemetryService.summary())
                         }
@@ -4679,6 +4690,11 @@ class Server {
                                 lprintln("error,server", "Maven upgrade failed: ${e.message}")
                                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Maven upgrade failed"))
                             }
+                        }
+
+                        get("/api/ai-local-feedback") {
+                            call.response.header("Cache-Control", "no-store")
+                            call.respondText(withContext(Dispatchers.IO) { localAiFeedback() }, ContentType.Application.Json)
                         }
 
                         post("/api/ai-local-connection") {
