@@ -4756,6 +4756,31 @@ kbd {
     transition: 0.2s all;
 }
 
+/* A stop was asked for and the box is still running: it is not responding to the stop. */
+.statusArea.stop-pending {
+    position: absolute;
+    left: auto;
+    right: 4px;
+    bottom: 4px;
+    width: 7px;
+    height: 7px;
+    border-radius: 1px;
+    background: var(--field-warning);
+    border: 0.5px solid var(--field-warning);
+    animation: stop-pending-pulse 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes stop-pending-pulse {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0.35;
+        transform: scale(0.7);
+    }
+}
+
 .statusArea .tooltiptext {
     visibility: hidden;
     position: absolute;

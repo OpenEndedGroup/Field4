@@ -3,6 +3,7 @@
 package afield.app.client
 
 import afield.app.protocol.GoJobs
+import afield.app.protocol.StopPending
 
 import afield.ai.conversation.images
 import afield.app.canvas.animate
@@ -6131,6 +6132,12 @@ suspend fun main() {
         val isRunning = Json.decodeFromJsonElement<IsRunning>(message.payload!!)
         setBoxRunning(isRunning.uid, isRunning.isRunning, isRunning.watermark, isRunning.strand, isRunning.mode)
 
+        Handled.yes
+    }
+    handlers.put("stop-pending") { message, _ ->
+        val stop = Json.decodeFromJsonElement<StopPending>(message.payload!!)
+        val setStopPending = window.asDynamic().setStopPending
+        if (setStopPending != null) setStopPending(stop.uid, stop.pending)
         Handled.yes
     }
     handlers.put("go-jobs") { message, _ ->
