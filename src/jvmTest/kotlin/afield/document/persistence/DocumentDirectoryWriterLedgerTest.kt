@@ -252,6 +252,12 @@ class DocumentDirectoryWriterLedgerTest {
             ),
 
             // ---- ungated, and out of scope with a reason ----
+            "src/jvmMain/kotlin/afield/document/workspace/WorkspaceProjectScope.kt" to exempt(
+                1,
+                "Shared project state under projectsDir(workspace)/<project>: files/ and preferences.json. " +
+                    "The document path is used only to find project membership; the scope directory " +
+                    "comes from WorkspaceProjectScopes.get, outside every individual document."
+            ),
             "src/jvmMain/kotlin/afield/document/workspace/dir.kt" to exempt(
                 10,
                 "Workspace lifecycle: create/delete/duplicate/zip a document (and the kit first-open " +
