@@ -221,6 +221,9 @@ class DocumentDirectoryWriterLedgerTest {
             // for the tool factory — and each refusal goes through `refuseWrite`.
             "src/jvmMain/kotlin/afield/app/server/documentGuides.kt" to GATED,
             "src/jvmMain/kotlin/afield/document/properties/saved.kt" to GATED,
+            // Path lookup may create <doc>/files, but skips that write for read-only sessions.
+            // Project directories and explicitly registered roots remain workspace/export targets.
+            "src/jvmMain/kotlin/afield/document/workspace/FileManager.kt" to GATED,
             // BoxStudies.directory: a read-only box's study works in a scratch copy outside the document.
             "src/jvmMain/kotlin/afield/study/source/SourceStudy.kt" to GATED,
 
@@ -231,12 +234,6 @@ class DocumentDirectoryWriterLedgerTest {
                     "<doc>/macros/*.yaml, `reveal` mkdirs <doc>/macros/ outright, and the Macro " +
                     "Recorder's rename/delete writes <doc>/macros/ and its .deleted/ trash. Wants the same " +
                     "treatment the three writers got, red-first."
-            ),
-            "src/jvmMain/kotlin/afield/document/workspace/FileManager.kt" to exempt(
-                5,
-                "REACHABLE. `documentFilesDirectory` calls createDirectories in a *getter* on the " +
-                    "path of every filename resolution from box code, so resolving \"data.csv\" " +
-                    "creates <doc>/files/. Its own KDoc already warns that asking has a side effect."
             ),
             "src/jvmMain/kotlin/afield/document/history/HistoryMetrics.kt" to exempt(
                 5,
