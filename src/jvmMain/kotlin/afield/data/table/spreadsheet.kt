@@ -28,7 +28,6 @@ import afield.graphics.vulkan.*
 import afield.media.stream.*
 import afield.media.video.*
 import afield.runtime.kotlin.KotlinInterface2
-import afield.runtime.kotlin.PreparedSnippet
 import afield.runtime.lifecycle.Runloop
 import afield.runtime.lifecycle.RunsAt
 import afield.runtime.lifecycle.end
@@ -395,6 +394,10 @@ object SpreadsheetEvalHelpers {
 
     @JvmStatic
     fun cell(ref: String): SpreadsheetScalar = runtime().cell(ref)
+
+    /** The [index]th reference written in the formula; see `rewriteSpreadsheetFormula`. */
+    @JvmStatic
+    fun ref(index: Int): String = runtime().refs[index]
 
     @JvmStatic
     fun range(ref: String): List<SpreadsheetScalar> = runtime().range(ref)
@@ -1153,6 +1156,8 @@ class SpreadsheetBoxBinding internal constructor(
 internal class SpreadsheetRuntime(
     private val info: SessionInformation,
     private val currentBox: Box,
+    /** The cell and range references the formula's compiled template reads, by position. */
+    internal val refs: List<String> = emptyList(),
     private val evaluateRef: (CellCoord) -> Any?
 ) {
     private val boxDependencies = linkedSetOf<SpreadsheetBoxDependency>()
@@ -1223,7 +1228,12 @@ private fun bindSpreadsheetBox(runtime: SpreadsheetRuntime, target: Box): Spread
 
 private class SpreadsheetEvaluator(private val cachePrefix: String) {
     private val lock = Any()
-    private val compiled = ConcurrentHashMap<String, PreparedSnippet>()
+    // One compiled formula *function* per template. A snippet is evaluated once, to make the function;
+    // each recompute then calls it. Until 2026-10-26 each recompute re-evaluated the snippet, and the
+    // K2 REPL handed back the previous result when the same snippet was evaluated twice in a row — so a
+    // sheet with one formula never followed the box it read, and a template shared by a filled-down
+    // column would have shown its first row everywhere (SpreadsheetTest pins both).
+    private val compiled = ConcurrentHashMap<String, () -> Any?>()
     // K2, like box code. Formulas moved off the legacy K1 engine on 2026-09-28, with no change a sheet
     // can see (examples.spreadsheet.formulas pins that); K1's REPL compiler is an error-level
     // deprecation from Kotlin 2.5.
@@ -1250,46 +1260,44 @@ private class SpreadsheetEvaluator(private val cachePrefix: String) {
 
     fun evaluate(expression: String, runtime: SpreadsheetRuntime): EvalResult {
         val source = buildSource(expression)
-        var compileError: String? = null
-        val snippet = synchronized(lock) {
+        var failure: String? = null
+        val formula = synchronized(lock) {
             bootstrapLocked()
-            compiled[source] ?: runBlocking {
-                compiler.compileSnippet(source, implicits = emptyList(), onCompileError = { diagnostics ->
-                    compileError = diagnostics.firstOrNull {
-                        it.severity.ordinal >= ScriptDiagnostic.Severity.ERROR.ordinal
-                    }?.message
-                })
-            }?.also {
-                compiled[source] = it
-            }
-        } ?: return EvalResult(
-            value = null,
-            errorDetail = compileError?.let { "Formula compilation failed: $it" } ?: "Formula compilation failed"
-        )
+            compiled[source] ?: compileLocked(source) { failure = it }?.also { compiled[source] = it }
+        } ?: return EvalResult(value = null, errorDetail = failure ?: "Formula compilation failed")
 
         return withSpreadsheetRuntime(runtime) {
             try {
-                val result = snippet.evalAndWait(
-                    updateContext = false,
-                    implicits = emptyList(),
-                    onEvalError = {},
-                    onEvalException = {}
-                )
-                when (result) {
-                    is ResultValue.Value -> when (val value = result.value) {
-                        is SpreadsheetEvalHelpers.Failure -> EvalResult(null, value.error.message ?: value.error.toString())
-                        // Stored unwrapped, so `getSpreadsheetCellValue("C3") as? FLine` finds the line
-                        // a formula like `C1 + B1` made, not the `SpreadsheetScalar` wrapped around it.
-                        else -> EvalResult(unwrapSpreadsheetValue(value))
-                    }
-                    is ResultValue.Error -> EvalResult(null, result.error.message ?: result.error.toString())
-                    is ResultValue.NotEvaluated -> EvalResult(null, "Formula was not evaluated")
-                    null -> EvalResult(null, "Formula evaluation returned no result")
-                    else -> EvalResult(null, result.toString())
+                when (val value = formula()) {
+                    is SpreadsheetEvalHelpers.Failure -> EvalResult(null, value.error.message ?: value.error.toString())
+                    // Stored unwrapped, so `getSpreadsheetCellValue("C3") as? FLine` finds the line
+                    // a formula like `C1 + B1` made, not the `SpreadsheetScalar` wrapped around it.
+                    else -> EvalResult(unwrapSpreadsheetValue(value))
                 }
             } catch (t: Throwable) {
                 EvalResult(null, t.message ?: t.toString())
             }
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun compileLocked(source: String, onFailure: (String) -> Unit): (() -> Any?)? {
+        var compileError: String? = null
+        val snippet = runBlocking {
+            compiler.compileSnippet(source, implicits = emptyList(), onCompileError = { diagnostics ->
+                compileError = diagnostics.firstOrNull {
+                    it.severity.ordinal >= ScriptDiagnostic.Severity.ERROR.ordinal
+                }?.message
+            })
+        }
+        if (snippet == null) {
+            onFailure(compileError?.let { "Formula compilation failed: $it" } ?: "Formula compilation failed")
+            return null
+        }
+        return when (val result = snippet.evalAndWait(updateContext = false, implicits = emptyList(), onEvalError = {}, onEvalException = {})) {
+            is ResultValue.Value -> (result.value as? () -> Any?) ?: run { onFailure("Formula did not compile to a function"); null }
+            is ResultValue.Error -> { onFailure(result.error.message ?: result.error.toString()); null }
+            else -> { onFailure("Formula was not evaluated"); null }
         }
     }
 
@@ -1301,10 +1309,10 @@ private class SpreadsheetEvaluator(private val cachePrefix: String) {
         import eu.sirotin.kotunil.derived.*
         import eu.sirotin.kotunil.specialunits.*
         run {
-            val self = afield.data.table.SpreadsheetEvalHelpers.self
             fun cell(ref: String) = afield.data.table.SpreadsheetEvalHelpers.cell(ref)
             fun range(ref: String) = afield.data.table.SpreadsheetEvalHelpers.range(ref)
             fun box(ref: String) = afield.data.table.SpreadsheetEvalHelpers.box(ref)
+            fun __ref(index: Int) = afield.data.table.SpreadsheetEvalHelpers.ref(index)
             fun sum(vararg values: Any?) = afield.data.table.SpreadsheetEvalHelpers.sum(values.toList())
             fun product(vararg values: Any?) = afield.data.table.SpreadsheetEvalHelpers.product(values.toList())
             fun avg(vararg values: Any?) = afield.data.table.SpreadsheetEvalHelpers.avg(values.toList())
@@ -1327,11 +1335,15 @@ private class SpreadsheetEvaluator(private val cachePrefix: String) {
             fun tan(x: Any?) = kotlin.math.tan(num(x))
             fun atan2(y: Any?, x: Any?) = kotlin.math.atan2(num(y), num(x))
             fun pow(x: Any?, p: Any?) = Math.pow(num(x), num(p))
-            try {
-                $expression
-            } catch (t: Throwable) {
-                afield.data.table.SpreadsheetEvalHelpers.failed(t)
+            val formula: () -> Any? = {
+                val self = afield.data.table.SpreadsheetEvalHelpers.self
+                try {
+                    $expression
+                } catch (t: Throwable) {
+                    afield.data.table.SpreadsheetEvalHelpers.failed(t)
+                }
             }
+            formula
         }
     """.trimIndent()
 }
@@ -1476,8 +1488,9 @@ private class SpreadsheetDocument(
                 if (expr.isEmpty()) {
                     EvalCell(input, "formula", "", "", null)
                 } else {
-                    val rewritten = rewriteSpreadsheetFormula(expr)
-                    val runtime = SpreadsheetRuntime(info, box) { coord ->
+                    val refs = mutableListOf<String>()
+                    val rewritten = rewriteSpreadsheetFormula(expr, refs)
+                    val runtime = SpreadsheetRuntime(info, box, refs) { coord ->
                         if (coord.row !in 0 until storedState.rows || coord.col !in 0 until storedState.cols) {
                             error("Cell ${cellLabel(coord.row, coord.col)} is outside the sheet")
                         }
@@ -2132,7 +2145,14 @@ private fun spreadsheetCellInputText(input: Any?): String = when (input) {
     else -> input.toString()
 }
 
-private fun rewriteSpreadsheetFormula(input: String): String {
+/**
+ * Turn the cell references in a formula into calls: `B2 * C2` becomes `cell(__ref(0)) * cell(__ref(1))`
+ * with `refs = [B2, C2]`. The references are passed in rather than written into the source so that a
+ * formula filled down a column — `B2 * C2`, `B3 * C3`, ... — is one template, compiled once. Until
+ * 2026-10-26 each row was its own snippet, and opening a sheet compiled every formula on it in turn
+ * (about 0.3 to 2 s each), so a ten-formula sheet took seconds to appear.
+ */
+internal fun rewriteSpreadsheetFormula(input: String, refs: MutableList<String> = mutableListOf()): String {
     val out = StringBuilder(input.length + 32)
     var index = 0
     var quote: Char? = null
@@ -2161,13 +2181,15 @@ private fun rewriteSpreadsheetFormula(input: String): String {
             if (colonIndex < input.length && input[colonIndex] == ':') {
                 val parsedSecond = parseCellRefAt(input, colonIndex + 1)
                 if (parsedSecond != null && isRefBoundaryAfter(input, parsedSecond.endExclusive)) {
-                    out.append("""range("${cellLabel(parsedFirst.row, parsedFirst.col)}:${cellLabel(parsedSecond.row, parsedSecond.col)}")""")
+                    refs += "${cellLabel(parsedFirst.row, parsedFirst.col)}:${cellLabel(parsedSecond.row, parsedSecond.col)}"
+                    out.append("range(__ref(${refs.lastIndex}))")
                     index = parsedSecond.endExclusive
                     continue
                 }
             }
             if (isRefBoundaryAfter(input, parsedFirst.endExclusive)) {
-                out.append("""cell("${cellLabel(parsedFirst.row, parsedFirst.col)}")""")
+                refs += cellLabel(parsedFirst.row, parsedFirst.col)
+                out.append("cell(__ref(${refs.lastIndex}))")
                 index = parsedFirst.endExclusive
                 continue
             }
@@ -2401,15 +2423,23 @@ private fun matchesCompletionQuery(label: String, query: String): Boolean {
     return haystack.contains(needle)
 }
 
+/**
+ * Show the sheet stored in [property] in output [channel], first filling an empty sheet from
+ * [defaultState]. [width] defaults to the sheet's own width — its columns plus the row header,
+ * up to 960 px, beyond which the grid scrolls — so a four-column sheet is not squeezed into a
+ * narrow output or stretched across a wide one.
+ */
 fun Box.spreadsheet(
     channel: String = "spreadsheet",
     property: String = "spreadsheet",
     height: Int = 360,
-    defaultState: SpreadsheetStoredState? = null
+    defaultState: SpreadsheetStoredState? = null,
+    width: Int? = null
 ) {
     val normalizedProperty = normalizedSpreadsheetProperty(property)
     registerSpreadsheetProperty(normalizedProperty)
     defaultState?.let { seedSpreadsheet(property = normalizedProperty, state = it) }
+    val sheetWidth = width ?: naturalSheetWidth(getSpreadsheetState(normalizedProperty))
     val info = inside
     val params = mutableListOf(
         "uid=${urlEncode(id)}",
@@ -2426,31 +2456,42 @@ fun Box.spreadsheet(
         displayChannel,
         """
         <iframe src="/spreadsheet.html?${params.joinToString("&")}" loading="lazy"
-            style="border:none;padding:0;margin:0;width:100%;height:${height}px;display:block;background:transparent;"></iframe>
+            style="border:none;padding:0;margin:0;width:${sheetWidth}px;max-width:none;height:${height}px;display:block;background:transparent;"></iframe>
         """.trimIndent()
     )
 }
+
+// The editor's row header (HEADER_WIDTH in spreadsheet.js), the root's 8 px padding each side, the
+// grid's border, and room for a vertical scrollbar.
+private const val SHEET_CHROME_WIDTH = 34 + 2 * 8 + 2 + 10
+private const val MAX_NATURAL_SHEET_WIDTH = 960
+
+private fun naturalSheetWidth(state: SpreadsheetStoredState): Int =
+    (SHEET_CHROME_WIDTH + state.colWidths.sumOf { it }.toInt()).coerceIn(320, MAX_NATURAL_SHEET_WIDTH)
 
 fun Box.spreadsheet(
     channel: String = "spreadsheet",
     property: String = "spreadsheet",
     height: Int = 360,
+    width: Int? = null,
     defaultState: SpreadsheetStateBuilder.() -> Unit
-) = spreadsheet(channel = channel, property = property, height = height, defaultState = spreadsheetState(defaultState))
+) = spreadsheet(channel = channel, property = property, height = height, defaultState = spreadsheetState(defaultState), width = width)
 
 fun Box.sheet(
     channel: String = "spreadsheet",
     property: String = "spreadsheet",
     height: Int = 360,
-    defaultState: SpreadsheetStoredState? = null
-) = spreadsheet(channel = channel, property = property, height = height, defaultState = defaultState)
+    defaultState: SpreadsheetStoredState? = null,
+    width: Int? = null
+) = spreadsheet(channel = channel, property = property, height = height, defaultState = defaultState, width = width)
 
 fun Box.sheet(
     channel: String = "spreadsheet",
     property: String = "spreadsheet",
     height: Int = 360,
+    width: Int? = null,
     defaultState: SpreadsheetStateBuilder.() -> Unit
-) = spreadsheet(channel = channel, property = property, height = height, defaultState = defaultState)
+) = spreadsheet(channel = channel, property = property, height = height, width = width, defaultState = defaultState)
 
 fun Box.getSpreadsheetState(property: String = "spreadsheet"): SpreadsheetStoredState {
     val normalizedProperty = normalizedSpreadsheetProperty(property)

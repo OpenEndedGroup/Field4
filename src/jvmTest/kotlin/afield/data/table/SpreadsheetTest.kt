@@ -91,6 +91,18 @@ class SpreadsheetTest {
     }
 
     @Test
+    fun aFilledDownFormulaIsOneTemplate() {
+        val refs2 = mutableListOf<String>()
+        val refs3 = mutableListOf<String>()
+        val row2 = rewriteSpreadsheetFormula("B2 * C2 + sum(\$A\$1:A2) + cell(\"Z9\")", refs2)
+        val row3 = rewriteSpreadsheetFormula("B3 * C3 + sum(\$A\$1:A3) + cell(\"Z9\")", refs3)
+        assertEquals(row2, row3)
+        assertEquals(listOf("B2", "C2", "A1:A2"), refs2)
+        assertEquals(listOf("B3", "C3", "A1:A3"), refs3)
+        assertEquals("3 .withUnit(m)", rewriteSpreadsheetFormula("3 | m"))
+    }
+
+    @Test
     fun anEmptyCellIsZeroInArithmetic() {
         sheet.editSpreadsheet(broadcast = false) {
             cell("A1", 4)
@@ -186,6 +198,15 @@ class SpreadsheetTest {
         assertEquals("21", display("A2"))
 
         detachSpreadsheetClient(client)
+    }
+
+    @Test
+    fun aOneFormulaSheetFollowsToo() {
+        source.setPropertyRaw("speed", 4.0, doResync = false)
+        sheet.editSpreadsheet(broadcast = false) { formula("A1", "box(\"source\")[\"speed\"] * 2") }
+        assertEquals("8", display("A1"))
+        source.setPropertyRaw("speed", 10.0, doResync = false)
+        assertEquals("20", display("A1"))
     }
 
     @Test
