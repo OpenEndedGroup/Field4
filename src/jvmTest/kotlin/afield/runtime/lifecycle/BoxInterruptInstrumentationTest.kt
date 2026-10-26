@@ -79,4 +79,19 @@ class BoxInterruptInstrumentationTest {
         BoxInterrupt.withdrawIfFrameAdvanced(Long.MIN_VALUE)
         assertTrue(!BoxInterrupt.isPending())
     }
+
+    @Test
+    fun aRequestFromAnEarlierFrameDoesNotFireInTheNextBox() {
+        // e.g. "Interrupt Running Box" pressed while nothing ran, with the watchdog not running
+        val cls = instrumentedShapes()
+        BoxInterrupt.request("stale", Thread.currentThread())
+        Thread.interrupted() // request() may set the flag; this test is about the pending slot
+        Runloop.runLoop.frame++
+        try {
+            assertEquals(499500, cls.getMethod("finite").invoke(cls.getDeclaredConstructor().newInstance()))
+            assertTrue(!BoxInterrupt.isPending())
+        } finally {
+            Runloop.runLoop.frame--
+        }
+    }
 }

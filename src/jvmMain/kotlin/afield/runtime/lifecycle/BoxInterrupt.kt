@@ -86,6 +86,10 @@ object BoxInterrupt {
     fun poll() {
         val r = pending.getOpaque() ?: return
         if (r.thread !== Thread.currentThread()) return
+        // A request outlives the box it was aimed at when that box returned on its own (or none was
+        // running). The box that is stuck is stuck inside the frame it was asked in, so a request
+        // from an earlier frame is stale: drop it rather than fire in whatever box runs next.
+        if (Runloop.runLoop.frame != r.frameAtRequest) { pending.compareAndSet(r, null); return }
         if (!pending.compareAndSet(r, null)) return
         Thread.interrupted() // clear the flag [request] set, so it does not leak into later code
         val e = BoxInterruptedError(r.reason)
