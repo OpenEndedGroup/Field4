@@ -108,7 +108,13 @@ data class SpreadsheetStoredState(
     val cols: Int = DEFAULT_SHEET_COLS,
     val colWidths: List<Double> = emptyList(),
     val rowHeights: List<Double> = emptyList(),
-    val cells: List<SpreadsheetStoredCell> = emptyList()
+    val cells: List<SpreadsheetStoredCell> = emptyList(),
+    /**
+     * The `=free(...)` cells' inputs as the last solve left them, by `row:col`. A variable whose input
+     * differs from this was edited since, and the next solve holds it at edit strength. Stored, so an
+     * edit made while the sheet was closed, or by `editSheet { }` before it opened, still counts.
+     */
+    val solved: Map<String, String> = emptyMap()
 )
 
 class SpreadsheetStateBuilder internal constructor(state: SpreadsheetStoredState? = null) {
@@ -118,6 +124,7 @@ class SpreadsheetStateBuilder internal constructor(state: SpreadsheetStoredState
     private val colWidths = linkedMapOf<Int, Int>()
     private val rowHeights = linkedMapOf<Int, Int>()
     private val cells = linkedMapOf<String, SpreadsheetStoredCell>()
+    private val solved: Map<String, String> = state?.solved.orEmpty()
 
     init {
         state?.colWidths.orEmpty().forEachIndexed { index, width ->
@@ -181,7 +188,8 @@ class SpreadsheetStateBuilder internal constructor(state: SpreadsheetStoredState
             cols = safeCols,
             colWidths = List(safeCols) { index -> (colWidths[index] ?: DEFAULT_SHEET_COL_WIDTH).toDouble() },
             rowHeights = List(safeRows) { index -> (rowHeights[index] ?: DEFAULT_SHEET_ROW_HEIGHT).toDouble() },
-            cells = cells.values.toList()
+            cells = cells.values.toList(),
+            solved = solved
         )
         return normalizeStoredState(state)
     }
@@ -1464,10 +1472,6 @@ private class SpreadsheetDocument(
     private var cachedEvalCells: Map<String, EvalCell> = emptyMap()
     private var lastExternalBoxDeps: Set<SpreadsheetBoxDependency> = emptySet()
     private var lastObservedExternalValues: Map<SpreadsheetBoxDependency, String> = emptyMap()
-    // The variable cells' inputs as the last solve left them. A variable whose input differs now was
-    // edited since, and is held at edit strength. Survives reloadFromBox, so an edit made by writing
-    // the property (editSpreadsheet with no open sheet, a sidecar edit) counts as an edit too.
-    private var lastSolvedInputs: Map<String, String> = emptyMap()
     val subscribers: MutableSet<SpreadsheetClient> = CopyOnWriteArraySet()
 
     fun hasSubscribers(): Boolean = subscribers.isNotEmpty()
@@ -1518,7 +1522,9 @@ private class SpreadsheetDocument(
 
     fun update(box: Box, info: SessionInformation, nextState: SpreadsheetStoredState): SpreadsheetSnapshot {
         synchronized(lock) {
-            storedState = writeStoredSpreadsheetState(box, key.property, nextState)
+            // The editor sends cells and sizes only; keep what the last solve recorded.
+            val carried = if (nextState.solved.isEmpty()) nextState.copy(solved = storedState.solved) else nextState
+            storedState = writeStoredSpreadsheetState(box, key.property, carried)
             persistedJson = encodeStoredSpreadsheetState(storedState)
             version += 1
             cachedSnapshot = computeSnapshot(box, info)
@@ -1560,7 +1566,7 @@ private class SpreadsheetDocument(
         // Typing a plain number over a variable cell edits the variable rather than replacing it.
         if (allowSolve) {
             val retyped = cellInputs.filter { (k, input) ->
-                lastSolvedInputs[k] != null && input.trim().toDoubleOrNull() != null
+                storedState.solved[k] != null && input.trim().toDoubleOrNull() != null
             }
             if (retyped.isNotEmpty()) {
                 retyped.forEach { (k, input) -> cellInputs[k] = freeCellInput(input.trim().toDouble()) }
@@ -1724,16 +1730,17 @@ private class SpreadsheetDocument(
         val inputs = storedState.cells.associate { "${it.row}:${it.col}" to it.input }
         val currentVariableInputs = variables.associate { it.cellKey to inputs[it.cellKey].orEmpty() }
         if (variables.isEmpty() || assertions.none { it.traced }) {
-            lastSolvedInputs = currentVariableInputs
+            recordSolved(box, currentVariableInputs, emptyMap())
             return null
         }
+        val previouslySolved = storedState.solved
         val edited = variables.indices.filter { i ->
             val k = variables[i].cellKey
-            lastSolvedInputs.isNotEmpty() && lastSolvedInputs[k] != currentVariableInputs[k]
+            previouslySolved.isNotEmpty() && previouslySolved[k] != currentVariableInputs[k]
         }.toSet()
         val outcome = SheetConstraintSolver.solve(variables.map { it.previous }.toDoubleArray(), edited, assertions)
         if (!outcome.ok) {
-            lastSolvedInputs = currentVariableInputs
+            recordSolved(box, currentVariableInputs, emptyMap())
             return outcome
         }
         val rewritten = mutableMapOf<String, String>()
@@ -1743,14 +1750,19 @@ private class SpreadsheetDocument(
             val currentValue = FREE_CELL_PATTERN.find(current)?.groupValues?.get(1)?.toDoubleOrNull()
             if (currentValue == null || freeLiteral(currentValue) != freeLiteral(outcome.values[i])) rewritten[v.cellKey] = next
         }
-        if (rewritten.isNotEmpty()) {
-            storedState = writeStoredSpreadsheetState(box, key.property, storedState.copy(cells = storedState.cells.map { c ->
-                rewritten["${c.row}:${c.col}"]?.let { c.copy(input = it) } ?: c
-            }))
-            persistedJson = encodeStoredSpreadsheetState(storedState)
-        }
-        lastSolvedInputs = currentVariableInputs + rewritten
+        recordSolved(box, currentVariableInputs, rewritten)
         return outcome
+    }
+
+    /** Write solved values into their cells and record the variables' inputs as solved; no write if nothing changed. */
+    private fun recordSolved(box: Box, variableInputs: Map<String, String>, rewritten: Map<String, String>) {
+        val solved = variableInputs + rewritten
+        if (rewritten.isEmpty() && solved == storedState.solved) return
+        storedState = writeStoredSpreadsheetState(box, key.property, storedState.copy(
+            cells = storedState.cells.map { c -> rewritten["${c.row}:${c.col}"]?.let { c.copy(input = it) } ?: c },
+            solved = solved,
+        ))
+        persistedJson = encodeStoredSpreadsheetState(storedState)
     }
 
     private fun captureExternalDependencyFingerprints(info: SessionInformation): Map<SpreadsheetBoxDependency, String> =
@@ -2281,7 +2293,10 @@ private fun normalizeStoredState(state: SpreadsheetStoredState?): SpreadsheetSto
         cols = cols,
         colWidths = colWidths,
         rowHeights = rowHeights,
-        cells = cells.values.toList()
+        cells = cells.values.toList(),
+        solved = state?.solved.orEmpty().filterKeys { k ->
+            k.split(':').let { it.size == 2 && (it[0].toIntOrNull() ?: -1) in 0 until rows && (it[1].toIntOrNull() ?: -1) in 0 until cols }
+        }
     )
 }
 

@@ -129,6 +129,28 @@ class SpreadsheetConstraintsTest {
     }
 
     @Test
+    fun anEditIsRememberedInTheStoredSheet() {
+        sheet.editSpreadsheet(broadcast = false) {
+            formula("A1", "free(1)"); formula("A2", "free(2)"); formula("B1", "A1 + A2 eq 3")
+        }
+        snap()
+        assertEquals(mapOf("0:0" to "=free(1)", "1:0" to "=free(2)"), sheet.getSpreadsheetState().solved)
+        // A second document (a reopened Field) sees the edit through the stored record alone.
+        documents.remove(session.filename)
+        val reopened = SessionInformation(filename = "<sheet-constraints-reopen-${System.nanoTime()}>", documentName = "reopen", root = session.root, ephemeral = true)
+        reopened.loading = false
+        val copy = Box("sheet-copy").also { it.inside = reopened; reopened.boxes[it.id] = it }
+        copy.setSpreadsheetState(sheet.getSpreadsheetState().let { st ->
+            st.copy(cells = st.cells.map { if (it.row == 0 && it.col == 0) it.copy(input = "=free(10)") else it })
+        }, broadcast = false)
+        documents[reopened.filename] = reopened
+        near(10.0, copy.getSpreadsheetCell("A1").d, 1e-9, "edit held")
+        near(-7.0, copy.getSpreadsheetCell("A2").d, 1e-7, "other moved")
+        documents.remove(reopened.filename)
+        documents[session.filename] = session
+    }
+
+    @Test
     fun anEditYieldsToARequiredAssertion() {
         sheet.editSpreadsheet(broadcast = false) {
             formula("A1", "free(10)")

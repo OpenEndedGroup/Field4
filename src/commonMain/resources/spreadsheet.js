@@ -440,6 +440,29 @@ function injectStyles() {
         .sheet-status {
             display: none;
         }
+
+        /* Constraint sheets: the last solve, in one line, under the grid. */
+        .sheet-status[data-solve] {
+            display: block;
+            padding: 3px 6px;
+            font-size: 10px;
+            opacity: 0.75;
+        }
+
+        /* A =free(...) variable cell, and an eq / le / ge assertion's verdict. */
+        .sheet-cell[data-type="variable"] {
+            color: #ffd479;
+            box-shadow: inset 2px 0 0 0 #ffd479;
+        }
+
+        .sheet-assertion[data-assertion="ok"] {
+            color: var(--sheet-accent-2);
+        }
+
+        .sheet-assertion[data-assertion="violated"] {
+            color: var(--sheet-error);
+            font-weight: 600;
+        }
     `;
     document.head.appendChild(style);
 }
@@ -682,6 +705,15 @@ function applySnapshot(snapshot) {
         renderGrid();
         syncFormulaInput();
         updateReferenceHighlightsFromFormula();
+        if (dom.status) {
+            if (snapshot.solve) {
+                dom.status.dataset.solve = "1";
+                dom.status.textContent = snapshot.solve;
+            } else {
+                delete dom.status.dataset.solve;
+                dom.status.textContent = "";
+            }
+        }
     } finally {
         state.isApplyingRemote = false;
     }
@@ -1109,7 +1141,7 @@ function syncFormulaInput() {
     if (document.activeElement !== dom.formulaInput || dom.formulaInput.value !== cell.input) {
         dom.formulaInput.value = cell.input || "";
     }
-    dom.formulaBadge.textContent = cell.type === "number" ? "num" : cell.type === "formula" ? "fx" : "txt";
+    dom.formulaBadge.textContent = cell.type === "number" ? "num" : cell.type === "variable" ? "var" : (cell.type === "formula" || cell.type === "assertion") ? "fx" : "txt";
 }
 
 function beginFormulaEditFromCell(rowIndex, colIndex, initialChar = null, options = {}) {
