@@ -349,11 +349,14 @@ for (i in 0 until 80) {
 check(state.contains("ready")) { "the docs page did not load with its notes panel: " + state }
 // Fail closed: this capture runs against the automation server's own notebook
 // (AFIELD_DOCS_ANNOTATIONS_STORE). Any note it did not write means it is looking at someone's real
-// notes, which must neither be shown nor touched. Its own note from an earlier run is removed.
+// notes, which must neither be shown nor touched. Its own note from an earlier run is removed. The
+// KDoc drafts ai_doc_polish imports from the runner's committed drafts cache are machine notes on
+// source pages, not this page's, so they are left alone rather than counted as someone's.
 val store = ui.eval("""
     const items = await (await fetch("/api/docs-annotations?resolved=true")).json()
-    if (items.some(a => a.note !== "$note")) return "foreign"
-    for (const a of items) await fetch("/api/docs-annotations/" + encodeURIComponent(a.id), { method: "DELETE" })
+    const others = items.filter(a => a.kind !== "kdoc-draft")
+    if (others.some(a => a.note !== "$note")) return "foreign"
+    for (const a of others) await fetch("/api/docs-annotations/" + encodeURIComponent(a.id), { method: "DELETE" })
     return "clean"
 """.trimIndent()).toString()
 check(store.contains("clean")) { "the notes store holds notes this capture did not write; refusing to capture it" }

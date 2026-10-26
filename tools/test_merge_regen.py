@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 from tools.git_isolation import scrub_process_env  # noqa: E402
 
@@ -71,6 +72,32 @@ class MergeRegenTest(unittest.TestCase):
         self.assertIn("notes.txt", result.stderr)
         self.assertNotIn("kdoc_worklist", result.stderr)
         self.assertEqual(self.generated.read_text(), "ours\n")
+
+    def test_continue_skips_only_the_drift_checks_just_regenerated(self) -> None:
+        sys.path.insert(0, str(SCRIPT.parent))
+        import merge_regen
+
+        git(self.repo, "config", "merge.field-generated.driver", "true")
+        git(self.repo, "config", "merge.field-counts.driver", COUNTS_DRIVER)
+        self._commit_both("ours", source=False)
+        git(self.repo, "merge", "--no-ff", "--no-commit", "other")
+        real_run = subprocess.run
+        guards = []
+
+        def run(command, **kwargs):
+            if any(str(arg).endswith("check_staged_generated_artifacts.py") for arg in command):
+                guards.append(command)
+                return subprocess.CompletedProcess(command, 0)
+            return real_run(command, **kwargs)
+
+        with mock.patch.object(merge_regen, "regenerate", return_value=(0, {"checkCodebaseReference"})), \
+                mock.patch.object(Path, "cwd", return_value=self.repo), \
+                mock.patch.object(merge_regen.subprocess, "run", side_effect=run):
+            self.assertEqual(merge_regen.main(["--continue", "--no-commit"]), 0)
+        self.assertEqual(len(guards), 1)
+        self.assertIn("--skip", guards[0])
+        self.assertEqual(guards[0][guards[0].index("--skip") + 1], "checkCodebaseReference")
+        self.assertNotIn("citationGates", guards[0])
 
 
 COUNTS_SCRIPT = SCRIPT.parent / "merge_derived_counts.py"
