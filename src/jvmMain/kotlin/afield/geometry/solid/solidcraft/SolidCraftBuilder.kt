@@ -5,6 +5,27 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
+ * Writing a SolidCraft design from Kotlin: sketches, the features that turn them into solids and
+ * surfaces, and parameters that stay editable afterwards.
+ *
+ * [solidCraft] opens a [SolidCraftBuilder], whose calls assemble SolidCraft's own design JSON.
+ * [SolidCraftBuilder.sketch] draws on a plane with [SolidCraftSketch]: lines, arcs, circles,
+ * splines, rectangles, polygons, and 3-D wires given as points or taken from an [FLine]. Those
+ * sketches become bodies through [SolidCraftBuilder.extrude], [SolidCraftBuilder.revolve],
+ * [SolidCraftBuilder.sweep], [SolidCraftBuilder.loft], [SolidCraftBuilder.pipe],
+ * [SolidCraftBuilder.fillet] and [SolidCraftBuilder.thicken], and surfaces through
+ * [SolidCraftBuilder.surfaceSweep], [SolidCraftBuilder.surfaceLoft],
+ * [SolidCraftBuilder.surfaceRevolve] and [SolidCraftBuilder.surfaceBoundary].
+ * [SolidCraftBuilder.feature] takes any feature this file does not name, as raw JSON.
+ *
+ * Lengths and angles are SolidCraft expressions rather than numbers, so [SolidCraftBuilder.param]
+ * declares a name that later features can compute with, and the design keeps it afterwards.
+ * [SolidCraftBuilder.open] evaluates the whole thing with the same engine that opens a saved file
+ * and hands back a [SolidCraftDesign], whose [SolidCraftDesign.setParameter] re-evaluates the
+ * design with one value changed. The worked account is `public/docs/solidcraft.md`.
+ */
+
+/**
  * Builds a SolidCraft design from Kotlin: sketches of points and curves (lines, arcs, circles,
  * splines, 3D wires) and the features that turn them into bodies and surfaces — extrude, revolve,
  * sweep with guide rails, loft, pipe, and the surface sweep, loft, revolve and boundary patch.

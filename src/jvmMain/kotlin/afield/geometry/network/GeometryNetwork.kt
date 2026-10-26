@@ -5,6 +5,30 @@ import afield.geometry.path.catmullRomToBezier
 import afield.math.linalg.Vec3
 
 /**
+ * The result type Field's geometry-extraction modules share: nodes, curves that name the nodes
+ * they end at, and typed attribute channels.
+ *
+ * A [GeometryNetwork] holds [GeometryNodes], which are node identities and packed positions, and a
+ * list of [GeometryCurve]s, which are polylines naming their endpoint nodes. Both carry per-element
+ * [Channel]s for whatever the module measured, a scalar such as persistence or a wider value such
+ * as a tangent. Connectivity is by named node only, so two curves that cross without naming the
+ * same node are not joined, and a module that keeps node identities stable across recomputation
+ * keeps whatever was attached to a feature attached to it.
+ *
+ * Morse–Smale complexes, polyvector vectorization, principal curves, Mapper graphs, contour trees,
+ * vector-field topology and feature tracking all hand back one of these, which is why the output
+ * of one is input to another. [GeometryNetwork.fromFLines] goes the other way, for lines that did
+ * not come from a module; it names no nodes, because touching is not connectivity.
+ *
+ * [GeometryNetwork.toFLines] draws one line per curve, straight or Catmull–Rom smoothed, and
+ * leaves the network itself on every line under `geometryNetwork`, so nothing the conversion
+ * cannot carry is lost. [GeometryNetwork.components], [GeometryNetwork.degrees],
+ * [GeometryNetwork.curvesAt] and [GeometryNetwork.filterCurves] read and cut the graph.
+ * `public/docs/geometry_chains.md` is the worked account of passing one module's network to the
+ * next.
+ */
+
+/**
  * A per-element attribute channel: [width] doubles per element, packed into [data].
  *
  * A scalar such as persistence has width 1, a 2D tangent has width 2, and a 3D normal-plane

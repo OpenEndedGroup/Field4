@@ -9,6 +9,26 @@ import afield.math.linalg.Vec4
 import afield.media.image.Img
 
 /**
+ * Merge trees and contour trees of a scalar field on a regular grid.
+ *
+ * [ContourTrees.joinTree] follows the components of the sublevel sets as the threshold rises,
+ * [ContourTrees.splitTree] does the same from the top down, and [ContourTrees.contourTree] follows
+ * every component of every level set, so joins and splits are both recorded. Each hands back a
+ * [ScalarTree] of [TreeNode]s typed by [TreeNodeType] and [TreeArc]s between them, and every arc
+ * owns the pixels of the level-set component it stands for, readable per pixel through
+ * [ScalarTree.arcOfPixel].
+ *
+ * [ScalarTree.simplify] is what makes a tree readable: it repeatedly removes leaf arcs whose value
+ * span is under a persistence threshold, so small bumps and dips go first. [ScalarTree.plot] draws
+ * the tree with height for value, [ScalarTree.segmentationImage] paints each pixel by the arc that
+ * owns it, and [ScalarTree.network] hands the tree on as a [GeometryNetwork].
+ *
+ * The field is read as the same piecewise-linear surface Field's Morse–Smale complexes use: the
+ * grid cut into triangles along one diagonal, with ties between equal samples broken by pixel
+ * index. The worked account is `public/docs/contour_trees.md`.
+ */
+
+/**
  * The kind of a tree node: where a component of the level set begins or ends ([MINIMUM], [MAXIMUM]),
  * where two components join or one splits ([SADDLE]), or where the tree is rooted ([ROOT], the
  * global extremum a merge tree ends at).

@@ -1238,7 +1238,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `FractionAlongAnchor` | class | `src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt:116` |
 | `ContactPatch` | class | `src/jvmMain/kotlin/afield/geometry/solid/manifold/PlanarContact.kt:19` |
 | `ApertureAudit` | class | `src/jvmMain/kotlin/afield/geometry/solid/manifold/PlanarContact.kt:21` |
-| `SolidCraftBuilder` | class | `src/jvmMain/kotlin/afield/geometry/solid/solidcraft/SolidCraftBuilder.kt:48` |
+| `SolidCraftBuilder` | class | `src/jvmMain/kotlin/afield/geometry/solid/solidcraft/SolidCraftBuilder.kt:69` |
 | `HasAccelerationStructure` | interface | `src/jvmMain/kotlin/afield/graphics/render/AccelerationStructure.kt:35` |
 | `AccelerationStructureTriangles` | class | `src/jvmMain/kotlin/afield/graphics/render/AccelerationStructure.kt:39` |
 | `AccelerationStructureAabbs` | class | `src/jvmMain/kotlin/afield/graphics/render/AccelerationStructure.kt:54` |
