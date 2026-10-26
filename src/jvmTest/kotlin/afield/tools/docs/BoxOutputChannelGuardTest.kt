@@ -197,4 +197,45 @@ class BoxOutputChannelGuardTest {
         assertEquals(1, problems.size, problems.toString())
         assertTrue(problems.single().contains("'controls'"), problems.single())
     }
+
+    /** A transcript holding a root with [rootFlag] and, connected beneath it, a Kotlin box with [code]. */
+    private fun repoWithRootedControlsBox(rootFlag: String, code: String): File {
+        val repo = repoWithControlsBox("Kotlin", "display(\"only\", one())")
+        val body = code.lines().joinToString("\n") { "          $it" }
+        File(repo, "dev_docs/agents/transcripts/rooted_fixture.yaml").writeText(
+            "- create:\n" +
+                "    box: a_root\n" +
+                "    properties:\n" +
+                "      $rootFlag: true\n" +
+                "- create:\n" +
+                "    box: rooted_box\n" +
+                "    properties:\n" +
+                "      code: |\n" +
+                body + "\n" +
+                "- connect: { parent: a_root, child: rooted_box }\n"
+        )
+        return repo
+    }
+
+    /**
+     * 2026-10-25: five boxes from the 10-24 RemoteJS work were reported for a slider and a checkbox
+     * on 'controls'. Beneath a RemoteJS or Kotlin-to-head root they run in the browser head, which
+     * posts its control specs and `RemoteJsBoxSurface.applyControls` groups them by channel.
+     */
+    @Test
+    fun headControlsOnOneChannelShareAPanel() {
+        for (flag in listOf("isRemoteJSRoot", "isKotlinJsRoot")) {
+            val repo = repoWithRootedControlsBox(flag, "slider(\"speed\")\ncheckbox(\"outline\")")
+            assertEquals(emptyList(), BoxOutputChannelGuard.audit(repo).problems, flag)
+        }
+    }
+
+    /** The counterfactual: beneath an ordinary root the same two calls are still two figures. */
+    @Test
+    fun controlsBeneathAnOrdinaryRootAreStillReported() {
+        val repo = repoWithRootedControlsBox("autorun", "slider(\"speed\")\ncheckbox(\"outline\")")
+        val problems = BoxOutputChannelGuard.audit(repo).problems
+        assertEquals(1, problems.size, problems.toString())
+        assertTrue(problems.single().contains("rooted_fixture.yaml#rooted_box"), problems.single())
+    }
 }
