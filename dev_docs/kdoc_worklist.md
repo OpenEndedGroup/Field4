@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17713 of 34416 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17718 of 34422 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2248 undocumented entry points** (types, top-level functions and values) and 13741 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2248 undocumented entry points** (types, top-level functions and values) and 13742 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -445,13 +445,13 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [MavenClasspathManager.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/MavenClasspathManager.kt) | Workspace | — | 1 | 9 | 0% |
 | [GpuRadixSort.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/GpuRadixSort.kt) | Graphics | — | 1 | 8 | 14% |
 | [MapOfSequences.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/MapOfSequences.kt) | Graphics | — | 1 | 8 | 35% |
+| [PresentationSlides.kt](../src/jvmMain/kotlin/afield/ui/slides/PresentationSlides.kt) | Visualization | — | 1 | 8 | 40% |
 | [terminal.kt](../src/jvmMain/kotlin/afield/app/server/terminal.kt) | Workspace | — | 1 | 7 | 20% |
 | [NewMain6.kt](../src/jvmMain/kotlin/afield/examples/four/NewMain6.kt) | Examples | — | 1 | 7 | 0% |
 | [NewMain7_dynamicNumberOfVerts.kt](../src/jvmMain/kotlin/afield/examples/four/NewMain7_dynamicNumberOfVerts.kt) | Examples | — | 1 | 7 | 0% |
 | [NewMain7_errorChecking.kt](../src/jvmMain/kotlin/afield/examples/four/NewMain7_errorChecking.kt) | Examples | — | 1 | 7 | 0% |
 | [NewMain8_writeToImage.kt](../src/jvmMain/kotlin/afield/examples/four/NewMain8_writeToImage.kt) | Examples | — | 1 | 7 | 0% |
 | [PetriNotation.kt](../src/jvmMain/kotlin/afield/simulation/petri/PetriNotation.kt) | Visualization | — | 1 | 7 | 45% |
-| [PresentationSlides.kt](../src/jvmMain/kotlin/afield/ui/slides/PresentationSlides.kt) | Visualization | — | 1 | 7 | 42% |
 | [tuio.kt](../src/jvmMain/kotlin/afield/io/osc/tuio.kt) | Data | — | 1 | 6 | 30% |
 | [ImGuiStereoQuadExample.kt](../src/jvmMain/kotlin/afield/examples/four/ImGuiStereoQuadExample.kt) | Examples | — | 1 | 5 | 0% |
 | [DescriptorSetLayout.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/device/DescriptorSetLayout.kt) | Graphics | — | 1 | 5 | 25% |

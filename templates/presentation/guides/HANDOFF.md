@@ -2,6 +2,23 @@
 
 This document is both a talk and its live teaching material. Its default presentation path is Kotlin plus standard `kotlinx.html`, using Field's existing guide system. It needs no per-talk Node project, TSX or Motion Canvas installation.
 
+## Themes and builds
+
+The starter's `files/themes/black.css`, `paper.css` and `slate.css` are each standalone themes.
+Copy the chosen CSS into `files/presentation.css` to keep all authored slides on the same theme.
+Preserve the user's edited stylesheet unless asked to change it. Refresh reloads saved CSS.
+
+Use `fadeIn(durationMs = 350, delayMs = 0) { ... }` inside `audience` for text, an image or a group.
+Use `reveal("Explain", dimPrevious = 0.25) { fadeIn { ... } }` after an HTML audience view to add a
+cue retaining the previous composition underneath. Previous layers are inert and do not replay fades.
+Back/Refresh show the completed build. Native webpages and live documents use ordinary cues instead.
+For separate slides reuse `val figure = audienceFragment { ... }`, then `audience(figure)` and
+`audienceOver(figure, dimPrevious = 0.25) { ... }`. Media paths still refer to shared files.
+
+In `talk.slides.json`, a cue may set `retainPrevious: true`, `previousOpacity: 0.25`, `fadeMs: 350`.
+Defaults replace the body without an element fade. `PresentationWriteSlideRequest` accepts these
+fields as part of the slide; it still saves data without running code or showing it to an audience.
+
 ## Install or update the presentation kit
 
 For a new managed talk, use Welcome's **Kits → Add presentation starter kit**, **Restart Field**, then

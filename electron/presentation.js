@@ -96,7 +96,12 @@ async function bounded(promise, message) {
 
 function finishTransition(session) {
   const overlay = session.transition;
-  if (!overlay || overlay.webContents.isDestroyed()) return;
+  const startBuild = () => {
+    if (active === session && session.native && !session.audience.isDestroyed()) {
+      void session.audience.webContents.executeJavaScript('window.startPresentationBuild?.()').catch(() => {});
+    }
+  };
+  if (!overlay || overlay.webContents.isDestroyed()) { startBuild(); return; }
   // A newly inserted guest view sits above existing views. Put the captured frame back on top.
   session.audience.contentView.removeChildView(overlay);
   session.audience.contentView.addChildView(overlay);
@@ -104,7 +109,7 @@ function finishTransition(session) {
   const duration = Math.max(0, Math.min(2000, Number(session.manifest.transitionMs ?? 450) || 0));
   void overlay.webContents.executeJavaScript(`document.body.style.transition='opacity ${duration}ms linear';
     requestAnimationFrame(()=>requestAnimationFrame(()=>document.body.style.opacity='0'));`).catch(() => {});
-  session.transitionTimer = setTimeout(() => clearTransition(session), duration + 100);
+  session.transitionTimer = setTimeout(() => { clearTransition(session); startBuild(); }, duration + 100);
 }
 
 function layoutGuest(session) {
@@ -331,6 +336,9 @@ async function updateGuidePresentation(source, state) {
   if (!session) session = await openGuidePresentation(source, state);
   else if (!session.transition && !session.navigating) await beginTransition(session);
   if (active !== session) return;
+  const previousState = session.state;
+  const animateBuilds = opening || !previousState || state.index > previousState.index ||
+    (state.index === previousState.index && state.cueIndex > previousState.cueIndex);
   session.state = state;
   session.slideshowId = state.slideshowId;
   session.lastCue = `${state.index}:${state.cueIndex}`;
@@ -338,7 +346,7 @@ async function updateGuidePresentation(source, state) {
   try {
     const document = new URL(source.getURL()).searchParams.get('file') || '';
     const baseUrl = `${session.url}/project/${encodeURIComponent(document)}/files/`;
-    await session.audience.webContents.executeJavaScript(`window.renderPresentation(${JSON.stringify({...state, baseUrl})})`);
+    await session.audience.webContents.executeJavaScript(`window.renderPresentation(${JSON.stringify({...state, baseUrl, animateBuilds})})`);
     await showGuest(session, session.lastCue);
     if (active !== session) return;
     finishTransition(session);

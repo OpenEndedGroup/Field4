@@ -134,6 +134,73 @@ The image layouts use `field-image-full`, `field-image-beside` and `field-image-
 
 Steps cross-fade by default. Set `transitionMs` on `presentation` to a duration from 0 to 2000 milliseconds. Going backwards uses the same transition. If a web surface cannot provide a snapshot, navigation proceeds with a direct switch. Navigation runs the destination step's callbacks, so make an `onEnter` action safe to revisit if it changes a document or creates output.
 
+## Themes and simple builds
+
+The starter includes **Black**, **Paper** and **Slate** in `files/themes/`. Each is one CSS file,
+with Iosevka type, solid backgrounds and matching image credits. Black is the default.
+Copy the contents of `themes/paper.css` or `themes/slate.css` into the editable **presentation.css**
+box, save, then **Refresh slide**. That changes every starter slide which uses that stylesheet.
+To theme one HTML slide, use `stylesheet("themes/paper.css")`. For a Markdown slide file,
+set its top-level `stylesheet` to `themes/paper.css`. No installation or asset build is needed.
+
+The three colour variables are `--field-slide-bg`, `--field-slide-fg` and `--field-slide-muted`.
+Image layouts and credits use them too. Images keep their original colours.
+
+| Black | Paper | Slate |
+| --- | --- | --- |
+| ![Black theme in the native audience window.](assets/presentation_studio/theme-black.png) | ![Paper theme in the native audience window.](assets/presentation_studio/theme-paper.png) | ![Slate theme in the native audience window.](assets/presentation_studio/theme-slate.png) |
+
+`fadeIn` fades a text block, image or group from transparent to opaque. It starts after the
+whole-slide crossfade finishes. Back and Refresh show the completed build immediately;
+the operating system's reduced-motion setting disables the element animation.
+
+```diffstatic {data-lang=kotlin}
+step("A figure") {
+    audience {
+        stylesheet("presentation.css")
+        fadeIn(durationMs = 600) {
+            fullScreenImage("wave.svg", alt = "A sine wave", citation = "Our study")
+        }
+    }
+    reveal("Add an explanation", dimPrevious = 0.25) {
+        fadeIn {
+            h1 { +"One curve. Many questions." }
+        }
+    }
+}
+```
+
+`reveal` adds a named cue. It retains the preceding HTML view at the chosen opacity and lays
+new content on top. Set `dimPrevious = 1.0` to keep its original brightness.
+Successive reveals retain the whole previous composition, so earlier layers dim again.
+Retained content stays visible but cannot receive clicks or keyboard focus. Its fades are already
+complete; only the new layer animates. This works with HTML, Markdown and shared images.
+Use ordinary cues for native webpages, YouTube or live Field documents.
+
+![An actual image retained at quarter opacity behind the next idea in the native audience window.](assets/presentation_studio/layered-build.png)
+
+For the same effect across two separate slides, keep a reusable fragment:
+
+```diffstatic {data-lang=kotlin}
+val figure = audienceFragment {
+    stylesheet("presentation.css")
+    fullScreenImage("wave.svg", alt = "A sine wave")
+}
+presentation {
+    step("Look") { audience(figure) }
+    step("Discuss") {
+        audienceOver(figure, dimPrevious = 0.2) {
+            fadeIn { h1 { +"What would you change?" } }
+        }
+    }
+}.present()
+```
+
+The image remains one shared file. `durationMs` accepts 0–10000 and the optional `delayMs`
+accepts 0–60000. Layout is ordinary HTML/CSS; the fade does not move or reflow the content.
+In an AI4-authored slide's JSON cue, use `retainPrevious: true`, `previousOpacity: 0.25`
+and `fadeMs: 350`. Leaving these fields out keeps the original replacement behaviour.
+
 ## Let AI4 help write a slide
 
 The starter also loads `files/talk.slides.json` with `slides("talk.slides.json")` inside its Kotlin

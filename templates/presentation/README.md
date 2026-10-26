@@ -1,5 +1,11 @@
 # A Field presentation
 
+Three standalone themes live in `files/themes/`: Black, Paper and Slate. Copy a theme into the
+editable `presentation.css` box and Refresh slide to use it throughout the talk.
+Inside `audience`, `fadeIn { ... }` fades text, images or a group. After an HTML view,
+`reveal("Explain", dimPrevious = 0.25) { fadeIn { ... } }` adds a cue over the dimmed previous view.
+See `guides/HANDOFF.md` for reusable fragments and AI4-authored builds.
+
 In Field's Electron app, open Welcome and expand **Kits**. Press **Add presentation starter kit**,
 then **Restart Field**. Once it reconnects, expand **Kits → Presentations** and press **Create document**
 beside **Teaching with Field**. The new document starts its guide, live example and talk in order.

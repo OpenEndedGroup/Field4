@@ -1,6 +1,8 @@
 package afield.ui.slides
 
 import afield.app.protocol.AudienceContent
+import afield.app.server.ReadOnlyDocuments
+import afield.app.server.documents
 import afield.document.workspace.file
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -25,7 +27,7 @@ data class PresentationSlides(
             require(slide.title.isNotBlank() && slide.title.length <= 4096) { "A slide needs a title" }
             require(slide.markdown.length <= 100_000 && slide.notes.length <= 32_000) { "Slide text exceeds the limit" }
             require(slide.section.size <= 16 && slide.section.all { it.isNotBlank() && it.length <= 4096 }) { "Invalid slide section" }
-            require(slide.cues.size <= 100 && slide.cues.all { it.title.isNotBlank() && it.title.length <= 4096 && it.markdown.length <= 100_000 }) { "Invalid slide cues" }
+            require(slide.cues.size <= 100 && slide.cues.all { it.title.isNotBlank() && it.title.length <= 4096 && it.markdown.length <= 100_000 && it.fadeMs in 0..10_000 && it.previousOpacity.isFinite() && it.previousOpacity in 0.0..1.0 }) { "Invalid slide cues" }
         }
     }
 }
@@ -34,13 +36,14 @@ data class PresentationSlides(
 data class PresentationSlide(val id: String, val title: String, val markdown: String,
     val notes: String = "", val section: List<String> = emptyList(), val cues: List<PresentationReveal> = emptyList())
 
-/** A content-only reveal replaces the slide body and never executes code. */
+/** A content-only reveal replaces or layers the slide body and never executes code. */
 @Serializable
-data class PresentationReveal(val title: String, val markdown: String)
+data class PresentationReveal(val title: String, val markdown: String,
+    val retainPrevious: Boolean = false, val previousOpacity: Double = 0.25, val fadeMs: Int = 0)
 
 /** Document-local files shared by the Kotlin builder and AI4's revision-checked slide tools. */
-class PresentationSlideFiles(root: File) {
-    private val root = root.canonicalFile
+class PresentationSlideFiles(private val documentDirectory: File) {
+    private val root = documentDirectory.canonicalFile
     private val json = Json { prettyPrint = true; encodeDefaults = true }
     private fun target(path: String): File {
         require(path.startsWith("files/") && path.endsWith(".slides.json") && !File(path).isAbsolute) { "Use files/<name>.slides.json inside this document" }
@@ -73,6 +76,12 @@ class PresentationSlideFiles(root: File) {
 
     /** Empty revision creates a new file; every replacement must name the exact revision just read. */
     fun write(path: String, revision: String, deck: PresentationSlides): Snapshot = synchronized(writeLock) {
+        if (ReadOnlyDocuments.blocksWritesTo(documentDirectory.path) || documents.values.any {
+                it.readOnly && runCatching { File(it.filename).canonicalFile == root }.getOrDefault(false)
+            }) {
+            ReadOnlyDocuments.refuseWrite("presentation-slide", documentDirectory.path)
+            error("This presentation document is read-only")
+        }
         deck.validated()
         val file = target(path)
         fun matches() = if (file.exists()) revision.isNotEmpty() && readFile(file).revision == revision else revision.isEmpty()
@@ -101,6 +110,15 @@ fun SlideShowBuilder.slides(file: File) {
         val style = if (css.isEmpty()) "" else "<link rel=\"stylesheet\" data-field-presentation-style href=\"${css.replace("&", "&amp;").replace("\"", "&quot;")}\">"
         return AudienceContent(html = style + SlideMarkdown.render(markdown))
     }
+    fun view(current: PresentationSlides, value: PresentationSlide, cueIndex: Int): AudienceContent {
+        var content = body(value.markdown, current.stylesheet)
+        value.cues.take(cueIndex).forEach { reveal ->
+            val html = body(reveal.markdown, current.stylesheet)
+            val next = if (reveal.fadeMs == 0) html else html.copy(html = """<div class="field-fade-in" style="--field-fade-duration:${reveal.fadeMs}ms">${html.html}</div>""")
+            content = if (reveal.retainPrevious) layerAudience(content, next, reveal.previousOpacity) else next
+        }
+        return content
+    }
     deck.slides.forEach { slide ->
         fun SlideShowBuilder.add(depth: Int) {
             if (depth < slide.section.size) section(slide.section[depth]) { add(depth + 1) }
@@ -115,8 +133,8 @@ fun SlideShowBuilder.slides(file: File) {
                     audienceProvider = {
                         val current = PresentationSlideFiles.readFile(file).deck
                         val value = current.slides.singleOrNull { it.id == slide.id } ?: error("Slide was removed; rebuild the Presentation box")
-                        val next = value.cues.getOrNull(index) ?: error("Cue was removed; rebuild the Presentation box")
-                        body(next.markdown, current.stylesheet)
+                        check(index in value.cues.indices) { "Cue was removed; rebuild the Presentation box" }
+                        view(current, value, index + 1)
                     }
                 } }
             }

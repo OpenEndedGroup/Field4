@@ -35,3 +35,20 @@ then `call --no-reset --command 'open <document>'`. Never aim this at an authore
 It records `wave-reveal.png`, `wave-controls.png` and `rehearsal.json` (source hash and checks).
 The default destination is `/tmp/field-lesson-rehearsal`; the public guide uses the checked-in
 captures produced with destination `public/docs/assets/presentation_studio`. Inspect both images.
+
+## Native builds and themes
+
+With an unchanged disposable copy of the current presentation starter open in this checkout's
+Electron, run:
+
+```sh
+node tools/presentation/rehearse-builds.mjs http://127.0.0.1:29493 /tmp/workspace/builds-demo
+```
+
+This drives the actual native controller and audience. It checks that element fades wait for the
+outgoing crossfade and have an intermediate opacity; the retained image is loaded, dimmed and inert;
+Back and Refresh show the completed build; and reduced-motion disables the fade. It temporarily
+copies each standalone theme onto the disposable document's presentation.css and restores that file
+in a finally block. It captures `layered-build.png` and the three `theme-*.png` views, and records
+source hashes and image hashes in `builds.json`. Inspect all four images before committing them.
+The source document must be disposable because ordinary Field saves still run during the rehearsal.

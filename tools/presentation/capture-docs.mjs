@@ -70,7 +70,7 @@ try {
   };
   const goto = async title => {
     await control.evaluate(`[...document.querySelectorAll('#slides button.slide')].find(b=>b.dataset.slideTitle===${JSON.stringify(title)}).click()`);
-    await until(() => control.evaluate('document.getElementById("status").textContent'), v => v.endsWith(title), title);
+    await until(() => control.evaluate('document.getElementById("status").textContent'), v => v.includes(title), title);
     await settled();
   };
   await goto('A figure, fullscreen');

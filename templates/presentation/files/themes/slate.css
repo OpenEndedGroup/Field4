@@ -1,0 +1,12 @@
+/* Slate — copy this file over files/presentation.css to theme the whole starter. */
+:root { --field-slide-bg: #171c22; --field-slide-fg: #e9edf1; --field-slide-muted: #a0aab4; }
+body {
+    font-family: "Iosevka Web", Iosevka, monospace;
+    background: var(--field-slide-bg);
+    color: var(--field-slide-fg);
+}
+h1 { font-weight: 400; letter-spacing: -.03em; }
+.muted { color: var(--field-slide-muted); }
+.columns { gap: 80px; }
+.field-image-full > figcaption, .field-image-beside figcaption { font-size: 24px; color: var(--field-slide-muted); }
+.field-image-text h1 { font-size: 88px; }
