@@ -12,6 +12,19 @@ import afield.math.linalg.Matrix4f
 import org.lwjgl.system.MemoryUtil.memFree
 
 /**
+ * Posing a rigged file from disk, by either of two routes that differ in where the result lands.
+ *
+ * [skinnedGltfToTriMesh] and [posedGltfToTriMesh] hand back a deformed [TriMesh], which is geometry
+ * to measure, show or write out at one instant of one clip, with no renderer in the picture.
+ * [CpuSkinner] instead overwrites the positions and normals of the GPU vertex buffer a loaded mesh
+ * already owns, which is what animates a character under the bundled glTF shaders without touching a
+ * shader. [gltfClipNames] says what a file has to offer before either call.
+ *
+ * Both routes do the skinning itself with [GltfSkinning], so they agree vertex for vertex on the same
+ * palette; the choice between them is about what happens next, not about the deformation.
+ */
+
+/**
  * A rigged file, deformed at a time, as a [TriMesh] you can render, measure and look at.
  *
  * [assimpToTriMesh] is the rigid sibling of this: it applies each node's own world matrix and hands

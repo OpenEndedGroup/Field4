@@ -11,6 +11,20 @@ import kotlin.math.abs
 import kotlin.math.sqrt
 
 /**
+ * The alternative to [GltfSkinning]'s matrix blend, for a rig whose joints twist.
+ *
+ * One object, with the same [DualQuaternionSkinning.skin] signature as [GltfSkinning.skin], so a
+ * caller swaps one for the other and changes nothing else. It averages rigid motions rather than
+ * matrices, which is what stops a twisted joint's cross-section collapsing, and
+ * [DualQuaternionSkinning.candyWrapperRadius] is the measurement that separates the two methods.
+ *
+ * Neither method is correct everywhere, and the block below gives the terms: what a unit dual
+ * quaternion cannot carry and what [DualQuaternionSkinning.split] does with the remainder, the sign
+ * convention two influences have to agree on, and the edge lengths each method gets wrong in opposite
+ * directions.
+ */
+
+/**
  * Dual quaternion linear blending — the skinning method that does not collapse a twisted joint.
  *
  * [GltfSkinning.skin] averages *matrices*. That is right for positions under small rotations and
@@ -93,7 +107,7 @@ object DualQuaternionSkinning {
     }
 
     /**
-     * Factor [m] into a rigid motion and a residual 3×3, by Gram-Schmidt on the upper 3×3.
+     * Factor `m` into a rigid motion and a residual 3×3, by Gram-Schmidt on the upper 3×3.
      *
      * Gram-Schmidt rather than a polar decomposition: it is exact for the rigid case (which is
      * almost every joint in almost every rig), it cannot fail to converge, and the residual it
