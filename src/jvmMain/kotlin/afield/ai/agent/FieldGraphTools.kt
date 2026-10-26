@@ -581,9 +581,20 @@ class FieldGraphTools(
             property = "code", requestId = requestId)
         if (launch) host.launch(info, box, exec, reply) else host.run(info, box, exec, reply)
 
-        val report = try {
+        var report = try {
             verdict.get((timeoutSeconds.coerceIn(0.5, 600.0) * 1000).toLong(), TimeUnit.MILLISECONDS)
         } catch (_: TimeoutException) { null }
+        // No verdict: if the box's code is what holds the Runloop, throw out of it (BoxInterrupt) and
+        // give the interrupted run a moment to report, so the agent gets a verdict and Field moves again.
+        var interrupted = false
+        if (report == null && !launch) {
+            val main = afield.runtime.lifecycle.Runloop.mainThread
+            if (main != null && afield.runtime.lifecycle.BoxInterrupt.culprit(main.stackTrace) != null) {
+                afield.runtime.lifecycle.BoxInterrupt.request("RunBox timeout after ${timeoutSeconds}s", main)
+                report = try { verdict.get(3000, TimeUnit.MILLISECONDS) } catch (_: TimeoutException) { null }
+                interrupted = true
+            }
+        }
         if (settleSeconds > 0) Thread.sleep((settleSeconds.coerceAtMost(10.0) * 1000).toLong())
 
         val page = BoxOutputLog.since(box, marker)
@@ -597,6 +608,12 @@ class FieldGraphTools(
             displays = displays, outputMarker = page.marker
         )
         return when {
+            interrupted -> common.copy(
+                stage = "interrupted", timedOut = true, error = report?.error?.take(4000) ?: "",
+                message = "The $verb of '${box.name}' did not return within ${timeoutSeconds}s, so Field interrupted it " +
+                    (if (report != null) "and it stopped. " else "but has no verdict yet. ") +
+                    "Look for a loop or recursion that never ends."
+            )
             report == null -> common.copy(
                 stage = "timeout", timedOut = true,
                 message = "No verdict for the $verb of '${box.name}' within ${timeoutSeconds}s. " +

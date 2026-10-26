@@ -188,6 +188,7 @@ class Runloop {
         }
         schedulingState.install(Thread.currentThread())
         lprintln("info,startup", "entering run loop")
+        BoxInterrupt.Watchdog.start()
         while (true) {
             val frameStartNs = System.nanoTime()
             preRun.update()

@@ -541,6 +541,10 @@ class KotlinInterface2(
     }
 
 
+    /** How a stall report names this engine's box (see [afield.runtime.lifecycle.BoxInterrupt]). */
+    private fun interruptLabel(): String =
+        (associatedBox as? Box)?.let { "'${it.name}' (${it.id})" } ?: "box code"
+
     suspend fun evaluate(
         e: LinkedSnippet<out CompiledScript>, updateContext: Boolean = false
     ): ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>> {
@@ -558,6 +562,7 @@ class KotlinInterface2(
                     }
                 }
 
+                afield.runtime.lifecycle.BoxInterrupt.instrument(e.get(), interruptLabel())
                 r = evaluator.eval(e, evalConfig)
                 if (r is ResultWithDiagnostics.Success) {
                     val evalResult = r.value.get().result
@@ -619,6 +624,7 @@ class KotlinInterface2(
                     }
                 }
 
+                afield.runtime.lifecycle.BoxInterrupt.instrument(e.get(), interruptLabel())
                 r = evaluator.eval(e, evalConfig)
                 if (r is ResultWithDiagnostics.Success) {
                     val evalResult = r.value.get().result
