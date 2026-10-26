@@ -319,6 +319,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
     - [onnx](machine-learning.md#clip-kt)
 - [knowledge](machine-learning.md#ai4filestorecli-kt)
 - [learning](machine-learning.md#deepsets-kt)
+    - [pen](machine-learning.md#pen-kt)
 - [models](machine-learning.md#ai4installer-kt)
 - *retrieval* — [Data](data.md#semanticsearchmanager-kt) · [Machine learning](machine-learning.md#markdownchunker-kt)
 - *tools* — [Machine learning](machine-learning.md#agentextensions-kt) · [Workspace](workspace.md#toolpool-kt)
@@ -647,7 +648,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**34422 public symbols across 1566 source files**, 17718 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34467 public symbols across 1567 source files**, 17748 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -676,7 +677,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio AI](audio-ai.md) | 22 | 584 | 397 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 123 | 3095 | 1408 (45%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 229 | 3146 | 1131 (35%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [Machine learning](machine-learning.md) | 102 | 2259 | 705 (31%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
+| [Machine learning](machine-learning.md) | 103 | 2304 | 735 (31%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 | [Output](output.md) | 1 | 25 | 17 (68%) |  |
 
@@ -1695,6 +1696,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>pd/<wbr></small> [PdNative.kt](synthesis.md#pdnative-kt) | Synthesis | 7 | 7 | Finds the optional libpd native library (`PdLibrary`) and binds its C functions for `PdInstance`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>pd/<wbr></small> [PdObjects.kt](synthesis.md#pdobjects-kt) | Synthesis | 5 | 5 | The catalog of object names the built libpd can create, used by `PdObjects.suggest` to correct a mistyped object box. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>pd/<wbr></small> [PdPatchGraph.kt](synthesis.md#pdpatchgraph-kt) | Synthesis | 15 | 15 | Reads Pd patch text into a graph of objects and connections without running Pd, and draws it into a box with `showPdPatch`. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>learning/<wbr>pen/<wbr></small> [pen.kt](machine-learning.md#pen-kt) | Machine learning | 45 | 30 | A learned pen: a recurrent network that has watched people write and draws the next point. | [A learned pen](../learned_pen.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>persistence/<wbr></small> [PersistedFingerprint.kt](workspace.md#persistedfingerprint-kt) | Workspace · internal | 8 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>settings/<wbr></small> [PersonalLayer.kt](workspace.md#personallayer-kt) | Workspace | 11 | 10 | Loads the gitignored `src/personal` jar in its own classloader between core Field and the REPL, so box code can use personal classes and the layer can be replaced without restarting. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>settings/<wbr></small> [PersonalLayerSmokeTest.kt](workspace.md#personallayersmoketest-kt) | Workspace · internal | 3 | 0 | Guards the `PersonalLayer` boundary: `src/personal` is off the app `-cp` and reachable only through its own classloader, so the ways it can quietly stop working are all invisible. |  |
