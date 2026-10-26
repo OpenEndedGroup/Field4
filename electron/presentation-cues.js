@@ -73,6 +73,11 @@ function validateGuideState(state) {
       (state.stepIds.length !== 0 && state.stepIds.length !== state.titles.length) ||
       !state.stepIds.every(id => typeof id === 'string' && id.trim() && id.length <= 256) ||
       new Set(state.stepIds).size !== state.stepIds.length)) throw new Error('Invalid guide step IDs');
+  if (state.searchTexts != null && (!Array.isArray(state.searchTexts) ||
+      (state.searchTexts.length !== 0 && state.searchTexts.length !== state.titles.length) ||
+      !state.searchTexts.every(text => typeof text === 'string' && text.length <= 16384))) {
+    throw new Error('Invalid guide search text');
+  }
   if (state.index === -1) return state;
   if (!Array.isArray(state.cueTitles) || state.cueTitles.length > 100 ||
       !state.cueTitles.every(title => typeof title === 'string' && title.trim() && title.length <= 4096) ||

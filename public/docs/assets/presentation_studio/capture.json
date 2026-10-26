@@ -1,9 +1,10 @@
 {
-  "capturedAt": "2026-10-26T16:31:50.669Z",
-  "commit": "348323af5bc486f64bdb54fda6cc8f382db615e1",
+  "capturedAt": "2026-10-26T17:04:35.060Z",
+  "commit": "af17b1f9d3159db9ed9fd8909e2dcf79e8eaa755",
   "inputs": {
-    "src/commonMain/resources/presentation-control.js": "013783bbd0a540302f438606403b443b9f00a16cbe23caf3aca0f68aa2709a63",
-    "src/commonMain/resources/presentation-control.html": "8df80113765d27a673c9bb6b8efdeb7af9f794383a32d7ed55f405652f838f3c",
+    "src/commonMain/resources/presentation-control.js": "9c4a7ba231f2e13688642307d7a9502fee755e54d31020095de00d9ad280caed",
+    "src/commonMain/resources/presentation-control.html": "469ecbc5d7062ac6c2cdd4fd851d4bc34a5bbbc681716b395ec91a10f67a4fc1",
+    "src/commonMain/resources/presentation-search.js": "9d30dd003a610a6befa61f994404db2112f47e4dc1105524a3fe63ca717dd413",
     "src/commonMain/resources/presentation-audience.js": "630aa5de4cf469635fd461e8fcc3f15e623f77985b360130bdf57fb15ac8032f",
     "src/jvmMain/kotlin/afield/ui/slides/AudienceBuilder.kt": "5ea2aa9654d129f59b04258e32fa4751a58345dd48203da49a7e99fdecf0e7b7",
     "templates/presentation/present_talk_code_.kt": "4fe6d42ee3be10ad36904bd937aa14d6e78fd7e07e3f3648c548dd633ad41254",
@@ -13,7 +14,7 @@
     "templates/presentation/macros/run_wave.yaml": "383bd9215cffdefef42fdfe83479bbbf970c1dbfd972ef57bbe22c28808d58f5"
   },
   "targets": {
-    "source": "https://localhost:9493/index.html?file=builds-demo",
+    "source": "https://localhost:9493/index.html?file=search-demo",
     "audience": "/presentation-audience.html",
     "controller": "/presentation-control.html"
   },
@@ -34,13 +35,13 @@
       "file": "outline.png",
       "width": 1000,
       "height": 760,
-      "sha256": "1e95bc8a0fe4db45762ffe1aa3ec6d4ece265636ce74a4452146ad28f4b7d663"
+      "sha256": "341f39eddf6804f83ee3a665f1ee51fb91e8b3f099873b20927c4468d74125a4"
     },
     {
       "file": "stylesheet.png",
       "width": 1280,
       "height": 820,
-      "sha256": "342aa95444651d58708090017973003cabff9b1cca0e8db5491989f28a347c09"
+      "sha256": "1f14e18452bead8b853d12f88ddf56ab0c25ae8261418dde38ffdd7e05f1601d"
     }
   ]
 }

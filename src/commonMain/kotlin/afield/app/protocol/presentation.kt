@@ -33,5 +33,6 @@ data class PresentationState(
     val cueIndex: Int = 0,
     val cueTitles: List<String> = emptyList(),
     val cueAction: Boolean = false,
-    val checkpoint: String = ""
+    val checkpoint: String = "",
+    val searchTexts: List<String> = emptyList()
 )

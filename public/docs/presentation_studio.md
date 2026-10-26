@@ -39,7 +39,23 @@ presentation(title = "A lesson about motion") {
 }.present()
 ```
 
-**Find slide** searches slide titles, section names and slide numbers. Press Enter to open the first match; Escape clears the search. Jumping to a slide reveals its section in the outline. Collapse other sections to keep a long lecture manageable; the controls preserve those choices as you navigate.
+### Keyboard search
+
+**Find slide** searches as you type across slide titles, authored HTML/Markdown text, reveal text,
+image descriptions, section names and slide numbers. Multiple words may occur in different parts
+of the slide; matching ignores case and accents. Body matches show a short excerpt.
+
+In the presenter controls, press **/** or **⌘/Ctrl+F** to focus search. **↑/↓** chooses a match;
+**Enter** visits that slide. The query stays ready for another hop. **Esc** clears the query and
+returns focus to the current slide in the outline, where the usual presentation navigation keys work.
+Typing and choosing a match leave the audience on the current slide until Enter.
+
+Search includes authored reveals, and visits their containing slide at its beginning. It does not
+open live webpages or documents to index their dynamic contents. The index is cached with the talk;
+**Refresh slide** updates it after body edits, and rerunning **Presentation** updates a changed outline.
+Jumping to a slide reveals its section. Other section disclosure choices are preserved.
+
+![Incremental body-text search in the real presenter: propagation finds text in an authored reveal, with a keyboard-selected result and excerpt.](assets/presentation_studio/search.png)
 
 ![Presenter controls with a searchable, numbered outline grouped into Opening, Pictures and ideas, and Working material.](assets/presentation_studio/outline.png)
 

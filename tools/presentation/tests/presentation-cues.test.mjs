@@ -115,3 +115,14 @@ test('native cue state accepts defaults and rejects impossible positions', () =>
     assert.throws(() => validateGuideState({...state, ...invalid}), /cue state/);
   }
 });
+
+test('native search text remains optional, aligned and bounded', () => {
+  const {validateGuideState} = require('../../../electron/presentation-cues.js');
+  const state = {slideshowId: 'search', hostUid: 'host', title: 'Talk', index: 0,
+    titles: ['One', 'Two'], content: {html: '<h1>One</h1>'}};
+  assert.doesNotThrow(() => validateGuideState(state));
+  assert.deepEqual(validateGuideState({...state, searchTexts: ['body one', 'body two']}).searchTexts, ['body one', 'body two']);
+  for (const searchTexts of ['bad', ['one'], [null, 'two'], ['x'.repeat(16385), 'two']]) {
+    assert.throws(() => validateGuideState({...state, searchTexts}), /search text/);
+  }
+});
