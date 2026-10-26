@@ -532,6 +532,30 @@ The preamble and setup blocks also re-run between fragments, so a fragment that 
 
 ---
 
+## Code that never returns
+
+Box code runs on Field's main loop, so a box that never finishes stops every other box and the
+canvas with it:
+
+```diffstatic {data-lang=kotlin}
+var i = 0L
+while (true) { i++ }
+```
+
+Field notices. After about a second and a half with no frame, the log names the box that is
+running and where it is. After five seconds Field throws out of that box's code: the run ends with
+the error `Box interrupted: ...`, and everything else carries on. To get out sooner, run
+**Interrupt Running Box** from the command palette.
+
+The interruption lands at the next loop iteration or function call in the box's own code, so it
+also stops runaway recursion, and a `catch (e: Exception)` inside the loop does not swallow it.
+It cannot reach into a library call that never returns on its own. A `Thread.sleep` or a wait
+inside the loop is woken, though.
+
+Two environment variables change the timings: `AFIELD_RUNLOOP_WATCHDOG_INTERRUPT_MS` sets the
+delay before the automatic interrupt (`0` turns it off and leaves only the command), and
+`AFIELD_RUNLOOP_WATCHDOG_REPORT_MS` sets the delay before the report.
+
 ## Putting it together
 
 - During interactive execution, Kotlin box code is **fragmented** on `//%-`, and each fragment is **macro-expanded, compiled, and evaluated in turn** — so a fragment sees the runtime effects of earlier fragments in that box.
