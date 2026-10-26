@@ -2152,13 +2152,39 @@ private fun spreadsheetCellInputText(input: Any?): String = when (input) {
  * 2026-10-26 each row was its own snippet, and opening a sheet compiled every formula on it in turn
  * (about 0.3 to 2 s each), so a ten-formula sheet took seconds to appear.
  */
-internal fun rewriteSpreadsheetFormula(input: String, refs: MutableList<String> = mutableListOf()): String {
+internal fun rewriteSpreadsheetFormula(input: String, refs: MutableList<String> = mutableListOf()): String =
+    rewritePipeUnits(rewriteCellRefs(input, refs))
+
+/** Where the `${'$'}{` that opens a string template at [open] is closed, or -1. */
+private fun templateEnd(input: String, open: Int): Int {
+    var depth = 1
+    var index = open + 1
+    while (index < input.length) {
+        when (input[index]) {
+            '{' -> depth += 1
+            '}' -> { depth -= 1; if (depth == 0) return index }
+        }
+        index += 1
+    }
+    return -1
+}
+
+private fun rewriteCellRefs(input: String, refs: MutableList<String>): String {
     val out = StringBuilder(input.length + 32)
     var index = 0
     var quote: Char? = null
     while (index < input.length) {
         val ch = input[index]
         if (quote != null) {
+            // The code inside a string template is code: `"${'$'}{min(A2:A4)}"` reads the range.
+            if (quote == '"' && ch == '$' && index + 1 < input.length && input[index + 1] == '{') {
+                val close = templateEnd(input, index + 1)
+                if (close > 0) {
+                    out.append("${'$'}{").append(rewriteCellRefs(input.substring(index + 2, close), refs)).append('}')
+                    index = close + 1
+                    continue
+                }
+            }
             out.append(ch)
             if (ch == '\\' && quote != '`' && index + 1 < input.length) {
                 out.append(input[index + 1])
@@ -2197,7 +2223,7 @@ internal fun rewriteSpreadsheetFormula(input: String, refs: MutableList<String> 
         out.append(ch)
         index += 1
     }
-    return rewritePipeUnits(out.toString())
+    return out.toString()
 }
 
 private val PIPE_UNIT_PATTERN = Regex("""\|\s*([A-Za-z_`][A-Za-z0-9_`]*)""")
@@ -2452,10 +2478,15 @@ fun Box.spreadsheet(
         params += "sessionKey=${urlEncode(info.filename)}"
     }
     val displayChannel = if (channel == normalizedProperty) channel else "$channel/$normalizedProperty"
+    // Not `loading="lazy"`: a lazy iframe in a closed output panel has no size, so it did not load until
+    // the panel opened, and the sheet then sat empty for the seconds its formulas took to compile.
+    // `data-afield-autosize="off"`: the sheet's size is known here, so the panel takes it from the
+    // inline pixels; measured from inside, a frame that loaded in a closed panel reported its own
+    // collapsed width and the sheet was clipped to a column and a half.
     display(
         displayChannel,
         """
-        <iframe src="/spreadsheet.html?${params.joinToString("&")}" loading="lazy"
+        <iframe src="/spreadsheet.html?${params.joinToString("&")}" data-afield-autosize="off"
             style="border:none;padding:0;margin:0;width:${sheetWidth}px;max-width:none;height:${height}px;display:block;background:transparent;"></iframe>
         """.trimIndent()
     )

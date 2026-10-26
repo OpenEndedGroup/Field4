@@ -62,6 +62,7 @@ class SpreadsheetTest {
             formula("B5", "\$A\$1 + A2")
             formula("B6", "sqrt(16.0)")
             formula("B7", "\"A1 stays text\"")
+            formula("B8", "\"total \${sum(A1:A3).toInt()}\"")
         }
         assertEquals("20", display("B1"))
         assertEquals("10", display("B2"))
@@ -70,6 +71,7 @@ class SpreadsheetTest {
         assertEquals("5", display("B5"))
         assertEquals("4", display("B6"))
         assertEquals("A1 stays text", display("B7"))
+        assertEquals("total 10", display("B8"), error("B8"))
         assertEquals(30.0, (sheet.getSpreadsheetCell("B3")).d)
     }
 
@@ -100,6 +102,12 @@ class SpreadsheetTest {
         assertEquals(listOf("B2", "C2", "A1:A2"), refs2)
         assertEquals(listOf("B3", "C3", "A1:A3"), refs3)
         assertEquals("3 .withUnit(m)", rewriteSpreadsheetFormula("3 | m"))
+        val templated = mutableListOf<String>()
+        assertEquals(
+            "\"A1 is \${cell(__ref(0))}, \${max(range(__ref(1)))}\"",
+            rewriteSpreadsheetFormula("\"A1 is \${A1}, \${max(A2:A3)}\"", templated)
+        )
+        assertEquals(listOf("A1", "A2:A3"), templated)
     }
 
     @Test
