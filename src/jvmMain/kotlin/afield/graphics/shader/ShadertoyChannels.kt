@@ -14,6 +14,7 @@
  * }
  * ```
  */
+
 package afield.graphics.shader
 
 import afield.app.diagnostics.logging.lprintln
