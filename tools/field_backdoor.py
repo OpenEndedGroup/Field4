@@ -2662,13 +2662,19 @@ class FieldBackdoor:
         # stale cached preview. Explicit inline source is handled by the callers.
         return await self.get_property(uid=resolved, property_name=property_name, timeout=timeout)
 
-    async def ai_tools_list(self, *, timeout: float, focus_box: str | None = None) -> list[dict[str, Any]]:
+    async def ai_tools_list(
+        self, *, timeout: float, focus_box: str | None = None, suspendable: bool = False
+    ) -> list[dict[str, Any]]:
         """List the ai4 agent tools available for the attached document.
 
         ``focus_box`` (a uid or unique name) stands in for the box whose chat is open, so tools that
         scope themselves to the focused box are listed as that box's chat would see them.
+        ``suspendable`` also lists the tools only a box chat's turn is offered, the ones that end the
+        turn to wait; ``ai_tool_call`` cannot call those.
         """
-        event = await self.call_for_single_reply("agent-ai-tools-list", {"focusBox": focus_box}, timeout=timeout)
+        event = await self.call_for_single_reply(
+            "agent-ai-tools-list", {"focusBox": focus_box, "suspendable": suspendable}, timeout=timeout
+        )
         payload = event.get("payload")
         tools = payload.get("tools") if isinstance(payload, dict) else None
         return tools if isinstance(tools, list) else []

@@ -175,10 +175,10 @@ output area and hands the model the picture.
   ],
   "width": 430,
   "height": 172,
-  "inkFraction": 0.04002163331530557,
+  "inkFraction": 0.03980530016224987,
   "dominantColours": [
-    "#050505 71.0%",
-    "#151515 25.0%",
+    "#050505 76.9%",
+    "#151515 19.1%",
     "#3a6ea5 2.4%",
     "#203a56 0.7%",
     "… 2 more"
@@ -614,11 +614,15 @@ Tools marked \* are deferred. The model sees only their names until it asks for 
 descriptions, because most chats never need them. The effects column says what a call can touch.
 On a read-only document, Field refuses every call that changes the document.
 
+Tools marked † end the turn to wait, for your answer or for a long build, so only the chat
+panel on a box offers them; the editor's inline chats and the document chat do not. None of them
+has an example here, because each needs a chat that someone resumes.
+
 A few tools appear only in a particular kind of chat, such as one about a RectSL scene. Their
 pages cover them.
 
 <!-- ai4-tools-reference:begin -->
-74 tools in 17 namespaces.
+76 tools in 17 namespaces.
 
 ### `graph`
 
@@ -789,6 +793,7 @@ Long-running study builds (see [Let AI4 wait for long builds](ai4_long_builds.md
 
 | Tool | What it does | Effects |
 | --- | --- | --- |
+| `AwaitStudyBuildsRequest` \* † | End this turn and let Field wait for build jobs without the model, then resume this conversation with their outcomes. | agent state, filesystem read, read document |
 | `CancelStudyBuildRequest` \* | Request cancellation of a specific build. | control runtime, filesystem write, mutate document |
 | `InspectStudyBuildsRequest` \* | Inspect a document build runner's stages and paged durable attempt history, or one jobId. | filesystem read, read document |
 | `ListStudyBuildsRequest` | List the live derived-stage build runners in this document. | filesystem read, read document |
@@ -810,6 +815,7 @@ Housekeeping, and why a name a box reads resolves where it does.
 
 | Tool | What it does | Effects |
 | --- | --- | --- |
+| `AskUserQuestionRequest` † | Ask the person a question and end this turn until they answer. | agent state |
 | `Commentary` | Assistant commentary or design notes about the code. | — |
 | `WhyDoesThisResolve` | Explain why a value a box's code reads resolves where it does, without running anything: for a name (an @exported or prop declaration, e.g. `_speed`, else a plain name as fromContextWithNameOrNull reads it) or a type (as fromContext<T>() finds it) — which box supplies it, through which path of parent boxes, whether it was a property or a live variable, which other boxes' values it shadows, whether an equally near box supplies a different value (an ambiguity), and which preamble line declared the name and which box that line came from. | — |
 <!-- ai4-tools-reference:end -->
