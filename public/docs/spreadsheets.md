@@ -164,6 +164,66 @@ sheet(height = 200) {
 }
 ```
 
+## Solving for cells
+
+A sheet can also run backwards. Write `=free(4)` in a cell and it becomes a variable: a number, 4
+for now, that the sheet is allowed to change. Formulas over it work as usual. A cell that says
+`=B3 eq 40` is an assertion, and the sheet changes its variables until every assertion holds,
+using the [Ceres](https://ceres-solver.org/) solver. `le` and `ge` assert at most and at least.
+The rectangle below starts at 4 by 5 and is asked for an area of 40 and a width of at most 6:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spreadsheets/solve.png" alt="A spreadsheet solving a rectangle. Width and height, both free variables, have moved from 4 and 5 to 5.9488 and 6.7241; the area formula reads 40 and the perimeter 25.3457. The assertions 'area is 40' and 'no wider than 6' both show a tick, and a line under the grid reads 'solved 2 variables, 2 assertions'" capture="box" open-outputs="true" wait-output=true wait-output-kind=display wait-output-channel="spreadsheet" wait="12" timeout="180" embed=true name="sheet-solve" w="620" h="440" padding="12"}
+sheet(height = 330) {
+    rows = 6
+    cols = 2
+    columnWidth("A", 140)
+    this["A1"] = "width"; formula("B1", "free(4)")
+    this["A2"] = "height"; formula("B2", "free(5)")
+    this["A3"] = "area"; formula("B3", "B1 * B2")
+    this["A4"] = "perimeter"; formula("B4", "2 * (B1 + B2)")
+    this["A5"] = "area is 40"; formula("B5", "B3 eq 40")
+    this["A6"] = "no wider than 6"; formula("B6", "B1 le 6")
+}
+```
+
+There are many rectangles of area 40, and the sheet picks the one closest to where it started:
+every variable prefers its previous value, so both sides grow a little rather than one growing a
+lot. After the solve the numbers inside `free(...)` are the new values, and the next solve starts
+from them.
+
+Typing into a variable cell edits it. Type `8` over the width and the cell stays a variable,
+`=free(8)`; the sheet keeps your 8 and moves the others to fit. When an assertion cannot hold with
+your number, your number gives way: here the width stops at 6 and the height becomes 6.6667. Any
+variable can be edited this way, so in a sheet where `=B2 eq B1 * 9.0 / 5.0 + 32.0` relates a
+Celsius cell `B1` and a Fahrenheit cell `B2`, typing into either one moves the other.
+
+What the solver can follow: `+ - * /`, `sum`, `sqrt`, `abs`, `exp`, `ln`, `sin`, `cos`, `tan`,
+`pow` and `atan2`, through as many formula cells as you like. `free(...)` has to be the whole
+formula of its cell. A number on the left of an assertion works too: `=0 le B2`.
+
+An assertion that cannot be met shows a cross and how far off it is. Here three amounts
+must add up to 100, but each is also asked to be at least 40:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spreadsheets/unsatisfiable.png" alt="A budget spreadsheet whose assertions cannot all hold. Rent, food and fun, all free variables, have moved to 40 each. The total row reads '120 = 100 (off by 20)' with a red cross, the three 'at least 40' rows each show a tick, and the line under the grid reads 'solved 3 variables, 4 assertions, 1 violated'" capture="box" open-outputs="true" wait-output=true wait-output-kind=display wait-output-channel="spreadsheet" wait="12" timeout="180" embed=true name="sheet-unsatisfiable" w="620" h="500" padding="12"}
+sheet(height = 390) {
+    rows = 7
+    cols = 2
+    columnWidth("A", 140)
+    this["A1"] = "rent"; formula("B1", "free(50)")
+    this["A2"] = "food"; formula("B2", "free(30)")
+    this["A3"] = "fun"; formula("B3", "free(20)")
+    this["A4"] = "total is 100"; formula("B4", "sum(B1:B3) eq 100")
+    this["A5"] = "rent at least 40"; formula("B5", "B1 ge 40")
+    this["A6"] = "food at least 40"; formula("B6", "B2 ge 40")
+    this["A7"] = "fun at least 40"; formula("B7", "B3 ge 40")
+}
+```
+
+The sheet still shows its best compromise, so you can see which assertion to loosen. An
+assertion that only limits one variable by a number, like `B1 ge 40`, is held exactly, so here the
+total is the one that gives. Code that
+reads a variable cell with `sheetCell("B1")` or `sheetCellValue("B1")` gets its number.
+
 ## Editing the sheet
 
 | Key | What it does |
@@ -189,4 +249,5 @@ here takes the same `property =`. `setSpreadsheetState(state)` replaces a sheet 
 `getSpreadsheetState()` reads its cells' inputs without evaluating them. The full list is in the
 [reference for `spreadsheet.kt`](reference/data.md#spreadsheet-kt).
 
-[Open the spreadsheet demo ↗](offline.html?file=assets/agent_transcripts/spreadsheet_tour/metadata.edn)
+[Open the spreadsheet demo ↗](offline.html?file=assets/agent_transcripts/spreadsheet_tour/metadata.edn) ·
+[Open the solving demo ↗](offline.html?file=assets/agent_transcripts/spreadsheet_constraints/metadata.edn)

@@ -211,6 +211,8 @@ object DemoTranscriptExecSmokeTest {
         // Two boxes, no Window: the rates box's variables and the sheet box, whose `sheet { }` seeds
         // its property and displays the editor iframe. Replaying it runs the real seeding path.
         "spreadsheet_tour",
+        // Two sheets whose assertions are solved by Ceres on open; replaying them runs the real solve.
+        "spreadsheet_constraints",
         "two_box_context",
         // Compiles a data class onto the shared classloader and uses it from three other boxes, one
         // of them through @rootExported. Slower than its neighbours — box 1 shells out to

@@ -128,6 +128,16 @@ and the editing keys.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/spreadsheet_tour/metadata.edn)
 
+### spreadsheet_constraints
+
+Two sheets that solve for their cells. In **Temperature**, Celsius and Fahrenheit are both variables
+and one assertion relates them: type a number into either and the other follows. In **Rectangle**,
+width and height are held to an area of 40 and a width of at most 6. Run each box, then type into a
+variable cell. [Solving for cells](spreadsheets.md#solving-for-cells) explains `free`, `eq`, `le`
+and `ge`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/spreadsheet_constraints/metadata.edn)
+
 ### marf_field_clocks
 
 Three boxes make the [MARF field-clock](marf.md) distinction visible. The first prints four

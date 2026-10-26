@@ -114,6 +114,18 @@ class SpreadsheetConstraintsTest {
     }
 
     @Test
+    fun theDocsRectangleStopsAnEditAtItsBound() {
+        sheet.editSpreadsheet(broadcast = false) {
+            formula("B1", "free(4)"); formula("B2", "free(5)"); formula("B3", "B1 * B2")
+            formula("B5", "B3 eq 40"); formula("B6", "B1 le 6")
+        }
+        assertEquals("5.9488", cell("B1").display); assertEquals("6.7241", cell("B2").display)
+        sheet.editSpreadsheet(broadcast = false) { cell("B1", 8) }
+        near(6.0, value("B1"), 1e-9, "edit stopped at the bound")
+        assertEquals("6.6667", cell("B2").display)
+    }
+
+    @Test
     fun inequalitiesBecomeBoundsOrBarriers() {
         sheet.editSpreadsheet(broadcast = false) {
             formula("A1", "free(5)")

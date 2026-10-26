@@ -5,7 +5,8 @@ User page: `public/docs/spreadsheets.md` (Spreadsheets in a Box). Code:
 and `src/commonMain/resources/spreadsheet.js` (the editor iframe). Tests:
 `src/jvmTest/kotlin/afield/data/table/SpreadsheetTest.kt` (real K2 formula engine) and the smoke
 `examples.spreadsheet.formulas` (`SpreadsheetFormulaSmoke.kt`). Starting point:
-`dev_docs/agents/transcripts/spreadsheet_tour.yaml`.
+`dev_docs/agents/transcripts/spreadsheet_tour.yaml`. Constraint solving (`=free(...)`, `eq`/`le`/`ge`):
+`dev_docs/SPREADSHEET_CONSTRAINTS.md`.
 
 ## How it works
 
