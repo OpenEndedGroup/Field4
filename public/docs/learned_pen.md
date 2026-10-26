@@ -200,7 +200,7 @@ result for Kotlin.
 !!! note "Installing"
     Training needs PyTorch. Install the optional `pen` group into the venv Field's Python uses:
 
-    ```bash
+    ```diffstatic {data-lang=bash}
     UV_PROJECT_ENVIRONMENT=.venv uv sync --inexact --group pen --group docs --group backdoor
     ```
 
