@@ -8,6 +8,30 @@ import kotlinx.html.stream.createHTML
 import kotlinx.html.visitAndFinalize
 import java.net.URI
 
+/**
+ * Giving a talk from a Field document: [Box.presentation] builds the same steps a `slideShow` does,
+ * and each step can carry a slide for a separate audience display.
+ *
+ * A step's audience surface is HTML, a real webpage, a YouTube embed, or another document in the
+ * workspace. Write the HTML with [SlideStepBuilder.audience] for kotlinx.html's type-safe builders
+ * (see [AudienceBuilder]), with [SlideStepBuilder.audienceHtml] for a fragment you already have, or
+ * with [SlideStepBuilder.audienceMarkdown]. [SlideStepBuilder.audienceWebpage] and
+ * [SlideStepBuilder.audienceYouTube] put a page or a video in an isolated native Electron view, and
+ * [SlideStepBuilder.audienceDocument] opens another workspace document with its own editor, outputs
+ * and guide. A step with no audience surface shows its note HTML, templates and all, so a guide
+ * written for a reader presents without being rewritten.
+ *
+ * [SlideShowInstance.present] starts the talk. Each step publishes a `presentation-state` message to
+ * the windows showing the host box's document, and Field's Electron app opens the audience and
+ * presenter windows from it; in a browser the document and its guides still work, but there is no
+ * separate display. Running the host box again rebuilds the talk and keeps the current step where it
+ * can. Anything bound for Electron is checked before it gets there: a webpage needs an HTTP or HTTPS
+ * URL with a host, a document a plain name in the current workspace, a video the eleven-character
+ * YouTube id, and a fractional rect has to sit inside the audience window.
+ *
+ * [Presenting with Field](../presentation_studio.md) is the guide to writing one.
+ */
+
 /** Options for showing a guide on a separate audience display. */
 data class PresentationOptions(val title: String, val transitionMs: Int = 450) {
     init { require(transitionMs in 0..2000) { "transitionMs must be between 0 and 2000" } }
