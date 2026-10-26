@@ -736,6 +736,17 @@ the same way every time.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/box_layout_demo/metadata.edn)
 
+### box_graph_demo
+
+The examples from [Why Field?](why.md) and the property-inheritance section of
+[Running code](running_code.md), in one document. Garden publishes `prop<Int>(petals) = 5`, Left
+and Right shadow it with 7 and 9, Sibling reads Garden's 5, and Bloom, with both Left and Right as
+parents, reads 9 because Right was connected first. Beside them, Studio holds plain variables that
+Sketch finds with `fromContext` and `fromContextWithNameOrNull`. Disconnect Bloom from Right and
+re-run it to see it read 7.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/box_graph_demo/metadata.edn)
+
 ### mesh_geometry_examples
 
 The [mesh and 3D geometry worked example](mesh_examples.md) as seven
