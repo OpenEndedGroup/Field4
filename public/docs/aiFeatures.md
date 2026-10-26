@@ -248,6 +248,9 @@ replacement.
 
 ## Give the AI a tool of your own
 
+The tools a chat already has, with a worked call for the common ones, are listed on
+[AI4's built-in tools](ai4_tools.md).
+
 Everything above is Field's AI working on Field's own material: boxes, code,
 errors. A tool lets it work on *yours*. You write an ordinary Kotlin class and an
 ordinary Kotlin lambda, register the pair, and from the next turn onward the

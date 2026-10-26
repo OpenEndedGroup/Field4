@@ -419,6 +419,7 @@ nav:
     # front page links it too.
     - Agent Transcript Gallery: agent_transcripts.md
     - AI Overview: aiFeatures.md
+    - AI4's Built-in Tools: ai4_tools.md
     - Local AI: local_ai.md
     - Talking to AI4: voice_input.md
     - Let AI4 Drive a Live Webpage: ai4_live_iframe.md
