@@ -32,6 +32,15 @@ def task_names(paths: list[str]) -> list[str]:
 
 
 class GeneratedArtifactSelectionTests(unittest.TestCase):
+    def test_completion_scrape_selects_its_producer_inputs_and_outputs(self) -> None:
+        from tools.scrape_completion_corpus import DOCS
+
+        for path in [*(f"public/docs/{name}.md" for name in DOCS),
+                     "tools/completion-corpus/scraped.tsv", "tools/completion-corpus/name-fixtures.tsv"]:
+            with self.subTest(path=path):
+                self.assertIn("checkPythonTools", task_names([path]))
+        self.assertNotIn("checkPythonTools", task_names(["public/docs/unrelated_page.md"]))
+
     def test_stdlib_change_selects_reference_and_kdoc_guards(self) -> None:
         self.assertEqual(
             task_names(["src/jvmMain/kotlin/afield/ui/controls/Controls.kt"]),

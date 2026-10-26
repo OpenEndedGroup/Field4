@@ -1,10 +1,30 @@
 package afield.examples
 
+import afield.app.server.SessionInformation
+import afield.document.graph.Box
+import afield.document.persistence.SavingContext
 import afield.app.server.docsRedirect
 import kotlin.io.path.createTempDirectory
 import kotlin.test.*
 
 class StartingPointDocsGuidesTest {
+    @Test fun rootSceneStateSurvivesStartingPointSerialization() {
+        val root = Box("root")
+        val session = SessionInformation("/tmp/starting-point-root-scene", "scene", root = root, ephemeral = true)
+        root.inside = session
+        session.boxes[root.id] = root
+        assertTrue(AgentTranscriptMaterializer.boxesForSave(session).isEmpty(), "an empty root must not churn existing documents")
+        val drawing = """{"type":"excalidraw","elements":[]}"""
+        for ((property, value) in listOf("drawing" to drawing, "panes" to "{}", "bookmarks" to "[]")) {
+            root.setPropertyRaw(property, value, doResync = false)
+        }
+        val transfers = SavingContext().toTransfer(AgentTranscriptMaterializer.boxesForSave(session), session.filename)
+        val persisted = transfers.single { it.id == "root" }.properties
+        assertEquals(drawing, persisted["drawing"])
+        assertEquals("{}", persisted["panes"])
+        assertEquals("[]", persisted["bookmarks"])
+    }
+
     @Test fun aTranscriptsDocsListBecomesRedirectGuidesTitledByThePage() {
         val root = createTempDirectory("starting-point-docs").toFile()
         try {
