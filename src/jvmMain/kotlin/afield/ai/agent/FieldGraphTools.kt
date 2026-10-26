@@ -587,14 +587,20 @@ class FieldGraphTools(
         // No verdict: if the box's code is what holds the Runloop, throw out of it (BoxInterrupt) and
         // give the interrupted run a moment to report, so the agent gets a verdict and Field moves again.
         var interrupted = false
+        // The timeout may fall while the box is still compiling, so watch a little longer for its code
+        // to reach the Runloop before giving up.
         if (report == null && !launch) {
             val main = afield.runtime.lifecycle.Runloop.mainThread
-            if (main != null && afield.runtime.lifecycle.BoxInterrupt.culprit(main.stackTrace) != null) {
-                afield.runtime.lifecycle.BoxInterrupt.request("RunBox timeout after ${timeoutSeconds}s", main)
-                report = try { verdict.get(3000, TimeUnit.MILLISECONDS) } catch (_: TimeoutException) { null }
-                interrupted = true
+            val deadline = System.currentTimeMillis() + 8000
+            while (main != null && report == null && System.currentTimeMillis() < deadline) {
+                if (!interrupted && afield.runtime.lifecycle.BoxInterrupt.culprit(main.stackTrace) != null) {
+                    afield.runtime.lifecycle.BoxInterrupt.request("RunBox timeout after ${timeoutSeconds}s", main)
+                    interrupted = true
+                }
+                report = try { verdict.get(50, TimeUnit.MILLISECONDS) } catch (_: TimeoutException) { null }
             }
         }
+        if (report?.let { !it.success && "Box interrupted:" in it.error } == true) interrupted = true
         if (settleSeconds > 0) Thread.sleep((settleSeconds.coerceAtMost(10.0) * 1000).toLong())
 
         val page = BoxOutputLog.since(box, marker)
