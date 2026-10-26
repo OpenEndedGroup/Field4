@@ -432,6 +432,22 @@ object SpreadsheetEvalHelpers {
     @JvmStatic
     fun nonEmpty(values: Any?): List<Any?> = flattenAny(values).filterNot { it == null || it == "" }
 
+    /**
+     * What a formula that threw evaluates to: the formula body runs inside a `try`, so the error
+     * that reaches the cell is the one the formula raised, not however the REPL reports a throw.
+     */
+    class Failure internal constructor(val error: Throwable)
+
+    @JvmStatic
+    fun failed(error: Throwable): Any = Failure(error)
+
+    @JvmStatic
+    fun product(values: Any?): Double = flattenNumeric(values).fold(1.0) { a, b -> a * b }
+
+    /** A cell, a number, a vector (its length) or a line (its diagonal) as a `Double`, for `sqrt(A1)`. */
+    @JvmStatic
+    fun num(value: Any?): Double = SpreadsheetDynamicRegistry.requireScalar(value)
+
     private fun flattenAny(value: Any?): List<Any?> = when (value) {
         null -> emptyList()
         is SpreadsheetScalar -> flattenAny(value.raw)
@@ -997,6 +1013,23 @@ class SpreadsheetScalar internal constructor(val raw: Any?) : Comparable<Any?> {
     val w: SpreadsheetScalar
         get() = SpreadsheetScalar(SpreadsheetDynamicRegistry.component(raw, 3))
 
+    /**
+     * The width of a line's bounds. `x`, `y`, `z`, `w` of a line are its bounds as the components
+     * `(x, y, width, height)` — so `.w` is the *height* — which is why the two have names of their own.
+     */
+    val width: SpreadsheetScalar
+        get() = SpreadsheetScalar(boundsOf("width")?.w)
+
+    /** The height of a line's bounds; see [width]. */
+    val height: SpreadsheetScalar
+        get() = SpreadsheetScalar(boundsOf("height")?.h)
+
+    private fun boundsOf(what: String): SpreadsheetFLineSummary? = when (val value = unwrapSpreadsheetValue(raw)) {
+        null -> null
+        is FLine -> summarizeFLine(value)
+        else -> error("$what needs a line, found '${formatSpreadsheetValue(value)}'")
+    }
+
     operator fun get(index: Int): SpreadsheetScalar =
         SpreadsheetScalar(SpreadsheetDynamicRegistry.component(raw, index))
 
@@ -1189,11 +1222,31 @@ private class SpreadsheetEvaluator(private val cachePrefix: String) {
     // can see (examples.spreadsheet.formulas pins that); K1's REPL compiler is an error-level
     // deprecation from Kotlin 2.5.
     private val compiler = KotlinInterface2(filePrefix = cachePrefix)
+    private var bootstrapped = false
+
+    // The K2 REPL defines its `ReplState` class with the first snippet it evaluates. Until 2026-10-26
+    // that was the sheet's first formula, so a sheet whose first formula did not compile never got
+    // one, and every later formula on it failed with `NoClassDefFoundError: ReplState` until Field
+    // restarted. Box code bootstraps its engine with the intro imports; the sheet now does the same.
+    private fun bootstrapLocked() {
+        if (bootstrapped) return
+        bootstrapped = true
+        runBlocking {
+            compiler.bootstrap(
+                "${introImports.joinToString("\n")}\nUnit",
+                implicits = emptyList(),
+                onCompileError = { lprintln("warning,spreadsheet", "formula engine bootstrap did not compile: ${it.firstOrNull()?.message}") },
+                onEvalError = {},
+                onEvalException = { lprintln("warning,spreadsheet", "formula engine bootstrap failed: ${it.message}") },
+            )
+        }
+    }
 
     fun evaluate(expression: String, runtime: SpreadsheetRuntime): EvalResult {
         val source = buildSource(expression)
         var compileError: String? = null
         val snippet = synchronized(lock) {
+            bootstrapLocked()
             compiled[source] ?: runBlocking {
                 compiler.compileSnippet(source, implicits = emptyList(), onCompileError = { diagnostics ->
                     compileError = diagnostics.firstOrNull {
@@ -1217,7 +1270,12 @@ private class SpreadsheetEvaluator(private val cachePrefix: String) {
                     onEvalException = {}
                 )
                 when (result) {
-                    is ResultValue.Value -> EvalResult(result.value)
+                    is ResultValue.Value -> when (val value = result.value) {
+                        is SpreadsheetEvalHelpers.Failure -> EvalResult(null, value.error.message ?: value.error.toString())
+                        // Stored unwrapped, so `getSpreadsheetCellValue("C3") as? FLine` finds the line
+                        // a formula like `C1 + B1` made, not the `SpreadsheetScalar` wrapped around it.
+                        else -> EvalResult(unwrapSpreadsheetValue(value))
+                    }
                     is ResultValue.Error -> EvalResult(null, result.error.message ?: result.error.toString())
                     is ResultValue.NotEvaluated -> EvalResult(null, "Formula was not evaluated")
                     null -> EvalResult(null, "Formula evaluation returned no result")
@@ -1241,14 +1299,33 @@ private class SpreadsheetEvaluator(private val cachePrefix: String) {
             fun cell(ref: String) = afield.data.table.SpreadsheetEvalHelpers.cell(ref)
             fun range(ref: String) = afield.data.table.SpreadsheetEvalHelpers.range(ref)
             fun box(ref: String) = afield.data.table.SpreadsheetEvalHelpers.box(ref)
-            fun sum(values: Any?) = afield.data.table.SpreadsheetEvalHelpers.sum(values)
-            fun avg(values: Any?) = afield.data.table.SpreadsheetEvalHelpers.avg(values)
-            fun mean(values: Any?) = afield.data.table.SpreadsheetEvalHelpers.mean(values)
-            fun min(values: Any?) = afield.data.table.SpreadsheetEvalHelpers.min(values)
-            fun max(values: Any?) = afield.data.table.SpreadsheetEvalHelpers.max(values)
-            fun count(values: Any?) = afield.data.table.SpreadsheetEvalHelpers.count(values)
-            fun nonEmpty(values: Any?) = afield.data.table.SpreadsheetEvalHelpers.nonEmpty(values)
-            $expression
+            fun sum(vararg values: Any?) = afield.data.table.SpreadsheetEvalHelpers.sum(values.toList())
+            fun product(vararg values: Any?) = afield.data.table.SpreadsheetEvalHelpers.product(values.toList())
+            fun avg(vararg values: Any?) = afield.data.table.SpreadsheetEvalHelpers.avg(values.toList())
+            fun mean(vararg values: Any?) = afield.data.table.SpreadsheetEvalHelpers.mean(values.toList())
+            fun min(vararg values: Any?) = afield.data.table.SpreadsheetEvalHelpers.min(values.toList())
+            fun max(vararg values: Any?) = afield.data.table.SpreadsheetEvalHelpers.max(values.toList())
+            fun count(vararg values: Any?) = afield.data.table.SpreadsheetEvalHelpers.count(values.toList())
+            fun nonEmpty(vararg values: Any?) = afield.data.table.SpreadsheetEvalHelpers.nonEmpty(values.toList())
+            fun num(value: Any?) = afield.data.table.SpreadsheetEvalHelpers.num(value)
+            fun sqrt(x: Any?) = kotlin.math.sqrt(num(x))
+            fun abs(x: Any?) = kotlin.math.abs(num(x))
+            fun round(x: Any?) = kotlin.math.round(num(x))
+            fun floor(x: Any?) = kotlin.math.floor(num(x))
+            fun ceil(x: Any?) = kotlin.math.ceil(num(x))
+            fun exp(x: Any?) = kotlin.math.exp(num(x))
+            fun ln(x: Any?) = kotlin.math.ln(num(x))
+            fun log10(x: Any?) = kotlin.math.log10(num(x))
+            fun sin(x: Any?) = kotlin.math.sin(num(x))
+            fun cos(x: Any?) = kotlin.math.cos(num(x))
+            fun tan(x: Any?) = kotlin.math.tan(num(x))
+            fun atan2(y: Any?, x: Any?) = kotlin.math.atan2(num(y), num(x))
+            fun pow(x: Any?, p: Any?) = Math.pow(num(x), num(p))
+            try {
+                $expression
+            } catch (t: Throwable) {
+                afield.data.table.SpreadsheetEvalHelpers.failed(t)
+            }
         }
     """.trimIndent()
 }
@@ -1353,20 +1430,24 @@ private class SpreadsheetDocument(
         }
 
         val memo = mutableMapOf<String, EvalCell>()
-        val visiting = mutableSetOf<String>()
+        // The chain of formulas being evaluated, innermost last, so a cycle can name every cell in it.
+        val visiting = mutableListOf<String>()
+        val cyclic = mutableSetOf<String>()
         val externalDeps = linkedSetOf<SpreadsheetBoxDependency>()
+
+        fun labelOf(keyString: String): String =
+            keyString.split(':').let { cellLabel(it[0].toInt(), it[1].toInt()) }
 
         fun evaluateCell(row: Int, col: Int): EvalCell {
             val keyString = "$row:$col"
             memo[keyString]?.let { return it }
             if (keyString in visiting) {
-                return EvalCell(
-                    input = cellInputs[keyString] ?: "",
-                    type = "formula",
-                    value = null,
-                    display = "#CYCLE",
-                    errorDetail = "Circular reference detected at ${cellLabel(row, col)}"
-                ).also { memo[keyString] = it }
+                // Until 2026-10-26 this returned an empty value and the cell that closed the loop then
+                // overwrote its own #CYCLE, so a cycle showed as blank cells. Now every cell on the
+                // loop is marked and the reference throws, so readers outside it see an error.
+                val loop = visiting.subList(visiting.indexOf(keyString), visiting.size)
+                cyclic += loop
+                throw IllegalStateException("Circular reference: ${(loop + keyString).joinToString(" -> ") { labelOf(it) }}")
             }
 
             val input = cellInputs[keyString].orEmpty()
@@ -1394,11 +1475,19 @@ private class SpreadsheetDocument(
                         if (coord.row !in 0 until storedState.rows || coord.col !in 0 until storedState.cols) {
                             error("Cell ${cellLabel(coord.row, coord.col)} is outside the sheet")
                         }
-                        evaluateCell(coord.row, coord.col).value
+                        val referenced = evaluateCell(coord.row, coord.col)
+                        // A formula that reads a failed cell fails too, as in Excel, instead of reading
+                        // the failure as empty (which made `A1 + 1` show 1 when A1 was #ERR).
+                        if (referenced.errorDetail != null) {
+                            error("${cellLabel(coord.row, coord.col)} is ${referenced.display}: ${referenced.errorDetail}")
+                        }
+                        referenced.value
                     }
                     val evalResult = evaluator.evaluate(rewritten, runtime)
                     externalDeps += runtime.boxDependencies()
-                    if (evalResult.errorDetail != null) {
+                    if (keyString in cyclic) {
+                        EvalCell(input, "formula", null, "#CYCLE", evalResult.errorDetail ?: "Circular reference at ${cellLabel(row, col)}")
+                    } else if (evalResult.errorDetail != null) {
                         EvalCell(input, "formula", null, "#ERR", evalResult.errorDetail)
                     } else {
                         EvalCell(
@@ -1412,10 +1501,10 @@ private class SpreadsheetDocument(
                     }
                 }
             } catch (t: Throwable) {
-                EvalCell(input, "formula", null, "#ERR", t.message ?: t.toString())
+                EvalCell(input, "formula", null, if (keyString in cyclic) "#CYCLE" else "#ERR", t.message ?: t.toString())
             }.also {
                 memo[keyString] = it
-                visiting -= keyString
+                visiting.removeAt(visiting.lastIndex)
             }
         }
 
@@ -1962,6 +2051,13 @@ private object SpreadsheetService {
 internal fun detachSpreadsheetClient(clientKey: Any) {
     SpreadsheetService.detachClient(clientKey)
 }
+
+/** The websocket request handler, for tests: what an open `spreadsheet.html` iframe sends. */
+internal fun handleSpreadsheetRequest(text: String, info: SessionInformation?, clientKey: Any, push: (String) -> Unit): String =
+    SpreadsheetService.handle(text, info = info, clientKey = clientKey, push = push)
+
+/** One frame of the live sweep the Runloop runs in `preRun`, for tests. */
+internal fun pollSpreadsheetsOnce() = SpreadsheetService.pollLiveSheets()
 
 private fun normalizeStoredState(state: SpreadsheetStoredState?): SpreadsheetStoredState {
     val rows = (state?.rows ?: DEFAULT_SHEET_ROWS).coerceIn(1, MAX_SHEET_ROWS)
