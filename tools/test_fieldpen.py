@@ -25,11 +25,13 @@ try:
     from fieldpen import Config, Controls, HandwritingModel, Session, export_for_field, load_model, save_model
     from fieldpen.data import collate, polyline_deltas
 except ImportError as e:  # the pen group is optional
-    raise unittest.SkipTest(f"fieldpen needs the optional `pen` dependency group (torch): {e}")
+    MISSING = f"fieldpen needs the optional `pen` dependency group ({e}); `uv sync --inexact --group pen`"
+else:
+    MISSING = None
+    torch.set_num_threads(1)
 
-torch.set_num_threads(1)
 
-
+@unittest.skipIf(MISSING, MISSING or "")
 class SessionTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -65,6 +67,7 @@ class SessionTest(unittest.TestCase):
             Controls(noise_scale=float("nan"))
 
 
+@unittest.skipIf(MISSING, MISSING or "")
 class TrainingTest(unittest.TestCase):
     def test_training_reduces_loss_and_both_formats_round_trip(self):
         torch.manual_seed(13)

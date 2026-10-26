@@ -103,8 +103,8 @@ val start = fline {
     thickness = 1.5
 }
 val grid = mutableListOf<FLine>()
-listOf(0.2, 0.65, 1.2).forEachIndexed { row, temperature ->
-    listOf(0.0, 0.65, 1.2).forEachIndexed { column, noise ->
+[0.2, 0.65, 1.2].forEachIndexed { row, temperature ->
+    [0.0, 0.65, 1.2].forEachIndexed { column, noise ->
         val at = vec(column * 200.0, row * 70.0, 0.0)
         val pen = PenControls(temperature = temperature, noise = noise)
         grid += start + at

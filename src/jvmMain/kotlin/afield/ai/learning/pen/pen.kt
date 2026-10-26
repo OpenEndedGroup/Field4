@@ -380,8 +380,12 @@ class Pen internal constructor(val model: PenModel, seed: Long) : StrokePen {
  * lines(writer.line)
  * ```
  *
- * [line] grows in place, so a box that redraws it every frame watches the pen write. [scale] is
- * drawing units per model unit, and is fixed when the PenLine is made.
+ * [line] grows in place, so a box that redraws it every frame watches the pen write.
+ *
+ * @param primer the line the pen is shown first and continues; `null` starts on an empty page.
+ * @param scale drawing units per model unit, fixed when the PenLine is made.
+ * @param step how often [primer] is resampled, in model units.
+ * @param start where a PenLine with no primer starts, in drawing units.
  */
 class PenLine(
     primer: FLine? = null,
@@ -390,7 +394,6 @@ class PenLine(
     var controls: PenControls = PenControls(),
     seed: Long = 0,
     step: Double = 0.35,
-    /** Where a PenLine with no primer starts, in drawing units. */
     start: Vec3 = Vec3(0f, 0f, 0f),
 ) {
     /** The pen underneath, for [Pen.setCell] or forking by hand. */
