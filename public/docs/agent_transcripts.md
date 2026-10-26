@@ -119,6 +119,15 @@ explains the opt-in and the tools.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/ai4_iframe_hello/metadata.edn)
 
+### spreadsheet_tour
+
+A bill kept as a spreadsheet in one box, priced by `tax` and `discount` variables in a second. Run
+**Rates** first, then **Bill**. Change a rate and run **Rates** again: the open sheet recomputes on the
+next frame without running **Bill**. [Spreadsheets in a Box](spreadsheets.md) covers formulas, units
+and the editing keys.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/spreadsheet_tour/metadata.edn)
+
 ### marf_field_clocks
 
 Three boxes make the [MARF field-clock](marf.md) distinction visible. The first prints four
