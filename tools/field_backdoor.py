@@ -3876,6 +3876,8 @@ def build_command_parser() -> argparse.ArgumentParser:
                                    help="Run the tasks mined from dev_docs/agents/transcripts (AgentEvalCorpus) instead of the hand suite")
     agent_eval_parser.add_argument("--sample", type=int, default=0, help="With --corpus/--calibrate: a seeded sample of N tasks")
     agent_eval_parser.add_argument("--seed", type=int, default=0)
+    agent_eval_parser.add_argument("--sealed", action="store_true",
+                                   help="Withhold the repository search tools (a mined task's answer is in the repository)")
     agent_eval_parser.add_argument("--calibrate", action="store_true",
                                    help="Re-mine the corpus: run every candidate's solution twice and derive its checks")
     agent_eval_parser.add_argument("--timeout", type=float)
@@ -5109,6 +5111,7 @@ async def dispatch_command(
             "sample": args.sample,
             "seed": args.seed,
             "calibrate": bool(args.calibrate),
+            "sealed": bool(args.sealed),
         }
         timeout = args.timeout or max(client.default_timeout, 3600.0 * (4 if args.calibrate else 1))
         event = await client.call_for_single_reply("agent-eval", payload, timeout=timeout)

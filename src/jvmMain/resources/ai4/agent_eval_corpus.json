@@ -1565,33 +1565,6 @@
             "hasProse": false
         },
         {
-            "id": "lua_demo/lua_root",
-            "source": "lua_demo",
-            "split": "heldout",
-            "kind": "stdout",
-            "request": {
-                "goal": "Make a box named lua_root (titled \"status — children of this box are Lua\"), and run it. What it is for, in its author's words: This root stays Kotlin; its `mainLanguage` makes the boxes under it Lua. When it runs, what it prints must include the text «LuaJIT at /opt/homebrew/lib/libluajit-5.1.dylib».",
-                "checks": [
-                    {
-                        "kind": "box-exists",
-                        "box": "lua_root"
-                    },
-                    {
-                        "kind": "last-run-ok",
-                        "box": "lua_root"
-                    },
-                    {
-                        "kind": "output-contains",
-                        "box": "lua_root",
-                        "text": "LuaJIT at /opt/homebrew/lib/libluajit-5.1.dylib"
-                    }
-                ],
-                "taskId": "lua_demo/lua_root"
-            },
-            "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"lua_root\",\"code\":\"// This root stays Kotlin; its `mainLanguage` makes the boxes under it Lua.\\nprintln(afield.lang.lua.LuaLibrary.describe())\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"lua_root\",\"timeoutSeconds\":90.0}},{\"final\":\"Made lua_root from its transcript code and ran it.\"}]",
-            "hasProse": true
-        },
-        {
             "id": "macro_recorder_stamp/mr_stamp",
             "source": "macro_recorder_stamp",
             "split": "train",
@@ -2455,7 +2428,7 @@
             "split": "heldout",
             "kind": "stdout",
             "request": {
-                "goal": "Make a box named rig_facts (titled \"1 - a rigged mesh, and what the loader reads out of it\"), and run it. What it is for, in its author's words: Field could load a glTF and it could sample per-NODE animation. It could not skin. When it runs, what it prints must include the text «rig  /Users/marc/field4-worktrees/2026-10-26-1-agent-eval-corpus/./dev_docs/agents/fixtures/skinning» and the text «bind pose: 60 of 60 vertices bit-identical to the unskinned mesh».",
+                "goal": "Make a box named rig_facts (titled \"1 - a rigged mesh, and what the loader reads out of it\"), and run it. What it is for, in its author's words: Field could load a glTF and it could sample per-NODE animation. It could not skin. When it runs, what it prints must include the text «mesh 60 vertices, 96 triangles» and the text «bind pose: 60 of 60 vertices bit-identical to the unskinned mesh».",
                 "checks": [
                     {
                         "kind": "box-exists",
@@ -2468,7 +2441,7 @@
                     {
                         "kind": "output-contains",
                         "box": "rig_facts",
-                        "text": "rig  /Users/marc/field4-worktrees/2026-10-26-1-agent-eval-corpus/./dev_docs/agents/fixtures/skinning"
+                        "text": "mesh 60 vertices, 96 triangles"
                     },
                     {
                         "kind": "output-contains",
@@ -2753,33 +2726,6 @@
             },
             "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"sorting_disorder\",\"code\":\"import space.kscience.plotly.*\\nimport space.kscience.plotly.models.ScatterMode\\n\\nval n = 12\\nval meanSamples = 180\\nval traceCount = 24\\nval bubble = SortingNetwork.bubble(n)\\nval merge = SortingNetwork.oddEvenMerge(n)\\nval maxInv = n * (n - 1) / 2.0\\n\\nfun randomPermutation(size: Int): IntArray {\\n    val xs = (0 until size).toMutableList()\\n    xs.shuffle()\\n    return xs.toIntArray()\\n}\\n\\nfun inversions(values: IntArray): Int {\\n    var inv = 0\\n    for (i in values.indices) for (j in i + 1 until values.size) if (values[i] > values[j]) inv++\\n    return inv\\n}\\n\\nfun profile(net: SortingNetwork): List<Double> {\\n    val sums = DoubleArray(net.depth() + 1)\\n    repeat(meanSamples) {\\n        net.layerTrace(randomPermutation(n)).forEachIndexed { index, snapshot ->\\n            sums[index] += inversions(snapshot) / maxInv\\n        }\\n    }\\n    return sums.map { it / meanSamples.toDouble() }\\n}\\n\\nfun traceFamily(net: SortingNetwork, count: Int): List<List<Double>> = List(count) {\\n    net.layerTrace(randomPermutation(n)).map { inversions(it) / maxInv }\\n}\\n\\nval bubbleTraces = traceFamily(bubble, traceCount)\\nval mergeTraces = traceFamily(merge, traceCount)\\nval bubbleProfile = profile(bubble)\\nval mergeProfile = profile(merge)\\n\\n// Each network's layers are spread over 0..1, so the two curves compare shape, not depth.\\nfun progress(values: List<Double>) = values.indices.map { it / (values.size - 1).toDouble() }\\n\\n// Faint lines for single inputs, a bold line with a marker per layer for the mean.\\nfun Plot.network(label: String, traces: List<List<Double>>, mean: List<Double>, hue: String) {\\n    for (trace in traces) scatter {\\n        x.set(progress(trace))\\n        y.set(trace)\\n        mode = ScatterMode.lines\\n        line {\\n            color(hue)\\n            width = 1.0\\n        }\\n        opacity = 0.2\\n        showlegend = false\\n    }\\n    scatter {\\n        name = \\\"$label, mean\\\"\\n        x.set(progress(mean))\\n        y.set(mean)\\n        mode = ScatterMode.`lines+markers`\\n        line {\\n            color(hue)\\n            width = 3.0\\n        }\\n        marker {\\n            size = 7\\n            color(hue)\\n        }\\n    }\\n}\\n\\ndisplay(\\n    \\\"sorting-disorder\\\",\\n    Plotly.plot {\\n            network(\\\"bubble\\\", bubbleTraces, bubbleProfile, \\\"#94d9ff\\\")\\n            network(\\\"odd-even merge\\\", mergeTraces, mergeProfile, \\\"#ffba61\\\")\\n            layout {\\n                title = \\\"Disorder left after each layer\\\"\\n                xaxis { title = \\\"fraction of the network's layers applied\\\" }\\n                yaxis { title = \\\"inversions / most possible\\\" }\\n                height = 480\\n            }\\n        }\\n        .darkMode(),\\n)\\n\",\"parent\":\"\"}},{\"tool\":\"LaunchBoxRequest\",\"arguments\":{\"box\":\"sorting_disorder\",\"timeoutSeconds\":90.0,\"settleSeconds\":1.0}},{\"final\":\"Made sorting_disorder from its transcript code and ran it.\"}]",
             "hasProse": false
-        },
-        {
-            "id": "sound_render_path/sound_path_where",
-            "source": "sound_render_path",
-            "split": "heldout",
-            "kind": "stdout",
-            "request": {
-                "goal": "Make a box named sound_path_where (titled \"4 · Where is the library?\"), and launch it. What it is for, in its author's words: The probe order, and what it found here. Dirt-Samples ships as a SuperCollider quark, so anyone who has run Tidal already has it — hence auto-discovery rather than asking you. When it runs, what it prints must include the text «found: /Users/marc/Library/Application Support/SuperCollider/downloaded-quarks/Dirt-Samples».",
-                "checks": [
-                    {
-                        "kind": "box-exists",
-                        "box": "sound_path_where"
-                    },
-                    {
-                        "kind": "last-run-ok",
-                        "box": "sound_path_where"
-                    },
-                    {
-                        "kind": "output-contains",
-                        "box": "sound_path_where",
-                        "text": "found: /Users/marc/Library/Application Support/SuperCollider/downloaded-quarks/Dirt-Samples"
-                    }
-                ],
-                "taskId": "sound_render_path/sound_path_where"
-            },
-            "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"sound_path_where\",\"code\":\"/*\\nThe probe order, and what it found here. Dirt-Samples ships as a SuperCollider quark, so\\nanyone who has run Tidal already has it — hence auto-discovery rather than asking you.\\n~400MB of third-party audio with mixed per-folder licensing, so it is NOT vendored.\\n*/\\nval root = DirtRender.dirtSampleRoot()\\nprintln(if (root != null) \\\"found: $root\\\" else \\\"not found — set ${DirtRender.ENV_VAR} to a copy of Dirt-Samples\\\")\\n\",\"parent\":\"\"}},{\"tool\":\"LaunchBoxRequest\",\"arguments\":{\"box\":\"sound_path_where\",\"timeoutSeconds\":90.0,\"settleSeconds\":1.0}},{\"final\":\"Made sound_path_where from its transcript code and ran it.\"}]",
-            "hasProse": true
         },
         {
             "id": "spatial_geometry_examples/spatial_delaunay",
@@ -7526,12 +7472,12 @@
         {
             "source": "drawn_morph",
             "box": "dm_paired",
-            "reason": "solution-fails failed: c4c11433-ebb9-4983-b06b-fed3e7c82788/code:2 [be923d98c40c2aa16f3f09d1f4836193082c343fe36d10661fc2fa452a425e17]: java.lang.NullPointerException"
+            "reason": "solution-fails failed: 0eca2b6c-54e8-499a-a864-ec1cc85cb957/code:2 [be923d98c40c2aa16f3f09d1f4836193082c343fe36d10661fc2fa452a425e17]: java.lang.NullPointerException"
         },
         {
             "source": "drawn_morph",
             "box": "dm_morph",
-            "reason": "solution-fails failed: 2a91f402-6791-41f9-8b8b-2c41e7e23793/code:2 [a9870b96099401708e36fe90d876113dc0719437e491b429f26f93c4b91fef86]: java.lang.NullPointerException"
+            "reason": "solution-fails failed: 07a00d9d-945e-440a-8868-a8405038d85f/code:2 [a9870b96099401708e36fe90d876113dc0719437e491b429f26f93c4b91fef86]: java.lang.NullPointerException"
         },
         {
             "source": "drawn_score",
@@ -7621,11 +7567,16 @@
         {
             "source": "keyframe_code_blend",
             "box": "kfb_kotlin_run",
-            "reason": "solution-fails failed: e66fd815-f2ca-4cf5-ba00-121117964846/code:19 [87789dc4fdf68d30f3e2f6fbf7e1adcee909f44523b6376f89f80b81d8eaec80]: Cannot hydrate source-backed block; box 'kfb_ko"
+            "reason": "solution-fails failed: 2e150fd8-465e-40bb-ae14-65cd1b55459e/code:19 [87789dc4fdf68d30f3e2f6fbf7e1adcee909f44523b6376f89f80b81d8eaec80]: Cannot hydrate source-backed block; box 'kfb_ko"
         },
         {
             "source": "kolakoski_euclid",
             "box": "wav_on_canvas",
+            "reason": "no-stable-output differs between runs"
+        },
+        {
+            "source": "lua_demo",
+            "box": "lua_root",
             "reason": "no-stable-output differs between runs"
         },
         {
@@ -7666,7 +7617,7 @@
         {
             "source": "offline_viewer_demo",
             "box": "74a7be47-7f7c-421a-ad3f-10afab498c12",
-            "reason": "solution-fails failed: 29f9cc89-76b8-4a34-9a65-25ddb303f0b9/code:17 [531032de24ff031fe91a7d09e1af690b9e47c66fc8b7501a0d06759d12921821]: Collection contains no element matching the pre"
+            "reason": "solution-fails failed: 9c00b1fe-7dda-49b1-9fec-931fed2a8431/code:17 [531032de24ff031fe91a7d09e1af690b9e47c66fc8b7501a0d06759d12921821]: Collection contains no element matching the pre"
         },
         {
             "source": "pattern_language_composition",
@@ -7721,17 +7672,17 @@
         {
             "source": "profiling_timeline",
             "box": "profile_capture",
-            "reason": "solution-fails failed: 01acc424-8c32-4cca-b3ce-2b514f50e2d8/code:7 [2ce00f21038e4a310f35842edc16aba6e6cc47e175ed2c03e5dd47424f018b34]: Another document is recording; finish its captur"
+            "reason": "solution-fails failed: c954aba8-e4ef-4b24-a51d-c229f009ca73/code:7 [2ce00f21038e4a310f35842edc16aba6e6cc47e175ed2c03e5dd47424f018b34]: Another document is recording; finish its captur"
         },
         {
             "source": "python_cells",
             "box": "python_shared",
-            "reason": "solution-fails failed: e2c62072-aa13-4854-b458-6d9cc7e36dca/code:1 [d0651379b2225bcf62fda643aeb0ec5f275c4477d8312911a0fa2e625617bb18]: Expecting an element"
+            "reason": "solution-fails failed: c64619e8-7cb2-49b8-b663-27fc062008c8/code:1 [d0651379b2225bcf62fda643aeb0ec5f275c4477d8312911a0fa2e625617bb18]: Expecting an element"
         },
         {
             "source": "simulation_clock",
             "box": "simulation_capture",
-            "reason": "solution-fails failed: b53d8754-5a0d-483e-a332-7b5414e794fc/code:1 [cd09ee4e36f84408134ebf5043a37f66a80653af6e505d8dea18186a16a63643]: Another document is recording; finish its captur"
+            "reason": "solution-fails failed: be8ac7ed-c0d9-42aa-8f79-8f67ed35215a/code:1 [cd09ee4e36f84408134ebf5043a37f66a80653af6e505d8dea18186a16a63643]: Another document is recording; finish its captur"
         },
         {
             "source": "skinned_characters",
@@ -7757,6 +7708,11 @@
             "source": "solidsl_inverse",
             "box": "gradient",
             "reason": "no-stable-output said nothing"
+        },
+        {
+            "source": "sound_render_path",
+            "box": "sound_path_where",
+            "reason": "no-stable-output differs between runs"
         },
         {
             "source": "spatial_geometry_examples",

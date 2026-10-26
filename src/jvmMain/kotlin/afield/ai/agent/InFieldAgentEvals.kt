@@ -485,6 +485,12 @@ data class AgentEvalRequest(
      * candidates (and does not write).
      */
     val calibrate: Boolean = false,
+    /**
+     * Withhold the repository search tools ([AgentEvalCorpus.SEARCH_TOOLS]) from every task. A mined task's solution
+     * is checked in — the transcript it came from — so with search on, a model can find the answer instead of
+     * writing it; the first live corpus runs did, in at least 3 and 5 of 20 tasks.
+     */
+    val sealed: Boolean = false,
 )
 
 @Serializable
@@ -532,6 +538,8 @@ data class AgentEvalReport(
     val corpusMessage: String = "",
     /** A calibration's rejections, counted by reason (static and calibration stages together). */
     val rejections: Map<String, Int> = emptyMap(),
+    /** Whether the repository search tools were withheld ([AgentEvalRequest.sealed]). */
+    val sealed: Boolean = false,
 )
 
 object AgentEvalRunner {
@@ -574,6 +582,7 @@ object AgentEvalRunner {
                 blind = request.blind,
                 programs = request.programs,
                 context = request.context,
+                withhold = if (request.sealed) AgentEvalCorpus.SEARCH_TOOLS else emptyList(),
             ))
         }
         fun sum(f: (AgentTaskResult) -> Long?): Long? = results.mapNotNull(f).takeIf { it.isNotEmpty() }?.sum()
@@ -599,6 +608,7 @@ object AgentEvalRunner {
             programCalls = results.sumOf { it.programCalls },
             nestedCalls = results.sumOf { it.nestedCalls },
             corpus = request.corpus,
+            sealed = request.sealed,
         )
         if (!request.distil) return report
         val outcome = AgentLessons.distilAndWrite(report)

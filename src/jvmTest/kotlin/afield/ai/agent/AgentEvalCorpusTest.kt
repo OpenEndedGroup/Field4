@@ -153,6 +153,14 @@ class AgentEvalCorpusTest {
     }
 
     @Test
+    fun machineSpecificLinesAreNeverChecks() {
+        assertTrue(AgentEvalCorpus.checkable("size is 7"))
+        assertTrue(!AgentEvalCorpus.checkable("rig  /Users/marc/field4/build/rig.gltf"))
+        assertTrue(!AgentEvalCorpus.checkable("box 62d3560c-8a9c-47c6-9135-3d9fed129e99 ran"))
+        assertTrue(AgentEvalCorpus.checkable("ratio 1/2 of the area"))
+    }
+
+    @Test
     fun splitAndSampleAreDeterministic() {
         val tasks = (1..60).map { i ->
             val id = "t$i/box"

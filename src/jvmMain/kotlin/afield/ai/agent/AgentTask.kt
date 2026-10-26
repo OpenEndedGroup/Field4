@@ -82,6 +82,8 @@ data class AgentTaskRequest(
      * run after the last. What makes a task multi-turn — the case where instructions used to pile up.
      */
     val followUps: List<String> = emptyList(),
+    /** Tool simple names withheld from this task's turn (as [programs] `off` withholds one); see [AgentEvalRequest.sealed]. */
+    val withhold: List<String> = emptyList(),
 )
 
 /**
@@ -268,7 +270,8 @@ object AgentTaskRunner {
 
         return try {
             val ctx = contextFor(info, graph, request.focusBox.ifBlank { null }).let { base ->
-                if (request.programs == "off") base.copy(withheld = base.withheld + afield.ai.tools.program.RUN_TOOL_PROGRAM) else base
+                val off = (if (request.programs == "off") setOf(afield.ai.tools.program.RUN_TOOL_PROGRAM) else emptySet()) + request.withhold
+                if (off.isNotEmpty()) base.copy(withheld = base.withheld + off) else base
             }
 
             if (request.setup.isNotBlank()) {

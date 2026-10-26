@@ -39,6 +39,9 @@ object AgentEvalCorpus {
     /** A live corpus run may sample at most this many tasks (the hand suite's cap is [AgentEvalRunner.MAX_LIVE_TASKS]). */
     const val MAX_LIVE_SAMPLE = 25
 
+    /** The tools that read the repository, where every mined solution sits: withheld by a `sealed` run. */
+    val SEARCH_TOOLS = listOf("WorkspaceSearchRequest", "WorkspaceSymbolSearch", "SemanticRetrievalSearchRequest", "TutorialCodeSearchRequest")
+
     /**
      * Code that needs something a headless scratch document does not give it, or whose output cannot be
      * the same twice. Matched as a regex anywhere in the box's code or its ancestors'.
@@ -271,6 +274,14 @@ object AgentEvalCorpus {
 
     private val CHECKABLE_LINE = Regex("""[A-Za-z]""")
 
+    /**
+     * Output that is the same twice on one machine and different on the next: an absolute path (the first live run
+     * found `rig  /Users/<me>/<worktree>/...` as a check), a uid, a hash code. Never a check.
+     */
+    private val MACHINE_SPECIFIC = Regex("""(^|[\s'"(=:])(/(Users|home|tmp|private|var|opt)/|[A-Za-z]:\\)|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-|@[0-9a-f]{6,}\b""")
+
+    fun checkable(line: String) = CHECKABLE_LINE.containsMatchIn(line) && !MACHINE_SPECIFIC.containsMatchIn(line)
+
     /** Lines that came out both times, in first-run order, trimmed; long ones cut to 100 chars. */
     fun stableLines(a: List<String>, b: List<String>): List<String> {
         fun split(xs: List<String>) = xs.flatMap { it.lines() }.map { it.trim() }.filter { it.length >= 3 }
@@ -281,7 +292,7 @@ object AgentEvalCorpus {
     /** Text nodes (between tags) that appeared in both displays. */
     fun stableTextNodes(a: Map<String, String>, b: Map<String, String>): List<String> {
         fun nodes(m: Map<String, String>) = m.values.flatMap { html ->
-            Regex(""">([^<>]{4,200})<""").findAll(html).map { it.groupValues[1].trim() }.filter { it.length >= 4 && CHECKABLE_LINE.containsMatchIn(it) }.toList()
+            Regex(""">([^<>]{4,200})<""").findAll(html).map { it.groupValues[1].trim() }.filter { it.length >= 4 && checkable(it) }.toList()
         }
         val second = nodes(b).toSet()
         return nodes(a).filter { it in second }.distinct()
@@ -306,7 +317,7 @@ object AgentEvalCorpus {
         }
         val base = mutableListOf(AgentCheck.parse("box-exists:${c.box}"), AgentCheck.parse("last-run-ok:${c.box}"))
         c.parents.forEach { base += AgentCheck.parse("connected:$it:${c.box}") }
-        val lines = stableLines(a.stdout, b.stdout).filter { CHECKABLE_LINE.containsMatchIn(it) }
+        val lines = stableLines(a.stdout, b.stdout).filter(::checkable)
         val texts = stableTextNodes(a.displays, b.displays)
         val (kind, expect) = when {
             lines.isNotEmpty() -> "stdout" to listOf(lines.first(), lines.last()).distinct().map { it.take(100) }
