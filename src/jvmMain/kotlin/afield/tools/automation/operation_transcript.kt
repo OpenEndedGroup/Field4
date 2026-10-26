@@ -41,6 +41,7 @@ import afield.app.server.PLAYWRIGHT_VIEWPORT_HEIGHT
 import afield.app.server.PLAYWRIGHT_VIEWPORT_WIDTH
 import afield.app.server.Server
 import afield.app.server.SessionInformation
+import afield.app.server.ReadOnlyDocuments
 import afield.app.server.documents
 import afield.app.server.ensurePlaywrightForSessionIfNeeded
 import afield.app.server.globalPlaywriteContext
@@ -211,6 +212,14 @@ object OperationTranscript {
         val dir: File
     )
 
+    private fun macroWriteRefusal(documentPath: String, location: MacroLocation, name: String = ""): MacroResult? {
+        if (location.scope != "document" || !ReadOnlyDocuments.blocksWritesTo(normalizeDocumentPath(documentPath))) return null
+        val target = if (name.isBlank()) location.dir else macroFile(location, name)
+        ReadOnlyDocuments.refuseWrite("OperationTranscript.macro", target.absolutePath)
+        return MacroResult(false, "The document is read-only; its macros cannot be changed.",
+            name = name, path = target.absolutePath, scope = location.scope, projectName = location.projectName)
+    }
+
     private data class MacroReplayContext(
         val macroName: String = "",
         val operationIndex: Int = -1,
@@ -271,6 +280,10 @@ object OperationTranscript {
         val cleanName = sanitizeMacroName(name)
         if (cleanName.isBlank()) return MacroResult(false, "Macro name cannot be empty.")
 
+        val location = macroLocation(documentPath, scope, projectName)
+            ?: return MacroResult(false, "No project macro scope is available for this document.")
+        macroWriteRefusal(documentPath, location, cleanName)?.let { return it }
+
         val state = stateFor(documentPath)
         val frame = Runloop.runLoop.frame
         val endId = UUID.randomUUID().toString()
@@ -300,8 +313,6 @@ object OperationTranscript {
         }
 
         val (slice, sourceSelection) = sliceAndSelection
-        val location = macroLocation(documentPath, scope, projectName)
-            ?: return MacroResult(false, "No project macro scope is available for this document.")
         val macroPath = macroFile(location, cleanName)
         val text = writeMacroYaml(cleanName, documentPath, slice, sourceSelection)
         macroPath.parentFile?.mkdirs()
@@ -366,6 +377,7 @@ object OperationTranscript {
         if (cleanName.isBlank()) return MacroResult(false, "Macro name cannot be empty.")
         val location = macroLocation(documentPath, scope, projectName)
             ?: return MacroResult(false, "No project macro scope is available for this document.", name = cleanName)
+        macroWriteRefusal(documentPath, location, cleanName)?.let { return it }
         val file = macroFile(location, cleanName)
         file.parentFile?.mkdirs()
         val wrote = file.safeSave(contents.trimEnd() + "\n", createBackup = true, maxBackups = 10, atomic = true)
@@ -473,6 +485,7 @@ object OperationTranscript {
         if (cleanName.isBlank() || cleanNew.isBlank()) return MacroResult(false, "Macro names cannot be empty.")
         val location = macroLocation(documentPath, scope, projectName)
             ?: return MacroResult(false, "No $scope macro scope is available for this document.", name = cleanName)
+        macroWriteRefusal(documentPath, location, cleanName)?.let { return it }
         val source = macroFile(location, cleanName)
         if (!source.exists()) return MacroResult(false, "No macro named '$cleanName'.", name = cleanName, scope = location.scope)
         if (cleanNew == cleanName) return MacroResult(true, "Macro '$cleanName' already has that name.", name = cleanName, scope = location.scope)
@@ -518,6 +531,7 @@ object OperationTranscript {
         if (cleanName.isBlank()) return MacroResult(false, "Choose a macro to delete.")
         val location = macroLocation(documentPath, scope, projectName)
             ?: return MacroResult(false, "No $scope macro scope is available for this document.", name = cleanName)
+        macroWriteRefusal(documentPath, location, cleanName)?.let { return it }
         val source = macroFile(location, cleanName)
         if (!source.exists()) return MacroResult(false, "No macro named '$cleanName'.", name = cleanName, scope = location.scope)
         val trash = File(location.dir, ".deleted").also { it.mkdirs() }
@@ -565,6 +579,7 @@ object OperationTranscript {
         val coalesced = coalesceOperationRuns(operations)
         val location = macroLocation(documentPath, scope, projectName)
             ?: return MacroResult(false, "No project macro scope is available for this document.", name = cleanName)
+        macroWriteRefusal(documentPath, location, cleanName)?.let { return it }
         val file = macroFile(location, cleanName)
         val sourceSelection = selectionEntries(selection)
         val text = writeMacroYaml(cleanName, documentPath, coalesced, sourceSelection)
@@ -591,6 +606,7 @@ object OperationTranscript {
         if (documentPath.isBlank()) return MacroResult(false, "No document path available.")
         val location = macroLocation(documentPath, scope, projectName)
             ?: return MacroResult(false, "No macro scope is available for this document.")
+        if (!location.dir.isDirectory) macroWriteRefusal(documentPath, location)?.let { return it }
         location.dir.mkdirs()
         return MacroResult(
             true,
@@ -1266,6 +1282,10 @@ object OperationTranscript {
             flushPendingEdit(state)
             if (!state.dirty) return false
             state.entries.map { LinkedHashMap(it) }
+        }
+        if (ReadOnlyDocuments.blocksWritesTo(normalizeDocumentPath(documentPath))) {
+            ReadOnlyDocuments.refuseWrite("OperationTranscript.checkpoint", operationTranscriptFile(documentPath).absolutePath)
+            return false
         }
         return try {
             val file = operationTranscriptFile(documentPath)
