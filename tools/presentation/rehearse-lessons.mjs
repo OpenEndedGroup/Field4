@@ -89,7 +89,7 @@ try {
   await guest.evaluate(`(()=>{const e=window.globalEditor;const m=e.getModel();e.executeEdits('lesson-rehearsal',[{range:m.getFullModelRange(),text:m.getValue().replace('val frequency = 1.0','val frequency = 2.0')}]);return true})()`);
   await pause(700);
   const port = new URL(guests.find(x => x.url.includes('/index.html?file=')).url).port;
-  execFileSync('uv', ['run', '--project', '.', '--group', 'backdoor', 'python', 'tools/field_session.py', 'call', '--port', port, '--no-reset', '--command', 'run present_wave_experiment'], {cwd:root, stdio:'pipe'});
+  execFileSync('uv', ['run', '--project', '.', '--group', 'backdoor', 'python', 'tools/field_session.py', 'call', '--port', port, '--no-reset', '--command', `open ${JSON.stringify(path.basename(document))}`, '--command', 'run present_wave_experiment'], {cwd:root, stdio:'pipe'});
   await until(() => guest.evaluate('document.querySelector("polyline")?.getAttribute("points")'), Boolean, 'wave output');
   const changedPoints = await guest.evaluate('document.querySelector("polyline").getAttribute("points")');
   await click('reset-checkpoint');

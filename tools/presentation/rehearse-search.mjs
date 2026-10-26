@@ -49,7 +49,8 @@ const pictures = [];
 async function capture(page, name, width, height) {
   await page.call('Emulation.setDeviceMetricsOverride', {width, height, deviceScaleFactor: 1, mobile: false});
   try {
-    await page.evaluate('document.fonts.ready.then(()=>new Promise(r=>document.visibilityState==="visible"?requestAnimationFrame(()=>requestAnimationFrame(r)):setTimeout(r,150)))');
+    // Native windows can be occluded while visibilityState still says visible.
+    await page.evaluate('document.fonts.ready.then(()=>new Promise(r=>{setTimeout(r,150);requestAnimationFrame(()=>requestAnimationFrame(r));}))');
     const result = await page.call('Page.captureScreenshot', {format: 'png', captureBeyondViewport: false});
     const bytes = Buffer.from(result.data, 'base64'); fs.writeFileSync(path.join(output, name), bytes);
     pictures.push({file: name, width, height, sha256: createHash('sha256').update(bytes).digest('hex')});
@@ -141,7 +142,7 @@ try {
   const found=await results(); assert.equal(found.length,1); assert.equal(found[0].title,'Predict a wave');
   assert.ok(found[0].excerpt.includes('propagation speed'),'reveals are searchable before entering them');
   await capture(control,'search.png',1000,580);
-  const inputs=['src/commonMain/resources/presentation-control.js','src/commonMain/resources/presentation-control.html','src/commonMain/resources/presentation-search.js','src/jvmMain/kotlin/afield/ui/slides/PresentationSearch.kt','src/jvmMain/kotlin/afield/ui/slides/SlideShow.kt','templates/presentation/present_talk_code_.kt','templates/presentation/files/talk.slides.json'];
+  const inputs=['src/jsMain/resources/iosevka.css', 'src/commonMain/resources/field.css', 'src/commonMain/resources/presentation-control.js','src/commonMain/resources/presentation-control.html','src/commonMain/resources/presentation-search.js','src/jvmMain/kotlin/afield/ui/slides/PresentationSearch.kt','src/jvmMain/kotlin/afield/ui/slides/SlideShow.kt','templates/presentation/present_talk_code_.kt','templates/presentation/files/talk.slides.json'];
   fs.writeFileSync(path.join(output,'search.json'),JSON.stringify({passed:true,capturedAt:new Date().toISOString(),
     checks:['111 slides','slash and Cmd/Ctrl+F','incremental body matching and excerpts','arrow selection without audience changes','Enter and repeat hops','accent-insensitive search','multiple terms','zero matches do not navigate','Refresh rebuilds cached index','Escape resumes normal keyboard navigation','reveal text searchable','starter restored before capture'],
     inputs:Object.fromEntries(inputs.map(file=>[file,createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex')])),pictures},null,2)+'\n');
