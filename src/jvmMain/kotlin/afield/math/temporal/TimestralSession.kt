@@ -25,6 +25,29 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
+/**
+ * Mistral's pretrained Timestral forecaster behind this package's session interface, running in a
+ * Python worker that Field starts and owns.
+ *
+ * [TimestralSession] has never seen the signal it is continuing and needs no training step: it
+ * reads the recent history and returns a median forecast with a quantile envelope around it. The
+ * model runs in a separate process under `uv run --script`, in an environment uv builds from the
+ * worker script's own pinned dependencies, so Torch never loads into Field or into the venv the
+ * Python boxes share. Field talks to the worker over length-prefixed frames on its standard
+ * input and output, one worker per session, and a session created inside a box run stops its
+ * worker when the box stops or re-runs.
+ *
+ * Because the model is optional, this file also answers whether it can be used at all. `status`
+ * reports whether `uv`, the worker script and the checkpoint are all present, without starting
+ * anything, and names the step that would supply the first one missing; [ProviderStatus] is that
+ * answer. Nothing downloads until `install` is called.
+ *
+ * The forecast's quantiles are per-sample marginals, so this session offers no sampled
+ * alternatives: drawing each step independently from its own quantile would invent a dependence
+ * between steps that the model never predicted. `TimestralSessionTest` exercises a real worker,
+ * and only when `AFIELD_TIMESTRAL_TEST=1` and the checkpoint is already installed.
+ */
+
 /** Where an optional provider stands, with the reason when it is not usable. */
 sealed class ProviderStatus {
     data class Installed(val detail: String) : ProviderStatus()
