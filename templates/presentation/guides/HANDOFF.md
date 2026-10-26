@@ -118,3 +118,12 @@ The **Predict a wave** Kotlin step has two cues and an explicit reset. Its sourc
 only Wave experiment's code at talk construction. Reset stops that box, restores the captured source
 and runs `run_wave`; unlisted boxes/files/notes remain outside the checkpoint. Back and Refresh do
 not replay cue actions. Rebuild from edited source only when you intend to establish a new baseline.
+
+## Keyboard search in the presenter
+
+Press `/` or Cmd/Ctrl+F in the live controls, type words from slide text or titles, then use Up/Down
+and Enter to visit a match. The query stays in place for repeated hops; Escape clears and returns to
+the current outline row. The audience stays put until Enter. Search includes image alt text and cue
+text, so write useful descriptions. It omits private presenter notes when there is an explicit
+HTML audience view, and never opens web/document guests or executes a cue while indexing.
+Refresh updates the cached text index after content edits; rerun Presentation after outline edits.

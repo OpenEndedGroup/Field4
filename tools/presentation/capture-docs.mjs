@@ -83,7 +83,7 @@ try {
   await sourcePage.evaluate('window.switchToProperty("present_styles", "contents")');
   await until(() => sourcePage.evaluate('window.globalEditor?.getModel()?.getLanguageId()'), v => v === 'css', 'CSS editor');
   await capture(sourcePage, 'stylesheet.png', 1280, 820);
-  const tracked = ['src/commonMain/resources/presentation-control.js', 'src/commonMain/resources/presentation-control.html',
+  const tracked = ['src/commonMain/resources/presentation-control.js', 'src/commonMain/resources/presentation-control.html', 'src/commonMain/resources/presentation-search.js',
     'src/commonMain/resources/presentation-audience.js', 'src/jvmMain/kotlin/afield/ui/slides/AudienceBuilder.kt',
     'templates/presentation/present_talk_code_.kt', 'templates/presentation/files/presentation.css', 'templates/presentation/files/talk.slides.json',
     'templates/presentation/present_wave_experiment_code_.kt', 'templates/presentation/macros/run_wave.yaml'];
