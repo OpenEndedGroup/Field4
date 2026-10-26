@@ -2585,7 +2585,7 @@ and `uiResyncProperties` lists what is pushed to connected clients when it chang
 
 `src/jvmMain/kotlin/afield/document/graph/Boxes.kt` — [read the source](source/jvmMain/afield/document/graph/Boxes/)
 
-**Used in:** [Keyboard shortcuts](../keybindings.md), [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md), [Layers](../layers.md)
+**Used in:** [AI4's built-in tools](../ai4_tools.md), [Keyboard shortcuts](../keybindings.md), [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md)
 
 ### Top-level functions { #boxes-kt-functions }
 

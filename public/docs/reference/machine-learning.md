@@ -269,6 +269,8 @@ the real one, and tests such as `InFieldAgentHarnessTest` supply a scripted host
 
 `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt` — [read the source](source/jvmMain/afield/ai/agent/FieldGraphTools/)
 
+**Used in:** [AI4's built-in tools](../ai4_tools.md)
+
 ### Top-level values { #fieldgraphtools-kt-values }
 
 | Declaration | Summary |
@@ -519,7 +521,7 @@ write the same notes the viewer shows, scoped to the current document.
 
 `src/jvmMain/kotlin/afield/ai/agent/GeometryReviewTools.kt` — [read the source](source/jvmMain/afield/ai/agent/GeometryReviewTools/)
 
-**Used in:** [Point to geometry, keep the context](../geometry_review.md)
+**Used in:** [AI4's built-in tools](../ai4_tools.md), [Point to geometry, keep the context](../geometry_review.md)
 
 ### ListGeometryViewsRequest { #geometryreviewtools-kt-listgeometryviewsrequest }
 
@@ -821,7 +823,7 @@ is the exception: its [`StudyBuildAwaitResult`](machine-learning.md#studybuildto
 
 `src/jvmMain/kotlin/afield/ai/agent/StudyBuildTools.kt` — [read the source](source/jvmMain/afield/ai/agent/StudyBuildTools/)
 
-**Used in:** [Studies](../studies.md), [Let AI4 Wait for Long Builds](../ai4_long_builds.md), [Change a rule without breaking what already works](../qualified_sources.md)
+**Used in:** [AI4's built-in tools](../ai4_tools.md), [Studies](../studies.md), [Let AI4 Wait for Long Builds](../ai4_long_builds.md)
 
 ### ListStudyBuildsRequest { #studybuildtools-kt-liststudybuildsrequest }
 
@@ -4569,6 +4571,8 @@ a box.
 
 `src/jvmMain/kotlin/afield/ai/tools/DocumentSourceTools.kt` — [read the source](source/jvmMain/afield/ai/tools/DocumentSourceTools/)
 
+**Used in:** [AI4's built-in tools](../ai4_tools.md)
+
 ### DocumentSourceReadRequest { #documentsourcetools-kt-documentsourcereadrequest }
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DocumentSourceReadRequest</span><span class="p">(</span><span class="k">val</span> <span class="n">uid</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;code&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/DocumentSourceTools/#L66)
@@ -4706,6 +4710,8 @@ and [`StateToolResult`](machine-learning.md#statetools-kt-statetoolresult) is th
 offered only by a history that reports `canFork`.
 
 `src/jvmMain/kotlin/afield/ai/tools/StateTools.kt` — [read the source](source/jvmMain/afield/ai/tools/StateTools/)
+
+**Used in:** [AI4's built-in tools](../ai4_tools.md)
 
 ### StateListRequest { #statetools-kt-statelistrequest }
 
@@ -4889,6 +4895,8 @@ keeps nullable arguments optional. `AgentToolSchemaTest` checks that OpenAI acce
 schema of every registered tool.
 
 `src/jvmMain/kotlin/afield/ai/tools/Tools.kt` — [read the source](source/jvmMain/afield/ai/tools/Tools/)
+
+**Used in:** [AI4's built-in tools](../ai4_tools.md)
 
 ### Top-level functions { #tools-kt-functions }
 
