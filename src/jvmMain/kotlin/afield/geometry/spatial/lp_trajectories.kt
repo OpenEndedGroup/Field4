@@ -19,21 +19,21 @@ import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/*
-Linear-programming algorithms on a convex polygon, used as curve generators.
-
-A 2-D linear program is "maximise c·x over a convex polygon". Every classical method for it walks
-from somewhere to the same optimal vertex, and each walks differently: the barrier method's central
-path is a smooth arc from the analytic centre, the primal-dual method takes a few long Newton
-strides, PDHG spirals in, the ellipsoid method shrinks a sequence of ellipses, the simplex method
-hops along the boundary and cutting planes carve the region away. Here those walks are the product.
-Every method returns its whole trajectory with per-step metadata ([LpSample]), and the FLine
-adapters at the bottom of this file draw them.
-
-The pure math is independent of Box and of FLine: an [LpPolygon] is a list of half-planes and the
-methods are plain functions on it. Doubles throughout; [LpSample.position] is the Vec2 for drawing.
-The visual reference for all of this is https://lpviz.net.
-*/
+/**
+ * Linear-programming algorithms on a convex polygon, used as curve generators.
+ *
+ * A 2-D linear program is "maximise c·x over a convex polygon". Every classical method for it walks
+ * from somewhere to the same optimal vertex, and each walks differently: the barrier method's central
+ * path is a smooth arc from the analytic centre, the primal-dual method takes a few long Newton
+ * strides, PDHG spirals in, the ellipsoid method shrinks a sequence of ellipses, the simplex method
+ * hops along the boundary and cutting planes carve the region away. Here those walks are the product.
+ * Every method returns its whole trajectory with per-step metadata ([LpSample]), and each result type
+ * has a `toFLine` that draws it, with `toFLines` for a whole fan of them.
+ *
+ * The pure math is independent of Box and of FLine: an [LpPolygon] is a list of half-planes and the
+ * methods are plain functions on it. Doubles throughout; [LpSample.position] is the Vec2 for drawing.
+ * The visual reference for all of this is https://lpviz.net.
+ */
 
 /**
  * A strictly convex polygon, held both as its vertices and as the half-planes `nᵢ·x ≤ bᵢ` of its

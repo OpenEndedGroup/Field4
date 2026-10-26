@@ -16,6 +16,27 @@ import java.util.concurrent.Executors
 import kotlin.math.abs
 import kotlin.math.floor
 
+/**
+ * The Morse–Smale complex of a 2-D scalar field: where its peaks, pits and passes are, how they
+ * are joined, and which of them are significant.
+ *
+ * [MorseSmale] is the entry point. It builds a [MorseSmaleComplex] once, from an image channel or
+ * a float grid, and the complex then answers for any persistence threshold without being rebuilt,
+ * which is what makes a persistence slider cheap. Each threshold gives a [MorseSmaleResult]: the
+ * surviving [CriticalPoint]s, the separatrices between them as a `GeometryNetwork`, and the basin
+ * and peak segmentation as one id per pixel. The whole hierarchy is readable from the complex as
+ * [PersistencePair]s and [Cancellation]s, and [MorseSmaleTimings] splits the build by stage.
+ *
+ * Persistence is in the field's own units and removes features by significance, so it is a
+ * different thing from blurring the field or smoothing the drawn separatrices. What the threshold
+ * does to a picture, and what the complex is good for once you have it, are in
+ * `public/docs/morse_smale.md`; following the critical points through time or scale is
+ * `afield.geometry.topology.tracking`.
+ *
+ * The complex is computed by the optional native library `field_morse_smale`
+ * ([MorseSmaleLibrary]), so it holds native memory and is closed by the box's next run.
+ */
+
 /** What kind of critical point: a minimum is a vertex, a saddle an edge, a maximum a triangle of the grid. */
 enum class CriticalType { MINIMUM, SADDLE, MAXIMUM }
 
