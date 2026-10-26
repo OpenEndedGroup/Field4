@@ -49,6 +49,20 @@ data class AiChatBlock(
     val isBuildWait: Boolean get() = isProgress && title.startsWith(BUILD_WAIT_PREFIX) && title.endsWith(BUILD_WAIT_SUFFIX)
 
     /**
+     * The row a box chat's turn ends with when the agent asks the person something (`AskUserQuestionRequest`,
+     * jvmMain): the question, then the suggested answers as `- ` lines under [QUESTION_CHOICES]. The person's
+     * next message is the answer. The panel shows it on its own, with a button per choice while it is unanswered.
+     */
+    val isQuestion: Boolean get() = isProgress && title == QUESTION_TITLE
+
+    /** A question row's question: its body above the choices. */
+    val questionText: String get() = body.substringBefore(QUESTION_CHOICES).trim()
+
+    /** A question row's suggested answers, in order; empty when it takes free text only. */
+    val questionChoices: List<String> get() = if (!body.contains(QUESTION_CHOICES)) emptyList()
+        else body.substringAfter(QUESTION_CHOICES).lines().map { it.trim() }.filter { it.startsWith("- ") }.map { it.removePrefix("- ").trim() }
+
+    /**
      * A request Field wrote itself (the outcome of builds a turn waited for): the model reads it as the next
      * request, but the person did not write it, and the panel says so.
      */
@@ -59,6 +73,19 @@ data class AiChatBlock(
         const val FIELD_MESSAGE_PREFIX = "**Field:** "
         private const val BUILD_WAIT_PREFIX = "Waiting for "
         private const val BUILD_WAIT_SUFFIX = " · no model calls"
+
+        const val QUESTION_TITLE = "Question for you · waiting for your answer"
+        const val QUESTION_CHOICES = "Suggested answers:"
+
+        /** The closed transcript block a turn ends with when it asks [question]; [isQuestion] recognises it. */
+        fun questionRow(question: String, choices: List<String>): String = buildString {
+            append("<<progress>>\n").append(QUESTION_TITLE).append('\n')
+            append(question.trim().replace("<<", "‹‹")).append('\n')
+            if (choices.isNotEmpty()) {
+                append(QUESTION_CHOICES).append('\n')
+                choices.forEach { append("- ").append(it.replace('\n', ' ').replace("<<", "‹‹").trim()).append('\n') }
+            }
+        }
 
         /** The title of a build-wait row for [jobs] jobs; [isBuildWait] recognises it. */
         fun buildWaitTitle(jobs: Int): String = BUILD_WAIT_PREFIX + (if (jobs == 1) "1 build" else "$jobs builds") + BUILD_WAIT_SUFFIX

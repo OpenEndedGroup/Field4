@@ -1,0 +1,42 @@
+name: remotejs_kotlin_controls
+description: >
+  Capture for public/docs/remotejs.md: a Kotlin box under a Kotlin-to-head root, compiled to Javascript and run in the browser head; the runner screenshots its outputs.
+operations:
+  - create:
+      box: remotejs_kotlin_controls_root
+      name: "Javascript root"
+      frame: { x: 60.0, y: 40.0, w: 300.0, h: 90.0 }
+      properties:
+        mainLanguage: remotejs
+        isRemoteJSRoot: true
+        code: |
+          remoteAr(width = 480, height = 270)
+  - execute: { box: remotejs_kotlin_controls_root, property: code }
+  - wait: { millis: 8000 }
+  - create:
+      box: remotejs_kotlin_controls_kroot
+      name: "Kotlin to head root"
+      frame: { x: 420.0, y: 40.0, w: 300.0, h: 90.0 }
+      properties:
+        mainLanguage: kotlinjs
+        isKotlinJsRoot: true
+        code: |
+          // Children of this box are Kotlin compiled to Javascript.
+  - create:
+      box: remotejs_kotlin_controls_box
+      name: "Kotlin: display, a slider and a checkbox"
+      frame: { x: 60.0, y: 700.0, w: 420.0, h: 120.0 }
+      properties:
+        code: |
+          // {{ remoteAR }}
+          var speed = 3.0
+          var outline = false
+
+          fun redraw() = display("main", "<b>${if (outline) "outlined" else "filled"}</b> square, turning at $speed rpm")
+
+          slider("speed", min = 0.0, max = 10.0, step = 0.1, initialValue = 3.0) { speed = it; redraw() }
+          checkbox("outline") { outline = it; redraw() }
+          redraw()
+  - connect: { parent: remotejs_kotlin_controls_root, child: remotejs_kotlin_controls_kroot }
+  - connect: { parent: remotejs_kotlin_controls_kroot, child: remotejs_kotlin_controls_box }
+  - wait: { frames: 2 }

@@ -422,6 +422,7 @@ ui.clickSelector(".monaco-editor")
 ui.pause(300)
 ui.press("Control+A")
 ui.type("(let [spline (polyline [[0 0] [10 10]])]\n  (lines [sp")
+ui.waitForSelector(".afield-suggest", 15000.0)
 ui.pause(400)
 // Escape first: typing does not open the popup, and opening it once on the finished text is the
 // only way to be sure the request the figure shows is the one for the caret the figure shows.
@@ -453,4 +454,4 @@ form again, so an unrealised lazy sequence is named rather than printed. See
 - **No compile-time diagnostics.** See the note under "When something throws".
 - **Stop does not interrupt an evaluation**, only an animation.
 
-See also [Python in a Box](python.md) and [language extensions](language_extensions.md).
+See also [Python in a Box](python.md), [Lua in a Box](lua.md) and [language extensions](language_extensions.md).

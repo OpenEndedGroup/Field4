@@ -693,7 +693,7 @@ class OpenAiIdeCodexBridge(
                     toolOutputs += ResponseInputItem.ofMessage(builder.build())
                 }
             }
-            // A tool ended the turn (AwaitStudyBuildsRequest): no follow-up request. The outputs go with the
+            // A tool ended the turn (AwaitStudyBuildsRequest, AskUserQuestionRequest): no follow-up request. The outputs go with the
             // next turn, and whatever the person wrote meanwhile stays in the inbox, which becomes a turn of its own.
             // An image a co-scheduled call returned is not carried over; its JSON output is.
             TurnSuspension.of(roundResults)?.let { awaited ->
@@ -702,7 +702,7 @@ class OpenAiIdeCodexBridge(
                 else state.suspendedRound = SuspendedRound(roundOutputs.toList())
                 openCalls = emptyList()
                 rounds++
-                info("turn suspended after round $rounds: waiting for ${awaited.jobs.size} build job(s) without the model")
+                info("turn suspended after round $rounds: waiting for ${awaited.describe()} without the model")
                 toolIo("turn_suspended", mapOf("round" to rounds, "jobIds" to awaited.jobs.map { it.jobId },
                     "deadlineMs" to awaited.deadlineMs, "pendingCallIds" to roundOutputs.map { it.callId }))
             }

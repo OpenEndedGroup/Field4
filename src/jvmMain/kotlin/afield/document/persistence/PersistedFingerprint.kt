@@ -29,26 +29,60 @@ import afield.document.graph.Box
  */
 object PersistedFingerprint {
 
-    fun of(info: SessionInformation): Long {
+    fun of(info: SessionInformation): Long = entries(info).values.sum()
+
+    fun of(directory: String, boxes: Collection<Box>): Long = entries(directory, boxes).values.sum()
+
+    /** Per `(box id, property)` hashes; [of] is their sum. Kept so the tripwire can name what changed. */
+    fun entries(info: SessionInformation): Map<Pair<String, String>, Long> {
         val boxes = info.boxes.values.toMutableSet()
         boxes.add(info.root)
-        return of(info.filename, boxes)
+        return entries(info.filename, boxes)
     }
 
-    fun of(directory: String, boxes: Collection<Box>): Long {
+    fun entries(directory: String, boxes: Collection<Box>): Map<Pair<String, String>, Long> {
         val patterns = Box.persistentPropertiesFor(directory).map { it.toRegex() }
         val persisted = HashMap<String, Boolean>()
-        var total = 0L
+        val out = HashMap<Pair<String, String>, Long>()
         for (box in boxes) {
-            // Order-independent across boxes and properties: the stores are hash maps.
             for ((name, value) in box.properties.entries.toList()) {
                 if (value == null || isEmpty(value)) continue
                 val keep = persisted.getOrPut(name) { patterns.any { name.matches(it) } && !Box.isNeverPersisted(name) }
                 if (!keep) continue
-                total += mix(box.id.hashCode().toLong() * 31 + name.hashCode(), deep(value))
+                out[box.id to name] = mix(box.id.hashCode().toLong() * 31 + name.hashCode(), deep(value))
             }
         }
-        return total
+        return out
+    }
+
+    /** Records [entries] as what disk holds now (after a load or a save). */
+    fun record(info: SessionInformation, entries: Map<Pair<String, String>, Long>?) {
+        info.savedFingerprintEntries = entries
+        info.savedFingerprint = entries?.values?.sum()
+    }
+
+    /**
+     * The tripwire (backlog N1022-2): the `(box id, property)` keys whose hash differs between
+     * [saved] and [now] (added, removed or changed) and that nothing marked in [marked]. Each one is
+     * a mutator that bypassed [Box.notePersistentChange]; the save still writes it, but the
+     * mutator should be fixed.
+     */
+    fun unmarkedChanges(
+        saved: Map<Pair<String, String>, Long>,
+        now: Map<Pair<String, String>, Long>,
+        marked: Set<Pair<String, String>>,
+    ): List<Pair<String, String>> {
+        val changed = (saved.keys + now.keys).filter { saved[it] != now[it] && it !in marked }
+        return changed.sortedWith(compareBy({ it.first }, { it.second }))
+    }
+
+    /** Whether [deep] of [value] is a function of its content (no identity hash anywhere inside). */
+    fun hashesByContent(value: Any?): Boolean = when (value) {
+        null, is Box, is String, is Number, is Boolean, is Char, is Enum<*> -> true
+        is Collection<*> -> value.all { hashesByContent(it) }
+        is Map<*, *> -> value.entries.all { hashesByContent(it.key) && hashesByContent(it.value) }
+        is Array<*> -> value.all { hashesByContent(it) }
+        else -> runCatching { value.javaClass.getMethod("hashCode").declaringClass != Any::class.java }.getOrDefault(false)
     }
 
     private fun isEmpty(value: Any): Boolean =

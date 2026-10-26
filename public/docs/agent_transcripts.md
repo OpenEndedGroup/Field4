@@ -208,6 +208,14 @@ headless, since the drawing is data on the server and needs no window. See
 
 [Open ↗](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn)
 
+### offline_viewer_demo
+
+Three boxes show a small flock, an SVG chart, and the drawing layer around them. Each box has notes;
+run `sketch` in Field to replace its frame, arrow, heading and underline. The saved drawing also
+appears in the offline viewer before any box runs. CPU only. See [Drawing and Notation](drawing_and_notation.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/offline_viewer_demo/metadata.edn)
+
 ### notation_elements
 
 The `notation` API end to end, in five boxes. `elements` draws one of every kind of mark from code
@@ -735,6 +743,17 @@ transcript replays — the nine boxes carry one-line comments and no execution �
 the same way every time.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/box_layout_demo/metadata.edn)
+
+### box_graph_demo
+
+The examples from [Why Field?](why.md) and the property-inheritance section of
+[Running code](running_code.md), in one document. Garden publishes `prop<Int>(petals) = 5`, Left
+and Right shadow it with 7 and 9, Sibling reads Garden's 5, and Bloom, with both Left and Right as
+parents, reads 9 because Right was connected first. Beside them, Studio holds plain variables that
+Sketch finds with `fromContext` and `fromContextWithNameOrNull`. Disconnect Bloom from Right and
+re-run it to see it read 7.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/box_graph_demo/metadata.edn)
 
 ### mesh_geometry_examples
 
@@ -2351,6 +2370,21 @@ one box of four; `ClojureFieldCoreTest` and `ClojureHostTest` run what the Cloju
 
 [Open ↗](offline.html?file=assets/agent_transcripts/clojure_box_parity/metadata.edn)
 
+### remotejs_box_parity
+
+**RemoteJS boxes doing what Kotlin, Python and Clojure boxes do.** Six boxes: a Kotlin root that opens
+the browser head on the canvas, and five Javascript boxes that run in it. `print` and `console.log`
+appear beside their lines and the last value beside the last line; an error is marked on line 4,
+inside `mean`, not on the call on line 7; `display`, a slider and a checkbox redraw a `main` panel
+from callbacks in the head; a `setTimeout` prints after the run has finished; and Stop freezes a
+`launch(...)` loop. Run the root first.
+
+`DemoTranscriptExecSmokeTest` compiles the Kotlin root and skips the Javascript boxes, which need a
+browser head; `RemoteJsBoxSurfaceTest` runs the JVM half. [Javascript in a browser tab](remotejs.md)
+teaches the same calls.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/remotejs_box_parity/metadata.edn)
+
 ### fieldcv_webcam
 
 **Your webcam through fieldcv, drawn by the GPU from shared memory.** Eight boxes: a render window; a
@@ -2905,9 +2939,8 @@ the icosphere shell leads; six of the demo's inserts follow, one on each of its 
 scanlines over the ToyCar model, read with `SplatSet.fromGltf` as one disc per vertex. Each launches
 into the same window with the demo's turn, size and trail controls; the gravity well starts with
 its trail on, each frame laid over a fading copy of the last. The insert runs in a compute pass
-ahead of the depth sort, so a dissolve that throws splats outward is sorted where they went:
-measured on the GPU, editing the splat vertex shader instead draws half of all neighbouring pairs
-in the wrong order.
+ahead of the depth sort, so a dissolve that throws splats outward is sorted where they went.
+Moving splats in the vertex shader instead would draw many neighbouring pairs in the wrong order.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/splat_shader_passthrough.png" capture="native-window" native-wait-frames="90" trim-native=true wait="3.0" embed=true hidden=true timeout="300" name="gallery-splat-shader" alt="The icosphere shell in the native window: a sphere of about a thousand small glowing splats on black, coloured by longitude from cyan on the left through chartreuse at the front to red and orange on the right, with the far side's violet splats showing between the near ones" macro-file="../../dev_docs/agents/transcripts/splat_shader.yaml" capture-box="splat_renderer"}
 // The transcript builds every box and launches the renderer and the passthrough.
@@ -2999,6 +3032,18 @@ The capture below is this transcript instrumented on [Field probes](field_probes
 ![100k soft-quad particles drawn as a glowing galaxy in a native Vulkan window](assets/field_probes/particles-galaxy.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/threebox/metadata.edn)
+
+### demo_document
+
+The [demo document](demo_document.md): one canvas showing most of what Field does. A palette pushes
+`petals` down to three connected boxes, one holding two nested boxes; a three.js gyroid and an editable
+FLine flower sit in output panels; a renderer streams a turning spiral into a box's panel and runs a
+compute shader a Field probe plots; a keyframe curve plays with its playhead running; a box draws inline
+visualizers when its editor is open; a time slider waits to be scrubbed across four cues; and a notes box
+draws on the drawing layer over all of it. Its film plays behind the home page, and the feel benchmark
+times the replay.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/demo_document/metadata.edn)
 
 ### four_pass_chain
 

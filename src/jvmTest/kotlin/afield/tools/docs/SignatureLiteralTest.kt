@@ -30,6 +30,20 @@ import kotlin.test.assertTrue
  */
 class SignatureLiteralTest {
 
+    @Test
+    fun `a wrapped explicit primary constructor survives in the reference signature`() {
+        for (visibility in listOf("", "internal ", "private ", "protected ", "public ")) {
+            assertEquals(
+                "class Voice ${visibility}constructor(frequency: Double = 440.0)",
+                StdlibReferenceGenerator.signatureAt(
+                    listOf("class Voice", "${visibility}constructor(",
+                        "frequency: Double = 440.0", ") {", "val level = 1.0", "}"),
+                    1, "class",
+                ),
+            )
+        }
+    }
+
     private fun signatureOf(vararg lines: String): String =
         StdlibReferenceGenerator.signatureAt(lines.toList(), 1, "fun")
 

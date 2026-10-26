@@ -756,6 +756,7 @@ RUNNER_DIGEST_SOURCE_FILES = (
     "src/jvmMain/kotlin/afield/graphics/someSkiko.kt",
     "src/commonMain/resources/outputareas2.js",
     "tools/field_backdoor.py",
+    "tools/lighting/capture_background.js",
     "tools/capture_transaction.py",
     "tools/run_field_tests.py",
 )
@@ -1656,14 +1657,23 @@ class RunnerState:
         # The general automation notebook also holds draft review notes made by other test
         # runners. The notes-panel capture must see only notes from this docs runner, while
         # still staying isolated from the user's real notebook.
-        server_env = automation_server_environment(
-            self.backdoor_port,
-            extra={
-                "AFIELD_DOCS_ANNOTATIONS_STORE": str(
-                    self.repo_root / "build" / "field-docs-runner-annotations.json"
-                )
-            },
-        )
+        # The KDoc drafts the ai_doc_polish captures count and import would otherwise be whatever
+        # completion cached in this checkout's .field/filestore: nothing in a fresh clone, and on
+        # one machine a draft whose file the package cutover had moved. A fresh copy of a committed
+        # cache gives every build the same real draft (test_docs_runner_inputs keeps it importable).
+        extra_env = {
+            "AFIELD_DOCS_ANNOTATIONS_STORE": str(
+                self.repo_root / "build" / "field-docs-runner-annotations.json"
+            )
+        }
+        committed_drafts = self.repo_root / "tools" / "docs_runner_inputs" / "generated_completion_docs.json"
+        if committed_drafts.is_file():
+            drafts = self.repo_root / "build" / "field-docs-runner-completion-drafts" / committed_drafts.name
+            shutil.rmtree(drafts.parent, ignore_errors=True)
+            drafts.parent.mkdir(parents=True)
+            shutil.copyfile(committed_drafts, drafts)
+            extra_env["AFIELD_COMPLETION_DRAFTS_FILE"] = str(drafts)
+        server_env = automation_server_environment(self.backdoor_port, extra=extra_env)
         sidecar_url = self._ensure_semantic_sidecar()
         if sidecar_url:
             server_env[SIDECAR_URL_ENV] = sidecar_url
@@ -5525,7 +5535,25 @@ def build_backdoor_command(
         if options.source_box_wait > 0:
             backdoor_commands.append(shlex.join(["sleep", str(options.source_box_wait)]))
     if options.macro_file:
-        pass
+        # A macro builds the document; `run-box` then names a box to run after it. An editor
+        # capture opens that box's editor first, so the inline output of the run lands in an
+        # editor that is already showing (output that arrives before the editor opens is not
+        # drawn beside its line).
+        if options.run_box:
+            if capture_mode == "editor":
+                backdoor_commands.append(shlex.join([
+                    "editor-open",
+                    options.run_box,
+                    "--property", options.property_name,
+                    "--padding", str(options.padding),
+                    "--timeout", str(options.timeout),
+                ]))
+            backdoor_commands.append(shlex.join([
+                "launch" if options.execution == "launch" else "run",
+                options.run_box,
+                "--property", options.property_name,
+                "--timeout", str(options.timeout),
+            ]))
     elif options.run_box is None and capture_mode == "editor":
         # Target the box explicitly rather than "@last": under graphics-context the
         # box is created via a macro (so "@last" is stale) and must match the box

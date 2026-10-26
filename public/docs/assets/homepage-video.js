@@ -21,7 +21,8 @@
      location from our own <script src> — no hard-coded base path. */
   var assetsBase = new URL(".", script.src);          // …/field4/assets/
   var siteBase   = new URL("..", assetsBase);         // …/field4/
-  var bannerUrl  = new URL("banner.mp4", assetsBase); // …/field4/assets/banner.mp4
+  /* The film of the demo document (demo_document.md), made by the docs build. */
+  var bannerUrl  = new URL("demo_document/film.mp4", assetsBase);
 
   function normalize(pathname) {
     return pathname.replace(/index\.html$/, "").replace(/\/*$/, "/");
@@ -52,6 +53,9 @@
     video.muted = true;
     video.defaultMuted = true;
     video.setAttribute("muted", "");
+    /* The film is filmed at the pace of a person's hands; the background plays it at twice that. */
+    video.defaultPlaybackRate = 2;
+    video.playbackRate = 2;
 
     var source = document.createElement("source");
     source.src = bannerUrl.href;
@@ -78,6 +82,7 @@
        are non-fatal — the current frame still shows behind the veil. */
     var tries = 0;
     function play() {
+      video.playbackRate = 2;
       if (!video.paused) return;
       var p = video.play();
       if (p && typeof p.catch === "function") p.catch(function () {});

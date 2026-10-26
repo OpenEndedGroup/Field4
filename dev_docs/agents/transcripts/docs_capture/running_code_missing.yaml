@@ -1,0 +1,25 @@
+name: running_code_missing
+description: |
+  Setup for `public/docs/running_code.md`, "When a lookup fails". "Garden" declares petals but has
+  never run; "Flower", beneath it, compiles (the declaration comes from Garden's code) but finds no
+  value. Only Flower runs; the page captures the message it reports.
+operations:
+  - create:
+      box: bgm_garden
+      name: Garden
+      frame: { x: 40.0, y: 40.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          prop<Int>(petals) = 5
+  - create:
+      box: bgm_flower
+      name: Flower
+      frame: { x: 40.0, y: 200.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          val seen = try { "petals = $petals" } catch (e: Exception) { e.message }
+          markdown("$seen")
+  - connect: { parent: bgm_garden, child: bgm_flower }
+  - execute: { box: bgm_flower, property: code }
+  - await: {}
+  - wait: { frames: 10 }

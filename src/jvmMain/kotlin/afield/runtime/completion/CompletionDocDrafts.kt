@@ -20,7 +20,7 @@ import afield.media.video.*
 import afield.runtime.lifecycle.map
 import afield.ui.output.templates.filter
 import afield.ai.completion.Ai4CompletionDoc
-import afield.ai.completion.GENERATED_COMPLETION_DOCS_FILE
+import afield.ai.completion.generatedCompletionDocsPath
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
@@ -40,7 +40,7 @@ object CompletionDocDrafts {
     private val json = Json { ignoreUnknownKeys = true }
 
     fun summary(): CompletionDocDraftSummary {
-        val cachePath = afield.ai.knowledge.FilestoreDir.resolve(GENERATED_COMPLETION_DOCS_FILE)
+        val cachePath = generatedCompletionDocsPath()
         if (!Files.exists(cachePath)) {
             return CompletionDocDraftSummary(cachePath.absolutePathString(), message = "No KDoc drafts yet.")
         }

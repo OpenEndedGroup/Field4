@@ -705,7 +705,7 @@ object StdlibReferenceGenerator {
     /** Docs pages that are not worked examples and would only add noise as "see also" targets. */
     private val EVIDENCE_PAGE_BLOCKLIST = setOf(
         "index.md", "installation.md", "survivalGuide.md", "funFeatures.md", "aiFeatures.md",
-        "staging.md", "building_and_testing.md", "sketch1.md", "sketch2.md",
+        "staging.md", "building_and_testing.md",
     )
 
     @JvmStatic
@@ -1244,7 +1244,9 @@ object StdlibReferenceGenerator {
             if (depth <= 0) {
                 val next = lines.getOrNull(index)?.trim().orEmpty()
                 val continues = next.startsWith(":") || next.startsWith(",") ||
-                    next.startsWith("where ") || builder.trim().endsWith("=")
+                    next.startsWith("where ") || builder.trim().endsWith("=") ||
+                    (kind == "class" && Regex("""^(?:(?:public|private|protected|internal)\s+)?constructor\b""")
+                        .containsMatchIn(next))
                 if (!continues) break
             }
         }
@@ -1863,7 +1865,6 @@ object StdlibReferenceGenerator {
         return documents.associate { doc ->
             val kept = doc.evidenceTokens().filter { tokenOwners[it]?.size == 1 }
             val patterns = kept.associateWith { (kind, name) ->
-                val escaped = Regex.escape(name)
                 // Two tightenings, each fixing a measured false claim:
                 //  - `\b` on the call form. Unanchored, `ply(` matched `apply(`, `run(` matched
                 //    `rerun(`, `range(` matched `arrange(`, `cosine(` matched `cosineInterp(` and
@@ -1873,7 +1874,7 @@ object StdlibReferenceGenerator {
                 //    are code text as far as this index is concerned, and English prose inside them
                 //    ("seed cosine (grey) → target sine", "full range (chebyshev clamps)") was
                 //    matching. Kotlin allows `f (x)`; this corpus never writes it.
-                if (kind == "call") Regex("\\b$escaped\\(") else Regex("\\b$escaped\\b")
+                EvidenceTokenMatcher(kind, name)
             }
             if (debugFor != null && doc.relativePath.endsWith(debugFor)) {
                 println("EVIDENCE-DEBUG ${doc.relativePath} unique tokens: $kept")
@@ -1889,6 +1890,15 @@ object StdlibReferenceGenerator {
                 .take(MAX_EVIDENCE_LINKS)
             doc.relativePath to hits
         }
+    }
+
+    /** Exact evidence matching, with a cheap necessary condition before scanning with a regex. */
+    internal class EvidenceTokenMatcher(kind: String, private val name: String) {
+        private val pattern = Regex.escape(name).let { escaped ->
+            if (kind == "call") Regex("\\b$escaped\\(") else Regex("\\b$escaped\\b")
+        }
+
+        fun containsMatchIn(code: String): Boolean = name in code && pattern.containsMatchIn(code)
     }
 
     private val FENCED_BLOCK = Regex("(?s)```.*?```")

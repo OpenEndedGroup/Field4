@@ -1,5 +1,11 @@
 # A Field presentation
 
+Three standalone themes live in `files/themes/`: Black, Paper and Slate. Copy a theme into the
+editable `presentation.css` box and Refresh slide to use it throughout the talk.
+Inside `audience`, `fadeIn { ... }` fades text, images or a group. After an HTML view,
+`reveal("Explain", dimPrevious = 0.25) { fadeIn { ... } }` adds a cue over the dimmed previous view.
+See `guides/HANDOFF.md` for reusable fragments and AI4-authored builds.
+
 In Field's Electron app, open Welcome and expand **Kits**. Press **Add presentation starter kit**,
 then **Restart Field**. Once it reconnects, expand **Kits → Presentations** and press **Create document**
 beside **Teaching with Field**. The new document starts its guide, live example and talk in order.
@@ -32,3 +38,13 @@ package registration. Ordinary slides require no Motion Canvas project or per-ta
 ## Organize a long talk
 
 Wrap related steps in `section("Title") { ... }`; sections may nest. Playback stays in source order. The presenter outline has collapsible groups, slide numbers and **Find slide** for titles, section names or numbers. Enter opens the first search result; Escape clears the search. Current-slide ancestors open when you navigate, while other collapsed groups stay collapsed.
+
+## Work with AI4 and repeat a lesson
+
+`files/talk.slides.json` holds two editable Markdown slides, notes and reveal cues. Ask AI4 to add a
+slide after `ask-a-question`, then rerun Presentation to include it. AI4 reads the latest revision
+before saving one slide; it does not need to rewrite the Kotlin talk. Refresh reloads existing bodies.
+
+In **Predict a wave**, Next reveals the explanation and then the live experiment. Change `frequency`
+in **Wave experiment** and run it. **Reset: Wave baseline** restores its captured source and runs the
+setup macro. The installed starting point and your other working material stay unchanged.

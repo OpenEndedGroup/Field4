@@ -1,0 +1,32 @@
+name: running_code_disconnect
+description: |
+  Setup for `public/docs/running_code.md`, "Disconnecting a running box". Garden sets petals = 5;
+  Ticker, beneath it, starts a go block that reads petals every 300 ms. After Ticker has read it a
+  few times, the connection is cut; the page captures Ticker's output after the next reads.
+operations:
+  - create:
+      box: bgx_garden
+      name: Garden
+      frame: { x: 40.0, y: 40.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          prop<Int>(petals) = 5
+  - create:
+      box: bgx_ticker
+      name: Ticker
+      frame: { x: 40.0, y: 200.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          go {
+              repeat(40) { n ->
+                  val seen = try { "petals = $petals" } catch (e: Exception) { e.message }
+                  markdown("read $n: $seen")
+                  delay(300)
+              }
+          }
+  - connect: { parent: bgx_garden, child: bgx_ticker }
+  - execute: { box: bgx_garden, property: code }
+  - execute: { box: bgx_ticker, property: code }
+  - wait: { millis: 1500 }
+  - disconnect: { parent: bgx_garden, child: bgx_ticker }
+  - wait: { millis: 1200 }

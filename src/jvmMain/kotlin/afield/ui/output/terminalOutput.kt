@@ -32,7 +32,7 @@ import java.util.concurrent.ConcurrentHashMap
  * A terminal started by [terminal]: the process keeps running when its panel is closed or the page
  * reloads, and the panel re-attaches with its scrollback.
  */
-class FieldTerminal internal constructor(val id: String) {
+class FieldTerminal internal constructor(val id: String, startAt: Long = 0) {
     /** Types [text] into the terminal; add `"\n"` (or `"\r"`) to submit a line. False once it has exited. */
     fun write(text: String): Boolean = writeToTerminal(id, text.toByteArray(Charsets.UTF_8))
 
@@ -68,56 +68,69 @@ class FieldTerminal internal constructor(val id: String) {
     }
 
     /**
-     * Suspends until [pattern] appears in what the terminal prints from now on, and returns the
-     * match. Colour and cursor escapes are stripped before matching, so match the text you see.
-     * It only sees output from the call on; to send and then read the reply, use [sendAndAwait]:
+     * Suspends until [pattern] appears in the terminal's output, and returns the match. Colour
+     * and cursor escapes are stripped first, so match the text you see.
+     *
+     * Each terminal reads its output once, front to back: a search starts where the last match
+     * ended (at the start, for a fresh terminal), so output printed before you call this still
+     * counts, and a prompt is not matched twice.
      *
      * ```kotlin
      * go {
-     *     val py = terminal("py", listOf("python3"))
+     *     val py = terminal("py", ["python3", "-q"])
      *     py.awaitOutput(">>> ")
      *     val answer = py.sendAndAwait("6 * 7", Regex("""\d+"""))
-     *     println(answer.value)  // 42
+     *     print(answer.value)  // 42
      * }
      * ```
      *
      * Throws if the process exits first, or after [timeoutMs].
      */
-    suspend fun awaitOutput(pattern: Regex, timeoutMs: Long = 30_000): MatchResult = awaitOutputAfter(terminalOutputMark(id), pattern, timeoutMs, skipEchoedLine = false)
+    suspend fun awaitOutput(pattern: Regex, timeoutMs: Long = 30_000): MatchResult = awaitMatch(pattern, timeoutMs, 0)
+
+    /** [awaitOutput] for a literal string. */
+    suspend fun awaitOutput(text: String, timeoutMs: Long = 30_000): MatchResult = awaitOutput(Regex(Regex.escape(text)), timeoutMs)
 
     /**
-     * Types [line] and a return, then suspends until [pattern] appears in what follows. The tty
-     * echoes the line itself, so match the reply rather than something the line contains.
+     * Types [line] and a return, then suspends until [pattern] appears in the reply. The reply
+     * starts after the terminal's echo of [line], so `\d+` after sending `6 * 7` matches `42`.
      */
     suspend fun sendAndAwait(line: String, pattern: Regex, timeoutMs: Long = 30_000): MatchResult {
         awaitReady()
-        val mark = terminalOutputMark(id)
+        readNew()
+        // Whatever was printed before the send is behind us; the reply follows the echoed line.
+        unread.setLength(0)
         send(line)
-        return awaitOutputAfter(mark, pattern, timeoutMs, skipEchoedLine = true)
+        return awaitMatch(pattern, timeoutMs, skipLine = true)
     }
 
-    private suspend fun awaitOutputAfter(start: Long, pattern: Regex, timeoutMs: Long, skipEchoedLine: Boolean): MatchResult {
-        var mark = start
-        val seen = StringBuilder()
-        return withTimeout(timeoutMs) {
+    /** Output read from the pty but not yet consumed by a match, escapes stripped. */
+    private val unread = StringBuilder()
+    /** How many bytes of the terminal's output [unread] has taken in. */
+    private var readTo = startAt
+
+    private fun readNew() {
+        val (bytes, next) = terminalOutputSince(id, readTo) ?: error("terminal $id is gone")
+        readTo = next
+        if (bytes.isNotEmpty()) unread.append(stripTerminalEscapes(bytes.toString(Charsets.UTF_8)))
+    }
+
+    private suspend fun awaitMatch(pattern: Regex, timeoutMs: Long, from: Int = 0, skipLine: Boolean = false): MatchResult =
+        withTimeout(timeoutMs) {
             while (true) {
-                val (bytes, next) = terminalOutputSince(id, mark) ?: error("terminal $id is gone")
-                mark = next
-                if (bytes.isNotEmpty()) {
-                    seen.append(stripTerminalEscapes(bytes.toString(Charsets.UTF_8)))
-                    // After a send, the reply starts past the first newline: before it is the tty's echo of the line.
-                    val from = if (skipEchoedLine) seen.indexOf('\n').let { if (it < 0) seen.length else it + 1 } else 0
-                    pattern.find(seen, from)?.let { return@withTimeout it }
+                readNew()
+                val start = if (!skipLine) from else unread.indexOf('\n').let { if (it < 0) -1 else it + 1 }
+                // Matched against a copy: the MatchResult must not change when [unread] is consumed.
+                if (start >= 0) pattern.find(unread.toString(), start)?.let { match ->
+                    unread.delete(0, match.range.last + 1)
+                    return@withTimeout match
                 }
                 if (terminalInfo(id)?.running != true) error("terminal $id exited before printing ${pattern.pattern}")
                 delay(50)
             }
             @Suppress("UNREACHABLE_CODE") error("unreachable")
         }
-    }
 
-    /** [awaitOutput] for a literal string. */
-    suspend fun awaitOutput(text: String, timeoutMs: Long = 30_000): MatchResult = awaitOutput(Regex(Regex.escape(text)), timeoutMs)
 
     override fun toString() = "FieldTerminal($id, ${if (running) "running" else "exited $exitCode"})"
 }
@@ -136,7 +149,7 @@ private val boxTerminals = ConcurrentHashMap<String, String>()
  * val t = terminal()                         // a shell in the document's directory
  * t.send("ls -la")
  *
- * terminal("top", command = listOf("top"))   // or any program
+ * terminal("top", command = ["top"])   // or any program
  * ```
  *
  * @param channel output-area channel, and its disclosure title
@@ -170,7 +183,8 @@ fun Box.terminal(
     }
     display(channel, terminalIframe(terminalId, width, height))
     displayOpen(channel)
-    return FieldTerminal(terminalId)
+    // A re-shown terminal's earlier output was for the earlier run; a fresh one is read from its start.
+    return FieldTerminal(terminalId, if (reuse != null) terminalOutputMark(terminalId) else 0L)
 }
 
 /** [terminal] running one command line through your shell, e.g. `terminal("build", "./gradlew build")`. */

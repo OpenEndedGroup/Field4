@@ -23,21 +23,35 @@ interface SuspendsTurn {
     val suspension: TurnSuspension?
 }
 
-/** The study-build jobs a suspended turn waits for, and how long it may wait. */
+/**
+ * What a suspended turn waits for: study-build [jobs] and how long it may wait for them, or the person's answer
+ * to a [question] (`AskUserQuestionRequest`), which has no deadline: their next message is the answer.
+ */
 data class TurnSuspension(
-    val jobs: List<AwaitedBuild>,
-    /** Epoch milliseconds after which the conversation resumes whatever the jobs' state. */
-    val deadlineMs: Long,
+    val jobs: List<AwaitedBuild> = emptyList(),
+    /** Epoch milliseconds after which the conversation resumes whatever the jobs' state; 0 with no jobs. */
+    val deadlineMs: Long = 0L,
+    val question: AskedQuestion? = null,
 ) {
-    /** One round may await more than once (two runners): wait for every job, until the later deadline. */
+    /** One round may await more than once (two runners): wait for every job, until the later deadline. The first question stands. */
     fun merge(other: TurnSuspension): TurnSuspension =
-        TurnSuspension((jobs + other.jobs).distinctBy { Triple(it.boxId, it.name, it.jobId) }, maxOf(deadlineMs, other.deadlineMs))
+        TurnSuspension((jobs + other.jobs).distinctBy { Triple(it.boxId, it.name, it.jobId) }, maxOf(deadlineMs, other.deadlineMs),
+            question ?: other.question)
+
+    /** For logs: what the turn waits for. */
+    fun describe(): String = listOfNotNull(
+        jobs.takeIf { it.isNotEmpty() }?.let { "${it.size} build job(s)" },
+        question?.let { "the person's answer" },
+    ).joinToString(" and ")
 
     companion object {
         fun of(results: List<Any?>): TurnSuspension? =
             results.mapNotNull { (it as? SuspendsTurn)?.suspension }.reduceOrNull(TurnSuspension::merge)
     }
 }
+
+/** A question the agent asked the person, and the answers it suggests (possibly none). */
+data class AskedQuestion(val question: String, val choices: List<String> = emptyList())
 
 /** One awaited attempt: the runner (its box and name), the job, and what to call it in the chat. */
 data class AwaitedBuild(

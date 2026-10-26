@@ -107,6 +107,9 @@ nav:
     # Beside moving_around_the_canvas.md: a canvas flight is a camera move through its bookmarks,
     # filmed to MP4.
     - Filming the Canvas: filming_the_canvas.md
+    # Beside filming_the_canvas.md: the showcase canvas built by demo_document.yaml, and the film of it
+    # that plays behind the home page.
+    - The Demo Document: demo_document.md
     # Beside moving_around_the_canvas.md: which boxes are on the canvas at all, and where each one
     # sits, per layer.
     - Layers: layers.md
@@ -147,6 +150,7 @@ nav:
     # are removed. Everything else in Seeing Values is something you put in one of those panels.
     - Box Output: box_output.md
     - Visualizers & Controls: visualizers.md
+    - A Terminal in a Box: terminal.md
     - Patchy from Kotlin: patchy.md
     - Field's 3D Output: three_output.md
     - Point to geometry and leave notes: geometry_review.md
@@ -318,6 +322,9 @@ nav:
     # with the host's objects reachable directly — and a reader who has read one wants the contrast.
     - Clojure in a Box: clojure.md
     - Lua in a Box: lua.md
+    # The desktop, browser-tab side of RemoteJS, beside the other guest languages. Its WebXR and
+    # headset reference (ar_reference.md) stays under Heads & Headsets.
+    - Javascript in a Browser Tab: remotejs.md
     - Nano Examples: nano_examples.md
     # MorphoHDL is a language brought in from outside (upstream's own compiler on GraalJS). Its
     # page is a user page since 2026-10-11; the circuit-search study that used to fill its second
@@ -412,6 +419,7 @@ nav:
     # front page links it too.
     - Agent Transcript Gallery: agent_transcripts.md
     - AI Overview: aiFeatures.md
+    - AI4's Built-in Tools: ai4_tools.md
     - Local AI: local_ai.md
     - Talking to AI4: voice_input.md
     - Let AI4 Drive a Live Webpage: ai4_live_iframe.md
@@ -465,7 +473,6 @@ nav:
       - Execution: reference/execution.md
       - Machine learning: reference/machine-learning.md
       - Networking: reference/networking.md
-      - IO: reference/io.md
       - Video: reference/video.md
       - Lighting: reference/lighting.md
       - Examples: reference/examples.md

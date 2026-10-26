@@ -12,6 +12,8 @@ points the way a person does, step by step, through the backdoor's own command d
   first-graphics   "Next: native graphics": renderer launch to its first frame, the triangle's
                    launch (shader compile + pipeline), a fragment-shader edit and relaunch,
                    a Kotlin edit and relaunch.
+  demo-document    `dev_docs/agents/transcripts/demo_document.yaml` replayed into a fresh document:
+                   the whole showcase canvas built and launched by one `macro run`.
 
 Each step records the client's wall time (command sent -> verdict or condition, what a person
 waits for), the time to the box's first output, and the server's `LatencySpans` that started
@@ -337,12 +339,42 @@ async def scenario_first_graphics(b: Bench, reps: int) -> None:
     await b.command(f"stop {renderer}")
 
 
+DEMO_TRANSCRIPT = REPO_ROOT / "dev_docs" / "agents" / "transcripts" / "demo_document.yaml"
+# The boxes demo_document.yaml leaves running, stopped after each replay (children before the renderer).
+DEMO_RUNNING = ["demo_brightness", "demo_metrics", "demo_draw", "demo_particles", "demo_spiral", "demo_renderer"]
+
+
+async def scenario_demo_document(b: Bench, reps: int) -> None:
+    """The demo document, built from its transcript into a fresh, empty document each time.
+
+    One step is one `macro run`: every create, connect, execute and launch in the transcript, to its
+    final `await`. The spans split it by operation (`transcript.op`, `transcript.launchGroup`) and by
+    what those cost (engine builds, compiles, shader compiles, pipelines). The first replay is in a JVM
+    that has only run the scenarios before it; the rest reuse its renderer's Vulkan device.
+
+    At most four replays follow the first, whatever `--reps` is: each one is a whole document with a
+    renderer, about 5 s, and four are enough for a median. A cold round (one rep) keeps the first.
+    """
+    name = "demo-document"
+    for i in range(1 + min(reps // 2, 4)):
+        await b.command(f"open feel_demo_document_{i} --create")
+        written = await b.command(f"macro write demo_document --file {shlex.quote(str(DEMO_TRANSCRIPT))}")
+        if not written.get("ok"):
+            print(f"         macro write failed: {json.dumps(written.get('data'))[:300]}", flush=True)
+            return
+        await b.step(name, "replay in a fresh document" if i == 0 else "replay again", "first" if i == 0 else "warm",
+                     lambda: b.command("macro run demo_document --timeout 300"))
+        for uid in DEMO_RUNNING:
+            await b.command(f"stop {uid}")
+
+
 SCENARIOS: dict[str, Callable[[Bench, int], Awaitable[None]]] = {
     "kotlin-println": scenario_kotlin_println,
     "first-steps": scenario_first_steps,
     "first-graphics": scenario_first_graphics,
+    "demo-document": scenario_demo_document,
 }
-GRAPHICS = {"first-graphics"}
+GRAPHICS = {"first-graphics", "demo-document"}
 
 
 # --------------------------------------------------------------------------- #

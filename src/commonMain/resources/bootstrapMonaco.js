@@ -831,6 +831,13 @@ const initMonaco = () => {
         window.ImportFolding?.install?.(globalEditor, monaco)
 }
 
+// The server says a stop has not taken effect (the runloop is blocked), or now has.
+const setStopPending = (uid, pending) => {
+        const box = [...document.querySelectorAll(".box")].find(x => x.uid === uid)
+        box?.querySelector(".statusArea")?.classList.toggle("stop-pending", pending)
+}
+window.setStopPending = setStopPending
+
 const syncBoxRunningClass = (box) => {
         box.classList.remove("running", "running-launching", "running-continued", "running-ending")
         const runningEntries = box.runningEntries ?? new Map()

@@ -665,6 +665,10 @@ class SessionInformation(
      */
     @Volatile
     var savedFingerprint: Long? = null
+
+    /** The per-property hashes behind [savedFingerprint], for the unmarked-edit tripwire. */
+    @Volatile
+    var savedFingerprintEntries: Map<Pair<String, String>, Long>? = null
     private val pendingSidecarSaveVersions = ConcurrentHashMap<Pair<String, String>, Long>()
     private val propertySyncSequences = ConcurrentHashMap<Pair<String, String>, AtomicLong>()
     private val pendingPropertySyncOrigins = ConcurrentHashMap<Pair<String, String>, PropertySyncOrigin>()
@@ -6036,6 +6040,8 @@ class Server {
          */
         fun stop(box: Box, entrypoint: String = "server.stop") {
             FlightRecorder.recordStopEntrypoint(entrypoint, box)
+            // If the runloop is blocked, this stop waits for it; the box's marker says so.
+            StopWatch.watch(box)
             box.ke.stop(box)
             // If this box owns a Field 4 Renderer (e.g. the agent graphics-context box),
             // cancelling its jobs never disposes the native window/surface. Do that now — before the

@@ -37,6 +37,7 @@ The run exits non-zero when a step fails.
 | `kotlin-println` | a new box running `println("hello")` | first run, same code again, warm reruns, edit + rerun (a new literal each time) |
 | `first-steps` | `templates/first-steps`, the welcome page's "Start here" | first launch, Alt+Enter `var petals = N` while it runs (`execute-fragment`), stop, second launch, warm relaunches |
 | `first-graphics` | `templates/first-graphics`, "Next: native graphics" | renderer launch, its first frames, triangle launch, its frames, same relaunch, fragment edit + Reload Shader, fragment edit + Update Shader, fragment edit + relaunch, Kotlin edit + relaunch |
+| `demo-document` | `dev_docs/agents/transcripts/demo_document.yaml`, the [demo document](../../public/docs/demo_document.md) | the whole transcript replayed into a fresh, empty document by one `macro run` (every create, connect, execute and launch, to its last `await`), then once more into another |
 
 The shader steps send what the editor sends. Alt+Enter in a `fragment`/`vertex` editor (and
 alt-r) is `set-string` with the edited text and then `perform-action moduleHere_reload`;
@@ -80,6 +81,9 @@ names the source records.
 | `pipeline.update` | the same, for a module rebuilding its pipeline |
 | `renderer.firstRender` | the first `render()` of a `Renderer.run` invocation |
 | `renderer.toFirstFrame` | `Renderer` construction to the end of its first frame (starts before the launch step, so the harness attributes it to no step; it is in the raw spans) |
+| `transcript.run` | one `macro run` of an operation transcript, `detail` its name |
+| `transcript.op` | one transcript operation other than a launch, `box` the box it names, `detail` macro and verb |
+| `transcript.launchGroup` | a run of consecutive `launch` operations, applied as one awaited batch, `detail` macro and boxes |
 
 ## Baseline, 2026-10-23
 
@@ -148,6 +152,22 @@ retired box disposes its spare; a spare older than a classpath change is refused
 
 The think time matters: with steps back to back (`--think 0`), the next run arrives while the
 spare is still being built and waits for most of it.
+
+## The demo document, 2026-10-24
+
+`--scenario demo-document --reps 2`, Apple M1 Max, **on battery**, commit `93752ed5c`. The
+transcript makes 20 boxes and launches 6 of them; a step is the one `macro run`.
+
+| Step | wall | `transcript.op` (39) | `transcript.launchGroup` (3) | engines | `kotlin.compile` (44) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| replay in a fresh document (cold JVM) | 19237 | 13107 | 6074 | 20 built, bootstrap 69211 summed | 75759 summed, max 5310 |
+| replay again, another fresh document | 5491 | 3732 | 1743 | 20 built, bootstrap 5015 summed | 7169 summed, max 341 |
+
+The summed spans are larger than the wall time because engines bootstrap and compile on several
+threads at once. Each box that runs gets its own engine, so 20 bootstraps in a cold JVM are most of
+the first replay; the second replay pays ~250 ms per engine. Renderer, shader and pipeline work is
+under 1 s of the cold replay. `/api/perf/spans` has each `transcript.op` with its box, for the
+per-box split.
 
 ## What the baseline says to fix next
 

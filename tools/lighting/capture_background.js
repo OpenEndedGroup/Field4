@@ -3,10 +3,7 @@
 (() => {
     const background = getComputedStyle(document.body).backgroundColor;
     document.documentElement.style.backgroundColor = background;
-    // Match the frame-synchronous recorder: omit the animated WebGL backdrop,
-    // which Chromium can composite as white in clipped headless screenshots.
-    const style = document.createElement('style');
-    style.textContent = '.field-webgl-background { display:none !important; }';
-    document.head.appendChild(style);
+    // Keep the WebGL backdrop: it is what the app shows. Hiding it exposed the CSS
+    // fallback, whose SVG grain is stretched to the window and reads as coarse speckle.
     return {background};
 })()

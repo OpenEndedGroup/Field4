@@ -1,0 +1,41 @@
+name: remotejs_draw
+description: >
+  Capture for docs/remotejs.md. A Javascript language root embeds the browser head on the canvas
+  with remoteAr(). A Javascript child that fills an FLine square into the head and turns it with launch; the runner screenshots the root, whose output is the head.
+operations:
+  - create:
+      box: remotejs_draw_root
+      name: "Javascript root"
+      frame: { x: 60.0, y: 40.0, w: 300.0, h: 90.0 }
+      properties:
+        mainLanguage: remotejs
+        isRemoteJSRoot: true
+        code: |
+          remoteAr(width = 480, height = 270)
+  - execute: { box: remotejs_draw_root, property: code }
+  - wait: { millis: 8000 }
+  - create:
+      box: remotejs_draw_box
+      name: "a turning square"
+      frame: { x: 60.0, y: 700.0, w: 360.0, h: 120.0 }
+      properties:
+        code_language: Javascript
+        code: |
+          const square = new FLine()
+          square.moveTo(-0.3, 1.3, -1.5)
+          square.lineTo(0.3, 1.3, -1.5)
+          square.lineTo(0.3, 1.9, -1.5)
+          square.lineTo(-0.3, 1.9, -1.5)
+          square.lineTo(-0.3, 1.3, -1.5)
+          square.color = vec(1.0, 0.55, 0.2, 1.0)
+          square.filled = true
+          stage.square = square
+
+          let angle = 0
+          launch(() => {
+            angle += 0.02
+            stage.square = square * rotate(angle, 0, 1.6)
+          }, "turn", false)
+          print("turning")
+  - connect: { parent: remotejs_draw_root, child: remotejs_draw_box }
+  - wait: { frames: 2 }

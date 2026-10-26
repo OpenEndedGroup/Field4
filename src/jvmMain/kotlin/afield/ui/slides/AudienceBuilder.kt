@@ -32,6 +32,15 @@ class AudienceBuilder internal constructor(
         }
     }
 
+    /** Fade this text, image or group in on forward entry; Back shows its completed state. */
+    fun fadeIn(durationMs: Int = 350, delayMs: Int = 0, block: AudienceBuilder.() -> Unit) {
+        require(durationMs in 0..10_000 && delayMs in 0..60_000) { "Use a fade of 0–10000 ms and a delay of 0–60000 ms" }
+        div(classes = "field-fade-in") {
+            style = "--field-fade-duration:${durationMs}ms;--field-fade-delay:${delayMs}ms"
+            block()
+        }
+    }
+
     /** Fill the audience display with an image and an optional visible credit. */
     fun fullScreenImage(
         source: String, alt: String, citation: String = "",

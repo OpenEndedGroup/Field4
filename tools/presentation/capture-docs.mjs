@@ -35,7 +35,7 @@ async function connect(target) {
   });
   const call = (method, params = {}) => new Promise((resolve, reject) => {
     const id = ++sequence;
-    const timer = setTimeout(() => { pending.delete(id); reject(Error(`CDP timeout: ${method}`)); }, 30000);
+    const timer = setTimeout(() => { pending.delete(id); reject(Error(`CDP timeout: ${method} ${String(params.expression || '').slice(0, 180)}`)); }, 30000);
     pending.set(id, {resolve, reject, timer}); socket.send(JSON.stringify({id, method, params}));
   });
   return {call, evaluate: async expression => {
@@ -49,7 +49,8 @@ const pictures = [];
 async function capture(page, name, width, height) {
   await page.call('Emulation.setDeviceMetricsOverride', {width, height, deviceScaleFactor: 1, mobile: false});
   try {
-    await page.evaluate('document.fonts.ready.then(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))');
+    // Native windows can be occluded while visibilityState still says visible.
+    await page.evaluate('document.fonts.ready.then(()=>new Promise(r=>{setTimeout(r,150);requestAnimationFrame(()=>requestAnimationFrame(r));}))');
     const result = await page.call('Page.captureScreenshot', {format: 'png', captureBeyondViewport: false});
     const bytes = Buffer.from(result.data, 'base64'); fs.writeFileSync(path.join(output, name), bytes);
     pictures.push({file: name, width, height, sha256: createHash('sha256').update(bytes).digest('hex')});
@@ -62,15 +63,16 @@ try {
   const sourcePage = await connect(sourceTarget);
   const control = await connect(list.find(t => t.url.endsWith('/presentation-control.html')));
   const audience = await connect(list.find(t => t.url.endsWith('/presentation-audience.html')));
-  assert.equal(await control.evaluate('document.querySelectorAll("#slides button.slide").length'), 8);
-  assert.equal(await control.evaluate('document.querySelectorAll("#slides details").length'), 3);
+  assert.ok(await control.evaluate(`document.fonts.load('300 semi-condensed 15px "Iosevka Web"').then(fonts=>fonts.length)`), 'Presenter must load Field’s custom font rather than fall back to a system monospace');
+  assert.equal(await control.evaluate('document.querySelectorAll("#slides button.slide").length'), 9 + JSON.parse(fs.readFileSync(path.join(document, 'files/talk.slides.json'), 'utf8')).slides.length);
+  assert.equal(await control.evaluate('document.querySelectorAll("#slides details").length'), 5);
   const settled = async () => {
     await until(targets, ts => !ts.some(t => t.url.startsWith('data:text/html,<html><style>html,body')), 'crossfade settles');
     await until(() => audience.evaluate('!!document.querySelector("iframe")?.contentDocument?.querySelector(".field-slide")'), Boolean, 'audience slide');
   };
   const goto = async title => {
     await control.evaluate(`[...document.querySelectorAll('#slides button.slide')].find(b=>b.dataset.slideTitle===${JSON.stringify(title)}).click()`);
-    await until(() => control.evaluate('document.getElementById("status").textContent'), v => v.endsWith(title), title);
+    await until(() => control.evaluate('document.getElementById("status").textContent'), v => v.includes(title), title);
     await settled();
   };
   await goto('A figure, fullscreen');
@@ -83,9 +85,10 @@ try {
   await sourcePage.evaluate('window.switchToProperty("present_styles", "contents")');
   await until(() => sourcePage.evaluate('window.globalEditor?.getModel()?.getLanguageId()'), v => v === 'css', 'CSS editor');
   await capture(sourcePage, 'stylesheet.png', 1280, 820);
-  const tracked = ['src/commonMain/resources/presentation-control.js', 'src/commonMain/resources/presentation-control.html',
+  const tracked = ['src/jsMain/resources/iosevka.css', 'src/commonMain/resources/field.css', 'src/commonMain/resources/presentation-control.js', 'src/commonMain/resources/presentation-control.html', 'src/commonMain/resources/presentation-search.js',
     'src/commonMain/resources/presentation-audience.js', 'src/jvmMain/kotlin/afield/ui/slides/AudienceBuilder.kt',
-    'templates/presentation/present_talk_code_.kt', 'templates/presentation/files/presentation.css'];
+    'templates/presentation/present_talk_code_.kt', 'templates/presentation/files/presentation.css', 'templates/presentation/files/talk.slides.json',
+    'templates/presentation/present_wave_experiment_code_.kt', 'templates/presentation/macros/run_wave.yaml'];
   fs.writeFileSync(path.join(output, 'capture.json'), JSON.stringify({
     capturedAt: new Date().toISOString(), commit: execFileSync('git', ['rev-parse', 'HEAD'], {cwd: root, encoding: 'utf8'}).trim(),
     inputs: Object.fromEntries(tracked.map(file => [file, createHash('sha256').update(fs.readFileSync(path.join(root, file))).digest('hex')])),

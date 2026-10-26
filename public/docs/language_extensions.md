@@ -282,7 +282,7 @@ its programs live in, so any language can have them. These are the ones Field's 
 | Pd | an object: what it is fed by and feeds; an `[s]` or `[r]`: the last value through its name, live from the playing patch; a `#X connect` line: the two ends it joins | — |
 
 The [ForthField](forth_examples.md#what-each-line-left-on-the-stack) and
-[Python](python.md#what-each-line-came-to) pages show notes in the editor; the [Clojure](clojure.md) and
+[Python](python.md#what-each-line-came-to) and [Lua](lua.md#line-notes) pages show notes in the editor; the [Clojure](clojure.md) and
 [Datalog](datalog.md) pages say what theirs contain.
 
 **A note never runs your code.** StackSL and RectSL can say what part of a program does without

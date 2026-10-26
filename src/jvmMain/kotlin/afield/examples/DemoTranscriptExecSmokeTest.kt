@@ -115,6 +115,8 @@ object DemoTranscriptExecSmokeTest {
         // code, read it back, register a stroke reaction, and read two graphic scores by cutting
         // them. No client is needed — the scene is server-side data — so every box executes headless.
         "drawing_notation",
+        // Three CPU boxes and their saved notation scene, promoted from the offline-viewer fixture.
+        "offline_viewer_demo",
         // drawing_and_notation.md's full tour: every mark kind, a score, the API audit, stroke/arrow/text
         // reactions. CPU only; headless, `hand`'s page script goes to no browser but the box completes.
         "notation_elements",
@@ -287,6 +289,10 @@ object DemoTranscriptExecSmokeTest {
         // Nine boxes and their connections, created and wired but never executed: the scene is the
         // starting position for the "Lay out selection" commands, which the reader runs.
         "box_layout_demo",
+        // Seven pure-compute boxes: prop inheritance through a diamond (nearer wins, then
+        // connection order) and fromContext / fromContextWithNameOrNull, each writing one markdown
+        // line. The examples of public/docs/why.md, in one document.
+        "box_graph_demo",
         // Deterministic synthesised audio and token fixtures through the real CodecVisualization
         // renderer; it deliberately does not reach for EnCodec's GPU service, so it completes here.
         "audio_ai_codec",
@@ -532,6 +538,8 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // The demo document: a renderer, an ElectronRTTView and a compute shader under it, and loops.
+        "demo_document",
         // ORCA in a box output, playing through a returned PatSynthBank, so running it opens an audio
         // device; and ORCA itself only plays in a browser. `run_ui_regressions.py --id orca-io` runs
         // the same calls in a real page, and OrcaTest feeds the Kotlin side the page's reports.
@@ -691,6 +699,10 @@ object DemoTranscriptExecSmokeTest {
         // Clojure box parity: its Kotlin root is compiled; the three Clojure boxes are a guest
         // language and skipped. ClojureFieldCoreTest and ClojureHostTest run the Clojure half.
         "clojure_box_parity",
+        // RemoteJS box parity: the Kotlin root opens a browser head, which a headless run lacks;
+        // the five Javascript boxes and five Kotlin → head boxes are guest languages and skipped. RemoteJsBoxSurfaceTest runs
+        // the JVM half; the head half was driven through the backdoor (REMOTEJS_BOX_PARITY.md).
+        "remotejs_box_parity",
         "python_box_parity",
         "python_cells",
         // fieldcv: the Python cells need JEP plus the optional cv group, and a camera; the Kotlin

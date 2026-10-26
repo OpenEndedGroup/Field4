@@ -2070,6 +2070,10 @@ private fun Box.updateCachedControlGroupValueInMemory(control: ControllerControl
     val values = controlGroupValues()
     values[cacheKey] = controlGroupStoredValue(control)
     properties[controlGroupValuesProperty] = values
+    // No resync and no flight-recorder entry per frame, but the persisted value did change, so say
+    // so. Unmarked, the fingerprint still saved it on the next autosave tick and the tripwire named
+    // the box on `warning,persistence` each time (2026-10-24, `AutosaveSubsystemMarkingTest`).
+    notePersistentChange(controlGroupValuesProperty)
 }
 
 internal fun registerControllerControlGroup(box: Box, channel: String, controls: List<ControllerControl>) {

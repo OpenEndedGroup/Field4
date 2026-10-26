@@ -262,6 +262,13 @@ data class LocalEval(val uid: String, val prompt: String, val kind: String)
 @Serializable
 data class Stop_box(val uid: String)
 
+/**
+ * Server → client: a stop asked for [uid] has not taken effect yet ([pending] true), or now has
+ * (false). Sent by `afield.app.server.StopWatch`; the box's status marker pulses while pending.
+ */
+@Serializable
+data class StopPending(val uid: String, val pending: Boolean)
+
 @Serializable
 data class InitialBoxFrame(val uid: String, val frame: Rect)
 
@@ -2320,6 +2327,8 @@ data class DependencyFlow(
     /** Reads since the server started; 0 means the arrow is remembered from `dependencies.edn`. */
     val sessionCount: Long,
     val lastSeen: Long,
+    /** The reader has finished a full run since without these reads: kept to explain, no longer reruns it. */
+    val historical: Boolean = false,
 )
 
 /** A box that asked for [name] and found nothing, with the boxes that supplied it on earlier reads. */

@@ -4,7 +4,7 @@
 
 Models small enough to train inside a box, in plain Kotlin, while you watch. Flow matching carries one 2D or 3D point cloud onto another and hands back the deformation between them; the multi-output regression head it trains is usable on its own. See [Flow Matching](../flow_matching.md).
 
-100 source file(s), 2235 public symbol(s), 698 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+102 source file(s), 2259 public symbol(s), 705 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -269,6 +269,8 @@ the real one, and tests such as `InFieldAgentHarnessTest` supply a scripted host
 
 `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt` — [read the source](source/jvmMain/afield/ai/agent/FieldGraphTools/)
 
+**Used in:** [AI4's built-in tools](../ai4_tools.md)
+
 ### Top-level values { #fieldgraphtools-kt-values }
 
 | Declaration | Summary |
@@ -519,7 +521,7 @@ write the same notes the viewer shows, scoped to the current document.
 
 `src/jvmMain/kotlin/afield/ai/agent/GeometryReviewTools.kt` — [read the source](source/jvmMain/afield/ai/agent/GeometryReviewTools/)
 
-**Used in:** [Point to geometry, keep the context](../geometry_review.md)
+**Used in:** [AI4's built-in tools](../ai4_tools.md), [Point to geometry, keep the context](../geometry_review.md)
 
 ### ListGeometryViewsRequest { #geometryreviewtools-kt-listgeometryviewsrequest }
 
@@ -821,7 +823,7 @@ is the exception: its [`StudyBuildAwaitResult`](machine-learning.md#studybuildto
 
 `src/jvmMain/kotlin/afield/ai/agent/StudyBuildTools.kt` — [read the source](source/jvmMain/afield/ai/agent/StudyBuildTools/)
 
-**Used in:** [Studies](../studies.md), [Let AI4 Wait for Long Builds](../ai4_long_builds.md), [Change a rule without breaking what already works](../qualified_sources.md)
+**Used in:** [AI4's built-in tools](../ai4_tools.md), [Studies](../studies.md), [Let AI4 Wait for Long Builds](../ai4_long_builds.md)
 
 ### ListStudyBuildsRequest { #studybuildtools-kt-liststudybuildsrequest }
 
@@ -1158,12 +1160,19 @@ The model is `AFIELD_COMPLETION_DOC_MODEL`, defaulting to the fast model.
 
 `src/jvmMain/kotlin/afield/ai/completion/Ai4CompletionDoc.kt` — [read the source](source/jvmMain/afield/ai/completion/Ai4CompletionDoc/)
 
+### Top-level functions { #ai4completiondoc-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="ai4completiondoc-kt--generatedcompletiondocspath"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">generatedCompletionDocsPath</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Path</span></code>](source/jvmMain/afield/ai/completion/Ai4CompletionDoc/#L912) | The drafts cache: [`GENERATED_COMPLETION_DOCS_ENV`](machine-learning.md#ai4completiondoc-kt--generated-completion-docs-env) when set, else [`GENERATED_COMPLETION_DOCS_FILE`](machine-learning.md#ai4completiondoc-kt--generated-completion-docs-file) in the filestore. |
+
 ### Top-level values { #ai4completiondoc-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
 | <a id="ai4completiondoc-kt--generated-completion-docs-file"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">GENERATED&#95;COMPLETION&#95;DOCS&#95;FILE</span></code>](source/jvmMain/afield/ai/completion/Ai4CompletionDoc/#L53) | The generated-completion-doc cache's file name, spelled once. |
 | <a id="ai4completiondoc-kt--generated-completion-docs-declined-file"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">GENERATED&#95;COMPLETION&#95;DOCS&#95;DECLINED&#95;FILE</span></code>](source/jvmMain/afield/ai/completion/Ai4CompletionDoc/#L59) | Keys of drafts the docs revision pass looked at and chose not to use, written beside the cache by `tools/docs_notes.py` (`DRAFT_DECLINED_FILE`). Completion neither shows nor regenerates them. |
+| <a id="ai4completiondoc-kt--generated-completion-docs-env"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">GENERATED&#95;COMPLETION&#95;DOCS&#95;ENV</span></code>](source/jvmMain/afield/ai/completion/Ai4CompletionDoc/#L909) | Points the drafts cache at one file, leaving the rest of the filestore where it is. The docs runner sets it to a fresh copy of a committed cache, so its captures of the drafts read the same input on every machine; `tools/docs_notes.py` (`DRAFT_CACHE_ENV`) honours it too. |
 
 ### Ai4CompletionDoc { #ai4completiondoc-kt-ai4completiondoc }
 
@@ -1620,7 +1629,7 @@ context, and [`buildDynamicInstructions`](machine-learning.md#instructions-kt--b
 | <a id="instructions-kt--errorinstructions"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">errorInstructions</span><span class="p">(</span><span class="n">lang</span><span class="p">:</span> <span class="nc">LanguageSpec</span><span class="p">,</span> <span class="n">errorMessage</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/ai/conversation/Instructions/#L115) |  |
 | <a id="instructions-kt--builddynamicinstructions"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">buildDynamicInstructions</span><span class="p">(</span><span class="n">mode</span><span class="p">:</span> <span class="nc">InstructionMode</span><span class="p">,</span> <span class="n">lang</span><span class="p">:</span> <span class="nc">LanguageSpec</span><span class="p">,</span> <span class="n">userPrompt</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="n">errorMessage</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="n">lineNumber</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">ToolExecutionContext</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/ai/conversation/Instructions/#L125) | The whole instruction block as one string: [`buildInstructionFragments`](machine-learning.md#instructions-kt--buildinstructionfragments), joined. |
 | <a id="instructions-kt--buildinstructionfragments"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">buildInstructionFragments</span><span class="p">(</span><span class="n">mode</span><span class="p">:</span> <span class="nc">InstructionMode</span><span class="p">,</span> <span class="n">lang</span><span class="p">:</span> <span class="nc">LanguageSpec</span><span class="p">,</span> <span class="n">userPrompt</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="n">errorMessage</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="n">lineNumber</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">ToolExecutionContext</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ContextFragment</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ai/conversation/Instructions/#L139) | A turn's instructions as [`ContextFragment`](machine-learning.md#contextpipeline-kt-contextfragment)s, in order; joined, they are [`buildDynamicInstructions`](machine-learning.md#instructions-kt--builddynamicinstructions). See [`TurnContext`](machine-learning.md#contextpipeline-kt-turncontext) for what the bridges do with each kind. The request itself is durable only where this is the one place it appears (inline and error turns); a chat turn's request follows in the message anyway. |
-| <a id="instructions-kt--fieldgraphtoolguidance"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">fieldGraphToolGuidance</span><span class="p">(</span><span class="n">editorTurn</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="n">seesOutput</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/ai/conversation/Instructions/#L370) | What the chat is told about the native box graph and execution tools. One text for every AI4 path that wires [`ToolExecutionContext.fieldGraph`](machine-learning.md#tools-kt--toolexecutioncontext--fieldgraph) — the box panel, the document chat and headless `AgentTask`s — so the tools cannot be described two ways. |
+| <a id="instructions-kt--fieldgraphtoolguidance"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">fieldGraphToolGuidance</span><span class="p">(</span><span class="n">editorTurn</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="n">seesOutput</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/ai/conversation/Instructions/#L371) | What the chat is told about the native box graph and execution tools. One text for every AI4 path that wires [`ToolExecutionContext.fieldGraph`](machine-learning.md#tools-kt--toolexecutioncontext--fieldgraph) — the box panel, the document chat and headless `AgentTask`s — so the tools cannot be described two ways. |
 
 ### InstructionMode { #instructions-kt-instructionmode }
 
@@ -1650,19 +1659,27 @@ A tool result that ends the model's turn when [`suspension`](machine-learning.md
 
 ### TurnSuspension { #turnsuspension-kt-turnsuspension }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TurnSuspension</span><span class="p">(</span><span class="k">val</span> <span class="n">jobs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AwaitedBuild</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">deadlineMs</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L27)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TurnSuspension</span><span class="p">(</span><span class="k">val</span> <span class="n">jobs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AwaitedBuild</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">deadlineMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">0L</span><span class="p">,</span> <span class="k">val</span> <span class="n">question</span><span class="p">:</span> <span class="nc">AskedQuestion</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L30)
 
-The study-build jobs a suspended turn waits for, and how long it may wait.
+What a suspended turn waits for: study-build [`jobs`](machine-learning.md#turnsuspension-kt--turnsuspension--jobs) and how long it may wait for them, or the person's answer to a [`question`](machine-learning.md#turnsuspension-kt--turnsuspension--question) (`AskUserQuestionRequest`), which has no deadline: their next message is the answer.
 
 | Declaration | Summary |
 | --- | --- |
 | <a id="turnsuspension-kt--turnsuspension--jobs"></a><code class="highlight"><span class="k">val</span> <span class="n">jobs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AwaitedBuild</span><span class="p">&gt;</span></code> |  |
-| <a id="turnsuspension-kt--turnsuspension--deadlinems"></a><code class="highlight"><span class="k">val</span> <span class="n">deadlineMs</span><span class="p">:</span> <span class="nc">Long</span></code> | Epoch milliseconds after which the conversation resumes whatever the jobs' state. |
-| <a id="turnsuspension-kt--turnsuspension--merge"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">merge</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">TurnSuspension</span><span class="p">)</span><span class="p">:</span> <span class="nc">TurnSuspension</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L33) | One round may await more than once (two runners): wait for every job, until the later deadline. |
+| <a id="turnsuspension-kt--turnsuspension--deadlinems"></a><code class="highlight"><span class="k">val</span> <span class="n">deadlineMs</span><span class="p">:</span> <span class="nc">Long</span></code> | Epoch milliseconds after which the conversation resumes whatever the jobs' state; 0 with no jobs. |
+| <a id="turnsuspension-kt--turnsuspension--question"></a><code class="highlight"><span class="k">val</span> <span class="n">question</span><span class="p">:</span> <span class="nc">AskedQuestion</span><span class="o">?</span></code> |  |
+| <a id="turnsuspension-kt--turnsuspension--merge"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">merge</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">TurnSuspension</span><span class="p">)</span><span class="p">:</span> <span class="nc">TurnSuspension</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L37) | One round may await more than once (two runners): wait for every job, until the later deadline. The first question stands. |
+| <a id="turnsuspension-kt--turnsuspension--describe"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L42) | For logs: what the turn waits for. |
+
+### AskedQuestion { #turnsuspension-kt-askedquestion }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AskedQuestion</span><span class="p">(</span><span class="k">val</span> <span class="n">question</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">choices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L54)
+
+A question the agent asked the person, and the answers it suggests (possibly none).
 
 ### AwaitedBuild { #turnsuspension-kt-awaitedbuild }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AwaitedBuild</span><span class="p">(</span><span class="k">val</span> <span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">jobId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">stage</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L43)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AwaitedBuild</span><span class="p">(</span><span class="k">val</span> <span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">jobId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">stage</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L57)
 
 One awaited attempt: the runner (its box and name), the job, and what to call it in the chat.
 
@@ -1677,13 +1694,13 @@ One awaited attempt: the runner (its box and name), the job, and what to call it
 
 ### SuspendedRound { #turnsuspension-kt-suspendedround }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SuspendedRound</span><span class="p">(</span><span class="k">val</span> <span class="n">outputs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PendingToolOutput</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L59)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SuspendedRound</span><span class="p">(</span><span class="k">val</span> <span class="n">outputs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PendingToolOutput</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L73)
 
 The tool outputs of the round that suspended a turn, which the provider has not seen yet. The next turn sends them first: on OpenAI's chained responses its `previous_response_id` is still the response that made these calls, and every call must have an output before anything else can follow it; on Anthropic, whose history this bridge keeps, the `tool_use` blocks need their `tool_result`s in the next user message.
 
 ### PendingToolOutput { #turnsuspension-kt-pendingtooloutput }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PendingToolOutput</span><span class="p">(</span><span class="k">val</span> <span class="n">callId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">outputJson</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">isError</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L62)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PendingToolOutput</span><span class="p">(</span><span class="k">val</span> <span class="n">callId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">outputJson</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">isError</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L76)
 
 A finished call's output as the provider will receive it. `isError` marks a failed call (Anthropic).
 
@@ -4238,6 +4255,36 @@ dry-run patch and transcript are written under this checkout's `build/`.
 | <a id="aitooluseimprovementmonitor-kt--aitooluseimprovementmonitor--start"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="n">dryRun</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">proposalCount</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span><span class="p">:</span> <span class="nc">AiToolUseImprovementStatus</span></code>](source/jvmMain/afield/ai/tools/AiToolUseImprovementMonitor/#L100) |  |
 | <a id="aitooluseimprovementmonitor-kt--aitooluseimprovementmonitor--clearreviewed"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">clearReviewed</span><span class="p">(</span><span class="n">recentOnly</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">AiToolUseImprovementStatus</span></code>](source/jvmMain/afield/ai/tools/AiToolUseImprovementMonitor/#L146) |  |
 
+## AskUserTools.kt { #askusertools-kt }
+
+Asking the person a question mid-task: [`AskUserQuestionRequest`](machine-learning.md#askusertools-kt-askuserquestionrequest) ends the turn with a [`TurnSuspension`](machine-learning.md#turnsuspension-kt-turnsuspension) carrying
+the question. The box chat ends its transcript with a question row (`AiChatBlock.questionRow`), which the panel
+shows with a button per suggested answer; the person's next message, a button's or typed, is the answer, and
+the next turn opens with this call's output ahead of it, as any suspended turn does.
+
+`src/jvmMain/kotlin/afield/ai/tools/AskUserTools.kt` — [read the source](source/jvmMain/afield/ai/tools/AskUserTools/)
+
+### AskUserQuestionRequest { #askusertools-kt-askuserquestionrequest }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AskUserQuestionRequest</span><span class="p">(</span><span class="p">@</span><span class="nc">JsonPropertyDescription</span><span class="p">(</span><span class="s">&quot;The one question, in a sentence or two, with whatever the person needs to answer it. Markdown is allowed.&quot;</span><span class="p">)</span> <span class="k">val</span> <span class="n">question</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="p">@</span><span class="nc">JsonPropertyDescription</span><span class="p">(</span><span class="s">&quot;Up to 6 short suggested answers (a few words each), your recommendation first; empty to ask for a free-text answer.&quot;</span><span class="p">)</span> <span class="k">val</span> <span class="n">choices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/AskUserTools/#L25)
+
+Asking the person a question mid-task: [`AskUserQuestionRequest`](machine-learning.md#askusertools-kt-askuserquestionrequest) ends the turn with a [`TurnSuspension`](machine-learning.md#turnsuspension-kt-turnsuspension) carrying the question. The box chat ends its transcript with a question row (`AiChatBlock.questionRow`), which the panel shows with a button per suggested answer; the person's next message, a button's or typed, is the answer, and the next turn opens with this call's output ahead of it, as any suspended turn does.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="askusertools-kt--askuserquestionrequest--question"></a><code class="highlight"><span class="k">val</span> <span class="n">question</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="askusertools-kt--askuserquestionrequest--choices"></a><code class="highlight"><span class="k">val</span> <span class="n">choices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
+
+### AskUserQuestionResult { #askusertools-kt-askuserquestionresult }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AskUserQuestionResult</span><span class="p">(</span><span class="k">val</span> <span class="n">success</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">suspended</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="p">@</span><span class="n">get</span><span class="p">:</span><span class="nc">JsonIgnore</span> <span class="k">override</span> <span class="k">val</span> <span class="n">suspension</span><span class="p">:</span> <span class="nc">TurnSuspension</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SummarisesForToolLog</span><span class="p">,</span> <span class="nc">SuspendsTurn</span></code>](source/jvmMain/afield/ai/tools/AskUserTools/#L33)
+
+[`AskUserQuestionRequest`](machine-learning.md#askusertools-kt-askuserquestionrequest)'s result. A set `suspension` ends the turn; the model reads only the rest.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="askusertools-kt--askuserquestionresult--toollogsummary"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toolLogSummary</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/AskUserTools/#L35) |  |
+
 ## AttachmentExcerpt.kt { #attachmentexcerpt-kt }
 
 `src/jvmMain/kotlin/afield/ai/tools/AttachmentExcerpt.kt` — [read the source](source/jvmMain/afield/ai/tools/AttachmentExcerpt/)
@@ -4505,12 +4552,12 @@ Shared by every chat provider and the MCP/backdoor registry. No ambient session 
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="documentguidetools-kt--documentguidetools--list"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">list</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">DocumentGuideToolResult</span></code>](source/jvmMain/afield/ai/tools/DocumentGuideTools/#L88) |  |
-| <a id="documentguidetools-kt--documentguidetools--read"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">read</span><span class="p">(</span><span class="n">req</span><span class="p">:</span> <span class="nc">DocumentGuideReadRequest</span><span class="p">)</span><span class="p">:</span> <span class="nc">DocumentGuideToolResult</span></code>](source/jvmMain/afield/ai/tools/DocumentGuideTools/#L94) |  |
-| <a id="documentguidetools-kt--documentguidetools--search"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">search</span><span class="p">(</span><span class="n">req</span><span class="p">:</span> <span class="nc">DocumentGuideSearchRequest</span><span class="p">)</span><span class="p">:</span> <span class="nc">DocumentGuideToolResult</span></code>](source/jvmMain/afield/ai/tools/DocumentGuideTools/#L109) |  |
-| <a id="documentguidetools-kt--documentguidetools--create"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">create</span><span class="p">(</span><span class="n">req</span><span class="p">:</span> <span class="nc">DocumentGuideCreateRequest</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/DocumentGuideTools/#L142) |  |
-| <a id="documentguidetools-kt--documentguidetools--patch"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">patch</span><span class="p">(</span><span class="n">req</span><span class="p">:</span> <span class="nc">DocumentGuidePatchRequest</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/DocumentGuideTools/#L143) |  |
-| <a id="documentguidetools-kt--documentguidetools--append"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">append</span><span class="p">(</span><span class="n">req</span><span class="p">:</span> <span class="nc">DocumentGuideAppendRequest</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/DocumentGuideTools/#L144) |  |
+| <a id="documentguidetools-kt--documentguidetools--list"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">list</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">DocumentGuideToolResult</span></code>](source/jvmMain/afield/ai/tools/DocumentGuideTools/#L92) |  |
+| <a id="documentguidetools-kt--documentguidetools--read"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">read</span><span class="p">(</span><span class="n">req</span><span class="p">:</span> <span class="nc">DocumentGuideReadRequest</span><span class="p">)</span><span class="p">:</span> <span class="nc">DocumentGuideToolResult</span></code>](source/jvmMain/afield/ai/tools/DocumentGuideTools/#L98) |  |
+| <a id="documentguidetools-kt--documentguidetools--search"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">search</span><span class="p">(</span><span class="n">req</span><span class="p">:</span> <span class="nc">DocumentGuideSearchRequest</span><span class="p">)</span><span class="p">:</span> <span class="nc">DocumentGuideToolResult</span></code>](source/jvmMain/afield/ai/tools/DocumentGuideTools/#L113) |  |
+| <a id="documentguidetools-kt--documentguidetools--create"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">create</span><span class="p">(</span><span class="n">req</span><span class="p">:</span> <span class="nc">DocumentGuideCreateRequest</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/DocumentGuideTools/#L146) |  |
+| <a id="documentguidetools-kt--documentguidetools--patch"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">patch</span><span class="p">(</span><span class="n">req</span><span class="p">:</span> <span class="nc">DocumentGuidePatchRequest</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/DocumentGuideTools/#L147) |  |
+| <a id="documentguidetools-kt--documentguidetools--append"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">append</span><span class="p">(</span><span class="n">req</span><span class="p">:</span> <span class="nc">DocumentGuideAppendRequest</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/DocumentGuideTools/#L148) |  |
 
 ## DocumentSourceTools.kt { #documentsourcetools-kt }
 
@@ -4523,6 +4570,8 @@ The AI4 tools that read and patch the live source of a box, navigate the editor 
 a box.
 
 `src/jvmMain/kotlin/afield/ai/tools/DocumentSourceTools.kt` — [read the source](source/jvmMain/afield/ai/tools/DocumentSourceTools/)
+
+**Used in:** [AI4's built-in tools](../ai4_tools.md)
 
 ### DocumentSourceReadRequest { #documentsourcetools-kt-documentsourcereadrequest }
 
@@ -4652,6 +4701,56 @@ Indexes local or managed directories of GLSL include files for AI grounding.
 | --- | --- |
 | <a id="outputiframeaitools-kt--exposeoutputiframetools"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">exposeOutputIframeTools</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">channel</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BoxTool</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ai/tools/OutputIframeAiTools/#L49) | Opt this box's named output iframe into AI4's tool catalogue for this document. |
 
+## PresentationTools.kt { #presentationtools-kt }
+
+`src/jvmMain/kotlin/afield/ai/tools/PresentationTools.kt` — [read the source](source/jvmMain/afield/ai/tools/PresentationTools/)
+
+### PresentationReadRequest { #presentationtools-kt-presentationreadrequest }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PresentationReadRequest</span><span class="p">(</span><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;files/talk.slides.json&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">slideId</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">limit</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/PresentationTools/#L14)
+
+### PresentationWriteSlideRequest { #presentationtools-kt-presentationwritesliderequest }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PresentationWriteSlideRequest</span><span class="p">(</span><span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">slide</span><span class="p">:</span> <span class="nc">PresentationSlide</span><span class="p">,</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;files/talk.slides.json&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">afterId</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/PresentationTools/#L18)
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="presentationtools-kt--presentationwritesliderequest--path"></a><code class="highlight"><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### PresentationInspectRequest { #presentationtools-kt-presentationinspectrequest }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PresentationInspectRequest</span><span class="p">(</span><span class="k">val</span> <span class="n">unused</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/PresentationTools/#L23)
+
+### PresentationControlRequest { #presentationtools-kt-presentationcontrolrequest }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PresentationControlRequest</span><span class="p">(</span><span class="k">val</span> <span class="n">hostUid</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">command</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/PresentationTools/#L27)
+
+### PresentationOutlineEntry { #presentationtools-kt-presentationoutlineentry }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PresentationOutlineEntry</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">section</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">cues</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/PresentationTools/#L29)
+
+### PresentationEditResult { #presentationtools-kt-presentationeditresult }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PresentationEditResult</span><span class="p">(</span><span class="k">val</span> <span class="n">success</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">outline</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PresentationOutlineEntry</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">slide</span><span class="p">:</span> <span class="nc">PresentationSlide</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">totalSlides</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">nextOffset</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/PresentationTools/#L30)
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="presentationtools-kt--presentationeditresult--outline"></a><code class="highlight"><span class="k">val</span> <span class="n">outline</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PresentationOutlineEntry</span><span class="p">&gt;</span></code> |  |
+| <a id="presentationtools-kt--presentationeditresult--totalslides"></a><code class="highlight"><span class="k">val</span> <span class="n">totalSlides</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+
+### PresentationTools { #presentationtools-kt-presentationtools }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">PresentationTools</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">readOnly</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">session</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/PresentationTools/#L35)
+
+One document's authoring surface; shared by chat providers and the backdoor registry.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="presentationtools-kt--presentationtools--read"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">read</span><span class="p">(</span><span class="n">req</span><span class="p">:</span> <span class="nc">PresentationReadRequest</span><span class="p">)</span><span class="p">:</span> <span class="nc">PresentationEditResult</span></code>](source/jvmMain/afield/ai/tools/PresentationTools/#L47) |  |
+| <a id="presentationtools-kt--presentationtools--write"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">write</span><span class="p">(</span><span class="n">req</span><span class="p">:</span> <span class="nc">PresentationWriteSlideRequest</span><span class="p">)</span><span class="p">:</span> <span class="nc">PresentationEditResult</span></code>](source/jvmMain/afield/ai/tools/PresentationTools/#L52) |  |
+| <a id="presentationtools-kt--presentationtools--inspect"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">inspect</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span></code>](source/jvmMain/afield/ai/tools/PresentationTools/#L77) |  |
+| <a id="presentationtools-kt--presentationtools--control"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">control</span><span class="p">(</span><span class="n">req</span><span class="p">:</span> <span class="nc">PresentationControlRequest</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span></code>](source/jvmMain/afield/ai/tools/PresentationTools/#L81) |  |
+
 ## StateTools.kt { #statetools-kt }
 
 The AI4 tools that list, read, show and fork the saved histories of a document, over the same providers the States browser shows a person.
@@ -4661,6 +4760,8 @@ and [`StateToolResult`](machine-learning.md#statetools-kt-statetoolresult) is th
 offered only by a history that reports `canFork`.
 
 `src/jvmMain/kotlin/afield/ai/tools/StateTools.kt` — [read the source](source/jvmMain/afield/ai/tools/StateTools/)
+
+**Used in:** [AI4's built-in tools](../ai4_tools.md)
 
 ### StateListRequest { #statetools-kt-statelistrequest }
 
@@ -4844,6 +4945,8 @@ keeps nullable arguments optional. `AgentToolSchemaTest` checks that OpenAI acce
 schema of every registered tool.
 
 `src/jvmMain/kotlin/afield/ai/tools/Tools.kt` — [read the source](source/jvmMain/afield/ai/tools/Tools/)
+
+**Used in:** [AI4's built-in tools](../ai4_tools.md)
 
 ### Top-level functions { #tools-kt-functions }
 

@@ -200,12 +200,32 @@ function has(target, key) {
         return /*!(key in window) && */!(key in __superglobal) /*&& key in target*/
 }
 
-function get(target, key) {
-        // console.log("GET, ", target, key, key in __superglobal)
-        // if (key in window) return window[key]
-        if (key in __superglobal) return __superglobal[key]
+// Browser globals a box reads through the sandbox (`setTimeout`, `fetch`, `JSON`, `AFRAME`...).
+// `has` claims every name so that assignments land in the box's own sandbox, which used to hide
+// every window global not listed in __superglobal: `setTimeout(...)` was "not a function".
+// Plain functions (lower-case name: setTimeout, fetch, requestAnimationFrame) are bound to window,
+// because a call found through `with` gets the sandbox proxy as `this`, which the browser rejects
+// as an illegal invocation. Constructors and namespaces (Date, JSON, THREE) are returned as they
+// are, so `Date.now()` and `new THREE.Vector3()` keep their static members.
+const __sandboxBoundGlobals = new Map()
 
-        return target[key]
+function __sandboxGlobal(key) {
+        if (typeof (key) !== "string") return undefined
+        const value = window[key]
+        if (typeof (value) !== "function" || !/^[a-z]/.test(key)) return value
+        let bound = __sandboxBoundGlobals.get(key)
+        if (!bound || bound.__fieldOriginal !== value) {
+                bound = value.bind(window)
+                bound.__fieldOriginal = value
+                __sandboxBoundGlobals.set(key, bound)
+        }
+        return bound
+}
+
+function get(target, key) {
+        if (key in __superglobal) return __superglobal[key]
+        if (key in target) return target[key]
+        return __sandboxGlobal(key)
 }
 
 function set(target, key, value) {
@@ -249,10 +269,9 @@ function runInSandbox(uid, code) {
 
 
 function compileCode_generator(src) {
-        const srcWrap = '__map__ = function*(){console.log("inside inner trampoline function, with sandbox", __sandbox_id__); with (__sandbox__) {' + src + '\n}}'
+        const srcWrap = '__map__ = function*(){with (__sandbox__) {' + src + '\n}}'
 
         return function (sandbox) {
-                console.log(" inside trampoline function, with sandbox ", sandbox)
                 if (sandbox) {
                         if (!sandboxProxies.has(sandbox)) {
                                 const sandboxTarget = {}

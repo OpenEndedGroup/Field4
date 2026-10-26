@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-215 source file(s), 684 public symbol(s), 301 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+216 source file(s), 686 public symbol(s), 302 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -321,7 +321,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L887) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L899) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -610,6 +610,20 @@ Guards the invariants that motivated generating both façades from one binding m
 | Declaration | Summary |
 | --- | --- |
 | <a id="kotlinjsbindingparitysmoketest-kt--kotlinjsbindingparitysmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/KotlinJsBindingParitySmokeTest/#L26) |  |
+
+## KotlinJsBoxSurfaceSmokeTest.kt { #kotlinjsboxsurfacesmoketest-kt }
+
+`src/jvmMain/kotlin/afield/examples/KotlinJsBoxSurfaceSmokeTest.kt` — [read the source](source/jvmMain/afield/examples/KotlinJsBoxSurfaceSmokeTest/)
+
+### KotlinJsBoxSurfaceSmokeTest { #kotlinjsboxsurfacesmoketest-kt-kotlinjsboxsurfacesmoketest }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">KotlinJsBoxSurfaceSmokeTest</span></code>](source/jvmMain/afield/examples/KotlinJsBoxSurfaceSmokeTest/#L32)
+
+The Kotlin→JS half of `dev_docs/REMOTEJS_BOX_PARITY.md`: a `// {{ remoteAR }}` box compiles against `display`, `slider`, `checkbox` and `setTimeout` (bound to the head's field.js globals), and an exception thrown inside the Kotlin stdlib maps, through the module's source map, to the editor line of the box's own code rather than to the generated JavaScript line (an inline stdlib function marks the line that called the user function it was expanded into). The compiled module runs in Node with stand-ins for the head's globals and a real stack.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="kotlinjsboxsurfacesmoketest-kt--kotlinjsboxsurfacesmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/KotlinJsBoxSurfaceSmokeTest/#L34) |  |
 
 ## KotlinJsCompletionSpikeTest.kt { #kotlinjscompletionspiketest-kt }
 

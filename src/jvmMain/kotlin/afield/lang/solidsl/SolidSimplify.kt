@@ -50,7 +50,7 @@ package afield.lang.solidsl
  *
  * Every rule is checked by sampling: `SolidSLSimplifyTest` asserts that the simplified expression's
  * field agrees with the original's at thousands of points, for every rule and every combination it
- * has. A simplifier that quietly changes the shape is the worst thing in this package, so it is the
+ * has. A rewrite that changes the shape is the failure this file exists to rule out, so it is the
  * most heavily sampled.
  */
 

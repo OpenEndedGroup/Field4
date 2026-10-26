@@ -17,6 +17,7 @@ import afield.app.protocol.HistoryBoxActivity
 import afield.app.protocol.HistoryDiffStats
 import afield.app.protocol.HistoryScreenshotRef
 import afield.app.protocol.payload
+import afield.app.server.ReadOnlyDocuments
 import afield.audio.synth.*
 import afield.data.table.ref
 import afield.document.graph.box
@@ -246,6 +247,7 @@ object HistoryMetrics {
         height: Int = 0,
         timestamp: Long = System.currentTimeMillis()
     ): HistoryScreenshotRef? {
+        if (refuseReadOnlyWrite(documentPath, "storeScreenshotDataUrl")) return null
         val startedAt = System.nanoTime()
         var decodeMs = 0L
         var writeMs = 0L
@@ -331,6 +333,7 @@ object HistoryMetrics {
         height: Int = 0,
         extension: String = "png"
     ): Pair<File, HistoryScreenshotRef>? {
+        if (refuseReadOnlyWrite(documentPath, "reserveScreenshotFile")) return null
         if (versionIndex < 0) return null
         val safeChannel = sanitizeChannel(channel)
         val safeExtension = sanitizeScreenshotExtension(extension)
@@ -458,6 +461,7 @@ object HistoryMetrics {
     }
 
     private fun saveRecords(documentPath: String, records: List<MetricRecord>) {
+        if (refuseReadOnlyWrite(documentPath, "saveRecords")) return
         val payload = linkedMapOf<String, Any?>(
             "version" to 1,
             "records" to records.map(::recordToMap)
@@ -465,6 +469,12 @@ object HistoryMetrics {
         val file = metricsFile(documentPath)
         file.parentFile?.mkdirs()
         file.safeSave(Edn.write(payload, Edn.CustomTypes()), maxBackups = 10)
+    }
+
+    private fun refuseReadOnlyWrite(documentPath: String, producer: String): Boolean {
+        if (!ReadOnlyDocuments.blocksWritesTo(documentPath)) return false
+        ReadOnlyDocuments.refuseWrite("HistoryMetrics.$producer", documentPath)
+        return true
     }
 
     private fun recordFromAny(value: Any?): MetricRecord? {
