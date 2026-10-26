@@ -6,6 +6,27 @@ import java.util.concurrent.atomic.AtomicLong
 import kotlinx.serialization.Serializable
 
 /**
+ * Field's server-side latency instrument: a ring of 8192 named spans covering the waits a person
+ * notices, readable over HTTP while the host runs. A span carries a sequence number, a name, a
+ * start in epoch microseconds, a duration, the thread, and optionally the box it belongs to and a
+ * detail string. The names are a flat dotted vocabulary owned by the call sites, grouped by prefix
+ * into `engine.`, `kotlin.`, `shader.`, `pipeline.`, `renderer.`, `execute.` and `transcript.`, as
+ * in `engine.bootstrap`, `kotlin.compile` and `renderer.toFirstFrame`.
+ *
+ * Start times are absolute rather than relative to the host's own start, because whatever reads them
+ * is a different process. [LatencySpans] anchors `nanoTime` against the wall clock once, keeping the
+ * tightest of sixteen reads, and every span converts through that anchor. A [LatencySpans.Snapshot]
+ * also reports this clock's own now, so a client can measure its offset instead of assuming none,
+ * and how many spans the ring dropped since the sequence number the client asked from.
+ *
+ * `tools/feel_bench.py` is the consumer this exists for. It records what a client waited for, then
+ * asks which server phases ran inside that wait, so a slower first run can be attributed to
+ * compilation rather than to round-trip or UI time; `dev_docs/testing/FEEL_BENCHMARKS.md` is that
+ * harness's guide. Time new work by wrapping it in [LatencySpans.time], or by calling
+ * [LatencySpans.record] with a `nanoTime` taken earlier where the work does not nest in a block.
+ */
+
+/**
  * Wall-clock spans for the moments a user waits on: building and bootstrapping a box's Kotlin
  * engine, compiling and evaluating a snippet, a whole `execute-all`/`launch-all` up to its verdict,
  * compiling a shader, creating a pipeline.

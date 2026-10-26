@@ -7,6 +7,30 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * The shared box and the persistent preferences a workspace project gives every document in it. The
+ * folder side of a project lives in `dir.kt`: a directory under the workspace's `_projects/` with a
+ * `contents.edn` membership list, a `preferences.json` and a `files/` folder, listed by
+ * `listWorkspaceProjects`. This file is the part of it that is live in a running host. Each
+ * [WorkspaceProjectScope] owns an invisible [Box] whose id is `project:` followed by a hash of the
+ * project directory, and `attachRootToMetaroot` parents a document's root box beneath the scopes it
+ * belongs to instead of directly beneath the global metaroot. A property set on that box is
+ * therefore inherited by every box in every document of the project, which is how a kit shares
+ * settings and runtime objects between its documents.
+ *
+ * From box code `projectScopes()` is the way in: `projectScopes().single().setPreference("theme",
+ * "dark")` writes a preference that outlives the host, and [WorkspaceProjectScope.preferences]
+ * reads a snapshot of them back. A project box never reaches a document's `metadata.edn`, because
+ * persistence filters it and the metaroot out of the saved `parents` and `children`. A document
+ * whose project is absent attaches to the metaroot instead, with nothing dangling in its saved
+ * graph.
+ *
+ * [WorkspaceProjectScopes] keeps one scope per project directory for the life of the host, so two
+ * documents in one project see the same box identity rather than two copies of it. Documents
+ * created by [KitInstances.create] land in a `kit-<id>` project and ordinarily have exactly one
+ * scope, but nothing stops a document from belonging to several.
+ */
+
 /** One workspace project's shared parent, persistent preferences and shared files. */
 class WorkspaceProjectScope internal constructor(val directory: File) {
     private val mapper = jacksonObjectMapper()
