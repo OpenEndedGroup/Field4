@@ -119,9 +119,9 @@ class FieldRTTStreamer(
     /**
      * Tag each submitted frame with the pose [target] last latched.
      *
-     * This is the whole point of the latch in [afield.graphics.vulkan.targets.SideBySideStereoTarget]: the pose the eye
-     * passes drew from is still recorded when the encoded frame is handed over, so the two travel together instead of
-     * the head having to guess how old the image is.
+     * The latch in [afield.graphics.vulkan.targets.SideBySideStereoTarget] is what makes this possible: the pose the
+     * eye passes drew from is still recorded when the encoded frame is handed over, so the two travel together
+     * instead of the head having to guess how old the image is.
      */
     fun tagPosesFrom(target: afield.graphics.vulkan.targets.SideBySideStereoTarget) {
         poseTag = {
@@ -432,8 +432,7 @@ class FieldRTTStreamer(
  * The head pose a streamed frame was rendered from, as the media wire carries it.
  *
  * [displayTimeNanos] is the **head's own** clock, because that is the only clock the receiver can use it in: it hands
- * the value straight to `queryDeviceAnchor(atTimestamp:)`. It is deliberately not the same quantity as the wire's
- * `ptsMicros`, which the producer stamps on an ideal cadence grid so the receiver has something regular to schedule
- * against.
+ * the value straight to `queryDeviceAnchor(atTimestamp:)`. It is a different quantity from the wire's `ptsMicros`,
+ * which the producer stamps on an ideal cadence grid so the receiver has something regular to schedule against.
  */
 data class StreamPose(val frameId: Long, val displayTimeNanos: Long)

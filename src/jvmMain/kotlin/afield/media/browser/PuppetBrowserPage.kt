@@ -51,8 +51,8 @@ fun PuppetBrowserControl.texts(
 
 /**
  * One attribute of the single element matching [selector]; null when either the element or the
- * attribute is absent. Deliberately the *attribute* and not the property: `href` here is what the
- * markup says, not the absolute URL Chromium resolved it to.
+ * attribute is absent. This reads the *attribute* rather than the DOM property, so `href` comes
+ * back as the markup wrote it and not as the absolute URL Chromium resolved it to.
  */
 fun PuppetBrowserControl.attribute(
     selector: String,
@@ -80,9 +80,9 @@ fun PuppetBrowserControl.count(
 /** A table's header cells and body rows, exactly as they were laid out. */
 data class PuppetPageTable(val header: List<String>, val rows: List<List<String>>) {
     /**
-     * Column [index] of every row as a number, with a cell that is not one becoming null rather
-     * than zero — a missing reading and a reading of zero are different facts, and a plot that
-     * cannot tell them apart is the reason this does not default.
+     * Column [index] of every row as a number; a cell that is not a number becomes null rather
+     * than zero, so a missing reading stays distinguishable from a reading of zero. Commas are
+     * stripped before parsing, so `1,024` reads as 1024.
      */
     fun numbers(index: Int): List<Double?> = rows.map { row ->
         row.getOrNull(index)?.replace(",", "")?.trim()?.toDoubleOrNull()
@@ -107,9 +107,10 @@ data class PuppetPageTable(val header: List<String>, val rows: List<List<String>
  * The table matching [selector], as a header and rows of trimmed cell text.
  *
  * The header is `thead`'s first row when there is one, otherwise the table's first row if every
- * cell in it is a `th`; each remaining `tr` becomes a row. No attempt is made at `colspan`, and
- * that is deliberate — a spanning cell has no single honest position in a rectangle, and quietly
- * guessing one is how a chart ends up plotting the wrong column.
+ * cell in it is a `th`; each remaining `tr` becomes a row. `colspan` is ignored: a spanning cell
+ * contributes one cell like any other, so a row containing one comes back shorter than the header
+ * and every cell after it sits under the wrong column name. Split such a table in the page, or
+ * read its rows by position rather than by header.
  */
 fun PuppetBrowserControl.table(
     selector: String,
