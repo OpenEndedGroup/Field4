@@ -208,6 +208,14 @@ headless, since the drawing is data on the server and needs no window. See
 
 [Open ↗](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn)
 
+### offline_viewer_demo
+
+Three boxes show a small flock, an SVG chart, and the drawing layer around them. Each box has notes;
+run `sketch` in Field to replace its frame, arrow, heading and underline. The saved drawing also
+appears in the offline viewer before any box runs. CPU only. See [Drawing and Notation](drawing_and_notation.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/offline_viewer_demo/metadata.edn)
+
 ### notation_elements
 
 The `notation` API end to end, in five boxes. `elements` draws one of every kind of mark from code

@@ -67,8 +67,10 @@ object PolyvectorLibrary : NativeGeometryCapability {
     override val isAvailable: Boolean get() = resolvedPath != null
 
     val HOW_TO_BUILD: String
-        get() = "Build it with `./gradlew buildPolyvectorNative` (needs cmake and a C++17 compiler, no other " +
-            "dependencies), or point -Dafield.polyvector.library / AFIELD_POLYVECTOR_LIBRARY at a $fileName."
+        get() = "Build it with `./gradlew buildPolyvectorNative` (needs cmake, a C++17 compiler, OpenCV, " +
+            "Boost and Eigen; macOS: `brew install cmake opencv boost eigen`; Debian/Ubuntu: " +
+            "`sudo apt install build-essential cmake libopencv-dev libboost-dev libeigen3-dev`), " +
+            "or point -Dafield.polyvector.library / AFIELD_POLYVECTOR_LIBRARY at a $fileName."
 
     override fun describe(): String = resolvedPath?.let {
         runCatching { "polyvector: ${PolyvectorNative.version()} at $it" }
