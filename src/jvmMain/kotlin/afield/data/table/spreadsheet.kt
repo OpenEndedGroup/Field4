@@ -232,7 +232,9 @@ data class SpreadsheetSnapshot(
     val colWidths: List<Int>,
     val rowHeights: List<Int>,
     val cells: List<SpreadsheetCellSnapshot>,
-    val version: Long
+    val version: Long,
+    /** When the sheet has assertions over variable cells: what the last solve did, in one line. */
+    val solve: String? = null
 )
 
 fun SpreadsheetStoredState.cell(ref: String): SpreadsheetStoredCell? {
@@ -405,6 +407,49 @@ object SpreadsheetEvalHelpers {
     @JvmStatic
     fun box(ref: String): SpreadsheetBoxBinding = runtime().box(ref)
 
+    /**
+     * `=free(3)`: this cell is a variable the sheet may solve for, currently 3. The number inside is its
+     * previous value, which the sheet prefers to keep; a solve writes the new value back into the formula.
+     */
+    @JvmStatic
+    fun free(initial: Any?): SpreadsheetScalar = SpreadsheetScalar(runtime().declareFree(num(initial)))
+
+    /** An assertion between two values; see [SpreadsheetScalar.eq]. */
+    @JvmStatic
+    fun assertThat(relation: SpreadsheetRelation, left: Any?, right: Any?): SpreadsheetAssertion {
+        val (lv, le) = spreadsheetTracedOperand(left)
+            ?: error("${relation.name.lowercase()} needs numbers, found '${SpreadsheetScalar(left)}'")
+        val (rv, re) = spreadsheetTracedOperand(right)
+            ?: error("${relation.name.lowercase()} needs numbers, found '${SpreadsheetScalar(right)}'")
+        val assertion = SpreadsheetAssertion(relation, lv, rv, le, re)
+        currentRuntime.get()?.registerAssertion(assertion)
+        return assertion
+    }
+
+    /** [sum], keeping the trace when any term comes from a variable cell. */
+    @JvmStatic
+    fun total(values: Any?): SpreadsheetScalar {
+        val flat = flattenAny(values).filterNot { it == null || it == "" }
+        if (flat.none { unwrapSpreadsheetValue(it) is SpreadsheetTraced }) return SpreadsheetScalar(sum(values))
+        return SpreadsheetScalar(flat.fold(0.0 as Any?) { acc, v -> SpreadsheetDynamicRegistry.binary(SpreadsheetBinaryOp.ADD, acc, v) })
+    }
+
+    internal fun scalarOrNull(value: Any?): Double? = SpreadsheetDynamicRegistry.scalar(value)
+
+    // The math a formula can call. Each keeps the trace when its argument comes from a variable cell,
+    // so an assertion over `sqrt(A1)` can still move A1; over plain numbers it is plain arithmetic.
+    @JvmStatic fun sqrt(x: Any?): SpreadsheetScalar = spreadsheetTracedUnary(x, { kotlin.math.sqrt(it) }, { afield.math.optimization.ceres.sqrt(it) })
+    @JvmStatic fun abs(x: Any?): SpreadsheetScalar = spreadsheetTracedUnary(x, { kotlin.math.abs(it) }, { afield.math.optimization.ceres.abs(it) })
+    @JvmStatic fun exp(x: Any?): SpreadsheetScalar = spreadsheetTracedUnary(x, { kotlin.math.exp(it) }, { afield.math.optimization.ceres.exp(it) })
+    @JvmStatic fun ln(x: Any?): SpreadsheetScalar = spreadsheetTracedUnary(x, { kotlin.math.ln(it) }, { afield.math.optimization.ceres.ln(it) })
+    @JvmStatic fun sin(x: Any?): SpreadsheetScalar = spreadsheetTracedUnary(x, { kotlin.math.sin(it) }, { afield.math.optimization.ceres.sin(it) })
+    @JvmStatic fun cos(x: Any?): SpreadsheetScalar = spreadsheetTracedUnary(x, { kotlin.math.cos(it) }, { afield.math.optimization.ceres.cos(it) })
+    @JvmStatic fun tan(x: Any?): SpreadsheetScalar = spreadsheetTracedUnary(x, { kotlin.math.tan(it) }, { afield.math.optimization.ceres.tan(it) })
+    @JvmStatic fun atan2(y: Any?, x: Any?): SpreadsheetScalar =
+        spreadsheetTracedBinaryFn(y, x, { a, b -> kotlin.math.atan2(a, b) }, { a, b -> afield.math.optimization.ceres.atan2(a, b) })
+    @JvmStatic fun pow(x: Any?, p: Any?): SpreadsheetScalar =
+        spreadsheetTracedBinaryFn(x, p, { a, b -> Math.pow(a, b) }, { a, b -> afield.math.optimization.ceres.pow(a, b) })
+
     @JvmStatic
     val self: SpreadsheetBoxBinding
         get() = runtime().self()
@@ -454,7 +499,7 @@ object SpreadsheetEvalHelpers {
     @JvmStatic
     fun num(value: Any?): Double = SpreadsheetDynamicRegistry.requireScalar(value)
 
-    private fun flattenAny(value: Any?): List<Any?> = when (value) {
+    internal fun flattenAny(value: Any?): List<Any?> = when (value) {
         null -> emptyList()
         is SpreadsheetScalar -> flattenAny(value.raw)
         is Iterable<*> -> value.flatMap { flattenAny(it) }
@@ -481,7 +526,7 @@ private fun unwrapSpreadsheetValue(value: Any?): Any? = when (value) {
     else -> value
 }
 
-private enum class SpreadsheetBinaryOp(val symbol: String) {
+internal enum class SpreadsheetBinaryOp(val symbol: String) {
     ADD("+"),
     SUBTRACT("-"),
     MULTIPLY("*"),
@@ -631,7 +676,23 @@ private object SpreadsheetDynamicRegistry {
     private val vec4Rules = mutableListOf<CoercionRule<Vec4>>()
 
     init {
+        registerTracedRules()
         registerBuiltins()
+    }
+
+    // First, so a number computed from a variable cell keeps its trace through + - * /. A list or a
+    // vector on either side is not a scalar operand, so it falls through to the broadcast rules, which
+    // come back here per element.
+    private fun registerTracedRules() {
+        registerScalar("traced") { value -> (value as? SpreadsheetTraced)?.value }
+        SpreadsheetBinaryOp.entries.forEach { op ->
+            registerBinary(
+                op,
+                "traced",
+                { left, right -> left is SpreadsheetTraced || right is SpreadsheetTraced },
+                { left, right -> spreadsheetTracedBinary(op, left, right) ?: fallbackBinary(op, left, right) }
+            )
+        }
     }
 
     fun binary(op: SpreadsheetBinaryOp, left: Any?, right: Any?): Any? {
@@ -1069,6 +1130,7 @@ class SpreadsheetScalar internal constructor(val raw: Any?) : Comparable<Any?> {
 
     operator fun unaryMinus(): SpreadsheetScalar {
         val value = unwrapSpreadsheetValue(raw)
+        if (value is SpreadsheetTraced) return SpreadsheetScalar(SpreadsheetTraced(-value.value, -value.expr))
         return when (spreadsheetActualVectorDimension(value)) {
             2 -> SpreadsheetScalar(Vec2(SpreadsheetDynamicRegistry.requireVec2(value)).mul(-1f))
             3 -> SpreadsheetScalar(Vec3(SpreadsheetDynamicRegistry.requireVec3(value)).mul(-1f))
@@ -1078,6 +1140,19 @@ class SpreadsheetScalar internal constructor(val raw: Any?) : Comparable<Any?> {
     }
 
     operator fun unaryPlus(): SpreadsheetScalar = this
+
+    /** Assert `this == other`. In a cell: `=A3 eq 10`. Over a variable cell, the sheet solves for it. */
+    infix fun eq(other: Any?): SpreadsheetAssertion = SpreadsheetEvalHelpers.assertThat(SpreadsheetRelation.EQ, raw, otherValue(other))
+
+    /** Assert `this <= other`; see [eq]. */
+    infix fun le(other: Any?): SpreadsheetAssertion = SpreadsheetEvalHelpers.assertThat(SpreadsheetRelation.LE, raw, otherValue(other))
+
+    /** Assert `this >= other`; see [eq]. */
+    infix fun ge(other: Any?): SpreadsheetAssertion = SpreadsheetEvalHelpers.assertThat(SpreadsheetRelation.GE, raw, otherValue(other))
+
+    fun toDouble(): Double = d
+    fun toInt(): Int = d.toInt()
+    fun toLong(): Long = d.toLong()
 
     override fun compareTo(other: Any?): Int {
         val left = unwrapSpreadsheetValue(raw)
@@ -1168,9 +1243,22 @@ internal class SpreadsheetRuntime(
     private val currentBox: Box,
     /** The cell and range references the formula's compiled template reads, by position. */
     internal val refs: List<String> = emptyList(),
+    /** The cell being evaluated, `row:col`, and its input; with [constraints], what `free(...)` needs. */
+    private val cellKey: String? = null,
+    private val cellInput: String? = null,
+    private val constraints: SheetConstraintCollector? = null,
     private val evaluateRef: (CellCoord) -> Any?
 ) {
     private val boxDependencies = linkedSetOf<SpreadsheetBoxDependency>()
+
+    fun declareFree(initial: Double): Any {
+        val collector = constraints ?: return initial
+        return collector.declare(cellKey ?: error("free(...) needs a cell"), cellInput.orEmpty(), initial)
+    }
+
+    fun registerAssertion(assertion: SpreadsheetAssertion) {
+        constraints?.assert(cellKey, assertion)
+    }
 
     fun cell(ref: String): SpreadsheetScalar {
         val coord = cellRefToCoord(ref) ?: error("Unknown cell reference '$ref'")
@@ -1323,7 +1411,7 @@ private class SpreadsheetEvaluator(private val cachePrefix: String) {
             fun range(ref: String) = afield.data.table.SpreadsheetEvalHelpers.range(ref)
             fun box(ref: String) = afield.data.table.SpreadsheetEvalHelpers.box(ref)
             fun __ref(index: Int) = afield.data.table.SpreadsheetEvalHelpers.ref(index)
-            fun sum(vararg values: Any?) = afield.data.table.SpreadsheetEvalHelpers.sum(values.toList())
+            fun sum(vararg values: Any?) = afield.data.table.SpreadsheetEvalHelpers.total(values.toList())
             fun product(vararg values: Any?) = afield.data.table.SpreadsheetEvalHelpers.product(values.toList())
             fun avg(vararg values: Any?) = afield.data.table.SpreadsheetEvalHelpers.avg(values.toList())
             fun mean(vararg values: Any?) = afield.data.table.SpreadsheetEvalHelpers.mean(values.toList())
@@ -1332,19 +1420,23 @@ private class SpreadsheetEvaluator(private val cachePrefix: String) {
             fun count(vararg values: Any?) = afield.data.table.SpreadsheetEvalHelpers.count(values.toList())
             fun nonEmpty(vararg values: Any?) = afield.data.table.SpreadsheetEvalHelpers.nonEmpty(values.toList())
             fun num(value: Any?) = afield.data.table.SpreadsheetEvalHelpers.num(value)
-            fun sqrt(x: Any?) = kotlin.math.sqrt(num(x))
-            fun abs(x: Any?) = kotlin.math.abs(num(x))
+            fun free(x: Any?) = afield.data.table.SpreadsheetEvalHelpers.free(x)
+            fun sqrt(x: Any?) = afield.data.table.SpreadsheetEvalHelpers.sqrt(x)
+            fun abs(x: Any?) = afield.data.table.SpreadsheetEvalHelpers.abs(x)
             fun round(x: Any?) = kotlin.math.round(num(x))
             fun floor(x: Any?) = kotlin.math.floor(num(x))
             fun ceil(x: Any?) = kotlin.math.ceil(num(x))
-            fun exp(x: Any?) = kotlin.math.exp(num(x))
-            fun ln(x: Any?) = kotlin.math.ln(num(x))
+            fun exp(x: Any?) = afield.data.table.SpreadsheetEvalHelpers.exp(x)
+            fun ln(x: Any?) = afield.data.table.SpreadsheetEvalHelpers.ln(x)
             fun log10(x: Any?) = kotlin.math.log10(num(x))
-            fun sin(x: Any?) = kotlin.math.sin(num(x))
-            fun cos(x: Any?) = kotlin.math.cos(num(x))
-            fun tan(x: Any?) = kotlin.math.tan(num(x))
-            fun atan2(y: Any?, x: Any?) = kotlin.math.atan2(num(y), num(x))
-            fun pow(x: Any?, p: Any?) = Math.pow(num(x), num(p))
+            fun sin(x: Any?) = afield.data.table.SpreadsheetEvalHelpers.sin(x)
+            fun cos(x: Any?) = afield.data.table.SpreadsheetEvalHelpers.cos(x)
+            fun tan(x: Any?) = afield.data.table.SpreadsheetEvalHelpers.tan(x)
+            fun atan2(y: Any?, x: Any?) = afield.data.table.SpreadsheetEvalHelpers.atan2(y, x)
+            fun pow(x: Any?, p: Any?) = afield.data.table.SpreadsheetEvalHelpers.pow(x, p)
+            infix fun Number.eq(other: Any?) = afield.data.table.spreadsheetValue(this).eq(other)
+            infix fun Number.le(other: Any?) = afield.data.table.spreadsheetValue(this).le(other)
+            infix fun Number.ge(other: Any?) = afield.data.table.spreadsheetValue(this).ge(other)
             val formula: () -> Any? = {
                 val self = afield.data.table.SpreadsheetEvalHelpers.self
                 try {
@@ -1372,6 +1464,10 @@ private class SpreadsheetDocument(
     private var cachedEvalCells: Map<String, EvalCell> = emptyMap()
     private var lastExternalBoxDeps: Set<SpreadsheetBoxDependency> = emptySet()
     private var lastObservedExternalValues: Map<SpreadsheetBoxDependency, String> = emptyMap()
+    // The variable cells' inputs as the last solve left them. A variable whose input differs now was
+    // edited since, and is held at edit strength. Survives reloadFromBox, so an edit made by writing
+    // the property (editSpreadsheet with no open sheet, a sidecar edit) counts as an edit too.
+    private var lastSolvedInputs: Map<String, String> = emptyMap()
     val subscribers: MutableSet<SpreadsheetClient> = CopyOnWriteArraySet()
 
     fun hasSubscribers(): Boolean = subscribers.isNotEmpty()
@@ -1411,7 +1507,12 @@ private class SpreadsheetDocument(
                 if (forceRecompute) version += 1
                 cachedSnapshot = computeSnapshot(box, info)
             }
-            return cachedEvalCells["${coord.row}:${coord.col}"]?.value ?: ""
+            // A variable cell, or a formula over one, reads as its number from outside the sheet.
+            return when (val value = cachedEvalCells["${coord.row}:${coord.col}"]?.value) {
+                null -> ""
+                is SpreadsheetTraced -> value.value
+                else -> value
+            }
         }
     }
 
@@ -1449,13 +1550,27 @@ private class SpreadsheetDocument(
         version += 1
     }
 
-    private fun computeSnapshot(box: Box, info: SessionInformation): SpreadsheetSnapshot {
+    private fun computeSnapshot(box: Box, info: SessionInformation, allowSolve: Boolean = true, solved: SheetSolveOutcome? = null): SpreadsheetSnapshot {
         val cellInputs = mutableMapOf<String, String>()
         storedState.cells.forEach { cell ->
             if (cell.row in 0 until storedState.rows && cell.col in 0 until storedState.cols) {
                 cellInputs["${cell.row}:${cell.col}"] = cell.input
             }
         }
+        // Typing a plain number over a variable cell edits the variable rather than replacing it.
+        if (allowSolve) {
+            val retyped = cellInputs.filter { (k, input) ->
+                lastSolvedInputs[k] != null && input.trim().toDoubleOrNull() != null
+            }
+            if (retyped.isNotEmpty()) {
+                retyped.forEach { (k, input) -> cellInputs[k] = freeCellInput(input.trim().toDouble()) }
+                storedState = writeStoredSpreadsheetState(box, key.property, storedState.copy(cells = storedState.cells.map { c ->
+                    cellInputs["${c.row}:${c.col}"]?.let { c.copy(input = it) } ?: c
+                }))
+                persistedJson = encodeStoredSpreadsheetState(storedState)
+            }
+        }
+        val constraints = SheetConstraintCollector()
 
         val memo = mutableMapOf<String, EvalCell>()
         // The chain of formulas being evaluated, innermost last, so a cycle can name every cell in it.
@@ -1500,7 +1615,7 @@ private class SpreadsheetDocument(
                 } else {
                     val refs = mutableListOf<String>()
                     val rewritten = rewriteSpreadsheetFormula(expr, refs)
-                    val runtime = SpreadsheetRuntime(info, box, refs) { coord ->
+                    val runtime = SpreadsheetRuntime(info, box, refs, keyString, input, constraints) { coord ->
                         if (coord.row !in 0 until storedState.rows || coord.col !in 0 until storedState.cols) {
                             error("Cell ${cellLabel(coord.row, coord.col)} is outside the sheet")
                         }
@@ -1521,7 +1636,11 @@ private class SpreadsheetDocument(
                     } else {
                         EvalCell(
                             input = input,
-                            type = "formula",
+                            type = when {
+                                constraints.isVariable(keyString) -> "variable"
+                                evalResult.value is SpreadsheetAssertion -> "assertion"
+                                else -> "formula"
+                            },
                             value = evalResult.value,
                             display = formatSpreadsheetValue(evalResult.value),
                             errorDetail = null,
@@ -1544,6 +1663,12 @@ private class SpreadsheetDocument(
                     evaluateCell(row, col)
                 }
             }
+        }
+
+        if (allowSolve) {
+            // Solved values are written into the variable cells; evaluate again so every cell downstream,
+            // and every assertion's verdict, reads them.
+            solveConstraints(box, constraints)?.let { return computeSnapshot(box, info, allowSolve = false, solved = it) }
         }
 
         lastExternalBoxDeps = externalDeps.toSet()
@@ -1576,8 +1701,56 @@ private class SpreadsheetDocument(
             colWidths = storedState.colWidths.map { it.toInt() },
             rowHeights = storedState.rowHeights.map { it.toInt() },
             cells = cells,
-            version = version
+            version = version,
+            solve = solved?.let { outcome ->
+                if (!outcome.ok) "solve failed: ${outcome.note ?: "unknown"}"
+                else outcome.summary(
+                    constraints.variables.size,
+                    constraints.assertions.size,
+                    constraints.assertions.count { !it.second.satisfied },
+                )
+            }
         )
+    }
+
+    /**
+     * Solve the sheet's assertions for its variable cells and write the answers back into their
+     * `=free(...)` formulas. Null when there is nothing to solve (no variable is read by an assertion);
+     * otherwise the outcome, which the re-evaluation turns into the sheet header's one-line summary.
+     */
+    private fun solveConstraints(box: Box, constraints: SheetConstraintCollector): SheetSolveOutcome? {
+        val variables = constraints.variables
+        val assertions = constraints.assertions.map { it.second }
+        val inputs = storedState.cells.associate { "${it.row}:${it.col}" to it.input }
+        val currentVariableInputs = variables.associate { it.cellKey to inputs[it.cellKey].orEmpty() }
+        if (variables.isEmpty() || assertions.none { it.traced }) {
+            lastSolvedInputs = currentVariableInputs
+            return null
+        }
+        val edited = variables.indices.filter { i ->
+            val k = variables[i].cellKey
+            lastSolvedInputs.isNotEmpty() && lastSolvedInputs[k] != currentVariableInputs[k]
+        }.toSet()
+        val outcome = SheetConstraintSolver.solve(variables.map { it.previous }.toDoubleArray(), edited, assertions)
+        if (!outcome.ok) {
+            lastSolvedInputs = currentVariableInputs
+            return outcome
+        }
+        val rewritten = mutableMapOf<String, String>()
+        variables.forEachIndexed { i, v ->
+            val next = freeCellInput(outcome.values[i])
+            val current = currentVariableInputs[v.cellKey].orEmpty()
+            val currentValue = FREE_CELL_PATTERN.find(current)?.groupValues?.get(1)?.toDoubleOrNull()
+            if (currentValue == null || freeLiteral(currentValue) != freeLiteral(outcome.values[i])) rewritten[v.cellKey] = next
+        }
+        if (rewritten.isNotEmpty()) {
+            storedState = writeStoredSpreadsheetState(box, key.property, storedState.copy(cells = storedState.cells.map { c ->
+                rewritten["${c.row}:${c.col}"]?.let { c.copy(input = it) } ?: c
+            }))
+            persistedJson = encodeStoredSpreadsheetState(storedState)
+        }
+        lastSolvedInputs = currentVariableInputs + rewritten
+        return outcome
     }
 
     private fun captureExternalDependencyFingerprints(info: SessionInformation): Map<SpreadsheetBoxDependency, String> =
@@ -2373,6 +2546,8 @@ private fun fingerprintSpreadsheetDependencyValue(value: Any?): String = when (v
 
 private fun formatSpreadsheetValue(value: Any?): String = when (value) {
     is SpreadsheetScalar -> formatSpreadsheetValue(value.raw)
+    is SpreadsheetTraced -> formatNumber(value.value)
+    is SpreadsheetAssertion -> formatAssertion(value)
     null -> ""
     is Unit -> ""
     is Quantity -> {
@@ -2411,14 +2586,23 @@ private fun isSpreadsheetScalarDisplay(value: Any?): Boolean {
     val raw = unwrapSpreadsheetValue(value)
     return when (raw) {
         null, is Unit -> true
-        is Number, is Boolean -> true
+        is Number, is Boolean, is SpreadsheetTraced -> true
         is Quantity, is Expression -> true
         is String -> raw.length <= 120
         else -> false
     }
 }
 
+private fun formatAssertion(a: SpreadsheetAssertion): String =
+    if (a.satisfied) "✓ ${formatNumber(a.left)} ${a.relation.symbol} ${formatNumber(a.right)}"
+    else "✗ ${formatNumber(a.left)} ${a.relation.symbol} ${formatNumber(a.right)} (off by ${formatNumber(a.violation).let { if (it == "0") "%.2g".format(a.violation) else it }})"
+
 private fun spreadsheetHtmlDisplay(value: Any?): String? {
+    val raw = unwrapSpreadsheetValue(value)
+    if (raw is SpreadsheetAssertion) {
+        val state = if (raw.satisfied) "ok" else "violated"
+        return "<span class=\"sheet-assertion\" data-assertion=\"$state\">${formatAssertion(raw)}</span>"
+    }
     if (isSpreadsheetScalarDisplay(value)) return null
     return try {
         ValueVisualizer.visualize(unwrapSpreadsheetValue(value))

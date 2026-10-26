@@ -888,3 +888,68 @@ private class CeresExpressionCompiler(
         return dst
     }
 }
+
+/**
+ * The free-variable blocks [this] reads, as `ExprVar.block` indices. A caller that builds expressions
+ * over a *program-wide* numbering of scalar variables (the spreadsheet does: variable `i` is
+ * `ExprVar(i, 0)`) uses this with [remapVariableBlocks] to hand each residual only the blocks it reads,
+ * which is what [CeresExpressionResidual] and Ceres require.
+ */
+internal fun CeresExpr.variableBlocksRead(): Set<Int> {
+    val out = linkedSetOf<Int>()
+    fun walk(e: CeresExpr) {
+        when (e) {
+            is ExprVar -> out += e.block
+            is ExprNode -> { walk(e.a); e.b?.let(::walk) }
+            is ExprConst, is ExprParam -> Unit
+        }
+    }
+    walk(this)
+    return out
+}
+
+/** [this] with every `ExprVar(block, c)` replaced by [replace]`(block, c)`; see [variableBlocksRead]. */
+internal fun CeresExpr.remapVariableBlocks(replace: (block: Int, component: Int) -> CeresExpr): CeresExpr = when (this) {
+    is ExprVar -> replace(block, component)
+    is ExprNode -> ExprNode(op, a.remapVariableBlocks(replace), b?.remapVariableBlocks(replace))
+    is ExprConst, is ExprParam -> this
+}
+
+/** A variable reference for [remapVariableBlocks]: component [component] of the residual's [block]-th variable. */
+internal fun ceresVariableComponent(block: Int, component: Int = 0): CeresExpr = ExprVar(block, component)
+
+/**
+ * Evaluate [this] on the JVM, with [variable] supplying free-variable components. The same arithmetic the
+ * native VM runs, for reading a residual back at a solution without a round trip. Point parameters are
+ * not supported (a sheet has none).
+ */
+internal fun CeresExpr.evaluateOnJvm(variable: (block: Int, component: Int) -> Double): Double = when (this) {
+    is ExprConst -> value
+    is ExprVar -> variable(block, component)
+    is ExprParam -> error("evaluateOnJvm does not bind point parameters")
+    is ExprNode -> {
+        val x = a.evaluateOnJvm(variable)
+        val y = b?.evaluateOnJvm(variable) ?: 0.0
+        when (op) {
+            ExprOp.ADD -> x + y
+            ExprOp.SUB -> x - y
+            ExprOp.MUL -> x * y
+            ExprOp.DIV -> x / y
+            ExprOp.NEG -> -x
+            ExprOp.SQRT -> kotlin.math.sqrt(x)
+            ExprOp.ABS -> kotlin.math.abs(x)
+            ExprOp.SIN -> kotlin.math.sin(x)
+            ExprOp.COS -> kotlin.math.cos(x)
+            ExprOp.TAN -> kotlin.math.tan(x)
+            ExprOp.EXP -> kotlin.math.exp(x)
+            ExprOp.LOG -> kotlin.math.ln(x)
+            ExprOp.POW -> Math.pow(x, y)
+            ExprOp.MIN -> kotlin.math.min(x, y)
+            ExprOp.MAX -> kotlin.math.max(x, y)
+            ExprOp.ATAN2 -> kotlin.math.atan2(x, y)
+            ExprOp.SQUARE -> x * x
+            ExprOp.RECIP -> 1.0 / x
+            ExprOp.CONST, ExprOp.PARAM, ExprOp.VAR -> error("leaf opcode $op in a node")
+        }
+    }
+}
