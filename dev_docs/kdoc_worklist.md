@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17702 of 34378 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17810 of 34378 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2241 undocumented entry points** (types, top-level functions and values) and 13721 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2137 undocumented entry points** (types, top-level functions and values) and 13717 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -17,10 +17,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [synth.kt](../src/jvmMain/kotlin/afield/audio/synth/synth.kt) | Synthesis | pure_data, sound_paths | 52 | 0 | 25% |
 | [TidalPatterns.kt](../src/jvmMain/kotlin/afield/audio/synth/TidalPatterns.kt) | Patterns | pattern_language, marf, petri_nets | 43 | 78 | 21% |
 | [Visualizers.kt](../src/jvmMain/kotlin/afield/audio/synth/Visualizers.kt) | Synthesis | visualizers | 37 | 11 | 5% |
-| [Expr.kt](../src/jvmMain/kotlin/afield/lang/fieldml/ast/Expr.kt) | Languages | fieldml_stages | 32 | 57 | 3% |
 | [outputs.kt](../src/jvmMain/kotlin/afield/ui/output/outputs.kt) | Visualization | visualizers, keyframe_editor, box_output | 30 | 45 | 39% |
-| [TypedAst.kt](../src/jvmMain/kotlin/afield/lang/fieldml/type/TypedAst.kt) | Languages | fieldml_stages | 29 | 60 | 3% |
-| [Core.kt](../src/jvmMain/kotlin/afield/lang/fieldml/core/Core.kt) | Languages | fieldml_stages | 29 | 45 | 2% |
 | [Boxes.kt](../src/jvmMain/kotlin/afield/document/graph/Boxes.kt) | Workspace | keybindings, keyframer_examples, layers | 23 | 33 | 28% |
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/data/graph/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 20 | 120 | 10% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/simulation/automata/wfc.kt) | Data | wfc_examples | 20 | 59 | 30% |
@@ -101,11 +98,14 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FabricatePostEffects.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricatePostEffects.kt) | Renderers | fabricate_renderer | 1 | 0 | 75% |
 | [stats.kt](../src/jvmMain/kotlin/afield/math/statistics/stats.kt) | Math | statistics_examples | 0 | 152 | 13% |
 | [ThreeJsInspector.kt](../src/jvmMain/kotlin/afield/graphics/three/ThreeJsInspector.kt) | Graphics | fline_examples, three_output, geometry_review | 0 | 62 | 31% |
+| [TypedAst.kt](../src/jvmMain/kotlin/afield/lang/fieldml/type/TypedAst.kt) | Languages | fieldml_stages | 0 | 60 | 34% |
+| [Expr.kt](../src/jvmMain/kotlin/afield/lang/fieldml/ast/Expr.kt) | Languages | fieldml_stages | 0 | 57 | 38% |
 | [StackSLEvolution.kt](../src/jvmMain/kotlin/afield/lang/stacksl/evolution/StackSLEvolution.kt) | Search | stacksl_evolve | 0 | 54 | 54% |
 | [GraphQuery.kt](../src/jvmMain/kotlin/afield/data/query/graph/GraphQuery.kt) | Data | graph_query, visualizers | 0 | 53 | 39% |
 | [Notation.kt](../src/jvmMain/kotlin/afield/ui/notation/Notation.kt) | Visualization | chain_drawn_paint, drawing_and_notation, chain_drawn_score | 0 | 51 | 57% |
 | [FnInterval.kt](../src/jvmMain/kotlin/afield/math/functions/FnInterval.kt) | Function | fn_intervals | 0 | 46 | 51% |
 | [PetriNets.kt](../src/jvmMain/kotlin/afield/simulation/petri/PetriNets.kt) | Visualization | petri_nets, chain_petri_sparks, petri_cheatsheet | 0 | 46 | 58% |
+| [Core.kt](../src/jvmMain/kotlin/afield/lang/fieldml/core/Core.kt) | Languages | fieldml_stages | 0 | 45 | 40% |
 | [FLineInterpolation.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineInterpolation.kt) | Graphics | fline_examples | 0 | 44 | 29% |
 | [SideBySideStereoTarget.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/targets/SideBySideStereoTarget.kt) | Graphics | vision | 0 | 42 | 26% |
 | [Marf.kt](../src/jvmMain/kotlin/afield/audio/synth/Marf.kt) | Patterns | marf | 0 | 41 | 60% |
@@ -296,7 +296,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [AI4_filestore.kt](../src/jvmMain/kotlin/afield/ai/knowledge/AI4_filestore.kt) | Machine learning | — | 15 | 39 | 16% |
 | [alignment.kt](../src/jvmMain/kotlin/afield/ui/layout/alignment.kt) | Visualization | — | 15 | 39 | 1% |
 | [provisional.kt](../src/jvmMain/kotlin/afield/document/workspace/provisional.kt) | Workspace | — | 15 | 2 | 5% |
-| [Types.kt](../src/jvmMain/kotlin/afield/lang/fieldml/type/Types.kt) | Languages | — | 14 | 12 | 10% |
 | [modelling.kt](../src/jvmMain/kotlin/afield/math/control/modelling.kt) | Graphics | — | 13 | 54 | 0% |
 | [PythonInterface.kt](../src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt) | Languages | — | 13 | 34 | 6% |
 | [Ai4Installer.kt](../src/jvmMain/kotlin/afield/ai/models/Ai4Installer.kt) | Machine learning | — | 13 | 8 | 12% |
@@ -730,6 +729,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [OpenDlssNrImage.kt](../src/jvmMain/kotlin/afield/graphics/render/neural/OpenDlssNrImage.kt) | Graphics | — | 0 | 8 | 20% |
 | [PlaybackClock.kt](../src/jvmMain/kotlin/afield/graphics/texture/video/PlaybackClock.kt) | Graphics | — | 0 | 8 | 38% |
 | [RayDeviceSupport.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/device/RayDeviceSupport.kt) | Graphics | — | 0 | 8 | 20% |
+| [Types.kt](../src/jvmMain/kotlin/afield/lang/fieldml/type/Types.kt) | Languages | — | 0 | 8 | 72% |
 | [StackSLPrograms.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackSLPrograms.kt) | Languages | — | 0 | 8 | 79% |
 | [StackSLStudy.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackSLStudy.kt) | Languages | — | 0 | 8 | 82% |
 | [GpJoint.kt](../src/jvmMain/kotlin/afield/math/gp/GpJoint.kt) | Math | — | 0 | 8 | 46% |
@@ -1256,4 +1256,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `Mesh` | class | `src/jvmMain/kotlin/afield/graphics/render/Mesh.kt:45` |
 | `Renderable` | interface | `src/jvmMain/kotlin/afield/graphics/render/Module.kt:308` |
 
-…and **2121 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **2017 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
