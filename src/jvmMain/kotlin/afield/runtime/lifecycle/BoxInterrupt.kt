@@ -59,16 +59,32 @@ object BoxInterrupt {
     /** Listeners told about every interrupt that actually fired (the UI and tests). */
     val onInterrupted = CopyOnWriteArrayList<(BoxInterruptedError) -> Unit>()
 
+    /** `AFIELD_BOX_INTERRUPT` / `-Dafield.boxInterrupt`, when set; it overrides the welcome-page preference. */
+    private val override: Boolean? = setting("AFIELD_BOX_INTERRUPT", "afield.boxInterrupt")?.let { it != "0" && it != "off" && it != "false" }
+
+    /**
+     * Whether newly compiled box code polls, and whether the [Watchdog] may interrupt. Off, the
+     * watchdog still reports stalls. Code compiled while it was on stays interruptible until it is
+     * recompiled.
+     */
     @Volatile
-    var enabled: Boolean = setting("AFIELD_BOX_INTERRUPT", "afield.boxInterrupt")?.let { it != "0" && it != "off" && it != "false" } ?: true
+    var enabled: Boolean = override ?: true
+
+    /** Apply the persisted preference (`FieldPreferences.boxInterrupt`), unless the env/property override is set. */
+    fun applyPreference(on: Boolean) {
+        enabled = override ?: on
+    }
 
     /**
      * Called by instrumented box code at every method entry and loop back-edge. Must stay cheap:
-     * the common path is one volatile read and a null check.
+     * the common path is one opaque read and a null check. Opaque, not volatile: a volatile read on
+     * every back-edge is an acquire barrier that stops the JIT vectorising the loop (`a[i] += i` over
+     * an `IntArray` ran ~20x slower), while an opaque read still cannot be hoisted out of the loop, so
+     * a request is seen within an iteration or two. The compare-and-set below is the real fence.
      */
     @JvmStatic
     fun poll() {
-        val r = pending.get() ?: return
+        val r = pending.getOpaque() ?: return
         if (r.thread !== Thread.currentThread()) return
         if (!pending.compareAndSet(r, null)) return
         Thread.interrupted() // clear the flag [request] set, so it does not leak into later code
@@ -259,7 +275,7 @@ object BoxInterrupt {
                             (who?.let { "; box code from $it is running" } ?: "") + "\n    at " + top)
                     onStall.forEach { runCatching { it(who, stalledMs, stack) } }
                 }
-                if (!interrupted && interruptAfterMs > 0 && stalledMs >= interruptAfterMs) {
+                if (enabled && !interrupted && interruptAfterMs > 0 && stalledMs >= interruptAfterMs) {
                     val who = culprit(main.stackTrace)
                     // Only box code polls, so only ask when box code is on the stack.
                     if (who != null) {
