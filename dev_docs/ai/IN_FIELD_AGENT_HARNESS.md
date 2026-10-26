@@ -301,7 +301,7 @@ lines, 18 on a displayed text node, 9 only on a tag such as `<svg`; 35 heldout).
 | renderer / Mesh / Vulkan (incl. 5 via an ancestor) | 210 | static |
 | no output call | 99 | static |
 | ran, but said nothing the tool result carries (mostly `lines(...)`/drawing helpers) | 51 | calibration |
-| audio, files, clock, camera, python, threads, `loop {}`/`start {}`, shader, unseeded random | 133 | static |
+| audio, files, clock, camera, python, threads, `loop {}`/`start {}`, shader, unseeded random | 113 | static |
 | solution fails in a scratch document (NPE, "another document is recording", source-backed block) | 7 | calibration |
 | output differs between two runs | 3 | calibration |
 | other (too long, unknown ancestor, self-reference) | 13 | static |
