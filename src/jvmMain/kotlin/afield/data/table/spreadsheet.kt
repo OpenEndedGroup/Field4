@@ -914,14 +914,24 @@ private object SpreadsheetDynamicRegistry {
         else -> null
     }
 
+    private fun isPlainNumber(value: Any?): Boolean = value !is Quantity && value !is Expression
+
+    private fun scaledDisplayUnit(left: Any?, right: Any?): Expression? = when {
+        isPlainNumber(right) -> quantityDisplayUnit(left)
+        isPlainNumber(left) -> quantityDisplayUnit(right)
+        else -> null
+    }
+
     private fun applyQuantityBinary(op: SpreadsheetBinaryOp, left: Any?, right: Any?): Any? {
         val leftExpr = toExpression(left) ?: error("Cannot convert '${formatSpreadsheetValue(left)}' to a unit expression")
         val rightExpr = toExpression(right) ?: error("Cannot convert '${formatSpreadsheetValue(right)}' to a unit expression")
         return when (op) {
             SpreadsheetBinaryOp.ADD -> Quantity(leftExpr + rightExpr, quantityDisplayUnit(left) ?: quantityDisplayUnit(right))
             SpreadsheetBinaryOp.SUBTRACT -> Quantity(leftExpr - rightExpr, quantityDisplayUnit(left) ?: quantityDisplayUnit(right))
-            SpreadsheetBinaryOp.MULTIPLY -> Quantity(leftExpr * rightExpr)
-            SpreadsheetBinaryOp.DIVIDE -> Quantity(leftExpr / rightExpr)
+            // Scaling by a plain number keeps the unit it was written in: `(0.21 | m) * 3` is 0.63 m,
+            // not the auto-scaled 6.3 dm.
+            SpreadsheetBinaryOp.MULTIPLY -> Quantity(leftExpr * rightExpr, scaledDisplayUnit(left, right))
+            SpreadsheetBinaryOp.DIVIDE -> Quantity(leftExpr / rightExpr, if (isPlainNumber(right)) quantityDisplayUnit(left) else null)
             SpreadsheetBinaryOp.REMAINDER -> Quantity(leftExpr % rightExpr)
         }
     }
