@@ -86,6 +86,16 @@ corpus of seeded variants built by the same stages. Open it and press **Build** 
 
 [Open ↗](offline.html?file=assets/agent_transcripts/staged_project/metadata.edn)
 
+### learned_pen
+
+**A pen that keeps writing.** The starting point of [A learned pen](learned_pen.md): the Distill
+handwriting LSTM, run in Kotlin, continues a stroke you give it; twelve different futures from one
+stroke; a drawing panel the pen writes on from, with sliders for its temperature and noise while it
+goes; and one memory cell held high and low, changing the hand. Pure CPU and nothing to install.
+Launch the third box and draw.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/learned_pen/metadata.edn)
+
 ### stipple_sheet
 
 **A trained warp you can drag.** The live version of [Stipple transport](stipple_transport.md): one
