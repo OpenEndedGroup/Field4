@@ -20,7 +20,8 @@ this run's workspace written ``<workspace>``. Arguments may use ``{{uid:Name}}``
 
 Between ``<!-- ai4-tools-reference:begin -->`` and ``<!-- ai4-tools-reference:end -->`` the page
 carries the catalogue as ``agent-ai-tools-list`` reports it for a box-focused chat on that document,
-less any tool whose class is declared under ``src/personal``.
+less any tool whose class is declared under ``src/personal``. It lists twice, the second time as a
+box chat's turn (``suspendable``), and marks the tools only that turn is offered.
 
 ``--update-page`` writes what the run produced into the page instead of failing on a difference.
 
@@ -97,7 +98,7 @@ def first_sentence(text: str) -> str:
     return text.replace("|", "\\|")
 
 
-def reference(tools: list[dict]) -> str:
+def reference(tools: list[dict], chat_only: set[str]) -> str:
     by_ns: dict[str, list[dict]] = defaultdict(list)
     for t in tools:
         by_ns[t["x-field"]["namespace"]].append(t)
@@ -110,7 +111,7 @@ def reference(tools: list[dict]) -> str:
         out += [f"### `{ns}`", "", NAMESPACES[ns], "", "| Tool | What it does | Effects |", "| --- | --- | --- |"]
         for t in sorted(by_ns[ns], key=lambda t: t["name"]):
             x = t["x-field"]
-            name = f"`{t['name']}`" + (" \\*" if x["exposure"] == "DEFERRED" else "")
+            name = f"`{t['name']}`" + (" \\*" if x["exposure"] == "DEFERRED" else "") + (" †" if t["name"] in chat_only else "")
             effects = ", ".join(e.lower().replace("_", " ") for e in x["effects"] if e != "UNDECLARED") or "—"
             out.append(f"| {name} | {first_sentence(t.get('description', ''))} | {effects} |")
         out.append("")
@@ -187,14 +188,17 @@ async def capture(port: int, update_page: bool) -> None:
                 new_page += [page[pos:m.start("result")], shown]
                 pos = m.end("result")
             new_page.append(page[pos:])
-            catalogue = await c.ai_tools_list(timeout=60, focus_box=next(iter(shaper.uids.values()), None))
+            focus = next(iter(shaper.uids.values()), None)
+            listed = await c.ai_tools_list(timeout=60, focus_box=focus)
+            catalogue = await c.ai_tools_list(timeout=60, focus_box=focus, suspendable=True)
         finally:
             await c.close()
     personal = personal_classes()
     catalogue = [t for t in catalogue if t["name"] not in personal]
     text = "".join(new_page)
     begin, end = text.index(REF_BEGIN) + len(REF_BEGIN), text.index(REF_END)
-    table = "\n" + reference(catalogue) + "\n"
+    chat_only = {t["name"] for t in catalogue} - {t["name"] for t in listed}
+    table = "\n" + reference(catalogue, chat_only) + "\n"
     if text[begin:end] != table:
         failures.append("reference table")
     text = text[:begin] + table + text[end:]
