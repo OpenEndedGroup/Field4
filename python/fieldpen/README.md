@@ -41,6 +41,9 @@ unit; Kotlin's default of 8 canvas units per model unit makes that two pixels.
 
 ## Training your own pen
 
+`public/docs/teaching_a_pen.md` (*Teaching a Pen*) is the long version: six synthetic corpora, the
+recipe that makes a pen draw rather than drift, and the pens Field ships. In short:
+
 Record strokes as JSON files of `{"strokes": [[[x, y], ...], ...]}` (one ordered pen-down path per
 inner list), keep training and validation drawings in separate folders, and:
 
@@ -48,7 +51,8 @@ inner list), keep training and validation drawings in separate folders, and:
 uv run --project . --group pen python -m fieldpen.prepare drawings/train train.npz --scale 8
 uv run --project . --group pen python -m fieldpen.prepare drawings/valid valid.npz --scale 8
 uv run --project . --group pen python -m fieldpen.train --train train.npz --valid valid.npz \
-    --out runs/mine --init src/jvmMain/resources/afield/pen/distill-b64.json
+    --out runs/mine --init src/jvmMain/resources/afield/pen/distill-b64.json \
+    --crop 256 --samples 2048 --batch 64 --input-noise 0.02 --device mps
 ```
 
 `--scale` is drawing units per model unit, the same number you pass Kotlin. `--init` fine-tunes
@@ -59,7 +63,7 @@ Then hand the result to Kotlin, which does not read `.pt` files:
 
 ```python
 import fieldpen
-fieldpen.export_for_field(fieldpen.load_model("runs/mine/best.pt"), "mine.fieldpen.json")
+fieldpen.export_for_field(fieldpen.load_model("runs/mine/best.pt"), "mine.fieldpen.json", half=True)
 ```
 
 ```kotlin

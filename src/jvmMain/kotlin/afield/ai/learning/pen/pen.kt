@@ -83,6 +83,53 @@ data class PenControls(
 )
 
 /**
+ * A pen's prediction for its next step: a mixture of 2D Gaussians and a lift probability.
+ *
+ * Component `i` has weight `weights[i]`, centre (`meanX[i]`, `meanY[i]`), spreads `sigmaX[i]` and
+ * `sigmaY[i]` and correlation `correlation[i]`. From [Pen.distribution] these are model-unit
+ * displacements; from [PenLine.distribution] they are absolute drawing coordinates.
+ */
+class PenDistribution(
+    val weights: DoubleArray,
+    val meanX: DoubleArray,
+    val meanY: DoubleArray,
+    val sigmaX: DoubleArray,
+    val sigmaY: DoubleArray,
+    val correlation: DoubleArray,
+    val liftProbability: Double,
+) {
+    /** The number of mixture components. */
+    val size: Int get() = weights.size
+
+    /** The same distribution, moved to [at] and scaled by [scale]: drawing coordinates. */
+    fun toDrawing(at: Vec3, scale: Double) = PenDistribution(
+        weights,
+        DoubleArray(size) { at.x + meanX[it] * scale },
+        DoubleArray(size) { at.y + meanY[it] * scale },
+        DoubleArray(size) { sigmaX[it] * scale },
+        DoubleArray(size) { sigmaY[it] * scale },
+        correlation,
+        liftProbability,
+    )
+}
+
+/**
+ * One point a [PenLine] drew: from [from] to [to] in drawing units, as a mark or (when [mark] is
+ * false) a move with the pen up. [liftProbability] is the chance the pen gave of lifting after this
+ * point, read before it was drawn. [cells] and [hidden] are the pen's memory just after the point,
+ * kept only when the PenLine was made with `recordMemory = true`.
+ */
+class PenMoment(
+    val from: Vec3,
+    val to: Vec3,
+    val mark: Boolean,
+    val lifted: Boolean,
+    val liftProbability: Double,
+    val cells: FloatArray?,
+    val hidden: FloatArray?,
+)
+
+/**
  * The weights of an LSTM pen model, shared by every [Pen] made from it.
  *
  * Layout and gate order follow `torch.nn.LSTM` (input, forget, cell, output), so a model trained in
@@ -168,8 +215,24 @@ class PenModel internal constructor(
          * Read a model: a `.fieldpen.json` written by `fieldpen.export_for_field`, or a file in the
          * Distill article's own quantized format.
          */
-        fun load(path: String): PenModel {
-            val json = Json.parseToJsonElement(File(path).readText())
+        fun load(path: String): PenModel = parse(File(path).readText())
+
+        /**
+         * One of the pens that ship with Field, trained on a synthetic corpus: `"hershey"`,
+         * `"harmonograph"`, `"plants"`, `"truchet"`, `"boids"`, `"mixed"` or `"rounder"` (see the
+         * *Teaching a pen* docs page). Loaded once each.
+         */
+        fun bundled(name: String): PenModel = bundledModels.getOrPut(name) {
+            val text = PenModel::class.java.getResourceAsStream("/afield/pen/models/$name.fieldpen.json")
+                ?.bufferedReader()?.readText()
+                ?: error("no bundled pen called \"$name\" (afield/pen/models/$name.fieldpen.json)")
+            parse(text)
+        }
+
+        private val bundledModels = java.util.concurrent.ConcurrentHashMap<String, PenModel>()
+
+        private fun parse(text: String): PenModel {
+            val json = Json.parseToJsonElement(text)
             return if (json is JsonObject) fromFieldPen(json) else fromDistill(json)
         }
 
@@ -216,8 +279,12 @@ class PenModel internal constructor(
             val tensors = json["tensors"]!!.jsonObject
             fun tensor(name: String): FloatArray {
                 val t = tensors[name]?.jsonObject ?: error("model has no tensor $name")
-                val buf = ByteBuffer.wrap(Base64.getDecoder().decode(t["data"]!!.jsonPrimitive.content))
-                    .order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+                val bytes = Base64.getDecoder().decode(t["data"]!!.jsonPrimitive.content)
+                if (t["dtype"]?.jsonPrimitive?.content == "f16") {
+                    val half = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
+                    return FloatArray(half.remaining()) { java.lang.Float.float16ToFloat(half.get(it)) }
+                }
+                val buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
                 return FloatArray(buf.remaining()).also { buf.get(it) }
             }
             val gates = ArrayList<FloatArray>()
@@ -334,6 +401,28 @@ class Pen internal constructor(val model: PenModel, seed: Long) : StrokePen {
         return other
     }
 
+    /**
+     * The pen's prediction for its next step, in model units relative to where it is: one weight,
+     * mean, spread and correlation per mixture component, with [controls]' temperature applied to
+     * the weights and its noise to the spreads, as [next] would sample them.
+     */
+    fun distribution(controls: PenControls = PenControls()): PenDistribution {
+        val k = model.mixtures
+        val logits = DoubleArray(k) { raw[1 + it] / controls.temperature }
+        val top = logits.max()
+        var total = 0.0
+        for (i in 0 until k) { logits[i] = exp(logits[i] - top); total += logits[i] }
+        return PenDistribution(
+            weights = DoubleArray(k) { logits[it] / total },
+            meanX = DoubleArray(k) { raw[1 + k + it] + controls.driftX },
+            meanY = DoubleArray(k) { raw[1 + 2 * k + it] + controls.driftY },
+            sigmaX = DoubleArray(k) { exp(raw[1 + 3 * k + it].toDouble().coerceIn(-9.0, 7.0)) * controls.noise },
+            sigmaY = DoubleArray(k) { exp(raw[1 + 4 * k + it].toDouble().coerceIn(-9.0, 7.0)) * controls.noise },
+            correlation = DoubleArray(k) { tanh(raw[1 + 5 * k + it].toDouble()).coerceIn(-0.9999, 0.9999) },
+            liftProbability = sigmoid(raw[0] + controls.liftBias),
+        )
+    }
+
     /** The probability that the pen lifts after its next step, before any [PenControls.liftBias]. */
     val liftProbability: Double get() = sigmoid(raw[0].toDouble())
 
@@ -395,6 +484,8 @@ class PenLine(
     seed: Long = 0,
     step: Double = 0.35,
     start: Vec3 = Vec3(0f, 0f, 0f),
+    /** Also keep each step's memory (`cells` and `hidden`) in [history], for colouring by a cell. */
+    val recordMemory: Boolean = false,
 ) {
     /** The pen underneath, for [Pen.setCell] or forking by hand. */
     var pen: StrokePen = model.pen(seed)
@@ -405,6 +496,15 @@ class PenLine(
 
     /** Only the pen's own contribution, without the primer. */
     val drawn: FLine = FLine()
+
+    /** One [PenMoment] per point the pen has drawn, oldest first. */
+    val history: MutableList<PenMoment> = ArrayList()
+
+    /** Where the pen is now, in drawing units. */
+    val tip: Vec3 get() = Vec3(x.toFloat(), y.toFloat(), 0f)
+
+    /** Whether the pen is off the paper, so its next point starts a new stroke. */
+    val penUp: Boolean get() = up
 
     private var x: Double
     private var y: Double
@@ -426,13 +526,25 @@ class PenLine(
     /** Draw [steps] more points onto [line] (and [drawn]); returns [line]. */
     fun grow(steps: Int = 1): FLine {
         repeat(steps) {
+            val p = pen as? Pen
+            val liftChance = p?.liftProbability ?: Double.NaN
+            val from = tip
             val s = pen.next(controls)
             x += s.dx * scale; y += s.dy * scale
-            if (up || line.nodes.isEmpty()) { line.moveTo(x, y); drawn.moveTo(x, y) } else { line.lineTo(x, y); drawn.lineTo(x, y) }
+            val mark = !(up || line.nodes.isEmpty())
+            if (mark) { line.lineTo(x, y); drawn.lineTo(x, y) } else { line.moveTo(x, y); drawn.moveTo(x, y) }
+            history += PenMoment(from, tip, mark, s.lift, liftChance,
+                if (recordMemory) p?.cells() else null, if (recordMemory) p?.hidden() else null)
             up = s.lift
         }
         return line
     }
+
+    /**
+     * What the pen expects next, in drawing units around [tip]: its mixture of Gaussians, with
+     * [controls]' temperature and noise applied. `null` if the pen is not a [PenModel]'s.
+     */
+    fun distribution(): PenDistribution? = (pen as? Pen)?.distribution(controls)?.toDrawing(tip, scale)
 
     /**
      * Ask what the pen might do next without letting it do it: [count] independent continuations of
@@ -502,7 +614,7 @@ fun FLine.futuresWith(
     step: Double = 0.35,
 ): List<FLine> = PenLine(this, model, scale, controls, 0, step).futures(count, steps, seed)
 
-private fun resample(piece: FLine, spacing: Double): List<Vec3> {
+internal fun resampleForPen(piece: FLine, spacing: Double): List<Vec3> {
     if (piece.nodes.isEmpty()) return emptyList()
     val pts = ArrayList(piece.sampleByDistance(max(spacing, 1e-6).toFloat()))
     val end = piece.currentPoint
@@ -515,7 +627,7 @@ private fun resample(piece: FLine, spacing: Double): List<Vec3> {
  * fresh pen, whose first point is a zero step (the same as a training sequence's first row).
  */
 private fun feedLine(pen: StrokePen, line: FLine, scale: Double, step: Double, liftAtEnd: Boolean, from: Vec3?) {
-    val pieces = line.pieces().map { resample(it, step * scale) }.filter { it.isNotEmpty() }
+    val pieces = line.pieces().map { resampleForPen(it, step * scale) }.filter { it.isNotEmpty() }
     var last = from
     pieces.forEachIndexed { k, pts ->
         pts.forEachIndexed { i, p ->

@@ -71,3 +71,40 @@ def collate(batch):
     x[:, 1:] = target[:, :-1]
     mask = torch.arange(target.shape[1])[None] < lengths[:, None]
     return x, target, mask
+
+
+class CropDataset(Dataset):
+    """Random windows of `length` points from a ragged stroke dataset, `samples` of them per epoch.
+
+    Each item is `length + 1` rows: the row before the window (a zero row when the window starts
+    a sequence, the same start-of-sequence input the model always sees first), then the window.
+    `collate_crops` turns that into inputs and targets. Windows start anywhere, mid-stroke
+    included, which is how a pen continuing a line meets its data; shorter sequences are used whole.
+    """
+    def __init__(self, path, length=256, samples=4096, seed=0):
+        base = StrokeDataset(path)
+        self.deltas, self.offsets = base.deltas, base.offsets
+        self.length, self.samples = length, samples
+        self.rng = np.random.default_rng(seed)
+        lengths = np.diff(self.offsets)
+        self.weights = lengths / lengths.sum()
+
+    def __len__(self):
+        return self.samples
+
+    def __getitem__(self, _):
+        i = self.rng.choice(len(self.weights), p=self.weights)
+        a, b = self.offsets[i], self.offsets[i + 1]
+        n = min(self.length, b - a)
+        start = int(self.rng.integers(a, b - n + 1))
+        window = self.deltas[start:start + n]
+        previous = self.deltas[start - 1:start] if start > a else np.zeros((1, 3), np.float32)
+        return torch.from_numpy(np.concatenate([previous, window]).copy())
+
+
+def collate_crops(batch):
+    lengths = torch.tensor([len(s) - 1 for s in batch])
+    rows = torch.nn.utils.rnn.pad_sequence(batch, batch_first=True)
+    x, target = rows[:, :-1].clone(), rows[:, 1:].clone()
+    mask = torch.arange(target.shape[1])[None] < lengths[:, None]
+    return x, target, mask
