@@ -471,6 +471,20 @@ data class AgentEvalRequest(
     val programs: String = "",
     /** `legacy` puts every task's instructions back inside the stored message; see [AgentTaskRequest.context]. */
     val context: String = "",
+    /**
+     * Run the mined corpus ([AgentEvalCorpus]) instead of the hand suite: `all`, `train` or `heldout`.
+     * Blank = the hand suite. [ids] then filter corpus ids (`<transcript>/<box>`).
+     */
+    val corpus: String = "",
+    /** With [corpus]: run a seeded sample of this many tasks (0 = every task in the split). */
+    val sample: Int = 0,
+    val seed: Long = 0,
+    /**
+     * Re-mine the corpus: mine the transcripts, run every candidate's solution twice (scripted), derive checks from
+     * the output that matched, and rewrite [AgentEvalCorpus.CHECKOUT_PATH]. [sample] > 0 calibrates only that many
+     * candidates (and does not write).
+     */
+    val calibrate: Boolean = false,
 )
 
 @Serializable
@@ -512,6 +526,12 @@ data class AgentEvalReport(
     val nestedCalls: Int = 0,
     /** `legacy` when the run put instructions inside the stored message, else blank. */
     val context: String = "",
+    /** The corpus split run (`all` / `train` / `heldout`), or blank for the hand suite; `calibrate` for a re-mine. */
+    val corpus: String = "",
+    /** A calibration's summary: what was mined, accepted and written. */
+    val corpusMessage: String = "",
+    /** A calibration's rejections, counted by reason (static and calibration stages together). */
+    val rejections: Map<String, Int> = emptyMap(),
 )
 
 object AgentEvalRunner {
@@ -529,10 +549,17 @@ object AgentEvalRunner {
             val outcome = AgentLessons.distilAndWrite(saved)
             return saved.copy(distilled = outcome.lessons.map { it.bullet() }, distilMessage = outcome.message)
         }
+        if (request.calibrate) return calibrate(request, runTask)
         val started = System.nanoTime()
-        val chosen = if (request.ids.isEmpty()) InFieldAgentEvals.tasks else request.ids.map(InFieldAgentEvals::byId)
+        val chosen = if (request.corpus.isNotBlank()) {
+            val corpus = AgentEvalCorpus.load()
+            require(corpus.tasks.isNotEmpty()) { "No mined corpus at ${AgentEvalCorpus.CHECKOUT_PATH}; run agent-eval --calibrate first." }
+            AgentEvalCorpus.select(corpus, request.corpus, request.sample, request.seed, request.ids)
+                .map { InFieldAgentEvals.EvalTask(it.id, it.request, it.solution) }
+        } else if (request.ids.isEmpty()) InFieldAgentEvals.tasks else request.ids.map(InFieldAgentEvals::byId)
         val live = request.mode == "live"
-        require(!live || chosen.size <= MAX_LIVE_TASKS) { "A live eval is capped at $MAX_LIVE_TASKS tasks." }
+        val cap = if (request.corpus.isNotBlank()) AgentEvalCorpus.MAX_LIVE_SAMPLE else MAX_LIVE_TASKS
+        require(!live || chosen.size <= cap) { "A live eval is capped at $cap tasks (use --sample)." }
         val rounds = if (live) request.maxToolRounds.coerceAtMost(MAX_LIVE_ROUNDS) else request.maxToolRounds
         val lessonsOn = AgentLessons.resolve(request.lessons)
         val lessonsPin = if (lessonsOn) "on" else "off"
@@ -571,9 +598,48 @@ object AgentEvalRunner {
             context = request.context,
             programCalls = results.sumOf { it.programCalls },
             nestedCalls = results.sumOf { it.nestedCalls },
+            corpus = request.corpus,
         )
         if (!request.distil) return report
         val outcome = AgentLessons.distilAndWrite(report)
         return report.copy(distilled = outcome.lessons.map { it.bullet() }, distilMessage = outcome.message)
+    }
+
+    /**
+     * Re-mine the corpus ([AgentEvalCorpus]): every statically mined candidate's solution runs twice, scripted, with
+     * no checks; the runs' output decides its checks. The report's results are the second runs, `passed` the tasks accepted.
+     */
+    fun calibrate(request: AgentEvalRequest, runTask: (AgentTaskRequest) -> AgentTaskResult): AgentEvalReport {
+        val started = System.nanoTime()
+        val mined = AgentEvalCorpus.mine()
+        val candidates = mined.candidates.let { all ->
+            if (request.ids.isNotEmpty()) all.filter { it.id in request.ids }
+            else if (request.sample > 0) all.shuffled(java.util.Random(request.seed)).take(request.sample) else all
+        }
+        val tasks = ArrayList<AgentEvalCorpus.CorpusTask>()
+        val rejections = ArrayList(mined.rejections)
+        val results = ArrayList<AgentTaskResult>()
+        for (c in candidates) {
+            val first = runTask(AgentEvalCorpus.calibrationRequest(c))
+            val second = runTask(AgentEvalCorpus.calibrationRequest(c))
+            results += second
+            when (val outcome = AgentEvalCorpus.calibrate(c, first, second)) {
+                is AgentEvalCorpus.Accepted -> tasks += outcome.task
+                is AgentEvalCorpus.Refused -> rejections += outcome.rejection
+            }
+        }
+        val corpus = AgentEvalCorpus.Corpus(transcripts = mined.transcripts, codeBoxes = mined.codeBoxes, tasks = tasks, rejections = rejections)
+        val whole = request.ids.isEmpty() && request.sample <= 0
+        if (whole) AgentEvalCorpus.write(corpus)
+        val message = "${mined.transcripts} transcripts, ${mined.codeBoxes} code boxes, ${mined.candidates.size} candidates; " +
+            "calibrated ${candidates.size}, accepted ${tasks.size} (" +
+            tasks.groupingBy { it.kind }.eachCount().entries.joinToString { "${it.key} ${it.value}" } + "; " +
+            tasks.count { it.split == "heldout" } + " heldout)" +
+            (if (whole) ", wrote ${AgentEvalCorpus.CHECKOUT_PATH}" else ", partial: not written")
+        return AgentEvalReport(
+            mode = "scripted", provider = "", model = "", population = candidates.size, passed = tasks.size,
+            results = results, elapsedMs = (System.nanoTime() - started) / 1_000_000, inputTokens = null, outputTokens = null,
+            corpus = "calibrate", corpusMessage = message, rejections = corpus.rejectionCounts(),
+        )
     }
 }
