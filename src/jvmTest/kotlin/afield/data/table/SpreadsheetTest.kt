@@ -91,6 +91,21 @@ class SpreadsheetTest {
     }
 
     @Test
+    fun anEmptyCellIsZeroInArithmetic() {
+        sheet.editSpreadsheet(broadcast = false) {
+            cell("A1", 4)
+            formula("B1", "A1 * 10")
+            formula("B2", "A2 * 10")
+            formula("B3", "A2 + 1")
+            formula("B4", "A2 < 1")
+        }
+        assertEquals("40", display("B1"))
+        assertEquals("0", display("B2"), error("B2"))
+        assertEquals("1", display("B3"), error("B3"))
+        assertEquals("true", display("B4"), error("B4"))
+    }
+
+    @Test
     fun anErrorPropagatesToTheCellsThatReadIt() {
         sheet.editSpreadsheet(broadcast = false) {
             formula("A1", "1 / 0 + error(\"boom\")")

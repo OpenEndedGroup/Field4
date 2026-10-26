@@ -82,6 +82,9 @@ import kotlin.math.sqrt
  *
  * From box code, build or edit the stored state with [spreadsheetState] / [Box.editSpreadsheet],
  * and read evaluated values with [Box.getSpreadsheetSnapshot] and [Box.getSpreadsheetCellValue].
+ *
+ * The guide, with captured sheets and the editing keys, is
+ * [Spreadsheets in a Box](../spreadsheets.md).
  */
 
 private const val SPREADSHEET_CHANNEL = "__spreadsheet__"
@@ -677,6 +680,9 @@ private object SpreadsheetDynamicRegistry {
     }
 
     private fun registerBuiltins() {
+        // An empty cell is 0 in arithmetic, as in Excel and Sheets, so `A3 * 10` over a blank A3 is 0
+        // rather than #ERR ("Expected a scalar-like value, found ''").
+        registerScalar("empty") { value -> if (value == null || value == "") 0.0 else null }
         registerScalar("number") { value ->
             when (value) {
                 is Double -> value
