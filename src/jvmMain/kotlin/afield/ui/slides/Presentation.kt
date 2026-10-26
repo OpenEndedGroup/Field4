@@ -30,6 +30,8 @@ fun Box.presentation(
     val instance = builder.build()
     require(instance.steps.isNotEmpty()) { "A presentation needs at least one step" }
     instance.resumeStep = previous?.takeIf { it.slideshowId == instance.slideshowId }?.currentStepIndex ?: -1
+    instance.resumeStepId = previous?.currentStep?.id
+    instance.resumeCue = previous?.currentCueIndex ?: 0
     slideShow = instance
     return instance
 }
@@ -38,14 +40,50 @@ fun Box.presentation(
 fun SlideShowInstance.present() {
     if (presentationOptions == null) presentationOptions = PresentationOptions(hostBox.name.ifBlank { "Field presentation" })
     inMain(Box.boxContextElement(hostBox)) {
-        goToStep(resumeStep.takeIf { it >= 0 }?.coerceAtMost(steps.lastIndex) ?: currentStepIndex.coerceAtLeast(0))
+        val index = steps.indexOfFirst { it.id == resumeStepId }.takeIf { it >= 0 }
+            ?: resumeStep.takeIf { it >= 0 }?.coerceAtMost(steps.lastIndex) ?: currentStepIndex.coerceAtLeast(0)
+        goToStep(index, resumeCue)
     }
 }
 
 /** Standard kotlinx.html builders; text is escaped by the library. No JavaScript build is needed. */
-fun SlideStepBuilder.audience(block: AudienceBuilder.() -> Unit) {
+fun SlideStepBuilder.audience(block: AudienceBuilder.() -> Unit): AudienceContent {
+    val content = audienceFragment(block)
+    audienceContent = content
+    return content
+}
+
+/** Reusable slide content. Keep one copy of the markup and shared image paths across slides. */
+fun audienceFragment(block: AudienceBuilder.() -> Unit): AudienceContent {
     val consumer = createHTML()
-    audienceHtml(AudienceBuilder(consumer).visitAndFinalize(consumer, block))
+    return AudienceContent(html = AudienceBuilder(consumer).visitAndFinalize(consumer, block))
+}
+
+/** Show a reusable HTML fragment without changing its content. */
+fun SlideStepBuilder.audience(content: AudienceContent) { audienceContent = content }
+
+/** Repeat HTML content dimmed behind a new layer; native webpages and documents stay separate surfaces. */
+fun SlideStepBuilder.audienceOver(previous: AudienceContent, dimPrevious: Double = 0.25, block: AudienceBuilder.() -> Unit) {
+    audienceContent = layerAudience(previous, audienceFragment(block), dimPrevious)
+}
+
+/** A cue that retains the preceding HTML view underneath a new layer. */
+fun SlideStepBuilder.reveal(title: String, dimPrevious: Double = 0.25, block: AudienceBuilder.() -> Unit) {
+    val previousCue = build().cues.lastOrNull()
+    val previous = previousCue?.audienceProvider ?: previousCue?.audience?.let { { it } }
+        ?: audienceProvider ?: audienceContent?.let { { it } }
+        ?: error("A reveal needs an HTML audience view first")
+    val addition = audienceFragment(block)
+    // Validate the surface now; providers are read again when Refresh reloads the slide.
+    layerAudience(previous(), addition, dimPrevious)
+    cue(title) { audienceProvider = { layerAudience(previous(), addition, dimPrevious) } }
+}
+
+internal fun layerAudience(previous: AudienceContent, addition: AudienceContent, opacity: Double): AudienceContent {
+    require(previous.type == "html" && addition.type == "html") { "Build layers need HTML slides; use a normal cue for webpages or Field documents" }
+    require(opacity.isFinite() && opacity in 0.0..1.0) { "dimPrevious must be between 0 and 1" }
+    require(previous.html.length + addition.html.length <= 2_000_000) { "Layered slide exceeds 2 MB" }
+    return AudienceContent(html = """<div class="field-slide-stack"><div class="field-slide-layer field-retained" inert aria-hidden="true" style="opacity:$opacity"><div class="field-slide-content">${previous.html}</div></div><div class="field-slide-layer"><div class="field-slide-content">${addition.html}</div></div></div>""")
 }
 
 /** Set an HTML fragment for the audience. Use [audience] for type-safe, escaped HTML construction. */

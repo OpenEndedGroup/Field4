@@ -217,6 +217,8 @@ class DocumentDirectoryWriterLedgerTest {
             "src/jvmMain/kotlin/afield/document/history/history.kt" to GATED,
             // The metrics save funnel and both screenshot helpers refuse read-only documents.
             "src/jvmMain/kotlin/afield/document/history/HistoryMetrics.kt" to GATED,
+            // Revision-checked slide files refuse read-only sessions before creating any directories.
+            "src/jvmMain/kotlin/afield/ui/slides/PresentationSlides.kt" to GATED,
             "src/jvmMain/kotlin/afield/app/server/fileproxy.kt" to GATED,
             // Reachable: the Guides panel's save and the AI4 create/patch/append tools both write
             // <doc>/*.md, <doc>/docs/** and <doc>/guides/**. Gated on the read-only predicate at

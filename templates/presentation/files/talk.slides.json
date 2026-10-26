@@ -1,0 +1,31 @@
+{
+  "schema": "field.presentation.slides.v1",
+  "stylesheet": "presentation.css",
+  "slides": [
+    {
+      "id": "ask-a-question",
+      "title": "Ask a better question",
+      "markdown": "# What would you try?\n\nA live lesson starts with a prediction.\n\n1. Change one thing.\n2. Observe what happens.\n3. Explain the difference.",
+      "notes": "Ask the room for a prediction before advancing. AI4 can revise this slide without editing the Kotlin talk.",
+      "section": [
+        "A lesson we can edit"
+      ],
+      "cues": [
+        {
+          "title": "Make a prediction",
+          "markdown": "# Say what you expect.\n\nThen test it in the working document."
+        }
+      ]
+    },
+    {
+      "id": "ask-ai4",
+      "title": "Make a slide with AI4",
+      "markdown": "# Ask AI4 for a slide.\n\n\u201cAdd a short slide about frequency after ask-a-question. Give it a prediction and a reveal.\u201d\n\nThe source, notes and reveals stay editable.",
+      "notes": "Open AI4 in the presentation document. It can read files/talk.slides.json and save a single revision-checked slide. Rerun Presentation to include a newly added slide.",
+      "section": [
+        "A lesson we can edit"
+      ],
+      "cues": []
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "checks": [
+    "forward/back reveals",
+    "live editor source change",
+    "explicit source reset",
+    "setup rerun",
+    "unrelated source preserved"
+  ],
+  "sourceSha256": "4fe6d42ee3be10ad36904bd937aa14d6e78fd7e07e3f3648c548dd633ad41254",
+  "slidesSha256": "52cf70b8fe492774b854d772e53653d1cd5ae142f760ff2d78fbc01caf3e32b4",
+  "pictures": [
+    {
+      "file": "wave-reveal.png",
+      "sha256": "2cde52e1b516b7efdf705f34b5d96d0d3ff59c1c4391aef147915bcbc91bb0a1"
+    },
+    {
+      "file": "wave-controls.png",
+      "sha256": "4c1c27f4c77bc8841b1809b3e91ffa7e170170e6f3f19942d6a92c8e3ba123db"
+    }
+  ]
+}

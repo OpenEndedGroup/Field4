@@ -17,7 +17,10 @@
     }
   },
   "assets": {
-    "presentation.css": "5d2f7cef535bd560fe480b9caf308a919b37fcce7de0ce350d802d661e133601"
+    "presentation.css": "5d2f7cef535bd560fe480b9caf308a919b37fcce7de0ce350d802d661e133601",
+    "themes/black.css": "cac93d97780e6bb8ac96e8dfcf9de794b62f8bbbd20c2c4aac0f079fcc66e4f7",
+    "themes/paper.css": "968f14e19a42c87dd9148c57e5719c060849899b1baca73ee1fd7fd294dfda9e",
+    "themes/slate.css": "41c9d8db39c0a623fa394037a7ce72ddb67b0d2bd1d4b076fa4f0c64f155c0ad"
   },
-  "revision": "d9a6e09ead7832faebde964a6c2885409fc80f83e916c01471490929d6c6ade0"
+  "revision": "9266543dd0400e033fd20999ac0d036c375ce2e8225e4c436d3b1763ce4ea430"
 }

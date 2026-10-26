@@ -22,3 +22,33 @@ To regenerate on macOS:
 
 The capture driver requires Node 22+ (built-in WebSocket), and no per-talk JavaScript dependencies.
 It changes the demo's selected slide and opens its CSS editor. It does not edit the talk or stylesheet.
+
+## Cues and reset
+
+`node tools/presentation/rehearse-lessons.mjs <CDP URL> <disposable starter directory> [capture directory]`
+rehearses the new **Predict a wave** slide. It navigates real controller buttons, edits frequency in
+the native audience document's Monaco editor, runs the changed box through the warm backdoor,
+resets the captured source and checks that setup reproduces the original waveform. It asserts that
+unrelated source stays unchanged. Start `tools/field_session.py serve` on the same server port first,
+then `call --no-reset --command 'open <document>'`. Never aim this at an authored lecture.
+
+It records `wave-reveal.png`, `wave-controls.png` and `rehearsal.json` (source hash and checks).
+The default destination is `/tmp/field-lesson-rehearsal`; the public guide uses the checked-in
+captures produced with destination `public/docs/assets/presentation_studio`. Inspect both images.
+
+## Native builds and themes
+
+With an unchanged disposable copy of the current presentation starter open in this checkout's
+Electron, run:
+
+```sh
+node tools/presentation/rehearse-builds.mjs http://127.0.0.1:29493 /tmp/workspace/builds-demo
+```
+
+This drives the actual native controller and audience. It checks that element fades wait for the
+outgoing crossfade and have an intermediate opacity; the retained image is loaded, dimmed and inert;
+Back and Refresh show the completed build; and reduced-motion disables the fade. It temporarily
+copies each standalone theme onto the disposable document's presentation.css and restores that file
+in a finally block. It captures `layered-build.png` and the three `theme-*.png` views, and records
+source hashes and image hashes in `builds.json`. Inspect all four images before committing them.
+The source document must be disposable because ordinary Field saves still run during the rehearsal.
