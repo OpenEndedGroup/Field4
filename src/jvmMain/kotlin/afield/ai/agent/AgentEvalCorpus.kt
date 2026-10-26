@@ -55,6 +55,8 @@ object AgentEvalCorpus {
         "clock" to Regex("""System\.nanoTime|currentTimeMillis|Instant\.now|LocalDateTime\.now|\bnow\(\)"""),
         "unseeded-random" to Regex("""Random\(\)|Math\.random|\brandom\(\)"""),
         "threads" to Regex("""Thread\b|\bsleep\(|delay\("""),
+        // A box that runs the eval harness itself would make the corpus mine its own demo.
+        "self" to Regex("""AgentEvalCorpus|InFieldAgentEvals|AgentTaskRunner|AgentEvalRunner"""),
         "forever" to Regex("""\bloop\s*\{|\bstart\s*\{|\bforever\s*\{"""),
     )
 

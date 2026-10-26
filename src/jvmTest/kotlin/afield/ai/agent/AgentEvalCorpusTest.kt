@@ -141,6 +141,17 @@ class AgentEvalCorpusTest {
         assertTrue(assertIs<AgentEvalCorpus.Refused>(AgentEvalCorpus.calibrate(report, broken, broken)).rejection.reason.startsWith("solution-fails"))
     }
 
+    /** Box code full of Kotlin string templates (a template over `xs.size`) is not mistaken for a script placeholder. */
+    @Test
+    fun stringTemplatesInMinedCodeSurviveTheScript() {
+        val code = "val xs = listOf(1, 2)\nprintln(\"n = ${'$'}{xs.size}\")"
+        val c = AgentEvalCorpus.Candidate("t/tpl", "t", "tpl", "tpl", code, "run", emptyList(), emptyList(), "")
+        val table = mapOf(code to Fake(out = listOf("n = 2")))
+        val task = assertIs<AgentEvalCorpus.Accepted>(AgentEvalCorpus.calibrate(c,
+            run(AgentEvalCorpus.calibrationRequest(c), table), run(AgentEvalCorpus.calibrationRequest(c), table))).task
+        assertEquals("n = 2", task.request.checks.last().text)
+    }
+
     @Test
     fun splitAndSampleAreDeterministic() {
         val tasks = (1..60).map { i ->
