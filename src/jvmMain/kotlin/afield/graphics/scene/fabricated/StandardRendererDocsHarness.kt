@@ -28,6 +28,39 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
+ * The render methods behind the `fabricate-scene` fences on `fabricate_renderer.md`,
+ * `rectsl_examples.md` and `stacksl_examples.md`.
+ *
+ * A fence on one of those pages carries a scene keyword and nothing else.
+ * `public/fabricate_docs_scenes.py` maps that keyword to one method name here, the docs
+ * runner generates the box code that calls it, and the method renders its scene and
+ * writes a PNG where the page expects one. `tools/discover_field_tests.py` reads the
+ * same map to build the smoke catalog, so one keyword names both a published figure and
+ * the test that regenerates it. Every public render method on this object is some page's
+ * scene; `htmlForImage` is the only entry point that is not.
+ *
+ * Twelve of them build a `StandardRenderer` scene here — a camera, generated geometry, a
+ * material, and whatever post stack the figure is about. The other six delegate to
+ * [StackSLGalleryHarness] and [RectSLGalleryHarness], which render a whole gallery from
+ * an editable workspace; they sit on this object so that a gallery reaches its page by
+ * the same route as a torus.
+ *
+ * Capture is shared. Each method waits for the renderer's frame counter to advance a
+ * fixed number of frames, then reads the post stack's final colour attachment back
+ * through [TexturePreviewCache.capture] and decodes the base64 out of the HTML it
+ * returns. Counting frames rather than seconds covers pipeline builds and first renders;
+ * a deadline throws if the frames never arrive, so a stalled renderer fails the capture
+ * instead of hanging it. `htmlForImage` runs the other way, wrapping a finished PNG for
+ * `display(...)`.
+ *
+ * The `renderer` argument defaults to a search rather than to `fromContext()` alone,
+ * because a docs fence is not necessarily a box connected beneath a renderer: the default
+ * walks the calling box's parents and children, then looks for a box named
+ * `agent_graphics_context` or `renderer`, then every box of every open document, before
+ * giving up.
+ */
+
+/**
  * Small native-render harness for docs and smoke tests. It renders deterministic
  * `StandardRenderer` scenes to PNGs and can turn those PNGs into HTML for display(...)
  * so the docs build can capture them through the normal backdoor screenshot path.

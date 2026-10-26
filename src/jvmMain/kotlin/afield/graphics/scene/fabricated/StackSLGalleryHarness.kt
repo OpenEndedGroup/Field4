@@ -32,6 +32,25 @@ import java.util.Base64
 import java.util.concurrent.TimeUnit
 
 /**
+ * The StackSL figures on `stacksl_examples.md`: one fullscreen fragment program per
+ * example, rendered from an editable Field document.
+ *
+ * The workspace arrangement is the one [RectSLGalleryHarness] also uses — a document on
+ * disk whose `<name>_stackSL_.stacksl` sidecars are the programs, read straight off disk
+ * by `loadExamples`, ordered by each example's `docOrder`, and declared in
+ * `public/fabricate_docs_scenes.py` as build inputs the docs runner hashes into the
+ * fence's cache digest, so editing a program re-renders this gallery. What differs is
+ * the render. A StackSL program is a
+ * single fragment over a fixed square target, so one renderer, one offscreen target and
+ * one module name serve every example in turn, each program replacing the last under that
+ * name rather than adding to the target's module map.
+ *
+ * `renderGallery` reads back a still per program. `renderAnimations` sweeps a time value
+ * across frames and hands each readback to ffmpeg, because the docs runner can screenshot
+ * the native GPU window but cannot record it.
+ */
+
+/**
  * A tiny fullscreen StackSL harness for the docs.
  *
  * It keeps **one** renderer, **one** offscreen [RenderToTexture], and **one**
@@ -95,10 +114,10 @@ object StackSLGalleryHarness {
     private const val HERO_NAME = "fbm-palette"
 
     /**
-     * One gallery entry loaded from the workspace: [name] is the box slug (and the
-     * PNG/mp4 stem `stacksl-<name>`), [program] its StackSL source, [time] is baked
-     * into `input.w` for the still. [animate] marks time-driven programs that also
-     * get an mp4, and [timeSpeed] scales how fast `input.w` sweeps in that clip.
+     * One gallery entry loaded from the workspace: `name` is the box slug (and the
+     * PNG/mp4 stem `stacksl-<name>`), `program` its StackSL source, `time` is baked
+     * into `input.w` for the still. `animate` marks time-driven programs that also
+     * get an mp4, and `timeSpeed` scales how fast `input.w` sweeps in that clip.
      */
     data class Example(
         val name: String,

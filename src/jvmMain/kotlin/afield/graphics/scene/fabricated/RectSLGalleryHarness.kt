@@ -46,6 +46,32 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
+ * The RectSL figures on `rectsl_examples.md`, rendered from an editable Field document
+ * rather than from sources held in this file.
+ *
+ * The workspace is a document on disk: a `metadata.edn` beside one
+ * `<name>_rectsl_.rectsl` sidecar per example, which is Field's ordinary sidecar layout,
+ * so a program can be opened in Field and edited like any other box property.
+ * `loadExamples` reads those sidecars directly instead of loading the document, and
+ * orders them by the `docOrder` in each example's sibling `<name>_metadata_.yaml`.
+ * `public/fabricate_docs_scenes.py` declares those sidecars as this gallery's build
+ * inputs and the docs runner folds a hash of them into the fence's cache digest, so
+ * editing one re-renders this gallery on the next docs build and leaves every other
+ * page's captures alone.
+ *
+ * `renderGallery` walks that list for a still per program and `renderAnimations` for an
+ * mp4 per animated one. Each example gets its own render target, because a RectSL program
+ * carries its own wall size and so its own aspect ratio.
+ *
+ * The signed-distance-field half of the file does not come from the workspace: its scene
+ * sources are literals here rather than workspace entries, and [measureSdfAgreement]
+ * probes the compiled shader's own field, compares it against the CPU sampler, and
+ * reports what it found as [SdfAgreement]. [renderSdf] runs that differential before it
+ * writes any image, so a field that disagrees with its CPU port fails the page instead of
+ * illustrating it.
+ */
+
+/**
  * The RectSL analogue of [StackSLGalleryHarness]. RectSL programs are whole
  * *scenes* (wall, duration, fps, rects, tracks, groups, StackSL materials) rather
  * than a single fullscreen fragment, so the render path is the one already used by
@@ -83,9 +109,9 @@ object RectSLGalleryHarness {
     private const val HERO_NAME = "orbit-petals"
 
     /**
-     * One gallery entry loaded from the workspace: [name] is the box slug (and the
-     * PNG/mp4 stem `rectsl-<name>`), [source] its RectSL program. [stillTime] is the
-     * timeline moment sampled for the still. [animate] marks programs that also get
+     * One gallery entry loaded from the workspace: `name` is the box slug (and the
+     * PNG/mp4 stem `rectsl-<name>`), `source` its RectSL program. `stillTime` is the
+     * timeline moment sampled for the still. `animate` marks programs that also get
      * an mp4.
      */
     data class Example(

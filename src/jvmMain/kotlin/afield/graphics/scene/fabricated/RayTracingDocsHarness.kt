@@ -65,6 +65,32 @@ import javax.imageio.ImageIO
 import kotlin.math.tan
 
 /**
+ * The four ray tracing figures on `ray_tracing_examples.md`, and the live window scene
+ * that page closes with.
+ *
+ * Each capture method builds its own acceleration structures, ray tracing pipeline and
+ * storage image, dispatches, and reads the storage image back to a PNG — the storage
+ * image rather than the window, so a figure does not inherit the window's size or
+ * exposure. The page runs those methods from hidden runner fences and quotes the GLSL and
+ * the module setup separately, as prose; `tools/test_ray_tracing_docs.py` tokenises the
+ * quoted shader blocks and compares them against the shader sources at the foot of this
+ * file, so the listing a reader copies cannot drift from the shader that drew the picture
+ * above it. That test needs no GPU and runs under `checkPythonTools`.
+ *
+ * Every entry point refuses a device without `VK_KHR_ray_tracing_pipeline` instead of
+ * writing something in its place: the capture methods throw before building anything, and
+ * the live-window installers fail a `require`. The four figures are therefore committed
+ * captures marked `capture-profile="linux-nvidia"`, retained on any machine that cannot
+ * regenerate them, and `tools/check_doc_assets.py` rejects a published figure whose
+ * pixels match a known availability card.
+ *
+ * [installMirrorBallsSceneInWindow] is the one path here that captures nothing. It
+ * dispatches into a persistent storage image every frame and blits the result into the
+ * renderer's own window target, returning a [LiveMirrorBallsScene] whose spheres and
+ * camera can be moved from box code while the window is up.
+ */
+
+/**
  * Docs and smoke-test harness for ray tracing shader support.
  *
  * Every public render method runs a deterministic ray tracing example and captures
