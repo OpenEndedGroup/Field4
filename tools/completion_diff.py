@@ -111,7 +111,13 @@ def aa_type_of(cands: list[dict], rank: int) -> str:
 def load(path: Path) -> dict[str, dict]:
     if not path.exists():
         sys.exit(f"missing dump: {path}\n  (run with --run to generate it)")
-    return {f["id"]: f for f in json.loads(path.read_text())}
+    fixtures = {}
+    for fixture in json.loads(path.read_text()):
+        fid = fixture["id"]
+        if fid in fixtures:
+            sys.exit(f"duplicate fixture id in {path}: {fid}")
+        fixtures[fid] = fixture
+    return fixtures
 
 
 def regenerate(workspace: Path) -> None:
@@ -159,6 +165,11 @@ def main() -> int:
     ids = [i for i in aa if i in k1]  # diff only fixtures present in both dumps
     only_k1 = sorted(set(k1) - set(aa))
     only_aa = sorted(set(aa) - set(k1))
+    mismatched = [i for i in ids if
+                  "source" not in aa[i] or "source" not in k1[i] or
+                  (aa[i].get("member", ""), aa[i].get("isDot", False), aa[i].get("source")) !=
+                  (k1[i].get("member", ""), k1[i].get("isDot", False), k1[i].get("source"))]
+    same_corpus = bool(ids) and not only_k1 and not only_aa and not mismatched
 
     print("═" * 100)
     print(f"K1-vs-AA COMPLETION DIFFERENTIAL   ({len(ids)} shared fixtures)")
@@ -166,6 +177,10 @@ def main() -> int:
         print(f"  ! only in K1 dump: {only_k1}")
     if only_aa:
         print(f"  ! only in AA dump: {only_aa}")
+    if mismatched:
+        print(f"  ! different fixture definitions: {mismatched}; regenerate both dumps with --run")
+    if not ids:
+        print("  ! no shared fixtures; no completion comparison was exercised")
     print("═" * 100)
     hdr = f"{'FIXTURE':<34}{'POS':<5}{'MEMBER':<16}{'K1':<10}{'AA':<10}  NOTES"
     print(hdr)
@@ -236,16 +251,18 @@ def main() -> int:
 
     # Acceptance per plan Stage D: AA matches-or-beats K1 recall AND passes all anti-goals; plus no
     # regression outside the documented known-hard set (a compensating win must not mask a real loss).
-    passed = aa_hits >= k1_hits and not aa_leaks and not aa_kw and not unexpected_regressions
+    passed = same_corpus and aa_hits >= k1_hits and not aa_leaks and not aa_kw and not unexpected_regressions
     print("═" * 100)
     print(f"VERDICT: {'PASS' if passed else 'FAIL'}  "
           f"(AA recall {aa_hits} {'>=' if aa_hits >= k1_hits else '<'} K1 {k1_hits}; "
           f"AA anti-goals {'clean' if not aa_leaks and not aa_kw else 'VIOLATED'}; "
-          f"unexpected regressions {len(unexpected_regressions)})")
+          f"unexpected regressions {len(unexpected_regressions)}; same nonempty corpus {same_corpus})")
 
     if args.json_summary:
         summary = {
             "shared": n, "k1_recall": k1_hits, "aa_recall": aa_hits,
+            "only_k1": only_k1, "only_aa": only_aa, "mismatched": mismatched,
+            "same_corpus": same_corpus,
             "regressions": regressions, "unexpected_regressions": unexpected_regressions,
             "known_hard_regressions": known_hard_hit, "wins": wins,
             "k1_leaks": k1_leaks, "aa_leaks": aa_leaks,
