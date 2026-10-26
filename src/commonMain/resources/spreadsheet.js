@@ -976,6 +976,21 @@ function handleCellKeydown(event, rowIndex, colIndex) {
     if (handleNavigation(event, rowIndex, colIndex)) {
         return;
     }
+    if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        clearSelectionOrCell(rowIndex, colIndex);
+        return;
+    }
+    if (isFillShortcut(event, "d")) {
+        event.preventDefault();
+        fillSelection("down");
+        return;
+    }
+    if (isFillShortcut(event, "r")) {
+        event.preventDefault();
+        fillSelection("right");
+        return;
+    }
     if (isPrintableKey(event)) {
         event.preventDefault();
         beginFormulaEditFromCell(rowIndex, colIndex, event.key);
@@ -1699,6 +1714,7 @@ function handleCopy(event) {
     if (!text) return;
     event.preventDefault();
     event.clipboardData.setData("text/plain", text);
+    rememberClipboardOrigin(text);
 }
 
 function handleCut(event) {
@@ -1708,6 +1724,7 @@ function handleCut(event) {
     if (!text) return;
     event.preventDefault();
     event.clipboardData.setData("text/plain", text);
+    rememberClipboardOrigin(text);
     clearSelectionCells();
     renderGrid();
     scheduleSync();
@@ -1720,6 +1737,56 @@ function handlePaste(event) {
     if (!text) return;
     event.preventDefault();
     applyPaste(text);
+}
+
+// Where the last copy or cut came from, so a pasted formula shifts its relative references by how far
+// it moved, as in Excel and Sheets: `=A1` copied from B1 and pasted into B2 becomes `=A2`.
+let clipboardOrigin = null;
+
+function selectionOrActiveCell() {
+    const sel = getNormalizedSelection();
+    if (sel) return sel;
+    if (!state.activeCell) return null;
+    const { row, col } = state.activeCell;
+    return { top: row, bottom: row, left: col, right: col };
+}
+
+function isFillShortcut(event, letter) {
+    if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return false;
+    return String(event.key || "").toLowerCase() === letter;
+}
+
+function clearSelectionOrCell(rowIndex, colIndex) {
+    const sel = selectionOrActiveCell() || { top: rowIndex, bottom: rowIndex, left: colIndex, right: colIndex };
+    for (let row = sel.top; row <= sel.bottom; row += 1) {
+        for (let col = sel.left; col <= sel.right; col += 1) {
+            state.cells.delete(cellKey(row, col));
+        }
+    }
+    renderGrid();
+    syncFormulaInput();
+    scheduleSync();
+}
+
+// Cmd/Ctrl+D copies the top row of the selection down through it, Cmd/Ctrl+R the left column across,
+// shifting relative references as each copy moves.
+function fillSelection(direction) {
+    const sel = getNormalizedSelection();
+    if (!sel) return;
+    if (direction === "down" && sel.bottom === sel.top) return;
+    if (direction === "right" && sel.right === sel.left) return;
+    for (let row = sel.top; row <= sel.bottom; row += 1) {
+        for (let col = sel.left; col <= sel.right; col += 1) {
+            const srcRow = direction === "down" ? sel.top : row;
+            const srcCol = direction === "right" ? sel.left : col;
+            if (srcRow === row && srcCol === col) continue;
+            const input = getCell(srcRow, srcCol).input || "";
+            setCellInput(row, col, adjustFormulaForOffset(input, row - srcRow, col - srcCol));
+        }
+    }
+    renderGrid();
+    syncFormulaInput();
+    scheduleSync();
 }
 
 function serializeSelection() {
@@ -1746,16 +1813,29 @@ function clearSelectionCells() {
     }
 }
 
-function applyPaste(text) {
+function rememberClipboardOrigin(text) {
     const sel = getNormalizedSelection();
+    clipboardOrigin = sel ? { row: sel.top, col: sel.left, text } : null;
+}
+
+function applyPaste(text) {
+    const sel = selectionOrActiveCell();
     if (!sel) return;
     const rows = String(text).split(/\r?\n/).map((line) => line.split("\t"));
-    for (let row = 0; row < rows.length; row += 1) {
-        for (let col = 0; col < rows[row].length; col += 1) {
+    // Text this sheet copied shifts by how far it moved; text from elsewhere is pasted as typed.
+    const origin = clipboardOrigin && clipboardOrigin.text === text ? clipboardOrigin : null;
+    const single = rows.length === 1 && rows[0].length === 1;
+    const height = single ? sel.bottom - sel.top + 1 : rows.length;
+    for (let row = 0; row < height; row += 1) {
+        const width = single ? sel.right - sel.left + 1 : rows[row].length;
+        for (let col = 0; col < width; col += 1) {
             const targetRow = sel.top + row;
             const targetCol = sel.left + col;
             if (targetRow >= state.rows || targetCol >= state.cols) continue;
-            setCellInput(targetRow, targetCol, adjustFormulaForOffset(rows[row][col], row, col));
+            const input = single ? rows[0][0] : rows[row][col];
+            const deltaRow = origin ? targetRow - (origin.row + (single ? 0 : row)) : 0;
+            const deltaCol = origin ? targetCol - (origin.col + (single ? 0 : col)) : 0;
+            setCellInput(targetRow, targetCol, adjustFormulaForOffset(input, deltaRow, deltaCol));
         }
     }
     renderGrid();
