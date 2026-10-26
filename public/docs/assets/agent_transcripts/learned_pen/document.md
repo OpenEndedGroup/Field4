@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 6 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 1 - continue a line
@@ -31,12 +31,43 @@ val more = start.continueWith(steps = 500, seed = 3).apply { color = vec(0.85, 0
 lines(start, more, w = 520.0, h = 260.0, fitToSize = true)
 ```
 
-## 2. 4 - one memory cell
+## 2. 6 - which cell? (launch)
 
-<!-- field-box id="lp_cell" index="1" -->
+<!-- field-box id="lp_cells" index="1" -->
+
+```edn [field-box id="lp_cells" role="properties"]
+{"id" "lp_cells" "index" 1 "name" "6 - which cell? (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 - which cell? (launch)" "_tombstone" false "frame" #afield/rect [60.0 4760.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_cells_code_.kt" "lines" 20 "characters" 938 "sha256" "6a819fa5be67e70ab470237fd5971745420a9f7086c45b6f14c140ecd9556f8a"}]}
+```
+
+```kotlin [field-property box="lp_cells" name="code" path="lp_cells_code_.kt"]
+import afield.ai.learning.pen.*
+
+// The pen writes 500 points once, remembering every cell's output at every point. Drag the
+// slider to colour the line by a cell: blue where it is low, orange where it is high. The
+// "liveliest" line lists the cells that changed most, the ones worth trying first.
+val start = fline { moveTo(0, 0); cubicTo(4, -14, 12, -14, 12, 0); cubicTo(12, 8, 20, 8, 24, 0) }
+val writer = PenLine(start, seed = 4, recordMemory = true)
+writer.grow(500)
+val lively = writer.liveliestCells(12)
+markdown("liveliest", "liveliest cells: ${lively.joinToString(", ")}")
+var cell = lively[0]
+var shown = -1
+slider("cell", min = 0.0, max = 499.0, step = 1.0, initialValue = cell.toDouble()) { cell = it.toInt() }
+frames {
+    while (frame()) {
+        if (cell == shown) continue
+        shown = cell
+        lines(writer.coloredByCell(cell, thickness = 2.0), channel = "cell", w = 520.0, h = 200.0, fitToSize = true)
+    }
+}
+```
+
+## 3. 4 - one memory cell
+
+<!-- field-box id="lp_cell" index="2" -->
 
 ```edn [field-box id="lp_cell" role="properties"]
-{"id" "lp_cell" "index" 1 "name" "4 - one memory cell" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - one memory cell" "_tombstone" false "frame" #afield/rect [60.0 2560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_cell_code_.kt" "lines" 16 "characters" 707 "sha256" "58a4a56a63dddfb766f64f8df4d7802f2525d6e846a80455fea0cdc794a393fc"}]}
+{"id" "lp_cell" "index" 2 "name" "4 - one memory cell" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - one memory cell" "_tombstone" false "frame" #afield/rect [60.0 2560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_cell_code_.kt" "lines" 16 "characters" 707 "sha256" "58a4a56a63dddfb766f64f8df4d7802f2525d6e846a80455fea0cdc794a393fc"}]}
 ```
 
 ```kotlin [field-property box="lp_cell" name="code" path="lp_cell_code_.kt"]
@@ -58,12 +89,12 @@ lines(row(null, 0.0), row(4.0, 140.0).apply { color = vec(0.5, 1.0, 0.6, 1.0) },
     row(-4.0, 280.0).apply { color = vec(1.0, 0.55, 0.6, 1.0) }, w = 520.0, h = 340.0, fitToSize = true)
 ```
 
-## 3. 3 - draw, and it writes on (launch)
+## 4. 3 - draw, and it writes on (launch)
 
-<!-- field-box id="lp_draw" index="2" -->
+<!-- field-box id="lp_draw" index="3" -->
 
 ```edn [field-box id="lp_draw" role="properties"]
-{"id" "lp_draw" "index" 2 "name" "3 - draw, and it writes on (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - draw, and it writes on (launch)" "_tombstone" false "frame" #afield/rect [60.0 1060.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_draw_code_.kt" "lines" 33 "characters" 1611 "sha256" "58748cbb1008809ee01999367d3a00f2c0d49a51b849a919d34951bab880b0af"}]}
+{"id" "lp_draw" "index" 3 "name" "3 - draw, and it writes on (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - draw, and it writes on (launch)" "_tombstone" false "frame" #afield/rect [60.0 1060.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_draw_code_.kt" "lines" 33 "characters" 1611 "sha256" "58748cbb1008809ee01999367d3a00f2c0d49a51b849a919d34951bab880b0af"}]}
 ```
 
 ```kotlin [field-property box="lp_draw" name="code" path="lp_draw_code_.kt"]
@@ -102,12 +133,12 @@ frames {
 }
 ```
 
-## 4. 2 - futures
+## 5. 2 - futures
 
-<!-- field-box id="lp_futures" index="3" -->
+<!-- field-box id="lp_futures" index="4" -->
 
 ```edn [field-box id="lp_futures" role="properties"]
-{"id" "lp_futures" "index" 3 "name" "2 - futures" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - futures" "_tombstone" false "frame" #afield/rect [60.0 560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_futures_code_.kt" "lines" 20 "characters" 732 "sha256" "95b461b333911718143e93769b693875112b057ee96d3285d4eb5508bfe72044"}]}
+{"id" "lp_futures" "index" 4 "name" "2 - futures" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - futures" "_tombstone" false "frame" #afield/rect [60.0 560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_futures_code_.kt" "lines" 20 "characters" 732 "sha256" "95b461b333911718143e93769b693875112b057ee96d3285d4eb5508bfe72044"}]}
 ```
 
 ```kotlin [field-property box="lp_futures" name="code" path="lp_futures_code_.kt"]
@@ -131,5 +162,34 @@ futures.forEachIndexed { k, future ->
     grid += (future + at).apply { color = vec(0.75, 0.85, 1.0, 1.0) }
 }
 lines(grid, w = 520.0, h = 260.0, fitToSize = true)
+```
+
+## 6. 5 - what it expects (launch)
+
+<!-- field-box id="lp_expects" index="5" -->
+
+```edn [field-box id="lp_expects" role="properties"]
+{"id" "lp_expects" "index" 5 "name" "5 - what it expects (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - what it expects (launch)" "_tombstone" false "frame" #afield/rect [60.0 3060.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_expects_code_.kt" "lines" 18 "characters" 959 "sha256" "57d86faa3657a06e41ba5900ceb86f3aa6be938cdd221efddefef6538d9a60ac"}]}
+```
+
+```kotlin [field-property box="lp_expects" name="code" path="lp_expects_code_.kt"]
+import afield.ai.learning.pen.*
+
+// Launch, and the pen writes two points a frame. "page" draws its line thick where it is sure
+// to stay on the paper and thin where it expects to lift. "tip" is a magnifier on the last
+// dozen points, with an ellipse for each of its guesses about where the next point will land.
+val start = fline { moveTo(0, 0); cubicTo(4, -14, 12, -14, 12, 0); cubicTo(12, 8, 20, 8, 24, 0); color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 }
+var noise = 1.0
+slider("noise", min = 0.1, max = 1.5, initialValue = noise) { noise = it }
+val writer = PenLine(start, seed = 9)
+frames {
+    while (frame()) {
+        if (writer.history.size > 600) continue
+        writer.controls = PenControls(noise = noise)
+        writer.grow(2)
+        lines([start] + writer.widthByLift(), channel = "page", w = 520.0, h = 200.0, fitToSize = true)
+        lines(writer.closeUp(12).lines(), channel = "tip", w = 520.0, h = 260.0, fitToSize = true)
+    }
+}
 ```
 

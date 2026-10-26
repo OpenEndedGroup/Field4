@@ -114,6 +114,51 @@ val grid = mutableListOf<FLine>()
 lines(grid, w = 520.0, h = 260.0, fitToSize = true)
 ```
 
+## What the pen expects next
+
+Before every point the pen has a picture of where the next one will land: twenty guesses, each a
+small oval of likely places, some more likely than others. `distribution()` on a `PenLine` returns
+that picture in drawing coordinates, and `ellipses()` draws it, each guess as an ellipse two
+standard deviations wide, fainter the less likely it is. `closeUp()` keeps the pen's last few
+points with it, so a moment can be looked at on its own.
+
+Here the pen writes two hundred points at its learned spread (`noise = 1.0`), keeping a close-up
+of every moment. The top row is the four moments mid-stroke where it was least sure; the bottom row
+the four least sure with the pen up, about to start somewhere new. Both rows are at the same
+scale. `sideBySide` lays groups of lines out left to right without overlapping.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/learned_pen/expects.png" embed=true alt="Two rows of close-ups at the pen tip. Top row: four short white strokes, each ending in a cluster of tiny blue ellipses barely bigger than the line is wide. Bottom row: four strokes ending with the pen lifted, each followed by large overlapping ellipses, a small one for a short hop and a broad faint one for a jump to the next letter"}
+:::static
+import afield.ai.learning.pen.*
+
+val start = fline { moveTo(0, 0); cubicTo(4, -14, 12, -14, 12, 0); cubicTo(12, 8, 20, 8, 24, 0); color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 }
+
+val writer = PenLine(start, seed = 4, controls = PenControls(noise = 1.0))
+val moments = (0 until 200).map { writer.grow(); writer.closeUp() }
+
+val down = moments.filter { !it.penUp }.sortedByDescending { it.distribution.uncertainty }.take(4)
+val up = moments.filter { it.penUp }.sortedByDescending { it.distribution.uncertainty }.take(4)
+lines(sideBySide(down.map { it.lines() }) + sideBySide(up.map { it.lines() }, y = 60.0), w = 520.0, h = 260.0, fitToSize = true)
+```
+
+Mid-stroke, even at its least certain, the pen knows within a pixel or two where it is going.
+With the pen up it is choosing between a short hop (the dot of an i, the cross of a t) and a jump
+to the next letter, and the two guesses are far apart. `uncertainty` is the spread of the whole
+mixture, the number used to pick these moments.
+
+The same question asked hundreds of times gives a map of where the pen might go.
+`futuresDensity()` runs that many futures from the end of a line and piles them into an image,
+brightest where most of them went, on a log scale so a single stray future still shows. It returns
+PNG bytes, which `display` shows as a picture.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/learned_pen/density.png" embed=true alt="A yellow wave on black, and from its end a fan of blue light: bright and narrow just past the tip where the futures agree, spreading into a broad haze to the right, with faint single strokes wandering out at the edges"}
+:::static
+import afield.ai.learning.pen.*
+
+val start = fline { moveTo(0, 0); cubicTo(4, -14, 12, -14, 12, 0); cubicTo(12, 8, 20, 8, 24, 0) }
+display("density", PenLine(start, seed = 4).futuresDensity(count = 600, steps = 40))
+```
+
 ## A pen that keeps writing
 
 `continueWith` draws everything at once. A `PenLine` keeps the pen and lets you draw a few points
@@ -186,66 +231,57 @@ lines(row(null, 0.0), row(4.0, 140.0).apply { color = vec(0.5, 1.0, 0.6, 1.0) },
     row(-4.0, 280.0).apply { color = vec(1.0, 0.55, 0.6, 1.0) }, w = 520.0, h = 340.0, fitToSize = true)
 ```
 
-Which cell does what is not written down anywhere; the network found its own uses for them.
-`hidden()` reads each cell's output, and `liftProbability` is the chance the pen lifts after its
-next point. Plotting either against the line it is drawing is how you find a cell worth holding.
+Which cell does what is not written down anywhere; the network found its own uses for them. To
+look for one, colour the line by it. A `PenLine` made with `recordMemory = true` keeps every
+cell's output for every point it draws, `coloredByCell(cell)` draws the line blue where that cell
+is low and orange where it is high, and `liveliestCells(n)` names the cells that changed most
+while it wrote, which is where to start looking.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/learned_pen/cells.png" embed=true alt="The same line of machine handwriting written four times, one above the other, each coloured from blue to orange by a different memory cell; the colours change in different places in each row, one bright orange at the start of the line, another along the final loop"}
+:::static
+import afield.ai.learning.pen.*
+
+val start = fline { moveTo(0, 0); cubicTo(4, -14, 12, -14, 12, 0); cubicTo(12, 8, 20, 8, 24, 0) }
+val writer = PenLine(start, seed = 4, recordMemory = true)
+writer.grow(400)
+
+val rows = writer.liveliestCells(4).mapIndexed { i, cell ->
+    writer.coloredByCell(cell, thickness = 2.0).map { it + vec(0.0, i * 45.0, 0.0) }
+}
+lines(rows.flatten(), w = 520.0, h = 300.0, fitToSize = true)
+```
+
+## Lift as pressure
+
+The pen was never shown pressure, but it does know, at every point, how likely it is to lift.
+`widthByLift()` draws the line thick where the pen is sure to stay on the paper and thin where it
+expects to lift, which looks a lot like a hand pressing and easing off: strokes swell in the middle
+and taper to their ends. It is the model's confidence, drawn as width.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/learned_pen/pressure.png" embed=true alt="A line of machine handwriting in white whose strokes swell and thin: heavy through the middle of each letter and tapering to hairlines where the pen is about to lift"}
+:::static
+import afield.ai.learning.pen.*
+
+val start = fline { moveTo(0, 0); cubicTo(4, -14, 12, -14, 12, 0); cubicTo(12, 8, 20, 8, 24, 0) }
+val writer = PenLine(start, seed = 4)
+writer.grow(400)
+lines(writer.widthByLift(), w = 520.0, h = 160.0, fitToSize = true)
+```
 
 ## Training your own pen
 
 The pen knows handwriting because it watched handwriting. Show it something else and it will
-learn that. The optional `fieldpen` Python package (in `python/fieldpen`, the same model in
-PyTorch) trains a model from scratch or fine-tunes this one on your own strokes, and exports the
-result for Kotlin.
+learn that. [Teaching a pen](teaching_a_pen.md) trains six new pens on drawings Field generates
+(plotter lettering, harmonographs, plants, Truchet curves, flocking trails and a two-handed
+script), finds a learned habit inside one of them, and fine-tunes this pen on a taste. They all
+ship with Field: `PenModel.bundled("hershey")` passed to `continueWith` writes in plotter
+lettering.
 
-!!! note "Installing"
-    Training needs PyTorch. Install the optional `pen` group into the venv Field's Python uses:
-
-    ```diffstatic {data-lang=bash}
-    UV_PROJECT_ENVIRONMENT=.venv uv sync --inexact --group pen --group docs --group backdoor
-    ```
-
-    None of the Kotlin on this page needs it.
-
-Record your drawings as JSON, one file per drawing, each a list of strokes and each stroke a list of
-`[x, y]` points in the order they were drawn:
-
-```diffstatic {data-lang=json}
-{"strokes": [[[0, 0], [8, 2], [16, -1]], [[30, 10], [31, 18]]]}
-```
-
-An FLine is already ordered, so drawings made in Field are the easiest source. Keep training and
-validation drawings in separate folders, holding out whole drawings rather than pieces of ones you
-train on, then:
-
-```diffstatic {data-lang=bash}
-uv run --project . --group pen python -m fieldpen.prepare drawings/train train.npz --scale 8
-uv run --project . --group pen python -m fieldpen.prepare drawings/valid valid.npz --scale 8
-uv run --project . --group pen python -m fieldpen.train --train train.npz --valid valid.npz \
-    --out runs/mine --init src/jvmMain/resources/afield/pen/distill-b64.json
-```
-
-`--scale` means what it means in Kotlin: drawing units per model unit. `--init` starts from the
-handwriting model, which already knows how a hand moves smoothly. Leave it out, and pick `--hidden`,
-`--layers` and `--mixtures`, to start from nothing. The model is small (about a million numbers), so
-it trains on a laptop CPU; `--device cuda` uses a GPU if there is one.
-
-Kotlin reads its own format rather than PyTorch's, so export the best checkpoint:
-
-```diffstatic {data-lang=python}
-import fieldpen
-fieldpen.export_for_field(fieldpen.load_model("runs/mine/best.pt"), "mine.fieldpen.json")
-```
-
-and pass it to anything on this page:
-
-```diffstatic {data-lang=kotlin}
-val mine = PenModel.load("/path/to/mine.fieldpen.json")
-lines(start, start.continueWith(mine))
-```
-
-The same package runs in a [Python box](python.md) too (`from fieldpen import load_model, Session`),
-and `python -m fieldpen.lab` opens a page in the browser for drawing primers, watching futures and
-editing cells without Field. `python/fieldpen/README.md` has both.
+Training uses the optional `fieldpen` Python package (in `python/fieldpen`, the same model in
+PyTorch). The package also runs in a [Python box](python.md)
+(`from fieldpen import load_model, Session`), and `python -m fieldpen.lab` opens a page in the
+browser for drawing primers, watching futures and editing cells without Field.
+`python/fieldpen/README.md` has both.
 
 ## Other models
 
@@ -258,7 +294,8 @@ Markov chain over recorded strokes, a model running in Python, or a rule you wro
 
 | file | what is in it |
 |---|---|
-| [`afield/ai/learning/pen/pen.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ai/learning/pen/pen.kt) | `PenModel`, `Pen`, `PenLine`, `PenControls`, `continueWith`, `futuresWith`, `StrokeModel` |
+| [`afield/ai/learning/pen/pen.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ai/learning/pen/pen.kt) | `PenModel`, `Pen`, `PenLine`, `PenControls`, `PenDistribution`, `continueWith`, `futuresWith`, `StrokeModel` |
+| [`afield/ai/learning/pen/penviz.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ai/learning/pen/penviz.kt) | `ellipses`, `closeUp`, `coloredByCell`, `liveliestCells`, `widthByLift`, `futuresDensity`, `sideBySide`, `stacked` |
 | [`python/fieldpen/`](https://github.com/OpenEndedGroup/Field4/tree/main/python/fieldpen) | the PyTorch model, training, data preparation, export and the browser lab |
 | `src/jvmMain/resources/afield/pen/distill-b64.json` | the Distill article's published weights, shared by Kotlin and Python |
 

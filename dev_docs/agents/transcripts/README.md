@@ -252,8 +252,12 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   samples, the per-event fallback and the library search, the companion to `sound.md`. Promoted from
   `public/docs/assets/sound_render_path/` on 2026-10-02; the page's wavs and roll stay there.
 - `learned_pen.yaml`: **the learned pen** — the starting point of `public/docs/learned_pen.md`.
-  Four pure-CPU boxes on `afield.ai.learning.pen`: `continueWith`, `futuresWith` as small multiples, a
-  launched `PenLine` writing on from an editable drawing panel, and `Pen.setCell` on one memory cell.
+  Six pure-CPU boxes on `afield.ai.learning.pen`: `continueWith`, `futuresWith` as small multiples, a
+  launched `PenLine` writing on from an editable drawing panel, `Pen.setCell` on one memory cell, a
+  launched tip magnifier with next-step ellipses, and a cell-colouring slider.
+- `teaching_a_pen.yaml`: **teaching a pen** — the starting point of `public/docs/teaching_a_pen.md`.
+  Seven pure-CPU boxes on the synthetic corpora and bundled pens: the corpora, each pen alone, one stroke
+  in seven hands, the two-hands probe and held cells, a click-to-keep taste box, rounder, a corpus of your own.
 - `stipple_sheet.yaml`: **the stipple transport sheet** — the companion to
   `stipple_transport.md`. Loads the committed two-image model and deforms particles and a lattice
   under transport-time, movie-time and step sliders. Pure CPU.

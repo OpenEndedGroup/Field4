@@ -3,8 +3,9 @@
     uv run --project . --group pen python tools/fieldpen_reference_fixture.py
 
 For the bundled Distill model and a small random two-layer model (also exported as a
-`.fieldpen.json`), records the head's raw output after the start-of-sequence step and after each of
-a fixed list of displacements, into `src/jvmTest/resources/afield/pen/`.
+`.fieldpen.json`, in float32 and float16), records the head's raw output after the
+start-of-sequence step and after each of a fixed list of displacements, into
+`src/jvmTest/resources/afield/pen/`.
 """
 
 import json
@@ -39,6 +40,7 @@ def main():
     torch.manual_seed(3)
     tiny = HandwritingModel(Config(8, 3, 2)).eval()
     fieldpen.export_for_field(tiny, OUT / "tiny.fieldpen.json")
+    fieldpen.export_for_field(tiny, OUT / "tiny.f16.fieldpen.json", half=True)
     (OUT / "tiny_reference.json").write_text(json.dumps(run(tiny)))
 
 

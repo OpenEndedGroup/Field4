@@ -454,6 +454,9 @@ object DemoTranscriptExecSmokeTest {
         // learned_pen.md's starting point: the Distill handwriting LSTM run in Kotlin from a bundled
         // resource, drawn through lines(); the drawing-panel box is a frames {} loop. CPU only.
         "learned_pen",
+        // teaching_a_pen.md's starting point: the six bundled synthetic pens and rounder, loaded from
+        // resources; the probe, holds and taste box are plain CPU loops. CPU only.
+        "teaching_a_pen",
         "fline_hit_records",
         // fline_examples.md's measuring sections: locationAt, trim/splitAt, crossings, fill rules. CPU only.
         "fline_measure",

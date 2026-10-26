@@ -124,15 +124,22 @@ def load_model(path=None, device='cpu'):
     return m.to(device).eval()
 
 
-def export_for_field(model, path, metadata=None):
+def export_for_field(model, path, metadata=None, half=False):
     """Write `model` as a `.fieldpen.json` that Kotlin's `PenModel.load(path)` reads, no torch needed.
 
-    Tensors are little-endian float32, base64-encoded, in torch's own layout and gate order.
+    Tensors are in torch's own layout and gate order, base64-encoded little-endian float32, or
+    float16 with `half=True` (half the size; a pen samples the same strokes from it). Eight bits a
+    weight is not enough: a pen trained on clean synthetic drawings has weights sharp enough that
+    rounding them to 256 levels makes it drift off across the page.
     """
-    tensors = {k: dict(shape=list(v.shape),
-                       data=base64.b64encode(v.detach().cpu().float().contiguous().numpy()
-                                             .astype('<f4').tobytes()).decode('ascii'))
-               for k, v in model.state_dict().items()}
+    def encode(v):
+        a = v.detach().cpu().float().contiguous().numpy()
+        kind = '<f2' if half else '<f4'
+        out = dict(shape=list(a.shape), data=base64.b64encode(a.astype(kind).tobytes()).decode('ascii'))
+        if half:
+            out['dtype'] = 'f16'
+        return out
+    tensors = {k: encode(v) for k, v in model.state_dict().items()}
     Path(path).write_text(json.dumps(dict(format='fieldpen', format_version=1,
                                           config=asdict(model.config), tensors=tensors,
                                           metadata=metadata or {})))
