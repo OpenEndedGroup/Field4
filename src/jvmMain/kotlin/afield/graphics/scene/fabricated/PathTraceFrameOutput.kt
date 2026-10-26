@@ -13,6 +13,29 @@ import afield.graphics.vulkan.targets.RenderToTexture
 import afield.math.linalg.Matrix4f
 import org.lwjgl.vulkan.VK13.*
 
+/**
+ * The path tracer's unaccumulated output, in the form a denoiser wants.
+ *
+ * [PathTracingRenderer] normally averages samples into one progressively cleaner image, and that
+ * is what you look at. DLSS Ray Reconstruction wants the opposite: a single frame's radiance with
+ * nothing averaged behind it, plus the primary-hit guides that let it tell a noisy surface from a
+ * noisy silhouette. The tracer writes six vec4s per pixel into a device-local buffer, 96 bytes,
+ * and the one fragment shader here fans that buffer out into seven colour attachments — radiance,
+ * depth, motion, diffuse and specular albedo, packed normal and roughness, and specular hit
+ * distance. Seven is why the class checks `maxColorAttachments` before allocating anything.
+ *
+ * `PathTracingRenderer.enableFrameOutput()` makes one, and refuses while any material is
+ * transmissive or not opaque, since a single sample through glass carries no coverage a guide can
+ * use. [PathTracedReconstruction] is the consumer: it orders trace, convert and denoise into one
+ * recorded pass, and sets the Halton jitter this class reports. `inputs()` and `guides()` package
+ * the images as [ReconstructionInputs] and `RayReconstructionGuides`, which is the whole of the
+ * interface a reconstruction sees.
+ *
+ * Producing the images needs no readback and no native library. The conversion is one fragment
+ * shader over a buffer reference, so the cost of enabling frame output is a buffer, seven images
+ * and a draw.
+ */
+
 /** GPU-resident output of a single path-tracing dispatch, before progressive accumulation.
  * Six vec4s per pixel (96 bytes). No readback or native library is needed to produce these images.
  * The tracer owns this object; consumers borrow the images until the tracer closes.

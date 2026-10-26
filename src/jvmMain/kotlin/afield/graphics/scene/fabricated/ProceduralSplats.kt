@@ -12,6 +12,22 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
+ * Six Gaussian-splat clouds built from code, and the geometry and colour arithmetic they share.
+ *
+ * [ProceduralSplats] is everything a caller wants: six functions returning a [SplatSet], and `all`
+ * to iterate them by the demo's names. Below them sit the three pieces of arithmetic every cloud
+ * needs. `quaternionFromUnitVectors` turns a direction into the rotation that faces a flat splat
+ * along it, and is the one helper anything else reaches for: `SplatSet.fromGltf` orients its
+ * per-vertex discs with it. `hsl` reads an HSL triple as three.js does and converts it to linear
+ * light, so a cloud's colours are the demo's colours. `previewHash` is the demo's own sine-based
+ * hash, reproduced rather than replaced, since the fern and the coral are chaos games driven by it
+ * and a different hash grows a different plant.
+ *
+ * Nothing here touches a renderer or a device, so a cloud can be generated and measured in a plain
+ * test.
+ */
+
+/**
  * The six procedural clouds of the madp splat-shader demo, as [SplatSet]s: built from code,
  * deterministic, and the same splat for splat as the demo's (same order, so `index` in an insert
  * means the same splat in both).
@@ -266,7 +282,7 @@ object ProceduralSplats {
     }
 
     /**
-     * three.js's `Color.setHSL`: [h] wraps, [s] and [l] clamp to 0..1, and the result is
+     * three.js's `Color.setHSL`: `h` wraps, `s` and `l` clamp to 0..1, and the result is
      * converted from sRGB to linear, as three.js's colour management does by default.
      */
     fun hsl(h: Double, s: Double, l: Double): DoubleArray {

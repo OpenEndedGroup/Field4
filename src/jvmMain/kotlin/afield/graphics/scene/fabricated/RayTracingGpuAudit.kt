@@ -39,6 +39,34 @@ expect:
   stdoutNotContains: ["VUID-"]
   stderrNotContains: ["VUID-"]
 */
+
+/**
+ * One process that runs Field's ray-tracing and path-tracing GPU checks against a real device and
+ * writes down what it found.
+ *
+ * The individual suites each need a renderer and a window: [PathTraceGpuSmoke] for materials,
+ * readback colours and accumulation, its temporal and fog companion, the statistical emitter and
+ * medium suites, and [RayTracingDocsHarness], which is also what captures the pictures on
+ * `ray_tracing_examples.md`. This entrypoint opens one window and one renderer, runs the selected
+ * stages in order with no saved document, and rewrites `report.json` after each one, so a run that
+ * crashes or times out still records which stage it reached and what the device could do. The
+ * default six stages are `seams`, `base`, `camera`, `temporal`, `fog` and `pipeline`; `--all` adds
+ * `emitters`, `medium` and a GPU timing sweep over both backends.
+ *
+ * The scheduling is the part to read before changing anything here. The renderer calls
+ * `runBlocking` itself while recording a frame, so an ordinary event loop around a suspending
+ * check would resume that check inside the recording, before submission. The audit installs a
+ * dispatcher that only queues continuations and drains the queue between complete frames, which is
+ * what keeps `awaitSamples` and the capture helpers reading pixels from frames that were presented.
+ *
+ * Capability is reported rather than assumed. A device with no ray-tracing pipeline leaves
+ * `pipeline` marked `SKIPPED` in the report instead of failing; `--require-ray-query` and
+ * `--require-pipeline` turn that into a failure for a run meant to prove the hardware path, and
+ * `--fallback` goes the other way, switching optional RT negotiation off so a device that has both
+ * still exercises the compute-BVH backend. The catalog id is `four.raytracing.gpu-audit`, and
+ * `dev_docs/RAY_TRACING_AUDIT.md` has the reproduction commands.
+ */
+
 /** Runs the existing Field renderer and readback smokes on one thread, without a saved document.
  * Default: seams, base/glTF/glass, camera, temporal, fog, pipeline captures.
  * --all adds emitters, medium and GPU benchmarks.

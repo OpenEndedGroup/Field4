@@ -22,6 +22,28 @@ import afield.ui.output.controlGroup
 import afield.ui.output.displayOpen
 
 /**
+ * Installing the splat-shader demo on Field's renderer: the cloud, the settings and the toolbar.
+ *
+ * [SplatShader] is the one call box code makes. Hand it a compute module and a [SplatSet] and it
+ * builds the source buffer, the renderer's cloud, the per-frame dispatch that runs the insert and
+ * the accumulation target the splats are drawn into, then installs the lot under one name.
+ * [SplatShaderSettings] is everything that call can be told, each property carrying the demo's own
+ * default, and [showControls] puts the demo's toolbar in a box output, so the demo's sliders are
+ * here too.
+ *
+ * One thing to know before reading the class: re-running a box must not leak a GPU buffer or a
+ * window-sized accumulation target, and nothing in this stack frees either. So the buffers and the
+ * cloud are kept per renderer, keyed by name, splat count and sort mode, and a re-run of the same
+ * shape takes the previous run's back rather than allocating its own. The same bookkeeping is why
+ * two SplatShaders under one name replace each other instead of stacking up.
+ *
+ * The GLSL a box's compute tab includes lives beside the class rather than in the box:
+ * `include("insert")` and `include("end")` read the two packaged files out of Field's resources,
+ * and `computeSource` assembles the whole shader for code building a module outside a box, which
+ * is how the GPU smoke runs an insert with no editor in the picture.
+ */
+
+/**
  * A Gaussian-splat cloud whose splats are rewritten every frame by a few lines of GLSL in a box:
  * the madp splat-shader demo's "insert", on Field's Vulkan splat renderer.
  *

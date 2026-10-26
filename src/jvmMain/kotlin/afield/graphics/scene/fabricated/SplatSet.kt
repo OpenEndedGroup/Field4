@@ -10,6 +10,23 @@ import java.io.File
 import kotlin.math.sqrt
 
 /**
+ * Where a Gaussian-splat cloud is built, loaded and measured, before any of it reaches a device.
+ *
+ * [SplatSet] is one float array and a count. It holds splats in their parametric form, which is
+ * the form an insert can edit and the form [GaussianSplatRenderer] turns into a covariance on the
+ * GPU after the insert has run, so a cloud assembled here can be handed to a [SplatShader] without
+ * anything in between. Everything comes in through that one array: `push` from code, `fromPly` or
+ * `fromTable` for a capture, and `fromGltf` for a mesh rewritten as one flat disc per vertex.
+ *
+ * The measurement is `fit`, and it is a median centre with a 90th-percentile radius rather than a
+ * bounding box, because a handful of stray splats in a capture would otherwise shrink everything
+ * else to a dot. `fitted` applies it, returning a copy about a unit across. That is more than
+ * framing: an insert reads the splats in their own coordinates and its spatial frequencies are
+ * literals in the GLSL, written for a cloud about a unit across as the procedural ones are. A
+ * capture or a model in metres is not one, so fit it before reaching for a preset.
+ */
+
+/**
  * Gaussian splats on the CPU in their *parametric* form — centre, radii, rotation, colour and
  * opacity — rather than the covariance [GaussianSplatRenderer] draws from.
  *
