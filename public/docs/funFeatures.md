@@ -377,6 +377,8 @@ The most successful and most important programming paradigm of all time — the 
 
 Supported features include integration with other boxes' variables — changing a dependant variable inside a box magically causes an auto-update sweep of the spreadsheet (next animation frame). And a complete and understanding type system: while the expression language for the spreadsheet is Kotlin, there's a very carefully wrapped pseudo-numeric type that auto-promotes gleefully, understanding scalars, scalars with physical units, Field's linear algebra types, and even Field's FLine. If you ever wanted a spreadsheet that could do formulae with drawings, this is it.
 
+[Spreadsheets in a Box](spreadsheets.md) shows how to make one, what formulas can do, and the editing keys.
+
 ## Actors / Message-passing
 
 We can think about 'the box' as taking on the role of "an actor". This marries very well with animation in general (the choreography of things over time) and Kotlin's flexible coroutine system. Given two boxes:

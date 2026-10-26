@@ -156,6 +156,9 @@ nav:
     - Point to geometry and leave notes: geometry_review.md
     - Charts as FLines: chart.md
     - DataFrames in a Box: dataframe.md
+    # Beside DataFrames: the other table a box can hold, this one typed into and computed by Kotlin
+    # formulas. Expands the funFeatures "Spreadsheets!" blurb.
+    - Spreadsheets in a Box: spreadsheets.md
     - Interactive Guides: interactive_guides.md
   - Presenting & Teaching:
     - Presenting with Field: presentation_studio.md
