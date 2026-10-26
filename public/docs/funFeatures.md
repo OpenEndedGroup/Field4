@@ -428,6 +428,16 @@ Press that cyan arrow to get back to the text editor.
 
 Beside the page is a **DOC NOTES** panel. Select a sentence, press `Ctrl+Shift+A` and say what's wrong with it; your note joins a queue that agents, one per page, work through: they revise the Markdown behind the note and leave a record of what they did, or a question for you. [Notes on the Documentation](docs_notes.md) explains the loop.
 
+## Presenting with Field
+
+Your talk can be a Field document too. Put Markdown, images, real webpages, YouTube and live Field documents on a separate audience display, with crossfades between slides and simple fade-in builds. When it's time to demonstrate something, run a saved macro or an interactive guide in the document on screen, and edit the code while the audience watches. Slides, CSS themes and shared media stay in ordinary files you can keep in Git.
+
+Long talks get a collapsible outline and incremental search over slide titles **and their text**, including reveals. Type a phrase, choose a match with the arrow keys, and press Enter to jump there; searching leaves the audience on the current slide until you're ready.
+
+![Field's presenter searching for propagation in a slide's reveal text, with a matching excerpt and a keyboard-selected result.](assets/presentation_studio/search.png)
+
+Start with the **Presentations** kit on Welcome. [Presenting with Field](presentation_studio.md#start-a-presentation) walks through making a talk, styling it and teaching from the live material.
+
 ## Navigating
 
 A few keyboard shortcuts for getting around Field.
