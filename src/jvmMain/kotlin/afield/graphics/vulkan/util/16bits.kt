@@ -10,21 +10,63 @@ import afield.math.linalg.Vector2f
 import afield.math.linalg.Vector3f
 import afield.math.linalg.Vector4f
 
+/**
+ * A two-component vector marked for 16-bit storage, holding the full-precision [Vector2f] until
+ * something writes it out.
+ *
+ * Nothing is converted or copied here: the wrapper is a type tag that tells a buffer writer to emit
+ * two halves rather than two floats. A `Structure` field declared `f16vec2` and a `PushConstants`
+ * member of this type both pack it into one `uint` with [packHalf2x16], which GLSL reads back with
+ * `unpackHalf2x16`. Read the components through `v`.
+ */
 data class Vec2h(val v: Vector2f)
+
+/**
+ * Three components marked for 16-bit storage. The packed form is two `uint`s — `x` and `y` in the
+ * first, `z` in the low half of the second — so it costs the same eight bytes a `uvec2` does.
+ */
 data class Vec3h(val v: Vector3f)
+
+/**
+ * Four components marked for 16-bit storage, packed into two `uint`s and read back in the shader as a
+ * `uvec2`: eight bytes where a `vec4` takes sixteen, at enough precision for a colour.
+ */
 data class Vec4h(val v: Vector4f)
 
 // The 8-lane fp16 vector is no longer a transit wrapper: use the real generated
 // afield.math.linalg.Vector8h, which stores binary16 directly.
 
 // Convenient ".half" views on Field vectors.
+
+/**
+ * Marks this vector for 16-bit storage: `Vector2f(0.4f, 0.9f).half` is the idiom for giving a
+ * push-constant member or a buffer field its half-precision form.
+ *
+ * The wrapper holds this vector rather than a copy of it, so a later mutation of the `Vector2f` is
+ * seen by whatever writes the wrapper out.
+ */
 val Vector2f.half: Vec2h get() = Vec2h(this)
+
+/** Marks this vector for 16-bit storage, wrapping it rather than copying it. */
 val Vector3f.half: Vec3h get() = Vec3h(this)
+
+/** Marks this vector for 16-bit storage, wrapping it rather than copying it. */
 val Vector4f.half: Vec4h get() = Vec4h(this)
 
+/**
+ * Converts one float to binary16 and returns the sixteen bits zero-extended into an `Int`.
+ *
+ * The upper half of the result is always zero, so two of these can be combined with a shift, which is
+ * what [packHalf2x16] does. Rounding, overflow to infinity and underflow to a subnormal all follow
+ * [floatToHalfBits].
+ */
 fun packHalf1x16(x: Float): Int =
     floatToHalfBits(x).toInt() and 0xFFFF
 
+/**
+ * Packs two floats into one `Int` as binary16 pairs, with [x] in the low sixteen bits and [y] in the
+ * high sixteen: the layout GLSL's `packHalf2x16` produces and `unpackHalf2x16` reads.
+ */
 fun packHalf2x16(x: Float, y: Float): Int {
     val hx = packHalf1x16(x)
     val hy = packHalf1x16(y)

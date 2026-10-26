@@ -30,37 +30,112 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicReferenceArray
 import kotlin.math.min
 
+/**
+ * The name a shader includes to get the statistics GLSL: `#include "fieldStats"`.
+ *
+ * The include expands differently depending on how the box was bound. A box that called
+ * `fieldStatsHere` gets the recording functions as well as the reading ones; a box bound as a
+ * consumer with `useFieldStats` gets only the readers. An include with no binding at all is a
+ * compile error saying which of the two to call.
+ */
 const val FIELD_STATS_INCLUDE_NAME = "fieldStats"
+
+/** The name of the scratch buffer the recording shader appends subgroup partials to, used to match
+ * the shader's declaration to the buffer the host allocates. */
 const val FIELD_STATS_PARTIAL_BUFFER_NAME = "FieldStatsPartialBuffer"
+
+/** The name of the buffer the reduce pass writes finished statistics into, and the only one the host
+ * reads back. */
 const val FIELD_STATS_RESULT_BUFFER_NAME = "FieldStatsResultBuffer"
+
+/** Default binding for the partial buffer, 61, up beside the probe's 63, where a shader's own
+ * bindings are unlikely to reach. Override it on the constructor if they do. */
 const val FIELD_STATS_DEFAULT_PARTIAL_BINDING = 61
+
+/** Default binding for the result buffer, 62, next door to
+ * [FIELD_STATS_DEFAULT_PARTIAL_BINDING]. */
 const val FIELD_STATS_DEFAULT_RESULT_BINDING = 62
 
 private val fieldStatsReadbackExecutor = Executors.newCachedThreadPool { runnable ->
     Thread(runnable, "field-stats-readback").apply { isDaemon = true }
 }
 
+/**
+ * What a box remembers about the statistics block its shaders include: which block, and whether this
+ * box is the one recording into it.
+ *
+ * One box records and any number may read, so the binding rather than the block decides which GLSL
+ * `#include "fieldStats"` expands to here.
+ */
 data class ShaderFieldStatsBinding(
+    /** The statistics block itself, which stays owned by the box that allocated it however many
+     * consumers bind to it. */
     val stats: ShaderFieldStats,
+    /** True for the box that records samples, which gets the recording functions and the subgroup
+     * extensions they need; false for a box that only reads the reduced result. */
     val producer: Boolean
 )
 
+/**
+ * One channel's statistics for one frame, as the reduce pass left them and the host read them back.
+ *
+ * Every number here describes the values recorded during a single frame; the block is reset at the
+ * start of the next one, so this is a per-frame summary rather than a running total. Counts are
+ * exact. The moments are accumulated in 32-bit floats on the GPU and widened to `Double` on the way
+ * out, so they carry single precision whatever their type says.
+ */
 data class FieldScalarStatsSnapshot(
+    /** Counts completed reduce passes since the block was created, and so identifies the frame this
+     * came from. Two reads with the same generation are the same frame's numbers. */
     val generation: Long,
+    /** How many shader invocations recorded into this channel, finite or not. */
     val calls: Long,
+    /** How many of those values were finite. This is the denominator for [mean] and [variance], and
+     * the total weight the quantile sketch is read against. */
     val finiteCount: Long,
+    /** How many were NaN or infinite. Non-zero here is the signal to look for: it says the shader is
+     * producing values that no average will show. */
     val invalidCount: Long,
+    /** How many finite values were not exactly zero: the cheap test for whether a channel is
+     * carrying anything at all. */
     val nonZeroCount: Long,
+    /** The smallest finite value recorded, exactly, not read off the sketch. Positive infinity when
+     * nothing finite was recorded. */
     val min: Double,
+    /** The largest finite value recorded, exactly. Negative infinity when nothing finite was
+     * recorded. */
     val max: Double,
+    /** The mean of the finite values, [sum] over [finiteCount], and zero when there were none. */
     val mean: Double,
+    /** The population variance, computed on the GPU as the mean of squares less the square of the
+     * mean and clamped at zero. That form loses precision when the values are large and their spread
+     * is small, which is where the clamp earns its place. */
     val variance: Double,
+    /** The sum of the finite values. */
     val sum: Double,
+    /** The sum of their squares. */
     val sumSquares: Double,
+    /** The square root of [variance]. */
     val standardDeviation: Double,
+    /** How many subgroup partials the recording pass had to throw away because the partial buffer was
+     * full. Non-zero means every number here was computed from a subset, and the fix is a larger
+     * `maxPartials`. */
     val droppedPartials: Long,
+    /** The quantile sketch: value-and-weight pairs in ascending value order, weights summing to
+     * [finiteCount], empty entries dropped. Read it through [quantile] and [cdf] rather than
+     * directly. A centroid's value is one recorded subgroup's mean standing in for a whole span of
+     * them, so the sketch summarises group averages rather than individual samples. */
     val centroids: List<Pair<Double, Double>>
 ) {
+    /**
+     * The value at quantile [q], read off the centroid sketch, with `q` clamped to 0..1.
+     *
+     * Walks the centroids accumulating weight and returns the value of the first one that reaches
+     * `q` of [finiteCount], so the answer is always one of the recorded centroid values rather than
+     * an interpolation between two. Returns NaN when nothing finite was recorded. Because a centroid
+     * is a subgroup mean, extreme quantiles are pulled in toward the middle — use [min] and [max]
+     * for the true ends.
+     */
     fun quantile(q: Double): Double {
         if (finiteCount == 0L || centroids.isEmpty()) return Double.NaN
         val target = q.coerceIn(0.0, 1.0) * finiteCount.toDouble()
@@ -74,6 +149,14 @@ data class FieldScalarStatsSnapshot(
         return answer
     }
 
+    /**
+     * The fraction of recorded values at or below [value], read off the centroid sketch and clamped
+     * to 0..1.
+     *
+     * Sums the weight of every leading centroid whose value is at most [value] — leading, because the
+     * walk stops at the first centroid above it. Returns NaN when nothing finite was recorded. The
+     * inverse of [quantile] to the sketch's resolution, which is one centroid per lane.
+     */
     fun cdf(value: Double): Double {
         if (finiteCount == 0L) return Double.NaN
         val weight = centroids.takeWhile { it.first <= value }.sumOf { it.second }
@@ -81,39 +164,113 @@ data class FieldScalarStatsSnapshot(
     }
 }
 
+/**
+ * One smoothing slot's current reading: a statistic of a channel, carried across frames with
+ * exponential smoothing instead of being recomputed from scratch.
+ *
+ * A per-frame mean jumps around enough to be useless for driving anything. A slot takes one statistic
+ * — the mean, or a quantile — and smooths it on the GPU as part of the reduce pass, so a shader can
+ * read a stable number with `fieldStatsSmoothedMean` or `fieldStatsSmoothedQuantile` and box code can
+ * read the same number here. Slots are configured by the shader that uses them, not from Kotlin.
+ */
 data class FieldStatsStateSnapshot(
+    /** Which statistic is being smoothed: 0 for an unused slot, 1 for the mean, 2 for the quantile at
+     * [parameter]. */
     val mode: Int,
+    /** Which channel's statistic this slot follows. */
     val channel: Int,
+    /** The quantile this slot tracks when [mode] is 2, between 0 and 1. Unread for the mean. */
     val parameter: Double,
+    /** How many frames it takes the smoothed value to cover half the distance to a new reading. The
+     * per-frame blend is `1 - 2^(-1/halfLife)`, so larger is slower; the shader side floors it just
+     * above zero. */
     val halfLife: Double,
+    /** The smoothed value as of this frame. Zero on a slot that has not run yet. */
     val value: Double,
+    /** Whether the slot has a real reading. A slot starts uninitialised and takes its first frame's
+     * statistic whole rather than blending up from zero, and a slot whose mode, channel, quantile or
+     * half-life changes restarts the same way, so a reconfigured slot does not drift from its old
+     * value to its new one. */
     val initialized: Boolean
 )
 
+/**
+ * A handle on one channel of a statistics block, so box code can hold onto a channel rather than
+ * passing its index around.
+ *
+ * Obtained from [ShaderFieldStats.scalar]. It stores the index and nothing else, so two handles on
+ * the same channel are interchangeable.
+ */
 class ShaderFieldStatsScalar internal constructor(
     private val stats: ShaderFieldStats,
+    /** Which channel this handle refers to. */
     val index: Int
 ) {
+    /** Reads the result buffer as it stands, without waiting for the GPU. See [ShaderFieldStats.read]
+     * for what that means for the numbers. */
     fun read(): FieldScalarStatsSnapshot = stats.read(index)
+
+    /** The most recent fence-synchronised read-back for this channel, or `null` if none has completed
+     * yet. This is the one to call each frame. */
     fun latest(): FieldScalarStatsSnapshot? = stats.latest(index)
 }
 
+/**
+ * A handle on one smoothing slot of a statistics block, obtained from [ShaderFieldStats.state].
+ *
+ * The slot's configuration comes from the shader; this side only reads it.
+ */
 class ShaderFieldStatsState internal constructor(
     private val stats: ShaderFieldStats,
+    /** Which slot this handle refers to. */
     val index: Int
 ) {
+    /** Reads the result buffer as it stands, without waiting for the GPU. */
     fun read(): FieldStatsStateSnapshot = stats.readState(index)
+
+    /** The most recent fence-synchronised read-back for this slot, or `null` if none has completed
+     * yet. */
     fun latest(): FieldStatsStateSnapshot? = stats.latestState(index)
 }
 
+/**
+ * A statistics block: the two GPU buffers, the two compute passes that reset and reduce them, and the
+ * read-back that brings each frame's numbers to box code.
+ *
+ * Allocate one through `Box.fieldStatsHere` rather than constructing it; that registers the binding
+ * the `fieldStats` include reads. Per frame it resets the partial buffer before the recording shader
+ * runs, reduces the partials afterwards, and — unless [cpuSnapshotsEnabled] is off — queues a
+ * read-back behind the frame's fence whose result shows up in [latest].
+ *
+ * All of the sizing is fixed at construction, and the buffers are sized from it: a wider block costs
+ * memory whether or not the shader fills it, and the partial buffer is the large one.
+ */
 class ShaderFieldStats(
+    /** The box that owns this block. Its name and id are what a failed read-back is reported
+     * against. */
     val box: Box,
+    /** How many independent statistics this block tracks, 1 to 64. A channel is a slot the shader
+     * chooses when it records, not a component of a vector: four channels is how you watch four
+     * unrelated quantities. */
     val channels: Int = 1,
+    /** How many centroids the quantile sketch keeps per channel: a power of two from 16 to 256, and
+     * also the reduce pass's workgroup size. Smaller is a coarser [FieldScalarStatsSnapshot.quantile]
+     * and nothing else: the counts and moments are reduced over every partial whatever this is. */
     val sketchSize: Int = 256,
+    /** How many subgroup partials one channel may record in a frame before the rest are counted as
+     * [FieldScalarStatsSnapshot.droppedPartials]. This is the term that dominates the partial
+     * buffer's size, at 48 bytes per partial per channel, and the block is double-buffered, so that
+     * figure is allocated twice over. */
     val maxPartials: Int = 65_536,
+    /** How many smoothing slots the block carries, 1 to 64. Slots cost almost nothing and are
+     * configured from the shader, so the default leaves room for a few without asking. */
     val stateSlots: Int = 8,
+    /** The descriptor set both buffers are bound in. */
     val descriptorSet: Int = 0,
+    /** Binding for the partial buffer. Change it only if the shader's own bindings reach this far
+     * up. */
     val partialBinding: Int = FIELD_STATS_DEFAULT_PARTIAL_BINDING,
+    /** Binding for the result buffer. */
     val resultBinding: Int = FIELD_STATS_DEFAULT_RESULT_BINDING
 ) {
     init {
@@ -149,6 +306,13 @@ class ShaderFieldStats(
     private val latestSnapshots = AtomicReferenceArray<FieldScalarStatsSnapshot?>(channels)
     private val latestStates = AtomicReferenceArray<FieldStatsStateSnapshot?>(stateSlots)
 
+    /**
+     * Whether each frame queues a read-back of the result buffer to the CPU. On by default.
+     *
+     * Turn it off for a block only the shader reads — `fieldStatsQuantile` and the smoothing slots
+     * all work on the GPU without this — and [latest] then stays at whatever it last held. [read]
+     * still works, since it goes to the buffer directly.
+     */
     @Volatile
     var cpuSnapshotsEnabled: Boolean = true
 
@@ -201,31 +365,54 @@ class ShaderFieldStats(
         }
     }
 
+    /** A handle on channel [index], for code that would rather hold a channel than an index. Throws
+     * for an index outside `0 until channels`. */
     fun scalar(index: Int): ShaderFieldStatsScalar {
         require(index in 0 until channels) { "index must be in 0 until $channels" }
         return ShaderFieldStatsScalar(this, index)
     }
 
+    /**
+     * The most recent fence-synchronised read-back for [channel], or `null` if none has completed
+     * yet.
+     *
+     * This is the per-frame call. The read-back runs on a background thread once the frame's fence
+     * has signalled, so what comes back is a frame or two old but internally consistent — every
+     * number in it is from the same reduce pass. Returns `null` while the first frames are still in
+     * flight, and whenever [cpuSnapshotsEnabled] has been off since the block was made.
+     */
     fun latest(channel: Int = 0): FieldScalarStatsSnapshot? {
         require(channel in 0 until channels) { "channel must be in 0 until $channels" }
         return latestSnapshots.get(channel)
     }
 
+    /**
+     * Reads [channel] out of the result buffer immediately, without waiting for the GPU.
+     *
+     * There is no fence wait here, so this can land mid-reduce and see a frame's numbers half
+     * written. It also reads all channels and slots to answer for one. Use it from a test or a
+     * one-shot inspection where the frame boundary is known; use [latest] in a running box.
+     */
     fun read(channel: Int = 0): FieldScalarStatsSnapshot {
         require(channel in 0 until channels) { "channel must be in 0 until $channels" }
         return readAll().snapshots[channel]
     }
 
+    /** A handle on smoothing slot [index]. Throws for an index outside `0 until stateSlots`. */
     fun state(index: Int): ShaderFieldStatsState {
         require(index in 0 until stateSlots) { "index must be in 0 until $stateSlots" }
         return ShaderFieldStatsState(this, index)
     }
 
+    /** The most recent fence-synchronised read-back for slot [index], or `null` if none has completed
+     * yet. The per-frame call for a smoothing slot. */
     fun latestState(index: Int): FieldStatsStateSnapshot? {
         require(index in 0 until stateSlots) { "index must be in 0 until $stateSlots" }
         return latestStates.get(index)
     }
 
+    /** Reads slot [index] out of the result buffer immediately, with the same no-fence caveat as
+     * [read]. */
     fun readState(index: Int): FieldStatsStateSnapshot {
         require(index in 0 until stateSlots) { "index must be in 0 until $stateSlots" }
         return readAll().states[index]
