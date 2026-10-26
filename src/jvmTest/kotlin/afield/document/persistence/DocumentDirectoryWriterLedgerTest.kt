@@ -186,11 +186,9 @@ class DocumentDirectoryWriterLedgerTest {
         /**
          * Every jvmMain file that writes to a document-derived path, as of 2026-10-07.
          *
-         * Twenty-three files: nine gated, fourteen not. The fourteen are **not** all bugs — most write
-         * somewhere a read-only session never reaches. The ones that are genuinely reachable are
-         * marked `REACHABLE`, and they are the backlog this test exists to keep visible rather than
-         * a claim that tonight fixed them. They were surveyed by an audit of 693 raw write-primitive
-         * hits across 178 files; see `dev_docs/document_write_back.md`.
+         * Files outside the gated group each carry a reason why their writes are outside document
+         * write-back. The original survey audited 693 raw write-primitive hits across 178 files;
+         * see `dev_docs/document_write_back.md`.
          */
         private val LEDGER: Map<String, Entry> = mapOf(
             // ---- consult the read-only predicate ----
@@ -232,12 +230,8 @@ class DocumentDirectoryWriterLedgerTest {
             // BoxStudies.directory: a read-only box's study works in a scratch copy outside the document.
             "src/jvmMain/kotlin/afield/study/source/SourceStudy.kt" to GATED,
 
-            // ---- ungated and reachable from a read-only session: the backlog ----
-            "src/jvmMain/kotlin/afield/runtime/kotlin/SharedTypes.kt" to exempt(
-                1,
-                "REACHABLE. `Box.sharedTypes {}` publishes into <doc>/.field-shared-types/gen-N/; " +
-                    "the receiving parameter is called `workspace` but is handed the document dir."
-            ),
+            // Read-only documents publish compiled types into temporary storage.
+            "src/jvmMain/kotlin/afield/runtime/kotlin/SharedTypes.kt" to GATED,
 
             // ---- ungated, and out of scope with a reason ----
             "src/jvmMain/kotlin/afield/document/workspace/WorkspaceProjectScope.kt" to exempt(
