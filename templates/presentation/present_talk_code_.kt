@@ -1,7 +1,16 @@
 import afield.ui.slides.*
 import kotlinx.html.*
+import afield.tools.automation.OperationTranscript
+import afield.document.workspace.files
 
 val talkDocument = inside.documentName
+val waveExperiment = inside.root.children.single { it.name == "Wave experiment" }
+val waveBaseline = LessonCheckpoint.capture(waveExperiment)
+val lessonDirectory = files.documentDirectory.toString()
+fun runWaveExperiment() {
+    val result = OperationTranscript.runMacro(lessonDirectory, "run_wave")
+    check(result.success) { result.toString() }
+}
 
 presentation(title = "Teaching with Field") {
     section("Opening") {
@@ -51,6 +60,26 @@ presentation(title = "Teaching with Field") {
                 }
             }
             markdownNote("Markdown mixes with HTML and image layouts. Edit presentation.css in its Field box, then Refresh slide. [[back]] [[next]]")
+        }
+    }
+    // Editable Markdown slides: AI4 can revise one slide without rewriting this Kotlin.
+    slides("talk.slides.json")
+    section("A repeatable experiment") {
+        step("Predict a wave", id = "wave-experiment") {
+            audienceMarkdown("# Twice the frequency?\nPredict what happens to the wavelength.")
+            markdownNote("Next reveals the explanation, then opens the experiment. Change frequency and run Wave experiment. Reset restores only its source and runs setup again. [[back]] [[next]]")
+            cue("Explain") {
+                audienceMarkdown("# Half the wavelength.\nAt the same propagation speed, twice the frequency means half the wavelength.")
+            }
+            cue("Try it live") {
+                audienceDocument(talkDocument, macro = "run_wave", interactiveGuide = false)
+                onEnter { runWaveExperiment() }
+                selectBox(waveExperiment)
+            }
+            checkpoint("Wave baseline") {
+                waveBaseline.restore()
+                runWaveExperiment()
+            }
         }
     }
     section("Working material") {

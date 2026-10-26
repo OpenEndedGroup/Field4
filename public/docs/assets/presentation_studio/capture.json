@@ -1,16 +1,19 @@
 {
-  "capturedAt": "2026-10-22T15:35:42.921Z",
-  "commit": "599b88195940824a43964e080ce1dc388d750e8b",
+  "capturedAt": "2026-10-26T01:00:50.727Z",
+  "commit": "e451e3ee87d4c2b407f55d3c295fa17bcb65611a",
   "inputs": {
-    "src/commonMain/resources/presentation-control.js": "cab30d46d1ae701cd3d91bcd526ef85a9e1d337d71b55438571c642ef0bbff74",
-    "src/commonMain/resources/presentation-control.html": "09fbf154ace51cc0f6acaa42c6ef7cd4f1f9b27e19073c8091a9871c113d239e",
+    "src/commonMain/resources/presentation-control.js": "013783bbd0a540302f438606403b443b9f00a16cbe23caf3aca0f68aa2709a63",
+    "src/commonMain/resources/presentation-control.html": "8df80113765d27a673c9bb6b8efdeb7af9f794383a32d7ed55f405652f838f3c",
     "src/commonMain/resources/presentation-audience.js": "249bc030fbfe7391079ee2a3065645830130e3a43d0e65a5d7ece65775068a89",
     "src/jvmMain/kotlin/afield/ui/slides/AudienceBuilder.kt": "421ec9f6da7b0ca06a36241f83e5339444d03b9334f82a5dfbb92b5b566f19a8",
-    "templates/presentation/present_talk_code_.kt": "e66bb855184160d07b981a90e79ea209c7b0b0f118343df6df1e9b2a9ecfc29f",
-    "templates/presentation/files/presentation.css": "5d2f7cef535bd560fe480b9caf308a919b37fcce7de0ce350d802d661e133601"
+    "templates/presentation/present_talk_code_.kt": "c81518b2f59d33d269cb99bb043c78e54a9520ea720f9f971ff3c67294c92861",
+    "templates/presentation/files/presentation.css": "5d2f7cef535bd560fe480b9caf308a919b37fcce7de0ce350d802d661e133601",
+    "templates/presentation/files/talk.slides.json": "52cf70b8fe492774b854d772e53653d1cd5ae142f760ff2d78fbc01caf3e32b4",
+    "templates/presentation/present_wave_experiment_code_.kt": "ee4a3ebe8a9f9defdfe43b8e300aafe3532cb95a0b30ff3cc7ba7db7f158f45b",
+    "templates/presentation/macros/run_wave.yaml": "383bd9215cffdefef42fdfe83479bbbf970c1dbfd972ef57bbe22c28808d58f5"
   },
   "targets": {
-    "source": "https://localhost:9488/index.html?file=docs-talk",
+    "source": "https://localhost:9493/index.html?file=docs-lesson",
     "audience": "/presentation-audience.html",
     "controller": "/presentation-control.html"
   },
@@ -31,13 +34,13 @@
       "file": "outline.png",
       "width": 1000,
       "height": 760,
-      "sha256": "3004fdce6fa655ae8ff27147d7d9bbd8a9311dd59cba8b9bf8787b43e457b94f"
+      "sha256": "1e95bc8a0fe4db45762ffe1aa3ec6d4ece265636ce74a4452146ad28f4b7d663"
     },
     {
       "file": "stylesheet.png",
       "width": 1280,
       "height": 820,
-      "sha256": "cb6be439e334526bc3d8a063f136ba520262bbe26f91410b3d7a39502dc9441c"
+      "sha256": "60775eef24a202af9ee94478e85a92b79e68b4663c339e07489023864fa28480"
     }
   ]
 }

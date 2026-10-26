@@ -30,6 +30,8 @@ fun Box.presentation(
     val instance = builder.build()
     require(instance.steps.isNotEmpty()) { "A presentation needs at least one step" }
     instance.resumeStep = previous?.takeIf { it.slideshowId == instance.slideshowId }?.currentStepIndex ?: -1
+    instance.resumeStepId = previous?.currentStep?.id
+    instance.resumeCue = previous?.currentCueIndex ?: 0
     slideShow = instance
     return instance
 }
@@ -38,7 +40,9 @@ fun Box.presentation(
 fun SlideShowInstance.present() {
     if (presentationOptions == null) presentationOptions = PresentationOptions(hostBox.name.ifBlank { "Field presentation" })
     inMain(Box.boxContextElement(hostBox)) {
-        goToStep(resumeStep.takeIf { it >= 0 }?.coerceAtMost(steps.lastIndex) ?: currentStepIndex.coerceAtLeast(0))
+        val index = steps.indexOfFirst { it.id == resumeStepId }.takeIf { it >= 0 }
+            ?: resumeStep.takeIf { it >= 0 }?.coerceAtMost(steps.lastIndex) ?: currentStepIndex.coerceAtLeast(0)
+        goToStep(index, resumeCue)
     }
 }
 

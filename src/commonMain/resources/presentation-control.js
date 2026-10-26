@@ -12,7 +12,7 @@
   let savedOpen;
 
   for (const action of ['previous', 'next', 'reload', 'show-audience', 'fullscreen',
-    'show-guide', 'run-macro', 'start-guide', 'guide-previous', 'guide-next', 'stop-guide']) {
+    'show-guide', 'run-macro', 'start-guide', 'guide-previous', 'guide-next', 'stop-guide', 'reset-checkpoint', 'run-cue']) {
     document.getElementById(action).addEventListener('click', () => bridge.action(action));
   }
 
@@ -96,9 +96,17 @@
   bridge.onState(state => {
     info = state;
     document.getElementById('title').textContent = info.title;
-    document.getElementById('status').textContent = `${info.index + 1} / ${info.count} · ${info.titles[info.index]}`;
-    document.getElementById('previous').disabled = info.index === 0;
-    document.getElementById('next').disabled = info.index === info.count - 1;
+    const cueIndex = info.cueIndex || 0;
+    const cues = info.cueTitles || [];
+    document.getElementById('status').textContent = `${info.index + 1} / ${info.count} · ${info.titles[info.index]}` +
+      (cues.length ? ` · cue ${cueIndex} / ${cues.length}${cueIndex ? ': ' + cues[cueIndex - 1] : ''}` : '');
+    document.getElementById('previous').disabled = info.index === 0 && cueIndex === 0;
+    document.getElementById('next').disabled = info.index === info.count - 1 && cueIndex === cues.length;
+    document.getElementById('lesson-actions').hidden = !info.checkpoint && !info.cueAction;
+    document.getElementById('run-cue').hidden = !info.cueAction;
+    const reset = document.getElementById('reset-checkpoint');
+    reset.hidden = !info.checkpoint;
+    reset.textContent = info.checkpoint ? `Reset: ${info.checkpoint}` : 'Reset experiment';
     document.getElementById('field-actions').hidden = !info.field?.guide;
     document.getElementById('interactive-guide').hidden = !info.field?.interactiveGuide;
     const macro = document.getElementById('run-macro');

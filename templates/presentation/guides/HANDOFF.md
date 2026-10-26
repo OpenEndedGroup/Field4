@@ -82,3 +82,22 @@ Run the edited box and read its real compiler/runtime result. Check the audience
 ## Organize a long talk
 
 Wrap related steps in `section("Title") { ... }`; sections may nest. Playback stays in source order. The presenter outline has collapsible groups, slide numbers and **Find slide** for titles, section names or numbers. Enter opens the first search result; Escape clears the search. Current-slide ancestors open when you navigate, while other collapsed groups stay collapsed.
+
+## AI4: add or revise one Markdown slide
+
+Read `files/talk.slides.json` through `PresentationReadRequest` (outline first, then `slideId` for
+one body). The renderer supports CommonMark, not LaTeX: write short formulas in plain text or HTML. Use `PresentationWriteSlideRequest` with the returned `revision` and one complete slide:
+`id`, `title`, `markdown`, `notes`, `section` and `cues` (`title`, `markdown`). A new ID inserts after
+`afterId`, or appends if omitted. An existing ID updates in place. Preserve unrelated slides and
+notes; re-read and reconcile on conflict. These are content-only edits: no code or macros run.
+
+The Presentation box includes `slides("talk.slides.json")`. Refresh reloads an existing body;
+rerun Presentation for outline or cue-structure changes. To rehearse when the person asks,
+PresentationInspectRequest gives host UIDs and cue state; PresentationControlRequest navigates,
+refreshes or explicitly runs a reset. A successful JVM command is not proof of painted output:
+inspect/capture the actual audience window before claiming a visual result.
+
+The **Predict a wave** Kotlin step has two cues and an explicit reset. Its source checkpoint captures
+only Wave experiment's code at talk construction. Reset stops that box, restores the captured source
+and runs `run_wave`; unlisted boxes/files/notes remain outside the checkpoint. Back and Refresh do
+not replay cue actions. Rebuild from edited source only when you intend to establish a new baseline.

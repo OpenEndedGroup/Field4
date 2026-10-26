@@ -134,6 +134,93 @@ The image layouts use `field-image-full`, `field-image-beside` and `field-image-
 
 Steps cross-fade by default. Set `transitionMs` on `presentation` to a duration from 0 to 2000 milliseconds. Going backwards uses the same transition. If a web surface cannot provide a snapshot, navigation proceeds with a direct switch. Navigation runs the destination step's callbacks, so make an `onEnter` action safe to revisit if it changes a document or creates output.
 
+## Let AI4 help write a slide
+
+The starter also loads `files/talk.slides.json` with `slides("talk.slides.json")` inside its Kotlin
+presentation. That file holds ordinary Markdown slides, presenter notes, section paths and reveals.
+Each slide has a stable ID. Kotlin still describes the live experiments and their actions.
+
+Open AI4 in the presentation document and try:
+
+> Add a short slide about frequency after `ask-a-question`. Give it a prediction and a reveal.
+> Keep the existing style and slides. Save the slide, but don't present it yet.
+
+AI4 can read `guides/HANDOFF.md`, inspect the file with **PresentationReadRequest**, then use
+**PresentationWriteSlideRequest** to insert or revise one slide. Writes require the revision from
+the latest read; a concurrent edit refuses the write rather than overwriting it. These tools work
+through the same registry for chat and automation. Reading an outline does not load every slide body;
+AI4 can request one slide by ID and page a long outline with `offset` and `limit`.
+
+**Refresh slide** reloads an existing slide's body from disk. Re-run **Presentation** after adding
+slides, changing titles or sections, or changing the number/order of reveals. Explicit slide IDs keep
+the current slide selected when earlier slides are inserted. Saving a slide never runs Kotlin,
+executes a macro or opens the audience window.
+
+The file can also be edited as JSON in Field. To start a content-only talk around it:
+
+```diffstatic {data-lang=kotlin}
+import afield.ui.slides.*
+
+presentation(title = "Our lesson") {
+    slides("talk.slides.json")
+}.present()
+```
+
+## Reveal, experiment and reset
+
+A slide can contain named **cues**. Next advances through its cues before moving to the next slide;
+Previous walks backwards through the views. The presenter status shows the current cue. A cue can
+replace the audience content, select code, and declare an `onEnter` action:
+
+```diffstatic {data-lang=kotlin}
+presentation(title = "A prediction") {
+    step("What changes?", id = "prediction") {
+        audienceMarkdown("# Twice the frequency?\nMake a prediction.")
+        cue("Explain") {
+            audienceMarkdown("# Half the wavelength.\nAssume the propagation speed stays constant.")
+        }
+        cue("Try it") {
+            audienceDocument("wave-study", interactiveGuide = false)
+        }
+    }
+}.present()
+```
+
+A cue action runs once on forward entry in this built talk. Back, Refresh and revisiting that cue do
+not replay it. **Run cue again** explicitly repeats the current action. Rebuilding or stopping a talk
+starts a new run. Ordinary step `onEnter`/`onExit` callbacks retain their existing behavior.
+
+![The wave lesson’s explanation reveal, rendered in the real audience window.](assets/presentation_studio/wave-reveal.png)
+
+For an experiment, capture the source you want to return to, then attach an explicit reset:
+
+```diffstatic {data-lang=kotlin}
+// experiment is a Box in this working document.
+val baseline = LessonCheckpoint.capture(experiment)
+presentation {
+    step("Experiment", id = "experiment") {
+        audienceMarkdown("# Change one thing, then observe.")
+        checkpoint("Original source") {
+            baseline.restore()
+            // Run the experiment's setup here if it needs to recreate its outputs.
+        }
+    }
+}.present()
+```
+
+`LessonCheckpoint` captures only the named boxes' local `code` text by default; pass
+`properties = listOf("code", "fragment")` for additional local text properties. Restore stops those
+boxes and restores their captured text. It does not undo arbitrary runtime objects, output, files,
+other boxes or network effects. Baselines are held in memory for this built talk. Capture before
+experimenting; rebuilding from edited source establishes a new baseline.
+
+**Reset: …** runs the declared reset and returns that slide to its initial cue. The starter's
+**Predict a wave** lesson restores **Wave experiment** and runs its saved `run_wave` setup macro.
+Change `frequency` in that box, run it, then reset and try again. Starting from the kit creates an
+editable document copy, preserving the installed teaching material.
+
+![Presenter controls at the live wave cue, with explicit reset and replay actions above the slide outline.](assets/presentation_studio/wave-controls.png)
+
 ## Bring the working material on screen
 
 A step can show a webpage, YouTube player or existing Field document instead of an HTML slide:

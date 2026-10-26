@@ -28,5 +28,10 @@ data class PresentationState(
     val titles: List<String>,
     val content: AudienceContent? = null,
     val transitionMs: Int = 450,
-    val sectionPaths: List<List<String>> = emptyList()
+    val sectionPaths: List<List<String>> = emptyList(),
+    val stepIds: List<String> = emptyList(),
+    val cueIndex: Int = 0,
+    val cueTitles: List<String> = emptyList(),
+    val cueAction: Boolean = false,
+    val checkpoint: String = ""
 )

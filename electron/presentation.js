@@ -8,7 +8,7 @@ const {paintTransitionFrame} = require('./presentation-transition');
 const PRELOAD = path.join(__dirname, 'presentation-preload.js');
 const SERVER_MODULE = path.resolve(__dirname, '../tools/presentation/server.mjs');
 const TYPESCRIPT_MODULE = path.resolve(__dirname, '../tools/presentation/typescript-service.mjs');
-const ALLOWED_ACTIONS = new Set(['next', 'previous', 'first', 'last', 'goto', 'reload']);
+const ALLOWED_ACTIONS = new Set(['next', 'previous', 'reset-checkpoint', 'run-cue', 'first', 'last', 'goto', 'reload']);
 let active = null;
 let fieldHost = null;
 let guideUpdates = Promise.resolve();
@@ -266,8 +266,8 @@ async function navigateGuide(session, action, id) {
   const state = session.state;
   let command = {first: 'home', last: String(state.titles.length - 1), reload: 'refresh'}[action] || action;
   if (action === 'goto') command = String(id);
-  if ((action === 'next' && state.index === state.titles.length - 1) ||
-      (action === 'previous' && state.index === 0) ||
+  if ((action === 'next' && state.index === state.titles.length - 1 && state.cueIndex === state.cueTitles.length) ||
+      (action === 'previous' && state.index === 0 && state.cueIndex === 0) ||
       (action === 'goto' && Number(id) === state.index)) return;
   session.navigating = true;
   try {
@@ -290,7 +290,7 @@ async function openGuidePresentation(source, state) {
   await closePresentation();
   const url = new URL(source.getURL()).origin;
   const audience = makeWindow(`${state.title} · audience`, 1280, 720);
-  const control = makeWindow(`${state.title} · controls`, 720, 460);
+  const control = makeWindow(`${state.title} · controls`, 860, 680);
   const session = {native: true, source, url, audience, control, state, slideshowId: state.slideshowId,
     hostUid: state.hostUid, manifest: {slides: {}, transitionMs: state.transitionMs},
     guest: null, guestUrl: null, guestRect: [0, 0, 1, 1], guestCue: null, lastCue: null};
@@ -333,7 +333,7 @@ async function updateGuidePresentation(source, state) {
   if (active !== session) return;
   session.state = state;
   session.slideshowId = state.slideshowId;
-  session.lastCue = String(state.index);
+  session.lastCue = `${state.index}:${state.cueIndex}`;
   session.manifest = {transitionMs: state.transitionMs, slides: {[session.lastCue]: state.content}};
   try {
     const document = new URL(source.getURL()).searchParams.get('file') || '';
@@ -346,6 +346,7 @@ async function updateGuidePresentation(source, state) {
       index: state.index, count: state.titles.length, title: state.title,
       currentSlideId: String(state.index), slides: state.titles.map((_, i) => String(i)), titles: state.titles, sectionPaths: state.sectionPaths || [],
       field: fieldActions(state.content),
+      cueIndex: state.cueIndex, cueTitles: state.cueTitles, cueAction: state.cueAction, checkpoint: state.checkpoint,
     });
     if (opening) {
       session.audience.show(); session.control.show();
