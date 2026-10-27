@@ -5,12 +5,36 @@ import afield.geometry.path.catmullRomToBezier
 import afield.math.linalg.Vec3
 
 /**
+ * The answer Field's geometry-extraction modules share: named points, the curves that join them,
+ * and typed channels holding whatever each module measured along the way.
+ *
+ * [MorseSmale], [Polyvector], [PrincipalCurves], [Mapper], [ContourTrees], [VectorFieldTopology]
+ * and the feature tracker all return a [GeometryNetwork], so code that filters, counts or draws
+ * one does not need to know which of them produced it, and `metadata` says which did.
+ *
+ * The three parts divide the work. [GeometryNodes] holds the points a module considers meaningful,
+ * each under an identity it keeps stable across recomputation where it can, so a downstream object
+ * stays attached to the same feature. A [GeometryCurve] is a polyline that names the nodes at its
+ * ends, which is why two curves crossing at a position are still unconnected: connectivity is
+ * stated, never inferred from proximity. A [Channel] packs a scalar, a direction or a covariance
+ * for every node or every vertex into one array, so a large network costs no per-element objects.
+ *
+ * [GeometryNetwork.toFLines] turns a network into drawable lines and leaves the network itself on
+ * each of them, so whatever the lines cannot carry is still reachable from them.
+ */
+
+/**
  * A per-element attribute channel: [width] doubles per element, packed into [data].
  *
  * A scalar such as persistence has width 1, a 2D tangent has width 2, and a 3D normal-plane
  * covariance has width 3 (xx, xy, yy). Packing keeps large networks free of per-vertex objects.
  */
-class Channel(val width: Int, val data: DoubleArray) {
+class Channel(
+    /** Doubles per element: 1 for a scalar, 2 for a 2D tangent, 3 for the xx, xy and yy of a covariance. */
+    val width: Int,
+    /** Every element's values in storage order; element `i` begins at `i * width`. */
+    val data: DoubleArray,
+) {
     init {
         require(width > 0) { "channel width must be positive, got $width" }
         require(data.size % width == 0) { "channel data size ${data.size} is not a multiple of width $width" }
@@ -35,9 +59,13 @@ class Channel(val width: Int, val data: DoubleArray) {
  * the same feature.
  */
 class GeometryNodes(
+    /** Coordinates stored per node, which a network requires its curves to agree with. */
     val dimension: Int,
+    /** Node identities in storage order; [indexOf] maps one back to its index. */
     val ids: IntArray,
+    /** Every node's coordinates in storage order, [dimension] doubles each. */
     val positions: DoubleArray,
+    /** Per-node channels by name. Each one describes every node. */
     val channels: Map<String, Channel> = emptyMap(),
 ) {
     init {
@@ -49,11 +77,12 @@ class GeometryNodes(
         }
     }
 
+    /** How many nodes this holds. */
     val size: Int get() = ids.size
 
     private val indexById: Map<Int, Int> by lazy { ids.withIndex().associate { (i, id) -> id to i } }
 
-    /** The storage index of the node with identity [id], or null. */
+    /** The storage index of the node with identity `id`, or null. */
     fun indexOf(id: Int): Int? = indexById[id]
 
     /** The position of the node at storage index [index], padded to 3D. */
@@ -77,13 +106,21 @@ class GeometryNodes(
  * name the same node: a crossing is not a junction.
  */
 class GeometryCurve(
+    /** This curve's identity within its network, which [GeometryNetwork.toFLines] copies out as `curveId`. */
     val id: Int,
+    /** Coordinates per vertex: 2 or 3. */
     val dimension: Int,
+    /** The polyline, [dimension] doubles per vertex, in order along the curve. */
     val coordinates: DoubleArray,
+    /** The identity of the node this curve starts at, or null when it starts at no node. */
     val startNode: Int? = null,
+    /** The identity of the node this curve ends at, or null when it ends at no node. */
     val endNode: Int? = null,
+    /** Whether the last vertex joins back to the first. */
     val closed: Boolean = false,
+    /** Whole-curve values by name, such as `kind` or `born`, each copied onto the line this becomes. */
     val attributes: Map<String, Double> = emptyMap(),
+    /** Per-vertex channels by name. Each one holds a value for every vertex of this curve. */
     val samples: Map<String, Channel> = emptyMap(),
 ) {
     init {
@@ -94,9 +131,10 @@ class GeometryCurve(
         }
     }
 
+    /** How many vertices the polyline has. */
     val vertexCount: Int get() = coordinates.size / dimension
 
-    /** Vertex [i], padded to 3D. */
+    /** Vertex `i`, padded to 3D. */
     fun vertex(i: Int): Vec3 = Vec3(
         coordinates[i * dimension].toFloat(),
         coordinates[i * dimension + 1].toFloat(),
@@ -122,9 +160,13 @@ class GeometryCurve(
  * under the `"geometryNetwork"` property, so nothing the conversion cannot express is lost.
  */
 class GeometryNetwork(
+    /** Coordinates per point. Every node and every curve must agree with it. */
     val dimension: Int,
+    /** The points curves may name as their ends. */
     val nodes: GeometryNodes,
+    /** The curves, which may name only nodes that are in [nodes]. */
     val curves: List<GeometryCurve>,
+    /** Provenance by name: which module made this network, and under which parameters. */
     val metadata: Map<String, String> = emptyMap(),
 ) {
     init {
@@ -237,6 +279,7 @@ class GeometryNetwork(
         }
     }
 
+    /** Dimension, node and curve counts, and the source recorded in [metadata], on one line. */
     override fun toString() =
         "GeometryNetwork(${dimension}D, ${nodes.size} nodes, ${curves.size} curves${metadata["source"]?.let { ", from $it" } ?: ""})"
 
