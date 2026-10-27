@@ -105,6 +105,8 @@ drawing alone, one stroke continued in seven hands, a probe that finds which cel
 pen know which hand it is in (and sixteen of them held, forcing one hand), a grid of scribbles you
 click to keep as a corpus, and the handwriting pen fine-tuned on its own curliest work. Pure CPU.
 
+![Six rows of pale line drawings, the corpora the pens learn from: Hershey lettering in three fonts; three harmonograph figures of decaying loops; three branching plants; three panels of Truchet tiles whose quarter-circle arcs join into winding curves; three tangles of flocking trails; and two lines alternating words of small loops with words of sharp zigzags](assets/teaching_a_pen/corpora.png)
+
 [Open ↗](offline.html?file=assets/agent_transcripts/teaching_a_pen/metadata.edn)
 
 ### stipple_sheet
