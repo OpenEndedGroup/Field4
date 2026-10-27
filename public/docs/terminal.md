@@ -105,8 +105,8 @@ terminal("server", "python3 -m http.server 8000", keep = true)
 started.
 
 !!! note
-    At most four terminals run at once across Field, counting the ones the docs revision pass and
-    the landing page open. A fifth `terminal()` throws; kill one first.
+    At most four terminals run at once across Field, including any that Field's own pages have
+    opened. A fifth `terminal()` throws; kill one first.
 
 See also: [Box Output](box_output.md) for channels and panels, and
 [Output Panel Sizing](output_panel_sizing.md) for how a panel takes its size.
