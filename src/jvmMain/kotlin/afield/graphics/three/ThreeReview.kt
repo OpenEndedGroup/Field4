@@ -23,11 +23,16 @@ import java.security.MessageDigest
 import java.time.Instant
 import java.util.UUID
 
-/** Geometry identity for ordinary meshes, lines and points. Presentation and random callback IDs
- * are excluded, so orbiting, lighting and relaunching identical geometry do not invalidate a note.
- * Canonical solids retain their double-boundary identity; geometry displayed alongside them also
- * contributes. A moving ordinary point must invalidate a note even if every solid stays unchanged.
+/** Geometry identity for a three-dimensional view: what a review note is pinned to.
+ *
+ * A note survives anything that is only presentation. Callback and session IDs, hover colour, style
+ * and label are left out of the digest, so orbiting, relighting and relaunching identical geometry
+ * all leave a note attached. Canonical solids keep their double-boundary identity, and geometry
+ * displayed alongside them contributes too: a moving ordinary point invalidates a note even when
+ * every solid is unchanged.
  */
+
+/** The SHA-256 a note is filed under, over one streamed JSON string. */
 @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 internal fun threeReviewRevision(payload: ThreeGeometryPayload): String {
     val canonicalDigest = payload.inspector?.artifactDigest

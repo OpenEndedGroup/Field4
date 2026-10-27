@@ -13,13 +13,17 @@ import org.lwjgl.system.MemoryUtil.*
 import org.lwjgl.system.Pointer
 
 /**
- * Native binding for `XR_HTC_eye_tracker`, which our LWJGL version does not generate.
+ * Native binding for `XR_HTC_eye_tracker`, which Field's LWJGL version does not generate.
+ *
  * Layouts and signatures follow HTC's ViveEyeTrackerHelper.cs and enum values in OpenXRUtils.cs:
  * https://github.com/ViveSoftware/VIVE-OpenXR-Unity/tree/25a5fd212420688952ead9deba735357656278ec/com.htc.upm.vive.openxr/Runtime
  *
- * Only 64-bit ABIs are supported: enum/bool32/float = 4 bytes, pointer/handle/time = 8 bytes.
- * The per-eye arrays are inline, not pointers, and their elements have NO type/next header.
+ * Only 64-bit ABIs are supported: enum/bool32/float = 4 bytes, pointer/handle/time = 8 bytes, and
+ * `create` returns null on any other pointer width. The per-eye arrays are inline rather than
+ * pointers, and their elements carry no `type`/`next` header.
  */
+
+/** Fills a [HtcEyeTrackingState] from a reference space: gaze, pupil and geometric, per eye. */
 internal class HtcEyeTracker private constructor(
     private val tracker: Long,
     private val pDestroy: Long,

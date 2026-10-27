@@ -8,12 +8,23 @@ import afield.lang.remotejs.JsFun
 import afield.geometry.path.div
 import kotlinx.serialization.Serializable
 
-/** Presentation overrides for a named part. Colours are RGB values in 0..1.
- * A null xrayOpacity follows the viewer slider; 1 keeps an important part opaque.
- * These settings do not change geometry, picking, assembly groups or review identity.
+/** Presentation overrides for a named part of a three-dimensional view.
+ *
+ * Colours are RGB in 0..1, and a part with no x-ray opacity of its own follows the viewer's slider.
+ * None of it changes geometry, picking, assembly groups or review identity: the styles travel beside
+ * the geometry rather than baked into it, so restyling a part leaves every note on it attached.
  */
+
+/** One part's overrides, as the viewer receives them. */
 @Serializable
-data class ThreePartAppearance(val color: List<Double>, val unlit: Boolean = false, val xrayOpacity: Double? = null) {
+data class ThreePartAppearance(
+    /** Red, green and blue, each a finite value in 0..1; anything else is refused. */
+    val color: List<Double>,
+    /** Draw the part at its own colour, with neither shading nor tone mapping. */
+    val unlit: Boolean = false,
+    /** This part's x-ray opacity in 0..1, or null to follow the viewer's slider. */
+    val xrayOpacity: Double? = null,
+) {
     internal fun validate() {
         require(color.size == 3 && color.all { it.isFinite() && it in 0.0..1.0 }) { "Colour must contain three finite RGB values in 0..1" }
         require(xrayOpacity == null || xrayOpacity.isFinite() && xrayOpacity in 0.0..1.0) { "X-ray opacity must be in 0..1" }

@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-317 source file(s), 7807 public symbol(s), 4248 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+317 source file(s), 7810 public symbol(s), 4251 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -9538,6 +9538,17 @@ Full-resolution, linear-light quality checks and actual GPU documentation captur
 
 ## LightingGpuTimer.kt { #lightinggputimer-kt }
 
+How long a lighting pass took on the GPU, timed per swapchain image.
+
+Two timestamps per image, top of pipe to bottom, reused once the renderer has waited on that
+image's fence. Each `begin` collects the previous result if it is available, so reading one never
+costs a CPU wait, and the last 1024 readings stay in `samples` in milliseconds for a live box.
+
+The queries are a slice of a pool shared with other timers (`TimestampSlabs`), not a pool of
+their own: KosmicKrisp backs every `VkQueryPool` with a Metal counter heap, and a process gets
+32 of those, each at most 4096 timestamps (measured, SDK 1.4.363, M1 Max), which a pool per timer
+exhausts. A timer that cannot get a slice records nothing.
+
 `src/jvmMain/kotlin/afield/graphics/render/lighting/LightingGpuTimer.kt` — [read the source](source/jvmMain/afield/graphics/render/lighting/LightingGpuTimer/)
 
 ## OpaqueRayScene.kt { #opaquerayscene-kt }
@@ -13477,15 +13488,35 @@ Server-side state for a live Three.js geometry viewer.
 
 ## ThreePartAppearance.kt { #threepartappearance-kt }
 
+Presentation overrides for a named part of a three-dimensional view.
+
+Colours are RGB in 0..1, and a part with no x-ray opacity of its own follows the viewer's slider.
+None of it changes geometry, picking, assembly groups or review identity: the styles travel beside
+the geometry rather than baked into it, so restyling a part leaves every note on it attached.
+
 `src/jvmMain/kotlin/afield/graphics/three/ThreePartAppearance.kt` — [read the source](source/jvmMain/afield/graphics/three/ThreePartAppearance/)
 
 ### ThreePartAppearance { #threepartappearance-kt-threepartappearance }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ThreePartAppearance</span><span class="p">(</span><span class="k">val</span> <span class="n">color</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">unlit</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">xrayOpacity</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/three/ThreePartAppearance/#L16)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ThreePartAppearance</span><span class="p">(</span><span class="k">val</span> <span class="n">color</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">unlit</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">xrayOpacity</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/three/ThreePartAppearance/#L20)
 
-Presentation overrides for a named part. Colours are RGB values in 0..1. A null xrayOpacity follows the viewer slider; 1 keeps an important part opaque. These settings do not change geometry, picking, assembly groups or review identity.
+One part's overrides, as the viewer receives them.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="threepartappearance-kt--threepartappearance--color"></a><code class="highlight"><span class="k">val</span> <span class="n">color</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> | Red, green and blue, each a finite value in 0..1; anything else is refused. |
+| <a id="threepartappearance-kt--threepartappearance--unlit"></a><code class="highlight"><span class="k">val</span> <span class="n">unlit</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Draw the part at its own colour, with neither shading nor tone mapping. |
+| <a id="threepartappearance-kt--threepartappearance--xrayopacity"></a><code class="highlight"><span class="k">val</span> <span class="n">xrayOpacity</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> | This part's x-ray opacity in 0..1, or null to follow the viewer's slider. |
 
 ## ThreeReview.kt { #threereview-kt }
+
+Geometry identity for a three-dimensional view: what a review note is pinned to.
+
+A note survives anything that is only presentation. Callback and session IDs, hover colour, style
+and label are left out of the digest, so orbiting, relighting and relaunching identical geometry
+all leave a note attached. Canonical solids keep their double-boundary identity, and geometry
+displayed alongside them contributes too: a moving ordinary point invalidates a note even when
+every solid is unchanged.
 
 `src/jvmMain/kotlin/afield/graphics/three/ThreeReview.kt` — [read the source](source/jvmMain/afield/graphics/three/ThreeReview/)
 
@@ -14430,6 +14461,13 @@ on arrival the same way the head composes its own, so there is nothing to reinte
 | <a id="visionposestereosource-kt--visionposestereosource--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/graphics/visionos/VisionPoseStereoSource/#L130) |  |
 
 ## CaptureOrientation.kt { #captureorientation-kt }
+
+The row order a pixel source hands to an encoder, and the paths that are held to it.
+
+Row order is not a property of the encoder, and not a property of the file format: it is a
+property of the *readback*. A "flip Y" at a call site says what a line of code does and not what
+it is for, so each capture path carries the order its source delivers instead, and a test reads
+the source back to check that the two agree.
 
 `src/jvmMain/kotlin/afield/graphics/vulkan/CaptureOrientation.kt` — [read the source](source/jvmMain/afield/graphics/vulkan/CaptureOrientation/)
 
@@ -15463,17 +15501,34 @@ created through OpenXR's `xrCreateVulkanInstanceKHR`, so the runtime can add the
 
 ## MacHdrActivator.kt { #machdractivator-kt }
 
+Enables Extended Dynamic Range (EDR) on the macOS CAMetalLayer that backs the GLFW/MoltenVK
+window.  Without this call the OS compositor clamps output to SDR even when an HDR Vulkan
+swap-chain format (e.g. scRGB) is selected.
+
+Implementation: the GLFW window handle is an NSWindow*.  We walk the Objective-C object graph
+via the ObjC runtime (`objc_msgSend`) using LWJGL's low-level JNI call helpers, without
+pulling in any extra native library or annotation processor:
+
+  NSWindow → contentView (NSView) → layer (CAMetalLayer) → setWantsExtendedDynamicRangeContent: YES
+
+All class and method lookups are done via reflection so this file compiles and loads on
+Windows/Linux without modification. It reaches LWJGL through five entry points:
+`GLFWNativeCocoa.glfwGetCocoaWindow`, `LibObjC.sel_registerName`, `LibObjC.getLibrary`,
+`JNI.callPPP` and `JNI.callPPZV`.
+
+All ObjC messaging is wrapped in a try/catch so a failure degrades gracefully to SDR.
+
 `src/jvmMain/kotlin/afield/graphics/vulkan/device/MacHdrActivator.kt` — [read the source](source/jvmMain/afield/graphics/vulkan/device/MacHdrActivator/)
 
 ### MacHdrActivator { #machdractivator-kt-machdractivator }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">MacHdrActivator</span></code>](source/jvmMain/afield/graphics/vulkan/device/MacHdrActivator/#L23)
+[<code class="highlight"><span class="k">object</span> <span class="nc">MacHdrActivator</span></code>](source/jvmMain/afield/graphics/vulkan/device/MacHdrActivator/#L25)
 
-Enables Extended Dynamic Range (EDR) on the macOS CAMetalLayer that backs the GLFW/MoltenVK window. Without this call the OS compositor clamps output to SDR even when an HDR Vulkan swap-chain format (e.g. scRGB) is selected.
+One function, [`activate`](graphics.md#machdractivator-kt--machdractivator--activate), which `SwapChain` calls as it builds a swap chain on macOS with HDR on.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="machdractivator-kt--machdractivator--activate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">activate</span><span class="p">(</span><span class="n">windowHandle</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/vulkan/device/MacHdrActivator/#L28) |  |
+| <a id="machdractivator-kt--machdractivator--activate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">activate</span><span class="p">(</span><span class="n">windowHandle</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/vulkan/device/MacHdrActivator/#L30) |  |
 
 ## PhysicalDevice.kt { #physicaldevice-kt }
 
@@ -15953,9 +16008,32 @@ Something that draws through a [`RenderToTexture`](graphics.md#rendertotexture-k
 
 ## HtcEyeTracker.kt { #htceyetracker-kt }
 
+Native binding for `XR_HTC_eye_tracker`, which Field's LWJGL version does not generate.
+
+Layouts and signatures follow HTC's ViveEyeTrackerHelper.cs and enum values in OpenXRUtils.cs:
+https://github.com/ViveSoftware/VIVE-OpenXR-Unity/tree/25a5fd212420688952ead9deba735357656278ec/com.htc.upm.vive.openxr/Runtime
+
+Only 64-bit ABIs are supported: enum/bool32/float = 4 bytes, pointer/handle/time = 8 bytes, and
+`create` returns null on any other pointer width. The per-eye arrays are inline rather than
+pointers, and their elements carry no `type`/`next` header.
+
 `src/jvmMain/kotlin/afield/graphics/vulkan/targets/HtcEyeTracker.kt` — [read the source](source/jvmMain/afield/graphics/vulkan/targets/HtcEyeTracker/)
 
 ## MndxXDevSpace.kt { #mndxxdevspace-kt }
+
+Hand-rolled bindings for `XR_MNDX_xdev_space`.
+
+This is a Monado *vendor* extension: it never made it into the official OpenXR registry, so
+LWJGL generates no bindings for it. We resolve the entry points through `xrGetInstanceProcAddr`
+and lay the structs out by hand. Definitions transcribed from Monado's
+`src/external/openxr_includes/openxr/XR_MNDX_xdev_space.h` (spec version 3, extension 445).
+
+It is the only route to WiVRn's body trackers. The obvious one, `XR_FB_body_tracking`, is a dead
+end there; [`OpenXRHmdTarget`](graphics.md#openxrhmdtarget-kt-openxrhmdtarget)'s body-tracking setup says why, and cites the WiVRn source.
+
+The extension enumerates every "xdev" (tracked device) the runtime knows about (HMD, controllers,
+body trackers) and hands back an `XrSpace` per device, which the caller then locates with the
+ordinary `xrLocateSpace`.
 
 `src/jvmMain/kotlin/afield/graphics/vulkan/targets/MndxXDevSpace.kt` — [read the source](source/jvmMain/afield/graphics/vulkan/targets/MndxXDevSpace/)
 

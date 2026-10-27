@@ -14,12 +14,14 @@ import afield.app.diagnostics.logging.lprintln
  *   NSWindow → contentView (NSView) → layer (CAMetalLayer) → setWantsExtendedDynamicRangeContent: YES
  *
  * All class and method lookups are done via reflection so this file compiles and loads on
- * Windows/Linux without modification.  Tested against LWJGL 3.4.0-SNAPSHOT; the public APIs
- * used (`GLFWNativeCocoa.glfwGetCocoaWindow`, `LibObjC.sel_registerName`, `LibObjC.getLibrary`,
- * `JNI.callPPP`, `JNI.callPPZV`) have been stable since LWJGL 3.2.
+ * Windows/Linux without modification. It reaches LWJGL through five entry points:
+ * `GLFWNativeCocoa.glfwGetCocoaWindow`, `LibObjC.sel_registerName`, `LibObjC.getLibrary`,
+ * `JNI.callPPP` and `JNI.callPPZV`.
  *
  * All ObjC messaging is wrapped in a try/catch so a failure degrades gracefully to SDR.
  */
+
+/** One function, [activate], which `SwapChain` calls as it builds a swap chain on macOS with HDR on. */
 object MacHdrActivator {
 
     /**
