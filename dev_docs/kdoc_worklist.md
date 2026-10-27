@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17972 of 34378 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17973 of 34378 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2082 undocumented entry points** (types, top-level functions and values) and 13611 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2082 undocumented entry points** (types, top-level functions and values) and 13610 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -942,7 +942,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ClipSmokeTest.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/ClipSmokeTest.kt) | Machine learning | — | 0 | 1 | 50% |
 | [LpipsSmokeTest.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/LpipsSmokeTest.kt) | Machine learning | — | 0 | 1 | 50% |
 | [OnnxSmokeTest.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/OnnxSmokeTest.kt) | Machine learning | — | 0 | 1 | 50% |
-| [VoiceTranscriber.kt](../src/jvmMain/kotlin/afield/ai/models/VoiceTranscriber.kt) | Machine learning | — | 0 | 1 | 50% |
 | [StateTreeBrowser.kt](../src/jvmMain/kotlin/afield/ai/tools/StateTreeBrowser.kt) | Machine learning | — | 0 | 1 | 80% |
 | [StatsHeatmap.kt](../src/jvmMain/kotlin/afield/app/diagnostics/logging/StatsHeatmap.kt) | Workspace | — | 0 | 1 | 75% |
 | [InterruptSignal.kt](../src/jvmMain/kotlin/afield/app/server/InterruptSignal.kt) | Workspace | — | 0 | 1 | 66% |

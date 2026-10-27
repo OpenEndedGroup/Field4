@@ -4,7 +4,7 @@
 
 Models small enough to train inside a box, in plain Kotlin, while you watch. Flow matching carries one 2D or 3D point cloud onto another and hands back the deformation between them; the multi-output regression head it trains is usable on its own. See [Flow Matching](../flow_matching.md).
 
-101 source file(s), 2245 public symbol(s), 704 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+101 source file(s), 2245 public symbol(s), 705 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1397,6 +1397,14 @@ Keeping `<document>/ai4_blobs/state/` (the box states AI4 conversations save aft
 `src/jvmMain/kotlin/afield/ai/conversation/AiToastPolicy.kt` — [read the source](source/jvmMain/afield/ai/conversation/AiToastPolicy/)
 
 ## AiToolFailure.kt { #aitoolfailure-kt }
+
+What a chat turn does when a tool throws. Three answers live here: which failures end the turn rather
+than becoming the call's output, what the model reads in place of a result, and what is written back
+for a call the turn ended before answering.
+
+The provider's thread has to hold an output for every call it made, so a turn that stops mid-round
+still writes one for each call left outstanding; without it, every later turn in that chat is refused
+for a function call with no output.
 
 `src/jvmMain/kotlin/afield/ai/conversation/AiToolFailure.kt` — [read the source](source/jvmMain/afield/ai/conversation/AiToolFailure/)
 
@@ -3641,23 +3649,62 @@ An [`LlmBridge`](machine-learning.md#llmbridge-kt-llmbridge) with no model behin
 
 ## StatelessHistory.kt { #statelesshistory-kt }
 
+Keeping a stateless provider's conversation (local models, OpenRouter) inside its context window.
+
+A stateless provider is sent its whole conversation on every request, so the conversation is ours to
+size, and an item count does not size it: every turn's user message carries the full instructions, and
+each of those copies stays in history. Three things keep it inside:
+
+- `settle`, once per turn boundary: the finished turn's prompt is swapped for its durable text (the
+  request without the instructions, which the newest message always carries), and older tool outputs and
+  images are cut down. Done once, so the history stays a stable prefix for the server's prompt cache.
+- `dropOldestTurns`, when an estimate says the next request will not fit: whole turns go from the front,
+  always at a user message, so no function call loses its output.
+- `contextOverflow` reads the window out of the server's own refusal, in llama.cpp's wording ("request
+  (65833 tokens) exceeds the available context size (65536 tokens)") or vLLM's, which calibrates the
+  estimate; the bridge then fits the request and retries.
+
 `src/jvmMain/kotlin/afield/ai/models/StatelessHistory.kt` — [read the source](source/jvmMain/afield/ai/models/StatelessHistory/)
 
 ## VoiceTranscriber.kt { #voicetranscriber-kt }
+
+Local speech-to-text for AI4 push-to-talk.
+
+The browser records while the push-to-talk key is held and sends the clip as `ai-transcribe`;
+this hands it to `python/fieldvoice/whisper_worker.py`, a Python process started on first use and
+kept alive so the model loads once (`large-v3-turbo` on a GPU, `small.en` on a CPU). The worker
+is an optional dependency (`uv sync --inexact --group voice`); without it the reply says how to
+install it.
+
+The interpreter is `FIELD_VOICE_PYTHON` if set, otherwise the one Field's Python boxes resolved
+(the same venv the `voice` group is installed into), otherwise the checkout's `.venv`
+(`Scripts\python.exe` on Windows).
+
+One clip is transcribed at a time, on a dedicated thread: a second press queues behind the first.
 
 `src/jvmMain/kotlin/afield/ai/models/VoiceTranscriber.kt` — [read the source](source/jvmMain/afield/ai/models/VoiceTranscriber/)
 
 ### VoiceTranscriber { #voicetranscriber-kt-voicetranscriber }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">VoiceTranscriber</span></code>](source/jvmMain/afield/ai/models/VoiceTranscriber/#L77)
+[<code class="highlight"><span class="k">object</span> <span class="nc">VoiceTranscriber</span></code>](source/jvmMain/afield/ai/models/VoiceTranscriber/#L79)
 
-Local speech-to-text for AI4 push-to-talk.
+The push-to-talk transcriber: owns the Whisper worker process and the thread clips queue on.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="voicetranscriber-kt--voicetranscriber--install"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ai/models/VoiceTranscriber/#L99) |  |
+| <a id="voicetranscriber-kt--voicetranscriber--install"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ai/models/VoiceTranscriber/#L102) | Registers the `ai-transcribe` and `ai-transcribe-warm` handlers the browser's recorder calls. |
 
 ## MarkdownChunker.kt { #markdownchunker-kt }
+
+Markdown cut into the pieces semantic search indexes and an embedder can read whole.
+
+Four things go wrong when a page is cut on its `#` lines and indexed raw, and each has an answer here.
+A `#` line inside a code fence is a comment rather than a heading, so headings count only outside
+fences. The generated reference pages carry their `<span class=…>` markup into the indexed text, so
+markup outside code is reduced to the text it wraps. A section longer than the window the embedder
+reads (around 512 tokens, which `DEFAULT_MAX_CHARS` approximates) loses its end, so a long section is
+split on paragraph boundaries. And a section alone says nothing about where it sits ("Kotlin side", of
+what?), so every chunk carries a breadcrumb of page title, parent headings and its own.
 
 `src/jvmMain/kotlin/afield/ai/retrieval/MarkdownChunker.kt` — [read the source](source/jvmMain/afield/ai/retrieval/MarkdownChunker/)
 
@@ -3696,32 +3743,42 @@ Process-wide related-context lookup rooted at the current working directory.
 
 ## RetrievalEval.kt { #retrievaleval-kt }
 
+How well documentation search answers the questions the repository already asks of it.
+
+Queries and answers come from two sources the authors wrote for readers rather than for a benchmark:
+the text of every cross-link between authored docs pages (`[drawing with FLines](fline_examples.md)`
+is a query whose answer is `fline_examples.md`; the standard anchor-text method), and the `why` text
+of each `docs:` entry in the agent transcripts (`dev_docs/agents/transcripts/<name>.yaml`), each of
+which says what a page explains. An anchor is left out when its text is generic (`here`, `this page`,
+`api`) or points at three or more different pages; the page a link sits on is not counted against it,
+since it contains the anchor text by construction.
+
 `src/jvmMain/kotlin/afield/ai/retrieval/RetrievalEval.kt` — [read the source](source/jvmMain/afield/ai/retrieval/RetrievalEval/)
 
 ### Top-level functions { #retrievaleval-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="retrievaleval-kt--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L143) | Score documentation search on [`RetrievalEval.cases`](machine-learning.md#retrievaleval-kt--retrievaleval--cases). Run from a checkout with an isolated index: `-Dafield.semanticSearch.cacheRoot=<dir with config.json + models>` and `-Dafield.semanticSearch.indexPath=<dir>`; `-Dafield.semanticSearch.corpora=documentation` keeps the build to minutes. Arguments: `rebuild` to (re)build first; then fusion modes to compare (default: hybrid lexical dense). Writes per-case ranks to `build/retrieval-eval/<mode>.tsv`. |
+| <a id="retrievaleval-kt--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L144) | Score documentation search on [`RetrievalEval.cases`](machine-learning.md#retrievaleval-kt--retrievaleval--cases). Run from a checkout with an isolated index: `-Dafield.semanticSearch.cacheRoot=<dir with config.json + models>` and `-Dafield.semanticSearch.indexPath=<dir>`; `-Dafield.semanticSearch.corpora=documentation` keeps the build to minutes. Arguments: `rebuild` to (re)build first; then fusion modes to compare (default: hybrid lexical dense). Writes per-case ranks to `build/retrieval-eval/<mode>.tsv`. |
 
 ### RetrievalEval { #retrievaleval-kt-retrievaleval }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">RetrievalEval</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L19)
+[<code class="highlight"><span class="k">object</span> <span class="nc">RetrievalEval</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L20)
 
-How well documentation search answers the questions the repository already asks of it.
+Query sets built from the repository's own prose, and the hit@1, hit@5 and MRR over them.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="retrievaleval-kt--retrievaleval--case"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Case</span><span class="p">(</span><span class="k">val</span> <span class="n">set</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">query</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">pages</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">excludePage</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L20) |  |
-| <a id="retrievaleval-kt--retrievaleval--anchorcases"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">anchorCases</span><span class="p">(</span><span class="n">docsRoot</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Case</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L27) | Cross-links between authored pages (not the generated reference, not assets). |
-| <a id="retrievaleval-kt--retrievaleval--whycases"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">whyCases</span><span class="p">(</span><span class="n">transcriptsDir</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Case</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L53) | `docs: [{page, why}]` in the agent transcripts: what a page explains, in its author's words. |
-| <a id="retrievaleval-kt--retrievaleval--lesson"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Lesson</span><span class="p">(</span><span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">files</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">summary</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L64) |  |
-| <a id="retrievaleval-kt--retrievaleval--graphicslessons"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">graphicsLessons</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Lesson</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L67) | The graphics curriculum's lessons from its generated index: the lesson table and the reverse API index. |
-| <a id="retrievaleval-kt--retrievaleval--tutorialcases"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">tutorialCases</span><span class="p">(</span><span class="n">checkout</span><span class="p">:</span> <span class="nc">Path</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Case</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L92) | Tutorial search, from the transcripts' `docs` links: the title a docs page's own author gave it is a query, and the tutorials that link to that page answer it. The summaries indexed for tutorials leave these links out. |
-| <a id="retrievaleval-kt--retrievaleval--cases"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">cases</span><span class="p">(</span><span class="n">checkout</span><span class="p">:</span> <span class="nc">Path</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Case</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L110) |  |
-| <a id="retrievaleval-kt--retrievaleval--score"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Score</span><span class="p">(</span><span class="k">val</span> <span class="n">set</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">hit1</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">hit5</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">mrr</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L113) |  |
-| <a id="retrievaleval-kt--retrievaleval--rank"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">rank</span><span class="p">(</span><span class="n">case</span><span class="p">:</span> <span class="nc">Case</span><span class="p">,</span> <span class="n">results</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L121) | Rank of the first result on an answering page, counting pages once and skipping `Case.excludePage`. `search` returns result paths relative to the checkout (`public/docs/...`), best first. |
-| <a id="retrievaleval-kt--retrievaleval--score-2"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">score</span><span class="p">(</span><span class="n">cases</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Case</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">search</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Score</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Case</span><span class="p">,</span> <span class="nc">Int</span><span class="o">?</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L126) |  |
+| <a id="retrievaleval-kt--retrievaleval--case"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Case</span><span class="p">(</span><span class="k">val</span> <span class="n">set</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">query</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">pages</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">excludePage</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L21) |  |
+| <a id="retrievaleval-kt--retrievaleval--anchorcases"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">anchorCases</span><span class="p">(</span><span class="n">docsRoot</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Case</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L28) | Cross-links between authored pages (not the generated reference, not assets). |
+| <a id="retrievaleval-kt--retrievaleval--whycases"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">whyCases</span><span class="p">(</span><span class="n">transcriptsDir</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Case</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L54) | `docs: [{page, why}]` in the agent transcripts: what a page explains, in its author's words. |
+| <a id="retrievaleval-kt--retrievaleval--lesson"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Lesson</span><span class="p">(</span><span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">files</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">summary</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L65) |  |
+| <a id="retrievaleval-kt--retrievaleval--graphicslessons"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">graphicsLessons</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Lesson</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L68) | The graphics curriculum's lessons from its generated index: the lesson table and the reverse API index. |
+| <a id="retrievaleval-kt--retrievaleval--tutorialcases"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">tutorialCases</span><span class="p">(</span><span class="n">checkout</span><span class="p">:</span> <span class="nc">Path</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Case</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L93) | Tutorial search, from the transcripts' `docs` links: the title a docs page's own author gave it is a query, and the tutorials that link to that page answer it. The summaries indexed for tutorials leave these links out. |
+| <a id="retrievaleval-kt--retrievaleval--cases"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">cases</span><span class="p">(</span><span class="n">checkout</span><span class="p">:</span> <span class="nc">Path</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Case</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L111) |  |
+| <a id="retrievaleval-kt--retrievaleval--score"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Score</span><span class="p">(</span><span class="k">val</span> <span class="n">set</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">hit1</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">hit5</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">mrr</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L114) |  |
+| <a id="retrievaleval-kt--retrievaleval--rank"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">rank</span><span class="p">(</span><span class="n">case</span><span class="p">:</span> <span class="nc">Case</span><span class="p">,</span> <span class="n">results</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L122) | Rank of the first result on an answering page, counting pages once and skipping `Case.excludePage`. `search` returns result paths relative to the checkout (`public/docs/...`), best first. |
+| <a id="retrievaleval-kt--retrievaleval--score-2"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">score</span><span class="p">(</span><span class="n">cases</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Case</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">search</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Score</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Case</span><span class="p">,</span> <span class="nc">Int</span><span class="o">?</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ai/retrieval/RetrievalEval/#L127) |  |
 
 ## SemanticRetrievalService.kt { #semanticretrievalservice-kt }
 
@@ -4466,13 +4523,21 @@ Docs-search engine for the documentation iframe.
 
 ## DocsSearchInstaller.kt { #docssearchinstaller-kt }
 
+The server side of the documentation search box: the `docs_search_input` Field message handler.
+
+The prefix of `Message.uid` before `_` is the browser session key. One
+[`DocsSearchBridge.SearchState`](machine-learning.md#docssearchbridge-kt--docssearchbridge--searchstate) is retained per key for the lifetime of this installer; there is no
+eviction and no reset message, though every state is dropped when the AI provider settings change.
+Work runs on the process-wide IO scope and replies are marshalled through [`inMain`](workspace.md#runloop-kt--inmain). Phase 1 is
+provisional HTML and phase 20 is terminal HTML. The incoming phase is not consulted.
+
 `src/jvmMain/kotlin/afield/ai/tools/DocsSearchInstaller.kt` — [read the source](source/jvmMain/afield/ai/tools/DocsSearchInstaller/)
 
 ### Top-level functions { #docssearchinstaller-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="docssearchinstaller-kt--installdocssearch"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">installDocsSearch</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/DocsSearchInstaller/#L66) | Installs the `docs_search_input` Field message handler. |
+| <a id="docssearchinstaller-kt--installdocssearch"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">installDocsSearch</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ai/tools/DocsSearchInstaller/#L67) | Installs the `docs_search_input` handler, which answers a query with provisional then final HTML. |
 
 ## DocumentGuideTools.kt { #documentguidetools-kt }
 
@@ -5846,6 +5911,35 @@ The evidence store for oversized nested tool results: [`store`](machine-learning
 | <a id="toolevidence-kt--readtoolevidenceresult--message"></a><code class="highlight"><span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ## ToolProgramRunner.kt { #toolprogramrunner-kt }
+
+The sandbox a tool program runs in: one [`RunToolProgramRequest`](machine-learning.md#toolprogramtools-kt-runtoolprogramrequest)'s JavaScript, in a fresh GraalJS
+context that can reach the conversation's tools and nothing else. [`RunToolProgramRequest`](machine-learning.md#toolprogramtools-kt-runtoolprogramrequest)'s own
+file overview says what a program is for; this file is how it is kept to its tools.
+
+### The boundary
+
+Only strings cross it. The guest gets six host functions (`__call`, `__out`, `__progress`, `__show`,
+`__describe`, `__settle`) and one JSON string of tool names; a prelude builds the friendly
+`tools.X(...)`, `tools.X.raw(...)`, `check(...)`, `progress(...)`, `text(...)` and `show(...)` surface from
+those in JS. The context runs under `SandboxPolicy.CONSTRAINED` with no IO, no threads, no processes,
+no native access, no polyglot access, no environment and no host class lookup, and carries a statement
+limit, so a program cannot reach a Java object even by accident.
+
+### Ending a program
+
+A program ends by settling its promise (stage `ok`; or `tool-failed` for an uncaught failing call,
+`check-failed` for an uncaught `check`, `runtime` for any other error), by a syntax error, by running out
+of statements, calls or time, or because its turn was cancelled. Time and cancellation are a watchdog's job:
+it closes the context from its own thread, which Graal honours the next time the program thread is in
+guest code, so a tool call already running is allowed to finish. A cancellation is rethrown as a
+`CancellationException` so the turn ends rather than reporting a tool error, matching every bridge's
+`isAiTurnCancellation` handling.
+
+### Threads
+
+The program runs on the calling thread, which is the agent loop's: an IO thread for a panel turn, a
+daemon for an agent task, the backdoor's scope for MCP. Never the Runloop — the graph tools a program
+calls hop onto the Runloop and wait for it, which would deadlock there, so `run` refuses.
 
 `src/jvmMain/kotlin/afield/ai/tools/program/ToolProgramRunner.kt` — [read the source](source/jvmMain/afield/ai/tools/program/ToolProgramRunner/)
 
