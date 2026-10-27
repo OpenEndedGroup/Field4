@@ -715,7 +715,7 @@ class KotlinInterface2(
         private set
 
     /**
-     * Completion intentionally delegates to the K1 IDE-services path.
+     * Completion delegates to the K1 IDE-services path.
      * K2 remains the execution backend, but autocomplete needs compiler-grade
      * language semantics rather than partial handwritten Analysis API coverage.
      */

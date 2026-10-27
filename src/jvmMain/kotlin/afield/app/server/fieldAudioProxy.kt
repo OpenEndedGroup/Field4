@@ -57,7 +57,8 @@ internal fun fieldAudioProxyTimeout(path: String): Duration =
     if (representationWaveformPath.matches(path)) Duration.ofSeconds(20) else Duration.ofMinutes(2)
 
 /**
- * A deliberately narrow same-origin bridge for browser-facing Field Audio UI.
+ * A same-origin bridge for browser-facing Field Audio UI, limited to an allowlist of paths per
+ * method; anything else answers 404.
  *
  * The model service remains loopback-only. Browsers fetch candidate audio and
  * persist candidate judgements through Field's own HTTPS origin, which also

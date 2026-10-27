@@ -221,7 +221,7 @@ fun searchUpwards(f: HasHierarchy, name: String, found: (String?) -> Unit) {
  * the `import` lines and the lines tagged with the trailing inherit marker (an empty block comment;
  * spelled out rather than written here, because a comment marker inside a KDoc nests). `prop`,
  * `@exported` and the FieldML host bridge all tag what they mean to publish; `moduleHere`'s
- * generated shader accessors deliberately do not, so they stay in the box whose shader declared
+ * generated shader accessors do not, so they stay in the box whose shader declared
  * them. Documented for users in `public/docs/running_code.md` ("Property inheritance").
  *
  * The marker gate applies to every ancestor *uniformly*, including one whose `preamble` has never

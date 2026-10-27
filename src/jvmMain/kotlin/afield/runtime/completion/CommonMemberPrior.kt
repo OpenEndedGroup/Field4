@@ -89,8 +89,8 @@ object CommonMemberPrior {
 
     /**
      * Names declared directly on [type]'s own annotation, in declared order — what the guard test checks
-     * against the class's actual members. Deliberately *not* inherited: a class is only answerable for the
-     * list it writes.
+     * against the class's actual members. A superclass's list is not included: a class is only
+     * answerable for the list it writes.
      */
     fun declaredNames(type: Class<*>): List<String> =
         type.getAnnotation(CommonMembers::class.java)?.value?.toList().orEmpty()
