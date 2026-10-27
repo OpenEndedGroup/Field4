@@ -60,6 +60,8 @@ import java.lang.reflect.Proxy
 import java.net.URL
 import java.net.URLClassLoader
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.reflect.*
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.isAccessible
@@ -178,6 +180,46 @@ class KotlinInterface(
         contextUpdater = ContextUpdater(context, evaluator, this)
     }
 
+    /**
+     * Release the compiler's project and everything it analysed.
+     *
+     * Nothing else frees it. The compilation state's `Disposable` hangs off IntelliJ's static
+     * `Disposer` tree, which reaches back through the project to this engine, so a dropped engine is
+     * never collected and its `finalize` never runs. Measured 2026-10-27: [KotlinInterface2] rebuilt
+     * its K1 completion delegate on every Kotlin edit of a launched graphics box, each one kept
+     * ~60 MB of deserialized library metadata, and an 8 GB heap ran out after ~120 edits.
+     *
+     * As in [KotlinInterface2.dispose], the state is released only once no compile, completion or
+     * macro pass is using it ([usingCompilationState]); work that starts afterwards is refused rather
+     * than allowed to build a new state.
+     */
+    override fun dispose() {
+        disposed = true
+        if (compilationStateUsers.get() == 0) releaseCompilationState()
+    }
+
+    @Volatile
+    private var disposed = false
+
+    override val isDisposed: Boolean get() = disposed
+
+    private val compilationStateUsers = AtomicInteger(0)
+    private val compilationStateReleased = AtomicBoolean(false)
+
+    /** Run [body] with the compilation state held live, or [onDisposed] once [dispose] has run. */
+    private inline fun <T> usingCompilationState(onDisposed: () -> T, body: () -> T): T {
+        compilationStateUsers.incrementAndGet()
+        try {
+            return if (disposed) onDisposed() else body()
+        } finally {
+            if (compilationStateUsers.decrementAndGet() == 0 && disposed) releaseCompilationState()
+        }
+    }
+
+    private fun releaseCompilationState() {
+        if (compilationStateReleased.compareAndSet(false, true)) compiler.state.dispose()
+    }
+
     fun configureMavenDepsOnAnnotations(context: ScriptConfigurationRefinementContext): ResultWithDiagnostics<ScriptCompilationConfiguration> {
         notify("configuring dependencies in script", "execution")
         val annotations =
@@ -262,13 +304,15 @@ class KotlinInterface(
         lprintln("info,kotlin,perf", "\t\t compile code $s")
 
         val ns = measureNanoTime {
-            if (KotlinEngineConfig.offloadCompilation) {
-                // K1 is NOT thread-safe — always use the single compilationThread
-                r = withContext(compilationDispatcher) {
+            r = usingCompilationState(onDisposed = { disposedFailure(s) }) {
+                if (KotlinEngineConfig.offloadCompilation) {
+                    // K1 is NOT thread-safe — always use the single compilationThread
+                    withContext(compilationDispatcher) {
+                        compiler.compile(code, compilerConfig)
+                    }
+                } else {
                     compiler.compile(code, compilerConfig)
                 }
-            } else {
-                r = compiler.compile(code, compilerConfig)
             }
         }
         lprintln("info,kotlin,compile", "compile=${formatMillis(ns)}")
@@ -277,6 +321,13 @@ class KotlinInterface(
         }
 
         return r!!
+    }
+
+    private fun disposedFailure(s: String): ResultWithDiagnostics<LinkedSnippet<KJvmCompiledScript>> {
+        lprintln("info,kotlin", "compile skipped: engine filePrefix=$filePrefix was disposed, preview=${compileSnippetPreview(s)}")
+        return ResultWithDiagnostics.Failure(
+            ScriptDiagnostic(ScriptDiagnostic.unspecifiedError, "This Kotlin engine was disposed before the code compiled.")
+        )
     }
 
 
@@ -369,7 +420,9 @@ class KotlinInterface(
         val code = SourceCodeImpl(id++, s)
 
         return try {
-            val cc = compiler.complete(code, cursor.toSourceCodePositionWithNewAbsolute(code, code)!!, compilerConfig)
+            val cc = usingCompilationState(onDisposed = { return CompletionResult.Empty(s, cursor) }) {
+                compiler.complete(code, cursor.toSourceCodePositionWithNewAbsolute(code, code)!!, compilerConfig)
+            }
             cc.valueOrNull()?.toList()?.let { completionList ->
                 getResult(s, cursor, completionList)
             } ?: CompletionResult.Empty(s, cursor)
@@ -386,7 +439,10 @@ class KotlinInterface(
         return runBlocking { complete(s, cursor) }
     }
 
-    override fun applyMacros(box: Box, s: String, skipMacros: Set<String>, previewOnly: Boolean): String {
+    override fun applyMacros(box: Box, s: String, skipMacros: Set<String>, previewOnly: Boolean): String =
+        usingCompilationState(onDisposed = { s }) { applyMacrosLive(box, s, skipMacros, previewOnly) }
+
+    private fun applyMacrosLive(box: Box, s: String, skipMacros: Set<String>, previewOnly: Boolean): String {
         var rewritten = s
         val needsRerun = false
         lblock("debug,kotlin", "rewriting AST analysis") {

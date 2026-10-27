@@ -857,6 +857,9 @@ class KotlinInterface2(
     }
 
     private var k1CompletionDelegate: KotlinInterface? = null
+
+    /** The completion delegate built so far, for `KotlinEngineReleaseSmokeTest`. */
+    internal fun k1CompletionDelegateForTest(): KotlinInterface? = k1CompletionDelegate
     private var k1CompletionDelegateBootstrapped = false
     private var k1CompletionDelegatePreambleFingerprint: Int? = null
     private val k1CompletionDelegateMutex = Mutex()
@@ -897,6 +900,8 @@ class KotlinInterface2(
             created.associatedBox = associatedBox
             k1CompletionDelegate = created
             k1CompletionDelegateBootstrapped = false
+            // Asked for after this engine was disposed: it compiles nothing, and holds no project.
+            if (disposed) created.dispose()
 
             if (!k1CompletionDelegateBootstrapped) {
                 val implicits = if (box != null) listOf(box) else emptyList()
@@ -3131,6 +3136,8 @@ class KotlinInterface2(
     override fun dispose() {
         disposed = true
         if (compilationStateUsers.get() == 0) releaseCompilationState()
+        // Its own compiler project, which nothing else releases.
+        k1CompletionDelegate?.dispose()
     }
 
     @Volatile
