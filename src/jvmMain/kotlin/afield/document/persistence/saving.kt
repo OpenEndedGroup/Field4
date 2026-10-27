@@ -1488,13 +1488,6 @@ class SavingContext {
         }
     }
 
-    /**
-     * A sidecar's text at load, unless `metadata.edn` was written after it with a different inline
-     * copy: that is a hand edit of the inline text made while the document was closed, and it wins.
-     * The sidecar it replaces is copied into `backups/` first and the choice is logged, so neither
-     * edit is lost. Two seconds of slack keep a checkout, which writes both files at once, on the
-     * sidecar.
-     */
     /** The box ids a stored topology value (`children`, `parents`) names, or null when it names none. */
     internal fun storedBoxRefIds(value: Any?): Set<String>? = when (value) {
         null -> emptySet()
@@ -1503,6 +1496,13 @@ class SavingContext {
         else -> null
     }
 
+    /**
+     * A sidecar's text at load, unless `metadata.edn` was written after it with a different inline
+     * copy: that is a hand edit of the inline text made while the document was closed, and it wins.
+     * The sidecar it replaces is copied into `backups/` first and the choice is logged, so neither
+     * edit is lost. Two seconds of slack keep a checkout, which writes both files at once, on the
+     * sidecar.
+     */
     internal fun sidecarOrNewerInline(file: File, value: FileInline, directory: String): String {
         val text = file.readText()
         if (text == value.inline) return text
