@@ -431,8 +431,11 @@ ui.pause(200)
 ui.press("Control+Space")
 // No warm-completion here: Clojure's candidates come from Compliment in Field's own JVM rather
 // than from the Analysis API sidecar, so there is nothing to pre-warm — but the first call does
-// load `compliment.core`, which is why this waits for a row rather than guessing a pause.
-ui.waitForSelector(".afield-suggest-row", 20000.0)
+// load `compliment.core`, which is why this waits for Compliment's own `split-at` row. Any row
+// would not do: the `let` binding's LOCAL row appears at once, before Compliment answers.
+ui.waitForSelector(".afield-suggest-row:has-text('split-at')", 30000.0)
+val compliment = ui.eval("return [...document.querySelectorAll('.afield-suggest-row')].some(r => r.textContent.includes('split-at')) ? 'served' : 'absent'").toString()
+check(compliment.contains("served")) { "Compliment's candidates never reached the popup (only its local rows did)" }
 ui.pause(1400)
 ```
 
