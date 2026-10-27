@@ -60,10 +60,17 @@ object AgentEvalCorpus {
         "threads" to Regex("""Thread\b|\bsleep\(|delay\("""),
         // A box that runs the eval harness itself would make the corpus mine its own demo.
         "self" to Regex("""AgentEvalCorpus|InFieldAgentEvals|AgentTaskRunner|AgentEvalRunner"""),
-        "forever" to Regex("""\bloop\s*\{|\bstart\s*\{|\bforever\s*\{"""),
+        "forever" to Regex("""\bloop\s*\{|\bstart\s*\{|\bforever\s*\{|\bwhile\s*\(\s*true\s*\)|\}\s*while\s*\(\s*true\s*\)|\bfor\s*\(\s*;\s*;\s*\)|generateSequence\s*\{[^}]*\}\s*\.\s*(forEach|toList|count|last)\b"""),
     )
 
-    private val OUTPUT_CALL = Regex("""\bprintln\(|\bprint\(|\bdisplay\(|\blines\(|\btable\(|\bhtml\(""")
+    private val OUTPUT_CALL = Regex("""\bprintln\(|\bprint\(|\bdisplay\(|\blines\(|\btable\(|\bhtml\(|\bmarkdown\(""")
+
+    /**
+     * How long a calibration run of a solution may take. Runaway code the deny list cannot see (recursion with no
+     * base case, a loop whose exit never comes) ends here as a `timeout` rejection, or — once the Runloop watchdog
+     * interrupts box code — as `interrupted`, rather than as a hung calibration.
+     */
+    const val CALIBRATION_TIMEOUT_SECONDS = 20.0
     const val MAX_CODE_CHARS = 6000
 
     @Serializable
@@ -228,19 +235,19 @@ object AgentEvalCorpus {
     fun splitOf(id: String): String = if (Math.floorMod(id.hashCode(), 3) == 0) "heldout" else "train"
 
     /** The scripted solution: the box made with its real code under its parents, then run as the transcript did. */
-    fun solution(c: Candidate): String {
+    fun solution(c: Candidate, timeout: Double = 90.0): String {
         val first = c.parents.firstOrNull().orEmpty()
         val calls = ArrayList<Any>()
         calls += InFieldAgentEvals.call("NewBoxRequest", "name" to c.box, "code" to c.code, "parent" to first)
         c.parents.drop(1).forEach { calls += InFieldAgentEvals.call("ConnectBoxesRequest", "parent" to it, "child" to c.box) }
-        calls += runCall(c.box, c.verb)
+        calls += runCall(c.box, c.verb, timeout)
         calls += "Made ${c.box} from its transcript code and ran it."
         return InFieldAgentEvals.steps(*calls.toTypedArray())
     }
 
-    private fun runCall(box: String, verb: String) =
-        if (verb == "launch") InFieldAgentEvals.call("LaunchBoxRequest", "box" to box, "timeoutSeconds" to 90.0, "settleSeconds" to 1.0)
-        else InFieldAgentEvals.call("RunBoxRequest", "box" to box, "timeoutSeconds" to 90.0)
+    private fun runCall(box: String, verb: String, timeout: Double = 90.0) =
+        if (verb == "launch") InFieldAgentEvals.call("LaunchBoxRequest", "box" to box, "timeoutSeconds" to timeout, "settleSeconds" to 1.0)
+        else InFieldAgentEvals.call("RunBoxRequest", "box" to box, "timeoutSeconds" to timeout)
 
     fun setup(c: Candidate): String {
         if (c.setup.isEmpty()) return ""
@@ -255,7 +262,7 @@ object AgentEvalCorpus {
 
     /** A calibration request: setup and solution, no checks (verdict `unchecked`); the tool log carries the output. */
     fun calibrationRequest(c: Candidate) = AgentTaskRequest(
-        goal = "calibrate ${c.id}", setup = setup(c), mode = "scripted", script = solution(c), taskId = c.id, maxToolRounds = 8,
+        goal = "calibrate ${c.id}", setup = setup(c), mode = "scripted", script = solution(c, CALIBRATION_TIMEOUT_SECONDS), taskId = c.id, maxToolRounds = 8,
     )
 
     /** What one run of the target box said, read from its Run/Launch tool record. */
@@ -270,6 +277,13 @@ object AgentEvalCorpus {
         val displays = (obj["displays"] as? JsonObject)?.mapValues { (it.value as? JsonPrimitive)?.contentOrNull.orEmpty() }.orEmpty()
         val success = (obj["success"] as? JsonPrimitive)?.contentOrNull == "true"
         return Observed(success, str("stage"), stdout, displays, str("error"))
+    }
+
+    /** A failed calibration run that ran away rather than failed: `timeout` (no verdict in time) or `interrupted` (the watchdog). */
+    fun failureCategory(o: Observed): String? = when {
+        o.stage == "timeout" -> "timeout"
+        o.error.contains("Box interrupted") || o.error.contains("BoxInterruptedError") || o.stage == "interrupted" -> "interrupted"
+        else -> null
     }
 
     private val CHECKABLE_LINE = Regex("""[A-Za-z]""")
@@ -313,6 +327,7 @@ object AgentEvalCorpus {
         val b = observed(second, c.box) ?: return refuse("no-run-record ${second.error.take(120)}")
         if (!a.success || !b.success) {
             val bad = if (!a.success) a else b
+            failureCategory(bad)?.let { return refuse("$it ${bad.error.lines().firstOrNull().orEmpty().take(160)}".trim()) }
             return refuse("solution-fails ${bad.stage.ifBlank { "?" }}: ${bad.error.lines().firstOrNull().orEmpty().take(160)}")
         }
         val base = mutableListOf(AgentCheck.parse("box-exists:${c.box}"), AgentCheck.parse("last-run-ok:${c.box}"))

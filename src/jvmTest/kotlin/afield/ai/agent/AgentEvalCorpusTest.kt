@@ -152,6 +152,45 @@ class AgentEvalCorpusTest {
         assertEquals("n = 2", task.request.checks.last().text)
     }
 
+    /** Runaway code the deny list sees is never a candidate; branch runaway_box_interrupt's loop is the case. */
+    @Test
+    fun runawayLoopsAreDeniedStatically() {
+        assertEquals("forever", AgentEvalCorpus.denyReason("var i = 0L\nwhile (true) { i++ }"))
+        assertEquals("forever", AgentEvalCorpus.denyReason("do { step() } while(true)"))
+        assertEquals(null, AgentEvalCorpus.denyReason("var i = 0\nwhile (i < 10) i++\nprintln(i)"))
+        val mined = AgentEvalCorpus.mineTranscript("runaway", """
+            operations:
+              - create:
+                  box: spin
+                  properties:
+                    code: |
+                      var i = 0L
+                      while (true) { i++ }
+              - create:
+                  box: after
+                  properties:
+                    code: markdown("main", "running again")
+              - execute: { box: spin }
+              - execute: { box: after }
+        """.trimIndent())
+        assertEquals("deny:forever", mined.rejections.single { it.box == "spin" }.reason)
+        assertEquals(listOf("runaway/after"), mined.candidates.map { it.id }, "markdown(...) counts as output")
+    }
+
+    /** Runaway code it does not see ends as a timeout or a watchdog interrupt: its own rejection, not a crash. */
+    @Test
+    fun runawaySolutionsAreRejectedAsTimeoutOrInterrupted() {
+        val c = AgentEvalCorpus.Candidate("t/rec", "t", "rec", "rec", "fun f(n: Int): Int = f(n + 1)\nprintln(f(0))", "run", emptyList(), emptyList(), "")
+        assertTrue(AgentEvalCorpus.calibrationRequest(c).script.contains("\"timeoutSeconds\":${AgentEvalCorpus.CALIBRATION_TIMEOUT_SECONDS}"))
+        fun result(json: String) = AgentTaskResult(taskId = c.id, goal = "", mode = "scripted", provider = "", model = "", verdict = "unchecked",
+            checks = emptyList(), toolCalls = listOf(AgentToolCallRecord(1, "RunBoxRequest", "{\"box\":\"rec\"}", false, json)),
+            finalText = "", rounds = 1, maxToolRounds = 8, hitToolRoundCap = false, elapsedMs = 0, documentName = "d")
+        val timedOut = result("{\"success\":false,\"stage\":\"timeout\",\"timedOut\":true}")
+        assertEquals("timeout", assertIs<AgentEvalCorpus.Refused>(AgentEvalCorpus.calibrate(c, timedOut, timedOut)).rejection.reason)
+        val interrupted = result("{\"success\":false,\"stage\":\"run\",\"error\":\"Box interrupted: ran for 5.0 s\"}")
+        assertTrue(assertIs<AgentEvalCorpus.Refused>(AgentEvalCorpus.calibrate(c, interrupted, interrupted)).rejection.reason.startsWith("interrupted"))
+    }
+
     @Test
     fun machineSpecificLinesAreNeverChecks() {
         assertTrue(AgentEvalCorpus.checkable("size is 7"))
