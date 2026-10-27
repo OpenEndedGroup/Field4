@@ -4620,7 +4620,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
         ),
         UiRegression(
             id="canvas-flight",
-            description="A filmed canvas flight through three bookmarks has one frame per 1/fps, reaches each bookmark exactly where restoring it does, turns the three.js sheet at 8 degrees a second, and gives the sheet its camera back.",
+            description="A filmed canvas flight through three bookmarks has one frame per 1/fps, reaches each bookmark exactly where restoring it does, turns the three.js sheet at 8 degrees a second, and gives the sheet its camera back; a sheet whose panel opens mid-flight joins it there and turns from that moment.",
             document=f"ui-regression-canvas-flight-{int(time.time())}",
             commands=[
                 "viewport 1280x720",
@@ -4637,6 +4637,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                     "--record", str(BUILD_ROOT / "scratch" / "canvas-flight.mp4"),
                 ]),
                 shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-flight-check.js"), "--timeout", pw_timeout]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-flight-late-view.js"), "--timeout", pw_timeout]),
                 "viewport default",
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),

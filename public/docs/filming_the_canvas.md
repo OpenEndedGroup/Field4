@@ -158,7 +158,7 @@ mouse.
 - On a split canvas the flight moves the main (bottom-right) pane.
 - The flight only moves the camera. It does not reselect boxes, reopen the editor or open and close
   output panels the way restoring a bookmark does.
-- Only three.js views turn. A view whose output panel opens during the flight stays still.
+- Only three.js views turn.
 - A live flight runs on the window's own clock, so a busy machine can stutter. A filmed flight
   cannot.
 
