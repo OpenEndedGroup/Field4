@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 9 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 2 - beside a line, seeing and blind
@@ -125,12 +125,55 @@ writer.grow(5000)
 lines(writer.line.apply { color = vec(0.9, 0.92, 1.0, 1.0); thickness = 0.8 }, w = 520.0, h = 320.0, fitToSize = true)
 ```
 
-## 5. 1 - what it sees
+## 5. 9 - hatch your drawing (launch)
 
-<!-- field-box id="ps_sees" index="4" -->
+<!-- field-box id="ps_doodle" index="4" -->
+
+```edn [field-box id="ps_doodle" role="properties"]
+{"id" "ps_doodle" "index" 4 "name" "9 - hatch your drawing (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "9 - hatch your drawing (launch)" "_tombstone" false "frame" #afield/rect [60.0 5460.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_doodle_code_.kt" "lines" 32 "characters" 1590 "sha256" "76903c3b0b0ca775ce189bd5383f3acdc4e97b755f0d394353993ad48d52f958"}]}
+```
+
+```kotlin [field-property box="ps_doodle" name="code" path="ps_doodle_code_.kt"]
+import afield.ai.learning.pen.*
+
+// Launch, and the pen hatches around the drawing in "draw here", stroke by stroke, as you
+// watch. Draw more and it starts again around everything. The checkbox switches the pen's hand.
+val border = fline { moveTo(0, 0); lineTo(500, 0); lineTo(500, 300); lineTo(0, 300); lineTo(0, 0); color = vec(1, 1, 1, 0.2) }
+val starter = listOf(
+    fline { moveTo(90, 60); cubicTo(200, 20, 260, 220, 400, 160) },
+    fline { moveTo(150, 250); cubicTo(180, 150, 300, 300, 330, 230) },
+).onEach { it.color = vec(1.0, 0.85, 0.3, 1.0); it.thickness = 2.0 }
+val canvas = lines(listOf(border) + starter, channel = "draw here", w = 520.0, h = 320.0, editable = true, drawing = true)!!
+val hands = listOf("echoes", "michaux")
+var hand = 0
+var choice = 0
+checkbox("Michaux's hand", channel = "hand") { choice = if (it) 1 else 0 }
+var hatcher: Hatcher? = null
+var drawing = listOf<FLine>()
+var seen = -1
+frames {
+    while (frame()) {
+        val drawn = canvas.currentLines().drop(1)
+        if (drawn.size != seen || choice != hand) {
+            seen = drawn.size
+            hand = choice
+            drawing = drawn.map { it.copy().apply { color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 } }
+            hatcher = Hatcher(drawing, PenModel.bundled(hands[hand]), passes = 8, gap = 4.0, seed = seen.toLong())
+        }
+        val h = hatcher ?: continue
+        if (!h.done) h.grow(24)
+        lines(listOf(border) + drawing + h.hatching.map { it.apply { color = vec(0.9, 0.92, 1.0, 1.0); thickness = 0.8 } },
+            channel = "pen", w = 520.0, h = 320.0)
+    }
+}
+```
+
+## 6. 1 - what it sees
+
+<!-- field-box id="ps_sees" index="5" -->
 
 ```edn [field-box id="ps_sees" role="properties"]
-{"id" "ps_sees" "index" 4 "name" "1 - what it sees" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - what it sees" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_sees_code_.kt" "lines" 14 "characters" 911 "sha256" "7f816869d57bcaf18d7c8e98c498fe5f2ad581cd124adabb0595d0daaf886989"}]}
+{"id" "ps_sees" "index" 5 "name" "1 - what it sees" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - what it sees" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_sees_code_.kt" "lines" 14 "characters" 911 "sha256" "7f816869d57bcaf18d7c8e98c498fe5f2ad581cd124adabb0595d0daaf886989"}]}
 ```
 
 ```kotlin [field-property box="ps_sees" name="code" path="ps_sees_code_.kt"]
@@ -150,12 +193,12 @@ val moments = listOf(60, 180, 320, 520).map { until ->
 lines(sideBySide(moments, gap = 40.0), w = 520.0, h = 300.0, fitToSize = true)
 ```
 
-## 6. 3 - cracks that stop at a line
+## 7. 3 - cracks that stop at a line
 
-<!-- field-box id="ps_cracks" index="5" -->
+<!-- field-box id="ps_cracks" index="6" -->
 
 ```edn [field-box id="ps_cracks" role="properties"]
-{"id" "ps_cracks" "index" 5 "name" "3 - cracks that stop at a line" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - cracks that stop at a line" "_tombstone" false "frame" #afield/rect [60.0 1060.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_cracks_code_.kt" "lines" 13 "characters" 1014 "sha256" "7e88b7ab0806eb1347105caa09825097e24068dd24ed2cf0bcf6bef0573daa7d"}]}
+{"id" "ps_cracks" "index" 6 "name" "3 - cracks that stop at a line" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - cracks that stop at a line" "_tombstone" false "frame" #afield/rect [60.0 1060.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_cracks_code_.kt" "lines" 13 "characters" 1014 "sha256" "7e88b7ab0806eb1347105caa09825097e24068dd24ed2cf0bcf6bef0573daa7d"}]}
 ```
 
 ```kotlin [field-property box="ps_cracks" name="code" path="ps_cracks_code_.kt"]
@@ -174,12 +217,12 @@ lines(sideBySide(listOf(inside("cracks", 1), inside("cracks", 2), inside("cracks
     w = 520.0, h = 300.0, fitToSize = true)
 ```
 
-## 7. 5 - seeing against blind, measured
+## 8. 5 - seeing against blind, measured
 
-<!-- field-box id="ps_measure" index="6" -->
+<!-- field-box id="ps_measure" index="7" -->
 
 ```edn [field-box id="ps_measure" role="properties"]
-{"id" "ps_measure" "index" 6 "name" "5 - seeing against blind, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - seeing against blind, measured" "_tombstone" false "frame" #afield/rect [60.0 2060.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_measure_code_.kt" "lines" 16 "characters" 1230 "sha256" "32656ae3c2ace83a48ec085655379f1b5b11b443441c44d8b95d4546ee3c9ac0"}]}
+{"id" "ps_measure" "index" 7 "name" "5 - seeing against blind, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - seeing against blind, measured" "_tombstone" false "frame" #afield/rect [60.0 2060.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_measure_code_.kt" "lines" 16 "characters" 1230 "sha256" "32656ae3c2ace83a48ec085655379f1b5b11b443441c44d8b95d4546ee3c9ac0"}]}
 ```
 
 ```kotlin [field-property box="ps_measure" name="code" path="ps_measure_code_.kt"]
@@ -199,5 +242,25 @@ markdown("measures", """
 | Michaux beside a line: following | ${hatching("michaux")} | ${hatching("michaux-blind")} |
 | cracks in an outline: joins | ${cracking("cracks")} | ${cracking("cracks-blind")} |
 """.trimIndent())
+```
+
+## 9. 8 - hatching around a word
+
+<!-- field-box id="ps_word" index="8" -->
+
+```edn [field-box id="ps_word" role="properties"]
+{"id" "ps_word" "index" 8 "name" "8 - hatching around a word" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 - hatching around a word" "_tombstone" false "frame" #afield/rect [60.0 4960.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_word_code_.kt" "lines" 9 "characters" 681 "sha256" "e82b1762f52f984a72cc85889fdf24b6387cc6a74f56b254a806d989e35c81c6"}]}
+```
+
+```kotlin [field-property box="ps_word" name="code" path="ps_word_code_.kt"]
+import afield.ai.learning.pen.*
+
+// Every stroke of the word gets ten passes of the echoes pen's trembling line, each kept
+// 3.5 pixels from the ink beside it. The pen proposes 32 next points at a time and a
+// FollowGuide picks the one that keeps the gap without crossing anything. Try "michaux".
+val word = HersheyFont.load("futural").text("FIELD", size = 90.0).apply { color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 }
+val hatching = Hatcher(listOf(word), PenModel.bundled("echoes"), passes = 10, gap = 3.5, seed = 1).finish()
+hatching.forEach { it.color = vec(0.9, 0.92, 1.0, 1.0); it.thickness = 0.7 }
+lines(listOf(word) + hatching, w = 520.0, h = 220.0, fitToSize = true)
 ```
 

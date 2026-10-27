@@ -41,6 +41,9 @@ RECIPES = {
     "michaux-blind": ("michaux", False, 200, 2e-3, 0),
     "cracks": ("cracks", False, 200, 2e-3, 16),
     "cracks-blind": ("cracks", False, 200, 2e-3, 0),
+    # the habit for guided hatching (afield.ai.learning.pen.Hatcher); unguided it cannot hatch,
+    # so it has no blind twin
+    "echoes": ("echoes", False, 200, 2e-3, 16),
 }
 
 

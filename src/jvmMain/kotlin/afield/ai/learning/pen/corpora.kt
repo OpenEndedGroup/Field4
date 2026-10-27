@@ -413,6 +413,122 @@ object PenDrawings {
     }
 
     /**
+     * Echo hatching: a few guide strokes (a stroke of a Hershey letter, a smooth curve, or a closed
+     * blob, each at a random angle), each followed by passes laid alongside it at a small gap, back
+     * and forth in one unbroken stroke with a tremor, outwards from the guide. A pass is cut short
+     * where it would run into other ink, so hatching stops at the lines around it.
+     *
+     * What a sensing pen learns from these is to follow whatever line is beside it, in any
+     * direction and at any scale, and to stop at other lines: hatching around lettering and
+     * drawings rather than only in vertical columns ([michaux]). [hatch] puts it to work.
+     */
+    fun echoes(seed: Long, guides: Int = 3, passes: Int = 7, gap: Double = 5.0): FLine {
+        val r = Random(seed)
+        val out = FLine()
+        val ink = ArrayList<Pair<Double, Double>>()
+        val grid = HashMap<Pair<Int, Int>, MutableList<Int>>()
+        fun put(x: Double, y: Double) {
+            ink += x to y
+            grid.getOrPut(floor(x / gap).toInt() to floor(y / gap).toInt()) { ArrayList() } += ink.size - 1
+        }
+        // is (x, y) within `within` of any ink outside index range [from, until)?
+        fun blocked(x: Double, y: Double, within: Double, from: Int, until: Int): Boolean {
+            val gx = floor(x / gap).toInt()
+            val gy = floor(y / gap).toInt()
+            for (cx in gx - 2..gx + 2) for (cy in gy - 2..gy + 2) for (j in grid[cx to cy] ?: emptyList<Int>()) {
+                if (j in from until until) continue
+                if (hypot(ink[j].first - x, ink[j].second - y) < within) return true
+            }
+            return false
+        }
+        fun resampled(points: List<Pair<Double, Double>>, spacing: Double): List<Pair<Double, Double>> {
+            val f = FLine()
+            points.forEachIndexed { i, (x, y) -> if (i == 0) f.moveTo(x, y) else f.lineTo(x, y) }
+            return resampleForPen(f, spacing).map { it.x.toDouble() to it.y.toDouble() }
+        }
+        fun smoothed(points: List<Pair<Double, Double>>, closed: Boolean): List<Pair<Double, Double>> = points.indices.map { i ->
+            val a = points[if (closed) (i - 1 + points.size) % points.size else max(0, i - 1)]
+            val b = points[if (closed) (i + 1) % points.size else minOf(points.size - 1, i + 1)]
+            (a.first + 2 * points[i].first + b.first) / 4 to (a.second + 2 * points[i].second + b.second) / 4
+        }
+        repeat(guides) { g ->
+            val cx = (r.nextDouble() - 0.5) * 160
+            val cy = (r.nextDouble() - 0.5) * 120
+            val angle = r.nextDouble() * 2 * PI
+            val kind = r.nextInt(3)
+            val closed = kind == 2
+            var raw: List<Pair<Double, Double>> = when (kind) {
+                0 -> {
+                    // a stroke of a Hershey letter, big
+                    val font = HersheyFont.load(HersheyFont.names[r.nextInt(HersheyFont.names.size)])
+                    val strokes = ('A'..'Z').flatMap { font.strokes(it) ?: emptyList() }.filter { it.size >= 4 }
+                    val k = 2.5 + r.nextDouble() * 2.5
+                    strokes[r.nextInt(strokes.size)].map { it[0] * k to it[1] * k }
+                }
+                1 -> {
+                    var x = 0.0; var y = 0.0; var a = 0.0; var turn = (r.nextDouble() - 0.5) * 0.06
+                    (0 until 40 + r.nextInt(40)).map {
+                        turn = (turn + (r.nextDouble() - 0.5) * 0.02).coerceIn(-0.07, 0.07)
+                        a += turn; x += cos(a) * 2.5; y += sin(a) * 2.5
+                        x to y
+                    }
+                }
+                else -> {
+                    val rad = 15 + r.nextDouble() * 25
+                    val wob = DoubleArray(3) { r.nextDouble() * 0.15 }
+                    val ph = DoubleArray(3) { r.nextDouble() * 2 * PI }
+                    (0 until 60).map { i ->
+                        val t = i * 2 * PI / 60
+                        var rr = rad
+                        for (w in 0..2) rr *= 1 + wob[w] * sin((w + 2) * t + ph[w])
+                        cos(t) * rr to sin(t) * rr
+                    }
+                }
+            }
+            raw = raw.map { (x, y) -> cx + cos(angle) * x - sin(angle) * y to cy + sin(angle) * x + cos(angle) * y }
+            var base = resampled(if (closed) raw + raw[0] else raw, 2.8)
+            if (base.size < 4) return@repeat
+            // the guide, as its own stroke
+            base.forEachIndexed { i, (x, y) -> if (i == 0) out.moveTo(x, y) else out.lineTo(x, y) }
+            var previousFrom = ink.size
+            base.forEach { (x, y) -> put(x, y) }
+            val side = if (r.nextBoolean()) 1.0 else -1.0
+            val tremor = 0.2 + r.nextDouble() * 0.4
+            var first = true
+            for (k in 1..passes) {
+                // offset the last pass by about one gap along its normals, smooth, roughen
+                val d = gap * (0.85 + r.nextDouble() * 0.3) * side
+                val offset = base.indices.map { i ->
+                    val a = base[max(0, i - 1)]
+                    val b = base[minOf(base.size - 1, i + 1)]
+                    val tx = b.first - a.first
+                    val ty = b.second - a.second
+                    val len = max(1e-9, hypot(tx, ty))
+                    base[i].first - ty / len * d to base[i].second + tx / len * d
+                }
+                base = smoothed(resampled(smoothed(offset, closed), 2.8), closed)
+                // closed shapes go round and round; open ones back and forth
+                val drawn = if (closed || k % 2 == 0) base else base.reversed()
+                val kept = ArrayList<Pair<Double, Double>>()
+                for ((x, y) in drawn) {
+                    if (blocked(x, y, gap * 0.6, previousFrom, ink.size)) break
+                    kept += x + (r.nextDouble() - 0.5) * tremor to y + (r.nextDouble() - 0.5) * tremor
+                }
+                if (kept.size < 5) break
+                val from = ink.size
+                kept.forEachIndexed { i, (x, y) ->
+                    // the first pass starts a new stroke beside the guide's end; later ones carry on
+                    if (first && i == 0) out.moveTo(x, y) else out.lineTo(x, y)
+                }
+                first = false
+                kept.forEach { (x, y) -> put(x, y) }
+                previousFrom = from
+            }
+        }
+        return out
+    }
+
+    /**
      * A line in two hands: words that are either chains of small loops (hand 0) or sharp zigzags
      * (hand 1), the hand changing every word or two. [hands] gets the hand of each word, one entry
      * per subpath of the result, which is what a probe needs to find the cell that tracks it.
@@ -572,6 +688,7 @@ object PenCorpora {
         // trained twice each, seeing and blind (tools/train_pen_corpora.py)
         "michaux" to { (0 until 300).map { PenDrawings.michaux(it.toLong()) } },
         "cracks" to { (0 until 300).map { PenDrawings.cracks(it.toLong()) } },
+        "echoes" to { (0 until 400).map { PenDrawings.echoes(it.toLong()) } },
     )
 
     /**

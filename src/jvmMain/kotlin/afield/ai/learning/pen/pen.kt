@@ -231,7 +231,8 @@ class PenModel internal constructor(
          * `"harmonograph"`, `"plants"`, `"truchet"`, `"boids"`, `"mixed"` or `"rounder"` (see the
          * *Teaching a pen* docs page), or one that senses the ink around it, `"michaux"` and
          * `"cracks"`, each with a blind twin trained on the same drawings, `"michaux-blind"` and
-         * `"cracks-blind"` (the *A pen that sees* page). Loaded once each.
+         * `"cracks-blind"`, and `"echoes"`, the hand [Hatcher] hatches with (the *A pen that sees*
+         * page). Loaded once each.
          */
         fun bundled(name: String): PenModel = bundledModels.getOrPut(name) {
             val text = PenModel::class.java.getResourceAsStream("/afield/pen/models/$name.fieldpen.json")
@@ -400,6 +401,17 @@ class Pen internal constructor(val model: PenModel, seed: Long) : StrokePen {
     }
 
     override fun next(controls: PenControls): PenStep {
+        val s = propose(controls)
+        feed(s.dx, s.dy, s.lift)
+        return s
+    }
+
+    /**
+     * A sample of the next step, as [next] would draw it, without drawing it: the pen is unchanged
+     * apart from its random generator. Calling this several times and then [feed]ing one is how a
+     * [PenGuide] chooses among proposals.
+     */
+    fun propose(controls: PenControls = PenControls()): PenStep {
         val k = model.mixtures
         // pick a component
         val logits = DoubleArray(k) { raw[1 + it] / controls.temperature }
@@ -419,7 +431,6 @@ class Pen internal constructor(val model: PenModel, seed: Long) : StrokePen {
         val dx = mx + sx * e0 + controls.driftX
         val dy = my + sy * (rho * e0 + sqrt(1 - rho * rho) * e1) + controls.driftY
         val lift = random.nextDouble() < sigmoid(raw[0] + controls.liftBias)
-        feed(dx, dy, lift)
         return PenStep(dx, dy, lift)
     }
 
@@ -573,8 +584,10 @@ class PenLine(
             val p = pen as? Pen
             val liftChance = p?.liftProbability ?: Double.NaN
             val from = tip
-            val s = pen.next(controls)
+            val g = guide
+            val s = if (g == null) pen.next(controls) else guidedStep(g, from)
             x += s.dx * scale; y += s.dy * scale
+            g?.drawn(tip, s.lift)
             val mark = !(up || line.nodes.isEmpty())
             if (mark) { line.lineTo(x, y); drawn.lineTo(x, y) } else { line.moveTo(x, y); drawn.moveTo(x, y) }
             history += PenMoment(from, tip, mark, s.lift, liftChance,
@@ -582,6 +595,32 @@ class PenLine(
             up = s.lift
         }
         return line
+    }
+
+    /**
+     * Steers the pen without taking its hand: each point, the pen proposes [PenGuide.candidates]
+     * next steps (by forking itself) and the guide's choice is the one drawn. `null`, the default,
+     * lets the pen draw as it would.
+     */
+    var guide: PenGuide? = null
+
+    private var guideSteps = 0L
+
+    private fun guidedStep(g: PenGuide, from: Vec3): PenStep {
+        var best: PenStep? = null
+        var bestScore = Double.POSITIVE_INFINITY
+        val p = pen as? Pen
+        for (k in 0 until g.candidates) {
+            // a Pen samples its proposals directly; any other StrokePen is forked for each
+            val s = p?.propose(controls) ?: pen.fork(guideSteps * 7919 + k).next(controls)
+            val to = Vec3((from.x + s.dx * scale).toFloat(), (from.y + s.dy * scale).toFloat(), 0f)
+            val score = g.score(from, to, s.lift, up)
+            if (score < bestScore) { bestScore = score; best = s }
+        }
+        guideSteps++
+        val s = best!!
+        pen.feed(s.dx, s.dy, s.lift)
+        return s
     }
 
     /**
