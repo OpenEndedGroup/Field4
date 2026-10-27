@@ -70,6 +70,7 @@ object ManifoldSmokeTest {
             return
         }
 
+        theDescriptorsMatchTheHeader()
         primitivesAreExact()
         booleansComposeArithmetically()
         genusIsTopological()
@@ -614,6 +615,19 @@ object ManifoldSmokeTest {
         } else {
             println("    . $what = $actual")
         }
+    }
+
+    /** Every bound FFM descriptor against `manifoldc.h` ([ManifoldHeaderCheck]); a mismatch links and returns garbage. */
+    private fun theDescriptorsMatchTheHeader() {
+        val header = ManifoldHeaderCheck.header()
+        if (header == null) {
+            println("SKIPPED descriptor check: no manifoldc.h at ${ManifoldHeaderCheck.headerCandidates().joinToString(", ")} (set AFIELD_MANIFOLD_HEADER)")
+            return
+        }
+        val problems = ManifoldHeaderCheck.check(header)
+        checks++
+        println("descriptors: ${ManifoldNative.boundDescriptors.size} bound, checked against ${header.path}, ${problems.size} mismatched")
+        problems.forEach { failures += "descriptor: $it" }
     }
 
     private fun near(what: String, actual: Double, expected: Double, tolerance: Double) {
