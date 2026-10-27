@@ -2909,6 +2909,16 @@ here are captures of that window, taken by the docs capture pipeline from these 
 carries none, there is no such capture: run the scene yourself and grab its window with a follow-on
 `native-screenshot` backdoor command (with `--with-playwright`).
 
+### renderer_browsing
+
+**The Vulkan renderer opened in `column(...)` and `tree(...)`**, in three boxes: a renderer and its
+window, a triangle beneath it, and a box that browses the renderer. Open render → modules → the
+triangle's module to see its pass, shaders, meshes and bindings, and cpu for span timings; the cards
+refresh about once a second while the renderer runs. See
+[Browsing the renderer](visualizers.md#browsing-the-renderer).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/renderer_browsing/metadata.edn)
+
 ### flow_grain
 
 A bounded pool of scrolling fluid tiles, flow-oriented grain, smoothed-velocity particle
