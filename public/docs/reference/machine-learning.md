@@ -1286,9 +1286,42 @@ The document chat's transcript (the chat on the code-use page, about a whole doc
 
 ## AiChatFenceCatalog.kt { #aichatfencecatalog-kt }
 
+The fenced blocks AI4 chat draws as pictures rather than printing as code, read on the JVM from
+the same catalog the browser renderers read.
+
+`src/commonMain/resources/ai4-fence-renderers.json` holds one entry per language, each naming the
+renderer module and export that draws it in the chat panel alongside the syntax guidance and the
+worked example the model is shown. There are two today, `mermaid` and `math`. The JVM reads that
+file out of its resources and turns it into the paragraph of fence instructions added to the
+chat system prompt, so a language the model is told about always has a renderer behind it and a
+language the browser cannot draw is never offered. Only chat mode gets that paragraph; the other
+instruction modes describe no fences.
+
+The catalog is checked on first read for a known schema version, one entry per language, a
+lowercase language name and no blank field. A malformed or absent catalog stops the read and says
+what is wrong with it, instead of leaving the panel one renderer short of what it advertised.
+
 `src/jvmMain/kotlin/afield/ai/conversation/AiChatFenceCatalog.kt` — [read the source](source/jvmMain/afield/ai/conversation/AiChatFenceCatalog/)
 
 ## AiLiveConversation.kt { #ailiveconversation-kt }
+
+The running transcript of one AI4 chat turn, assembled in the order things happened.
+
+A turn interleaves three kinds of entry: text streamed from the model, the activity lines that
+say which tool is running, and anything the person typed while the turn was still going. Each is
+appended as it arrives, and the whole sequence renders into the `<<ai>>`, `<<you>>` and
+`<<progress>>` markers that a box's `ai4_chat_history` property stores and `aiChatHistoryHtml`
+turns into the chat panel.
+
+Two rules keep that order readable while the turn is live. Consecutive text deltas merge into one
+block instead of one block per delta, and a new activity line replaces the previous one only
+where that one was still transient, so a finished tool's result or failure is never overwritten
+by the next thing to start. The newest activity line of a live turn is marked `<<progress-open>>`
+and renders expanded; the earlier ones stay collapsed.
+
+At the end the bridge hands back the turn's final text, which usually repeats what was already
+streamed. Rendering drops the streamed copy when the final text starts with it and nothing but
+completion activity follows it, so the reader is left with one answer rather than two.
 
 `src/jvmMain/kotlin/afield/ai/conversation/AiLiveConversation.kt` — [read the source](source/jvmMain/afield/ai/conversation/AiLiveConversation/)
 
@@ -1297,6 +1330,27 @@ The document chat's transcript (the chat on the code-use page, about a whole doc
 `src/jvmMain/kotlin/afield/ai/conversation/AiRateLimitRecovery.kt` — [read the source](source/jvmMain/afield/ai/conversation/AiRateLimitRecovery/)
 
 ## AiRequestLedger.kt { #airequestledger-kt }
+
+The on-disk accounting record for every AI4 model request: which endpoint answered, how many
+tokens it billed, how long it took and how it ended, with none of the prompt and none of the
+reply.
+
+The OpenAI Responses bridge and the Anthropic messages bridge both write through it, so a
+session's whole model spend lands in one place whatever provider served it. Lines are appended as
+JSON under `~/.afield/logs/ai_usage`, redirected by the `afield.ai.usageLog.path` system property
+or the `AFIELD_AI_USAGE_LOG_PATH` environment variable. A file name carries the date, the process
+id and a uuid minted per JVM, so two Field processes logging at once never share a file or
+contend for a lock.
+
+Four events describe one request. `attempt_started` opens each attempt; `response_usage` records
+the billed token counts, normalised so that input means the whole prompt for either provider and
+cached input is part of it; `retry_wait` marks a backoff between attempts; and
+`attempt_finished` carries the elapsed time, the error type, the HTTP status and whichever
+rate-limit headers the provider returned. Usage is recorded before the response is validated,
+because a stream that failed partway can still have billed.
+
+Writing is best effort. A directory that cannot be written prints one warning to stderr and the
+request carries on, since losing accounting is not a reason to lose the answer.
 
 `src/jvmMain/kotlin/afield/ai/conversation/AiRequestLedger.kt` — [read the source](source/jvmMain/afield/ai/conversation/AiRequestLedger/)
 
@@ -1394,6 +1448,22 @@ Keeping `<document>/ai4_blobs/state/` (the box states AI4 conversations save aft
 
 ## AiToastPolicy.kt { #aitoastpolicy-kt }
 
+Which AI4 log lines become a toast on the canvas, and which stay in the log.
+
+A turn logs a great deal, and almost none of it is addressed to the person watching. Only events
+carrying the `ai.user` channel are candidates, which is what `userNotice` writes; everything else
+a bridge or a tool logs is diagnostics, and the log viewer is where it belongs.
+
+Candidates are then thinned twice. The same text repeated inside fifteen seconds is dropped, and
+an ordinary notice arriving within five seconds of the last one is dropped as well, so a burst of
+activity shows one line rather than six. A notice also carrying `warning` or `error` skips the
+five-second gate and is held back only by the repeat test.
+
+`toolActivity` is the other half of the policy. It maps a handful of tool names to one short
+phrase each, "Checking the view…" or "Updating the document…", and says nothing for the rest:
+reads, discovery and unfamiliar tools are already visible in the chat panel and the tool pool,
+and a tool's implementation name is not a description of what was asked for.
+
 `src/jvmMain/kotlin/afield/ai/conversation/AiToastPolicy.kt` — [read the source](source/jvmMain/afield/ai/conversation/AiToastPolicy/)
 
 ## AiToolFailure.kt { #aitoolfailure-kt }
@@ -1409,6 +1479,17 @@ for a function call with no output.
 `src/jvmMain/kotlin/afield/ai/conversation/AiToolFailure.kt` — [read the source](source/jvmMain/afield/ai/conversation/AiToolFailure/)
 
 ## AiTurnCancellation.kt { #aiturncancellation-kt }
+
+Telling a stopped AI4 turn apart from one that failed.
+
+Stopping a turn arrives as a `CancellationException` or an `InterruptedException`, but rarely at
+the top of the throwable: a future, a coroutine or a reflective tool call wraps it, sometimes
+several layers down, so the type that was thrown says nothing by itself. The one function here
+walks the cause chain for either of those two, guarding against a cycle on the way.
+
+It is asked wherever the agent loop would otherwise swallow an exception and carry on. Saving and
+restoring a conversation's branch state both do that, and both rethrow instead when this answers
+yes, so a turn the person stopped is not written into the transcript as a step that failed.
 
 `src/jvmMain/kotlin/afield/ai/conversation/AiTurnCancellation.kt` — [read the source](source/jvmMain/afield/ai/conversation/AiTurnCancellation/)
 
@@ -4281,6 +4362,29 @@ A tool result that can describe itself in one line for the tool I/O log.
 
 ## Ai4BackdoorTools.kt { #ai4backdoortools-kt }
 
+The AI4 tool surface as an external agent sees it: the same registry the chat panel uses, wired
+to one attached document, with every target named outright.
+
+Building a context for a session assembles what a tool call will need: compiling and evaluating
+Kotlin against a box, reading, writing and replaying operation macros, semantic retrieval over
+the indexed corpora, text and symbol search across the workspace, the runtime providers for
+shader reload and render-window capture, whatever tools the document's own boxes declare, and the
+agent memory kept per document. The backdoor and the MCP bridge both call it, and so do the tests
+that pin a tool's answer.
+
+Targeting is the one place it differs from the chat panel. A chat tool may mean "the box whose
+chat is open"; here a box is named by uid, by a name unique in the document, or by an `afield://`
+reference, and there is no current-box fallback. A name matching two boxes is refused with the
+count rather than resolved to either, because replaying a macro over the wrong box is the one
+failure here that edits a document. A name matching nothing still falls through to the literal
+uid, which is how a document root reaches its box and how a typo earns the provider's own
+message. Passing a focus box names the box whose chat is to be played, which is how a backdoor
+call reproduces what the panel would have answered.
+
+Workspace text search is rooted at the attached document, the workspace and this checkout's
+`src`, never at the process working directory, and refuses to run on Field's [`Runloop`](workspace.md#runloop-kt-runloop) because it
+reads disk.
+
 `src/jvmMain/kotlin/afield/ai/tools/Ai4BackdoorTools.kt` — [read the source](source/jvmMain/afield/ai/tools/Ai4BackdoorTools/)
 
 ## Ai4RenderCapture.kt { #ai4rendercapture-kt }
@@ -4288,6 +4392,24 @@ A tool result that can describe itself in one line for the tool I/O log.
 `src/jvmMain/kotlin/afield/ai/tools/Ai4RenderCapture.kt` — [read the source](source/jvmMain/afield/ai/tools/Ai4RenderCapture/)
 
 ## Ai4RuntimeToolProviders.kt { #ai4runtimetoolproviders-kt }
+
+The five AI4 tools that need the running Field rather than the saved document: reload a box's
+shaders, capture the render window, list a box's Kotlin context variables, query the code-use
+index, and search workspace symbols.
+
+The in-Field chat panel and the backdoor registry share all five and differ only in what they
+hand the constructor. The caller supplies how a box reference resolves and how to look a box up
+by uid, which is what lets the panel mean "the box whose chat is open" where the backdoor insists
+on an explicit target. The panel also supplies a staged-source hook, so a shader reload compiles
+the text the editor is showing rather than the text last written to the box; the backdoor leaves
+that argument out and compiles what the box holds.
+
+Shader reload is the largest of the five, because one box can carry several shader programs at
+once and a request may not say which to rebuild. An explicit mode wins outright. Failing that the
+property being reloaded implies one: `vertex` and `fragment` mean graphics, `compute` means
+compute, `task` and `mesh` mean mesh, and the ray-tracing stages mean ray. Failing that too, the
+box is asked which programs it actually has and each is rebuilt, which is what `auto` and an
+absent mode both come to.
 
 `src/jvmMain/kotlin/afield/ai/tools/Ai4RuntimeToolProviders.kt` — [read the source](source/jvmMain/afield/ai/tools/Ai4RuntimeToolProviders/)
 
