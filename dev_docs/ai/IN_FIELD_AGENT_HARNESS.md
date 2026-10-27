@@ -352,6 +352,35 @@ results make this a lower bound. Sealed, it fell to 1 and 2 of 20, all through
 `EvaluateKotlinExpressionRequest`, which can read files and is not withheld. Use `--sealed` for corpus
 numbers. A clean seal needs either the corpus solutions kept out of the agent's reachable tree or file
 reads denied for that path.
+### Continue pass (2026-10-27): runaways, a real seal, the floor on disk
+
+- **Runaway code.** The `forever` deny list now also matches `while (true)` and `do { } while (true)`, and
+  `markdown(...)` counts as output. Runaway code the deny list cannot see, such as recursion with no base
+  case, hits a 20 s calibration timeout (`CALIBRATION_TIMEOUT_SECONDS`). It is rejected as `timeout`, or as
+  `interrupted` once the Runloop watchdog (`BoxInterruptedError`) stops it. It is not counted as
+  `solution-fails`. Re-calibrated: 194 candidates, **132 tasks** (92 stdout, 31 display, 9 display-shape;
+  42 heldout), with one `timeout` rejection.
+- **Sealing.** `--sealed` also withholds `EvaluateKotlinExpressionRequest` and `CodeUseQueryRequest`
+  (`SEALED_TOOLS`), the two tools through which the 10-26 sealed arms still read their solution. Box code
+  can still open the transcript files, so withholding tools proves nothing on its own.
+  `AgentEvalCorpus.leak` searches every non-echoing tool result for the solution's five longest code
+  lines. Box output counts, so a box that printed the transcript file is caught. A sealed pass that saw
+  its solution scores `leaked`, and the report counts `leaked`.
+- **Floor on disk.** `dev_docs/ai/agent_eval_corpus_floor.json` holds the per-task result of the scripted
+  floor on live Field 9631: **132/132** in 114 s, documents 1 → 1.
+
+Held-out rerun (openai gpt-6.1-sol, sealed, heldout seed 2, 12 tasks per arm, the same 12 in both arms):
+
+| arm | lessons | pass | rounds | input tokens | misuse | leaked |
+| --- | --- | --- | --- | --- | --- | --- |
+| F | off (v5) | 12/12 | 90 | 1,716,618 | 4 | 0 |
+| G | on (v6, distilled from arm A) | 12/12 | 62 | 1,014,646 | 4 | 0 |
+
+With the wider seal, no task saw its own solution (0 of 24, against 1 and 2 of 20 before). The v6
+lessons cut rounds and tokens on this sample but not misuse, which is what they were distilled to cut.
+Arms D/E showed misuse 14 → 10. One run per arm, and the rerun does not reproduce the misuse effect, so
+**v6 is not committed**: `agent_lessons.md` stays at v5.
+
 ## AI4 as the repo's third coding agent (2026-10-27)
 
 `FIELD_AGENT=field` (or `field` as the first word of `~/.afield/agent`) makes Field's own agent the one
