@@ -329,7 +329,10 @@ object VisionPoseStream {
     /** Messages on the channel that were not usable: wrong version, malformed, wrong shape. */
     val rejectedCount: Long get() = rejected.get()
 
-    /** Smoothed arrival interval in milliseconds — the honest answer to "is this really 90 Hz?". */
+    /**
+     * Smoothed arrival interval in milliseconds, an EWMA over the gaps between arriving frames. This
+     * is the rate the head is delivering, which need not be the rate it advertises.
+     */
     val intervalMillis: Double get() = intervalMillisEwma
 
     /** Heads that have said hello on a still-open session. */
@@ -519,7 +522,10 @@ object VisionPoseStream {
         )
     }
 
-    /** Test seam: drop every accumulated statistic and pose. */
+    /**
+     * Drops every accumulated statistic, the last pose, the known heads and sessions, and every
+     * registered listener. For tests.
+     */
     fun reset() {
         latest = null
         heads.clear()

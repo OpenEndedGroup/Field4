@@ -261,7 +261,10 @@ object VisionPoseLatency {
         append("motion-to-photon figure above is short by up to one compositor frame.")
     }
 
-    /** Forget everything. Test seam, and useful before a measurement run. */
+    /**
+     * Drops every span, ping and device report, and forgets the clock offset. For tests, and before
+     * a measurement run.
+     */
     fun reset() {
         spans.clear()
         pings.clear()

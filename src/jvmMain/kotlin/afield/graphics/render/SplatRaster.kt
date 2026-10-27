@@ -401,9 +401,9 @@ object SplatRaster {
 
     /**
      * What the rasterizer did, per splat. Every splat is in exactly one of the counted categories, and
-     * [check] enforces that, so a category quietly appearing that nothing counts cannot hide.
+     * [check] enforces that, so a splat that lands in none of them cannot go unnoticed.
      *
-     * [nonFinite] is separated from the culls on purpose. A NaN position fails
+     * [nonFinite] is separated from the culls. A NaN position fails
      * `depth <= 0.0001` — `NaN <= x` is false — so it sails past the near-plane cull and then
      * silently contributes nothing when its pixel bounds come out empty. Counting it as "culled"
      * would let a cloud that is NaN throughout report a clean render of nothing. It is counted, and

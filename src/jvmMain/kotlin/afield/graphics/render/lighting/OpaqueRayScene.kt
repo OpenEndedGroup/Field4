@@ -45,8 +45,8 @@ data class OpaqueInstance(val id: Int, val geometry: OpaqueTriangles, val transf
 /**
  * Static BLAS per geometry identity; a new TLAS for each explicit instance edit. No refit is claimed.
  * Commit on the render thread between frames. Builds submit on Field's graphics queue and wait for
- * their fence; removed resources retire via Field's frames-in-flight queue. This intentionally
- * conservative first slice makes edits safe, at the cost of a stall on instance/topology edits.
+ * their fence; removed resources retire via Field's frames-in-flight queue. Rebuilding rather than
+ * refitting makes an edit safe, at the cost of a stall on instance and topology edits.
  */
 class OpaqueRayScene(val renderer: Renderer) : HasAccelerationStructure, AutoCloseable {
     private data class Geometry(val vertices: VulkanBuffer, val indices: VulkanBuffer, val blas: AccelerationStructure) {
