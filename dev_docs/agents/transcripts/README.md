@@ -282,6 +282,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `euclid(12,24)` at the same density, the same rule run recursively as a branching tree whose level
   sizes are the word's own partial sums, and a `.wav` player pinned to the canvas through
   `customization`. Sample-backed through `showDirtAudio`; falls back to `patVoice` with no library.
+- `renderer_browsing.yaml`: **the Vulkan renderer in `column(...)` and `tree(...)`** — a renderer box,
+  a triangle module beneath it, and a box that opens the renderer: targets in draw order, modules
+  with shaders, bindings and meshes, CPU span timings. GPU. See `dev_docs/INSPECTOR_EMBEDS.md`.
 - `browse_embeds.yaml`: **the three inspector embeds**, one box each — `tree(...)` over a data class,
   a `DoubleArray`, a 5000-item list paged 200 rows at a time, object keys and a two-node loop;
   `column(...)`; a **launched** box whose list grows without a re-run; and `logs(...)` filtered to one
