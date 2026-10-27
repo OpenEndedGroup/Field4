@@ -199,6 +199,16 @@ See [Reading Saved AI4 Chats](ai4_chat_archive.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/ai4_chat_archive/metadata.edn)
 
+### ai4_repo_tools
+
+**The repo tools Field's agent edits a checkout with**, in one box. It makes a three-file toy checkout
+in a temporary directory, then searches it, patches a misspelling, and reads the line back, all through
+the same tools AI4 calls when `FIELD_AGENT=field` hands it a docs revision or a landing question. The
+rest of its output is what the job's scope refuses: a path outside the readable list, `..`, a symbolic
+link out of the root, `.git`, a read-only page, and a generated file. No model and no API key.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/ai4_repo_tools/metadata.edn)
+
 ### simulation_clock
 
 The same instrument pointed at *simulation* time rather than wall-clock time, in two
