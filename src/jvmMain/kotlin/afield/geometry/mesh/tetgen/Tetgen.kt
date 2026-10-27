@@ -378,12 +378,17 @@ internal object TetgenNative {
         .reinterpret(Long.MAX_VALUE).getString(0)
 
     fun tetrahedralize(surface: TriMesh, quality: Double, maxVolume: Double,
+                       preserveSurface: Boolean): TetMesh =
+        tetrahedralize(DoubleArray(surface.positions.size) { surface.positions[it].toDouble() }, surface.indices,
+            quality, maxVolume, preserveSurface)
+
+    /** The same, from `double` xyz [positions] and triangle [indices], which reach TetGen unnarrowed. */
+    fun tetrahedralize(positions: DoubleArray, indices: IntArray, quality: Double, maxVolume: Double,
                        preserveSurface: Boolean): TetMesh = Arena.ofConfined().use { arena ->
-        val pointCount = surface.vertexCount
-        val triangleCount = surface.indices.size / 3
-        val points = arena.allocate(JAVA_DOUBLE, (3L * pointCount))
-        for (i in 0 until 3 * pointCount) points.setAtIndex(JAVA_DOUBLE, i.toLong(), surface.positions[i].toDouble())
-        val triangles = arena.allocateFrom(JAVA_INT, *surface.indices)
+        val pointCount = positions.size / 3
+        val triangleCount = indices.size / 3
+        val points = arena.allocateFrom(JAVA_DOUBLE, *positions)
+        val triangles = arena.allocateFrom(JAVA_INT, *indices)
 
         val nodeCount = arena.allocate(JAVA_INT)
         val cellCount = arena.allocate(JAVA_INT)
