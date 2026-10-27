@@ -49,9 +49,11 @@ description: |
       of a point is its agent type, pushed apart from `interactionnets.kt`'s own hues because `ERASE`
       and `DUP` are only 20 degrees apart there and `VAR` and `APP` 18, which is not eye-discriminable.
 
-  **Pacing.** The box paces itself with a blocking sleep loop, so it needs no native
+  **Pacing and panel size.** The box paces itself with a blocking sleep loop, so it needs no native
   `Window` or `Renderer`, and streams each frame's geometry into the Three.js viewer it already
-  opened, at the 1460 x 840 it asks for.
+  opened. The output panel opens at 480 x 174 and ignores the
+  size the viewer asks for — a real defect, measured and written up in `dev_docs/OUTPUT_PANEL_SIZING.md`
+  with the seven hypotheses that were wrong about it. Drag the panel once and the size sticks.
 
   `interaction_nets_lambda` is the companion scene that explains the reduction itself in 2D;
   `dev_docs/INTERACTION_NETS_LAMBDA.md` is the write-up and
