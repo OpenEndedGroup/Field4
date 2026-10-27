@@ -195,7 +195,60 @@ Typing into a variable cell edits it. Type `8` over the width and the cell stays
 `=free(8)`; the sheet keeps your 8 and moves the others to fit. When an assertion cannot hold with
 your number, your number gives way: here the width stops at 6 and the height becomes 6.6667. Any
 variable can be edited this way, so in a sheet where `=B2 eq B1 * 9.0 / 5.0 + 32.0` relates a
-Celsius cell `B1` and a Fahrenheit cell `B2`, typing into either one moves the other.
+Celsius cell `B1` and a Fahrenheit cell `B2`, typing into either one moves the other. Both are
+variables, and one assertion ties them together:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spreadsheets/temperature.png" alt="A temperature spreadsheet. Celsius and Fahrenheit, both free variables, read 100 and 212, Kelvin reads 373.15, and the assertion 'F from C' shows a tick" capture="box" open-outputs="true" wait-output=true wait-output-kind=display wait-output-channel="spreadsheet" wait="12" timeout="180" embed=true name="sheet-temperature" w="620" h="320" padding="12"}
+sheet(height = 200) {
+    rows = 4
+    cols = 2
+    columnWidth("A", 140)
+    this["A1"] = "Celsius"; formula("B1", "free(100)")
+    this["A2"] = "Fahrenheit"; formula("B2", "free(212)")
+    this["A3"] = "Kelvin"; formula("B3", "B1 + 273.15")
+    this["A4"] = "F from C"; formula("B4", "B2 eq B1 * 9.0 / 5.0 + 32.0")
+}
+```
+
+Below, 37 is typed into Celsius and Fahrenheit becomes 98.6; 50 is typed into Fahrenheit and
+Celsius becomes 10; then 0 is typed into Celsius and Fahrenheit becomes 32:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="sheet_temperature" video="assets/spreadsheets/temperature.mp4" fps="5" transcript="assets/transcripts/sheet_temperature_setup.yaml" hide-toasts=true padding="12" wait="0" timeout="240" embed=true hidden=true name="sheet-temperature-video" alt="The temperature sheet edited live. Celsius reads 100 and Fahrenheit 212; 37 is typed into the Celsius cell and Fahrenheit changes to 98.6 and Kelvin to 310.15. Then 50 is typed into the Fahrenheit cell and Celsius changes to 10 and Kelvin to 283.15. Last, 0 is typed into Celsius and Fahrenheit changes to 32, the assertion keeping its tick throughout"}
+// The sheet comes from the setup transcript. Click a cell of its iframe with the real mouse,
+// type a number with the real keyboard and press Enter; the sheet solves and redraws.
+fun cellCentre(row: Int, col: Int): Pair<Double, Double> {
+    var at = ""
+    for (i in 0 until 80) {
+        at = ui.eval("""
+            const f = [...document.querySelectorAll('iframe')].find(f => f.src.includes('/spreadsheet.html'))
+            const c = f && f.contentDocument && f.contentDocument.querySelector('.sheet-cell[data-row="$row"][data-col="$col"]')
+            if (!c) return 'waiting'
+            const a = f.getBoundingClientRect(), b = c.getBoundingClientRect()
+            return (a.left + b.left + b.width / 2) + ',' + (a.top + b.top + b.height / 2)
+        """.trimIndent()).toString().trim('"')
+        if (at.contains(",")) break
+        ui.pause(250)
+    }
+    check(at.contains(",")) { "the sheet's cell $row,$col never showed" }
+    val (x, y) = at.split(",").map { it.toDouble() }
+    return x to y
+}
+fun typeInto(row: Int, col: Int, value: String) {
+    val (x, y) = cellCentre(row, col)
+    ui.moveMouse(x, y, steps = 10)
+    ui.clickAt(x, y)
+    ui.pause(500)
+    ui.typeSlowly(value, 180L)
+    ui.pause(400)
+    ui.press("Enter")
+    ui.pause(1600)
+}
+ui.pause(1500)
+typeInto(0, 1, "37")
+typeInto(1, 1, "50")
+typeInto(0, 1, "0")
+ui.pause(600)
+```
 
 What the solver can follow: `+ - * /`, `sum`, `sqrt`, `abs`, `exp`, `ln`, `sin`, `cos`, `tan`,
 `pow` and `atan2`, through as many formula cells as you like. `free(...)` has to be the whole
