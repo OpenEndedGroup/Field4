@@ -239,17 +239,6 @@ ui.pause(1500)
 
 ## Making it again
 
-Field's documentation build makes the film. It replays `demo_document.yaml` into an empty document
-in this checkout's Field desktop app, then runs the script above, which moves the camera and the
-mouse the way a person would, while Field records the window. The build only films it on macOS with
-`FIELD_DOCS_CAPTURE_PROFILES=macos-electron`, because the spiral's frames only reach a page in
-Field's desktop app. On any other machine the build keeps the film it already has.
-
-```diffstatic {data-lang=bash}
-FIELD_DOCS_CAPTURE_PROFILES=macos-electron FIELD_DOCS_RUNNER_MODE=always \
-  uv run --project . --group docs python tools/build_zensical_docs.py --page demo_document.md
-```
-
 To open the document itself, replay the transcript with the [backdoor](automating_field.md):
 
 ```diffstatic {data-lang=bash}
@@ -271,3 +260,14 @@ The feel benchmark times the same replay, as its `demo-document` scenario
     selected and opens its editor, so the script clicks empty canvas afterwards to close it again.
     The home page shows the film behind a veil, tilted in CSS (`.field-homepage-video` in
     `stylesheets/extra.css`); the file itself is the flat window.
+
+    Field's documentation build makes the film. It replays `demo_document.yaml` into an empty document
+    in this checkout's Field desktop app, then runs the script above, which moves the camera and the
+    mouse the way a person would, while Field records the window. The build only films it on macOS with
+    `FIELD_DOCS_CAPTURE_PROFILES=macos-electron`, because the spiral's frames only reach a page in
+    Field's desktop app. On any other machine the build keeps the film it already has.
+
+    ```diffstatic {data-lang=bash}
+    FIELD_DOCS_CAPTURE_PROFILES=macos-electron FIELD_DOCS_RUNNER_MODE=always \
+      uv run --project . --group docs python tools/build_zensical_docs.py --page demo_document.md
+    ```
