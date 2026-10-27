@@ -136,6 +136,9 @@ class DefaultOutput : HasOutput {
     var displayProxy: (String, Any?) -> Unit = { _, _ -> }
     var errorProxy: (Any?, String, Int) -> Unit = { _, _, _ -> }
 
+    /** A compiler warning for the run being configured: message, line, start column, end line, end column (1-based, -1 unknown). */
+    var warningProxy: (String, Int, Int, Int, Int) -> Unit = { _, _, _, _, _ -> }
+
     override fun print(message: Any?) {
         proxy(message, false, -1)
     }

@@ -2848,6 +2848,13 @@ body.field-pane-resizing-h * {
     font-style: italic;
 }
 
+.warning .inner_output {
+    background: rgba(var(--field-warning-rgb), 0.12) !important;
+    border: 1px solid rgba(var(--field-warning-rgb), 0.6);
+    font-size: 90%;
+    font-style: italic;
+}
+
 .error .inner_output.copyable-error-output,
 .error .inner_output.copyable-error-output * {
     -webkit-user-select: text;

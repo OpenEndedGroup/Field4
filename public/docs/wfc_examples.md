@@ -1583,9 +1583,9 @@ Magenta in a wave frame is a cell whose possibility set has been emptied.
 **Names and shapes that bite inside a Field box.** Every snippet on this page runs in one, and neither
 of these is WFC-specific:
 
-- **A box's scope is crowded.** `h`, `sky` and `error` all resolve to something Field already defines
-  ahead of a script-local `val` of the same name once you are inside a lambda with its own receiver.
-  `outW`/`outH`/`skyPattern` are not paranoia, and `throw` beats `error(...)`.
+- **`error(...)` in a box shows a message and does not throw.** It is the box's own `error`, which
+  marks the box, so `?: error("...")` leaves the expression nullable. Write
+  `?: throw IllegalStateException("...")` to stop.
 - **`display(channel, x)` replaces that channel's contents; it does not append.** Text and a picture
   need two channels, or one payload that contains both. `showImg(img, caption = …)` is the latter
   (a single `<figure>`), but in an *animation* prefer drawing the label into the raster with `montage`

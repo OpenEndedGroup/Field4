@@ -342,6 +342,24 @@ class KotlinInterface2(
     /** Reruns served by [rerunCache] instead of a compile. */
     val rerunCacheHits: Int get() = rerunCache.hits
 
+    /** Field's own compiler warnings ([ShadowedSnippetNameDiagnostics]) by rerun-cache key, so a cache hit shows them again. */
+    private val fieldWarningsByKey = HashMap<String, List<ScriptDiagnostic>>()
+
+    /** Sends this compile's Field warnings to the box's editor, through the output its run wired up. */
+    private fun publishFieldWarnings(warnings: List<ScriptDiagnostic>) {
+        val box = associatedBox as? Box ?: return
+        warnings.forEach { d ->
+            val l = d.location
+            box.output.warningProxy(d.message, l?.start?.line ?: 0, l?.start?.col ?: -1, l?.end?.line ?: -1, l?.end?.col ?: -1)
+        }
+    }
+
+    private fun fieldWarnings(r: ResultWithDiagnostics<*>): List<ScriptDiagnostic> =
+        if (r !is ResultWithDiagnostics.Success) emptyList()
+        else (r.reports + messageCollector.diagnostics)
+            .filter { it.severity == ScriptDiagnostic.Severity.WARNING && it.message.contains(ShadowedSnippetNameDiagnostics.MESSAGE_MARK) }
+            .distinctBy { Triple(it.message, it.location?.start?.line, it.location?.start?.col) }
+
     /**
      * [compile], except that an exact rerun of a source this engine already compiled — same
      * expanded text, source property and implicit receivers, nothing it binds to redeclared since —
@@ -366,7 +384,7 @@ class KotlinInterface2(
                         "info,kotlin,perf",
                         "\t\t compile cache hit engine=KotlinInterface2 filePrefix=$filePrefix property=$sourceProperty hits=${rerunCache.hits} misses=${rerunCache.misses} compiles=$compileCount preview=${compileSnippetPreview(s)}"
                     )
-                    ResultWithDiagnostics.Success(reuse.snippet)
+                    ResultWithDiagnostics.Success(reuse.snippet).also { publishFieldWarnings(fieldWarningsByKey[key].orEmpty()) }
                 } else {
                     lprintln(
                         "info,kotlin,perf",
@@ -518,6 +536,9 @@ class KotlinInterface2(
             context.debugScripts.discard(snapshot)
         }
         val result = r!!
+        val warnings = fieldWarnings(result)
+        if (cacheKey != null) { if (warnings.isEmpty()) fieldWarningsByKey.remove(cacheKey) else fieldWarningsByKey[cacheKey] = warnings }
+        publishFieldWarnings(warnings)
         if (result is ResultWithDiagnostics.Success) {
             codeUseSnippetIds[result.value] = snippetId
             // Every successful compile is registered, cached or not: its declarations may shadow a cached entry's.
@@ -3214,7 +3235,20 @@ class KotlinInterface2(
          * classloader, so only the compiler ever sees it.
          */
         val compilerPluginArgs: List<String> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-            witherPluginArgs + dataFramePluginArgs
+            witherPluginArgs + dataFramePluginArgs + shadowedNamePluginArgs
+        }
+
+        /**
+         * Field's own checker for box-level names that a lambda's receiver shadows
+         * ([ShadowedSnippetNameDiagnostics]). Disable with `-Dafield.shadowedNameWarning=false`.
+         */
+        private val shadowedNamePluginArgs: List<String> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+            if (System.getProperty("afield.shadowedNameWarning", "true") != "true") return@lazy emptyList()
+            runCatching { listOf("-Xplugin=${ShadowedSnippetNameCheckerPlugin.jar.absolutePath}") }
+                .getOrElse { e ->
+                    lprintln("warning,kotlin", "shadowed-name checker not enabled: ${e.message}")
+                    emptyList()
+                }
         }
 
         /**
