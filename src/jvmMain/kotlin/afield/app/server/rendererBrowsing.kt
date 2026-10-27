@@ -19,47 +19,28 @@ import java.util.concurrent.atomic.AtomicLong
 private val rendererAdaptersRegistered = AtomicBoolean(false)
 private val cpuLastPushMs = AtomicLong(0)
 
-/** Call once from your app to expose the renderer and install all adaptors. */
-fun installRendererBrowsing(
-    renderer: Renderer,
-    label: String = "Renderer",
-    extraRoots: Map<String, Any?> = emptyMap()
-) {
-    registerRendererBrowsingAdapters()
-    Inspector.setRoots { extraRoots + mapOf(label to renderer) }
-}
+/** Frames per live-update step for adapters whose version follows the frame counter. */
+internal const val LIVE_FRAMES = 60L
 
-/** One-time registration of Renderer/graphics Browsable adapters. */
+/**
+ * One-time registration of the Renderer/graphics [Browsable] adapters, so `column("r", renderer)` and
+ * `tree("r", renderer)` open the renderer as targets (in draw order), modules with their shaders and
+ * bindings, textures, CPU span timings and profiler state. Called from [installInspectorHandler] at
+ * server start; idempotent.
+ *
+ * Thread ownership: `dir()`/`html()` run inside `Inspector.handle`, which the `__browsing__` handler
+ * runs `inMain`, the same Runloop thread that records and submits frames, so they never read a
+ * target mid-record. `version()` runs on the inspector's poll timer and reads only scalars
+ * (frame counter, map sizes), quantised so a live renderer refreshes the browser about once a second
+ * rather than on every frame.
+ */
 fun registerRendererBrowsingAdapters() {
     if (!rendererAdaptersRegistered.compareAndSet(false, true)) return
     CPUSpan.addListener { maybePushCpuChanged() }
 
-    // Generic helpers -----------------------------------------------------------------------------------------------
-
-    BrowsableAdapters.register(Map::class) { m: Map<*, *>, _, title ->
-        val entries = m.entries.associate { (k, v) -> (k?.toString() ?: "null") to v }
-        object : Browsable {
-            override fun heading(): String = title ?: "Map"
-            override fun dir(): Map<String, Any?> = entries
-            override fun html(): String = card(heading(), listOf("size" to m.size.toString()))
-            override fun version(): Long = m.size.toLong()
-        }
-    }
-
-    BrowsableAdapters.register(Iterable::class) { seq: Iterable<*>, _, title ->
-        if (seq is Map<*, *>) return@register null // handled above
-        val items = seq.toList()
-        object : Browsable {
-            override fun heading(): String = title ?: "List"
-            override fun dir(): Map<String, Any?> = items.mapIndexed { idx, v -> "[${idx}]" to v }.toMap()
-            override fun html(): String = card(heading(), listOf("items" to items.size.toString()))
-            override fun version(): Long = items.size.toLong()
-        }
-    }
-
     // Renderer + windowing ------------------------------------------------------------------------------------------
 
-    BrowsableAdapters.register(Renderer::class) { r, _, _ ->
+    reg<Renderer> { r, _, _ ->
         object : Browsable {
             override fun heading(): String = "Renderer"
             override fun dir(): Map<String, Any?> {
@@ -75,7 +56,7 @@ fun registerRendererBrowsingAdapters() {
                     "cpu" to CpuNode,
                     "device" to r.device,
                     "pipelineCache" to r.pipelineCache,
-                    "profiling" to r.windowContext(0).profilerState
+                    "profiling" to runCatching { r.windowContext(0).profilerState }.getOrNull()
                 )
             }
 
@@ -95,11 +76,11 @@ fun registerRendererBrowsingAdapters() {
                 return card("Renderer", rows, accent = "#7dd3fc")
             }
 
-            override fun version(): Long = r.frameCounter
+            override fun version(): Long = r.frameCounter / LIVE_FRAMES
         }
     }
 
-    BrowsableAdapters.register(Renderer.WindowContext::class) { ctx, _, title ->
+    reg<Renderer.WindowContext> { ctx, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: "WindowContext"
             override fun dir(): Map<String, Any?> {
@@ -140,7 +121,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(Window::class) { w, _, title ->
+    reg<Window> { w, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: "Window"
             override fun dir(): Map<String, Any?>? = null
@@ -161,23 +142,25 @@ fun registerRendererBrowsingAdapters() {
 
     // Targets --------------------------------------------------------------------------------------------------------
 
-    BrowsableAdapters.register(RenderTarget::class) { rt, _, title ->
+    reg<RenderTarget> { rt, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: "RenderTarget"
+            // Keys in the order RenderTarget.render records them: pre-targets, then graphics modules,
+            // then mesh-shader modules (each map in insertion order), then the "others" targets.
             override fun dir(): Map<String, Any?> = linkedMapOf(
+                "preTargets" to rt.preTargets,
                 "modules" to rt.modules,
                 "meshModules" to rt.meshModules,
                 "others" to rt.others,
-                "preTargets" to rt.preTargets,
                 "preRecorded" to (rt.preRecordedInsideRendering ?: emptyList<CommandBuffer>())
             )
 
             override fun html(): String {
                 val rows = listOf(
-                    "modules" to names(rt.modules.keys),
-                    "mesh" to names(rt.meshModules.keys),
-                    "others" to names(rt.others.keys),
-                    "preTargets" to names(rt.preTargets.keys)
+                    "1. preTargets" to names(rt.preTargets.keys),
+                    "2. modules" to names(rt.modules.keys),
+                    "3. mesh" to names(rt.meshModules.keys),
+                    "4. others" to names(rt.others.keys)
                 )
                 return card(heading(), rows, accent = "#c084fc")
             }
@@ -187,7 +170,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(ComputeTarget::class) { ct, _, title ->
+    reg<ComputeTarget> { ct, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: "ComputeTarget"
             override fun dir(): Map<String, Any?> = linkedMapOf(
@@ -210,7 +193,7 @@ fun registerRendererBrowsingAdapters() {
 
     // Modules --------------------------------------------------------------------------------------------------------
 
-    BrowsableAdapters.register(ModulePointer::class) { mp, _, title ->
+    reg<ModulePointer> { mp, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: mp.current.parameters.name
             override fun dir(): Map<String, Any?> = mapOf("module" to mp.current)
@@ -228,7 +211,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(MeshModulePointer::class) { mp, _, title ->
+    reg<MeshModulePointer> { mp, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: mp.current.parameters.name
             override fun dir(): Map<String, Any?> = mapOf("module" to mp.current)
@@ -246,7 +229,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(ComputeModulePointer::class) { mp, _, title ->
+    reg<ComputeModulePointer> { mp, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: mp.current.parameters.name
             override fun dir(): Map<String, Any?> = mapOf("module" to mp.current)
@@ -264,7 +247,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(Module::class) { m, _, title ->
+    reg<Module> { m, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: m.parameters.name
             override fun dir(): Map<String, Any?> = linkedMapOf(
@@ -286,11 +269,11 @@ fun registerRendererBrowsingAdapters() {
                 return card(heading(), rows, accent = "#22c55e")
             }
 
-            override fun version(): Long = m.parameters.renderer.frameCounter
+            override fun version(): Long = m.parameters.renderer.frameCounter / LIVE_FRAMES
         }
     }
 
-    BrowsableAdapters.register(MeshModule::class) { m, _, title ->
+    reg<MeshModule> { m, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: m.parameters.name
             override fun dir(): Map<String, Any?> = linkedMapOf(
@@ -310,11 +293,11 @@ fun registerRendererBrowsingAdapters() {
                 return card(heading(), rows, accent = "#d946ef")
             }
 
-            override fun version(): Long = m.parameters.renderer.frameCounter
+            override fun version(): Long = m.parameters.renderer.frameCounter / LIVE_FRAMES
         }
     }
 
-    BrowsableAdapters.register(ComputeModule::class) { m, _, title ->
+    reg<ComputeModule> { m, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: m.parameters.name
             override fun dir(): Map<String, Any?> = linkedMapOf(
@@ -334,11 +317,11 @@ fun registerRendererBrowsingAdapters() {
                 return card(heading(), rows, accent = "#38bdf8")
             }
 
-            override fun version(): Long = m.parameters.renderer.frameCounter
+            override fun version(): Long = m.parameters.renderer.frameCounter / LIVE_FRAMES
         }
     }
 
-    BrowsableAdapters.register(Parameters::class) { p, _, title ->
+    reg<Parameters> { p, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: p.name
             override fun dir(): Map<String, Any?>? = null
@@ -358,7 +341,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(Module.Uniform::class) { u, _, title ->
+    reg<Module.Uniform> { u, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: u.name
             override fun dir(): Map<String, Any?> = mapOf("buffer" to u.buffer, "source" to u.source)
@@ -374,7 +357,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(Module.TexturePointer::class) { t, _, title ->
+    reg<Module.TexturePointer> { t, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: t.name
             override fun dir(): Map<String, Any?> = mapOf(
@@ -393,7 +376,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(Module.TextureArrayPointer::class) { t, _, title ->
+    reg<Module.TextureArrayPointer> { t, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: t.name
             override fun dir(): Map<String, Any?> = mapOf(
@@ -412,7 +395,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(Module.ImagePointer::class) { t, _, title ->
+    reg<Module.ImagePointer> { t, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: t.name
             override fun dir(): Map<String, Any?> = mapOf("image" to t.texture)
@@ -426,7 +409,7 @@ fun registerRendererBrowsingAdapters() {
 
     // Meshes --------------------------------------------------------------------------------------------------------
 
-    BrowsableAdapters.register(Mesh::class) { m, _, title ->
+    reg<Mesh> { m, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: "Mesh"
             override fun dir(): Map<String, Any?> = linkedMapOf(
@@ -449,7 +432,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(MeshMesh::class) { m, _, title ->
+    reg<MeshMesh> { m, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: "Mesh task"
             override fun dir(): Map<String, Any?> = mapOf("pushConstants" to m.push)
@@ -461,7 +444,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(ComputeMesh::class) { m, _, title ->
+    reg<ComputeMesh> { m, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: "Compute task"
             override fun dir(): Map<String, Any?> = mapOf("pushConstants" to m.push)
@@ -475,7 +458,7 @@ fun registerRendererBrowsingAdapters() {
 
     // Textures ------------------------------------------------------------------------------------------------------
 
-    BrowsableAdapters.register(Attachment::class) { a, _, title ->
+    reg<Attachment> { a, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: if (a.isDepthAttachment) "Depth Attachment" else "Attachment"
             override fun dir(): Map<String, Any?> = mapOf("image" to a.image, "view" to a.imageView)
@@ -490,7 +473,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(Image::class) { img, _, title ->
+    reg<Image> { img, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: "Image"
             override fun dir(): Map<String, Any?>? = null
@@ -506,7 +489,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(ImageView::class) { view, _, title ->
+    reg<ImageView> { view, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: "ImageView"
             override fun dir(): Map<String, Any?> = view.underlyingImage?.let { mapOf("image" to it) } ?: emptyMap()
@@ -522,7 +505,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(LoadedTexture::class) { tex, _, title ->
+    reg<LoadedTexture> { tex, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: tex.fileName
             override fun dir(): Map<String, Any?> = mapOf("image" to tex.image, "view" to tex.imageView)
@@ -538,7 +521,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(HasImageView::class) { hv, _, title ->
+    reg<HasImageView> { hv, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: hv.imageView.toString()
             override fun dir(): Map<String, Any?> = mapOf("view" to hv.imageView)
@@ -550,7 +533,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(TextureSampler::class) { s, _, title ->
+    reg<TextureSampler> { s, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: "Sampler"
             override fun dir(): Map<String, Any?>? = null
@@ -558,7 +541,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(VideoTexture::class) { v, _, title ->
+    reg<VideoTexture> { v, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: "VideoTexture"
             override fun dir(): Map<String, Any?>? = null
@@ -589,7 +572,7 @@ fun registerRendererBrowsingAdapters() {
 
     // Device/runtime -------------------------------------------------------------------------------------------------
 
-    BrowsableAdapters.register(SwapChain::class) { sc, _, title ->
+    reg<SwapChain> { sc, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: "SwapChain"
             override fun dir(): Map<String, Any?> = linkedMapOf(
@@ -611,7 +594,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(Queue::class) { q, _, title ->
+    reg<Queue> { q, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: "Queue"
             override fun dir(): Map<String, Any?>? = null
@@ -626,7 +609,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(CommandBuffer::class) { cb, _, title ->
+    reg<CommandBuffer> { cb, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: "CommandBuffer"
             override fun dir(): Map<String, Any?>? = null
@@ -638,7 +621,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(CommandPool::class) { cp, _, title ->
+    reg<CommandPool> { cp, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: "CommandPool"
             override fun dir(): Map<String, Any?>? = null
@@ -655,7 +638,7 @@ fun registerRendererBrowsingAdapters() {
 
     // Profiling ------------------------------------------------------------------------------------------------------
 
-    BrowsableAdapters.register(Renderer.ProfilerState::class) { ps, _, title ->
+    reg<Renderer.ProfilerState> { ps, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: "ProfilerState"
             override fun dir(): Map<String, Any?> = linkedMapOf(
@@ -678,7 +661,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(Renderer.FrameMarkers::class) { m, _, title ->
+    reg<Renderer.FrameMarkers> { m, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: "Frame markers"
             override fun dir(): Map<String, Any?> = emptyMap()
@@ -694,7 +677,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(Renderer.ModuleMarks::class) { m, _, title ->
+    reg<Renderer.ModuleMarks> { m, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: m.name
             override fun dir(): Map<String, Any?> = emptyMap()
@@ -710,7 +693,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(GpuProfiler::class) { p, _, title ->
+    reg<GpuProfiler> { p, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: "GpuProfiler"
             override fun dir(): Map<String, Any?> = mapOf("perfMeta" to p.perfMeta)
@@ -728,7 +711,7 @@ fun registerRendererBrowsingAdapters() {
         }
     }
 
-    BrowsableAdapters.register(ProfilingOptions::class) { o, _, title ->
+    reg<ProfilingOptions> { o, _, title ->
         object : Browsable {
             override fun heading(): String = title ?: "ProfilingOptions"
             override fun dir(): Map<String, Any?> = emptyMap()
@@ -744,6 +727,39 @@ fun registerRendererBrowsingAdapters() {
             )
         }
     }
+}
+
+/**
+ * Registers [adapter] with [BrowsableAdapters], shaped so its card is seen: the inspector shows
+ * `html()` only for leaves, so a node with children gets its card as a first `summary` row, and a
+ * node whose `dir()` is empty becomes a leaf.
+ */
+private inline fun <reified T : Any> reg(noinline adapter: (T, Browsable?, String?) -> Browsable?) {
+    BrowsableAdapters.register(T::class) { v: T, parent, title -> adapter(v, parent, title)?.let(::withSummaryRow) }
+}
+
+internal fun withSummaryRow(b: Browsable): Browsable {
+    val d = b.dir()
+    if (d.isNullOrEmpty()) return object : Browsable {
+        override fun heading(): String = b.heading()
+        override fun html(): String? = b.html()
+        override fun version(): Long = b.version()
+    }
+    if (b.html() == null) return b
+    return object : Browsable {
+        override fun heading(): String = b.heading()
+        override fun dir(): Map<String, Any?> = linkedMapOf<String, Any?>("summary" to SummaryCard(b)) + (b.dir() ?: emptyMap())
+        override fun version(): Long = b.version()
+    }
+}
+
+/** The card of a directory node, as a leaf row. */
+private class SummaryCard(val of: Browsable) : Browsable {
+    override fun heading(): String = of.heading()
+    override fun html(): String? = of.html()
+    override fun version(): Long = of.version()
+    override fun equals(other: Any?) = other is SummaryCard && other.of.heading() == of.heading()
+    override fun hashCode(): Int = of.heading().hashCode()
 }
 
 // -- helpers ---------------------------------------------------------------------------------------------------------
