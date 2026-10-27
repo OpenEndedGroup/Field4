@@ -661,6 +661,8 @@ object DemoTranscriptExecSmokeTest {
         // Real Vulkan/OpenXR rendering; binocular depth additionally requires HTC eye hardware.
         "openxr_eye_intersection",
         "afield_four_traditional_triangle",
+        // Needs a live Vulkan renderer; the column it opens is captured by visualizers.md (graphics context).
+        "renderer_browsing",
         // Streams a splat sequence into a native window, and wants a directory of .compressed.ply
         // frames that is deliberately not committed -- so compiled here and no further.
         "splat_sequence_streaming",
