@@ -309,7 +309,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ### ai
 
-- [agent](machine-learning.md#agentlessons-kt)
+- [agent](machine-learning.md#agentevalcorpus-kt)
 - [compat](machine-learning.md#ai4-kt)
 - [completion](machine-learning.md#ai4autoboxnamer-kt)
 - [conversation](machine-learning.md#aiboxconversation-kt)
@@ -648,7 +648,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**34566 public symbols across 1570 source files**, 17802 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34622 public symbols across 1571 source files**, 17832 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -677,7 +677,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio AI](audio-ai.md) | 22 | 584 | 397 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 123 | 3095 | 1408 (45%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 229 | 3145 | 1130 (35%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [Machine learning](machine-learning.md) | 106 | 2404 | 790 (32%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
+| [Machine learning](machine-learning.md) | 107 | 2460 | 820 (33%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 | [Output](output.md) | 1 | 25 | 17 (68%) |  |
 
@@ -700,11 +700,12 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [AdvancedVulkanFallbackSmoke.kt](graphics.md#advancedvulkanfallbacksmoke-kt) | Graphics | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [agent_backdoor.kt](workspace.md#agent-backdoor-kt) | Workspace · internal | 1 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [AgentDemoDriftGuard.kt](workspace.md#agentdemodriftguard-kt) | Workspace · internal | 2 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [AgentEvalCorpus.kt](machine-learning.md#agentevalcorpus-kt) | Machine learning | 43 | 18 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [AgentExtensions.kt](machine-learning.md#agentextensions-kt) | Machine learning | 42 | 19 | # A box that extends the agent, live |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>automation/<wbr></small> [AgentJvmMainLauncher.kt](workspace.md#agentjvmmainlauncher-kt) | Workspace · internal | 2 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [AgentLessons.kt](machine-learning.md#agentlessons-kt) | Machine learning | 22 | 11 | Lessons AI4 distils from its own eval runs, kept in a reviewable Markdown file and added to the instructions of every turn that has the graph tools. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [agentRouteAccess.kt](workspace.md#agentrouteaccess-kt) | Workspace · internal | 0 | 0 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [AgentTask.kt](machine-learning.md#agenttask-kt) | Machine learning | 74 | 31 | Headless agent tasks: a goal, a document and a set of checks, run through AI4's own turn and judged from what the document's boxes did. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [AgentTask.kt](machine-learning.md#agenttask-kt) | Machine learning | 76 | 33 | Headless agent tasks: a goal, a document and a set of checks, run through AI4's own turn and judged from what the document's boxes did. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [AgentTaskTranscript.kt](machine-learning.md#agenttasktranscript-kt) | Machine learning | 7 | 3 | Writes an agent task into a box's AI4 chat transcript, so a finished task can be read and continued in that box's chat panel. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [AgentToolDemoEvidence.kt](examples.md#agenttooldemoevidence-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [AgentToolExtensions.kt](machine-learning.md#agenttoolextensions-kt) | Machine learning | 13 | 13 | The registration point through which code outside the AI core, including a document's own boxes, adds tools to the AI4 agents. |  |
@@ -1301,7 +1302,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [importing.kt](workspace.md#importing-kt) | Workspace · internal | 4 | 4 | Server handlers that import boxes from a dropped `metadata.edn` or Jupyter notebook, and export Python cells back to `.ipynb`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>oracle/<wbr></small> [Improviser.kt](math.md#improviser-kt) | Math | 59 | 31 |  | [Continuing a Gesture: Sequence Memory and Forecasting](../temporal_memory.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>type/<wbr></small> [Inferencer.kt](languages.md#inferencer-kt) | Languages | 5 | 5 | FieldML's type checker: a Hindley-Milner inference pass over the surface tree, producing the typed tree the lowerer consumes. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [InFieldAgentEvals.kt](machine-learning.md#infieldagentevals-kt) | Machine learning | 90 | 29 | A small eval suite for Field's own agent: seventeen tasks (five graded by pixels, three made of many similar calls that a tool program does in one, two that are several turns of one conversation), each a goal, the setup it starts from, checks that decide it, and a scripted solution. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [InFieldAgentEvals.kt](machine-learning.md#infieldagentevals-kt) | Machine learning | 101 | 39 | A small eval suite for Field's own agent: seventeen tasks (five graded by pixels, three made of many similar calls that a tool program does in one, two that are several turns of one conversation), each a goal, the setup it starts from, checks that decide it, and a scripted solution. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [inspecting.kt](workspace.md#inspecting-kt) | Workspace · internal | 29 | 0 | A two-way debug inspector for a box: `Box.inspect` shows a set of objects in an iframe at `/inspect` and lets the page edit their fields. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [Instance.kt](graphics.md#instance-kt) | Graphics | 5 | 1 | The Vulkan instance: SDK and driver selection, layers, extensions and the debug messenger. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [Instructions.kt](machine-learning.md#instructions-kt) | Machine learning | 9 | 4 | The instruction text AI4 sends the model with each turn, per kind of turn. |  |

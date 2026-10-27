@@ -1,4 +1,6 @@
 [
+  {"doc": "agent_eval_corpus", "box": "corpus_one_task", "codeSha256": "07e55295bf811a51", "codeLines": 7, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "agent_eval_corpus", "box": "corpus_summary", "codeSha256": "5b34e72ebfbed272", "codeLines": 11, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "ai4_chat_archive", "box": "chat-archive-lens-stats", "codeSha256": "13c9e34068020062", "codeLines": 9, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "ai4_chat_archive", "box": "chat-archive-outline", "codeSha256": "2160a918e2b97e56", "codeLines": 6, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "ai4_chat_archive", "box": "chat-archive-read", "codeSha256": "768e0c2592007ea8", "codeLines": 7, "receivers": ["afield.document.graph.Box"], "preamble": ""},
