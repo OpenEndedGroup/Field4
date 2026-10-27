@@ -1302,6 +1302,17 @@ Tracks per-session back pressure for output messages. When the frontend is slow 
 
 ## StopWatch.kt { #stopwatch-kt }
 
+Tells a box's clients when a stop has not taken effect, so the box's status marker can say
+"asked to stop, not responding".
+
+A stop is carried out on the runloop. When the runloop is blocked (a box sleeping or in a busy
+loop, or a `propUp` pull of one, whose nested pump does not advance [`Runloop.frame`](workspace.md#runloop-kt--runloop--frame)), nothing
+stops until the block ends, and the client's own running state can already say "stopped"
+because the queued launch was cancelled. So the test is server-side: the stop is pending while
+the runloop has not finished a tick since the stop was asked for, or while the box is still
+inside a run. It is watched from a daemon thread, because a blocked runloop cannot report on
+itself.
+
 `src/jvmMain/kotlin/afield/app/server/StopWatch.kt` — [read the source](source/jvmMain/afield/app/server/StopWatch/)
 
 ## UserThemeManager.kt { #userthememanager-kt }
@@ -5308,17 +5319,23 @@ STAGE B (K1 side of the differential). Runs the REAL production K1 completion pa
 
 ## CompletionDocDrafts.kt { #completiondocdrafts-kt }
 
+How many KDoc drafts completion has cached, for the welcome page.
+
+Nothing here works the drafts. `tools/docs_notes.py import-drafts` makes each one under src/ a
+`kdoc-draft` note on its declaration, and the docs revision pass (/docs-pass.html) handles them
+like the human's own notes. See dev_docs/agents/COMPLETION_DOC_POLISH_DESIGN.md.
+
 `src/jvmMain/kotlin/afield/runtime/completion/CompletionDocDrafts.kt` — [read the source](source/jvmMain/afield/runtime/completion/CompletionDocDrafts/)
 
 ### CompletionDocDrafts { #completiondocdrafts-kt-completiondocdrafts }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionDocDrafts</span></code>](source/jvmMain/afield/runtime/completion/CompletionDocDrafts/#L39)
+[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionDocDrafts</span></code>](source/jvmMain/afield/runtime/completion/CompletionDocDrafts/#L41)
 
-How many KDoc drafts completion has cached, for the welcome page.
+Counts the cached KDoc drafts that belong to declarations under `src/`, for the welcome page.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="completiondocdrafts-kt--completiondocdrafts--summary"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">summary</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletionDocDraftSummary</span></code>](source/jvmMain/afield/runtime/completion/CompletionDocDrafts/#L42) |  |
+| <a id="completiondocdrafts-kt--completiondocdrafts--summary"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">summary</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletionDocDraftSummary</span></code>](source/jvmMain/afield/runtime/completion/CompletionDocDrafts/#L44) |  |
 
 ## CompletionDocScrapeProbe.kt { #completiondocscrapeprobe-kt }
 
@@ -5336,17 +5353,24 @@ PHASE 0 (exploratory): run REAL doc code through completion. Fixtures are scrape
 
 ## CompletionInteractionLogger.kt { #completioninteractionlogger-kt }
 
+Durable, append-only observations of what happens at Field's autocomplete UI boundary.
+
+The server cannot reconstruct this later: the browser merges several candidate sources and owns
+the final ranking. Conversely the browser does not have the inherited preamble or the other
+code-bearing properties that shape completion. [`record`](workspace.md#completioninteractionlogger-kt--completioninteractionlogger--record) joins those two views without placing
+logging on the latency-sensitive completion reply path.
+
 `src/jvmMain/kotlin/afield/runtime/completion/CompletionInteractionLogger.kt` — [read the source](source/jvmMain/afield/runtime/completion/CompletionInteractionLogger/)
 
 ### CompletionInteractionLogger { #completioninteractionlogger-kt-completioninteractionlogger }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionInteractionLogger</span></code>](source/jvmMain/afield/runtime/completion/CompletionInteractionLogger/#L50)
+[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionInteractionLogger</span></code>](source/jvmMain/afield/runtime/completion/CompletionInteractionLogger/#L52)
 
-Durable, append-only observations of what happens at Field's autocomplete UI boundary.
+Appends one browser-reported completion event, with its box's server-side context, to today's log.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="completioninteractionlogger-kt--completioninteractionlogger--record"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">record</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="nc">CompletionInteractionEvent</span><span class="p">,</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">documentName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">documentPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionInteractionLogger/#L76) |  |
+| <a id="completioninteractionlogger-kt--completioninteractionlogger--record"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">record</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="nc">CompletionInteractionEvent</span><span class="p">,</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">documentName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">documentPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionInteractionLogger/#L78) |  |
 
 ## CompletionLoweringProbe.kt { #completionloweringprobe-kt }
 
@@ -6054,17 +6078,25 @@ mutable bindings of the same name and Kotlin type after evaluation; captured `va
 
 ## KotlinLineNotes.kt { #kotlinlinenotes-kt }
 
+Line notes for a Kotlin box: each top-level `val` or `var` a run declared, and the value it held
+when the run finished.
+
+The REPL hands back only a snippet's final value, but it also publishes the snippet's properties
+after every evaluation (`box.ki.context.vars`, the same map `fromContext()` searches), so a
+declaration's value can be read back by name once the run is over. A statement that declares
+nothing has no note: its value was never kept.
+
 `src/jvmMain/kotlin/afield/runtime/kotlin/KotlinLineNotes.kt` — [read the source](source/jvmMain/afield/runtime/KotlinLineNotes/)
 
 ### KotlinLineNotes { #kotlinlinenotes-kt-kotlinlinenotes }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">KotlinLineNotes</span></code>](source/jvmMain/afield/runtime/KotlinLineNotes/#L15)
+[<code class="highlight"><span class="k">object</span> <span class="nc">KotlinLineNotes</span></code>](source/jvmMain/afield/runtime/KotlinLineNotes/#L17)
 
-Line notes for a Kotlin box: each top-level `val` or `var` a run declared, and the value it held when the run finished.
+Reads a finished run's declarations out of the box's variable table and records them as notes.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="kotlinlinenotes-kt--kotlinlinenotes--record"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">record</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">lineOffset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/KotlinLineNotes/#L20) | Record what the declarations of `code` (box `property`, after box line `lineOffset`) came to. |
+| <a id="kotlinlinenotes-kt--kotlinlinenotes--record"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">record</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">lineOffset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/KotlinLineNotes/#L22) | Record what the declarations of `code` (box `property`, after box line `lineOffset`) came to. |
 
 ## KotlinScriptEngine.kt { #kotlinscriptengine-kt }
 
@@ -8691,9 +8723,45 @@ Where a study's frames come from: `P` — a program, a compiled scene — drawn 
 
 ## StudyKeys.kt { #studykeys-kt }
 
+Keys for a study card: a snapshot of every number in a program, saved by name, which the card can
+apply or blend towards. They are the person's way of keeping "this look" and "that look" and moving
+between them before choosing a revision.
+
+A key is a [`KeyframeScope`](graphics.md#keyframer-kt-keyframescope) key like any other, saved with [`KeyframeScope.saveKey`](graphics.md#keyframer-kt--keyframescope--savekey), so each has its
+`.versions` history and the keyframe browser can read the folder. Its values are the knobs by index
+(`k0`, `k1`, …) and, under `shape`, the shape of the program it came from: that program's text with
+every number blanked out, the language, and what reads each number. So a key applies to the program
+it was captured from, and to that program with any of its numbers changed, but not to one whose text
+has changed around them, where the same index may be a different number.
+
+Keys live in `keys/` in the study's directory.
+
 `src/jvmMain/kotlin/afield/study/source/StudyKeys.kt` — [read the source](source/jvmMain/afield/study/source/StudyKeys/)
 
 ## sourceBlock.kt { #sourceblock-kt }
+
+A block of code that is also its own source: call it like a function, and it carries the Kotlin
+text it was written as.
+
+```diffstatic {data-lang=kotlin}
+val answer = sourceBlock { 6 * 7 }
+println(answer())          // 42
+println(answer.source)     // 6 * 7
+```
+
+A macro: before the box compiles, `sourceBlock { … }` is rewritten to a [`SourceBackedBlock`](internal.md#sourcebackedblock-kt-sourcebackedblock) holding
+both the live lambda and the text of its body. Code that saves a block (a keyframe track, a
+code-blend plan) saves that text, and a block loaded back from it compiles the text again, in the
+box it came from, the first time it is called. So a saved block works before (or without) the box
+that wrote it running again.
+
+A block made by this call carries its lambda and is safe to call at once. A block loaded back from
+saved text is not safe to call from inside its own box's running code: compiling it runs that box's
+code again, which calls the block again. Call it from another box, a frame loop or a control
+callback; [`SourceBackedBlockSelfBoxReentry`](internal.md#sourcebackedblock-kt-sourcebackedblockselfboxreentry) stops the loop and says so if you do.
+
+Should the macro not run (code that reaches this function some other way), the result still works,
+with an empty [`SourceBackedBlock.source`](internal.md#sourcebackedblock-kt--sourcebackedblock--source).
 
 `src/jvmMain/kotlin/afield/study/source/sourceBlock.kt` — [read the source](source/jvmMain/afield/study/source/sourceBlock/)
 
@@ -8701,9 +8769,25 @@ Where a study's frames come from: `P` — a program, a compiled scene — drawn 
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="sourceblock-kt--sourceblock"></a>[<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">sourceBlock</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="nc">SourceBackedBlock</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/study/source/sourceBlock/#L57) | A block of code that is also its own source: call it like a function, and it carries the Kotlin text it was written as. |
+| <a id="sourceblock-kt--sourceblock"></a>[<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">sourceBlock</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="nc">SourceBackedBlock</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/study/source/sourceBlock/#L62) | A block carrying `block` and no source, which is what `sourceBlock { … }` compiles to when the macro has not rewritten it. |
 
 ## KnobNames.kt { #knobnames-kt }
+
+Short names for the numbers of a program, like `wave drift speed` or `star brightness`, for the
+sliders of a study card, written by Field's fast model from what the compiler already knows.
+
+A card can always say what reads a number: StackSL's compiler records what took it (`mix amount`,
+`x of palette a`), RectSL's tokens the word that reads it (`->wall width`). That is exact, but a
+program whose numbers mostly scale and offset reads as a column of `multiplies` and `adds`. So the
+card shows that at first, and asks the fast model once, for all of the program's numbers at a time,
+to say in a few words what turning each one changes, given the program with its comments and each
+number's line, spelling and operand. The compiler's label stays on the slider's tooltip.
+
+Names are kept by the program's shape: its text with every number blanked out, the language, and
+what reads each number. Turning a number, or keeping one, never asks again; the names are stored in
+the study's directory, beside its revisions, so a document carries them. Nothing is asked for a box
+in no open document (a test's box), nor for a document an agent opened unless
+`AFIELD_AI_KNOB_NAMES=1`; `0` turns asking off, and names already stored are still shown.
 
 `src/jvmMain/kotlin/afield/study/ui/KnobNames.kt` — [read the source](source/jvmMain/afield/study/ui/KnobNames/)
 

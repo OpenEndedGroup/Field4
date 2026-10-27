@@ -47,6 +47,8 @@ import java.time.format.DateTimeFormatter
  * code-bearing properties that shape completion. [record] joins those two views without placing
  * logging on the latency-sensitive completion reply path.
  */
+
+/** Appends one browser-reported completion event, with its box's server-side context, to today's log. */
 object CompletionInteractionLogger {
     private val lock = Any()
     private val day = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC)
