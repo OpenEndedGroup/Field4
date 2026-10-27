@@ -508,6 +508,9 @@ class Pen internal constructor(val model: PenModel, seed: Long) : StrokePen {
  * @param scale drawing units per model unit, fixed when the PenLine is made.
  * @param step how often [primer] is resampled, in model units.
  * @param start where a PenLine with no primer starts, in drawing units.
+ * @param surroundings lines a sensing pen should see from the start, as though already on the page.
+ * @param liftAtEnd lift the pen at the end of [primer], so it starts a new stroke rather than
+ *   carrying that one on.
  */
 class PenLine(
     primer: FLine? = null,
@@ -519,9 +522,7 @@ class PenLine(
     start: Vec3 = Vec3(0f, 0f, 0f),
     /** Also keep each step's memory (`cells` and `hidden`) in [history], for colouring by a cell. */
     val recordMemory: Boolean = false,
-    /** Lines a sensing pen should see from the start, as though they were already on the page. */
     surroundings: List<FLine> = emptyList(),
-    /** Lift the pen at the end of [primer], so the pen starts a new stroke rather than carrying it on. */
     liftAtEnd: Boolean = false,
 ) {
     /** The pen underneath, for [Pen.setCell] or forking by hand. */
