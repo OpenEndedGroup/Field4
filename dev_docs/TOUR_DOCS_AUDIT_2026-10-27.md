@@ -15,10 +15,10 @@ opened and looked at; **true (code)** means read from source only; **unverified*
 | `screenshot_35` (`column`) | `funfeatures/column.png` | true (run) |
 | `screenshot_36` (`tree`) | `funfeatures/tree.png` | true (run) |
 | `screenshot_37` (`logs`) | `funfeatures/logs.png` | true (run); page said `logs('log')`, the API is `logs()` (channel defaults to "internal logging") — fixed |
-| `screenshot_38` (alt-held ✕) | omitted, aside | UI state needing a held modifier; no capture hook holds one |
-| `screenshot_40` (docs browser) | omitted, aside | capture would record whichever docs build the Field finds |
+| `screenshot_38` (alt-held ✕) | kept (hand-taken; Marc: asides explaining a missing picture are lab-notebook voice) | UI state needing a held modifier; no capture hook holds one |
+| `screenshot_40` (docs browser) | kept (hand-taken; Marc: asides explaining a missing picture are lab-notebook voice) | capture would record whichever docs build the Field finds |
 | `screenshot_42` (keyframes) | `funfeatures/keyframes.png`, box capture of the shown `keyframes(...)` call | true (run): two default keys at (0.2, 0.5), (0.5, 2.0) |
-| `screenshot_45` (nested connections) | omitted, aside | needs a setup transcript with a nested+connected box |
+| `screenshot_45` (nested connections) | kept (hand-taken; Marc: asides explaining a missing picture are lab-notebook voice) | needs a setup transcript with a nested+connected box |
 | `screenshot_54` (Clojure) | `funfeatures/clojure-output.png`, same code as `clojure.md`'s output fence | true (run): inline chips and rainbow parens |
 
 All twelve old PNGs were referenced only by this page and were removed. Existing runner captures

@@ -221,11 +221,7 @@ Additionally, we can write code that extends and decorates our text editor in a 
 
 You can remove output areas you no longer want to see by `alt/option-click`ing their disclosure triangles; while `alt/option` is held over one, the triangle turns into a red ✕.
 
-??? aside "Why there is no picture of the ✕"
-    The old hand-taken screenshot of the red ✕ was removed in the 2026-10-27 tour audit. The ✕
-    only exists while a key is held and the pointer hovers a disclosure triangle, and the docs
-    runner's box and editor captures do not hold modifier keys. A `drive` capture could; until one
-    is written, [Box Output](box_output.md) describes the gesture.
+![](assets/screenshot_38.png)
 
 Programmatic control over output areas is through these functions (see
 [Box Output](box_output.md) for what each one does, and for the other mouse gestures):
@@ -442,13 +438,12 @@ Along the top is a timeline of every saved version, which you can scrub, and vie
 
 ## Documentation browser
 
-In some weird inception move, Field has a documentation browser (`Browse Documentation` or `ctrl/command-/`): these pages, open in the panel where the text editor usually sits. Press the cyan arrow at its top to get back to the text editor.
+In some weird inception move, Field has a documentation browser (`Browse Documentation` or `ctrl/command-/`):
 
-??? aside "Why there is no picture of the documentation browser"
-    The hand-taken screenshot was removed in the 2026-10-27 tour audit. What the panel shows is
-    this site, served by the Field the capture runs in, so a runner capture would record whichever
-    build of the docs that Field happened to find (`public/field4/` or the upstream mirror). A
-    `drive` capture that opens the panel on a fixed page would be honest; none exists yet.
+![](assets/screenshot_40.png)
+
+Press that cyan arrow to get back to the text editor.
+
 
 Beside the page is a **DOC NOTES** panel. Select a sentence, press `Ctrl+Shift+A` and say what's wrong with it; your note joins a queue that agents, one per page, work through: they revise the Markdown behind the note and leave a record of what they did, or a question for you. [Notes on the Documentation](docs_notes.md) explains the loop.
 
@@ -887,12 +882,7 @@ This allows you to encapsulate boxes inside other boxes to work together to achi
 
 Nested parents can be referenced inside nesting children with `nestedIn` (`Box?`) and nesting parents can get a `Set<Box>` of their nest children with `nested`. If there are non-visible nesting children that are acting as children or parents to boxes that _are_ visible that is notated in the connections: the connection is drawn to the nesting parent instead, ending in a short bar with a label.
 
-??? aside "Why there is no picture of the nested-connection notation"
-    The hand-taken screenshot was removed in the 2026-10-27 tour audit. Showing the notation needs
-    a nested box that is also connected to a visible one; the tour's shared setup transcript
-    (`funfeatures_tour_setup.yaml`) does not build that, and the nesting video above stops at the
-    nest. Adding the connection to a transcript and capturing it with `capture="ui"` is the way to
-    restore it.
+![](assets/screenshot_45.png)
 
 ## Referencing
 
