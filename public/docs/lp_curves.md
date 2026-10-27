@@ -562,10 +562,8 @@ redraw(LpPolygon([vec(-2.0, -1.0), vec(1.5, -1.5), vec(3.0, 1.0), vec(0.5, 2.5),
 ![A three-dimensional viewer, seen at an angle over a ground grid, showing the white pentagon outline with its rainbow central paths and grey rings, and the camera and pencil tools at the left of its toolbar](assets/lp_curves/fan_map_editable.png)
 
 The callback runs when a drag ends, not while it moves, and the grid is recomputed then; at this
-size that takes a few milliseconds. Only `threeLines` has this callback. A `three { }` scene and a
-plane figure (`showPlane`) can be panned and zoomed but not edited, and `Box.lines(...,
-editable = true)` lets you drag points but has no callback: read its lines with
-`currentLines()` on the value it returns. The starting point
+size that takes a few milliseconds. The flat SVG view takes the same callback:
+`lines(polygon, editable = true, onEditCommitted = { edited -> ... })`. The starting point
 [lp_curves](agent_transcripts.md#lp_curves) has this box as `lp_fan_map`.
 
 ## In three dimensions
@@ -752,9 +750,8 @@ three(name = "ellipsoids", width = 760, height = 470) {
 
 A cutting-plane method keeps the region still in play, finds a centre of it, and cuts away the half
 where `c·x` is worse than at the centre. `cuttingPlanes` returns the region at every step as an
-`LpPolytope` of its own. In three dimensions the centre is `ANALYTIC`, `CENTROID` or `CHEBYSHEV`
-(the centre of the largest ball inside), as in the plane; `VOLUMETRIC` is not implemented for
-polytopes and is refused. The example cuts toward the cube's top corner through centroids, each of
+`LpPolytope` of its own. In three dimensions the centre is `ANALYTIC`, `CENTROID`, `CHEBYSHEV`
+(the centre of the largest ball inside) or `VOLUMETRIC`, as in the plane. The example cuts toward the cube's top corner through centroids, each of
 which removes at least `1 − (3/4)³ ≈ 58%` of the volume.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/lp_curves_3d/cutting_planes.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
@@ -825,7 +822,7 @@ In three dimensions:
 | `polytope.pdhg(direction, iterations, tau, sigma, theta)` | `LpPdhgTrace3`: the primal walk and every dual vector |
 | `polytope.ellipsoid(direction, iterations)` | `LpEllipsoidTrace3`: centres and `LpEllipsoid`s |
 | `polytope.simplexWalk(direction, startVertex)` | the walk along edges, `LpTrajectory3` |
-| `polytope.cuttingPlanes(direction, iterations, center)` | `LpCuttingPlaneTrace3`: centres and remaining regions; `ANALYTIC`, `CENTROID` or `CHEBYSHEV` |
+| `polytope.cuttingPlanes(direction, iterations, center)` | `LpCuttingPlaneTrace3`: centres and remaining regions; `ANALYTIC`, `CENTROID`, `CHEBYSHEV` or `VOLUMETRIC` |
 | `trajectory.toFLine()`, `fan.toFLines()`, `ellipsoid.toFLine()`, `polytope.toFLine()`, `polytope.toMesh()` | 3-D `FLine`s and the solid as a `TriMesh` |
 
 </div>

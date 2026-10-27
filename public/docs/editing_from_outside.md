@@ -96,17 +96,19 @@ it had, and the next save writes the file back. To delete a box, delete it in Fi
 
 **You edited the code inside `metadata.edn`.** `metadata.edn` keeps a copy of each box's code
 as `"inline"`. Changing that inline text while the document is open applies it to the box, and the
-next save writes it to the box's own file. When the document is closed, the box's file is what
-counts and an inline edit is lost on the next open, so editing the file is the safer habit.
+next save writes it to the box's own file. When the document is closed, the newer of the two wins
+on the next open: an inline edit saved after the box's file replaces it, and the file's text is
+kept in `backups/` as `<id>_code_.kt.before-inline-<time>`.
 
 ## Edit `metadata.edn` itself
 
 Everything else about a box (its name, frame, connections and other properties) lives in
 `metadata.edn`, and Field applies hand edits to it while the document is open. In a test, changing
 a box's `"name"` and `"frame"` renamed and moved it on the canvas, and adding a new
-`{"id" ... "properties" {...}}` entry to the `"boxes"` list created the box. Field does not rewire
-the connections of a box already open from an edit to `metadata.edn`, and it ignores deletion of
-the file. [What a Document Is on Disk](document_on_disk.md#editing-the-directory-under-a-running-field)
+`{"id" ... "properties" {...}}` entry to the `"boxes"` list created the box. Adding or removing a box's id in
+another box's `"children"` (or `"parents"`) connects or disconnects them. Deleting `metadata.edn`
+while the document is open does not delete the document: Field says so and writes the file back on
+its next save. [What a Document Is on Disk](document_on_disk.md#editing-the-directory-under-a-running-field)
 gives the exact rules.
 
 Field also writes a `document.md` beside `metadata.edn`: a readable copy of the boxes and their

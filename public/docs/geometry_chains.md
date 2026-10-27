@@ -8,7 +8,7 @@ Field's three geometry extensions each answer a different question about an imag
 
 None of them depends on the others. What they share is their output: ordinary `FLine`s and
 `GeometryNetwork`s, which any of them, or anything else in Field, can take as input. This page
-chains them two ways.
+chains them three ways.
 
 !!! note "Needs the libraries"
     These examples need the Morse–Smale, principal-curve and polyvector libraries. The welcome page's
@@ -158,10 +158,92 @@ The two curves that cross in the X stay separate, because separate curves in a f
 node. That is the reason to start from the strokes rather than grow a forest from nothing, which
 would turn the crossing into a junction (see [crossing or branching](principal_curves.md#crossing-or-branching-who-decides)).
 
-## What does not chain yet
+## Ridges as a required graph for strokes
 
-The proposal behind these extensions also asks for one module to constrain another, for example a
-Morse–Smale graph fixing the connectivity that polyvector tracing must keep. The polyvector
-implementation has no input for a required graph, so this is not available. Using a complex's
-ridges as polyvector evidence works, but it treats the ridges as pixels, and the connectivity is not
-carried over.
+One module can also constrain another. Passing a `GeometryNetwork` as `required` to
+`Polyvector.vectorize` makes tracing keep its connectivity: the required curves are added to the
+ink so the field follows them, traced curves are cut and joined at the required nodes, and the
+result says which required curves no chain of traced curves reproduces. Here the required graph is
+the ridges of the sketch's ink, keeping only the ridges that stay on ink along their whole length:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/geometry_chains/ridges_required.png" alt="two panels on black of the pencil sketch: an A, a post meeting a beam with a stroke crossing it, and a wave. On the left, in blue, the two Morse–Smale ridges that stay on ink: the upper halves of the A's legs, meeting at its apex, and its crossbar, with white dots at their ends. On the right, the polyvector curves in orange, traced under those ridges and titled 0 of 2 missing, with white nodes where curves meet: at the A's apex, at the left end of its crossbar, at the T, and at a join in the wave" wait="6" timeout="240" capture="box" open-outputs="true" padding="20" requires="morse-smale,polyvector" name="chain-ridges-required" embed=true}
+import afield.geometry.topology.morsesmale.*
+import afield.geometry.vectorize.polyvector.*
+
+:::fold the pencil sketch from the polyvector page
+// A sketch, drawn the way a hand would: each stroke laid down three times with a little wobble, in a
+// soft pencil line about three pixels wide.
+val random = java.util.Random(3)
+val strokes = [
+    [Vec2(40f, 200f), Vec2(110f, 60f), Vec2(180f, 200f)], // an A
+    [Vec2(70f, 140f), Vec2(150f, 140f)], // its crossbar
+    [Vec2(220f, 60f), Vec2(220f, 200f)], // a post
+    [Vec2(220f, 130f), Vec2(300f, 130f)], // meeting a beam: a T
+    [Vec2(250f, 60f), Vec2(340f, 200f)], // and a stroke crossing it: an X
+    (0..30).map { Vec2(40f + 300f * it / 30, (245 + 12 * sin(it / 30.0 * 2 * PI)).toFloat()) }, // a wave
+]
+val w = 380
+val h = 280
+val ink = FloatArray(w * h)
+for (stroke in strokes) repeat(3) {
+    val jitter = { random.nextGaussian().toFloat() * 1.5f }
+    val pts = stroke.map { Vec2(it.x + jitter(), it.y + jitter()) }
+    for (k in 0 until pts.size - 1) {
+        val a = pts[k]
+        val b = pts[k + 1]
+        val n = (a.distance(b) * 2).toInt()
+        for (s in 0..n) {
+            val t = s.toFloat() / n
+            val cx = a.x + (b.x - a.x) * t
+            val cy = a.y + (b.y - a.y) * t
+            for (y in (cy - 4).toInt()..(cy + 4).toInt()) for (x in (cx - 4).toInt()..(cx + 4).toInt()) {
+                if (x !in 0 until w || y !in 0 until h) continue
+                val d = hypot(x + 0.5 - cx, y + 0.5 - cy) / 1.6
+                ink[y * w + x] = maxOf(ink[y * w + x], (0.8 * exp(-d * d)).toFloat())
+            }
+        }
+    }
+}
+val drawing = Img(w, h, 3, FloatArray(w * h * 3) { 1f - ink[it / 3] })
+:::
+
+// 1. Morse–Smale: the ridges of the ink, keeping those whose every vertex is on ink.
+val ms = MorseSmale.compute(Img(w, h, 1, ink).gaussianBlur(1.5), persistence = 0.2)
+val ridges = ms.ascending.filterCurves { ridge -> ridge.samples.getValue("value").data.min() > 0.3 }
+
+// 2. Polyvector, traced so that the ridges' connectivity is kept.
+val traced = Polyvector.vectorize(drawing, required = ridges)
+
+val pencil = Img(w, h, 3, FloatArray(w * h * 3) { 0.04f + 0.7f * ink[it / 3] })
+fun dots(nodes: FLine) = nodes.apply {
+    pointed = true
+    pointSize = 7.0
+    color = Vec4(1f, 1f, 1f, 1f)
+}
+showImgGrid(
+    "required ridges" to
+        pencil.drawFLines(
+            ridges.toFLines().onEach {
+                it.color = Vec4(0.3f, 0.6f, 1f, 1f)
+                it.thickness = 2.0
+            } + dots(ridges.nodesFLine()),
+            scale = 2.0,
+        ),
+    "traced, ${traced.missingCurves.size} of ${ridges.curves.size} missing" to
+        pencil.drawFLines(
+            traced.network.toFLines().onEach {
+                it.color = Vec4(1f, 0.4f, 0.2f, 1f)
+                it.thickness = 2.0
+            } + dots(traced.network.nodesFLine()),
+            scale = 2.0,
+        ),
+    columns = 2,
+    cellSide = 440,
+)
+```
+
+The constraint is soft. A required curve that crosses bare paper, as many ridges of a line drawing
+do between one stroke and the next, cannot be traced, and it is listed in `traced.missingCurves`
+rather than drawn in; `traced.satisfied` is true only when nothing is missing. A required node
+that tracing stopped short of is joined to the nearest traced junction on its curve within `reach`
+pixels (12 by default).

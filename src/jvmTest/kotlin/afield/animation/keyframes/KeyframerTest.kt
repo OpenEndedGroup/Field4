@@ -1200,6 +1200,18 @@ class KeyframerTest {
     }
 
     @Test
+    fun theMarksOfAPre2026_08RenumberingAreNamed() {
+        val scope = KeyframeScope()
+        fun v(i: Int, t: String) = KeyVersionInfo(index = i, timestamp = t, note = null, file = "%06d.json".format(i))
+        assertEquals(emptyList(), scope.keyVersionDamage(listOf(v(0, "2026-07-01T00:00:00Z"), v(1, "2026-07-02T00:00:00Z"))))
+        val gap = scope.keyVersionDamage(listOf(v(0, "2026-07-01T00:00:00Z"), v(3, "2026-07-02T00:00:00Z")))
+        assertEquals(listOf("versions 1, 2 are missing"), gap)
+        // version 0 rewritten by the renumbering save, the old 1 left with its older timestamp
+        val renumbered = scope.keyVersionDamage(listOf(v(0, "2026-07-09T00:00:00Z"), v(1, "2026-07-02T00:00:00Z")))
+        assertTrue(renumbered.single().startsWith("version 1"), renumbered.toString())
+    }
+
+    @Test
     fun aManifestRowWhoseFileIsGoneIsStillListedRatherThanQuietlyDropped() {
         // The manifest is a cache of notes, but it is also the only record that a version ever
         // existed. Losing the file is a fact worth showing, not one to paper over — and the index

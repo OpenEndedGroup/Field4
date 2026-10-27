@@ -3664,15 +3664,23 @@ class Server {
                     return@mutableSetOf Handled.yes
                 }
 
-                GlobalScope.launch {
-                    try {
-                        session.translate(update)
-                    } catch (e: Exception) {
-                        lprintln("error,fline", "Error applying FLine edit translation: ${e.message}")
-                        e.printStackTrace()
-                    }
+                // Applied in websocket order, so the fline-edit-commit that follows a drag sees every delta.
+                try {
+                    session.translate(update)
+                } catch (e: Exception) {
+                    lprintln("error,fline", "Error applying FLine edit translation: ${e.message}")
+                    e.printStackTrace()
                 }
 
+                Handled.yes
+            })
+
+            handlers["fline-edit-commit"] = mutableSetOf({ message, reply ->
+                val id = (message.payload as? kotlinx.serialization.json.JsonObject)?.get("sessionId")
+                    ?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+                val session = id?.let { getFLineEditSession(it) } ?: return@mutableSetOf Handled.yes
+                // As threeLines does: the snapshot and the callback both happen here, in websocket order.
+                runCatching { session.commit() }.onFailure { lprintln("error,fline", "onEditCommitted failed: ${it.message}") }
                 Handled.yes
             })
 

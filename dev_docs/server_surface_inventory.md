@@ -299,7 +299,7 @@ the file, and the reach is described per file below in prose that a human checke
 
 | declaring file | commands |
 | --- | --- |
-| `Server.kt` | 53 |
+| `Server.kt` | 54 |
 | `agent_backdoor.kt` | 26 |
 | `history.kt` | 13 |
 | `executing.kt` | 10 |
@@ -448,6 +448,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `fline-edit-append-line` | `Server.kt` |
 | `fline-edit-begin-line` | `Server.kt` |
 | `fline-edit-clear` | `Server.kt` |
+| `fline-edit-commit` | `Server.kt` |
 | `fline-edit-end-line` | `Server.kt` |
 | `fline-edit-translate` | `Server.kt` |
 | `get-all-layers` | `Server.kt` |

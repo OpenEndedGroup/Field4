@@ -68,7 +68,6 @@ import afield.math.linalg.plus
 import smile.data.DataFrame
 import smile.data.formula.Formula
 import smile.regression.OLS
-import java.awt.geom.Area
 import kotlin.math.*
 
 /**
@@ -1036,58 +1035,33 @@ fun FLine.byCreatingOsculatingCircles(samples: Int = 20, circleSegments: Int = 3
 /**
  * Union of two curves (using Java2D Area).
  *
+ * Both operands are read as filled regions, whatever their `thickness` or `thicken`; pass
+ * `stroke = true` to read a styled operand as the outline of its stroke instead.
+ *
  * With `exact = true` the four boolean ops go through [booleanExact] instead: the result keeps the
  * operands' cubic pieces, cut exactly at the crossings, and falls back to this Area path only when
  * the exact engine cannot verify its answer.
  */
-fun FLine.byUnionWith(other: FLine, exact: Boolean = false): FLine {
-    if (exact) return booleanExact(other, FLineBooleanOp.Union).line
-    val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
-    val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
-    val area1 = Area(shape1)
-    val area2 = Area(shape2)
-    area1.add(area2)
-    return FLinesAndJavaShapes.javaShapeToFLine(area1)
-}
+fun FLine.byUnionWith(other: FLine, exact: Boolean = false, stroke: Boolean = false): FLine =
+    if (exact) booleanExact(other, FLineBooleanOp.Union, stroke).line else FLineExact.awt(this, other, FLineBooleanOp.Union, stroke)
 
 /**
  * Difference of two curves (line1 - line2).
  */
-fun FLine.byDifferenceWith(other: FLine, exact: Boolean = false): FLine {
-    if (exact) return booleanExact(other, FLineBooleanOp.Subtract).line
-    val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
-    val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
-    val area1 = Area(shape1)
-    val area2 = Area(shape2)
-    area1.subtract(area2)
-    return FLinesAndJavaShapes.javaShapeToFLine(area1)
-}
+fun FLine.byDifferenceWith(other: FLine, exact: Boolean = false, stroke: Boolean = false): FLine =
+    if (exact) booleanExact(other, FLineBooleanOp.Subtract, stroke).line else FLineExact.awt(this, other, FLineBooleanOp.Subtract, stroke)
 
 /**
  * Intersection of two curves.
  */
-fun FLine.byIntersectionWith(other: FLine, exact: Boolean = false): FLine {
-    if (exact) return booleanExact(other, FLineBooleanOp.Intersect).line
-    val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
-    val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
-    val area1 = Area(shape1)
-    val area2 = Area(shape2)
-    area1.intersect(area2)
-    return FLinesAndJavaShapes.javaShapeToFLine(area1)
-}
+fun FLine.byIntersectionWith(other: FLine, exact: Boolean = false, stroke: Boolean = false): FLine =
+    if (exact) booleanExact(other, FLineBooleanOp.Intersect, stroke).line else FLineExact.awt(this, other, FLineBooleanOp.Intersect, stroke)
 
 /**
  * XOR (exclusive or) of two curves.
  */
-fun FLine.byExclusiveOrWith(other: FLine, exact: Boolean = false): FLine {
-    if (exact) return booleanExact(other, FLineBooleanOp.Xor).line
-    val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
-    val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
-    val area1 = Area(shape1)
-    val area2 = Area(shape2)
-    area1.exclusiveOr(area2)
-    return FLinesAndJavaShapes.javaShapeToFLine(area1)
-}
+fun FLine.byExclusiveOrWith(other: FLine, exact: Boolean = false, stroke: Boolean = false): FLine =
+    if (exact) booleanExact(other, FLineBooleanOp.Xor, stroke).line else FLineExact.awt(this, other, FLineBooleanOp.Xor, stroke)
 
 // ==================== GEOMETRIC QUERIES ====================
 

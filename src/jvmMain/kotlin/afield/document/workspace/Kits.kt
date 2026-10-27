@@ -265,7 +265,9 @@ data class KitItem(val role: String?, val property: String?, val asset: String?,
  */
 data class KitInspection(val kit: String?, val recordedRevision: String?, val kitRevision: String?, val kitDirectory: String?,
     val kitFound: Boolean, val items: List<KitItem>, val problems: List<String>,
-    val roleProperty: String = Kits.DEFAULT_ROLE_PROPERTY, val launchOrder: List<String> = emptyList()) {
+    val roleProperty: String = Kits.DEFAULT_ROLE_PROPERTY, val launchOrder: List<String> = emptyList(),
+    /** The document's kit package, when it was created from one; [Box.showKit] fills it in. */
+    val packageInstance: KitInstanceInspection? = null) {
     /** Items in [state]. */
     fun inState(state: KitItemState): List<KitItem> = items.filter { it.state == state }
 
@@ -308,11 +310,32 @@ data class KitInspection(val kit: String?, val recordedRevision: String?, val ki
  * Show which kit this document runs, and every property and asset that differs from it, in a box
  * output ([channel], by default `kit`). [kit] is a kit directory to compare against; by default,
  * the one the document's record names.
+ *
+ * A document created from a kit package (one with a `.field-kit-instance.json`) also gets the
+ * package's line on the card: the package, the revision this document was made from, the installed
+ * revision, and what an update would change. [KitInspection.packageInstance] carries it.
  */
 fun Box.showKit(kit: File? = null, channel: String = "kit"): KitInspection {
-    val inspection = Kits.inspect(inside.boxes.values, File(inside.filename), kit)
+    val document = File(inside.filename)
+    val packageInstance = runCatching { KitInstances.record(document)?.let { KitInstances.inspect(document) } }.getOrNull()
+    val inspection = Kits.inspect(inside.boxes.values, document, kit).copy(packageInstance = packageInstance)
     BoxStudies.show(this, channel, kitCardHtml(inspection))
     return inspection
+}
+
+/** One line for a document's kit package: revision, installed revision, and what an update would do. */
+internal fun packageSummary(p: KitInstanceInspection): String {
+    val made = "Made from package '${p.record.kit}' at revision ${KitInspection.short(p.record.revision)}"
+    if (p.availableRevision.isEmpty()) return "$made; " + p.conflicts.joinToString("; ").ifBlank { "it is not installed" } + "."
+    val installed = if (p.availableRevision == p.record.revision) "; that revision is installed"
+        else "; revision ${KitInspection.short(p.availableRevision)} is installed"
+    val changes = p.changes.groupBy { it.state }.entries.joinToString(", ") { (state, list) -> "${list.size} ${state.replace('-', ' ')}" }
+    val update = when {
+        p.conflicts.isNotEmpty() -> ". An update would conflict on ${p.conflicts.joinToString()}"
+        changes.isNotEmpty() -> ". Files differ: $changes"
+        else -> ". No file differs from it"
+    }
+    return made + installed + update + "."
 }
 
 internal fun kitCardHtml(inspection: KitInspection): String {
@@ -338,7 +361,7 @@ internal fun kitCardHtml(inspection: KitInspection): String {
 .$prefix p{margin:8px 0 0;user-select:text;white-space:pre-wrap;overflow-wrap:anywhere}
 .$prefix table{border-collapse:collapse;margin-top:12px;width:100%}.$prefix td{padding:3px 12px 3px 0;vertical-align:top}.$prefix td+td{text-align:right;padding-right:0}
 </style><div class="$prefix" data-kit="${kitEscape(inspection.kit.orEmpty())}" data-afield-intrinsic-width="640">
-<div class="kit-title">$title<span>${kitEscape(revision)}</span></div><p>${kitEscape(inspection.summary())}</p>
+<div class="kit-title">$title<span>${kitEscape(revision)}</span></div><p>${kitEscape(inspection.summary())}</p>${inspection.packageInstance?.let { "<p class=\"kit-package\">${kitEscape(packageSummary(it))}</p>" }.orEmpty()}
 <table>$rows</table></div>
 """.trimIndent()
 }

@@ -344,8 +344,9 @@ one.
 The coincident-corner cube is not a failure either: collapsing one corner of a unit cube onto its
 neighbour really does leave a body of volume `2/3`, and TetGen meshed exactly that. This is the
 shape the mistake takes in practice: a mesh off disk with an unwelded or over-welded seam produces a
-plausible solid of the wrong size, and nothing in this path will tell you. Compare `mesh.volume()`
-against `Solid.volume` before you trust a result.
+plausible solid of the wrong size. `Tetgen.tetrahedralize` checks the surface first and says so on
+`warning,tetgen`, naming the coincident vertices, open loops or collapsed triangles it found, and
+warns again if the tetrahedra do not hold the volume the surface encloses.
 
 ??? aside "The fatal path"
     Two of the eight — self-intersection and degeneracy — reach TetGen's own fatal handler. Built

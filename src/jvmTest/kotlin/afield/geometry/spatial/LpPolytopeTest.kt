@@ -135,7 +135,7 @@ class LpPolytopeTest {
 
     @Test
     fun cuttingPlanesApproachTheOptimum() {
-        for (kind in listOf(LpCenter.ANALYTIC, LpCenter.CENTROID, LpCenter.CHEBYSHEV)) {
+        for (kind in LpCenter.entries) {
             val trace = cube.cuttingPlanes(c, iterations = 18, center = kind)
             val s = trace.trajectory.samples
             assertTrue(s.all { cube.violation(it.x, it.y, it.z) < 1e-9 }, "$kind: centres inside")
@@ -145,7 +145,22 @@ class LpPolytopeTest {
         }
         val cheb = chebyshevCenter3(cube.normalX, cube.normalY, cube.normalZ, cube.bound)
         assertEquals(1.0, cheb[3], 1e-9)
-        assertFailsWith<IllegalArgumentException> { cube.cuttingPlanes(c, center = LpCenter.VOLUMETRIC) }
+    }
+
+    @Test
+    fun volumetricCentreOfAPrismIsItsTriangleCentreInThePlane() {
+        // a triangle times [-1, 2]: the 3-D volumetric centre's x, y must be the 2-D one's
+        val nx = doubleArrayOf(-1.0, 0.0, 0.6); val ny = doubleArrayOf(0.0, -1.0, 0.8); val b = doubleArrayOf(0.0, 0.0, 2.4)
+        val flat = volumetricCenter(nx, ny, b, 0.5, 0.5)
+        val prism = volumetricCenter3(
+            nx + doubleArrayOf(0.0, 0.0), ny + doubleArrayOf(0.0, 0.0), doubleArrayOf(0.0, 0.0, 0.0, 1.0, -1.0), b + doubleArrayOf(2.0, 1.0),
+            doubleArrayOf(0.5, 0.5, 0.0),
+        )
+        assertEquals(flat[0], prism[0], 1e-7)
+        assertEquals(flat[1], prism[1], 1e-7)
+        assertEquals(0.5, prism[2], 1e-7)
+        val centre = volumetricCenter3(cube.normalX, cube.normalY, cube.normalZ, cube.bound, doubleArrayOf(0.3, -0.2, 0.1))
+        centre.forEach { assertEquals(0.0, it, 1e-7) }
     }
 
     @Test

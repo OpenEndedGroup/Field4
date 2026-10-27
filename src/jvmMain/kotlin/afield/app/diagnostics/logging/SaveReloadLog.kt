@@ -4,11 +4,14 @@
  *
  * Each line is an ISO instant, the event name in brackets and a message. `logTiming` adds the
  * elapsed milliseconds since a `System.nanoTime()` start and skips events faster than its threshold.
- * The file rolls over to `save_reload.log.1` once it reaches 50 MB.
+ * The file rolls over to `save_reload.log.1` once it reaches 50 MB. Every line also goes to
+ * [LogDispatcher] on `info,persist,savereload`, so the log widget and other sinks see it; the
+ * console mutes `info,persist` by default.
  */
 
 package afield.app.diagnostics.logging
 
+import afield.ai.diagnostics.LogDispatcher
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -23,6 +26,7 @@ object SaveReloadLog {
     private const val maxBytes = 50L * 1024 * 1024
     private val lock = Any()
     private val formatter = DateTimeFormatter.ISO_INSTANT
+    const val CHANNEL = "info,persist,savereload"
 
     fun elapsedMillis(startedAtNs: Long): Long =
         (System.nanoTime() - startedAtNs) / 1_000_000L
@@ -36,6 +40,7 @@ object SaveReloadLog {
     }
 
     fun log(event: String, message: String) {
+        LogDispatcher.log(CHANNEL, "[$event] $message")
         val line = buildString {
             append(formatter.format(Instant.now()))
             append(" [")
