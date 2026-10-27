@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-319 source file(s), 7826 public symbol(s), 4283 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+320 source file(s), 7827 public symbol(s), 4284 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2602,6 +2602,16 @@ For ray to *named part* rather than ray to triangle, see [`PickScene`](graphics.
 | Declaration | Summary |
 | --- | --- |
 | <a id="pointing-mesh-kt--raycast"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">MeshBvh</span><span class="p">.</span><span class="nf">raycast</span><span class="p">(</span><span class="n">ray</span><span class="p">:</span> <span class="nc">Ray</span><span class="p">,</span> <span class="n">maxDistance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">MAX&#95;VALUE</span><span class="p">,</span> <span class="n">cullBackFaces</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">RayHit</span><span class="o">?</span></code>](source/jvmMain/afield/geometry/mesh/pointing_mesh/#L80) | Convenience: [`MeshBvh.raycast`](graphics.md#pointing-mesh-kt--raycast) down a [`Ray`](graphics.md#pointing-kt-ray). Distances come back in world units. |
+
+## TetgenSolid.kt { #tetgensolid-kt }
+
+`src/jvmMain/kotlin/afield/geometry/mesh/tetgen/TetgenSolid.kt` — [read the source](source/jvmMain/afield/geometry/mesh/tetgen/TetgenSolid/)
+
+### Top-level functions { #tetgensolid-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="tetgensolid-kt--tetrahedralize"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Tetgen</span><span class="p">.</span><span class="nf">tetrahedralize</span><span class="p">(</span><span class="n">solid</span><span class="p">:</span> <span class="nc">Solid</span><span class="p">,</span> <span class="n">quality</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.2</span><span class="p">,</span> <span class="n">targetEdgeLength</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">preserveSurface</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">order</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span><span class="p">:</span> <span class="nc">TetMesh</span></code>](source/jvmMain/afield/geometry/mesh/tetgen/TetgenSolid/#L20) | Tetrahedralize a Manifold `solid` straight from its `double` positions. |
 
 ## GeometryNetwork.kt { #geometrynetwork-kt }
 

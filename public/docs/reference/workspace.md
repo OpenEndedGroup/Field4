@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-234 source file(s), 3175 public symbol(s), 1154 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+234 source file(s), 3177 public symbol(s), 1156 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2264,10 +2264,10 @@ an exception to that — re-running a box can open windows, start strands and hi
 | Declaration | Summary |
 | --- | --- |
 | <a id="personalreload-kt--reloadpersonal"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">reloadPersonal</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PersonalReloadReport</span></code>](source/jvmMain/afield/app/settings/PersonalReload/#L118) | Retire the live personal layer and pick up whatever `./gradlew personalJar` last built. |
-| <a id="personalreload-kt--installpersonalreloadaction"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">installPersonalReloadAction</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/app/settings/PersonalReload/#L168) |  |
-| <a id="personalreload-kt--scanforstaleclasses"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">scanForStaleClasses</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/app/settings/PersonalReload/#L209) | A one-peel look for classes belonging to a retired layer, returning a human-readable description of the first thing found, or null. |
-| <a id="personalreload-kt--scanengineforstaleclasses"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">scanEngineForStaleClasses</span><span class="p">(</span><span class="n">ki</span><span class="p">:</span> <span class="nc">KotlinScriptEngine</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/app/settings/PersonalReload/#L221) | The engine half of [`scanForStaleClasses`](workspace.md#personalreload-kt--scanforstaleclasses) — its declarations, without a box's property bag. |
-| <a id="personalreload-kt--stalelayerdiagnosis"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">staleLayerDiagnosis</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">throwable</span><span class="p">:</span> <span class="nc">Throwable</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/app/settings/PersonalReload/#L296) | If `throwable` looks like a box tripping over classes from a retired layer, an explanation fit to show in place of the JVM's — and the box is flagged [`needsRerun`](workspace.md#personalreload-kt--needsrerun) on the way past, since that is exactly the state it is in. |
+| <a id="personalreload-kt--installpersonalreloadaction"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">installPersonalReloadAction</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/app/settings/PersonalReload/#L175) |  |
+| <a id="personalreload-kt--scanforstaleclasses"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">scanForStaleClasses</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/app/settings/PersonalReload/#L216) | A one-peel look for classes belonging to a retired layer, returning a human-readable description of the first thing found, or null. |
+| <a id="personalreload-kt--scanengineforstaleclasses"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">scanEngineForStaleClasses</span><span class="p">(</span><span class="n">ki</span><span class="p">:</span> <span class="nc">KotlinScriptEngine</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/app/settings/PersonalReload/#L228) | The engine half of [`scanForStaleClasses`](workspace.md#personalreload-kt--scanforstaleclasses) — its declarations, without a box's property bag. |
+| <a id="personalreload-kt--stalelayerdiagnosis"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">staleLayerDiagnosis</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">throwable</span><span class="p">:</span> <span class="nc">Throwable</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/app/settings/PersonalReload/#L303) | If `throwable` looks like a box tripping over classes from a retired layer, an explanation fit to show in place of the JVM's — and the box is flagged [`needsRerun`](workspace.md#personalreload-kt--needsrerun) on the way past, since that is exactly the state it is in. |
 
 ### Top-level values { #personalreload-kt-values }
 
@@ -3728,49 +3728,57 @@ document launches, and it insists on exactly one live box per name instead of gu
 shutdown hook deactivates every live document and calls [`KitLifecycle.cleanup`](workspace.md#kitruntime-kt--kitlifecycle--cleanup) in reverse load
 order, with four seconds to finish.
 
+Reloading the personal layer (`reloadPersonal()`) goes through [`suspendForReload`](workspace.md#kitruntime-kt--kitruntime--suspendforreload) and
+[`resumeAfterReload`](workspace.md#kitruntime-kt--kitruntime--resumeafterreload): every kit is deactivated and cleaned up, the layer is replaced, and the kits
+start again from the new classes, reactivating the documents that were open. The package
+directories themselves are still the launch profile's, so installing or removing a kit needs a
+restart, as does a native library a kit has already loaded.
+
 `src/jvmMain/kotlin/afield/document/workspace/KitRuntime.kt` — [read the source](source/jvmMain/afield/document/workspace/KitRuntime/)
 
 **Used in:** [Kits and Starting Points](../kits.md)
 
 ### KitLifecycle { #kitruntime-kt-kitlifecycle }
 
-[<code class="highlight"><span class="k">interface</span> <span class="nc">KitLifecycle</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L36)
+[<code class="highlight"><span class="k">interface</span> <span class="nc">KitLifecycle</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L42)
 
 Implement in a kit's Kotlin extension; startup/cleanup belong to the host, activation to a document.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="kitruntime-kt--kitlifecycle--startup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">startup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitHostContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L37) |  |
-| <a id="kitruntime-kt--kitlifecycle--activate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">activate</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitDocumentContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L38) |  |
-| <a id="kitruntime-kt--kitlifecycle--deactivate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">deactivate</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitDocumentContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L39) |  |
-| <a id="kitruntime-kt--kitlifecycle--cleanup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">cleanup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitHostContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L40) |  |
+| <a id="kitruntime-kt--kitlifecycle--startup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">startup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitHostContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L43) |  |
+| <a id="kitruntime-kt--kitlifecycle--activate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">activate</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitDocumentContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L44) |  |
+| <a id="kitruntime-kt--kitlifecycle--deactivate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">deactivate</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitDocumentContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L45) |  |
+| <a id="kitruntime-kt--kitlifecycle--cleanup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">cleanup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitHostContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L46) |  |
 
 ### KitHostContext { #kitruntime-kt-kithostcontext }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitHostContext</span><span class="p">(</span><span class="k">val</span> <span class="n">kit</span><span class="p">:</span> <span class="nc">InstalledKit</span><span class="p">,</span> <span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L44)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitHostContext</span><span class="p">(</span><span class="k">val</span> <span class="n">kit</span><span class="p">:</span> <span class="nc">InstalledKit</span><span class="p">,</span> <span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L50)
 
 The immutable runtime revision loaded by this process.
 
 ### KitDocumentContext { #kitruntime-kt-kitdocumentcontext }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitDocumentContext</span><span class="p">(</span><span class="k">val</span> <span class="n">host</span><span class="p">:</span> <span class="nc">KitHostContext</span><span class="p">,</span> <span class="k">val</span> <span class="n">document</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">,</span> <span class="k">val</span> <span class="n">project</span><span class="p">:</span> <span class="nc">WorkspaceProjectScope</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L47)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitDocumentContext</span><span class="p">(</span><span class="k">val</span> <span class="n">host</span><span class="p">:</span> <span class="nc">KitHostContext</span><span class="p">,</span> <span class="k">val</span> <span class="n">document</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">,</span> <span class="k">val</span> <span class="n">project</span><span class="p">:</span> <span class="nc">WorkspaceProjectScope</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L53)
 
 The ordinary Field document and its project's shared parent/resources/preferences.
 
 ### KitRuntime { #kitruntime-kt-kitruntime }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">KitRuntime</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L50)
+[<code class="highlight"><span class="k">object</span> <span class="nc">KitRuntime</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L56)
 
 Runtime lifecycle for the exact package paths captured by the launcher, independent of pending registry changes.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="kitruntime-kt--kitruntime--errors"></a>[<code class="highlight"><span class="k">val</span> <span class="n">errors</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L56) |  |
-| <a id="kitruntime-kt--kitruntime--start"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L59) |  |
-| <a id="kitruntime-kt--kitruntime--activate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">activate</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L89) |  |
-| <a id="kitruntime-kt--kitruntime--deactivate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">deactivate</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L109) |  |
-| <a id="kitruntime-kt--kitruntime--shutdown"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">shutdown</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L116) |  |
-| <a id="kitruntime-kt--kitruntime--launchboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">launchBoxes</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="o">?</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L126) |  |
+| <a id="kitruntime-kt--kitruntime--errors"></a>[<code class="highlight"><span class="k">val</span> <span class="n">errors</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L63) |  |
+| <a id="kitruntime-kt--kitruntime--start"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L66) |  |
+| <a id="kitruntime-kt--kitruntime--suspendforreload"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">suspendForReload</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SessionInformation</span><span class="p">&gt;</span><span class="o">?</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L101) | The documents active now, for [`resumeAfterReload`](workspace.md#kitruntime-kt--kitruntime--resumeafterreload); deactivates them and cleans up every kit. Null when the kits were never started, so there is nothing to resume. |
+| <a id="kitruntime-kt--kitruntime--resumeafterreload"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">resumeAfterReload</span><span class="p">(</span><span class="n">documents</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SessionInformation</span><span class="p">&gt;</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L113) | Starts the kits again, from the personal layer as it is now, and reactivates `documents`. A document that will not reactivate is reported in [`errors`](workspace.md#kitruntime-kt--kitruntime--errors) and left inactive. |
+| <a id="kitruntime-kt--kitruntime--activate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">activate</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L123) |  |
+| <a id="kitruntime-kt--kitruntime--deactivate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">deactivate</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L143) |  |
+| <a id="kitruntime-kt--kitruntime--shutdown"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">shutdown</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L150) |  |
+| <a id="kitruntime-kt--kitruntime--launchboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">launchBoxes</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="o">?</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L160) |  |
 
 ## Kits.kt { #kits-kt }
 
