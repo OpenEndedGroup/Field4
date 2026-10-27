@@ -588,15 +588,19 @@
                         const width      = col.getBoundingClientRect().width;
                         const wasActive  = col.classList.contains('active');
                         const colIdx     = colIndexOf(col);
-
-                        clearRightOfColumn(colIdx);
+                        // Keep the columns to the right open while the row they hang from is still
+                        // listed: a value that changes every second (a running renderer) must not
+                        // fold the reader's path back to its own column each time it does.
+                        const openName   = selectedIn(col)?.dataset.name;
 
                         const resp = await sendReq('open', { id, watch: true });
 
+                        if (!(resp && resp.ok) || resp.type !== 'dir') clearRightOfColumn(colIdx);
                         if (resp && resp.ok) {
                                 if (resp.type === 'dir') {
                                         const mapped = mapEntries(resp.entries);
                                         rebuildDirColumn(col, { heading: resp.heading, entries: mapped, resp });
+                                        if (!(openName && [...col.querySelectorAll('.item')].some(x => x.dataset.name === openName))) clearRightOfColumn(colIdx);
                                 } else if (resp.type === 'leaf') {
                                         const title = col.dataset.title || 'Leaf';
                                         rebuildLeafColumn(col, { title, html: resp.html, value: resp.value, type: resp.valueType });
@@ -883,7 +887,15 @@
                                 const mapped = mapEntries(resp.entries);
                                 renderDir({ id: resp.id, heading: resp.heading || 'Root', entries: mapped, resp }, undefined);
                                 if (resp.id) fireAndForget('open', { id: resp.id, watch: true });
-                                if (document.documentElement.dataset.afieldOutputIframe === "true") {
+                                const openPath = PARAMS.get('open');
+                                if (openPath) {
+                                        // column(..., open = "a/b/c"): open the columns down to that row, and the row itself.
+                                        if (await revealPath(openPath)) {
+                                                const cols = [...columnsEl.querySelectorAll('.column')];
+                                                const last = cols[cols.length - 1], sel = last && selectedIn(last);
+                                                if (sel) sel.click();
+                                        }
+                                } else if (document.documentElement.dataset.afieldOutputIframe === "true") {
                                         const first = columnsEl.querySelector('.column .item');
                                         if (first) first.click();
                                 }

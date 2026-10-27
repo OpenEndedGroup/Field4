@@ -100,7 +100,7 @@ operations:
           // `renderer` is the parent box's Renderer. column(...) opens it as Finder-style columns:
           // render (the main target, its passes in draw order), compute, windows, cpu (CPU span timings),
           // device. Each node with children starts with a `summary` row: its card.
-          column("renderer", renderer, width = 1100)
+          column("renderer", renderer, width = 1700, open = "render/modules/module in box 'triangle' (triangle)/module/summary")
           displayOpen("renderer")
   - connect:
       parent: agent_graphics_context
@@ -113,7 +113,7 @@ operations:
         // `renderer` is the parent box's Renderer. column(...) opens it as Finder-style columns:
         // render (the main target, its passes in draw order), compute, windows, cpu (CPU span timings),
         // device. Each node with children starts with a `summary` row: its card.
-        column("renderer", renderer, width = 1100)
+        column("renderer", renderer, width = 1700, open = "render/modules/module in box 'triangle' (triangle)/module/summary")
         displayOpen("renderer")
   - wait:
-      millis: 1500
+      millis: 5000

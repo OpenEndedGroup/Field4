@@ -252,6 +252,7 @@ fun registerRendererBrowsingAdapters() {
             override fun heading(): String = title ?: m.parameters.name
             override fun dir(): Map<String, Any?> = linkedMapOf(
                 "parameters" to m.parameters,
+                "shaders" to shaderStages(m.parameters),
                 "uniforms" to m.uniforms,
                 "liveUniforms" to m.liveUniformStructures,
                 "meshes" to m.meshes
@@ -264,7 +265,7 @@ fun registerRendererBrowsingAdapters() {
                     "pipelines" to if (m.pipeline != 0L) "built" else "missing",
                     "uniforms" to m.uniforms.size.toString(),
                     "meshes" to m.meshes.size.toString(),
-                    "shaders" to "${trimName(m.parameters.vertex)} / ${trimName(m.parameters.fragment)}"
+                    "shaders" to stagesSummary(m.parameters)
                 )
                 return card(heading(), rows, accent = "#22c55e")
             }
@@ -278,6 +279,7 @@ fun registerRendererBrowsingAdapters() {
             override fun heading(): String = title ?: m.parameters.name
             override fun dir(): Map<String, Any?> = linkedMapOf(
                 "parameters" to m.parameters,
+                "shaders" to shaderStages(m.parameters),
                 "uniforms" to m.uniforms,
                 "liveUniforms" to m.liveUniformStructures,
                 "meshes" to m.meshes
@@ -288,7 +290,7 @@ fun registerRendererBrowsingAdapters() {
                     "valid" to m.valid.toString(),
                     "enabled" to m.enabled.toString(),
                     "meshes" to m.meshes.size.toString(),
-                    "shaders" to "${trimName(m.parameters.task)} / ${trimName(m.parameters.mesh)} / ${trimName(m.parameters.fragment)}"
+                    "shaders" to stagesSummary(m.parameters)
                 )
                 return card(heading(), rows, accent = "#d946ef")
             }
@@ -302,6 +304,7 @@ fun registerRendererBrowsingAdapters() {
             override fun heading(): String = title ?: m.parameters.name
             override fun dir(): Map<String, Any?> = linkedMapOf(
                 "parameters" to m.parameters,
+                "shaders" to shaderStages(m.parameters),
                 "uniforms" to m.uniforms,
                 "liveUniforms" to m.liveUniformStructures,
                 "tasks" to m.meshes
@@ -312,7 +315,7 @@ fun registerRendererBrowsingAdapters() {
                     "valid" to m.valid.toString(),
                     "enabled" to m.enabled.toString(),
                     "tasks" to m.meshes.size.toString(),
-                    "shader" to trimName(m.parameters.compute)
+                    "shaders" to stagesSummary(m.parameters)
                 )
                 return card(heading(), rows, accent = "#38bdf8")
             }
@@ -784,7 +787,16 @@ private fun card(title: String, rows: List<Pair<String, String>>, accent: String
 
 private fun names(keys: Collection<String>): String = if (keys.isEmpty()) "-" else keys.joinToString(", ")
 
-private fun trimName(path: String): String = path.substringAfterLast('/').ifBlank { path }
+/** The shader stages [p] has source for, stage name to GLSL source, in pipeline order. */
+internal fun shaderStages(p: Parameters): Map<String, String> = linkedMapOf(
+    "task" to p.task, "mesh" to p.mesh, "vertex" to p.vertex, "fragment" to p.fragment, "compute" to p.compute,
+    "raygen" to p.raygen, "miss" to p.miss, "closesthit" to p.closesthit, "anyhit" to p.anyhit,
+    "intersection" to p.intersection, "callable" to p.callable,
+).filterValues { it.isNotBlank() }
+
+/** `vertex 11 lines · fragment 8 lines`: which stages a module has, and how big each is. */
+internal fun stagesSummary(p: Parameters): String =
+    shaderStages(p).entries.joinToString(" · ") { (k, v) -> "$k ${v.lines().size} lines" }.ifBlank { "-" }
 
 private fun hex(v: Long): String = "0x" + v.toString(16)
 

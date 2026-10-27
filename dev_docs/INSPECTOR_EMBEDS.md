@@ -66,3 +66,28 @@ with the box; any exception just skips that poll.
 - Column view keeps the old column width (260px) and fixed-ish styling; no type-ahead.
 - No UI regression in `tools/run_ui_regressions.py` yet; `window.inspectorTreeState()`,
   `window.inspectorColumnsState()` and `window.logsEmbedState()` exist as probes for one.
+
+## Renderer browsing (2026-10-27)
+
+`registerRendererBrowsingAdapters()` (`rendererBrowsing.kt`) is now called from
+`installInspectorHandler`, so `column("r", renderer)` / `tree("r", renderer)` open a Renderer as
+targets in recording order (preTargets, modules, meshModules, others), modules with parameters,
+`shaders` (stage -> source), uniforms/texture bindings and meshes, plus `cpu` (CPUSpan p1..p99).
+Facts that cost time:
+
+- The inspector shows `html()` only for leaves. A Browsable with a `dir()` never shows its card, so
+  every adapter is registered through `reg<T>` / `withSummaryRow`, which prepends a `summary` leaf
+  row holding the card; an empty `dir()` becomes a leaf.
+- The removed Map/Iterable adapters were dead (the inspector pages maps/iterables before adapters).
+- Thread ownership: `dir()`/`html()` run inside `Inspector.handle`, which runs `inMain`, the same
+  Runloop thread as the frame record/submit. `version()` runs on the poll timer and reads only
+  scalars; frame-counter versions are divided by `LIVE_FRAMES` (60) so cards refresh about 1 Hz.
+- `browser.html` `reopenNode` used to clear every column right of a changed node, so a node whose
+  version moves every second (the renderer root) folded the reader's path each second. It now
+  keeps them while the selected row is still listed.
+- `column(..., width = px, open = "a/b/c")`: a pixel panel width, and a path opened on load.
+  `open` exists because a docs `capture="ui"` drive under `graphics-context=true` could not get
+  inspector replies during `ui.pause` (columns stayed empty); opening during the setup
+  transcript's `wait` works. Not root-caused.
+- Demo: `dev_docs/agents/transcripts/renderer_browsing.yaml`; capture:
+  `docs_capture/renderer_column.yaml` -> `visualizers.md#browsing-the-renderer`.

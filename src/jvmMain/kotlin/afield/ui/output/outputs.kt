@@ -873,10 +873,14 @@ fun Box.tree(channel: String = "debug", a : Any?, maxHeight: Int = 520, includeP
  * @param includePrivate also list private properties, as for [tree]
  * @param width the panel width in pixels, room for several columns side by side; null leaves the
  *   panel at its current width and the columns scroll sideways
+ * @param open a row path (as the **path** button copies it, e.g. `"render/modules"`) to open the
+ *   columns down to when the browser loads, that row included
  */
-fun Box.column(channel: String = "debug", a : Any?, maxHeight: Int = 420, includePrivate: Boolean = false, width: Int? = null) {
+fun Box.column(channel: String = "debug", a : Any?, maxHeight: Int = 420, includePrivate: Boolean = false, width: Int? = null, open: String? = null) {
     val options = afield.data.query.graph.GraphWalkOptions(includePrivate = includePrivate)
-    display(channel, inspectorIframe(Inspector.linkFor(a ?: "null", "/browse", options = options), maxHeight, width))
+    val link = Inspector.linkFor(a ?: "null", "/browse", options = options) +
+        (open?.let { "&open=" + java.net.URLEncoder.encode(it, Charsets.UTF_8).replace("+", "%20") } ?: "")
+    display(channel, inspectorIframe(link, maxHeight, width))
 }
 
 /**
