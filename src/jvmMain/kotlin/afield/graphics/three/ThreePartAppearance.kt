@@ -8,7 +8,8 @@ import afield.lang.remotejs.JsFun
 import afield.geometry.path.div
 import kotlinx.serialization.Serializable
 
-/** Presentation overrides for a named part of a three-dimensional view.
+/**
+ * Presentation overrides for a named part of a three-dimensional view.
  *
  * Colours are RGB in 0..1, and a part with no x-ray opacity of its own follows the viewer's slider.
  * None of it changes geometry, picking, assembly groups or review identity: the styles travel beside

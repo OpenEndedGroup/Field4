@@ -5,24 +5,23 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Writing a SolidCraft design from Kotlin: sketches, the features that turn them into solids and
- * surfaces, and parameters that stay editable afterwards.
+ * Writing a SolidCraft part in Kotlin instead of drawing it: sketches, the features that turn them
+ * into solids and surfaces, and named parameters that stay editable afterwards.
  *
- * [solidCraft] opens a [SolidCraftBuilder], whose calls assemble SolidCraft's own design JSON.
- * [SolidCraftBuilder.sketch] draws on a plane with [SolidCraftSketch]: lines, arcs, circles,
- * splines, rectangles, polygons, and 3-D wires given as points or taken from an [FLine]. Those
- * sketches become bodies through [SolidCraftBuilder.extrude], [SolidCraftBuilder.revolve],
- * [SolidCraftBuilder.sweep], [SolidCraftBuilder.loft], [SolidCraftBuilder.pipe],
- * [SolidCraftBuilder.fillet] and [SolidCraftBuilder.thicken], and surfaces through
- * [SolidCraftBuilder.surfaceSweep], [SolidCraftBuilder.surfaceLoft],
- * [SolidCraftBuilder.surfaceRevolve] and [SolidCraftBuilder.surfaceBoundary].
- * [SolidCraftBuilder.feature] takes any feature this file does not name, as raw JSON.
+ * [solidCraft] opens a [SolidCraftBuilder], whose calls accumulate into SolidCraft's own design
+ * document, the same JSON a saved design holds. So a part written here is evaluated by the engine
+ * that opens one from disk, and everything downstream treats the two alike.
+ * [SolidCraftBuilder.json] is that document and [SolidCraftBuilder.open] evaluates it, giving back
+ * a [SolidCraftDesign] to mesh, re-parameterise or export.
  *
- * Lengths and angles are SolidCraft expressions rather than numbers, so [SolidCraftBuilder.param]
- * declares a name that later features can compute with, and the design keeps it afterwards.
- * [SolidCraftBuilder.open] evaluates the whole thing with the same engine that opens a saved file
- * and hands back a [SolidCraftDesign], whose [SolidCraftDesign.setParameter] re-evaluates the
- * design with one value changed. The worked account is `public/docs/solidcraft.md`.
+ * Only the evaluation needs the native bridge, since the document is assembled as plain JSON. A
+ * box can therefore build and inspect a design on a machine where SolidCraft was never compiled,
+ * and [SolidCraftLibrary] says whether this one has it.
+ *
+ * Lengths and angles are SolidCraft expressions rather than numbers: `"12"` in the design's units,
+ * a quantity such as `"30 deg"`, or a formula over the design's parameters such as `"width/2"`.
+ * That is what keeps a finished part adjustable, through [SolidCraftDesign.setParameter], without
+ * rebuilding it here.
  */
 
 /**

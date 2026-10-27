@@ -2175,6 +2175,7 @@
                     <div class="runtime-info-body">
                         <div id="runtime-info-grid" class="runtime-info-grid"></div>
                         <pre id="runtime-info-args" class="runtime-info-args" hidden></pre>
+                        <label class="preference-toggle" title="Box code checks for an interrupt at every loop and call, so a box that never returns can be stopped (Interrupt Running Box, or automatically after 5 s). Applies to code compiled after the change."><input id="pref-box-interrupt" type="checkbox" checked> interruptible box code</label>
                     </div>
                 </details>
                 <details id="vulkan-details">
@@ -3865,12 +3866,14 @@
             "pref-openxr-debug-input": "openXRDebugInput",
             "pref-validate": "validate",
             "pref-quiet-mode": "quietMode",
-            "pref-auto-open-last": "autoOpenLastDocumentInDesktop"
+            "pref-auto-open-last": "autoOpenLastDocumentInDesktop",
+            "pref-box-interrupt": "boxInterrupt"
         };
         Object.entries(fields).forEach(([id, key]) => {
             const input = document.getElementById(id);
             if (!input) return;
-            input.checked = !!prefs[key];
+            // boxInterrupt defaults on, and a server that encodes without defaults omits it.
+            input.checked = key === "boxInterrupt" ? prefs[key] !== false : !!prefs[key];
         });
         document.querySelectorAll("[data-stickiness-value]").forEach((button) => {
             const active = button.getAttribute("data-stickiness-value") === stickiness;
@@ -3953,6 +3956,7 @@
             validate: !!document.getElementById("pref-validate")?.checked,
             quietMode: !!document.getElementById("pref-quiet-mode")?.checked,
             autoOpenLastDocumentInDesktop: !!document.getElementById("pref-auto-open-last")?.checked,
+            boxInterrupt: document.getElementById("pref-box-interrupt")?.checked !== false,
             editorPropertyStickiness: document.querySelector(".stickiness-segment.active")?.getAttribute("data-stickiness-value") || "none",
             oscEditorEnabled: !!document.getElementById("osc-editor-enabled")?.checked,
             oscEditorPort: Number.parseInt(document.getElementById("osc-editor-port")?.value || "9001", 10) || 9001,

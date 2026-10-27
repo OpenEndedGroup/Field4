@@ -10,20 +10,19 @@ import java.io.File
 import kotlin.math.sqrt
 
 /**
- * Where a Gaussian-splat cloud is built, loaded and measured, before any of it reaches a device.
+ * The CPU side of a splat cloud: how one is built, where it can be loaded from, and how it is
+ * framed before a camera looks at it.
  *
- * [SplatSet] is one float array and a count. It holds splats in their parametric form, which is
- * the form an insert can edit and the form [GaussianSplatRenderer] turns into a covariance on the
- * GPU after the insert has run, so a cloud assembled here can be handed to a [SplatShader] without
- * anything in between. Everything comes in through that one array: `push` from code, `fromPly` or
- * `fromTable` for a capture, and `fromGltf` for a mesh rewritten as one flat disc per vertex.
+ * [SplatSet] keeps the splats in a flat `FloatArray` laid out the way the GPU reads them, and
+ * grows as `push` appends. Its companion loads a cloud instead of building one: `fromPly` reads a
+ * Gaussian-splat capture, decoding the log scales, logit opacity and spherical-harmonic colour
+ * those files store, and `fromGltf` turns the vertices of a mesh into discs facing along their
+ * normals, sized from how densely they cover the surface.
  *
- * The measurement is `fit`, and it is a median centre with a 90th-percentile radius rather than a
- * bounding box, because a handful of stray splats in a capture would otherwise shrink everything
- * else to a dot. `fitted` applies it, returning a copy about a unit across. That is more than
- * framing: an insert reads the splats in their own coordinates and its spatial frequencies are
- * literals in the GLSL, written for a cloud about a unit across as the procedural ones are. A
- * capture or a model in metres is not one, so fit it before reaching for a preset.
+ * `fit` is the framing a [SplatShader] uses: a median centre and a 90th-percentile radius, so a
+ * handful of stray splats cannot decide where the camera points. A cloud that arrives in metres
+ * needs `fitted` before an insert written for a unit-sized cloud reads on it as it does on
+ * [ProceduralSplats].
  */
 
 /**

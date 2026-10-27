@@ -933,6 +933,8 @@ data class ToolExecutionContext(
     // Optional extra tools
     val workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
     val workspaceSearch: ((WorkspaceSearchRequest) -> WorkspaceSearchResult)? = null,
+    /** The `repo` tools over one checkout ([RepoFileTools]); only a headless job with a repo scope wires it. */
+    val repoFiles: RepoFileTools? = null,
 
     /** What this conversation is about, when it is about one box: see [ToolFocus]. */
     val focus: ToolFocus? = null,

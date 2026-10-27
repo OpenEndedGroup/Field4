@@ -1,17 +1,13 @@
 package afield.graphics.scene.fabricated
 
 /**
- * The ordered, name-keyed pass map Fabricate's post stack and frame graph are both built on, and
- * the rule for where a rebuilt chain reads its input.
+ * The ordering primitive the Fabricate renderer's pass collections are built on.
  *
- * [FabricatePassGraph] is the map. `inputBeforeReplacement`, the file's other half, is the rule
- * that goes with it: a chain appended to the stack reads whatever the stack outputs now, but one
- * that replaces passes already present has to read what sat immediately before the first of them.
- * Reading the final output would feed the rebuilt chain its own reused target, and what comes out
- * of that is wrong in a way that still looks like a picture. `addPassChain` is its only caller.
- *
- * The file has no imports, which is what lets both be exercised on plain strings with no device;
- * `FabricatePassGraphTestMain` does that.
+ * Both [FabricatePostStack] and [FabricateFrameGraph] hold a [FabricatePassGraph], so what a pass
+ * name means, and where a new pass may go relative to one already there, is settled once here
+ * rather than once per collection. The same file carries the rule that decides where a
+ * replacement chain picks up its input: the output of the pass before the first one it replaces,
+ * or the chain's original input when that pass comes first.
  */
 
 /** New chains append; replacements keep the input before their first existing pass. */

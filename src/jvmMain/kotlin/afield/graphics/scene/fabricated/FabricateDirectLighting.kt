@@ -6,27 +6,17 @@ import afield.math.linalg.Vector3f
 import afield.math.linalg.Vector4f
 
 /**
- * Driving the direct-lighting experiment from a Fabricate scene, in three calls on
- * [StandardRenderer.Bundle].
+ * What connects [StandardRenderer]'s raster bundle to the ray-traced [DirectLighting] pass.
  *
- * `DirectLighting` asks for point-sampled world positions, world normals, linear albedo, a source
- * colour and motion vectors, which is a deferred renderer's G-buffer under another set of names. A
- * Fabricate bundle already renders one, so this file is a mapping rather than a second renderer:
- * `directLighting(visibility)` hands the lighting pass the same four attachments the bundle's own
- * shading reads as `gAlbedoRoughness`, `gNormalMetallic`, `gPositionDepth` and `gMotionMaterial`,
- * with the post stack's current output as the source image that `Mode.SOURCE` shows unchanged. The
- * call order is fixed: `bundle.attachTo(renderer)`, then `lighting.attach()`, then present
- * `lighting.output`.
+ * That pass needs a G-buffer and a ray-visibility scene that agree about where the surfaces are.
+ * `registerOpaqueTriangles` fills the raster G-buffer from the same indexed [OpaqueTriangles]
+ * snapshot the ray acceleration structure keeps, expanding it once for the pulling shader instead
+ * of uploading geometry every frame. `directLighting` then hands the bundle's G-buffer images and
+ * its post-stack output to the pass, and `rtxdiSettings` supplies the camera contract the
+ * optional RTXDI path wants, read from the bundle's own raster projection.
  *
- * Shadow rays have to see the geometry the raster pass drew, and two separate uploads are how the
- * two come apart. `registerOpaqueTriangles` takes one indexed [OpaqueTriangles] snapshot and feeds
- * both: the ray BLAS keeps it indexed, and the bundle's pulling shader, which reads expanded vec4
- * triangles, gets them expanded once at registration rather than every frame. `rtxdiSettings`
- * supplies the optional RTXDI pass with the bundle's own view and projection, since resampling
- * across frames reprojects against the matrices rasterization used.
- *
- * Opaque diffuse surfaces only. Transparency, textured emission and latent pigments have no route
- * through here. `DirectLightingDemo` is the worked scene and `direct_lighting.md` the page.
+ * Opaque diffuse surfaces only: transparency, textured emission and latent pigments want an
+ * adapter nothing here provides yet.
  */
 
 /** Build the experiment from Fabricate's existing G-buffer. Call bundle.attachTo first, then

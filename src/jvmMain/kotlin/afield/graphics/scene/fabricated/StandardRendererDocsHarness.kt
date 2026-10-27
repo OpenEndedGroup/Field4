@@ -28,43 +28,23 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * The render methods behind the `fabricate-scene` fences on `fabricate_renderer.md`,
- * `rectsl_examples.md` and `stacksl_examples.md`.
+ * The offscreen renders behind Field's graphics documentation: deterministic `StandardRenderer`
+ * scenes captured to PNG, plus the HTML wrapper that puts one in a box output.
  *
- * A fence on one of those pages carries a scene keyword and nothing else.
- * `public/fabricate_docs_scenes.py` maps that keyword to one method name here, the docs
- * runner generates the box code that calls it, and the method renders its scene and
- * writes a PNG where the page expects one. `tools/discover_field_tests.py` reads the
- * same map to build the smoke catalog, so one keyword names both a published figure and
- * the test that regenerates it. Every public render method on this object is some page's
- * scene; `htmlForImage` is the only entry point that is not.
+ * A page gets its figure by calling one of the `render` functions from a box, passing the returned
+ * file to [htmlForImage], and letting the docs build screenshot the result through the ordinary
+ * backdoor path. The scenes take the renderer's features one at a time: metalness, shadow and
+ * ambient-occlusion comparisons, a camera and depth study, glTF loading, blended transparency, and
+ * the post-stack vignette and tone-map passes. Each takes its renderer from the box's context by
+ * default, so a box connected beneath a renderer needs to pass only an output path.
  *
- * Twelve of them build a `StandardRenderer` scene here — a camera, generated geometry, a
- * material, and whatever post stack the figure is about. The other six delegate to
- * [StackSLGalleryHarness] and [RectSLGalleryHarness], which render a whole gallery from
- * an editable workspace; they sit on this object so that a gallery reaches its page by
- * the same route as a torus.
- *
- * Capture is shared. Each method waits for the renderer's frame counter to advance a
- * fixed number of frames, then reads the post stack's final colour attachment back
- * through [TexturePreviewCache.capture] and decodes the base64 out of the HTML it
- * returns. Counting frames rather than seconds covers pipeline builds and first renders;
- * a deadline throws if the frames never arrive, so a stalled renderer fails the capture
- * instead of hanging it. `htmlForImage` runs the other way, wrapping a finished PNG for
- * `display(...)`.
- *
- * The `renderer` argument defaults to a search rather than to `fromContext()` alone,
- * because a docs fence is not necessarily a box connected beneath a renderer: the default
- * walks the calling box's parents and children, then looks for a box named
- * `agent_graphics_context` or `renderer`, then every box of every open document, before
- * giving up.
+ * [renderStackSLGallery] and [renderRectSLGallery], with their animation counterparts, are
+ * wrappers rather than scenes of their own: the rendering belongs to [StackSLGalleryHarness] and
+ * [RectSLGalleryHarness], and the wrapper copies the hero image that harness produced to the path
+ * the docs fence checks.
  */
 
-/**
- * Small native-render harness for docs and smoke tests. It renders deterministic
- * `StandardRenderer` scenes to PNGs and can turn those PNGs into HTML for display(...)
- * so the docs build can capture them through the normal backdoor screenshot path.
- */
+/** Renders the graphics documentation's `StandardRenderer` figures offscreen, one scene per call. */
 object StandardRendererDocsHarness {
 
     private const val WAIT_FRAMES = 90

@@ -5,7 +5,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.KaIdeApi
-import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.analysis.api.components.KaDiagnosticCheckerFilter
 import org.jetbrains.kotlin.analysis.api.components.KaExtensionApplicabilityResult
@@ -1018,7 +1017,7 @@ class AaCompleter(
         return try {
             val file = KtPsiFactory.contextual(contextFile, markGenerated = false, eventSystemEnabled = false)
                 .createFile("AaLowering.kt", lowered.text)
-            val errors = analyze(file) {
+            val errors = withAnalysis(file) {
                 file.collectDiagnostics(KaDiagnosticCheckerFilter.ONLY_COMMON_CHECKERS)
                     .filter { it.severity == KaSeverity.ERROR }
                     .map { d ->
@@ -1411,7 +1410,7 @@ class AaCompleter(
         // In a kotlinjs box (compiled to JS, no JVM) drop JVM-only stdlib members; a no-op otherwise.
         val jsFilter: (AaCandidate) -> Boolean = { c -> !jsTarget || !isJvmOnlyForJsTarget(c) }
 
-        return analyze(file) {
+        return withAnalysis(file) {
             /**
              * Can the box actually WRITE this symbol? A type's member scope is the declaration's, not the
              * use site's: it hands back `private`, Java package-private and other-module `internal`
@@ -1932,7 +1931,7 @@ class AaCompleter(
                     else -> emptyList()
                 }.filterNot { it.isSynthetic }.filter(jsFilter).distinctBy { it.name }.sortedBy { it.name }
                     .map { if (it.icon == "method") it.copy(insertText = it.name) else it }
-                return@analyze AaCompletionResult(
+                return@withAnalysis AaCompletionResult(
                     out,
                     when {
                         out.isEmpty() -> "0 matched on an import line; path=${path.ifEmpty { "<root>" }}" +
@@ -1972,7 +1971,7 @@ class AaCompleter(
                     isPackageName(path, index) -> packageCandidates(path, index, withCallables = false)
                     else -> emptyList()
                 }.filter(jsFilter).distinctBy { it.dedupKey }.sortedBy { it.name }
-                return@analyze AaCompletionResult(
+                return@withAnalysis AaCompletionResult(
                     out,
                     if (out.isEmpty()) "0 matched; type qualifier=$path ${if (cls != null) "class" else "package"}" else "",
                 )
@@ -1980,7 +1979,7 @@ class AaCompleter(
 
             if (isDot) {
                 val dq = PsiTreeUtil.getParentOfType(leaf, KtQualifiedExpression::class.java)
-                    ?: return@analyze AaCompletionResult(emptyList(), "no qualified expr")
+                    ?: return@withAnalysis AaCompletionResult(emptyList(), "no qualified expr")
                 val recv: KtExpression = dq.receiverExpression
 
                 // A receiver can be a VALUE (`someList.`, `Functions.`) or a TYPE QUALIFIER
@@ -2007,7 +2006,7 @@ class AaCompleter(
                     val out = staticScopeCandidates(recv)
                         .filterNot { it.isSynthetic }.filter(jsFilter)
                         .distinctBy { it.dedupKey }.sortedBy { it.name }
-                    return@analyze AaCompletionResult(
+                    return@withAnalysis AaCompletionResult(
                         out,
                         if (out.isEmpty()) "0 matched; type qualifier=${recv.text} kind=$qualifierKind" else ""
                     )
@@ -2056,11 +2055,11 @@ class AaCompleter(
                 // through a bare `it`, and a dotted `it.unimi.‸` receiver is unaffected — it is not this
                 // name. What everybody does type is `it.` inside a lambda.
                 if (!recvIsValue && recvText == "it")
-                    return@analyze AaCompletionResult(emptyList(), "`it` UNBOUND (enclosing call unresolved)")
+                    return@withAnalysis AaCompletionResult(emptyList(), "`it` UNBOUND (enclosing call unresolved)")
                 if (!recvIsValue && looksLikePath && isPackageName(recvText, index)) {
                     val out = packageCandidates(recvText, index).filterNot { it.isSynthetic }
                         .distinctBy { it.dedupKey }.sortedBy { it.name }
-                    return@analyze AaCompletionResult(
+                    return@withAnalysis AaCompletionResult(
                         out,
                         if (out.isEmpty()) "0 matched in package $recvText"
                         else packageTruncated?.let { "truncated $it" }.orEmpty(),
@@ -2068,7 +2067,7 @@ class AaCompleter(
                 }
 
                 val type = recv.expressionType
-                    ?: return@analyze AaCompletionResult(emptyList(), "receiver type UNRESOLVED: ${recv.text}")
+                    ?: return@withAnalysis AaCompletionResult(emptyList(), "receiver type UNRESOLVED: ${recv.text}")
                 // An ERROR type is not a type. `errorType.isSubtypeOf(anything)` is vacuously true, so
                 // the extension-conformance test below accepted EVERY prefix-matching extension in the
                 // index: `d.fl` on an unresolved `d` filled the panel with flatMap/flatten/flatShaded.
@@ -2076,7 +2075,7 @@ class AaCompleter(
                 // suppresses the K1 fallback that would have answered correctly — so the damage was not
                 // just noise, it was the right answer being withheld. Bail like the null case above.
                 if (type is KaErrorType)
-                    return@analyze AaCompletionResult(emptyList(), "receiver type UNRESOLVED (error): ${recv.text}")
+                    return@withAnalysis AaCompletionResult(emptyList(), "receiver type UNRESOLVED (error): ${recv.text}")
                 val typeStr = runCatching { type.toString() }.getOrDefault("?")
 
                 // The receiver's own classifier and its supertypes, as fq names — what [proximityOf] scores
@@ -2192,7 +2191,7 @@ class AaCompleter(
                 )
             } else {
                 val pos = PsiTreeUtil.getParentOfType(leaf, KtElement::class.java) ?: (leaf as? KtElement)
-                    ?: return@analyze AaCompletionResult(emptyList(), "no position element")
+                    ?: return@withAnalysis AaCompletionResult(emptyList(), "no position element")
 
                 // Argument position → the enclosing call's remaining (not-yet-supplied) named params,
                 // unioned across all overloads (an incomplete call may resolve to a no-arg overload).

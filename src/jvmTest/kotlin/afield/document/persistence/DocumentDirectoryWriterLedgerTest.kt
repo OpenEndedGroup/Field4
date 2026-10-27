@@ -186,16 +186,17 @@ class DocumentDirectoryWriterLedgerTest {
         /**
          * Every jvmMain file that writes to a document-derived path, as of 2026-10-07.
          *
-         * Twenty-three files: nine gated, fourteen not. The fourteen are **not** all bugs — most write
-         * somewhere a read-only session never reaches. The ones that are genuinely reachable are
-         * marked `REACHABLE`, and they are the backlog this test exists to keep visible rather than
-         * a claim that tonight fixed them. They were surveyed by an audit of 693 raw write-primitive
-         * hits across 178 files; see `dev_docs/document_write_back.md`.
+         * Files outside the gated group each carry a reason why their writes are outside document
+         * write-back. The original survey audited 693 raw write-primitive hits across 178 files;
+         * see `dev_docs/document_write_back.md`.
          */
         private val LEDGER: Map<String, Entry> = mapOf(
             // ---- consult the read-only predicate ----
             "src/jvmMain/kotlin/afield/app/server/Server.kt" to GATED,
             "src/jvmMain/kotlin/afield/app/server/agent_backdoor.kt" to GATED,
+            // Document macro mutators and transcript checkpoints refuse read-only documents.
+            // Workspace/project macro exports write outside the document.
+            "src/jvmMain/kotlin/afield/tools/automation/operation_transcript.kt" to GATED,
             // Arrived 2026-10-09 with propUp/propDown (`4462f1519`): the per-document dependency
             // record. Its only disk write returns early on ReadOnlyDocuments.blocksWritesTo(filename),
             // so read-only and scratch documents record in memory and never write.
@@ -214,6 +215,10 @@ class DocumentDirectoryWriterLedgerTest {
             // owner box, while allowing an explicit export directory outside the document.
             "src/jvmMain/kotlin/afield/ai/conversation/chatlog/ChatlogTools.kt" to GATED,
             "src/jvmMain/kotlin/afield/document/history/history.kt" to GATED,
+            // The metrics save funnel and both screenshot helpers refuse read-only documents.
+            "src/jvmMain/kotlin/afield/document/history/HistoryMetrics.kt" to GATED,
+            // Revision-checked slide files refuse read-only sessions before creating any directories.
+            "src/jvmMain/kotlin/afield/ui/slides/PresentationSlides.kt" to GATED,
             "src/jvmMain/kotlin/afield/app/server/fileproxy.kt" to GATED,
             // Reachable: the Guides panel's save and the AI4 create/patch/append tools both write
             // <doc>/*.md, <doc>/docs/** and <doc>/guides/**. Gated on the read-only predicate at
@@ -227,26 +232,8 @@ class DocumentDirectoryWriterLedgerTest {
             // BoxStudies.directory: a read-only box's study works in a scratch copy outside the document.
             "src/jvmMain/kotlin/afield/study/source/SourceStudy.kt" to GATED,
 
-            // ---- ungated and reachable from a read-only session: the backlog ----
-            "src/jvmMain/kotlin/afield/tools/automation/operation_transcript.kt" to exempt(
-                14,
-                "REACHABLE. The macro/transcript command handler writes <doc>/operations.yaml and " +
-                    "<doc>/macros/*.yaml, `reveal` mkdirs <doc>/macros/ outright, and the Macro " +
-                    "Recorder's rename/delete writes <doc>/macros/ and its .deleted/ trash. Wants the same " +
-                    "treatment the three writers got, red-first."
-            ),
-            "src/jvmMain/kotlin/afield/document/history/HistoryMetrics.kt" to exempt(
-                5,
-                "REACHABLE but conditional. Opening the history panel can rewrite " +
-                    "<doc>/history_metrics.edn, though recordEditStats bails unless a record for " +
-                    "that version already exists. Its screenshot writers are gated only by their " +
-                    "single callers, not by a predicate."
-            ),
-            "src/jvmMain/kotlin/afield/runtime/kotlin/SharedTypes.kt" to exempt(
-                1,
-                "REACHABLE. `Box.sharedTypes {}` publishes into <doc>/.field-shared-types/gen-N/; " +
-                    "the receiving parameter is called `workspace` but is handed the document dir."
-            ),
+            // Read-only documents publish compiled types into temporary storage.
+            "src/jvmMain/kotlin/afield/runtime/kotlin/SharedTypes.kt" to GATED,
 
             // ---- ungated, and out of scope with a reason ----
             "src/jvmMain/kotlin/afield/document/workspace/WorkspaceProjectScope.kt" to exempt(

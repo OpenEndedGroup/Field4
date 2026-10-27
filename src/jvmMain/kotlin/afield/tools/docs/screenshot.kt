@@ -3053,7 +3053,7 @@ class DocsUiDriver internal constructor(
 
     /** Open (and pan to) a box's code editor, reusing the screenshot editor-prep path. */
     fun openEditor(uid: String, property: String = "code") {
-        val response = runBlocking(playwrightDispatcher) {
+        awaitBoxOnPage(pageProvider, uid, ::idle); val response = runBlocking(playwrightDispatcher) {
             requestWindowScreenshot(
                 pageProvider(),
                 WindowScreenshotRequest(uid = uid, property = property, showEditor = true, panIntoView = true)
@@ -3153,5 +3153,28 @@ class DocsUiDriver internal constructor(
         } else {
             Thread.sleep(ms)
         }
+    }
+}
+
+/**
+ * Wait, pumping the Runloop through [pump], until the page shows box [uid].
+ *
+ * A drive fragment runs *on* the Runloop, and a box it has just made (often its own,
+ * `__docs_drive__`) reaches the page only when the Runloop flushes. [DocsUiDriver.openEditor]
+ * used to ask the page for the box at once, without yielding, so the page could poll for the
+ * whole preparation window for a box whose creation was queued behind the very drive that
+ * wanted it (completion_ranking's popup-decides-fline-dot, 2026-10-27). Gives up after
+ * [timeoutMs] and lets the caller report the box as missing.
+ */
+private fun awaitBoxOnPage(page: () -> Page, uid: String, pump: (Long) -> Unit, timeoutMs: Long = 15_000L) {
+    val script = "uid => Array.from(document.getElementsByClassName('box'))" +
+        ".some(e => (e.uid || e.getAttribute('uid') || e.getAttribute('data-uid')) === uid)"
+    val deadline = System.currentTimeMillis() + timeoutMs
+    while (System.currentTimeMillis() < deadline) {
+        val present = runCatching {
+            runBlocking(playwrightDispatcher) { page().evaluate(script, uid) == true }
+        }.getOrDefault(false)
+        if (present) return
+        pump(120L)
     }
 }

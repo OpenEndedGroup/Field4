@@ -17,7 +17,14 @@
     }
   },
   "assets": {
-    "presentation.css": "5d2f7cef535bd560fe480b9caf308a919b37fcce7de0ce350d802d661e133601"
+    "presentation.css": "5d2f7cef535bd560fe480b9caf308a919b37fcce7de0ce350d802d661e133601",
+    "themes/black.css": "cac93d97780e6bb8ac96e8dfcf9de794b62f8bbbd20c2c4aac0f079fcc66e4f7",
+    "themes/paper.css": "968f14e19a42c87dd9148c57e5719c060849899b1baca73ee1fd7fd294dfda9e",
+    "themes/slate.css": "41c9d8db39c0a623fa394037a7ce72ddb67b0d2bd1d4b076fa4f0c64f155c0ad",
+    "themes/lecture.css": "a666a09d220b6317917766dc8b224ed5cbcb27da2a1c475c91258f86424c148d",
+    "examples/lecture.kt": "d8dfc32a56e9f48605192cafd1a398274d21a78761fe2b95034fda34c7ebdfd7",
+    "examples/lecture-lines.svg": "276d1b03af5ecddc66afc1abddd49700f424efeb91d682c07d8f925f2628ffc1",
+    "examples/lecture-comparison.svg": "57ced801af9483c452e8c374a3a773ccae774d5928ad39c2d1c27ce19f55d52d"
   },
-  "revision": "d9a6e09ead7832faebde964a6c2885409fc80f83e916c01471490929d6c6ade0"
+  "revision": "6b148c1ee883c13d5755e55658aa6dec0ded9a4b8034b6dfeafe9b35d74df478"
 }

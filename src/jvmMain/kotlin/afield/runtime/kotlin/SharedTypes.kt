@@ -20,6 +20,7 @@ import afield.ui.notation.with
 import afield.ui.output.history
 import afield.ui.output.update
 
+import afield.app.server.ReadOnlyDocuments
 import afield.app.server.SessionInformation
 import afield.app.server.thisSessionInfo
 import afield.audio.synth.*
@@ -37,6 +38,7 @@ import afield.app.diagnostics.logging.lprintln
 import java.io.File
 import java.net.URL
 import java.net.URLClassLoader
+import java.nio.file.Files
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -170,7 +172,8 @@ object SharedTypes {
      * Compile [source] into a fresh generation, put it on the shared classloader, and invalidate the
      * engines that could not otherwise see it.
      *
-     * @param workspace the document directory; generations live under [ROOT_NAME] inside it.
+     * @param workspace the document directory; generations live under [ROOT_NAME] inside it, or in
+     *   temporary storage when the document is read-only. Shared types remain usable in either case.
      * @param except a box to leave alone — normally the box calling this, which is mid-execution in
      *   the very engine we would otherwise dispose.
      * @param refreshOthers set false to publish without restarting anything, in which case only
@@ -183,7 +186,7 @@ object SharedTypes {
         refreshOthers: Boolean = true,
         session: SessionInformation? = null,
     ): Publication {
-        val root = File(workspace, ROOT_NAME)
+        val root = publicationRoot(workspace, session)
         val gen = nextGeneration(root)
         val dir = File(root, "gen-$gen")
 
@@ -216,6 +219,16 @@ object SharedTypes {
                 "(${produced.size} class file(s), ${refreshed.size} box(es) restarted)"
         )
         return Publication(true, gen, dir, produced.map { it.name }, refreshed, log, shadowed)
+    }
+
+    /** Keep compiled classes alive outside a read-only document for the shared loader's lifetime. */
+    internal fun publicationRoot(workspace: File, session: SessionInformation?): File {
+        val destination = File(workspace, ROOT_NAME)
+        if (session?.readOnly == true || ReadOnlyDocuments.blocksWritesTo(workspace.absolutePath)) {
+            ReadOnlyDocuments.refuseWrite("shared types", destination.absolutePath)
+            return Files.createTempDirectory("field-read-only-shared-types-").toFile()
+        }
+        return destination
     }
 
     /** One past the highest generation already on disk, so restarts do not collide. */

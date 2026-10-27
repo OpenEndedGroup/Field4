@@ -12,16 +12,22 @@ import afield.math.linalg.Matrix4f
 import org.lwjgl.system.MemoryUtil.memFree
 
 /**
- * Posing a rigged file from disk, by either of two routes that differ in where the result lands.
+ * Posing a rigged glTF on the CPU: into a fresh [TriMesh], or back into the vertex buffer a loaded
+ * model already owns.
  *
- * [skinnedGltfToTriMesh] and [posedGltfToTriMesh] hand back a deformed [TriMesh], which is geometry
- * to measure, show or write out at one instant of one clip, with no renderer in the picture.
- * [CpuSkinner] instead overwrites the positions and normals of the GPU vertex buffer a loaded mesh
- * already owns, which is what animates a character under the bundled glTF shaders without touching a
- * shader. [gltfClipNames] says what a file has to offer before either call.
+ * Which of the two you want depends on what happens next. [skinnedGltfToTriMesh] loads the file,
+ * deforms it at one time and hands back geometry, which suits measuring a pose, feeding the
+ * software rasteriser, or treating a frame as data. [CpuSkinner] wraps a mesh that is already
+ * loaded for drawing and overwrites its positions and normals in place, so the stock glTF shaders
+ * draw a moving character without knowing that anything is being skinned.
  *
- * Both routes do the skinning itself with [GltfSkinning], so they agree vertex for vertex on the same
- * palette; the choice between them is about what happens next, not about the deformation.
+ * [posedGltfToTriMesh] is [skinnedGltfToTriMesh] with the joint palette supplied by the caller,
+ * for a clip blend or a pose an IK solver produced, and [gltfClipNames] reads the clip names out
+ * of a file without deforming anything.
+ *
+ * The blend itself is [GltfSkinning]'s; what this file adds is the plumbing on either side of it.
+ * [GpuSkinner] moves the same work into the vertex shader, which is the path to take when the
+ * character has to animate every frame.
  */
 
 /**

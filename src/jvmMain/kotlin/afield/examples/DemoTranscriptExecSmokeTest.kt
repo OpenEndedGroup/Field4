@@ -100,6 +100,8 @@ object DemoTranscriptExecSmokeTest {
         "stacksl_fit_demo",
         // ai4_chat_archive.md's demo: reads the example chat under public/docs/assets by checkout path.
         "ai4_chat_archive",
+        // IN_FIELD_AGENT_HARNESS.md's repo-tools demo: a toy checkout in a temporary directory, removed after.
+        "ai4_repo_tools",
         "particle_video_reader",
         // contour_trees.md's starting point: contour trees of a computed field and the leaf print, plain Kotlin.
         "contour_trees_explorer",
@@ -115,6 +117,8 @@ object DemoTranscriptExecSmokeTest {
         // code, read it back, register a stroke reaction, and read two graphic scores by cutting
         // them. No client is needed — the scene is server-side data — so every box executes headless.
         "drawing_notation",
+        // Three CPU boxes and their saved notation scene, promoted from the offline-viewer fixture.
+        "offline_viewer_demo",
         // drawing_and_notation.md's full tour: every mark kind, a score, the API audit, stroke/arrow/text
         // reactions. CPU only; headless, `hand`'s page script goes to no browser but the box completes.
         "notation_elements",
@@ -206,6 +210,11 @@ object DemoTranscriptExecSmokeTest {
         "hello_display",
         "hello_display_capture",
         "ai4_iframe_hello",
+        // Two boxes, no Window: the rates box's variables and the sheet box, whose `sheet { }` seeds
+        // its property and displays the editor iframe. Replaying it runs the real seeding path.
+        "spreadsheet_tour",
+        // Two sheets whose assertions are solved by Ceres on open; replaying them runs the real solve.
+        "spreadsheet_constraints",
         "two_box_context",
         // Compiles a data class onto the shared classloader and uses it from three other boxes, one
         // of them through @rootExported. Slower than its neighbours — box 1 shells out to
@@ -287,6 +296,10 @@ object DemoTranscriptExecSmokeTest {
         // Nine boxes and their connections, created and wired but never executed: the scene is the
         // starting position for the "Lay out selection" commands, which the reader runs.
         "box_layout_demo",
+        // Seven pure-compute boxes: prop inheritance through a diamond (nearer wins, then
+        // connection order) and fromContext / fromContextWithNameOrNull, each writing one markdown
+        // line. The examples of public/docs/why.md, in one document.
+        "box_graph_demo",
         // Deterministic synthesised audio and token fixtures through the real CodecVisualization
         // renderer; it deliberately does not reach for EnCodec's GPU service, so it completes here.
         "audio_ai_codec",
@@ -354,6 +367,8 @@ object DemoTranscriptExecSmokeTest {
         // is its own sleep loop rather than `frames { }`, and it exits when all twenty cells have
         // landed or after a 2600-frame cap, so it terminates without a render clock.
         "confluence_grid",
+        // 2026-10-26: reads the checked-in agent eval corpus (src/jvmMain/resources/ai4/) and prints it. Pure CPU.
+        "agent_eval_corpus",
         // Sixteen saved demo documents under `dev_docs/agents/demos/` were invisible to this
         // harness, to the welcome screen and to the gallery — openable with `./field.sh` and
         // nothing else. These are those, promoted: nine of them already shipped an agent-authored
@@ -445,6 +460,15 @@ object DemoTranscriptExecSmokeTest {
         // stipple_transport.md's live sheet: a committed JSON model evaluated in plain Kotlin,
         // drawn through lines() and controlGroup sliders. CPU only.
         "stipple_sheet",
+        // learned_pen.md's starting point: the Distill handwriting LSTM run in Kotlin from a bundled
+        // resource, drawn through lines(); the drawing-panel box is a frames {} loop. CPU only.
+        "learned_pen",
+        // teaching_a_pen.md's starting point: the six bundled synthetic pens and rounder, loaded from
+        // resources; the probe, holds and taste box are plain CPU loops. CPU only.
+        "teaching_a_pen",
+        // a_pen_that_sees.md's starting point: the bundled sensing pens (PenSense) and their blind
+        // twins; two drawing-panel boxes are frames {} loops. CPU only.
+        "a_pen_that_sees",
         "fline_hit_records",
         // fline_examples.md's measuring sections: locationAt, trim/splitAt, crossings, fill rules. CPU only.
         "fline_measure",
@@ -532,6 +556,9 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // Spins a box in while (true) on purpose until the watchdog interrupts it (~5 s); the
+        // runtime.runaway-box-interrupt.smoke FIELD_TEST runs the same escape.
+        "runaway_box_interrupt",
         // The demo document: a renderer, an ElectronRTTView and a compute shader under it, and loops.
         "demo_document",
         // ORCA in a box output, playing through a returned PatSynthBank, so running it opens an audio
@@ -649,6 +676,8 @@ object DemoTranscriptExecSmokeTest {
         // Real Vulkan/OpenXR rendering; binocular depth additionally requires HTC eye hardware.
         "openxr_eye_intersection",
         "afield_four_traditional_triangle",
+        // Needs a live Vulkan renderer; the column it opens is captured by visualizers.md (graphics context).
+        "renderer_browsing",
         // Streams a splat sequence into a native window, and wants a directory of .compressed.ply
         // frames that is deliberately not committed -- so compiled here and no further.
         "splat_sequence_streaming",

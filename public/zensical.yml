@@ -156,6 +156,9 @@ nav:
     - Point to geometry and leave notes: geometry_review.md
     - Charts as FLines: chart.md
     - DataFrames in a Box: dataframe.md
+    # Beside DataFrames: the other table a box can hold, this one typed into and computed by Kotlin
+    # formulas. Expands the funFeatures "Spreadsheets!" blurb.
+    - Spreadsheets in a Box: spreadsheets.md
     - Interactive Guides: interactive_guides.md
   - Presenting & Teaching:
     - Presenting with Field: presentation_studio.md
@@ -199,6 +202,11 @@ nav:
       # After finding what repeats: continuing a recording, by recombining it (oracle) or by
       # forecasting it (Timestral).
       - "Continuing a Gesture": temporal_memory.md
+      # Continuing a drawn line rather than a recorded signal: a learned handwriting model that
+      # carries on any FLine. Beside temporal_memory.md because both continue what you give them.
+      - A Learned Pen: learned_pen.md
+      - Teaching a Pen: teaching_a_pen.md
+      - A Pen That Sees: a_pen_that_sees.md
     # Two pages whose input is an unordered set of points rather than a series or a function, and
     # which were each a one-page group of their own ("Distances & Projections", "Clouds &
     # Deformations") until they were put together here. Not under "Time & Signals": the input to a
@@ -419,6 +427,7 @@ nav:
     # front page links it too.
     - Agent Transcript Gallery: agent_transcripts.md
     - AI Overview: aiFeatures.md
+    - AI4's Built-in Tools: ai4_tools.md
     - Local AI: local_ai.md
     - Talking to AI4: voice_input.md
     - Let AI4 Drive a Live Webpage: ai4_live_iframe.md
@@ -472,7 +481,6 @@ nav:
       - Execution: reference/execution.md
       - Machine learning: reference/machine-learning.md
       - Networking: reference/networking.md
-      - IO: reference/io.md
       - Video: reference/video.md
       - Lighting: reference/lighting.md
       - Examples: reference/examples.md

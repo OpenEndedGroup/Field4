@@ -1239,6 +1239,7 @@ private fun normalizeFieldPreferences(preferences: FieldPreferences): FieldPrefe
 private fun applyFieldPreferences(preferences: FieldPreferences) {
     val framePresentationLogWasEnabled = Options.framePresentationLog
     CodeUseTelemetryService.configureQuietMode(preferences.quietMode)
+    afield.runtime.lifecycle.BoxInterrupt.applyPreference(preferences.boxInterrupt)
     Options.profiling = if (Options.captureCompatibility) false else preferences.profiling
     Options.framePresentationLog = preferences.framePresentationLog
     Options.logShadercSource = preferences.logShadercSource
@@ -2926,10 +2927,10 @@ class Server {
                         oldValue,
                         targetBox.getPropertyRaw(set.property)?.toString().orEmpty()
                     )
-                    // Proactively warm the K1 completion delegate as the user edits Kotlin code, so
-                    // the intelligent-error path (and completion) is warm by run time instead of
-                    // paying the ~1s bootstrap on the first compile error. Self-de-duplicating.
-                    if (set.property == "code") {
+                    // Warm the K1 completion delegate as the user edits a Kotlin box, so error suggestions
+                    // and completion are warm by run time. Kotlin boxes only: `ki` builds a Kotlin engine on
+                    // first touch, which in a Clojure box ran on the runloop ahead of its own completion.
+                    if (set.property == "code" && targetBox.ke is KotlinExecution) {
                         targetBox.ki.warmCompletionAsync()
                     }
                 }

@@ -53,7 +53,7 @@ function fieldActions(slide) {
 // The sender is checked by the Electron host; validate the wire data before opening any windows.
 function validateGuideState(state) {
   // Kotlin's wire encoder omits values equal to their declared defaults.
-  state = {transitionMs: 450, ...state};
+  state = {transitionMs: 450, cueIndex: 0, cueTitles: [], cueAction: false, checkpoint: '', ...state};
   if (state.content) state.content = {type: 'html', html: '', ...state.content};
   if (!state || typeof state !== 'object' || typeof state.slideshowId !== 'string' || !state.slideshowId ||
       typeof state.hostUid !== 'string' || !state.hostUid || typeof state.title !== 'string' ||
@@ -69,7 +69,22 @@ function validateGuideState(state) {
         path.every(title => typeof title === 'string' && title.trim() && title.length <= 4096)))) {
     throw new Error('Invalid guide presentation sections');
   }
+  if (state.stepIds != null && (!Array.isArray(state.stepIds) ||
+      (state.stepIds.length !== 0 && state.stepIds.length !== state.titles.length) ||
+      !state.stepIds.every(id => typeof id === 'string' && id.trim() && id.length <= 256) ||
+      new Set(state.stepIds).size !== state.stepIds.length)) throw new Error('Invalid guide step IDs');
+  if (state.searchTexts != null && (!Array.isArray(state.searchTexts) ||
+      (state.searchTexts.length !== 0 && state.searchTexts.length !== state.titles.length) ||
+      !state.searchTexts.every(text => typeof text === 'string' && text.length <= 16384))) {
+    throw new Error('Invalid guide search text');
+  }
   if (state.index === -1) return state;
+  if (!Array.isArray(state.cueTitles) || state.cueTitles.length > 100 ||
+      !state.cueTitles.every(title => typeof title === 'string' && title.trim() && title.length <= 4096) ||
+      !Number.isInteger(state.cueIndex) || state.cueIndex < 0 || state.cueIndex > state.cueTitles.length ||
+      typeof state.cueAction !== 'boolean' || typeof state.checkpoint !== 'string' || state.checkpoint.length > 4096) {
+    throw new Error('Invalid guide cue state');
+  }
   const content = state.content;
   if (!content || (content.type === 'html'
     ? typeof content.html !== 'string' || content.html.length > 1000000

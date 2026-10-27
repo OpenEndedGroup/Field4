@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Handwriting / Field</title>
+<style>
+:root{color-scheme:light;--paper:#f4f1e8;--ink:#242724;--muted:#74756d;--accent:#b35c36;--line:#d8d5ca}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:14px system-ui,sans-serif}header{padding:30px 36px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:end}h1{font:normal 38px Georgia,serif;margin:8px 0}small,.label{font:11px ui-monospace,monospace;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted)}main{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:28px;padding:28px 36px}.toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}button{font:inherit;border:1px solid var(--line);background:transparent;padding:8px 12px;cursor:pointer;border-radius:3px}button:hover{background:#e6e1d4}button.primary{background:var(--ink);color:var(--paper)}canvas{display:block;width:100%;touch-action:none}#paper{height:390px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);cursor:crosshair}#history{height:160px;image-rendering:pixelated;margin-top:12px}#cells{height:240px;cursor:crosshair}aside{border-left:1px solid var(--line);padding-left:24px}label{display:block;margin:16px 0;color:var(--muted)}input[type=range]{width:100%;accent-color:var(--accent)}input[type=number]{width:80px;border:1px solid var(--line);padding:7px;background:transparent;color:var(--ink)}output{float:right;font-family:monospace;color:var(--ink)}p{line-height:1.5;color:var(--muted)}.readout{display:flex;gap:28px;margin:18px 0;font:12px ui-monospace,monospace}#status{min-height:20px;color:var(--accent)}h2{font:normal 22px Georgia,serif;margin:22px 0 8px}.footer{border-top:1px solid var(--line);margin-top:22px;padding-top:14px;font-size:12px}@media(max-width:850px){main{grid-template-columns:1fr;padding:20px}header{padding:20px}aside{border-left:0;padding:0}#cells{max-width:300px}}
+</style>
+<header><div><small>Field / Neural trajectories</small><h1>A pen with memory.</h1></div><small>LSTM · 500 cells · 20 mixtures</small></header>
+<main><section><div class="toolbar"><button class="primary" id="play">Generate</button><button id="step">+ 32 points</button><button id="branch">32 possible futures</button><button id="reset">Reset</button><button id="save">Bookmark</button><button id="restore">Restore</button><button id="export">Export JSON</button></div>
+<canvas id="paper"></canvas><div class="readout"><span id="count">0 points</span><span id="pen">lift —</span><span id="timing">— ms / batch</span></div><div id="status" role="status">Loading network…</div>
+<h2>Memory over time</h2><small>Columns: committed points. Rows: cell state. Click the grid to select a cell.</small><canvas id="history"></canvas>
+<p>Pause and draw on the paper to give the network your own strokes. Then generate a continuation or preview alternative paths. Stroke colour shows the selected cell's activity. The ellipse describes the next-point mixture covariance.</p>
+<div class="footer">A new PyTorch implementation of Carter, Ha, Johnson &amp; Olah’s <a href="https://distill.pub/2016/handwriting/">Distill handwriting experiments</a>. Published pretrained weights; unconditional handwriting-like marks, without text prompting.</div>
+</section><aside><small>Sampling</small><label>Component temperature <output id="tempVal">0.65</output><input id="temp" type="range" min="0.05" max="1.5" step="0.01" value="0.65"></label><label>Spatial variation <output id="noiseVal">0.65</output><input id="noise" type="range" min="0" max="1.5" step="0.01" value="0.65"></label><label>Pen-lift bias <output id="liftVal">0</output><input id="lift" type="range" min="-4" max="4" step="0.1" value="0"></label><label>Drawing scale <output id="scaleVal">8</output><input id="scale" type="range" min="3" max="24" step="1" value="8"></label>
+<h2>Inside the pen</h2><canvas id="cells"></canvas><p>Cell <b id="selected">0</b> · <span id="value">0</span><br>Dark blue: negative. Rust: positive.</p><label>Set cell memory to <input type="number" id="intervention" value="0" min="-20" max="20" step="0.5"></label><button id="set">Intervene</button><button id="ablate">Zero this cell</button><p>Interventions are one-shot edits of <i>c</i>. Their effect emerges on the next recurrent step. Bookmark first to compare the same random future.</p></aside></main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+let tail=Promise.resolve(), running=false, busy=false, points=[], traces=[], futures=[], state=null, selected=0, bookmark=null;
+let drawing=null, camera=0, generation=Promise.resolve();
+const sid='lab-'+Math.random().toString(36).slice(2);
+function api(op,body={}) {
+  const task=tail.then(async()=>{
+    const r=await fetch('/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({op,session:sid,...body})});
+    const d=await r.json(); if(!d.ok)throw Error(d.error);
+    $('timing').textContent=d.elapsed_ms.toFixed(1)+' ms / request'; return d.result;
+  });
+  tail=task.catch(e=>{$('status').textContent=e.message;}); return task;
+}
+function controls(){return {mixture_temperature:+$('temp').value,noise_scale:+$('noise').value,pen_bias:+$('lift').value};}
+for(const [id,out] of [['temp','tempVal'],['noise','noiseVal'],['lift','liftVal'],['scale','scaleVal']]) $(id).oninput=()=>{$(out).textContent=$(id).value;render();};
+function canvas(id){const c=$(id),d=devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;if(c.width!==w*d||c.height!==h*d){c.width=w*d;c.height=h*d;}const g=c.getContext('2d');g.setTransform(d,0,0,d,0,0);g.clearRect(0,0,w,h);return [g,w,h];}
+function colour(v){const a=Math.min(1,Math.abs(v)/3);return v<0?`rgba(36,85,113,${.08+.92*a})`:`rgba(179,92,54,${.08+.92*a})`;}
+function render(){
+ const [g,w,h]=canvas('paper'),scale=+$('scale').value;
+ if(state)camera=Math.max(0,state.position[0]*scale-w+140);
+ const px=x=>60+x*scale-camera,py=y=>h*.48+y*scale;
+ g.lineWidth=.6;g.strokeStyle='#d8d5ca';g.beginPath();g.moveTo(0,h*.48);g.lineTo(w,h*.48);g.stroke();
+ function path(ps,color,alpha=1,start=null){g.globalAlpha=alpha;g.strokeStyle=color;g.lineWidth=1.5;g.beginPath();if(start)g.moveTo(px(start[0]),py(start[1]));ps.forEach((p,i)=>{if(p[2]||(!i&&!start))g.moveTo(px(p[0]),py(p[1]));else g.lineTo(px(p[0]),py(p[1]));});g.stroke();g.globalAlpha=1;}
+ if(points.length){for(let i=1;i<points.length;i++){if(points[i][2])continue;g.strokeStyle=traces[i]?colour(traces[i][selected]):'#242724';g.lineWidth=1.7;g.beginPath();g.moveTo(px(points[i-1][0]),py(points[i-1][1]));g.lineTo(px(points[i][0]),py(points[i][1]));g.stroke();}}
+ futures.forEach((f,i)=>path(f,i%2?'#b35c36':'#346d77',.18,state?.position));
+ if(drawing)path(drawing.map((p,i)=>[...p,i===0?1:0]),'#242724');
+ if(state){const c=state.covariance,a=c[0][0],b=c[0][1],d=c[1][1],v=Math.sqrt((a-d)**2+4*b*b),l1=Math.max(0,(a+d+v)/2),l2=Math.max(0,(a+d-v)/2);g.strokeStyle='#b35c36';g.lineWidth=1;g.beginPath();g.ellipse(px(state.position[0]+state.mean[0]),py(state.position[1]+state.mean[1]),Math.sqrt(l1)*scale*2,Math.sqrt(l2)*scale*2,Math.atan2(2*b,a-d)/2,0,Math.PI*2);g.stroke();$('count').textContent=state.count+' points';$('pen').textContent='lift '+(100*state.pen_probability).toFixed(1)+'%';}
+ const [cg,cw,ch]=canvas('cells');for(let i=0;i<500;i++){cg.fillStyle=colour(state?.c[0][i]||0);cg.fillRect((i%20)*cw/20,Math.floor(i/20)*ch/25,cw/20-1,ch/25-1);}cg.strokeStyle='#242724';cg.strokeRect(selected%20*cw/20,Math.floor(selected/20)*ch/25,cw/20,ch/25);
+ $('selected').textContent=selected;$('value').textContent=(state?.c[0][selected]||0).toFixed(3);
+ const [hg,hw,hh]=canvas('history'),ts=traces.slice(-256);ts.forEach((col,x)=>{for(let i=0;i<500;i++){hg.fillStyle=colour(col?.[i]||0);hg.fillRect(x*hw/256,i*hh/500,hw/256+0.1,hh/500+0.1);}});
+}
+async function inspect(){state=await api('inspect');render();}
+function add(r){points.push(...r.points);traces.push(...(r.c?r.c.map(x=>x[0]):r.points.map(()=>null)));futures=[];if(points.length>12000){const n=points.length-12000;points.splice(0,n);traces.splice(0,n);}}
+async function step(n=16){if(busy||drawing)return;busy=true;try{add(await api('generate',{steps:n,controls:controls(),trace:true}));await inspect();$('status').textContent='Drawing. Select a cell to colour the strokes.';}finally{busy=false;}}
+async function loop(){while(running){await step();await new Promise(r=>setTimeout(r,25));}}
+function pause(){running=false;$('play').textContent='Generate';}
+$('play').onclick=()=>{if(running){pause();return;}running=true;$('play').textContent='Pause';generation=loop().catch(e=>{pause();$('status').textContent=e.message;});};
+$('step').onclick=()=>{pause();generation.then(()=>step(32)).catch(()=>{});};
+$('branch').onclick=async()=>{pause();await generation;futures=(await api('branches',{branches:32,steps:40,controls:controls(),seed:19})).points;render();};
+$('reset').onclick=async()=>{pause();await generation;await api('reset',{seed:42});points=[];traces=[];futures=[];await inspect();$('status').textContent='Draw a primer, or generate from zero state.';};
+$('save').onclick=async()=>{pause();await generation;await api('snapshot',{name:'bookmark'});bookmark={points:structuredClone(points),traces:structuredClone(traces)};$('status').textContent='Bookmarked pen state and random generator.';};
+$('restore').onclick=async()=>{pause();await generation;if(!bookmark)return;await api('restore',{name:'bookmark'});points=structuredClone(bookmark.points);traces=structuredClone(bookmark.traces);futures=[];await inspect();};
+$('export').onclick=()=>{const blob=new Blob([JSON.stringify({points,cell_trace:traces,state},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='handwriting.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+$('cells').onclick=e=>{const r=e.target.getBoundingClientRect();selected=Math.min(499,Math.floor((e.clientY-r.top)/r.height*25)*20+Math.floor((e.clientX-r.left)/r.width*20));render();};
+async function intervene(value){pause();await generation;state=await api('intervene',{cell:selected,value});futures=[];render();}
+$('set').onclick=()=>intervene(+$('intervention').value);$('ablate').onclick=()=>intervene(0);
+function local(e){const r=$('paper').getBoundingClientRect(),s=+$('scale').value;return [(e.clientX-r.left-60+camera)/s,(e.clientY-r.top-r.height*.48)/s];}
+$('paper').onpointerdown=e=>{if(running||busy||!state){$('status').textContent='Pause generation before drawing a primer.';return;}drawing=[local(e)];$('paper').setPointerCapture(e.pointerId);render();};
+$('paper').onpointermove=e=>{if(!drawing)return;const p=local(e),last=drawing.at(-1);if(Math.hypot(p[0]-last[0],p[1]-last[1])>=.08){drawing.push(p);render();}};
+$('paper').onpointerup=async()=>{if(!drawing)return;const stroke=drawing;drawing=null;busy=true;try{await generation;const ds=[[0,0,1]];let last=state.position;stroke.forEach((p,i)=>{ds.push([p[0]-last[0],p[1]-last[1],i===stroke.length-1?1:0]);last=p;});if(ds.length>256){$('status').textContent='Use a shorter primer (up to 256 points per stroke).';return;}add(await api('consume',{deltas:ds,trace:true}));await inspect();$('status').textContent='Primer consumed. Generate or inspect possible futures.';}finally{busy=false;}};
+$('paper').onpointercancel=()=>{drawing=null;render();};
+window.onresize=render;
+api('create',{seed:42}).then(inspect).then(()=>{$('status').textContent='Ready. Generate, or draw your own primer.';}).catch(()=>{});
+</script></html>

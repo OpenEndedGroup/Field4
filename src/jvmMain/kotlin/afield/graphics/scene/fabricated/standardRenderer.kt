@@ -35,19 +35,18 @@ import kotlin.math.abs
  * The deferred renderer the rest of Fabricate is arranged around: the pass bundle, its shaders, and
  * the configuration that sizes them.
  *
- * This is the largest file in the package and the one to read first, because the objects it returns
- * are what almost everything else here consumes. `StandardRenderer.build(...)` builds the five
- * passes — g-buffer, shadow map, ambient occlusion, lighting composite, transparent composite —
- * and hands back a `Bundle` holding each as an ordinary Field 4 `Target`, along with the
- * scene defaults, the scene graph and the post stack. Nothing is hidden
- * behind that: `FabricateFrameGraph` wraps the same targets to give them names and an order,
- * `FabricatePostStack` appends to them, and a box that wants to reach past all of it and
- * manipulate a `RenderToTexture` directly still can. The design decision throughout is to compose
- * the existing primitives rather than replace them.
+ * This is the file to read first, because the objects it returns are what almost everything else
+ * here consumes. `StandardRenderer.build(...)` builds seven passes (g-buffer, shadow map, ambient
+ * occlusion, lighting composite, transparent composite, motion blur, anti-aliasing) and hands back
+ * a `Bundle` holding each as a `RenderToTexture`, along with the scene defaults, the scene graph
+ * and the post stack. Nothing is hidden behind that: `FabricateFrameGraph` wraps the same targets
+ * to give them names and an order, `FabricatePostStack` appends to them, and a box that wants to
+ * reach past all of it and manipulate a `RenderToTexture` directly still can. Throughout, the
+ * existing Field 4 primitives are composed rather than replaced.
  *
  * Deferred is the choice that explains the pass list. Geometry is rasterized once into a g-buffer
  * of positions, normals and material parameters, and lighting is then evaluated per screen pixel,
- * so cost scales with lights rather than with lights times triangles — which is what lets
+ * so cost scales with lights rather than with lights times triangles, which is what lets
  * `FabricateScene`'s light list be arbitrary. It is also why transparency needs a separate pass at
  * the end: a g-buffer holds one surface per pixel, and a blended surface is a second one.
  *

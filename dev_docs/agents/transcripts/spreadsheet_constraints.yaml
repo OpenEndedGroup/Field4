@@ -1,0 +1,51 @@
+name: spreadsheet_constraints
+description: Spreadsheets that solve for their cells. A temperature sheet where editing Celsius moves Fahrenheit and editing Fahrenheit moves Celsius, and a rectangle held to an area and a maximum width.
+docs:
+  - page: spreadsheets.md#solving-for-cells
+    why: "free() variable cells, eq / le / ge assertions, and how an edit moves the other cells."
+operations:
+  - create:
+      box: spreadsheet_constraints_temperature
+      name: Temperature · run me
+      frame:
+        x: 80.0
+        y: 80.0
+        w: 420.0
+        h: 60.0
+      properties:
+        code: |
+          // B1 and B2 are variables; B4 says how they are related.
+          // Type 37 into B1 and Fahrenheit follows; type 451 into B2 and Celsius follows.
+          sheet(height = 200) {
+              rows = 4
+              cols = 2
+              columnWidth("A", 140)
+              this["A1"] = "Celsius"; formula("B1", "free(100)")
+              this["A2"] = "Fahrenheit"; formula("B2", "free(212)")
+              this["A3"] = "Kelvin"; formula("B3", "B1 + 273.15")
+              this["A4"] = "F from C"; formula("B4", "B2 eq B1 * 9.0 / 5.0 + 32.0")
+          }
+  - create:
+      box: spreadsheet_constraints_rectangle
+      name: Rectangle · run me
+      frame:
+        x: 80.0
+        y: 380.0
+        w: 420.0
+        h: 60.0
+      properties:
+        code: |
+          // Width and height are variables; area and perimeter are ordinary formulas over them.
+          // The two assertions hold the area at 40 and the width at no more than 6.
+          // Type 8 into the width: the sheet stops it at 6 and the height takes up the area.
+          sheet(height = 260) {
+              rows = 6
+              cols = 2
+              columnWidth("A", 140)
+              this["A1"] = "width"; formula("B1", "free(4)")
+              this["A2"] = "height"; formula("B2", "free(5)")
+              this["A3"] = "area"; formula("B3", "B1 * B2")
+              this["A4"] = "perimeter"; formula("B4", "2 * (B1 + B2)")
+              this["A5"] = "area is 40"; formula("B5", "B3 eq 40")
+              this["A6"] = "no wider than 6"; formula("B6", "B1 le 6")
+          }

@@ -769,6 +769,7 @@ internal object InspectorValues {
 fun installInspectorHandler() {
     registerExampleRoots()
     registerExampleAdapters()
+    registerRendererBrowsingAdapters()
     rawHandlers.getOrPut("__browsing__") { mutableSetOf() }.add { text ->
         val s = thisSession.get()
         inMain {

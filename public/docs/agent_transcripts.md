@@ -86,6 +86,41 @@ corpus of seeded variants built by the same stages. Open it and press **Build** 
 
 [Open ↗](offline.html?file=assets/agent_transcripts/staged_project/metadata.edn)
 
+### learned_pen
+
+**A pen that keeps writing.** The starting point of [A learned pen](learned_pen.md): the Distill
+handwriting LSTM, run in Kotlin, continues a stroke you give it; twelve different futures from one
+stroke; a drawing panel the pen writes on from, with sliders for its temperature and noise while it
+goes; one memory cell held high and low, changing the hand; a live magnifier on the pen tip with
+its next-step ellipses; and a slider that colours the line by any of its 500 cells. Pure CPU and
+nothing to install. Launch the third box and draw.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/learned_pen/metadata.edn)
+
+### a_pen_that_sees
+
+**A pen that sees the ink around it.** The starting point of [A pen that sees](a_pen_that_sees.md):
+a pen that senses nearby lines, after Henri Michaux's mescaline drawings, hatching beside a line
+pass after pass where its blind twin wanders; cracks that stop where they meet a line; a field of
+trembling columns grown from one stroke; the measures that separate seeing from blind; and two
+drawing panels, one the pen hatches beside and one it fills with cracks. Pure CPU.
+
+![A field of fine pale lines on black: dense columns of trembling vertical strokes laid side by side, each a run of passes echoing one another](assets/a_pen_that_sees/field.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/a_pen_that_sees/metadata.edn)
+
+### teaching_a_pen
+
+**Pens with other hands.** The starting point of [Teaching a pen](teaching_a_pen.md): Hershey plotter
+lettering and five drawing generators as corpora, the six pens Field ships trained on them each
+drawing alone, one stroke continued in seven hands, a probe that finds which cells of a two-handed
+pen know which hand it is in (and sixteen of them held, forcing one hand), a grid of scribbles you
+click to keep as a corpus, and the handwriting pen fine-tuned on its own curliest work. Pure CPU.
+
+![Six rows of pale line drawings, the corpora the pens learn from: Hershey lettering in three fonts; three harmonograph figures of decaying loops; three branching plants; three panels of Truchet tiles whose quarter-circle arcs join into winding curves; three tangles of flocking trails; and two lines alternating words of small loops with words of sharp zigzags](assets/teaching_a_pen/corpora.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/teaching_a_pen/metadata.edn)
+
 ### stipple_sheet
 
 **A trained warp you can drag.** The live version of [Stipple transport](stipple_transport.md): one
@@ -118,6 +153,25 @@ AI Chat panel, and ask it to write “hello” in the textbox. [Live iframe tool
 explains the opt-in and the tools.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/ai4_iframe_hello/metadata.edn)
+
+### spreadsheet_tour
+
+A bill kept as a spreadsheet in one box, priced by `tax` and `discount` variables in a second. Run
+**Rates** first, then **Bill**. Change a rate and run **Rates** again: the open sheet recomputes on the
+next frame without running **Bill**. [Spreadsheets in a Box](spreadsheets.md) covers formulas, units
+and the editing keys.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/spreadsheet_tour/metadata.edn)
+
+### spreadsheet_constraints
+
+Two sheets that solve for their cells. In **Temperature**, Celsius and Fahrenheit are both variables
+and one assertion relates them: type a number into either and the other follows. In **Rectangle**,
+width and height are held to an area of 40 and a width of at most 6. Run each box, then type into a
+variable cell. [Solving for cells](spreadsheets.md#solving-for-cells) explains `free`, `eq`, `le`
+and `ge`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/spreadsheet_constraints/metadata.edn)
 
 ### marf_field_clocks
 
@@ -176,6 +230,16 @@ See [Reading Saved AI4 Chats](ai4_chat_archive.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/ai4_chat_archive/metadata.edn)
 
+### ai4_repo_tools
+
+**The repo tools Field's agent edits a checkout with**, in one box. It makes a three-file toy checkout
+in a temporary directory, then searches it, patches a misspelling, and reads the line back, all through
+the same tools AI4 calls when `FIELD_AGENT=field` hands it a docs revision or a landing question. The
+rest of its output is what the job's scope refuses: a path outside the readable list, `..`, a symbolic
+link out of the root, `.git`, a read-only page, and a generated file. No model and no API key.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/ai4_repo_tools/metadata.edn)
+
 ### simulation_clock
 
 The same instrument pointed at *simulation* time rather than wall-clock time, in two
@@ -207,6 +271,14 @@ headless, since the drawing is data on the server and needs no window. See
 [Drawing and Notation](drawing_and_notation.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn)
+
+### offline_viewer_demo
+
+Three boxes show a small flock, an SVG chart, and the drawing layer around them. Each box has notes;
+run `sketch` in Field to replace its frame, arrow, heading and underline. The saved drawing also
+appears in the offline viewer before any box runs. CPU only. See [Drawing and Notation](drawing_and_notation.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/offline_viewer_demo/metadata.edn)
 
 ### notation_elements
 
@@ -735,6 +807,17 @@ transcript replays — the nine boxes carry one-line comments and no execution �
 the same way every time.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/box_layout_demo/metadata.edn)
+
+### box_graph_demo
+
+The examples from [Why Field?](why.md) and the property-inheritance section of
+[Running code](running_code.md), in one document. Garden publishes `prop<Int>(petals) = 5`, Left
+and Right shadow it with 7 and 9, Sibling reads Garden's 5, and Bloom, with both Left and Right as
+parents, reads 9 because Right was connected first. Beside them, Studio holds plain variables that
+Sketch finds with `fromContext` and `fromContextWithNameOrNull`. Disconnect Bloom from Right and
+re-run it to see it read 7.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/box_graph_demo/metadata.edn)
 
 ### mesh_geometry_examples
 
@@ -1798,6 +1881,19 @@ wants an audio device.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/faust_polyphony/metadata.edn)
 
+### agent_eval_corpus
+
+**The eval corpus Field's own agent is measured on.** `AgentEvalCorpus` turns the boxes in this corpus
+into tasks for the in-Field agent: a box the transcript ran whole, that prints or displays, and that
+needs no renderer, audio, files or clock becomes a goal (its name, its parents, its own leading comment,
+the text its output must include), a setup (its ancestors), a solution (its real code) and checks (the
+output it gave twice in a row). Two boxes: *What was mined* prints how many tasks came from how many
+transcripts and tabulates them by kind and split beside the reasons the other boxes were dropped; *One
+task* prints a held-out task's goal and checks as the agent receives them. The method and the live
+before/after are in `dev_docs/ai/IN_FIELD_AGENT_HARNESS.md` ("Mined corpus").
+
+[Open ↗](offline.html?file=assets/agent_transcripts/agent_eval_corpus/metadata.edn)
+
 ### alife_script
 
 **Giving one agent a program.** `afield.simulation.agents`' `alife_script.kt` adds a per-agent behaviour layer to ALife:
@@ -2678,6 +2774,15 @@ the 306 frames; the second box renders the whole clip as a movie. From
 
 [Open ↗](offline.html?file=assets/agent_transcripts/eagle_flow_explorer/metadata.edn)
 
+### runaway_box_interrupt
+
+**Stopping a runaway box**, in two boxes: the first spins in a loop that never ends, and Field
+throws out of it after about five seconds (or sooner, with Interrupt Running Box); the second then
+runs normally to show Field is responsive again. CI compiles it but cannot evaluate a box whose
+point is that it never finishes. See [Running code](running_code.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/runaway_box_interrupt/metadata.edn)
+
 ## FieldML scenes
 
 <!-- transcript-index: verified-by = compile -->
@@ -2868,6 +2973,16 @@ here are captures of that window, taken by the docs capture pipeline from these 
 (`capture="native-window"`). Where an entry
 carries none, there is no such capture: run the scene yourself and grab its window with a follow-on
 `native-screenshot` backdoor command (with `--with-playwright`).
+
+### renderer_browsing
+
+**The Vulkan renderer opened in `column(...)` and `tree(...)`**, in three boxes: a renderer and its
+window, a triangle beneath it, and a box that browses the renderer. Open render → modules → the
+triangle's module to see its pass, shaders, meshes and bindings, and cpu for span timings; the cards
+refresh about once a second while the renderer runs. See
+[Browsing the renderer](visualizers.md#browsing-the-renderer).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/renderer_browsing/metadata.edn)
 
 ### flow_grain
 

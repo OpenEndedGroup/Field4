@@ -110,7 +110,7 @@ class Preview:
         self.width = width
         self.quality = quality
         if self._box is not None:
-            from afield import OutputsKt
+            from afield.ui.output import OutputsKt
             OutputsKt.displayOpen(self._box, channel)
 
     def show(self, image: np.ndarray) -> None:

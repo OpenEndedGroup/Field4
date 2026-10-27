@@ -41,30 +41,28 @@ expect:
 */
 
 /**
- * One process that runs Field's ray-tracing and path-tracing GPU checks against a real device and
- * writes down what it found.
+ * The ray-tracing audit: one JVM entrypoint that drives Field's path-tracing and ray-pipeline
+ * smokes against a real GPU and writes down what it found.
  *
- * The individual suites each need a renderer and a window: [PathTraceGpuSmoke] for materials,
- * readback colours and accumulation, its temporal and fog companion, the statistical emitter and
- * medium suites, and [RayTracingDocsHarness], which is also what captures the pictures on
- * `ray_tracing_examples.md`. This entrypoint opens one window and one renderer, runs the selected
- * stages in order with no saved document, and rewrites `report.json` after each one, so a run that
- * crashes or times out still records which stage it reached and what the device could do. The
- * default six stages are `seams`, `base`, `camera`, `temporal`, `fog` and `pipeline`; `--all` adds
- * `emitters`, `medium` and a GPU timing sweep over both backends.
+ * This is the `four.raytracing.gpu-audit` catalog test. There is no document on disk and no Field
+ * server: the audit opens a window, builds a [Renderer], makes a bare `Box` for the smokes to run
+ * under, and steps the frame loop itself, resuming each check only between complete frames,
+ * because the renderer records with a `runBlocking` of its own. Every stage writes its verdict and
+ * elapsed time into `report.json` as it finishes, so a run that dies part way through still says
+ * where it got to.
  *
- * The scheduling is the part to read before changing anything here. The renderer calls
- * `runBlocking` itself while recording a frame, so an ordinary event loop around a suspending
- * check would resume that check inside the recording, before submission. The audit installs a
- * dispatcher that only queues continuations and drains the queue between complete frames, which is
- * what keeps `awaitSamples` and the capture helpers reading pixels from frames that were presented.
+ * The stages selected by default are `seams`, `base`, `camera`, `temporal`, `fog` and `pipeline`;
+ * `--all` adds `emitters`, `medium` for participating media, and `benchmark`, and `--stage=NAME`
+ * runs a single one. A device
+ * with no `VK_KHR_ray_tracing_pipeline` records the pipeline stage as SKIPPED and its reason,
+ * unless `--require-pipeline` says to fail there instead, and `--fallback` turns the optional
+ * ray-tracing negotiation off so the ordinary compute path is what gets measured.
  *
- * Capability is reported rather than assumed. A device with no ray-tracing pipeline leaves
- * `pipeline` marked `SKIPPED` in the report instead of failing; `--require-ray-query` and
- * `--require-pipeline` turn that into a failure for a run meant to prove the hardware path, and
- * `--fallback` goes the other way, switching optional RT negotiation off so a device that has both
- * still exercises the compute-BVH backend. The catalog id is `four.raytracing.gpu-audit`, and
- * `dev_docs/RAY_TRACING_AUDIT.md` has the reproduction commands.
+ * The pipeline stage reads pixels rather than checking that a file was written: a UV gradient
+ * against the value its dispatch should have computed, a barycentric triangle that has to reach
+ * all three vertex colours, checker geometry that has to come out both dark and light, and a
+ * sphere whose traced image has to change when its instance transform moves and come back
+ * identical when the transform is put back.
  */
 
 /** Runs the existing Field renderer and readback smokes on one thread, without a saved document.

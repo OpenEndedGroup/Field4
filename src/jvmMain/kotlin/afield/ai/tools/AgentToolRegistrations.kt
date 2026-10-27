@@ -21,6 +21,7 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
         // Inverting it was the right fix independent of the move; see AgentToolExtensions.
         AgentToolExtensions.applyTo(tools)
         registerDocumentGuideTools(tools)
+        registerPresentationTools(tools)
         registerTutorialCodeTools(tools)
         registerDocumentSourceTools(tools)
         registerStateTools(tools)
@@ -58,6 +59,7 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
         afield.ai.agent.registerGeometryReviewTools(tools)
         afield.ai.agent.registerStudyBuildTools(tools)
         registerAskUserTools(tools)
+        registerRepoFileTools(tools)
         afield.ai.agent.registerKitTools(tools)
 
 

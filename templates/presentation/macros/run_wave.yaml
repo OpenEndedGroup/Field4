@@ -1,0 +1,4 @@
+name: run_wave
+description: Run the current Wave experiment source without replacing the student's edits.
+operations:
+  - execute: {box: present_wave_experiment, property: code}

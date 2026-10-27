@@ -17,6 +17,7 @@ that way.
 from __future__ import annotations
 
 import argparse
+import ast
 import functools
 import json
 import re
@@ -374,11 +375,24 @@ class Guard:
         return self.input_matches(path) or any(_under(path, root) for root in self.output_roots)
 
 
+@functools.lru_cache(maxsize=1)
+def _scraped_completion_docs() -> frozenset[str]:
+    producer = Path(__file__).with_name("scrape_completion_corpus.py")
+    for node in ast.parse(producer.read_text()).body:
+        if isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == "DOCS" for target in node.targets
+        ):
+            return frozenset(f"public/docs/{name}.md" for name in ast.literal_eval(node.value))
+    raise RuntimeError(f"cannot read the completion scrape's DOCS manifest: {producer}")
+
+
 def _python_tool_input(path: str) -> bool:
     # The reference catalog is read by Python guard-selection and documentation
     # detector tests. Its producer and generated pages must run those tests too.
     return (
         _demo_input(path)
+        or path in _scraped_completion_docs()
+        or path in {"tools/completion-corpus/scraped.tsv", "tools/completion-corpus/name-fixtures.tsv"}
         or path == _REFERENCE_GENERATOR_REL
         or _under(path, "public/docs/reference")
         or (_under(path, "tools") and path.endswith(".py"))

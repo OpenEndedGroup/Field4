@@ -2662,13 +2662,19 @@ class FieldBackdoor:
         # stale cached preview. Explicit inline source is handled by the callers.
         return await self.get_property(uid=resolved, property_name=property_name, timeout=timeout)
 
-    async def ai_tools_list(self, *, timeout: float, focus_box: str | None = None) -> list[dict[str, Any]]:
+    async def ai_tools_list(
+        self, *, timeout: float, focus_box: str | None = None, suspendable: bool = False
+    ) -> list[dict[str, Any]]:
         """List the ai4 agent tools available for the attached document.
 
         ``focus_box`` (a uid or unique name) stands in for the box whose chat is open, so tools that
         scope themselves to the focused box are listed as that box's chat would see them.
+        ``suspendable`` also lists the tools only a box chat's turn is offered, the ones that end the
+        turn to wait; ``ai_tool_call`` cannot call those.
         """
-        event = await self.call_for_single_reply("agent-ai-tools-list", {"focusBox": focus_box}, timeout=timeout)
+        event = await self.call_for_single_reply(
+            "agent-ai-tools-list", {"focusBox": focus_box, "suspendable": suspendable}, timeout=timeout
+        )
         payload = event.get("payload")
         tools = payload.get("tools") if isinstance(payload, dict) else None
         return tools if isinstance(tools, list) else []
@@ -3834,7 +3840,11 @@ def build_command_parser() -> argparse.ArgumentParser:
     )
 
     agent_task_parser = subparsers.add_parser("agent-task", add_help=False)
-    agent_task_parser.add_argument("--goal", required=True)
+    agent_task_parser.add_argument("--goal", default="")
+    agent_task_parser.add_argument("--goal-file", default="", help="Path (or - for stdin) to the goal, for a long prompt")
+    agent_task_parser.add_argument("--repo-root", default="", help="A checkout the repo tools work in (blank: no repo tools)")
+    agent_task_parser.add_argument("--repo-read", action="append", default=[], help="Readable glob under --repo-root; repeatable (default **)")
+    agent_task_parser.add_argument("--repo-write", action="append", default=[], help="Writable glob under --repo-root; repeatable (default none)")
     agent_task_parser.add_argument("--check", dest="checks", action="append", default=[])
     agent_task_parser.add_argument("--mode", choices=("live", "scripted"), default="live")
     agent_task_parser.add_argument("--script", help="Path (or - for stdin) to a JSON script for --mode scripted")
@@ -3866,6 +3876,14 @@ def build_command_parser() -> argparse.ArgumentParser:
                                    help="off withholds RunToolProgramRequest from every task (the tool-program A/B arm)")
     agent_eval_parser.add_argument("--context", choices=("", "legacy"), default="",
                                    help="legacy sends every task's instructions inside the stored message (the context-pipeline A/B arm)")
+    agent_eval_parser.add_argument("--corpus", nargs="?", const="all", default="", choices=("", "all", "train", "heldout"),
+                                   help="Run the tasks mined from dev_docs/agents/transcripts (AgentEvalCorpus) instead of the hand suite")
+    agent_eval_parser.add_argument("--sample", type=int, default=0, help="With --corpus/--calibrate: a seeded sample of N tasks")
+    agent_eval_parser.add_argument("--seed", type=int, default=0)
+    agent_eval_parser.add_argument("--sealed", action="store_true",
+                                   help="Withhold the tools that read the repository (a mined task's answer is in it); a pass that still saw its solution scores leaked")
+    agent_eval_parser.add_argument("--calibrate", action="store_true",
+                                   help="Re-mine the corpus: run every candidate's solution twice and derive its checks")
     agent_eval_parser.add_argument("--timeout", type=float)
 
     ai_chat_parser = subparsers.add_parser("ai-chat", add_help=False)
@@ -5054,8 +5072,11 @@ async def dispatch_command(
         checks = []
         for spec in args.checks:
             checks.append(parse_agent_check(spec))
+        goal = client.read_text_source(args.goal_file, command_line=command_line) if args.goal_file else args.goal
+        if not goal.strip():
+            raise BackdoorError("agent-task needs --goal or --goal-file")
         payload: dict[str, Any] = {
-            "goal": args.goal,
+            "goal": goal,
             "checks": checks,
             "mode": args.mode,
             "maxToolRounds": args.max_rounds,
@@ -5066,6 +5087,10 @@ async def dispatch_command(
             "context": args.context,
             "followUps": list(args.follow_ups),
         }
+        if args.repo_root:
+            payload["repoRoot"] = str(Path(args.repo_root).expanduser().resolve())
+            payload["repoRead"] = list(args.repo_read)
+            payload["repoWrite"] = list(args.repo_write)
         if args.script:
             payload["script"] = client.read_text_source(args.script, command_line=command_line)
         if args.setup:
@@ -5093,11 +5118,18 @@ async def dispatch_command(
             "blind": bool(args.blind),
             "programs": args.programs,
             "context": args.context,
+            "corpus": args.corpus,
+            "sample": args.sample,
+            "seed": args.seed,
+            "calibrate": bool(args.calibrate),
+            "sealed": bool(args.sealed),
         }
-        timeout = args.timeout or max(client.default_timeout, 3600.0)
+        timeout = args.timeout or max(client.default_timeout, 3600.0 * (4 if args.calibrate else 1))
         event = await client.call_for_single_reply("agent-eval", payload, timeout=timeout)
         data = event.get("payload") if isinstance(event.get("payload"), dict) else {}
-        ok = bool(data) and data.get("passed") == data.get("population")
+        # A calibration's verdict is that it produced a corpus; rejected candidates are its normal output.
+        ok = bool(data) and not data.get("error") and (bool(data.get("passed")) if args.calibrate
+                                                       else data.get("passed") == data.get("population"))
         result = command_result(command_line, ok, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=ok)
         return result

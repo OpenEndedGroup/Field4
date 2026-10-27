@@ -1703,6 +1703,20 @@ private fun declaresIframeHeight(frame: HTMLElement): Boolean {
     return dataAttributePixelsOrZero(frame, "data-afield-intrinsic-height") > 0.0
 }
 
+/**
+ * The pixel width an iframe that opted out of self-measurement (`data-afield-autosize="off"`) states
+ * inline, or 0. The live panel adopts that width (`adoptDeclaredSizeForFixedPanel`), but the capture
+ * measured the iframe's rect, which `width:100% !important` makes the panel's pre-capture width, so a
+ * sheet's figure came out a column and a half wide while the panel in Field showed all four.
+ */
+private fun declaredFixedIframeWidth(element: HTMLElement): Double {
+    if (element.tagName.uppercase() != "IFRAME") return 0.0
+    if (element.getAttribute("data-afield-autosize")?.trim()?.lowercase() != "off") return 0.0
+    val inline = element.style.width.trim().lowercase()
+    if (!inline.endsWith("px")) return 0.0
+    return inline.removeSuffix("px").toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0
+}
+
 private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
     outputArea.style.maxHeight = "none"
     val maxDisclosureHeight = max(680.0, min(1400.0, window.innerHeight.toDouble() * 0.82))
@@ -1823,8 +1837,10 @@ private fun fitBoxWidthToOutputsForScreenshot(box: HTMLElement, outputArea: HTML
                     if (containsFillWidthIframe(element)) return@mapNotNull null
                     val edgeW = element.getBoundingClientRect().right - contentRect.left
                     val html = element as? HTMLElement
-                    val intrinsicWidth =
-                        html?.let { dataAttributePixelsOrZero(it, "data-afield-intrinsic-width") } ?: 0.0
+                    val intrinsicWidth = max(
+                        html?.let { dataAttributePixelsOrZero(it, "data-afield-intrinsic-width") } ?: 0.0,
+                        html?.let(::declaredFixedIframeWidth) ?: 0.0
+                    )
                     max(
                         edgeW,
                         max(
@@ -2508,6 +2524,12 @@ private fun registerCanvasZoomActions() {
     reset.run = { resetCanvasZoom() }
     val builtin = allActions.builtin ?: js("[]")
     builtin.push(reset)
+    val interrupt: dynamic = js("({})")
+    interrupt.id = "interrupt-box"
+    interrupt.label = "Interrupt Running Box"
+    interrupt.detail = "Throw out of box code that never returns (a runaway loop or recursion), so Field runs again"
+    interrupt.run = { send("interrupt-box", js("({})")) }
+    builtin.push(interrupt)
     val frame: dynamic = js("({})")
     frame.id = "frame-selected"
     frame.label = "Frame Selected"

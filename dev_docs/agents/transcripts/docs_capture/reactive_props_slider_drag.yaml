@@ -1,7 +1,7 @@
 name: reactive_props_slider_drag
 description: |
   The Meter capture's setup: reactive_props_slider.yaml, then a real pointer drag of Gain's
-  slider from 0.50 to near the top of its track (0.97), so Meter's picture is the one the drag reruns. Setup for `public/docs/reactive_properties.md`, "Controls". "Gain" declares
+  slider from 0.50 past the end of its track, where it stops at 1.00, so Meter's picture is the one the drag reruns. Setup for `public/docs/reactive_properties.md`, "Controls". "Gain" declares
   `propDown<Double>(gain)` and binds it to a slider with `syncToProperty`; "Meter", under Gain,
   draws a bar `gain` long. Both run once. Dragging the slider reruns Meter (checked live with
   `sendSliderUpdate`, and by ReactivePropsTest.aRawWriteToADeclaredDownPropertyIsAChange).
@@ -32,7 +32,7 @@ operations:
         ui.eval("return window.fieldBackdoorPrepareBoxScreenshot({ uid: 'rp_gain', openOutputs: true, expectOutputs: 'panel' });")
         ui.pause(500)
         ui.waitForSelector("[data-slider-id] .field-slider-visual .slider-thumb", 15000.0)
-        val r = ui.eval("const v = document.querySelector('[data-slider-id] .field-slider-visual'); const t = v.querySelector('.slider-thumb').getBoundingClientRect(); const b = v.getBoundingClientRect(); return [t.x + t.width / 2, t.y + t.height / 2, b.x + b.width * 0.8];").toString()
+        val r = ui.eval("const v = document.querySelector('[data-slider-id] .field-slider-visual'); const t = v.querySelector('.slider-thumb').getBoundingClientRect(); const b = v.getBoundingClientRect(); return [t.x + t.width / 2, t.y + t.height / 2, b.x + b.width + 40];").toString()
         val (tx, ty, ex) = r.trim('[', ']').split(",").map { it.trim().toDouble() }
         ui.moveMouse(tx, ty)
         ui.mouseDown()
@@ -40,6 +40,6 @@ operations:
         ui.mouseUp()
         ui.pause(1000)
         val after = ui.eval("return document.querySelector('[data-slider-id]').getAttribute('aria-valuenow');").toString()
-        check(after.trim('"').toDouble() > 0.6) { "slider drag from ($tx, $ty) to $ex left the value at $after" }
+        check(after.trim('"').toDouble() == 1.0) { "slider drag from ($tx, $ty) to $ex left the value at $after" }
   - await: {}
   - wait: { frames: 10 }

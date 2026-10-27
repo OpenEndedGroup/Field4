@@ -68,9 +68,13 @@ data class DocumentGuideToolResult(
 /** Shared by every chat provider and the MCP/backdoor registry. No ambient session lookup. */
 class DocumentGuideTools internal constructor(private val root: File, internal val sources: DocumentSourceTools? = null, internal val states: StateTools? = null, private val isReadOnly: () -> Boolean) {
     private val files = DocumentGuideFiles(root)
+    internal var presentations: PresentationTools = PresentationTools(root, isReadOnly)
+        private set
 
     companion object {
-        internal fun forSession(info: SessionInformation) = DocumentGuideTools(File(info.filename), DocumentSourceTools(info), StateTools.forSession(info)) { ReadOnlyDocuments.global || info.readOnly }
+        internal fun forSession(info: SessionInformation) = DocumentGuideTools(File(info.filename), DocumentSourceTools(info), StateTools.forSession(info)) { ReadOnlyDocuments.global || info.readOnly }.also {
+            it.presentations = PresentationTools(File(info.filename), { ReadOnlyDocuments.global || info.readOnly }, info)
+        }
         private fun encode(value: String) = URLEncoder.encode(value, Charsets.UTF_8).replace("+", "%20")
         private fun link(path: String, heading: String = ""): String =
             "field://guide/" + path.split('/').joinToString("/") { encode(it) } +

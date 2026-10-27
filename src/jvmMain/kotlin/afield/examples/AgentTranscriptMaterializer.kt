@@ -232,9 +232,7 @@ object AgentTranscriptMaterializer {
         // Persist through the exact codepath the `save` transcript op uses (operation_transcript.kt),
         // but invoked here so the transcript yaml never needs a `save` op of its own.
         val info = thisSessionInfo.get()
-        val boxes = info.boxes.values
-            .filter { it.id != "root" && it.id != METAROOT_ID && !it.getPropertyRaw("_tombstone").isTrue() }
-            .toSet()
+        val boxes = boxesForSave(info)
         // This standalone harness does not run the normal @RunsAt startup registry. Add the
         // language-root properties (main language, KotlinJS, FieldML) only while saving documents that actually use them; leaving the
         // global persistence set enlarged would rewrite every unrelated generated starting point.
@@ -270,7 +268,18 @@ object AgentTranscriptMaterializer {
         } finally {
             Box.ioPersistentProperties.removeAll(addedLanguageProperties)
         }
-        return boxes.size
+        return boxes.count { it.id != "root" }
+    }
+
+    /** Preserve a transcript's saved drawing and viewport state without adding empty roots elsewhere. */
+    internal fun boxesForSave(info: SessionInformation): Set<Box> {
+        val boxes = info.boxes.values
+            .filter { it.id != "root" && it.id != METAROOT_ID && !it.getPropertyRaw("_tombstone").isTrue() }
+            .toMutableSet()
+        if (listOf("drawing", "panes", "bookmarks").any { info.root.getPropertyRaw(it) != null }) {
+            boxes.add(info.root)
+        }
+        return boxes
     }
 
     /** One documentation page a starting point points its reader to: `page.md[#anchor]` and why it matters here. */
