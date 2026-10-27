@@ -67,7 +67,9 @@ def _result(stdout: str) -> dict:
         doc = json.loads(stdout)
     except json.JSONDecodeError:
         return {}
-    for item in (doc if isinstance(doc, list) else doc.get("results", [])):
+    if isinstance(doc, dict) and isinstance(doc.get("data"), dict) and "finalText" in doc["data"]:
+        return doc["data"]
+    for item in (doc if isinstance(doc, list) else doc.get("results", []) if isinstance(doc, dict) else []):
         if isinstance(item, dict) and isinstance(item.get("data"), dict) and "finalText" in item["data"]:
             return item["data"]
     return {}
@@ -94,7 +96,7 @@ def main(argv: list[str] | None = None) -> int:
     root = Path(args.root).expanduser().resolve()
     read = _globs(args.read, "FIELD_AGENT_READ") or ["**"]
     write = _globs(args.write, "FIELD_AGENT_WRITE")
-    tmp = root / ".field-backdoor" / "field-agent"
+    tmp = REPO / ".field-backdoor" / "field-agent"  # this checkout's, never the job's root
     tmp.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile("w", suffix=".md", dir=tmp, delete=False, encoding="utf-8") as f:
         f.write(prompt)

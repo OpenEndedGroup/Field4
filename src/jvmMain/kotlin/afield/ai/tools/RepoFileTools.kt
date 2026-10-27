@@ -195,6 +195,7 @@ class RepoFileTools(val scope: RepoScope) {
         val path = resolve(req.path, write = true)
         if (!Files.isRegularFile(path, NOFOLLOW_LINKS)) return@guarded RepoFileResult(false, "no such file: ${req.path}", req.path)
         val text = readText(path) ?: return@guarded RepoFileResult(false, "not a UTF-8 text file", req.path)
+        generatedBy(text)?.let { return@guarded RepoFileResult(false, "${req.path} is generated ($it): change its generator instead", req.path) }
         if (req.oldText.isEmpty()) return@guarded RepoFileResult(false, "oldText is empty", req.path)
         val count = countOccurrences(text, req.oldText)
         if (count == 0) return@guarded RepoFileResult(false, "oldText does not occur in ${req.path}; read the file again and copy the passage exactly", req.path)
@@ -209,6 +210,9 @@ class RepoFileTools(val scope: RepoScope) {
         val path = resolve(req.path, write = true)
         if (Files.exists(path, NOFOLLOW_LINKS) && !req.overwrite)
             return@guarded RepoFileResult(false, "${req.path} exists; patch it, or pass overwrite=true", req.path)
+        if (Files.isRegularFile(path, NOFOLLOW_LINKS)) readText(path)?.let(::generatedBy)?.let {
+            return@guarded RepoFileResult(false, "${req.path} is generated ($it): change its generator instead", req.path)
+        }
         if (req.content.length > MAX_FILE_BYTES) return@guarded RepoFileResult(false, "content over ${MAX_FILE_BYTES / 1024} KB", req.path)
         Files.createDirectories(path.parent)
         // createDirectories may have made the parents; re-check that nothing on the way is a link.
@@ -224,6 +228,13 @@ class RepoFileTools(val scope: RepoScope) {
         const val MAX_LIST = 500
         const val MAX_SEARCH_FILES = 20_000
         private val SKIPPED_DIRS = setOf(".git", "node_modules", "build", ".gradle", ".venv", ".kotlin")
+
+        /**
+         * The `DO NOT EDIT` line in a file's first five lines, or null. The first live docs-notes run
+         * (2026-10-27) read lines 850-1035 of a generated Vectors.kt, never saw its header, and patched it.
+         */
+        internal fun generatedBy(text: String): String? =
+            text.lineSequence().take(5).firstOrNull { it.contains("DO NOT EDIT") }?.trim()?.trimStart('/', '#', '*', ' ', '<', '!', '-')?.take(160)
 
         private fun countOccurrences(text: String, needle: String): Int {
             var n = 0; var at = text.indexOf(needle)
