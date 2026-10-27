@@ -143,7 +143,8 @@ lines(stacked(rows, gap = 30.0), w = 520.0, h = 700.0, fitToSize = true)
 The pattern in what they missed is the same: a pen sees only how far it moved, never where it is.
 Anything that depends on absolute position, a grid, a centre, the fork a branch started from, is
 out of its reach unless the drawing walks back there. Plants work because the corpus draws each
-branch out and back.
+branch out and back. [A pen that sees](a_pen_that_sees.md) gives a pen sight of the ink around it,
+which is what following a line, stopping at one or closing a shape takes.
 
 ## One stroke, seven hands
 

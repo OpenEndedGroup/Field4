@@ -97,6 +97,18 @@ nothing to install. Launch the third box and draw.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/learned_pen/metadata.edn)
 
+### a_pen_that_sees
+
+**A pen that sees the ink around it.** The starting point of [A pen that sees](a_pen_that_sees.md):
+a pen that senses nearby lines, after Henri Michaux's mescaline drawings, hatching beside a line
+pass after pass where its blind twin wanders; cracks that stop where they meet a line; a field of
+trembling columns grown from one stroke; the measures that separate seeing from blind; and two
+drawing panels, one the pen hatches beside and one it fills with cracks. Pure CPU.
+
+![A field of fine pale lines on black: dense columns of trembling vertical strokes laid side by side, each a run of passes echoing one another](assets/a_pen_that_sees/field.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/a_pen_that_sees/metadata.edn)
+
 ### teaching_a_pen
 
 **Pens with other hands.** The starting point of [Teaching a pen](teaching_a_pen.md): Hershey plotter

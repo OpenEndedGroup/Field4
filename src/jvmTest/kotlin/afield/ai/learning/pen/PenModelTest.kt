@@ -48,6 +48,62 @@ class PenModelTest {
         checkAgainst(PenModel.load(resource("tiny.f16.fieldpen.json").path), "tiny_reference.json", 2e-3)
 
     @Test
+    fun aSensingPenSeesWhatFieldpenSeesAndAgreesWithTorch() {
+        val ref = Json.parseToJsonElement(resource("seeing_reference.json").readText()).jsonObject
+        val inputs = ref["inputs"]!!.jsonArray.map { r -> r.jsonArray.map { it.jsonPrimitive.double } }
+        val sense = ref["sense"]!!.jsonArray.map { r -> r.jsonArray.map { it.jsonPrimitive.double } }
+        val raw = ref["raw"]!!.jsonArray.map { r -> r.jsonArray.map { it.jsonPrimitive.double } }
+        val model = PenModel.load(resource("seeing.fieldpen.json").path)
+        assertEquals(16, model.sectors)
+        val pen = model.pen(0)
+        val seen = FloatArray(18)
+        raw.forEachIndexed { k, expected ->
+            if (k > 0) {
+                val d = inputs[k - 1]
+                pen.feed(d[0], d[1], d[2] == 1.0)
+                pen.sense!!.features(pen.x0, pen.y0, seen, 0)
+                sense[k - 1].forEachIndexed { i, e -> assertTrue(abs(e - seen[i]) < 1e-5, "point ${k - 1} sector $i: fieldpen $e, kotlin ${seen[i]}") }
+            }
+            val actual = pen.rawOutput()
+            expected.forEachIndexed { i, e -> assertTrue(abs(e - actual[i]) < 1e-4, "step $k output $i: torch $e, kotlin ${actual[i]}") }
+        }
+        // the second lap really did see the first
+        assertTrue(sense.drop(40).any { r -> r.count { it > 0.5 } >= 3 })
+    }
+
+    @Test
+    fun inkFromOutsideIsSeenAtOnceAndCountedOnce() {
+        val s = PenSense(16, 3.0, 8)
+        s.add(0.0, 0.0)
+        s.addInk(1.0, 0.0)
+        val out = FloatArray(s.size)
+        s.features(0.0, 0.0, out, 0)
+        // the pen's own point is still hidden by `recent`; the outside point is not
+        assertEquals(1f - 1f / 3f, out[PenSense.sectorOf(1.0, 0.0, 16)], 1e-6f)
+        assertEquals(kotlin.math.tanh(1.0 / PenSense.CENTRE_SCALE).toFloat(), out[16], 1e-6f)
+        // once the pen moves on far enough to see its first point, the middle counts both, once each
+        repeat(10) { s.add(0.0, 0.1 * (it + 1)) }
+        val fork = s.copy()
+        s.features(0.0, 2.0, out, 0)
+        val middleX = out[16]
+        repeat(5) { fork.add(5.0, 5.0) }
+        val again = FloatArray(s.size)
+        s.features(0.0, 2.0, again, 0)
+        assertEquals(middleX, again[16], 0f, "a fork's ink does not leak into its parent")
+        assertTrue(middleX > 0f && middleX < kotlin.math.tanh(1.0 / PenSense.CENTRE_SCALE).toFloat())
+    }
+
+    @Test
+    fun theShippedPensAreStillPlainPens() {
+        assertEquals(3, PenModel.distill.inputs)
+        for (name in listOf("hershey", "harmonograph", "plants", "truchet", "boids", "mixed", "rounder")) {
+            val m = PenModel.bundled(name)
+            assertEquals(3, m.inputs, name)
+            assertEquals(null, m.pen(0).sense, name)
+        }
+    }
+
+    @Test
     fun distributionMatchesWhatNextSamples() {
         val pen = PenModel.distill.pen(5)
         pen.feed(0.2, 0.1, false)

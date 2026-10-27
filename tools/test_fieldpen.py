@@ -24,6 +24,8 @@ try:
     import torch
     from fieldpen import Config, Controls, HandwritingModel, Session, export_for_field, load_model, save_model
     from fieldpen.data import collate, polyline_deltas
+    from fieldpen.model import with_sense
+    from fieldpen.sense import sector_of, sense_features
 except ImportError as e:  # the pen group is optional
     MISSING = f"fieldpen needs the optional `pen` dependency group ({e}); `uv sync --inexact --group pen`"
 else:
@@ -90,11 +92,50 @@ class TrainingTest(unittest.TestCase):
             torch.testing.assert_close(m(x)[0], load_model(Path(d) / "m.pt")(x)[0])
             export_for_field(m, Path(d) / "m.fieldpen.json")
             exported = json.loads((Path(d) / "m.fieldpen.json").read_text())
-        self.assertEqual(exported["config"], dict(hidden=12, mixtures=2, layers=2))
+        self.assertEqual(exported["config"], dict(hidden=12, mixtures=2, layers=2, inputs=3, sense_sectors=0, sense_radius=0.0, sense_recent=0))
         for name, t in m.state_dict().items():
             e = exported["tensors"][name]
             values = np.frombuffer(base64.b64decode(e["data"]), "<f4").reshape(e["shape"])
             np.testing.assert_array_equal(values, t.detach().numpy())
+
+
+@unittest.skipIf(MISSING, MISSING or "")
+class SenseTest(unittest.TestCase):
+    def test_a_pen_sees_earlier_ink_but_not_its_own_last_points(self):
+        # a straight line out along +x, then back along y = 0.5 just above it
+        out = [(x * 0.35, 0.0) for x in range(20)]
+        back = [(6.65 - x * 0.35, 0.5) for x in range(20)]
+        f = sense_features(out + back, sectors=16, radius=3.0, recent=8)
+        self.assertTrue((f[:8] == 0).all(), "nothing is visible before `recent` points have passed")
+        # straight down is the boundary between two sectors, so look at both
+        below = [sector_of(1e-6, -0.5, 16), sector_of(-1e-6, -0.5, 16)]
+        self.assertGreater(f[30, below].max(), 0.8, "coming back, the outward line is just below")
+        self.assertEqual(f[30, sector_of(0.0, 1.0, 16)], 0.0, "and nothing is above")
+        self.assertEqual(f.shape[1], 18)
+        self.assertLess(f[30, 17], 0, "the middle of the ink so far is below")
+
+    def test_sectors_cover_the_circle_once(self):
+        seen = {sector_of(__import__("math").cos(a / 100), __import__("math").sin(a / 100), 16) for a in range(-314, 315)}
+        self.assertEqual(seen, set(range(16)))
+
+    def test_crops_of_a_sensing_corpus_keep_their_width(self):
+        from fieldpen.data import CropDataset, collate_crops, save_dataset
+        from fieldpen.sense import with_sense
+        rows = [with_sense(polyline_deltas([[[i * 2.8, 0.0] for i in range(40)]], 8.0)) for _ in range(3)]
+        with tempfile.TemporaryDirectory() as d:
+            save_dataset(rows, Path(d) / "c.npz", (16, 3.0, 8))
+            data = CropDataset(Path(d) / "c.npz", length=50, samples=8)
+            self.assertEqual(data.sense, (16, 3.0, 8))
+            # every window starts at a sequence start here, the case that once produced 3-wide rows
+            x, y, mask = collate_crops([data[i] for i in range(8)])
+        self.assertEqual(x.shape[-1], 21)
+
+    def test_widening_a_pen_changes_nothing_until_it_trains(self):
+        m = HandwritingModel(Config(12, 2, 1)).eval()
+        s = with_sense(m, 16, 3.0, 8).eval()
+        x = torch.randn(1, 5, 3)
+        wide = torch.cat([x, torch.rand(1, 5, 18)], dim=-1)
+        torch.testing.assert_close(m(x)[0], s(wide)[0])
 
 
 if __name__ == "__main__":

@@ -360,3 +360,37 @@ fun stacked(groups: List<List<FLine>>, gap: Double = 12.0, x: Double = 0.0): Lis
         g.map { it + afield.math.linalg.vec(dx, dy, 0.0) }
     }
 }
+
+/**
+ * What a sensing pen sees from where it is now: a faint circle as far as it can see, and a ray in
+ * each direction that has ink in reach, out to the nearest ink there, brighter the closer it is.
+ * Empty for a pen that does not sense.
+ */
+fun PenLine.seeing(color: Vec4 = Vec4(1f, 0.6f, 0.3f, 1f)): List<FLine> {
+    val p = pen as? Pen ?: return emptyList()
+    val s = p.sense ?: return emptyList()
+    val values = FloatArray(s.size)
+    s.features(p.x0, p.y0, values, 0)
+    val at = tip
+    val reach = s.radius * scale
+    val out = ArrayList<FLine>()
+    out += FLine().also { c ->
+        for (k in 0..48) {
+            val a = k * 2 * PI / 48
+            if (k == 0) c.moveTo(at.x + cos(a) * reach, at.y + sin(a) * reach) else c.lineTo(at.x + cos(a) * reach, at.y + sin(a) * reach)
+        }
+        c.color = Vec4(color.x, color.y, color.z, 0.25f)
+        c.thickness = 1.0
+    }
+    for (k in 0 until s.sectors) {
+        if (values[k] <= 0f) continue
+        // the middle of sector k, out to the nearest ink in it
+        val a = -PI + (k + 0.5) * 2 * PI / s.sectors
+        val d = (1 - values[k]) * reach
+        out += FLine().moveTo(at.x, at.y).lineTo(at.x + cos(a) * d, at.y + sin(a) * d).also {
+            it.color = Vec4(color.x, color.y, color.z, 0.3f + 0.7f * values[k])
+            it.thickness = 1.5
+        }
+    }
+    return out
+}

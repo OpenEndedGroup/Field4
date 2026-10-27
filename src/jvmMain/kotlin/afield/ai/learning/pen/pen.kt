@@ -147,6 +147,15 @@ class PenModel internal constructor(
     private val gateBias: List<FloatArray>,
     private val headWeight: FloatArray,
     private val headBias: FloatArray,
+    /**
+     * 3 for a pen that reads only its own displacements, `3 + sectors + 2` for one that also sees the
+     * ink around it ([PenSense]), in [sectors] directions out to [senseRadius] model units, ignoring
+     * its last [senseRecent] points.
+     */
+    val inputs: Int = 3,
+    val sectors: Int = 0,
+    val senseRadius: Double = 0.0,
+    val senseRecent: Int = 0,
 ) : StrokeModel {
 
     private val outputs = 1 + 6 * mixtures
@@ -157,7 +166,7 @@ class PenModel internal constructor(
     fun pen(primer: FLine, scale: Double = 8.0, step: Double = 0.35, seed: Long = 0): Pen =
         pen(seed).also { it.feed(primer, scale, step) }
 
-    internal fun inputs(layer: Int) = if (layer == 0) 3 else hidden
+    internal fun inputs(layer: Int) = if (layer == 0) inputs else hidden
 
     /** One LSTM step for every layer, in place on [h] and [c]; writes the head's output into [raw]. */
     internal fun step(x: FloatArray, h: Array<FloatArray>, c: Array<FloatArray>, raw: FloatArray, scratch: FloatArray) {
@@ -220,7 +229,9 @@ class PenModel internal constructor(
         /**
          * One of the pens that ship with Field, trained on a synthetic corpus: `"hershey"`,
          * `"harmonograph"`, `"plants"`, `"truchet"`, `"boids"`, `"mixed"` or `"rounder"` (see the
-         * *Teaching a pen* docs page). Loaded once each.
+         * *Teaching a pen* docs page), or one that senses the ink around it, `"michaux"` and
+         * `"cracks"`, each with a blind twin trained on the same drawings, `"michaux-blind"` and
+         * `"cracks-blind"` (the *A pen that sees* page). Loaded once each.
          */
         fun bundled(name: String): PenModel = bundledModels.getOrPut(name) {
             val text = PenModel::class.java.getResourceAsStream("/afield/pen/models/$name.fieldpen.json")
@@ -276,6 +287,11 @@ class PenModel internal constructor(
             val hidden = config["hidden"]!!.jsonPrimitive.int
             val mixtures = config["mixtures"]!!.jsonPrimitive.int
             val layers = config["layers"]!!.jsonPrimitive.int
+            // absent from pens exported before sensing existed: those read only (dx, dy, lift)
+            val inputs = config["inputs"]?.jsonPrimitive?.int ?: 3
+            val sectors = config["sense_sectors"]?.jsonPrimitive?.int ?: 0
+            val senseRadius = config["sense_radius"]?.jsonPrimitive?.content?.toDouble() ?: 0.0
+            val senseRecent = config["sense_recent"]?.jsonPrimitive?.int ?: 0
             val tensors = json["tensors"]!!.jsonObject
             fun tensor(name: String): FloatArray {
                 val t = tensors[name]?.jsonObject ?: error("model has no tensor $name")
@@ -290,7 +306,7 @@ class PenModel internal constructor(
             val gates = ArrayList<FloatArray>()
             val biases = ArrayList<FloatArray>()
             for (l in 0 until layers) {
-                val n = if (l == 0) 3 else hidden
+                val n = if (l == 0) inputs else hidden
                 val wih = tensor("rnn.weight_ih_l$l")
                 val whh = tensor("rnn.weight_hh_l$l")
                 val width = n + hidden
@@ -304,7 +320,8 @@ class PenModel internal constructor(
                 gates += w
                 biases += FloatArray(4 * hidden) { bi[it] + bh[it] }
             }
-            return PenModel(hidden, mixtures, layers, gates, biases, tensor("head.weight"), tensor("head.bias"))
+            return PenModel(hidden, mixtures, layers, gates, biases, tensor("head.weight"), tensor("head.bias"),
+                inputs, sectors, senseRadius, senseRecent)
         }
     }
 }
@@ -322,7 +339,11 @@ class Pen internal constructor(val model: PenModel, seed: Long) : StrokePen {
     private val c = Array(model.layers) { FloatArray(model.hidden) }
     private val raw = model.newRaw()
     private val scratch = model.newScratch()
-    private val x = FloatArray(3)
+    private val x = FloatArray(model.inputs)
+
+    /** The ink a sensing pen sees; null for a pen that does not sense. */
+    var sense: PenSense? = if (model.sectors > 0) PenSense(model.sectors, model.senseRadius, model.senseRecent) else null
+        private set
 
     /** Pen position in model units, the sum of every displacement fed so far. */
     var x0 = 0.0
@@ -346,10 +367,21 @@ class Pen internal constructor(val model: PenModel, seed: Long) : StrokePen {
 
     override fun feed(dx: Double, dy: Double, lift: Boolean) {
         x[0] = dx.toFloat(); x[1] = dy.toFloat(); x[2] = if (lift) 1f else 0f
-        model.step(x, h, c, raw, scratch)
         x0 += dx; y0 += dy
+        // a sensing pen is shown what it sees from the point it has just reached
+        sense?.let { it.add(x0, y0); it.features(x0, y0, x, 3) }
+        model.step(x, h, c, raw, scratch)
         penUp = lift
         count++
+    }
+
+    /**
+     * Let a sensing pen see ink it did not draw: points in model units, in the pen's own coordinates
+     * (its first point is the origin). Does nothing for a pen that does not sense.
+     */
+    fun addInk(points: List<Pair<Double, Double>>) {
+        val s = sense ?: return
+        for ((px, py) in points) s.addInk(px, py)
     }
 
     /**
@@ -398,6 +430,7 @@ class Pen internal constructor(val model: PenModel, seed: Long) : StrokePen {
         }
         raw.copyInto(other.raw)
         other.x0 = x0; other.y0 = y0; other.penUp = penUp; other.count = count
+        other.sense = sense?.copy()
         return other
     }
 
@@ -475,6 +508,9 @@ class Pen internal constructor(val model: PenModel, seed: Long) : StrokePen {
  * @param scale drawing units per model unit, fixed when the PenLine is made.
  * @param step how often [primer] is resampled, in model units.
  * @param start where a PenLine with no primer starts, in drawing units.
+ * @param surroundings lines a sensing pen should see from the start, as though already on the page.
+ * @param liftAtEnd lift the pen at the end of [primer], so it starts a new stroke rather than
+ *   carrying that one on.
  */
 class PenLine(
     primer: FLine? = null,
@@ -486,6 +522,8 @@ class PenLine(
     start: Vec3 = Vec3(0f, 0f, 0f),
     /** Also keep each step's memory (`cells` and `hidden`) in [history], for colouring by a cell. */
     val recordMemory: Boolean = false,
+    surroundings: List<FLine> = emptyList(),
+    liftAtEnd: Boolean = false,
 ) {
     /** The pen underneath, for [Pen.setCell] or forking by hand. */
     var pen: StrokePen = model.pen(seed)
@@ -510,13 +548,19 @@ class PenLine(
     private var y: Double
     private var up: Boolean
 
+    // drawing units of the pen's model-unit origin: the primer's first point, or `start`
+    private val origin: Vec3
+
     init {
         val p = pen
         val end = primer?.currentPoint
+        val first = primer?.pieces()?.firstNotNullOfOrNull { resampleForPen(it, step * scale).firstOrNull() }
+        origin = first ?: start
+        if (surroundings.isNotEmpty()) sense(surroundings, step)
         if (primer != null && end != null) {
             primer.nodes.forEach { line.nodes.add(it.copy()) }
-            feedLine(p, primer, scale, step, false, null)
-            x = end.x.toDouble(); y = end.y.toDouble(); up = false
+            feedLine(p, primer, scale, step, liftAtEnd, null)
+            x = end.x.toDouble(); y = end.y.toDouble(); up = liftAtEnd
         } else {
             x = start.x.toDouble(); y = start.y.toDouble(); up = true
         }
@@ -565,6 +609,20 @@ class PenLine(
         out
     }
 
+    /**
+     * Let a sensing pen see [lines] from now on, as ink already on the page: other strokes to join,
+     * follow or stop at. Resampled at the pen's own spacing. Does nothing for a pen that does not sense.
+     */
+    fun sense(lines: List<FLine>, step: Double = 0.35) {
+        val p = pen as? Pen ?: return
+        if (p.sense == null) return
+        lines.forEach { l ->
+            PenCorpus.strokes(l, scale, step).forEach { stroke ->
+                p.addInk(stroke.map { ((it.x - origin.x) / scale) to ((it.y - origin.y) / scale) })
+            }
+        }
+    }
+
     /** Make the pen lift now, so the next point starts a new stroke. */
     fun lift() {
         pen.feed(0.0, 0.0, true)
@@ -582,7 +640,8 @@ class PenLine(
  * ```
  *
  * The pen is shown the whole line first, resampled every [step] model units, then left touching
- * the paper at the end, so it carries on rather than starting a new mark. [scale] is how many of
+ * the paper at the end, so it carries on rather than starting a new mark; `liftAtEnd = true` lifts
+ * it there instead, for a pen whose next move after a finished shape is a new stroke. [scale] is how many of
  * this line's units make one model unit; 8 makes canvas-pixel handwriting a sensible size. Same
  * [seed], same continuation.
  */
@@ -593,8 +652,9 @@ fun FLine.continueWith(
     controls: PenControls = PenControls(),
     seed: Long = 0,
     step: Double = 0.35,
+    liftAtEnd: Boolean = false,
 ): FLine {
-    val writer = PenLine(this, model, scale, controls, seed, step)
+    val writer = PenLine(this, model, scale, controls, seed, step, liftAtEnd = liftAtEnd)
     writer.grow(steps)
     return writer.drawn
 }

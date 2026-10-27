@@ -23,18 +23,24 @@ sys.path.insert(0, str(ROOT / "python"))
 DISTILL = ROOT / "src/jvmMain/resources/afield/pen/distill-b64.json"
 OUT = ROOT / "src/jvmMain/resources/afield/pen/models"
 
-# name: (fine-tune the handwriting model?, epochs, learning rate). Every run trains on random
-# 256-point windows (2048 a epoch, 64 a batch) with a little input noise: whole drawings give too
-# few optimizer steps, and a pen trained on noiseless inputs never learns to recover from its own
-# small errors, so it drifts off the page instead of closing a figure.
+# name: (corpus, fine-tune the handwriting model?, epochs, learning rate, sense sectors). Every run
+# trains on random 256-point windows (2048 a epoch, 64 a batch) with a little input noise: whole
+# drawings give too few optimizer steps, and a pen trained on noiseless inputs never learns to recover
+# from its own small errors, so it drifts off the page instead of closing a figure. A pen with sense
+# sectors also sees the ink around it (fieldpen.sense, radius 3 model units, ignoring its last 8
+# points); each corpus that needs sight is trained twice, seeing and blind, to show what sight adds.
 RECIPES = {
-    "hershey": (True, 40, 5e-4),
-    "harmonograph": (False, 200, 2e-3),
-    "plants": (False, 200, 2e-3),
-    "truchet": (False, 200, 2e-3),
-    "boids": (False, 200, 2e-3),
-    "mixed": (False, 200, 2e-3),
-    "rounder": (True, 30, 5e-4),
+    "hershey": ("hershey", True, 40, 5e-4, 0),
+    "harmonograph": ("harmonograph", False, 200, 2e-3, 0),
+    "plants": ("plants", False, 200, 2e-3, 0),
+    "truchet": ("truchet", False, 200, 2e-3, 0),
+    "boids": ("boids", False, 200, 2e-3, 0),
+    "mixed": ("mixed", False, 200, 2e-3, 0),
+    "rounder": ("rounder", True, 30, 5e-4, 0),
+    "michaux": ("michaux", False, 200, 2e-3, 16),
+    "michaux-blind": ("michaux", False, 200, 2e-3, 0),
+    "cracks": ("cracks", False, 200, 2e-3, 16),
+    "cracks-blind": ("cracks", False, 200, 2e-3, 0),
 }
 
 
@@ -52,10 +58,11 @@ def main() -> int:
 
     OUT.mkdir(parents=True, exist_ok=True)
     for name in names:
-        finetune, epochs, lr = RECIPES[name]
+        corpus, finetune, epochs, lr, sense = RECIPES[name]
         for split in ("train", "valid"):
-            subprocess.run([sys.executable, "-m", "fieldpen.prepare", str(corpora / name / split),
-                            str(corpora / f"{name}_{split}.npz"), "--scale", "8"],
+            subprocess.run([sys.executable, "-m", "fieldpen.prepare", str(corpora / corpus / split),
+                            str(corpora / f"{name}_{split}.npz"), "--scale", "8"]
+                           + (["--sense", str(sense), "--sense-radius", "3", "--sense-recent", "8"] if sense else []),
                            check=True, cwd=ROOT / "python", stdout=subprocess.DEVNULL)
         run = ROOT / "build/pen-runs" / name
         command = [sys.executable, "-m", "fieldpen.train",
@@ -71,7 +78,7 @@ def main() -> int:
         best = min(metrics, key=lambda m: m["metrics"]["valid"])
         model = fieldpen.load_model(run / "best.pt")
         fieldpen.export_for_field(model, OUT / f"{name}.fieldpen.json", half=True, metadata=dict(
-            corpus=name, finetuned_from="distill" if finetune else None, epochs=epochs, lr=lr,
+            corpus=corpus, sense_sectors=sense, finetuned_from="distill" if finetune else None, epochs=epochs, lr=lr,
             crop=256, input_noise=0.02, best_epoch=best["epoch"], valid_nll=best["metrics"]["valid"],
             first_valid_nll=metrics[0]["metrics"]["valid"]))
         print(f"{name}: best epoch {best['epoch']} valid {best['metrics']['valid']:.3f} -> {OUT / name}.fieldpen.json",
