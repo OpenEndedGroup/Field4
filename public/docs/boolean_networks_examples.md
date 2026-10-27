@@ -178,14 +178,14 @@ fun markers(values: List<Double>, color: Vec4, size: Double): FLine = fline {
 
 lines(
     guides() +
-        listOf(
+        [
             curve(rows.map { it.attractors }, vec(0.56, 0.92, 1.0, 0.95), 3.0),
             curve(rows.map { it.period }, vec(1.0, 0.74, 0.38, 0.92), 3.0),
             curve(rows.map { it.fixed }, vec(0.58, 1.0, 0.68, 0.92), 3.0),
             markers(rows.map { it.attractors }, vec(0.56, 0.92, 1.0, 0.95), 5.0),
             markers(rows.map { it.period }, vec(1.0, 0.74, 0.38, 0.92), 5.0),
             markers(rows.map { it.fixed }, vec(0.58, 1.0, 0.68, 0.92), 5.0),
-        ),
+        ],
     channel = "boolean-kauffman",
     w = 1180.0,
     h = 660.0,

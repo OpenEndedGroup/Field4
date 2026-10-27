@@ -30,7 +30,7 @@ From `notes`
 Flock
 
 ```edn [field-box id="995d4515-cba7-425d-a369-cc80dd953245" role="properties"]
-{"id" "995d4515-cba7-425d-a369-cc80dd953245" "index" 1 "name" "flock" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "flock" "_tombstone" false "frame" #afield/rect [40.0 40.0 260.0 120.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "995d4515-cba7-425d-a369-cc80dd953245_code_.kt" "lines" 13 "characters" 703 "sha256" "16fe0b7f308d6780f25189e4d67676c93457d0996864e027e72197ac0f6e6c15"} {"name" "notes" "language" "markdown" "path" "995d4515-cba7-425d-a369-cc80dd953245_notes_.md" "lines" 8 "characters" 361 "sha256" "f57d96bedf27b2b5f5afc54bb740d7d285c1630d5e9ddd46211654bac4b201e8"}]}
+{"id" "995d4515-cba7-425d-a369-cc80dd953245" "index" 1 "name" "flock" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "flock" "_tombstone" false "frame" #afield/rect [40.0 40.0 260.0 120.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "995d4515-cba7-425d-a369-cc80dd953245_code_.kt" "lines" 16 "characters" 735 "sha256" "ebb3a02a7a1e1aa9a98e862197f06cb1ed118d3274721cbf18352826707cbc65"} {"name" "notes" "language" "markdown" "path" "995d4515-cba7-425d-a369-cc80dd953245_notes_.md" "lines" 8 "characters" 361 "sha256" "f57d96bedf27b2b5f5afc54bb740d7d285c1630d5e9ddd46211654bac4b201e8"}]}
 ```
 
 ```kotlin [field-property box="995d4515-cba7-425d-a369-cc80dd953245" name="code" path="995d4515-cba7-425d-a369-cc80dd953245_code_.kt"]
@@ -41,11 +41,14 @@ val rnd = java.util.Random(4)
 var heading = DoubleArray(n) { rnd.nextDouble() * 2 * Math.PI }
 fun alignment(h: DoubleArray) = Math.hypot(h.sumOf { Math.cos(it) }, h.sumOf { Math.sin(it) }) / h.size
 for (round in 0..6) {
-    println("round $round: alignment ${"%.3f".format(alignment(heading))}")
-    heading = DoubleArray(n) { i ->
-        val l = heading[(i + n - 1) % n]; val r = heading[(i + 1) % n]; val me = heading[i]
-        Math.atan2(Math.sin(l) + Math.sin(me) + Math.sin(r), Math.cos(l) + Math.cos(me) + Math.cos(r))
-    }
+    println("round $round: alignment ${(alignment(heading)).f3}")
+    heading =
+        DoubleArray(n) { i ->
+            val l = heading[(i + n - 1) % n]
+            val r = heading[(i + 1) % n]
+            val me = heading[i]
+            Math.atan2(Math.sin(l) + Math.sin(me) + Math.sin(r), Math.cos(l) + Math.cos(me) + Math.cos(r))
+        }
 }
 ```
 
@@ -75,17 +78,20 @@ From `notes`
 Chart
 
 ```edn [field-box id="b4fffaa4-cf67-48c0-8108-2cd3b969a7df" role="properties"]
-{"id" "b4fffaa4-cf67-48c0-8108-2cd3b969a7df" "index" 2 "name" "chart" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chart" "_tombstone" false "frame" #afield/rect [440.0 40.0 260.0 120.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "b4fffaa4-cf67-48c0-8108-2cd3b969a7df_code_.kt" "lines" 8 "characters" 501 "sha256" "efac5764c61d85d5988f15c52eb3118b71b02e8f0d8991d329522a1d33fd158c"} {"name" "notes" "language" "markdown" "path" "b4fffaa4-cf67-48c0-8108-2cd3b969a7df_notes_.md" "lines" 11 "characters" 223 "sha256" "219493bda3a588c8be3df949e920effd90f2e48f3c1aa9b84ebb86aa68aaacc7"}]}
+{"id" "b4fffaa4-cf67-48c0-8108-2cd3b969a7df" "index" 2 "name" "chart" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chart" "_tombstone" false "frame" #afield/rect [440.0 40.0 260.0 120.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "b4fffaa4-cf67-48c0-8108-2cd3b969a7df_code_.kt" "lines" 11 "characters" 506 "sha256" "14baee7af5501eeb6cfaac5fe3f5ef145ff9dbfed717d8bd3b012ba6d6a49091"} {"name" "notes" "language" "markdown" "path" "b4fffaa4-cf67-48c0-8108-2cd3b969a7df_notes_.md" "lines" 11 "characters" 223 "sha256" "219493bda3a588c8be3df949e920effd90f2e48f3c1aa9b84ebb86aa68aaacc7"}]}
 ```
 
 ```kotlin [field-property box="b4fffaa4-cf67-48c0-8108-2cd3b969a7df" name="code" path="b4fffaa4-cf67-48c0-8108-2cd3b969a7df_code_.kt"]
 // Draws alignment against round as an SVG polyline in the box's output.
-val values = listOf(0.468, 0.609, 0.665, 0.702, 0.732, 0.757, 0.779)
+val values = [0.468, 0.609, 0.665, 0.702, 0.732, 0.757, 0.779]
 val pts = values.mapIndexed { i, v -> "${20 + i * 40},${120 - v * 100}" }.joinToString(" ")
-display("main", """<svg width="290" height="140" style="background:#111">
+display(
+    "main",
+    """<svg width="290" height="140" style="background:#111">
   <polyline points="$pts" fill="none" stroke="#48c9ff" stroke-width="2"/>
   <text x="20" y="135" fill="#888" font-size="11">round 0 .. 6</text>
-</svg>""")
+</svg>""",
+)
 println("drew ${values.size} points")
 ```
 
@@ -120,13 +126,15 @@ From `notes`
 Sketch
 
 ```edn [field-box id="74a7be47-7f7c-421a-ad3f-10afab498c12" role="properties"]
-{"id" "74a7be47-7f7c-421a-ad3f-10afab498c12" "index" 3 "name" "sketch" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "sketch" "_tombstone" false "frame" #afield/rect [240.0 340.0 200.0 80.0] "autorun" false "layers" "default,annotation"} "blockProperties" [{"name" "code" "language" "kotlin" "path" "74a7be47-7f7c-421a-ad3f-10afab498c12_code_.kt" "lines" 15 "characters" 804 "sha256" "531032de24ff031fe91a7d09e1af690b9e47c66fc8b7501a0d06759d12921821"} {"name" "notes" "language" "markdown" "path" "74a7be47-7f7c-421a-ad3f-10afab498c12_notes_.md" "lines" 11 "characters" 469 "sha256" "4f939f7bf3332f2a28a0e3ba16225e951fc7b19db034299b47a9720cdd7239f9"}]}
+{"id" "74a7be47-7f7c-421a-ad3f-10afab498c12" "index" 3 "name" "sketch" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "sketch" "_tombstone" false "frame" #afield/rect [240.0 340.0 200.0 80.0] "autorun" false "layers" "default,annotation"} "blockProperties" [{"name" "code" "language" "kotlin" "path" "74a7be47-7f7c-421a-ad3f-10afab498c12_code_.kt" "lines" 17 "characters" 801 "sha256" "330a647a52f7c99302e4fa5ab7c340f476d3a21dd501155555251fdf5b6c5691"} {"name" "notes" "language" "markdown" "path" "74a7be47-7f7c-421a-ad3f-10afab498c12_notes_.md" "lines" 11 "characters" 469 "sha256" "4f939f7bf3332f2a28a0e3ba16225e951fc7b19db034299b47a9720cdd7239f9"}]}
 ```
 
 ```kotlin [field-property box="74a7be47-7f7c-421a-ad3f-10afab498c12" name="code" path="74a7be47-7f7c-421a-ad3f-10afab498c12_code_.kt"]
-// Writes this document's drawing layer: a frame around the two boxes, an arrow between them,
-// a heading, and a hand-drawn underline. The marks belong to this box: run it again and they
-// are replaced in place.
+/*
+Writes this document's drawing layer: a frame around the two boxes, an arrow between them,
+a heading, and a hand-drawn underline. The marks belong to this box: run it again and they
+are replaced in place.
+*/
 val flock = inside.boxes.values.first { it.name == "flock" }
 val chart = inside.boxes.values.first { it.name == "chart" }
 notation {

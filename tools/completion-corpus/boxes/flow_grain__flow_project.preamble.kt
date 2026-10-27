@@ -1,10 +1,10 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
-import afield.graphics.vulkan.targets.RenderToTexture
-import afield.graphics.vulkan.targets.ComputeTarget
-import afield.ui.controls.EffectiveParameter
-import afield.runtime.lifecycle.SimulationReset
 import afield.graphics.vulkan.buffers.FrameBufferGroup
+import afield.runtime.lifecycle.SimulationReset
+import afield.ui.controls.EffectiveParameter
+import afield.graphics.vulkan.targets.ComputeTarget
+import afield.graphics.vulkan.targets.RenderToTexture
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.flowA by ReactiveInheritance<FrameBufferGroup>(Reactive.DOWN) /*from:flow_resources*/ /**/
 val Once.flowA by Onceing<FrameBufferGroup>() /*from:flow_resources*/ /**/
 val Why.flowA by Whying() /*from:flow_resources*/ /**/

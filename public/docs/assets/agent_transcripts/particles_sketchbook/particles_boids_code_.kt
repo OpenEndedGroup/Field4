@@ -30,9 +30,11 @@ showControls(sketch)
 // The world starts empty; these loops are there so it isn't. Drag in the window for more.
 if (sketch.isEmpty) {
     for (k in 0 until 5) {
-        sketch.paint((0..40).map { i ->
-            val a = i / 40.0 * 2 * PI
-            vec(170 + k * 190 + cos(a) * 55, 380 + sin(a) * 150)
-        })
+        sketch.paint(
+            (0..40).map { i ->
+                val a = i / 40.0 * 2 * PI
+                vec(170 + k * 190 + cos(a) * 55, 380 + sin(a) * 150)
+            },
+        )
     }
 }

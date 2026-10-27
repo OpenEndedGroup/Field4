@@ -393,7 +393,11 @@ connection to Garden was cut:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/running_code/disconnect.png" capture="box" open-outputs="true" wait="0.2" timeout="180" embed=true name="running-code-disconnect" macro-file="../../dev_docs/agents/transcripts/docs_capture/running_code_disconnect.yaml" capture-box="bgx_ticker" w="760" h="100" alt="Ticker's main output after its connection to Garden was cut: read 10: Can't find a value for inherited property 'petals' in 'Ticker' or any of its 2 parent boxes. Are you sure the parent boxes that define 'petals' have been executed?"}
 go {
     repeat(40) { n ->
-        val seen = try { "petals = $petals" } catch (e: Exception) { e.message }
+        val seen = try {
+            "petals = $petals"
+        } catch (e: Exception) {
+                e.message
+            }
         markdown("read $n: $seen")
         delay(300)
     }
@@ -417,7 +421,11 @@ graph has a value yet. Usually the parent has not run, or it failed. Here Garden
 but was never run, and Flower, beneath it, reports:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/running_code/missing.png" capture="box" open-outputs="true" wait="1.5" timeout="180" embed=true name="running-code-missing" macro-file="../../dev_docs/agents/transcripts/docs_capture/running_code_missing.yaml" capture-box="bgm_flower" w="760" h="100" alt="Flower's main output: Can't find a value for inherited property 'petals' in 'Flower' or any of its 3 parent boxes. Are you sure the parent boxes that define 'petals' have been executed?"}
-val seen = try { "petals = $petals" } catch (e: Exception) { e.message }
+val seen = try {
+    "petals = $petals"
+} catch (e: Exception) {
+        e.message
+    }
 markdown("$seen")
 ```
 
@@ -539,7 +547,9 @@ canvas with it:
 
 ```diffstatic {data-lang=kotlin}
 var i = 0L
-while (true) { i++ }
+while (true) {
+    i++
+}
 ```
 
 Field notices. After about a second and a half with no frame, the log names the box that is

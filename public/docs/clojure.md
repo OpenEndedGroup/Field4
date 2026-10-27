@@ -410,11 +410,15 @@ vector and docstring, and offers local names in scope at the caret: a `let` bind
 parameter or a `doseq` variable. The popup below was opened at the prefix `sp`:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" screenshot="assets/clojure/completion.png" transcript="assets/transcripts/clojure_completion_setup.yaml" padding="6" wait="0" timeout="180" embed=true hidden=true name="clojure-completion" alt="Field's completion popup in a Clojure box at the prefix sp, grouped by kind. Under FUNCTIONS: spit, split-at, split-with and special-symbol?, each with its argument vector in grey underneath. Then LOCAL, holding spline — the let binding two lines up. Then VALUES, holding a var named spiral, and TYPES, holding a class. The panel to the right reads clojure.core/spit, its argument vector, and its docstring."}
-// An ordinary prefix, in code with a `let` binding in scope, so one figure carries both halves of
-// what a Clojure candidate is: the shape of one (name, argument vector, docstring) and where it
-// came from (core, the binding two lines up, and — as `spiral` under VALUES — a var an earlier box
-// on this page left in the shared namespace).
-ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';")
+/*
+An ordinary prefix, in code with a `let` binding in scope, so one figure carries both halves of
+what a Clojure candidate is: the shape of one (name, argument vector, docstring) and where it
+came from (core, the binding two lines up, and — as `spiral` under VALUES — a var an earlier box
+on this page left in the shared namespace).
+*/
+ui.eval(
+    "window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';",
+)
 ui.openEditor("clojure_completion")
 ui.pause(900)
 ui.waitForSelector(".monaco-editor", 15000.0)
@@ -429,12 +433,18 @@ ui.pause(400)
 ui.press("Escape")
 ui.pause(200)
 ui.press("Control+Space")
-// No warm-completion here: Clojure's candidates come from Compliment in Field's own JVM rather
-// than from the Analysis API sidecar, so there is nothing to pre-warm — but the first call does
-// load `compliment.core`, which is why this waits for Compliment's own `split-at` row. Any row
-// would not do: the `let` binding's LOCAL row appears at once, before Compliment answers.
+/*
+No warm-completion here: Clojure's candidates come from Compliment in Field's own JVM rather
+than from the Analysis API sidecar, so there is nothing to pre-warm — but the first call does
+load `compliment.core`, which is why this waits for Compliment's own `split-at` row. Any row
+would not do: the `let` binding's LOCAL row appears at once, before Compliment answers.
+*/
 ui.waitForSelector(".afield-suggest-row:has-text('split-at')", 30000.0)
-val compliment = ui.eval("return [...document.querySelectorAll('.afield-suggest-row')].some(r => r.textContent.includes('split-at')) ? 'served' : 'absent'").toString()
+val compliment =
+    ui.eval(
+            "return [...document.querySelectorAll('.afield-suggest-row')].some(r => r.textContent.includes('split-at')) ? 'served' : 'absent'",
+        )
+        .toString()
 check(compliment.contains("served")) { "Compliment's candidates never reached the popup (only its local rows did)" }
 ui.pause(1400)
 ```

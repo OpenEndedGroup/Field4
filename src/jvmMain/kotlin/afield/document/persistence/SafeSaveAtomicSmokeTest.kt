@@ -44,16 +44,16 @@ expect:
     - "SafeSave atomic smoke passed"
 */
 /**
- * Smoke for [File.safeSave]'s `atomic = true` path — the fix for transient `operations.yaml`
- * corruption (a reader catching a truncated/interleaved write). The operation-transcript writer
- * (`OperationTranscript.checkpoint` and friends) now writes atomically: to a temp file in the same
- * directory, then an atomic rename into place, so a concurrent reader (or another process sharing
- * the workspace) only ever observes a complete file.
+ * Smoke for [File.safeSave]'s `atomic = true` path, which is what keeps a file readable while it is
+ * being rewritten. The operation-transcript writer (`OperationTranscript.checkpoint` and friends)
+ * uses it for `operations.yaml`: the text goes to a temp file in the same directory and is then
+ * renamed into place, so a concurrent reader — another thread, or another process sharing the
+ * workspace — only ever sees a complete file.
  *
- * The load-bearing case is `concurrentAtomicWritesNeverTear`: many writer threads hammer one file
- * while a reader parses it in a tight loop; with atomic writes the reader must never see a
- * half-written (unparseable) file — which is exactly the SnakeYAML "expected <block end>" failure
- * this fix eliminates.
+ * `concurrentAtomicWritesNeverTear` is the case that exercises that. Six writer threads replace one
+ * file 120 times each, with payloads of very different lengths, while a reader parses it in
+ * a tight loop. A torn or interleaved write splices one payload into another and SnakeYAML reports
+ * `expected <block end>`; under atomic writes every read parses to a list.
  */
 
 object SafeSaveAtomicSmokeTest {

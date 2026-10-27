@@ -88,7 +88,10 @@ var freq = 3.0
 
 fun redraw() = display("main", "<b>sine</b> at $freq Hz")
 
-slider("frequency", min = 1.0, max = 10.0, step = 0.1, initialValue = 3.0) { freq = it; redraw() }
+slider("frequency", min = 1.0, max = 10.0, step = 0.1, initialValue = 3.0) {
+    freq = it
+    redraw()
+}
 checkbox("square wave") { println("square: $it") }
 setTimeout({ println("half a second later") }, 500)
 redraw()

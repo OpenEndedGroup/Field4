@@ -33,23 +33,36 @@ val discount = 0.9
 <!-- field-box id="spreadsheet_tour_sheet" index="1" -->
 
 ```edn [field-box id="spreadsheet_tour_sheet" role="properties"]
-{"id" "spreadsheet_tour_sheet" "index" 1 "name" "Bill · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Bill · run me" "_tombstone" false "frame" #afield/rect [80.0 180.0 640.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spreadsheet_tour_sheet_code_.kt" "lines" 16 "characters" 742 "sha256" "931fb7f8429bfc0c7f2c654a9e0a65841940b8aee96b8efe4bd24c449006f4b6"}]}
+{"id" "spreadsheet_tour_sheet" "index" 1 "name" "Bill · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Bill · run me" "_tombstone" false "frame" #afield/rect [80.0 180.0 640.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spreadsheet_tour_sheet_code_.kt" "lines" 29 "characters" 781 "sha256" "0176c5cef72dbe30da85866c7af2e598522d70e4635061261179e0d1a21a7509"}]}
 ```
 
 ```kotlin [field-property box="spreadsheet_tour_sheet" name="code" path="spreadsheet_tour_sheet_code_.kt"]
 sheet(height = 320) {
     rows = 8
     cols = 5
-    this["A1"] = "Item"; this["B1"] = "Price"; this["C1"] = "Qty"; this["D1"] = "Net"; this["E1"] = "Width"
-    this["A2"] = "paper"; this["B2"] = 4.5; this["C2"] = 3
-    this["A3"] = "ink"; this["B3"] = 12; this["C3"] = 2
-    this["A4"] = "pens"; this["B4"] = 1.25; this["C4"] = 10
+    this["A1"] = "Item"
+    this["B1"] = "Price"
+    this["C1"] = "Qty"
+    this["D1"] = "Net"
+    this["E1"] = "Width"
+    this["A2"] = "paper"
+    this["B2"] = 4.5
+    this["C2"] = 3
+    this["A3"] = "ink"
+    this["B3"] = 12
+    this["C3"] = 2
+    this["A4"] = "pens"
+    this["B4"] = 1.25
+    this["C4"] = 10
     formula("D2", "B2 * C2")
     formula("D3", "B3 * C3")
     formula("D4", "B4 * C4")
-    this["A5"] = "Subtotal"; formula("D5", "sum(D2:D4)")
-    this["A6"] = "Discounted"; formula("D6", "D5 * box(\"Rates · run me first\")[\"discount\"]")
-    this["A7"] = "With tax"; formula("D7", "round(D6 * box(\"Rates · run me first\")[\"tax\"] * 100) / 100")
+    this["A5"] = "Subtotal"
+    formula("D5", "sum(D2:D4)")
+    this["A6"] = "Discounted"
+    formula("D6", "D5 * box(\"Rates · run me first\")[\"discount\"]")
+    this["A7"] = "With tax"
+    formula("D7", "round(D6 * box(\"Rates · run me first\")[\"tax\"] * 100) / 100")
     formula("E2", "0.21 | m")
     formula("E3", "E2 * C2")
 }

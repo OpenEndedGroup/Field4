@@ -1,5 +1,4 @@
 import afield.graphics.scene.fabricated.ProceduralSplats
-import afield.graphics.scene.fabricated.SplatSet
 import afield.graphics.scene.fabricated.SplatShader
 import afield.graphics.scene.fabricated.showControls
 

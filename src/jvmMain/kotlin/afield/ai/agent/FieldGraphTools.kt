@@ -46,8 +46,9 @@ import java.util.concurrent.TimeoutException
  * table's `-connect`, `-disconnect` and `-delete-box`), so box execution is not reimplemented here.
  *
  * A box that fails to compile or throws comes back as `success: false` with its diagnostics,
- * never as a silent success. [FieldGraphHost] is the seam to the server: [LiveFieldGraphHost] is
- * the real one, and tests such as `InFieldAgentHarnessTest` supply a scripted host.
+ * never as a silent success. [FieldGraphHost] is how these tools reach the server:
+ * [LiveFieldGraphHost] is the real one, and tests such as `InFieldAgentHarnessTest` supply a
+ * scripted host.
  */
 
 @JsonClassDescription("List every box in this Field document. Returns, per box: uid, name, parents, children, whether it is running, the length of its code, and the verdict of its last run. Use it when a box the task names is not one you know; other tools accept the names it lists (e.g. box = `Sun`). It takes no arguments and does not fail; an empty list means no boxes yet.")

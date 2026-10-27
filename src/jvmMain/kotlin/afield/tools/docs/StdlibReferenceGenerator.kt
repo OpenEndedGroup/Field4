@@ -22,7 +22,7 @@ expect:
  *
  * ### Why this exists, and why it is not Dokka
  *
- * `20e64da5` removed Dokka on purpose: the durable facts belong in KDoc beside the code, and a
+ * Dokka was removed in `20e64da5`, because the durable facts belong in KDoc beside the code and a
  * generated wall of one-page-per-symbol HTML is not documentation anyone reads. Field already has
  * two *interactive* ways into that KDoc — the completion panel's recursive code browser
  * (`public/docs/completion_doc_browser.md`) and the semantic index — but both need you to already
@@ -37,11 +37,11 @@ expect:
  * panel can resolve. Only the signature text is re-read from source here (the index stores names
  * and lines, not signatures); see [signatureAt].
  *
- * ### Honesty rules
+ * ### What it will not invent
  *
- * - Nothing is invented. Every summary is the first paragraph of a real KDoc comment; a symbol
- *   with no KDoc is listed with an empty summary rather than a guessed one.
- * - `[Symbol]` KDoc references are linkified only when the target is a type this reference
+ * - Every summary is the first paragraph of a real KDoc comment; a symbol with no KDoc is listed
+ *   with an empty summary rather than a guessed one.
+ * - A KDoc reference in square brackets is linkified only when the target is a type this reference
  *   actually emits — the same "links only appear when they resolve" rule the completion panel
  *   follows. Everything else degrades to plain inline code.
  * - The "see also" links from a reference section to a worked-example page are *evidence-based*:
@@ -52,10 +52,9 @@ expect:
  *
  * The first KDoc block in a file is treated as the *file's* overview when it ends before the first
  * declaration **and** is separated from that declaration by at least one blank or comment line —
- * and it is then not also shown as that declaration's own summary. Verified against the corpus:
- * `spectral.kt`, `voronoi.kt` and `wfc.kt` have genuine file-level blocks and are picked up;
- * `booleannetworks.kt`'s opening KDoc sits flush against `data class BoolNode` and is correctly
- * left attached to it.
+ * and it is then not also shown as that declaration's own summary. A block written flush against
+ * its declaration stays that declaration's own KDoc, of which only the first paragraph is
+ * published; the file's "what it is" cell on the index then has nothing to fill it with.
  *
  * ### Running it
  *
@@ -73,6 +72,8 @@ expect:
  * JVM step, and a generated reference is only trustworthy if an API change shows up as a reviewable
  * diff.
  */
+
+/** Emits `public/docs/reference/` from the KDoc in `src/`, or drift-checks the committed pages. */
 object StdlibReferenceGenerator {
 
     /** Repo-relative home of the committed reference pages. */

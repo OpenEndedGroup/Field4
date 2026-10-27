@@ -93,6 +93,26 @@ import afield.study.source.*
 import afield.study.ui.*
 import kotlinx.coroutines.*
 
+/**
+ * The five AI4 tools that need the running Field rather than the saved document: reload a box's
+ * shaders, capture the render window, list a box's Kotlin context variables, query the code-use
+ * index, and search workspace symbols.
+ *
+ * The in-Field chat panel and the backdoor registry share all five and differ only in what they
+ * hand the constructor. The caller supplies how a box reference resolves and how to look a box up
+ * by uid, which is what lets the panel mean "the box whose chat is open" where the backdoor insists
+ * on an explicit target. The panel also supplies a staged-source hook, so a shader reload compiles
+ * the text the editor is showing rather than the text last written to the box; the backdoor leaves
+ * that argument out and compiles what the box holds.
+ *
+ * Shader reload is the largest of the five, because one box can carry several shader programs at
+ * once and a request may not say which to rebuild. An explicit mode wins outright. Failing that the
+ * property being reloaded implies one: `vertex` and `fragment` mean graphics, `compute` means
+ * compute, `task` and `mesh` mean mesh, and the ray-tracing stages mean ray. Failing that too, the
+ * box is asked which programs it actually has and each is rebuilt, which is what `auto` and an
+ * absent mode both come to.
+ */
+
 /** Shared runtime providers. The caller supplies targeting and provisional source policy. */
 internal class Ai4RuntimeToolProviders(
     private val sessionInfo: SessionInformation,

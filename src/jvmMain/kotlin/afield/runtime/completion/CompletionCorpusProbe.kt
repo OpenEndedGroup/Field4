@@ -36,8 +36,30 @@ expect:
   stdoutContains:
     - "CORPUS SPEC DONE"
 */
+
 /**
- * PHASE 0 completion characterization corpus, framed as a SPEC (per the design call):
+ * What Kotlin completion offers at a caret, read against what it ought to offer there.
+ *
+ * Each fixture is a fragment of box code with `|` where the caret sits, and a list of candidates
+ * the engine is expected to produce (goals) or to keep out (anti-goals). The matchers look for a
+ * candidate by call form, by class, by exact text, by exact text ignoring case, or in the
+ * named-argument form an editor offers for a parameter still to be filled in; they read the
+ * candidate set and not its order, because the order a reader sees is decided in the browser by
+ * `fieldSuggest.js` and is covered separately by `FieldSuggestPresentationTest`.
+ *
+ * A run prints each goal as met or unmet, with the rank of the candidate that met it, and ends
+ * with a met/unmet summary. It always exits 0, so the unmet set is a reading rather than a gate.
+ * Completion is asked for through [KotlinInterface2] itself, so the answers come from the engine a
+ * box talks to and not from a stand-in.
+ *
+ * The fixtures here are written out in this file. The box-shaped fixtures that
+ * [CompletionCorpusHarvest] generates, with a real inherited preamble, are what
+ * [CompletionLoweringProbe] reads instead.
+ */
+
+/**
+ * PHASE 0 characterization corpus for completion, written as a specification of the behaviour
+ * wanted rather than as a snapshot of the behaviour there is.
  *
  *  - Assertions are ENGINE RECALL + TYPES, order-independent: does the candidate SET contain the
  *    expected item (by call form / class / exact text), and with the right return type? Ranking is

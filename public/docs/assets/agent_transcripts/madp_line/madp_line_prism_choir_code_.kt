@@ -20,10 +20,19 @@ eachStroke(trail = 0.18) {
     var spark = 0.0
     fun toPan(v: Double) = 0.5 + v.coerceIn(-1.0, 1.0) * 0.5
 
-    val choir = pat("c4 e4 g4 b4") with s("sawtooth") with gain(signal { 0.06 + span * 0.16 }) with
-        lpf(signal { 240 + height * 1600 + spark * 1400 }) with pan(signal { toPan(panning) }) with room(0.45)
-    val bass = pat("c3 g3 c4 g3") with s("triangle") with gain(signal { 0.03 + flow * 0.12 }) with
-        lpf(signal { 180 + spark * 900 }) with pan(signal { toPan(panning * -0.6) })
+    val choir =
+        pat("c4 e4 g4 b4") with
+            s("sawtooth") with
+            gain(signal { 0.06 + span * 0.16 }) with
+            lpf(signal { 240 + height * 1600 + spark * 1400 }) with
+            pan(signal { toPan(panning) }) with
+            room(0.45)
+    val bass =
+        pat("c3 g3 c4 g3") with
+            s("triangle") with
+            gain(signal { 0.03 + flow * 0.12 }) with
+            lpf(signal { 180 + spark * 900 }) with
+            pan(signal { toPan(panning * -0.6) })
     sound(stack(choir, bass))
 
     draw { t ->
@@ -36,17 +45,26 @@ eachStroke(trail = 0.18) {
         val hue = 205 + audioHit * 80 + t * 20
         var motion = 0.0
         val ribbon = ArrayList<Vec2>()
-        val sparks = FLine().apply { pointed = true; stroked = false }
+        val sparks = FLine().apply {
+            pointed = true
+            stroked = false
+        }
         for (i in base.indices) {
             val p = base[i]
             val n = normalAt(base, i)
-            val wave = (triWave(t * 0.48 + i * 0.08 + audioHit * 0.25) * 0.65 + driftNoise(i * 0.21 + audioHit * 0.5, t, 0.9)) *
-                (7 + audioHit * 60) * envelope(i, base.size)
+            val wave =
+                (triWave(t * 0.48 + i * 0.08 + audioHit * 0.25) * 0.65 +
+                    driftNoise(i * 0.21 + audioHit * 0.5, t, 0.9)) * (7 + audioHit * 60) * envelope(i, base.size)
             motion += abs(wave)
             ribbon += vec(p.x + n.x * wave, p.y + n.y * wave)
             if (i % 8 == 0) {
                 val size = 1.1 + max(audioHit, min(1.0, abs(wave) / 28)) * 6
-                sparks.dot(p.x - n.x * wave * 0.35, p.y - n.y * wave * 0.35, size, cssHsla(hue + i * 3 + 40, 0.98, 0.78, 0.86))
+                sparks.dot(
+                    p.x - n.x * wave * 0.35,
+                    p.y - n.y * wave * 0.35,
+                    size,
+                    cssHsla(hue + i * 3 + 40, 0.98, 0.78, 0.86),
+                )
             }
         }
         spark = max(audioHit * 0.7, min(1.0, motion / (base.size * 22)))
@@ -54,6 +72,6 @@ eachStroke(trail = 0.18) {
         val line = smooth(ribbon)
         line.color = cssHsla(hue + base.size * 3, 0.96, 0.68, 0.88)
         line.overshoot = 10.0
-        listOf(line, sparks)
+        [line, sparks]
     }
 }

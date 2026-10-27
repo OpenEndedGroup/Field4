@@ -13,6 +13,27 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
+ * Mapper: a graph that summarises the shape of a point cloud, in any number of dimensions.
+ *
+ * [Mapper.compute] gives every point a *lens* value, cuts the range of the lens into overlapping
+ * bins, clusters the points within each bin, and joins clusters in neighbouring bins that share
+ * points. The [MapperGraph] that comes back has a [MapperNode] per cluster and a [MapperEdge]
+ * wherever two clusters share points, so a cloud with branches, loops or separate pieces produces
+ * a graph with branches, loops or separate pieces; [MapperGraph.components] and [MapperGraph.loops]
+ * count those directly.
+ *
+ * The lens decides what the graph can see. [Mapper.coordinate] slices the cloud along one axis,
+ * [Mapper.eccentricity] measures how far each point is from the rest and so picks out the ends of
+ * branches whatever direction they run in, and [Mapper.density] measures how crowded a point's
+ * neighbourhood is. Any array with one value per point will do.
+ *
+ * [MapperGraph.toFLines] draws the graph over the cloud's first two coordinates, each node sized by
+ * how many points it holds and coloured by its mean lens value; [MapperGraph.pointsFLine] draws the
+ * points themselves; and [MapperGraph.network] hands the graph on as a [GeometryNetwork]. The
+ * worked account is `public/docs/mapper.md`.
+ */
+
+/**
  * A node of a [MapperGraph]: one cluster of points within one bin of the lens. [members] are point
  * indices; [centroid] their mean position (all [MapperGraph.dimension] coordinates) and [lens] their
  * mean lens value.

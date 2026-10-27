@@ -13,6 +13,24 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
+ * A recipe language for triangle meshes: emit triangles through a transform stack with a current
+ * colour and a current material, and get back a scene of named, shaded parts.
+ *
+ * [GeometryBuilder] is the language and [GeometryScene] is what a recipe builds: [GeometryPart]s,
+ * each an unindexed [TriMesh] with its own [GeometryMaterial] and a normal per triangle, plus the
+ * [GeometryView] that says how the scene asks to be shown. The usual way to run a recipe is
+ * [afield.graphics.three.geometry], which draws it in a studio-lit `three` view in a box output,
+ * or [afield.graphics.three.animateGeometry], which runs it again every frame with the recipe's
+ * `t` moving. [geometryScene] builds the same scene with no viewer, for code that wants the mesh
+ * rather than the picture.
+ *
+ * From there, [GeometryScene.toTriMesh] joins the parts into one mesh for the rest of
+ * `afield.geometry.mesh`, [writeGlb] writes a still as glTF, and [writeGlbAnimation] records a
+ * recipe played over time, which needs every frame to emit the same parts with the same vertex
+ * counts.
+ */
+
+/**
  * A stateful, immediate-mode triangle language: describe a model as a recipe of triangles, emitted
  * through a transform stack with a current colour and a current material, and get back a
  * [GeometryScene] of named, coloured, materialled [TriMesh] parts.

@@ -10,6 +10,22 @@ import afield.lang.morpho.planeBounds
 import afield.geometry.spatial.showPlaneGrid
 
 /**
+ * Lets a documentation page hold MorphoHDL itself, rather than Kotlin that mentions it.
+ *
+ * A fence written as `data-lang=morpho` shows its body as MorphoHDL, and `public/docs_hooks.py`
+ * wraps that body in a call into this file before the docs runner evaluates it, the same way it
+ * already wraps a `nano` or a `forth` fence. What the reader sees under the fence is that program
+ * compiled, grown out in full with its layout relaxing between expansions, and drawn.
+ *
+ * The snippet is handled as a morpho box would handle it, down to using [MorphoExecution]'s own
+ * directive parsing, so a program on the page and the same text pasted into a box behave alike.
+ * That includes the refusal: without a `# main` line there is no design to build and no width to
+ * build it at, so the snippet fails rather than guessing. A snippet that defines no cells of its
+ * own is given morpho's standard library, which is what makes a one-line program publishable.
+ * `morpho_examples.md` is the page that uses this.
+ */
+
+/**
  * Render a MorphoHDL snippet the way a morpho box would, for a `data-lang=morpho` docs fence.
  *
  * The point is that the code shown on the page is **MorphoHDL**, not Kotlin that happens to mention

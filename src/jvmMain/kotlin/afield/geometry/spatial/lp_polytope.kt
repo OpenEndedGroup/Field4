@@ -22,15 +22,15 @@ import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/*
-The three-dimensional companion of lp_trajectories.kt: the same linear-programming methods, as
-curve generators, on a convex polytope `{ x : nᵢ·x ≤ bᵢ }` in space. The methods are the 2-D ones
-with 3×3 linear algebra in place of 2×2 (the ellipsoid method's constants change with the
-dimension: centre step 1/(n+1) = 1/4, expansion n²/(n²−1) = 9/8). The simplex walk follows the
-polytope's edges, which the constructor finds by enumerating vertices.
-
-Pure math, independent of Box; doubles throughout, Vec3 only for drawing.
-*/
+/**
+ * The three-dimensional companion of lp_trajectories.kt: the same linear-programming methods, as
+ * curve generators, on a convex polytope `{ x : nᵢ·x ≤ bᵢ }` in space. The methods are the 2-D ones
+ * with 3×3 linear algebra in place of 2×2 (the ellipsoid method's constants change with the
+ * dimension: centre step 1/(n+1) = 1/4, expansion n²/(n²−1) = 9/8). The simplex walk follows the
+ * polytope's edges, which the constructor finds by enumerating vertices.
+ *
+ * Pure math, independent of Box; doubles throughout, Vec3 only for drawing.
+ */
 
 /**
  * A bounded convex polytope with an interior, held as its half-spaces `nᵢ·x ≤ bᵢ` (unit outward

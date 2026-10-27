@@ -36,16 +36,22 @@ lines(start, more, w = 520.0, h = 260.0, fitToSize = true)
 <!-- field-box id="lp_cells" index="1" -->
 
 ```edn [field-box id="lp_cells" role="properties"]
-{"id" "lp_cells" "index" 1 "name" "6 - which cell? (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 - which cell? (launch)" "_tombstone" false "frame" #afield/rect [60.0 4760.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_cells_code_.kt" "lines" 20 "characters" 938 "sha256" "6a819fa5be67e70ab470237fd5971745420a9f7086c45b6f14c140ecd9556f8a"}]}
+{"id" "lp_cells" "index" 1 "name" "6 - which cell? (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 - which cell? (launch)" "_tombstone" false "frame" #afield/rect [60.0 4760.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_cells_code_.kt" "lines" 26 "characters" 945 "sha256" "b788df3f5cc4a1738e0b2e0edadfd1dd5740a4899d462b7f92a1a3c58c07fc04"}]}
 ```
 
 ```kotlin [field-property box="lp_cells" name="code" path="lp_cells_code_.kt"]
 import afield.ai.learning.pen.*
 
-// The pen writes 500 points once, remembering every cell's output at every point. Drag the
-// slider to colour the line by a cell: blue where it is low, orange where it is high. The
-// "liveliest" line lists the cells that changed most, the ones worth trying first.
-val start = fline { moveTo(0, 0); cubicTo(4, -14, 12, -14, 12, 0); cubicTo(12, 8, 20, 8, 24, 0) }
+/*
+The pen writes 500 points once, remembering every cell's output at every point. Drag the
+slider to colour the line by a cell: blue where it is low, orange where it is high. The
+"liveliest" line lists the cells that changed most, the ones worth trying first.
+*/
+val start = fline {
+    moveTo(0, 0)
+    cubicTo(4, -14, 12, -14, 12, 0)
+    cubicTo(12, 8, 20, 8, 24, 0)
+}
 val writer = PenLine(start, seed = 4, recordMemory = true)
 writer.grow(500)
 val lively = writer.liveliestCells(12)
@@ -67,15 +73,17 @@ frames {
 <!-- field-box id="lp_cell" index="2" -->
 
 ```edn [field-box id="lp_cell" role="properties"]
-{"id" "lp_cell" "index" 2 "name" "4 - one memory cell" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - one memory cell" "_tombstone" false "frame" #afield/rect [60.0 2560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_cell_code_.kt" "lines" 16 "characters" 707 "sha256" "58a4a56a63dddfb766f64f8df4d7802f2525d6e846a80455fea0cdc794a393fc"}]}
+{"id" "lp_cell" "index" 2 "name" "4 - one memory cell" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - one memory cell" "_tombstone" false "frame" #afield/rect [60.0 2560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_cell_code_.kt" "lines" 24 "characters" 727 "sha256" "0d5e231e6d286c81de73393296d2dfb44cdba26b37082cedaf80c4051a62f5b9"}]}
 ```
 
 ```kotlin [field-property box="lp_cell" name="code" path="lp_cell_code_.kt"]
 import afield.ai.learning.pen.*
 
-// The same pen, the same seed, written three times. The middle row holds one memory cell at
-// +4 the whole way, the bottom row at -4. Which cell does what is something to find out:
-// try other cells (0 until 500) and values.
+/*
+The same pen, the same seed, written three times. The middle row holds one memory cell at
++4 the whole way, the bottom row at -4. Which cell does what is something to find out:
+try other cells (0 until 500) and values.
+*/
 val cell = 136
 fun row(value: Double?, y: Double): FLine {
     val writer = PenLine(start = vec(0.0, y, 0.0), seed = 11)
@@ -85,8 +93,14 @@ fun row(value: Double?, y: Double): FLine {
     }
     return writer.line
 }
-lines(row(null, 0.0), row(4.0, 140.0).apply { color = vec(0.5, 1.0, 0.6, 1.0) },
-    row(-4.0, 280.0).apply { color = vec(1.0, 0.55, 0.6, 1.0) }, w = 520.0, h = 340.0, fitToSize = true)
+lines(
+    row(null, 0.0),
+    row(4.0, 140.0).apply { color = vec(0.5, 1.0, 0.6, 1.0) },
+    row(-4.0, 280.0).apply { color = vec(1.0, 0.55, 0.6, 1.0) },
+    w = 520.0,
+    h = 340.0,
+    fitToSize = true,
+)
 ```
 
 ## 4. 3 - draw, and it writes on (launch)
@@ -94,7 +108,7 @@ lines(row(null, 0.0), row(4.0, 140.0).apply { color = vec(0.5, 1.0, 0.6, 1.0) },
 <!-- field-box id="lp_draw" index="3" -->
 
 ```edn [field-box id="lp_draw" role="properties"]
-{"id" "lp_draw" "index" 3 "name" "3 - draw, and it writes on (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - draw, and it writes on (launch)" "_tombstone" false "frame" #afield/rect [60.0 1060.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_draw_code_.kt" "lines" 33 "characters" 1611 "sha256" "58748cbb1008809ee01999367d3a00f2c0d49a51b849a919d34951bab880b0af"}]}
+{"id" "lp_draw" "index" 3 "name" "3 - draw, and it writes on (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - draw, and it writes on (launch)" "_tombstone" false "frame" #afield/rect [60.0 1060.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_draw_code_.kt" "lines" 49 "characters" 1689 "sha256" "d3f488463e98d238c67dfd07f36c0b098eadff78c743f142d26300054c1cb20e"}]}
 ```
 
 ```kotlin [field-property box="lp_draw" name="code" path="lp_draw_code_.kt"]
@@ -109,8 +123,21 @@ controlGroup("pen controls") {
     slider("noise", min = 0.0, max = 1.5, initialValue = noise) { noise = it }
 }
 
-val border = fline { moveTo(0, 0); lineTo(500, 0); lineTo(500, 240); lineTo(0, 240); lineTo(0, 0); color = vec(1, 1, 1, 0.2) }
-val starter = fline { moveTo(30, 120); cubicTo(36, 96, 52, 96, 50, 116); cubicTo(48, 128, 60, 130, 68, 118); color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 }
+val border = fline {
+    moveTo(0, 0)
+    lineTo(500, 0)
+    lineTo(500, 240)
+    lineTo(0, 240)
+    lineTo(0, 0)
+    color = vec(1, 1, 1, 0.2)
+}
+val starter = fline {
+    moveTo(30, 120)
+    cubicTo(36, 96, 52, 96, 50, 116)
+    cubicTo(48, 128, 60, 130, 68, 118)
+    color = vec(1.0, 0.85, 0.3, 1.0)
+    thickness = 2.0
+}
 val canvas = lines(border, starter, channel = "draw here", w = 520.0, h = 260.0, editable = true, drawing = true)!!
 var primer = starter
 var writer: PenLine? = null
@@ -120,7 +147,10 @@ frames {
         val drawn = canvas.currentLines()
         if (drawn.size > seen) {
             seen = drawn.size
-            primer = drawn.last().copy().apply { color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 }
+            primer = drawn.last().copy().apply {
+                color = vec(1.0, 0.85, 0.3, 1.0)
+                thickness = 2.0
+            }
             writer = PenLine(primer)
         }
         val w = writer ?: continue
@@ -138,15 +168,17 @@ frames {
 <!-- field-box id="lp_futures" index="4" -->
 
 ```edn [field-box id="lp_futures" role="properties"]
-{"id" "lp_futures" "index" 4 "name" "2 - futures" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - futures" "_tombstone" false "frame" #afield/rect [60.0 560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_futures_code_.kt" "lines" 20 "characters" 732 "sha256" "95b461b333911718143e93769b693875112b057ee96d3285d4eb5508bfe72044"}]}
+{"id" "lp_futures" "index" 4 "name" "2 - futures" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - futures" "_tombstone" false "frame" #afield/rect [60.0 560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_futures_code_.kt" "lines" 22 "characters" 729 "sha256" "1056f4ee3f9a3a4cd6cf067a8629f8d55d6ca2002a54257dd1d3000090bad0ea"}]}
 ```
 
 ```kotlin [field-property box="lp_futures" name="code" path="lp_futures_code_.kt"]
 import afield.ai.learning.pen.*
 
-// Twelve things the pen might do next, from the same line, each drawn beside its own copy
-// of the line. They share the pen's reading of the yellow stroke and differ only in the
-// random choices after it.
+/*
+Twelve things the pen might do next, from the same line, each drawn beside its own copy
+of the line. They share the pen's reading of the yellow stroke and differ only in the
+random choices after it.
+*/
 val start = fline {
     moveTo(0, 0)
     cubicTo(4, -14, 12, -14, 12, 0)
@@ -169,16 +201,24 @@ lines(grid, w = 520.0, h = 260.0, fitToSize = true)
 <!-- field-box id="lp_expects" index="5" -->
 
 ```edn [field-box id="lp_expects" role="properties"]
-{"id" "lp_expects" "index" 5 "name" "5 - what it expects (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - what it expects (launch)" "_tombstone" false "frame" #afield/rect [60.0 3060.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_expects_code_.kt" "lines" 18 "characters" 959 "sha256" "57d86faa3657a06e41ba5900ceb86f3aa6be938cdd221efddefef6538d9a60ac"}]}
+{"id" "lp_expects" "index" 5 "name" "5 - what it expects (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - what it expects (launch)" "_tombstone" false "frame" #afield/rect [60.0 3060.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_expects_code_.kt" "lines" 26 "characters" 972 "sha256" "c8ef3f62f382219ec92eed12aeb23a8a12b000eb4ea559453c91d1e06d42febe"}]}
 ```
 
 ```kotlin [field-property box="lp_expects" name="code" path="lp_expects_code_.kt"]
 import afield.ai.learning.pen.*
 
-// Launch, and the pen writes two points a frame. "page" draws its line thick where it is sure
-// to stay on the paper and thin where it expects to lift. "tip" is a magnifier on the last
-// dozen points, with an ellipse for each of its guesses about where the next point will land.
-val start = fline { moveTo(0, 0); cubicTo(4, -14, 12, -14, 12, 0); cubicTo(12, 8, 20, 8, 24, 0); color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 }
+/*
+Launch, and the pen writes two points a frame. "page" draws its line thick where it is sure
+to stay on the paper and thin where it expects to lift. "tip" is a magnifier on the last
+dozen points, with an ellipse for each of its guesses about where the next point will land.
+*/
+val start = fline {
+    moveTo(0, 0)
+    cubicTo(4, -14, 12, -14, 12, 0)
+    cubicTo(12, 8, 20, 8, 24, 0)
+    color = vec(1.0, 0.85, 0.3, 1.0)
+    thickness = 2.0
+}
 var noise = 1.0
 slider("noise", min = 0.1, max = 1.5, initialValue = noise) { noise = it }
 val writer = PenLine(start, seed = 9)

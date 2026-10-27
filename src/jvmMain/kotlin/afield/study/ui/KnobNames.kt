@@ -52,22 +52,24 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 /**
- * Short names for the numbers of a program — `wave drift speed`, `star brightness` — for the sliders
- * of a study card, written by Field's fast model from what the compiler already knows.
+ * Short names for the numbers of a program, like `wave drift speed` or `star brightness`, for the
+ * sliders of a study card, written by Field's fast model from what the compiler already knows.
  *
- * A card can always say what reads a number: StackSL's compiler records the operand it took it as
- * (`mix amount`, `multiply b`), RectSL's knobs the word that reads them (`->xy x`). That is exact, but
- * a program whose numbers mostly scale and offset reads as a column of `multiplies` and `adds`. So the
- * card shows that at first, and asks the fast model once, for every number of the program at a time,
+ * A card can always say what reads a number: StackSL's compiler records what took it (`mix amount`,
+ * `x of palette a`), RectSL's tokens the word that reads it (`->wall width`). That is exact, but a
+ * program whose numbers mostly scale and offset reads as a column of `multiplies` and `adds`. So the
+ * card shows that at first, and asks the fast model once, for all of the program's numbers at a time,
  * to say in a few words what turning each one changes, given the program with its comments and each
  * number's line, spelling and operand. The compiler's label stays on the slider's tooltip.
  *
- * Names are kept by the program's shape — its text with every number blanked out, and the operands —
- * so turning a number, or keeping one, never asks again; they are stored in the study's directory,
- * beside its revisions, so a document carries them. Nothing is asked for a box in no open document (a
- * test's box), nor for a document an agent opened unless `AFIELD_AI_KNOB_NAMES=1`; `0` turns asking
- * off, and names already stored are still shown.
+ * Names are kept by the program's shape: its text with every number blanked out, the language, and
+ * what reads each number. Turning a number, or keeping one, never asks again; the names are stored in
+ * the study's directory, beside its revisions, so a document carries them. Nothing is asked for a box
+ * in no open document (a test's box), nor for a document an agent opened unless
+ * `AFIELD_AI_KNOB_NAMES=1`; `0` turns asking off, and names already stored are still shown.
  */
+
+/** Knob names for a study card: the ones already stored, and the request that fills the rest in. */
 internal object KnobNames {
 
     private const val FILE = "knob-names.json"

@@ -17,7 +17,11 @@ operations:
       frame: { x: 40.0, y: 200.0, w: 200.0, h: 60.0 }
       properties:
         code: |
-          val seen = try { "petals = $petals" } catch (e: Exception) { e.message }
+          val seen = try {
+              "petals = $petals"
+          } catch (e: Exception) {
+                  e.message
+              }
           markdown("$seen")
   - connect: { parent: bgm_garden, child: bgm_flower }
   - execute: { box: bgm_flower, property: code }

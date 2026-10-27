@@ -22,15 +22,30 @@ its reach, and each ray runs to the nearest ink in one direction, brighter the c
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/a_pen_that_sees/sees.png" embed=true alt="Four stages of a pen hatching beside a yellow wavering line, one, two, three and then five passes; at the pen tip in each a faint orange circle, and short bright orange rays reaching sideways to the nearest line"}
 :::static
 import afield.ai.learning.pen.*
-import kotlin.math.*
 
-val yours = FLine().also { f -> for (i in 0..120) { val y = i * 2.0; val x = 14 * sin(y / 40) + 5 * sin(y / 13); if (i == 0) f.moveTo(x, y) else f.lineTo(x, y) } }
-val writer = PenLine(yours, model = PenModel.bundled("michaux"), seed = 1)
-val moments = [60, 180, 320, 520].map { until ->
-    writer.grow(until - writer.history.size)
-    listOf(yours.copy().apply { color = vec(1.0, 0.85, 0.3, 1.0); thickness = 1.5 },
-        writer.drawn.copy().apply { color = vec(0.9, 0.92, 1.0, 1.0); thickness = 1.0 }) + writer.seeing()
+val yours = fline {
+    breakNext()
+    for (i in 0..120) {
+        val y = i * 2.0
+        val x = 14 * sin(y / 40) + 5 * sin(y / 13)
+        lineTo(x, y)
+    }
 }
+val writer = PenLine(yours, model = PenModel.bundled("michaux"), seed = 1)
+val moments =
+    [60, 180, 320, 520].map { until ->
+        writer.grow(until - writer.history.size)
+        [
+            yours.copy().apply {
+                color = vec(1.0, 0.85, 0.3, 1.0)
+                thickness = 1.5
+            },
+            writer.drawn.copy().apply {
+                color = vec(0.9, 0.92, 1.0, 1.0)
+                thickness = 1.0
+            },
+        ] + writer.seeing()
+    }
 lines(sideBySide(moments, gap = 40.0), w = 520.0, h = 300.0, fitToSize = true)
 ```
 
@@ -47,16 +62,40 @@ white, the blind one red.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/a_pen_that_sees/hatch.png" embed=true alt="Five copies of a yellow wavering line. Beside the first three, white passes of the seeing pen lie close alongside it, following its waves in tight columns. Beside the last two, red lines of the blind pen wander and cross, running far below the line and tangling"}
 :::static
 import afield.ai.learning.pen.*
-import kotlin.math.*
 
-val yours = FLine().also { f -> for (i in 0..120) { val y = i * 2.0; val x = 14 * sin(y / 40) + 5 * sin(y / 13); if (i == 0) f.moveTo(x, y) else f.lineTo(x, y) } }
-fun beside(model: String, seed: Long) = listOf(
-    yours.copy().apply { color = vec(1.0, 0.85, 0.3, 1.0); thickness = 1.5 },
+val yours = fline {
+    breakNext()
+    for (i in 0..120) {
+        val y = i * 2.0
+        val x = 14 * sin(y / 40) + 5 * sin(y / 13)
+        lineTo(x, y)
+    }
+}
+fun beside(model: String, seed: Long) = [
+    yours.copy().apply {
+        color = vec(1.0, 0.85, 0.3, 1.0)
+        thickness = 1.5
+    },
     yours.continueWith(PenModel.bundled(model), steps = 1500, seed = seed).apply {
-        color = if (model.endsWith("blind")) vec(1.0, 0.6, 0.6, 1.0) else vec(0.9, 0.92, 1.0, 1.0); thickness = 1.0
-    })
-lines(sideBySide([beside("michaux", 1), beside("michaux", 2), beside("michaux", 3), beside("michaux-blind", 1), beside("michaux-blind", 2)], gap = 30.0),
-    w = 520.0, h = 440.0, fitToSize = true)
+        color = if (model.endsWith("blind")) vec(1.0, 0.6, 0.6, 1.0) else vec(0.9, 0.92, 1.0, 1.0)
+        thickness = 1.0
+    },
+]
+lines(
+    sideBySide(
+        [
+            beside("michaux", 1),
+            beside("michaux", 2),
+            beside("michaux", 3),
+            beside("michaux-blind", 1),
+            beside("michaux-blind", 2),
+        ],
+        gap = 30.0,
+    ),
+    w = 520.0,
+    h = 440.0,
+    fitToSize = true,
+)
 ```
 
 ## Cracks that stop at a line
@@ -68,16 +107,40 @@ stop on lines; the blind pen leaves the outline, because it cannot tell where it
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/a_pen_that_sees/cracks.png" embed=true alt="Five copies of a yellow wobbling outline. Inside the first three, white cracks of the seeing pen cross the shape and gather towards its middle, one of them wandering out in a long loop. Around the last two, red strokes of the blind pen cross the outline and scatter away from it"}
 :::static
 import afield.ai.learning.pen.*
-import kotlin.math.*
 
-val outline = FLine().also { f -> for (i in 0..90) { val a = i * 2 * PI / 90; val r = 60 * (1 + 0.15 * sin(3 * a) + 0.08 * cos(5 * a)); if (i == 0) f.moveTo(cos(a) * r, sin(a) * r) else f.lineTo(cos(a) * r, sin(a) * r) } }
-fun inside(model: String, seed: Long) = listOf(
-    outline.copy().apply { color = vec(1.0, 0.85, 0.3, 1.0); thickness = 1.5 },
+val outline = fline {
+    breakNext()
+    for (i in 0..90) {
+        val a = i * 2 * PI / 90
+        val r = 60 * (1 + 0.15 * sin(3 * a) + 0.08 * cos(5 * a))
+        lineTo(cos(a) * r, sin(a) * r)
+    }
+}
+fun inside(model: String, seed: Long) = [
+    outline.copy().apply {
+        color = vec(1.0, 0.85, 0.3, 1.0)
+        thickness = 1.5
+    },
     outline.continueWith(PenModel.bundled(model), steps = 700, seed = seed, liftAtEnd = true).apply {
-        color = if (model.endsWith("blind")) vec(1.0, 0.6, 0.6, 1.0) else vec(0.9, 0.92, 1.0, 1.0); thickness = 1.0
-    })
-lines(sideBySide([inside("cracks", 1), inside("cracks", 2), inside("cracks", 3), inside("cracks-blind", 1), inside("cracks-blind", 2)], gap = 30.0),
-    w = 520.0, h = 300.0, fitToSize = true)
+        color = if (model.endsWith("blind")) vec(1.0, 0.6, 0.6, 1.0) else vec(0.9, 0.92, 1.0, 1.0)
+        thickness = 1.0
+    },
+]
+lines(
+    sideBySide(
+        [
+            inside("cracks", 1),
+            inside("cracks", 2),
+            inside("cracks", 3),
+            inside("cracks-blind", 1),
+            inside("cracks-blind", 2),
+        ],
+        gap = 30.0,
+    ),
+    w = 520.0,
+    h = 300.0,
+    fitToSize = true,
+)
 ```
 
 It is not perfect. The cracks crowd towards the middle of the shape, and now and then the pen
@@ -94,19 +157,38 @@ within 8 pixels, `following(line)`; *joins* is the share of its strokes that end
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/a_pen_that_sees/measures.png" embed=true alt="A table with columns seeing and blind. Michaux beside a line, following: 0.86 seeing, 0.59 blind. Cracks in an outline, joins: 0.85 seeing, 0.19 blind"}
 :::static
 import afield.ai.learning.pen.*
-import kotlin.math.*
 
-val yours = FLine().also { f -> for (i in 0..120) { val y = i * 2.0; val x = 14 * sin(y / 40) + 5 * sin(y / 13); if (i == 0) f.moveTo(x, y) else f.lineTo(x, y) } }
-val outline = FLine().also { f -> for (i in 0..90) { val a = i * 2 * PI / 90; val r = 60 * (1 + 0.15 * sin(3 * a) + 0.08 * cos(5 * a)); if (i == 0) f.moveTo(cos(a) * r, sin(a) * r) else f.lineTo(cos(a) * r, sin(a) * r) } }
-fun mean(f: (Long) -> Double) = "%.2f".format((0 until 20).map { f(it.toLong()) }.average())
+val yours = fline {
+    breakNext()
+    for (i in 0..120) {
+        val y = i * 2.0
+        val x = 14 * sin(y / 40) + 5 * sin(y / 13)
+        lineTo(x, y)
+    }
+}
+val outline = fline {
+    breakNext()
+    for (i in 0..90) {
+        val a = i * 2 * PI / 90
+        val r = 60 * (1 + 0.15 * sin(3 * a) + 0.08 * cos(5 * a))
+        lineTo(cos(a) * r, sin(a) * r)
+    }
+}
+fun mean(f: (Long) -> Double) = ((0 until 20).map { f(it.toLong()) }.average()).f2
 val hatching = { m: String -> mean { s -> following(yours.continueWith(PenModel.bundled(m), steps = 1500, seed = s)) } }
-val cracking = { m: String -> mean { s -> joins(outline.continueWith(PenModel.bundled(m), steps = 700, seed = s, liftAtEnd = true)) } }
-markdown("measures", """
+val cracking = { m: String ->
+    mean { s -> joins(outline.continueWith(PenModel.bundled(m), steps = 700, seed = s, liftAtEnd = true)) }
+}
+markdown(
+    "measures",
+    """
 | | seeing | blind |
 |---|---|---|
 | Michaux beside a line: following | ${hatching("michaux")} | ${hatching("michaux-blind")} |
 | cracks in an outline: joins | ${cracking("cracks")} | ${cracking("cracks-blind")} |
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 ```
 
 The seeing pens also predicted their validation drawings better than the blind ones, but by much
@@ -121,12 +203,26 @@ following the last, a little changed, a field that accumulates.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/a_pen_that_sees/field.png" embed=true alt="A field of fine pale lines on black: several dense columns of trembling vertical strokes laid side by side, each column a run of passes echoing one another, with single long wavering lines at the edges"}
 :::static
 import afield.ai.learning.pen.*
-import kotlin.math.*
 
-val first = FLine().also { f -> for (i in 0..60) { val y = i * 2.5; val x = 6 * sin(y / 25); if (i == 0) f.moveTo(x, y) else f.lineTo(x, y) } }
+val first = fline {
+    breakNext()
+    for (i in 0..60) {
+        val y = i * 2.5
+        val x = 6 * sin(y / 25)
+        lineTo(x, y)
+    }
+}
 val writer = PenLine(first, model = PenModel.bundled("michaux"), seed = 7)
 writer.grow(5000)
-lines(writer.line.apply { color = vec(0.9, 0.92, 1.0, 1.0); thickness = 0.8 }, w = 520.0, h = 320.0, fitToSize = true)
+lines(
+    writer.line.apply {
+        color = vec(0.9, 0.92, 1.0, 1.0)
+        thickness = 0.8
+    },
+    w = 520.0,
+    h = 320.0,
+    fitToSize = true,
+)
 ```
 
 ## Drawing with it
@@ -140,8 +236,20 @@ is surroundings, so the pen hatches beside your line and around the rest.
 :::static
 import afield.ai.learning.pen.*
 
-val border = fline { moveTo(0, 0); lineTo(500, 0); lineTo(500, 300); lineTo(0, 300); lineTo(0, 0); color = vec(1, 1, 1, 0.2) }
-val starter = fline { moveTo(120, 30); cubicTo(150, 100, 100, 170, 130, 270); color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 }
+val border = fline {
+    moveTo(0, 0)
+    lineTo(500, 0)
+    lineTo(500, 300)
+    lineTo(0, 300)
+    lineTo(0, 0)
+    color = vec(1, 1, 1, 0.2)
+}
+val starter = fline {
+    moveTo(120, 30)
+    cubicTo(150, 100, 100, 170, 130, 270)
+    color = vec(1.0, 0.85, 0.3, 1.0)
+    thickness = 2.0
+}
 val canvas = lines(border, starter, channel = "draw here", w = 520.0, h = 320.0, editable = true, drawing = true)!!
 val michaux = PenModel.bundled("michaux")
 var writer: PenLine? = null
@@ -152,14 +260,27 @@ frames {
         val drawn = canvas.currentLines()
         if (drawn.size > seen) {
             seen = drawn.size
-            val yours = drawn.last().copy().apply { color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 }
+            val yours = drawn.last().copy().apply {
+                color = vec(1.0, 0.85, 0.3, 1.0)
+                thickness = 2.0
+            }
             shown = drawn.drop(1).dropLast(1).map { it.copy().apply { color = vec(1.0, 0.85, 0.3, 0.6) } } + yours
             writer = PenLine(yours, model = michaux, seed = seen.toLong(), surroundings = drawn.drop(1).dropLast(1))
         }
         val w = writer ?: continue
         // six points a frame; it runs past the end of your line before it turns back
         if (w.history.size < 2400) w.grow(6)
-        lines([border] + shown + w.drawn.apply { color = vec(0.9, 0.92, 1.0, 1.0); thickness = 1.0 }, channel = "pen", w = 520.0, h = 320.0)
+        lines(
+            [border] +
+                shown +
+                w.drawn.apply {
+                    color = vec(0.9, 0.92, 1.0, 1.0)
+                    thickness = 1.0
+                },
+            channel = "pen",
+            w = 520.0,
+            h = 320.0,
+        )
     }
 }
 ```
@@ -185,9 +306,15 @@ passes and they keep clear of each other:
 :::static
 import afield.ai.learning.pen.*
 
-val word = HersheyFont.load("futural").text("FIELD", size = 90.0).apply { color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 }
+val word = HersheyFont.load("futural").text("FIELD", size = 90.0).apply {
+    color = vec(1.0, 0.85, 0.3, 1.0)
+    thickness = 2.0
+}
 val hatching = Hatcher([word], PenModel.bundled("echoes"), passes = 10, gap = 3.5, seed = 1).finish()
-hatching.forEach { it.color = vec(0.9, 0.92, 1.0, 1.0); it.thickness = 0.7 }
+hatching.forEach {
+    it.color = vec(0.9, 0.92, 1.0, 1.0)
+    it.thickness = 0.7
+}
 lines([word] + hatching, w = 520.0, h = 220.0, fitToSize = true)
 ```
 
@@ -202,11 +329,29 @@ The starting point's ninth box hatches whatever you draw, as you watch:
 :::static
 import afield.ai.learning.pen.*
 
-val border = fline { moveTo(0, 0); lineTo(500, 0); lineTo(500, 300); lineTo(0, 300); lineTo(0, 0); color = vec(1, 1, 1, 0.2) }
-val starter = listOf(
-    fline { moveTo(90, 60); cubicTo(200, 20, 260, 220, 400, 160) },
-    fline { moveTo(150, 250); cubicTo(180, 150, 300, 300, 330, 230) },
-).onEach { it.color = vec(1.0, 0.85, 0.3, 1.0); it.thickness = 2.0 }
+val border = fline {
+    moveTo(0, 0)
+    lineTo(500, 0)
+    lineTo(500, 300)
+    lineTo(0, 300)
+    lineTo(0, 0)
+    color = vec(1, 1, 1, 0.2)
+}
+val starter =
+    [
+            fline {
+                moveTo(90, 60)
+                cubicTo(200, 20, 260, 220, 400, 160)
+            },
+            fline {
+                moveTo(150, 250)
+                cubicTo(180, 150, 300, 300, 330, 230)
+            },
+        ]
+        .onEach {
+            it.color = vec(1.0, 0.85, 0.3, 1.0)
+            it.thickness = 2.0
+        }
 val canvas = lines([border] + starter, channel = "draw here", w = 520.0, h = 320.0, editable = true, drawing = true)!!
 val hands = ["echoes", "michaux"]
 var hand = 0
@@ -221,13 +366,29 @@ frames {
         if (drawn.size != seen || choice != hand) {
             seen = drawn.size
             hand = choice
-            drawing = drawn.map { it.copy().apply { color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 } }
+            drawing = drawn.map {
+                it.copy().apply {
+                    color = vec(1.0, 0.85, 0.3, 1.0)
+                    thickness = 2.0
+                }
+            }
             hatcher = Hatcher(drawing, PenModel.bundled(hands[hand]), passes = 8, gap = 4.0, seed = seen.toLong())
         }
         val h = hatcher ?: continue
         if (!h.done) h.grow(24)
-        lines([border] + drawing + h.hatching.map { it.apply { color = vec(0.9, 0.92, 1.0, 1.0); thickness = 0.8 } },
-            channel = "pen", w = 520.0, h = 320.0)
+        lines(
+            [border] +
+                drawing +
+                h.hatching.map {
+                    it.apply {
+                        color = vec(0.9, 0.92, 1.0, 1.0)
+                        thickness = 0.8
+                    }
+                },
+            channel = "pen",
+            w = 520.0,
+            h = 320.0,
+        )
     }
 }
 ```

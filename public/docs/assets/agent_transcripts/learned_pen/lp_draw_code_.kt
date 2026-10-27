@@ -9,8 +9,21 @@ controlGroup("pen controls") {
     slider("noise", min = 0.0, max = 1.5, initialValue = noise) { noise = it }
 }
 
-val border = fline { moveTo(0, 0); lineTo(500, 0); lineTo(500, 240); lineTo(0, 240); lineTo(0, 0); color = vec(1, 1, 1, 0.2) }
-val starter = fline { moveTo(30, 120); cubicTo(36, 96, 52, 96, 50, 116); cubicTo(48, 128, 60, 130, 68, 118); color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 }
+val border = fline {
+    moveTo(0, 0)
+    lineTo(500, 0)
+    lineTo(500, 240)
+    lineTo(0, 240)
+    lineTo(0, 0)
+    color = vec(1, 1, 1, 0.2)
+}
+val starter = fline {
+    moveTo(30, 120)
+    cubicTo(36, 96, 52, 96, 50, 116)
+    cubicTo(48, 128, 60, 130, 68, 118)
+    color = vec(1.0, 0.85, 0.3, 1.0)
+    thickness = 2.0
+}
 val canvas = lines(border, starter, channel = "draw here", w = 520.0, h = 260.0, editable = true, drawing = true)!!
 var primer = starter
 var writer: PenLine? = null
@@ -20,7 +33,10 @@ frames {
         val drawn = canvas.currentLines()
         if (drawn.size > seen) {
             seen = drawn.size
-            primer = drawn.last().copy().apply { color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 }
+            primer = drawn.last().copy().apply {
+                color = vec(1.0, 0.85, 0.3, 1.0)
+                thickness = 2.0
+            }
             writer = PenLine(primer)
         }
         val w = writer ?: continue

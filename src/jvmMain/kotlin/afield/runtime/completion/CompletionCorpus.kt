@@ -129,7 +129,7 @@ object CompletionCorpus {
     /**
      * Parse a `document.md` — the machine-readable mirror Field writes beside `metadata.edn`. Only what
      * this corpus needs is read: each box's parent list (for `gatherPreambleUpwards`) and its property
-     * texts. Deliberately not an EDN parser; the mirror exists so tools don't need one.
+     * texts. Not an EDN parser: the mirror exists so tools don't need one.
      */
     fun parseDocument(file: File): DocRec? {
         val lines = runCatching { file.readLines() }.getOrNull() ?: return null
@@ -361,8 +361,8 @@ object CompletionCorpus {
 
     /**
      * Read the checked-in fixtures back, joined to the code they were harvested from. The join is
-     * verified: a box that has moved, vanished or been edited shows up in [Drift] rather than quietly
-     * measuring a preamble that belongs to different code.
+     * verified: a box that has moved, vanished or been edited shows up in [Drift] rather than being
+     * measured against a preamble that belongs to different code.
      */
     fun readFixtures(dir: File = File(FIXTURE_DIR), dirs: List<String> = defaultDirs): Pair<List<Case>, List<Drift>> {
         val manifest = File(dir, "manifest.json")

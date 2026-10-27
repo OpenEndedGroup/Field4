@@ -19,7 +19,11 @@ operations:
         code: |
           go {
               repeat(40) { n ->
-                  val seen = try { "petals = $petals" } catch (e: Exception) { e.message }
+                  val seen = try {
+                      "petals = $petals"
+                  } catch (e: Exception) {
+                          e.message
+                      }
                   markdown("read $n: $seen")
                   delay(300)
               }

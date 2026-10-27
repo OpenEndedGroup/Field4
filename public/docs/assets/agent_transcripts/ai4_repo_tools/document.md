@@ -17,7 +17,7 @@ From `code`
 A throwaway checkout: two docs pages, a generated file, and a secret beside the root.
 
 ```edn [field-box id="ai4-repo-tools-scope" role="properties"]
-{"id" "ai4-repo-tools-scope" "index" 0 "name" "repo tools on a toy checkout" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "repo tools on a toy checkout" "_tombstone" false "frame" #afield/rect [60.0 60.0 520.0 160.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4-repo-tools-scope_code_.kt" "lines" 29 "characters" 1929 "sha256" "43bc60558ea261c3fed2bf27a8c849d0fe184ae7c2eacd30bf95950f9a54888e"}]}
+{"id" "ai4-repo-tools-scope" "index" 0 "name" "repo tools on a toy checkout" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "repo tools on a toy checkout" "_tombstone" false "frame" #afield/rect [60.0 60.0 520.0 160.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4-repo-tools-scope_code_.kt" "lines" 43 "characters" 2040 "sha256" "5d2d45cbaafde54eef2fd26db74eba3cfdd01b8a79d28782ef73fcc636cf9f23"}]}
 ```
 
 ```kotlin [field-property box="ai4-repo-tools-scope" name="code" path="ai4-repo-tools-scope_code_.kt"]
@@ -36,17 +36,31 @@ java.nio.file.Files.writeString(outer.resolve("secret.txt"), "not yours\n")
 java.nio.file.Files.createSymbolicLink(root.resolve("docs/escape.txt"), outer.resolve("secret.txt"))
 
 // What a job may touch: read docs and gen, write one page and gen.
-val scope = afield.ai.tools.RepoScope(root, listOf("docs/**", "gen/**"), listOf("docs/page.md", "gen/**"))
+val scope = afield.ai.tools.RepoScope(root, ["docs/**", "gen/**"], ["docs/page.md", "gen/**"])
 val tools = afield.ai.tools.RepoFileTools(scope)
 
 println(tools.search(afield.ai.tools.RepoSearchRequest("re(ci|ie)ve", regex = true)).matches)
-println(tools.patch(afield.ai.tools.RepoPatchFileRequest("docs/page.md", "recieve function returns teh", "receive function returns the")).message)
+println(
+    tools
+        .patch(
+            afield.ai.tools.RepoPatchFileRequest(
+                "docs/page.md",
+                "recieve function returns teh",
+                "receive function returns the",
+            ),
+        )
+        .message,
+)
 println(tools.read(afield.ai.tools.RepoReadFileRequest("docs/page.md", 3, 3)).text)
 
 // Refusals: each comes back as success=false with the reason the model would read.
-for (path in listOf("../secret.txt", "docs/escape.txt", ".git/config", "src/Main.kt"))
-    println("$path -> " + tools.read(afield.ai.tools.RepoReadFileRequest(path)).message)
-println("docs/other.md (read-only) -> " + tools.patch(afield.ai.tools.RepoPatchFileRequest("docs/other.md", "Nothing", "Everything")).message)
+for (path in ["../secret.txt", "docs/escape.txt", ".git/config", "src/Main.kt"]) println(
+    "$path -> " + tools.read(afield.ai.tools.RepoReadFileRequest(path)).message,
+)
+println(
+    "docs/other.md (read-only) -> " +
+        tools.patch(afield.ai.tools.RepoPatchFileRequest("docs/other.md", "Nothing", "Everything")).message,
+)
 println("gen/Table.kt -> " + tools.patch(afield.ai.tools.RepoPatchFileRequest("gen/Table.kt", "1", "2")).message)
 println("wrote: " + tools.written)
 outer.toFile().deleteRecursively()

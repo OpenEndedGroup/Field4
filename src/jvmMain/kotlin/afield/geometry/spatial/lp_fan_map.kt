@@ -14,21 +14,25 @@ import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.sin
 
-/*
-The central-path fan as a map from the (θ, log μ) plane into a polygon.
-
-For an objective direction c(θ) = (cos θ, sin θ) and barrier weight μ, the barrier maximiser
-x(θ, μ) solves  c(θ) = μ Σ wᵢ nᵢ / sᵢ(x). Write g(x) = Σ wᵢ nᵢ / sᵢ(x): the gradient of the
-(negated) barrier, a diffeomorphism from the polygon's interior onto the whole plane. Then
-g(x) = c(θ)/μ, so (θ, 1/μ) are polar coordinates of g(x) and the fan is the polar grid pulled
-back through g⁻¹: one-to-one onto the interior minus the weighted analytic centre (g = 0).
-
-Differentiating the optimality condition with M = μ Σ wᵢ nᵢnᵢᵀ / sᵢ² (the negated Hessian):
-  ∂x/∂θ     =  M⁻¹ c'(θ)
-  ∂x/∂log μ = −M⁻¹ c(θ)
-and det[∂x/∂θ, ∂x/∂log μ] = det(M⁻¹) · det[c', −c] = 1 / det M > 0. The map never folds; it only
-pinches, at both ends of the log μ axis.
-*/
+/**
+ * The central-path fan as a map from the (θ, log μ) plane into a polygon.
+ *
+ * For an objective direction c(θ) = (cos θ, sin θ) and barrier weight μ, the barrier maximiser
+ * x(θ, μ) solves  c(θ) = μ Σ wᵢ nᵢ / sᵢ(x). Write g(x) = Σ wᵢ nᵢ / sᵢ(x): the gradient of the
+ * (negated) barrier, a diffeomorphism from the polygon's interior onto the whole plane. Then
+ * g(x) = c(θ)/μ, so (θ, 1/μ) are polar coordinates of g(x) and the fan is the polar grid pulled
+ * back through g⁻¹: one-to-one onto the interior minus the weighted analytic centre (g = 0).
+ *
+ * Differentiating the optimality condition with M = μ Σ wᵢ nᵢnᵢᵀ / sᵢ² (the negated Hessian):
+ *
+ * ```text
+ * ∂x/∂θ     =  M⁻¹ c'(θ)
+ * ∂x/∂log μ = −M⁻¹ c(θ)
+ * ```
+ *
+ * and det[∂x/∂θ, ∂x/∂log μ] = det(M⁻¹) · det[c', −c] = 1 / det M > 0. The map never folds; it only
+ * pinches, at both ends of the log μ axis.
+ */
 
 /**
  * One point of an [LpFanMap]: where `(theta, logMu)` lands in the polygon, and the map's Jacobian

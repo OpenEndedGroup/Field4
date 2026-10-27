@@ -108,7 +108,8 @@ val grid = mutableListOf<FLine>()
         val at = vec(column * 200.0, row * 70.0, 0.0)
         val pen = PenControls(temperature = temperature, noise = noise)
         grid += start + at
-        grid += (start.continueWith(steps = 110, seed = 5, controls = pen) + at).apply { color = vec(0.75, 0.85, 1.0, 1.0) }
+        grid +=
+            (start.continueWith(steps = 110, seed = 5, controls = pen) + at).apply { color = vec(0.75, 0.85, 1.0, 1.0) }
     }
 }
 lines(grid, w = 520.0, h = 260.0, fitToSize = true)
@@ -131,14 +132,28 @@ scale. `sideBySide` lays groups of lines out left to right without overlapping.
 :::static
 import afield.ai.learning.pen.*
 
-val start = fline { moveTo(0, 0); cubicTo(4, -14, 12, -14, 12, 0); cubicTo(12, 8, 20, 8, 24, 0); color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 }
+val start = fline {
+    moveTo(0, 0)
+    cubicTo(4, -14, 12, -14, 12, 0)
+    cubicTo(12, 8, 20, 8, 24, 0)
+    color = vec(1.0, 0.85, 0.3, 1.0)
+    thickness = 2.0
+}
 
 val writer = PenLine(start, seed = 4, controls = PenControls(noise = 1.0))
-val moments = (0 until 200).map { writer.grow(); writer.closeUp() }
+val moments = (0 until 200).map {
+    writer.grow()
+    writer.closeUp()
+}
 
 val down = moments.filter { !it.penUp }.sortedByDescending { it.distribution.uncertainty }.take(4)
 val up = moments.filter { it.penUp }.sortedByDescending { it.distribution.uncertainty }.take(4)
-lines(sideBySide(down.map { it.lines() }) + sideBySide(up.map { it.lines() }, y = 60.0), w = 520.0, h = 260.0, fitToSize = true)
+lines(
+    sideBySide(down.map { it.lines() }) + sideBySide(up.map { it.lines() }, y = 60.0),
+    w = 520.0,
+    h = 260.0,
+    fitToSize = true,
+)
 ```
 
 Mid-stroke, even at its least certain, the pen knows within a pixel or two where it is going.
@@ -155,7 +170,11 @@ PNG bytes, which `display` shows as a picture.
 :::static
 import afield.ai.learning.pen.*
 
-val start = fline { moveTo(0, 0); cubicTo(4, -14, 12, -14, 12, 0); cubicTo(12, 8, 20, 8, 24, 0) }
+val start = fline {
+    moveTo(0, 0)
+    cubicTo(4, -14, 12, -14, 12, 0)
+    cubicTo(12, 8, 20, 8, 24, 0)
+}
 display("density", PenLine(start, seed = 4).futuresDensity(count = 600, steps = 40))
 ```
 
@@ -180,8 +199,21 @@ controlGroup("pen controls") {
     slider("noise", min = 0.0, max = 1.5, initialValue = noise) { noise = it }
 }
 
-val border = fline { moveTo(0, 0); lineTo(500, 0); lineTo(500, 240); lineTo(0, 240); lineTo(0, 0); color = vec(1, 1, 1, 0.2) }
-val starter = fline { moveTo(30, 120); cubicTo(36, 96, 52, 96, 50, 116); cubicTo(48, 128, 60, 130, 68, 118); color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 }
+val border = fline {
+    moveTo(0, 0)
+    lineTo(500, 0)
+    lineTo(500, 240)
+    lineTo(0, 240)
+    lineTo(0, 0)
+    color = vec(1, 1, 1, 0.2)
+}
+val starter = fline {
+    moveTo(30, 120)
+    cubicTo(36, 96, 52, 96, 50, 116)
+    cubicTo(48, 128, 60, 130, 68, 118)
+    color = vec(1.0, 0.85, 0.3, 1.0)
+    thickness = 2.0
+}
 val canvas = lines(border, starter, channel = "draw here", w = 520.0, h = 260.0, editable = true, drawing = true)!!
 var primer = starter
 var writer: PenLine? = null
@@ -191,7 +223,10 @@ frames {
         val drawn = canvas.currentLines()
         if (drawn.size > seen) {
             seen = drawn.size
-            primer = drawn.last().copy().apply { color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 }
+            primer = drawn.last().copy().apply {
+                color = vec(1.0, 0.85, 0.3, 1.0)
+                thickness = 2.0
+            }
             writer = PenLine(primer)
         }
         val w = writer ?: continue
@@ -227,8 +262,14 @@ fun row(value: Double?, y: Double): FLine {
     }
     return writer.line
 }
-lines(row(null, 0.0), row(4.0, 140.0).apply { color = vec(0.5, 1.0, 0.6, 1.0) },
-    row(-4.0, 280.0).apply { color = vec(1.0, 0.55, 0.6, 1.0) }, w = 520.0, h = 340.0, fitToSize = true)
+lines(
+    row(null, 0.0),
+    row(4.0, 140.0).apply { color = vec(0.5, 1.0, 0.6, 1.0) },
+    row(-4.0, 280.0).apply { color = vec(1.0, 0.55, 0.6, 1.0) },
+    w = 520.0,
+    h = 340.0,
+    fitToSize = true,
+)
 ```
 
 Which cell does what is not written down anywhere; the network found its own uses for them. To
@@ -241,13 +282,18 @@ while it wrote, which is where to start looking.
 :::static
 import afield.ai.learning.pen.*
 
-val start = fline { moveTo(0, 0); cubicTo(4, -14, 12, -14, 12, 0); cubicTo(12, 8, 20, 8, 24, 0) }
+val start = fline {
+    moveTo(0, 0)
+    cubicTo(4, -14, 12, -14, 12, 0)
+    cubicTo(12, 8, 20, 8, 24, 0)
+}
 val writer = PenLine(start, seed = 4, recordMemory = true)
 writer.grow(400)
 
-val rows = writer.liveliestCells(4).mapIndexed { i, cell ->
-    writer.coloredByCell(cell, thickness = 2.0).map { it + vec(0.0, i * 45.0, 0.0) }
-}
+val rows =
+    writer.liveliestCells(4).mapIndexed { i, cell ->
+        writer.coloredByCell(cell, thickness = 2.0).map { it + vec(0.0, i * 45.0, 0.0) }
+    }
 lines(rows.flatten(), w = 520.0, h = 300.0, fitToSize = true)
 ```
 
@@ -262,7 +308,11 @@ and taper to their ends. It is the model's confidence, drawn as width.
 :::static
 import afield.ai.learning.pen.*
 
-val start = fline { moveTo(0, 0); cubicTo(4, -14, 12, -14, 12, 0); cubicTo(12, 8, 20, 8, 24, 0) }
+val start = fline {
+    moveTo(0, 0)
+    cubicTo(4, -14, 12, -14, 12, 0)
+    cubicTo(12, 8, 20, 8, 24, 0)
+}
 val writer = PenLine(start, seed = 4)
 writer.grow(400)
 lines(writer.widthByLift(), w = 520.0, h = 160.0, fitToSize = true)

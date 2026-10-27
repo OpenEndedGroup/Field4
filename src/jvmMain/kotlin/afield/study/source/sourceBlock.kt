@@ -41,8 +41,8 @@ import afield.document.graph.Box
  * ```
  *
  * A macro: before the box compiles, `sourceBlock { … }` is rewritten to a [SourceBackedBlock] holding
- * both the live lambda and the text of its body. Code that saves a block — a keyframe track, a
- * code-blend plan — saves that text, and a block loaded back from it compiles the text again, in the
+ * both the live lambda and the text of its body. Code that saves a block (a keyframe track, a
+ * code-blend plan) saves that text, and a block loaded back from it compiles the text again, in the
  * box it came from, the first time it is called. So a saved block works before (or without) the box
  * that wrote it running again.
  *
@@ -53,6 +53,11 @@ import afield.document.graph.Box
  *
  * Should the macro not run (code that reaches this function some other way), the result still works,
  * with an empty [SourceBackedBlock.source].
+ */
+
+/**
+ * A block carrying [block] and no source, which is what `sourceBlock { … }` compiles to when the
+ * macro has not rewritten it.
  */
 fun <T> sourceBlock(block: () -> T): SourceBackedBlock<T> =
     SourceBackedBlock(Box.context.get()?.id ?: "", "", block)

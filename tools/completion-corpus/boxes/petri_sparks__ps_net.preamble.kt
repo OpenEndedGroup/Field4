@@ -1,7 +1,7 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
-import afield.simulation.petri.PetriRun
 import afield.simulation.petri.PetriNet
+import afield.simulation.petri.PetriRun
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.sparkNet by Inheritance<PetriNet>() /**/
 val Once.sparkNet by Onceing<PetriNet>() /**/
 val Why.sparkNet by Whying() /**/

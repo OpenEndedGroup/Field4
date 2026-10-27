@@ -1,7 +1,7 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
-import afield.graphics.scene.fabricated.StandardRenderer
 import afield.graphics.scene.fabricated.FabricateBuiltChain
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.chain by Inheritance<FabricateBuiltChain>() /*from:rp_chain*/ /**/
 val Once.chain by Onceing<FabricateBuiltChain>() /*from:rp_chain*/ /**/
 val Why.chain by Whying() /*from:rp_chain*/ /**/

@@ -3,6 +3,23 @@ package afield.geometry.network
 import kotlinx.serialization.Serializable
 
 /**
+ * Which of Field's optional native geometry libraries are installed, and what the welcome page
+ * says about the rest.
+ *
+ * Morse–Smale complexes, principal curves and polyvector vectorization each need a native library
+ * that Field does not build by default. [NativeGeometry] holds one [NativeGeometryCapability] per
+ * module, registered by that module's own library object, and answers [NativeGeometry.available]
+ * and [NativeGeometry.describe] without loading any of them, so asking never fails. Field runs
+ * without any of them, and calling into one that is absent throws an error naming the Gradle task
+ * that builds it.
+ *
+ * [NativeGeometry.status] reports every module as a [NativeGeometryStatus], which
+ * `GET /api/native-geometry-status` serves to the welcome page's Geometry extensions panel:
+ * whether the library loaded, its docs page, its build task, and the shell commands that install
+ * its prerequisites on macOS, Linux and Windows.
+ */
+
+/**
  * One optional native geometry library, as [NativeGeometry] sees it. Implementations must answer
  * without loading the library's symbols, so asking never fails.
  */

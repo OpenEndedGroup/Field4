@@ -21,11 +21,10 @@ without reading anything. This box shells out to `tools/rank_weight_lab.py`, whi
 shipped fieldSuggest.js into a temp directory with one ranking constant rewritten and re-scores all
 578 carets through it. Nothing in the repository is touched.
 
-It needs the spec the test drops. If the box tells you it is missing, run once:
-./gradlew jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'
+On a fresh checkout the tool first writes the spec it measures, which takes a minute or two.
 
 ```edn [field-box id="sweep" role="properties"]
-{"id" "sweep" "index" 0 "name" "re-run the decision" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "re-run the decision" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sweep_code_.kt" "lines" 49 "characters" 2260 "sha256" "feb069a25d7ec462f96c3c153c46db8f81b4d833ed1915731c190b4cb7bd53a1"}]}
+{"id" "sweep" "index" 0 "name" "re-run the decision" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "re-run the decision" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sweep_code_.kt" "lines" 41 "characters" 1856 "sha256" "a15a864e16483e3c4bccfebf7d93ca88e1c2d44e74b15f10886c08ad371faa2f"}]}
 ```
 
 ```kotlin [field-property box="sweep" name="code" path="sweep_code_.kt"]
@@ -37,8 +36,7 @@ without reading anything. This box shells out to `tools/rank_weight_lab.py`, whi
 shipped fieldSuggest.js into a temp directory with one ranking constant rewritten and re-scores all
 578 carets through it. Nothing in the repository is touched.
 
-It needs the spec the test drops. If the box tells you it is missing, run once:
-  ./gradlew jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'
+On a fresh checkout the tool first writes the spec it measures, which takes a minute or two.
 */
 
 import java.io.File
@@ -60,22 +58,15 @@ fun findRepoRoot(): File {
     throw IllegalStateException("no Field checkout above ${File(".").absolutePath} - start Field from the repo root")
 }
 val repo: File = findRepoRoot()
-val spec = File(repo, "build/completion-corpus/rank-spec.json")
-
-val report = if (!spec.exists()) {
-    "no spec at ${spec.path}\n\nrun once, then re-run me:\n" +
-        "  ./gradlew jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'"
-} else {
-        val process =
-            ProcessBuilder("uv", "run", "--project", repo.absolutePath, "python", "tools/rank_weight_lab.py")
-                .directory(repo)
-                .redirectErrorStream(true)
-                .start()
-        val text = process.inputStream.bufferedReader().use { it.readText() }
-        val exit = process.waitFor()
-        check(exit == 0) { "Ranking measurement exited with status $exit:\n$text" }
-        "R0 is the popup as shipped. Compare the measured bare c-recall across the ranking variants.\n\n" + text
-    }
+val process =
+    ProcessBuilder("uv", "run", "--project", repo.absolutePath, "python", "tools/rank_weight_lab.py")
+        .directory(repo)
+        .redirectErrorStream(true)
+        .start()
+val text = process.inputStream.bufferedReader().use { it.readText() }
+val exit = process.waitFor()
+check(exit == 0) { "Ranking measurement exited with status $exit:\n$text" }
+val report = "R0 is the popup as shipped. Compare the measured bare c-recall across the ranking variants.\n\n" + text
 
 report
 ```

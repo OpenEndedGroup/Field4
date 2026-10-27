@@ -42,16 +42,16 @@ import kotlin.io.path.name
  *
  * Structure as JSON, presentation as HTML. The collection summary, the slot bands and the version
  * rows are typed payloads the page lays out itself; individual *values* come over as rendered HTML
- * from `.h`, because that is the whole point of reusing the value visualizers — a `Vector3f` arrives
- * with its axis widget already drawn, and a type that registers its own printer gets it for free.
+ * from `.h`, which is what reusing the value visualizers buys: a `Vector3f` arrives with its axis
+ * widget already drawn, and a type that registers its own printer gets it for free.
  *
- * ## Read-only, deliberately
+ * ## Read-only
  *
- * There is an [apply][KeyframeBrowserProtocol] op, because putting a saved look back is the reason
- * you were browsing. There is no edit op. Everything on disk is append-only by construction —
- * `saveKey` never overwrites a numbered version and an unreadable manifest is quarantined rather
- * than replaced — and an in-browser edit button would quietly break that. Getting a modified look
- * back out goes through `updateCode`, which emits pasteable Kotlin.
+ * There is an `apply` op, because putting a saved look back is the reason you were browsing. There
+ * is no edit op. Everything on disk is append-only by construction — `saveKey` never overwrites a
+ * numbered version and an unreadable manifest is quarantined rather than replaced — and an
+ * in-browser edit button would break that. Getting a modified look back out goes through
+ * `updateCode`, which emits pasteable Kotlin.
  */
 
 private const val KEYFRAME_BROWSER_CHANNEL = "__keyframe_browser__"

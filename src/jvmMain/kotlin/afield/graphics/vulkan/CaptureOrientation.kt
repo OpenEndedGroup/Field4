@@ -2,12 +2,15 @@ package afield.graphics.vulkan
 
 import afield.graphics.scene.*
 /**
- * The row order a pixel source hands to an encoder.
+ * The row order a pixel source hands to an encoder, and the paths that are held to it.
  *
- * Not a property of the encoder, and not a property of the file format — a property of the
- * *readback*. Naming it is the whole point: "flip Y" on its own says what a line of code does and
- * not what it is for, which is how [BottomUp] came to be applied to two top-down sources.
+ * Row order is not a property of the encoder, and not a property of the file format: it is a
+ * property of the *readback*. A "flip Y" at a call site says what a line of code does and not what
+ * it is for, so each capture path carries the order its source delivers instead, and a test reads
+ * the source back to check that the two agree.
  */
+
+/** Which end of the buffer row 0 is. */
 internal enum class RowOrder {
     /** Row 0 of the buffer is the top row of the picture. */
     TopDown,

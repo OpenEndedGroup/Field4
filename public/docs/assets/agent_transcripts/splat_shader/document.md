@@ -217,7 +217,7 @@ From `notes`
 Splat shader
 
 ```edn [field-box id="splat_passthrough" role="properties"]
-{"id" "splat_passthrough" "index" 4 "name" "passthrough" "parents" ["root" "splat_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "splat_renderer"} "name" "passthrough" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "splat_passthrough_notes_.md" "lines" 78 "characters" 4776 "sha256" "ac61e4ff04deabfbefee6aa6d1ea4e028088831f36c7c040cc83f5218696c455"} {"name" "code" "language" "kotlin" "path" "splat_passthrough_code_.kt" "lines" 21 "characters" 1038 "sha256" "adcdd2b924bf9ed232484dd7b321aa2ce83a5e9c73e37b4acfae23d4bf3c0c65"} {"name" "compute" "language" "glsl" "path" "splat_passthrough_compute_.glsl" "lines" 22 "characters" 550 "sha256" "03da5912255eed50c7ec8d92fd9d982c020efe69e12c30be657dfe8572136247"}]}
+{"id" "splat_passthrough" "index" 4 "name" "passthrough" "parents" ["root" "splat_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "splat_renderer"} "name" "passthrough" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "splat_passthrough_notes_.md" "lines" 78 "characters" 4776 "sha256" "ac61e4ff04deabfbefee6aa6d1ea4e028088831f36c7c040cc83f5218696c455"} {"name" "code" "language" "kotlin" "path" "splat_passthrough_code_.kt" "lines" 20 "characters" 989 "sha256" "999deb7c7694ca842a9582174d8c62f1d14bb6812b908ca74439773aeda253ff"} {"name" "compute" "language" "glsl" "path" "splat_passthrough_compute_.glsl" "lines" 22 "characters" 550 "sha256" "03da5912255eed50c7ec8d92fd9d982c020efe69e12c30be657dfe8572136247"}]}
 ```
 
 ```markdown [field-property box="splat_passthrough" name="notes" path="splat_passthrough_notes_.md"]
@@ -303,7 +303,6 @@ off that target is cleared every frame.
 
 ```kotlin [field-property box="splat_passthrough" name="code" path="splat_passthrough_code_.kt"]
 import afield.graphics.scene.fabricated.ProceduralSplats
-import afield.graphics.scene.fabricated.SplatSet
 import afield.graphics.scene.fabricated.SplatShader
 import afield.graphics.scene.fabricated.showControls
 
@@ -420,7 +419,7 @@ From `notes`
 Lichen tangle
 
 ```edn [field-box id="splat_lichen_tangle" role="properties"]
-{"id" "splat_lichen_tangle" "index" 6 "name" "lichen tangle" "parents" ["root" "splat_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "splat_renderer"} "name" "lichen tangle" "_tombstone" false "frame" #afield/rect [640.0 1240.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "splat_lichen_tangle_notes_.md" "lines" 4 "characters" 204 "sha256" "7bbb15369c1676841506a49935c1cee958d8b8d1fe09abbd49d4c84f8741495e"} {"name" "code" "language" "kotlin" "path" "splat_lichen_tangle_code_.kt" "lines" 13 "characters" 470 "sha256" "e78147b11b559293eea69a9e277e389bf48a4afac4f604ac2f1e51d04ac47d66"} {"name" "compute" "language" "glsl" "path" "splat_lichen_tangle_compute_.glsl" "lines" 20 "characters" 536 "sha256" "ef90ae20f4f11e796d616e9a7ca67864caf9eb9782c32aefdf6d4ec9439a8299"}]}
+{"id" "splat_lichen_tangle" "index" 6 "name" "lichen tangle" "parents" ["root" "splat_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "splat_renderer"} "name" "lichen tangle" "_tombstone" false "frame" #afield/rect [640.0 1240.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "splat_lichen_tangle_notes_.md" "lines" 4 "characters" 204 "sha256" "7bbb15369c1676841506a49935c1cee958d8b8d1fe09abbd49d4c84f8741495e"} {"name" "code" "language" "kotlin" "path" "splat_lichen_tangle_code_.kt" "lines" 13 "characters" 470 "sha256" "e78147b11b559293eea69a9e277e389bf48a4afac4f604ac2f1e51d04ac47d66"} {"name" "compute" "language" "glsl" "path" "splat_lichen_tangle_compute_.glsl" "lines" 20 "characters" 542 "sha256" "8f166bc62df520ad2c609ea2ddee4d6a2a3e1d8827b633f0f87ae7c82e56a3ae"}]}
 ```
 
 ```markdown [field-property box="splat_lichen_tangle" name="notes" path="splat_lichen_tangle_notes_.md"]
@@ -454,9 +453,9 @@ vec3 p = pos;
 float branch = 0.0;
 float amp = 0.58;
 for (int i = 0; i < 5; i++) {
-  branch += amp * abs(noise31(p * 4.2) - 0.5);
-  p = p.yzx * 1.73 + vec3(0.19, -0.07, 0.11);
-  amp *= 0.6;
+    branch += amp * abs(noise31(p * 4.2) - 0.5);
+    p = p.yzx * 1.73 + vec3(0.19, -0.07, 0.11);
+    amp *= 0.6;
 }
 
 float canopy = sat(1.0 - branch * 1.7);
