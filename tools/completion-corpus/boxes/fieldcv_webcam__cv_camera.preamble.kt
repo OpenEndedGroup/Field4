@@ -1,14 +1,14 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
-import java.nio.*
-import arrow.core.right
-import arrow.core.left
-import afield.graphics.shader.*
-import afield.graphics.scene.*
-import afield.graphics.render.*
-import afield.document.context.*
-import afield.graphics.vulkan.buffers.*
 import afield.graphics.texture.LoadedTexture
+import afield.graphics.vulkan.buffers.*
+import afield.document.context.*
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import arrow.core.left
+import arrow.core.right
+import java.nio.*
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.camera by Inheritance<LoadedTexture>() /**/
 val Once.camera by Onceing<LoadedTexture>() /**/
 val Why.camera by Whying() /**/

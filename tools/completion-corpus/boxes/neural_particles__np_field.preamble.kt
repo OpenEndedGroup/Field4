@@ -1,6 +1,6 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
 import afield.simulation.particles.FlowMatchExport
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.neuralExport by Inheritance<FlowMatchExport>() /**/
 val Once.neuralExport by Onceing<FlowMatchExport>() /**/
 val Why.neuralExport by Whying() /**/

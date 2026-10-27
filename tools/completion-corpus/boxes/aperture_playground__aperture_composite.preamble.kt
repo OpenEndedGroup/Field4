@@ -1,14 +1,14 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
-import java.nio.*
-import arrow.core.right
-import arrow.core.left
-import afield.graphics.shader.*
-import afield.graphics.scene.*
-import afield.graphics.render.*
-import afield.document.context.*
 import afield.graphics.vulkan.buffers.*
+import afield.document.context.*
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import arrow.core.left
+import arrow.core.right
+import java.nio.*
 import afield.graphics.vulkan.targets.RenderToTexture
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
 /*graphics-pc-structure:displayControl*/ var Structure.displayControl by Structure.FromStructure<Any>()
 /*graphics-pc-binding:displayControl*/ var Mesh.displayControl by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>()

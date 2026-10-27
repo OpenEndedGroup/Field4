@@ -1,6 +1,6 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
 import afield.simulation.agents.ShaderLatticeBoltzmannSystem
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.lbm by Inheritance<ShaderLatticeBoltzmannSystem>() /**/
 val Once.lbm by Onceing<ShaderLatticeBoltzmannSystem>() /**/
 val Why.lbm by Whying() /**/

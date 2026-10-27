@@ -1,6 +1,6 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
 import afield.audio.synth.PatSynthLaunch
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.bandEnergy by Inheritance<DoubleArray>() /**/
 val Once.bandEnergy by Onceing<DoubleArray>() /**/
 val Why.bandEnergy by Whying() /**/
