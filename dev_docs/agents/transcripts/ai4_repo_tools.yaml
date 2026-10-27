@@ -27,17 +27,31 @@ operations:
           java.nio.file.Files.createSymbolicLink(root.resolve("docs/escape.txt"), outer.resolve("secret.txt"))
 
           // What a job may touch: read docs and gen, write one page and gen.
-          val scope = afield.ai.tools.RepoScope(root, listOf("docs/**", "gen/**"), listOf("docs/page.md", "gen/**"))
+          val scope = afield.ai.tools.RepoScope(root, ["docs/**", "gen/**"], ["docs/page.md", "gen/**"])
           val tools = afield.ai.tools.RepoFileTools(scope)
 
           println(tools.search(afield.ai.tools.RepoSearchRequest("re(ci|ie)ve", regex = true)).matches)
-          println(tools.patch(afield.ai.tools.RepoPatchFileRequest("docs/page.md", "recieve function returns teh", "receive function returns the")).message)
+          println(
+              tools
+                  .patch(
+                      afield.ai.tools.RepoPatchFileRequest(
+                          "docs/page.md",
+                          "recieve function returns teh",
+                          "receive function returns the",
+                      ),
+                  )
+                  .message,
+          )
           println(tools.read(afield.ai.tools.RepoReadFileRequest("docs/page.md", 3, 3)).text)
 
           // Refusals: each comes back as success=false with the reason the model would read.
-          for (path in listOf("../secret.txt", "docs/escape.txt", ".git/config", "src/Main.kt"))
-              println("$path -> " + tools.read(afield.ai.tools.RepoReadFileRequest(path)).message)
-          println("docs/other.md (read-only) -> " + tools.patch(afield.ai.tools.RepoPatchFileRequest("docs/other.md", "Nothing", "Everything")).message)
+          for (path in ["../secret.txt", "docs/escape.txt", ".git/config", "src/Main.kt"]) println(
+              "$path -> " + tools.read(afield.ai.tools.RepoReadFileRequest(path)).message,
+          )
+          println(
+              "docs/other.md (read-only) -> " +
+                  tools.patch(afield.ai.tools.RepoPatchFileRequest("docs/other.md", "Nothing", "Everything")).message,
+          )
           println("gen/Table.kt -> " + tools.patch(afield.ai.tools.RepoPatchFileRequest("gen/Table.kt", "1", "2")).message)
           println("wrote: " + tools.written)
           outer.toFile().deleteRecursively()

@@ -111,7 +111,12 @@ A runtime may name a compiled class in `runtime.lifecycle`. It implements `KitLi
 ```diffstatic {data-lang=kotlin}
 package afield.example
 
+import afield.document.graph.Box
+import afield.document.properties.Inheritance
 import afield.document.workspace.*
+
+// Compiled kit code declares the typed delegate that prop<String>(lessonMode) creates in a box.
+var Box.lessonMode by Inheritance<String>()
 
 class Lifecycle : KitLifecycle {
     override fun startup(context: KitHostContext) {
@@ -119,7 +124,7 @@ class Lifecycle : KitLifecycle {
     }
 
     override fun activate(context: KitDocumentContext) {
-        context.project.root.setPropertyRaw("lessonMode", "explore", doResync = false)
+        context.project.root.lessonMode = "explore"
     }
 
     override fun deactivate(context: KitDocumentContext) {

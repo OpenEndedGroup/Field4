@@ -90,18 +90,20 @@ operations:
           - **The look** is the same rig (ACES tone mapping, a shadow-casting key, hemisphere and rim lights,
             ambient occlusion), provided by `three { studio() }`, so any `three` scene can use it.
         code: |
-          // geometry { } is a recipe of triangles. Running the box runs the recipe and draws it.
-          //
-          //   mat(...)             the material for triangles that follow
-          //   color(...)           the colour for vertices that follow
-          //   tri(a, b, c)         one triangle
-          //   quad(a, b, c, d)     two triangles
-          //   surface(...)         a grid of triangles
-          //   revolve, tube, box   more triangles
-          //   push() / pop() with translate, rotateX/Y/Z, scale
-          //
-          // geometryAgent() teaches this document's AI4 chat the language and lets it look at every view here:
-          // open the AI panel and ask for "a coral reef of tubes", or "make the terrain stormier".
+          /*
+          geometry { } is a recipe of triangles. Running the box runs the recipe and draws it.
+
+            mat(...)             the material for triangles that follow
+            color(...)           the colour for vertices that follow
+            tri(a, b, c)         one triangle
+            quad(a, b, c, d)     two triangles
+            surface(...)         a grid of triangles
+            revolve, tube, box   more triangles
+            push() / pop() with translate, rotateX/Y/Z, scale
+
+          geometryAgent() teaches this document's AI4 chat the language and lets it look at every view here:
+          open the AI panel and ask for "a coral reef of tubes", or "make the terrain stormier".
+          */
           geometryAgent()
 
           geometry {
@@ -152,8 +154,12 @@ operations:
                       tri(
                           vertex(cos(a0) * radius, lift, sin(a0) * radius, hsl(hue - 14, 0.9, 0.38)),
                           vertex(cos(a1) * radius, lift + jitter, sin(a1) * radius, hsl(hue + 10, 0.95, 0.52)),
-                          vertex(cos(mid) * (radius + 0.12 + lean), lift + height, sin(mid) * (radius + 0.12 - lean),
-                              hsl(hue + 26, 0.95, 0.68)),
+                          vertex(
+                              cos(mid) * (radius + 0.12 + lean),
+                              lift + height,
+                              sin(mid) * (radius + 0.12 - lean),
+                              hsl(hue + 26, 0.95, 0.68),
+                          ),
                       )
                   }
               }
@@ -169,13 +175,14 @@ operations:
           geometry {
               view(background = "#060807", ground = true, grid = true)
 
-              val body = List(36) { i ->
-                  val v = i / 35.0
-                  val waist = 0.72 + sin(v * PI) * 0.42
-                  val ripple = sin(v * PI * 8) * 0.045
-                  val shoulder = exp(-(v - 0.72) * (v - 0.72) * 38) * 0.22
-                  profile(waist + ripple + shoulder, (v - 0.5) * 3.2, hsl(28 + v * 34, 0.58, 0.42 + v * 0.16))
-              }
+              val body =
+                  List(36) { i ->
+                      val v = i / 35.0
+                      val waist = 0.72 + sin(v * PI) * 0.42
+                      val ripple = sin(v * PI * 8) * 0.045
+                      val shoulder = exp(-(v - 0.72) * (v - 0.72) * 38) * 0.22
+                      profile(waist + ripple + shoulder, (v - 0.5) * 3.2, hsl(28 + v * 34, 0.58, 0.42 + v * 0.16))
+                  }
 
               mesh("vessel body")
               mat(color = "#ffffff", roughness = 0.72, metalness = 0.02, flat = true)
@@ -183,7 +190,7 @@ operations:
 
               mesh("rim")
               mat(color = "#f4d28a", roughness = 0.38, metalness = 0.65, flat = true)
-              revolve(listOf(profile(1.0, 1.54, "#ffe4a0"), profile(1.16, 1.6, "#fff2bd"), profile(1.02, 1.68, "#c99a45")), 96)
+              revolve([profile(1.0, 1.54, "#ffe4a0"), profile(1.16, 1.6, "#fff2bd"), profile(1.02, 1.68, "#c99a45")], 96)
           }
   - create:
       box: knot_tube
@@ -270,12 +277,15 @@ operations:
                       push()
                       translate(end)
                       scale(radius * 4.4, radius * 0.9, radius * 4.4)
-                      revolve(listOf(
-                          profile(0.04, 0.0, hsl(36, 0.9, 0.72)),
-                          profile(0.58, 0.08, hsl(32, 0.72, 0.55)),
-                          profile(1.0, 0.0, hsl(24, 0.75, 0.44)),
-                          profile(0.42, -0.16, hsl(42, 0.58, 0.62)),
-                      ), 18)
+                      revolve(
+                          [
+                              profile(0.04, 0.0, hsl(36, 0.9, 0.72)),
+                              profile(0.58, 0.08, hsl(32, 0.72, 0.55)),
+                              profile(1.0, 0.0, hsl(24, 0.75, 0.44)),
+                              profile(0.42, -0.16, hsl(42, 0.58, 0.62)),
+                          ],
+                          18,
+                      )
                       pop()
                       return
                   }
@@ -284,11 +294,13 @@ operations:
                   for (i in 0 until branches) {
                       val turn = i.toDouble() / branches * TAU + rand(-0.5, 0.5)
                       val lift = 0.48 + rand(0.0, 0.32)
-                      val next = vec(
-                          dir.x * 0.62 + cos(turn) * (0.45 + rand(0.0, 0.22)),
-                          dir.y * 0.52 + lift,
-                          dir.z * 0.62 + sin(turn) * (0.45 + rand(0.0, 0.22)),
-                      ).normalize()
+                      val next =
+                          vec(
+                                  dir.x * 0.62 + cos(turn) * (0.45 + rand(0.0, 0.22)),
+                                  dir.y * 0.52 + lift,
+                                  dir.z * 0.62 + sin(turn) * (0.45 + rand(0.0, 0.22)),
+                              )
+                              .normalize()
                       branch(end - (radius * 0.6) * dir, next, length * rand(0.56, 0.76), radius * rand(0.58, 0.72), depth - 1)
                   }
               }
@@ -315,7 +327,7 @@ operations:
                   }
                   val step = size / 3
                   for (x in -1..1) for (y in -1..1) for (z in -1..1) {
-                      val holes = listOf(x, y, z).count { it == 0 }
+                      val holes = [x, y, z].count { it == 0 }
                       if (holes >= 2) continue
                       sponge(center + vec(x * step, y * step, z * step), step, depth - 1)
                   }
@@ -336,7 +348,14 @@ operations:
               view(background = "#050608", ground = true, grid = false)
 
               mesh("signal tear")
-              mat(color = "#ffffff", roughness = 0.52, metalness = 0.18, emissive = "#07121c", emissiveIntensity = 0.55, flat = true)
+              mat(
+                  color = "#ffffff",
+                  roughness = 0.52,
+                  metalness = 0.18,
+                  emissive = "#07121c",
+                  emissiveIntensity = 0.55,
+                  flat = true,
+              )
 
               surface(72, 36) { u, v ->
                   val row = floor(v * 36)

@@ -244,12 +244,12 @@ val merge = SortingNetwork.oddEvenMerge(8)
 val mergeDense = SortingNetwork(
     8,
     merge.comparators +
-        listOf(
+        [
             SortingComparator(0, 1),
             SortingComparator(2, 3),
             SortingComparator(4, 5),
             SortingComparator(6, 7),
-        ),
+        ],
 )
 
 val configs =

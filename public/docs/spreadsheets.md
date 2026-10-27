@@ -17,10 +17,19 @@ per row and a sum.
 sheet(height = 280) {
     rows = 6
     cols = 4
-    this["A1"] = "Item";  this["B1"] = "Price"; this["C1"] = "Qty"; this["D1"] = "Total"
-    this["A2"] = "paper"; this["B2"] = 4.5;     this["C2"] = 3
-    this["A3"] = "ink";   this["B3"] = 12;      this["C3"] = 2
-    this["A4"] = "pens";  this["B4"] = 1.25;    this["C4"] = 10
+    this["A1"] = "Item"
+    this["B1"] = "Price"
+    this["C1"] = "Qty"
+    this["D1"] = "Total"
+    this["A2"] = "paper"
+    this["B2"] = 4.5
+    this["C2"] = 3
+    this["A3"] = "ink"
+    this["B3"] = 12
+    this["C3"] = 2
+    this["A4"] = "pens"
+    this["B4"] = 1.25
+    this["C4"] = 10
     formula("D2", "B2 * C2")
     formula("D3", "B3 * C3")
     formula("D4", "B4 * C4")
@@ -52,8 +61,12 @@ templates, `PI`.
 sheet(height = 280) {
     rows = 6
     cols = 4
-    this["A1"] = "°C"; this["B1"] = "feels"; this["C1"] = "sqrt"
-    this["A2"] = 12; this["A3"] = 31; this["A4"] = 22
+    this["A1"] = "°C"
+    this["B1"] = "feels"
+    this["C1"] = "sqrt"
+    this["A2"] = 12
+    this["A3"] = 31
+    this["A4"] = 22
     for (row in 2..4) {
         formula("B$row", "when { A$row > 28 -> \"hot\"; A$row < 15 -> \"cold\"; else -> \"mild\" }")
         formula("C$row", "sqrt(A$row)")
@@ -80,8 +93,10 @@ length and a line for its diagonal.
 sheet(height = 440) {
     rows = 3
     cols = 3
-    columnWidth("A", 220); columnWidth("B", 220)
-    rowHeight(2, 125); rowHeight(3, 180)
+    columnWidth("A", 220)
+    columnWidth("B", 220)
+    rowHeight(2, 125)
+    rowHeight(3, 180)
     formula("A1", "3 | m")
     formula("B1", "A1 * 2")
     formula("C1", "A1 / (2 | s)")
@@ -114,7 +129,9 @@ sheet(height = 250) {
     cols = 2
     this["A1"] = "rate"
     formula("B1", "self[\"rate\"]")
-    this["A2"] = 100; this["A3"] = 250; this["A4"] = 40
+    this["A2"] = 100
+    this["A3"] = 250
+    this["A4"] = 40
     formula("B2", "A2 * \$B\$1")
     formula("B3", "A3 * \$B\$1")
     formula("B4", "A4 * \$B\$1")
@@ -137,7 +154,9 @@ is the plain Kotlin value. `sheetSnapshot()` gives every cell at once, each with
 sheet(height = 220) {
     rows = 4
     cols = 2
-    this["A1"] = 3; this["A2"] = 4; this["A3"] = 5
+    this["A1"] = 3
+    this["A2"] = 4
+    this["A3"] = 5
     formula("B1", "sum(A1:A3)")
 }
 
@@ -177,12 +196,18 @@ sheet(height = 330) {
     rows = 6
     cols = 2
     columnWidth("A", 140)
-    this["A1"] = "width"; formula("B1", "free(4)")
-    this["A2"] = "height"; formula("B2", "free(5)")
-    this["A3"] = "area"; formula("B3", "B1 * B2")
-    this["A4"] = "perimeter"; formula("B4", "2 * (B1 + B2)")
-    this["A5"] = "area is 40"; formula("B5", "B3 eq 40")
-    this["A6"] = "no wider than 6"; formula("B6", "B1 le 6")
+    this["A1"] = "width"
+    formula("B1", "free(4)")
+    this["A2"] = "height"
+    formula("B2", "free(5)")
+    this["A3"] = "area"
+    formula("B3", "B1 * B2")
+    this["A4"] = "perimeter"
+    formula("B4", "2 * (B1 + B2)")
+    this["A5"] = "area is 40"
+    formula("B5", "B3 eq 40")
+    this["A6"] = "no wider than 6"
+    formula("B6", "B1 le 6")
 }
 ```
 
@@ -203,10 +228,14 @@ sheet(height = 260) {
     rows = 4
     cols = 2
     columnWidth("A", 140)
-    this["A1"] = "Celsius"; formula("B1", "free(100)")
-    this["A2"] = "Fahrenheit"; formula("B2", "free(212)")
-    this["A3"] = "Kelvin"; formula("B3", "B1 + 273.15")
-    this["A4"] = "F from C"; formula("B4", "B2 eq B1 * 9.0 / 5.0 + 32.0")
+    this["A1"] = "Celsius"
+    formula("B1", "free(100)")
+    this["A2"] = "Fahrenheit"
+    formula("B2", "free(212)")
+    this["A3"] = "Kelvin"
+    formula("B3", "B1 + 273.15")
+    this["A4"] = "F from C"
+    formula("B4", "B2 eq B1 * 9.0 / 5.0 + 32.0")
 }
 ```
 
@@ -219,13 +248,19 @@ Celsius becomes 10; then 0 is typed into Celsius and Fahrenheit becomes 32:
 fun cellCentre(row: Int, col: Int): Pair<Double, Double> {
     var at = ""
     for (i in 0 until 80) {
-        at = ui.eval("""
+        at =
+            ui.eval(
+                    """
             const f = [...document.querySelectorAll('iframe')].find(f => f.src.includes('/spreadsheet.html'))
             const c = f && f.contentDocument && f.contentDocument.querySelector('.sheet-cell[data-row="$row"][data-col="$col"]')
             if (!c) return 'waiting'
             const a = f.getBoundingClientRect(), b = c.getBoundingClientRect()
             return (a.left + b.left + b.width / 2) + ',' + (a.top + b.top + b.height / 2)
-        """.trimIndent()).toString().trim('"')
+        """
+                        .trimIndent(),
+                )
+                .toString()
+                .trim('"')
         if (at.contains(",")) break
         ui.pause(250)
     }
@@ -262,13 +297,20 @@ sheet(height = 390) {
     rows = 7
     cols = 2
     columnWidth("A", 140)
-    this["A1"] = "rent"; formula("B1", "free(50)")
-    this["A2"] = "food"; formula("B2", "free(30)")
-    this["A3"] = "fun"; formula("B3", "free(20)")
-    this["A4"] = "total is 100"; formula("B4", "sum(B1:B3) eq 100")
-    this["A5"] = "rent at least 40"; formula("B5", "B1 ge 40")
-    this["A6"] = "food at least 40"; formula("B6", "B2 ge 40")
-    this["A7"] = "fun at least 40"; formula("B7", "B3 ge 40")
+    this["A1"] = "rent"
+    formula("B1", "free(50)")
+    this["A2"] = "food"
+    formula("B2", "free(30)")
+    this["A3"] = "fun"
+    formula("B3", "free(20)")
+    this["A4"] = "total is 100"
+    formula("B4", "sum(B1:B3) eq 100")
+    this["A5"] = "rent at least 40"
+    formula("B5", "B1 ge 40")
+    this["A6"] = "food at least 40"
+    formula("B6", "B2 ge 40")
+    this["A7"] = "fun at least 40"
+    formula("B7", "B3 ge 40")
 }
 ```
 

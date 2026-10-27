@@ -46,6 +46,7 @@ val zones = ZoneId.getAvailableZoneIds().sorted().associateWith {
     ZoneId.of(it).rules.getOffset(day).totalSeconds / 3600.0
 }
 val offsets = zones.values.toDoubleArray()
+
 :::endfold
 
 for (o in offsets) {
@@ -83,16 +84,16 @@ val counts = offsets.toList().groupingBy { it }.eachCount().toSortedMap()
 display(
     "plot",
     Plotly.plot {
-        bar {
-            x.set(counts.keys.toList())
-            y.set(counts.values.toList())
+            bar {
+                x.set(counts.keys.toList())
+                y.set(counts.values.toList())
+            }
+            layout {
+                title = "time zones per UTC offset"
+                xaxis { title = "hours from UTC" }
+                yaxis { title = "zones" }
+            }
         }
-        layout {
-            title = "time zones per UTC offset"
-            xaxis { title = "hours from UTC" }
-            yaxis { title = "zones" }
-        }
-    }
         .darkMode(),
 )
 ```

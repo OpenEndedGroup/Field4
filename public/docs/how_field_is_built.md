@@ -325,7 +325,8 @@ page lists it with its state and where it sits in the source:
 // DOC NOTES panel to sit beside the text, select a sentence, and leave a note with the real keys.
 val note = "Show what a bounce looks like here, and where its failures file is. @example"
 val sentence = "That queues the current branch at its current commit and returns immediately."
-ui.eval("""
+ui.eval(
+    """
     document.getElementById("docs-notes-frame")?.remove()
     const f = document.createElement("iframe")
     f.id = "docs-notes-frame"
@@ -333,34 +334,49 @@ ui.eval("""
     f.setAttribute("style", "position:fixed;left:0;top:0;width:1720px;height:720px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
     return true
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 var state = ""
 for (i in 0 until 80) {
     ui.pause(250)
-    state = ui.eval("""
+    state =
+        ui.eval(
+                """
         const f = document.getElementById("docs-notes-frame")
         const d = f?.contentDocument
         if (!d || !d.getElementById("f4-annotations") || !d.querySelector("article p")) return "loading"
         if (f.contentWindow.__FIELD_DOCS_SOURCE__ !== "local") return "not local"
         return "ready"
-    """.trimIndent()).toString()
+    """
+                    .trimIndent(),
+            )
+            .toString()
     if (state.contains("ready")) break
 }
 check(state.contains("ready")) { "the docs page did not load with its notes panel: " + state }
-// Fail closed: this capture runs against the automation server's own notebook
-// (AFIELD_DOCS_ANNOTATIONS_STORE). Any note it did not write means it is looking at someone's real
-// notes, which must neither be shown nor touched. Its own note from an earlier run is removed. The
-// KDoc drafts ai_doc_polish imports from the runner's committed drafts cache are machine notes on
-// source pages, not this page's, so they are left alone rather than counted as someone's.
-val store = ui.eval("""
+/*
+Fail closed: this capture runs against the automation server's own notebook
+(AFIELD_DOCS_ANNOTATIONS_STORE). Any note it did not write means it is looking at someone's real
+notes, which must neither be shown nor touched. Its own note from an earlier run is removed. The
+KDoc drafts ai_doc_polish imports from the runner's committed drafts cache are machine notes on
+source pages, not this page's, so they are left alone rather than counted as someone's.
+*/
+val store =
+    ui.eval(
+            """
     const items = await (await fetch("/api/docs-annotations?resolved=true")).json()
     const others = items.filter(a => a.kind !== "kdoc-draft")
     if (others.some(a => a.note !== "$note")) return "foreign"
     for (const a of others) await fetch("/api/docs-annotations/" + encodeURIComponent(a.id), { method: "DELETE" })
     return "clean"
-""".trimIndent()).toString()
+"""
+                .trimIndent(),
+        )
+        .toString()
 check(store.contains("clean")) { "the notes store holds notes this capture did not write; refusing to capture it" }
-ui.eval("""
+ui.eval(
+    """
     document.getElementById("docs-notes-frame")?.remove()
     const f = document.createElement("iframe")
     f.id = "docs-notes-frame"
@@ -368,10 +384,14 @@ ui.eval("""
     f.setAttribute("style", "position:fixed;left:0;top:0;width:1720px;height:720px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
     return true
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 for (i in 0 until 80) {
     ui.pause(250)
-    state = ui.eval("""
+    state =
+        ui.eval(
+                """
         const f = document.getElementById("docs-notes-frame")
         const d = f?.contentDocument
         if (!d || !d.getElementById("f4-annotations") || !d.querySelector("article p")) return "loading"
@@ -387,7 +407,10 @@ for (i in 0 until 80) {
         selection.addRange(range)
         f.contentWindow.focus()
         return "ready"
-    """.trimIndent()).toString()
+    """
+                    .trimIndent(),
+            )
+            .toString()
     if (state.contains("ready")) break
 }
 check(state.contains("ready")) { "could not select the sentence to annotate: " + state }
@@ -397,16 +420,22 @@ ui.typeSlowly(note, 15)
 ui.press("Enter")
 for (i in 0 until 40) {
     ui.pause(250)
-    state = ui.eval("""
+    state =
+        ui.eval(
+                """
         const d = document.getElementById("docs-notes-frame").contentDocument
         return d.querySelectorAll("#f4-annotations .f4a-note").length > 0 ? "saved" : "saving"
-    """.trimIndent()).toString()
+    """
+                    .trimIndent(),
+            )
+            .toString()
     if (state.contains("saved")) break
 }
 check(state.contains("saved")) { "the note did not appear in the panel: " + state }
 ui.pause(800)
 // Clip to the page's text column and the panel, from the title down past the annotated paragraph.
-ui.eval("""
+ui.eval(
+    """
     const f = document.getElementById("docs-notes-frame")
     const d = f.contentDocument
     const title = d.querySelector("article h1").getBoundingClientRect()
@@ -423,7 +452,9 @@ ui.eval("""
         "left:" + left + "px;top:" + top + "px;width:" + (o.left + panel.right - left) + "px;height:" + (bottom - top) + "px")
     document.body.appendChild(m)
     return true
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 ui.pause(300)
 ```
 
