@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 18227 of 34745 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 18228 of 34745 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2079 undocumented entry points** (types, top-level functions and values) and 13718 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2078 undocumented entry points** (types, top-level functions and values) and 13718 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -536,7 +536,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PreambleFailureStopsExecutionTest.kt](../src/jvmMain/kotlin/afield/runtime/execution/PreambleFailureStopsExecutionTest.kt) | Workspace | — | 1 | 1 | 0% |
 | [AgentJvmMainLauncher.kt](../src/jvmMain/kotlin/afield/tools/automation/AgentJvmMainLauncher.kt) | Workspace | — | 1 | 1 | 0% |
 | [OutputRequests.kt](../src/jvmMain/kotlin/afield/ui/output/OutputRequests.kt) | Workspace | — | 1 | 1 | 71% |
-| [ChatlogRoutes.kt](../src/jvmMain/kotlin/afield/ai/conversation/chatlog/ChatlogRoutes.kt) | Machine learning | — | 1 | 0 | 0% |
 | [WorkspaceSymbolSearchSupport.kt](../src/jvmMain/kotlin/afield/ai/tools/WorkspaceSymbolSearchSupport.kt) | Machine learning | — | 1 | 0 | 0% |
 | [keyframeTypeLibrary.kt](../src/jvmMain/kotlin/afield/animation/keyframes/keyframeTypeLibrary.kt) | Graphics | — | 1 | 0 | 90% |
 | [PinnedConsole.kt](../src/jvmMain/kotlin/afield/app/diagnostics/logging/PinnedConsole.kt) | Workspace | — | 1 | 0 | 92% |
@@ -1258,4 +1257,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `DirtSampleToken` | class | `src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt:126` |
 | `DirtSampleDescriptor` | class | `src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt:145` |
 
-…and **1959 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **1958 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

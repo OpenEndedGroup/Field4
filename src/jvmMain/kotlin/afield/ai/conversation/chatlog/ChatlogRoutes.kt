@@ -20,8 +20,14 @@ import java.io.File
  * workspace than the server's. Pictures are served only by blob name (`<sha16>.<ext>`) from the chat's own
  * `ai4_blobs/`.
  */
+
 private val blobName = Regex("[0-9a-f]{16}\\.(jpeg|jpg|png|webp|gif)")
 
+/**
+ * Mounts `/api/chatlog/lens`, which answers [ChatLensViewer.payload] as JSON, and `/api/chatlog/blob`,
+ * which serves one picture from a chat's own blob directory. Called once while the server builds its
+ * routing.
+ */
 fun Route.installChatlogRoutes() {
     get("/api/chatlog/lens") {
         if (call.refuseUnlessSameSiteDocsClient(docsPassPolicy(docsAccessPolicy))) return@get
