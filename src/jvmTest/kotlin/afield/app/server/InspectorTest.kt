@@ -265,6 +265,7 @@ class InspectorTest {
         assertTrue(html.contains("src='/tree?root=abc&maxh=300'"), html)
         assertTrue(html.contains("width:100%"))
         assertTrue(html.trim().endsWith("</iframe>"))
+        assertTrue(inspectorIframe("/browse?root=abc", 300, width = 900).contains("width:900px"))
     }
 
     @Test

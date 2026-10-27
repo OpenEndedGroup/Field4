@@ -1,0 +1,119 @@
+name: renderer_column
+description: >
+  For the renderer column capture in visualizers.md: a triangle module and a box that opens
+  column(...) on the renderer, both beneath the docs runner's graphics context
+  (agent_graphics_context). The full demo, renderer launch included, is renderer_browsing.yaml.
+operations:
+  - create:
+      box: triangle
+      name: triangle
+      frame:
+        x: 40.0
+        y: 180.0
+        w: 320.0
+        h: 100.0
+      properties:
+        vertex: |
+          #version 450
+          layout (location = 0) in vec3 pos;
+
+          layout (location = 1) in vec4 col;
+          layout (location = 0) out vec4 fcol;
+
+          void main()
+          {
+              fcol = col;
+              gl_Position = vec4(pos, 1);
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) out vec4 uFragColor;
+
+          layout(location = 0) in vec4 fcol;
+          void main()
+          {
+              uFragColor = vec4(1.0, 0.8, 0.4, 1.0) * fcol;
+          }
+        code: |
+          // A module is one draw pipeline: this box's `vertex` and `fragment` shaders plus the meshes it
+          // draws. `renderer` is inherited from the renderer parent box, and `+=` puts the module on screen.
+          renderer += moduleHere {
+              primitiveType = triangle_strip
+
+              // A mesh holds vertex buffers whose names come from the vertex shader's `in` attributes
+              // (`pos`, `col`), plus the index buffer `tri`. Re-running the box replaces it by name.
+              +Mesh("my mesh") {
+                  // Room for 3 vertices and 3 indices; inside, `pos`, `col` and `tri` append data.
+                  set(3, 3) {
+                      // x, y, z for each of the three corners, in clip space (-1..1)
+                      pos.add(0, 0, 0, 0.5, 0, 0, 0.5, 0.5, 0)
+
+                      // one RGBA colour per vertex, `it` running 0, 1, 2
+                      3 {
+                          col.add(0, it / 3.0, 1 - it / 3.0, 1)
+                      }
+                      tri.add(0, 1, 2)
+                  }
+              }
+          }
+  - connect:
+      parent: agent_graphics_context
+      child: triangle
+  - execute:
+      box: triangle
+      property: code
+      type: fragment
+      code: |
+        // A module is one draw pipeline: this box's `vertex` and `fragment` shaders plus the meshes it
+        // draws. `renderer` is inherited from the renderer parent box, and `+=` puts the module on screen.
+        renderer += moduleHere {
+            primitiveType = triangle_strip
+
+            // A mesh holds vertex buffers whose names come from the vertex shader's `in` attributes
+            // (`pos`, `col`), plus the index buffer `tri`. Re-running the box replaces it by name.
+            +Mesh("my mesh") {
+                // Room for 3 vertices and 3 indices; inside, `pos`, `col` and `tri` append data.
+                set(3, 3) {
+                    // x, y, z for each of the three corners, in clip space (-1..1)
+                    pos.add(0, 0, 0, 0.5, 0, 0, 0.5, 0.5, 0)
+
+                    // one RGBA colour per vertex, `it` running 0, 1, 2
+                    3 {
+                        col.add(0, it / 3.0, 1 - it / 3.0, 1)
+                    }
+                    tri.add(0, 1, 2)
+                }
+            }
+        }
+  - wait:
+      seconds: 2
+  - create:
+      box: browse_renderer
+      name: browse the renderer
+      frame:
+        x: 380.0
+        y: 40.0
+        w: 820.0
+        h: 100.0
+      properties:
+        code: |
+          // `renderer` is the parent box's Renderer. column(...) opens it as Finder-style columns:
+          // render (the main target, its passes in draw order), compute, windows, cpu (CPU span timings),
+          // device. Each node with children starts with a `summary` row: its card.
+          column("renderer", renderer, width = 1100)
+          displayOpen("renderer")
+  - connect:
+      parent: agent_graphics_context
+      child: browse_renderer
+  - execute:
+      box: browse_renderer
+      property: code
+      type: code
+      code: |
+        // `renderer` is the parent box's Renderer. column(...) opens it as Finder-style columns:
+        // render (the main target, its passes in draw order), compute, windows, cpu (CPU span timings),
+        // device. Each node with children starts with a `summary` row: its card.
+        column("renderer", renderer, width = 1100)
+        displayOpen("renderer")
+  - wait:
+      millis: 1500

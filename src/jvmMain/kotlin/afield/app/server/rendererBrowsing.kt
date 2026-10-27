@@ -47,7 +47,8 @@ fun registerRendererBrowsingAdapters() {
                 val contexts = r.windows.indices.associate { i -> "context[$i]" to r.windowContext(i) }
                 val windows = r.windows.withIndex().associate { (i, w) -> "window[$i]" to w }
                 val queues = mapOf("graphics" to r.graphQueue, "present" to r.presentQueue)
-                return linkedMapOf(
+                val profiling = runCatching { r.windowContext(0).profilerState }.getOrNull()
+                return linkedMapOf<String, Any?>(
                     "render" to r.renderList,
                     "compute" to r.computeList,
                     "contexts" to contexts,
@@ -56,8 +57,7 @@ fun registerRendererBrowsingAdapters() {
                     "cpu" to CpuNode,
                     "device" to r.device,
                     "pipelineCache" to r.pipelineCache,
-                    "profiling" to runCatching { r.windowContext(0).profilerState }.getOrNull()
-                )
+                ).also { if (profiling != null) it["profiling"] = profiling }
             }
 
             override fun html(): String {
@@ -758,6 +758,7 @@ private class SummaryCard(val of: Browsable) : Browsable {
     override fun heading(): String = of.heading()
     override fun html(): String? = of.html()
     override fun version(): Long = of.version()
+    override fun toString(): String = "card"
     override fun equals(other: Any?) = other is SummaryCard && other.of.heading() == of.heading()
     override fun hashCode(): Int = of.heading().hashCode()
 }
@@ -804,6 +805,7 @@ private fun <T> readField(target: Any, name: String): T? {
 // Browsable CPU node (stable identity for change pushes)
 private object CpuNode : Browsable {
     override fun heading(): String = "CPU"
+    override fun toString(): String = CPUSpan.snapshot().let { if (it.isEmpty()) "no samples" else "${it.size} spans" }
     override fun dir(): Map<String, Any?>? = null
     override fun html(): String {
         val snaps = CPUSpan.snapshot()

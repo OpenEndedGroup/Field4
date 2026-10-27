@@ -1,0 +1,175 @@
+name: renderer_browsing
+description: >
+  The Vulkan renderer opened in column(...) and tree(...). Box "renderer" launches a renderer and its
+  window; box "triangle" (beneath it) adds one module with a vertex and fragment shader and a mesh;
+  box "browse the renderer" (also beneath it) calls column("renderer", renderer, width = 1100) and
+  tree("renderer tree", renderer). Open render -> modules -> "module in box triangle" -> module to see the pass, its
+  shaders, meshes and bindings, and cpu for CPU span timings. The cards refresh about once a second
+  while the renderer runs. See dev_docs/INSPECTOR_EMBEDS.md.
+docs:
+  - page: visualizers.md#browsing-the-renderer
+    why: "Explains column(...)/tree(...) on a live Renderer, which these boxes open."
+operations:
+  - create:
+      box: agent_graphics_context
+      name: renderer
+      frame:
+        x: 40.0
+        y: 40.0
+        w: 300.0
+        h: 100.0
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+          
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          
+          Options.enableHDR = false
+          Options.profiling = false
+          
+          once.renderer {
+              window = Window("Field")
+              Renderer(window)
+          }
+          
+          println("agent graphics renderer ready")
+          start(renderer::run)
+  - launch:
+      box: agent_graphics_context
+      property: code
+      type: code
+      strand: renderer
+      code: |
+        import afield.graphics.vulkan.util.Options
+        
+        prop<Window>(window)
+        prop<Renderer>(renderer)
+        
+        Options.enableHDR = false
+        Options.profiling = false
+        
+        once.renderer {
+            window = Window("Field")
+            Renderer(window)
+        }
+        
+        println("agent graphics renderer ready")
+        start(renderer::run)
+  - wait:
+      frames: 3
+  - create:
+      box: triangle
+      name: triangle
+      frame:
+        x: 40.0
+        y: 180.0
+        w: 320.0
+        h: 100.0
+      properties:
+        vertex: |
+          #version 450
+          layout (location = 0) in vec3 pos;
+
+          layout (location = 1) in vec4 col;
+          layout (location = 0) out vec4 fcol;
+
+          void main()
+          {
+              fcol = col;
+              gl_Position = vec4(pos, 1);
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) out vec4 uFragColor;
+
+          layout(location = 0) in vec4 fcol;
+          void main()
+          {
+              uFragColor = vec4(1.0, 0.8, 0.4, 1.0) * fcol;
+          }
+        code: |
+          // A module is one draw pipeline: this box's `vertex` and `fragment` shaders plus the meshes it
+          // draws. `renderer` is inherited from the renderer parent box, and `+=` puts the module on screen.
+          renderer += moduleHere {
+              primitiveType = triangle_strip
+
+              // A mesh holds vertex buffers whose names come from the vertex shader's `in` attributes
+              // (`pos`, `col`), plus the index buffer `tri`. Re-running the box replaces it by name.
+              +Mesh("my mesh") {
+                  // Room for 3 vertices and 3 indices; inside, `pos`, `col` and `tri` append data.
+                  set(3, 3) {
+                      // x, y, z for each of the three corners, in clip space (-1..1)
+                      pos.add(0, 0, 0, 0.5, 0, 0, 0.5, 0.5, 0)
+
+                      // one RGBA colour per vertex, `it` running 0, 1, 2
+                      3 {
+                          col.add(0, it / 3.0, 1 - it / 3.0, 1)
+                      }
+                      tri.add(0, 1, 2)
+                  }
+              }
+          }
+  - connect:
+      parent: agent_graphics_context
+      child: triangle
+  - execute:
+      box: triangle
+      property: code
+      type: fragment
+      code: |
+        // A module is one draw pipeline: this box's `vertex` and `fragment` shaders plus the meshes it
+        // draws. `renderer` is inherited from the renderer parent box, and `+=` puts the module on screen.
+        renderer += moduleHere {
+            primitiveType = triangle_strip
+
+            // A mesh holds vertex buffers whose names come from the vertex shader's `in` attributes
+            // (`pos`, `col`), plus the index buffer `tri`. Re-running the box replaces it by name.
+            +Mesh("my mesh") {
+                // Room for 3 vertices and 3 indices; inside, `pos`, `col` and `tri` append data.
+                set(3, 3) {
+                    // x, y, z for each of the three corners, in clip space (-1..1)
+                    pos.add(0, 0, 0, 0.5, 0, 0, 0.5, 0.5, 0)
+
+                    // one RGBA colour per vertex, `it` running 0, 1, 2
+                    3 {
+                        col.add(0, it / 3.0, 1 - it / 3.0, 1)
+                    }
+                    tri.add(0, 1, 2)
+                }
+            }
+        }
+  - wait:
+      seconds: 2
+  - create:
+      box: browse_renderer
+      name: browse the renderer
+      frame:
+        x: 380.0
+        y: 40.0
+        w: 820.0
+        h: 100.0
+      properties:
+        code: |
+          // `renderer` is the parent box's Renderer. column(...) opens it as Finder-style columns:
+          // render (the main target, its passes in draw order), compute, windows, cpu (CPU span timings),
+          // device. Each node with children starts with a `summary` row: its card.
+          column("renderer", renderer, width = 1100)
+
+          // The same value as an indented tree.
+          tree("renderer tree", renderer)
+  - connect:
+      parent: agent_graphics_context
+      child: browse_renderer
+  - execute:
+      box: browse_renderer
+      property: code
+      type: code
+      code: |
+        // `renderer` is the parent box's Renderer. column(...) opens it as Finder-style columns:
+        // render (the main target, its passes in draw order), compute, windows, cpu (CPU span timings),
+        // device. Each node with children starts with a `summary` row: its card.
+        column("renderer", renderer, width = 1100)
+
+        // The same value as an indented tree.
+        tree("renderer tree", renderer)
