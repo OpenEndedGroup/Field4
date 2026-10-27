@@ -342,12 +342,6 @@ class KotlinInterface2(
     /** Reruns served by [rerunCache] instead of a compile. */
     val rerunCacheHits: Int get() = rerunCache.hits
 
-    /**
-     * [compile], except that an exact rerun of a source this engine already compiled — same
-     * expanded text, source property and implicit receivers, nothing it binds to redeclared since —
-     * returns the snippet it already has. Only [execInternal] uses this: [compile] itself, and
-     * [compileSnippet]'s prepared snippets, always compile.
-     */
     /** Field's own compiler warnings ([ShadowedSnippetNameDiagnostics]) by rerun-cache key, so a cache hit shows them again. */
     private val fieldWarningsByKey = HashMap<String, List<ScriptDiagnostic>>()
 
@@ -366,6 +360,12 @@ class KotlinInterface2(
             .filter { it.severity == ScriptDiagnostic.Severity.WARNING && it.message.contains(ShadowedSnippetNameDiagnostics.MESSAGE_MARK) }
             .distinctBy { Triple(it.message, it.location?.start?.line, it.location?.start?.col) }
 
+    /**
+     * [compile], except that an exact rerun of a source this engine already compiled — same
+     * expanded text, source property and implicit receivers, nothing it binds to redeclared since —
+     * returns the snippet it already has. Only [execInternal] uses this: [compile] itself, and
+     * [compileSnippet]'s prepared snippets, always compile.
+     */
     private suspend fun compileOrReuse(s: String, implicits: List<Any>): ResultWithDiagnostics<LinkedSnippet<CompiledScript>> {
         if (!KotlinEngineConfig.rerunCompileCache || !rerunCache.cacheable(s)) return compile(s)
         val key = sourceProperty + "\u0000" + implicits.joinToString(",") { it.javaClass.name } + "\u0000" + s
