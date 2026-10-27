@@ -116,9 +116,16 @@ data class PersonalReloadReport(
  * execution otherwise; [installPersonalReloadAction] goes through [inMain] for exactly this reason.
  */
 fun reloadPersonal(): PersonalReloadReport {
-    check(System.getProperty("afield.kit.packages").isNullOrBlank()) {
-        "This host loaded kit runtimes. Restart Field to replace their classes and native dependencies."
+    // Kit runtimes live in this layer: clean them up before it goes, start them again from the new one.
+    val kitDocuments = afield.document.workspace.KitRuntime.suspendForReload()
+    try {
+        return reloadPersonalLayer()
+    } finally {
+        afield.document.workspace.KitRuntime.resumeAfterReload(kitDocuments)
     }
+}
+
+private fun reloadPersonalLayer(): PersonalReloadReport {
     val examined = documents.values.flatMap { it.boxes.values }
         .filter { !it.getPropertyRaw("_tombstone").isTrue() }
 

@@ -30,6 +30,12 @@ import java.util.concurrent.ConcurrentHashMap
  * document launches, and it insists on exactly one live box per name instead of guessing. A
  * shutdown hook deactivates every live document and calls [KitLifecycle.cleanup] in reverse load
  * order, with four seconds to finish.
+ *
+ * Reloading the personal layer (`reloadPersonal()`) goes through [suspendForReload] and
+ * [resumeAfterReload]: every kit is deactivated and cleaned up, the layer is replaced, and the kits
+ * start again from the new classes, reactivating the documents that were open. The package
+ * directories themselves are still the launch profile's, so installing or removing a kit needs a
+ * restart, as does a native library a kit has already loaded.
  */
 
 /** Implement in a kit's Kotlin extension; startup/cleanup belong to the host, activation to a document. */
@@ -53,6 +59,7 @@ object KitRuntime {
     private val activeDocuments = ConcurrentHashMap<String, KitDocumentContext>()
     private val problems = ConcurrentHashMap<String, String>()
     private var started = false
+    private var shutdownHookInstalled = false
     val errors: Map<String, String> get() = problems.toMap()
 
     @Synchronized
@@ -78,11 +85,38 @@ object KitRuntime {
                 loaded[id] = Loaded(context, lifecycle)
             }.onFailure { problems[id] = it.message ?: it.javaClass.simpleName; lprintln("error,kits", "$id startup failed: ${problems[id]}") }
         }
-        if (directories.isNotEmpty()) Runtime.getRuntime().addShutdownHook(Thread({
+        // A reload calls start again; the hook is the host's, so it is added once.
+        if (directories.isNotEmpty() && !shutdownHookInstalled) Runtime.getRuntime().addShutdownHook(Thread({
             val worker = Thread({ shutdown() }, "field-kit-cleanup-worker").apply { isDaemon = true }
             worker.start(); worker.join(4000)
             if (worker.isAlive) System.err.println("Field kit cleanup exceeded 4 seconds; exiting.")
-        }, "field-kit-cleanup"))
+        }, "field-kit-cleanup")).also { shutdownHookInstalled = true }
+    }
+
+    /**
+     * The documents active now, for [resumeAfterReload]; deactivates them and cleans up every kit.
+     * Null when the kits were never started, so there is nothing to resume.
+     */
+    @Synchronized
+    fun suspendForReload(): List<SessionInformation>? {
+        if (!started) return null
+        val documents = activeDocuments.values.map { it.document }
+        shutdown()
+        return documents
+    }
+
+    /**
+     * Starts the kits again, from the personal layer as it is now, and reactivates [documents].
+     * A document that will not reactivate is reported in [errors] and left inactive.
+     */
+    @Synchronized
+    fun resumeAfterReload(documents: List<SessionInformation>?) {
+        if (documents == null) return
+        start()
+        documents.forEach { info ->
+            runCatching { activate(info) }
+                .onFailure { lprintln("error,kits", "${info.documentName} did not reactivate after the reload: ${it.message}") }
+        }
     }
 
     @Synchronized

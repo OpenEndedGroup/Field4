@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 18232 of 34756 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 18239 of 34764 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2079 undocumented entry points** (types, top-level functions and values) and 13724 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2079 undocumented entry points** (types, top-level functions and values) and 13725 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -189,7 +189,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DepthAnything.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/DepthAnything.kt) | Machine learning | onnx | 0 | 10 | 50% |
 | [movement.kt](../src/jvmMain/kotlin/afield/animation/motion/movement.kt) | Simulation | movement_examples | 0 | 10 | 75% |
 | [PatCondense.kt](../src/jvmMain/kotlin/afield/audio/synth/PatCondense.kt) | Patterns | pattern_language | 0 | 10 | 57% |
-| [KitRuntime.kt](../src/jvmMain/kotlin/afield/document/workspace/KitRuntime.kt) | Workspace | kits | 0 | 10 | 28% |
+| [KitRuntime.kt](../src/jvmMain/kotlin/afield/document/workspace/KitRuntime.kt) | Workspace | kits | 0 | 10 | 37% |
 | [lp_polytope.kt](../src/jvmMain/kotlin/afield/geometry/spatial/lp_polytope.kt) | Graphics | lp_curves | 0 | 10 | 80% |
 | [VectorFieldTopology.kt](../src/jvmMain/kotlin/afield/geometry/topology/vectorfield/VectorFieldTopology.kt) | Graphics | vector_field_topology | 0 | 10 | 45% |
 | [RtxdiSettings.kt](../src/jvmMain/kotlin/afield/graphics/render/lighting/RtxdiSettings.kt) | Graphics | direct_lighting | 0 | 10 | 28% |
@@ -1064,6 +1064,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ParticleTrackerSmoke.kt](../src/jvmMain/kotlin/afield/examples/video/ParticleTrackerSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [ChartGallery.kt](../src/jvmMain/kotlin/afield/examples/visualization/ChartGallery.kt) | Examples | — | 0 | 1 | 50% |
 | [FLinesAndJavaShapes.kt](../src/jvmMain/kotlin/afield/geometry/path/java2d/FLinesAndJavaShapes.kt) | Graphics | — | 0 | 1 | 85% |
+| [ManifoldHeaderCheck.kt](../src/jvmMain/kotlin/afield/geometry/solid/manifold/ManifoldHeaderCheck.kt) | Graphics | — | 0 | 1 | 80% |
 | [ManifoldSmokeTest.kt](../src/jvmMain/kotlin/afield/geometry/solid/manifold/ManifoldSmokeTest.kt) | Graphics | — | 0 | 1 | 50% |
 | [SolidCraftBuilderSmokeTest.kt](../src/jvmMain/kotlin/afield/geometry/solid/solidcraft/SolidCraftBuilderSmokeTest.kt) | Graphics | — | 0 | 1 | 50% |
 | [SolidCraftSmokeTest.kt](../src/jvmMain/kotlin/afield/geometry/solid/solidcraft/SolidCraftSmokeTest.kt) | Graphics | — | 0 | 1 | 50% |

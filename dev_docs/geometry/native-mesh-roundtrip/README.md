@@ -21,6 +21,7 @@ rotated, and rotated/translated), with three native imports per case. On this ma
 | Library | Cases | Failing cases | Largest directed-difference sum |
 | --- | ---: | ---: | ---: |
 | Installed 3.5.2 | 900 | 16 | 7.000000000000064 |
+| Installed 3.5.4 (Homebrew, 2026-10-27) | 900 | 16 | 7.000000000000064 |
 | Candidate patch, parallel build | 900 | 0 | 6.394884621840902e-13 |
 
 Each generation checks status, both directed native differences against the original handle,

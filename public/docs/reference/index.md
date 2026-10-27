@@ -438,14 +438,14 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - curves
     - [principal](graphics.md#principalcurves-kt)
 - *mesh* — [Graphics](graphics.md#geometrybuilder-kt) · [Math](math.md#linalg-mesh-kt) · [Simulation](simulation.md#tetmeshviews-kt)
-    - [tetgen](simulation.md#tetmeshviews-kt)
+    - *tetgen* — [Graphics](graphics.md#tetgensolid-kt) · [Simulation](simulation.md#tetmeshviews-kt)
 - [network](graphics.md#geometrynetwork-kt)
 - *path* — [Graphics](graphics.md#fline-kt) · [Math](math.md#cubicbezier3d-kt)
     - [java2d](graphics.md#flinesandjavashapes-kt)
     - [planning](math.md#cubicbezier3d-kt)
 - [polytope](polytopes.md#attributes-kt)
 - solid
-    - *manifold* — [Graphics](graphics.md#manifoldsmoketest-kt) · [Internal](internal.md#manifoldnative-kt)
+    - *manifold* — [Graphics](graphics.md#manifoldheadercheck-kt) · [Internal](internal.md#manifoldnative-kt)
     - [solidcraft](graphics.md#solidcraft-kt)
 - *spatial* — [Graphics](graphics.md#bspot-kt) · [Machine learning](machine-learning.md#stippletransport-kt) · [Math](math.md#linalg-spatial-kt)
 - topology
@@ -648,7 +648,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**34756 public symbols across 1581 source files**, 18232 of them (52%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34764 public symbols across 1583 source files**, 18239 of them (52%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -661,7 +661,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 134 | 50 (37%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 47 | 2156 | 1522 (70%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1061 | 463 (43%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 318 | 7821 | 4279 (54%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 320 | 7827 | 4284 (54%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 797 | 427 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
@@ -676,7 +676,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 77 | 2092 | 1013 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 584 | 397 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 123 | 3096 | 1519 (49%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 234 | 3175 | 1154 (36%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 234 | 3177 | 1156 (36%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 110 | 2510 | 852 (33%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 | [Output](output.md) | 1 | 25 | 17 (68%) |  |
@@ -1352,7 +1352,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitPackages.kt](workspace.md#kitpackages-kt) | Workspace | 41 | 7 | The registry of kit packages installed on this machine, and the immutable snapshot each registration copies out of a package's source folder. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitRestarts.kt](workspace.md#kitrestarts-kt) | Workspace | 4 | 2 | Builds the classpath a kit needs before stopping the Field that asked for it, so a build that fails leaves Welcome running and able to say why. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [KitRoutes.kt](workspace.md#kitroutes-kt) | Workspace · internal | 3 | 1 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitRuntime.kt](workspace.md#kitruntime-kt) | Workspace | 14 | 4 | Loads each installed kit runtime once per host, then attaches and detaches documents against it. | [Kits and Starting Points](../kits.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitRuntime.kt](workspace.md#kitruntime-kt) | Workspace | 16 | 6 | Loads each installed kit runtime once per host, then attaches and detaches documents against it. | [Kits and Starting Points](../kits.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [Kits.kt](workspace.md#kits-kt) | Workspace | 25 | 21 | Kits package the shared parts of one kind of document so many documents can be installed from, and migrated to, the same source. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [KitTools.kt](machine-learning.md#kittools-kt) | Machine learning | 4 | 0 | The AI4 tool that reports which kit a document runs and which of its kit-provided properties and assets have drifted from the kit. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>study/<wbr>ui/<wbr></small> [KnobNames.kt](workspace.md#knobnames-kt) | Workspace | 0 | 0 | Short names for the numbers of a program, like `wave drift speed` or `star brightness`, for the sliders of a study card, written by Field's fast model from what the compiler already knows. |  |
@@ -1461,6 +1461,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>macros/<wbr></small> [macros.kt](workspace.md#macros-kt) | Workspace | 40 | 12 | The call-rewriting macro pass that box code goes through before it compiles: a call such as `prop(...)`, `moduleHere(...)` or `_println(...)` is replaced by source text generated for the box that contains it. | [Running code in a box](../running_code.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>buffers/<wbr></small> [magic.kt](graphics.md#magic-kt) | Graphics | 50 | 2 | The buffer DSL: `buffer` and `defaultBuffer` build a `BufferParameters` that says how a Vulkan buffer is sized, placed in memory and used. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr></small> [MainLanguageRegistry.kt](workspace.md#mainlanguageregistry-kt) | Workspace | 12 | 2 | The registry that lets a box choose the language its children run in, such as Python instead of Kotlin. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>solid/<wbr>manifold/<wbr></small> [ManifoldHeaderCheck.kt](graphics.md#manifoldheadercheck-kt) | Graphics | 5 | 4 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>solid/<wbr>manifold/<wbr></small> [ManifoldNative.kt](internal.md#manifoldnative-kt) | Internal · internal | 22 | 16 | The FFM binding to `libmanifoldc` that `Solid` and `Section` are built on, plus the small public enums they take. | [Solids that cannot fail: Manifold in Field](../manifold.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>solid/<wbr>manifold/<wbr></small> [ManifoldSmokeTest.kt](graphics.md#manifoldsmoketest-kt) | Graphics · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [MapOfSequences.kt](graphics.md#mapofsequences-kt) | Graphics | 14 | 5 | Keyed collections of running sequences that a host steps once per frame. |  |
@@ -2146,6 +2147,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [terminalOutput.kt](visualization.md#terminaloutput-kt) | Visualization | 15 | 12 | A real terminal in a box's output area: `terminal` starts a process in a panel and returns a `FieldTerminal` that box code can type into, read, and kill. | [A Terminal in a Box](../terminal.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [TestDirectedConstraints4.kt](examples.md#testdirectedconstraints4-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>mesh/<wbr>tetgen/<wbr></small> [Tetgen.kt](simulation.md#tetgen-kt) | Simulation | 19 | 13 | A closed surface turned into tetrahedra, with its sharp edges intact. | [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>mesh/<wbr>tetgen/<wbr></small> [TetgenSolid.kt](graphics.md#tetgensolid-kt) | Graphics | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>mesh/<wbr>tetgen/<wbr></small> [TetMeshViews.kt](simulation.md#tetmeshviews-kt) | Simulation | 6 | 6 | Ways of looking at a `TetMesh`: its element quality, a slice of it, and the triangles that draw it. | [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr></small> [textures.kt](graphics.md#textures-kt) | Graphics | 34 | 6 | Sampled textures for Field 4 shaders: images decoded from disk or memory, CPU-streamed frames, and GPU-writable storage images. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr></small> [TextureSampler.kt](graphics.md#texturesampler-kt) | Graphics | 4 | 1 | `TextureSampler` wraps a `VkSampler`: filtering, mipmap mode, anisotropy and per-axis address modes for sampling a texture in a shader. |  |

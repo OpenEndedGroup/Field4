@@ -677,26 +677,31 @@ trade-off — if your part has a sharp edge and you care what happens there, the
 get you closer by refining. [`dev_docs/TETGEN.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/TETGEN.md) has the per-resolution errors, and the same
 comparison run against MMG rather than marching cubes.
 
-### Where precision is lost: `TriMesh` stores float32
+### Mesh the `Solid` for full precision
 
-The bracket's meshed volume differs from Manifold's by `1.6e-9` relative, where the cube's differs by
-`2.7e-15`. That gap is not the mesher. `TriMesh` stores positions as `Float`, so `Solid.toTriMesh()`
-narrows every coordinate on the way in:
+`Tetgen.tetrahedralize` also takes a Manifold `Solid` directly, and that is the route to use when the
+volume has to match Manifold's:
+
+```diffstatic {data-lang=kotlin}
+val mesh = Tetgen.tetrahedralize(part, targetEdgeLength = 5.0) // part is the Solid itself
+```
+
+`TriMesh` stores positions as `Float`, so `part.toTriMesh()` narrows every coordinate before TetGen
+sees it. The `Solid` overload reads Manifold's `double` positions instead. On the bracket:
 
 <div class="field-data-table" markdown>
 
-| Representation | volume of the bracket |
-|---|---|
-| Manifold, in double | `76958.9090888672` |
-| its `TriMesh`, after narrowing to float32 | `76958.90896392896` |
-| TetGen's mesh of that `TriMesh` | `76958.90896392865` |
+| Representation | volume of the bracket | relative to Manifold |
+|---|---|---|
+| Manifold, in double | `76958.9090888672` | |
+| TetGen's mesh of `part.toTriMesh()` | `76958.90896392895` | `1.6e-9` |
+| TetGen's mesh of `part` | `76958.90908886695` | `3.4e-15` |
 
 </div>
 
-TetGen reproduces what it was handed to `4e-15`. The cube lands at `2.7e-15` because `0`, `2`, `3`
-and `4` are exactly representable in float32 and a 48-segment cylinder's vertices are not. If you
-need better than 1 part in `10⁹` on a curved body, the bridge is where to spend the effort, not the
-mesher.
+The cube is exact either way, because `0`, `2`, `3` and `4` are exactly representable in float32 and
+a 48-segment cylinder's vertices are not. The `Solid` overload takes the same `quality`,
+`targetEdgeLength`, `preserveSurface` and `order` arguments.
 
 ### Promoting to 10 nodes
 

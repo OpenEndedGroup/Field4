@@ -131,7 +131,7 @@
   {"doc": "cloth_simdverlet_start", "box": "cloth_start", "codeSha256": "1f39a942cd6f3c06", "codeLines": 56, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "completion_rank_at_scale", "box": "classify", "codeSha256": "16d814ca93b7a3ff", "codeLines": 94, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "completion_rank_at_scale", "box": "corpus", "codeSha256": "fefdb7f12284bc17", "codeLines": 77, "receivers": ["afield.document.graph.Box"], "preamble": ""},
-  {"doc": "completion_rank_at_scale", "box": "sweep", "codeSha256": "868d102d8879f85e", "codeLines": 49, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "completion_rank_at_scale", "box": "sweep", "codeSha256": "94265aea783048a7", "codeLines": 41, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "computed_ray_geometry", "box": "agent_graphics_context", "codeSha256": "0925cc7e55ed8f46", "codeLines": 17, "receivers": ["afield.document.graph.Box"], "preamble": "computed_ray_geometry__agent_graphics_context.preamble.kt"},
   {"doc": "computed_ray_geometry", "box": "computed_ray_geometry", "codeSha256": "a9eaaba6328f1bd2", "codeLines": 32, "receivers": ["afield.document.graph.Box"], "preamble": "computed_ray_geometry__computed_ray_geometry.preamble.kt"},
   {"doc": "confluence_grid", "box": "confluence_grid", "codeSha256": "956f1d5abac4d3b3", "codeLines": 363, "receivers": ["afield.document.graph.Box"], "preamble": ""},

@@ -1341,9 +1341,8 @@ four isomorphic graphs draw four different ways and the picture then claims the 
 The final pose is therefore a three-round Weisfeiler-Leman refinement — a node's label is its type folded
 with its neighbours' labels, in **port order** — so the ordering is a structural invariant and nothing
 reads an id or an insertion order. (A pose by BFS depth alone is not enough: on `3^3`, ten `DUP`s
-leave sibling order ambiguous.) The box also documents two traps in place: it does **not** use `frames { }`, because a frames loop in a box with no `Window`/`Renderer` gets
-*zero* ticks, so it drives its own clock with a sleep loop; and its output panel opens at 480 x 174 and
-ignores the size the viewer asks for, a known defect described in `dev_docs/OUTPUT_PANEL_SIZING.md`. Drag the panel once and the size sticks.
+leave sibling order ambiguous.) The box does **not** use `frames { }`, because a frames loop in a box with no `Window`/`Renderer` gets
+*zero* ticks, so it drives its own clock with a sleep loop.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/confluence_grid/metadata.edn)
 
@@ -1978,8 +1977,7 @@ third-party JS chart.
 window, no sidecar. Three boxes: the corpus itself with its payload distribution, the *real*
 `KotlinSourceIndex.getCompletionCategoryForSymbol` called with the real recorded `declaredIn`, and
 the whole decision re-scored through the shipped
-weights. The third box shells out to `tools/rank_weight_lab.py` and wants a spec file
-`afield.runtime.completion.FieldSuggestPresentationTest` drops; if it says so, run that test once.
+weights. The third box shells out to `tools/rank_weight_lab.py`.
 `dev_docs/completion_rank_at_scale.md` is the written-up version, with the sweep and the falsification
 behind it.
 
