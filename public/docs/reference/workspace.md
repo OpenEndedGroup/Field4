@@ -550,6 +550,21 @@ Explicit frame boundaries for the existing Profiling panel. This object does not
 
 ## JvmProfileCapture.kt { #jvmprofilecapture-kt }
 
+The stack-sampling half of the profiling panel: a JFR recording that runs alongside a coroutine
+capture, read back as frames, samples and the source each frame came from.
+
+[`CoroutineProfiles`](workspace.md#coroutineprofiling-kt-coroutineprofiles) starts one only when a capture asks for stacks. It records execution samples
+every 10 ms, throttled allocation samples and GC pauses, under a size ceiling and a recording
+length the capture cannot outrun. Nothing is parsed while the capture is live: stopping the
+recording hands the dump to a single daemon thread, and the panel is told how far that has got.
+
+Two things keep the result bounded and safe to hold. Registering a box's snippet copies its source
+text and a few identifiers, never the box, its classloader or its coroutines, and every list has a
+cap past which samples are counted as dropped rather than kept. A frame that is not box code is
+traced back to a file by reading the class's own SourceFile attribute and then requiring the
+declared package to agree, so two files of the same name in different packages are never guessed
+between.
+
 `src/jvmMain/kotlin/afield/app/diagnostics/JvmProfileCapture.kt` — [read the source](source/jvmMain/afield/app/diagnostics/JvmProfileCapture/)
 
 ## LatencySpans.kt { #latencyspans-kt }
@@ -1150,6 +1165,20 @@ first address it hears, for filling in the preferences.
 
 ## PatchyWebStorage.kt { #patchywebstorage-kt }
 
+The HTTP side of a Patchy editor that edits a `.psd` on disk: one route pair, addressed by an
+opaque output-binding id rather than by a path.
+
+[`patchyWeb`](graphics.md#patchyweb-kt--patchyweb) registers a binding when a box opens a document file and drops it again when the run
+stops, so the browser never names a path and a stale id resolves to nothing. Registration refuses
+anything that is not a `.psd` inside that document's own `files` directory, both requests are
+refused unless they are same-site, and a write to a read-only document is refused as well.
+
+Writes are compare-and-swap on the file's content hash. A GET returns the hash with the bytes, a
+PUT has to send the hash it is replacing, and a PUT whose hash does not match the file on disk is
+answered with a conflict rather than overwriting whatever arrived in the meantime. The new bytes
+have to open with a PSD signature and fit the size limit, and they land through a temporary file
+moved into place rather than by writing over the original.
+
 `src/jvmMain/kotlin/afield/app/server/PatchyWebStorage.kt` — [read the source](source/jvmMain/afield/app/server/PatchyWebStorage/)
 
 ## Server.kt { #server-kt }
@@ -1553,13 +1582,25 @@ connected controllers current as output, selection and control values change in 
 
 ## dependencies.kt { #dependencies-kt }
 
+One websocket handler, `dependency-graph`, which is how the dependency layer asks what it draws.
+
+The reply is [`PropertyDependencies`](workspace.md#propertydependencies-kt-propertydependencies)' record for the document of the page that asked: every
+producer to consumer flow it has seen, and every read that found nothing. Sending it with
+`action = "clear"` forgets that document's record first, which is the palette's Clear Dependency
+Record.
+
+Nothing calls [`dependencyGraphHandlers`](workspace.md#dependencies-kt--dependencygraphhandlers); the startup scan finds it by its `@RunsAt` annotation and
+runs it while handlers are being installed. A page with no document session yet, or a record that
+fails to build, is answered with an empty graph carrying the reason rather than with an error, so
+the layer can say why it is empty.
+
 `src/jvmMain/kotlin/afield/app/server/dependencies.kt` — [read the source](source/jvmMain/afield/app/server/dependencies/)
 
 ### Top-level functions { #dependencies-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="dependencies-kt--dependencygraphhandlers"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">dependencyGraphHandlers</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/dependencies/#L51) | `dependency-graph`: the dependency layer's view of [`PropertyDependencies`](workspace.md#propertydependencies-kt-propertydependencies) for the asking page's document — every producer → consumer flow and every unanswered read — or, with `action = "clear"`, forget the document's record first. |
+| <a id="dependencies-kt--dependencygraphhandlers"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">dependencyGraphHandlers</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/dependencies/#L65) | `dependency-graph`: the dependency layer's view of [`PropertyDependencies`](workspace.md#propertydependencies-kt-propertydependencies) for the asking page's document — every producer → consumer flow and every unanswered read — or, with `action = "clear"`, forget the document's record first. |
 
 ## docsAnnotations.kt { #docsannotations-kt }
 
@@ -2518,14 +2559,26 @@ The AI4 tool that explains where a box's inherited or context value comes from (
 
 ## Mesh_context.kt { #mesh-context-kt }
 
+The two calls that find a value somewhere up a box's parent chain: [`fromContext`](workspace.md#mesh-context-kt--fromcontext) by type,
+[`fromContextWithNameOrNull`](workspace.md#mesh-context-kt--fromcontextwithnameornull) by name.
+
+Both are inline wrappers over [`ContextResolution`](workspace.md#contextresolution-kt-contextresolution)'s walk, which does the searching. What they add
+is the reified type argument and the lookup of the box that is asking, so outside a running box
+there is nothing to search: [`fromContext`](workspace.md#mesh-context-kt--fromcontext) throws unless it was given a default, and
+[`fromContextWithNameOrNull`](workspace.md#mesh-context-kt--fromcontextwithnameornull) returns the default or null.
+
+Neither searches the asking box's own top-level variables unless `includeLocalVariables` is set.
+That is what keeps `val x = fromContext<X>()` resolving from a parent on every later run instead
+of finding the answer it left behind last time.
+
 `src/jvmMain/kotlin/afield/document/context/Mesh_context.kt` — [read the source](source/jvmMain/afield/document/context/Mesh_context/)
 
 ### Top-level functions { #mesh-context-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="mesh-context-kt--fromcontext"></a>[<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">A</span><span class="p">&gt;</span> <span class="nf">fromContext</span><span class="p">(</span><span class="n">defaultValue</span><span class="p">:</span> <span class="nc">A</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">includeLocalVariables</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">A</span></code>](source/jvmMain/afield/document/context/Mesh_context/#L45) | Resolve a value of type `A` from the box context: this box first, then its ancestors, breadth-first. |
-| <a id="mesh-context-kt--fromcontextwithnameornull"></a>[<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">A</span><span class="p">&gt;</span> <span class="nf">fromContextWithNameOrNull</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">defaultValue</span><span class="p">:</span> <span class="nc">A</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">includeLocalVariables</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">A</span><span class="o">?</span></code>](source/jvmMain/afield/document/context/Mesh_context/#L77) | Named sibling of [`fromContext`](workspace.md#mesh-context-kt--fromcontext): resolve the value called `name` (and assignable to `A`) from the box context. |
+| <a id="mesh-context-kt--fromcontext"></a>[<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">A</span><span class="p">&gt;</span> <span class="nf">fromContext</span><span class="p">(</span><span class="n">defaultValue</span><span class="p">:</span> <span class="nc">A</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">includeLocalVariables</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">A</span></code>](source/jvmMain/afield/document/context/Mesh_context/#L59) | Resolve a value of type `A` from the box context: this box first, then its ancestors, breadth-first. |
+| <a id="mesh-context-kt--fromcontextwithnameornull"></a>[<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">A</span><span class="p">&gt;</span> <span class="nf">fromContextWithNameOrNull</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">defaultValue</span><span class="p">:</span> <span class="nc">A</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">includeLocalVariables</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">A</span><span class="o">?</span></code>](source/jvmMain/afield/document/context/Mesh_context/#L91) | Named sibling of [`fromContext`](workspace.md#mesh-context-kt--fromcontext): resolve the value called `name` (and assignable to `A`) from the box context. |
 
 ## WhyAnswer.kt { #whyanswer-kt }
 
@@ -5553,6 +5606,21 @@ Which boxes' bodies are executing right now: set by execution around a box's run
 
 ## ExecutionVerdict.kt { #executionverdict-kt }
 
+Whether a box run succeeded, decided from what the run emitted rather than from what its engine
+reported.
+
+An `ExecutionTrace` is built where an execution request arrives and finished where the work
+completes, which for every engine but Kotlin's is a later dispatch onto the Runloop. While it is
+open it watches the output the run routes through its reply, so a box that reports success while
+printing a compiler error ends with a failed receipt. The verdict collects up to twenty of those
+diagnostics and the receipt carries them back as an `ExecutionReport`.
+
+`ExecutionReports` keeps the last attempt and the last successful setup per property on the box
+itself, so an agent asking later whether a box ran gets an answer that outlived the run, and
+`sourceRevision` hashes the source text so that answer can be checked against the code the box
+holds now. A request with no id is not awaited: the trace still forwards output, and finishes
+without publishing a receipt.
+
 `src/jvmMain/kotlin/afield/runtime/execution/ExecutionVerdict.kt` — [read the source](source/jvmMain/afield/runtime/execution/ExecutionVerdict/)
 
 ## PreambleFailureStopsExecutionTest.kt { #preamblefailurestopsexecutiontest-kt }
@@ -6977,27 +7045,35 @@ Thrown when a model's output still carries a reply marker such as `<help>` or `<
 
 ## BoxInterrupt.kt { #boxinterrupt-kt }
 
+Getting out of box code that will not return: a stall watchdog, and the bytecode rewriting that
+gives the interrupt somewhere to land.
+
+The whole public surface is [`BoxInterrupt`](workspace.md#boxinterrupt-kt-boxinterrupt): request an interrupt, poll for one, instrument a
+freshly compiled snippet, and the nested watchdog that notices a Runloop which has stopped making
+frames. The rest of the file is the ASM class and method visitors that insert the poll call, and
+nothing outside the file uses them. `dev_docs/RUNAWAY_BOX_INTERRUPT.md` has the design.
+
 `src/jvmMain/kotlin/afield/runtime/lifecycle/BoxInterrupt.kt` — [read the source](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/)
 
 ### BoxInterrupt { #boxinterrupt-kt-boxinterrupt }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">BoxInterrupt</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L43)
+[<code class="highlight"><span class="k">object</span> <span class="nc">BoxInterrupt</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L53)
 
 Box code that never returns no longer freezes Field: a stall watchdog plus a cooperative escape.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="boxinterrupt-kt--boxinterrupt--boxinterruptederror"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">BoxInterruptedError</span><span class="p">(</span><span class="k">val</span> <span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Error</span><span class="p">(</span><span class="s">&quot;Box interrupted: $reason&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L46) | Thrown out of box code by [`poll`](workspace.md#boxinterrupt-kt--boxinterrupt--poll). An `Error`, so `catch (e: Exception)` in a box does not swallow it. |
-| <a id="boxinterrupt-kt--boxinterrupt--oninterrupted"></a>[<code class="highlight"><span class="k">val</span> <span class="n">onInterrupted</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L60) | Listeners told about every interrupt that actually fired (the UI and tests). |
-| <a id="boxinterrupt-kt--boxinterrupt--enabled"></a>[<code class="highlight"><span class="k">var</span> <span class="n">enabled</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L71) | Whether newly compiled box code polls, and whether the [`Watchdog`](workspace.md#boxinterrupt-kt--boxinterrupt--watchdog) may interrupt. Off, the watchdog still reports stalls. Code compiled while it was on stays interruptible until it is recompiled. |
-| <a id="boxinterrupt-kt--boxinterrupt--applypreference"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">applyPreference</span><span class="p">(</span><span class="n">on</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L74) | Apply the persisted preference (`FieldPreferences.boxInterrupt`), unless the env/property override is set. |
-| <a id="boxinterrupt-kt--boxinterrupt--poll"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">poll</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L86) | Called by instrumented box code at every method entry and loop back-edge. Must stay cheap: the common path is one opaque read and a null check. Opaque, not volatile: a volatile read on every back-edge is an acquire barrier that stops the JIT vectorising the loop (`a[`i`](workspace.md#stdlib-kt--i) += i` over an `IntArray` ran ~20x slower), while an opaque read still cannot be hoisted out of the loop, so a request is seen within an iteration or two. The compare-and-set below is the real fence. |
-| <a id="boxinterrupt-kt--boxinterrupt--request"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">request</span><span class="p">(</span><span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">thread</span><span class="p">:</span> <span class="nc">Thread</span><span class="o">?</span> <span class="o">=</span> <span class="nc">Runloop</span><span class="p">.</span><span class="n">mainThread</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L107) | Ask `thread` (by default the Runloop thread) to leave box code at its next poll. Returns false when there is no such thread. Safe to call from any thread, including while the Runloop is blocked. A request is withdrawn by the [`Watchdog`](workspace.md#boxinterrupt-kt--boxinterrupt--watchdog) once the Runloop makes progress again, so a request that found no box code to land in cannot fire later in an unrelated box. |
-| <a id="boxinterrupt-kt--boxinterrupt--ispending"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">isPending</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L124) | True while a request has not yet landed or been withdrawn. |
-| <a id="boxinterrupt-kt--boxinterrupt--culprit"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">culprit</span><span class="p">(</span><span class="n">stack</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">StackTraceElement</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L132) | Box label that owns the innermost snippet frame in `stack`, or null. |
-| <a id="boxinterrupt-kt--boxinterrupt--instrument"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">instrument</span><span class="p">(</span><span class="n">script</span><span class="p">:</span> <span class="nc">CompiledScript</span><span class="p">,</span> <span class="n">boxLabel</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L144) | Rewrite the newest snippet of `script` so its code polls. Idempotent per compiled module; a module of an unknown shape is left alone (and logged once). |
-| <a id="boxinterrupt-kt--boxinterrupt--instrumentclass"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">instrumentClass</span><span class="p">(</span><span class="n">bytes</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="n">boxLabel</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L168) | `bytes` rewritten to poll, recording its class as `boxLabel`'s; null if it is not rewritable (then the class runs unchanged, just not interruptibly). |
-| <a id="boxinterrupt-kt--boxinterrupt--watchdog"></a>[<code class="highlight"><span class="k">object</span> <span class="nc">Watchdog</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L237) | Notices that [`Runloop.frame`](workspace.md#runloop-kt--runloop--frame) has stopped advancing. After `reportAfterMs` it logs the stall once, with the culprit box and the Runloop thread's stack; after `interruptAfterMs` (0 = never) it [`request`](workspace.md#boxinterrupt-kt--boxinterrupt--request)s an interrupt. Runs on its own daemon thread; never touches Runloop state beyond reading the frame counter and the thread's stack. |
+| <a id="boxinterrupt-kt--boxinterrupt--boxinterruptederror"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">BoxInterruptedError</span><span class="p">(</span><span class="k">val</span> <span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Error</span><span class="p">(</span><span class="s">&quot;Box interrupted: $reason&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L56) | Thrown out of box code by [`poll`](workspace.md#boxinterrupt-kt--boxinterrupt--poll). An `Error`, so `catch (e: Exception)` in a box does not swallow it. |
+| <a id="boxinterrupt-kt--boxinterrupt--oninterrupted"></a>[<code class="highlight"><span class="k">val</span> <span class="n">onInterrupted</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L70) | Listeners told about every interrupt that actually fired (the UI and tests). |
+| <a id="boxinterrupt-kt--boxinterrupt--enabled"></a>[<code class="highlight"><span class="k">var</span> <span class="n">enabled</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L81) | Whether newly compiled box code polls, and whether the [`Watchdog`](workspace.md#boxinterrupt-kt--boxinterrupt--watchdog) may interrupt. Off, the watchdog still reports stalls. Code compiled while it was on stays interruptible until it is recompiled. |
+| <a id="boxinterrupt-kt--boxinterrupt--applypreference"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">applyPreference</span><span class="p">(</span><span class="n">on</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L84) | Apply the persisted preference (`FieldPreferences.boxInterrupt`), unless the env/property override is set. |
+| <a id="boxinterrupt-kt--boxinterrupt--poll"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">poll</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L96) | Called by instrumented box code at every method entry and loop back-edge. Must stay cheap: the common path is one opaque read and a null check. Opaque, not volatile: a volatile read on every back-edge is an acquire barrier that stops the JIT vectorising the loop (`a[`i`](workspace.md#stdlib-kt--i) += i` over an `IntArray` ran ~20x slower), while an opaque read still cannot be hoisted out of the loop, so a request is seen within an iteration or two. The compare-and-set below is the real fence. |
+| <a id="boxinterrupt-kt--boxinterrupt--request"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">request</span><span class="p">(</span><span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">thread</span><span class="p">:</span> <span class="nc">Thread</span><span class="o">?</span> <span class="o">=</span> <span class="nc">Runloop</span><span class="p">.</span><span class="n">mainThread</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L117) | Ask `thread` (by default the Runloop thread) to leave box code at its next poll. Returns false when there is no such thread. Safe to call from any thread, including while the Runloop is blocked. A request is withdrawn by the [`Watchdog`](workspace.md#boxinterrupt-kt--boxinterrupt--watchdog) once the Runloop makes progress again, so a request that found no box code to land in cannot fire later in an unrelated box. |
+| <a id="boxinterrupt-kt--boxinterrupt--ispending"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">isPending</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L134) | True while a request has not yet landed or been withdrawn. |
+| <a id="boxinterrupt-kt--boxinterrupt--culprit"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">culprit</span><span class="p">(</span><span class="n">stack</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">StackTraceElement</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L142) | Box label that owns the innermost snippet frame in `stack`, or null. |
+| <a id="boxinterrupt-kt--boxinterrupt--instrument"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">instrument</span><span class="p">(</span><span class="n">script</span><span class="p">:</span> <span class="nc">CompiledScript</span><span class="p">,</span> <span class="n">boxLabel</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L154) | Rewrite the newest snippet of `script` so its code polls. Idempotent per compiled module; a module of an unknown shape is left alone (and logged once). |
+| <a id="boxinterrupt-kt--boxinterrupt--instrumentclass"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">instrumentClass</span><span class="p">(</span><span class="n">bytes</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="n">boxLabel</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L178) | `bytes` rewritten to poll, recording its class as `boxLabel`'s; null if it is not rewritable (then the class runs unchanged, just not interruptibly). |
+| <a id="boxinterrupt-kt--boxinterrupt--watchdog"></a>[<code class="highlight"><span class="k">object</span> <span class="nc">Watchdog</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L247) | Notices that [`Runloop.frame`](workspace.md#runloop-kt--runloop--frame) has stopped advancing. After `reportAfterMs` it logs the stall once, with the culprit box and the Runloop thread's stack; after `interruptAfterMs` (0 = never) it [`request`](workspace.md#boxinterrupt-kt--boxinterrupt--request)s an interrupt. Runs on its own daemon thread; never touches Runloop state beyond reading the frame counter and the thread's stack. |
 
 ## LifecycleLedger.kt { #lifecycleledger-kt }
 
@@ -7214,6 +7290,20 @@ The runs that `propUp` and `propDown` cause: pulling a missing value from upstre
 | <a id="reactiveruns-kt--reactiveruns--ordernext"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">orderNext</span><span class="p">(</span><span class="n">waiting</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">adjacency</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/lifecycle/ReactiveRuns/#L787) | Of `waiting` (in priority order), the first that no *other* waiting id reaches through `adjacency`; the first of all when every one is reachable from another (a cycle). |
 
 ## RunOwnedListener.kt { #runownedlistener-kt }
+
+A box's callbacks on a long-lived object, registered so that stopping or rerunning the box takes
+them off again.
+
+`runOwnedListener` subscribes under an owner object and a name, and both halves of that pair
+matter: registering the same name again closes the previous subscription rather than adding a
+second one, and the owner is compared by identity, so two objects with equal contents keep
+separate slots. The registering box's [`RunScope`](workspace.md#runscope-kt-runscope) owns the result, which is what releases it on
+Stop, on a rerun, and when the run is retired; calling it from outside a box run fails.
+
+Events arrive with the registering box's context and run scope restored, so a callback behaves as
+if it were still inside the run. One that arrives after the scope stopped, or after a later
+registration took the same name, is dropped rather than delivered. Orca's listeners and
+`PuppetBrowser`'s page events are registered this way.
 
 `src/jvmMain/kotlin/afield/runtime/lifecycle/RunOwnedListener.kt` — [read the source](source/jvmMain/afield/runtime/lifecycle/RunOwnedListener/)
 

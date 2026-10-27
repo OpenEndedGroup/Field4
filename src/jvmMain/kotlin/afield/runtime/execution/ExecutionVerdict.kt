@@ -29,6 +29,23 @@ import afield.ui.output.templates.filter
 import kotlinx.serialization.json.*
 import java.security.MessageDigest
 
+/**
+ * Whether a box run succeeded, decided from what the run emitted rather than from what its engine
+ * reported.
+ *
+ * An `ExecutionTrace` is built where an execution request arrives and finished where the work
+ * completes, which for every engine but Kotlin's is a later dispatch onto the Runloop. While it is
+ * open it watches the output the run routes through its reply, so a box that reports success while
+ * printing a compiler error ends with a failed receipt. The verdict collects up to twenty of those
+ * diagnostics and the receipt carries them back as an `ExecutionReport`.
+ *
+ * `ExecutionReports` keeps the last attempt and the last successful setup per property on the box
+ * itself, so an agent asking later whether a box ran gets an answer that outlived the run, and
+ * `sourceRevision` hashes the source text so that answer can be checked against the code the box
+ * holds now. A request with no id is not awaited: the trace still forwards output, and finishes
+ * without publishing a receipt.
+ */
+
 /** Content identity, independent of save time or sidecar location. */
 internal fun sourceRevision(source: String): String = MessageDigest.getInstance("SHA-256")
     .digest(source.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
