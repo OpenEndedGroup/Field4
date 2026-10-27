@@ -945,6 +945,29 @@ class CacheEntry:
     metadata: dict[str, Any] | None = None
 
 
+def asset_fingerprint(path: Path, previous: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    """Size, mtime and sha256 of a cached asset, or None when it is gone.
+
+    A cache entry certifies the bytes its capture published. Recording them lets a later run tell
+    that the file at that path is no longer those bytes (a `git stash`, a checkout of `main`'s
+    copy, a hand edit) and capture again, instead of passing the stale file as a cache hit. The
+    hash is reused while size and mtime are unchanged, so saving the cache does not reread 1 GB.
+    """
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    if not path.is_file():
+        return None
+    if previous and previous.get("size") == stat.st_size and previous.get("mtime_ns") == stat.st_mtime_ns:
+        return dict(previous)
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return {"size": stat.st_size, "mtime_ns": stat.st_mtime_ns, "sha256": digest.hexdigest()}
+
+
 class RunnerState:
     def __init__(self, config: Any) -> None:
         self.config = config
@@ -2206,6 +2229,8 @@ class RunnerState:
 
         cache: dict[str, str] = {}
         metadata: dict[str, dict[str, Any]] = {}
+        fingerprints: dict[str, dict[str, Any]] = {}
+        dropped = 0
         for key, value in entries.items():
             cache_key = str(key)
             if isinstance(value, str):
@@ -2216,10 +2241,20 @@ class RunnerState:
             digest = value.get("digest")
             if not isinstance(digest, str):
                 continue
+            recorded = value.get("asset")
+            if isinstance(recorded, dict):
+                current = asset_fingerprint(Path(cache_key), recorded)
+                if current is None or current.get("sha256") != recorded.get("sha256"):
+                    dropped += 1
+                    continue
+                fingerprints[cache_key] = current
             cache[cache_key] = digest
             entry_metadata = value.get("metadata")
             if isinstance(entry_metadata, dict):
                 metadata[cache_key] = entry_metadata
+        if dropped:
+            LOG.info("Field docs runner cache: %d entries dropped, their asset is no longer the bytes they certified", dropped)
+        self._asset_fingerprints = fingerprints
         return cache, metadata
 
     def save(self) -> None:
@@ -2228,15 +2263,19 @@ class RunnerState:
         if not self.dirty:
             return
         entries: dict[str, Any] = {}
+        fingerprints = getattr(self, "_asset_fingerprints", {})
         for cache_key, digest in self.cache.items():
             metadata = self.cache_metadata.get(cache_key)
-            if metadata is None:
+            asset = asset_fingerprint(Path(cache_key), fingerprints.get(cache_key))
+            if metadata is None and asset is None:
                 entries[cache_key] = digest
             else:
-                entries[cache_key] = {
-                    "digest": digest,
-                    "metadata": metadata,
-                }
+                entries[cache_key] = {"digest": digest}
+                if metadata is not None:
+                    entries[cache_key]["metadata"] = metadata
+                if asset is not None:
+                    entries[cache_key]["asset"] = fingerprints[cache_key] = asset
+        self._asset_fingerprints = fingerprints
         payload = {
             "version": SCRIPT_VERSION,
             "mode": self.runner_mode,
