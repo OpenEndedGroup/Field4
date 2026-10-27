@@ -32,34 +32,33 @@ import java.util.Base64
 import java.util.concurrent.TimeUnit
 
 /**
- * A tiny fullscreen StackSL harness for the docs.
+ * The StackSL gallery on the docs site: one fullscreen fragment per example program, rendered
+ * offscreen into a fixed 512² (`OUTPUT_DIM`) target.
  *
- * It keeps **one** renderer, **one** offscreen [RenderToTexture], and **one**
- * fragment slot alive, then walks the StackSL programs from a
- * canonical_graphics-style workspace ([WORKSPACE_DIR]). Each program is injected
- * through the ordinary `{{ stack.auto.program }}` template path (the same
- * live-coding mechanism documented on the StackSL pages), the fullscreen module
- * is rebuilt under a single name — so the new module simply replaces the previous
- * one in the target's module map — and the resulting texture is read back.
+ * It holds one renderer, one offscreen [RenderToTexture] and one fragment slot open, then walks
+ * the StackSL programs in a canonical_graphics-style workspace (`WORKSPACE_DIR`). Each program is
+ * injected through the ordinary `{{ stack.auto.program }}` template path, the same live-coding
+ * mechanism the StackSL pages describe, and the fullscreen module is rebuilt under a single name,
+ * so a new module replaces the previous one in the target's module map. The resulting texture is
+ * then read back.
  *
- * [renderGallery] reads back a single still per program. [renderAnimations]
- * drives a `time` push constant across frames and encodes each program to an mp4
- * (the docs runner can only screenshot the native GPU window, never record it, so
- * the harness owns the readback + ffmpeg encode). Both are "one Field document,
- * many Field 4 renders": the whole page is produced inside a single graphics
- * context instead of restarting the JVM per asset. The example programs are
- * editable Field content in the workspace, not literals in this file.
+ * [renderGallery] reads back a single still per program. [renderAnimations] drives a `time` push
+ * constant across frames and encodes each `animate: true` program to an mp4, since the docs runner
+ * can screenshot the native GPU window but never record it, which leaves the readback and the
+ * ffmpeg encode to the harness. Both are "one Field document, many Field 4 renders": a whole
+ * page's assets come out of a single graphics context rather than a JVM restart apiece. The
+ * example programs are editable Field content in the workspace, not literals in this file.
  *
- * Both targets are [GALLERY_FORMAT], an sRGB format, for the same reason the window's swapchain
- * is `B8G8R8A8_SRGB`: the fragment writes *linear* colour and the attachment encodes it on
- * write, so the bytes read back are the bytes a person sees in a live window. The gallery used
- * to render into `R8G8B8A8_UNORM`, which stores the linear values as they are; its PNGs were
- * then markedly darker than the same program in a window (`uv saturate` read 128 at `u = 0.5`
- * where the window shows 188; the `fbm-palette` hero averaged 60 against the window's 110).
- * The feedback programs sample their own previous frame, and an sRGB ping-pong hands that
- * sample back decoded, so they still compute in linear light — it is also
+ * Both targets use `GALLERY_FORMAT`, an sRGB format, for the same reason the window's swapchain is
+ * `B8G8R8A8_SRGB`: the fragment writes linear colour and the attachment encodes it on write, so
+ * the bytes read back are the bytes a viewer sees in a live window. A `UNORM` attachment stores
+ * the linear values unencoded, and reads back markedly darker than the same program looks in a
+ * window. The feedback programs sample their own previous frame, and an sRGB ping-pong hands that
+ * sample back decoded, so they still compute in linear light; that is also
  * `PingPongRenderToTexture`'s default.
  */
+
+/** Renders the StackSL gallery stills and animations offscreen, one fullscreen program at a time. */
 object StackSLGalleryHarness {
 
     const val OUTPUT_DIM = 512

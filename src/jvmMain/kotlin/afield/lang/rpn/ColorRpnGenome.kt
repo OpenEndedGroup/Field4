@@ -10,6 +10,22 @@ import kotlin.math.roundToInt
 import kotlin.random.Random
 
 /**
+ * The breeding rules for [ColorRpn] programs: what a child of two programs is, and the eight
+ * mutations that make one.
+ *
+ * [ColorRpnBreeding] is the knobs, with the madp GA demo's values as the defaults: how many
+ * mutations a child gets, the length it is nudged toward, the chance of splicing a slice out of
+ * the other parent, and how often each of the eight mutations is chosen. [ColorRpnGenome] applies
+ * them, and because it implements [GenomeOps] the same genome drives both halves of
+ * `afield.study.search`: the picture grid of `EyeEvolution.kt`, where you pick the parents, and
+ * the scored drivers of `PopulationSearch.kt`, where an [Objective] picks them.
+ *
+ * A mutation can produce a program that makes no sense, and nothing rejects it. [ColorRpn] reads
+ * any token sequence as some picture, which is what lets a search of this space run without a
+ * validity test.
+ */
+
+/**
  * How the GA demo breeds [ColorRpn] programs. The defaults are the demo's.
  *
  * @property mutationRate scales how many mutations a child gets: about `mutationRate × targetLength

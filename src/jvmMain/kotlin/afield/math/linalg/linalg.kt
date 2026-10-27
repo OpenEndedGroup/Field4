@@ -64,24 +64,27 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * The short vector aliases ([Vec2], [Vec3], [Vec4], [Quat], [DualQuat]) plus the constructors and
- * point-cloud helpers that sit on top of Field's generated `afield.math.linalg` types.
+ * The short names for Field's vector and rotation types ([Vec2], [Vec3], [Vec4], [Quat],
+ * [DualQuat]) and the `vec`, `quat` and `dualquat` constructors that build them.
  *
- * `vec(...)` is the usual way to make one — from numbers, by copying, or by concatenating a
- * scalar with a smaller vector — and `quat` / `dualquat` do the same for rotations. Collections
- * of vectors gain `center`, `median` / `medianVec` and `aabbBounds` in 2D, 3D and 4D; 3D also
- * gets `obbBounds` (a box aligned to the covariance matrix's principal axes, found by power
- * iteration, so a PCA fit rather than a minimal-volume one),
- * `convexHull`, which goes through the QuickHull3D library and returns the input unchanged if the
- * hull cannot be built, and `convexHullPeelingMedian`, which peels hulls away and returns the
- * centre of what is left — a single point, not a cloud. [Cuboid] is a separate plain 3D
- * box-with-size type used for layout-style union / inset / intersects work.
+ * `vec(...)` takes numbers, copies an existing vector, or concatenates a scalar with a smaller one.
+ * `quat` turns an angle in radians and an axis into a rotation, and `dualquat` pairs a rotation with
+ * a translation to give a rigid transform. `v3` lifts a 2D vector into 3D with `z = 0` and `v2`
+ * drops the z again, for the float and the double types alike.
  *
- * These vector types are mutable and most operations mutate the receiver, so copy first
- * (`Vec3(existing)`) when you need to keep the original. Swizzles and the *vector* `invoke`, `%=`
- * and `len` operators are absent here: they are generated for every float vector into
- * `Swizzles.kt` and `VectorOperators.kt` by `tools/linalg-generator`. `%=` for [Quat] and
- * [DualQuat] is defined here, because no generator emits those.
+ * The rest of the file is the arithmetic the generated types do not cover: scalar times vector,
+ * vector times quaternion, vector times dual quaternion, the `x` infix cross product, `isNaN` for
+ * the 2D and 3D vectors, and `%=` for [Quat] and [DualQuat]. `median(index)` reads a single
+ * component's median across a collection of vectors and returns that one `Float`.
+ *
+ * These types are mutable and most operations write into the receiver, so copy first
+ * (`Vec3(existing)`) when the original still matters. Swizzles and the per-vector `invoke`, `%=` and
+ * `len` operators are absent here because `tools/linalg-generator` emits them for every float vector
+ * into `Swizzles.kt` and `VectorOperators.kt`; `%=` for [Quat] and [DualQuat] is written out here
+ * because no generator covers those two.
+ *
+ * Point-cloud geometry built on these types lives elsewhere: centroids, medians and bounding boxes
+ * in `linalg_spatial.kt`, convex hulls in `linalg_mesh.kt`.
  */
 
 /**

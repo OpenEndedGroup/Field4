@@ -10,6 +10,22 @@ import java.io.File
 import kotlin.math.sqrt
 
 /**
+ * The CPU side of a splat cloud: how one is built, where it can be loaded from, and how it is
+ * framed before a camera looks at it.
+ *
+ * [SplatSet] keeps the splats in a flat `FloatArray` laid out the way the GPU reads them, and
+ * grows as `push` appends. Its companion loads a cloud instead of building one: `fromPly` reads a
+ * Gaussian-splat capture, decoding the log scales, logit opacity and spherical-harmonic colour
+ * those files store, and `fromGltf` turns the vertices of a mesh into discs facing along their
+ * normals, sized from how densely they cover the surface.
+ *
+ * `fit` is the framing a [SplatShader] uses: a median centre and a 90th-percentile radius, so a
+ * handful of stray splats cannot decide where the camera points. A cloud that arrives in metres
+ * needs `fitted` before an insert written for a unit-sized cloud reads on it as it does on
+ * [ProceduralSplats].
+ */
+
+/**
  * Gaussian splats on the CPU in their *parametric* form — centre, radii, rotation, colour and
  * opacity — rather than the covariance [GaussianSplatRenderer] draws from.
  *

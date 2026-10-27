@@ -6,6 +6,21 @@ import java.util.concurrent.atomic.AtomicLong
 import kotlinx.serialization.Serializable
 
 /**
+ * Where a Field server's own time goes during the moments someone is waiting on it.
+ *
+ * Each phase worth attributing is wrapped in [LatencySpans.time] (creating and bootstrapping a
+ * box's Kotlin engine, compiling a snippet, compiling a shader, building or updating a pipeline,
+ * running a transcript operation) and lands in a ring buffer with its name, the box it belongs to,
+ * the thread it ran on, and a start time in epoch microseconds.
+ * `GET /api/perf/spans?since=<seq>` serves everything recorded after a sequence number.
+ *
+ * `tools/feel_bench.py` is what reads it: it measures a step from the client side, then asks the
+ * server which of its own phases that wall time was spent in, and the shared epoch clock is what
+ * lets the two be laid against each other. Recording is always on, because a span costs one
+ * `nanoTime` pair and one array write against work that costs milliseconds.
+ */
+
+/**
  * Wall-clock spans for the moments a user waits on: building and bootstrapping a box's Kotlin
  * engine, compiling and evaluating a snippet, a whole `execute-all`/`launch-all` up to its verdict,
  * compiling a shader, creating a pipeline.

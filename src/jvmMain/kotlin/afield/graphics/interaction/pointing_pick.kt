@@ -108,13 +108,14 @@ import kotlin.math.sqrt
  * # Typical use
  *
  * ```kotlin
+ * val floor = planeMesh(width = 4.0, height = 4.0)
  * val scene = pickScene {
- *     add("floor", plane(4.0), parts = PickParts.single(plane(4.0), "floor"))
- *     add("lamp", icosphere(2), at = Matrix4f().translation(0f, 1.5f, 0f))
+ *     add("floor", floor, parts = PickParts.single(floor, "floor"))
+ *     add("lamp", icosphereMesh(2), at = Matrix4f().translation(0f, 1.5f, 0f))
  * }
  * val camera = MeshView().rayCamera(scene.mergedMesh())
  * val hit = scene.pick(camera.rayThroughPixel(360, 270))
- * println(hit?.describe())      // "lamp / lamp  tri 812  1.83 away  at (0.31, 1.72, 0.44)"
+ * println(hit?.describe())      // "lamp / lamp  tri 812  1.8300 away  at (0.3100, 1.7200, 0.4400)"
  * ```
  */
 

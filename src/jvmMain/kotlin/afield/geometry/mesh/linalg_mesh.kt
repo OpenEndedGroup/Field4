@@ -53,24 +53,17 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * The short vector aliases ([Vec2], [Vec3], [Vec4], [Quat], [DualQuat]) plus the constructors and
- * point-cloud helpers that sit on top of Field's generated `afield.math.linalg` types.
+ * The 3D convex hull of a list of [Vec3], computed with the QuickHull3D library.
  *
- * `vec(...)` is the usual way to make one — from numbers, by copying, or by concatenating a
- * scalar with a smaller vector — and `quat` / `dualquat` do the same for rotations. Collections
- * of vectors gain `center`, `median` / `medianVec` and `aabbBounds` in 2D, 3D and 4D; 3D also
- * gets `obbBounds` (a box aligned to the covariance matrix's principal axes, found by power
- * iteration, so a PCA fit rather than a minimal-volume one),
- * `convexHull`, which goes through the QuickHull3D library and returns the input unchanged if the
- * hull cannot be built, and `convexHullPeelingMedian`, which peels hulls away and returns the
- * centre of what is left — a single point, not a cloud. [Cuboid] is a separate plain 3D
- * box-with-size type used for layout-style union / inset / intersects work.
+ * One function, `convexHull`, which keeps the vertices on the outside of the cloud and drops the
+ * interior ones. Vertices only, in the library's own order, with no faces and no winding. Fewer
+ * than four points, or a cloud QuickHull cannot triangulate, returns the input unchanged rather
+ * than throwing, so a result the same size as the input may be a hull or a refusal and the two
+ * cannot be told apart from the return value.
  *
- * These vector types are mutable and most operations mutate the receiver, so copy first
- * (`Vec3(existing)`) when you need to keep the original. Swizzles and the *vector* `invoke`, `%=`
- * and `len` operators are absent here: they are generated for every float vector into
- * `Swizzles.kt` and `VectorOperators.kt` by `tools/linalg-generator`. `%=` for [Quat] and
- * [DualQuat] is defined here, because no generator emits those.
+ * The vector types themselves are in `linalg.kt`. Centroids, medians and bounding boxes for the
+ * same point collections are in `linalg_spatial.kt`, which also holds `convexHullPeelingMedian`
+ * and the `asQuickHullPoints` packer.
  */
 
 /**

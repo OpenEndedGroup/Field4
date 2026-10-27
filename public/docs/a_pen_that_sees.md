@@ -166,6 +166,72 @@ frames {
 
 The seventh box does the same with the cracks pen: draw a closed shape and it cracks it.
 
+## Hatching around a drawing
+
+The Michaux pen hatches beside one long line, because that is what its corpus showed it. A word
+is many short strokes in every direction. A pen trained on hatching around such strokes (the
+*echoes* corpus: letter strokes, curves and blobs, each followed by passes laid beside it) learned
+the hand but not the job: on its own it wanders off after a pass or two. So for hatching, Field
+steers.
+
+A **guide** chooses among the pen's proposals. At every point the pen proposes 32 next points,
+sampled from its own prediction, and a `FollowGuide` picks the one that stays a set gap from the
+ink beside it, does not cross any, and does not jump. The pen keeps its tremor, its rhythm and the
+way it turns; the guide only decides which of its ideas to draw. `Hatcher` hands the pen each
+stroke of a drawing in turn, with everything else as surroundings, so every stroke gets its
+passes and they keep clear of each other:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/a_pen_that_sees/word.png" embed=true alt="The word FIELD in yellow plotter lettering, every stroke surrounded by ten trembling pale contour lines that wrap round its ends, fill the counter of the D and crowd together where letters meet, so the word looks engraved"}
+:::static
+import afield.ai.learning.pen.*
+
+val word = HersheyFont.load("futural").text("FIELD", size = 90.0).apply { color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 }
+val hatching = Hatcher([word], PenModel.bundled("echoes"), passes = 10, gap = 3.5, seed = 1).finish()
+hatching.forEach { it.color = vec(0.9, 0.92, 1.0, 1.0); it.thickness = 0.7 }
+lines([word] + hatching, w = 520.0, h = 220.0, fitToSize = true)
+```
+
+Any pen can be steered this way; `PenLine.guide` takes a guide for any drawing, not only
+hatching. The echoes pen gives the closest contour lines. The Michaux pen, guided the same way,
+gives a wilder, broken hatching. The handwriting pen barely manages, because its habit is to set
+off sideways for the next letter.
+
+The starting point's ninth box hatches whatever you draw, as you watch:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/a_pen_that_sees/doodle.png" embed=true macro-file="../../dev_docs/agents/transcripts/a_pen_that_sees.yaml" run-box="ps_doodle" capture-box="ps_doodle" execution="launch" wait="15" alt="A box's output: a drawing panel with two yellow curves, a checkbox for Michaux's hand, and below a panel where each curve is wrapped in several trembling white contour lines that follow it and loop round its ends"}
+:::static
+import afield.ai.learning.pen.*
+
+val border = fline { moveTo(0, 0); lineTo(500, 0); lineTo(500, 300); lineTo(0, 300); lineTo(0, 0); color = vec(1, 1, 1, 0.2) }
+val starter = listOf(
+    fline { moveTo(90, 60); cubicTo(200, 20, 260, 220, 400, 160) },
+    fline { moveTo(150, 250); cubicTo(180, 150, 300, 300, 330, 230) },
+).onEach { it.color = vec(1.0, 0.85, 0.3, 1.0); it.thickness = 2.0 }
+val canvas = lines([border] + starter, channel = "draw here", w = 520.0, h = 320.0, editable = true, drawing = true)!!
+val hands = ["echoes", "michaux"]
+var hand = 0
+var choice = 0
+checkbox("Michaux's hand", channel = "hand") { choice = if (it) 1 else 0 }
+var hatcher: Hatcher? = null
+var drawing = listOf<FLine>()
+var seen = -1
+frames {
+    while (frame()) {
+        val drawn = canvas.currentLines().drop(1)
+        if (drawn.size != seen || choice != hand) {
+            seen = drawn.size
+            hand = choice
+            drawing = drawn.map { it.copy().apply { color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 } }
+            hatcher = Hatcher(drawing, PenModel.bundled(hands[hand]), passes = 8, gap = 4.0, seed = seen.toLong())
+        }
+        val h = hatcher ?: continue
+        if (!h.done) h.grow(24)
+        lines([border] + drawing + h.hatching.map { it.apply { color = vec(0.9, 0.92, 1.0, 1.0); thickness = 0.8 } },
+            channel = "pen", w = 520.0, h = 320.0)
+    }
+}
+```
+
 ## Training a pen that sees
 
 What a pen sees is computed the same way in Python, where it is trained, and in Kotlin, where it
@@ -196,7 +262,9 @@ stroke, down and back up beside itself, so at every point the line beside it say
 | [`python/fieldpen/sense.py`](https://github.com/OpenEndedGroup/Field4/blob/main/python/fieldpen/sense.py) | the same, in Python, and the canonical definition |
 | [`afield/ai/learning/pen/corpora.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ai/learning/pen/corpora.kt) | `PenDrawings.michaux`, `PenDrawings.cracks`, `following`, `joins` |
 | [`afield/ai/learning/pen/penviz.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ai/learning/pen/penviz.kt) | `seeing()` |
-| `src/jvmMain/resources/afield/pen/models/` | `michaux`, `cracks` and their blind twins `michaux-blind`, `cracks-blind` |
+| [`afield/ai/learning/pen/guide.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ai/learning/pen/guide.kt) | `PenGuide`, `FollowGuide`: choosing among a pen's proposals |
+| [`afield/ai/learning/pen/hatch.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ai/learning/pen/hatch.kt) | `Hatcher`, `hatch`: a drawing hatched stroke by stroke |
+| `src/jvmMain/resources/afield/pen/models/` | `michaux`, `cracks` and their blind twins `michaux-blind`, `cracks-blind`, and `echoes` |
 
 ??? aside "What did not work first"
     The first Michaux corpus drew every pass as its own stroke, lifting and landing beside the last,
@@ -207,4 +275,11 @@ stroke, down and back up beside itself, so at every point the line beside it say
     two numbers pointing at the middle of the ink are what fixed that. Python first rounded the
     displacements to float32 before summing them into positions, and a point lying exactly on the
     boundary between two directions fell in a different one than Kotlin put it; positions are now
-    summed in float64 on both sides.
+    summed in float64 on both sides. The echoes pen, trained on hatching around strokes in every
+    direction, predicted its corpus about as well as a blind twin did and, shown a drawing halfway
+    through its hatching, laid a pass or two and wandered off; it is the hand for guided hatching,
+    not a hatcher on its own. The first guide scored only where a proposal landed, so a long jump to
+    the right distance from far-off ink won, and lifting let the pen go anywhere: it now penalises
+    long steps and never lifts. Forking the pen once per proposal took ten seconds for a word;
+    proposals are now drawn straight from the pen's prediction, which is the same thing and costs
+    nothing.
