@@ -236,7 +236,7 @@ object BoxInterrupt {
      */
     object Watchdog {
         @Volatile var reportAfterMs: Long = setting("AFIELD_RUNLOOP_WATCHDOG_REPORT_MS", "afield.runloop.watchdog.reportMs")?.toLongOrNull() ?: 1500L
-        @Volatile var interruptAfterMs: Long = setting("AFIELD_RUNLOOP_WATCHDOG_INTERRUPT_MS", "afield.runloop.watchdog.interruptMs")?.toLongOrNull() ?: 5000L
+        @Volatile var interruptAfterMs: Long = setting("AFIELD_RUNLOOP_WATCHDOG_INTERRUPT_MS", "afield.runloop.watchdog.interruptMs")?.toLongOrNull() ?: 30_000L
         @Volatile var pollMs: Long = 100L
 
         /** Told about each stall report: (culprit box label or null, milliseconds stalled, stack). */

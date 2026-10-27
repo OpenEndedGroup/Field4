@@ -30,7 +30,7 @@ Source: `src/jvmMain/kotlin/afield/runtime/lifecycle/BoxInterrupt.kt`.
 - **Watchdog** (`afield-runloop-watchdog`, daemon, started by `Runloop.start`): polls
   `Runloop.runLoop.frame` every 100 ms. After `AFIELD_RUNLOOP_WATCHDOG_REPORT_MS` (1500) of no
   frame it logs `warn,runloop,watchdog` with the culprit box and the top of the Runloop stack;
-  after `AFIELD_RUNLOOP_WATCHDOG_INTERRUPT_MS` (5000, `0` = never) it requests an interrupt, but
+  after `AFIELD_RUNLOOP_WATCHDOG_INTERRUPT_MS` (30000, `0` = never) it requests an interrupt, but
   only if a snippet class is on the stack. A request is withdrawn as soon as the frame advances, so
   it can never land later in unrelated box code.
 - **Naming the culprit.** `RunScope.current()` and `Box.context` are thread-locals, unreadable from
@@ -65,8 +65,10 @@ Loops that call functions are dominated by the call.
   woken, see above). Such stalls are still reported.
 - Only Kotlin box code (K2 engine) is instrumented; Python, Clojure, JS boxes are not.
 - `Thread.stop` is unsupported since JDK 20, so there is no non-cooperative escape.
-- A legitimately long synchronous computation (> 5 s on the Runloop) is now interrupted. Move it
-  off the Runloop or raise the threshold.
+- A legitimately long synchronous computation (> 30 s on the Runloop) is now interrupted. Move it
+  off the Runloop or raise the threshold. The limit was 5 s until 2026-10-27, which interrupted
+  docs examples that compute for a few seconds in their body (`a_pen_that_sees` at 5046 ms). The
+  docs runner starts Field with 300000 (5 minutes); its own per-capture timeouts govern there.
 
 ## Verification
 

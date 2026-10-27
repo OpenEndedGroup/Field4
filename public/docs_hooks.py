@@ -198,6 +198,8 @@ COMPLETION_AA_FALLBACK_RE = re.compile(r"^.*completion backend=K1.*\(AA→K1:.*$
 COMPLETION_BACKEND_RE = re.compile(r"completion backend=(\w+)")
 # How long a completion capture waits for Field's `completion backend=` line to reach the log file.
 COMPLETION_LOG_SETTLE_SEC = 5.0
+# The docs build's runloop-watchdog interrupt (BoxInterrupt.Watchdog), 5 minutes; Field's default is 30 s.
+DOCS_RUNLOOP_WATCHDOG_INTERRUPT_MS = 300_000
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 RUNNER_MODE_ALIASES = {
     "incremental": "incremental",
@@ -1674,7 +1676,10 @@ class RunnerState:
         extra_env = {
             "AFIELD_DOCS_ANNOTATIONS_STORE": str(
                 self.repo_root / "build" / "field-docs-runner-annotations.json"
-            )
+            ),
+            # The runloop watchdog interrupts box code that holds the runloop this long. Docs examples
+            # may compute for a while in their body, and each capture already has its own timeout.
+            "AFIELD_RUNLOOP_WATCHDOG_INTERRUPT_MS": str(DOCS_RUNLOOP_WATCHDOG_INTERRUPT_MS),
         }
         committed_drafts = self.repo_root / "tools" / "docs_runner_inputs" / "generated_completion_docs.json"
         if committed_drafts.is_file():
