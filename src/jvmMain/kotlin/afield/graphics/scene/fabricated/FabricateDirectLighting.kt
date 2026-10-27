@@ -5,6 +5,20 @@ import afield.math.linalg.Matrix4f
 import afield.math.linalg.Vector3f
 import afield.math.linalg.Vector4f
 
+/**
+ * What connects [StandardRenderer]'s raster bundle to the ray-traced [DirectLighting] pass.
+ *
+ * That pass needs a G-buffer and a ray-visibility scene that agree about where the surfaces are.
+ * `registerOpaqueTriangles` fills the raster G-buffer from the same indexed [OpaqueTriangles]
+ * snapshot the ray acceleration structure keeps, expanding it once for the pulling shader instead
+ * of uploading geometry every frame. `directLighting` then hands the bundle's G-buffer images and
+ * its post-stack output to the pass, and `rtxdiSettings` supplies the camera contract the
+ * optional RTXDI path wants, read from the bundle's own raster projection.
+ *
+ * Opaque diffuse surfaces only: transparency, textured emission and latent pigments want an
+ * adapter nothing here provides yet.
+ */
+
 /** Build the experiment from Fabricate's existing G-buffer. Call bundle.attachTo first, then
  * lighting.attach; present lighting.output. SOURCE reads the unchanged post-stack output.
  * Opaque diffuse only: transparency, textured emission and latent pigments require a future adapter. */
