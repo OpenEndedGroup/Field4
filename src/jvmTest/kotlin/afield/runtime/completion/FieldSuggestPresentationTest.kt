@@ -297,6 +297,18 @@ class FieldSuggestPresentationTest {
     }
 
     /**
+     * Only writes `build/completion-corpus/rank-spec.json`, for `tools/rank_weight_lab.py`, which runs
+     * this one test when the file is missing. Seconds, where the corpus measurement takes minutes.
+     */
+    @Test
+    fun `writes the rank spec the weight lab reads`() {
+        val spec = withHermeticSourceIndex { rankMetricsSpec() }
+        val dump = repoRoot().resolve("build/completion-corpus/rank-spec.json")
+        Files.createDirectories(dump.parent)
+        dump.writeText(spec)
+    }
+
+    /**
      * **The same question as the case above, over 578 carets instead of seven.**
      *
      * The seven-case fixture is a *ratchet*: each case carries a note saying why its number is what it is,
@@ -330,18 +342,6 @@ class FieldSuggestPresentationTest {
      * fewer than 80 rows is 100% by construction, so the headline is restricted to the **contested**
      * carets — the ones where the popup had to leave something out — and the count of those is asserted.
      */
-    /**
-     * Only writes `build/completion-corpus/rank-spec.json`, for `tools/rank_weight_lab.py`, which runs
-     * this one test when the file is missing. Seconds, where the measurement below takes minutes.
-     */
-    @Test
-    fun `writes the rank spec the weight lab reads`() {
-        val spec = withHermeticSourceIndex { rankMetricsSpec() }
-        val dump = repoRoot().resolve("build/completion-corpus/rank-spec.json")
-        Files.createDirectories(dump.parent)
-        dump.writeText(spec)
-    }
-
     @Test
     fun `the rank a person sees, measured over the whole caret corpus`() {
         val spec = withHermeticSourceIndex { rankMetricsSpec() }
