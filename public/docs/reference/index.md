@@ -648,7 +648,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**34693 public symbols across 1575 source files**, 17881 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34694 public symbols across 1575 source files**, 17882 of them (51%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -675,7 +675,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 40 | 1316 | 721 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 77 | 2092 | 1013 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 584 | 397 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 123 | 3095 | 1408 (45%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 123 | 3096 | 1409 (45%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 231 | 3160 | 1145 (36%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 108 | 2478 | 835 (33%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
@@ -879,7 +879,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr>chatlog/<wbr></small> [ChatLogViews.kt](machine-learning.md#chatlogviews-kt) | Machine learning | 12 | 10 | # What an agent reads of a chat |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>inference/<wbr>onnx/<wbr></small> [Clip.kt](machine-learning.md#clip-kt) | Machine learning | 35 | 30 | CLIP, as a source of *directions in meaning*. | [Depth and CLIP: neural vision in a box](../onnx.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>inference/<wbr>onnx/<wbr></small> [ClipSmokeTest.kt](machine-learning.md#clipsmoketest-kt) | Machine learning · internal | 2 | 1 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>clojure/<wbr></small> [ClojureInterface.kt](languages.md#clojureinterface-kt) | Languages | 53 | 27 | Clojure as a Field main language: a box whose source is Clojure, evaluated by the real Clojure runtime on this JVM. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>clojure/<wbr></small> [ClojureInterface.kt](languages.md#clojureinterface-kt) | Languages | 54 | 28 | Clojure as a Field main language: a box whose source is Clojure, evaluated by the real Clojure runtime on this JVM. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr></small> [Cloth.kt](simulation.md#cloth-kt) | Simulation | 34 | 34 | A rectangular cloth patch on a `SimdVerlet` simulation. | [Frames and the animation loop](../animation_time_model.md), [Physics: particles, constraints and cloth](../physics.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [ClothSimulationExample.kt](examples.md#clothsimulationexample-kt) | Examples | 10 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [ClusterGeometry.kt](graphics.md#clustergeometry-kt) | Graphics | 12 | 5 | Builds NVIDIA cluster acceleration structures from compute-shader output: `ClusterGeometry` validates `TriangleCluster` records, builds cluster-level acceleration structures and one cluster BLAS for ray tracing. | [Compute your ray-traced geometry](../computed_ray_geometry.md) |
