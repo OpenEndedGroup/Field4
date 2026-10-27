@@ -36,6 +36,28 @@ expect:
   stdoutContains:
     - "DOCSCRAPE PROBE DONE"
 */
+
+/**
+ * Asks how completion does on Field's own documentation: the fixtures are real doc code with the
+ * caret put back where the author was typing.
+ *
+ * `tools/scrape_completion_corpus.py` walks the Kotlin fences in `public/docs`, cuts each sampled
+ * line at a member access, and records the member the page actually used into
+ * `tools/completion-corpus/scraped.tsv` as a label, the code with a `‸` for the caret, and that
+ * member's name. This probe replays each one through [KotlinInterface2] and reports whether the
+ * member came back and at what rank, with the top candidates printed under it so an answer can be
+ * read rather than just scored.
+ *
+ * Alongside the rank it reports whether the receiver type resolved at all, judged by how many
+ * candidates came back: more than two hundred is read as completion having fallen back to offering
+ * every name in scope. The two readings belong together, because a member can sit at a good rank in
+ * a list that was never about the receiver.
+ *
+ * It is a reading and not a gate: it always exits 0. With the scraped file absent it says so and
+ * still prints its done marker, so the smoke entry shows that the probe ran rather than that it had
+ * anything to run on.
+ */
+
 /**
  * PHASE 0 (exploratory): run REAL doc code through completion. Fixtures are scraped from
  * `diffstatic{_runner}` kotlin blocks in public/docs, with a caret dropped mid-member-access and

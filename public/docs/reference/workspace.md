@@ -1515,13 +1515,30 @@ Register custom HTML renderers for non-Browsable values (leaf fallback).
 
 ## chat.kt { #chat-kt }
 
+The server side of the Discussion thread that a slideshow step or a box can show: two RPC
+handlers that carry messages between Field's clients and an outside chat service.
+
+A thread is addressed by an id and a number, and the pair is a name rather than a location:
+`withChat(id)` on a step can hand it a template id, so that every document made from the same
+template shares one thread, and `Box.withChat` passes the box's own id. `load-chat-messages`
+fetches a thread and replies only to the client that asked for it; `post-chat-message` sends one
+and then broadcasts `chat-message-posted` to every client of the session, so any open widget
+reloads the thread. Field's browser never calls the service itself.
+
+Field ships no such service. The Python one was removed from the repository in October 2026, so
+unless something compatible is listening on `CHAT_SERVER_URL` the Discussion UI appears, loads an
+empty thread and drops what is posted into it. The rest of a slideshow is unaffected by that: the
+requests run outside slideshow execution, a failed load is answered as an empty list, and a
+failed post is logged and not answered at all. `dev_docs/GUIDE_CHAT_QUICKSTART.md` lists what a
+replacement backend would have to serve.
+
 `src/jvmMain/kotlin/afield/app/server/chat.kt` — [read the source](source/jvmMain/afield/app/server/chat/)
 
 ### Top-level functions { #chat-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="chat-kt--chat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">chat</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/chat/#L69) | Install Field's guide-chat RPC bridge. |
+| <a id="chat-kt--chat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">chat</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/chat/#L88) | Install Field's guide-chat RPC bridge. |
 
 ## controllers.kt { #controllers-kt }
 
@@ -5205,17 +5222,38 @@ Resolves a receiver type's [`CommonMembers`](workspace.md#util-completion-kt-com
 
 ## CompletionAaE2EProbe.kt { #completionaae2eprobe-kt }
 
+Runs Field's completion chain end to end against the Analysis-API sidecar, inside a live Field
+JVM: a box's gathered preamble and this JVM's classpath go out over HTTP and the candidates come
+back.
+
+The probe switches the active backend to `AA`, builds a parent and a child box so the child
+completes with an inherited preamble, and asks for candidates at a series of carets. Every check
+names the backend that answered, read from `KotlinInterface2.lastCompletionBackend`, so an answer
+the K1 fallback produced counts as a failure however good its candidates look. The fallback
+offers every name in position, thousands of them, which is enough to satisfy a check for a
+present candidate while the sidecar is still building its session.
+
+A sidecar is required, and the smoke runner supplies one. By hand, point the probe at one with
+`-Dafield.completion.sidecarUrl`, `AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL`, or a
+`build/completion-corpus/sidecar-url.txt`; with no sidecar it exits 3 and never prints its
+`AA E2E DONE` marker, so the smoke gate reads an unreachable chain as a failure rather than as a
+skip. A cold sidecar indexes the whole classpath before it can answer anything, which takes
+minutes on the first request of its life and almost nothing once a running Field or an earlier
+probe has paid for it, so waiting for the session is itself one of the checks. A run whose
+candidate list came back truncated fails too: a receiver index too small for the classpath in
+front of it drops real members, and nothing in the answer says which.
+
 `src/jvmMain/kotlin/afield/runtime/completion/CompletionAaE2EProbe.kt` — [read the source](source/jvmMain/afield/runtime/completion/CompletionAaE2EProbe/)
 
 ### CompletionAaE2EProbe { #completionaae2eprobe-kt-completionaae2eprobe }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionAaE2EProbe</span></code>](source/jvmMain/afield/runtime/completion/CompletionAaE2EProbe/#L95)
+[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionAaE2EProbe</span></code>](source/jvmMain/afield/runtime/completion/CompletionAaE2EProbe/#L119)
 
 STAGE D live end-to-end: exercises the REAL KI2 → AA-sidecar completion chain in a running Field JVM. Sets `activeCompletionBackend = AA`, builds a parent→child box pair with an inherited preamble (as `CompletionContextProbe` does), and calls `KotlinInterface2.complete()` — which POSTs the box's gathered preamble + implicit `Box` receiver + this JVM's classpath to the sidecar `/complete`.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="completionaae2eprobe-kt--completionaae2eprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionAaE2EProbe/#L110) |  |
+| <a id="completionaae2eprobe-kt--completionaae2eprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionAaE2EProbe/#L134) |  |
 
 ## CompletionContextProbe.kt { #completioncontextprobe-kt }
 
@@ -5268,31 +5306,68 @@ The completion corpus: real boxes, with the preamble they have AT RUNTIME.
 
 ## CompletionCorpusHarvest.kt { #completioncorpusharvest-kt }
 
+Builds the checked-in completion fixtures under `tools/completion-corpus/boxes`, and on a plain
+run guards them instead of rewriting them.
+
+The fixtures are real boxes, taken from the agent transcripts and templates in
+[`CompletionCorpus.defaultDirs`](workspace.md#completioncorpus-kt--completioncorpus--defaultdirs), each with the preamble its parents give it. That preamble is what
+makes a completion measurement about Field rather than about Kotlin, and recovering it means
+reading whole documents and expanding their macros, so the probes downstream read it from disk
+instead: [`CompletionLoweringProbe`](workspace.md#completionloweringprobe-kt-completionloweringprobe) measures against these files rather than harvesting its own.
+
+This file's two jobs share one entrypoint, because a generator and the guard that watches for
+drift have to agree on what the fixtures should contain. `AFIELD_HARVEST_WRITE=1` writes;
+anything else compares, prints a `DRIFT` line per difference and fails. `AFIELD_LOWERING_CORPUS`
+and `AFIELD_HARVEST_DIR` move the input and output directories.
+
+A harvest resolves imports against the repository rather than against this machine, so a class
+in `src/personal` that shares a simple name with one in `src/` cannot change what a fixture says
+a box can see. Running with `AFIELD_IMPORT_HERMETIC=0` where that collision exists is refused
+rather than recorded; `dev_docs/HERMETIC_COMPLETION_INPUTS.md` has the history.
+
 `src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpusHarvest.kt` — [read the source](source/jvmMain/afield/runtime/completion/CompletionCorpusHarvest/)
 
 ### CompletionCorpusHarvest { #completioncorpusharvest-kt-completioncorpusharvest }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionCorpusHarvest</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpusHarvest/#L68)
+[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionCorpusHarvest</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpusHarvest/#L90)
 
 Harvests [`CompletionCorpus`](workspace.md#completioncorpus-kt-completioncorpus) fixtures — and, run without `AFIELD_HARVEST_WRITE=1`, guards them.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="completioncorpusharvest-kt--completioncorpusharvest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpusHarvest/#L71) |  |
+| <a id="completioncorpusharvest-kt--completioncorpusharvest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpusHarvest/#L93) |  |
 
 ## CompletionCorpusProbe.kt { #completioncorpusprobe-kt }
+
+What Kotlin completion offers at a caret, read against what it ought to offer there.
+
+Each fixture is a fragment of box code with `|` where the caret sits, and a list of candidates
+the engine is expected to produce (goals) or to keep out (anti-goals). The matchers look for a
+candidate by call form, by class, by exact text, by exact text ignoring case, or in the
+named-argument form an editor offers for a parameter still to be filled in; they read the
+candidate set and not its order, because the order a reader sees is decided in the browser by
+`fieldSuggest.js` and is covered separately by `FieldSuggestPresentationTest`.
+
+A run prints each goal as met or unmet, with the rank of the candidate that met it, and ends
+with a met/unmet summary. It always exits 0, so the unmet set is a reading rather than a gate.
+Completion is asked for through [`KotlinInterface2`](workspace.md#kotlininterface2-kt-kotlininterface2) itself, so the answers come from the engine a
+box talks to and not from a stand-in.
+
+The fixtures here are written out in this file. The box-shaped fixtures that
+[`CompletionCorpusHarvest`](workspace.md#completioncorpusharvest-kt-completioncorpusharvest) generates, with a real inherited preamble, are what
+[`CompletionLoweringProbe`](workspace.md#completionloweringprobe-kt-completionloweringprobe) reads instead.
 
 `src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpusProbe.kt` — [read the source](source/jvmMain/afield/runtime/completion/CompletionCorpusProbe/)
 
 ### CompletionCorpusProbe { #completioncorpusprobe-kt-completioncorpusprobe }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionCorpusProbe</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpusProbe/#L57)
+[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionCorpusProbe</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpusProbe/#L79)
 
-PHASE 0 completion characterization corpus, framed as a SPEC (per the design call):
+PHASE 0 characterization corpus for completion, written as a specification of the behaviour wanted rather than as a snapshot of the behaviour there is.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="completioncorpusprobe-kt--completioncorpusprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpusProbe/#L142) |  |
+| <a id="completioncorpusprobe-kt--completioncorpusprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpusProbe/#L164) |  |
 
 ## CompletionDiffK1Probe.kt { #completiondiffk1probe-kt }
 
@@ -5339,17 +5414,36 @@ Counts the cached KDoc drafts that belong to declarations under `src/`, for the 
 
 ## CompletionDocScrapeProbe.kt { #completiondocscrapeprobe-kt }
 
+Asks how completion does on Field's own documentation: the fixtures are real doc code with the
+caret put back where the author was typing.
+
+`tools/scrape_completion_corpus.py` walks the Kotlin fences in `public/docs`, cuts each sampled
+line at a member access, and records the member the page actually used into
+`tools/completion-corpus/scraped.tsv` as a label, the code with a `‸` for the caret, and that
+member's name. This probe replays each one through [`KotlinInterface2`](workspace.md#kotlininterface2-kt-kotlininterface2) and reports whether the
+member came back and at what rank, with the top candidates printed under it so an answer can be
+read rather than just scored.
+
+Alongside the rank it reports whether the receiver type resolved at all, judged by how many
+candidates came back: more than two hundred is read as completion having fallen back to offering
+every name in scope. The two readings belong together, because a member can sit at a good rank in
+a list that was never about the receiver.
+
+It is a reading and not a gate: it always exits 0. With the scraped file absent it says so and
+still prints its done marker, so the smoke entry shows that the probe ran rather than that it had
+anything to run on.
+
 `src/jvmMain/kotlin/afield/runtime/completion/CompletionDocScrapeProbe.kt` — [read the source](source/jvmMain/afield/runtime/completion/CompletionDocScrapeProbe/)
 
 ### CompletionDocScrapeProbe { #completiondocscrapeprobe-kt-completiondocscrapeprobe }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionDocScrapeProbe</span></code>](source/jvmMain/afield/runtime/completion/CompletionDocScrapeProbe/#L50)
+[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionDocScrapeProbe</span></code>](source/jvmMain/afield/runtime/completion/CompletionDocScrapeProbe/#L72)
 
 PHASE 0 (exploratory): run REAL doc code through completion. Fixtures are scraped from `diffstatic{_runner}` kotlin blocks in public/docs, with a caret dropped mid-member-access and the remainder of the line deleted (tools/scrape_completion_corpus.py → tools/completion-corpus/scraped.tsv, columns: label, base64(code with ‸ caret), intendedMember).
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="completiondocscrapeprobe-kt--completiondocscrapeprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionDocScrapeProbe/#L58) |  |
+| <a id="completiondocscrapeprobe-kt--completiondocscrapeprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionDocScrapeProbe/#L80) |  |
 
 ## CompletionInteractionLogger.kt { #completioninteractionlogger-kt }
 
@@ -5757,17 +5851,38 @@ Entry point and case list for the compiled-snippet smoke test.
 
 ## DataFramePluginCostProbe.kt { #dataframeplugincostprobe-kt }
 
+Measures what wiring the Kotlin DataFrame compiler plugin adds to the cost of building a box's
+Kotlin engine.
+
+Field builds one [`KotlinInterface2`](workspace.md#kotlininterface2-kt-kotlininterface2) per box, so a compiler plugin registered into the compilation
+state is paid for by every box in a document rather than by the boxes that use DataFrame. This
+entrypoint builds three engines in a row, times each one's construction and its first evaluation,
+and prints the per-engine total:
+
+```diffstatic {data-lang=bash}
+run-jvm-main afield.runtime.kotlin.DataFramePluginCostProbe --arg off
+```
+
+`--arg on` is the default and `--arg off` disables the plugin, by setting the
+`afield.dataframePlugin` property that `KotlinInterface2.compilerPluginArgs` reads through a
+`lazy`. The property has to be set before the first engine is built, which is why this is a
+jvm-main entrypoint rather than something a box can call. The other half of the cost, the
+`dataframe-core` jar every engine takes into its classpath snapshot, is fixed at build time, so
+the difference between an `on` run and an `off` run isolates the plugin's share.
+`dev_docs/DATAFRAME_PLUGIN.md` records the readings, and the different fix each of the two costs
+would need if one ever came to dominate.
+
 `src/jvmMain/kotlin/afield/runtime/kotlin/DataFramePluginCostProbe.kt` — [read the source](source/jvmMain/afield/runtime/DataFramePluginCostProbe/)
 
 ### DataFramePluginCostProbe { #dataframeplugincostprobe-kt-dataframeplugincostprobe }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">DataFramePluginCostProbe</span></code>](source/jvmMain/afield/runtime/DataFramePluginCostProbe/#L66)
+[<code class="highlight"><span class="k">object</span> <span class="nc">DataFramePluginCostProbe</span></code>](source/jvmMain/afield/runtime/DataFramePluginCostProbe/#L90)
 
 What does wiring the DataFrame compiler plugin cost *every other box*?
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="dataframeplugincostprobe-kt--dataframeplugincostprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/DataFramePluginCostProbe/#L71) |  |
+| <a id="dataframeplugincostprobe-kt--dataframeplugincostprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/DataFramePluginCostProbe/#L95) |  |
 
 ## DataFramePluginSpike.kt { #dataframepluginspike-kt }
 
@@ -9399,13 +9514,27 @@ Cuts Kotlin source into a verified tiling of declaration, KDoc and filler spans;
 
 ## MorphoDocsSupport.kt { #morphodocssupport-kt }
 
+Lets a documentation page hold MorphoHDL itself, rather than Kotlin that mentions it.
+
+A fence written as `data-lang=morpho` shows its body as MorphoHDL, and `public/docs_hooks.py`
+wraps that body in a call into this file before the docs runner evaluates it, the same way it
+already wraps a `nano` or a `forth` fence. What the reader sees under the fence is that program
+compiled, grown out in full with its layout relaxing between expansions, and drawn.
+
+The snippet is handled as a morpho box would handle it, down to using [`MorphoExecution`](languages.md#morphointerface-kt-morphoexecution)'s own
+directive parsing, so a program on the page and the same text pasted into a box behave alike.
+That includes the refusal: without a `# main` line there is no design to build and no width to
+build it at, so the snippet fails rather than guessing. A snippet that defines no cells of its
+own is given morpho's standard library, which is what makes a one-line program publishable.
+`morpho_examples.md` is the page that uses this.
+
 `src/jvmMain/kotlin/afield/tools/docs/MorphoDocsSupport.kt` — [read the source](source/jvmMain/afield/tools/docs/MorphoDocsSupport/)
 
 ### Top-level functions { #morphodocssupport-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="morphodocssupport-kt--rendermorphodocssnippet"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">renderMorphoDocsSnippet</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/MorphoDocsSupport/#L24) | Render a MorphoHDL snippet the way a morpho box would, for a `data-lang=morpho` docs fence. |
+| <a id="morphodocssupport-kt--rendermorphodocssnippet"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">renderMorphoDocsSnippet</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/MorphoDocsSupport/#L40) | Render a MorphoHDL snippet the way a morpho box would, for a `data-lang=morpho` docs fence. |
 
 ## ShaderBindingDocs.kt { #shaderbindingdocs-kt }
 
