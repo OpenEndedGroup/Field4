@@ -199,6 +199,10 @@ nav:
       # After finding what repeats: continuing a recording, by recombining it (oracle) or by
       # forecasting it (Timestral).
       - "Continuing a Gesture": temporal_memory.md
+      # Continuing a drawn line rather than a recorded signal: a learned handwriting model that
+      # carries on any FLine. Beside temporal_memory.md because both continue what you give them.
+      - A Learned Pen: learned_pen.md
+      - Teaching a Pen: teaching_a_pen.md
     # Two pages whose input is an unordered set of points rather than a series or a function, and
     # which were each a one-page group of their own ("Distances & Projections", "Clouds &
     # Deformations") until they were put together here. Not under "Time & Signals": the input to a

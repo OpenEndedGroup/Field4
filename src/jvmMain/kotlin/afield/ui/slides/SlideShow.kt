@@ -451,6 +451,7 @@ class SlideShowInstance(
         private set
     private val completedCueActions = mutableSetOf<Pair<Int, Int>>()
     private val commandMutex = Mutex()
+    private var searchTextsCache: List<String>? = null
     // Generate unique slideshow ID (use custom ID if provided, otherwise generate based on host box)
     val slideshowId: String = customId ?: "slideshow_${hostBox.id}_${System.currentTimeMillis()}"
     
@@ -645,7 +646,10 @@ class SlideShowInstance(
                 command == "start" || command == "home" -> home()
                 command == "stop" -> stop()
                 command == "present" -> present()
-                command == "refresh" -> if (currentStepIndex >= 0) renderCurrent()
+                command == "refresh" -> if (currentStepIndex >= 0) {
+                    searchTextsCache = null
+                    renderCurrent()
+                }
                 command == "reset-checkpoint" -> {
                     val step = currentStep
                     step?.reset?.invoke()
@@ -666,7 +670,7 @@ class SlideShowInstance(
         }
     }
 
-    internal fun presentationState(): PresentationState? {
+    internal fun presentationState(includeSearchText: Boolean = true): PresentationState? {
         val options = presentationOptions ?: return null
         val step = currentStep
         val visible = visibleStep()
@@ -675,7 +679,10 @@ class SlideShowInstance(
         return PresentationState(slideshowId, hostBox.id, options.title, currentStepIndex,
             steps.map { it.title }, content, options.transitionMs, steps.map { it.sectionPath },
             steps.map { it.id }, currentCueIndex, step?.cues?.map { it.title }.orEmpty(),
-            currentCueIndex > 0 && visible?.onEnter != null, step?.checkpoint.orEmpty())
+            currentCueIndex > 0 && visible?.onEnter != null, step?.checkpoint.orEmpty(),
+            if (!includeSearchText || currentStepIndex < 0) emptyList() else searchTextsCache ?: steps.map {
+                PresentationSearch.text(it)
+            }.also { searchTextsCache = it })
     }
 
     private fun publishPresentation() {

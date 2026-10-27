@@ -100,6 +100,8 @@ object DemoTranscriptExecSmokeTest {
         "stacksl_fit_demo",
         // ai4_chat_archive.md's demo: reads the example chat under public/docs/assets by checkout path.
         "ai4_chat_archive",
+        // IN_FIELD_AGENT_HARNESS.md's repo-tools demo: a toy checkout in a temporary directory, removed after.
+        "ai4_repo_tools",
         "particle_video_reader",
         // contour_trees.md's starting point: contour trees of a computed field and the leaf print, plain Kotlin.
         "contour_trees_explorer",
@@ -453,6 +455,12 @@ object DemoTranscriptExecSmokeTest {
         // stipple_transport.md's live sheet: a committed JSON model evaluated in plain Kotlin,
         // drawn through lines() and controlGroup sliders. CPU only.
         "stipple_sheet",
+        // learned_pen.md's starting point: the Distill handwriting LSTM run in Kotlin from a bundled
+        // resource, drawn through lines(); the drawing-panel box is a frames {} loop. CPU only.
+        "learned_pen",
+        // teaching_a_pen.md's starting point: the six bundled synthetic pens and rounder, loaded from
+        // resources; the probe, holds and taste box are plain CPU loops. CPU only.
+        "teaching_a_pen",
         "fline_hit_records",
         // fline_examples.md's measuring sections: locationAt, trim/splitAt, crossings, fill rules. CPU only.
         "fline_measure",

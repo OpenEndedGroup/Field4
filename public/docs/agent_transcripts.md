@@ -86,6 +86,29 @@ corpus of seeded variants built by the same stages. Open it and press **Build** 
 
 [Open ↗](offline.html?file=assets/agent_transcripts/staged_project/metadata.edn)
 
+### learned_pen
+
+**A pen that keeps writing.** The starting point of [A learned pen](learned_pen.md): the Distill
+handwriting LSTM, run in Kotlin, continues a stroke you give it; twelve different futures from one
+stroke; a drawing panel the pen writes on from, with sliders for its temperature and noise while it
+goes; one memory cell held high and low, changing the hand; a live magnifier on the pen tip with
+its next-step ellipses; and a slider that colours the line by any of its 500 cells. Pure CPU and
+nothing to install. Launch the third box and draw.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/learned_pen/metadata.edn)
+
+### teaching_a_pen
+
+**Pens with other hands.** The starting point of [Teaching a pen](teaching_a_pen.md): Hershey plotter
+lettering and five drawing generators as corpora, the six pens Field ships trained on them each
+drawing alone, one stroke continued in seven hands, a probe that finds which cells of a two-handed
+pen know which hand it is in (and sixteen of them held, forcing one hand), a grid of scribbles you
+click to keep as a corpus, and the handwriting pen fine-tuned on its own curliest work. Pure CPU.
+
+![Six rows of pale line drawings, the corpora the pens learn from: Hershey lettering in three fonts; three harmonograph figures of decaying loops; three branching plants; three panels of Truchet tiles whose quarter-circle arcs join into winding curves; three tangles of flocking trails; and two lines alternating words of small loops with words of sharp zigzags](assets/teaching_a_pen/corpora.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/teaching_a_pen/metadata.edn)
+
 ### stipple_sheet
 
 **A trained warp you can drag.** The live version of [Stipple transport](stipple_transport.md): one
@@ -175,6 +198,16 @@ example chat that ships under `public/docs/assets/ai4_chat_archive`, so run Fiel
 See [Reading Saved AI4 Chats](ai4_chat_archive.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/ai4_chat_archive/metadata.edn)
+
+### ai4_repo_tools
+
+**The repo tools Field's agent edits a checkout with**, in one box. It makes a three-file toy checkout
+in a temporary directory, then searches it, patches a misspelling, and reads the line back, all through
+the same tools AI4 calls when `FIELD_AGENT=field` hands it a docs revision or a landing question. The
+rest of its output is what the job's scope refuses: a path outside the readable list, `..`, a symbolic
+link out of the root, `.git`, a read-only page, and a generated file. No model and no API key.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/ai4_repo_tools/metadata.edn)
 
 ### simulation_clock
 

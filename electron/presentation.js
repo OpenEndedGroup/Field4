@@ -353,6 +353,7 @@ async function updateGuidePresentation(source, state) {
     session.control.webContents.send('field-presentation-state-to-control', {
       index: state.index, count: state.titles.length, title: state.title,
       currentSlideId: String(state.index), slides: state.titles.map((_, i) => String(i)), titles: state.titles, sectionPaths: state.sectionPaths || [],
+      searchTexts: state.searchTexts || [],
       field: fieldActions(state.content),
       cueIndex: state.cueIndex, cueTitles: state.cueTitles, cueAction: state.cueAction, checkpoint: state.checkpoint,
     });

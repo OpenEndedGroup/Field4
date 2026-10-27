@@ -164,13 +164,15 @@ h3 {
 }
 @media screen and (min-width: 76.234375em) {
     .md-typeset img {
-        max-width: calc(100% + 63px);
+        box-sizing: border-box;
+        max-width: calc(100% + 50px);
         padding-left: 50px;
         margin-left: -50px;
         /* border-left: 0.5px solid white; */
     }
     .md-typeset video {
-        max-width: calc(100% + 63px);
+        box-sizing: border-box;
+        max-width: calc(100% + 50px);
         padding-left: 50px;
         margin-left: -50px;
         /* border-left: 0.5px solid white; */

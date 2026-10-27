@@ -76,7 +76,7 @@ class PresentationTools internal constructor(root: File, private val readOnly: (
     }
     fun inspect(): Any = onOwner {
         val info = requireNotNull(session) { "No live document session" }
-        mapOf("success" to true, "presentations" to info.boxes.values.mapNotNull { box -> box.slideShow?.presentationState() })
+        mapOf("success" to true, "presentations" to info.boxes.values.mapNotNull { box -> box.slideShow?.presentationState(includeSearchText = false) })
     }
     fun control(req: PresentationControlRequest): Any = onOwner {
         check(!readOnly()) { "This document is read-only" }
@@ -87,7 +87,7 @@ class PresentationTools internal constructor(root: File, private val readOnly: (
         val index = req.command.toIntOrNull()
         require(index == null || index in show.steps.indices) { "Slide index is out of range" }
         show.command(req.command)
-        mapOf("success" to true, "state" to show.presentationState())
+        mapOf("success" to true, "state" to show.presentationState(includeSearchText = false))
     }
 }
 

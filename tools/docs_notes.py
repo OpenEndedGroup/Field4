@@ -1766,7 +1766,31 @@ def _codex_argv(prompt: str, root: Path, partition: Partition, cli: str) -> list
     return [find_executable("codex"), "exec", "--sandbox", "workspace-write", prompt]
 
 
-AGENTS = {"claude": AgentSpec("claude", _claude_argv), "codex": AgentSpec("codex", _codex_argv)}
+FIELD_AGENT_NOTE = """Field's own agent (AI4) is doing this revision. You have no shell, so every `{cli} ...` command
+below is unavailable: work through the repo tools, and record EVERY outcome by writing the JSON
+outcomes file described below with RepoWriteFileRequest (one file, all outcomes, written once at
+the end; overwrite=true if you rewrite it). You cannot file a handoff: record a question instead,
+saying it needs one. You may write only the files you own, that outcomes file, and drafts under
+the handoff directory.
+
+"""
+
+
+def _field_argv(prompt: str, root: Path, partition: Partition, cli: str) -> list[str]:
+    """Field's AI4 through tools/field_repo_agent.py: reads anything in the checkout, writes only the
+    files this partition owns plus its own outcomes file and handoff drafts (the run directory's name
+    is not passed in, so those two are matched by the partition's slug under any run)."""
+    runs = ".field-backdoor/docs-notes/runs/*"
+    write = [*partition.files, f"{runs}/{partition.slug}.outcomes.json", f"{runs}/{partition.slug}.handoffs/*"]
+    argv = [sys.executable, str(Path(__file__).resolve().parent / "field_repo_agent.py"), "--root", str(root),
+            "--prompt", FIELD_AGENT_NOTE + prompt]
+    for glob in write:
+        argv += ["--write", glob]
+    return argv
+
+
+AGENTS = {"claude": AgentSpec("claude", _claude_argv), "codex": AgentSpec("codex", _codex_argv),
+          "field": AgentSpec("field", _field_argv)}
 
 
 def agent_from_template(template: str) -> AgentSpec:

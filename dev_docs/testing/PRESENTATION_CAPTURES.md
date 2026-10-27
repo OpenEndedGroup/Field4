@@ -52,3 +52,14 @@ copies each standalone theme onto the disposable document's presentation.css and
 in a finally block. It captures `layered-build.png` and the three `theme-*.png` views, and records
 source hashes and image hashes in `builds.json`. Inspect all four images before committing them.
 The source document must be disposable because ordinary Field saves still run during the rehearsal.
+
+## Keyboard search
+
+Run `node tools/presentation/rehearse-search.mjs <CDP URL> <disposable starter document>` with the
+warm backdoor session and native Electron attached to the same document. This adds 100 authored
+Markdown slides to the disposable slide file, reruns Presentation, and drives real CDP keyboard input
+through the native controls. It checks body matches and excerpts, slash and Cmd/Ctrl+F, arrow choice,
+Enter and repeated hops, unchanged audience while typing, accent matching, multiple terms, zero
+results, refreshed search text, and Escape returning to normal navigation. It restores the starter
+file and reruns Presentation before capturing the real 11-slide search view to `search.png`, with
+source and image hashes in `search.json`. Its finally block restores the disposable source on failure.
