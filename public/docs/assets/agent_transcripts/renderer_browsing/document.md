@@ -45,13 +45,15 @@ render (the main target, its passes in draw order), compute, windows, cpu (CPU s
 device. Each node with children starts with a `summary` row: its card.
 
 ```edn [field-box id="browse_renderer" role="properties"]
-{"id" "browse_renderer" "index" 1 "name" "browse the renderer" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "browse the renderer" "_tombstone" false "frame" #afield/rect [380.0 40.0 820.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "browse_renderer_code_.kt" "lines" 7 "characters" 376 "sha256" "7b1f1be05bbbe9384786c4eacb942fd207f6a22cb7c3e111efda5d10da8bb197"}]}
+{"id" "browse_renderer" "index" 1 "name" "browse the renderer" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "browse the renderer" "_tombstone" false "frame" #afield/rect [380.0 40.0 820.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "browse_renderer_code_.kt" "lines" 9 "characters" 373 "sha256" "3920a83d576d51a658d9f0af943651d8ba6653c4f82c7432b1778e327fe9bad4"}]}
 ```
 
 ```kotlin [field-property box="browse_renderer" name="code" path="browse_renderer_code_.kt"]
-// `renderer` is the parent box's Renderer. column(...) opens it as Finder-style columns:
-// render (the main target, its passes in draw order), compute, windows, cpu (CPU span timings),
-// device. Each node with children starts with a `summary` row: its card.
+/*
+`renderer` is the parent box's Renderer. column(...) opens it as Finder-style columns:
+render (the main target, its passes in draw order), compute, windows, cpu (CPU span timings),
+device. Each node with children starts with a `summary` row: its card.
+*/
 column("renderer", renderer, width = 1100)
 
 // The same value as an indented tree.

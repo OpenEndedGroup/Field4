@@ -1,8 +1,10 @@
 import afield.media.webrtc.webrtcSink
 
-// Published as login/field-shader: your aaaframe login, or this computer's user name on
-// Field's own relay. A browser ShaderTrinket receives it by that name. To join a class,
-// run WebRTCNetwork.join("https://<your aaaframe>") once; Field asks you to sign in.
+/*
+Published as login/field-shader: your aaaframe login, or this computer's user name on
+Field's own relay. A browser ShaderTrinket receives it by that name. To join a class,
+run WebRTCNetwork.join("https://<your aaaframe>") once; Field asks you to sign in.
+*/
 @exported val sink = webrtcSink("field-shader", 640, 360)
 
 val module = moduleHere { +sink }

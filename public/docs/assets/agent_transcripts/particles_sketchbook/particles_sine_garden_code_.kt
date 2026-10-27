@@ -16,10 +16,12 @@ showControls(sketch)
 
 // a ring and two diagonals; drag in the window for more
 if (sketch.isEmpty) {
-    sketch.paint((0..60).map { i ->
-        val a = i / 60.0 * 2 * PI
-        vec(550 + cos(a) * 160, 380 + sin(a) * 160)
-    })
+    sketch.paint(
+        (0..60).map { i ->
+            val a = i / 60.0 * 2 * PI
+            vec(550 + cos(a) * 160, 380 + sin(a) * 160)
+        },
+    )
     sketch.paint(250.0, 150.0, 850.0, 610.0)
     sketch.paint(850.0, 150.0, 250.0, 610.0)
 }

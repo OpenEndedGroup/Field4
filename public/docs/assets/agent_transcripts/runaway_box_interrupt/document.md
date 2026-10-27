@@ -18,14 +18,16 @@ This loop never ends. After about five seconds Field throws out of it
 ("Box interrupted: ..."); run Interrupt Running Box to stop it sooner.
 
 ```edn [field-box id="agent_runaway_loop" role="properties"]
-{"id" "agent_runaway_loop" "index" 0 "name" "Runaway Loop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Runaway Loop" "_tombstone" false "frame" #afield/rect [80.0 80.0 320.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_runaway_loop_code_.kt" "lines" 4 "characters" 179 "sha256" "d5fbac5de29aece9ece98b229de7df81ed39386dbaa5413a06ba52cd8929ca04"}]}
+{"id" "agent_runaway_loop" "index" 0 "name" "Runaway Loop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Runaway Loop" "_tombstone" false "frame" #afield/rect [80.0 80.0 320.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_runaway_loop_code_.kt" "lines" 6 "characters" 183 "sha256" "c6a33396996a8fda0df6392385e167dba85ea0119c3d8196c726505a62925617"}]}
 ```
 
 ```kotlin [field-property box="agent_runaway_loop" name="code" path="agent_runaway_loop_code_.kt"]
 // This loop never ends. After about five seconds Field throws out of it
 // ("Box interrupted: ..."); run Interrupt Running Box to stop it sooner.
 var i = 0L
-while (true) { i++ }
+while (true) {
+    i++
+}
 ```
 
 ## 2. After The Runaway

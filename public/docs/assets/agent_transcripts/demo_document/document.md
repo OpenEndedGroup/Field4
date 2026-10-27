@@ -47,14 +47,17 @@ From `code`
 Runs while the time slider is over it.
 
 ```edn [field-box id="demo_cue_1" role="properties"]
-{"id" "demo_cue_1" "index" 1 "name" "cue 1" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "cue 1" "_tombstone" false "frame" #afield/rect [4420.0 80.0 260.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "demo_cue_1_code_.kt" "lines" 4 "characters" 202 "sha256" "e7e51625e49ced129a5356b51eaa1cf172ddaf03842f5455c85dbe97899d2ab9"}]}
+{"id" "demo_cue_1" "index" 1 "name" "cue 1" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "cue 1" "_tombstone" false "frame" #afield/rect [4420.0 80.0 260.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "demo_cue_1_code_.kt" "lines" 7 "characters" 212 "sha256" "96295929a991c27c16de1209a3c5fef6bae83957ad1fe13ac3edf1a3006befcf"}]}
 ```
 
 ```kotlin [field-property box="demo_cue_1" name="code" path="demo_cue_1_code_.kt"]
 // Runs while the time slider is over it.
-display("main", "<div style='width:300px;height:26px;border-radius:4px;background:linear-gradient(90deg,#1971c2,#4dabf7)'></div>")
+display(
+    "main",
+    "<div style='width:300px;height:26px;border-radius:4px;background:linear-gradient(90deg,#1971c2,#4dabf7)'></div>",
+)
 displayOpen("main")
-loop { }
+loop {}
 ```
 
 ## 3. palette
@@ -219,14 +222,17 @@ From `code`
 Runs while the time slider is over it.
 
 ```edn [field-box id="demo_cue_3" role="properties"]
-{"id" "demo_cue_3" "index" 7 "name" "cue 3" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "cue 3" "_tombstone" false "frame" #afield/rect [4860.0 520.0 260.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "demo_cue_3_code_.kt" "lines" 4 "characters" 202 "sha256" "3d94128ffcaf4f14a89b73c355dfcc964cefc125edbb634c983dfebbd190b4f9"}]}
+{"id" "demo_cue_3" "index" 7 "name" "cue 3" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "cue 3" "_tombstone" false "frame" #afield/rect [4860.0 520.0 260.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "demo_cue_3_code_.kt" "lines" 7 "characters" 212 "sha256" "6f90c8c85b37248ae532dc6364916d890056d58b1b757410ea84cf6eb29ea85d"}]}
 ```
 
 ```kotlin [field-property box="demo_cue_3" name="code" path="demo_cue_3_code_.kt"]
 // Runs while the time slider is over it.
-display("main", "<div style='width:300px;height:26px;border-radius:4px;background:linear-gradient(90deg,#e8590c,#ffc078)'></div>")
+display(
+    "main",
+    "<div style='width:300px;height:26px;border-radius:4px;background:linear-gradient(90deg,#e8590c,#ffc078)'></div>",
+)
 displayOpen("main")
-loop { }
+loop {}
 ```
 
 ## 9. cue 2
@@ -240,14 +246,17 @@ From `code`
 Runs while the time slider is over it.
 
 ```edn [field-box id="demo_cue_2" role="properties"]
-{"id" "demo_cue_2" "index" 8 "name" "cue 2" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "cue 2" "_tombstone" false "frame" #afield/rect [4640.0 300.0 260.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "demo_cue_2_code_.kt" "lines" 4 "characters" 202 "sha256" "ab2d2e2c3783b3557ac37cc6436a0dbb58704694da178dc1f18044fa624dd9aa"}]}
+{"id" "demo_cue_2" "index" 8 "name" "cue 2" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "cue 2" "_tombstone" false "frame" #afield/rect [4640.0 300.0 260.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "demo_cue_2_code_.kt" "lines" 7 "characters" 212 "sha256" "4df823011981a7394a0ba351027beb58f740402e43442ef77161fda32d515d9f"}]}
 ```
 
 ```kotlin [field-property box="demo_cue_2" name="code" path="demo_cue_2_code_.kt"]
 // Runs while the time slider is over it.
-display("main", "<div style='width:300px;height:26px;border-radius:4px;background:linear-gradient(90deg,#2f9e44,#8ce99a)'></div>")
+display(
+    "main",
+    "<div style='width:300px;height:26px;border-radius:4px;background:linear-gradient(90deg,#2f9e44,#8ce99a)'></div>",
+)
 displayOpen("main")
-loop { }
+loop {}
 ```
 
 ## 10. swatch
@@ -274,14 +283,17 @@ From `code`
 Runs while the time slider is over it.
 
 ```edn [field-box id="demo_cue_4" role="properties"]
-{"id" "demo_cue_4" "index" 10 "name" "cue 4" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "cue 4" "_tombstone" false "frame" #afield/rect [5080.0 740.0 260.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "demo_cue_4_code_.kt" "lines" 4 "characters" 202 "sha256" "c5c74a74a0a0ef1a125eae4d5e917428c27df11d7426770b806f40363bed07e8"}]}
+{"id" "demo_cue_4" "index" 10 "name" "cue 4" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "cue 4" "_tombstone" false "frame" #afield/rect [5080.0 740.0 260.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "demo_cue_4_code_.kt" "lines" 7 "characters" 212 "sha256" "273e171b3f9b3377aa3efeb8586bb94c27ea8eee8013bc8413f04fdcb85fe028"}]}
 ```
 
 ```kotlin [field-property box="demo_cue_4" name="code" path="demo_cue_4_code_.kt"]
 // Runs while the time slider is over it.
-display("main", "<div style='width:300px;height:26px;border-radius:4px;background:linear-gradient(90deg,#ae3ec9,#e599f7)'></div>")
+display(
+    "main",
+    "<div style='width:300px;height:26px;border-radius:4px;background:linear-gradient(90deg,#ae3ec9,#e599f7)'></div>",
+)
 displayOpen("main")
-loop { }
+loop {}
 ```
 
 ## 12. t
@@ -431,7 +443,7 @@ From `code`
 Draws the particles the compute box publishes as `outputPositions`, in the renderer's window.
 
 ```edn [field-box id="demo_draw" role="properties"]
-{"id" "demo_draw" "index" 15 "name" "draw particles" "parents" ["root" "demo_particles"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "demo_particles"} "name" "draw particles" "_tombstone" false "frame" #afield/rect [3300.0 680.0 300.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "demo_draw_vertex_.glsl" "lines" 19 "characters" 647 "sha256" "2c8e11634cdf55e1666a96f3bd1411949e77074c7a19dbac24f48c5380aa07f1"} {"name" "fragment" "language" "glsl" "path" "demo_draw_fragment_.glsl" "lines" 10 "characters" 312 "sha256" "739c6e5b6ad0ac8fd506d6926fe7af6eac86d734807a1a8c121ca6d00585c25e"} {"name" "code" "language" "kotlin" "path" "demo_draw_code_.kt" "lines" 10 "characters" 370 "sha256" "ef5d245e8063e6542b4e4bd0d9311adffc8e7b87fed3cccfeb889912806b0848"}]}
+{"id" "demo_draw" "index" 15 "name" "draw particles" "parents" ["root" "demo_particles"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "demo_particles"} "name" "draw particles" "_tombstone" false "frame" #afield/rect [3300.0 680.0 300.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "demo_draw_vertex_.glsl" "lines" 19 "characters" 647 "sha256" "2c8e11634cdf55e1666a96f3bd1411949e77074c7a19dbac24f48c5380aa07f1"} {"name" "fragment" "language" "glsl" "path" "demo_draw_fragment_.glsl" "lines" 11 "characters" 426 "sha256" "ae99d429c903b7fc256d03b17d4cf5da7bc54971b51e820a15d561c546e90500"} {"name" "code" "language" "kotlin" "path" "demo_draw_code_.kt" "lines" 10 "characters" 370 "sha256" "ef5d245e8063e6542b4e4bd0d9311adffc8e7b87fed3cccfeb889912806b0848"}]}
 ```
 
 ```glsl [field-property box="demo_draw" name="vertex" path="demo_draw_vertex_.glsl"]
@@ -462,8 +474,9 @@ layout(location = 0) out vec4 uFragColor;
 layout(location = 0) in vec2 tc;
 void main() {
     float d = max(0.0, 0.5-length(tc-vec2(0.5)));
-    float w = fwidth(d);
-    d = smoothstep(0.1, 0.1+w, d)*smoothstep(0.14+w, 0.14, d);
+    // Keep a nonzero pixel-wide transition, even where the distance is locally flat.
+    float w = max(fwidth(d), 0.00001);
+    d = smoothstep(0.1, 0.1 + w, d) * (1.0 - smoothstep(0.14, 0.14 + w, d));
     uFragColor = vec4(1.0, 0.8, 0.4, d*0.2);
     if (d<0.01) discard;
 }
@@ -556,7 +569,7 @@ displayOpen("lines")
 <!-- field-box id="demo_spiral" index="18" -->
 
 ```edn [field-box id="demo_spiral" role="properties"]
-{"id" "demo_spiral" "index" 18 "name" "streamed spiral" "parents" ["root" "demo_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "demo_renderer"} "name" "streamed spiral" "_tombstone" false "frame" #afield/rect [2300.0 240.0 300.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "demo_spiral_vertex_.glsl" "lines" 11 "characters" 182 "sha256" "9d436fbe6ce920d07c12fe0a650bcc9b94bf95c322ada019712f8575ac389fa7"} {"name" "fragment" "language" "glsl" "path" "demo_spiral_fragment_.glsl" "lines" 16 "characters" 417 "sha256" "683d125eba81059cab8d2a0711eb55a928d359bce34e3fd05be19546485a276c"} {"name" "code" "language" "kotlin" "path" "demo_spiral_code_.kt" "lines" 21 "characters" 555 "sha256" "2f3672b816363c06bb50e8c265c81d038078cf353cc47475fc5bad58b5a70edc"}]}
+{"id" "demo_spiral" "index" 18 "name" "streamed spiral" "parents" ["root" "demo_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "demo_renderer"} "name" "streamed spiral" "_tombstone" false "frame" #afield/rect [2300.0 240.0 300.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "demo_spiral_vertex_.glsl" "lines" 11 "characters" 182 "sha256" "9d436fbe6ce920d07c12fe0a650bcc9b94bf95c322ada019712f8575ac389fa7"} {"name" "fragment" "language" "glsl" "path" "demo_spiral_fragment_.glsl" "lines" 16 "characters" 417 "sha256" "683d125eba81059cab8d2a0711eb55a928d359bce34e3fd05be19546485a276c"} {"name" "code" "language" "kotlin" "path" "demo_spiral_code_.kt" "lines" 23 "characters" 655 "sha256" "fdd70e3a66c1197e58b4780177cbb2d7d588c238efb0119b6bfe22cc42df0bad"}]}
 ```
 
 ```glsl [field-property box="demo_spiral" name="vertex" path="demo_spiral_vertex_.glsl"]
@@ -599,18 +612,20 @@ import afield.media.stream.ElectronRTTView
 val view = ElectronRTTView(640, 360)
 val started = AnimationClock.nowSeconds()
 
-view += "content" to moduleHere {
-    +view
-    +Mesh("square") {
-        set(4, 2) {
-            pos.add(-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0)
-            tc.add(0, 0, 1, 0, 1, 1, 0, 1)
-            tri.add(0, 1, 2)
-            tri.add(0, 2, 3)
+view +=
+    "content" to
+        moduleHere {
+            +view
+            +Mesh("square") {
+                set(4, 2) {
+                    pos.add(-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0)
+                    tc.add(0, 0, 1, 0, 1, 1, 0, 1)
+                    tri.add(0, 1, 2)
+                    tri.add(0, 2, 3)
+                }
+                time = { AnimationClock.nowSeconds() - started }
+            }
         }
-        time = { AnimationClock.nowSeconds() - started }
-    }
-}
 
 display("main", view.html())
 displayOpen("main")

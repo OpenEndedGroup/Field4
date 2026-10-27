@@ -11,13 +11,17 @@ val sim = BoidSketch(module) {
     trail = 24
     kind("dancer") {
         count = 360
-        maxSpeed = 2.6; minSpeed = 1.2; maxForce = 0.08; fov = 200.0
+        maxSpeed = 2.6
+        minSpeed = 1.2
+        maxForce = 0.08
+        fov = 200.0
         rules(
             custom(46, 1.6),
             separate(7, 2.0),
             wander(0.35),
         )
-        shape = BoidShape.ARROW; size = 3.0
+        shape = BoidShape.ARROW
+        size = 3.0
         trailAlpha = 0.5
     }
 }

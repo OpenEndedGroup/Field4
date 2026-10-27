@@ -5,9 +5,9 @@ vec3 p = pos;
 float branch = 0.0;
 float amp = 0.58;
 for (int i = 0; i < 5; i++) {
-  branch += amp * abs(noise31(p * 4.2) - 0.5);
-  p = p.yzx * 1.73 + vec3(0.19, -0.07, 0.11);
-  amp *= 0.6;
+    branch += amp * abs(noise31(p * 4.2) - 0.5);
+    p = p.yzx * 1.73 + vec3(0.19, -0.07, 0.11);
+    amp *= 0.6;
 }
 
 float canopy = sat(1.0 - branch * 1.7);

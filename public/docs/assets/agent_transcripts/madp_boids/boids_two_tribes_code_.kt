@@ -11,7 +11,10 @@ val sim = BoidSketch(module) {
     trail = 16
     kind("red") {
         count = 450
-        maxSpeed = 2.8; minSpeed = 1.2; maxForce = 0.07; fov = 300.0
+        maxSpeed = 2.8
+        minSpeed = 1.2
+        maxForce = 0.07
+        fov = 300.0
         rules(
             separate(12, 1.6, among = "all"),
             align(32, 1.0), // align and cohere default to "same"
@@ -19,12 +22,16 @@ val sim = BoidSketch(module) {
             flee("blue", 36, 1.1),
             wander(0.1),
         )
-        shape = BoidShape.ARROW; size = 3.0
+        shape = BoidShape.ARROW
+        size = 3.0
         trailAlpha = 0.4
     }
     kind("blue") {
         count = 450
-        maxSpeed = 2.8; minSpeed = 1.2; maxForce = 0.07; fov = 300.0
+        maxSpeed = 2.8
+        minSpeed = 1.2
+        maxForce = 0.07
+        fov = 300.0
         rules(
             separate(12, 1.6, among = "all"),
             align(32, 1.0),
@@ -32,7 +39,8 @@ val sim = BoidSketch(module) {
             flee("red", 36, 1.1),
             wander(0.1),
         )
-        shape = BoidShape.ARROW; size = 3.0
+        shape = BoidShape.ARROW
+        size = 3.0
         trailAlpha = 0.4
     }
 }

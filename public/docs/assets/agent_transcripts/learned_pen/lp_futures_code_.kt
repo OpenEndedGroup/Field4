@@ -1,8 +1,10 @@
 import afield.ai.learning.pen.*
 
-// Twelve things the pen might do next, from the same line, each drawn beside its own copy
-// of the line. They share the pen's reading of the yellow stroke and differ only in the
-// random choices after it.
+/*
+Twelve things the pen might do next, from the same line, each drawn beside its own copy
+of the line. They share the pen's reading of the yellow stroke and differ only in the
+random choices after it.
+*/
 val start = fline {
     moveTo(0, 0)
     cubicTo(4, -14, 12, -14, 12, 0)

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="fungal_tree" index="0" -->
 
 ```edn [field-box id="fungal_tree" role="properties"]
-{"id" "fungal_tree" "index" 0 "name" "fungal tree" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "fungal tree" "_tombstone" false "frame" #afield/rect [80.0 2000.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "fungal_tree_notes_.md" "lines" 1 "characters" 253 "sha256" "a5bafe6ef1ffdd94d40c681c01860c243810847743a63fc8d7f3188b5fdf8f63"} {"name" "code" "language" "kotlin" "path" "fungal_tree_code_.kt" "lines" 52 "characters" 2031 "sha256" "faa34cc2518b330d1ea725f06b9acb675d8b0d1afb47086366bcb5c9e03a1e1b"}]}
+{"id" "fungal_tree" "index" 0 "name" "fungal tree" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "fungal tree" "_tombstone" false "frame" #afield/rect [80.0 2000.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "fungal_tree_notes_.md" "lines" 1 "characters" 253 "sha256" "a5bafe6ef1ffdd94d40c681c01860c243810847743a63fc8d7f3188b5fdf8f63"} {"name" "code" "language" "kotlin" "path" "fungal_tree_code_.kt" "lines" 57 "characters" 2161 "sha256" "ba1e5c73beea95d145ac9d6d8a66ded8a36f5901b9fc2abb2840f9fb48e0947a"}]}
 ```
 
 ```markdown [field-property box="fungal_tree" name="notes" path="fungal_tree_notes_.md"]
@@ -46,12 +46,15 @@ geometry {
             push()
             translate(end)
             scale(radius * 4.4, radius * 0.9, radius * 4.4)
-            revolve(listOf(
-                profile(0.04, 0.0, hsl(36, 0.9, 0.72)),
-                profile(0.58, 0.08, hsl(32, 0.72, 0.55)),
-                profile(1.0, 0.0, hsl(24, 0.75, 0.44)),
-                profile(0.42, -0.16, hsl(42, 0.58, 0.62)),
-            ), 18)
+            revolve(
+                [
+                    profile(0.04, 0.0, hsl(36, 0.9, 0.72)),
+                    profile(0.58, 0.08, hsl(32, 0.72, 0.55)),
+                    profile(1.0, 0.0, hsl(24, 0.75, 0.44)),
+                    profile(0.42, -0.16, hsl(42, 0.58, 0.62)),
+                ],
+                18,
+            )
             pop()
             return
         }
@@ -60,11 +63,13 @@ geometry {
         for (i in 0 until branches) {
             val turn = i.toDouble() / branches * TAU + rand(-0.5, 0.5)
             val lift = 0.48 + rand(0.0, 0.32)
-            val next = vec(
-                dir.x * 0.62 + cos(turn) * (0.45 + rand(0.0, 0.22)),
-                dir.y * 0.52 + lift,
-                dir.z * 0.62 + sin(turn) * (0.45 + rand(0.0, 0.22)),
-            ).normalize()
+            val next =
+                vec(
+                        dir.x * 0.62 + cos(turn) * (0.45 + rand(0.0, 0.22)),
+                        dir.y * 0.52 + lift,
+                        dir.z * 0.62 + sin(turn) * (0.45 + rand(0.0, 0.22)),
+                    )
+                    .normalize()
             branch(end - (radius * 0.6) * dir, next, length * rand(0.56, 0.76), radius * rand(0.58, 0.72), depth - 1)
         }
     }
@@ -84,7 +89,7 @@ From `code`
 Another animation: the same grid every frame, torn along random rows as t moves. Launch it (alt+up).
 
 ```edn [field-box id="signal_tear" role="properties"]
-{"id" "signal_tear" "index" 1 "name" "signal tear — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "signal tear — launch me" "_tombstone" false "frame" #afield/rect [900.0 1360.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "signal_tear_notes_.md" "lines" 1 "characters" 249 "sha256" "4b0f01d48a7b28f794ebcd9c6606556bfb559e38da6de0f5b728033bc9cee620"} {"name" "code" "language" "kotlin" "path" "signal_tear_code_.kt" "lines" 19 "characters" 846 "sha256" "916fd89abac87b188fc8c0ceb61c23ae9f59f80f6848db3fd9f16b60064a3376"}]}
+{"id" "signal_tear" "index" 1 "name" "signal tear — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "signal tear — launch me" "_tombstone" false "frame" #afield/rect [900.0 1360.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "signal_tear_notes_.md" "lines" 1 "characters" 249 "sha256" "4b0f01d48a7b28f794ebcd9c6606556bfb559e38da6de0f5b728033bc9cee620"} {"name" "code" "language" "kotlin" "path" "signal_tear_code_.kt" "lines" 26 "characters" 901 "sha256" "d0e2e8719d2fe79adc80e6afc55710dc68fd3345d419b8381f5368f2daeffee1"}]}
 ```
 
 ```markdown [field-property box="signal_tear" name="notes" path="signal_tear_notes_.md"]
@@ -97,7 +102,14 @@ animateGeometry {
     view(background = "#050608", ground = true, grid = false)
 
     mesh("signal tear")
-    mat(color = "#ffffff", roughness = 0.52, metalness = 0.18, emissive = "#07121c", emissiveIntensity = 0.55, flat = true)
+    mat(
+        color = "#ffffff",
+        roughness = 0.52,
+        metalness = 0.18,
+        emissive = "#07121c",
+        emissiveIntensity = 0.55,
+        flat = true,
+    )
 
     surface(72, 36) { u, v ->
         val row = floor(v * 36)
@@ -236,7 +248,7 @@ geometry {
 <!-- field-box id="lathe_vessel" index="5" -->
 
 ```edn [field-box id="lathe_vessel" role="properties"]
-{"id" "lathe_vessel" "index" 5 "name" "lathe vessel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "lathe vessel" "_tombstone" false "frame" #afield/rect [80.0 720.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "lathe_vessel_notes_.md" "lines" 1 "characters" 214 "sha256" "702666a88c901bece63d32155f54210360c8d8d91484e7bd51b0f9503b69e0cc"} {"name" "code" "language" "kotlin" "path" "lathe_vessel_code_.kt" "lines" 19 "characters" 728 "sha256" "13f4da8579d02e37d8813b4be47b774c8180a4c5f7af8069dfbdecf8dd18e50a"}]}
+{"id" "lathe_vessel" "index" 5 "name" "lathe vessel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "lathe vessel" "_tombstone" false "frame" #afield/rect [80.0 720.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "lathe_vessel_notes_.md" "lines" 1 "characters" 214 "sha256" "702666a88c901bece63d32155f54210360c8d8d91484e7bd51b0f9503b69e0cc"} {"name" "code" "language" "kotlin" "path" "lathe_vessel_code_.kt" "lines" 20 "characters" 754 "sha256" "159df79aea8e8cc7842f8c496faf175ce8526881e47d147d5dc5db69cd01c812"}]}
 ```
 
 ```markdown [field-property box="lathe_vessel" name="notes" path="lathe_vessel_notes_.md"]
@@ -247,13 +259,14 @@ geometry {
 geometry {
     view(background = "#060807", ground = true, grid = true)
 
-    val body = List(36) { i ->
-        val v = i / 35.0
-        val waist = 0.72 + sin(v * PI) * 0.42
-        val ripple = sin(v * PI * 8) * 0.045
-        val shoulder = exp(-(v - 0.72) * (v - 0.72) * 38) * 0.22
-        profile(waist + ripple + shoulder, (v - 0.5) * 3.2, hsl(28 + v * 34, 0.58, 0.42 + v * 0.16))
-    }
+    val body =
+        List(36) { i ->
+            val v = i / 35.0
+            val waist = 0.72 + sin(v * PI) * 0.42
+            val ripple = sin(v * PI * 8) * 0.045
+            val shoulder = exp(-(v - 0.72) * (v - 0.72) * 38) * 0.22
+            profile(waist + ripple + shoulder, (v - 0.5) * 3.2, hsl(28 + v * 34, 0.58, 0.42 + v * 0.16))
+        }
 
     mesh("vessel body")
     mat(color = "#ffffff", roughness = 0.72, metalness = 0.02, flat = true)
@@ -261,7 +274,7 @@ geometry {
 
     mesh("rim")
     mat(color = "#f4d28a", roughness = 0.38, metalness = 0.65, flat = true)
-    revolve(listOf(profile(1.0, 1.54, "#ffe4a0"), profile(1.16, 1.6, "#fff2bd"), profile(1.02, 1.68, "#c99a45")), 96)
+    revolve([profile(1.0, 1.54, "#ffe4a0"), profile(1.16, 1.6, "#fff2bd"), profile(1.02, 1.68, "#c99a45")], 96)
 }
 ```
 
@@ -270,7 +283,7 @@ geometry {
 <!-- field-box id="menger_lesson" index="6" -->
 
 ```edn [field-box id="menger_lesson" role="properties"]
-{"id" "menger_lesson" "index" 6 "name" "menger lesson" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "menger lesson" "_tombstone" false "frame" #afield/rect [80.0 2640.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "menger_lesson_notes_.md" "lines" 1 "characters" 151 "sha256" "962cc51bbeac5039fc5ec668367fd97463ec47a1d877ba9c587be0c9e1b68efb"} {"name" "code" "language" "kotlin" "path" "menger_lesson_code_.kt" "lines" 20 "characters" 719 "sha256" "79a28735220083d152fc8a5e9f89bd6baa120491a0547c6550f41f59f6f1e68c"}]}
+{"id" "menger_lesson" "index" 6 "name" "menger lesson" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "menger lesson" "_tombstone" false "frame" #afield/rect [80.0 2640.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "menger_lesson_notes_.md" "lines" 1 "characters" 151 "sha256" "962cc51bbeac5039fc5ec668367fd97463ec47a1d877ba9c587be0c9e1b68efb"} {"name" "code" "language" "kotlin" "path" "menger_lesson_code_.kt" "lines" 20 "characters" 713 "sha256" "fd633b6ee9bf9a3a1e55661787f8f233a9ab9063fff7e7c32cd0e04a5229b6a5"}]}
 ```
 
 ```markdown [field-property box="menger_lesson" name="notes" path="menger_lesson_notes_.md"]
@@ -290,7 +303,7 @@ geometry {
         }
         val step = size / 3
         for (x in -1..1) for (y in -1..1) for (z in -1..1) {
-            val holes = listOf(x, y, z).count { it == 0 }
+            val holes = [x, y, z].count { it == 0 }
             if (holes >= 2) continue
             sponge(center + vec(x * step, y * step, z * step), step, depth - 1)
         }
@@ -395,7 +408,7 @@ geometry {
 <!-- field-box id="crystal_bloom" index="9" -->
 
 ```edn [field-box id="crystal_bloom" role="properties"]
-{"id" "crystal_bloom" "index" 9 "name" "crystal bloom" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "crystal bloom" "_tombstone" false "frame" #afield/rect [900.0 80.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "crystal_bloom_notes_.md" "lines" 1 "characters" 198 "sha256" "eb14a30910bcbdbb39b3af80c4bfaedb7a8942393edf336a03ba8a5eb3135092"} {"name" "code" "language" "kotlin" "path" "crystal_bloom_code_.kt" "lines" 30 "characters" 1133 "sha256" "c5c483ac8d9a68d04fd86b93738b59f75e9c25d7986b4d2360aed3242b66e41e"}]}
+{"id" "crystal_bloom" "index" 9 "name" "crystal bloom" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "crystal bloom" "_tombstone" false "frame" #afield/rect [900.0 80.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "crystal_bloom_notes_.md" "lines" 1 "characters" 198 "sha256" "eb14a30910bcbdbb39b3af80c4bfaedb7a8942393edf336a03ba8a5eb3135092"} {"name" "code" "language" "kotlin" "path" "crystal_bloom_code_.kt" "lines" 34 "characters" 1212 "sha256" "37ce9971b4dca8e47ef8020ff420f69ea7c022c968ee53c17f4cb8e7d5744d25"}]}
 ```
 
 ```markdown [field-property box="crystal_bloom" name="notes" path="crystal_bloom_notes_.md"]
@@ -427,8 +440,12 @@ geometry {
             tri(
                 vertex(cos(a0) * radius, lift, sin(a0) * radius, hsl(hue - 14, 0.9, 0.38)),
                 vertex(cos(a1) * radius, lift + jitter, sin(a1) * radius, hsl(hue + 10, 0.95, 0.52)),
-                vertex(cos(mid) * (radius + 0.12 + lean), lift + height, sin(mid) * (radius + 0.12 - lean),
-                    hsl(hue + 26, 0.95, 0.68)),
+                vertex(
+                    cos(mid) * (radius + 0.12 + lean),
+                    lift + height,
+                    sin(mid) * (radius + 0.12 - lean),
+                    hsl(hue + 26, 0.95, 0.68),
+                ),
             )
         }
     }
@@ -461,7 +478,7 @@ geometryAgent() teaches this document's AI4 chat the language and lets it look a
 open the AI panel and ask for "a coral reef of tubes", or "make the terrain stormier".
 
 ```edn [field-box id="ripple_terrain" role="properties"]
-{"id" "ripple_terrain" "index" 10 "name" "ripple terrain — start here" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ripple terrain — start here" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "ripple_terrain_notes_.md" "lines" 63 "characters" 4246 "sha256" "d9705d3e2a7b17cdb74e55fcc8616bd5f551dafb11271f4495ca65f4b65549b8"} {"name" "code" "language" "kotlin" "path" "ripple_terrain_code_.kt" "lines" 30 "characters" 1163 "sha256" "118c6ed47796f44a1b7b794dc88819af77dd56ff3b768b8b7d320e6e5ee99575"}]}
+{"id" "ripple_terrain" "index" 10 "name" "ripple terrain — start here" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ripple terrain — start here" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "ripple_terrain_notes_.md" "lines" 63 "characters" 4246 "sha256" "d9705d3e2a7b17cdb74e55fcc8616bd5f551dafb11271f4495ca65f4b65549b8"} {"name" "code" "language" "kotlin" "path" "ripple_terrain_code_.kt" "lines" 32 "characters" 1135 "sha256" "4092282d4cab28c451f21c81595eae36ba11969ad4728919c37f2989837ec65d"}]}
 ```
 
 ```markdown [field-property box="ripple_terrain" name="notes" path="ripple_terrain_notes_.md"]
@@ -531,18 +548,20 @@ can do, from a single triangle to a recursive tree.
 ```
 
 ```kotlin [field-property box="ripple_terrain" name="code" path="ripple_terrain_code_.kt"]
-// geometry { } is a recipe of triangles. Running the box runs the recipe and draws it.
-//
-//   mat(...)             the material for triangles that follow
-//   color(...)           the colour for vertices that follow
-//   tri(a, b, c)         one triangle
-//   quad(a, b, c, d)     two triangles
-//   surface(...)         a grid of triangles
-//   revolve, tube, box   more triangles
-//   push() / pop() with translate, rotateX/Y/Z, scale
-//
-// geometryAgent() teaches this document's AI4 chat the language and lets it look at every view here:
-// open the AI panel and ask for "a coral reef of tubes", or "make the terrain stormier".
+/*
+geometry { } is a recipe of triangles. Running the box runs the recipe and draws it.
+
+  mat(...)             the material for triangles that follow
+  color(...)           the colour for vertices that follow
+  tri(a, b, c)         one triangle
+  quad(a, b, c, d)     two triangles
+  surface(...)         a grid of triangles
+  revolve, tube, box   more triangles
+  push() / pop() with translate, rotateX/Y/Z, scale
+
+geometryAgent() teaches this document's AI4 chat the language and lets it look at every view here:
+open the AI panel and ask for "a coral reef of tubes", or "make the terrain stormier".
+*/
 geometryAgent()
 
 geometry {
