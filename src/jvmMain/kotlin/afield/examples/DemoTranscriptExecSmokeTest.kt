@@ -100,6 +100,8 @@ object DemoTranscriptExecSmokeTest {
         "stacksl_fit_demo",
         // ai4_chat_archive.md's demo: reads the example chat under public/docs/assets by checkout path.
         "ai4_chat_archive",
+        // IN_FIELD_AGENT_HARNESS.md's repo-tools demo: a toy checkout in a temporary directory, removed after.
+        "ai4_repo_tools",
         "particle_video_reader",
         // contour_trees.md's starting point: contour trees of a computed field and the leaf print, plain Kotlin.
         "contour_trees_explorer",

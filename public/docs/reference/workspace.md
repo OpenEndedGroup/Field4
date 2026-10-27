@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-229 source file(s), 3146 public symbol(s), 1131 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+229 source file(s), 3145 public symbol(s), 1130 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1371,8 +1371,8 @@ the browser's inspector page talks to.
 | Declaration | Summary |
 | --- | --- |
 | <a id="browsing-kt--installinspectorhandler"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">installInspectorHandler</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/browsing/#L769) |  |
-| <a id="browsing-kt--registerexampleroots"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">registerExampleRoots</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/browsing/#L835) |  |
-| <a id="browsing-kt--registerexampleadapters"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">registerExampleAdapters</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/browsing/#L929) |  |
+| <a id="browsing-kt--registerexampleroots"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">registerExampleRoots</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/browsing/#L836) |  |
+| <a id="browsing-kt--registerexampleadapters"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">registerExampleAdapters</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/browsing/#L930) |  |
 
 ### Browsable { #browsing-kt-browsable }
 
@@ -1426,62 +1426,62 @@ Register custom HTML renderers for non-Browsable values (leaf fallback).
 
 ### Clock { #browsing-kt-clock }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">Clock</span> <span class="p">:</span> <span class="nc">Browsable</span></code>](source/jvmMain/afield/app/server/browsing/#L786)
+[<code class="highlight"><span class="k">class</span> <span class="nc">Clock</span> <span class="p">:</span> <span class="nc">Browsable</span></code>](source/jvmMain/afield/app/server/browsing/#L787)
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="browsing-kt--clock--heading"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">heading</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/browsing/#L794) |  |
-| <a id="browsing-kt--clock--html"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/browsing/#L795) |  |
-| <a id="browsing-kt--clock--version"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">version</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/app/server/browsing/#L796) |  |
+| <a id="browsing-kt--clock--heading"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">heading</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/browsing/#L795) |  |
+| <a id="browsing-kt--clock--html"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/browsing/#L796) |  |
+| <a id="browsing-kt--clock--version"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">version</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/app/server/browsing/#L797) |  |
 
 ### Heap { #browsing-kt-heap }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">Heap</span> <span class="p">:</span> <span class="nc">Browsable</span></code>](source/jvmMain/afield/app/server/browsing/#L799)
+[<code class="highlight"><span class="k">class</span> <span class="nc">Heap</span> <span class="p">:</span> <span class="nc">Browsable</span></code>](source/jvmMain/afield/app/server/browsing/#L800)
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="browsing-kt--heap--heading"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">heading</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/browsing/#L807) |  |
-| <a id="browsing-kt--heap--html"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/browsing/#L808) |  |
-| <a id="browsing-kt--heap--version"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">version</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/app/server/browsing/#L821) |  |
+| <a id="browsing-kt--heap--heading"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">heading</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/browsing/#L808) |  |
+| <a id="browsing-kt--heap--html"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/browsing/#L809) |  |
+| <a id="browsing-kt--heap--version"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">version</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/app/server/browsing/#L822) |  |
 
 ### Numbers { #browsing-kt-numbers }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">Numbers</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Browsable</span></code>](source/jvmMain/afield/app/server/browsing/#L824)
+[<code class="highlight"><span class="k">class</span> <span class="nf">Numbers</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Browsable</span></code>](source/jvmMain/afield/app/server/browsing/#L825)
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="browsing-kt--numbers--heading"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">heading</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/browsing/#L825) |  |
-| <a id="browsing-kt--numbers--dir"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">dir</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/app/server/browsing/#L826) |  |
+| <a id="browsing-kt--numbers--heading"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">heading</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/browsing/#L826) |  |
+| <a id="browsing-kt--numbers--dir"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">dir</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/app/server/browsing/#L827) |  |
 
 ### ThreadList { #browsing-kt-threadlist }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">ThreadList</span> <span class="p">:</span> <span class="nc">Browsable</span></code>](source/jvmMain/afield/app/server/browsing/#L829)
+[<code class="highlight"><span class="k">class</span> <span class="nc">ThreadList</span> <span class="p">:</span> <span class="nc">Browsable</span></code>](source/jvmMain/afield/app/server/browsing/#L830)
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="browsing-kt--threadlist--heading"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">heading</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/browsing/#L830) |  |
-| <a id="browsing-kt--threadlist--html"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/browsing/#L831) |  |
+| <a id="browsing-kt--threadlist--heading"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">heading</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/browsing/#L831) |  |
+| <a id="browsing-kt--threadlist--html"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/browsing/#L832) |  |
 
 ### AdapterFn { #browsing-kt-adapterfn }
 
-[<code class="highlight"><span class="k">typealias</span> <span class="nc">AdapterFn</span> <span class="o">=</span> <span class="p">(</span><span class="nc">Any</span><span class="p">,</span> <span class="nc">Browsable</span><span class="o">?</span><span class="p">,</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Browsable</span><span class="o">?</span></code>](source/jvmMain/afield/app/server/browsing/#L873)
+[<code class="highlight"><span class="k">typealias</span> <span class="nc">AdapterFn</span> <span class="o">=</span> <span class="p">(</span><span class="nc">Any</span><span class="p">,</span> <span class="nc">Browsable</span><span class="o">?</span><span class="p">,</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Browsable</span><span class="o">?</span></code>](source/jvmMain/afield/app/server/browsing/#L874)
 
 ### BrowsableAdapters { #browsing-kt-browsableadapters }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">BrowsableAdapters</span></code>](source/jvmMain/afield/app/server/browsing/#L874)
+[<code class="highlight"><span class="k">object</span> <span class="nc">BrowsableAdapters</span></code>](source/jvmMain/afield/app/server/browsing/#L875)
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="browsing-kt--browsableadapters--register"></a>[<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span> <span class="p">:</span> <span class="nc">Any</span><span class="p">&gt;</span> <span class="nf">register</span><span class="p">(</span><span class="n">klass</span><span class="p">:</span> <span class="nc">KClass</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">adapter</span><span class="p">:</span> <span class="p">(</span><span class="nc">T</span><span class="p">,</span> <span class="nc">Browsable</span><span class="o">?</span><span class="p">,</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Browsable</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/browsing/#L882) |  |
-| <a id="browsing-kt--browsableadapters--adapt"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">adapt</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Any</span><span class="p">,</span> <span class="n">parent</span><span class="p">:</span> <span class="nc">Browsable</span><span class="o">?</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Browsable</span><span class="o">?</span></code>](source/jvmMain/afield/app/server/browsing/#L889) |  |
+| <a id="browsing-kt--browsableadapters--register"></a>[<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span> <span class="p">:</span> <span class="nc">Any</span><span class="p">&gt;</span> <span class="nf">register</span><span class="p">(</span><span class="n">klass</span><span class="p">:</span> <span class="nc">KClass</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">adapter</span><span class="p">:</span> <span class="p">(</span><span class="nc">T</span><span class="p">,</span> <span class="nc">Browsable</span><span class="o">?</span><span class="p">,</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Browsable</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/browsing/#L883) |  |
+| <a id="browsing-kt--browsableadapters--adapt"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">adapt</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Any</span><span class="p">,</span> <span class="n">parent</span><span class="p">:</span> <span class="nc">Browsable</span><span class="o">?</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Browsable</span><span class="o">?</span></code>](source/jvmMain/afield/app/server/browsing/#L890) |  |
 
 ### ToStringHighlighter { #browsing-kt-tostringhighlighter }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">ToStringHighlighter</span></code>](source/jvmMain/afield/app/server/browsing/#L942)
+[<code class="highlight"><span class="k">object</span> <span class="nc">ToStringHighlighter</span></code>](source/jvmMain/afield/app/server/browsing/#L943)
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="browsing-kt--tostringhighlighter--render"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">src</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/browsing/#L955) |  |
+| <a id="browsing-kt--tostringhighlighter--render"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">src</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/browsing/#L956) |  |
 
 ## chat.kt { #chat-kt }
 
@@ -2006,8 +2006,7 @@ Capture all log events (while still emitting to stdout) and expose a lightweight
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="rendererbrowsing-kt--installrendererbrowsing"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">installRendererBrowsing</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;Renderer&quot;</span><span class="p">,</span> <span class="n">extraRoots</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/rendererBrowsing/#L23) | Call once from your app to expose the renderer and install all adaptors. |
-| <a id="rendererbrowsing-kt--registerrendererbrowsingadapters"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">registerRendererBrowsingAdapters</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/rendererBrowsing/#L33) | One-time registration of Renderer/graphics Browsable adapters. |
+| <a id="rendererbrowsing-kt--registerrendererbrowsingadapters"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">registerRendererBrowsingAdapters</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/rendererBrowsing/#L37) | One-time registration of the Renderer/graphics [`Browsable`](workspace.md#browsing-kt-browsable) adapters, so `column("r", renderer)` and `tree("r", renderer)` open the renderer as targets (in draw order), modules with their shaders and bindings, textures, CPU span timings and profiler state. Called from [`installInspectorHandler`](workspace.md#browsing-kt--installinspectorhandler) at server start; idempotent. |
 
 ## signalViewer.kt { #signalviewer-kt }
 

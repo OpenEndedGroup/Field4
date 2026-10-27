@@ -82,6 +82,13 @@ data class AgentTaskRequest(
      * run after the last. What makes a task multi-turn — the case where instructions used to pile up.
      */
     val followUps: List<String> = emptyList(),
+    /**
+     * A checkout the `repo` tools ([afield.ai.tools.RepoFileTools]) work in: blank = no repo tools. [repoRead]
+     * and [repoWrite] are globs over root-relative paths; the job may read only the first and write only the second.
+     */
+    val repoRoot: String = "",
+    val repoRead: List<String> = emptyList(),
+    val repoWrite: List<String> = emptyList(),
 )
 
 /**
@@ -216,6 +223,8 @@ data class AgentTaskResult(
     val turns: Int = 1,
     /** Where the last turn's instructions went: `instructions`, `system+prefix`, or `inline` (the legacy arm). */
     val contextPlacement: String = "",
+    /** Root-relative paths the `repo` tools wrote, in order (a path written twice appears twice). */
+    val repoWritten: List<String> = emptyList(),
 )
 
 /**
@@ -269,6 +278,13 @@ object AgentTaskRunner {
         return try {
             val ctx = contextFor(info, graph, request.focusBox.ifBlank { null }).let { base ->
                 if (request.programs == "off") base.copy(withheld = base.withheld + afield.ai.tools.program.RUN_TOOL_PROGRAM) else base
+            }.let { base ->
+                if (request.repoRoot.isBlank()) base else {
+                    val root = java.io.File(request.repoRoot)
+                    require(root.isDirectory) { "repoRoot '${request.repoRoot}' is not a directory" }
+                    base.copy(repoFiles = afield.ai.tools.RepoFileTools(afield.ai.tools.RepoScope(root.toPath(),
+                        request.repoRead.ifEmpty { listOf("**") }, request.repoWrite)))
+                }
             }
 
             if (request.setup.isNotBlank()) {
@@ -300,6 +316,13 @@ object AgentTaskRunner {
                     info.boxes.values.filter { !it.getPropertyRaw("_tombstone").isTrue() }
                         .joinToString(", ") { it.name.ifBlank { it.id } }.ifBlank { "(none)" })
                 appendLine("You have at most $budget tool rounds.")
+                ctx.repoFiles?.scope?.let { s ->
+                    appendLine()
+                    appendLine("Repository: ${s.root}. Work on its files with the repo tools (RepoReadFileRequest, RepoListFilesRequest, " +
+                        "RepoSearchRequest, RepoPatchFileRequest, RepoWriteFileRequest); paths are relative to that root. " +
+                        "Readable: ${s.readable.joinToString(", ")}. Writable: ${s.writable.joinToString(", ").ifBlank { "(nothing)" }}. " +
+                        "There is no shell: anything the goal says to run as a command, do through these tools instead.")
+                }
             }
             val helpers = afield.ai.conversation.IdeChatHelpers(b,
                 ephemeralInstructions = request.context != "legacy" && afield.ai.conversation.ContextPipeline.enabledByDefault)
@@ -341,6 +364,7 @@ object AgentTaskRunner {
                 nestedCalls = calls.count { it.parent.isNotEmpty() },
                 turns = 1 + request.followUps.size,
                 contextPlacement = sent.contextReport?.placement ?: "inline",
+                repoWritten = ctx.repoFiles?.written?.toList().orEmpty(),
             )
         } catch (t: Throwable) {
             failure("${t.javaClass.simpleName}: ${t.message}")

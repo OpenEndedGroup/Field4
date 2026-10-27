@@ -58,6 +58,43 @@ class FieldAgentTest(unittest.TestCase):
         with mock.patch.object(field_agent, "INSTALL_DIRS", ()):
             self.assertIsNone(field_agent.headless_argv("codex"))
 
+    def test_field_is_a_third_choice_that_needs_no_executable(self) -> None:
+        os.environ["FIELD_AGENT"] = "field"
+        self.assertEqual(field_agent.configured_agent(), "field")
+        argv = field_agent.headless_argv()
+        self.assertEqual(argv[0], sys.executable)
+        self.assertTrue(argv[1].endswith("field_repo_agent.py"))
+        self.assertEqual(argv[2:], ["--root", "."], "read-only unless edits: no --write glob")
+        self.assertEqual(field_agent.headless_argv("field", edits=True)[-2:], ["--write", "**"])
+        self.assertEqual(field_agent.describe("field"), "Field AI4")
+
+
+class FieldRepoAgentTest(unittest.TestCase):
+    def test_backdoor_line_carries_root_globs_and_caps(self) -> None:
+        import field_repo_agent
+        argv = field_repo_agent.build_backdoor_argv(root=Path("/r"), read=["**"], write=["a.md", "b/*"],
+                                                    goal_file=Path("/g.md"), model="m", max_rounds=7, port="9631", timeout=100)
+        self.assertIn("--port", argv)
+        task = argv[argv.index("--command") + 1]
+        self.assertEqual(task, "agent-task --goal-file /g.md --repo-root /r --max-rounds 7 --timeout 100 "
+                               "--repo-read '**' --repo-write a.md --repo-write 'b/*' --model m")
+
+    def test_result_is_found_in_backdoor_json(self) -> None:
+        import field_repo_agent
+        out = '{"ok": false, "results": [{"command": "agent-task", "ok": false, "data": {"finalText": "done", "rounds": 3}}]}'
+        self.assertEqual(field_repo_agent._result(out)["finalText"], "done")
+        self.assertEqual(field_repo_agent._result("not json"), {})
+
+    def test_docs_notes_field_agent_writes_only_its_partition(self) -> None:
+        import docs_notes
+        part = docs_notes.Partition(key="k", pages=["p.md"], files=["public/docs/p.md"], notes=[{"id": "n"}], generated=[])
+        argv = docs_notes.AGENTS["field"].argv("PROMPT", Path("/r"), part, "cli")
+        writes = [argv[i + 1] for i, a in enumerate(argv) if a == "--write"]
+        self.assertEqual(writes[0], "public/docs/p.md")
+        self.assertTrue(all(w == "public/docs/p.md" or part.slug in w for w in writes))
+        prompt = argv[argv.index("--prompt") + 1]
+        self.assertTrue(prompt.startswith(docs_notes.FIELD_AGENT_NOTE) and prompt.endswith("PROMPT"))
+
 
 if __name__ == "__main__":
     unittest.main()
