@@ -11,7 +11,7 @@ opened and looked at; **true (code)** means read from source only; **unverified*
 | `screenshot_31` (`.h`) | `funfeatures/h-map.png`, runner capture | true (run): one-line map with sparkline |
 | `screenshot_32` (`.h2`) | `funfeatures/h2-buffer.png`, runner capture of a 100 000-float `FloatBuffer` | true (run): paged table, stride 4 |
 | `screenshot_33` (`display`) | `funfeatures/display-map.png` | true (run) |
-| `screenshot_34` (display HTML) | `funfeatures/display-html.png` | true (run); panels appear newest-first |
+| `screenshot_34` (display HTML) | `funfeatures/display-html.png` | true (run); the order of the two panels differed between runs |
 | `screenshot_35` (`column`) | `funfeatures/column.png` | true (run) |
 | `screenshot_36` (`tree`) | `funfeatures/tree.png` | true (run) |
 | `screenshot_37` (`logs`) | `funfeatures/logs.png` | true (run); page said `logs('log')`, the API is `logs()` (channel defaults to "internal logging") — fixed |
@@ -28,7 +28,7 @@ videos) were regenerated in the same run; stills were looked at, videos were not
 ## Prose claims
 
 - Snippets used `[1, 2, 3, 4, 8, 7.2]` (a mixed Int/Double collection literal); replaced with
-  `listOf(1.0, …)` so the inferred type is plain. **fixed**
+  `[1.0, …]`, all Doubles, so the inferred type is plain. **fixed**
 - ".h2 … highlighted colors show unusually low and high values": not visible in the capture
   (smooth data, no tint). **unverified, removed**
 - "This page is older than that machinery and many of its screenshots were taken by hand": **stale,

@@ -90,7 +90,7 @@ So, if you don't know what that variable is, drop in a `print()` and find out.
 Appending `.h` or even `.h2` to the thing that you are printing will cause Field to work much harder to make the thing that you are printing a pretty piece of `h`tml. Here a map holding a list goes to an output area with `.h`:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/funfeatures/h-map.png" capture="box" open-outputs="true" wait="3" padding="16" timeout="120" embed=true name="funfeatures-h-map" w="700" h="200" alt="An output panel titled m under a Field box, holding one line: { a → b, c → [1, 2, 3, 4, 8, 7.2] (6) } with the keys in green, the numbers in blue and a small sparkline of the list beside it."}
-val l = listOf(1.0, 2.0, 3.0, 4.0, 8.0, 7.2)
+val l = [1.0, 2.0, 3.0, 4.0, 8.0, 7.2]
 val m = mapOf("a" to "b", "c" to l)
 display("m", m.h)
 ```
@@ -110,7 +110,7 @@ display("buffer", buffer.h2)
 We can also 'print' to the canvas using `display`. For example:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/funfeatures/display-map.png" capture="box" open-outputs="true" wait="3" padding="16" timeout="120" embed=true name="funfeatures-display-map" w="700" h="200" alt="An output panel titled m is equal to, holding the map on one line: { a → b, c → [1, 2, 3, 4, 8, 7.2] (6) } with a sparkline of the list."}
-val l = listOf(1.0, 2.0, 3.0, 4.0, 8.0, 7.2)
+val l = [1.0, 2.0, 3.0, 4.0, 8.0, 7.2]
 val m = mapOf("a" to "b", "c" to l)
 display("m is equal to ", m.h)
 ```
@@ -121,8 +121,8 @@ Subsequent calls to `display` overwrites the previous one, giving you a way of '
 
 While the `.h` and `.h2` visualizers try hard to make things pretty, all they are really doing is making some complex HTML in response to what they are trying to visualize. You can make your own as well:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/funfeatures/display-html.png" capture="box" open-outputs="true" wait="3" padding="16" timeout="120" embed=true name="funfeatures-display-html" w="700" h="220" trim=true alt="Two output panels under a Field box: just some html, holding the word foo! in heavy bold type, and below it m is equal to, holding the map on one line with its sparkline."}
-val l = listOf(1.0, 2.0, 3.0, 4.0, 8.0, 7.2)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/funfeatures/display-html.png" capture="box" open-outputs="true" wait="3" padding="16" timeout="120" embed=true name="funfeatures-display-html" w="700" h="220" trim=true alt="Two output panels under a Field box: m is equal to, holding the map on one line with its sparkline, and just some html, holding the word foo! in heavy bold type."}
+val l = [1.0, 2.0, 3.0, 4.0, 8.0, 7.2]
 val m = mapOf("a" to "b", "c" to l)
 
 display("m is equal to ", m.h)
@@ -137,7 +137,7 @@ That's also how this documentation gets made: the docs build runs the examples i
 There are a few more elaborate visualizers for more tangled structures. The "column" visualizer is loosely modelled after Smalltalk's browser:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/funfeatures/column.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="120" embed=true name="funfeatures-column" w="900" h="300" alt="A column browser in an output panel titled m, headed LinkedHashMap 3 entries, listing a String \"b\", c ArrayList 6 items and m LinkedHashMap 2 entries; a is selected."}
-val l = listOf(1.0, 2.0, 3.0, 4.0, 8.0, 7.2)
+val l = [1.0, 2.0, 3.0, 4.0, 8.0, 7.2]
 val m2 = mapOf("foo" to "bar", "gux" to l)
 val m = mapOf("a" to "b", "c" to l, "m" to m2)
 
@@ -147,7 +147,7 @@ column("m", m)
 This structure live updates if `m` changes. Similarly there is `tree`, the same values as an outline:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/funfeatures/tree.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="120" embed=true name="funfeatures-tree" w="900" h="300" alt="A tree browser in an output panel titled m, headed LinkedHashMap 3 entries with a filter box: row a String \"b\" selected with path and copy buttons, and folded rows c ArrayList 6 items and m LinkedHashMap."}
-val l = listOf(1.0, 2.0, 3.0, 4.0, 8.0, 7.2)
+val l = [1.0, 2.0, 3.0, 4.0, 8.0, 7.2]
 val m2 = mapOf("foo" to "bar", "gux" to l)
 val m = mapOf("a" to "b", "c" to l, "m" to m2)
 
