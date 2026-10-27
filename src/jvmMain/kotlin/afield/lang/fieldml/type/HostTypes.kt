@@ -208,11 +208,11 @@ object FieldMLHostTypes {
     // ---- named arguments ---------------------------------------------------------------------
 
     /**
-     * The type-level twin of `FieldMLHostBridge.callMethodNamed`, and deliberately weaker than its
-     * positional counterpart in one respect: it resolves on the argument *names* alone and ignores
-     * their types.
+     * The type-level twin of `FieldMLHostBridge.callMethodNamed`, weaker than its positional
+     * counterpart in one respect: it resolves on the argument *names* alone and ignores their
+     * types.
      *
-     * That is not laziness, it is where the information is. A name set is usually far more selective
+     * The names are where the information is. A name set is usually far more selective
      * than an arity — most overload sets differ in what they are called, not just in how many — and
      * the value-level scoring that would break a remaining tie has to agree with what the runtime
      * does, which for a named call is `chooseNamed`. Rather than keep a third scorer in step, this
@@ -532,7 +532,8 @@ object FieldMLHostTypes {
      * then turns the function that comes back into a proxy of the result interface in its turn. So
      * `fun a b -> …` really is a `Function1<A, Function1<B, C>>`. When the result is *not* a
      * functional interface, the extra parameter means the JVM is handed a function where it wants a
-     * value, and that fails on the first call — which is worth saying at compile time.
+     * value, and that fails on the first call — which the type checker can report before the
+     * program runs.
      *
      * A `suspend` type's own return is erased to `Object` and says nothing; its declared result
      * lives inside the trailing `Continuation`, which is what [FieldMLHostBridge.suspendShape] digs

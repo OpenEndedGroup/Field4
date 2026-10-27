@@ -95,8 +95,8 @@ import java.util.concurrent.TimeUnit
  *  - **[PythonExecution]**, the `BoxExecution`. Beyond the usual output proxying it carries the
  *    cooperative event loop: an `asyncio` loop implemented in Python that yields to Field's runloop
  *    instead of blocking it, so `await` inside a box does not stop the editor.
- *  - **Output.** Everything a box prints funnels through one formatter, and three cases are special
- *    on purpose: a `\r` becomes a Field progress bar (which is how `tqdm` renders as a real one),
+ *  - **Output.** Everything a box prints funnels through one formatter, and three cases are
+ *    special: a `\r` becomes a Field progress bar (which is how `tqdm` renders as a real one),
  *    an object exposing `HTML`/`Image`/`Markdown`/`Math`/`JSON` renders as itself, and a library
  *    that tries to open a browser page — plotly's `fig.show()`, bokeh, folium — is intercepted and
  *    the HTML delivered into the box as an iframe `srcdoc`. Nothing here opens a browser.

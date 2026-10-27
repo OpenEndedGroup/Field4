@@ -90,8 +90,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  *    rather than naming `SomeSkikoKt`.
  *  - [ClojureExecution] is the `BoxExecution`, so it is the half that knows about boxes: output
  *    proxying, `is-running`, per-fragment generation counting, and `complete`, whose candidates
- *    come from Compliment if that namespace loads and from nothing if it does not — completion is
- *    optional here by design rather than by omission.
+ *    come from Compliment if that namespace loads. Without it on the classpath `complete` returns
+ *    an empty list rather than throwing, so a box runs and completes nothing.
  *  - [installClojure] and [clojureTopologyNeedsUpdating] are the registration, and they are
  *    identical in shape to every other main language: one `registerMainLanguageRuntime` call, one
  *    `TopologyWatcher` that swaps a child box's execution when the graph changes.
@@ -822,8 +822,8 @@ class ClojureHost(private val defaultNs: String = "user") {
  * document. What interop is *bad* at is the two shapes Field's Kotlin API uses most — an extension
  * function (compiled to a static whose class name is a file name, `SomeSkikoKt`) and a default
  * argument (not a default at all from outside Kotlin, so every parameter has to be passed). So this
- * is a thin facade over exactly those, and deliberately nothing else: everything below is a
- * one-liner, and a verb that reads well as raw interop does not belong here.
+ * is a thin facade over exactly those and nothing else: everything below is a one-liner, and a verb
+ * that reads well as raw interop does not belong here.
  *
  * [thisBox] is the same device as `PythonInterface.thisBox` and carries the same caveat: box code
  * runs on the main coroutine, one fragment at a time, so a single slot is enough — but it *is* a
