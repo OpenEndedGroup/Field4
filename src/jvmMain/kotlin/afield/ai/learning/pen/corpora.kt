@@ -19,6 +19,7 @@ import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.exp
+import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.sin
@@ -288,6 +289,130 @@ object PenDrawings {
     }
 
     /**
+     * After Henri Michaux's mescaline drawings: columns of fine, trembling lines, each laid down
+     * beside the last at a small gap and following its undulation, a little changed, so the field
+     * accumulates. A column is one unbroken stroke going down, turning, and coming back up beside
+     * itself, the way hatching is drawn; now and then a pass leans into its neighbour and touches it.
+     *
+     * Following the line beside it is the thing a pen that sees only its own displacements cannot
+     * do: train a sensing pen ([PenModel.sectors] above 0) on these.
+     */
+    fun michaux(seed: Long, columns: Int = 2, lines: Int = 14, length: Double = 200.0, gap: Double = 5.0): FLine {
+        val r = Random(seed)
+        val out = FLine()
+        var x0 = 0.0
+        repeat(columns) {
+            val n = (lines * (0.6 + r.nextDouble() * 0.8)).toInt().coerceAtLeast(4)
+            val len = length * (0.6 + r.nextDouble() * 0.6)
+            // the shape every pass inherits: a few slow waves down the column
+            val amp = DoubleArray(3) { 2.0 + r.nextDouble() * 6 }
+            val freq = DoubleArray(3) { (it + 1) * (0.5 + r.nextDouble()) * 2 * PI / len }
+            val phase = DoubleArray(3) { r.nextDouble() * 2 * PI }
+            val tremor = 0.3 + r.nextDouble() * 0.6
+            var offset = 0.0
+            var first = true
+            for (k in 0 until n) {
+                for (i in 0..2) phase[i] += (r.nextDouble() - 0.5) * 0.15
+                val down = k % 2 == 0
+                val top = (r.nextDouble() - 0.5) * 12
+                val bottom = len + (r.nextDouble() - 0.5) * 12
+                val touch = k > 0 && r.nextDouble() < 0.12
+                val steps = ((bottom - top) / 2.0).toInt()
+                for (i in 0..steps) {
+                    val t = if (down) i / steps.toDouble() else 1 - i / steps.toDouble()
+                    val y = top + (bottom - top) * t
+                    var x = x0 + offset
+                    for (w in 0..2) x += amp[w] * sin(freq[w] * y + phase[w])
+                    x += tremor * sin(y * 1.7 + k) + (r.nextDouble() - 0.5) * tremor
+                    // a pass that touches leans back onto its neighbour through its middle third
+                    if (touch && i > steps / 3 && i < steps * 2 / 3) x -= gap * 0.8 * sin(PI * (i - steps / 3.0) / (steps / 3.0))
+                    if (first) { out.moveTo(x, y); first = false } else out.lineTo(x, y)
+                }
+                offset += gap * (0.8 + r.nextDouble() * 0.4)
+            }
+            x0 += offset + 25 + r.nextDouble() * 20
+        }
+        return out
+    }
+
+    /**
+     * A web of cracks: a wobbling outline, then crack after crack, each starting on the ink near the
+     * last one and wandering until it meets a line, where it stops. Every crack ends in a join: the
+     * thing a sensing pen can learn and a blind one cannot.
+     */
+    fun cracks(seed: Long, size: Double = 110.0, count: Int = 26): FLine {
+        val r = Random(seed)
+        val out = FLine()
+        val ink = ArrayList<Pair<Double, Double>>()
+        val cell = 6.0
+        val grid = HashMap<Pair<Int, Int>, MutableList<Int>>()
+        fun put(x: Double, y: Double) {
+            ink += x to y
+            grid.getOrPut(floor(x / cell).toInt() to floor(y / cell).toInt()) { ArrayList() } += ink.size - 1
+        }
+        fun near(x: Double, y: Double, within: Double, skipFrom: Int): Boolean {
+            val gx = floor(x / cell).toInt()
+            val gy = floor(y / cell).toInt()
+            for (cx in gx - 1..gx + 1) for (cy in gy - 1..gy + 1) for (j in grid[cx to cy] ?: emptyList<Int>()) {
+                if (j >= skipFrom) continue
+                if (hypot(ink[j].first - x, ink[j].second - y) < within) return true
+            }
+            return false
+        }
+        // the outline: a closed, wobbling loop
+        val wob = DoubleArray(4) { r.nextDouble() * 0.12 }
+        val ph = DoubleArray(4) { r.nextDouble() * 2 * PI }
+        val n = (2 * PI * size / 2 / 2.5).toInt()
+        for (i in 0..n) {
+            val a = i * 2 * PI / n
+            var rad = size / 2
+            for (w in 0..3) rad *= 1 + wob[w] * sin((w + 2) * a + ph[w])
+            val x = cos(a) * rad
+            val y = sin(a) * rad
+            if (i == 0) out.moveTo(x, y) else out.lineTo(x, y)
+            put(x, y)
+        }
+        var lastEnd = ink.last()
+        repeat(count) {
+            // start on ink within reach of where the last crack ended, trying a few starts and
+            // directions and keeping the one with the most open space ahead, so the web spreads
+            val candidates = ink.indices.filter { hypot(ink[it].first - lastEnd.first, ink[it].second - lastEnd.second) < 30 }
+                .ifEmpty { ink.indices.toList() }
+            fun freeRun(sx: Double, sy: Double, angle: Double): Int {
+                var k = 1
+                while (k < 40 && !near(sx + cos(angle) * 2.5 * k, sy + sin(angle) * 2.5 * k, 2.0, ink.size) &&
+                    hypot(sx + cos(angle) * 2.5 * k, sy + sin(angle) * 2.5 * k) < size * 0.75) k++
+                return k
+            }
+            val (start, heading) = (0 until 8).map {
+                val s0 = ink[candidates.random(r)]
+                s0 to atan2(-s0.second, -s0.first) + (r.nextDouble() - 0.5) * 2.4
+            }.maxBy { (s0, a0) -> freeRun(s0.first, s0.second, a0) }
+            var x = start.first
+            var y = start.second
+            var a = heading
+            var turn = (r.nextDouble() - 0.5) * 0.1
+            out.moveTo(x, y)
+            val first = ink.size
+            put(x, y)
+            for (step in 0 until 200) {
+                turn += (r.nextDouble() - 0.5) * 0.04
+                turn = turn.coerceIn(-0.12, 0.12)
+                a += turn
+                x += cos(a) * 2.5
+                y += sin(a) * 2.5
+                out.lineTo(x, y)
+                // stop on meeting any line other than the last few points of this one
+                val hit = step > 2 && near(x, y, 2.0, max(first, ink.size - 3)) || hypot(x, y) > size * 0.75
+                put(x, y)
+                if (hit) break
+            }
+            lastEnd = x to y
+        }
+        return out
+    }
+
+    /**
      * A line in two hands: words that are either chains of small loops (hand 0) or sharp zigzags
      * (hand 1), the hand changing every word or two. [hands] gets the hand of each word, one entry
      * per subpath of the result, which is what a probe needs to find the cell that tracks it.
@@ -444,6 +569,9 @@ object PenCorpora {
         "boids" to { (0 until 200).map { PenDrawings.boids(it.toLong()) } },
         "mixed" to { (0 until 600).map { PenDrawings.twoHands(it.toLong()) } },
         "rounder" to { rounder() },
+        // trained twice each, seeing and blind (tools/train_pen_corpora.py)
+        "michaux" to { (0 until 300).map { PenDrawings.michaux(it.toLong()) } },
+        "cracks" to { (0 until 300).map { PenDrawings.cracks(it.toLong()) } },
     )
 
     /**
@@ -467,4 +595,49 @@ object PenCorpora {
             println("$name: ${drawings.size} drawings, $points points -> $root/$name")
         }
     }
+}
+
+/**
+ * How much of [line] runs alongside ink it drew earlier: the share of its points (resampled the way
+ * a pen reads a line) with an earlier point, more than [recent] points back, within [within]
+ * drawing units. Hatching scores high; a single wandering line scores near zero.
+ */
+fun following(line: FLine, within: Double = 8.0, recent: Int = 8, scale: Double = 8.0, step: Double = 0.35): Double {
+    val points = PenCorpus.strokes(line, scale, step).flatten()
+    if (points.size <= recent) return 0.0
+    val cell = within
+    val grid = HashMap<Pair<Int, Int>, MutableList<Int>>()
+    var near = 0
+    for (i in points.indices) {
+        if (i > recent) {
+            val j = i - recent - 1
+            grid.getOrPut(floor(points[j].x / cell).toInt() to floor(points[j].y / cell).toInt()) { ArrayList() } += j
+        }
+        val gx = floor(points[i].x / cell).toInt()
+        val gy = floor(points[i].y / cell).toInt()
+        var found = false
+        for (cx in gx - 1..gx + 1) for (cy in gy - 1..gy + 1) {
+            if (found) break
+            for (j in grid[cx to cy] ?: emptyList<Int>()) if (points[j].distance(points[i]) < within) { found = true; break }
+        }
+        if (found) near++
+    }
+    return near.toDouble() / points.size
+}
+
+/**
+ * How many of [line]'s strokes end on other ink: the share of its subpaths whose last point is within
+ * [within] drawing units of a point of any earlier subpath, or of this one more than [recent] points
+ * back. A web of cracks scores high; strokes that stop in mid-air score low.
+ */
+fun joins(line: FLine, within: Double = 4.0, recent: Int = 8, scale: Double = 8.0, step: Double = 0.35): Double {
+    val strokes = PenCorpus.strokes(line, scale, step)
+    if (strokes.size < 2) return 0.0
+    var joined = 0
+    strokes.forEachIndexed { k, s ->
+        val end = s.last()
+        val earlier = strokes.take(k).flatten() + s.dropLast(recent + 1)
+        if (earlier.any { it.distance(end) < within }) joined++
+    }
+    return joined.toDouble() / strokes.size
 }

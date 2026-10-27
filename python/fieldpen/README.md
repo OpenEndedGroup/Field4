@@ -71,6 +71,13 @@ val mine = PenModel.load("/path/to/mine.fieldpen.json")
 lines(start, start.continueWith(mine))
 ```
 
+## Pens that see
+
+`--sense 16` on `prepare` adds what a pen sees of the ink around it to every point (`fieldpen.sense`,
+the canonical definition), and `train` then makes a pen with those inputs; `--init` widens a plain
+pen. Sensing pens are trained here but draw in Kotlin, which computes what they see as they go
+(`PenSense`); `Session` drives only plain pens. `public/docs/a_pen_that_sees.md` has the details.
+
 ## The lab
 
 ```bash

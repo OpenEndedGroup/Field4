@@ -30,6 +30,9 @@ class Session:
     at this point; deltas: [dx,dy,lift] where lift applies AFTER this point.
     """
     def __init__(self, model, seed=0):
+        if model.config.inputs != 3:
+            raise ValueError('Session drives plain pens; a sensing pen runs in Kotlin '
+                             '(afield.ai.learning.pen), which computes what it sees as it draws')
         self.model = model
         self.device = next(model.parameters()).device
         self.rng = torch.Generator(device=self.device).manual_seed(seed)

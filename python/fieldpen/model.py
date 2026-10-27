@@ -17,6 +17,16 @@ class Config:
     hidden: int = 500
     mixtures: int = 20
     layers: int = 1
+    # 3 for a plain pen (dx, dy, lift); 3 + sense_sectors + 2 for one that also sees nearby ink
+    # (`fieldpen.sense`), out to sense_radius, ignoring its last sense_recent points
+    inputs: int = 3
+    sense_sectors: int = 0
+    sense_radius: float = 0.0
+    sense_recent: int = 0
+
+    @property
+    def sectors(self):
+        return self.sense_sectors
 
 
 class HandwritingModel(nn.Module):
@@ -28,7 +38,7 @@ class HandwritingModel(nn.Module):
     def __init__(self, config: Config = Config()):
         super().__init__()
         self.config = config
-        self.rnn = nn.LSTM(3, config.hidden, config.layers, batch_first=True)
+        self.rnn = nn.LSTM(config.inputs, config.hidden, config.layers, batch_first=True)
         self.head = nn.Linear(config.hidden, 1 + 6 * config.mixtures)
 
     def zero_state(self, batch=1):
@@ -99,6 +109,20 @@ def import_distill(path):
         m.head.weight.copy_(out_w.T)
         m.head.bias.copy_(out_b)
     return m
+
+
+def with_sense(model, sectors, radius, recent):
+    """A copy of a plain pen that also takes `sectors` sense inputs, starting out ignoring them (their
+    weights are zero), so fine-tuning begins from exactly the pen it was."""
+    if model.config.inputs != 3:
+        raise ValueError('already a sensing pen')
+    c = model.config
+    out = HandwritingModel(Config(c.hidden, c.mixtures, c.layers, 3 + sectors + 2, int(sectors), float(radius), int(recent)))
+    state = model.state_dict()
+    w = state['rnn.weight_ih_l0']
+    state['rnn.weight_ih_l0'] = torch.cat([w, w.new_zeros(w.shape[0], sectors + 2)], dim=1)
+    out.load_state_dict(state)
+    return out.to(next(model.parameters()).device)
 
 
 def save_model(model, path, metadata=None):

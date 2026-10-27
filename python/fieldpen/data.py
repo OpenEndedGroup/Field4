@@ -32,12 +32,15 @@ def iam_line(path, scale=20.0):
     return polyline_deltas(strokes, scale)
 
 
-def save_dataset(sequences, path):
+def save_dataset(sequences, path, sense=None):
+    """Write ragged sequences to one NPZ. `sense` is `(sectors, radius, recent)` when the rows carry
+    sense columns after `[dx, dy, lift]` (see `fieldpen.sense`), so training can check them."""
     seq = [np.asarray(s, dtype=np.float32) for s in sequences]
     if not seq:
         raise ValueError('No sequences')
     offsets = np.r_[0, np.cumsum([len(s) for s in seq])].astype(np.int64)
-    np.savez_compressed(path, deltas=np.concatenate(seq), offsets=offsets)
+    extra = {} if sense is None else dict(sense=np.asarray(sense, dtype=np.float64))
+    np.savez_compressed(path, deltas=np.concatenate(seq), offsets=offsets, **extra)
 
 
 class StrokeDataset(Dataset):
@@ -45,8 +48,12 @@ class StrokeDataset(Dataset):
         with np.load(path, allow_pickle=False) as d:
             self.deltas = d['deltas'].astype(np.float32)
             self.offsets = d['offsets'].astype(np.int64)
+            # (sectors, radius, recent) for rows that carry what a sensing pen sees; None for plain rows
+            self.sense = tuple(d['sense'].tolist()) if 'sense' in d else None
         x, o = self.deltas, self.offsets
-        if (x.ndim != 2 or x.shape[1] != 3 or not np.isfinite(x).all() or
+        # sense rows: the sectors, then the two values pointing at the middle of the ink
+        width = 3 + (int(self.sense[0]) + 2 if self.sense else 0)
+        if (x.ndim != 2 or x.shape[1] != width or not np.isfinite(x).all() or
             not np.isin(x[:, 2], [0,1]).all() or o.ndim != 1 or len(o)<2 or
             o[0] != 0 or o[-1] != len(x) or np.any(np.diff(o)<2)):
             raise ValueError('Invalid ragged stroke dataset')
@@ -83,7 +90,7 @@ class CropDataset(Dataset):
     """
     def __init__(self, path, length=256, samples=4096, seed=0):
         base = StrokeDataset(path)
-        self.deltas, self.offsets = base.deltas, base.offsets
+        self.deltas, self.offsets, self.sense = base.deltas, base.offsets, base.sense
         self.length, self.samples = length, samples
         self.rng = np.random.default_rng(seed)
         lengths = np.diff(self.offsets)
@@ -98,7 +105,7 @@ class CropDataset(Dataset):
         n = min(self.length, b - a)
         start = int(self.rng.integers(a, b - n + 1))
         window = self.deltas[start:start + n]
-        previous = self.deltas[start - 1:start] if start > a else np.zeros((1, 3), np.float32)
+        previous = self.deltas[start - 1:start] if start > a else np.zeros((1, self.deltas.shape[1]), np.float32)
         return torch.from_numpy(np.concatenate([previous, window]).copy())
 
 

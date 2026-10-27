@@ -1,4 +1,11 @@
 [
+  {"doc": "a_pen_that_sees", "box": "ps_cracks", "codeSha256": "335f7a9179473d04", "codeLines": 13, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "a_pen_that_sees", "box": "ps_draw", "codeSha256": "6e66eae21e5cad7d", "codeLines": 27, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "a_pen_that_sees", "box": "ps_field", "codeSha256": "5893d65f2a393027", "codeLines": 9, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "a_pen_that_sees", "box": "ps_hatch", "codeSha256": "f23b5da7e17a63eb", "codeLines": 13, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "a_pen_that_sees", "box": "ps_measure", "codeSha256": "38f3a03c25bbe1b1", "codeLines": 16, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "a_pen_that_sees", "box": "ps_sees", "codeSha256": "030656a01c8e251c", "codeLines": 14, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "a_pen_that_sees", "box": "ps_shape", "codeSha256": "f97218dc86e85796", "codeLines": 26, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "ai4_chat_archive", "box": "chat-archive-lens-stats", "codeSha256": "13c9e34068020062", "codeLines": 9, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "ai4_chat_archive", "box": "chat-archive-outline", "codeSha256": "2160a918e2b97e56", "codeLines": 6, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "ai4_chat_archive", "box": "chat-archive-read", "codeSha256": "768e0c2592007ea8", "codeLines": 7, "receivers": ["afield.document.graph.Box"], "preamble": ""},

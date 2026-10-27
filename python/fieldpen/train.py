@@ -7,7 +7,7 @@ import random
 import torch
 from torch.utils.data import DataLoader
 from .data import CropDataset, StrokeDataset, collate, collate_crops
-from .model import Config, HandwritingModel, load_model, save_model
+from .model import Config, HandwritingModel, load_model, save_model, with_sense
 
 
 def main():
@@ -39,8 +39,20 @@ def main():
     torch.set_num_threads(a.threads)
     torch.manual_seed(a.seed)
     random.seed(a.seed)
-    m = (load_model(a.init, a.device) if a.init else
-         HandwritingModel(Config(a.hidden, a.mixtures, a.layers)).to(a.device))
+    # a corpus prepared with --sense makes a sensing pen; fine-tuning a plain one widens its inputs
+    sense = StrokeDataset(a.train, a.limit).sense
+    if a.init:
+        m = load_model(a.init, a.device)
+        if sense and m.config.inputs == 3:
+            m = with_sense(m, int(sense[0]), sense[1], int(sense[2]))
+    else:
+        cfg = (Config(a.hidden, a.mixtures, a.layers, 3 + int(sense[0]) + 2, int(sense[0]), float(sense[1]), int(sense[2]))
+               if sense else Config(a.hidden, a.mixtures, a.layers))
+        m = HandwritingModel(cfg).to(a.device)
+    wanted = (m.config.sectors, m.config.sense_radius, m.config.sense_recent) if m.config.sectors else None
+    have = (int(sense[0]), sense[1], int(sense[2])) if sense else None
+    if wanted != have:
+        p.error(f'the model senses {wanted} but the corpus was prepared with {have}')
     train_data = (CropDataset(a.train, a.crop, a.samples, a.seed) if a.crop
                   else StrokeDataset(a.train, a.limit))
     loaders = [DataLoader(train_data, batch_size=a.batch, shuffle=not a.crop,

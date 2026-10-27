@@ -457,6 +457,9 @@ object DemoTranscriptExecSmokeTest {
         // teaching_a_pen.md's starting point: the six bundled synthetic pens and rounder, loaded from
         // resources; the probe, holds and taste box are plain CPU loops. CPU only.
         "teaching_a_pen",
+        // a_pen_that_sees.md's starting point: the bundled sensing pens (PenSense) and their blind
+        // twins; two drawing-panel boxes are frames {} loops. CPU only.
+        "a_pen_that_sees",
         "fline_hit_records",
         // fline_examples.md's measuring sections: locationAt, trim/splitAt, crossings, fill rules. CPU only.
         "fline_measure",

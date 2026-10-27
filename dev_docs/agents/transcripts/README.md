@@ -255,6 +255,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   Six pure-CPU boxes on `afield.ai.learning.pen`: `continueWith`, `futuresWith` as small multiples, a
   launched `PenLine` writing on from an editable drawing panel, `Pen.setCell` on one memory cell, a
   launched tip magnifier with next-step ellipses, and a cell-colouring slider.
+- `a_pen_that_sees.yaml`: **a pen that sees** — the starting point of `public/docs/a_pen_that_sees.md`.
+  Seven pure-CPU boxes on the sensing pens (`PenSense`): what one sees, Michaux hatching and cracks against
+  blind twins, a field of lines, the following/joins measures, and two launched drawing panels.
 - `teaching_a_pen.yaml`: **teaching a pen** — the starting point of `public/docs/teaching_a_pen.md`.
   Seven pure-CPU boxes on the synthetic corpora and bundled pens: the corpora, each pen alone, one stroke
   in seven hands, the two-hands probe and held cells, a click-to-keep taste box, rounder, a corpus of your own.
