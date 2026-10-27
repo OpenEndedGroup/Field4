@@ -76,7 +76,7 @@ class Performance(
     fun sourceSeconds(): List<Double> = source.map { if (it < 0) Double.NaN else it / output.sampleRate }
 
     /** Fraction of output samples whose source passage was played at least once before within [window] samples. */
-    fun reuse(window: Int = (output.sampleRate * 10).toInt()): Double {
+    fun sourceReuse(window: Int = (output.sampleRate * 10).toInt()): Double {
         var r = 0
         for (t in source.indices) {
             val s = source[t]; if (s < 0) continue
@@ -95,7 +95,7 @@ class Performance(
      * [channels] (all by default; pick a few for a wide trajectory), with the output resampled to
      * [rate] Hz to keep the comparison cheap.
      *
-     * [reuse] counts memory positions, so a loop made of copies of the same gesture from different
+     * [sourceReuse] counts memory positions, so a loop made of copies of the same gesture from different
      * places in memory does not show up there; it shows up here.
      */
     fun outputRepetition(window: Double = 2.0, threshold: Double = 0.25, channels: List<Int> = output.channels.indices.toList(), rate: Double = 10.0): Double {
@@ -161,7 +161,7 @@ class Performance(
         d
     }
 
-    override fun toString() = "Performance(${output.length} samples, ${segments.size} segments, reuse=${"%.2f".format(reuse())})"
+    override fun toString() = "Performance(${output.length} samples, ${segments.size} segments, sourceReuse=${"%.2f".format(sourceReuse())})"
 }
 
 /**

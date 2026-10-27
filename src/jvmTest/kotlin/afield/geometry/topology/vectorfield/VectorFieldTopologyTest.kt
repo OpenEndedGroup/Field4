@@ -50,6 +50,25 @@ class VectorFieldTopologyTest {
         }
     }
 
+    @Test fun separatricesStopWhereTheFlowSlowsBelowMinSpeed() {
+        // a saddle whose flow speeds up away from it, then dies out beyond a radius of about 8 px
+        val field = flow { x, y ->
+            val dx = x - 20.5; val dy = y - 15.5
+            val fade = exp(-(dx * dx + dy * dy) / 40.0)
+            dx * fade to -dy * fade
+        }
+        val free = VectorFieldTopology.compute(field)
+        val held = VectorFieldTopology.compute(field, minSpeed = 0.5)
+        assertEquals(4, held.separatrices.size)
+        fun reach(t: VectorFieldTopology) = t.separatrices.map { s ->
+            val ex = s.points[s.points.size - 2]; val ey = s.points[s.points.size - 1]
+            kotlin.math.hypot(ex - 20.5, ey - 15.5)
+        }
+        free.separatrices.zip(reach(free)).forEach { (s, r) -> assertTrue(r > 14, "unlimited separatrix ${s.unstable} stops at $r") }
+        // they leave the slow neighbourhood of the saddle, then stop where the flow fades out
+        reach(held).forEach { r -> assertTrue(r in 8.0..13.0, "held separatrix stops at $r") }
+    }
+
     private fun twoHills(w: Int = 60, h: Int = 40, shift: Double = 0.0) = Img.generate(w, h) { x, y ->
         (exp(-((x - 18.0 - shift) * (x - 18.0 - shift) + (y - 20.0) * (y - 20.0)) / 60.0) +
             0.8 * exp(-((x - 42.0 - shift) * (x - 42.0 - shift) + (y - 20.3) * (y - 20.3)) / 60.0)).toFloat()

@@ -1422,11 +1422,6 @@ animateEvolution(
 )
 ```
 
-??? aside "Why `drawSymbols` exists"
-    The Sierpiński arrowhead curve is written `A → B−A−B`, `B → A+B+A`, where `A` and `B` are *both*
-    drawing symbols. Interpreted with the default `F`/`G` alphabet it draws nothing at all, and a blank
-    panel is the only warning you get.
-
 ## 10. Bridges out: FLines, trees and a watertight mesh
 
 What makes this family Field's rather than a generic ALife library is where its output goes. Three
@@ -1445,13 +1440,6 @@ bridges, all into machinery that was already here:
    occupancy and runs `mesh_sdf.kt`'s marching cubes, so the automaton's surface is a real mesh you can
    boolean, subdivide and export. The claim asserted is that it is **watertight**: a leaking mesher
    produces a picture that looks fine and a model that cannot be printed.
-
-!!! warning "Contour loops carry no winding information"
-    An annulus contours to two loops, an outer and an inner, and **both come back wound the same way**.
-    Each is right to better than 0.4 % of its own circle, so the geometry is sound, but
-    `loops.sumOf { flineSignedArea(...) }` reads 67 % high for a shape with a hole; the right answer is
-    the *difference* of the magnitudes (0.006 % out). Anything that fills, booleans or exports these
-    curves has to find the hole by containment or by area, not by orientation.
 
 ??? aside "An empty mesh is vacuously watertight"
     A dead volume meshes to **zero triangles** and passes a watertight check, so the triangle count is

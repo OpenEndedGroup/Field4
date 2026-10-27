@@ -662,11 +662,6 @@ tenth eigenvalue" is a worse first experience than losing 0.015 of a correlation
   it is projected. `smileMds` builds the matrix itself
   (`smile_mds.kt:111#val proximity = Array(vectors.size) { DoubleArray(vectors.size) }`), so the cost
   applies even when you never see it.
-- **`dimensions` must be at least 2**, and all four entry points say so themselves rather than
-  letting Smile's own message through
-  (`smile_mds.kt:97#require(dimensions in 2 until vectors.size)` for the vector pair,
-  `smile_mds.kt:280#require(dimensions in 2 until distances.size)` for the matrix pair). If you want
-  one number per thing, fit two and use the first column.
 - **MDS axes have arbitrary sign and arbitrary rotation.** They are eigenvectors; nothing pins the
   direction. The spiral fence flips the sign to agree with the known parameter before comparing, and
   any code that compares two fits has to do something equivalent.

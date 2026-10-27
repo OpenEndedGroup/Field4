@@ -233,7 +233,7 @@ class MeshCoreTest {
     fun revolveClosesWhenTheProfileTouchesTheAxisAtBothEnds() {
         // A cone profile: radius 1 at y=0 down to 0 at y=2, plus a flat base back to the axis.
         val profile = listOf(Vec2(0f, 0f), Vec2(1f, 0f), Vec2(0f, 2f))
-        val lathe = revolveMesh(profile, 64)
+        val lathe = revolveMesh(profile, RevolveAxis.Y, 64)
         assertClosedGenus(lathe, 0, "revolved cone")
         // (1/3) pi r^2 h = (1/3) pi * 1 * 2 = 2.0944
         assertEquals(2.0 * PI / 3.0, lathe.signedVolume(), 0.01)

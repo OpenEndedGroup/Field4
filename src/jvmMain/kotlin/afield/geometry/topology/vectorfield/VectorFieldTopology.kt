@@ -181,15 +181,19 @@ class VectorFieldTopology internal constructor(
          * Traces with unit-speed RK4 (the direction of the flow, [step] pixels at a time) in direction
          * [sign], up to [length] pixels. Stops on leaving the frame, where the flow vanishes, or within
          * [captureRadius] (3 px) of a critical point other than [from]; returns the points and the index
-         * of the critical point reached, if any.
+         * of the critical point reached, if any. Where the flow is slower than [minSpeed] the trace
+         * stops too; with [armed] false that check waits until the trace has first been faster than
+         * [minSpeed], so a separatrix can leave the slow neighbourhood of its own saddle.
          */
-        fun trace(x0: Double, y0: Double, sign: Int, length: Double, step: Double, targets: List<FlowCriticalPoint>, from: Int, minSpeed: Double = 0.0): Pair<DoubleArray, Int?> {
+        fun trace(x0: Double, y0: Double, sign: Int, length: Double, step: Double, targets: List<FlowCriticalPoint>, from: Int, minSpeed: Double = 0.0, armed: Boolean = true): Pair<DoubleArray, Int?> {
             val pts = ArrayList<Double>(); pts.add(x0); pts.add(y0)
             var x = x0; var y = y0; var travelled = 0.0
             val k = DoubleArray(2)
+            var fast = armed
             fun dir(px: Double, py: Double, out: DoubleArray): Boolean {
                 if (!at(px, py, k)) return false
-                val m = hypot(k[0], k[1]); if (m < 1e-12 || m < minSpeed) return false
+                val m = hypot(k[0], k[1]); if (m < 1e-12) return false
+                if (m >= minSpeed) fast = true else if (fast) return false
                 out[0] = sign * k[0] / m; out[1] = sign * k[1] / m; return true
             }
             val k1 = DoubleArray(2); val k2 = DoubleArray(2); val k3 = DoubleArray(2); val k4 = DoubleArray(2)
@@ -233,7 +237,9 @@ class VectorFieldTopology internal constructor(
          * one zero, found exactly, and its Jacobian is that triangle's. Points weaker than
          * [minStrength] are dropped; a focus whose rotation is less than [centerTolerance] of its
          * divergence counts as a source or sink, and one whose divergence is under [centerTolerance]
-         * of its rotation as a centre. Separatrices are traced up to [maxLength] pixels.
+         * of its rotation as a centre. Separatrices are traced up to [maxLength] pixels, and stop
+         * where the flow, having left the saddle, slows below [minSpeed] (pixels per frame; 0 traces
+         * the direction whatever the speed).
          */
         fun compute(
             u: Img,
@@ -242,6 +248,7 @@ class VectorFieldTopology internal constructor(
             centerTolerance: Double = 0.02,
             maxLength: Double = 2000.0,
             step: Double = 0.5,
+            minSpeed: Double = 0.0,
         ): VectorFieldTopology {
             require(u.width == v.width && u.height == v.height) { "u is ${u.width}x${u.height} but v is ${v.width}x${v.height}" }
             val w = u.width; val h = u.height
@@ -271,7 +278,7 @@ class VectorFieldTopology internal constructor(
                     val unstable = lambda > 0
                     val sx = s.x + sgn * ev[0] * CAPTURE * 0.8; val sy = s.y + sgn * ev[1] * CAPTURE * 0.8
                     // traced against every zero, so it stops cleanly at a weak one too (and then ends nowhere)
-                    val (pts, end) = field.trace(sx, sy, if (unstable) 1 else -1, maxLength, step, all, s.id)
+                    val (pts, end) = field.trace(sx, sy, if (unstable) 1 else -1, maxLength, step, all, s.id, minSpeed, armed = false)
                     seps.add(Separatrix(s.id, unstable, doubleArrayOf(s.x, s.y) + pts, end?.takeIf { it in kept }))
                 }
             }
@@ -279,11 +286,11 @@ class VectorFieldTopology internal constructor(
         }
 
         /** The topology of a flow given as one image with u in channel 0 and v in channel 1 (a third channel is ignored). */
-        fun compute(flow: Img, minStrength: Double = 0.0, centerTolerance: Double = 0.02, maxLength: Double = 2000.0, step: Double = 0.5): VectorFieldTopology {
+        fun compute(flow: Img, minStrength: Double = 0.0, centerTolerance: Double = 0.02, maxLength: Double = 2000.0, step: Double = 0.5, minSpeed: Double = 0.0): VectorFieldTopology {
             require(flow.channels >= 3) { "a flow image holds u and v in channels 0 and 1 of an RGB image, this has ${flow.channels} channel(s)" }
             val n = flow.width * flow.height
             return compute(Img(flow.width, flow.height, 1, FloatArray(n) { flow.data[it * flow.channels] }),
-                Img(flow.width, flow.height, 1, FloatArray(n) { flow.data[it * flow.channels + 1] }), minStrength, centerTolerance, maxLength, step)
+                Img(flow.width, flow.height, 1, FloatArray(n) { flow.data[it * flow.channels + 1] }), minStrength, centerTolerance, maxLength, step, minSpeed)
         }
 
         /**

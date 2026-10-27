@@ -42,4 +42,14 @@ class FLineCommitTest {
         copied.c1.x=99f
         assertEquals(3.5f,(line.nodes[1] as FLine.CubicTo).c1.x)
     }
+
+    @Test fun theSvgEditorSessionCarriesItsOnEditCommitted() {
+        val line=FLine().moveTo(0.0,0.0,0.0).lineTo(1.0,0.0,0.0)
+        val commits=mutableListOf<List<FLine>>()
+        val widget=afield.ui.visualization.buildEditableSVGWidget(listOf(line to line.copy()),null,200.0,200.0,onEditCommitted={commits.add(it)})
+        val session=assertNotNull(getFLineEditSession(widget.viewState.sessionId))
+        session.translate(FLineTranslatePoints(session.sessionId,listOf(FLinePointRef(0,1,FLineHandleKind.TO)),0.0,2.0,0.0,FLineEditSpace.MODEL))
+        session.commit()
+        assertEquals(2f,(commits.single().single().nodes[1] as FLine.LineTo).to.y)
+    }
 }
