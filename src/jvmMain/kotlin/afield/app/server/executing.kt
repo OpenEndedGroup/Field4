@@ -241,6 +241,15 @@ fun executing() {
             Handled.yes
         })
 
+    // Dispatched on the websocket's coroutine, not the Runloop, so it works while box code has the
+    // Runloop blocked: the box's next loop back-edge or call throws (afield.runtime.lifecycle.BoxInterrupt).
+    handlers["interrupt-box"] = mutableSetOf(
+        { _, _: (Message) -> Unit ->
+            val asked = afield.runtime.lifecycle.BoxInterrupt.request("Interrupt Running Box command")
+            lprintln("info,execution,interrupt", "interrupt-box requested=$asked")
+            Handled.yes
+        })
+
     handlers["stop-all"] = mutableSetOf(
         { message, reply: (Message) -> Unit ->
 

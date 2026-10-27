@@ -1239,6 +1239,7 @@ private fun normalizeFieldPreferences(preferences: FieldPreferences): FieldPrefe
 private fun applyFieldPreferences(preferences: FieldPreferences) {
     val framePresentationLogWasEnabled = Options.framePresentationLog
     CodeUseTelemetryService.configureQuietMode(preferences.quietMode)
+    afield.runtime.lifecycle.BoxInterrupt.applyPreference(preferences.boxInterrupt)
     Options.profiling = if (Options.captureCompatibility) false else preferences.profiling
     Options.framePresentationLog = preferences.framePresentationLog
     Options.logShadercSource = preferences.logShadercSource

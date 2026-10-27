@@ -419,6 +419,8 @@ data class FieldPreferences(
     val validate: Boolean = true,
     val quietMode: Boolean = false,
     val autoOpenLastDocumentInDesktop: Boolean = false,
+    /** Compile box code so a box that never returns can be interrupted (`afield.runtime.lifecycle.BoxInterrupt`). */
+    val boxInterrupt: Boolean = true,
     val editorPropertyStickiness: String = "none",
     val oscEditorEnabled: Boolean = false,
     val oscEditorPort: Int = 9001,

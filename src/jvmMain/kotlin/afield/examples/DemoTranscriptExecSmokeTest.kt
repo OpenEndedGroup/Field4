@@ -548,6 +548,9 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // Spins a box in while (true) on purpose until the watchdog interrupts it (~5 s); the
+        // runtime.runaway-box-interrupt.smoke FIELD_TEST runs the same escape.
+        "runaway_box_interrupt",
         // The demo document: a renderer, an ElectronRTTView and a compute shader under it, and loops.
         "demo_document",
         // ORCA in a box output, playing through a returned PatSynthBank, so running it opens an audio

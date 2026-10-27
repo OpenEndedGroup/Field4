@@ -441,8 +441,9 @@ about boxes it does not need here.
 ## What is not done
 
 - ~~No native box screenshot tool~~: done 2026-09-30 (`ViewBoxOutputRequest`).
-- `RunBoxRequest` on code that never returns blocks the Runloop, just as a Run from the editor
-  does. The tool times out and says so, but it cannot unstick Field.
+- ~~`RunBoxRequest` on code that never returns blocks the Runloop~~: fixed 2026-10-26. On timeout
+  the tool interrupts box code that holds the Runloop and returns stage `interrupted`
+  (`dev_docs/RUNAWAY_BOX_INTERRUPT.md`).
 - ~~`CompileKotlinRequest` fileRefs cost the live model rounds~~: fixed 2026-09-30. The tool's
   description now says RunBox compiles by itself (live CompileKotlin calls 20 → 0), and the
   backdoor resolver accepts every spelling the model guessed.

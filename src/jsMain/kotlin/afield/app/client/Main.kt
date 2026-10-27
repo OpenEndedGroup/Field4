@@ -2508,6 +2508,12 @@ private fun registerCanvasZoomActions() {
     reset.run = { resetCanvasZoom() }
     val builtin = allActions.builtin ?: js("[]")
     builtin.push(reset)
+    val interrupt: dynamic = js("({})")
+    interrupt.id = "interrupt-box"
+    interrupt.label = "Interrupt Running Box"
+    interrupt.detail = "Throw out of box code that never returns (a runaway loop or recursion), so Field runs again"
+    interrupt.run = { send("interrupt-box", js("({})")) }
+    builtin.push(interrupt)
     val frame: dynamic = js("({})")
     frame.id = "frame-selected"
     frame.label = "Frame Selected"

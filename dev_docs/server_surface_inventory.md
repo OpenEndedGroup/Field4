@@ -302,7 +302,7 @@ the file, and the reach is described per file below in prose that a human checke
 | `Server.kt` | 53 |
 | `agent_backdoor.kt` | 26 |
 | `history.kt` | 13 |
-| `executing.kt` | 9 |
+| `executing.kt` | 10 |
 | `Ai4Installer.kt` | 10 |
 | `importing.kt` | 4 |
 | `NotationServer.kt` | 3 |
@@ -329,7 +329,7 @@ What each of those reaches, checked against the code rather than inferred from t
 | `Server.kt` | document and box state, the completion engine, clipboard, layers, FLine editing, `set-string`, which writes box source to disk, and the live output iframe ready/reply relay. The relay accepts client readiness and replies within the existing `/ws` trust boundary; a native client can claim readiness, and a matching pending reply is accepted only from the selected socket |
 | `agent_backdoor.kt` | the agent path: read/write boxes, run transcripts, screenshot, macros. The published automation surface |
 | `history.kt` | the document history store — versions, screenshots, restore |
-| `executing.kt` | **box execution.** `launch-all`, `launch-batch`, `launch-fragment`, `stop-box`, `stop-all`. This is arbitrary Kotlin in Field's own JVM |
+| `executing.kt` | **box execution.** `launch-all`, `launch-batch`, `launch-fragment`, `stop-box`, `stop-all`, `interrupt-box`. This is arbitrary Kotlin in Field's own JVM |
 | `Ai4Installer.kt` | AI chat sessions and tool use; reads or clears the attached document’s per-box saved chat, reports the last turn’s context metadata (`ai-chat-context`, no text), rewinds or switches a chat’s branches, and — when asked — undoes a rewound turn’s recorded edits and created boxes (`ai-chat-rewind-world`), reads the attached document’s saved state trees and bounded state details (`ai-state-tree`, including read/inspect callbacks registered by box code; no restore or fork), runs a document’s agent-extension chat commands (`ai-chat-command`, box code), and reads the saved document chat (`chat_history`, `<document>/ai4_document_chat.md`, which `chat_input` appends to), behind the existing `/ws` boundary |
 | `importing.kt` | notebook and EDN import — parses foreign documents into boxes |
 | `NotationServer.kt` | the attached document's drawing (the root box's `drawing` property): merges a client's scene into it, records the drawing-layer selection (memory only), anchors marks to boxes. No reach beyond what `set-string` on `root.drawing` already had; it runs box code only as the `onNotation` reactions that box code itself registered |
@@ -464,6 +464,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `replay-output-areas` | `Server.kt` |
 | `initialize` | `Server.kt` |
 | `insert-template` | `templating.kt` |
+| `interrupt-box` | `executing.kt` |
 | `launch-all` | `executing.kt` |
 | `launch-batch` | `executing.kt` |
 | `launch-fragment` | `executing.kt` |
