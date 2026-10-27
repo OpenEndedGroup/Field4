@@ -827,18 +827,15 @@ An unreadable manifest is reported on the `error,keyframer` log channel rather t
 the next `saveKey` moves it aside to `manifest.json.corrupt` instead of overwriting it. The notes in
 a half-written file are still there for you to read.
 
-??? aside "Agents: tests, and gaps in older version directories"
+??? aside "Agents: tests"
     One test covers each way the manifest can go
     wrong: `aCorruptManifestNeitherLosesHistoryNorReusesAVersionIndex`,
     `aCorruptManifestIsRecoveredFromTheFilesAndQuarantinedRatherThanOverwritten`,
     `aVersionFileTheManifestNeverRecordedIsNotOverwritten` and
     `aDeletedManifestStillLeavesTheFilesAsTheHistory`, and
     `theFloatOnDiskNarrowsBackToExactlyTheFloatThatWasSaved` pins the `Float` round trip against the
-    exact on-disk string.
-
-    A `.versions` directory written before 2026-08 can have gaps. An
-    unparseable manifest read as no history at all back then, so the next save called itself version 0
-    and wrote over `000000.json`. Whatever is on disk is still readable; what was overwritten is gone.
+    exact on-disk string. `theMarksOfAPre2026_08RenumberingAreNamed` pins the `error,keyframer`
+    report for a `.versions` directory damaged by a save from before 2026-08.
 
 ### Browsing saved keys
 

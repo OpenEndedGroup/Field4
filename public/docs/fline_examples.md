@@ -3117,14 +3117,11 @@ Blue is the default `tension = 1.0`; orange is `tension = 0.45`, which shortens 
 
 </div>
 
-By default these use Java2D `Area` (via `FLinesAndJavaShapes`). Both inputs are read as filled regions under the non-zero rule, and an open line is closed with a straight segment. Pass `exact = true` to get the curve-preserving engine described under [Exact booleans and offsets](#exact-booleans-and-offsets) below.
-
-!!! note
-    An input with `thickness` (or `thicken`) set is read as the outline of its stroke, not as the filled shape, so a union of two drawn squares comes back as a union of two square rings. Build the shapes without style and style the result.
+By default these use Java2D `Area` (via `FLinesAndJavaShapes`). Both inputs are read as filled regions under the non-zero rule, whatever their `thickness`, and an open line is closed with a straight segment; pass `stroke = true` to use a styled input's stroke outline instead. Pass `exact = true` to get the curve-preserving engine described under [Exact booleans and offsets](#exact-booleans-and-offsets) below.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_ops_2d.png" embed=true}
 :::static
-// The shapes themselves carry no style: a line with a `thickness` is read as the outline of its stroke.
+// The inputs' style does not enter the boolean; the results are styled below.
 val a = fline {
     moveTo(80, 80)
     lineTo(260, 80)
