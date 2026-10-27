@@ -126,6 +126,110 @@
             "hasProse": false
         },
         {
+            "id": "box_graph_demo/bgdemo_sibling",
+            "source": "box_graph_demo",
+            "split": "train",
+            "kind": "display",
+            "request": {
+                "goal": "Make a box named bgdemo_sibling (titled \"Sibling\") as a child of bgdemo_garden, which already exist and have been run; it may use what they share, and run it. It must display (with display(...) or a drawing helper) output that includes the text «Sibling sees petals = 5».",
+                "checks": [
+                    {
+                        "kind": "box-exists",
+                        "box": "bgdemo_sibling"
+                    },
+                    {
+                        "kind": "last-run-ok",
+                        "box": "bgdemo_sibling"
+                    },
+                    {
+                        "kind": "connected",
+                        "parent": "bgdemo_garden",
+                        "child": "bgdemo_sibling"
+                    },
+                    {
+                        "kind": "output-contains",
+                        "box": "bgdemo_sibling",
+                        "text": "Sibling sees petals = 5"
+                    }
+                ],
+                "setup": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"bgdemo_garden\",\"code\":\"prop<Int>(petals) = 5\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"bgdemo_garden\",\"timeoutSeconds\":90.0}}]",
+                "taskId": "box_graph_demo/bgdemo_sibling"
+            },
+            "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"bgdemo_sibling\",\"code\":\"markdown(\\\"Sibling sees petals = $petals\\\")\\n\",\"parent\":\"bgdemo_garden\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"bgdemo_sibling\",\"timeoutSeconds\":90.0}},{\"final\":\"Made bgdemo_sibling from its transcript code and ran it.\"}]",
+            "hasProse": false
+        },
+        {
+            "id": "box_graph_demo/bgdemo_bloom",
+            "source": "box_graph_demo",
+            "split": "heldout",
+            "kind": "display",
+            "request": {
+                "goal": "Make a box named bgdemo_bloom (titled \"Bloom\") as a child of bgdemo_right and bgdemo_left, which already exist and have been run; it may use what they share, and run it. It must display (with display(...) or a drawing helper) output that includes the text «Bloom sees petals = 9».",
+                "checks": [
+                    {
+                        "kind": "box-exists",
+                        "box": "bgdemo_bloom"
+                    },
+                    {
+                        "kind": "last-run-ok",
+                        "box": "bgdemo_bloom"
+                    },
+                    {
+                        "kind": "connected",
+                        "parent": "bgdemo_right",
+                        "child": "bgdemo_bloom"
+                    },
+                    {
+                        "kind": "connected",
+                        "parent": "bgdemo_left",
+                        "child": "bgdemo_bloom"
+                    },
+                    {
+                        "kind": "output-contains",
+                        "box": "bgdemo_bloom",
+                        "text": "Bloom sees petals = 9"
+                    }
+                ],
+                "setup": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"bgdemo_garden\",\"code\":\"prop<Int>(petals) = 5\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"bgdemo_garden\",\"timeoutSeconds\":90.0}},{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"bgdemo_left\",\"code\":\"petals = 7\\n\",\"parent\":\"bgdemo_garden\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"bgdemo_left\",\"timeoutSeconds\":90.0}},{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"bgdemo_right\",\"code\":\"petals = 9\\n\",\"parent\":\"bgdemo_garden\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"bgdemo_right\",\"timeoutSeconds\":90.0}}]",
+                "taskId": "box_graph_demo/bgdemo_bloom"
+            },
+            "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"bgdemo_bloom\",\"code\":\"markdown(\\\"Bloom sees petals = $petals\\\")\\n\",\"parent\":\"bgdemo_right\"}},{\"tool\":\"ConnectBoxesRequest\",\"arguments\":{\"parent\":\"bgdemo_left\",\"child\":\"bgdemo_bloom\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"bgdemo_bloom\",\"timeoutSeconds\":90.0}},{\"final\":\"Made bgdemo_bloom from its transcript code and ran it.\"}]",
+            "hasProse": false
+        },
+        {
+            "id": "box_graph_demo/bgdemo_sketch",
+            "source": "box_graph_demo",
+            "split": "train",
+            "kind": "display",
+            "request": {
+                "goal": "Make a box named bgdemo_sketch (titled \"Sketch\") as a child of bgdemo_studio, which already exist and have been run; it may use what they share, and run it. It must display (with display(...) or a drawing helper) output that includes the text «ink = (200, 40, 40), title = Spring, subtitle = null».",
+                "checks": [
+                    {
+                        "kind": "box-exists",
+                        "box": "bgdemo_sketch"
+                    },
+                    {
+                        "kind": "last-run-ok",
+                        "box": "bgdemo_sketch"
+                    },
+                    {
+                        "kind": "connected",
+                        "parent": "bgdemo_studio",
+                        "child": "bgdemo_sketch"
+                    },
+                    {
+                        "kind": "output-contains",
+                        "box": "bgdemo_sketch",
+                        "text": "ink = (200, 40, 40), title = Spring, subtitle = null"
+                    }
+                ],
+                "setup": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"bgdemo_studio\",\"code\":\"val ink = java.awt.Color(200, 40, 40)\\nval title = \\\"Spring\\\"\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"bgdemo_studio\",\"timeoutSeconds\":90.0}}]",
+                "taskId": "box_graph_demo/bgdemo_sketch"
+            },
+            "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"bgdemo_sketch\",\"code\":\"val ink = fromContext<java.awt.Color>()\\nval title = fromContextWithNameOrNull<String>(\\\"title\\\")\\nval missing = fromContextWithNameOrNull<String>(\\\"subtitle\\\")\\nmarkdown(\\\"ink = (${ink.red}, ${ink.green}, ${ink.blue}), title = $title, subtitle = $missing\\\")\\n\",\"parent\":\"bgdemo_studio\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"bgdemo_sketch\",\"timeoutSeconds\":90.0}},{\"final\":\"Made bgdemo_sketch from its transcript code and ran it.\"}]",
+            "hasProse": false
+        },
+        {
             "id": "certified_envelope/range",
             "source": "certified_envelope",
             "split": "train",
@@ -448,6 +552,66 @@
             "hasProse": true
         },
         {
+            "id": "demo_document/demo_palette",
+            "source": "demo_document",
+            "split": "heldout",
+            "kind": "display",
+            "request": {
+                "goal": "Make a box named demo_palette (titled \"palette\"), and run it. What it is for, in its author's words: Everything connected beneath this box sees `petals`, and reruns when it changes. It must display (with display(...) or a drawing helper) output that includes the text «Pushing».",
+                "checks": [
+                    {
+                        "kind": "box-exists",
+                        "box": "demo_palette"
+                    },
+                    {
+                        "kind": "last-run-ok",
+                        "box": "demo_palette"
+                    },
+                    {
+                        "kind": "output-contains",
+                        "box": "demo_palette",
+                        "text": "Pushing"
+                    }
+                ],
+                "taskId": "demo_document/demo_palette"
+            },
+            "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"demo_palette\",\"code\":\"// Everything connected beneath this box sees `petals`, and reruns when it changes.\\npropDown<Int>(petals) = 7\\nmarkdown(\\\"Pushing **\\\" + petals + \\\" petals** down to every box connected beneath this one.\\\")\\ndisplayOpen(\\\"main\\\")\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"demo_palette\",\"timeoutSeconds\":90.0}},{\"final\":\"Made demo_palette from its transcript code and ran it.\"}]",
+            "hasProse": true
+        },
+        {
+            "id": "demo_document/demo_swatch",
+            "source": "demo_document",
+            "split": "train",
+            "kind": "display",
+            "request": {
+                "goal": "Make a box named demo_swatch (titled \"swatch\") as a child of demo_palette, which already exist and have been run; it may use what they share, and run it. It must display (with display(...) or a drawing helper) output that includes the text «A flower with 7 petals: ✿✿✿✿✿✿✿».",
+                "checks": [
+                    {
+                        "kind": "box-exists",
+                        "box": "demo_swatch"
+                    },
+                    {
+                        "kind": "last-run-ok",
+                        "box": "demo_swatch"
+                    },
+                    {
+                        "kind": "connected",
+                        "parent": "demo_palette",
+                        "child": "demo_swatch"
+                    },
+                    {
+                        "kind": "output-contains",
+                        "box": "demo_swatch",
+                        "text": "A flower with 7 petals: ✿✿✿✿✿✿✿"
+                    }
+                ],
+                "setup": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"demo_palette\",\"code\":\"// Everything connected beneath this box sees `petals`, and reruns when it changes.\\npropDown<Int>(petals) = 7\\nmarkdown(\\\"Pushing **\\\" + petals + \\\" petals** down to every box connected beneath this one.\\\")\\ndisplayOpen(\\\"main\\\")\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"demo_palette\",\"timeoutSeconds\":90.0}}]",
+                "taskId": "demo_document/demo_swatch"
+            },
+            "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"demo_swatch\",\"code\":\"markdown(\\\"A flower with \\\" + petals + \\\" petals: \\\" + \\\"✿\\\".repeat(petals))\\ndisplayOpen(\\\"main\\\")\\n\",\"parent\":\"demo_palette\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"demo_swatch\",\"timeoutSeconds\":90.0}},{\"final\":\"Made demo_swatch from its transcript code and ran it.\"}]",
+            "hasProse": false
+        },
+        {
             "id": "demo_document/demo_rosette",
             "source": "demo_document",
             "split": "train",
@@ -478,6 +642,39 @@
                 "taskId": "demo_document/demo_rosette"
             },
             "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"demo_rosette\",\"code\":\"// The same `petals`, drawn as FLines.\\nval rings =\\n    (0 until petals).map { i ->\\n        val a = i * 2 * PI / petals\\n        fline {\\n            color = vec(0.35 + 0.6 * i / petals, 0.7, 1.0 - 0.5 * i / petals, 0.8)\\n            thickness = 1.5\\n            moveTo(vec(0.0, 0.0, 0.0))\\n            cubicTo(\\n                vec(120 * cos(a - 0.5), 120 * sin(a - 0.5), 0.0),\\n                vec(160 * cos(a + 0.5), 160 * sin(a + 0.5), 0.0),\\n                vec(0.0, 0.0, 0.0),\\n            )\\n        }\\n    }\\nlines(rings, w = 300.0, h = 300.0, fitToSize = true)\\n\",\"parent\":\"demo_palette\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"demo_rosette\",\"timeoutSeconds\":90.0}},{\"final\":\"Made demo_rosette from its transcript code and ran it.\"}]",
+            "hasProse": true
+        },
+        {
+            "id": "demo_document/demo_sketch",
+            "source": "demo_document",
+            "split": "heldout",
+            "kind": "display",
+            "request": {
+                "goal": "Make a box named demo_sketch (titled \"sketch\") as a child of demo_palette, which already exist and have been run; it may use what they share, and run it. What it is for, in its author's words: Two helpers are nested inside this box: open its \"nested\" panel to see them. It must display (with display(...) or a drawing helper) output that includes the text «sketch holds 0 nested helpers, and 7 petals from above».",
+                "checks": [
+                    {
+                        "kind": "box-exists",
+                        "box": "demo_sketch"
+                    },
+                    {
+                        "kind": "last-run-ok",
+                        "box": "demo_sketch"
+                    },
+                    {
+                        "kind": "connected",
+                        "parent": "demo_palette",
+                        "child": "demo_sketch"
+                    },
+                    {
+                        "kind": "output-contains",
+                        "box": "demo_sketch",
+                        "text": "sketch holds 0 nested helpers, and 7 petals from above"
+                    }
+                ],
+                "setup": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"demo_palette\",\"code\":\"// Everything connected beneath this box sees `petals`, and reruns when it changes.\\npropDown<Int>(petals) = 7\\nmarkdown(\\\"Pushing **\\\" + petals + \\\" petals** down to every box connected beneath this one.\\\")\\ndisplayOpen(\\\"main\\\")\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"demo_palette\",\"timeoutSeconds\":90.0}}]",
+                "taskId": "demo_document/demo_sketch"
+            },
+            "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"demo_sketch\",\"code\":\"// Two helpers are nested inside this box: open its \\\"nested\\\" panel to see them.\\nmarkdown(\\\"sketch holds \\\" + nested.size + \\\" nested helpers, and \\\" + petals + \\\" petals from above\\\")\\ndisplayOpen(\\\"main\\\")\\ndisplayOpen(\\\"nested\\\")\\n\",\"parent\":\"demo_palette\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"demo_sketch\",\"timeoutSeconds\":90.0}},{\"final\":\"Made demo_sketch from its transcript code and ran it.\"}]",
             "hasProse": true
         },
         {
@@ -591,6 +788,33 @@
                 "taskId": "drawn_morph/dm_shapes"
             },
             "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"dm_shapes\",\"code\":\"// Two strokes, drawn from code into the document's drawing: a circle named \\\"from\\\" and a\\n// heart named \\\"to\\\". Running it again replaces them.\\nnotation { morphShapes() }\\n/*\\nTo morph two strokes you drew yourself (Alt+D, P), delete the line above and use:\\n  val mine = notation.strokes.filter { it.handDrawn }.takeLast(2)\\n  notation.edit(mine[0]) { name = \\\"from\\\" }\\n  notation.edit(mine[1]) { name = \\\"to\\\" }\\n*/\\nprintln(notation.strokes.map { \\\"${it.label}: ${it.points.size} points\\\" })\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"dm_shapes\",\"timeoutSeconds\":90.0}},{\"final\":\"Made dm_shapes from its transcript code and ran it.\"}]",
+            "hasProse": true
+        },
+        {
+            "id": "drawn_paint/dp_strokes",
+            "source": "drawn_paint",
+            "split": "heldout",
+            "kind": "display",
+            "request": {
+                "goal": "Make a box named dp_strokes (titled \"strokes\"), and run it. What it is for, in its author's words: Three pen strokes, drawn from code into the document's drawing, each with a pen pressure (0..1) as a function of how far along the stroke the pen is. Running it again replaces them. It must display (with display(...) or a drawing helper) output that includes the text «stroke».",
+                "checks": [
+                    {
+                        "kind": "box-exists",
+                        "box": "dp_strokes"
+                    },
+                    {
+                        "kind": "last-run-ok",
+                        "box": "dp_strokes"
+                    },
+                    {
+                        "kind": "output-contains",
+                        "box": "dp_strokes",
+                        "text": "stroke"
+                    }
+                ],
+                "taskId": "drawn_paint/dp_strokes"
+            },
+            "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"dp_strokes\",\"code\":\"// Three pen strokes, drawn from code into the document's drawing, each with a pen pressure\\n// (0..1) as a function of how far along the stroke the pen is. Running it again replaces them.\\nnotation {\\n    stroke(\\n        FLine().moveTo(80, 300).cubicTo(200, 60, 330, 420, 420, 140),\\n        name = \\\"S\\\",\\n        pressure = { 0.15 + 0.85 * sin(PI * it) },\\n    )\\n    stroke(\\n        FLine().moveTo(470, 110).cubicTo(560, 300, 700, 330, 820, 180),\\n        name = \\\"sweep\\\",\\n        pressure = { 1.0 - 0.85 * it },\\n    )\\n    stroke(\\n        FLine().moveTo(880, 330).cubicTo(1060, 300, 1020, 60, 900, 120).cubicTo(820, 160, 880, 260, 960, 250),\\n        name = \\\"loop\\\",\\n        pressure = { 0.15 + 0.85 * it * it },\\n    )\\n}\\n// Read back every stroke in this part of the drawing, with its pressure at 50 evenly spaced points.\\nval strokes = notation.strokes.filter { it.bounds.intersects(Rect(40.0, 40.0, 1040.0, 400.0)) }\\nshowSignals(\\n    *strokes.map { (it.label ?: it.id) to it.pressuresAlong(50) }.toTypedArray(),\\n    x = (0 until 50).map { it / 49.0 },\\n    title = \\\"pen pressure along each stroke\\\",\\n    xTitle = \\\"fraction of the way along\\\",\\n    yTitle = \\\"pressure\\\",\\n    channel = \\\"pressure\\\",\\n)\\nmarkdown(\\n    \\\"table\\\",\\n    \\\"| stroke | points | lightest | heaviest |\\\\n|---|---|---|---|\\\\n\\\" +\\n        strokes.joinToString(\\\"\\\\n\\\") {\\n            \\\"| ${it.label ?: \\\"drawn\\\"} | ${it.points.size} | %.2f | %.2f |\\\"\\n                .format(it.pressures.minOrNull() ?: 0.0, it.pressures.maxOrNull() ?: 0.0)\\n        },\\n    width = 380,\\n)\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"dp_strokes\",\"timeoutSeconds\":90.0}},{\"final\":\"Made dp_strokes from its transcript code and ran it.\"}]",
             "hasProse": true
         },
         {
@@ -1565,6 +1789,33 @@
             "hasProse": false
         },
         {
+            "id": "logging_layer/log_stats",
+            "source": "logging_layer",
+            "split": "train",
+            "kind": "display",
+            "request": {
+                "goal": "Make a box named log_stats (titled \"Stat lines and the heatmap\"), and run it. It must display (with display(...) or a drawing helper) output that includes the text «formatMillis keeps digits where they matter».",
+                "checks": [
+                    {
+                        "kind": "box-exists",
+                        "box": "log_stats"
+                    },
+                    {
+                        "kind": "last-run-ok",
+                        "box": "log_stats"
+                    },
+                    {
+                        "kind": "output-contains",
+                        "box": "log_stats",
+                        "text": "formatMillis keeps digits where they matter"
+                    }
+                ],
+                "taskId": "logging_layer/log_stats"
+            },
+            "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"log_stats\",\"code\":\"import afield.app.diagnostics.logging.StatsHeatmap\\nimport afield.app.diagnostics.logging.formatMillis\\n\\n/*\\nA channel that reports a number every frame gets coloured by whether each value rose\\nor fell since that channel last reported the same key. The contract is only a string\\nformat: key=value or key: value, optionally with a unit.\\n\\nformatMillis emits a unit that matches that grammar, which is why a slow compile\\nreads compile=1.63s rather than compile=1629ms.\\n*/\\nval durations = [120_000L, 3_400_000L, 47_000_000L, 250_000_000L, 1_630_000_000L, 12_400_000_000L]\\nval ladder =\\n    Table(\\n            [\\\"nanoseconds\\\", \\\"formatted\\\"],\\n            title = \\\"formatMillis keeps digits where they matter\\\",\\n            note = \\\"more digits below a millisecond, plain integers past 100ms, decimal seconds past a second\\\",\\n        )\\n        .rows(durations.map { [it, formatMillis(it)] })\\n        .role(\\\"formatted\\\", CellRole.ACCENT)\\n\\nval line = \\\"fps=61.2 upload=3.4MB net:102% dropped=0\\\"\\nval torn =\\n    Table(\\n            [\\\"fragment\\\", \\\"treated as\\\"],\\n            title = \\\"how a stats line is torn into colourable tokens\\\",\\n            note =\\n                \\\"history is kept per channel and per key, so two unrelated metrics sharing one \\\" +\\n                    \\\"channel do not colour each other\\\",\\n        )\\n        .rows(\\n            StatsHeatmap.fragments(\\\"logdemo\\\", line).map {\\n                [\\\"'${it.text}'\\\", if (it.style == null) \\\"plain text\\\" else \\\"number\\\"]\\n            },\\n        )\\n        .roleBy(\\\"treated as\\\") { if (it == \\\"number\\\") CellRole.ACCENT else CellRole.DIM }\\n\\nmarkdown(\\n    \\\"main\\\",\\n    \\\"\\\"\\\"\\n    ${ladder.h}\\n\\n    ${torn.h}\\n\\\"\\\"\\\"\\n        .trimIndent(),\\n)\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"log_stats\",\"timeoutSeconds\":90.0}},{\"final\":\"Made log_stats from its transcript code and ran it.\"}]",
+            "hasProse": false
+        },
+        {
             "id": "macro_recorder_stamp/mr_stamp",
             "source": "macro_recorder_stamp",
             "split": "train",
@@ -2005,6 +2256,33 @@
             "hasProse": false
         },
         {
+            "id": "pattern_condense/condense_invents_nothing",
+            "source": "pattern_condense",
+            "split": "heldout",
+            "kind": "display",
+            "request": {
+                "goal": "Make a box named condense_invents_nothing (titled \"2 - Invent nothing\"), and launch it. It must display (with display(...) or a drawing helper) output that includes the text «300 random 16-step masks, seed 20260910, one step in 3 on».",
+                "checks": [
+                    {
+                        "kind": "box-exists",
+                        "box": "condense_invents_nothing"
+                    },
+                    {
+                        "kind": "last-run-ok",
+                        "box": "condense_invents_nothing"
+                    },
+                    {
+                        "kind": "output-contains",
+                        "box": "condense_invents_nothing",
+                        "text": "300 random 16-step masks, seed 20260910, one step in 3 on"
+                    }
+                ],
+                "taskId": "pattern_condense/condense_invents_nothing"
+            },
+            "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"condense_invents_nothing\",\"code\":\"import kotlin.random.Random\\n\\n/*\\n2 - Invent nothing.\\n\\nThe failure mode of a description-length search is naming a figure that is one step away\\nfrom the rhythm in front of it. This box runs that check live, on masks with no structure\\nput into them.\\n\\nPOKE THIS: change `seed`, or `density` (one step in N is on), or `trials`. The count of\\nwrong namings has to stay 0 whatever you set, because every mask that came back as a\\nwhole-span figure is recomputed here from bjorklund / kolakoskiMask and compared.\\n*/\\nval seed = 20260910\\nval density = 3\\nval trials = 300\\n\\nval random = Random(seed)\\nval euclidean = Regex(\\\"\\\"\\\"^x\\\\((\\\\d+),(\\\\d+)(?:,(\\\\d+))?\\\\)$\\\"\\\"\\\")\\nval kolakoskian = Regex(\\\"\\\"\\\"^x\\\\(([kg])(\\\\d+)(?:,(\\\\d+))?\\\\)$\\\"\\\"\\\")\\n\\nvar named = 0\\nvar wrong = 0\\nval ratios = mutableListOf<Double>()\\n\\nrepeat(trials) {\\n    val mask = List(16) { random.nextInt(density) == 0 }\\n    val condensed = patCondense(mask)\\n    ratios += condensed.compression\\n    euclidean.matchEntire(condensed.notation)?.let { m ->\\n        named++\\n        val pulses = m.groupValues[1].toInt()\\n        val steps = m.groupValues[2].toInt()\\n        val offset = m.groupValues[3].ifEmpty { \\\"0\\\" }.toInt()\\n        val figure = List(steps) { i -> bjorklund(pulses, steps)[((i + offset) % steps + steps) % steps] }\\n        if (figure != mask) wrong++\\n    }\\n    kolakoskian.matchEntire(condensed.notation)?.let { m ->\\n        named++\\n        val reading = if (m.groupValues[1] == \\\"k\\\") KolakoskiReading.RUNS else KolakoskiReading.GAPS\\n        val steps = m.groupValues[2].toInt()\\n        val offset = m.groupValues[3].ifEmpty { \\\"0\\\" }.toInt()\\n        if (kolakoskiMask(steps, reading, rotation = -offset) != mask) wrong++\\n    }\\n}\\n\\nval median = ratios.sorted()[ratios.size / 2]\\nval structured = patCondense(kolakoskiMask(16)).compression\\n\\nmarkdown(\\n    \\\"main\\\",\\n    \\\"\\\"\\\"\\n    ### $trials random 16-step masks, seed $seed, one step in $density on\\n\\n    | | |\\n    |---|---|\\n    | read as a single whole-span figure | **$named** |\\n    | of those, wrong | **$wrong** |\\n    | median compression | ${\\\"%.3f\\\".format(median)} |\\n    | the same number for `kolakoskiMask(16)` | ${\\\"%.3f\\\".format(structured)} |\\n\\n    Noise compresses about ${\\\"%.1f\\\".format(median / structured)} times worse than the figure\\n    it is up against. That separation is the claim. If random masks compressed as well as\\n    structured ones, the search would be finding figures in nothing.\\n\\n    None of this rests on the search's own opinion of itself: every string it returned was\\n    re-parsed and re-played before it was accepted, and the namings above are recomputed from\\n    the generators rather than read off the label.\\n    \\\"\\\"\\\"\\n        .trimIndent(),\\n)\\n\",\"parent\":\"\"}},{\"tool\":\"LaunchBoxRequest\",\"arguments\":{\"box\":\"condense_invents_nothing\",\"timeoutSeconds\":90.0,\"settleSeconds\":1.0}},{\"final\":\"Made condense_invents_nothing from its transcript code and ran it.\"}]",
+            "hasProse": false
+        },
+        {
             "id": "petri_state_space/petri_ss_unbounded",
             "source": "petri_state_space",
             "split": "train",
@@ -2101,6 +2379,33 @@
             "hasProse": false
         },
         {
+            "id": "photo_to_solid_chain/photo_levelset",
+            "source": "photo_to_solid_chain",
+            "split": "train",
+            "kind": "display",
+            "request": {
+                "goal": "Make a box named photo_levelset (titled \"the same solid, marched\"), and run it. It must display (with display(...) or a drawing helper) output that includes the text «grid volume 0.422578178, marched 0.421920277 —».",
+                "checks": [
+                    {
+                        "kind": "box-exists",
+                        "box": "photo_levelset"
+                    },
+                    {
+                        "kind": "last-run-ok",
+                        "box": "photo_levelset"
+                    },
+                    {
+                        "kind": "output-contains",
+                        "box": "photo_levelset",
+                        "text": "grid volume 0.422578178, marched 0.421920277 —"
+                    }
+                ],
+                "taskId": "photo_to_solid_chain/photo_levelset"
+            },
+            "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"photo_levelset\",\"code\":\"import afield.examples.chain.PhotoToSolidChain\\nimport afield.geometry.solid.manifold.Solid\\n\\n// Two independent constructions of the same object: the grid triangulation, and a marched\\n// level set of the same depth field. Compared against EACH OTHER, not against a constant.\\nval mount = PhotoToSolidChain.mount()\\nval edge = 2.0 / 128\\nSolid.scope {\\n    // plaqueVolume, not volume: the field describes the plaque, and `volume` is the plaque\\n    // UNION the frame. Comparing against the wrong one of those reads as a 7% disagreement.\\n    val marched = PhotoToSolidChain.marchedPlaque(mount.depth, mount.footprintZ, edge)\\n    val apart = kotlin.math.abs(marched.volume - mount.plaqueVolume) / mount.plaqueVolume\\n    markdown(\\n        buildString {\\n            appendLine(\\n                \\\"grid volume %.9f, marched %.9f — **%.3f%%** apart at edgeLength %.4f\\\"\\n                    .format(mount.plaqueVolume, marched.volume, apart * 100, edge),\\n            )\\n            appendLine()\\n            appendLine(\\\"Two constructions that share no code, agreeing to about one marching cell.\\\")\\n        },\\n        width = 760,\\n    )\\n}\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"photo_levelset\",\"timeoutSeconds\":90.0}},{\"final\":\"Made photo_levelset from its transcript code and ran it.\"}]",
+            "hasProse": false
+        },
+        {
             "id": "point_matching/match_hello",
             "source": "point_matching",
             "split": "train",
@@ -2192,6 +2497,33 @@
             "hasProse": true
         },
         {
+            "id": "polytope_conway_gallery/polytope_abstract_dual",
+            "source": "polytope_conway_gallery",
+            "split": "train",
+            "kind": "stdout",
+            "request": {
+                "goal": "Make a box named polytope_abstract_dual (titled \"2 — a dual with no coordinates\"), and run it. What it is for, in its author's words: Take the cube's coordinates away. The topology is untouched, and every combinatorial question about the dual is still decidable. When it runs, what it prints must include the text «PolytopeTopologySummary {rank -> 3elementCounts -> {0 -> 61 -> 122 -> 83 -> 1} (4)faceDegreeCounts -».",
+                "checks": [
+                    {
+                        "kind": "box-exists",
+                        "box": "polytope_abstract_dual"
+                    },
+                    {
+                        "kind": "last-run-ok",
+                        "box": "polytope_abstract_dual"
+                    },
+                    {
+                        "kind": "output-contains",
+                        "box": "polytope_abstract_dual",
+                        "text": "PolytopeTopologySummary {rank -> 3elementCounts -> {0 -> 61 -> 122 -> 83 -> 1} (4)faceDegreeCounts -"
+                    }
+                ],
+                "taskId": "polytope_conway_gallery/polytope_abstract_dual"
+            },
+            "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"polytope_abstract_dual\",\"code\":\"// Take the cube's coordinates away. The topology is untouched, and every combinatorial\\n// question about the dual is still decidable.\\nval abstractCube = PolyhedralObject(cube().topology)\\nval abstract = abstractCube.transform(ConwayOperator.DUAL).polyhedron\\n\\n// Ask the abstract object for geometry anyway, and keep whatever it actually says.\\n// These are real caught exceptions; nothing here paraphrases an error message.\\nval flineRefusal = runCatching {\\n    abstract.toFaceFLines()\\n}\\n    .fold({ \\\"no exception — unexpected\\\" }, { \\\"${it::class.simpleName}: ${it.message}\\\" })\\nval triangleRefusal = runCatching {\\n    abstract.triangulate()\\n}\\n    .fold({ \\\"no exception — unexpected\\\" }, { \\\"${it::class.simpleName}: ${it.message}\\\" })\\n\\n/*\\n***** CHANGE THIS ***** Try a realization policy that supplies coordinates.\\nThe right-hand column draws that geometry; policies returning null belong in the\\nabstract comparison above, where geometry refusals are caught and displayed.\\n*/\\nval realized = cube().dual(DualCentroidRealization).polyhedron\\n\\nmarkdown(\\n    \\\"dual\\\",\\n    \\\"\\\"\\\"\\n    #### The dual of `cube()` with and without an embedding\\n\\n    | | abstract | after a realization policy |\\n    |---|---|---|\\n    | `realization` | `${abstract.realization}` | `Realization3(${realized.realization?.size} vertices)` |\\n    | counts | ${abstract.topology.elements(0).size}v ${abstract.topology.elements(1).size}e ${abstract.topology.elements(2).size}f | ${realized.topology.elements(0).size}v ${realized.topology.elements(1).size}e ${realized.topology.elements(2).size}f |\\n    | closed manifold | ${abstract.topology.validate(checkManifold = true).isValid} | ${realized.topology.validate(checkManifold = true).isValid} |\\n    | isomorphic to `octahedron()` | ${abstract.topology.isCombinatoriallyIsomorphicTo(octahedron().topology)} | ${realized.topology.isCombinatoriallyIsomorphicTo(octahedron().topology)} |\\n    | `toFaceFLines()` | `$flineRefusal` | ${realized.toFaceFLines().size} FLines |\\n    | `triangulate()` | `$triangleRefusal` | ${realized.triangulate().triangleCount} triangles |\\n\\n    The left column is a complete, valid, checkable octahedron. It has nowhere to be.\\n\\\"\\\"\\\"\\n        .trimIndent(),\\n    width = 900,\\n)\\n\\n// The registered value printer reduces this to a public data class from Summaries.kt.\\nabstract.topology\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"polytope_abstract_dual\",\"timeoutSeconds\":90.0}},{\"final\":\"Made polytope_abstract_dual from its transcript code and ran it.\"}]",
+            "hasProse": true
+        },
+        {
             "id": "polytope_conway_gallery/polytope_parameter_field",
             "source": "polytope_conway_gallery",
             "split": "heldout",
@@ -2222,6 +2554,33 @@
             },
             "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"polytope_parameter_field\",\"code\":\"// A scalar per face, written as an ordinary attribute. Selection and deployment are\\n// separate concerns: `band` decides WHERE kis happens, `spike` decides HOW MUCH.\\nvar source = dodecahedron()\\nval realization = source.realization!!\\nval vertexIndex = source.topology.elements(0).mapIndexed { i, v -> v.id.value to i }.toMap()\\nfor (face in source.topology.elements(2)) {\\n    val centre = source.topology.faceCycle(face.id).map { realization[vertexIndex.getValue(it)] }\\n    val x = centre.map { it.x }.average()\\n    val y = centre.map { it.y }.average()\\n    source = source.withAttributes(\\n        face.id,\\n        // ***** CHANGE THIS *****  any function of the face you like. Make `band` always\\n        // true for a fully non-uniform kis, or narrow it for selective AND non-uniform.\\n        mapOf(\\\"band\\\" to (y < 0.62), \\\"spike\\\" to (0.10 + 0.80 * (x + 1.0) / 2.0)),\\n    )\\n}\\n\\nval result = source.kis(\\n    selector = ElementSelectors.attributeEquals(\\\"band\\\", true),\\n    heightScale = ElementParameters.attribute(\\\"spike\\\"),\\n)\\nval out = result.polyhedron\\nval deployment = result.deployments.single()\\nval deployed = deployment.scalarParameters.values.mapNotNull { it[\\\"heightScale\\\"] }\\n\\nval scalarRange = if (deployed.isEmpty()) \\\"no selected faces\\\" else \\\"%.3f .. %.3f\\\".format(deployed.min(), deployed.max())\\nprintln(\\n    \\\"\\\"\\\"\\n    kis deployed over ${deployment.selectedSources?.size} of ${source.topology.elements(2).size} faces\\n    heightScale resolved over ${deployed.size} sources: $scalarRange\\n    output ${out.topology.elements(0).size}v ${out.topology.elements(1).size}e ${out.topology.elements(2).size}f\\n    hover a face; click it to read the lineage that produced it\\n    \\\"\\\"\\\"\\n        .trimIndent(),\\n)\\n\\nval card: (String) -> Unit = { message -> markdown(\\\"face provenance\\\", message) }\\n\\n// One FLine per authoritative polygon. The colour is the deployed scalar, carried on the\\n// face by the attribute propagation policy — no coordinate is consulted to choose it.\\nval lo = deployed.minOrNull()\\nval hi = deployed.maxOrNull()\\nval faceLines = out.toFaceFLines { face, line ->\\n    val spike = (out.attributes[face.id][\\\"spike\\\"] as? Number)?.toDouble()\\n    val u = when {\\n        spike == null || lo == null || hi == null -> null\\n        hi == lo -> 0.5 // A constant scalar field uses the middle of the palette.\\n        else -> ((spike - lo) / (hi - lo)).coerceIn(0.0, 1.0)\\n    }\\n    val role = (result.lineage(face.id) as? ElementLineage.Derived)?.role ?: \\\"source\\\"\\n    line.filled = true\\n    line.stroked = true\\n    line.thickness = if (u == null) 1.1 else 1.7\\n    line.color =\\n        if (u == null) vec(0.30, 0.34, 0.40, 0.55) else vec(0.20 + 0.78 * u, 0.84 - 0.28 * u, 0.98 - 0.72 * u, 0.80)\\n    line.hoverColor = vec(0.96, 0.98, 1.00, 0.98)\\n    line.onClick = { hit ->\\n        card(\\n            \\\"\\\"\\\"\\n            **output face ${face.id.value}**\\n\\n            - role: `$role`\\n            - deployed spike: `${spike?.let { \\\"%.3f\\\".format(it) } ?: \\\"not selected\\\"}`\\n            - source: ${result.sourceElements(face.id).joinToString { \\\"rank ${it.rank} / id ${it.id.value}\\\" }}\\n            - clicked at: `${hit.position}`\\n            \\\"\\\"\\\"\\n                .trimIndent(),\\n        )\\n    }\\n}\\n\\nthreeLines(\\n    faceLines,\\n    channel = \\\"parameter-field\\\",\\n    name = \\\"non-uniform kis\\\",\\n    height = 520,\\n    autoFrame = true,\\n    editable = false,\\n)\\ndisplayOpen(\\\"parameter-field\\\")\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"polytope_parameter_field\",\"timeoutSeconds\":90.0}},{\"final\":\"Made polytope_parameter_field from its transcript code and ran it.\"}]",
             "hasProse": true
+        },
+        {
+            "id": "polytope_conway_gallery/polytope_realization_relax",
+            "source": "polytope_conway_gallery",
+            "split": "train",
+            "kind": "stdout",
+            "request": {
+                "goal": "Make a box named polytope_realization_relax (titled \"4 — realization before and after, with diagnostics\"), and run it. When it runs, what it prints must include the text «RealizationSolveResult {polyhedron -> PolyhedralObjectSummary {topology -> PolytopeTopologySummary {».",
+                "checks": [
+                    {
+                        "kind": "box-exists",
+                        "box": "polytope_realization_relax"
+                    },
+                    {
+                        "kind": "last-run-ok",
+                        "box": "polytope_realization_relax"
+                    },
+                    {
+                        "kind": "output-contains",
+                        "box": "polytope_realization_relax",
+                        "text": "RealizationSolveResult {polyhedron -> PolyhedralObjectSummary {topology -> PolytopeTopologySummary {"
+                    }
+                ],
+                "taskId": "polytope_conway_gallery/polytope_realization_relax"
+            },
+            "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"polytope_realization_relax\",\"code\":\"import kotlin.random.Random\\n\\n// A real Conway output, then every vertex jittered. The topology is not touched: the\\n// solver only ever returns copy(realization = ...).\\nval clean = conway(\\\"aC\\\").polyhedron\\nval rng = Random(7)\\n// ***** CHANGE THIS *****  the jitter amplitude. Push it far enough and the solver stops\\n// converging, and `reason` will say so instead of quietly returning something wrong.\\nval amplitude = 0.62f\\nval jittered = clean.copy(\\n    realization = Realization3(\\n        clean.realization!!.vertexCoordinates.map {\\n            Vec3(it)\\n                .add(\\n                    (rng.nextDouble() - 0.5).toFloat() * amplitude,\\n                    (rng.nextDouble() - 0.5).toFloat() * amplitude,\\n                    (rng.nextDouble() - 0.5).toFloat() * amplitude,\\n                )\\n        },\\n    ),\\n)\\n\\nval solved = jittered.solveRealization()\\n\\nval view = MeshView(wireframe = false, distance = 2.5)\\nthreeGrid(\\n    \\\"aC as built\\\" to clean.toTriMesh(),\\n    \\\"jittered\\\" to jittered.toTriMesh(),\\n    \\\"solveRealization()\\\" to solved.polyhedron.toTriMesh(),\\n    channel = \\\"relax\\\",\\n    name = \\\"relax\\\",\\n    columns = 3,\\n    height = 360,\\n    cellWidth = 420,\\n    view = view,\\n)\\n\\nfun row(label: String, d: RealizationDiagnostics) =\\n    \\\"| $label | %.5f | %.3e | %.3e | %.3e | ${d.degenerateFaces.size} |\\\"\\n        .format(\\n            d.edgeLengthMean,\\n            d.edgeLengthRmsDeviation,\\n            d.maxFacePlanarityError,\\n            d.facePlanarityRmsError,\\n        )\\n\\nmarkdown(\\n    \\\"diagnostics\\\",\\n    \\\"\\\"\\\"\\n    | embedding | edge mean | edge RMS dev | max planarity err | planarity RMS | degenerate |\\n    |---|---|---|---|---|---|\\n    ${row(\\\"as built\\\", clean.geometryDiagnostics())}\\n    ${row(\\\"jittered\\\", solved.initialDiagnostics)}\\n    ${row(\\\"solved\\\", solved.finalDiagnostics)}\\n\\n    converged = **${solved.converged}** &middot; iterations = ${solved.iterations} &middot;\\n    reason = `${solved.reason}` &middot;\\n    topology object identical = **${solved.polyhedron.topology === jittered.topology}**\\n\\n    This is constraint relaxation, not canonicalisation. It has no symmetry model and it\\n    cannot tell you the shape you wish you had given it — only how far the shape you did\\n    give it is from a common edge length, a common radius and planar faces.\\n\\\"\\\"\\\"\\n        .trimIndent(),\\n    width = 940,\\n)\\n\\n// The solve result is already a data class, so it visualizes without a registered printer.\\nsolved\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"polytope_realization_relax\",\"timeoutSeconds\":90.0}},{\"final\":\"Made polytope_realization_relax from its transcript code and ran it.\"}]",
+            "hasProse": false
         },
         {
             "id": "polytope_holes_and_chains/polytope_plate_with_and_without",
@@ -2285,6 +2644,60 @@
                 "taskId": "polytope_holes_and_chains/polytope_chained_vocabulary"
             },
             "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"polytope_chained_vocabulary\",\"code\":\"/*\\nUntil 2026-08-05 none of these compiled: the eight composites were declared on\\nPolyhedralObject only, so cube().ambo() had no .bevel(), and needle, zip and ortho had no\\nnamed function at all. Every operator is now on both receivers, so a chain reads the same\\nwherever a step sits.\\n*/\\nval chains: List<Pair<String, PolytopeTransformResult>> = [\\n    \\\"cube().ambo().join()\\\" to cube().ambo().join(),\\n    \\\"cube().ambo().needle()\\\" to cube().ambo().needle(),\\n    \\\"cube().ambo().zip()\\\" to cube().ambo().zip(),\\n    \\\"cube().ambo().ortho()\\\" to cube().ambo().ortho(),\\n    \\\"cube().ambo().expand()\\\" to cube().ambo().expand(),\\n    \\\"cube().ambo().snub()\\\" to cube().ambo().snub(),\\n    \\\"cube().ambo().meta()\\\" to cube().ambo().meta(),\\n    \\\"cube().ambo().bevel()\\\" to cube().ambo().bevel(),\\n]\\n\\nval view = MeshView(wireframe = false, distance = 2.4)\\nval cells = chains.map { (source, result) ->\\n    val topology = result.polyhedron.topology\\n    ThreeMeshPanel(\\n        label = source,\\n        mesh = result.polyhedron.canonicalize().polyhedron.toTriMesh(),\\n        facts =\\n            \\\"asked ${result.notationHistory.joinToString(\\\"\\\") { it.symbol.toString() }}\\\" +\\n                \\\" · ran ${result.history.joinToString(\\\"\\\") { it.symbol.toString() }}\\\" +\\n                \\\" · ${topology.elements(0).size}v ${topology.elements(1).size}e ${topology.elements(2).size}f\\\" +\\n                \\\" · χ=${topology.eulerCharacteristic()}\\\",\\n    )\\n}\\nthreeGrid(cells, channel = \\\"chains\\\", name = \\\"chains\\\", columns = 4, height = 440, cellWidth = 260, view = view)\\n\\n// The composite is recorded as what you asked for; the history is what actually ran. And a\\n// longer chain is just more of the same.\\nval long = cube().ambo().bevel().kis().dual()\\nprintln(\\n    \\\"\\\"\\\"\\n    asked for: ${long.notationHistory.joinToString(\\\" \\\") { it.displayName }}\\n    actually ran: ${long.history.joinToString(\\\" \\\") { it.displayName }}\\n    result: ${long.polyhedron.topology.elements(0).size}v ${long.polyhedron.topology.elements(2).size}f,\\n        chi = ${long.polyhedron.topology.eulerCharacteristic()}\\n    a composite still refuses a single realization policy:\\n        ${runCatching { cube().ambo().transform(ConwayOperator.BEVEL, DualCentroidRealization) }.exceptionOrNull()?.message}\\n    \\\"\\\"\\\"\\n        .trimIndent(),\\n)\\nviz(\\\"chain\\\", long.summary())\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"polytope_chained_vocabulary\",\"timeoutSeconds\":90.0}},{\"final\":\"Made polytope_chained_vocabulary from its transcript code and ran it.\"}]",
+            "hasProse": true
+        },
+        {
+            "id": "popup_prior_inspect/agent_popup_prior_inspect",
+            "source": "popup_prior_inspect",
+            "split": "train",
+            "kind": "display",
+            "request": {
+                "goal": "Make a box named agent_popup_prior_inspect (titled \"What prior does the popup have\"), and run it. What it is for, in its author's words: Ask Field what prior the completion popup has, instead of trusting a number typed into a page. `CommonMemberPrior` is the object the completion server itself calls, once per candidate, on every keystroke — so this table is the popup's own arithmetic rather than a description of it. It must display (with display(...) or a drawing helper) output that includes the text «@CommonMembers on afield.geometry.path.FLine — 8 members, first scores 40, less 2 per position».",
+                "checks": [
+                    {
+                        "kind": "box-exists",
+                        "box": "agent_popup_prior_inspect"
+                    },
+                    {
+                        "kind": "last-run-ok",
+                        "box": "agent_popup_prior_inspect"
+                    },
+                    {
+                        "kind": "output-contains",
+                        "box": "agent_popup_prior_inspect",
+                        "text": "@CommonMembers on afield.geometry.path.FLine — 8 members, first scores 40, less 2 per position"
+                    }
+                ],
+                "taskId": "popup_prior_inspect/agent_popup_prior_inspect"
+            },
+            "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"agent_popup_prior_inspect\",\"code\":\"/*\\nAsk Field what prior the completion popup has, instead of trusting a number typed into a\\npage. `CommonMemberPrior` is the object the completion server itself calls, once per\\ncandidate, on every keystroke — so this table is the popup's own arithmetic rather than a\\ndescription of it. Change `receiver` to any qualified type name to ask about your own class.\\n\\nWhat this cannot tell you is which SECTION each of these lands in, which is the other half\\nof where a row appears on screen. That answer belongs to KotlinCompletionSupport, and it is\\n`internal` — deliberately unreachable from a box. Use `FIELD_RANK_DUMP` for that; it prints\\na `category=` beside every visible row. See public/docs/completion_ranking.md.\\n*/\\nval receiver = \\\"afield.geometry.path.FLine\\\"\\nval ranks = afield.runtime.completion.CommonMemberPrior.ranksFor(receiver)\\n\\n// Sorted by position rather than trusting the map's iteration order, so the figure is the\\n// same every time it is drawn.\\nval prior =\\n    Table([\\\"position\\\", \\\"member\\\", \\\"prior score\\\"])\\n        .rows(\\n            ranks.entries\\n                .sortedBy { it.value }\\n                .map { (member, position) ->\\n                    [position, member, afield.runtime.completion.CommonMemberPrior.scoreOf(position)]\\n                },\\n        )\\n        .role(\\\"member\\\", CellRole.ACCENT)\\n\\n// Position 1 scores BASE, and each position after it costs STEP.\\ncheck(\\n    ranks.all { (_, position) ->\\n        afield.runtime.completion.CommonMemberPrior.scoreOf(position) ==\\n            afield.runtime.completion.CommonMemberPrior.BASE -\\n                afield.runtime.completion.CommonMemberPrior.STEP * (position - 1)\\n    },\\n) {\\n    \\\"the prior is no longer BASE less STEP per position\\\"\\n}\\n\\nmarkdown(\\n    \\\"main\\\",\\n    \\\"\\\"\\\"\\n    {muted:@CommonMembers on ${receiver.md} — ${ranks.size} members, first scores ${afield.runtime.completion.CommonMemberPrior.BASE}, less ${afield.runtime.completion.CommonMemberPrior.STEP} per position}\\n\\n    ${prior.h}\\n\\\"\\\"\\\",\\n)\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"agent_popup_prior_inspect\",\"timeoutSeconds\":90.0}},{\"final\":\"Made agent_popup_prior_inspect from its transcript code and ran it.\"}]",
+            "hasProse": true
+        },
+        {
+            "id": "profiling_timeline/profile_capture",
+            "source": "profiling_timeline",
+            "split": "heldout",
+            "kind": "stdout",
+            "request": {
+                "goal": "Make a box named profile_capture (titled \"4. Record and explore\"), and run it. What it is for, in its author's words: Run the three workload boxes first, then run this box. The macro does that for you. When it runs, what it prints must include the text «Recording three seconds. The timeline will latch automatically.».",
+                "checks": [
+                    {
+                        "kind": "box-exists",
+                        "box": "profile_capture"
+                    },
+                    {
+                        "kind": "last-run-ok",
+                        "box": "profile_capture"
+                    },
+                    {
+                        "kind": "output-contains",
+                        "box": "profile_capture",
+                        "text": "Recording three seconds. The timeline will latch automatically."
+                    }
+                ],
+                "taskId": "profiling_timeline/profile_capture"
+            },
+            "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"profile_capture\",\"code\":\"/*\\nRun the three workload boxes first, then run this box. The macro does that for you.\\nDrag the overview, Zoom to selection, choose Allocated bytes, and click a lane.\\nOpen current box code returns you to the code behind a measured coroutine.\\nHot code adds sampled classes, methods and box lines, including background threads.\\n*/\\nCoroutineProfiles.request(thisBox.inside.filename, CoroutineProfileRequest(\\\"start\\\", 3.0, stacks = true))\\nthisBox.inBrowser(\\\"window.showProfilingTimeline()\\\")\\nprintln(\\\"Recording three seconds. The timeline will latch automatically.\\\")\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"profile_capture\",\"timeoutSeconds\":90.0}},{\"final\":\"Made profile_capture from its transcript code and ran it.\"}]",
             "hasProse": true
         },
         {
@@ -2484,6 +2897,33 @@
                 "taskId": "skinned_characters/path_trace"
             },
             "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"path_trace\",\"code\":\"import afield.graphics.scene.fabricated.GltfSkinPose\\nimport afield.graphics.scene.fabricated.PathTraceScene\\nimport afield.graphics.scene.fabricated.importGltf\\n\\n/*\\nThe line this whole branch was aimed at.\\n\\nPathTraceGltf.kt used to contain, verbatim:\\n    require(mesh.mNumBones()==0) { \\\"Skinned glTF meshes need skin deformation before path tracing\\\" }\\nIt was the only mention of a bone in the entire JVM source tree -- the codebase naming a missing\\ncapability in its own refusal message. It now traces the DEFORMED mesh at a pose you choose.\\n*/\\n\\nval rig = RiggedFixture.locate()\\n\\nval rest = PathTraceScene()\\nval restImport = rest.importGltf(rig)\\nval bent = PathTraceScene()\\nval bentImport = bent.importGltf(rig, pose = GltfSkinPose(\\\"bend\\\", 1f))\\n\\nprintln(\\n    \\\"rest pose   ${restImport.triangleCount} triangles, \\\" +\\n        \\\"x in [%.4f, %.4f]\\\".format(restImport.boundsMin.x, restImport.boundsMax.x),\\n)\\nprintln(\\n    \\\"bend t=1    ${bentImport.triangleCount} triangles, \\\" +\\n        \\\"x in [%.4f, %.4f]\\\".format(bentImport.boundsMin.x, bentImport.boundsMax.x),\\n)\\nprintln()\\nbentImport.warnings.forEach { println(\\\"warning: $it\\\") }\\nprintln()\\n\\n/*\\nThe cross-check worth printing: two completely separate readers of the same deformation. The\\ntracer walks Assimp and stages world-space triangles; the CPU bridge packs a 12-float vertex\\nbuffer and builds a TriMesh. They are two implementations of one formula, so agreeing is\\nevidence and disagreeing would localise the bug.\\n*/\\nval cpu = skinnedGltfToTriMesh(rig, clip = \\\"bend\\\", seconds = 1f).bounds()\\nprintln(\\\"CPU bridge  x in [%.4f, %.4f], y in [%.4f, %.4f]\\\".format(cpu.min.x, cpu.max.x, cpu.min.y, cpu.max.y))\\nprintln(\\n    \\\"tracer      x in [%.4f, %.4f], y in [%.4f, %.4f]\\\"\\n        .format(bentImport.boundsMin.x, bentImport.boundsMax.x, bentImport.boundsMin.y, bentImport.boundsMax.y),\\n)\\nprintln(\\n    \\\"max |difference| = %.7f\\\"\\n        .format(\\n            maxOf(\\n                kotlin.math.abs(cpu.min.x - bentImport.boundsMin.x),\\n                kotlin.math.abs(cpu.max.x - bentImport.boundsMax.x),\\n                kotlin.math.abs(cpu.min.y - bentImport.boundsMin.y),\\n                kotlin.math.abs(cpu.max.y - bentImport.boundsMax.y),\\n            ),\\n        ),\\n)\\nprintln()\\nprintln(\\\"An unknown clip name fails the import rather than quietly tracing the rest pose -- try\\\")\\nprintln(\\\"GltfSkinPose(\\\\\\\"walk\\\\\\\", 1f) above and read the message.\\\")\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"path_trace\",\"timeoutSeconds\":90.0}},{\"final\":\"Made path_trace from its transcript code and ran it.\"}]",
+            "hasProse": false
+        },
+        {
+            "id": "smpte_timecode/tc_arithmetic",
+            "source": "smpte_timecode",
+            "split": "train",
+            "kind": "display",
+            "request": {
+                "goal": "Make a box named tc_arithmetic (titled \"1 - Drop-frame arithmetic\"), and run it. It must display (with display(...) or a drawing helper) output that includes the text «+ 1 frame =».",
+                "checks": [
+                    {
+                        "kind": "box-exists",
+                        "box": "tc_arithmetic"
+                    },
+                    {
+                        "kind": "last-run-ok",
+                        "box": "tc_arithmetic"
+                    },
+                    {
+                        "kind": "output-contains",
+                        "box": "tc_arithmetic",
+                        "text": "+ 1 frame ="
+                    }
+                ],
+                "taskId": "smpte_timecode/tc_arithmetic"
+            },
+            "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"tc_arithmetic\",\"code\":\"import afield.io.timecode.*\\n\\nval t = Timecode.parse(\\\"00:00:59;29\\\")\\nmarkdown(\\n    \\\"main\\\",\\n    \\\"`$t` + 1 frame = `${t + 1}`  \\\\n`${Timecode.parse(\\\"00:09:59;29\\\")}` + 1 frame = `${Timecode.parse(\\\"00:09:59;29\\\") + 1}`  \\\\nan hour of drop-frame labels is ${\\\"%.3f\\\".format(Timecode.parse(\\\"01:00:00;00\\\").totalSeconds)} s of wall time\\\",\\n)\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"tc_arithmetic\",\"timeoutSeconds\":90.0}},{\"final\":\"Made tc_arithmetic from its transcript code and ran it.\"}]",
             "hasProse": false
         },
         {
@@ -3197,6 +3637,33 @@
             "hasProse": true
         },
         {
+            "id": "syphon_bridge/syphon_servers",
+            "source": "syphon_bridge",
+            "split": "heldout",
+            "kind": "display",
+            "request": {
+                "goal": "Make a box named syphon_servers (titled \"Syphon — servers on this machine\"), and run it. It must display (with display(...) or a drawing helper) output that includes the text «Syphon bridge not built. Build it with».",
+                "checks": [
+                    {
+                        "kind": "box-exists",
+                        "box": "syphon_servers"
+                    },
+                    {
+                        "kind": "last-run-ok",
+                        "box": "syphon_servers"
+                    },
+                    {
+                        "kind": "output-contains",
+                        "box": "syphon_servers",
+                        "text": "Syphon bridge not built. Build it with"
+                    }
+                ],
+                "taskId": "syphon_bridge/syphon_servers"
+            },
+            "solution": "[{\"tool\":\"NewBoxRequest\",\"arguments\":{\"name\":\"syphon_servers\",\"code\":\"import afield.io.syphon.*\\n\\nrun {\\n    if (!Syphon.isAvailable) {\\n        markdown(Syphon.describe())\\n        return@run\\n    }\\n\\n    val servers = Syphon.servers(waitMs = 1000)\\n    markdown(\\n        if (servers.isEmpty()) \\\"No Syphon servers are running.\\\"\\n        else servers.joinToString(\\\"\\\\n\\\") { \\\"- **${it.appName}** ${it.name}\\\" },\\n    )\\n}\\n\",\"parent\":\"\"}},{\"tool\":\"RunBoxRequest\",\"arguments\":{\"box\":\"syphon_servers\",\"timeoutSeconds\":90.0}},{\"final\":\"Made syphon_servers from its transcript code and ran it.\"}]",
+            "hasProse": false
+        },
+        {
             "id": "three_inspector_wall/three-inspector-wall",
             "source": "three_inspector_wall",
             "split": "heldout",
@@ -3846,22 +4313,7 @@
         },
         {
             "source": "box_graph_demo",
-            "box": "bgdemo_sibling",
-            "reason": "no-output-call"
-        },
-        {
-            "source": "box_graph_demo",
-            "box": "bgdemo_bloom",
-            "reason": "no-output-call"
-        },
-        {
-            "source": "box_graph_demo",
             "box": "bgdemo_studio",
-            "reason": "no-output-call"
-        },
-        {
-            "source": "box_graph_demo",
-            "box": "bgdemo_sketch",
             "reason": "no-output-call"
         },
         {
@@ -4116,21 +4568,6 @@
         },
         {
             "source": "demo_document",
-            "box": "demo_palette",
-            "reason": "no-output-call"
-        },
-        {
-            "source": "demo_document",
-            "box": "demo_swatch",
-            "reason": "no-output-call"
-        },
-        {
-            "source": "demo_document",
-            "box": "demo_sketch",
-            "reason": "no-output-call"
-        },
-        {
-            "source": "demo_document",
             "box": "demo_leaf",
             "reason": "not-executed"
         },
@@ -4248,11 +4685,6 @@
             "source": "drawn_morph",
             "box": "dm_play",
             "reason": "deny:audio"
-        },
-        {
-            "source": "drawn_paint",
-            "box": "dp_strokes",
-            "reason": "no-output-call"
         },
         {
             "source": "drawn_paint",
@@ -5145,11 +5577,6 @@
             "reason": "deny:clock"
         },
         {
-            "source": "logging_layer",
-            "box": "log_stats",
-            "reason": "no-output-call"
-        },
-        {
             "source": "loris_partial_explorer",
             "box": "loris_source_and_partials",
             "reason": "not-executed"
@@ -5991,16 +6418,6 @@
         },
         {
             "source": "pattern_condense",
-            "box": "condense_basics",
-            "reason": "no-output-call"
-        },
-        {
-            "source": "pattern_condense",
-            "box": "condense_invents_nothing",
-            "reason": "no-output-call"
-        },
-        {
-            "source": "pattern_condense",
             "box": "condense_from_audio",
             "reason": "deny:audio"
         },
@@ -6175,11 +6592,6 @@
             "reason": "deny:files"
         },
         {
-            "source": "photo_to_solid_chain",
-            "box": "photo_levelset",
-            "reason": "no-output-call"
-        },
-        {
             "source": "physics_manifold_path_trace",
             "box": "chain_renderer",
             "reason": "deny:renderer"
@@ -6225,16 +6637,6 @@
             "reason": "deny:clock"
         },
         {
-            "source": "polytope_conway_gallery",
-            "box": "polytope_abstract_dual",
-            "reason": "no-output-call"
-        },
-        {
-            "source": "polytope_conway_gallery",
-            "box": "polytope_realization_relax",
-            "reason": "no-output-call"
-        },
-        {
             "source": "polytope_layer_stack_path_trace",
             "box": "chain_renderer",
             "reason": "deny:renderer"
@@ -6278,11 +6680,6 @@
             "source": "polyvector_explorer",
             "box": "pv_geometry",
             "reason": "not-executed"
-        },
-        {
-            "source": "popup_prior_inspect",
-            "box": "agent_popup_prior_inspect",
-            "reason": "no-output-call"
         },
         {
             "source": "principal_curves_explorer",
@@ -6756,11 +7153,6 @@
         },
         {
             "source": "smpte_timecode",
-            "box": "tc_arithmetic",
-            "reason": "no-output-call"
-        },
-        {
-            "source": "smpte_timecode",
             "box": "tc_mtc",
             "reason": "deny:clock"
         },
@@ -7165,11 +7557,6 @@
             "reason": "deny:files"
         },
         {
-            "source": "statistics_examples",
-            "box": "stats_rolling",
-            "reason": "no-output-call"
-        },
-        {
             "source": "stippling",
             "box": "stipple_relaxing",
             "reason": "deny:forever"
@@ -7188,11 +7575,6 @@
             "source": "streaming_diffusion",
             "box": "diffusion_curves",
             "reason": "not-executed"
-        },
-        {
-            "source": "syphon_bridge",
-            "box": "syphon_servers",
-            "reason": "no-output-call"
         },
         {
             "source": "syphon_bridge",
@@ -7472,12 +7854,12 @@
         {
             "source": "drawn_morph",
             "box": "dm_paired",
-            "reason": "solution-fails failed: 0eca2b6c-54e8-499a-a864-ec1cc85cb957/code:2 [be923d98c40c2aa16f3f09d1f4836193082c343fe36d10661fc2fa452a425e17]: java.lang.NullPointerException"
+            "reason": "solution-fails failed: 414be431-b594-43e0-9311-03dae9780adb/code:2 [be923d98c40c2aa16f3f09d1f4836193082c343fe36d10661fc2fa452a425e17]: java.lang.NullPointerException"
         },
         {
             "source": "drawn_morph",
             "box": "dm_morph",
-            "reason": "solution-fails failed: 07a00d9d-945e-440a-8868-a8405038d85f/code:2 [a9870b96099401708e36fe90d876113dc0719437e491b429f26f93c4b91fef86]: java.lang.NullPointerException"
+            "reason": "solution-fails failed: bce67253-ffad-4bfb-9f88-d5b365414508/code:2 [a9870b96099401708e36fe90d876113dc0719437e491b429f26f93c4b91fef86]: java.lang.NullPointerException"
         },
         {
             "source": "drawn_score",
@@ -7567,7 +7949,7 @@
         {
             "source": "keyframe_code_blend",
             "box": "kfb_kotlin_run",
-            "reason": "solution-fails failed: 2e150fd8-465e-40bb-ae14-65cd1b55459e/code:19 [87789dc4fdf68d30f3e2f6fbf7e1adcee909f44523b6376f89f80b81d8eaec80]: Cannot hydrate source-backed block; box 'kfb_ko"
+            "reason": "solution-fails failed: 4b2a0d0a-518f-46f3-b893-ec45419fb2f1/code:19 [87789dc4fdf68d30f3e2f6fbf7e1adcee909f44523b6376f89f80b81d8eaec80]: Cannot hydrate source-backed block; box 'kfb_ko"
         },
         {
             "source": "kolakoski_euclid",
@@ -7612,12 +7994,17 @@
         {
             "source": "morpho_circuit_search",
             "box": "morpho_search_adder",
-            "reason": "no-stable-output said nothing"
+            "reason": "timeout"
         },
         {
             "source": "offline_viewer_demo",
             "box": "74a7be47-7f7c-421a-ad3f-10afab498c12",
-            "reason": "solution-fails failed: 9c00b1fe-7dda-49b1-9fec-931fed2a8431/code:17 [531032de24ff031fe91a7d09e1af690b9e47c66fc8b7501a0d06759d12921821]: Collection contains no element matching the pre"
+            "reason": "solution-fails failed: 895edf8e-cf97-4cb7-8aeb-fe7234fd8ec7/code:17 [531032de24ff031fe91a7d09e1af690b9e47c66fc8b7501a0d06759d12921821]: Collection contains no element matching the pre"
+        },
+        {
+            "source": "pattern_condense",
+            "box": "condense_basics",
+            "reason": "no-stable-output said nothing"
         },
         {
             "source": "pattern_language_composition",
@@ -7670,19 +8057,14 @@
             "reason": "no-stable-output said nothing"
         },
         {
-            "source": "profiling_timeline",
-            "box": "profile_capture",
-            "reason": "solution-fails failed: c954aba8-e4ef-4b24-a51d-c229f009ca73/code:7 [2ce00f21038e4a310f35842edc16aba6e6cc47e175ed2c03e5dd47424f018b34]: Another document is recording; finish its captur"
-        },
-        {
             "source": "python_cells",
             "box": "python_shared",
-            "reason": "solution-fails failed: c64619e8-7cb2-49b8-b663-27fc062008c8/code:1 [d0651379b2225bcf62fda643aeb0ec5f275c4477d8312911a0fa2e625617bb18]: Expecting an element"
+            "reason": "solution-fails failed: 87f6102e-4424-414c-a53f-60246f1918e4/code:1 [d0651379b2225bcf62fda643aeb0ec5f275c4477d8312911a0fa2e625617bb18]: Expecting an element"
         },
         {
             "source": "simulation_clock",
             "box": "simulation_capture",
-            "reason": "solution-fails failed: be8ac7ed-c0d9-42aa-8f79-8f67ed35215a/code:1 [cd09ee4e36f84408134ebf5043a37f66a80653af6e505d8dea18186a16a63643]: Another document is recording; finish its captur"
+            "reason": "solution-fails failed: 3a36dbe5-2bcd-4d84-a92e-93b153c4e348/code:1 [cd09ee4e36f84408134ebf5043a37f66a80653af6e505d8dea18186a16a63643]: Another document is recording; finish its captur"
         },
         {
             "source": "skinned_characters",
@@ -7727,6 +8109,11 @@
         {
             "source": "statistics_examples",
             "box": "stats_dependence",
+            "reason": "no-stable-output said nothing"
+        },
+        {
+            "source": "statistics_examples",
+            "box": "stats_rolling",
             "reason": "no-stable-output said nothing"
         },
         {
