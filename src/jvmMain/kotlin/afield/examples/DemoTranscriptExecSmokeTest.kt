@@ -362,6 +362,8 @@ object DemoTranscriptExecSmokeTest {
         // is its own sleep loop rather than `frames { }`, and it exits when all twenty cells have
         // landed or after a 2600-frame cap, so it terminates without a render clock.
         "confluence_grid",
+        // 2026-10-26: reads the checked-in agent eval corpus (src/jvmMain/resources/ai4/) and prints it. Pure CPU.
+        "agent_eval_corpus",
         // Sixteen saved demo documents under `dev_docs/agents/demos/` were invisible to this
         // harness, to the welcome screen and to the gallery — openable with `./field.sh` and
         // nothing else. These are those, promoted: nine of them already shipped an agent-authored

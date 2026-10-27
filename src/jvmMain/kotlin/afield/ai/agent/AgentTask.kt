@@ -82,6 +82,8 @@ data class AgentTaskRequest(
      * run after the last. What makes a task multi-turn — the case where instructions used to pile up.
      */
     val followUps: List<String> = emptyList(),
+    /** Tool simple names withheld from this task's turn (as [programs] `off` withholds one); see [AgentEvalRequest.sealed]. */
+    val withhold: List<String> = emptyList(),
     /**
      * A checkout the `repo` tools ([afield.ai.tools.RepoFileTools]) work in: blank = no repo tools. [repoRead]
      * and [repoWrite] are globs over root-relative paths; the job may read only the first and write only the second.
@@ -187,7 +189,7 @@ data class AgentTaskResult(
     val mode: String,
     val provider: String,
     val model: String,
-    /** `pass`, `fail`, `budget-exhausted`, `error`, `unchecked`, or `running` when observation ended before a live panel turn. */
+    /** `pass`, `fail`, `budget-exhausted`, `error`, `unchecked`, `leaked` (a sealed corpus pass that read its solution), or `running` when observation ended before a live panel turn. */
     val verdict: String,
     val checks: List<AgentCheckOutcome>,
     val toolCalls: List<AgentToolCallRecord>,
@@ -223,6 +225,8 @@ data class AgentTaskResult(
     val turns: Int = 1,
     /** Where the last turn's instructions went: `instructions`, `system+prefix`, or `inline` (the legacy arm). */
     val contextPlacement: String = "",
+    /** A mined-corpus task only: the tool whose result held a line of the task's own solution (see [AgentEvalCorpus.leak]). */
+    val leakedVia: String = "",
     /** Root-relative paths the `repo` tools wrote, in order (a path written twice appears twice). */
     val repoWritten: List<String> = emptyList(),
 )
@@ -277,7 +281,8 @@ object AgentTaskRunner {
 
         return try {
             val ctx = contextFor(info, graph, request.focusBox.ifBlank { null }).let { base ->
-                if (request.programs == "off") base.copy(withheld = base.withheld + afield.ai.tools.program.RUN_TOOL_PROGRAM) else base
+                val off = (if (request.programs == "off") setOf(afield.ai.tools.program.RUN_TOOL_PROGRAM) else emptySet()) + request.withhold
+                if (off.isNotEmpty()) base.copy(withheld = base.withheld + off) else base
             }.let { base ->
                 if (request.repoRoot.isBlank()) base else {
                     val root = java.io.File(request.repoRoot)

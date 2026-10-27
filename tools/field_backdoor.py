@@ -3876,6 +3876,14 @@ def build_command_parser() -> argparse.ArgumentParser:
                                    help="off withholds RunToolProgramRequest from every task (the tool-program A/B arm)")
     agent_eval_parser.add_argument("--context", choices=("", "legacy"), default="",
                                    help="legacy sends every task's instructions inside the stored message (the context-pipeline A/B arm)")
+    agent_eval_parser.add_argument("--corpus", nargs="?", const="all", default="", choices=("", "all", "train", "heldout"),
+                                   help="Run the tasks mined from dev_docs/agents/transcripts (AgentEvalCorpus) instead of the hand suite")
+    agent_eval_parser.add_argument("--sample", type=int, default=0, help="With --corpus/--calibrate: a seeded sample of N tasks")
+    agent_eval_parser.add_argument("--seed", type=int, default=0)
+    agent_eval_parser.add_argument("--sealed", action="store_true",
+                                   help="Withhold the tools that read the repository (a mined task's answer is in it); a pass that still saw its solution scores leaked")
+    agent_eval_parser.add_argument("--calibrate", action="store_true",
+                                   help="Re-mine the corpus: run every candidate's solution twice and derive its checks")
     agent_eval_parser.add_argument("--timeout", type=float)
 
     ai_chat_parser = subparsers.add_parser("ai-chat", add_help=False)
@@ -5110,11 +5118,18 @@ async def dispatch_command(
             "blind": bool(args.blind),
             "programs": args.programs,
             "context": args.context,
+            "corpus": args.corpus,
+            "sample": args.sample,
+            "seed": args.seed,
+            "calibrate": bool(args.calibrate),
+            "sealed": bool(args.sealed),
         }
-        timeout = args.timeout or max(client.default_timeout, 3600.0)
+        timeout = args.timeout or max(client.default_timeout, 3600.0 * (4 if args.calibrate else 1))
         event = await client.call_for_single_reply("agent-eval", payload, timeout=timeout)
         data = event.get("payload") if isinstance(event.get("payload"), dict) else {}
-        ok = bool(data) and data.get("passed") == data.get("population")
+        # A calibration's verdict is that it produced a corpus; rejected candidates are its normal output.
+        ok = bool(data) and not data.get("error") and (bool(data.get("passed")) if args.calibrate
+                                                       else data.get("passed") == data.get("population"))
         result = command_result(command_line, ok, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=ok)
         return result

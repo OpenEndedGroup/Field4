@@ -270,6 +270,117 @@ nightly agent brought up a Field on this night's assigned port 9611, so the caus
 port collision is the leading suspect. It cost one live task (primes, abandoned mid-turn). The rest
 ran on port 9637 and over HTTP.
 
+## Mined corpus (2026-10-26)
+
+`AgentEvalCorpus` (`ai/agent/AgentEvalCorpus.kt`) mines tasks from the operation transcripts in
+`dev_docs/agents/transcripts/`, so the suite stops being seventeen hand-written tasks. Each mined task has
+four parts. The goal gives the box's name, its parents, the first two sentences of its leading comment and
+the text its output must include. The setup is the box's ancestors, created with their code and run. The
+solution is the box's real code. The checks are `box-exists`, `last-run-ok`, `connected` per parent, and
+`output-contains` on output that came out the same in two scripted runs. No new check kind was added. The
+calibrated corpus is checked in as `src/jvmMain/resources/ai4/agent_eval_corpus.json`. The split is fixed by
+id hash, with about a third `heldout`.
+
+```bash
+B="uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9631 --command"
+$B 'agent-eval --calibrate'                       # re-mine + rewrite the corpus (~4 min)
+$B 'agent-eval --corpus all'                      # scripted floor
+$B 'agent-eval --corpus heldout --sample 20 --seed 1 --mode live --lessons on --sealed'
+```
+
+`--sealed` withholds the four repository-search tools: a mined task's answer is in the repository (below).
+Corpus live runs are capped at **25** sampled tasks. The hand suite's cap stays at 17. Demo:
+`dev_docs/agents/transcripts/agent_eval_corpus.yaml`, two boxes that print the corpus summary and one task.
+
+**Yield** (267 transcripts, 978 code boxes): 177 static candidates, **116 tasks** (89 checked on printed
+lines, 18 on a displayed text node, 9 only on a tag such as `<svg`; 35 heldout). The dropped boxes, by reason:
+
+| reason | boxes | stage |
+| --- | --- | --- |
+| not executed whole by its transcript (fragment runs, never run) | 366 | static |
+| renderer / Mesh / Vulkan (incl. 5 via an ancestor) | 210 | static |
+| no output call | 99 | static |
+| ran, but said nothing the tool result carries (mostly `lines(...)`/drawing helpers) | 51 | calibration |
+| audio, files, clock, camera, python, threads, `loop {}`/`start {}`, shader, unseeded random | 113 | static |
+| solution fails in a scratch document (NPE, "another document is recording", source-backed block) | 7 | calibration |
+| output differs between two runs | 3 | calibration |
+| other (too long, unknown ancestor, self-reference) | 13 | static |
+
+**What mines well**: CPU boxes that `println` a computed summary (`hysteresis on: 553 edges created, ...`).
+These are 89 of 116 tasks and every live failure but one infrastructure error. **What mines badly**: drawing
+boxes, whose output never reaches the tool result as text (51 dropped, and 9 kept only with a tag check that
+any SVG passes). Graphics are a third of the transcripts and cannot be mined without a renderer parent.
+**What is brittle**: 18 tasks check floating-point layout to four or more decimals (`plotRect:
+Rect(x=73.71484375, ...)`). The one task that failed in both sealed arms (`chart_clip/clip_on`) is of
+this kind. 32 tasks have no leading comment, so their goal is a name and a target text.
+
+Two harness bugs turned up and were fixed:
+- `ScriptedLlmBridge` treated every `${a.b}` as a placeholder. Any box code with a Kotlin template such as
+  `"${it.name}"` threw, which cost 70 of 177 candidates. Placeholders must now name a tool
+  (`${XxxRequest.field}`).
+- One check quoted the calibrating worktree's absolute path. Lines with absolute paths, uids or identity
+  hashes are no longer checks.
+
+### Results (2026-10-26): scripted floor and live before/after
+
+Scripted floor on live Field (port 9631): **116/116** in 93 s, documents 1 → 1 (118/118 on the corpus
+before the path filter). Live runs used openai gpt-6.1-sol (`AFIELD_AI_PROVIDER=openai`), because the
+configured local endpoint did not answer. Each arm is 20 seeded tasks, one run per arm:
+
+| arm | population | lessons | search | pass | rounds | input tokens | misuse |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| A | train, seed 1 | off (v5), then `--distil` → v6 | on | 20/20 | 148 | 2,834,827 | 15 |
+| B | heldout, seed 1 (corpus of 118) | off | on | 19/20 | 201 | 3,975,333 | 28 |
+| C | same 20 as B | on (v6, from A) | on | 20/20 | 159 | 3,133,460 | 5 |
+| D | heldout, seed 1 (corpus of 116) | off | sealed | 17/20 | 174 | 3,317,309 | 14 |
+| E | same 20 as D | on (v6) | sealed | 19/20 | 150 | 3,471,504 | 10 |
+
+Arm A's distil wrote three lessons: `DescribeToolsRequest` asked for a non-existent `AttachmentRequest`,
+`WorkspaceSearchRequest` was called with an empty query, and `EvaluateKotlinExpressionRequest` was given a
+blank target. On held-out tasks the lessons cut misuse 28 → 5 with search on and 14 → 10 sealed, and cut
+rounds 201 → 159 and 174 → 150. Pass rate is near ceiling (B 19, C 20, D 17, E 19), so on this population
+it does not separate the arms. One run per arm: read the misuse difference as a direction, not an effect
+size. D's three misses are two layout-float tasks the model renamed or abandoned and one provider outage
+(`provider remained temporarily unavailable`). Arm B's miss is the absolute-path check, since removed.
+The distilled v6 lessons were **not** kept. `agent_lessons.md` is unchanged in this branch, because
+replacing the hand-suite lessons is a separate decision. The v6 text is in the nightly worklog.
+
+**Contamination.** The solutions are in the repository, and the model looks for them. Some non-box tool
+result held a line of the task's own solution in 3, 5 and 4 of 20 tasks (A, B, C), through
+`SemanticRetrievalSearchRequest` and `EvaluateKotlinExpressionRequest` reading the transcript. Truncated
+results make this a lower bound. Sealed, it fell to 1 and 2 of 20, all through
+`EvaluateKotlinExpressionRequest`, which can read files and is not withheld. Use `--sealed` for corpus
+numbers. A clean seal needs either the corpus solutions kept out of the agent's reachable tree or file
+reads denied for that path.
+### Continue pass (2026-10-27): runaways, a real seal, the floor on disk
+
+- **Runaway code.** The `forever` deny list now also matches `while (true)` and `do { } while (true)`, and
+  `markdown(...)` counts as output. Runaway code the deny list cannot see, such as recursion with no base
+  case, hits a 20 s calibration timeout (`CALIBRATION_TIMEOUT_SECONDS`). It is rejected as `timeout`, or as
+  `interrupted` once the Runloop watchdog (`BoxInterruptedError`) stops it. It is not counted as
+  `solution-fails`. Re-calibrated: 194 candidates, **132 tasks** (92 stdout, 31 display, 9 display-shape;
+  42 heldout), with one `timeout` rejection.
+- **Sealing.** `--sealed` also withholds `EvaluateKotlinExpressionRequest` and `CodeUseQueryRequest`
+  (`SEALED_TOOLS`), the two tools through which the 10-26 sealed arms still read their solution. Box code
+  can still open the transcript files, so withholding tools proves nothing on its own.
+  `AgentEvalCorpus.leak` searches every non-echoing tool result for the solution's five longest code
+  lines. Box output counts, so a box that printed the transcript file is caught. A sealed pass that saw
+  its solution scores `leaked`, and the report counts `leaked`.
+- **Floor on disk.** `dev_docs/ai/agent_eval_corpus_floor.json` holds the per-task result of the scripted
+  floor on live Field 9631: **132/132** in 114 s, documents 1 → 1.
+
+Held-out rerun (openai gpt-6.1-sol, sealed, heldout seed 2, 12 tasks per arm, the same 12 in both arms):
+
+| arm | lessons | pass | rounds | input tokens | misuse | leaked |
+| --- | --- | --- | --- | --- | --- | --- |
+| F | off (v5) | 12/12 | 90 | 1,716,618 | 4 | 0 |
+| G | on (v6, distilled from arm A) | 12/12 | 62 | 1,014,646 | 4 | 0 |
+
+With the wider seal, no task saw its own solution (0 of 24, against 1 and 2 of 20 before). The v6
+lessons cut rounds and tokens on this sample but not misuse, which is what they were distilled to cut.
+Arms D/E showed misuse 14 → 10. One run per arm, and the rerun does not reproduce the misuse effect, so
+**v6 is not committed**: `agent_lessons.md` stays at v5.
+
 ## AI4 as the repo's third coding agent (2026-10-27)
 
 `FIELD_AGENT=field` (or `field` as the first word of `~/.afield/agent`) makes Field's own agent the one
