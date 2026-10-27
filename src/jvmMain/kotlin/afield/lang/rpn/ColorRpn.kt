@@ -24,6 +24,25 @@ import kotlin.math.sqrt
 import kotlin.math.tan
 
 /**
+ * A reverse-Polish language whose programs are pictures: tokens push numbers and colours onto a
+ * stack, the program runs once per pixel of a square, and what is left on the stack is that
+ * pixel's colour.
+ *
+ * [ColorRpn] is the language, and it is small enough to read in one sitting: four variables for
+ * where the pixel is, twenty-five words, and no way to fail. Compiling a program gives a
+ * [ColorRpnProgram], which reports the colour at one point, renders a square at any size on all
+ * cores, or hands back PNG bytes that `display` shows as an image.
+ *
+ * ```kotlin
+ * display("main", ColorRpn.compile("x 9 * sin 0.18 +  y 0.55 +  0.62  hsl").png(256))
+ * ```
+ *
+ * The rest of the family builds a search on top: `ColorRpnGenome.kt` breeds one program from two,
+ * and `ColorRpnEvolution.kt` puts a grid of the results in a box for you to pick from. The
+ * language is described word by word on [ColorRpn] below.
+ */
+
+/**
  * The colour expression language of the madp *GA* demo (`ga.html`): a reverse-Polish program run
  * once per pixel, whose result is a colour. It is the genome of interactive evolution in the manner
  * of Karl Sims' *Genetic Images* (see `ColorRpnGenome` and `afield.study.search.EyeEvolution`), and
