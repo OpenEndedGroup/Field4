@@ -4,6 +4,20 @@ import afield.app.server.SessionInformation
 import afield.document.graph.Box
 
 /**
+ * The content hash that catches a document edit dirty marking did not see.
+ *
+ * Field decides whether to save by marking: a write through `setPropertyRaw`, `removePropertyRaw`,
+ * `connect` or `disconnect` tells the session there is something to write. A collection mutated in
+ * place and a write made while the document is still loading go through none of them. So the
+ * autosave tick, the detach save and the shutdown flush also hash what they would write and compare
+ * that against the hash from the last time the document matched disk, saving when the two differ.
+ *
+ * The per-property entries behind the hash are kept as well, which lets a tripwire name the
+ * `(box id, property)` pairs that changed without being marked. Each one names a mutator that
+ * should have marked its own write.
+ */
+
+/**
  * A content hash of everything a document would write to `metadata.edn`.
  *
  * Dirty marking ([Box.notePersistentChange]) sees a write that goes through `setPropertyRaw`,
