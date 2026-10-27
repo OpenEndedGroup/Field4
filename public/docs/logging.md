@@ -14,7 +14,7 @@ lprintln("info,mypage", "something happened")
 
 `"info,mypage"` is a **channel**: a comma-separated list of *tags*, which every consumer
 downstream selects on. A channel is neither a level nor a logger name. There
-are **1091**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
+are **1092**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
 `lprintln` with the channel written out as a literal, spelling
 **254**<!--count:logChannelStrings--> distinct channel strings between them.
 
