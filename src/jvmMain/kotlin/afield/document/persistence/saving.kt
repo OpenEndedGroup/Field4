@@ -1488,6 +1488,42 @@ class SavingContext {
         }
     }
 
+    /**
+     * A sidecar's text at load, unless `metadata.edn` was written after it with a different inline
+     * copy: that is a hand edit of the inline text made while the document was closed, and it wins.
+     * The sidecar it replaces is copied into `backups/` first and the choice is logged, so neither
+     * edit is lost. Two seconds of slack keep a checkout, which writes both files at once, on the
+     * sidecar.
+     */
+    /** The box ids a stored topology value (`children`, `parents`) names, or null when it names none. */
+    internal fun storedBoxRefIds(value: Any?): Set<String>? = when (value) {
+        null -> emptySet()
+        is BoxRef -> setOf(value.id)
+        is Collection<*> -> value.mapNotNullTo(LinkedHashSet()) { (it as? BoxRef)?.id }
+        else -> null
+    }
+
+    internal fun sidecarOrNewerInline(file: File, value: FileInline, directory: String): String {
+        val text = file.readText()
+        if (text == value.inline) return text
+        val metadata = File(directory, METADATA_EDN)
+        if (!metadata.isFile || metadata.lastModified() <= file.lastModified() + 2000) return text
+        runCatching {
+            val backup = File(directory, "backups/${file.name}.before-inline-${System.currentTimeMillis()}")
+            backup.parentFile.mkdirs()
+            file.copyTo(backup)
+            lprintln(
+                "warning,save",
+                "${value.path}: metadata.edn's inline copy is newer than the file and differs from it, so the inline " +
+                    "edit is loaded; the file's text is kept as backups/${backup.name}"
+            )
+        }.onFailure { e ->
+            lprintln("warning,save", "${value.path}: could not back up the file before loading the newer inline copy (${e.message}); keeping the file")
+            return text
+        }
+        return value.inline
+    }
+
     private fun resolveValue(
         value: Any?,
         directory: String,
@@ -1507,7 +1543,7 @@ class SavingContext {
         }
         is FileInline -> {
             val file = File(directory, value.path)
-            if (!preferInlineFiles && file.exists()) file.readText() else value.inline
+            if (!preferInlineFiles && file.exists()) sidecarOrNewerInline(file, value, directory) else value.inline
         }
 
         is BoxRef -> {

@@ -210,6 +210,32 @@ class FileWatchMetadataReconcileTest {
             "the inline code edit was not applied (code=${a.getPropertyRaw("code")})")
     }
 
+    /** Adding and removing a box id in an open box's `children` in metadata.edn rewires it. */
+    @Test
+    fun aConnectionEditToAnOpenBoxIsApplied() {
+        val directory = tempDocument("connections")
+        val metadata = File(directory, SavingContext.METADATA_EDN)
+        fun withChildren(children: String) =
+            "{\"version\" 2 \"boxes\" [{\"id\" \"root\" \"properties\" {\"name\" \"root\"}} " +
+                "{\"id\" \"a\" \"properties\" {\"name\" \"a\" \"children\" #{$children}}} " +
+                "{\"id\" \"b\" \"properties\" {\"name\" \"b\"}}]}\n"
+        metadata.writeText(withChildren(""))
+        val loadedAt = metadata.lastModified()
+        val info = session(directory, "a", "b")
+        val a = info.boxes.getValue("a"); val b = info.boxes.getValue("b")
+        val watcher = info.fileWatchManager
+
+        metadata.writeText(withChildren("#afield/box \"b\""))
+        metadata.setLastModified(loadedAt + 2_000L)
+        runBlocking { watcher.handleMetadataChange(metadata) }
+        assertTrue(pumpMainUntil { b in a.children && a in b.parents }, "a -> b was not connected")
+
+        metadata.writeText(withChildren(""))
+        metadata.setLastModified(loadedAt + 4_000L)
+        runBlocking { watcher.handleMetadataChange(metadata) }
+        assertTrue(pumpMainUntil { b !in a.children && a !in b.parents }, "a -> b was not disconnected")
+    }
+
     /**
      * The watcher used to call any event "Field's own save" when the file had the size Field wrote and
      * an mtime inside a 15 s grace window, so a same-length edit just after a save was invisible. It
