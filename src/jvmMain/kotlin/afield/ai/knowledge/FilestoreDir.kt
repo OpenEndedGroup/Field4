@@ -43,7 +43,7 @@ object FilestoreDir {
     const val PROPERTY = "afield.filestore.dir"
     const val ENV = "AFIELD_FILESTORE_DIR"
 
-    /** Where `~/.afield/filestore` used to be, and still is for anyone who has not run this code. */
+    /** The machine-wide `~/.afield/filestore`, which [FilestoreDir] copies from and never deletes. */
     val legacyGlobal: Path
         get() = Paths.get(System.getProperty("user.home"), ".afield", "filestore")
 
@@ -54,9 +54,9 @@ object FilestoreDir {
     private var seeded: Path? = null
 
     /**
-     * The directory itself. Read late rather than captured in a `val`, because a test that pins it
-     * after some object's `<clinit>` has run must still be obeyed — a field initialised at class-load
-     * time is the shape of bug this whole file exists to remove.
+     * The directory itself. Read late rather than captured in a `val`, so that a test pinning it
+     * after some object's `<clinit>` has run is still obeyed; a value captured at class-load time
+     * would keep answering with whatever was resolved first.
      */
     val path: Path
         get() = pinned
@@ -75,7 +75,7 @@ object FilestoreDir {
     /**
      * Copy the legacy global caches into a checkout that has none, once per JVM.
      *
-     * Deliberately not a move: another Field, or an older build, may still be reading the global copy,
+     * A copy, not a move: another Field, or an older build, may still be reading the global copy,
      * and a half-migrated machine that answers slowly is better than one that answers wrongly.
      */
     private fun seedFromLegacyOnce(target: Path) {
@@ -109,11 +109,10 @@ object FilestoreDir {
     }
 
     /**
-     * Run [block] with the filestore pinned to [dir] — the seam a test needs to hand the completion
-     * path a known index instead of whatever the machine last wrote.
+     * Run [block] with the filestore pinned to [dir] — how a test hands the completion path a known
+     * index instead of whatever the machine last wrote.
      *
-     * Restores the previous pin rather than clearing it, so nesting works and a test that pins does not
-     * quietly un-pin an outer one.
+     * Restores the previous pin rather than clearing it, so an inner pin leaves an outer one standing.
      */
     fun <T> withDirectory(dir: Path, block: () -> T): T {
         val was = pinned

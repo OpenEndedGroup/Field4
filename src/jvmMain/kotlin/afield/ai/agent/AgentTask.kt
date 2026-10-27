@@ -79,7 +79,7 @@ data class AgentTaskRequest(
     val context: String = "",
     /**
      * Further user turns, sent in order in the same conversation after the goal's turn finishes. The checks
-     * run after the last. What makes a task multi-turn — the case where instructions used to pile up.
+     * run after the last. Any non-empty list makes the task multi-turn.
      */
     val followUps: List<String> = emptyList(),
 )

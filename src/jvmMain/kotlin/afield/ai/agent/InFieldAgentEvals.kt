@@ -72,9 +72,9 @@ object InFieldAgentEvals {
      * stylesheet that makes `.bars` `flex-direction: row-reverse` — output panels share one page, so a
      * style in one panel reaches every other. The bars therefore appear in the reverse of the list's
      * order, and sorting the list ascending, the obvious first move, draws them tallest-first. Chart's
-     * own code does not say so; the picture does. (The first version put row-reverse in Chart's own
-     * code; the live model read it and got it right first time, twice, so it tested nothing.) The
-     * scripted solution makes the mistake on purpose, sees it, and fixes it.
+     * own code does not say so; the picture does. The stylesheet lives in Theme for that reason: in
+     * Chart's own code, reading it would stand in for looking at the output. The scripted solution
+     * makes the mistake first, sees it, and fixes it.
      */
     val THEME_CODE = "display(\"main\", \"<style>.bars { flex-direction: row-reverse; justify-content: flex-end; }</style>" +
         "<div style='font: 12px monospace'>theme loaded</div>\")"

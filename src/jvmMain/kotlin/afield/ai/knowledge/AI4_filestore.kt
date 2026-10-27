@@ -41,9 +41,9 @@ import kotlin.concurrent.write
  * [OpenAiFileStoreCache] keys each record by a SHA-256 of the content and a peppered hash of the API key
  * (the key itself is never stored), keeps the database as JSON, and writes it atomically under a
  * read-write lock. `uploadIfNeeded` returns an existing file ID when the content is already known, and
- * [DuplicatePolicy] decides what a second upload of known content does. [OpenAiFileUploader] is the upload
- * seam; [OkHttpOpenAiFileUploader] is a minimal multipart client for `/v1/files`, and [uploadVirtualFiles]
- * pushes Field virtual files through the same path.
+ * [DuplicatePolicy] decides what a second upload of known content does. [OpenAiFileUploader] is the
+ * interface an upload goes through; [OkHttpOpenAiFileUploader] is a minimal multipart client for
+ * `/v1/files`, and [uploadVirtualFiles] pushes Field virtual files through the same path.
  *
  * [OpenAiKnowledgeStore] is a second, registry-style store over the Files and Vector Stores REST endpoints.
  * The command-line driver for the cache is `AI4FilestoreCli.kt`.
