@@ -150,8 +150,14 @@ var outline = false
 
 fun redraw() = display("main", "<b>${if (outline) "outlined" else "filled"}</b> square, turning at $speed rpm")
 
-slider("speed", min = 0.0, max = 10.0, step = 0.1, initialValue = 3.0) { speed = it; redraw() }
-checkbox("outline") { outline = it; redraw() }
+slider("speed", min = 0.0, max = 10.0, step = 0.1, initialValue = 3.0) {
+    speed = it
+    redraw()
+}
+checkbox("outline") {
+    outline = it
+    redraw()
+}
 redraw()
 ```
 

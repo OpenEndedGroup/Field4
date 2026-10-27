@@ -132,7 +132,6 @@ operations:
           }
           lines(petal, stem, w = 420.0, h = 420.0, fitToSize = true, editable = true)
           displayOpen("lines")
-
   # ---------------------------------------------------------------- Vulkan: streamed view and a probe
   - create:
       box: demo_renderer
@@ -193,18 +192,20 @@ operations:
           val view = ElectronRTTView(640, 360)
           val started = AnimationClock.nowSeconds()
 
-          view += "content" to moduleHere {
-              +view
-              +Mesh("square") {
-                  set(4, 2) {
-                      pos.add(-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0)
-                      tc.add(0, 0, 1, 0, 1, 1, 0, 1)
-                      tri.add(0, 1, 2)
-                      tri.add(0, 2, 3)
+          view +=
+              "content" to
+                  moduleHere {
+                      +view
+                      +Mesh("square") {
+                          set(4, 2) {
+                              pos.add(-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0)
+                              tc.add(0, 0, 1, 0, 1, 1, 0, 1)
+                              tri.add(0, 1, 2)
+                              tri.add(0, 2, 3)
+                          }
+                          time = { AnimationClock.nowSeconds() - started }
+                      }
                   }
-                  time = { AnimationClock.nowSeconds() - started }
-              }
-          }
 
           display("main", view.html())
           displayOpen("main")
@@ -300,8 +301,9 @@ operations:
           layout(location = 0) in vec2 tc;
           void main() {
               float d = max(0.0, 0.5-length(tc-vec2(0.5)));
-              float w = fwidth(d);
-              d = smoothstep(0.1, 0.1+w, d)*smoothstep(0.14+w, 0.14, d);
+              // Keep a nonzero pixel-wide transition, even where the distance is locally flat.
+              float w = max(fwidth(d), 0.00001);
+              d = smoothstep(0.1, 0.1 + w, d) * (1.0 - smoothstep(0.14, 0.14 + w, d));
               uFragColor = vec4(1.0, 0.8, 0.4, d*0.2);
               if (d<0.01) discard;
           }
@@ -365,7 +367,6 @@ operations:
               }
               frame()
           }
-
   # ---------------------------------------------------------------- a timeline to scrub
   - create:
       box: demo_timeline
@@ -425,9 +426,12 @@ operations:
       properties:
         code: |
           // Runs while the time slider is over it.
-          display("main", "<div style='width:300px;height:26px;border-radius:4px;background:linear-gradient(90deg,#1971c2,#4dabf7)'></div>")
+          display(
+              "main",
+              "<div style='width:300px;height:26px;border-radius:4px;background:linear-gradient(90deg,#1971c2,#4dabf7)'></div>",
+          )
           displayOpen("main")
-          loop { }
+          loop {}
   - create:
       box: demo_cue_2
       name: cue 2
@@ -435,9 +439,12 @@ operations:
       properties:
         code: |
           // Runs while the time slider is over it.
-          display("main", "<div style='width:300px;height:26px;border-radius:4px;background:linear-gradient(90deg,#2f9e44,#8ce99a)'></div>")
+          display(
+              "main",
+              "<div style='width:300px;height:26px;border-radius:4px;background:linear-gradient(90deg,#2f9e44,#8ce99a)'></div>",
+          )
           displayOpen("main")
-          loop { }
+          loop {}
   - create:
       box: demo_cue_3
       name: cue 3
@@ -445,9 +452,12 @@ operations:
       properties:
         code: |
           // Runs while the time slider is over it.
-          display("main", "<div style='width:300px;height:26px;border-radius:4px;background:linear-gradient(90deg,#e8590c,#ffc078)'></div>")
+          display(
+              "main",
+              "<div style='width:300px;height:26px;border-radius:4px;background:linear-gradient(90deg,#e8590c,#ffc078)'></div>",
+          )
           displayOpen("main")
-          loop { }
+          loop {}
   - create:
       box: demo_cue_4
       name: cue 4
@@ -455,10 +465,12 @@ operations:
       properties:
         code: |
           // Runs while the time slider is over it.
-          display("main", "<div style='width:300px;height:26px;border-radius:4px;background:linear-gradient(90deg,#ae3ec9,#e599f7)'></div>")
+          display(
+              "main",
+              "<div style='width:300px;height:26px;border-radius:4px;background:linear-gradient(90deg,#ae3ec9,#e599f7)'></div>",
+          )
           displayOpen("main")
-          loop { }
-
+          loop {}
   # ---------------------------------------------------------------- the drawing layer
   - create:
       box: demo_notes
@@ -481,7 +493,6 @@ operations:
               stroke((0..80).map { k -> vec(1300 + k * 12.0, 1440 + 30 * sin(k / 5.0)) }, stroke = "#2f9e44")
           }
           markdown("marks", "" + notation.mine.size + " marks drawn on the drawing layer")
-
   # ---------------------------------------------------------------- run it
   - execute: { box: demo_palette }
   - execute: { box: demo_swatch }

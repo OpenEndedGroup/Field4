@@ -733,8 +733,12 @@ lines(
     strokedOnly,
     filledOnly + vec(400, 0),
     debugPoints + vec(800, 0),
-    filledOnly + vec(1200, 0), strokedOnly + vec(1200, 0), debugPoints + vec(1200, 0),
-    w = 1000.0, h = 260.0, fitToSize = true,
+    filledOnly + vec(1200, 0),
+    strokedOnly + vec(1200, 0),
+    debugPoints + vec(1200, 0),
+    w = 1000.0,
+    h = 260.0,
+    fitToSize = true,
 )
 ```
 
@@ -1423,10 +1427,15 @@ fun dot(p: Vec2, c: Vec4) = fline {
 
 val white = vec(1, 1, 1, 1)
 lines(
-    f1, f2,
-    dot(a, white), dot(b, white),
-    dot(vec(a.x, a.y - 60), white), dot(vec(b.x, b.y - 60), white),
-    w = 420.0, h = 260.0, fitToSize = true,
+    f1,
+    f2,
+    dot(a, white),
+    dot(b, white),
+    dot(vec(a.x, a.y - 60), white),
+    dot(vec(b.x, b.y - 60), white),
+    w = 420.0,
+    h = 260.0,
+    fitToSize = true,
 )
 ```
 
@@ -1567,8 +1576,18 @@ val reflected = styled(house().byReflecting2D(vec(50f, 0f), vec(50f, 100f)), 340
 val sheared = styled(house().byShearing2D(shearX = 0.4f, shearY = 0f), 510.0, vec(0.4, 1.0, 0.6, 0.45))
 
 lines(
-    ghost(0.0), rot, ghost(170.0), scaled, ghost(340.0), mirror, reflected, ghost(510.0), sheared,
-    w = 720.0, h = 220.0, fitToSize = true,
+    ghost(0.0),
+    rot,
+    ghost(170.0),
+    scaled,
+    ghost(340.0),
+    mirror,
+    reflected,
+    ghost(510.0),
+    sheared,
+    w = 720.0,
+    h = 220.0,
+    fitToSize = true,
 )
 ```
 
@@ -1916,10 +1935,13 @@ val gauss = base(0.0).byGaussianNoising(amplitude = 6f, seed = 1L, samples = 140
     color = vec(1.0, 0.6, 0.2, 0.9)
 }
 
-val oriented = base(110.0).byOrientedGaussianNoising(normalAmplitude = 10f, tangentAmplitude = 1.5f, seed = 2L, samples = 140).apply {
-    thickness = 2.5
-    color = vec(0.4, 1.0, 0.6, 0.9)
-}
+val oriented =
+    base(110.0)
+        .byOrientedGaussianNoising(normalAmplitude = 10f, tangentAmplitude = 1.5f, seed = 2L, samples = 140)
+        .apply {
+            thickness = 2.5
+            color = vec(0.4, 1.0, 0.6, 0.9)
+        }
 
 val perlin = base(220.0).byPerlinNoising(amplitude = 12f, frequency = 0.02f, octaves = 4, seed = 3L, samples = 140).apply {
     thickness = 2.5
@@ -2038,19 +2060,24 @@ fun styled(f: FLine, c: Vec4) = f.apply {
 // A grid: each filter over a faint copy of the same noisy input.
 val ema = styled(raw(0.0, 0.0).byEmaFiltering(alpha = 0.10f, samples = 220), vec(0.7, 0.9, 1.0, 0.95))
 val oneEuro = styled(
-    raw(400.0, 0.0).byOneEuroFiltering(minCutoffHz = 1.0f, beta = 0.05f, dCutoffHz = 1.0f, fpsHint = 60f, samples = 220),
+    raw(400.0, 0.0)
+        .byOneEuroFiltering(minCutoffHz = 1.0f, beta = 0.05f, dCutoffHz = 1.0f, fpsHint = 60f, samples = 220),
     vec(0.4, 1.0, 0.6, 0.95),
 )
-val ab = styled(raw(0.0, 170.0).byAlphaBetaFiltering(alpha = 0.25f, beta = 0.08f, fpsHint = 60f, samples = 220), vec(1.0, 0.6, 0.2, 0.95))
+val ab = styled(
+    raw(0.0, 170.0).byAlphaBetaFiltering(alpha = 0.25f, beta = 0.08f, fpsHint = 60f, samples = 220),
+    vec(1.0, 0.6, 0.2, 0.95),
+)
 val gpMean = styled(
-    raw(400.0, 170.0).byGaussianProcessInterpolating(
-        trainingSamples = 44,
-        samples = 220,
-        lengthScale = 0.11f,
-        variance = 1f,
-        noise = 0.02f,
-        drawSamples = false,
-    ),
+    raw(400.0, 170.0)
+        .byGaussianProcessInterpolating(
+            trainingSamples = 44,
+            samples = 220,
+            lengthScale = 0.11f,
+            variance = 1f,
+            noise = 0.02f,
+            drawSamples = false,
+        ),
     vec(1.0, 0.4, 0.4, 0.95),
 )
 // One-Dollar normalizes the gesture around the origin (rotated, scaled to 220, resampled), so it gets its own cell.
@@ -2060,10 +2087,18 @@ val oneDollar = styled(
 ) + vec(370, 340, 0)
 
 lines(
-    ghost(0.0, 0.0), ema, ghost(400.0, 0.0), oneEuro,
-    ghost(0.0, 170.0), ab, ghost(400.0, 170.0), gpMean,
+    ghost(0.0, 0.0),
+    ema,
+    ghost(400.0, 0.0),
+    oneEuro,
+    ghost(0.0, 170.0),
+    ab,
+    ghost(400.0, 170.0),
+    gpMean,
     oneDollar,
-    w = 720.0, h = 480.0, fitToSize = true,
+    w = 720.0,
+    h = 480.0,
+    fitToSize = true,
 )
 ```
 
@@ -2641,10 +2676,17 @@ val snippet = a.byExtracting(tStart = 0.3f, tEnd = 0.8f).apply {
 val dx = vec(260.0, 0.0)
 val dx2 = vec(520.0, 0.0)
 lines(
-    a, b, startDot,
-    a + dx, flat + dx, mid + dx,
-    a + dx2, snippet + dx2,
-    w = 720.0, h = 220.0, fitToSize = true,
+    a,
+    b,
+    startDot,
+    a + dx,
+    flat + dx,
+    mid + dx,
+    a + dx2,
+    snippet + dx2,
+    w = 720.0,
+    h = 220.0,
+    fitToSize = true,
 )
 ```
 
@@ -2713,10 +2755,11 @@ val step = 140.0
 val ii = FLineInterpolator(f, f2)
 
 // One frame per column, left to right, rather than all of them on top of each other.
-val frames = (0 until n).map { i ->
-    val t = i / (n - 1f)
-    ink(ii.lineAt(t), tint(t), 3.0) + vec(i * step, 0.0)
-}
+val frames =
+    (0 until n).map { i ->
+        val t = i / (n - 1f)
+        ink(ii.lineAt(t), tint(t), 3.0) + vec(i * step, 0.0)
+    }
 
 lines(frames, w = 720.0, h = 160.0, fitToSize = true)
 ```
@@ -2864,14 +2907,15 @@ val spun = FLineInterpolator(
 fun seen(line: FLine) = line.byPerspectiveProjecting(cameraPos = vec(50f, 50f, -400f))
 
 // Top row: the plain morph. Bottom row: the same morph with the spin.
-val frames = (0 until n).flatMap { i ->
-    val t = i / (n - 1f)
-    val at = vec(i * step, 0.0)
-    [
-        ink(seen(plain.lineAt(t)), vec(1.0, 1.0, 1.0, 0.45), 2.0) + at,
-        ink(seen(spun.lineAt(t)), tint(t), 3.0) + at + vec(0.0, 150.0),
-    ]
-}
+val frames =
+    (0 until n).flatMap { i ->
+        val t = i / (n - 1f)
+        val at = vec(i * step, 0.0)
+        [
+            ink(seen(plain.lineAt(t)), vec(1.0, 1.0, 1.0, 0.45), 2.0) + at,
+            ink(seen(spun.lineAt(t)), tint(t), 3.0) + at + vec(0.0, 150.0),
+        ]
+    }
 
 lines(frames, w = 720.0, h = 300.0, fitToSize = true)
 ```
@@ -3164,10 +3208,17 @@ val dx = vec(340.0, 0.0)
 val dx2 = vec(680.0, 0.0)
 val none = vec(0.0, 0.0)
 lines(
-    ghost(a, none), ghost(b, none),
-    ghost(a, dx), ghost(b, dx), u + dx,
-    ghost(a, dx2), ghost(b, dx2), i + dx2,
-    w = 720.0, h = 220.0, fitToSize = true,
+    ghost(a, none),
+    ghost(b, none),
+    ghost(a, dx),
+    ghost(b, dx),
+    u + dx,
+    ghost(a, dx2),
+    ghost(b, dx2),
+    i + dx2,
+    w = 720.0,
+    h = 220.0,
+    fitToSize = true,
 )
 ```
 

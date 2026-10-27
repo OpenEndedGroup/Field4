@@ -26,11 +26,14 @@ operations:
           var heading = DoubleArray(n) { rnd.nextDouble() * 2 * Math.PI }
           fun alignment(h: DoubleArray) = Math.hypot(h.sumOf { Math.cos(it) }, h.sumOf { Math.sin(it) }) / h.size
           for (round in 0..6) {
-              println("round $round: alignment ${"%.3f".format(alignment(heading))}")
-              heading = DoubleArray(n) { i ->
-                  val l = heading[(i + n - 1) % n]; val r = heading[(i + 1) % n]; val me = heading[i]
-                  Math.atan2(Math.sin(l) + Math.sin(me) + Math.sin(r), Math.cos(l) + Math.cos(me) + Math.cos(r))
-              }
+              println("round $round: alignment ${(alignment(heading)).f3}")
+              heading =
+                  DoubleArray(n) { i ->
+                      val l = heading[(i + n - 1) % n]
+                      val r = heading[(i + 1) % n]
+                      val me = heading[i]
+                      Math.atan2(Math.sin(l) + Math.sin(me) + Math.sin(r), Math.cos(l) + Math.cos(me) + Math.cos(r))
+                  }
           }
         "notes": |
           # Flock
@@ -49,12 +52,15 @@ operations:
         "autorun": false
         "code": |
           // Draws alignment against round as an SVG polyline in the box's output.
-          val values = listOf(0.468, 0.609, 0.665, 0.702, 0.732, 0.757, 0.779)
+          val values = [0.468, 0.609, 0.665, 0.702, 0.732, 0.757, 0.779]
           val pts = values.mapIndexed { i, v -> "${20 + i * 40},${120 - v * 100}" }.joinToString(" ")
-          display("main", """<svg width="290" height="140" style="background:#111">
+          display(
+              "main",
+              """<svg width="290" height="140" style="background:#111">
             <polyline points="$pts" fill="none" stroke="#48c9ff" stroke-width="2"/>
             <text x="20" y="135" fill="#888" font-size="11">round 0 .. 6</text>
-          </svg>""")
+          </svg>""",
+          )
           println("drew ${values.size} points")
         "notes": |
           # Chart
@@ -75,9 +81,11 @@ operations:
       properties:
         "autorun": false
         "code": |
-          // Writes this document's drawing layer: a frame around the two boxes, an arrow between them,
-          // a heading, and a hand-drawn underline. The marks belong to this box: run it again and they
-          // are replaced in place.
+          /*
+          Writes this document's drawing layer: a frame around the two boxes, an arrow between them,
+          a heading, and a hand-drawn underline. The marks belong to this box: run it again and they
+          are replaced in place.
+          */
           val flock = inside.boxes.values.first { it.name == "flock" }
           val chart = inside.boxes.values.first { it.name == "chart" }
           notation {

@@ -79,13 +79,15 @@ operations:
           The other three boxes are variations: a sentence in place of a picture, one picture swapped, and a
           fifth point that does not fit.
         code: |
-          // Four pictures, embedded by CLIP, drawn as the one tetrahedron whose six edges are
-          // their six distances.
-          //
-          // CLIP turns each picture into 512 numbers: a point in a 512-dimensional space where
-          // pictures of similar things land close together. Any four points of such a space fit
-          // exactly in three dimensions, so this tetrahedron loses nothing: its edges ARE the
-          // distances. Drop your own pictures on the slots, or drag one up from the tray.
+          /*
+          Four pictures, embedded by CLIP, drawn as the one tetrahedron whose six edges are
+          their six distances.
+
+          CLIP turns each picture into 512 numbers: a point in a 512-dimensional space where
+          pictures of similar things land close together. Any four points of such a space fit
+          exactly in three dimensions, so this tetrahedron loses nothing: its edges ARE the
+          distances. Drop your own pictures on the slots, or drag one up from the tray.
+          */
           val inputs = mediaSlots {
               image("public/docs/assets/madp_tetra/tabby_cat.jpg")
               image("public/docs/assets/madp_tetra/labrador.jpg")
@@ -98,7 +100,7 @@ operations:
           // Runs now, and again whenever a slot changes.
           inputs.onChange { slots ->
               view.dim("processing current embeddings")
-              val vectors = slots.map { it.clip() }        // one unit-length 512-vector per slot
+              val vectors = slots.map { it.clip() } // one unit-length 512-vector per slot
               val simplex = embeddingSimplex(vectors, slots.map { it.label })
               view.show(simplex, colors = slots.map { it.color })
           }
@@ -122,12 +124,14 @@ operations:
 
           The madp page's server squared these distances twice before MDS; this box does not.
         code: |
-          // Three pictures and a sentence, in the one space CLIP puts both in.
-          //
-          // The sentence sits far from every picture, even the one it describes: CLIP's pictures
-          // and its sentences occupy different regions of the space (the "modality gap"). The
-          // diamonds rank each point's three edges: green the closest, orange, red the furthest.
-          // Which picture is the sentence closest to? Type something else and see.
+          /*
+          Three pictures and a sentence, in the one space CLIP puts both in.
+
+          The sentence sits far from every picture, even the one it describes: CLIP's pictures
+          and its sentences occupy different regions of the space (the "modality gap"). The
+          diamonds rank each point's three edges: green the closest, orange, red the furthest.
+          Which picture is the sentence closest to? Type something else and see.
+          */
           val inputs = mediaSlots {
               image("public/docs/assets/madp_tetra/tabby_cat.jpg")
               image("public/docs/assets/madp_tetra/labrador.jpg")
@@ -139,7 +143,7 @@ operations:
 
           inputs.onChange { slots ->
               view.dim("processing current embeddings")
-              val vectors = slots.map { it.clip() }        // pictures and text, one space
+              val vectors = slots.map { it.clip() } // pictures and text, one space
               val simplex = embeddingSimplex(vectors, slots.map { it.label })
               view.show(simplex, colors = slots.map { it.color }, flags = true)
           }
@@ -155,12 +159,14 @@ operations:
           its point stood off on its own. With four animals every edge is between about 0.75 and 0.94, a
           nearly even tetrahedron. Drag the bicycle from the tray onto slot 4 and see where it lands.
         code: |
-          // tetra with one picture swapped: the car is now a wolf.
-          //
-          // Compare the shape with tetra's. There, the car's three edges were the three longest:
-          // its point stood off on its own. Four animals make a nearly even tetrahedron, every
-          // edge within a fifth of the others. Drag the bicycle from the tray onto slot 4 and see
-          // where it lands.
+          /*
+          tetra with one picture swapped: the car is now a wolf.
+
+          Compare the shape with tetra's. There, the car's three edges were the three longest:
+          its point stood off on its own. Four animals make a nearly even tetrahedron, every
+          edge within a fifth of the others. Drag the bicycle from the tray onto slot 4 and see
+          where it lands.
+          */
           val inputs = mediaSlots {
               image("public/docs/assets/madp_tetra/tabby_cat.jpg")
               image("public/docs/assets/madp_tetra/labrador.jpg")
@@ -188,11 +194,13 @@ operations:
           longer quite the distances in the table, and the note under it gives the stress: how far the fit
           is from the real distances, 0 being exact. With these five photographs it is about 0.17.
         code: |
-          // Five points do not fit in three dimensions.
-          //
-          // Four points always sit exactly in 3D; five in general need four. The picture is now
-          // classical MDS's best 3D fit, its drawn edges no longer quite the distances in the
-          // table, and the note under it gives the stress: how far the fit is off, 0 being exact.
+          /*
+          Five points do not fit in three dimensions.
+
+          Four points always sit exactly in 3D; five in general need four. The picture is now
+          classical MDS's best 3D fit, its drawn edges no longer quite the distances in the
+          table, and the note under it gives the stress: how far the fit is off, 0 being exact.
+          */
           val inputs = mediaSlots {
               image("public/docs/assets/madp_tetra/tabby_cat.jpg")
               image("public/docs/assets/madp_tetra/labrador.jpg")

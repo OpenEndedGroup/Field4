@@ -262,8 +262,12 @@ creases, and a dark ground with a faint grid. Give a mesh a material to go with 
 
 ```diffstatic {data-lang=kotlin}
 three {
-    mesh(vase, wireframe = false, cullBackFaces = false,
-        material = ThreeSurfaceMaterial(roughness = 0.4f, metalness = 0.6f))
+    mesh(
+        vase,
+        wireframe = false,
+        cullBackFaces = false,
+        material = ThreeSurfaceMaterial(roughness = 0.4f, metalness = 0.6f),
+    )
     studio(groundY = -1.25)
     background("#060807")
 }

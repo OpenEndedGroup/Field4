@@ -45,20 +45,27 @@ notation {
 Run both, press `alt/option-D`, pick the pen and draw. Below, the stroke was drawn with the mouse, and the green copy is the box's answer:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1400x560" clip="0,0,1400,380" hide-toasts=true screenshot="assets/drawing_and_notation/listen.png" transcript="assets/transcripts/notation_listen_setup.yaml" padding="0" wait="0" timeout="120" embed=true hidden=true name="notation-listen" alt="The drawing layer switched on over two boxes, 'listen' and 'tell', joined by a blue arrow labelled 'tells'. A pale wave drawn with the pen runs across the canvas below them, a green copy of it runs alongside, and the listen box's output reports the stroke's point count and length."}
-// The boxes come from the setup transcript. Switch the drawing layer on, as Alt-D does, take
-// the pen, and draw a wave with the mouse: a real stroke, which the listen box hears once it is
-// finished.
+/*
+The boxes come from the setup transcript. Switch the drawing layer on, as Alt-D does, take
+the pen, and draw a wave with the mouse: a real stroke, which the listen box hears once it is
+finished.
+*/
 ui.eval("window.toggleDrawingLayer(); return window.drawingLayerState()")
 ui.waitForSelector("#field-drawing-layer .excalidraw", 15000.0)
 var ready = ""
 for (i in 0 until 60) {
     ui.pause(250)
-    ready = ui.eval("""
+    ready =
+        ui.eval(
+                """
         const s = window.drawingLayerState()
         const tools = document.querySelector("#field-drawing-layer .App-toolbar")
         const shown = !!tools && tools.getBoundingClientRect().width > 0
         return (s && s.active && shown) ? "ready" : "waiting"
-    """.trimIndent()).toString()
+    """
+                    .trimIndent(),
+            )
+            .toString()
     if (ready.contains("ready")) break
 }
 check(ready.contains("ready")) { "the drawing layer's toolbar never showed" }
@@ -76,10 +83,15 @@ ui.mouseUp()
 var echoed = ""
 for (i in 0 until 80) {
     ui.pause(250)
-    echoed = ui.eval("""
+    echoed =
+        ui.eval(
+                """
         const els = window.drawingLayerScene()
         return els.some(e => !e.isDeleted && e.customData && e.customData.fieldKey === "echo") ? "echoed" : "waiting"
-    """.trimIndent()).toString()
+    """
+                    .trimIndent(),
+            )
+            .toString()
     if (echoed.contains("echoed")) break
 }
 check(echoed.contains("echoed")) { "the listen box never answered the stroke" }

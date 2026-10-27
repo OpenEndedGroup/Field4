@@ -162,9 +162,13 @@ The first tab in the desktop app is the welcome page, also at `https://localhost
 a browser:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x1260" clip-selector="#docs-welcome-frame" screenshot="assets/welcome/welcome-page.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="welcome-page" alt="The welcome page. Across the top, Field·4 and buttons for Start here: a moving drawing, the five-minute guide, native graphics, documentation, and shutdown, then a filename box with Create. On the left, Running now, a search box and the workspace's documents, and the collapsed Starting points, Templates and Kits disclosures with their counts. On the right, the Changelog open on recent commits, and below it the collapsed Projects, Maven, Workspace, Runtime, Vulkan, Geometry extensions, Python, AI, Preferences and OSC panels with one-line summaries."}
-// The compact /welcome row and empty-workspace prompt point to Start here; /welcome is its own page, so it is loaded into a frame on the capture page at a desktop
-// window's size, against the runner's fresh checkout-local workspace: what a new user sees.
-ui.eval("""
+/*
+The compact /welcome row and empty-workspace prompt point to Start here; /welcome is its own page, so it is loaded
+into a frame on the capture page at a desktop
+window's size, against the runner's fresh checkout-local workspace: what a new user sees.
+*/
+ui.eval(
+    """
     document.getElementById("docs-welcome-frame")?.remove()
     const f = document.createElement("iframe")
     f.id = "docs-welcome-frame"
@@ -172,24 +176,32 @@ ui.eval("""
     f.setAttribute("style", "position:fixed;left:0;top:0;width:1100px;height:1240px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
     return true
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 // Wait for the parts that load after the page: the starting-points dock and every panel summary.
 var state = ""
 for (i in 0 until 60) {
     ui.pause(250)
-    state = ui.eval("""
+    state =
+        ui.eval(
+                """
         const d = document.getElementById("docs-welcome-frame")?.contentDocument
         if (!d || !d.getElementById("starting-points-dock")) return "loading"
         const splash = d.getElementById("splash-screen")
         if (splash && !splash.classList.contains("hidden")) return "splash"
         const pending = [...d.querySelectorAll("details > summary")].filter(s => /loading|checking/i.test(s.textContent)).length
         return pending === 0 ? "ready" : "pending:" + pending
-    """.trimIndent()).toString()
+    """
+                    .trimIndent(),
+            )
+            .toString()
     if (state.contains("ready")) break
 }
 check(state.contains("ready")) { "the welcome page did not finish loading: " + state }
 ui.pause(1200)
-ui.eval("""
+ui.eval(
+    """
     const f = document.getElementById("docs-welcome-frame")
     const d = f.contentDocument
     const kits = d.getElementById("kit-library")
@@ -201,7 +213,9 @@ ui.eval("""
     const response = await f.contentWindow.fetch("/api/kits", {cache: "no-store"})
     if (!response.ok) throw new Error("Kit library failed to load: " + response.status)
     return true
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 ```
 
 The left side is your documents. Type a name into the box at the top and press **Create** to make
