@@ -65,7 +65,7 @@ can be met) exact anyway, and re-anchoring removes the remaining stay leak geome
   weighted residual. When they conflict (the budget page example) the equality is the one shown
   violated. Documented on the page; a true priority order among requireds is not attempted.
 - **The formula REPL cannot see `internal`.** Functions the formula source calls must be public
-  (`SpreadsheetEvalHelpers.sqrt` etc.); an internal one fails every formula's compile.
+  (`SpreadsheetEvalHelpers.sqrt` etc., `spreadsheet.kt:399#SpreadsheetEvalHelpers`); an internal one fails every formula's compile.
 - **Edit detection needs a record that survives.** An in-memory "last solved inputs" missed edits
   made before the sheet document existed (`editSheet` before the iframe opened) and across restarts.
   It is now `SpreadsheetStoredState.solved` (additive JSON field), carried through the editor's
