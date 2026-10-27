@@ -1956,16 +1956,16 @@ client already has, the way the h2 explorer and the log stream do.
 
 Structure as JSON, presentation as HTML. The collection summary, the slot bands and the version
 rows are typed payloads the page lays out itself; individual *values* come over as rendered HTML
-from `.h`, because that is the whole point of reusing the value visualizers — a `Vector3f` arrives
-with its axis widget already drawn, and a type that registers its own printer gets it for free.
+from `.h`, which is what reusing the value visualizers buys: a `Vector3f` arrives with its axis
+widget already drawn, and a type that registers its own printer gets it for free.
 
-### Read-only, deliberately
+### Read-only
 
-There is an `apply` op, because putting a saved look back is the reason
-you were browsing. There is no edit op. Everything on disk is append-only by construction —
-`saveKey` never overwrites a numbered version and an unreadable manifest is quarantined rather
-than replaced — and an in-browser edit button would quietly break that. Getting a modified look
-back out goes through `updateCode`, which emits pasteable Kotlin.
+There is an `apply` op, because putting a saved look back is the reason you were browsing. There
+is no edit op. Everything on disk is append-only by construction — `saveKey` never overwrites a
+numbered version and an unreadable manifest is quarantined rather than replaced — and an
+in-browser edit button would break that. Getting a modified look back out goes through
+`updateCode`, which emits pasteable Kotlin.
 
 `src/jvmMain/kotlin/afield/app/server/keyframeBrowsing.kt` — [read the source](source/jvmMain/afield/app/server/keyframeBrowsing/)
 
@@ -3043,16 +3043,16 @@ A content hash of everything a document would write to `metadata.edn`.
 
 ## SafeSaveAtomicSmokeTest.kt { #safesaveatomicsmoketest-kt }
 
-Smoke for [`File.safeSave`](workspace.md#saving-kt--safesave)'s `atomic = true` path — the fix for transient `operations.yaml`
-corruption (a reader catching a truncated/interleaved write). The operation-transcript writer
-(`OperationTranscript.checkpoint` and friends) now writes atomically: to a temp file in the same
-directory, then an atomic rename into place, so a concurrent reader (or another process sharing
-the workspace) only ever observes a complete file.
+Smoke for [`File.safeSave`](workspace.md#saving-kt--safesave)'s `atomic = true` path, which is what keeps a file readable while it is
+being rewritten. The operation-transcript writer (`OperationTranscript.checkpoint` and friends)
+uses it for `operations.yaml`: the text goes to a temp file in the same directory and is then
+renamed into place, so a concurrent reader — another thread, or another process sharing the
+workspace — only ever sees a complete file.
 
-The load-bearing case is `concurrentAtomicWritesNeverTear`: many writer threads hammer one file
-while a reader parses it in a tight loop; with atomic writes the reader must never see a
-half-written (unparseable) file — which is exactly the SnakeYAML "expected <block end>" failure
-this fix eliminates.
+`concurrentAtomicWritesNeverTear` is the case that exercises that. Six writer threads replace one
+file 120 times each, with payloads of very different lengths, while a reader parses it in
+a tight loop. A torn or interleaved write splices one payload into another and SnakeYAML reports
+`expected <block end>`; under atomic writes every read parses to a list.
 
 `src/jvmMain/kotlin/afield/document/persistence/SafeSaveAtomicSmokeTest.kt` — [read the source](source/jvmMain/afield/document/persistence/SafeSaveAtomicSmokeTest/)
 
@@ -5130,7 +5130,7 @@ any failure so the caller falls back to the in-process K1 completer.
 
 [<code class="highlight"><span class="k">object</span> <span class="nc">AaCompletionClient</span></code>](source/jvmMain/afield/runtime/completion/AaCompletionClient/#L63)
 
-Stage C client for the out-of-process K2 Analysis-API completion endpoint (`/complete` on the code-use semantic sidecar). Used only when `KotlinEngineConfig.activeCompletionBackend == AA`; [`KotlinInterface2.complete`](workspace.md#kotlininterface2-kt--kotlininterface2--complete) falls back to the K1 delegate whenever this returns null (no sidecar URL configured, HTTP/timeout failure, or the sidecar reports failure). The AA classpath deliberately stays out of the live runtime — this is a thin HTTP bridge, mirroring `CodeUseTelemetryService`.
+Stage C client for the out-of-process K2 Analysis-API completion endpoint (`/complete` on the code-use semantic sidecar). Used only when `KotlinEngineConfig.activeCompletionBackend == AA`; [`KotlinInterface2.complete`](workspace.md#kotlininterface2-kt--kotlininterface2--complete) falls back to the K1 delegate whenever this returns null (no sidecar URL configured, HTTP/timeout failure, or the sidecar reports failure). The AA classpath stays out of the live runtime: this is a thin HTTP bridge, mirroring `CodeUseTelemetryService`.
 
 | Declaration | Summary |
 | --- | --- |
@@ -5142,7 +5142,7 @@ Stage C client for the out-of-process K2 Analysis-API completion endpoint (`/com
 | <a id="aacompletionclient-kt--aacompletionclient--complete"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">complete</span><span class="p">(</span><span class="n">snippet</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">cursor</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">preamble</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">implicitReceivers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">declarations</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">timeoutMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">4000</span><span class="p">,</span> <span class="n">classpathRootsOverride</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">jsTarget</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">replImports</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Outcome</span></code>](source/jvmMain/afield/runtime/completion/AaCompletionClient/#L186) |  |
 | <a id="aacompletionclient-kt--aacompletionclient--loweringerror"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LoweringError</span><span class="p">(</span><span class="k">val</span> <span class="n">region</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">factory</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">excerpt</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/AaCompletionClient/#L279) | One error in the lowered file, with the region of the lowering it belongs to. |
 | <a id="aacompletionclient-kt--aacompletionclient--lowering"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Lowering</span><span class="p">(</span><span class="k">val</span> <span class="n">success</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">preambleInjected</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">preambleBlank</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">stubCount</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">errors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">LoweringError</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/AaCompletionClient/#L289) | What `/lower` reports: the file completion would analyse, and every error in it. |
-| <a id="aacompletionclient-kt--aacompletionclient--lower"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">lower</span><span class="p">(</span><span class="n">snippet</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">cursor</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">preamble</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">implicitReceivers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">declarations</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">replImports</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">includeText</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">timeoutMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">300</span><span class="n">&#95;000</span><span class="p">)</span><span class="p">:</span> <span class="nc">Lowering</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/completion/AaCompletionClient/#L307) | Type-check the lowering for a request instead of completing it — the invariant behind `CompletionLoweringProbe`. Same arguments as [`complete`](workspace.md#aacompletionclient-kt--aacompletionclient--complete) deliberately: a lowering checked under a different request than the live one isn't checked. Null when there is no sidecar or the call failed. |
+| <a id="aacompletionclient-kt--aacompletionclient--lower"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">lower</span><span class="p">(</span><span class="n">snippet</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">cursor</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">preamble</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">implicitReceivers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">declarations</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">replImports</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">includeText</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">timeoutMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">300</span><span class="n">&#95;000</span><span class="p">)</span><span class="p">:</span> <span class="nc">Lowering</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/completion/AaCompletionClient/#L308) | Type-check the lowering for a request instead of completing it — the invariant behind `CompletionLoweringProbe`. Takes the same arguments as [`complete`](workspace.md#aacompletionclient-kt--aacompletionclient--complete), because a lowering checked under a different request than the live one isn't checked. Null when there is no sidecar or the call failed. |
 
 ## CommonMemberPrior.kt { #commonmemberprior-kt }
 
@@ -5222,7 +5222,7 @@ The completion corpus: real boxes, with the preamble they have AT RUNTIME.
 | <a id="completioncorpus-kt--completioncorpus--docrec"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DocRec</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">dir</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="k">val</span> <span class="n">boxes</span><span class="p">:</span> <span class="nc">LinkedHashMap</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">BoxRec</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L102) |  |
 | <a id="completioncorpus-kt--completioncorpus--case"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Case</span><span class="p">(</span><span class="k">val</span> <span class="n">doc</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">preamble</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">receivers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">listOf</span><span class="p">(</span><span class="s">&quot;afield.document.graph.Box&quot;</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L105) | One corpus entry: a box's code, and the preamble it has once its macros have expanded. |
 | <a id="completioncorpus-kt--completioncorpus--sha256"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">sha256</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L126) |  |
-| <a id="completioncorpus-kt--completioncorpus--parsedocument"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">parseDocument</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">DocRec</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L134) | Parse a `document.md` — the machine-readable mirror Field writes beside `metadata.edn`. Only what this corpus needs is read: each box's parent list (for `gatherPreambleUpwards`) and its property texts. Deliberately not an EDN parser; the mirror exists so tools don't need one. |
+| <a id="completioncorpus-kt--completioncorpus--parsedocument"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">parseDocument</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">DocRec</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L134) | Parse a `document.md` — the machine-readable mirror Field writes beside `metadata.edn`. Only what this corpus needs is read: each box's parent list (for `gatherPreambleUpwards`) and its property texts. Not an EDN parser: the mirror exists so tools don't need one. |
 | <a id="completioncorpus-kt--completioncorpus--documents"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">documents</span><span class="p">(</span><span class="n">dirs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="n">defaultDirs</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DocRec</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L169) | Every document under `dirs` (repo-relative or absolute), sorted, for determinism. |
 | <a id="completioncorpus-kt--completioncorpus--boxgraph"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">boxGraph</span><span class="p">(</span><span class="n">doc</span><span class="p">:</span> <span class="nc">DocRec</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Box</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L186) | Reconstruct a document's box graph as detached [`Box`](workspace.md#boxes-kt-box)es carrying its text properties. Enough for `gatherPreambleUpwards` (which walks `parents` and reads `preamble`) and for macro expansion (which reads `vertex`/`fragment`/… and writes `preamble`). Nothing is registered anywhere, so these boxes are garbage once the caller drops them. |
 | <a id="completioncorpus-kt--completioncorpus--kotlinboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">kotlinBoxes</span><span class="p">(</span><span class="n">doc</span><span class="p">:</span> <span class="nc">DocRec</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BoxRec</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L215) | Boxes whose `code` is Kotlin — the only ones this corpus is about. |
@@ -5230,7 +5230,7 @@ The completion corpus: real boxes, with the preamble they have AT RUNTIME.
 | <a id="completioncorpus-kt--completioncorpus--typesdeclaredwithoutanimport"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">typesDeclaredWithoutAnImport</span><span class="p">(</span><span class="n">preamble</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L302) | The types this preamble *declares a property of* but never brings into scope. |
 | <a id="completioncorpus-kt--completioncorpus--writefixtures"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">writeFixtures</span><span class="p">(</span><span class="n">cases</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Case</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">dir</span><span class="p">:</span> <span class="nc">File</span> <span class="o">=</span> <span class="nc">File</span><span class="p">(</span><span class="nc">FIXTURE&#95;DIR</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L338) | Write `cases` as reviewable fixtures: one manifest line per box, and one `.preamble.kt` file per box that has a preamble. The preamble is the harvested part — the part no static read of the corpus can produce — so it is what gets checked in; the code is left where it already lives and referenced by a content hash, so there is exactly one copy of it in the repo and a corpus edit is detectable. |
 | <a id="completioncorpus-kt--completioncorpus--drift"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Drift</span><span class="p">(</span><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">what</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L360) | A fixture that no longer matches the corpus it was harvested from. |
-| <a id="completioncorpus-kt--completioncorpus--readfixtures"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">readFixtures</span><span class="p">(</span><span class="n">dir</span><span class="p">:</span> <span class="nc">File</span> <span class="o">=</span> <span class="nc">File</span><span class="p">(</span><span class="nc">FIXTURE&#95;DIR</span><span class="p">)</span><span class="p">,</span> <span class="n">dirs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="n">defaultDirs</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Case</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Drift</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L367) | Read the checked-in fixtures back, joined to the code they were harvested from. The join is verified: a box that has moved, vanished or been edited shows up in [`Drift`](workspace.md#completioncorpus-kt--completioncorpus--drift) rather than quietly measuring a preamble that belongs to different code. |
+| <a id="completioncorpus-kt--completioncorpus--readfixtures"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">readFixtures</span><span class="p">(</span><span class="n">dir</span><span class="p">:</span> <span class="nc">File</span> <span class="o">=</span> <span class="nc">File</span><span class="p">(</span><span class="nc">FIXTURE&#95;DIR</span><span class="p">)</span><span class="p">,</span> <span class="n">dirs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="n">defaultDirs</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Case</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Drift</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L367) | Read the checked-in fixtures back, joined to the code they were harvested from. The join is verified: a box that has moved, vanished or been edited shows up in [`Drift`](workspace.md#completioncorpus-kt--completioncorpus--drift) rather than being measured against a preamble that belongs to different code. |
 
 ## CompletionCorpusHarvest.kt { #completioncorpusharvest-kt }
 
@@ -5818,48 +5818,47 @@ Type-name rendering for `@exported`; [`render`](workspace.md#exportedtypenames-k
 Smoke for [`ExportedTypeNames`](workspace.md#exportedtypenames-kt-exportedtypenames), which decides the type text `@exported` splices into another box's
 preamble.
 
-Two properties are load-bearing and pull in opposite directions, so both are asserted here:
+Two properties pull in opposite directions, and both are asserted here:
 
- - **Precision.** Library and `afield.` types must survive with their generic arguments intact.
-   The whole point of the change is that they used to be flattened to `Any?` by a prefix
-   whitelist that no real type matched.
- - **Safety.** A type the consuming box cannot name must degrade to `Any?`, never be emitted
-   hopefully. A preamble line that fails to compile poisons every later compile in that box, so
-   a false accept is far more expensive than a false reject.
+ - **Precision.** Library and `afield.` types survive with their generic arguments intact, so
+   `List<Double>` reaches the consuming box as `List<Double>` rather than as `Any?`.
+ - **Safety.** A type the consuming box cannot name degrades to `Any?` rather than being emitted
+   and hoped for. A preamble line that fails to compile breaks every later compile in that box,
+   so a false accept costs more than a false reject.
 
-`testUnnameableArgumentIsErasedNotEmitted` is the regression that motivated the rewrite: the old
-implementation accepted any name starting with `kotlin.` and returned it *whole*, so a
-`List<SomeBoxLocalClass>` was emitted verbatim with an unresolvable argument inside it.
+`testUnnameableArgumentIsErasedNotEmitted` is where the two meet: an argument the consuming box
+cannot name collapses to a star projection, leaving `List<*>`, so the outer type still lands and
+no unresolvable name reaches the preamble.
 
-Pure renderer assertions — no REPL, no engine, so this stays fast. Runnable-object test style,
+Pure renderer assertions: no REPL and no engine, so this stays fast. Runnable-object test style,
 matching [`WitherSmokeTest`](workspace.md#withersmoketest-kt-withersmoketest).
 
 `src/jvmMain/kotlin/afield/runtime/kotlin/ExportedTypeNamesSmokeTest.kt` — [read the source](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/)
 
 ### ExportedTypeNamesSmokeTest { #exportedtypenamessmoketest-kt-exportedtypenamessmoketest }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">ExportedTypeNamesSmokeTest</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L60)
+[<code class="highlight"><span class="k">object</span> <span class="nc">ExportedTypeNamesSmokeTest</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L59)
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="exportedtypenamessmoketest-kt--exportedtypenamessmoketest--runtests"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runTests</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L65) |  |
-| <a id="exportedtypenamessmoketest-kt--exportedtypenamessmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L87) |  |
+| <a id="exportedtypenamessmoketest-kt--exportedtypenamessmoketest--runtests"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runTests</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L64) |  |
+| <a id="exportedtypenamessmoketest-kt--exportedtypenamessmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L86) |  |
 
 ### ExportedTypeNamesPublicProbe { #exportedtypenamessmoketest-kt-exportedtypenamespublicprobe }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">ExportedTypeNamesPublicProbe</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L204)
+[<code class="highlight"><span class="k">class</span> <span class="nc">ExportedTypeNamesPublicProbe</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L203)
 
 Public probe for [`ExportedTypeNamesSmokeTest`](workspace.md#exportedtypenamessmoketest-kt-exportedtypenamessmoketest); nameable from the app classloader.
 
 ### ExportedTypeNamesSuspendProbe { #exportedtypenamessmoketest-kt-exportedtypenamessuspendprobe }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">ExportedTypeNamesSuspendProbe</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L210)
+[<code class="highlight"><span class="k">class</span> <span class="nc">ExportedTypeNamesSuspendProbe</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L209)
 
 Carries a suspend function type, which `typeOf` cannot express directly.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="exportedtypenamessmoketest-kt--exportedtypenamessuspendprobe--fn"></a>[<code class="highlight"><span class="k">val</span> <span class="n">fn</span><span class="p">:</span> <span class="k">suspend</span> <span class="p">(</span><span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L211) |  |
+| <a id="exportedtypenamessmoketest-kt--exportedtypenamessuspendprobe--fn"></a>[<code class="highlight"><span class="k">val</span> <span class="n">fn</span><span class="p">:</span> <span class="k">suspend</span> <span class="p">(</span><span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L210) |  |
 
 ## FieldKtParser.kt { #fieldktparser-kt }
 
@@ -6529,10 +6528,10 @@ K2 REPL ([`KotlinInterface2`](workspace.md#kotlininterface2-kt-kotlininterface2)
 `io.github.kyay10.wither.with(x)` turns `x` into an implicit receiver for the rest of the
 enclosing block, and its IR pass rewrites the receiver-less member accesses that follow.
 
-The load-bearing assertion is `testReceiverInjection`: a bare `greet()` with no explicit
+`testReceiverInjection` is the assertion that decides the run: a bare `greet()` with no explicit
 receiver only resolves if Wither injected the `Greeter` receiver. Without the plugin the
-snippet fails to compile ("unresolved reference 'greet'"), so a green run proves the plugin
-is actually registered into the REPL's compilation config and doing work end-to-end.
+snippet fails to compile (`unresolved reference 'greet'`), so a green run shows that the plugin
+is registered into the REPL's compilation config and working end to end.
 
 `testPlainEvalStillWorks` is the regression half: turning the plugin on must not disturb
 ordinary snippet evaluation.
@@ -8846,17 +8845,32 @@ files in the document's `backups/` folder.
 
 ## AgentDemoDriftGuard.kt { #agentdemodriftguard-kt }
 
+Checks that each loadable document under `dev_docs/agents/demos/` agrees with the loose source
+files beside it.
+
+A `#afield/file-inline` property has two copies: the fallback embedded in `metadata.edn`, and the
+loose file beside it. Field prefers the loose file, so an edited demo can run correctly while the
+metadata that is supposed to be canonical stays stale. This guard compares the two
+byte-for-byte. `--write` refreshes the inline fallbacks through the EDN codec in [`SavingContext`](workspace.md#saving-kt-savingcontext).
+
+`--write` rewrites `metadata.edn` for every document it visits, and re-encoding is not always
+byte-identical to what is committed — a hand-edited artifact can carry `\uXXXX` escapes that the
+codec re-emits as the literal character. That turns "add one demo" into a diff against unrelated
+documents, which is an invitation to a merge conflict between two branches that each added one.
+`--only <document>[,<document>…]` narrows the run to the documents named after the directory
+under `dev_docs/agents/demos`, so adding a demo touches that demo alone.
+
 `src/jvmMain/kotlin/afield/tools/docs/AgentDemoDriftGuard.kt` — [read the source](source/jvmMain/afield/tools/docs/AgentDemoDriftGuard/)
 
 ### AgentDemoDriftGuard { #agentdemodriftguard-kt-agentdemodriftguard }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">AgentDemoDriftGuard</span></code>](source/jvmMain/afield/tools/docs/AgentDemoDriftGuard/#L22)
+[<code class="highlight"><span class="k">object</span> <span class="nc">AgentDemoDriftGuard</span></code>](source/jvmMain/afield/tools/docs/AgentDemoDriftGuard/#L25)
 
-Keeps loadable documents under `dev_docs/agents/demos/` honest about their loose source files.
+Compares each demo's `#afield/file-inline` fallbacks with the loose files beside them.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="agentdemodriftguard-kt--agentdemodriftguard--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/AgentDemoDriftGuard/#L28) |  |
+| <a id="agentdemodriftguard-kt--agentdemodriftguard--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/AgentDemoDriftGuard/#L31) |  |
 
 ## AgentTranscriptIndexGuard.kt { #agenttranscriptindexguard-kt }
 
