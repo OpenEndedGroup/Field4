@@ -152,9 +152,10 @@ Relative `.file` lookup checks document files, Project files and then the instan
 shared resources before the usual search folders. This lets a course share large media without
 copying it into each document. A document file can override a shared resource.
 
-Kit runtimes currently share one extension layer in a host. Changing or removing a runtime requires
-restart; `reloadPersonal()` refuses to replace a layer containing active kit runtimes. Shutdown
-allows four seconds for kit cleanup.
+`reloadPersonal()` reloads kit runtimes with the rest of the personal layer: each kit is deactivated
+and cleaned up, then started again from the new classes, and the documents that were open are
+activated again. Installing or removing a kit still needs a restart. Shutdown allows four seconds for
+kit cleanup.
 
 ### Starting-point revisions and instance updates
 
