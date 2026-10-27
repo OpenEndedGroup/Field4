@@ -3,7 +3,7 @@
   "id": "presentation",
   "title": "Presentations",
   "description": "Teach with editable slides, shared media, live webpages and real Field documents.",
-  "version": "1.1",
+  "version": "1.2",
   "guide": "guides/HANDOFF.md",
   "startingPoints": {
     "presentation": {

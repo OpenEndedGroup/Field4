@@ -4,7 +4,7 @@ This document is both a talk and its live teaching material. Its default present
 
 ## Themes and builds
 
-The starter's `files/themes/black.css`, `paper.css` and `slate.css` are each standalone themes.
+The starter's `files/themes/black.css`, `paper.css`, `slate.css` and `lecture.css` are each standalone themes.
 Copy the chosen CSS into `files/presentation.css` to keep all authored slides on the same theme.
 Preserve the user's edited stylesheet unless asked to change it. Refresh reloads saved CSS.
 
@@ -18,6 +18,22 @@ For separate slides reuse `val figure = audienceFragment { ... }`, then `audienc
 In `talk.slides.json`, a cue may set `retainPrevious: true`, `previousOpacity: 0.25`, `fadeMs: 350`.
 Defaults replace the body without an element fade. `PresentationWriteSlideRequest` accepts these
 fields as part of the slide; it still saves data without running code or showing it to an audience.
+
+## Lecture layouts
+
+`stylesheet("themes/lecture.css")` loads the ink-blue, warm-lettered lecture theme as one CSS file.
+It styles `fullScreenImage` and `imageBeside` directly, with quiet right-aligned citations.
+For a large banner, use `div(classes = "lecture-banner") { h1 { +"Mapping" }; p(classes = "lecture-tagline") { +"New physics" } }`.
+For the airy list, use `div(classes = "lecture-list") { h1 { +"Topics" }; ul { li { +"One idea" }; li { +"Another idea" } } }`.
+`files/examples/lecture.kt` is a complete four-slide example, with two editable SVG line studies.
+Paste it into a new box and run that box when asked to try the layouts.
+
+The theme automatically settles images, text, credits and individual list items in a short stagger
+on forward entry. It uses the host's `data-field-builds` crossfade release, so no `fadeIn` wrappers
+are needed. The incoming composition stays mostly visible while the crossfade runs. Back, Refresh,
+retained layers and reduced-motion mode show the finished composition. `--lecture-beat` controls
+spacing between arrivals; `--lecture-settle` controls duration; `--lecture-banner-size` controls
+large title size. Preserve the author's own stylesheet and talk when borrowing these layouts.
 
 ## Install or update the presentation kit
 
