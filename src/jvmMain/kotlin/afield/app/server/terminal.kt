@@ -100,18 +100,32 @@ internal fun terminalPlan(launch: TerminalLaunch, checkout: Path, agent: String,
     }
     return when (launch.kind) {
         // The kind keeps its old name on the wire; it starts whichever agent [fieldAgent] names.
-        "claude" -> Result.success(TerminalPlan(listOf(agent) + if (text.isEmpty()) emptyList() else listOf(text), checkout, Path.of(agent).fileName.toString()))
+        "claude" -> if (agent == FIELD_AI4_AGENT) fieldAi4Plan(text, checkout, uv, "Field AI4")
+            else Result.success(TerminalPlan(listOf(agent) + if (text.isEmpty()) emptyList() else listOf(text), checkout, Path.of(agent).fileName.toString()))
         "handoff-batch" -> {
             if (launch.batch !in docsPassBatches) return Result.failure(IllegalArgumentException("unknown batch '${launch.batch}'"))
             val worktree = sessionWorktree(launch.batch)
                 ?: return Result.failure(IllegalStateException("the ${launch.batch} batch has no open session; start one first"))
             val title = "${launch.batch}" + if (text.isEmpty()) "" else ": ${text.take(60)}"
-            Result.success(TerminalPlan(listOf(agent, handoffBatchBrief(text)), worktree, title))
+            if (agent == FIELD_AI4_AGENT) fieldAi4Plan(handoffBatchBrief(text), worktree, uv, title)
+            else Result.success(TerminalPlan(listOf(agent, handoffBatchBrief(text)), worktree, title))
         }
         "land-watch" -> Result.success(TerminalPlan(listOf("/usr/bin/env", "FIELD_LAND_PLAIN=1", uv, "run", "python", "tools/land.py", "status", "--watch"), checkout, "landing queue"))
         else -> Result.failure(IllegalArgumentException("unknown terminal kind '${launch.kind}'"))
     }
 }
+
+/** What [fieldAgent] returns for Field's own agent: not an executable, a choice [terminalPlan] expands. */
+internal const val FIELD_AI4_AGENT = "field"
+
+/**
+ * A terminal that runs one AI4 job over [dir] with `tools/field_repo_agent.py`. AI4 has no interactive
+ * terminal client, so it needs a prompt: an empty one is refused rather than opening a shell that does nothing.
+ */
+private fun fieldAi4Plan(prompt: String, dir: Path, uv: String, title: String): Result<TerminalPlan> =
+    if (prompt.isBlank()) Result.failure(IllegalArgumentException("Field's own agent runs one prompt at a time; type what it should do"))
+    else Result.success(TerminalPlan(listOf(uv, "run", "--project", ".", "--group", "backdoor", "python", "tools/field_repo_agent.py",
+        "--root", ".", "--write", "**", "--prompt", prompt), dir, title))
 
 /** The first message for a `handoff-batch` terminal: the session brief, then the human's sentence. */
 internal fun handoffBatchBrief(direction: String): String {
@@ -136,12 +150,12 @@ internal fun handoffSessionWorktree(checkout: Path, batch: String): Path? = runC
 }.getOrNull()?.takeIf { Files.isDirectory(it) }
 
 /**
- * The coding agent Field starts: `claude` or `codex`. `FIELD_AGENT` in the environment, else the first
+ * The coding agent Field starts: `claude`, `codex`, or `field` (AI4 itself, [FIELD_AI4_AGENT]). `FIELD_AGENT` in the environment, else the first
  * word of `~/.afield/agent`, else `claude`; `tools/field_agent.py` reads the same two places, so the
  * landing queue and the docs revision pass agree with the terminals here.
  */
 internal fun fieldAgent(env: Map<String, String> = System.getenv(), file: Path = Paths.get(System.getProperty("user.home"), ".afield", "agent")): String {
-    val agents = setOf("claude", "codex")
+    val agents = setOf("claude", "codex", FIELD_AI4_AGENT)
     val fromFile = runCatching { Files.readString(file).trim().split(Regex("\\s+")).first() }.getOrDefault("")
     return listOf(env["FIELD_AGENT"].orEmpty(), fromFile).map { it.trim().lowercase() }.firstOrNull { it in agents } ?: "claude"
 }
@@ -323,7 +337,7 @@ internal fun Route.installTerminalRoutes(policy: DocsAccessPolicy) {
             ?: return@post call.respond(HttpStatusCode.ServiceUnavailable, "The checkout is not usable; set $DOCS_IMPROVEMENT_DIRECTORY_ENV.")
         val launch = call.receive<TerminalLaunch>()
         val planned = if (launch.kind == "refactor-batch") refactorTerminalPlan(launch, checkout, terminalExecutable("uv"))
-            else terminalPlan(launch, checkout, terminalExecutable(fieldAgent()), terminalExecutable("uv")) { handoffSessionWorktree(checkout, it) }
+            else terminalPlan(launch, checkout, fieldAgent().let { if (it == FIELD_AI4_AGENT) it else terminalExecutable(it) }, terminalExecutable("uv")) { handoffSessionWorktree(checkout, it) }
         val plan = planned
             .getOrElse { return@post call.respond(HttpStatusCode.BadRequest, it.message ?: "bad request") }
         TerminalSessions.start(launch, plan)

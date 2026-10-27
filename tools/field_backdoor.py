@@ -3840,7 +3840,11 @@ def build_command_parser() -> argparse.ArgumentParser:
     )
 
     agent_task_parser = subparsers.add_parser("agent-task", add_help=False)
-    agent_task_parser.add_argument("--goal", required=True)
+    agent_task_parser.add_argument("--goal", default="")
+    agent_task_parser.add_argument("--goal-file", default="", help="Path (or - for stdin) to the goal, for a long prompt")
+    agent_task_parser.add_argument("--repo-root", default="", help="A checkout the repo tools work in (blank: no repo tools)")
+    agent_task_parser.add_argument("--repo-read", action="append", default=[], help="Readable glob under --repo-root; repeatable (default **)")
+    agent_task_parser.add_argument("--repo-write", action="append", default=[], help="Writable glob under --repo-root; repeatable (default none)")
     agent_task_parser.add_argument("--check", dest="checks", action="append", default=[])
     agent_task_parser.add_argument("--mode", choices=("live", "scripted"), default="live")
     agent_task_parser.add_argument("--script", help="Path (or - for stdin) to a JSON script for --mode scripted")
@@ -5060,8 +5064,11 @@ async def dispatch_command(
         checks = []
         for spec in args.checks:
             checks.append(parse_agent_check(spec))
+        goal = client.read_text_source(args.goal_file, command_line=command_line) if args.goal_file else args.goal
+        if not goal.strip():
+            raise BackdoorError("agent-task needs --goal or --goal-file")
         payload: dict[str, Any] = {
-            "goal": args.goal,
+            "goal": goal,
             "checks": checks,
             "mode": args.mode,
             "maxToolRounds": args.max_rounds,
@@ -5072,6 +5079,10 @@ async def dispatch_command(
             "context": args.context,
             "followUps": list(args.follow_ups),
         }
+        if args.repo_root:
+            payload["repoRoot"] = str(Path(args.repo_root).expanduser().resolve())
+            payload["repoRead"] = list(args.repo_read)
+            payload["repoWrite"] = list(args.repo_write)
         if args.script:
             payload["script"] = client.read_text_source(args.script, command_line=command_line)
         if args.setup:
