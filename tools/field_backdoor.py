@@ -3877,7 +3877,7 @@ def build_command_parser() -> argparse.ArgumentParser:
     agent_eval_parser.add_argument("--sample", type=int, default=0, help="With --corpus/--calibrate: a seeded sample of N tasks")
     agent_eval_parser.add_argument("--seed", type=int, default=0)
     agent_eval_parser.add_argument("--sealed", action="store_true",
-                                   help="Withhold the repository search tools (a mined task's answer is in the repository)")
+                                   help="Withhold the tools that read the repository (a mined task's answer is in it); a pass that still saw its solution scores leaked")
     agent_eval_parser.add_argument("--calibrate", action="store_true",
                                    help="Re-mine the corpus: run every candidate's solution twice and derive its checks")
     agent_eval_parser.add_argument("--timeout", type=float)

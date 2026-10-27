@@ -43,6 +43,38 @@ object AgentEvalCorpus {
     val SEARCH_TOOLS = listOf("WorkspaceSearchRequest", "WorkspaceSymbolSearch", "SemanticRetrievalSearchRequest", "TutorialCodeSearchRequest")
 
     /**
+     * What a sealed run withholds: the search tools, and the two that read arbitrary files from outside a box
+     * (`EvaluateKotlinExpressionRequest` evaluates in the server JVM; `CodeUseQueryRequest` returns source). The
+     * 10-26 sealed arms still saw their solution through these in 1 and 2 of 20 tasks. Box code can read files too,
+     * so withholding is not a proof: [leak] checks every result afterwards, and a sealed pass that saw its solution
+     * is scored `leaked`, not `pass`.
+     */
+    val SEALED_TOOLS = SEARCH_TOOLS + listOf("EvaluateKotlinExpressionRequest", "CodeUseQueryRequest")
+
+    /** Calls whose results echo the agent's own edits, so a solution line in them is not evidence of a lookup. */
+    private val ECHOING_TOOLS = setOf("NewBoxRequest", "SetBoxPropertyRequest", "GetBoxPropertyRequest", "PatchBoxTextRequest")
+
+    /** The solution's most distinctive code lines: the five longest non-comment lines over 25 characters. */
+    fun fingerprint(solutionScript: String): List<String> {
+        val code = runCatching {
+            (Json.parseToJsonElement(solutionScript) as JsonArray).firstNotNullOfOrNull { step ->
+                ((step as? JsonObject)?.get("arguments") as? JsonObject)?.get("code")?.let { (it as? JsonPrimitive)?.contentOrNull }
+            }
+        }.getOrNull().orEmpty()
+        return code.lines().map { it.trim() }
+            .filter { it.length > 25 && !it.startsWith("/*") && !it.startsWith("*") && !it.startsWith("//") }
+            .distinct().sortedByDescending { it.length }.take(5)
+    }
+
+    /** The tool whose result held a line of the task's own solution, or null: did the turn look the answer up? */
+    fun leak(solutionScript: String, result: AgentTaskResult): String? {
+        val lines = fingerprint(solutionScript).ifEmpty { return null }
+        return result.toolCalls.firstOrNull { call ->
+            call.tool !in ECHOING_TOOLS && lines.any { l -> call.result.contains(l) || call.result.replace("\\\"", "\"").contains(l) }
+        }?.tool
+    }
+
+    /**
      * Code that needs something a headless scratch document does not give it, or whose output cannot be
      * the same twice. Matched as a regex anywhere in the box's code or its ancestors'.
      */

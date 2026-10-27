@@ -486,7 +486,7 @@ data class AgentEvalRequest(
      */
     val calibrate: Boolean = false,
     /**
-     * Withhold the repository search tools ([AgentEvalCorpus.SEARCH_TOOLS]) from every task. A mined task's solution
+     * Withhold the tools that read the repository ([AgentEvalCorpus.SEALED_TOOLS]) from every task. A mined task's solution
      * is checked in — the transcript it came from — so with search on, a model can find the answer instead of
      * writing it; the first live corpus runs did, in at least 3 and 5 of 20 tasks.
      */
@@ -540,6 +540,8 @@ data class AgentEvalReport(
     val rejections: Map<String, Int> = emptyMap(),
     /** Whether the repository search tools were withheld ([AgentEvalRequest.sealed]). */
     val sealed: Boolean = false,
+    /** Corpus live runs: tasks whose tool results held a line of their own solution ([AgentEvalCorpus.leak]). */
+    val leaked: Int = 0,
 )
 
 object AgentEvalRunner {
@@ -582,8 +584,16 @@ object AgentEvalRunner {
                 blind = request.blind,
                 programs = request.programs,
                 context = request.context,
-                withhold = if (request.sealed) AgentEvalCorpus.SEARCH_TOOLS else emptyList(),
-            ))
+                withhold = if (request.sealed) AgentEvalCorpus.SEALED_TOOLS else emptyList(),
+            )).let { result ->
+                // A corpus solution is checked in; a turn that read it has not shown it can write it.
+                val leakedVia = if (request.corpus.isNotBlank() && live) AgentEvalCorpus.leak(task.solution, result) else null
+                when {
+                    leakedVia == null -> result
+                    request.sealed && result.verdict == "pass" -> result.copy(verdict = "leaked", leakedVia = leakedVia)
+                    else -> result.copy(leakedVia = leakedVia)
+                }
+            }
         }
         fun sum(f: (AgentTaskResult) -> Long?): Long? = results.mapNotNull(f).takeIf { it.isNotEmpty() }?.sum()
         val report = AgentEvalReport(
@@ -609,6 +619,7 @@ object AgentEvalRunner {
             nestedCalls = results.sumOf { it.nestedCalls },
             corpus = request.corpus,
             sealed = request.sealed,
+            leaked = results.count { it.leakedVia.isNotBlank() },
         )
         if (!request.distil) return report
         val outcome = AgentLessons.distilAndWrite(report)

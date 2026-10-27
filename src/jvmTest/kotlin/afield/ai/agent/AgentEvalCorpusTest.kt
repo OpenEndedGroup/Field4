@@ -191,6 +191,24 @@ class AgentEvalCorpusTest {
         assertTrue(assertIs<AgentEvalCorpus.Refused>(AgentEvalCorpus.calibrate(c, interrupted, interrupted)).rejection.reason.startsWith("interrupted"))
     }
 
+    /** A turn that read its own solution from a tool result is caught; one that only wrote it is not. */
+    @Test
+    fun leakIsTheSolutionInANonEchoingToolResult() {
+        val code = "/* comment line that is long enough to count */\nval sites = (0 until 6).map { i -> Vector2d(100.0 + i, 60.0) }\nprintln(sites.size)"
+        val c = AgentEvalCorpus.Candidate("t/s", "t", "s", "s", code, "run", emptyList(), emptyList(), "")
+        val solution = AgentEvalCorpus.solution(c)
+        assertEquals(listOf("val sites = (0 until 6).map { i -> Vector2d(100.0 + i, 60.0) }"), AgentEvalCorpus.fingerprint(solution))
+        fun result(vararg calls: Pair<String, String>) = AgentTaskResult(taskId = c.id, goal = "", mode = "live", provider = "", model = "", verdict = "pass",
+            checks = emptyList(), toolCalls = calls.mapIndexed { i, (tool, out) -> AgentToolCallRecord(i, tool, "{}", true, out) },
+            finalText = "", rounds = 1, maxToolRounds = 8, hitToolRoundCap = false, elapsedMs = 0, documentName = "d")
+        val line = AgentEvalCorpus.fingerprint(solution).single()
+        assertEquals(null, AgentEvalCorpus.leak(solution, result("NewBoxRequest" to "{\"code\":\"$line\"}", "RunBoxRequest" to "{\"stdout\":[\"6\"]}")))
+        assertEquals("RunBoxRequest", AgentEvalCorpus.leak(solution, result("RunBoxRequest" to "{\"stdout\":[\"$line\"]}")),
+            "a box that printed the transcript file is a lookup")
+        assertEquals("EvaluateKotlinExpressionRequest", AgentEvalCorpus.leak(solution, result("EvaluateKotlinExpressionRequest" to "...$line...")))
+        assertTrue("EvaluateKotlinExpressionRequest" in AgentEvalCorpus.SEALED_TOOLS)
+    }
+
     @Test
     fun machineSpecificLinesAreNeverChecks() {
         assertTrue(AgentEvalCorpus.checkable("size is 7"))

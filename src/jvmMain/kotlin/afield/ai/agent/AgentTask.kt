@@ -182,7 +182,7 @@ data class AgentTaskResult(
     val mode: String,
     val provider: String,
     val model: String,
-    /** `pass`, `fail`, `budget-exhausted`, `error`, `unchecked`, or `running` when observation ended before a live panel turn. */
+    /** `pass`, `fail`, `budget-exhausted`, `error`, `unchecked`, `leaked` (a sealed corpus pass that read its solution), or `running` when observation ended before a live panel turn. */
     val verdict: String,
     val checks: List<AgentCheckOutcome>,
     val toolCalls: List<AgentToolCallRecord>,
@@ -218,6 +218,8 @@ data class AgentTaskResult(
     val turns: Int = 1,
     /** Where the last turn's instructions went: `instructions`, `system+prefix`, or `inline` (the legacy arm). */
     val contextPlacement: String = "",
+    /** A mined-corpus task only: the tool whose result held a line of the task's own solution (see [AgentEvalCorpus.leak]). */
+    val leakedVia: String = "",
 )
 
 /**
