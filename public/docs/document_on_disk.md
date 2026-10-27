@@ -120,16 +120,21 @@ line decides which copy a load uses:
 ```diffstatic {data-lang=kotlin}
 is FileInline -> {
     val file = File(directory, value.path)
-    if (!preferInlineFiles && file.exists()) file.readText() else value.inline
+    if (!preferInlineFiles && file.exists()) sidecarOrNewerInline(file, value, directory) else value.inline
 }
 ```
 
-`src/jvmMain/kotlin/afield/document/persistence/saving.kt:1357#if (!preferInlineFiles && file.exists()) file.readText() else value.inline`.
-So **if the loose sidecar file exists, its contents win, and the inline copy in `metadata.edn` is not
-read.** Regenerate a `metadata.edn` by hand with new code in the `inline` field, leave
-`<box>_code_.kt` in place, and the document opens with the old code: that one property came from the
-file. Frames, names, topology and everything else on the same box are still read from `metadata.edn`
-exactly as written. The choice is per property, and only for the property names in
+`src/jvmMain/kotlin/afield/document/persistence/saving.kt:1546#if (!preferInlineFiles && file.exists()) sidecarOrNewerInline(file, value, directory) else value.inline`.
+So **if the loose sidecar file exists, its contents win**, with one exception: when `metadata.edn`
+was written more than two seconds after the sidecar and its inline copy differs from it, the inline
+copy is loaded instead
+(`src/jvmMain/kotlin/afield/document/persistence/saving.kt:1510#if (!metadata.isFile || metadata.lastModified() <= file.lastModified() + 2000) return text`).
+That is a hand edit of the `inline` field made while the document was closed. Before loading it,
+Field copies the sidecar into `backups/` and logs a `warning,save` line naming the copy, so neither
+edit is lost. A checkout writes both files at once, and the two seconds keep it on the sidecar. Edit
+the sidecar after `metadata.edn` and the sidecar wins. Frames, names, topology and
+everything else on the same box are always read from `metadata.edn` exactly as written. The choice
+is per property, and only for the property names in
 `src/jvmMain/kotlin/afield/document/graph/Boxes.kt:498#var ioSeparateProperties = mutableMapOf(`.
 
 `preferInlineFiles` inverts it, and there is one caller who wants that: the history machinery, which
