@@ -73,7 +73,7 @@ syncToProperty("gain", 0.5, min = 0.0, max = 1.0)
 
 **Meter**, beneath it, draws a bar `gain` long:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/reactive_properties/meter.png" capture="box" open-outputs="true" wait="1.5" timeout="180" embed=true name="reactive-props-meter" macro-file="../../dev_docs/agents/transcripts/docs_capture/reactive_props_slider_drag.yaml" capture-box="rp_meter" w="560" h="80" alt="Meter's main output after Gain's slider is dragged most of the way up: a blue bar about 290 pixels long, and below it the text gain 0.97"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/reactive_properties/meter.png" capture="box" open-outputs="true" wait="1.5" timeout="180" embed=true name="reactive-props-meter" macro-file="../../dev_docs/agents/transcripts/docs_capture/reactive_props_slider_drag.yaml" capture-box="rp_meter" w="560" h="80" alt="Meter's main output after Gain's slider is dragged to the top: a blue bar 300 pixels long, and below it the text gain 1.00"}
 val width = (gain * 300).toInt()
 display("main", "<div style='width:${width}px;height:14px;background:#4a90d9'></div><p>gain ${"%.2f".format(gain)}</p>")
 ```
