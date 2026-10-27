@@ -38,8 +38,8 @@ import kotlin.math.pow
  * restore selections, editors or output panels as restoring the bookmark does.
  *
  * A three.js view takes part through `FieldViewer.film` (`threejs_viewer.html`): begun when the
- * flight starts, set to the flight's time every frame, and ended, which puts its camera back, when the
- * flight finishes or stops.
+ * flight starts, or on the first frame its panel is open and loaded, set to the time since then every
+ * frame, and ended, which puts its camera back, when the flight finishes or stops.
  */
 object CanvasFlightClient {
     private val json = Json { ignoreUnknownKeys = true }
@@ -49,7 +49,8 @@ object CanvasFlightClient {
         val timeline: CanvasFlightTimeline,
         val bookmarks: List<Bookmark>,
         val views: List<CanvasFlightView>,
-        val viewers: List<dynamic>,
+        /** The three.js views taking part so far, each with the flight time it joined at. */
+        val viewers: MutableList<Pair<dynamic, Double>>,
         /** Legs (by the stop they fly to) whose straight path crosses canvas with nothing on it. */
         val emptyLegs: Set<Int>
     )
@@ -74,7 +75,7 @@ object CanvasFlightClient {
             v.copy(zoom = v.zoom.coerceIn(MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM))
         }
         val timeline = CanvasFlightTimeline(spec)
-        return Prepared(spec, timeline, bookmarks, views, threeViewers(), emptyLegs(views, r.w, r.h))
+        return Prepared(spec, timeline, bookmarks, views, mutableListOf(), emptyLegs(views, r.w, r.h))
     }
 
     /** Boxes and open panels covering less of the window than this leave it empty. */
@@ -123,9 +124,11 @@ object CanvasFlightClient {
             if (film == null || film == undefined) null else film
         }
 
-    private fun begin(p: Prepared) {
-        p.viewers.forEach { film ->
-            runCatching { film.begin(obj { it.degreesPerSecond = p.spec.orbitDegreesPerSecond }) }
+    /** Begins every three.js view that is showing and not yet taking part, from [seconds]. */
+    private fun join(p: Prepared, seconds: Double) {
+        for (film in threeViewers()) {
+            if (p.viewers.any { it.first === film }) continue
+            if (runCatching { film.begin(obj { it.degreesPerSecond = p.spec.orbitDegreesPerSecond }) }.isSuccess) p.viewers.add(Pair(film, seconds))
         }
     }
 
@@ -135,12 +138,14 @@ object CanvasFlightClient {
         val view = p.timeline.at(seconds, p.views, r.w, r.h) { it in p.emptyLegs }
         val (tx, ty) = view.translation(r.x, r.y, r.w, r.h)
         flyCanvasCamera(tx, ty, view.zoom, settled)
-        p.viewers.forEach { film -> runCatching { film.at(seconds) } }
+        // A panel the flight has just opened onto (or that has just loaded) joins here.
+        join(p, seconds)
+        p.viewers.forEach { (film, since) -> runCatching { film.at(seconds - since) } }
         return view
     }
 
     private fun end(p: Prepared) {
-        p.viewers.forEach { film -> runCatching { film.end() } }
+        p.viewers.forEach { (film, _) -> runCatching { film.end() } }
         // Tell the server where the flight left the camera.
         flyCanvasCamera(CanvasCamera.main.tx, CanvasCamera.main.ty, mainZoom, settled = true)
     }
@@ -158,7 +163,6 @@ object CanvasFlightClient {
         }
         live = p
         val generation = ++liveGeneration
-        begin(p)
         apply(p, 0.0, settled = false)
         notify("Flying through ${p.bookmarks.joinToString(" → ") { it.name }} (${formatSeconds(p.timeline.duration)})", "bookmarks")
         val start = window.performance.now()
@@ -195,7 +199,6 @@ object CanvasFlightClient {
             val p = prepare(json.decodeFromString(CanvasFlightSpec.serializer(), specJson))
             recording = p
             document.body?.classList?.add("canvas-flight-recording")
-            begin(p)
             apply(p, 0.0, settled = false)
             val r = CanvasCamera.main.rect
             reply.ok = true
@@ -234,7 +237,7 @@ object CanvasFlightClient {
         val shown = camera(CanvasCamera.main.tx, CanvasCamera.main.ty, mainZoom)
         shown.t = seconds
         // Each three.js view's camera in this frame, so a check can see the turn.
-        shown.views = p.viewers.map { film -> try { film.status() } catch (_: Throwable) { null } }.toTypedArray()
+        shown.views = p.viewers.map { (film, _) -> try { film.status() } catch (_: Throwable) { null } }.toTypedArray()
         val report = lastRecording
         if (report != null) {
             report.frames = (report.frames as Int) + 1
