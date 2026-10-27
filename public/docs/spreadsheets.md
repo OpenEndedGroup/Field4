@@ -274,8 +274,7 @@ sheet(height = 390) {
 
 The sheet still shows its best compromise, so you can see which assertion to loosen. An
 assertion that only limits one variable by a number, like `B1 ge 40`, is held exactly, so here the
-total is the one that gives. Code that
-reads a variable cell with `sheetCell("B1")` or `sheetCellValue("B1")` gets its number.
+total is the one that gives. Code that reads a variable cell with `sheetCell("B1")` or `sheetCellValue("B1")` gets its number.
 
 ## Editing the sheet
 

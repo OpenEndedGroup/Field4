@@ -364,13 +364,14 @@ frames {
 }
 ```
 
-??? aside "Why the dance needed bridges, a runway and fresh starts"
-    The first version of this example froze. With 114 channels the oracle's suffix links
-    almost never cross from one take to another, so three of the six takes were never entered. The
-    takes also end alike, with the dancer coming to rest, so at the end of a take the best matches
-    were the ends of other takes: a loop around the last seconds of each. Three changes fixed it. Bridges give a
-    way across. Candidates need a phrase of runway before their take ends. A take ends by beginning
-    another, least recently played first. It is all in the lab notebook of the starting point.
+??? aside "Why the dance needs bridges, a runway and fresh starts"
+    With 114 channels the oracle's suffix links almost never cross from one take to another, so
+    without `bridges` half the takes would never be entered. The takes also end alike, with the
+    dancer coming to rest, so the best match for the end of one take is the end of another; without
+    the runway rule, which rejects a candidate that has less than a phrase left before its take
+    ends, the improviser would loop around those last seconds. A take that does end begins
+    another, the one played least recently. The measurements are in the starting point's lab
+    notebook.
 
 ## Taking over a channel
 

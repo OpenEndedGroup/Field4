@@ -78,8 +78,8 @@ void main()
 `time` comes from the fragment shader the same way. It is a member of the shader's push constants,
 so the mesh gets a `time` property, and the function assigned to it is called every frame: here,
 seconds since the box ran. The shader declares a `float`, and Field narrows the `Double` to it as it
-writes the value. The clock is the `AnimationClock` from [Frames and the Animation Loop](animation_time_model.md), so the rings drift
-outward at the same rate live and in a recording.
+writes the value. The clock is the `AnimationClock` from
+[Frames and the Animation Loop](animation_time_model.md), so the rings drift outward at the same rate live and in a recording.
 
 ```diffstatic {data-lang=glsl}
 #version 450
@@ -221,8 +221,8 @@ display("main", view.html())
 ```
 
 `+view` inside `moduleHere { }` sends the module's drawing into the view instead of the window,
-`view += ...` attaches the module to it, and `display` puts the view in the box's `main` output. A web browser, including Field's HTTP
-mirror, shows a message in place of the frames.
+`view += ...` attaches the module to it, and `display` puts the view in the box's `main` output.
+A web browser, including Field's HTTP mirror, shows a message in place of the frames.
 
 ## Where to go from here
 

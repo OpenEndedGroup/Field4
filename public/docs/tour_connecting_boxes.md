@@ -58,8 +58,7 @@ ui.pause(1200)
 ```
 
 The line follows the boxes when you move them. `u` with the same two boxes selected disconnects
-them. A box can have several parents and several
-children; the lines are the document's structure, and they are saved with it.
+them. A box can have several parents and several children; the lines are the document's structure, and they are saved with it.
 
 ## A parent publishes, a child reads
 
