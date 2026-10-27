@@ -138,23 +138,23 @@ option enums [`BooleanOp`](internal.md#manifoldnative-kt-booleanop), [`JoinType`
 
 ### ManifoldLibrary { #manifoldnative-kt-manifoldlibrary }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">ManifoldLibrary</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L773)
+[<code class="highlight"><span class="k">object</span> <span class="nc">ManifoldLibrary</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L777)
 
 Where `libmanifoldc` is, and what to do when it is not there.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="manifoldnative-kt--manifoldlibrary--filename"></a>[<code class="highlight"><span class="k">val</span> <span class="n">fileName</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L782) | `libmanifoldc.dylib` / `.so` / `manifoldc.dll`, chosen for the platform actually running. |
-| <a id="manifoldnative-kt--manifoldlibrary--searchedpaths"></a>[<code class="highlight"><span class="k">val</span> <span class="n">searchedPaths</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Path</span><span class="p">&gt;</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L790) | Every path [`resolvedPath`](internal.md#manifoldnative-kt--manifoldlibrary--resolvedpath) tries, in order — quoted in the "not installed" error. |
-| <a id="manifoldnative-kt--manifoldlibrary--resolvedpath"></a>[<code class="highlight"><span class="k">val</span> <span class="n">resolvedPath</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L811) | The first path that exists, or `null`. |
-| <a id="manifoldnative-kt--manifoldlibrary--isavailable"></a>[<code class="highlight"><span class="k">val</span> <span class="n">isAvailable</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L815) | `true` when [`Solid`](graphics.md#solid-kt-solid) and [`Section`](graphics.md#section-kt-section) will work. Cheap enough to branch on in a box. |
-| <a id="manifoldnative-kt--manifoldlibrary--reportedversion"></a>[<code class="highlight"><span class="k">val</span> <span class="n">reportedVersion</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L826) | The upstream version, read off the `.dylib`/`.so` filename that the SO-versioned symlink points at — `libmanifoldc.3.5.2.dylib` reports `3.5.2`. |
-| <a id="manifoldnative-kt--manifoldlibrary--how-to-install"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">HOW&#95;TO&#95;INSTALL</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L834) | What to tell someone who has not got it, in the package manager they are likely to have. |
-| <a id="manifoldnative-kt--manifoldlibrary--describe"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L843) | One line for a box or a smoke test to print: what was found, or why not. |
+| <a id="manifoldnative-kt--manifoldlibrary--filename"></a>[<code class="highlight"><span class="k">val</span> <span class="n">fileName</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L786) | `libmanifoldc.dylib` / `.so` / `manifoldc.dll`, chosen for the platform actually running. |
+| <a id="manifoldnative-kt--manifoldlibrary--searchedpaths"></a>[<code class="highlight"><span class="k">val</span> <span class="n">searchedPaths</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Path</span><span class="p">&gt;</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L794) | Every path [`resolvedPath`](internal.md#manifoldnative-kt--manifoldlibrary--resolvedpath) tries, in order — quoted in the "not installed" error. |
+| <a id="manifoldnative-kt--manifoldlibrary--resolvedpath"></a>[<code class="highlight"><span class="k">val</span> <span class="n">resolvedPath</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L815) | The first path that exists, or `null`. |
+| <a id="manifoldnative-kt--manifoldlibrary--isavailable"></a>[<code class="highlight"><span class="k">val</span> <span class="n">isAvailable</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L819) | `true` when [`Solid`](graphics.md#solid-kt-solid) and [`Section`](graphics.md#section-kt-section) will work. Cheap enough to branch on in a box. |
+| <a id="manifoldnative-kt--manifoldlibrary--reportedversion"></a>[<code class="highlight"><span class="k">val</span> <span class="n">reportedVersion</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L830) | The upstream version, read off the `.dylib`/`.so` filename that the SO-versioned symlink points at — `libmanifoldc.3.5.2.dylib` reports `3.5.2`. |
+| <a id="manifoldnative-kt--manifoldlibrary--how-to-install"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">HOW&#95;TO&#95;INSTALL</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L838) | What to tell someone who has not got it, in the package manager they are likely to have. |
+| <a id="manifoldnative-kt--manifoldlibrary--describe"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L847) | One line for a box or a smoke test to print: what was found, or why not. |
 
 ### ManifoldStatus { #manifoldnative-kt-manifoldstatus }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">ManifoldStatus</span><span class="p">(</span><span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L856)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">ManifoldStatus</span><span class="p">(</span><span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L860)
 
 `ManifoldError`, the status a [`Solid`](graphics.md#solid-kt-solid) carries when an operation could not produce a valid solid.
 
@@ -162,11 +162,11 @@ Constants: `NO_ERROR`, `NON_FINITE_VERTEX`, `NOT_MANIFOLD`, `VERTEX_INDEX_OUT_OF
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="manifoldnative-kt--manifoldstatus--iserror"></a>[<code class="highlight"><span class="k">val</span> <span class="n">isError</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L875) | `true` for everything except `NO_ERROR`. |
+| <a id="manifoldnative-kt--manifoldstatus--iserror"></a>[<code class="highlight"><span class="k">val</span> <span class="n">isError</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L879) | `true` for everything except `NO_ERROR`. |
 
 ### BooleanOp { #manifoldnative-kt-booleanop }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">BooleanOp</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L884)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">BooleanOp</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L888)
 
 `ManifoldOpType`, the operation `Solid.batchBoolean` and `Section.batchBoolean` apply.
 
@@ -174,7 +174,7 @@ Constants: `UNION`, `DIFFERENCE`, `INTERSECTION`.
 
 ### JoinType { #manifoldnative-kt-jointype }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">JoinType</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L893)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">JoinType</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L897)
 
 `ManifoldJoinType` — how [`Section.offset`](graphics.md#section-kt--section--offset) treats a convex corner.
 
@@ -182,7 +182,7 @@ Constants: `SQUARE`, `ROUND`, `MITER`, `BEVEL`.
 
 ### FillRule { #manifoldnative-kt-fillrule }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">FillRule</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L902)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">FillRule</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L906)
 
 `ManifoldFillRule` — how a set of contours decides what is inside, when they overlap or nest.
 
@@ -190,7 +190,7 @@ Constants: `EVEN_ODD`, `NON_ZERO`, `POSITIVE`, `NEGATIVE`.
 
 ### RayHit { #manifoldnative-kt-rayhit }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RayHit</span><span class="p">(</span><span class="k">val</span> <span class="n">faceId</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalX</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalY</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalZ</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L905)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RayHit</span><span class="p">(</span><span class="k">val</span> <span class="n">faceId</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalX</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalY</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalZ</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L909)
 
 One intersection from [`Solid.raycast`](graphics.md#solid-kt--solid--raycast).
 
@@ -509,8 +509,8 @@ messages says where to invoke the block instead.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="sourcebackedblock-kt--sourcebackedblock"></a>[<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">sourceBackedBlock</span><span class="p">(</span><span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">SourceBackedBlock</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/study/source/SourceBackedBlock/#L214) |  |
-| <a id="sourcebackedblock-kt--sourcebackedblockbox"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">sourceBackedBlockBox</span><span class="p">(</span><span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span></code>](source/jvmMain/afield/study/source/SourceBackedBlock/#L217) |  |
+| <a id="sourcebackedblock-kt--sourcebackedblock"></a>[<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">sourceBackedBlock</span><span class="p">(</span><span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">SourceBackedBlock</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/study/source/SourceBackedBlock/#L257) |  |
+| <a id="sourcebackedblock-kt--sourcebackedblockbox"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">sourceBackedBlockBox</span><span class="p">(</span><span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span></code>](source/jvmMain/afield/study/source/SourceBackedBlock/#L260) |  |
 
 ### SourceBackedBlockSelfBoxReentry { #sourcebackedblock-kt-sourcebackedblockselfboxreentry }
 
@@ -535,7 +535,7 @@ A callable block that keeps the Kotlin source used to create it.
 | <a id="sourcebackedblock-kt--sourcebackedblock--boxid"></a><code class="highlight"><span class="k">val</span> <span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 | <a id="sourcebackedblock-kt--sourcebackedblock--source"></a><code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 | <a id="sourcebackedblock-kt--sourcebackedblock--invoke"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">invoke</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span></code>](source/jvmMain/afield/study/source/SourceBackedBlock/#L140) |  |
-| <a id="sourcebackedblock-kt--sourcebackedblock--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/study/source/SourceBackedBlock/#L210) |  |
+| <a id="sourcebackedblock-kt--sourcebackedblock--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/study/source/SourceBackedBlock/#L237) |  |
 
 ## PrettyStrings.kt { #prettystrings-kt }
 
