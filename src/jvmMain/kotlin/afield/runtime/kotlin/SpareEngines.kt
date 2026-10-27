@@ -24,6 +24,8 @@ import kotlinx.coroutines.CompletableDeferred
  * it is created. Engines are tens of MB, so at most [capacity] boxes hold one, least recently
  * prepared first out; `-Dafield.kotlin.spareEngines=0` (or `AFIELD_SPARE_ENGINES=0`) turns this off.
  */
+
+/** Holds a pre-built Kotlin engine per box, so the next `execute-all` does not wait for one. */
 object SpareEngines {
 
     val capacity: Int = (System.getProperty("afield.kotlin.spareEngines") ?: System.getenv("AFIELD_SPARE_ENGINES"))

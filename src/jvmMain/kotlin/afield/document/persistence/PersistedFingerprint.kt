@@ -10,23 +10,25 @@ import afield.document.graph.Box
  * `removePropertyRaw`, `connect` or `disconnect`. Two kinds of edit do not:
  *
  * - a collection mutated in place: `box.layerFrames[layer] = rect` changes the map that is already
- *   the property's value, so no property is set (backlog N1020-6);
+ *   the property's value, so no property is set;
  * - a write made while the document is still loading (`SessionInformation.loading`): box runtimes
  *   start, and code can run, before the loader clears that flag, and marking is off for the whole
  *   of it so the loader's own writes are not mistaken for edits.
  *
- * Both used to reach disk only if some later marked edit triggered a save. The autosave tick, the
- * detach save and the shutdown flush now also compare this hash against the one recorded when the
- * document last matched disk — when the loader finished reading it, and at every save — and save
- * when they differ.
+ * Dirty marking alone would let both reach disk only if some later marked edit triggered a save. So
+ * the autosave tick, the detach save and the shutdown flush also compare this hash against the one
+ * recorded when the document last matched disk — when the loader finished reading it, and at every
+ * save — and save when they differ.
  *
  * The filter is the one `SavingContext.snapshotBoxes` applies (the document's persistent names,
  * never-persisted names excluded). A box reference hashes as its id, so the walk never recurses
  * through the graph. Null and empty collections hash as absent, because a `Delegation` getter
  * with a default (`layerFrames`, ...) materialises an empty map on first read and that is not an
- * edit. A value of some other class contributes its own `hashCode`; an identity hash makes an
- * in-place change to it invisible here, which is no worse than before.
+ * edit. A value of some other class contributes its own `hashCode`; where that is an identity hash,
+ * an in-place change to it is invisible here, exactly as it is to dirty marking.
  */
+
+/** A content hash of a document's persistent properties, for "has this changed since the last save?" */
 object PersistedFingerprint {
 
     fun of(info: SessionInformation): Long = entries(info).values.sum()

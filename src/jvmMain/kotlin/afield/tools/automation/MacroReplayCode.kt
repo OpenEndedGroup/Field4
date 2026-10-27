@@ -5,7 +5,7 @@ package afield.tools.automation
  *
  * A macro replays against the document as it is now, not as it was when the macro was recorded:
  *
- * - A whole-box launch (`type: launch`, `code` or `all`) runs the box's current [liveText]. Any
+ * - A whole-box launch (`type: launch`, `code` or `all`) runs the box's current text. Any
  *   `code:` or `recordedCode:` on the op is a reference to what ran at recording time; a recording
  *   made before the box's code was edited still launches the edited code.
  * - A fragment (`type: fragment`, the default for `execute`, `execute-fragment` and
@@ -15,10 +15,12 @@ package afield.tools.automation
  *   recorded line), otherwise the same lines of the current text.
  * - `codeSource: recorded` runs the op's own `code:` / `recordedCode:` as written, for a macro
  *   that has to replay exactly what ran.
- * - An op with no code runs the box's current text, as before.
+ * - An op with no code at all runs the box's current text.
  *
- * [note] says when what runs differs from what was recorded, for the replay log.
+ * `note` says when what runs differs from what was recorded, for the replay log.
  */
+
+/** The code a replayed macro op runs, the line it starts at, and how it differs from the recording. */
 internal data class MacroReplayCode(val code: String, val line: Int, val note: String? = null) {
     companion object {
         private val wholeBoxTypes = setOf("launch", "code", "all")

@@ -3023,23 +3023,46 @@ JSON serializer for Field's mutable `Vector3f`, encoded as `[x, y, z]` floats.
 
 ## PersistedFingerprint.kt { #persistedfingerprint-kt }
 
+A content hash of everything a document would write to `metadata.edn`.
+
+Dirty marking (`Box.notePersistentChange`) sees a write that goes through `setPropertyRaw`,
+`removePropertyRaw`, `connect` or `disconnect`. Two kinds of edit do not:
+
+- a collection mutated in place: `box.layerFrames[`layer`](patterns.md#patcomposition-kt--layer) = rect` changes the map that is already
+  the property's value, so no property is set;
+- a write made while the document is still loading (`SessionInformation.loading`): box runtimes
+  start, and code can run, before the loader clears that flag, and marking is off for the whole
+  of it so the loader's own writes are not mistaken for edits.
+
+Dirty marking alone would let both reach disk only if some later marked edit triggered a save. So
+the autosave tick, the detach save and the shutdown flush also compare this hash against the one
+recorded when the document last matched disk — when the loader finished reading it, and at every
+save — and save when they differ.
+
+The filter is the one `SavingContext.snapshotBoxes` applies (the document's persistent names,
+never-persisted names excluded). A box reference hashes as its id, so the walk never recurses
+through the graph. Null and empty collections hash as absent, because a `Delegation` getter
+with a default (`layerFrames`, ...) materialises an empty map on first read and that is not an
+edit. A value of some other class contributes its own `hashCode`; where that is an identity hash,
+an in-place change to it is invisible here, exactly as it is to dirty marking.
+
 `src/jvmMain/kotlin/afield/document/persistence/PersistedFingerprint.kt` — [read the source](source/jvmMain/afield/document/persistence/PersistedFingerprint/)
 
 ### PersistedFingerprint { #persistedfingerprint-kt-persistedfingerprint }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">PersistedFingerprint</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L30)
+[<code class="highlight"><span class="k">object</span> <span class="nc">PersistedFingerprint</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L32)
 
-A content hash of everything a document would write to `metadata.edn`.
+A content hash of a document's persistent properties, for "has this changed since the last save?"
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="persistedfingerprint-kt--persistedfingerprint--of"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">of</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L32) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">of</span><span class="p">(</span><span class="n">directory</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">boxes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L34) |  |
-| <a id="persistedfingerprint-kt--persistedfingerprint--entries"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">entries</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L37) | Per `(box id, property)` hashes; [`of`](workspace.md#persistedfingerprint-kt--persistedfingerprint--of) is their sum. Kept so the tripwire can name what changed. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">entries</span><span class="p">(</span><span class="n">directory</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">boxes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L43) |  |
-| <a id="persistedfingerprint-kt--persistedfingerprint--record"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">record</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">,</span> <span class="n">entries</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L59) | Records [`entries`](workspace.md#persistedfingerprint-kt--persistedfingerprint--entries) as what disk holds now (after a load or a save). |
-| <a id="persistedfingerprint-kt--persistedfingerprint--unmarkedchanges"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">unmarkedChanges</span><span class="p">(</span><span class="n">saved</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">now</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">marked</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L70) | The tripwire (backlog N1022-2): the `(box id, property)` keys whose hash differs between [`saved`](data.md#saved-kt--saved) and `now` (added, removed or changed) and that nothing marked in `marked`. Each one is a mutator that bypassed `Box.notePersistentChange`; the save still writes it, but the mutator should be fixed. |
-| <a id="persistedfingerprint-kt--persistedfingerprint--hashesbycontent"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">hashesByContent</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L80) | Whether `deep` of `value` is a function of its content (no identity hash anywhere inside). |
+| <a id="persistedfingerprint-kt--persistedfingerprint--of"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">of</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L34) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">of</span><span class="p">(</span><span class="n">directory</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">boxes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L36) |  |
+| <a id="persistedfingerprint-kt--persistedfingerprint--entries"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">entries</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L39) | Per `(box id, property)` hashes; [`of`](workspace.md#persistedfingerprint-kt--persistedfingerprint--of) is their sum. Kept so the tripwire can name what changed. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">entries</span><span class="p">(</span><span class="n">directory</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">boxes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L45) |  |
+| <a id="persistedfingerprint-kt--persistedfingerprint--record"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">record</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">,</span> <span class="n">entries</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L61) | Records [`entries`](workspace.md#persistedfingerprint-kt--persistedfingerprint--entries) as what disk holds now (after a load or a save). |
+| <a id="persistedfingerprint-kt--persistedfingerprint--unmarkedchanges"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">unmarkedChanges</span><span class="p">(</span><span class="n">saved</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">now</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">marked</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L72) | The tripwire (backlog N1022-2): the `(box id, property)` keys whose hash differs between [`saved`](data.md#saved-kt--saved) and `now` (added, removed or changed) and that nothing marked in `marked`. Each one is a mutator that bypassed `Box.notePersistentChange`; the save still writes it, but the mutator should be fixed. |
+| <a id="persistedfingerprint-kt--persistedfingerprint--hashesbycontent"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">hashesByContent</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L82) | Whether `deep` of `value` is a function of its content (no identity hash anywhere inside). |
 
 ## SafeSaveAtomicSmokeTest.kt { #safesaveatomicsmoketest-kt }
 
@@ -6389,6 +6412,36 @@ Real K2 closure checks for declaration-time resets and the snapshots they must p
 
 ## RerunCompileCache.kt { #reruncompilecache-kt }
 
+Compile once, re-evaluate on rerun: one K2 engine's record of the snippets it has compiled.
+
+A box that reruns with exactly the same expanded source (a `propDown` reader re-launched by its
+writer, the regathered preamble in front of it) can evaluate the snippet it already has instead
+of compiling it again.
+
+On Kotlin 2.5.0-Beta1's `K2ReplEvaluator`, re-evaluating an old `LinkedSnippet` is *not* the same
+as recompiling its source, in two ways, and the cache refuses both:
+
+ 1. **The body does not run** when the snippet is re-evaluated straight after its own previous
+    evaluation: the evaluator reuses the class it already loaded, and a K2 snippet's body runs
+    once per loaded class. (`lst.add(1); lst.size` gave 1 twice and the list kept one element.)
+    With any other snippet evaluated in between the class is reloaded and the body runs. So a
+    hit is refused when the cached snippet is the evaluator's last one ([`KotlinInterface2`](workspace.md#kotlininterface2-kt-kotlininterface2) checks).
+ 2. **Stale bindings.** A snippet binds each name it uses to the snippet *class* that declared it
+    when it was compiled. If a later snippet redeclares that name, a recompile binds the new
+    declaration and a re-evaluation keeps the old one (`q * 2` stayed 10 after `val q = 6`). So
+    every entry records which earlier snippet classes it references, and is refused once any
+    name those classes declare has been redeclared by a later compile.
+
+Mutable declarations and their readers also compile afresh: cached evaluation can reload
+historical backing classes, leaving captured mutable slots outside the evaluator's current
+history.
+
+Also refused, conservatively: sources that carry `@file:` annotations (`DependsOn` refines the
+compile configuration) — and a compiled `import` invalidates every entry, since imports may
+change how already-compiled names would resolve now.
+
+Everything here runs under the engine's compile mutex.
+
 `src/jvmMain/kotlin/afield/runtime/kotlin/RerunCompileCache.kt` — [read the source](source/jvmMain/afield/runtime/RerunCompileCache/)
 
 ## SharedTypes.kt { #sharedtypes-kt }
@@ -6492,20 +6545,35 @@ search order is first-wins — and if so that is a real constraint on the featur
 
 ## SpareEngines.kt { #spareengines-kt }
 
+Engines built ahead of a box's next `execute-all`, so running a box does not wait for a new
+Kotlin engine.
+
+Running a box (`execute-all`) gives it a fresh REPL: a new engine whose stdlib intro is compiled
+and evaluated before the box's code. Built on the spot that is ~250 ms of every run of a one-line
+box on an M1 Max (`engine.reset` in `dev_docs/testing/FEEL_BENCHMARKS.md`). So once a run has
+its verdict, [`prepare`](workspace.md#spareengines-kt--spareengines--prepare) builds the box's next engine in the background, and the next run [`take`](workspace.md#spareengines-kt--spareengines--take)s
+it. The run still gets a fresh engine; only the wait moves.
+
+A spare is the box's only until [`discard`](workspace.md#spareengines-kt--spareengines--discard) (called by [`Box.disposeKi`](workspace.md#boxes-kt--box--disposeki), so retiring a box, reloading
+personal code and recycling an engine all drop it), and is refused by [`take`](workspace.md#spareengines-kt--spareengines--take) if the shared class
+loader has gained jars since it was built, because an engine snapshots its compile classpath when
+it is created. Engines are tens of MB, so at most [`capacity`](workspace.md#spareengines-kt--spareengines--capacity) boxes hold one, least recently
+prepared first out; `-Dafield.kotlin.spareEngines=0` (or `AFIELD_SPARE_ENGINES=0`) turns this off.
+
 `src/jvmMain/kotlin/afield/runtime/kotlin/SpareEngines.kt` — [read the source](source/jvmMain/afield/runtime/SpareEngines/)
 
 ### SpareEngines { #spareengines-kt-spareengines }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">SpareEngines</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L27)
+[<code class="highlight"><span class="k">object</span> <span class="nc">SpareEngines</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L29)
 
-Engines built ahead of a box's next `execute-all`, so running a box does not wait for a new Kotlin engine.
+Holds a pre-built Kotlin engine per box, so the next `execute-all` does not wait for one.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="spareengines-kt--spareengines--capacity"></a>[<code class="highlight"><span class="k">val</span> <span class="n">capacity</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L29) |  |
-| <a id="spareengines-kt--spareengines--take"></a>[<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">take</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">KotlinScriptEngine</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L54) | The box's spare engine, if it has one and it is still current; it is no longer the spare. A spare still being built is waited for: building another beside it would only compete with it. |
-| <a id="spareengines-kt--spareengines--prepare"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">prepare</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L66) | Build [`box`](workspace.md#boxes-kt--box)'s next engine in the background, unless it has one or one is being built. |
-| <a id="spareengines-kt--spareengines--discard"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">discard</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L111) | Drop [`box`](workspace.md#boxes-kt--box)'s spare, and supersede one being built (it is disposed when its build returns). |
+| <a id="spareengines-kt--spareengines--capacity"></a>[<code class="highlight"><span class="k">val</span> <span class="n">capacity</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L31) |  |
+| <a id="spareengines-kt--spareengines--take"></a>[<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">take</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">KotlinScriptEngine</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L56) | The box's spare engine, if it has one and it is still current; it is no longer the spare. A spare still being built is waited for: building another beside it would only compete with it. |
+| <a id="spareengines-kt--spareengines--prepare"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">prepare</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L68) | Build [`box`](workspace.md#boxes-kt--box)'s next engine in the background, unless it has one or one is being built. |
+| <a id="spareengines-kt--spareengines--discard"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">discard</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L113) | Drop [`box`](workspace.md#boxes-kt--box)'s spare, and supersede one being built (it is disposed when its build returns). |
 
 ## SpareEnginesSmokeTest.kt { #spareenginessmoketest-kt }
 
@@ -8755,6 +8823,24 @@ Git worktree proposals for agents: create, list, update, merge, finalize and del
 
 ## MacroReplayCode.kt { #macroreplaycode-kt }
 
+The code a replayed `execute` / `launch` op runs, and where in the box it sits.
+
+A macro replays against the document as it is now, not as it was when the macro was recorded:
+
+- A whole-box launch (`type: launch`, `code` or `all`) runs the box's current text. Any
+  `code:` or `recordedCode:` on the op is a reference to what ran at recording time; a recording
+  made before the box's code was edited still launches the edited code.
+- A fragment (`type: fragment`, the default for `execute`, `execute-fragment` and
+  `launch-fragment`) with an explicit `code:` runs that code: an authored transcript uses it to
+  run a snippet that is not in the box. A recorded fragment carries `recordedCode:` instead and
+  is found again in the box's current text — the same text where it still occurs (nearest its
+  recorded line), otherwise the same lines of the current text.
+- `codeSource: recorded` runs the op's own `code:` / `recordedCode:` as written, for a macro
+  that has to replay exactly what ran.
+- An op with no code at all runs the box's current text.
+
+`note` says when what runs differs from what was recorded, for the replay log.
+
 `src/jvmMain/kotlin/afield/tools/automation/MacroReplayCode.kt` — [read the source](source/jvmMain/afield/tools/automation/MacroReplayCode/)
 
 ## operation_transcript.kt { #operation-transcript-kt }
@@ -8874,17 +8960,83 @@ Compares each demo's `#afield/file-inline` fallbacks with the loose files beside
 
 ## AgentTranscriptIndexGuard.kt { #agenttranscriptindexguard-kt }
 
+Fails the build when `public/docs/agent_transcripts.md` stops being a true index of
+`dev_docs/agents/transcripts/`.
+
+### The failure this exists to stop
+
+The page calls itself "the illustrated index" of the transcript corpus and is the public front door
+to Field's agent-automation story. The generated half of the same system cannot drift:
+`AgentTranscriptMaterializer` and `checkAgentTranscripts` guard the committed starting-point bundle
+byte-for-byte. The hand-curated page beside it has no such guard of its own, and goes stale the
+moment anybody adds a transcript without remembering the page exists — a page that claims to list
+every transcript, listing most of them.
+
+The page is **not** generated, because its entries quote the number a box prints and say why that
+number is the interesting one — `0.985 forwards, 0.246 backwards on a parabola`; `473 diagonal
+breaks against 0`. None of that is in the yaml, which carries op verbs, box ids, rects and Kotlin
+source; a generator over it could emit a name and a box count, which would replace the writing with
+a table. So the trade here is [`KDocAttachmentGuard`](workspace.md#kdocattachmentguard-kt-kdocattachmentguard)'s, not [`StdlibReferenceGenerator`](workspace.md#stdlibreferencegenerator-kt-stdlibreferencegenerator)'s: keep the
+prose hand-written and make its *incompleteness* a build failure, so a new transcript cannot ship
+without somebody writing a sentence about it.
+
+### The five things it checks
+
+1. **Completeness** — every `*.yaml` in the corpus has exactly one entry. An entry is a `###`
+   heading whose whole text is the transcript's name, `### transcript_name`, at column zero. `###`
+   on that page is therefore reserved for entries: a sub-heading inside an entry has to be `####`
+   or deeper, and a `###` naming anything else is read as an entry for a transcript that does not
+   exist. A heading per entry is also what makes a hundred-odd scenes something a reader can link
+   to and scroll through one at a time.
+2. **No orphans** — every entry names a transcript that is still in the corpus, so deleting or
+   renaming a yaml turns the stale paragraph red instead of leaving it to be read as current.
+3. **The CI claim, per entry** — each `##` section declares how CI verifies the scenes under it,
+   with an invisible marker line beneath the heading:
+   ```diffstatic {data-lang=kotlin}
+   <!-- transcript-index: verified-by = execute -->
+   ```
+   The value is one or more of `execute`, `compile`, `kotlinjs`, naming
+   `DemoTranscriptExecSmokeTest.EXECUTE`, `DemoTranscriptExecSmokeTest.COMPILE_ONLY` and
+   `DemoTranscriptExecSmokeTest.KOTLINJS` — which is where classification is decided, and stays the
+   single source of truth. An entry whose transcript is not in one of its section's declared sets is
+   a failure, which is what makes the section prose ("these build and run headless", "each one
+   builds and compiles in CI") an accurate statement about every entry beneath it rather than about
+   most of them. The marker is an HTML comment, so it renders as nothing.
+4. **Open ↗ links that exist** — a transcript is offered as an openable starting point exactly when
+   the materializer ships it, i.e. when it is not in `AgentTranscriptMaterializer.EXCLUDE`. So an
+   entry must carry an `assets/agent_transcripts/<name>/metadata.edn` link when its transcript is
+   materialized and must not when it is not, and the committed bundle directory must really be
+   there. This is the check that stops the page advertising a document the welcome screen cannot
+   open.
+5. **No counts in the CI paragraph** — the paragraph marked
+   ```diffstatic {data-lang=kotlin}
+   <!-- transcript-index: totals -->
+   ```
+   must not quote a number. A paragraph that quoted the corpus size and each set's size would put
+   every branch that adds a transcript into the same sentence, and any two of them into a conflict
+   there. The counts live in `DemoTranscriptExecSmokeTest`, which prints them; the prose names the
+   three depths without them.
+
+### Running it
+
+```diffstatic {data-lang=kotlin}
+./gradlew checkAgentTranscriptIndex          # also runs as part of check
+```
+Reads five kinds of text file and nothing else: no Field server, no runloop, no boxes, no GPU.
+Its heavyweight sibling `checkAgentTranscripts` builds real boxes and costs ~25 s; a completeness
+check needs none of that. See `dev_docs/agent_transcript_index.md` for how to add an entry.
+
 `src/jvmMain/kotlin/afield/tools/docs/AgentTranscriptIndexGuard.kt` — [read the source](source/jvmMain/afield/tools/docs/AgentTranscriptIndexGuard/)
 
 ### AgentTranscriptIndexGuard { #agenttranscriptindexguard-kt-agenttranscriptindexguard }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">AgentTranscriptIndexGuard</span></code>](source/jvmMain/afield/tools/docs/AgentTranscriptIndexGuard/#L90)
+[<code class="highlight"><span class="k">object</span> <span class="nc">AgentTranscriptIndexGuard</span></code>](source/jvmMain/afield/tools/docs/AgentTranscriptIndexGuard/#L89)
 
-Fails the build when `public/docs/agent_transcripts.md` stops being a true index of `dev_docs/agents/transcripts/`.
+Checks that `public/docs/agent_transcripts.md` lists every transcript, and only real ones.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="agenttranscriptindexguard-kt--agenttranscriptindexguard--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/AgentTranscriptIndexGuard/#L122) |  |
+| <a id="agenttranscriptindexguard-kt--agenttranscriptindexguard--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/AgentTranscriptIndexGuard/#L121) |  |
 
 ## AgentTranscriptLayoutGuard.kt { #agenttranscriptlayoutguard-kt }
 
@@ -9258,31 +9410,130 @@ Generates and verifies the source-mirror docs pages; see the file overview.
 
 ## SourcePartitionGuard.kt { #sourcepartitionguard-kt }
 
+Proves that every Kotlin file in the repository can be cut into spans **losslessly**, and measures
+how much of it the cutter actually understands.
+
+### The failure this exists to stop
+
+A source page that lifts KDoc into prose, turns declarations into headers and numbers the code
+fences from their real source lines is correct only if the partition it was rendered from accounts
+for the whole file. Lose three lines and every fence below them is numbered wrong — on a published
+page, in a way that looks completely normal, and that a reader can only catch by opening the source
+they came here to avoid opening. The wrong page is well-formed, so review does not catch it either.
+
+So the partition is checked against the file it came from, over the whole repository, before any
+page exists. [`KotlinSourcePartition.verify`](workspace.md#kotlinsourcepartition-kt--kotlinsourcepartition--verify) holds the invariants; this walks the corpus, adds the
+two checks that need more than one file's worth of context, and reports.
+
+### What it checks
+
+- **The invariants** — tile, nest, reconstruct, balance, terminated. See [`KotlinSourcePartition`](workspace.md#kotlinsourcepartition-kt-kotlinsourcepartition).
+- **Agreement** — every declaration `KotlinSourceIndex.parseTopLevelDefinitions` finds is the
+  `declarationLine` of some `DECLARATION` span. Two independent recognisers, one corpus: a
+  disagreement means one of them is wrong about real source, and it does not much matter which,
+  because the reference pages and the completion panel are built on the index while the source pages
+  would be built on this. They have to see the same declarations or the two halves of the site
+  disagree.
+- **The unattributed census, as a ratchet** — every line the partition could not attribute to a
+  declaration, a comment or a header lands in `FILLER`. That is a *correctness-preserving* fallback:
+  the tiling still holds, no line is lost. It is not free, though — a `FILLER` line is a line a page
+  can only show as anonymous code — so the `FILLER` lines that carry code are counted and pinned,
+  and the pin falls whenever the scanner learns a shape and rises only with a reason. Blank lines
+  land in `FILLER` too and are not counted: there is nothing for a page to lose.
+- **Locals reported as API** — a second ratchet counts the declarations
+  [`KotlinSourceIndex`](workspace.md#kotlinsourceindex-kt-kotlinsourceindex) reports from *inside a function body*, each of which the reference pages and
+  the completion panel would otherwise publish as though it were public.
+
+### Running it
+
+```diffstatic {data-lang=kotlin}
+./gradlew checkSourcePartition                        # also part of check and docsGates
+./gradlew checkSourcePartition --args=--verbose       # …and the per-file and per-shape breakdowns
+```
+Needs no Field server, no GPU and no network: it reads source text. Sibling of
+[`KDocAttachmentGuard`](workspace.md#kdocattachmentguard-kt-kdocattachmentguard), which guards the other half of the same pipeline — that a KDoc block reaches
+the declaration its author meant.
+
 `src/jvmMain/kotlin/afield/tools/docs/SourcePartitionGuard.kt` — [read the source](source/jvmMain/afield/tools/docs/SourcePartitionGuard/)
 
 ### SourcePartitionGuard { #sourcepartitionguard-kt-sourcepartitionguard }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">SourcePartitionGuard</span></code>](source/jvmMain/afield/tools/docs/SourcePartitionGuard/#L61)
+[<code class="highlight"><span class="k">object</span> <span class="nc">SourcePartitionGuard</span></code>](source/jvmMain/afield/tools/docs/SourcePartitionGuard/#L66)
 
-Proves that every Kotlin file in the repository can be cut into spans **losslessly**, and measures how much of it the cutter actually understands.
+Checks every Kotlin file in the repository against the span partition a source page renders.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="sourcepartitionguard-kt--sourcepartitionguard--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/SourcePartitionGuard/#L149) |  |
+| <a id="sourcepartitionguard-kt--sourcepartitionguard--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/SourcePartitionGuard/#L154) |  |
 
 ## StdlibReferenceGenerator.kt { #stdlibreferencegenerator-kt }
+
+Emits Field's **codebase reference** — the browsable answer to "what is already in the box?" —
+from the KDoc that lives next to the code.
+
+### Why this exists, and why it is not Dokka
+
+Dokka was removed in `20e64da5`, because the durable facts belong in KDoc beside the code and a
+generated wall of one-page-per-symbol HTML is not documentation anyone reads. Field already has
+two *interactive* ways into that KDoc — the completion panel's recursive code browser
+(`public/docs/completion_doc_browser.md`) and the semantic index — but both need you to already
+know the name you are looking for. Nothing answered the browsing question. This generator does,
+with ordinary Zensical markdown inside the existing docs site: a page per completion category,
+a section per source file, the file's own KDoc as the orientation prose, and a table per type.
+
+### One parser, not two
+
+Declarations come from `KotlinSourceIndex.parseTopLevelDefinitions` — the *same* scan that feeds
+the in-app completion doc browser — so a symbol listed here is by construction a symbol the doc
+panel can resolve. Only the signature text is re-read from source here (the index stores names
+and lines, not signatures); see `signatureAt`.
+
+### What it will not invent
+
+- Every summary is the first paragraph of a real KDoc comment; a symbol with no KDoc is listed
+  with an empty summary rather than a guessed one.
+- A KDoc reference in square brackets is linkified only when the target is a type this reference
+  actually emits — the same "links only appear when they resolve" rule the completion panel
+  follows. Everything else degrades to plain inline code.
+- The "see also" links from a reference section to a worked-example page are *evidence-based*:
+  a page is linked only when it literally mentions `MIN_EVIDENCE_HITS` or more distinct public
+  symbol names from that source file (see `evidenceLinks`). No hand-maintained topic map to rot.
+
+### File overview rule
+
+The first KDoc block in a file is treated as the *file's* overview when it ends before the first
+declaration **and** is separated from that declaration by at least one blank or comment line —
+and it is then not also shown as that declaration's own summary. A block written flush against
+its declaration stays that declaration's own KDoc, of which only the first paragraph is
+published; the file's "what it is" cell on the index then has nothing to fill it with.
+
+### Running it
+
+Regenerate the committed pages (needs no Field server, no GPU, no network):
+```diffstatic {data-lang=kotlin}
+./gradlew generateCodebaseReference
+```
+Run with **no** output directory and it emits to a temp dir and then **drift-checks** the
+committed pages byte-for-byte instead — which is what the `docs.codebase-reference.generate`
+FIELD_TEST does, so an API or KDoc change that nobody regenerated fails the build. This mirrors
+[`afield.examples.AgentTranscriptMaterializer`](examples.md#agenttranscriptmaterializer-kt-agenttranscriptmaterializer) and the `tools/linalg-generator --check` mode that
+guards `public/docs/linear_algebra_api.md`.
+
+The pages are **committed** rather than built on the fly: the Zensical docs build must not gain a
+JVM step, and a generated reference is only trustworthy if an API change shows up as a reviewable
+diff.
 
 `src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt` — [read the source](source/jvmMain/afield/tools/docs/StdlibReferenceGenerator/)
 
 ### StdlibReferenceGenerator { #stdlibreferencegenerator-kt-stdlibreferencegenerator }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">StdlibReferenceGenerator</span></code>](source/jvmMain/afield/tools/docs/StdlibReferenceGenerator/#L76)
+[<code class="highlight"><span class="k">object</span> <span class="nc">StdlibReferenceGenerator</span></code>](source/jvmMain/afield/tools/docs/StdlibReferenceGenerator/#L77)
 
-Emits Field's **codebase reference** — the browsable answer to "what is already in the box?" — from the KDoc that lives next to the code.
+Emits `public/docs/reference/` from the KDoc in `src/`, or drift-checks the committed pages.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="stdlibreferencegenerator-kt--stdlibreferencegenerator--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/StdlibReferenceGenerator/#L712) |  |
+| <a id="stdlibreferencegenerator-kt--stdlibreferencegenerator--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/StdlibReferenceGenerator/#L713) |  |
 
 ## canvasFlightRecording.kt { #canvasflightrecording-kt }
 
