@@ -1978,8 +1978,7 @@ third-party JS chart.
 window, no sidecar. Three boxes: the corpus itself with its payload distribution, the *real*
 `KotlinSourceIndex.getCompletionCategoryForSymbol` called with the real recorded `declaredIn`, and
 the whole decision re-scored through the shipped
-weights. The third box shells out to `tools/rank_weight_lab.py` and wants a spec file
-`afield.runtime.completion.FieldSuggestPresentationTest` drops; if it says so, run that test once.
+weights. The third box shells out to `tools/rank_weight_lab.py`.
 `dev_docs/completion_rank_at_scale.md` is the written-up version, with the sweep and the falsification
 behind it.
 
