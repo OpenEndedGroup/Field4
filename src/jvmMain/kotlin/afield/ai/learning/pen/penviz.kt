@@ -333,9 +333,9 @@ fun sideBySide(groups: List<List<FLine>>, gap: Double = 12.0, y: Double = 0.0): 
     return groups.flatMap { g ->
         val boxes = g.filter { it.nodes.isNotEmpty() }.map { it.fast2DBounds() }
         if (boxes.isEmpty()) return@flatMap emptyList()
-        val x0 = boxes.minOf { it.x.toDouble() }
-        val y0 = boxes.minOf { it.y.toDouble() }
-        val x1 = boxes.maxOf { (it.x + it.w).toDouble() }
+        val x0 = boxes.minOf { it.x }
+        val y0 = boxes.minOf { it.y }
+        val x1 = boxes.maxOf { it.x + it.w }
         val dx = x - x0
         val dy = y - y0
         x += x1 - x0 + gap
@@ -350,9 +350,9 @@ fun stacked(groups: List<List<FLine>>, gap: Double = 12.0, x: Double = 0.0): Lis
     return groups.flatMap { g ->
         val boxes = g.filter { it.nodes.isNotEmpty() }.map { it.fast2DBounds() }
         if (boxes.isEmpty()) return@flatMap emptyList()
-        val x0 = boxes.minOf { it.x.toDouble() }
-        val y0 = boxes.minOf { it.y.toDouble() }
-        val y1 = boxes.maxOf { (it.y + it.h).toDouble() }
+        val x0 = boxes.minOf { it.x }
+        val y0 = boxes.minOf { it.y }
+        val y1 = boxes.maxOf { it.y + it.h }
         val dx = x - x0
         val dy = y - y0
         y += y1 - y0 + gap

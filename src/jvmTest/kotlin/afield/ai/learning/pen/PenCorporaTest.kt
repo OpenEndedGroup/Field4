@@ -21,7 +21,7 @@ class PenCorporaTest {
     @Test
     fun capitalsAreAsTallAsAsked() {
         val b = HersheyFont.load("futural").text("H", size = 21.0).fast2DBounds()
-        assertEquals(21.0, b.h.toDouble(), 1.5)
+        assertEquals(21.0, b.h, 1.5)
     }
 
     @Test
