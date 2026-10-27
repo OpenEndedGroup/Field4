@@ -48,17 +48,20 @@ import java.io.File
 
 /**
  * Keys for a study card: a snapshot of every number in a program, saved by name, which the card can
- * apply or blend towards — the person's way of keeping "this look" and "that look" and moving between
- * them before choosing a revision.
+ * apply or blend towards. They are the person's way of keeping "this look" and "that look" and moving
+ * between them before choosing a revision.
  *
  * A key is a [KeyframeScope] key like any other, saved with [KeyframeScope.saveKey], so each has its
  * `.versions` history and the keyframe browser can read the folder. Its values are the knobs by index
- * (`k0`, `k1`, …) and, under `shape`, the program's shape ([KnobNames.shape]): a key applies to the
- * program it was captured from, and to that program with any of its numbers changed, but not to one whose
- * text has changed around them, where the same index may be a different number.
+ * (`k0`, `k1`, …) and, under `shape`, the shape of the program it came from: that program's text with
+ * every number blanked out, the language, and what reads each number. So a key applies to the program
+ * it was captured from, and to that program with any of its numbers changed, but not to one whose text
+ * has changed around them, where the same index may be a different number.
  *
  * Keys live in `keys/` in the study's directory.
  */
+
+/** A study's saved keys, on disk: reading them, saving one, and the card's own half of the UI. */
 internal object StudyKeys {
     /** A saved key: its [name], the [shape] of the program it came from, and its numbers by knob index. */
     data class Saved(val name: String, val shape: String, val values: Map<Int, Double>)

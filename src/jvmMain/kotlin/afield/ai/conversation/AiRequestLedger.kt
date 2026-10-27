@@ -15,6 +15,29 @@ import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 
+/**
+ * The on-disk accounting record for every AI4 model request: which endpoint answered, how many
+ * tokens it billed, how long it took and how it ended, with none of the prompt and none of the
+ * reply.
+ *
+ * The OpenAI Responses bridge and the Anthropic messages bridge both write through it, so a
+ * session's whole model spend lands in one place whatever provider served it. Lines are appended as
+ * JSON under `~/.afield/logs/ai_usage`, redirected by the `afield.ai.usageLog.path` system property
+ * or the `AFIELD_AI_USAGE_LOG_PATH` environment variable. A file name carries the date, the process
+ * id and a uuid minted per JVM, so two Field processes logging at once never share a file or
+ * contend for a lock.
+ *
+ * Four events describe one request. `attempt_started` opens each attempt; `response_usage` records
+ * the billed token counts, normalised so that input means the whole prompt for either provider and
+ * cached input is part of it; `retry_wait` marks a backoff between attempts; and
+ * `attempt_finished` carries the elapsed time, the error type, the HTTP status and whichever
+ * rate-limit headers the provider returned. Usage is recorded before the response is validated,
+ * because a stream that failed partway can still have billed.
+ *
+ * Writing is best effort. A directory that cannot be written prints one warning to stderr and the
+ * request carries on, since losing accounting is not a reason to lose the answer.
+ */
+
 /** Content-free, per-process request accounting shared by all AI4 conversations and completions. */
 internal object AiRequestLedger {
     private val mapper = ObjectMapper()

@@ -5,6 +5,30 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
+ * Building a Variable Markov Oracle over a recording, and asking it where a performance could
+ * continue from.
+ *
+ * [VariableMarkovOracle] indexes a [Trajectory] once, in its constructor, and then answers three
+ * kinds of question about it. Its suffix links (`sfx`) and repeated-suffix lengths (`lrs`) say
+ * where the material repeats itself, which is what [Improviser] walks. `cue` ranks positions by
+ * how well the samples before them match a window of recent history, over any subset of channels,
+ * which is how a performer's input finds a place in memory. `bridges` finds the nearest moments
+ * in other episodes, where suffix links rarely reach, so several separately recorded takes can
+ * be played as one memory.
+ *
+ * The one parameter that matters is the threshold at which two frames count as the same symbol,
+ * and `build` chooses it rather than asking for it: it constructs an oracle at each of a range of
+ * candidate thresholds and keeps the one with the highest total information rate. That rate is
+ * near zero at both ends of the range, since a threshold too small finds no repeats and one too
+ * large makes everything a repeat, so the choice is a peak rather than a limit.
+ *
+ * The construction is a Kotlin port of Cheng-i Wang's reference Python `vmo` package, kept in
+ * Kotlin so an oracle can be built and queried inside the frame loop.
+ * `VmoReferenceTest` checks the suffix links, the repeat lengths and the summed information rate
+ * against a fixture generated from the pinned package.
+ */
+
+/**
  * A Variable Markov Oracle (Wang and Dubnov, 2014) over a [Trajectory]: a Factor Oracle
  * (Allauzen, Crochemore and Raffinot, 1999) built on continuous frames, where two frames count
  * as "the same symbol" when their [GestureFeatures] lie within [threshold] of each other.

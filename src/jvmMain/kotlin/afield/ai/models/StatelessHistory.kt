@@ -6,19 +6,20 @@ import com.openai.models.responses.ResponseInputItem
  * Keeping a stateless provider's conversation (local models, OpenRouter) inside its context window.
  *
  * A stateless provider is sent its whole conversation on every request, so the conversation is ours to
- * size. Before this, it was capped only by item count, and the first real conversation with a local model
- * (qwen3.8-27b on llama.cpp, 64k context, 2026-10-22) ran out of room in its ninth turn: each turn's user
- * message carried the full ~24k-character instructions, and every one of those copies stayed in history.
- * Three things keep it inside now:
+ * size, and an item count does not size it: every turn's user message carries the full instructions, and
+ * each of those copies stays in history. Three things keep it inside:
  *
- * - [settle], once per turn boundary: the finished turn's prompt is swapped for its durable text (the
+ * - `settle`, once per turn boundary: the finished turn's prompt is swapped for its durable text (the
  *   request without the instructions, which the newest message always carries), and older tool outputs and
  *   images are cut down. Done once, so the history stays a stable prefix for the server's prompt cache.
- * - [dropOldestTurns], when an estimate says the next request will not fit: whole turns go from the front,
+ * - `dropOldestTurns`, when an estimate says the next request will not fit: whole turns go from the front,
  *   always at a user message, so no function call loses its output.
- * - [contextOverflow] reads the server's own refusal ("request (65833 tokens) exceeds the available context
- *   size (65536 tokens)"), which gives the window and calibrates the estimate; the bridge then fits and retries.
+ * - `contextOverflow` reads the window out of the server's own refusal, in llama.cpp's wording ("request
+ *   (65833 tokens) exceeds the available context size (65536 tokens)") or vLLM's, which calibrates the
+ *   estimate; the bridge then fits the request and retries.
  */
+
+/** Sizing a stateless provider's conversation: what each item costs, and what to settle or drop. */
 internal object StatelessHistory {
     /** An image is counted as this many characters (~1,500 tokens), whatever its data URL's length. */
     const val IMAGE_CHARS = 4_500

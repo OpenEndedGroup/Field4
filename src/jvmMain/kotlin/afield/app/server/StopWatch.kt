@@ -21,9 +21,11 @@ import java.util.concurrent.ConcurrentHashMap
  * stops until the block ends, and the client's own running state can already say "stopped"
  * because the queued launch was cancelled. So the test is server-side: the stop is pending while
  * the runloop has not finished a tick since the stop was asked for, or while the box is still
- * inside a run. Watched from a daemon thread, which is the point: the runloop cannot report on
+ * inside a run. It is watched from a daemon thread, because a blocked runloop cannot report on
  * itself.
  */
+
+/** Watches one box's stop and tells that box's sessions while it has not taken effect. */
 internal object StopWatch {
     private const val PENDING_AFTER_MS = 600L
     private const val POLL_MS = 200L

@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-231 source file(s), 3159 public symbol(s), 1144 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+231 source file(s), 3159 public symbol(s), 1147 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1287,6 +1287,17 @@ Tracks per-session back pressure for output messages. When the frontend is slow 
 
 ## StopWatch.kt { #stopwatch-kt }
 
+Tells a box's clients when a stop has not taken effect, so the box's status marker can say
+"asked to stop, not responding".
+
+A stop is carried out on the runloop. When the runloop is blocked (a box sleeping or in a busy
+loop, or a `propUp` pull of one, whose nested pump does not advance [`Runloop.frame`](workspace.md#runloop-kt--runloop--frame)), nothing
+stops until the block ends, and the client's own running state can already say "stopped"
+because the queued launch was cancelled. So the test is server-side: the stop is pending while
+the runloop has not finished a tick since the stop was asked for, or while the box is still
+inside a run. It is watched from a daemon thread, because a blocked runloop cannot report on
+itself.
+
 `src/jvmMain/kotlin/afield/app/server/StopWatch.kt` — [read the source](source/jvmMain/afield/app/server/StopWatch/)
 
 ## UserThemeManager.kt { #userthememanager-kt }
@@ -1489,13 +1500,30 @@ Register custom HTML renderers for non-Browsable values (leaf fallback).
 
 ## chat.kt { #chat-kt }
 
+The server side of the Discussion thread that a slideshow step or a box can show: two RPC
+handlers that carry messages between Field's clients and an outside chat service.
+
+A thread is addressed by an id and a number, and the pair is a name rather than a location:
+`withChat(id)` on a step can hand it a template id, so that every document made from the same
+template shares one thread, and `Box.withChat` passes the box's own id. `load-chat-messages`
+fetches a thread and replies only to the client that asked for it; `post-chat-message` sends one
+and then broadcasts `chat-message-posted` to every client of the session, so any open widget
+reloads the thread. Field's browser never calls the service itself.
+
+Field ships no such service. The Python one was removed from the repository in October 2026, so
+unless something compatible is listening on `CHAT_SERVER_URL` the Discussion UI appears, loads an
+empty thread and drops what is posted into it. The rest of a slideshow is unaffected by that: the
+requests run outside slideshow execution, a failed load is answered as an empty list, and a
+failed post is logged and not answered at all. `dev_docs/GUIDE_CHAT_QUICKSTART.md` lists what a
+replacement backend would have to serve.
+
 `src/jvmMain/kotlin/afield/app/server/chat.kt` — [read the source](source/jvmMain/afield/app/server/chat/)
 
 ### Top-level functions { #chat-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="chat-kt--chat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">chat</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/chat/#L69) | Install Field's guide-chat RPC bridge. |
+| <a id="chat-kt--chat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">chat</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/chat/#L88) | Install Field's guide-chat RPC bridge. |
 
 ## controllers.kt { #controllers-kt }
 
@@ -1941,16 +1969,16 @@ client already has, the way the h2 explorer and the log stream do.
 
 Structure as JSON, presentation as HTML. The collection summary, the slot bands and the version
 rows are typed payloads the page lays out itself; individual *values* come over as rendered HTML
-from `.h`, because that is the whole point of reusing the value visualizers — a `Vector3f` arrives
-with its axis widget already drawn, and a type that registers its own printer gets it for free.
+from `.h`, which is what reusing the value visualizers buys: a `Vector3f` arrives with its axis
+widget already drawn, and a type that registers its own printer gets it for free.
 
-### Read-only, deliberately
+### Read-only
 
-There is an `apply` op, because putting a saved look back is the reason
-you were browsing. There is no edit op. Everything on disk is append-only by construction —
-`saveKey` never overwrites a numbered version and an unreadable manifest is quarantined rather
-than replaced — and an in-browser edit button would quietly break that. Getting a modified look
-back out goes through `updateCode`, which emits pasteable Kotlin.
+There is an `apply` op, because putting a saved look back is the reason you were browsing. There
+is no edit op. Everything on disk is append-only by construction — `saveKey` never overwrites a
+numbered version and an unreadable manifest is quarantined rather than replaced — and an
+in-browser edit button would break that. Getting a modified look back out goes through
+`updateCode`, which emits pasteable Kotlin.
 
 `src/jvmMain/kotlin/afield/app/server/keyframeBrowsing.kt` — [read the source](source/jvmMain/afield/app/server/keyframeBrowsing/)
 
@@ -3005,32 +3033,32 @@ should have marked its own write.
 
 ### PersistedFingerprint { #persistedfingerprint-kt-persistedfingerprint }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">PersistedFingerprint</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L44)
+[<code class="highlight"><span class="k">object</span> <span class="nc">PersistedFingerprint</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L21)
 
-A content hash of everything a document would write to `metadata.edn`.
+A content hash of a document's persistent properties, for "has this changed since the last save?"
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="persistedfingerprint-kt--persistedfingerprint--of"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">of</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L46) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">of</span><span class="p">(</span><span class="n">directory</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">boxes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L48) |  |
-| <a id="persistedfingerprint-kt--persistedfingerprint--entries"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">entries</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L51) | Per `(box id, property)` hashes; [`of`](workspace.md#persistedfingerprint-kt--persistedfingerprint--of) is their sum. Kept so the tripwire can name what changed. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">entries</span><span class="p">(</span><span class="n">directory</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">boxes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L57) |  |
-| <a id="persistedfingerprint-kt--persistedfingerprint--record"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">record</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">,</span> <span class="n">entries</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L73) | Records `entries` as what disk holds now (after a load or a save). |
-| <a id="persistedfingerprint-kt--persistedfingerprint--unmarkedchanges"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">unmarkedChanges</span><span class="p">(</span><span class="n">saved</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">now</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">marked</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L84) | The tripwire (backlog N1022-2): the `(box id, property)` keys whose hash differs between `saved` and `now` (added, removed or changed) and that nothing marked in `marked`. Each one is a mutator that bypassed `Box.notePersistentChange`; the save still writes it, but the mutator should be fixed. |
-| <a id="persistedfingerprint-kt--persistedfingerprint--hashesbycontent"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">hashesByContent</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L94) | Whether `deep` of `value` is a function of its content (no identity hash anywhere inside). |
+| <a id="persistedfingerprint-kt--persistedfingerprint--of"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">of</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L23) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">of</span><span class="p">(</span><span class="n">directory</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">boxes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L25) |  |
+| <a id="persistedfingerprint-kt--persistedfingerprint--entries"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">entries</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L28) | Per `(box id, property)` hashes; [`of`](workspace.md#persistedfingerprint-kt--persistedfingerprint--of) is their sum. Kept so the tripwire can name what changed. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">entries</span><span class="p">(</span><span class="n">directory</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">boxes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L34) |  |
+| <a id="persistedfingerprint-kt--persistedfingerprint--record"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">record</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">,</span> <span class="n">entries</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L50) | Records `entries` as what disk holds now (after a load or a save). |
+| <a id="persistedfingerprint-kt--persistedfingerprint--unmarkedchanges"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">unmarkedChanges</span><span class="p">(</span><span class="n">saved</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">now</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">marked</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L61) | The tripwire (backlog N1022-2): the `(box id, property)` keys whose hash differs between `saved` and `now` (added, removed or changed) and that nothing marked in `marked`. Each one is a mutator that bypassed `Box.notePersistentChange`; the save still writes it, but the mutator should be fixed. |
+| <a id="persistedfingerprint-kt--persistedfingerprint--hashesbycontent"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">hashesByContent</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/document/persistence/PersistedFingerprint/#L71) | Whether `deep` of `value` is a function of its content (no identity hash anywhere inside). |
 
 ## SafeSaveAtomicSmokeTest.kt { #safesaveatomicsmoketest-kt }
 
-Smoke for [`File.safeSave`](workspace.md#saving-kt--safesave)'s `atomic = true` path — the fix for transient `operations.yaml`
-corruption (a reader catching a truncated/interleaved write). The operation-transcript writer
-(`OperationTranscript.checkpoint` and friends) now writes atomically: to a temp file in the same
-directory, then an atomic rename into place, so a concurrent reader (or another process sharing
-the workspace) only ever observes a complete file.
+Smoke for [`File.safeSave`](workspace.md#saving-kt--safesave)'s `atomic = true` path, which is what keeps a file readable while it is
+being rewritten. The operation-transcript writer (`OperationTranscript.checkpoint` and friends)
+uses it for `operations.yaml`: the text goes to a temp file in the same directory and is then
+renamed into place, so a concurrent reader — another thread, or another process sharing the
+workspace — only ever sees a complete file.
 
-The load-bearing case is `concurrentAtomicWritesNeverTear`: many writer threads hammer one file
-while a reader parses it in a tight loop; with atomic writes the reader must never see a
-half-written (unparseable) file — which is exactly the SnakeYAML "expected <block end>" failure
-this fix eliminates.
+`concurrentAtomicWritesNeverTear` is the case that exercises that. Six writer threads replace one
+file 120 times each, with payloads of very different lengths, while a reader parses it in
+a tight loop. A torn or interleaved write splices one payload into another and SnakeYAML reports
+`expected <block end>`; under atomic writes every read parses to a list.
 
 `src/jvmMain/kotlin/afield/document/persistence/SafeSaveAtomicSmokeTest.kt` — [read the source](source/jvmMain/afield/document/persistence/SafeSaveAtomicSmokeTest/)
 
@@ -3384,11 +3412,34 @@ The property delegate that makes a value *inherited*: reading it looks in this b
 
 ## KitDedicatedHost.kt { #kitdedicatedhost-kt }
 
+The compatibility route for a project that already has its own launcher, workspace and document
+conventions and wants to appear in Welcome's kit library without adopting Field's. Such a kit
+declares a `host` block in its `field-kit.json` naming a launcher script, a loopback HTTP endpoint
+and the workspace that launcher owns, and Field then treats it as something to start rather than
+something to load: none of its runtime declarations join the calling host's classpath, and its
+documents keep whatever versioning scheme the project already uses.
+
+[`KitDedicatedHosts.open`](workspace.md#kitdedicatedhost-kt--kitdedicatedhosts--open) is the whole action, and it runs only from an explicit **Open kit host**
+or **Create in kit host** in Welcome, never from adding a kit. It probes `/api/instance-info` at
+the declared endpoint first and reuses a host that is already up, refusing outright when a
+different workspace answers there; otherwise it runs the launcher from the kit's source directory
+with Field's own port and path variables stripped from the environment, appends its output to
+`logs/<id>.log` under the kits directory, and polls for up to three minutes. Creating a document
+is then a POST to that host's own starting-point API, so the running project copies the seed by
+its own rules and hands back the URL to open.
+
+Two checks hold the arrangement together. [`KitPackages.read`](workspace.md#kitpackages-kt--kitpackages--read) calls [`KitDedicatedHosts.validate`](workspace.md#kitdedicatedhost-kt--kitdedicatedhosts--validate) on
+every manifest, so a non-loopback endpoint, a query string, user info in the URL, or a launcher
+path escaping the package is refused when the kit is added rather than when it is run. And
+[`KitDedicatedHosts.open`](workspace.md#kitdedicatedhost-kt--kitdedicatedhosts--open) compares the launcher's hash in the source directory against the one in
+the installed snapshot, so the script that executes is the script that was there when the kit was
+added.
+
 `src/jvmMain/kotlin/afield/document/workspace/KitDedicatedHost.kt` — [read the source](source/jvmMain/afield/document/workspace/KitDedicatedHost/)
 
 ### KitDedicatedHost { #kitdedicatedhost-kt-kitdedicatedhost }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitDedicatedHost</span><span class="p">(</span><span class="k">val</span> <span class="n">launcher</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">endpoint</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">workspace</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">environment</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitDedicatedHost/#L14)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitDedicatedHost</span><span class="p">(</span><span class="k">val</span> <span class="n">launcher</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">endpoint</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">workspace</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">environment</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitDedicatedHost/#L39)
 
 Compatibility for an existing project launcher. Its original workspace and runtime remain authoritative.
 
@@ -3398,14 +3449,14 @@ Compatibility for an existing project launcher. Its original workspace and runti
 
 ### KitDedicatedHosts { #kitdedicatedhost-kt-kitdedicatedhosts }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">KitDedicatedHosts</span></code>](source/jvmMain/afield/document/workspace/KitDedicatedHost/#L18)
+[<code class="highlight"><span class="k">object</span> <span class="nc">KitDedicatedHosts</span></code>](source/jvmMain/afield/document/workspace/KitDedicatedHost/#L43)
 
 Starts an existing local project without rewriting its launcher, manifests or existing documents.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="kitdedicatedhost-kt--kitdedicatedhosts--validate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">validate</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">host</span><span class="p">:</span> <span class="nc">KitDedicatedHost</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitDedicatedHost/#L22) |  |
-| <a id="kitdedicatedhost-kt--kitdedicatedhosts--open"></a>[<code class="highlight"><span class="k">fun</span> <span class="k">open</span><span class="p">(</span><span class="n">kit</span><span class="p">:</span> <span class="nc">InstalledKit</span><span class="p">,</span> <span class="n">startingPoint</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitDedicatedHost/#L34) | The launcher is invoked only by an explicit Run/Create action, never by installation. |
+| <a id="kitdedicatedhost-kt--kitdedicatedhosts--validate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">validate</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">host</span><span class="p">:</span> <span class="nc">KitDedicatedHost</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitDedicatedHost/#L47) |  |
+| <a id="kitdedicatedhost-kt--kitdedicatedhosts--open"></a>[<code class="highlight"><span class="k">fun</span> <span class="k">open</span><span class="p">(</span><span class="n">kit</span><span class="p">:</span> <span class="nc">InstalledKit</span><span class="p">,</span> <span class="n">startingPoint</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitDedicatedHost/#L59) | The launcher is invoked only by an explicit Run/Create action, never by installation. |
 
 ## KitFirstOpen.kt { #kitfirstopen-kt }
 
@@ -3432,11 +3483,32 @@ Finds the roles a freshly copied kit document launches on its first open.
 
 ## KitInstances.kt { #kitinstances-kt }
 
+A document copied from a kit's starting point, the record of what it received, and the three-way
+comparison that updates it. [`KitInstances.create`](workspace.md#kitinstances-kt--kitinstances--create) copies a starting point into the workspace,
+puts the new document in a `kit-<id>` workspace project, and writes `.field-kit-instance.json`:
+the kit id, the package and runtime revisions, the starting point, the project, and a hash of
+every file the copy began from. Those hashes are the baseline; the document's files are its own
+from then on.
+
+[`KitInstances.inspect`](workspace.md#kitinstances-kt--kitinstances--inspect) reads three hashes for each path (the baseline, the document's file now,
+and the same path in the installed starting point) and labels the difference `update`,
+`edited-here`, `remove` or `conflict`, a conflict being both sides changed since the baseline.
+[`KitInstances.migrate`](workspace.md#kitinstances-kt--kitinstances--migrate) then applies that plan or none of it. It refuses outright while any path
+conflicts, copies every file it is about to write or delete into `backups/kit-<uuid>` first,
+restores from those copies if a write fails partway, and rewrites the record last, so a failed
+update leaves the document on the revision it already had.
+
+A document reads shared resources from the package revision it recorded rather than the newest
+installed one ([`KitInstances.sharedResources`](workspace.md#kitinstances-kt--kitinstances--sharedresources)), which is also why `.field-kit-instance.json` has
+to travel with the document's other files: without it a host has no kit to compare the document
+against, and it opens as an ordinary workspace document. The equivalent for a role kit inside a
+single document is [`Kits`](workspace.md#kits-kt-kits).
+
 `src/jvmMain/kotlin/afield/document/workspace/KitInstances.kt` — [read the source](source/jvmMain/afield/document/workspace/KitInstances/)
 
 ### KitInstanceRecord { #kitinstances-kt-kitinstancerecord }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitInstanceRecord</span><span class="p">(</span><span class="k">val</span> <span class="n">kit</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">runtimeRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">startingPoint</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">project</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">files</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L9)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitInstanceRecord</span><span class="p">(</span><span class="k">val</span> <span class="n">kit</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">runtimeRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">startingPoint</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">project</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">files</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L32)
 
 The seed revision and file baselines this document actually received.
 
@@ -3446,11 +3518,15 @@ The seed revision and file baselines this document actually received.
 
 ### KitInstanceChange { #kitinstances-kt-kitinstancechange }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitInstanceChange</span><span class="p">(</span><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L13)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitInstanceChange</span><span class="p">(</span><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L37)
+
+One path and what an update would do to it: `update`, `edited-here`, `remove` or `conflict`.
 
 ### KitInstanceInspection { #kitinstances-kt-kitinstanceinspection }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitInstanceInspection</span><span class="p">(</span><span class="k">val</span> <span class="n">document</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">record</span><span class="p">:</span> <span class="nc">KitInstanceRecord</span><span class="p">,</span> <span class="k">val</span> <span class="n">availableRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">changes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KitInstanceChange</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">conflicts</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L16)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitInstanceInspection</span><span class="p">(</span><span class="k">val</span> <span class="n">document</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">record</span><span class="p">:</span> <span class="nc">KitInstanceRecord</span><span class="p">,</span> <span class="k">val</span> <span class="n">availableRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">changes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KitInstanceChange</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">conflicts</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L41)
+
+An update preview: the revision on offer, every path that differs, and the conflicts that block it.
 
 | Declaration | Summary |
 | --- | --- |
@@ -3458,28 +3534,56 @@ The seed revision and file baselines this document actually received.
 
 ### KitInstances { #kitinstances-kt-kitinstances }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">KitInstances</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L20)
+[<code class="highlight"><span class="k">object</span> <span class="nc">KitInstances</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L45)
 
 Starting-point copies and all-or-nothing three-way file migration. Runtime snapshots remain immutable.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="kitinstances-kt--kitinstances--record"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RECORD</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L21) |  |
-| <a id="kitinstances-kt--kitinstances--first-open"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">FIRST&#95;OPEN</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L22) |  |
-| <a id="kitinstances-kt--kitinstances--record-2"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">record</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">KitInstanceRecord</span><span class="o">?</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L26) |  |
-| <a id="kitinstances-kt--kitinstances--files"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">files</span><span class="p">(</span><span class="n">seed</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L31) |  |
-| <a id="kitinstances-kt--kitinstances--create"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">create</span><span class="p">(</span><span class="n">workspace</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">startingPoint</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">DuplicateDocumentResponse</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L39) |  |
-| <a id="kitinstances-kt--kitinstances--inspect"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">inspect</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">KitInstanceInspection</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L63) |  |
-| <a id="kitinstances-kt--kitinstances--migrate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">migrate</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">KitInstanceInspection</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L89) | Caller must close/unload a live document first. Validate the whole plan before writing any file. |
-| <a id="kitinstances-kt--kitinstances--sharedresources"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">sharedResources</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L124) |  |
+| <a id="kitinstances-kt--kitinstances--record"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RECORD</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L46) |  |
+| <a id="kitinstances-kt--kitinstances--first-open"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">FIRST&#95;OPEN</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L47) |  |
+| <a id="kitinstances-kt--kitinstances--record-2"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">record</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">KitInstanceRecord</span><span class="o">?</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L51) |  |
+| <a id="kitinstances-kt--kitinstances--files"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">files</span><span class="p">(</span><span class="n">seed</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L56) |  |
+| <a id="kitinstances-kt--kitinstances--create"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">create</span><span class="p">(</span><span class="n">workspace</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">startingPoint</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">DuplicateDocumentResponse</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L64) |  |
+| <a id="kitinstances-kt--kitinstances--inspect"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">inspect</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">KitInstanceInspection</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L88) |  |
+| <a id="kitinstances-kt--kitinstances--migrate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">migrate</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">KitInstanceInspection</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L114) | Caller must close/unload a live document first. Validate the whole plan before writing any file. |
+| <a id="kitinstances-kt--kitinstances--sharedresources"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">sharedResources</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span></code>](source/jvmMain/afield/document/workspace/KitInstances/#L149) |  |
 
 ## KitPackages.kt { #kitpackages-kt }
+
+The registry of kit packages installed on this machine, and the immutable snapshot each
+registration copies out of a package's source folder. A kit package is a directory holding a
+`field-kit.json` that names one or more starting points, each of them an ordinary saved Field
+document, beside optional Kotlin sources, JARs, pinned Maven coordinates, native libraries and a
+lifecycle class. `public/docs/kits.md` is the user's page. The smaller role-kit model, which
+describes shared box code and assets inside one document, is [`Kits`](workspace.md#kits-kt-kits).
+
+[`KitPackages.read`](workspace.md#kitpackages-kt--kitpackages--read) validates a manifest and [`KitPackages.install`](workspace.md#kitpackages-kt--kitpackages--install) copies the package to
+`packages/<id>/<revision>/` under `~/.afield/kits` (`afield.kits.dir` or `AFIELD_KITS_DIR` moves
+that root). The revision is a SHA-256 over the path and content hash of every declared file, so
+registering unchanged source resolves to the snapshot that already exists, and a document goes on
+reading the revision it recorded after a newer one arrives. Installation reads JSON and copies
+bytes; it runs nothing the package ships.
+
+Two files carry the registry to the next start of Field. `registry.json` lists the
+[`InstalledKit`](workspace.md#kitpackages-kt-installedkit) snapshots, and `runtime.properties` is a launch profile that `build.gradle.kts`
+reads to assemble the extension classpath, resolve the pinned dependencies, extend
+`java.library.path` and pass `-Dafield.kit.packages` and `-Dafield.kit.revisions` to the host,
+which is where [`KitRuntime`](workspace.md#kitruntime-kt-kitruntime) picks the same set up again. A kit registered inside a running host
+therefore reports `restart-required` from [`KitPackages.statuses`](workspace.md#kitpackages-kt--kitpackages--statuses) until its revision turns up in
+[`KitPackages.active`](workspace.md#kitpackages-kt--kitpackages--active); those statuses are what Welcome's **Kits** area lists.
+
+[`KitPackages.child`](workspace.md#kitpackages-kt--kitpackages--child) is the containment rule every path here goes through: package-relative, no
+`..`, and canonicalised, so neither a path nor a symlink inside the package can reach a file
+outside it. Because one host loads every installed runtime together, installing also refuses a
+set of kits that disagree about a dependency's version, about the value of a runtime system
+property, or about the contents of two native libraries with the same filename.
 
 `src/jvmMain/kotlin/afield/document/workspace/KitPackages.kt` — [read the source](source/jvmMain/afield/document/workspace/KitPackages/)
 
 ### KitPackageManifest { #kitpackages-kt-kitpackagemanifest }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitPackageManifest</span><span class="p">(</span><span class="k">val</span> <span class="n">schema</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;field.kit.package.v1&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">version</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">guide</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">runtime</span><span class="p">:</span> <span class="nc">KitPackageRuntime</span> <span class="o">=</span> <span class="nc">KitPackageRuntime</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">startingPoints</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">KitStartingPoint</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">sharedResources</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">preferences</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">host</span><span class="p">:</span> <span class="nc">KitDedicatedHost</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L13)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitPackageManifest</span><span class="p">(</span><span class="k">val</span> <span class="n">schema</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;field.kit.package.v1&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">version</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">guide</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">runtime</span><span class="p">:</span> <span class="nc">KitPackageRuntime</span> <span class="o">=</span> <span class="nc">KitPackageRuntime</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">startingPoints</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">KitStartingPoint</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">sharedResources</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">preferences</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">host</span><span class="p">:</span> <span class="nc">KitDedicatedHost</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L43)
 
 A self-contained runtime package. Each starting point is an ordinary Field document directory.
 
@@ -3499,7 +3603,7 @@ A self-contained runtime package. Each starting point is an ordinary Field docum
 
 ### KitPackageRuntime { #kitpackages-kt-kitpackageruntime }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitPackageRuntime</span><span class="p">(</span><span class="k">val</span> <span class="n">extensionDirs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">jars</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">dependencies</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">nativeDirectories</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">systemProperties</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">lifecycle</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L29)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitPackageRuntime</span><span class="p">(</span><span class="k">val</span> <span class="n">extensionDirs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">jars</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">dependencies</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">nativeDirectories</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">systemProperties</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">lifecycle</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L59)
 
 Runtime declarations are consumed at the next build/restart, never injected into a running host.
 
@@ -3514,19 +3618,19 @@ Runtime declarations are consumed at the next build/restart, never injected into
 
 ### KitStartingPoint { #kitpackages-kt-kitstartingpoint }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitStartingPoint</span><span class="p">(</span><span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">launch</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L40)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitStartingPoint</span><span class="p">(</span><span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">launch</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L70)
 
 A named, versioned seed; `launch` names boxes to launch in order on first open and explicit activation.
 
 ### InstalledKit { #kitpackages-kt-installedkit }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">InstalledKit</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">runtimeRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L44)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">InstalledKit</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">runtimeRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L74)
 
 One immutable package snapshot registered on this machine. Old revisions remain for existing instances.
 
 ### KitPackageStatus { #kitpackages-kt-kitpackagestatus }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitPackageStatus</span><span class="p">(</span><span class="k">val</span> <span class="n">installed</span><span class="p">:</span> <span class="nc">InstalledKit</span><span class="p">,</span> <span class="k">val</span> <span class="n">manifest</span><span class="p">:</span> <span class="nc">KitPackageManifest</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L47)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitPackageStatus</span><span class="p">(</span><span class="k">val</span> <span class="n">installed</span><span class="p">:</span> <span class="nc">InstalledKit</span><span class="p">,</span> <span class="k">val</span> <span class="n">manifest</span><span class="p">:</span> <span class="nc">KitPackageManifest</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L77)
 
 | Declaration | Summary |
 | --- | --- |
@@ -3537,47 +3641,89 @@ One immutable package snapshot registered on this machine. Old revisions remain 
 
 ### KitPackages { #kitpackages-kt-kitpackages }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">KitPackages</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L55)
+[<code class="highlight"><span class="k">object</span> <span class="nc">KitPackages</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L85)
 
 Registry and immutable snapshots used by Welcome and by the launcher's Gradle runtime profile.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="kitpackages-kt--kitpackages--manifest"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MANIFEST</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L56) |  |
-| <a id="kitpackages-kt--kitpackages--directory"></a>[<code class="highlight"><span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L60) |  |
-| <a id="kitpackages-kt--kitpackages--read"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">read</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">KitPackageManifest</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L63) |  |
-| <a id="kitpackages-kt--kitpackages--child"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">child</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">File</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L96) | Canonical containment applies to symlinks too; installed snapshots never depend on outside files. |
-| <a id="kitpackages-kt--kitpackages--hash"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">hash</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L102) |  |
-| <a id="kitpackages-kt--kitpackages--runtimerevision"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runtimeRevision</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L141) |  |
-| <a id="kitpackages-kt--kitpackages--hashtext"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">hashText</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L142) |  |
-| <a id="kitpackages-kt--kitpackages--installed"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">installed</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">InstalledKit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L146) |  |
-| <a id="kitpackages-kt--kitpackages--install"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">InstalledKit</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L154) | Validate and copy a package before publishing its new registry entry. No code executes here. |
-| <a id="kitpackages-kt--kitpackages--remove"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">remove</span><span class="p">(</span><span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L205) |  |
-| <a id="kitpackages-kt--kitpackages--writejson"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">writeJson</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L246) |  |
-| <a id="kitpackages-kt--kitpackages--active"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">active</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L253) |  |
-| <a id="kitpackages-kt--kitpackages--statuses"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">statuses</span><span class="p">(</span><span class="n">errors</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KitPackageStatus</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L256) |  |
-| <a id="kitpackages-kt--kitpackages--platform"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">platform</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L265) |  |
+| <a id="kitpackages-kt--kitpackages--manifest"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MANIFEST</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L86) |  |
+| <a id="kitpackages-kt--kitpackages--directory"></a>[<code class="highlight"><span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L90) |  |
+| <a id="kitpackages-kt--kitpackages--read"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">read</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">KitPackageManifest</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L93) |  |
+| <a id="kitpackages-kt--kitpackages--child"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">child</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">File</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L126) | Canonical containment applies to symlinks too; installed snapshots never depend on outside files. |
+| <a id="kitpackages-kt--kitpackages--hash"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">hash</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L132) |  |
+| <a id="kitpackages-kt--kitpackages--runtimerevision"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runtimeRevision</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L171) |  |
+| <a id="kitpackages-kt--kitpackages--hashtext"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">hashText</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L172) |  |
+| <a id="kitpackages-kt--kitpackages--installed"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">installed</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">InstalledKit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L176) |  |
+| <a id="kitpackages-kt--kitpackages--install"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">InstalledKit</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L184) | Validate and copy a package before publishing its new registry entry. No code executes here. |
+| <a id="kitpackages-kt--kitpackages--remove"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">remove</span><span class="p">(</span><span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L235) |  |
+| <a id="kitpackages-kt--kitpackages--writejson"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">writeJson</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L276) |  |
+| <a id="kitpackages-kt--kitpackages--active"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">active</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L283) |  |
+| <a id="kitpackages-kt--kitpackages--statuses"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">statuses</span><span class="p">(</span><span class="n">errors</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KitPackageStatus</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L286) |  |
+| <a id="kitpackages-kt--kitpackages--platform"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">platform</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/KitPackages/#L295) |  |
 
 ## KitRestarts.kt { #kitrestarts-kt }
+
+Builds the classpath a kit needs before stopping the Field that asked for it, so a build that
+fails leaves Welcome running and able to say why. Adding a kit package registers a snapshot but
+loads nothing: its Kotlin extensions, pinned dependencies and native libraries reach a host only
+through the launch profile [`KitPackages`](workspace.md#kitpackages-kt-kitpackages) writes, which is why **Restart Field** in Welcome's kit
+area has to compile and resolve before the restart rather than after it.
+
+[`KitRestarts.prepare`](workspace.md#kitrestarts-kt--kitrestarts--prepare) checks that this installation has both a launcher (`field.sh`, or
+`field.ps1` on Windows) and a Gradle wrapper, then runs `gradlew jvmJar dumpFieldLaunch
+-PfieldServerOnly=true` on a daemon thread, adding `--offline` when `AFIELD_OFFLINE` is set and
+appending to `logs/restart.log` under the kits directory. The current host keeps serving
+throughout. A non-zero exit, or a build still going after twenty minutes, leaves
+[`KitRestarts.status`](workspace.md#kitrestarts-kt--kitrestarts--status) at phase `failed` with the message and the log path and no restart happens;
+only a clean build invokes the `ready` callback, which flushes pending document saves, stops the
+server and relaunches the launcher with `--server-only`. Welcome polls
+`GET /api/kits/restart-status` while the build runs, and the Electron or browser window it polled
+from reconnects to the new host once the restart completes.
 
 `src/jvmMain/kotlin/afield/document/workspace/KitRestarts.kt` — [read the source](source/jvmMain/afield/document/workspace/KitRestarts/)
 
 ### KitRestartStatus { #kitrestarts-kt-kitrestartstatus }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitRestartStatus</span><span class="p">(</span><span class="k">val</span> <span class="n">running</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">phase</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;idle&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">log</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRestarts/#L8)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitRestartStatus</span><span class="p">(</span><span class="k">val</span> <span class="n">running</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">phase</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;idle&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">log</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRestarts/#L28)
+
+The phase Welcome is showing: `idle`, `building`, `restarting` or `failed`, with its log path.
 
 ### KitRestarts { #kitrestarts-kt-kitrestarts }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">KitRestarts</span></code>](source/jvmMain/afield/document/workspace/KitRestarts/#L11)
+[<code class="highlight"><span class="k">object</span> <span class="nc">KitRestarts</span></code>](source/jvmMain/afield/document/workspace/KitRestarts/#L31)
 
 Prepare the next classpath before stopping Field, so a failed kit build leaves Welcome usable.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="kitrestarts-kt--kitrestarts--status"></a>[<code class="highlight"><span class="k">var</span> <span class="n">status</span></code>](source/jvmMain/afield/document/workspace/KitRestarts/#L12) |  |
-| <a id="kitrestarts-kt--kitrestarts--prepare"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">prepare</span><span class="p">(</span><span class="n">checkout</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">ready</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRestarts/#L16) |  |
+| <a id="kitrestarts-kt--kitrestarts--status"></a>[<code class="highlight"><span class="k">var</span> <span class="n">status</span></code>](source/jvmMain/afield/document/workspace/KitRestarts/#L32) |  |
+| <a id="kitrestarts-kt--kitrestarts--prepare"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">prepare</span><span class="p">(</span><span class="n">checkout</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">ready</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRestarts/#L36) |  |
 
 ## KitRuntime.kt { #kitruntime-kt }
+
+Loads each installed kit runtime once per host, then attaches and detaches documents against it.
+[`KitRuntime.start`](workspace.md#kitruntime-kt--kitruntime--start) reads the package directories the launcher captured in `afield.kit.packages`,
+instantiates each manifest's `runtime.lifecycle` class from the personal class layer and calls
+[`KitLifecycle.startup`](workspace.md#kitruntime-kt--kitlifecycle--startup). A kit whose startup throws is cleaned up, recorded in [`KitRuntime.errors`](workspace.md#kitruntime-kt--kitruntime--errors)
+and shown as an error in Welcome rather than failing the host. Opening a document that carries a
+[`KitInstanceRecord`](workspace.md#kitinstances-kt-kitinstancerecord) calls [`KitRuntime.activate`](workspace.md#kitruntime-kt--kitruntime--activate), which resolves the document's
+[`WorkspaceProjectScope`](workspace.md#workspaceprojectscope-kt-workspaceprojectscope) and runs [`KitLifecycle.activate`](workspace.md#kitruntime-kt--kitlifecycle--activate) inside its root box context; tearing that
+session down calls [`KitLifecycle.deactivate`](workspace.md#kitruntime-kt--kitlifecycle--deactivate).
+
+Those package directories come from the profile Gradle read at launch, not from the registry as it
+stands now, so a kit installed or updated since this host started is invisible here until a
+restart.
+[`KitRuntime.activate`](workspace.md#kitruntime-kt--kitruntime--activate) enforces the matching condition directly: a document records the runtime
+revision it was created against, and activation refuses when this host loaded a different one,
+naming both.
+
+[`KitRuntime.launchBoxes`](workspace.md#kitruntime-kt--kitruntime--launchboxes) answers what a starting point asks Field to run. It reads `launch` from
+the revision the *document* recorded rather than from the newer compatible one this host may
+hold, so a kit that has since renamed or reordered its boxes cannot change what an existing
+document launches, and it insists on exactly one live box per name instead of guessing. A
+shutdown hook deactivates every live document and calls [`KitLifecycle.cleanup`](workspace.md#kitruntime-kt--kitlifecycle--cleanup) in reverse load
+order, with four seconds to finish.
 
 `src/jvmMain/kotlin/afield/document/workspace/KitRuntime.kt` — [read the source](source/jvmMain/afield/document/workspace/KitRuntime/)
 
@@ -3585,43 +3731,43 @@ Prepare the next classpath before stopping Field, so a failed kit build leaves W
 
 ### KitLifecycle { #kitruntime-kt-kitlifecycle }
 
-[<code class="highlight"><span class="k">interface</span> <span class="nc">KitLifecycle</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L11)
+[<code class="highlight"><span class="k">interface</span> <span class="nc">KitLifecycle</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L36)
 
 Implement in a kit's Kotlin extension; startup/cleanup belong to the host, activation to a document.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="kitruntime-kt--kitlifecycle--startup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">startup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitHostContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L12) |  |
-| <a id="kitruntime-kt--kitlifecycle--activate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">activate</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitDocumentContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L13) |  |
-| <a id="kitruntime-kt--kitlifecycle--deactivate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">deactivate</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitDocumentContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L14) |  |
-| <a id="kitruntime-kt--kitlifecycle--cleanup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">cleanup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitHostContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L15) |  |
+| <a id="kitruntime-kt--kitlifecycle--startup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">startup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitHostContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L37) |  |
+| <a id="kitruntime-kt--kitlifecycle--activate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">activate</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitDocumentContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L38) |  |
+| <a id="kitruntime-kt--kitlifecycle--deactivate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">deactivate</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitDocumentContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L39) |  |
+| <a id="kitruntime-kt--kitlifecycle--cleanup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">cleanup</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">KitHostContext</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L40) |  |
 
 ### KitHostContext { #kitruntime-kt-kithostcontext }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitHostContext</span><span class="p">(</span><span class="k">val</span> <span class="n">kit</span><span class="p">:</span> <span class="nc">InstalledKit</span><span class="p">,</span> <span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L19)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitHostContext</span><span class="p">(</span><span class="k">val</span> <span class="n">kit</span><span class="p">:</span> <span class="nc">InstalledKit</span><span class="p">,</span> <span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L44)
 
 The immutable runtime revision loaded by this process.
 
 ### KitDocumentContext { #kitruntime-kt-kitdocumentcontext }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitDocumentContext</span><span class="p">(</span><span class="k">val</span> <span class="n">host</span><span class="p">:</span> <span class="nc">KitHostContext</span><span class="p">,</span> <span class="k">val</span> <span class="n">document</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">,</span> <span class="k">val</span> <span class="n">project</span><span class="p">:</span> <span class="nc">WorkspaceProjectScope</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L22)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitDocumentContext</span><span class="p">(</span><span class="k">val</span> <span class="n">host</span><span class="p">:</span> <span class="nc">KitHostContext</span><span class="p">,</span> <span class="k">val</span> <span class="n">document</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">,</span> <span class="k">val</span> <span class="n">project</span><span class="p">:</span> <span class="nc">WorkspaceProjectScope</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L47)
 
 The ordinary Field document and its project's shared parent/resources/preferences.
 
 ### KitRuntime { #kitruntime-kt-kitruntime }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">KitRuntime</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L25)
+[<code class="highlight"><span class="k">object</span> <span class="nc">KitRuntime</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L50)
 
 Runtime lifecycle for the exact package paths captured by the launcher, independent of pending registry changes.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="kitruntime-kt--kitruntime--errors"></a>[<code class="highlight"><span class="k">val</span> <span class="n">errors</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L31) |  |
-| <a id="kitruntime-kt--kitruntime--start"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L34) |  |
-| <a id="kitruntime-kt--kitruntime--activate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">activate</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L64) |  |
-| <a id="kitruntime-kt--kitruntime--deactivate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">deactivate</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L84) |  |
-| <a id="kitruntime-kt--kitruntime--shutdown"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">shutdown</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L91) |  |
-| <a id="kitruntime-kt--kitruntime--launchboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">launchBoxes</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="o">?</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L101) |  |
+| <a id="kitruntime-kt--kitruntime--errors"></a>[<code class="highlight"><span class="k">val</span> <span class="n">errors</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L56) |  |
+| <a id="kitruntime-kt--kitruntime--start"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L59) |  |
+| <a id="kitruntime-kt--kitruntime--activate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">activate</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L89) |  |
+| <a id="kitruntime-kt--kitruntime--deactivate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">deactivate</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L109) |  |
+| <a id="kitruntime-kt--kitruntime--shutdown"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">shutdown</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L116) |  |
+| <a id="kitruntime-kt--kitruntime--launchboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">launchBoxes</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="o">?</span></code>](source/jvmMain/afield/document/workspace/KitRuntime/#L126) |  |
 
 ## Kits.kt { #kits-kt }
 
@@ -3812,39 +3958,61 @@ One addressable file: its `afield:` [`uri`](workspace.md#virtualfilesystem-kt--v
 
 ## WorkspaceProjectScope.kt { #workspaceprojectscope-kt }
 
+The shared box and the persistent preferences a workspace project gives every document in it. The
+folder side of a project lives in `dir.kt`: a directory under the workspace's `_projects/` with a
+`contents.edn` membership list, a `preferences.json` and a `files/` folder, listed by
+`listWorkspaceProjects`. This file is the part of it that is live in a running host. Each
+[`WorkspaceProjectScope`](workspace.md#workspaceprojectscope-kt-workspaceprojectscope) owns an invisible [`Box`](workspace.md#boxes-kt-box) whose id is `project:` followed by a hash of the
+project directory, and `attachRootToMetaroot` parents a document's root box beneath the scopes it
+belongs to instead of directly beneath the global metaroot. A property set on that box is
+therefore inherited by every box in every document of the project, which is how a kit shares
+settings and runtime objects between its documents.
+
+From box code `projectScopes()` is the way in: `projectScopes().single().setPreference("theme",
+"dark")` writes a preference that outlives the host, and [`WorkspaceProjectScope.preferences`](workspace.md#workspaceprojectscope-kt--workspaceprojectscope--preferences)
+reads a snapshot of them back. A project box never reaches a document's `metadata.edn`, because
+persistence filters it and the metaroot out of the saved `parents` and `children`. A document
+whose project is absent attaches to the metaroot instead, with nothing dangling in its saved
+graph.
+
+[`WorkspaceProjectScopes`](workspace.md#workspaceprojectscope-kt-workspaceprojectscopes) keeps one scope per project directory for the life of the host, so two
+documents in one project see the same box identity rather than two copies of it. Documents
+created by [`KitInstances.create`](workspace.md#kitinstances-kt--kitinstances--create) land in a `kit-<id>` project and ordinarily have exactly one
+scope, but nothing stops a document from belonging to several.
+
 `src/jvmMain/kotlin/afield/document/workspace/WorkspaceProjectScope.kt` — [read the source](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/)
 
 ### Top-level functions { #workspaceprojectscope-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="workspaceprojectscope-kt--projectscopes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">projectScopes</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">WorkspaceProjectScope</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L58) | Shared project scopes above this document's root; a kit instance ordinarily has exactly one. |
+| <a id="workspaceprojectscope-kt--projectscopes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">projectScopes</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">WorkspaceProjectScope</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L82) | Shared project scopes above this document's root; a kit instance ordinarily has exactly one. |
 
 ### WorkspaceProjectScope { #workspaceprojectscope-kt-workspaceprojectscope }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">WorkspaceProjectScope</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L11)
+[<code class="highlight"><span class="k">class</span> <span class="nc">WorkspaceProjectScope</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L35)
 
 One workspace project's shared parent, persistent preferences and shared files.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="workspaceprojectscope-kt--workspaceprojectscope--name"></a>[<code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L13) |  |
-| <a id="workspaceprojectscope-kt--workspaceprojectscope--files"></a>[<code class="highlight"><span class="k">val</span> <span class="n">files</span><span class="p">:</span> <span class="nc">File</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L14) |  |
-| <a id="workspaceprojectscope-kt--workspaceprojectscope--root"></a>[<code class="highlight"><span class="k">val</span> <span class="n">root</span><span class="p">:</span> <span class="nc">Box</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L15) |  |
-| <a id="workspaceprojectscope-kt--workspaceprojectscope--preferences"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">preferences</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L26) | A snapshot; write a preference with [`setPreference`](workspace.md#workspaceprojectscope-kt--workspaceprojectscope--setpreference) so it survives a host restart. |
-| <a id="workspaceprojectscope-kt--workspaceprojectscope--setpreference"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">setPreference</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L32) |  |
+| <a id="workspaceprojectscope-kt--workspaceprojectscope--name"></a>[<code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L37) |  |
+| <a id="workspaceprojectscope-kt--workspaceprojectscope--files"></a>[<code class="highlight"><span class="k">val</span> <span class="n">files</span><span class="p">:</span> <span class="nc">File</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L38) |  |
+| <a id="workspaceprojectscope-kt--workspaceprojectscope--root"></a>[<code class="highlight"><span class="k">val</span> <span class="n">root</span><span class="p">:</span> <span class="nc">Box</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L39) |  |
+| <a id="workspaceprojectscope-kt--workspaceprojectscope--preferences"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">preferences</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L50) | A snapshot; write a preference with [`setPreference`](workspace.md#workspaceprojectscope-kt--workspaceprojectscope--setpreference) so it survives a host restart. |
+| <a id="workspaceprojectscope-kt--workspaceprojectscope--setpreference"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">setPreference</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L56) |  |
 
 ### WorkspaceProjectScopes { #workspaceprojectscope-kt-workspaceprojectscopes }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">WorkspaceProjectScopes</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L42)
+[<code class="highlight"><span class="k">object</span> <span class="nc">WorkspaceProjectScopes</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L66)
 
 Stable scope identity per workspace/project, rebuilt from project membership on document attachment.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="workspaceprojectscope-kt--workspaceprojectscopes--get"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">workspace</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">WorkspaceProjectScope</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L44) |  |
-| <a id="workspaceprojectscope-kt--workspaceprojectscopes--fordocument"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">forDocument</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">WorkspaceProjectScope</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L50) |  |
-| <a id="workspaceprojectscope-kt--workspaceprojectscopes--isprojectroot"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">isProjectRoot</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L54) |  |
+| <a id="workspaceprojectscope-kt--workspaceprojectscopes--get"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">workspace</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">WorkspaceProjectScope</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L68) |  |
+| <a id="workspaceprojectscope-kt--workspaceprojectscopes--fordocument"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">forDocument</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">WorkspaceProjectScope</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L74) |  |
+| <a id="workspaceprojectscope-kt--workspaceprojectscopes--isprojectroot"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">isProjectRoot</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/document/workspace/WorkspaceProjectScope/#L78) |  |
 
 ## copy.kt { #copy-kt }
 
@@ -4934,7 +5102,7 @@ any failure so the caller falls back to the in-process K1 completer.
 
 [<code class="highlight"><span class="k">object</span> <span class="nc">AaCompletionClient</span></code>](source/jvmMain/afield/runtime/completion/AaCompletionClient/#L63)
 
-Stage C client for the out-of-process K2 Analysis-API completion endpoint (`/complete` on the code-use semantic sidecar). Used only when `KotlinEngineConfig.activeCompletionBackend == AA`; [`KotlinInterface2.complete`](workspace.md#kotlininterface2-kt--kotlininterface2--complete) falls back to the K1 delegate whenever this returns null (no sidecar URL configured, HTTP/timeout failure, or the sidecar reports failure). The AA classpath deliberately stays out of the live runtime — this is a thin HTTP bridge, mirroring `CodeUseTelemetryService`.
+Stage C client for the out-of-process K2 Analysis-API completion endpoint (`/complete` on the code-use semantic sidecar). Used only when `KotlinEngineConfig.activeCompletionBackend == AA`; [`KotlinInterface2.complete`](workspace.md#kotlininterface2-kt--kotlininterface2--complete) falls back to the K1 delegate whenever this returns null (no sidecar URL configured, HTTP/timeout failure, or the sidecar reports failure). The AA classpath stays out of the live runtime: this is a thin HTTP bridge, mirroring `CodeUseTelemetryService`.
 
 | Declaration | Summary |
 | --- | --- |
@@ -4946,7 +5114,7 @@ Stage C client for the out-of-process K2 Analysis-API completion endpoint (`/com
 | <a id="aacompletionclient-kt--aacompletionclient--complete"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">complete</span><span class="p">(</span><span class="n">snippet</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">cursor</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">preamble</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">implicitReceivers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">declarations</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">timeoutMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">4000</span><span class="p">,</span> <span class="n">classpathRootsOverride</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">jsTarget</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">replImports</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Outcome</span></code>](source/jvmMain/afield/runtime/completion/AaCompletionClient/#L186) |  |
 | <a id="aacompletionclient-kt--aacompletionclient--loweringerror"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LoweringError</span><span class="p">(</span><span class="k">val</span> <span class="n">region</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">factory</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">excerpt</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/AaCompletionClient/#L279) | One error in the lowered file, with the region of the lowering it belongs to. |
 | <a id="aacompletionclient-kt--aacompletionclient--lowering"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Lowering</span><span class="p">(</span><span class="k">val</span> <span class="n">success</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">preambleInjected</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">preambleBlank</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">stubCount</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">errors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">LoweringError</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/AaCompletionClient/#L289) | What `/lower` reports: the file completion would analyse, and every error in it. |
-| <a id="aacompletionclient-kt--aacompletionclient--lower"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">lower</span><span class="p">(</span><span class="n">snippet</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">cursor</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">preamble</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">implicitReceivers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">declarations</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">replImports</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">includeText</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">timeoutMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">300</span><span class="n">&#95;000</span><span class="p">)</span><span class="p">:</span> <span class="nc">Lowering</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/completion/AaCompletionClient/#L307) | Type-check the lowering for a request instead of completing it — the invariant behind `CompletionLoweringProbe`. Same arguments as [`complete`](workspace.md#aacompletionclient-kt--aacompletionclient--complete) deliberately: a lowering checked under a different request than the live one isn't checked. Null when there is no sidecar or the call failed. |
+| <a id="aacompletionclient-kt--aacompletionclient--lower"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">lower</span><span class="p">(</span><span class="n">snippet</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">cursor</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">preamble</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">implicitReceivers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">declarations</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">replImports</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">includeText</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">timeoutMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">300</span><span class="n">&#95;000</span><span class="p">)</span><span class="p">:</span> <span class="nc">Lowering</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/completion/AaCompletionClient/#L308) | Type-check the lowering for a request instead of completing it — the invariant behind `CompletionLoweringProbe`. Takes the same arguments as [`complete`](workspace.md#aacompletionclient-kt--aacompletionclient--complete), because a lowering checked under a different request than the live one isn't checked. Null when there is no sidecar or the call failed. |
 
 ## CommonMemberPrior.kt { #commonmemberprior-kt }
 
@@ -4975,17 +5143,38 @@ Resolves a receiver type's [`CommonMembers`](workspace.md#util-completion-kt-com
 
 ## CompletionAaE2EProbe.kt { #completionaae2eprobe-kt }
 
+Runs Field's completion chain end to end against the Analysis-API sidecar, inside a live Field
+JVM: a box's gathered preamble and this JVM's classpath go out over HTTP and the candidates come
+back.
+
+The probe switches the active backend to `AA`, builds a parent and a child box so the child
+completes with an inherited preamble, and asks for candidates at a series of carets. Every check
+names the backend that answered, read from `KotlinInterface2.lastCompletionBackend`, so an answer
+the K1 fallback produced counts as a failure however good its candidates look. The fallback
+offers every name in position, thousands of them, which is enough to satisfy a check for a
+present candidate while the sidecar is still building its session.
+
+A sidecar is required, and the smoke runner supplies one. By hand, point the probe at one with
+`-Dafield.completion.sidecarUrl`, `AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL`, or a
+`build/completion-corpus/sidecar-url.txt`; with no sidecar it exits 3 and never prints its
+`AA E2E DONE` marker, so the smoke gate reads an unreachable chain as a failure rather than as a
+skip. A cold sidecar indexes the whole classpath before it can answer anything, which takes
+minutes on the first request of its life and almost nothing once a running Field or an earlier
+probe has paid for it, so waiting for the session is itself one of the checks. A run whose
+candidate list came back truncated fails too: a receiver index too small for the classpath in
+front of it drops real members, and nothing in the answer says which.
+
 `src/jvmMain/kotlin/afield/runtime/completion/CompletionAaE2EProbe.kt` — [read the source](source/jvmMain/afield/runtime/completion/CompletionAaE2EProbe/)
 
 ### CompletionAaE2EProbe { #completionaae2eprobe-kt-completionaae2eprobe }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionAaE2EProbe</span></code>](source/jvmMain/afield/runtime/completion/CompletionAaE2EProbe/#L95)
+[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionAaE2EProbe</span></code>](source/jvmMain/afield/runtime/completion/CompletionAaE2EProbe/#L119)
 
 STAGE D live end-to-end: exercises the REAL KI2 → AA-sidecar completion chain in a running Field JVM. Sets `activeCompletionBackend = AA`, builds a parent→child box pair with an inherited preamble (as `CompletionContextProbe` does), and calls `KotlinInterface2.complete()` — which POSTs the box's gathered preamble + implicit `Box` receiver + this JVM's classpath to the sidecar `/complete`.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="completionaae2eprobe-kt--completionaae2eprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionAaE2EProbe/#L110) |  |
+| <a id="completionaae2eprobe-kt--completionaae2eprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionAaE2EProbe/#L134) |  |
 
 ## CompletionContextProbe.kt { #completioncontextprobe-kt }
 
@@ -5026,7 +5215,7 @@ The completion corpus: real boxes, with the preamble they have AT RUNTIME.
 | <a id="completioncorpus-kt--completioncorpus--docrec"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DocRec</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">dir</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="k">val</span> <span class="n">boxes</span><span class="p">:</span> <span class="nc">LinkedHashMap</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">BoxRec</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L102) |  |
 | <a id="completioncorpus-kt--completioncorpus--case"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Case</span><span class="p">(</span><span class="k">val</span> <span class="n">doc</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">preamble</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">receivers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">listOf</span><span class="p">(</span><span class="s">&quot;afield.document.graph.Box&quot;</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L105) | One corpus entry: a box's code, and the preamble it has once its macros have expanded. |
 | <a id="completioncorpus-kt--completioncorpus--sha256"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">sha256</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L126) |  |
-| <a id="completioncorpus-kt--completioncorpus--parsedocument"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">parseDocument</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">DocRec</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L134) | Parse a `document.md` — the machine-readable mirror Field writes beside `metadata.edn`. Only what this corpus needs is read: each box's parent list (for `gatherPreambleUpwards`) and its property texts. Deliberately not an EDN parser; the mirror exists so tools don't need one. |
+| <a id="completioncorpus-kt--completioncorpus--parsedocument"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">parseDocument</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">DocRec</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L134) | Parse a `document.md` — the machine-readable mirror Field writes beside `metadata.edn`. Only what this corpus needs is read: each box's parent list (for `gatherPreambleUpwards`) and its property texts. Not an EDN parser: the mirror exists so tools don't need one. |
 | <a id="completioncorpus-kt--completioncorpus--documents"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">documents</span><span class="p">(</span><span class="n">dirs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="n">defaultDirs</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DocRec</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L169) | Every document under `dirs` (repo-relative or absolute), sorted, for determinism. |
 | <a id="completioncorpus-kt--completioncorpus--boxgraph"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">boxGraph</span><span class="p">(</span><span class="n">doc</span><span class="p">:</span> <span class="nc">DocRec</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Box</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L186) | Reconstruct a document's box graph as detached [`Box`](workspace.md#boxes-kt-box)es carrying its text properties. Enough for `gatherPreambleUpwards` (which walks `parents` and reads `preamble`) and for macro expansion (which reads `vertex`/`fragment`/… and writes `preamble`). Nothing is registered anywhere, so these boxes are garbage once the caller drops them. |
 | <a id="completioncorpus-kt--completioncorpus--kotlinboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">kotlinBoxes</span><span class="p">(</span><span class="n">doc</span><span class="p">:</span> <span class="nc">DocRec</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BoxRec</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L215) | Boxes whose `code` is Kotlin — the only ones this corpus is about. |
@@ -5034,35 +5223,72 @@ The completion corpus: real boxes, with the preamble they have AT RUNTIME.
 | <a id="completioncorpus-kt--completioncorpus--typesdeclaredwithoutanimport"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">typesDeclaredWithoutAnImport</span><span class="p">(</span><span class="n">preamble</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L302) | The types this preamble *declares a property of* but never brings into scope. |
 | <a id="completioncorpus-kt--completioncorpus--writefixtures"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">writeFixtures</span><span class="p">(</span><span class="n">cases</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Case</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">dir</span><span class="p">:</span> <span class="nc">File</span> <span class="o">=</span> <span class="nc">File</span><span class="p">(</span><span class="nc">FIXTURE&#95;DIR</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L338) | Write `cases` as reviewable fixtures: one manifest line per box, and one `.preamble.kt` file per box that has a preamble. The preamble is the harvested part — the part no static read of the corpus can produce — so it is what gets checked in; the code is left where it already lives and referenced by a content hash, so there is exactly one copy of it in the repo and a corpus edit is detectable. |
 | <a id="completioncorpus-kt--completioncorpus--drift"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Drift</span><span class="p">(</span><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">what</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L360) | A fixture that no longer matches the corpus it was harvested from. |
-| <a id="completioncorpus-kt--completioncorpus--readfixtures"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">readFixtures</span><span class="p">(</span><span class="n">dir</span><span class="p">:</span> <span class="nc">File</span> <span class="o">=</span> <span class="nc">File</span><span class="p">(</span><span class="nc">FIXTURE&#95;DIR</span><span class="p">)</span><span class="p">,</span> <span class="n">dirs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="n">defaultDirs</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Case</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Drift</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L367) | Read the checked-in fixtures back, joined to the code they were harvested from. The join is verified: a box that has moved, vanished or been edited shows up in [`Drift`](workspace.md#completioncorpus-kt--completioncorpus--drift) rather than quietly measuring a preamble that belongs to different code. |
+| <a id="completioncorpus-kt--completioncorpus--readfixtures"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">readFixtures</span><span class="p">(</span><span class="n">dir</span><span class="p">:</span> <span class="nc">File</span> <span class="o">=</span> <span class="nc">File</span><span class="p">(</span><span class="nc">FIXTURE&#95;DIR</span><span class="p">)</span><span class="p">,</span> <span class="n">dirs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="n">defaultDirs</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Case</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Drift</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpus/#L367) | Read the checked-in fixtures back, joined to the code they were harvested from. The join is verified: a box that has moved, vanished or been edited shows up in [`Drift`](workspace.md#completioncorpus-kt--completioncorpus--drift) rather than being measured against a preamble that belongs to different code. |
 
 ## CompletionCorpusHarvest.kt { #completioncorpusharvest-kt }
+
+Builds the checked-in completion fixtures under `tools/completion-corpus/boxes`, and on a plain
+run guards them instead of rewriting them.
+
+The fixtures are real boxes, taken from the agent transcripts and templates in
+[`CompletionCorpus.defaultDirs`](workspace.md#completioncorpus-kt--completioncorpus--defaultdirs), each with the preamble its parents give it. That preamble is what
+makes a completion measurement about Field rather than about Kotlin, and recovering it means
+reading whole documents and expanding their macros, so the probes downstream read it from disk
+instead: [`CompletionLoweringProbe`](workspace.md#completionloweringprobe-kt-completionloweringprobe) measures against these files rather than harvesting its own.
+
+This file's two jobs share one entrypoint, because a generator and the guard that watches for
+drift have to agree on what the fixtures should contain. `AFIELD_HARVEST_WRITE=1` writes;
+anything else compares, prints a `DRIFT` line per difference and fails. `AFIELD_LOWERING_CORPUS`
+and `AFIELD_HARVEST_DIR` move the input and output directories.
+
+A harvest resolves imports against the repository rather than against this machine, so a class
+in `src/personal` that shares a simple name with one in `src/` cannot change what a fixture says
+a box can see. Running with `AFIELD_IMPORT_HERMETIC=0` where that collision exists is refused
+rather than recorded; `dev_docs/HERMETIC_COMPLETION_INPUTS.md` has the history.
 
 `src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpusHarvest.kt` — [read the source](source/jvmMain/afield/runtime/completion/CompletionCorpusHarvest/)
 
 ### CompletionCorpusHarvest { #completioncorpusharvest-kt-completioncorpusharvest }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionCorpusHarvest</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpusHarvest/#L68)
+[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionCorpusHarvest</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpusHarvest/#L90)
 
 Harvests [`CompletionCorpus`](workspace.md#completioncorpus-kt-completioncorpus) fixtures — and, run without `AFIELD_HARVEST_WRITE=1`, guards them.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="completioncorpusharvest-kt--completioncorpusharvest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpusHarvest/#L71) |  |
+| <a id="completioncorpusharvest-kt--completioncorpusharvest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpusHarvest/#L93) |  |
 
 ## CompletionCorpusProbe.kt { #completioncorpusprobe-kt }
+
+What Kotlin completion offers at a caret, read against what it ought to offer there.
+
+Each fixture is a fragment of box code with `|` where the caret sits, and a list of candidates
+the engine is expected to produce (goals) or to keep out (anti-goals). The matchers look for a
+candidate by call form, by class, by exact text, by exact text ignoring case, or in the
+named-argument form an editor offers for a parameter still to be filled in; they read the
+candidate set and not its order, because the order a reader sees is decided in the browser by
+`fieldSuggest.js` and is covered separately by `FieldSuggestPresentationTest`.
+
+A run prints each goal as met or unmet, with the rank of the candidate that met it, and ends
+with a met/unmet summary. It always exits 0, so the unmet set is a reading rather than a gate.
+Completion is asked for through [`KotlinInterface2`](workspace.md#kotlininterface2-kt-kotlininterface2) itself, so the answers come from the engine a
+box talks to and not from a stand-in.
+
+The fixtures here are written out in this file. The box-shaped fixtures that
+[`CompletionCorpusHarvest`](workspace.md#completioncorpusharvest-kt-completioncorpusharvest) generates, with a real inherited preamble, are what
+[`CompletionLoweringProbe`](workspace.md#completionloweringprobe-kt-completionloweringprobe) reads instead.
 
 `src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpusProbe.kt` — [read the source](source/jvmMain/afield/runtime/completion/CompletionCorpusProbe/)
 
 ### CompletionCorpusProbe { #completioncorpusprobe-kt-completioncorpusprobe }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionCorpusProbe</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpusProbe/#L57)
+[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionCorpusProbe</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpusProbe/#L79)
 
-PHASE 0 completion characterization corpus, framed as a SPEC (per the design call):
+PHASE 0 characterization corpus for completion, written as a specification of the behaviour wanted rather than as a snapshot of the behaviour there is.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="completioncorpusprobe-kt--completioncorpusprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpusProbe/#L142) |  |
+| <a id="completioncorpusprobe-kt--completioncorpusprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionCorpusProbe/#L164) |  |
 
 ## CompletionDiffK1Probe.kt { #completiondiffk1probe-kt }
 
@@ -5089,45 +5315,77 @@ STAGE B (K1 side of the differential). Runs the REAL production K1 completion pa
 
 ## CompletionDocDrafts.kt { #completiondocdrafts-kt }
 
+How many KDoc drafts completion has cached, for the welcome page.
+
+Nothing here works the drafts. `tools/docs_notes.py import-drafts` makes each one under src/ a
+`kdoc-draft` note on its declaration, and the docs revision pass (/docs-pass.html) handles them
+like the human's own notes. See dev_docs/agents/COMPLETION_DOC_POLISH_DESIGN.md.
+
 `src/jvmMain/kotlin/afield/runtime/completion/CompletionDocDrafts.kt` — [read the source](source/jvmMain/afield/runtime/completion/CompletionDocDrafts/)
 
 ### CompletionDocDrafts { #completiondocdrafts-kt-completiondocdrafts }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionDocDrafts</span></code>](source/jvmMain/afield/runtime/completion/CompletionDocDrafts/#L39)
+[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionDocDrafts</span></code>](source/jvmMain/afield/runtime/completion/CompletionDocDrafts/#L41)
 
-How many KDoc drafts completion has cached, for the welcome page.
+Counts the cached KDoc drafts that belong to declarations under `src/`, for the welcome page.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="completiondocdrafts-kt--completiondocdrafts--summary"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">summary</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletionDocDraftSummary</span></code>](source/jvmMain/afield/runtime/completion/CompletionDocDrafts/#L42) |  |
+| <a id="completiondocdrafts-kt--completiondocdrafts--summary"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">summary</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletionDocDraftSummary</span></code>](source/jvmMain/afield/runtime/completion/CompletionDocDrafts/#L44) |  |
 
 ## CompletionDocScrapeProbe.kt { #completiondocscrapeprobe-kt }
+
+Asks how completion does on Field's own documentation: the fixtures are real doc code with the
+caret put back where the author was typing.
+
+`tools/scrape_completion_corpus.py` walks the Kotlin fences in `public/docs`, cuts each sampled
+line at a member access, and records the member the page actually used into
+`tools/completion-corpus/scraped.tsv` as a label, the code with a `‸` for the caret, and that
+member's name. This probe replays each one through [`KotlinInterface2`](workspace.md#kotlininterface2-kt-kotlininterface2) and reports whether the
+member came back and at what rank, with the top candidates printed under it so an answer can be
+read rather than just scored.
+
+Alongside the rank it reports whether the receiver type resolved at all, judged by how many
+candidates came back: more than two hundred is read as completion having fallen back to offering
+every name in scope. The two readings belong together, because a member can sit at a good rank in
+a list that was never about the receiver.
+
+It is a reading and not a gate: it always exits 0. With the scraped file absent it says so and
+still prints its done marker, so the smoke entry shows that the probe ran rather than that it had
+anything to run on.
 
 `src/jvmMain/kotlin/afield/runtime/completion/CompletionDocScrapeProbe.kt` — [read the source](source/jvmMain/afield/runtime/completion/CompletionDocScrapeProbe/)
 
 ### CompletionDocScrapeProbe { #completiondocscrapeprobe-kt-completiondocscrapeprobe }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionDocScrapeProbe</span></code>](source/jvmMain/afield/runtime/completion/CompletionDocScrapeProbe/#L50)
+[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionDocScrapeProbe</span></code>](source/jvmMain/afield/runtime/completion/CompletionDocScrapeProbe/#L72)
 
 PHASE 0 (exploratory): run REAL doc code through completion. Fixtures are scraped from `diffstatic{_runner}` kotlin blocks in public/docs, with a caret dropped mid-member-access and the remainder of the line deleted (tools/scrape_completion_corpus.py → tools/completion-corpus/scraped.tsv, columns: label, base64(code with ‸ caret), intendedMember).
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="completiondocscrapeprobe-kt--completiondocscrapeprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionDocScrapeProbe/#L58) |  |
+| <a id="completiondocscrapeprobe-kt--completiondocscrapeprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionDocScrapeProbe/#L80) |  |
 
 ## CompletionInteractionLogger.kt { #completioninteractionlogger-kt }
+
+Durable, append-only observations of what happens at Field's autocomplete UI boundary.
+
+The server cannot reconstruct this later: the browser merges several candidate sources and owns
+the final ranking. Conversely the browser does not have the inherited preamble or the other
+code-bearing properties that shape completion. [`record`](workspace.md#completioninteractionlogger-kt--completioninteractionlogger--record) joins those two views without placing
+logging on the latency-sensitive completion reply path.
 
 `src/jvmMain/kotlin/afield/runtime/completion/CompletionInteractionLogger.kt` — [read the source](source/jvmMain/afield/runtime/completion/CompletionInteractionLogger/)
 
 ### CompletionInteractionLogger { #completioninteractionlogger-kt-completioninteractionlogger }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionInteractionLogger</span></code>](source/jvmMain/afield/runtime/completion/CompletionInteractionLogger/#L50)
+[<code class="highlight"><span class="k">object</span> <span class="nc">CompletionInteractionLogger</span></code>](source/jvmMain/afield/runtime/completion/CompletionInteractionLogger/#L52)
 
-Durable, append-only observations of what happens at Field's autocomplete UI boundary.
+Appends one browser-reported completion event, with its box's server-side context, to today's log.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="completioninteractionlogger-kt--completioninteractionlogger--record"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">record</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="nc">CompletionInteractionEvent</span><span class="p">,</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">documentName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">documentPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionInteractionLogger/#L76) |  |
+| <a id="completioninteractionlogger-kt--completioninteractionlogger--record"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">record</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="nc">CompletionInteractionEvent</span><span class="p">,</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">documentName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">documentPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/CompletionInteractionLogger/#L78) |  |
 
 ## CompletionLoweringProbe.kt { #completionloweringprobe-kt }
 
@@ -5505,17 +5763,38 @@ Entry point and case list for the compiled-snippet smoke test.
 
 ## DataFramePluginCostProbe.kt { #dataframeplugincostprobe-kt }
 
+Measures what wiring the Kotlin DataFrame compiler plugin adds to the cost of building a box's
+Kotlin engine.
+
+Field builds one [`KotlinInterface2`](workspace.md#kotlininterface2-kt-kotlininterface2) per box, so a compiler plugin registered into the compilation
+state is paid for by every box in a document rather than by the boxes that use DataFrame. This
+entrypoint builds three engines in a row, times each one's construction and its first evaluation,
+and prints the per-engine total:
+
+```diffstatic {data-lang=bash}
+run-jvm-main afield.runtime.kotlin.DataFramePluginCostProbe --arg off
+```
+
+`--arg on` is the default and `--arg off` disables the plugin, by setting the
+`afield.dataframePlugin` property that `KotlinInterface2.compilerPluginArgs` reads through a
+`lazy`. The property has to be set before the first engine is built, which is why this is a
+jvm-main entrypoint rather than something a box can call. The other half of the cost, the
+`dataframe-core` jar every engine takes into its classpath snapshot, is fixed at build time, so
+the difference between an `on` run and an `off` run isolates the plugin's share.
+`dev_docs/DATAFRAME_PLUGIN.md` records the readings, and the different fix each of the two costs
+would need if one ever came to dominate.
+
 `src/jvmMain/kotlin/afield/runtime/kotlin/DataFramePluginCostProbe.kt` — [read the source](source/jvmMain/afield/runtime/DataFramePluginCostProbe/)
 
 ### DataFramePluginCostProbe { #dataframeplugincostprobe-kt-dataframeplugincostprobe }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">DataFramePluginCostProbe</span></code>](source/jvmMain/afield/runtime/DataFramePluginCostProbe/#L66)
+[<code class="highlight"><span class="k">object</span> <span class="nc">DataFramePluginCostProbe</span></code>](source/jvmMain/afield/runtime/DataFramePluginCostProbe/#L90)
 
 What does wiring the DataFrame compiler plugin cost *every other box*?
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="dataframeplugincostprobe-kt--dataframeplugincostprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/DataFramePluginCostProbe/#L71) |  |
+| <a id="dataframeplugincostprobe-kt--dataframeplugincostprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/DataFramePluginCostProbe/#L95) |  |
 
 ## DataFramePluginSpike.kt { #dataframepluginspike-kt }
 
@@ -5613,48 +5892,47 @@ Type-name rendering for `@exported`; [`render`](workspace.md#exportedtypenames-k
 Smoke for [`ExportedTypeNames`](workspace.md#exportedtypenames-kt-exportedtypenames), which decides the type text `@exported` splices into another box's
 preamble.
 
-Two properties are load-bearing and pull in opposite directions, so both are asserted here:
+Two properties pull in opposite directions, and both are asserted here:
 
- - **Precision.** Library and `afield.` types must survive with their generic arguments intact.
-   The whole point of the change is that they used to be flattened to `Any?` by a prefix
-   whitelist that no real type matched.
- - **Safety.** A type the consuming box cannot name must degrade to `Any?`, never be emitted
-   hopefully. A preamble line that fails to compile poisons every later compile in that box, so
-   a false accept is far more expensive than a false reject.
+ - **Precision.** Library and `afield.` types survive with their generic arguments intact, so
+   `List<Double>` reaches the consuming box as `List<Double>` rather than as `Any?`.
+ - **Safety.** A type the consuming box cannot name degrades to `Any?` rather than being emitted
+   and hoped for. A preamble line that fails to compile breaks every later compile in that box,
+   so a false accept costs more than a false reject.
 
-`testUnnameableArgumentIsErasedNotEmitted` is the regression that motivated the rewrite: the old
-implementation accepted any name starting with `kotlin.` and returned it *whole*, so a
-`List<SomeBoxLocalClass>` was emitted verbatim with an unresolvable argument inside it.
+`testUnnameableArgumentIsErasedNotEmitted` is where the two meet: an argument the consuming box
+cannot name collapses to a star projection, leaving `List<*>`, so the outer type still lands and
+no unresolvable name reaches the preamble.
 
-Pure renderer assertions — no REPL, no engine, so this stays fast. Runnable-object test style,
+Pure renderer assertions: no REPL and no engine, so this stays fast. Runnable-object test style,
 matching [`WitherSmokeTest`](workspace.md#withersmoketest-kt-withersmoketest).
 
 `src/jvmMain/kotlin/afield/runtime/kotlin/ExportedTypeNamesSmokeTest.kt` — [read the source](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/)
 
 ### ExportedTypeNamesSmokeTest { #exportedtypenamessmoketest-kt-exportedtypenamessmoketest }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">ExportedTypeNamesSmokeTest</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L60)
+[<code class="highlight"><span class="k">object</span> <span class="nc">ExportedTypeNamesSmokeTest</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L59)
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="exportedtypenamessmoketest-kt--exportedtypenamessmoketest--runtests"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runTests</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L65) |  |
-| <a id="exportedtypenamessmoketest-kt--exportedtypenamessmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L87) |  |
+| <a id="exportedtypenamessmoketest-kt--exportedtypenamessmoketest--runtests"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runTests</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L64) |  |
+| <a id="exportedtypenamessmoketest-kt--exportedtypenamessmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L86) |  |
 
 ### ExportedTypeNamesPublicProbe { #exportedtypenamessmoketest-kt-exportedtypenamespublicprobe }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">ExportedTypeNamesPublicProbe</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L204)
+[<code class="highlight"><span class="k">class</span> <span class="nc">ExportedTypeNamesPublicProbe</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L203)
 
 Public probe for [`ExportedTypeNamesSmokeTest`](workspace.md#exportedtypenamessmoketest-kt-exportedtypenamessmoketest); nameable from the app classloader.
 
 ### ExportedTypeNamesSuspendProbe { #exportedtypenamessmoketest-kt-exportedtypenamessuspendprobe }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">ExportedTypeNamesSuspendProbe</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L210)
+[<code class="highlight"><span class="k">class</span> <span class="nc">ExportedTypeNamesSuspendProbe</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L209)
 
 Carries a suspend function type, which `typeOf` cannot express directly.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="exportedtypenamessmoketest-kt--exportedtypenamessuspendprobe--fn"></a>[<code class="highlight"><span class="k">val</span> <span class="n">fn</span><span class="p">:</span> <span class="k">suspend</span> <span class="p">(</span><span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L211) |  |
+| <a id="exportedtypenamessmoketest-kt--exportedtypenamessuspendprobe--fn"></a>[<code class="highlight"><span class="k">val</span> <span class="n">fn</span><span class="p">:</span> <span class="k">suspend</span> <span class="p">(</span><span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/ExportedTypeNamesSmokeTest/#L210) |  |
 
 ## FieldKtParser.kt { #fieldktparser-kt }
 
@@ -5827,17 +6105,25 @@ mutable bindings of the same name and Kotlin type after evaluation; captured `va
 
 ## KotlinLineNotes.kt { #kotlinlinenotes-kt }
 
+Line notes for a Kotlin box: each top-level `val` or `var` a run declared, and the value it held
+when the run finished.
+
+The REPL hands back only a snippet's final value, but it also publishes the snippet's properties
+after every evaluation (`box.ki.context.vars`, the same map `fromContext()` searches), so a
+declaration's value can be read back by name once the run is over. A statement that declares
+nothing has no note: its value was never kept.
+
 `src/jvmMain/kotlin/afield/runtime/kotlin/KotlinLineNotes.kt` — [read the source](source/jvmMain/afield/runtime/KotlinLineNotes/)
 
 ### KotlinLineNotes { #kotlinlinenotes-kt-kotlinlinenotes }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">KotlinLineNotes</span></code>](source/jvmMain/afield/runtime/KotlinLineNotes/#L15)
+[<code class="highlight"><span class="k">object</span> <span class="nc">KotlinLineNotes</span></code>](source/jvmMain/afield/runtime/KotlinLineNotes/#L17)
 
-Line notes for a Kotlin box: each top-level `val` or `var` a run declared, and the value it held when the run finished.
+Reads a finished run's declarations out of the box's variable table and records them as notes.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="kotlinlinenotes-kt--kotlinlinenotes--record"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">record</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">lineOffset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/KotlinLineNotes/#L20) | Record what the declarations of `code` (box `property`, after box line `lineOffset`) came to. |
+| <a id="kotlinlinenotes-kt--kotlinlinenotes--record"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">record</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">lineOffset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/KotlinLineNotes/#L22) | Record what the declarations of `code` (box `property`, after box line `lineOffset`) came to. |
 
 ## KotlinScriptEngine.kt { #kotlinscriptengine-kt }
 
@@ -6185,6 +6471,36 @@ Real K2 closure checks for declaration-time resets and the snapshots they must p
 
 ## RerunCompileCache.kt { #reruncompilecache-kt }
 
+Compile once, re-evaluate on rerun: one K2 engine's record of the snippets it has compiled.
+
+A box that reruns with exactly the same expanded source (a `propDown` reader re-launched by its
+writer, the regathered preamble in front of it) can evaluate the snippet it already has instead
+of compiling it again.
+
+On Kotlin 2.5.0-Beta1's `K2ReplEvaluator`, re-evaluating an old `LinkedSnippet` is *not* the same
+as recompiling its source, in two ways, and the cache refuses both:
+
+ 1. **The body does not run** when the snippet is re-evaluated straight after its own previous
+    evaluation: the evaluator reuses the class it already loaded, and a K2 snippet's body runs
+    once per loaded class. (`lst.add(1); lst.size` gave 1 twice and the list kept one element.)
+    With any other snippet evaluated in between the class is reloaded and the body runs. So a
+    hit is refused when the cached snippet is the evaluator's last one ([`KotlinInterface2`](workspace.md#kotlininterface2-kt-kotlininterface2) checks).
+ 2. **Stale bindings.** A snippet binds each name it uses to the snippet *class* that declared it
+    when it was compiled. If a later snippet redeclares that name, a recompile binds the new
+    declaration and a re-evaluation keeps the old one (`q * 2` stayed 10 after `val q = 6`). So
+    every entry records which earlier snippet classes it references, and is refused once any
+    name those classes declare has been redeclared by a later compile.
+
+Mutable declarations and their readers also compile afresh: cached evaluation can reload
+historical backing classes, leaving captured mutable slots outside the evaluator's current
+history.
+
+Also refused, conservatively: sources that carry `@file:` annotations (`DependsOn` refines the
+compile configuration) — and a compiled `import` invalidates every entry, since imports may
+change how already-compiled names would resolve now.
+
+Everything here runs under the engine's compile mutex.
+
 `src/jvmMain/kotlin/afield/runtime/kotlin/RerunCompileCache.kt` — [read the source](source/jvmMain/afield/runtime/RerunCompileCache/)
 
 ## SharedTypes.kt { #sharedtypes-kt }
@@ -6304,16 +6620,16 @@ classpath when it is created. `-Dafield.kotlin.spareEngines=0` turns the whole t
 
 ### SpareEngines { #spareengines-kt-spareengines }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">SpareEngines</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L41)
+[<code class="highlight"><span class="k">object</span> <span class="nc">SpareEngines</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L26)
 
-Engines built ahead of a box's next `execute-all`, so running a box does not wait for a new Kotlin engine.
+Holds a pre-built Kotlin engine per box, so the next `execute-all` does not wait for one.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="spareengines-kt--spareengines--capacity"></a>[<code class="highlight"><span class="k">val</span> <span class="n">capacity</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L43) |  |
-| <a id="spareengines-kt--spareengines--take"></a>[<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">take</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">KotlinScriptEngine</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L68) | The box's spare engine, if it has one and it is still current; it is no longer the spare. A spare still being built is waited for: building another beside it would only compete with it. |
-| <a id="spareengines-kt--spareengines--prepare"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">prepare</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L80) | Build `box`'s next engine in the background, unless it has one or one is being built. |
-| <a id="spareengines-kt--spareengines--discard"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">discard</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L125) | Drop `box`'s spare, and supersede one being built (it is disposed when its build returns). |
+| <a id="spareengines-kt--spareengines--capacity"></a>[<code class="highlight"><span class="k">val</span> <span class="n">capacity</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L28) |  |
+| <a id="spareengines-kt--spareengines--take"></a>[<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">take</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">KotlinScriptEngine</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L53) | The box's spare engine, if it has one and it is still current; it is no longer the spare. A spare still being built is waited for: building another beside it would only compete with it. |
+| <a id="spareengines-kt--spareengines--prepare"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">prepare</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L65) | Build `box`'s next engine in the background, unless it has one or one is being built. |
+| <a id="spareengines-kt--spareengines--discard"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">discard</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/SpareEngines/#L110) | Drop `box`'s spare, and supersede one being built (it is disposed when its build returns). |
 
 ## SpareEnginesSmokeTest.kt { #spareenginessmoketest-kt }
 
@@ -6336,10 +6652,10 @@ K2 REPL ([`KotlinInterface2`](workspace.md#kotlininterface2-kt-kotlininterface2)
 `io.github.kyay10.wither.with(x)` turns `x` into an implicit receiver for the rest of the
 enclosing block, and its IR pass rewrites the receiver-less member accesses that follow.
 
-The load-bearing assertion is `testReceiverInjection`: a bare `greet()` with no explicit
+`testReceiverInjection` is the assertion that decides the run: a bare `greet()` with no explicit
 receiver only resolves if Wither injected the `Greeter` receiver. Without the plugin the
-snippet fails to compile ("unresolved reference 'greet'"), so a green run proves the plugin
-is actually registered into the REPL's compilation config and doing work end-to-end.
+snippet fails to compile (`unresolved reference 'greet'`), so a green run shows that the plugin
+is registered into the REPL's compilation config and working end to end.
 
 `testPlainEvalStillWorks` is the regression half: turning the plugin on must not disturb
 ordinary snippet evaluation.
@@ -8468,9 +8784,45 @@ Where a study's frames come from: `P` — a program, a compiled scene — drawn 
 
 ## StudyKeys.kt { #studykeys-kt }
 
+Keys for a study card: a snapshot of every number in a program, saved by name, which the card can
+apply or blend towards. They are the person's way of keeping "this look" and "that look" and moving
+between them before choosing a revision.
+
+A key is a [`KeyframeScope`](graphics.md#keyframer-kt-keyframescope) key like any other, saved with [`KeyframeScope.saveKey`](graphics.md#keyframer-kt--keyframescope--savekey), so each has its
+`.versions` history and the keyframe browser can read the folder. Its values are the knobs by index
+(`k0`, `k1`, …) and, under `shape`, the shape of the program it came from: that program's text with
+every number blanked out, the language, and what reads each number. So a key applies to the program
+it was captured from, and to that program with any of its numbers changed, but not to one whose text
+has changed around them, where the same index may be a different number.
+
+Keys live in `keys/` in the study's directory.
+
 `src/jvmMain/kotlin/afield/study/source/StudyKeys.kt` — [read the source](source/jvmMain/afield/study/source/StudyKeys/)
 
 ## sourceBlock.kt { #sourceblock-kt }
+
+A block of code that is also its own source: call it like a function, and it carries the Kotlin
+text it was written as.
+
+```diffstatic {data-lang=kotlin}
+val answer = sourceBlock { 6 * 7 }
+println(answer())          // 42
+println(answer.source)     // 6 * 7
+```
+
+A macro: before the box compiles, `sourceBlock { … }` is rewritten to a [`SourceBackedBlock`](internal.md#sourcebackedblock-kt-sourcebackedblock) holding
+both the live lambda and the text of its body. Code that saves a block (a keyframe track, a
+code-blend plan) saves that text, and a block loaded back from it compiles the text again, in the
+box it came from, the first time it is called. So a saved block works before (or without) the box
+that wrote it running again.
+
+A block made by this call carries its lambda and is safe to call at once. A block loaded back from
+saved text is not safe to call from inside its own box's running code: compiling it runs that box's
+code again, which calls the block again. Call it from another box, a frame loop or a control
+callback; [`SourceBackedBlockSelfBoxReentry`](internal.md#sourcebackedblock-kt-sourcebackedblockselfboxreentry) stops the loop and says so if you do.
+
+Should the macro not run (code that reaches this function some other way), the result still works,
+with an empty [`SourceBackedBlock.source`](internal.md#sourcebackedblock-kt--sourcebackedblock--source).
 
 `src/jvmMain/kotlin/afield/study/source/sourceBlock.kt` — [read the source](source/jvmMain/afield/study/source/sourceBlock/)
 
@@ -8478,9 +8830,25 @@ Where a study's frames come from: `P` — a program, a compiled scene — drawn 
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="sourceblock-kt--sourceblock"></a>[<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">sourceBlock</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="nc">SourceBackedBlock</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/study/source/sourceBlock/#L57) | A block of code that is also its own source: call it like a function, and it carries the Kotlin text it was written as. |
+| <a id="sourceblock-kt--sourceblock"></a>[<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">sourceBlock</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="nc">SourceBackedBlock</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/study/source/sourceBlock/#L62) | A block carrying `block` and no source, which is what `sourceBlock { … }` compiles to when the macro has not rewritten it. |
 
 ## KnobNames.kt { #knobnames-kt }
+
+Short names for the numbers of a program, like `wave drift speed` or `star brightness`, for the
+sliders of a study card, written by Field's fast model from what the compiler already knows.
+
+A card can always say what reads a number: StackSL's compiler records what took it (`mix amount`,
+`x of palette a`), RectSL's tokens the word that reads it (`->wall width`). That is exact, but a
+program whose numbers mostly scale and offset reads as a column of `multiplies` and `adds`. So the
+card shows that at first, and asks the fast model once, for all of the program's numbers at a time,
+to say in a few words what turning each one changes, given the program with its comments and each
+number's line, spelling and operand. The compiler's label stays on the slider's tooltip.
+
+Names are kept by the program's shape: its text with every number blanked out, the language, and
+what reads each number. Turning a number, or keeping one, never asks again; the names are stored in
+the study's directory, beside its revisions, so a document carries them. Nothing is asked for a box
+in no open document (a test's box), nor for a document an agent opened unless
+`AFIELD_AI_KNOB_NAMES=1`; `0` turns asking off, and names already stored are still shown.
 
 `src/jvmMain/kotlin/afield/study/ui/KnobNames.kt` — [read the source](source/jvmMain/afield/study/ui/KnobNames/)
 
@@ -8600,6 +8968,24 @@ Git worktree proposals for agents: create, list, update, merge, finalize and del
 
 ## MacroReplayCode.kt { #macroreplaycode-kt }
 
+The code a replayed `execute` / `launch` op runs, and where in the box it sits.
+
+A macro replays against the document as it is now, not as it was when the macro was recorded:
+
+- A whole-box launch (`type: launch`, `code` or `all`) runs the box's current text. Any
+  `code:` or `recordedCode:` on the op is a reference to what ran at recording time; a recording
+  made before the box's code was edited still launches the edited code.
+- A fragment (`type: fragment`, the default for `execute`, `execute-fragment` and
+  `launch-fragment`) with an explicit `code:` runs that code: an authored transcript uses it to
+  run a snippet that is not in the box. A recorded fragment carries `recordedCode:` instead and
+  is found again in the box's current text — the same text where it still occurs (nearest its
+  recorded line), otherwise the same lines of the current text.
+- `codeSource: recorded` runs the op's own `code:` / `recordedCode:` as written, for a macro
+  that has to replay exactly what ran.
+- An op with no code at all runs the box's current text.
+
+`note` says when what runs differs from what was recorded, for the replay log.
+
 `src/jvmMain/kotlin/afield/tools/automation/MacroReplayCode.kt` — [read the source](source/jvmMain/afield/tools/automation/MacroReplayCode/)
 
 ## operation_transcript.kt { #operation-transcript-kt }
@@ -8690,31 +9076,112 @@ files in the document's `backups/` folder.
 
 ## AgentDemoDriftGuard.kt { #agentdemodriftguard-kt }
 
+Checks that each loadable document under `dev_docs/agents/demos/` agrees with the loose source
+files beside it.
+
+A `#afield/file-inline` property has two copies: the fallback embedded in `metadata.edn`, and the
+loose file beside it. Field prefers the loose file, so an edited demo can run correctly while the
+metadata that is supposed to be canonical stays stale. This guard compares the two
+byte-for-byte. `--write` refreshes the inline fallbacks through the EDN codec in [`SavingContext`](workspace.md#saving-kt-savingcontext).
+
+`--write` rewrites `metadata.edn` for every document it visits, and re-encoding is not always
+byte-identical to what is committed — a hand-edited artifact can carry `\uXXXX` escapes that the
+codec re-emits as the literal character. That turns "add one demo" into a diff against unrelated
+documents, which is an invitation to a merge conflict between two branches that each added one.
+`--only <document>[,<document>…]` narrows the run to the documents named after the directory
+under `dev_docs/agents/demos`, so adding a demo touches that demo alone.
+
 `src/jvmMain/kotlin/afield/tools/docs/AgentDemoDriftGuard.kt` — [read the source](source/jvmMain/afield/tools/docs/AgentDemoDriftGuard/)
 
 ### AgentDemoDriftGuard { #agentdemodriftguard-kt-agentdemodriftguard }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">AgentDemoDriftGuard</span></code>](source/jvmMain/afield/tools/docs/AgentDemoDriftGuard/#L22)
+[<code class="highlight"><span class="k">object</span> <span class="nc">AgentDemoDriftGuard</span></code>](source/jvmMain/afield/tools/docs/AgentDemoDriftGuard/#L25)
 
-Keeps loadable documents under `dev_docs/agents/demos/` honest about their loose source files.
+Compares each demo's `#afield/file-inline` fallbacks with the loose files beside them.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="agentdemodriftguard-kt--agentdemodriftguard--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/AgentDemoDriftGuard/#L28) |  |
+| <a id="agentdemodriftguard-kt--agentdemodriftguard--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/AgentDemoDriftGuard/#L31) |  |
 
 ## AgentTranscriptIndexGuard.kt { #agenttranscriptindexguard-kt }
+
+Fails the build when `public/docs/agent_transcripts.md` stops being a true index of
+`dev_docs/agents/transcripts/`.
+
+### The failure this exists to stop
+
+The page calls itself "the illustrated index" of the transcript corpus and is the public front door
+to Field's agent-automation story. The generated half of the same system cannot drift:
+`AgentTranscriptMaterializer` and `checkAgentTranscripts` guard the committed starting-point bundle
+byte-for-byte. The hand-curated page beside it has no such guard of its own, and goes stale the
+moment anybody adds a transcript without remembering the page exists — a page that claims to list
+every transcript, listing most of them.
+
+The page is **not** generated, because its entries quote the number a box prints and say why that
+number is the interesting one — `0.985 forwards, 0.246 backwards on a parabola`; `473 diagonal
+breaks against 0`. None of that is in the yaml, which carries op verbs, box ids, rects and Kotlin
+source; a generator over it could emit a name and a box count, which would replace the writing with
+a table. So the trade here is [`KDocAttachmentGuard`](workspace.md#kdocattachmentguard-kt-kdocattachmentguard)'s, not [`StdlibReferenceGenerator`](workspace.md#stdlibreferencegenerator-kt-stdlibreferencegenerator)'s: keep the
+prose hand-written and make its *incompleteness* a build failure, so a new transcript cannot ship
+without somebody writing a sentence about it.
+
+### The five things it checks
+
+1. **Completeness** — every `*.yaml` in the corpus has exactly one entry. An entry is a `###`
+   heading whose whole text is the transcript's name, `### transcript_name`, at column zero. `###`
+   on that page is therefore reserved for entries: a sub-heading inside an entry has to be `####`
+   or deeper, and a `###` naming anything else is read as an entry for a transcript that does not
+   exist. A heading per entry is also what makes a hundred-odd scenes something a reader can link
+   to and scroll through one at a time.
+2. **No orphans** — every entry names a transcript that is still in the corpus, so deleting or
+   renaming a yaml turns the stale paragraph red instead of leaving it to be read as current.
+3. **The CI claim, per entry** — each `##` section declares how CI verifies the scenes under it,
+   with an invisible marker line beneath the heading:
+   ```diffstatic {data-lang=kotlin}
+   <!-- transcript-index: verified-by = execute -->
+   ```
+   The value is one or more of `execute`, `compile`, `kotlinjs`, naming
+   `DemoTranscriptExecSmokeTest.EXECUTE`, `DemoTranscriptExecSmokeTest.COMPILE_ONLY` and
+   `DemoTranscriptExecSmokeTest.KOTLINJS` — which is where classification is decided, and stays the
+   single source of truth. An entry whose transcript is not in one of its section's declared sets is
+   a failure, which is what makes the section prose ("these build and run headless", "each one
+   builds and compiles in CI") an accurate statement about every entry beneath it rather than about
+   most of them. The marker is an HTML comment, so it renders as nothing.
+4. **Open ↗ links that exist** — a transcript is offered as an openable starting point exactly when
+   the materializer ships it, i.e. when it is not in `AgentTranscriptMaterializer.EXCLUDE`. So an
+   entry must carry an `assets/agent_transcripts/<name>/metadata.edn` link when its transcript is
+   materialized and must not when it is not, and the committed bundle directory must really be
+   there. This is the check that stops the page advertising a document the welcome screen cannot
+   open.
+5. **No counts in the CI paragraph** — the paragraph marked
+   ```diffstatic {data-lang=kotlin}
+   <!-- transcript-index: totals -->
+   ```
+   must not quote a number. A paragraph that quoted the corpus size and each set's size would put
+   every branch that adds a transcript into the same sentence, and any two of them into a conflict
+   there. The counts live in `DemoTranscriptExecSmokeTest`, which prints them; the prose names the
+   three depths without them.
+
+### Running it
+
+```diffstatic {data-lang=kotlin}
+./gradlew checkAgentTranscriptIndex          # also runs as part of check
+```
+Reads five kinds of text file and nothing else: no Field server, no runloop, no boxes, no GPU.
+Its heavyweight sibling `checkAgentTranscripts` builds real boxes and costs ~25 s; a completeness
+check needs none of that. See `dev_docs/agent_transcript_index.md` for how to add an entry.
 
 `src/jvmMain/kotlin/afield/tools/docs/AgentTranscriptIndexGuard.kt` — [read the source](source/jvmMain/afield/tools/docs/AgentTranscriptIndexGuard/)
 
 ### AgentTranscriptIndexGuard { #agenttranscriptindexguard-kt-agenttranscriptindexguard }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">AgentTranscriptIndexGuard</span></code>](source/jvmMain/afield/tools/docs/AgentTranscriptIndexGuard/#L90)
+[<code class="highlight"><span class="k">object</span> <span class="nc">AgentTranscriptIndexGuard</span></code>](source/jvmMain/afield/tools/docs/AgentTranscriptIndexGuard/#L89)
 
-Fails the build when `public/docs/agent_transcripts.md` stops being a true index of `dev_docs/agents/transcripts/`.
+Checks that `public/docs/agent_transcripts.md` lists every transcript, and only real ones.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="agenttranscriptindexguard-kt--agenttranscriptindexguard--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/AgentTranscriptIndexGuard/#L122) |  |
+| <a id="agenttranscriptindexguard-kt--agenttranscriptindexguard--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/AgentTranscriptIndexGuard/#L121) |  |
 
 ## AgentTranscriptLayoutGuard.kt { #agenttranscriptlayoutguard-kt }
 
@@ -8993,13 +9460,27 @@ Cuts Kotlin source into a verified tiling of declaration, KDoc and filler spans;
 
 ## MorphoDocsSupport.kt { #morphodocssupport-kt }
 
+Lets a documentation page hold MorphoHDL itself, rather than Kotlin that mentions it.
+
+A fence written as `data-lang=morpho` shows its body as MorphoHDL, and `public/docs_hooks.py`
+wraps that body in a call into this file before the docs runner evaluates it, the same way it
+already wraps a `nano` or a `forth` fence. What the reader sees under the fence is that program
+compiled, grown out in full with its layout relaxing between expansions, and drawn.
+
+The snippet is handled as a morpho box would handle it, down to using [`MorphoExecution`](languages.md#morphointerface-kt-morphoexecution)'s own
+directive parsing, so a program on the page and the same text pasted into a box behave alike.
+That includes the refusal: without a `# main` line there is no design to build and no width to
+build it at, so the snippet fails rather than guessing. A snippet that defines no cells of its
+own is given morpho's standard library, which is what makes a one-line program publishable.
+`morpho_examples.md` is the page that uses this.
+
 `src/jvmMain/kotlin/afield/tools/docs/MorphoDocsSupport.kt` — [read the source](source/jvmMain/afield/tools/docs/MorphoDocsSupport/)
 
 ### Top-level functions { #morphodocssupport-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="morphodocssupport-kt--rendermorphodocssnippet"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">renderMorphoDocsSnippet</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/MorphoDocsSupport/#L24) | Render a MorphoHDL snippet the way a morpho box would, for a `data-lang=morpho` docs fence. |
+| <a id="morphodocssupport-kt--rendermorphodocssnippet"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">renderMorphoDocsSnippet</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/MorphoDocsSupport/#L40) | Render a MorphoHDL snippet the way a morpho box would, for a `data-lang=morpho` docs fence. |
 
 ## ShaderBindingDocs.kt { #shaderbindingdocs-kt }
 
@@ -9088,31 +9569,130 @@ Generates and verifies the source-mirror docs pages; see the file overview.
 
 ## SourcePartitionGuard.kt { #sourcepartitionguard-kt }
 
+Proves that every Kotlin file in the repository can be cut into spans **losslessly**, and measures
+how much of it the cutter actually understands.
+
+### The failure this exists to stop
+
+A source page that lifts KDoc into prose, turns declarations into headers and numbers the code
+fences from their real source lines is correct only if the partition it was rendered from accounts
+for the whole file. Lose three lines and every fence below them is numbered wrong — on a published
+page, in a way that looks completely normal, and that a reader can only catch by opening the source
+they came here to avoid opening. The wrong page is well-formed, so review does not catch it either.
+
+So the partition is checked against the file it came from, over the whole repository, before any
+page exists. [`KotlinSourcePartition.verify`](workspace.md#kotlinsourcepartition-kt--kotlinsourcepartition--verify) holds the invariants; this walks the corpus, adds the
+two checks that need more than one file's worth of context, and reports.
+
+### What it checks
+
+- **The invariants** — tile, nest, reconstruct, balance, terminated. See [`KotlinSourcePartition`](workspace.md#kotlinsourcepartition-kt-kotlinsourcepartition).
+- **Agreement** — every declaration `KotlinSourceIndex.parseTopLevelDefinitions` finds is the
+  `declarationLine` of some `DECLARATION` span. Two independent recognisers, one corpus: a
+  disagreement means one of them is wrong about real source, and it does not much matter which,
+  because the reference pages and the completion panel are built on the index while the source pages
+  would be built on this. They have to see the same declarations or the two halves of the site
+  disagree.
+- **The unattributed census, as a ratchet** — every line the partition could not attribute to a
+  declaration, a comment or a header lands in `FILLER`. That is a *correctness-preserving* fallback:
+  the tiling still holds, no line is lost. It is not free, though — a `FILLER` line is a line a page
+  can only show as anonymous code — so the `FILLER` lines that carry code are counted and pinned,
+  and the pin falls whenever the scanner learns a shape and rises only with a reason. Blank lines
+  land in `FILLER` too and are not counted: there is nothing for a page to lose.
+- **Locals reported as API** — a second ratchet counts the declarations
+  [`KotlinSourceIndex`](workspace.md#kotlinsourceindex-kt-kotlinsourceindex) reports from *inside a function body*, each of which the reference pages and
+  the completion panel would otherwise publish as though it were public.
+
+### Running it
+
+```diffstatic {data-lang=kotlin}
+./gradlew checkSourcePartition                        # also part of check and docsGates
+./gradlew checkSourcePartition --args=--verbose       # …and the per-file and per-shape breakdowns
+```
+Needs no Field server, no GPU and no network: it reads source text. Sibling of
+[`KDocAttachmentGuard`](workspace.md#kdocattachmentguard-kt-kdocattachmentguard), which guards the other half of the same pipeline — that a KDoc block reaches
+the declaration its author meant.
+
 `src/jvmMain/kotlin/afield/tools/docs/SourcePartitionGuard.kt` — [read the source](source/jvmMain/afield/tools/docs/SourcePartitionGuard/)
 
 ### SourcePartitionGuard { #sourcepartitionguard-kt-sourcepartitionguard }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">SourcePartitionGuard</span></code>](source/jvmMain/afield/tools/docs/SourcePartitionGuard/#L61)
+[<code class="highlight"><span class="k">object</span> <span class="nc">SourcePartitionGuard</span></code>](source/jvmMain/afield/tools/docs/SourcePartitionGuard/#L66)
 
-Proves that every Kotlin file in the repository can be cut into spans **losslessly**, and measures how much of it the cutter actually understands.
+Checks every Kotlin file in the repository against the span partition a source page renders.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="sourcepartitionguard-kt--sourcepartitionguard--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/SourcePartitionGuard/#L149) |  |
+| <a id="sourcepartitionguard-kt--sourcepartitionguard--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/SourcePartitionGuard/#L154) |  |
 
 ## StdlibReferenceGenerator.kt { #stdlibreferencegenerator-kt }
+
+Emits Field's **codebase reference** — the browsable answer to "what is already in the box?" —
+from the KDoc that lives next to the code.
+
+### Why this exists, and why it is not Dokka
+
+Dokka was removed in `20e64da5`, because the durable facts belong in KDoc beside the code and a
+generated wall of one-page-per-symbol HTML is not documentation anyone reads. Field already has
+two *interactive* ways into that KDoc — the completion panel's recursive code browser
+(`public/docs/completion_doc_browser.md`) and the semantic index — but both need you to already
+know the name you are looking for. Nothing answered the browsing question. This generator does,
+with ordinary Zensical markdown inside the existing docs site: a page per completion category,
+a section per source file, the file's own KDoc as the orientation prose, and a table per type.
+
+### One parser, not two
+
+Declarations come from `KotlinSourceIndex.parseTopLevelDefinitions` — the *same* scan that feeds
+the in-app completion doc browser — so a symbol listed here is by construction a symbol the doc
+panel can resolve. Only the signature text is re-read from source here (the index stores names
+and lines, not signatures); see `signatureAt`.
+
+### What it will not invent
+
+- Every summary is the first paragraph of a real KDoc comment; a symbol with no KDoc is listed
+  with an empty summary rather than a guessed one.
+- A KDoc reference in square brackets is linkified only when the target is a type this reference
+  actually emits — the same "links only appear when they resolve" rule the completion panel
+  follows. Everything else degrades to plain inline code.
+- The "see also" links from a reference section to a worked-example page are *evidence-based*:
+  a page is linked only when it literally mentions `MIN_EVIDENCE_HITS` or more distinct public
+  symbol names from that source file (see `evidenceLinks`). No hand-maintained topic map to rot.
+
+### File overview rule
+
+The first KDoc block in a file is treated as the *file's* overview when it ends before the first
+declaration **and** is separated from that declaration by at least one blank or comment line —
+and it is then not also shown as that declaration's own summary. A block written flush against
+its declaration stays that declaration's own KDoc, of which only the first paragraph is
+published; the file's "what it is" cell on the index then has nothing to fill it with.
+
+### Running it
+
+Regenerate the committed pages (needs no Field server, no GPU, no network):
+```diffstatic {data-lang=kotlin}
+./gradlew generateCodebaseReference
+```
+Run with **no** output directory and it emits to a temp dir and then **drift-checks** the
+committed pages byte-for-byte instead — which is what the `docs.codebase-reference.generate`
+FIELD_TEST does, so an API or KDoc change that nobody regenerated fails the build. This mirrors
+[`afield.examples.AgentTranscriptMaterializer`](examples.md#agenttranscriptmaterializer-kt-agenttranscriptmaterializer) and the `tools/linalg-generator --check` mode that
+guards `public/docs/linear_algebra_api.md`.
+
+The pages are **committed** rather than built on the fly: the Zensical docs build must not gain a
+JVM step, and a generated reference is only trustworthy if an API change shows up as a reviewable
+diff.
 
 `src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt` — [read the source](source/jvmMain/afield/tools/docs/StdlibReferenceGenerator/)
 
 ### StdlibReferenceGenerator { #stdlibreferencegenerator-kt-stdlibreferencegenerator }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">StdlibReferenceGenerator</span></code>](source/jvmMain/afield/tools/docs/StdlibReferenceGenerator/#L76)
+[<code class="highlight"><span class="k">object</span> <span class="nc">StdlibReferenceGenerator</span></code>](source/jvmMain/afield/tools/docs/StdlibReferenceGenerator/#L77)
 
-Emits Field's **codebase reference** — the browsable answer to "what is already in the box?" — from the KDoc that lives next to the code.
+Emits `public/docs/reference/` from the KDoc in `src/`, or drift-checks the committed pages.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="stdlibreferencegenerator-kt--stdlibreferencegenerator--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/StdlibReferenceGenerator/#L712) |  |
+| <a id="stdlibreferencegenerator-kt--stdlibreferencegenerator--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/tools/docs/StdlibReferenceGenerator/#L713) |  |
 
 ## canvasFlightRecording.kt { #canvasflightrecording-kt }
 

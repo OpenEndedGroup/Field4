@@ -4,6 +4,26 @@ import kotlinx.serialization.Serializable
 import java.io.File
 import java.util.concurrent.TimeUnit
 
+/**
+ * Builds the classpath a kit needs before stopping the Field that asked for it, so a build that
+ * fails leaves Welcome running and able to say why. Adding a kit package registers a snapshot but
+ * loads nothing: its Kotlin extensions, pinned dependencies and native libraries reach a host only
+ * through the launch profile [KitPackages] writes, which is why **Restart Field** in Welcome's kit
+ * area has to compile and resolve before the restart rather than after it.
+ *
+ * [KitRestarts.prepare] checks that this installation has both a launcher (`field.sh`, or
+ * `field.ps1` on Windows) and a Gradle wrapper, then runs `gradlew jvmJar dumpFieldLaunch
+ * -PfieldServerOnly=true` on a daemon thread, adding `--offline` when `AFIELD_OFFLINE` is set and
+ * appending to `logs/restart.log` under the kits directory. The current host keeps serving
+ * throughout. A non-zero exit, or a build still going after twenty minutes, leaves
+ * [KitRestarts.status] at phase `failed` with the message and the log path and no restart happens;
+ * only a clean build invokes the `ready` callback, which flushes pending document saves, stops the
+ * server and relaunches the launcher with `--server-only`. Welcome polls
+ * `GET /api/kits/restart-status` while the build runs, and the Electron or browser window it polled
+ * from reconnects to the new host once the restart completes.
+ */
+
+/** The phase Welcome is showing: `idle`, `building`, `restarting` or `failed`, with its log path. */
 @Serializable
 data class KitRestartStatus(val running: Boolean = false, val phase: String = "idle", val message: String = "", val log: String = "")
 

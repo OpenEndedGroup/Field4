@@ -18,6 +18,31 @@ import java.util.concurrent.Executors
 import kotlin.math.hypot
 
 /**
+ * Turning a raster line drawing into curves, by the polyvector-field method of Bessmeltsev and
+ * Solomon (2019).
+ *
+ * The problem this solves is the junction: where two strokes cross, a tracer that follows ink alone
+ * has no way to tell which outgoing branch continues which incoming one. A [PolyvectorField] gives
+ * every ink pixel *two* unsigned directions rather than one, so a crossing is a pixel where both
+ * strokes are represented and each can be followed through it. [Polyvector] is the entry point:
+ * [Polyvector.fitField] solves for the field, [PolyvectorField.trace] reads curves off it as a
+ * [PolyvectorDrawing], and [Polyvector.vectorize] does both for a dark-on-light scan.
+ *
+ * Fitting the field is the expensive step and tracing is not, which is why the controls come in two
+ * parts: [FrameFieldParameters] for the field, [TraceParameters] for the trace. A drawing can be
+ * re-traced at several prune ratios without the field being solved again.
+ *
+ * The input is *evidence*, 0 to 1, for how much each pixel is ink, not a picture:
+ * [Polyvector.inkOf] gets it from a dark-on-light drawing as `1 - luminance`, and an edge or ridge
+ * detector's output can be passed to [Polyvector.fitField] instead. Coordinates throughout are
+ * pixels at pixel centres, x right and y down. The worked account, including which drawings the
+ * method suits, is `public/docs/polyvector.md`.
+ *
+ * The solver is the optional native library `field_polyvector` ([PolyvectorLibrary]), so a field
+ * holds native memory and is closed by the box's next run.
+ */
+
+/**
  * Controls for building the frame field. [inkThreshold] is the evidence level (0..1) above which a
  * pixel counts as ink. [regularizer] pushes the two directions towards a right angle (larger gives
  * sharper junctions, smaller follows narrow junctions more closely). [smoothness] trades fidelity to

@@ -8,6 +8,36 @@ import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.Properties
 
+/**
+ * The registry of kit packages installed on this machine, and the immutable snapshot each
+ * registration copies out of a package's source folder. A kit package is a directory holding a
+ * `field-kit.json` that names one or more starting points, each of them an ordinary saved Field
+ * document, beside optional Kotlin sources, JARs, pinned Maven coordinates, native libraries and a
+ * lifecycle class. `public/docs/kits.md` is the user's page. The smaller role-kit model, which
+ * describes shared box code and assets inside one document, is [Kits].
+ *
+ * [KitPackages.read] validates a manifest and [KitPackages.install] copies the package to
+ * `packages/<id>/<revision>/` under `~/.afield/kits` (`afield.kits.dir` or `AFIELD_KITS_DIR` moves
+ * that root). The revision is a SHA-256 over the path and content hash of every declared file, so
+ * registering unchanged source resolves to the snapshot that already exists, and a document goes on
+ * reading the revision it recorded after a newer one arrives. Installation reads JSON and copies
+ * bytes; it runs nothing the package ships.
+ *
+ * Two files carry the registry to the next start of Field. `registry.json` lists the
+ * [InstalledKit] snapshots, and `runtime.properties` is a launch profile that `build.gradle.kts`
+ * reads to assemble the extension classpath, resolve the pinned dependencies, extend
+ * `java.library.path` and pass `-Dafield.kit.packages` and `-Dafield.kit.revisions` to the host,
+ * which is where [KitRuntime] picks the same set up again. A kit registered inside a running host
+ * therefore reports `restart-required` from [KitPackages.statuses] until its revision turns up in
+ * [KitPackages.active]; those statuses are what Welcome's **Kits** area lists.
+ *
+ * [KitPackages.child] is the containment rule every path here goes through: package-relative, no
+ * `..`, and canonicalised, so neither a path nor a symlink inside the package can reach a file
+ * outside it. Because one host loads every installed runtime together, installing also refuses a
+ * set of kits that disagree about a dependency's version, about the value of a runtime system
+ * property, or about the contents of two native libraries with the same filename.
+ */
+
 /** A self-contained runtime package. Each starting point is an ordinary Field document directory. */
 @Serializable
 data class KitPackageManifest(

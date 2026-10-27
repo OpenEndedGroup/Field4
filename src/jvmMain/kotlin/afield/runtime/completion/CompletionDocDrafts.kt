@@ -36,6 +36,8 @@ import kotlin.io.path.absolutePathString
  * `kdoc-draft` note on its declaration, and the docs revision pass (/docs-pass.html) handles them
  * like the human's own notes. See dev_docs/agents/COMPLETION_DOC_POLISH_DESIGN.md.
  */
+
+/** Counts the cached KDoc drafts that belong to declarations under `src/`, for the welcome page. */
 object CompletionDocDrafts {
     private val json = Json { ignoreUnknownKeys = true }
 

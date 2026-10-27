@@ -16,6 +16,27 @@ import java.util.concurrent.Executors
 import kotlin.math.sqrt
 
 /**
+ * Elastic principal graphs: smooth curves, trees and forests fitted through a 2-D or 3-D point
+ * cloud, as a port of ElPiGraph.
+ *
+ * [PrincipalCurves] is the entry point, and what it hands back is not a finished answer but an
+ * optimisation state. A [PrincipalForest] can be fitted again, grown with more nodes under one of
+ * the graph grammars [Growth] offers, have nodes moved and pinned, and be read back at any point
+ * along the way: as node positions and edges, as FLines, or as a [GeometryNetwork] whose channels
+ * carry the per-node measurements. So pinning a node, replacing the points under a fitted graph, or
+ * adding nodes to it continues from where the fit had reached rather than starting over.
+ *
+ * [ElasticParameters] holds the energy the fit minimises, [ElasticEnergy] its value split by term,
+ * [PointAssignments] which node and edge each point ended up on, and [NodeStatistics] the spread
+ * of the points around each node, which is what the ribbon widths are drawn from.
+ *
+ * The solver is the optional native library `field_principal_curves`
+ * ([PrincipalCurvesLibrary]), so a forest holds native memory, is closed by the box's next run,
+ * and `PrincipalCurves.isAvailable` reports whether the library loaded at all. The worked account
+ * is `public/docs/principal_curves.md`.
+ */
+
+/**
  * The weights of the elastic energy and the solver's controls.
  *
  * [lambda] penalises stretching (the squared length of every edge) and so total length; [mu]

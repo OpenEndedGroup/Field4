@@ -3,6 +3,26 @@ package afield.ai.conversation
 import afield.ai.models.LlmProgressUpdate
 import afield.ai.conversation.AiChatModelIdentity
 
+/**
+ * The running transcript of one AI4 chat turn, assembled in the order things happened.
+ *
+ * A turn interleaves three kinds of entry: text streamed from the model, the activity lines that
+ * say which tool is running, and anything the person typed while the turn was still going. Each is
+ * appended as it arrives, and the whole sequence renders into the `<<ai>>`, `<<you>>` and
+ * `<<progress>>` markers that a box's `ai4_chat_history` property stores and `aiChatHistoryHtml`
+ * turns into the chat panel.
+ *
+ * Two rules keep that order readable while the turn is live. Consecutive text deltas merge into one
+ * block instead of one block per delta, and a new activity line replaces the previous one only
+ * where that one was still transient, so a finished tool's result or failure is never overwritten
+ * by the next thing to start. The newest activity line of a live turn is marked `<<progress-open>>`
+ * and renders expanded; the earlier ones stay collapsed.
+ *
+ * At the end the bridge hands back the turn's final text, which usually repeats what was already
+ * streamed. Rendering drops the streamed copy when the final text starts with it and nothing but
+ * completion activity follows it, so the reader is left with one answer rather than two.
+ */
+
 /** Ordered live transcript: tool waits cannot move earlier explanations below newer activity. */
 internal class AiLiveConversation {
     private sealed interface Entry

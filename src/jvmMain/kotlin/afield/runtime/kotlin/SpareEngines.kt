@@ -22,22 +22,7 @@ import kotlinx.coroutines.CompletableDeferred
  * classpath when it is created. `-Dafield.kotlin.spareEngines=0` turns the whole thing off.
  */
 
-/**
- * Engines built ahead of a box's next `execute-all`, so running a box does not wait for a new
- * Kotlin engine.
- *
- * Running a box (`execute-all`) gives it a fresh REPL: a new engine whose stdlib intro is compiled
- * and evaluated before the box's code. Built on the spot that is ~250 ms of every run of a one-line
- * box on an M1 Max (`engine.reset` in `dev_docs/testing/FEEL_BENCHMARKS.md`). So once a run has
- * its verdict, [prepare] builds the box's next engine in the background, and the next run [take]s
- * it. The run still gets a fresh engine; only the wait moves.
- *
- * A spare is the box's only until [discard] (called by [Box.disposeKi], so retiring a box, reloading
- * personal code and recycling an engine all drop it), and is refused by [take] if the shared class
- * loader has gained jars since it was built, because an engine snapshots its compile classpath when
- * it is created. Engines are tens of MB, so at most [capacity] boxes hold one, least recently
- * prepared first out; `-Dafield.kotlin.spareEngines=0` (or `AFIELD_SPARE_ENGINES=0`) turns this off.
- */
+/** Holds a pre-built Kotlin engine per box, so the next `execute-all` does not wait for one. */
 object SpareEngines {
 
     val capacity: Int = (System.getProperty("afield.kotlin.spareEngines") ?: System.getenv("AFIELD_SPARE_ENGINES"))

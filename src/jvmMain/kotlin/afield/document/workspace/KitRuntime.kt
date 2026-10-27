@@ -7,6 +7,31 @@ import afield.app.diagnostics.logging.lprintln
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * Loads each installed kit runtime once per host, then attaches and detaches documents against it.
+ * [KitRuntime.start] reads the package directories the launcher captured in `afield.kit.packages`,
+ * instantiates each manifest's `runtime.lifecycle` class from the personal class layer and calls
+ * [KitLifecycle.startup]. A kit whose startup throws is cleaned up, recorded in [KitRuntime.errors]
+ * and shown as an error in Welcome rather than failing the host. Opening a document that carries a
+ * [KitInstanceRecord] calls [KitRuntime.activate], which resolves the document's
+ * [WorkspaceProjectScope] and runs [KitLifecycle.activate] inside its root box context; tearing that
+ * session down calls [KitLifecycle.deactivate].
+ *
+ * Those package directories come from the profile Gradle read at launch, not from the registry as it
+ * stands now, so a kit installed or updated since this host started is invisible here until a
+ * restart.
+ * [KitRuntime.activate] enforces the matching condition directly: a document records the runtime
+ * revision it was created against, and activation refuses when this host loaded a different one,
+ * naming both.
+ *
+ * [KitRuntime.launchBoxes] answers what a starting point asks Field to run. It reads `launch` from
+ * the revision the *document* recorded rather than from the newer compatible one this host may
+ * hold, so a kit that has since renamed or reordered its boxes cannot change what an existing
+ * document launches, and it insists on exactly one live box per name instead of guessing. A
+ * shutdown hook deactivates every live document and calls [KitLifecycle.cleanup] in reverse load
+ * order, with four seconds to finish.
+ */
+
 /** Implement in a kit's Kotlin extension; startup/cleanup belong to the host, activation to a document. */
 interface KitLifecycle {
     fun startup(context: KitHostContext) {}

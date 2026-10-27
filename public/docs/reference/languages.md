@@ -4,7 +4,7 @@
 
 Field's small languages, from the host side. A box can be *written* in one of them — a per-box property picks the language and a `BoxExecution` runs it, which is how `datalog`, `forth`, `nano`, `morpho`, `clojure`, `python`, FieldML and the two `remotejs` runtimes work — or a program can be *embedded*, a triple-quoted Kotlin string whose first line names the language and whose contents are compiled on the JVM, which is how RectSL and StackSL work. What is documented below is the Kotlin that either shape hands you: the compiler you give a program to, the result and the diagnostics it gives back, and the bridge a running program calls host values through. The notation itself is on the cheatsheets, and that is where the pictures are. Read `Datalog.kt` first — it is the smallest complete example of the shape all of these have, a value you add source to, query, and then ask `why` of — then `DatalogEngine.kt` for what the implementation underneath actually costs, `StackSL.kt` for the compile-and-diagnose surface both embedded languages share, `ForthInterpreter.kt` and `NanoVM.kt` for the two implementations you can read end to end in a sitting, and `HostBridge.kt` for FieldML's reflective JVM bridge — the file to read before wiring any language to Kotlin values. `dev_docs/` carries the map of what a new language has to touch on the way in, in `small_language_anatomy.md`, which is also the guarded list of which languages exist. The prose, with pictures: [Language extensions](../language_extensions.md) for the route decision, then [Datalog](../datalog.md), [RectSL](../rectsl_cheatsheet.md), [StackSL](../stacksl_cheatsheet.md), [FieldML](../fieldml_cheatsheet.md), [MorphoHDL](../morpho_examples.md), [Nano](../nano_examples.md), [Forth](../forth_examples.md) and [Python](../python.md).
 
-123 source file(s), 3096 public symbol(s), 1411 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+123 source file(s), 3096 public symbol(s), 1519 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -700,8 +700,8 @@ Read it in four layers:
    rather than naming `SomeSkikoKt`.
  - [`ClojureExecution`](languages.md#clojureinterface-kt-clojureexecution) is the `BoxExecution`, so it is the half that knows about boxes: output
    proxying, `is-running`, per-fragment generation counting, and `complete`, whose candidates
-   come from Compliment if that namespace loads and from nothing if it does not — completion is
-   optional here by design rather than by omission.
+   come from Compliment if that namespace loads. Without it on the classpath `complete` returns
+   an empty list rather than throwing, so a box runs and completes nothing.
  - [`installClojure`](languages.md#clojureinterface-kt--installclojure) and [`clojureTopologyNeedsUpdating`](languages.md#clojureinterface-kt--clojuretopologyneedsupdating) are the registration, and they are
    identical in shape to every other main language: one `registerMainLanguageRuntime` call, one
    `TopologyWatcher` that swaps a child box's execution when the graph changes.
@@ -1097,35 +1097,51 @@ A node of the surface tree, positioned by the [`SourceRange`](languages.md#diagn
 
 ### EInt { #expr-kt-eint }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EInt</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L35)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EInt</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L36)
+
+An integer literal.
 
 ### EFloat { #expr-kt-efloat }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EFloat</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L36)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EFloat</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L39)
+
+A floating-point literal.
 
 ### EBool { #expr-kt-ebool }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EBool</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L37)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EBool</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L42)
+
+`true` or `false`. The value comes from which keyword was read, never from the text.
 
 ### EString { #expr-kt-estring }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EString</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L38)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EString</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L45)
+
+A string literal, with its quotes removed and its backslash escapes already decoded.
 
 ### EVar { #expr-kt-evar }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EVar</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L39)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EVar</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L53)
+
+A name used as an expression.
 
 ### ETuple { #expr-kt-etuple }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ETuple</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Expr</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L40)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ETuple</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Expr</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L61)
+
+Two or more comma-separated expressions in parentheses.
 
 ### EList { #expr-kt-elist }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EList</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Expr</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L41)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EList</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Expr</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L64)
+
+A bracketed list of elements, which may be empty.
 
 ### TypeDecl { #expr-kt-typedecl }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TypeDecl</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">parameters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">constructors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ConstructorDecl</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L43)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TypeDecl</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">parameters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">constructors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ConstructorDecl</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L74)
+
+A `type` declaration as written: the name being declared, the parameters it takes, and its constructors.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1136,7 +1152,9 @@ A node of the surface tree, positioned by the [`SourceRange`](languages.md#diagn
 
 ### ConstructorDecl { #expr-kt-constructordecl }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ConstructorDecl</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TypeRef</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L50)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ConstructorDecl</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TypeRef</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L82)
+
+One constructor of a [`TypeDecl`](languages.md#expr-kt-typedecl), with its argument types as they were written.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1146,16 +1164,20 @@ A node of the surface tree, positioned by the [`SourceRange`](languages.md#diagn
 
 ### TypeRef { #expr-kt-typeref }
 
-[<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">TypeRef</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L56)
+[<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">TypeRef</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L89)
+
+A type as written inside a constructor's argument list.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="expr-kt--typeref--name"></a>[<code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L57) |  |
-| <a id="expr-kt--typeref--range"></a>[<code class="highlight"><span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L58) |  |
+| <a id="expr-kt--typeref--name"></a>[<code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L90) |  |
+| <a id="expr-kt--typeref--range"></a>[<code class="highlight"><span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L91) |  |
 
 ### TypeRefName { #expr-kt-typerefname }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TypeRefName</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TypeRef</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L61)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TypeRefName</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TypeRef</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L100)
+
+[`TypeRef`](languages.md#expr-kt-typeref)'s only case: a bare name.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1164,7 +1186,9 @@ A node of the surface tree, positioned by the [`SourceRange`](languages.md#diagn
 
 ### ETypeDecl { #expr-kt-etypedecl }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ETypeDecl</span><span class="p">(</span><span class="k">val</span> <span class="n">declaration</span><span class="p">:</span> <span class="nc">TypeDecl</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L66)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ETypeDecl</span><span class="p">(</span><span class="k">val</span> <span class="n">declaration</span><span class="p">:</span> <span class="nc">TypeDecl</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L106)
+
+A `type` declaration together with the program that follows it, which is its `body`.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1174,7 +1198,9 @@ A node of the surface tree, positioned by the [`SourceRange`](languages.md#diagn
 
 ### ELet { #expr-kt-elet }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ELet</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">parameters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L72)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ELet</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">parameters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L119)
+
+A `let` binding together with the program that follows it.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1186,7 +1212,9 @@ A node of the surface tree, positioned by the [`SourceRange`](languages.md#diagn
 
 ### ELambda { #expr-kt-elambda }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ELambda</span><span class="p">(</span><span class="k">val</span> <span class="n">parameters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L80)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ELambda</span><span class="p">(</span><span class="k">val</span> <span class="n">parameters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L133)
+
+`fun x y -> ...`, keeping its parameter list as written.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1196,7 +1224,9 @@ A node of the surface tree, positioned by the [`SourceRange`](languages.md#diagn
 
 ### ECall { #expr-kt-ecall }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ECall</span><span class="p">(</span><span class="k">val</span> <span class="n">function</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">val</span> <span class="n">argument</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L86)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ECall</span><span class="p">(</span><span class="k">val</span> <span class="n">function</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">val</span> <span class="n">argument</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L146)
+
+One argument applied to one function.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1206,7 +1236,9 @@ A node of the surface tree, positioned by the [`SourceRange`](languages.md#diagn
 
 ### EIf { #expr-kt-eif }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EIf</span><span class="p">(</span><span class="k">val</span> <span class="n">condition</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">val</span> <span class="n">thenBranch</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">val</span> <span class="n">elseBranch</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L92)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EIf</span><span class="p">(</span><span class="k">val</span> <span class="n">condition</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">val</span> <span class="n">thenBranch</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">val</span> <span class="n">elseBranch</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L153)
+
+`if ... then ... else ...`. There is no one-armed form, so both branches are always present.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1217,43 +1249,61 @@ A node of the surface tree, positioned by the [`SourceRange`](languages.md#diagn
 
 ### Pattern { #expr-kt-pattern }
 
-[<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L99)
+[<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L161)
+
+The left-hand side of a `match` arm, positioned by the [`SourceRange`](languages.md#diagnostics-kt-sourcerange) it was parsed from.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="expr-kt--pattern--range"></a>[<code class="highlight"><span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L100) |  |
+| <a id="expr-kt--pattern--range"></a>[<code class="highlight"><span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L162) |  |
 
 ### PWildcard { #expr-kt-pwildcard }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PWildcard</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L103)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PWildcard</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L166)
+
+`_`: matches anything and binds nothing.
 
 ### PVar { #expr-kt-pvar }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PVar</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L104)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PVar</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L169)
+
+A lower-case name: matches anything and binds it for the arm's body.
 
 ### PInt { #expr-kt-pint }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PInt</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L105)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PInt</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L172)
+
+An integer literal, matching that value.
 
 ### PBool { #expr-kt-pbool }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PBool</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L106)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PBool</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L175)
+
+`true` or `false`, matching that value.
 
 ### PString { #expr-kt-pstring }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PString</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L107)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PString</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L178)
+
+A string literal, escapes already decoded, matching that text.
 
 ### PTuple { #expr-kt-ptuple }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PTuple</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pattern</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L108)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PTuple</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pattern</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L181)
+
+Two or more comma-separated patterns in parentheses. A single one is grouping.
 
 ### PList { #expr-kt-plist }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PList</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pattern</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L109)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PList</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pattern</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L184)
+
+A bracketed pattern, matching a list of exactly that length. `[]` matches the empty list.
 
 ### PConstructor { #expr-kt-pconstructor }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PConstructor</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pattern</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L111)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PConstructor</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pattern</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L192)
+
+A constructor name and the patterns for its arguments.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1263,7 +1313,7 @@ A node of the surface tree, positioned by the [`SourceRange`](languages.md#diagn
 
 ### PCons { #expr-kt-pcons }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PCons</span><span class="p">(</span><span class="k">val</span> <span class="n">head</span><span class="p">:</span> <span class="nc">Pattern</span><span class="p">,</span> <span class="k">val</span> <span class="n">tail</span><span class="p">:</span> <span class="nc">Pattern</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L118)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PCons</span><span class="p">(</span><span class="k">val</span> <span class="n">head</span><span class="p">:</span> <span class="nc">Pattern</span><span class="p">,</span> <span class="k">val</span> <span class="n">tail</span><span class="p">:</span> <span class="nc">Pattern</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Pattern</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L199)
 
 `head :: tail` — matches any non-empty list, binding its first element and the rest.
 
@@ -1275,7 +1325,9 @@ A node of the surface tree, positioned by the [`SourceRange`](languages.md#diagn
 
 ### MatchCase { #expr-kt-matchcase }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">MatchCase</span><span class="p">(</span><span class="k">val</span> <span class="n">pattern</span><span class="p">:</span> <span class="nc">Pattern</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L124)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">MatchCase</span><span class="p">(</span><span class="k">val</span> <span class="n">pattern</span><span class="p">:</span> <span class="nc">Pattern</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L206)
+
+One `| pattern -> body` arm of an [`EMatch`](languages.md#expr-kt-ematch).
 
 | Declaration | Summary |
 | --- | --- |
@@ -1285,7 +1337,9 @@ A node of the surface tree, positioned by the [`SourceRange`](languages.md#diagn
 
 ### EMatch { #expr-kt-ematch }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EMatch</span><span class="p">(</span><span class="k">val</span> <span class="n">scrutinee</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">val</span> <span class="n">cases</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MatchCase</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L130)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EMatch</span><span class="p">(</span><span class="k">val</span> <span class="n">scrutinee</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">val</span> <span class="n">cases</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MatchCase</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L218)
+
+`match scrutinee with` followed by its arms.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1295,7 +1349,9 @@ A node of the surface tree, positioned by the [`SourceRange`](languages.md#diagn
 
 ### RecordField { #expr-kt-recordfield }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RecordField</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L136)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RecordField</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L225)
+
+One `name = value` field of an [`ERecord`](languages.md#expr-kt-erecord).
 
 | Declaration | Summary |
 | --- | --- |
@@ -1305,7 +1361,9 @@ A node of the surface tree, positioned by the [`SourceRange`](languages.md#diagn
 
 ### ERecord { #expr-kt-erecord }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ERecord</span><span class="p">(</span><span class="k">val</span> <span class="n">fields</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">RecordField</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L142)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ERecord</span><span class="p">(</span><span class="k">val</span> <span class="n">fields</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">RecordField</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L237)
+
+A braced record literal.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1314,7 +1372,9 @@ A node of the surface tree, positioned by the [`SourceRange`](languages.md#diagn
 
 ### EField { #expr-kt-efield }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EField</span><span class="p">(</span><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">val</span> <span class="n">field</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L147)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EField</span><span class="p">(</span><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">val</span> <span class="n">field</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L243)
+
+`target.field`, reading one field out of a record.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1324,13 +1384,17 @@ A node of the surface tree, positioned by the [`SourceRange`](languages.md#diagn
 
 ### BinaryOp { #expr-kt-binaryop }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">BinaryOp</span><span class="p">(</span><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L153)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">BinaryOp</span><span class="p">(</span><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L256)
+
+The infix operators, each carrying the text it is written as.
 
 Constants: `ADD`, `SUB`, `MUL`, `DIV`, `CONCAT`, `LT`, `LTE`, `GT`, `GTE`, `EQ`, `NEQ`, `AND`, `OR`, `CONS`.
 
 ### EBinary { #expr-kt-ebinary }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EBinary</span><span class="p">(</span><span class="k">val</span> <span class="n">op</span><span class="p">:</span> <span class="nc">BinaryOp</span><span class="p">,</span> <span class="k">val</span> <span class="n">left</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">val</span> <span class="n">right</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L170)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EBinary</span><span class="p">(</span><span class="k">val</span> <span class="n">op</span><span class="p">:</span> <span class="nc">BinaryOp</span><span class="p">,</span> <span class="k">val</span> <span class="n">left</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">val</span> <span class="n">right</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L274)
+
+An infix operator applied to two operands, with precedence already resolved into the shape.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1341,7 +1405,7 @@ Constants: `ADD`, `SUB`, `MUL`, `DIV`, `CONCAT`, `LT`, `LTE`, `GT`, `GTE`, `EQ`,
 
 ### ENegate { #expr-kt-enegate }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ENegate</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L178)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ENegate</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Expr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Expr</span></code>](source/jvmMain/afield/lang/fieldml/ast/Expr/#L282)
 
 Prefix `-` over numbers and vectors.
 
@@ -1383,35 +1447,51 @@ A node of the lowered tree, carrying the type inferred for it.
 
 ### CInt { #core-kt-cint }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CInt</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L29)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CInt</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L30)
+
+An integer literal, from [`TExprInt`](languages.md#typedast-kt-texprint).
 
 ### CFloat { #core-kt-cfloat }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CFloat</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L30)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CFloat</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L33)
+
+A floating-point literal, from [`TExprFloat`](languages.md#typedast-kt-texprfloat).
 
 ### CBool { #core-kt-cbool }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CBool</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L31)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CBool</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L36)
+
+A boolean literal, from [`TExprBool`](languages.md#typedast-kt-texprbool).
 
 ### CString { #core-kt-cstring }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CString</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L32)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CString</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L39)
+
+A string literal, from [`TExprString`](languages.md#typedast-kt-texprstring).
 
 ### CVar { #core-kt-cvar }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CVar</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L33)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CVar</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L42)
+
+A name to look up in the environment, from [`TExprVar`](languages.md#typedast-kt-texprvar).
 
 ### CTuple { #core-kt-ctuple }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CTuple</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CoreExpr</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L34)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CTuple</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CoreExpr</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L45)
+
+A tuple, from [`TExprTuple`](languages.md#typedast-kt-texprtuple).
 
 ### CList { #core-kt-clist }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CList</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CoreExpr</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L35)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CList</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CoreExpr</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L48)
+
+A list, from [`TExprList`](languages.md#typedast-kt-texprlist).
 
 ### CTypeDecl { #core-kt-ctypedecl }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CTypeDecl</span><span class="p">(</span><span class="k">val</span> <span class="n">declaration</span><span class="p">:</span> <span class="nc">TypeDecl</span><span class="p">,</span> <span class="k">val</span> <span class="n">constructors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CoreConstructor</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L37)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CTypeDecl</span><span class="p">(</span><span class="k">val</span> <span class="n">declaration</span><span class="p">:</span> <span class="nc">TypeDecl</span><span class="p">,</span> <span class="k">val</span> <span class="n">constructors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CoreConstructor</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L55)
+
+A data type declaration and the program that follows it, from [`TExprTypeDecl`](languages.md#typedast-kt-texprtypedecl).
 
 | Declaration | Summary |
 | --- | --- |
@@ -1422,7 +1502,9 @@ A node of the lowered tree, carrying the type inferred for it.
 
 ### CoreConstructor { #core-kt-coreconstructor }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CoreConstructor</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">arity</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L44)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CoreConstructor</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">arity</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L69)
+
+A constructor as the evaluator needs it: its name, and how many arguments it takes before it is a value.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1431,7 +1513,9 @@ A node of the lowered tree, carrying the type inferred for it.
 
 ### CLet { #core-kt-clet }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CLet</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="k">val</span> <span class="n">recursive</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L49)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CLet</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="k">val</span> <span class="n">recursive</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L80)
+
+A binding and the program that follows it, from [`TExprLet`](languages.md#typedast-kt-texprlet).
 
 | Declaration | Summary |
 | --- | --- |
@@ -1443,7 +1527,9 @@ A node of the lowered tree, carrying the type inferred for it.
 
 ### CLam { #core-kt-clam }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CLam</span><span class="p">(</span><span class="k">val</span> <span class="n">parameter</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">parameterType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L58)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CLam</span><span class="p">(</span><span class="k">val</span> <span class="n">parameter</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">parameterType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L97)
+
+A lambda of exactly one parameter, so the evaluator only ever binds one at a time.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1454,7 +1540,9 @@ A node of the lowered tree, carrying the type inferred for it.
 
 ### CApp { #core-kt-capp }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CApp</span><span class="p">(</span><span class="k">val</span> <span class="n">function</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">argument</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L65)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CApp</span><span class="p">(</span><span class="k">val</span> <span class="n">function</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">argument</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L105)
+
+One argument applied to one function, from [`TExprCall`](languages.md#typedast-kt-texprcall).
 
 | Declaration | Summary |
 | --- | --- |
@@ -1464,7 +1552,9 @@ A node of the lowered tree, carrying the type inferred for it.
 
 ### CIf { #core-kt-cif }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CIf</span><span class="p">(</span><span class="k">val</span> <span class="n">condition</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">thenBranch</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">elseBranch</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L71)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CIf</span><span class="p">(</span><span class="k">val</span> <span class="n">condition</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">thenBranch</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">elseBranch</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L112)
+
+A conditional, from [`TExprIf`](languages.md#typedast-kt-texprif). Both branches are present and have the same type.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1475,43 +1565,61 @@ A node of the lowered tree, carrying the type inferred for it.
 
 ### CorePattern { #core-kt-corepattern }
 
-[<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L78)
+[<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L125)
+
+A pattern in the lowered tree, carrying the type it matches against.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="core-kt--corepattern--type"></a>[<code class="highlight"><span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L79) |  |
+| <a id="core-kt--corepattern--type"></a>[<code class="highlight"><span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L126) |  |
 
 ### CPWildcard { #core-kt-cpwildcard }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CPWildcard</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L82)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CPWildcard</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L130)
+
+Matches anything and binds nothing, from [`TPWildcard`](languages.md#typedast-kt-tpwildcard).
 
 ### CPVar { #core-kt-cpvar }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CPVar</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L83)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CPVar</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L133)
+
+Matches anything and binds it under `name`, from [`TPVar`](languages.md#typedast-kt-tpvar).
 
 ### CPInt { #core-kt-cpint }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CPInt</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L84)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CPInt</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L136)
+
+Matches one integer value, from [`TPInt`](languages.md#typedast-kt-tpint).
 
 ### CPBool { #core-kt-cpbool }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CPBool</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L85)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CPBool</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L139)
+
+Matches one boolean value, from [`TPBool`](languages.md#typedast-kt-tpbool).
 
 ### CPString { #core-kt-cpstring }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CPString</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L86)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CPString</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L142)
+
+Matches one string value, from [`TPString`](languages.md#typedast-kt-tpstring).
 
 ### CPTuple { #core-kt-cptuple }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CPTuple</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CorePattern</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L87)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CPTuple</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CorePattern</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L145)
+
+Matches a tuple element by element, from [`TPTuple`](languages.md#typedast-kt-tptuple).
 
 ### CPList { #core-kt-cplist }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CPList</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CorePattern</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L88)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CPList</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CorePattern</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L148)
+
+Matches a list of exactly this length, from [`TPList`](languages.md#typedast-kt-tplist).
 
 ### CPConstructor { #core-kt-cpconstructor }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CPConstructor</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CorePattern</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L90)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CPConstructor</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CorePattern</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L151)
+
+Matches one constructor and its arguments, from [`TPConstructor`](languages.md#typedast-kt-tpconstructor).
 
 | Declaration | Summary |
 | --- | --- |
@@ -1521,7 +1629,9 @@ A node of the lowered tree, carrying the type inferred for it.
 
 ### CPCons { #core-kt-cpcons }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CPCons</span><span class="p">(</span><span class="k">val</span> <span class="n">head</span><span class="p">:</span> <span class="nc">CorePattern</span><span class="p">,</span> <span class="k">val</span> <span class="n">tail</span><span class="p">:</span> <span class="nc">CorePattern</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L96)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CPCons</span><span class="p">(</span><span class="k">val</span> <span class="n">head</span><span class="p">:</span> <span class="nc">CorePattern</span><span class="p">,</span> <span class="k">val</span> <span class="n">tail</span><span class="p">:</span> <span class="nc">CorePattern</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CorePattern</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L158)
+
+Matches a non-empty list, splitting it into `head` and `tail`, from [`TPCons`](languages.md#typedast-kt-tpcons).
 
 | Declaration | Summary |
 | --- | --- |
@@ -1531,7 +1641,9 @@ A node of the lowered tree, carrying the type inferred for it.
 
 ### CMatchCase { #core-kt-cmatchcase }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CMatchCase</span><span class="p">(</span><span class="k">val</span> <span class="n">pattern</span><span class="p">:</span> <span class="nc">CorePattern</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L102)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CMatchCase</span><span class="p">(</span><span class="k">val</span> <span class="n">pattern</span><span class="p">:</span> <span class="nc">CorePattern</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L165)
+
+One arm of a [`CMatch`](languages.md#core-kt-cmatch): a pattern, and the expression to evaluate when it matches.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1540,7 +1652,9 @@ A node of the lowered tree, carrying the type inferred for it.
 
 ### CMatch { #core-kt-cmatch }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CMatch</span><span class="p">(</span><span class="k">val</span> <span class="n">scrutinee</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">cases</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CMatchCase</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L107)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CMatch</span><span class="p">(</span><span class="k">val</span> <span class="n">scrutinee</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">cases</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CMatchCase</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L177)
+
+A match over its arms, from [`TExprMatch`](languages.md#typedast-kt-texprmatch).
 
 | Declaration | Summary |
 | --- | --- |
@@ -1550,7 +1664,9 @@ A node of the lowered tree, carrying the type inferred for it.
 
 ### CRecord { #core-kt-crecord }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CRecord</span><span class="p">(</span><span class="k">val</span> <span class="n">fields</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">CoreExpr</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L113)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CRecord</span><span class="p">(</span><span class="k">val</span> <span class="n">fields</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">CoreExpr</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L184)
+
+A record literal, from [`TExprRecord`](languages.md#typedast-kt-texprrecord), as name-and-value pairs in their written order.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1559,7 +1675,9 @@ A node of the lowered tree, carrying the type inferred for it.
 
 ### CField { #core-kt-cfield }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CField</span><span class="p">(</span><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">field</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L118)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CField</span><span class="p">(</span><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">field</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L190)
+
+Reads one field off a record or a host value, from [`TExprField`](languages.md#typedast-kt-texprfield).
 
 | Declaration | Summary |
 | --- | --- |
@@ -1569,7 +1687,9 @@ A node of the lowered tree, carrying the type inferred for it.
 
 ### CBinary { #core-kt-cbinary }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CBinary</span><span class="p">(</span><span class="k">val</span> <span class="n">op</span><span class="p">:</span> <span class="nc">BinaryOp</span><span class="p">,</span> <span class="k">val</span> <span class="n">left</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">right</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L124)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CBinary</span><span class="p">(</span><span class="k">val</span> <span class="n">op</span><span class="p">:</span> <span class="nc">BinaryOp</span><span class="p">,</span> <span class="k">val</span> <span class="n">left</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">right</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L201)
+
+An infix operator over two operands, from [`TExprBinary`](languages.md#typedast-kt-texprbinary).
 
 | Declaration | Summary |
 | --- | --- |
@@ -1580,7 +1700,9 @@ A node of the lowered tree, carrying the type inferred for it.
 
 ### CNegate { #core-kt-cnegate }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CNegate</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L131)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CNegate</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">CoreExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CoreExpr</span></code>](source/jvmMain/afield/lang/fieldml/core/Core/#L209)
+
+Negation, from [`TExprNegate`](languages.md#typedast-kt-texprnegate), over an integer, a float, or each component of a vector.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2066,7 +2188,7 @@ Reflection over a host type: the JVM class a [`THost`](languages.md#types-kt-tho
 | <a id="hosttypes-kt--fieldmlhosttypes--methodresulttype"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">methodResultType</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L182) |  |
 | <a id="hosttypes-kt--fieldmlhosttypes--staticmethodresulttype"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">staticMethodResultType</span><span class="p">(</span><span class="n">classType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L190) |  |
 | <a id="hosttypes-kt--fieldmlhosttypes--constructorresulttype"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">constructorResultType</span><span class="p">(</span><span class="n">classType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L198) |  |
-| <a id="hosttypes-kt--fieldmlhosttypes--namedmethodresulttype"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">namedMethodResultType</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">argumentNames</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L225) | The type-level twin of `FieldMLHostBridge.callMethodNamed`, and deliberately weaker than its positional counterpart in one respect: it resolves on the argument *names* alone and ignores their types. |
+| <a id="hosttypes-kt--fieldmlhosttypes--namedmethodresulttype"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">namedMethodResultType</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">argumentNames</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L225) | The type-level twin of `FieldMLHostBridge.callMethodNamed`, weaker than its positional counterpart in one respect: it resolves on the argument *names* alone and ignores their types. |
 | <a id="hosttypes-kt--fieldmlhosttypes--namedstaticmethodresulttype"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">namedStaticMethodResultType</span><span class="p">(</span><span class="n">classType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">argumentNames</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">wantsExtensionReceiver</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L234) |  |
 | <a id="hosttypes-kt--fieldmlhosttypes--namedconstructorresulttype"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">namedConstructorResultType</span><span class="p">(</span><span class="n">classType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">argumentNames</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Resolution</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L251) |  |
 | <a id="hosttypes-kt--fieldmlhosttypes--namedparameters"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">namedParameters</span><span class="p">(</span><span class="n">receiverOrClass</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="n">static</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="n">argumentNames</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">wantsExtensionReceiver</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">HostParameter</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L272) | The parameter slot each name of a named call lands in, for the names every candidate that accepts `argumentNames` agrees on. A name whose slot differs between candidates is left out, which is "no claim" — the same rule `parametersOf` follows for positions. |
@@ -2076,11 +2198,11 @@ Reflection over a host type: the JVM class a [`THost`](languages.md#types-kt-tho
 | <a id="hosttypes-kt--fieldmlhosttypes--constructorparameters"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">constructorParameters</span><span class="p">(</span><span class="n">classType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">lambdaArities</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="o">?</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HostParameter</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L409) |  |
 | <a id="hosttypes-kt--fieldmlhosttypes--parameterslot"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">parameterSlot</span><span class="p">(</span><span class="n">owner</span><span class="p">:</span> <span class="nc">Executable</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">HostParameter</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L462) | The parameter slot at `index` of `owner`, for a caller that already knows which member it means. |
 | <a id="hosttypes-kt--fieldmlhosttypes--samparametertypes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">samParameterTypes</span><span class="p">(</span><span class="n">parameter</span><span class="p">:</span> <span class="nc">HostParameter</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="o">?</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L509) | The FieldML types the JVM will hand a lambda that satisfies `parameter`, or null when `parameter` is not a functional interface. |
-| <a id="hosttypes-kt--fieldmlhosttypes--samresultacceptsfunction"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">samResultAcceptsFunction</span><span class="p">(</span><span class="n">parameter</span><span class="p">:</span> <span class="nc">HostParameter</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L543) | Whether a lambda satisfying `parameter` may legitimately have *more* parameters than the interface takes. |
-| <a id="hosttypes-kt--fieldmlhosttypes--readablemembers"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">readableMembers</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HostMember</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L602) | Members `hostGet` can read, for completion. Static members when `receiver` is a class handle. |
-| <a id="hosttypes-kt--fieldmlhosttypes--callablemethods"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">callableMethods</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HostMethod</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L616) | Methods `hostCall` can reach, for completion. Static methods when `receiver` is a class handle. |
-| <a id="hosttypes-kt--fieldmlhosttypes--hostmember"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">HostMember</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="k">val</span> <span class="n">owner</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L641) |  |
-| <a id="hosttypes-kt--fieldmlhosttypes--hostmethod"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">HostMethod</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">parameters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">resultType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="k">val</span> <span class="n">owner</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L643) |  |
+| <a id="hosttypes-kt--fieldmlhosttypes--samresultacceptsfunction"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">samResultAcceptsFunction</span><span class="p">(</span><span class="n">parameter</span><span class="p">:</span> <span class="nc">HostParameter</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L544) | Whether a lambda satisfying `parameter` may legitimately have *more* parameters than the interface takes. |
+| <a id="hosttypes-kt--fieldmlhosttypes--readablemembers"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">readableMembers</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HostMember</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L603) | Members `hostGet` can read, for completion. Static members when `receiver` is a class handle. |
+| <a id="hosttypes-kt--fieldmlhosttypes--callablemethods"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">callableMethods</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HostMethod</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L617) | Methods `hostCall` can reach, for completion. Static methods when `receiver` is a class handle. |
+| <a id="hosttypes-kt--fieldmlhosttypes--hostmember"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">HostMember</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="k">val</span> <span class="n">owner</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L642) |  |
+| <a id="hosttypes-kt--fieldmlhosttypes--hostmethod"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">HostMethod</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">parameters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">resultType</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="k">val</span> <span class="n">owner</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/type/HostTypes/#L644) |  |
 
 ## Inferencer.kt { #inferencer-kt }
 
@@ -2171,7 +2293,7 @@ caret, which is how a callback's parameters have types before a reader has writt
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="typedast-kt--walktyped"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">TExpr</span><span class="p">.</span><span class="nf">walkTyped</span><span class="p">(</span><span class="n">visit</span><span class="p">:</span> <span class="p">(</span><span class="nc">TExpr</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L166) | Every node of a typed tree, parents before children. |
+| <a id="typedast-kt--walktyped"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">TExpr</span><span class="p">.</span><span class="nf">walkTyped</span><span class="p">(</span><span class="n">visit</span><span class="p">:</span> <span class="p">(</span><span class="nc">TExpr</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L278) | Every node of a typed tree, parents before children. |
 
 ### TExpr { #typedast-kt-texpr }
 
@@ -2186,35 +2308,51 @@ A node of the typed tree: a surface node, its source range, and the type inferre
 
 ### TExprInt { #typedast-kt-texprint }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprInt</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L35)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprInt</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L36)
+
+[`EInt`](languages.md#expr-kt-eint) typed, which is always `Int`.
 
 ### TExprFloat { #typedast-kt-texprfloat }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprFloat</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L36)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprFloat</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L39)
+
+[`EFloat`](languages.md#expr-kt-efloat) typed, which is always `Float`.
 
 ### TExprBool { #typedast-kt-texprbool }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprBool</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L37)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprBool</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L42)
+
+[`EBool`](languages.md#expr-kt-ebool) typed, which is always `Bool`.
 
 ### TExprString { #typedast-kt-texprstring }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprString</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L38)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprString</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L45)
+
+[`EString`](languages.md#expr-kt-estring) typed, which is always `String`.
 
 ### TExprVar { #typedast-kt-texprvar }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprVar</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L39)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprVar</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L53)
+
+[`EVar`](languages.md#expr-kt-evar) typed: a name, and the type the environment had for it.
 
 ### TExprTuple { #typedast-kt-texprtuple }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprTuple</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TExpr</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L40)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprTuple</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TExpr</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L56)
+
+[`ETuple`](languages.md#expr-kt-etuple) typed, carrying a [`TTuple`](languages.md#types-kt-ttuple) over its elements' types.
 
 ### TExprList { #typedast-kt-texprlist }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprList</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TExpr</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L41)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprList</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TExpr</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L64)
+
+[`EList`](languages.md#expr-kt-elist) typed, carrying a [`TList`](languages.md#types-kt-tlist) of one element type.
 
 ### TExprTypeDecl { #typedast-kt-texprtypedecl }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprTypeDecl</span><span class="p">(</span><span class="k">val</span> <span class="n">declaration</span><span class="p">:</span> <span class="nc">TypeDecl</span><span class="p">,</span> <span class="k">val</span> <span class="n">constructors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TypedConstructor</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L43)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprTypeDecl</span><span class="p">(</span><span class="k">val</span> <span class="n">declaration</span><span class="p">:</span> <span class="nc">TypeDecl</span><span class="p">,</span> <span class="k">val</span> <span class="n">constructors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TypedConstructor</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L73)
+
+[`ETypeDecl`](languages.md#expr-kt-etypedecl) typed: the declaration as written, its constructors as inference bound them, and the program that follows.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2226,7 +2364,9 @@ A node of the typed tree: a surface node, its source range, and the type inferre
 
 ### TypedConstructor { #typedast-kt-typedconstructor }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TypedConstructor</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">arity</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">scheme</span><span class="p">:</span> <span class="nc">Scheme</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L51)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TypedConstructor</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">arity</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">scheme</span><span class="p">:</span> <span class="nc">Scheme</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L88)
+
+What inference worked out about one constructor of a declared data type.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2236,7 +2376,9 @@ A node of the typed tree: a surface node, its source range, and the type inferre
 
 ### TExprLet { #typedast-kt-texprlet }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprLet</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">parameters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Type</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="k">val</span> <span class="n">recursive</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L57)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprLet</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">parameters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Type</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="k">val</span> <span class="n">recursive</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L100)
+
+[`ELet`](languages.md#expr-kt-elet) typed, with a type beside each parameter name.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2250,7 +2392,9 @@ A node of the typed tree: a surface node, its source range, and the type inferre
 
 ### TExprLambda { #typedast-kt-texprlambda }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprLambda</span><span class="p">(</span><span class="k">val</span> <span class="n">parameters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Type</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L72)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprLambda</span><span class="p">(</span><span class="k">val</span> <span class="n">parameters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Type</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L122)
+
+[`ELambda`](languages.md#expr-kt-elambda) typed, still holding every parameter it was written with.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2261,7 +2405,9 @@ A node of the typed tree: a surface node, its source range, and the type inferre
 
 ### TExprCall { #typedast-kt-texprcall }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprCall</span><span class="p">(</span><span class="k">val</span> <span class="n">function</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">argument</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L79)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprCall</span><span class="p">(</span><span class="k">val</span> <span class="n">function</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">argument</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L130)
+
+[`ECall`](languages.md#expr-kt-ecall) typed: one argument applied to one function, carrying the result type.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2272,7 +2418,9 @@ A node of the typed tree: a surface node, its source range, and the type inferre
 
 ### TExprIf { #typedast-kt-texprif }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprIf</span><span class="p">(</span><span class="k">val</span> <span class="n">condition</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">thenBranch</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">elseBranch</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L86)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprIf</span><span class="p">(</span><span class="k">val</span> <span class="n">condition</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">thenBranch</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">elseBranch</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L143)
+
+[`EIf`](languages.md#expr-kt-eif) typed.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2284,44 +2432,62 @@ A node of the typed tree: a surface node, its source range, and the type inferre
 
 ### TPattern { #typedast-kt-tpattern }
 
-[<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L94)
+[<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L157)
+
+A pattern after inference: a surface pattern, its range, and the type it matches against.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="typedast-kt--tpattern--range"></a>[<code class="highlight"><span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L95) |  |
-| <a id="typedast-kt--tpattern--type"></a>[<code class="highlight"><span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L96) |  |
+| <a id="typedast-kt--tpattern--range"></a>[<code class="highlight"><span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L158) |  |
+| <a id="typedast-kt--tpattern--type"></a>[<code class="highlight"><span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L159) |  |
 
 ### TPWildcard { #typedast-kt-tpwildcard }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TPWildcard</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L99)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TPWildcard</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L163)
+
+[`PWildcard`](languages.md#expr-kt-pwildcard) typed. It matches anything, so its type is whatever the scrutinee's is.
 
 ### TPVar { #typedast-kt-tpvar }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TPVar</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L100)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TPVar</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L166)
+
+[`PVar`](languages.md#expr-kt-pvar) typed. The type here is what the name is bound to inside the arm's body.
 
 ### TPInt { #typedast-kt-tpint }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TPInt</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L101)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TPInt</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L169)
+
+[`PInt`](languages.md#expr-kt-pint) typed, which forces the scrutinee to `Int`.
 
 ### TPBool { #typedast-kt-tpbool }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TPBool</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L102)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TPBool</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L172)
+
+[`PBool`](languages.md#expr-kt-pbool) typed, which forces the scrutinee to `Bool`.
 
 ### TPString { #typedast-kt-tpstring }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TPString</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L103)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TPString</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L175)
+
+[`PString`](languages.md#expr-kt-pstring) typed, which forces the scrutinee to `String`.
 
 ### TPTuple { #typedast-kt-tptuple }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TPTuple</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TPattern</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L104)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TPTuple</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TPattern</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L178)
+
+[`PTuple`](languages.md#expr-kt-ptuple) typed, element by element against a [`TTuple`](languages.md#types-kt-ttuple) of the same width.
 
 ### TPList { #typedast-kt-tplist }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TPList</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TPattern</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L105)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TPList</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TPattern</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L181)
+
+[`PList`](languages.md#expr-kt-plist) typed: every element against the one element type of a [`TList`](languages.md#types-kt-tlist).
 
 ### TPConstructor { #typedast-kt-tpconstructor }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TPConstructor</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TPattern</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L107)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TPConstructor</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TPattern</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L189)
+
+[`PConstructor`](languages.md#expr-kt-pconstructor) typed.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2332,7 +2498,9 @@ A node of the typed tree: a surface node, its source range, and the type inferre
 
 ### TPCons { #typedast-kt-tpcons }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TPCons</span><span class="p">(</span><span class="k">val</span> <span class="n">head</span><span class="p">:</span> <span class="nc">TPattern</span><span class="p">,</span> <span class="k">val</span> <span class="n">tail</span><span class="p">:</span> <span class="nc">TPattern</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L114)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TPCons</span><span class="p">(</span><span class="k">val</span> <span class="n">head</span><span class="p">:</span> <span class="nc">TPattern</span><span class="p">,</span> <span class="k">val</span> <span class="n">tail</span><span class="p">:</span> <span class="nc">TPattern</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TPattern</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L197)
+
+[`PCons`](languages.md#expr-kt-pcons) typed: `head` against the element type and `tail` against the list type.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2343,7 +2511,9 @@ A node of the typed tree: a surface node, its source range, and the type inferre
 
 ### TMatchCase { #typedast-kt-tmatchcase }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TMatchCase</span><span class="p">(</span><span class="k">val</span> <span class="n">pattern</span><span class="p">:</span> <span class="nc">TPattern</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L121)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TMatchCase</span><span class="p">(</span><span class="k">val</span> <span class="n">pattern</span><span class="p">:</span> <span class="nc">TPattern</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L210)
+
+One arm of a [`TExprMatch`](languages.md#typedast-kt-texprmatch), as a typed pattern and the body it guards.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2352,7 +2522,9 @@ A node of the typed tree: a surface node, its source range, and the type inferre
 
 ### TExprMatch { #typedast-kt-texprmatch }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprMatch</span><span class="p">(</span><span class="k">val</span> <span class="n">scrutinee</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">cases</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TMatchCase</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L126)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprMatch</span><span class="p">(</span><span class="k">val</span> <span class="n">scrutinee</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">cases</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TMatchCase</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L221)
+
+[`EMatch`](languages.md#expr-kt-ematch) typed.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2363,7 +2535,9 @@ A node of the typed tree: a surface node, its source range, and the type inferre
 
 ### TExprRecord { #typedast-kt-texprrecord }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprRecord</span><span class="p">(</span><span class="k">val</span> <span class="n">fields</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">TExpr</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L133)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprRecord</span><span class="p">(</span><span class="k">val</span> <span class="n">fields</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">TExpr</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L234)
+
+[`ERecord`](languages.md#expr-kt-erecord) typed, carrying a [`TRecord`](languages.md#types-kt-trecord) of its fields' types.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2373,7 +2547,9 @@ A node of the typed tree: a surface node, its source range, and the type inferre
 
 ### TExprField { #typedast-kt-texprfield }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprField</span><span class="p">(</span><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">field</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L139)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprField</span><span class="p">(</span><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">field</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L249)
+
+[`EField`](languages.md#expr-kt-efield) typed: the type reading that field off that target produced.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2384,7 +2560,9 @@ A node of the typed tree: a surface node, its source range, and the type inferre
 
 ### TExprBinary { #typedast-kt-texprbinary }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprBinary</span><span class="p">(</span><span class="k">val</span> <span class="n">op</span><span class="p">:</span> <span class="nc">BinaryOp</span><span class="p">,</span> <span class="k">val</span> <span class="n">left</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">right</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L146)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprBinary</span><span class="p">(</span><span class="k">val</span> <span class="n">op</span><span class="p">:</span> <span class="nc">BinaryOp</span><span class="p">,</span> <span class="k">val</span> <span class="n">left</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">right</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L257)
+
+[`EBinary`](languages.md#expr-kt-ebinary) typed, with the result type the operator's own rule produced for those operands.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2396,7 +2574,9 @@ A node of the typed tree: a surface node, its source range, and the type inferre
 
 ### TExprNegate { #typedast-kt-texprnegate }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprNegate</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L154)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TExprNegate</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">TExpr</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">SourceRange</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">TExpr</span></code>](source/jvmMain/afield/lang/fieldml/type/TypedAst/#L266)
+
+[`ENegate`](languages.md#expr-kt-enegate) typed, over the numeric or vector type its operand turned out to have.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2437,31 +2617,45 @@ An inferred FieldML type.
 
 ### TInt { #types-kt-tint }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">object</span> <span class="nc">TInt</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L29)
+[<code class="highlight"><span class="k">data</span> <span class="k">object</span> <span class="nc">TInt</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L30)
+
+The type of an integer.
 
 ### TFloat { #types-kt-tfloat }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">object</span> <span class="nc">TFloat</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L30)
+[<code class="highlight"><span class="k">data</span> <span class="k">object</span> <span class="nc">TFloat</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L33)
+
+The type of a floating-point number.
 
 ### TBool { #types-kt-tbool }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">object</span> <span class="nc">TBool</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L31)
+[<code class="highlight"><span class="k">data</span> <span class="k">object</span> <span class="nc">TBool</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L36)
+
+The type of a boolean.
 
 ### TString { #types-kt-tstring }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">object</span> <span class="nc">TString</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L32)
+[<code class="highlight"><span class="k">data</span> <span class="k">object</span> <span class="nc">TString</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L39)
+
+The type of a string.
 
 ### TUnit { #types-kt-tunit }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">object</span> <span class="nc">TUnit</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L33)
+[<code class="highlight"><span class="k">data</span> <span class="k">object</span> <span class="nc">TUnit</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L42)
+
+The type with one value, which is what `()` has.
 
 ### TVar { #types-kt-tvar }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TVar</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L35)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TVar</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L50)
+
+A unification variable, identified by the number inference gave it.
 
 ### TFun { #types-kt-tfun }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TFun</span><span class="p">(</span><span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="k">val</span> <span class="n">to</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L37)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TFun</span><span class="p">(</span><span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="k">val</span> <span class="n">to</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L58)
+
+A function from one argument to one result.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2470,7 +2664,9 @@ An inferred FieldML type.
 
 ### TRecord { #types-kt-trecord }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TRecord</span><span class="p">(</span><span class="k">val</span> <span class="n">fields</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L42)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TRecord</span><span class="p">(</span><span class="k">val</span> <span class="n">fields</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L64)
+
+A record type: a field name for each of its fields' types.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2478,7 +2674,9 @@ An inferred FieldML type.
 
 ### TTuple { #types-kt-ttuple }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TTuple</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L46)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TTuple</span><span class="p">(</span><span class="k">val</span> <span class="n">elements</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L69)
+
+A tuple type, in the order the elements were written.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2486,7 +2684,9 @@ An inferred FieldML type.
 
 ### TList { #types-kt-tlist }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TList</span><span class="p">(</span><span class="k">val</span> <span class="n">element</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L50)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TList</span><span class="p">(</span><span class="k">val</span> <span class="n">element</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L74)
+
+A list type, which is homogeneous: every element has the one `element` type.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2494,7 +2694,9 @@ An inferred FieldML type.
 
 ### TAdt { #types-kt-tadt }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TAdt</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L54)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TAdt</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Type</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L79)
+
+A data type declared by a `type` declaration, applied to as many arguments as it takes.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2503,7 +2705,9 @@ An inferred FieldML type.
 
 ### THost { #types-kt-thost }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">THost</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L59)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">THost</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Type</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L90)
+
+A JVM type reached over the host bridge.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2511,23 +2715,27 @@ An inferred FieldML type.
 
 ### Scheme { #types-kt-scheme }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Scheme</span><span class="p">(</span><span class="k">val</span> <span class="n">quantified</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="k">val</span> <span class="n">numeric</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptySet</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">vector</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptySet</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L63)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Scheme</span><span class="p">(</span><span class="k">val</span> <span class="n">quantified</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">Type</span><span class="p">,</span> <span class="k">val</span> <span class="n">numeric</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptySet</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">vector</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptySet</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L102)
+
+A type together with the variables generalised over it, and any restriction on what they may become.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="types-kt--scheme--quantified"></a><code class="highlight"><span class="k">val</span> <span class="n">quantified</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
-| <a id="types-kt--scheme--body"></a><code class="highlight"><span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">Type</span></code> |  |
-| <a id="types-kt--scheme--numeric"></a><code class="highlight"><span class="k">val</span> <span class="n">numeric</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <a id="types-kt--scheme--quantified"></a><code class="highlight"><span class="k">val</span> <span class="n">quantified</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> | The [`TVar`](languages.md#types-kt-tvar) ids generalised over `body`. An empty set is a type with nothing to instantiate. |
+| <a id="types-kt--scheme--body"></a><code class="highlight"><span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">Type</span></code> | The type being generalised. |
+| <a id="types-kt--scheme--numeric"></a><code class="highlight"><span class="k">val</span> <span class="n">numeric</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> | Quantified ids that may only be instantiated to `Int` or `Float`. |
 | <a id="types-kt--scheme--vector"></a><code class="highlight"><span class="k">val</span> <span class="n">vector</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> | Quantified ids that may only be instantiated to `Vec2`/`Vec3`/`Vec4`. |
 
 ### TypePrinter { #types-kt-typeprinter }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">TypePrinter</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L71)
+[<code class="highlight"><span class="k">class</span> <span class="nc">TypePrinter</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L121)
+
+Renders a [`Type`](languages.md#types-kt-type) back to the two forms a reader sees.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="types-kt--typeprinter--printsignature"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">printSignature</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L81) | Like [`print`](languages.md#types-kt--typeprinter--print), but without the parentheses that [`print`](languages.md#types-kt--typeprinter--print) puts around every arrow. Since `->` is right associative, a curried type only needs them when a function is an *argument*: `Float -> Float -> Vec2` rather than `(Float -> (Float -> Vec2))`, but still `(Int -> 'a) -> Int -> ['a]`. This is the form to show a reader — signatures in the cheatsheet and in completion — while [`print`](languages.md#types-kt--typeprinter--print) stays as it is for inline results and diagnostics. |
-| <a id="types-kt--typeprinter--print"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">print</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L101) |  |
+| <a id="types-kt--typeprinter--printsignature"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">printSignature</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L131) | Like [`print`](languages.md#types-kt--typeprinter--print), but without the parentheses that [`print`](languages.md#types-kt--typeprinter--print) puts around every arrow. Since `->` is right associative, a curried type only needs them when a function is an *argument*: `Float -> Float -> Vec2` rather than `(Float -> (Float -> Vec2))`, but still `(Int -> 'a) -> Int -> ['a]`. This is the form to show a reader — signatures in the cheatsheet and in completion — while [`print`](languages.md#types-kt--typeprinter--print) stays as it is for inline results and diagnostics. |
+| <a id="types-kt--typeprinter--print"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">print</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="nc">Type</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/fieldml/type/Types/#L157) | The fully parenthesised form, with brackets around every arrow. |
 
 ## ForthInterface.kt { #forthinterface-kt }
 
@@ -4498,8 +4706,8 @@ Read it in four layers:
  - **[`PythonExecution`](languages.md#pythoninterface-kt-pythonexecution)**, the `BoxExecution`. Beyond the usual output proxying it carries the
    cooperative event loop: an `asyncio` loop implemented in Python that yields to Field's runloop
    instead of blocking it, so `await` inside a box does not stop the editor.
- - **Output.** Everything a box prints funnels through one formatter, and three cases are special
-   on purpose: a `\r` becomes a Field progress bar (which is how `tqdm` renders as a real one),
+ - **Output.** Everything a box prints funnels through one formatter, and three cases are
+   special: a `\r` becomes a Field progress bar (which is how `tqdm` renders as a real one),
    an object exposing `HTML`/`Image`/`Markdown`/`Math`/`JSON` renders as itself, and a library
    that tries to open a browser page — plotly's `fig.show()`, bokeh, folium — is intercepted and
    the HTML delivered into the box as an iframe `srcdoc`. Nothing here opens a browser.
@@ -5825,8 +6033,8 @@ read as a pass: see [`CoverageBiasRow.partialPixels`](languages.md#rectslcoverag
 
 Area coverage is defined for **opaque** geometry. A rect at alpha 0.4 has no area interpretation —
 the exact answer to "what fraction of this pixel is covered" is still 1 if the rect fills it — so
-[`exactRaster`](languages.md#rectslcoverage-kt--exactraster) treats every visible rect as opaque and [`measureCoverageBias`](languages.md#rectslcoverage-kt--measurecoveragebias) refuses a scene whose
-rects are translucent rather than quietly comparing two different quantities.
+[`exactRaster`](languages.md#rectslcoverage-kt--exactraster) treats every visible rect as opaque and [`measureCoverageBias`](languages.md#rectslcoverage-kt--measurecoveragebias) throws on a scene
+whose rects are translucent, instead of returning a number that compares two different quantities.
 
 `src/jvmMain/kotlin/afield/lang/rectsl/RectSLCoverage.kt` — [read the source](source/jvmMain/afield/lang/rectsl/RectSLCoverage/)
 
@@ -6495,8 +6703,8 @@ assert it on the other. So composing them needs no scheduler and no frame loop: 
 
 RectSL.kt is already 4.6k lines, and this layer is the only part of the language that depends
 on `afield.audio.synth`. Keeping the dependency in one file means the rest of RectSL still
-compiles and reads without knowing the pattern language exists. The seams it needs from
-RectSL.kt are deliberately small and marked `internal`: `RectLangVm.word`/`RectLangVm.mutator`
+compiles and reads without knowing the pattern language exists. What it reaches back into
+RectSL.kt for is a short list: `RectLangVm.word`/`RectLangVm.mutator`
 (so the musical words register through the same one path as every other word),
 `RectLangVm.loopStack` and [`LoopFrame.pat`](languages.md#rectsl-kt--loopframe--pat) (so `i`/`n`/`f` keep working inside a `pat` body),
 `SceneBuilder.mapScalarTracks`, and [`SceneBuilder.cps`](languages.md#rectsl-kt--scenebuilder--cps).
@@ -6807,7 +7015,8 @@ The obvious plan is "lower the scene to an `Fn`-valued signed distance field ove
 [`Functions.Fn`](math.md#functions-kt--functions--fn) cannot be that: it is a `(Double) -> Double`, one input and one output, and every
 existing consumer of a lowered track — [`freeParameterSlots`](languages.md#rectslsoftraster-kt--sceneadfield--freeparameterslots), [`Track.substituteParameters`](languages.md#rectslfn-kt--substituteparameters),
 [`Track.fitParameters`](languages.md#rectslfit-kt--fitparameters) — reads its θ-vector as *the track's own leaves*. Smuggling x and y in as two
-more θ leaves would make all of them quietly wrong about what they are solving for.
+more θ leaves would make all of them wrong about what they are solving for, and nothing would
+report it.
 
 So the differentiable layer here is not `Fn`, it is [`AD`](math.md#autodiff-kt-ad) on an [`ADTape`](math.md#autodiff-kt-adtape) — which is what `Fn`'s own
 gradient is built out of anyway. `FnAutoDiff.interpret` already re-reads an `Fn` graph in `AD`
@@ -6860,21 +7069,21 @@ company with its own `Fn.eval` is refused, not averaged in.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="rectslsoftraster-kt--coverageat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">coverageAt</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="nc">SceneAdFrame</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">SoftRasterSpec</span><span class="p">,</span> <span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">j</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">AD</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L479) | The soft coverage of one pixel of `spec`, tracked, from an already-transformed `frame`. |
-| <a id="rectslsoftraster-kt--softraster"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">softRaster</span><span class="p">(</span><span class="n">field</span><span class="p">:</span> <span class="nc">SceneAdField</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">SoftRasterSpec</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="n">field</span><span class="p">.</span><span class="n">theta</span><span class="p">,</span> <span class="n">rowsPerChunk</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L506) | The whole soft raster as coverage in `0..1`, row-major, untracked. |
-| <a id="rectslsoftraster-kt--softrasterlossandgradient"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">softRasterLossAndGradient</span><span class="p">(</span><span class="n">field</span><span class="p">:</span> <span class="nc">SceneAdField</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">SoftRasterSpec</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="n">field</span><span class="p">.</span><span class="n">theta</span><span class="p">,</span> <span class="n">rowsPerChunk</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">)</span><span class="p">:</span> <span class="nc">RasterLoss</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L549) | The mean squared difference between the soft raster and `target`, and its exact gradient with respect to every numeric leaf in the scene. |
-| <a id="rectslsoftraster-kt--toadfield"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SceneProgram</span><span class="p">.</span><span class="nf">toAdField</span><span class="p">(</span><span class="n">over</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span> <span class="o">=</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="nf">maxOf</span><span class="p">(</span><span class="n">duration</span><span class="p">,</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">9</span><span class="p">)</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">SceneAdField</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L602) | Lowers every rect of this scene into a [`SceneAdField`](languages.md#rectslsoftraster-kt-sceneadfield), skipping — and reporting — the rects whose channels have no differentiable form. |
+| <a id="rectslsoftraster-kt--coverageat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">coverageAt</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="nc">SceneAdFrame</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">SoftRasterSpec</span><span class="p">,</span> <span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">j</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">AD</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L480) | The soft coverage of one pixel of `spec`, tracked, from an already-transformed `frame`. |
+| <a id="rectslsoftraster-kt--softraster"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">softRaster</span><span class="p">(</span><span class="n">field</span><span class="p">:</span> <span class="nc">SceneAdField</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">SoftRasterSpec</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="n">field</span><span class="p">.</span><span class="n">theta</span><span class="p">,</span> <span class="n">rowsPerChunk</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L507) | The whole soft raster as coverage in `0..1`, row-major, untracked. |
+| <a id="rectslsoftraster-kt--softrasterlossandgradient"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">softRasterLossAndGradient</span><span class="p">(</span><span class="n">field</span><span class="p">:</span> <span class="nc">SceneAdField</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">SoftRasterSpec</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="n">field</span><span class="p">.</span><span class="n">theta</span><span class="p">,</span> <span class="n">rowsPerChunk</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">)</span><span class="p">:</span> <span class="nc">RasterLoss</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L550) | The mean squared difference between the soft raster and `target`, and its exact gradient with respect to every numeric leaf in the scene. |
+| <a id="rectslsoftraster-kt--toadfield"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SceneProgram</span><span class="p">.</span><span class="nf">toAdField</span><span class="p">(</span><span class="n">over</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span> <span class="o">=</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="nf">maxOf</span><span class="p">(</span><span class="n">duration</span><span class="p">,</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">9</span><span class="p">)</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">SceneAdField</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L603) | Lowers every rect of this scene into a [`SceneAdField`](languages.md#rectslsoftraster-kt-sceneadfield), skipping — and reporting — the rects whose channels have no differentiable form. |
 
 ### Top-level values { #rectslsoftraster-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="rectslsoftraster-kt--rectsl-invisible-distance"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RECTSL&#95;INVISIBLE&#95;DISTANCE</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L86) | The sentinel an invisible rect's distance returns, matching the emitted GLSL's `1e9` exactly. |
-| <a id="rectslsoftraster-kt--rectsl-channel-tolerance"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RECTSL&#95;CHANNEL&#95;TOLERANCE</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L89) | How far apart the `AD` reading of a channel and its own `Fn.eval` may be before it is refused. |
+| <a id="rectslsoftraster-kt--rectsl-invisible-distance"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RECTSL&#95;INVISIBLE&#95;DISTANCE</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L87) | The sentinel an invisible rect's distance returns, matching the emitted GLSL's `1e9` exactly. |
+| <a id="rectslsoftraster-kt--rectsl-channel-tolerance"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RECTSL&#95;CHANNEL&#95;TOLERANCE</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L90) | How far apart the `AD` reading of a channel and its own `Fn.eval` may be before it is refused. |
 
 ### AdShape { #rectslsoftraster-kt-adshape }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">AdShape</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">levels</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">LoweredLevel</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">w</span><span class="p">:</span> <span class="nc">LoweredChannel</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">h</span><span class="p">:</span> <span class="nc">LoweredChannel</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L127)
+[<code class="highlight"><span class="k">class</span> <span class="nc">AdShape</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">levels</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">LoweredLevel</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">w</span><span class="p">:</span> <span class="nc">LoweredChannel</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">h</span><span class="p">:</span> <span class="nc">LoweredChannel</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L128)
 
 One rect, with its ancestor groups flattened into an ordered transform stack.
 
@@ -6884,7 +7093,7 @@ One rect, with its ancestor groups flattened into an ordered transform stack.
 
 ### AdShapeFrame { #rectslsoftraster-kt-adshapeframe }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">AdShapeFrame</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">centreX</span><span class="p">:</span> <span class="nc">AD</span><span class="p">,</span> <span class="k">val</span> <span class="n">centreY</span><span class="p">:</span> <span class="nc">AD</span><span class="p">,</span> <span class="k">val</span> <span class="n">rotation</span><span class="p">:</span> <span class="nc">AD</span><span class="p">,</span> <span class="k">val</span> <span class="n">halfX</span><span class="p">:</span> <span class="nc">AD</span><span class="p">,</span> <span class="k">val</span> <span class="n">halfY</span><span class="p">:</span> <span class="nc">AD</span><span class="p">,</span> <span class="k">val</span> <span class="n">alpha</span><span class="p">:</span> <span class="nc">AD</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L141)
+[<code class="highlight"><span class="k">class</span> <span class="nc">AdShapeFrame</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">centreX</span><span class="p">:</span> <span class="nc">AD</span><span class="p">,</span> <span class="k">val</span> <span class="n">centreY</span><span class="p">:</span> <span class="nc">AD</span><span class="p">,</span> <span class="k">val</span> <span class="n">rotation</span><span class="p">:</span> <span class="nc">AD</span><span class="p">,</span> <span class="k">val</span> <span class="n">halfX</span><span class="p">:</span> <span class="nc">AD</span><span class="p">,</span> <span class="k">val</span> <span class="n">halfY</span><span class="p">:</span> <span class="nc">AD</span><span class="p">,</span> <span class="k">val</span> <span class="n">alpha</span><span class="p">:</span> <span class="nc">AD</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L142)
 
 A rect's world transform at one instant, on one tape — the part that does not vary per pixel.
 
@@ -6897,12 +7106,12 @@ A rect's world transform at one instant, on one tape — the part that does not 
 | <a id="rectslsoftraster-kt--adshapeframe--halfx"></a><code class="highlight"><span class="k">val</span> <span class="n">halfX</span><span class="p">:</span> <span class="nc">AD</span></code> | Half-width including accumulated scale, tracked and non-negative. |
 | <a id="rectslsoftraster-kt--adshapeframe--halfy"></a><code class="highlight"><span class="k">val</span> <span class="n">halfY</span><span class="p">:</span> <span class="nc">AD</span></code> | Half-height including accumulated scale, tracked and non-negative. |
 | <a id="rectslsoftraster-kt--adshapeframe--alpha"></a><code class="highlight"><span class="k">val</span> <span class="n">alpha</span><span class="p">:</span> <span class="nc">AD</span></code> | Accumulated alpha, clamped to `0..1`, tracked. |
-| <a id="rectslsoftraster-kt--adshapeframe--visible"></a>[<code class="highlight"><span class="k">val</span> <span class="n">visible</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L158) | True when this rect contributes a silhouette at all — the emitted shader's own test. |
-| <a id="rectslsoftraster-kt--adshapeframe--distanceat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">distanceAt</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">AD</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L164) | The exact signed distance from `(x, y)` to this rect, tracked: positive outside, negative inside, transcribed from `rectslRect` / `rectslBox` in [`RectSLGlsl.PRELUDE`](languages.md#rectslglsl-kt--rectslglsl--prelude). |
+| <a id="rectslsoftraster-kt--adshapeframe--visible"></a>[<code class="highlight"><span class="k">val</span> <span class="n">visible</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L159) | True when this rect contributes a silhouette at all — the emitted shader's own test. |
+| <a id="rectslsoftraster-kt--adshapeframe--distanceat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">distanceAt</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">AD</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L165) | The exact signed distance from `(x, y)` to this rect, tracked: positive outside, negative inside, transcribed from `rectslRect` / `rectslBox` in [`RectSLGlsl.PRELUDE`](languages.md#rectslglsl-kt--rectslglsl--prelude). |
 
 ### SceneAdFrame { #rectslsoftraster-kt-sceneadframe }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">SceneAdFrame</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">tape</span><span class="p">:</span> <span class="nc">ADTape</span><span class="p">,</span> <span class="k">val</span> <span class="n">theta</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AD</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">shapes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AdShapeFrame</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L183)
+[<code class="highlight"><span class="k">class</span> <span class="nc">SceneAdFrame</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">tape</span><span class="p">:</span> <span class="nc">ADTape</span><span class="p">,</span> <span class="k">val</span> <span class="n">theta</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AD</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">shapes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AdShapeFrame</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L184)
 
 Every rect of a scene, transformed at one instant, on one tape.
 
@@ -6912,12 +7121,12 @@ Every rect of a scene, transformed at one instant, on one tape.
 | <a id="rectslsoftraster-kt--sceneadframe--theta"></a><code class="highlight"><span class="k">val</span> <span class="n">theta</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AD</span><span class="p">&gt;</span></code> | The scene's whole θ-vector as tape variables, in [`SceneAdField.theta`](languages.md#rectslsoftraster-kt--sceneadfield--theta) order. |
 | <a id="rectslsoftraster-kt--sceneadframe--time"></a><code class="highlight"><span class="k">val</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Double</span></code> | The instant this frame was transformed at. |
 | <a id="rectslsoftraster-kt--sceneadframe--shapes"></a><code class="highlight"><span class="k">val</span> <span class="n">shapes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AdShapeFrame</span><span class="p">&gt;</span></code> | Every rect, in scene order, visible or not. |
-| <a id="rectslsoftraster-kt--sceneadframe--visible"></a>[<code class="highlight"><span class="k">val</span> <span class="n">visible</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AdShapeFrame</span><span class="p">&gt;</span> <span class="k">by</span> <span class="nf">lazy</span><span class="p">(</span><span class="nc">LazyThreadSafetyMode</span><span class="p">.</span><span class="nc">NONE</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L194) | The rects not gated invisible at this instant. |
-| <a id="rectslsoftraster-kt--sceneadframe--distanceat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">distanceAt</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">AD</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L205) | The scene's signed distance at `(x, y)`: the `min` over visible rects, or [`RECTSL_INVISIBLE_DISTANCE`](languages.md#rectslsoftraster-kt--rectsl-invisible-distance) when nothing is visible. |
+| <a id="rectslsoftraster-kt--sceneadframe--visible"></a>[<code class="highlight"><span class="k">val</span> <span class="n">visible</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AdShapeFrame</span><span class="p">&gt;</span> <span class="k">by</span> <span class="nf">lazy</span><span class="p">(</span><span class="nc">LazyThreadSafetyMode</span><span class="p">.</span><span class="nc">NONE</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L195) | The rects not gated invisible at this instant. |
+| <a id="rectslsoftraster-kt--sceneadframe--distanceat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">distanceAt</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">AD</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L206) | The scene's signed distance at `(x, y)`: the `min` over visible rects, or [`RECTSL_INVISIBLE_DISTANCE`](languages.md#rectslsoftraster-kt--rectsl-invisible-distance) when nothing is visible. |
 
 ### SceneAdField { #rectslsoftraster-kt-sceneadfield }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">SceneAdField</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">SceneProgram</span><span class="p">,</span> <span class="k">val</span> <span class="n">shapes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AdShape</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">theta</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">freeParameterSlots</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">skipped</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">worstChannelDisagreement</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">window</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L223)
+[<code class="highlight"><span class="k">class</span> <span class="nc">SceneAdField</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">SceneProgram</span><span class="p">,</span> <span class="k">val</span> <span class="n">shapes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AdShape</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">theta</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">freeParameterSlots</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">skipped</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">worstChannelDisagreement</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">window</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L224)
 
 A whole scene, lowered: its shapes, its concatenated θ, and what it had to leave out.
 
@@ -6930,16 +7139,16 @@ A whole scene, lowered: its shapes, its concatenated θ, and what it had to leav
 | <a id="rectslsoftraster-kt--sceneadfield--skipped"></a><code class="highlight"><span class="k">val</span> <span class="n">skipped</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code> | Rect id to refusal reason, for the rects that could not be lowered. |
 | <a id="rectslsoftraster-kt--sceneadfield--worstchanneldisagreement"></a><code class="highlight"><span class="k">val</span> <span class="n">worstChannelDisagreement</span><span class="p">:</span> <span class="nc">Double</span></code> | The worst `AD`-versus-`Fn.eval` disagreement across every channel that was accepted. |
 | <a id="rectslsoftraster-kt--sceneadfield--window"></a><code class="highlight"><span class="k">val</span> <span class="n">window</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span></code> | The time window every channel was lowered over. |
-| <a id="rectslsoftraster-kt--sceneadfield--rectcount"></a>[<code class="highlight"><span class="k">val</span> <span class="n">rectCount</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L240) | How many rects lowered. |
-| <a id="rectslsoftraster-kt--sceneadfield--freeparameternames"></a>[<code class="highlight"><span class="k">val</span> <span class="n">freeParameterNames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L243) | The scene's free-parameter names in first-seen order. |
-| <a id="rectslsoftraster-kt--sceneadfield--frameat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">frameAt</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="n">theta</span><span class="p">)</span><span class="p">:</span> <span class="nc">SceneAdFrame</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L252) | Transforms every shape at `time` on a fresh tape, with `at` as the θ-vector. |
-| <a id="rectslsoftraster-kt--sceneadfield--signeddistanceat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">signedDistanceAt</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="n">theta</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L302) | This scene's signed distance at one point and instant, untracked — the shape of call the differential check against [`SceneProgram.sample`](languages.md#rectsl-kt--sceneprogram--sample) makes. |
-| <a id="rectslsoftraster-kt--sceneadfield--freeparameters"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">freeParameters</span><span class="p">(</span><span class="n">at</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="n">theta</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L306) | The value of each named free parameter in `at`, read from its first global slot. |
-| <a id="rectslsoftraster-kt--sceneadfield--withfreeparameters"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">withFreeParameters</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="n">theta</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L316) | A copy of `at` with each name in `values` written to **every** slot it occupies. |
+| <a id="rectslsoftraster-kt--sceneadfield--rectcount"></a>[<code class="highlight"><span class="k">val</span> <span class="n">rectCount</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L241) | How many rects lowered. |
+| <a id="rectslsoftraster-kt--sceneadfield--freeparameternames"></a>[<code class="highlight"><span class="k">val</span> <span class="n">freeParameterNames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L244) | The scene's free-parameter names in first-seen order. |
+| <a id="rectslsoftraster-kt--sceneadfield--frameat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">frameAt</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="n">theta</span><span class="p">)</span><span class="p">:</span> <span class="nc">SceneAdFrame</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L253) | Transforms every shape at `time` on a fresh tape, with `at` as the θ-vector. |
+| <a id="rectslsoftraster-kt--sceneadfield--signeddistanceat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">signedDistanceAt</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="n">theta</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L303) | This scene's signed distance at one point and instant, untracked — the shape of call the differential check against [`SceneProgram.sample`](languages.md#rectsl-kt--sceneprogram--sample) makes. |
+| <a id="rectslsoftraster-kt--sceneadfield--freeparameters"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">freeParameters</span><span class="p">(</span><span class="n">at</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="n">theta</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L307) | The value of each named free parameter in `at`, read from its first global slot. |
+| <a id="rectslsoftraster-kt--sceneadfield--withfreeparameters"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">withFreeParameters</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="n">theta</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L317) | A copy of `at` with each name in `values` written to **every** slot it occupies. |
 
 ### CoverageKernel { #rectslsoftraster-kt-coveragekernel }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">CoverageKernel</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L343)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">CoverageKernel</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L344)
 
 The three soft-coverage kernels, **normalised to be comparable**: each reads 0.5 at the surface and has slope `1/beta` there.
 
@@ -6947,12 +7156,12 @@ Constants: `LINEAR`, `SMOOTHSTEP`, `SIGMOID`.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="rectslsoftraster-kt--coveragekernel--coverage"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">coverage</span><span class="p">(</span><span class="n">d</span><span class="p">:</span> <span class="nc">AD</span><span class="p">,</span> <span class="n">beta</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">AD</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L364) | This kernel's coverage for a tracked signed distance `d` at band width `beta`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">coverage</span><span class="p">(</span><span class="n">d</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">beta</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L374) | This kernel's coverage for a plain signed distance — the same formula, untracked. |
+| <a id="rectslsoftraster-kt--coveragekernel--coverage"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">coverage</span><span class="p">(</span><span class="n">d</span><span class="p">:</span> <span class="nc">AD</span><span class="p">,</span> <span class="n">beta</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">AD</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L365) | This kernel's coverage for a tracked signed distance `d` at band width `beta`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">coverage</span><span class="p">(</span><span class="n">d</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">beta</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L375) | This kernel's coverage for a plain signed distance — the same formula, untracked. |
 
 ### CoverageComposite { #rectslsoftraster-kt-coveragecomposite }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">CoverageComposite</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L390)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">CoverageComposite</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L391)
 
 How per-rect coverage becomes one number per pixel.
 
@@ -6960,7 +7169,7 @@ Constants: `UNION_SDF`, `OVER`.
 
 ### SoftRasterSpec { #rectslsoftraster-kt-softrasterspec }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SoftRasterSpec</span><span class="p">(</span><span class="k">val</span> <span class="n">wall</span><span class="p">:</span> <span class="nc">WallSpec</span><span class="p">,</span> <span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">beta</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">kernel</span><span class="p">:</span> <span class="nc">CoverageKernel</span> <span class="o">=</span> <span class="nc">CoverageKernel</span><span class="p">.</span><span class="nc">LINEAR</span><span class="p">,</span> <span class="k">val</span> <span class="n">composite</span><span class="p">:</span> <span class="nc">CoverageComposite</span> <span class="o">=</span> <span class="nc">CoverageComposite</span><span class="p">.</span><span class="nc">UNION&#95;SDF</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L426)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SoftRasterSpec</span><span class="p">(</span><span class="k">val</span> <span class="n">wall</span><span class="p">:</span> <span class="nc">WallSpec</span><span class="p">,</span> <span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">beta</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">kernel</span><span class="p">:</span> <span class="nc">CoverageKernel</span> <span class="o">=</span> <span class="nc">CoverageKernel</span><span class="p">.</span><span class="nc">LINEAR</span><span class="p">,</span> <span class="k">val</span> <span class="n">composite</span><span class="p">:</span> <span class="nc">CoverageComposite</span> <span class="o">=</span> <span class="nc">CoverageComposite</span><span class="p">.</span><span class="nc">UNION&#95;SDF</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L427)
 
 A rasterization window: a pixel grid over a [`WallSpec`](languages.md#rectsl-kt-wallspec), plus the coverage kernel and the band width it is allowed.
 
@@ -6972,17 +7181,17 @@ A rasterization window: a pixel grid over a [`WallSpec`](languages.md#rectsl-kt-
 | <a id="rectslsoftraster-kt--softrasterspec--beta"></a><code class="highlight"><span class="k">val</span> <span class="n">beta</span><span class="p">:</span> <span class="nc">Double</span></code> | Coverage band width, in wall units. |
 | <a id="rectslsoftraster-kt--softrasterspec--kernel"></a><code class="highlight"><span class="k">val</span> <span class="n">kernel</span><span class="p">:</span> <span class="nc">CoverageKernel</span></code> | Which normalised kernel turns distance into coverage. |
 | <a id="rectslsoftraster-kt--softrasterspec--composite"></a><code class="highlight"><span class="k">val</span> <span class="n">composite</span><span class="p">:</span> <span class="nc">CoverageComposite</span></code> | How per-rect coverage becomes one number. |
-| <a id="rectslsoftraster-kt--softrasterspec--pixelwidth"></a>[<code class="highlight"><span class="k">val</span> <span class="n">pixelWidth</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L447) | Wall units across one pixel. |
-| <a id="rectslsoftraster-kt--softrasterspec--pixelheight"></a>[<code class="highlight"><span class="k">val</span> <span class="n">pixelHeight</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L450) | Wall units down one pixel. |
-| <a id="rectslsoftraster-kt--softrasterspec--pixelcount"></a>[<code class="highlight"><span class="k">val</span> <span class="n">pixelCount</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L453) | How many pixels there are. |
-| <a id="rectslsoftraster-kt--softrasterspec--betainpixels"></a>[<code class="highlight"><span class="k">val</span> <span class="n">betaInPixels</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L456) | [`beta`](languages.md#rectslsoftraster-kt--softrasterspec--beta) expressed in pixel widths — the unit the bias measurement is reported in. |
-| <a id="rectslsoftraster-kt--softrasterspec--centrex"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">centreX</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L459) | The wall x of pixel column `i`'s centre. |
-| <a id="rectslsoftraster-kt--softrasterspec--centrey"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">centreY</span><span class="p">(</span><span class="n">j</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L462) | The wall y of pixel row `j`'s centre. y grows *up* in wall space and down in the image. |
-| <a id="rectslsoftraster-kt--softrasterspec--pixelbox"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">pixelBox</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">j</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L465) | The wall-space box of pixel `(i, j)` as `(x0, y0, x1, y1)`, with y0 below y1. |
+| <a id="rectslsoftraster-kt--softrasterspec--pixelwidth"></a>[<code class="highlight"><span class="k">val</span> <span class="n">pixelWidth</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L448) | Wall units across one pixel. |
+| <a id="rectslsoftraster-kt--softrasterspec--pixelheight"></a>[<code class="highlight"><span class="k">val</span> <span class="n">pixelHeight</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L451) | Wall units down one pixel. |
+| <a id="rectslsoftraster-kt--softrasterspec--pixelcount"></a>[<code class="highlight"><span class="k">val</span> <span class="n">pixelCount</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L454) | How many pixels there are. |
+| <a id="rectslsoftraster-kt--softrasterspec--betainpixels"></a>[<code class="highlight"><span class="k">val</span> <span class="n">betaInPixels</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L457) | [`beta`](languages.md#rectslsoftraster-kt--softrasterspec--beta) expressed in pixel widths — the unit the bias measurement is reported in. |
+| <a id="rectslsoftraster-kt--softrasterspec--centrex"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">centreX</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L460) | The wall x of pixel column `i`'s centre. |
+| <a id="rectslsoftraster-kt--softrasterspec--centrey"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">centreY</span><span class="p">(</span><span class="n">j</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L463) | The wall y of pixel row `j`'s centre. y grows *up* in wall space and down in the image. |
+| <a id="rectslsoftraster-kt--softrasterspec--pixelbox"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">pixelBox</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">j</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L466) | The wall-space box of pixel `(i, j)` as `(x0, y0, x1, y1)`, with y0 below y1. |
 
 ### RasterLoss { #rectslsoftraster-kt-rasterloss }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">RasterLoss</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">loss</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">gradient</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L528)
+[<code class="highlight"><span class="k">class</span> <span class="nc">RasterLoss</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">loss</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">gradient</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L529)
 
 A raster loss and its exact gradient with respect to the scene's whole θ.
 
@@ -6990,7 +7199,7 @@ A raster loss and its exact gradient with respect to the scene's whole θ.
 | --- | --- |
 | <a id="rectslsoftraster-kt--rasterloss--loss"></a><code class="highlight"><span class="k">val</span> <span class="n">loss</span><span class="p">:</span> <span class="nc">Double</span></code> | Mean squared coverage error over the image. |
 | <a id="rectslsoftraster-kt--rasterloss--gradient"></a><code class="highlight"><span class="k">val</span> <span class="n">gradient</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | `d(loss)/dθ`, one entry per [`SceneAdField.theta`](languages.md#rectslsoftraster-kt--sceneadfield--theta) slot. |
-| <a id="rectslsoftraster-kt--rasterloss--rmse"></a>[<code class="highlight"><span class="k">val</span> <span class="n">rmse</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L535) | Root mean squared coverage error — the number worth printing. |
+| <a id="rectslsoftraster-kt--rasterloss--rmse"></a>[<code class="highlight"><span class="k">val</span> <span class="n">rmse</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L536) | Root mean squared coverage error — the number worth printing. |
 
 ## RectSLSoftRasterFigure.kt { #rectslsoftrasterfigure-kt }
 
@@ -8744,7 +8953,7 @@ Nothing here is on unless a caller asks: `AdSurrogate.OFF` is the default everyw
 switched on it replaces **only local partials** and never a primal value. The measurements —
 including the two that argue against enabling it globally — are `dev_docs/STACKSL_SURROGATE.md`.
 
-What is deliberately *not* here is `GlslAdScalars`' mask tracking, which is what stops a nested
+What is *not* here is `GlslAdScalars`' mask tracking, which is what stops a nested
 predicate being charged a second kernel. That is a property of the AD path rather than of the
 surrogate, so it sits in `GlslAd.kt` beside the jump sites it corrects.
 
@@ -8764,14 +8973,14 @@ A differentiable surrogate for the jump-discontinuous GLSL operations, as a **mo
 | <a id="glsladsurrogate-kt--adsurrogate--covers"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">covers</span><span class="p">(</span><span class="n">family</span><span class="p">:</span> <span class="nc">AdSurrogateFamily</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L107) | Is `family` surrogated here? |
 | <a id="glsladsurrogate-kt--adsurrogate--at"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">at</span><span class="p">(</span><span class="n">temperature</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">AdSurrogate</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L110) | The same families at a different temperature — what an annealing schedule steps. |
 | <a id="glsladsurrogate-kt--adsurrogate--kernel"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">kernel</span><span class="p">(</span><span class="n">u</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">jump</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L119) | The mollified delta: `jump · sech²(u / 2t) / 4t`, with `u` the signed distance to the jump. |
-| <a id="glsladsurrogate-kt--adsurrogate--unitperiodmass"></a>[<code class="highlight"><span class="k">val</span> <span class="n">unitPeriodMass</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L138) | The fraction of a unit-period jump this kernel actually carries: `tanh(1 / 4t)`. |
-| <a id="glsladsurrogate-kt--adsurrogate--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L140) |  |
-| <a id="glsladsurrogate-kt--adsurrogate--equals"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">equals</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L144) |  |
-| <a id="glsladsurrogate-kt--adsurrogate--hashcode"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">hashCode</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L147) |  |
+| <a id="glsladsurrogate-kt--adsurrogate--unitperiodmass"></a>[<code class="highlight"><span class="k">val</span> <span class="n">unitPeriodMass</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L137) | The fraction of a unit-period jump this kernel actually carries: `tanh(1 / 4t)`. |
+| <a id="glsladsurrogate-kt--adsurrogate--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L139) |  |
+| <a id="glsladsurrogate-kt--adsurrogate--equals"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">equals</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L143) |  |
+| <a id="glsladsurrogate-kt--adsurrogate--hashcode"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">hashCode</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L146) |  |
 
 ### AdSurrogateFamily { #glsladsurrogate-kt-adsurrogatefamily }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">AdSurrogateFamily</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L185)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">AdSurrogateFamily</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L184)
 
 The three jump families, split by *where the jumps are* rather than by builtin name — because that is what decides the surrogate partial, and two builtins with the same jump lattice want the same treatment.
 
@@ -8779,7 +8988,7 @@ Constants: `STAIRCASE`, `STEP`, `SIGN`.
 
 ### AdAnnealing { #glsladsurrogate-kt-adannealing }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">AdAnnealing</span><span class="p">(</span><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">budget</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">families</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">AdSurrogateFamily</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L234)
+[<code class="highlight"><span class="k">class</span> <span class="nf">AdAnnealing</span><span class="p">(</span><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">budget</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">families</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">AdSurrogateFamily</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L233)
 
 A geometric annealing schedule from [`start`](languages.md#glsladsurrogate-kt--adannealing--start) down to [`end`](languages.md#glsladsurrogate-kt--adannealing--end), plus the driver that steps it.
 
@@ -8789,10 +8998,10 @@ A geometric annealing schedule from [`start`](languages.md#glsladsurrogate-kt--a
 | <a id="glsladsurrogate-kt--adannealing--end"></a><code class="highlight"><span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Double</span></code> | The temperature at the last evaluation of the budget. |
 | <a id="glsladsurrogate-kt--adannealing--budget"></a><code class="highlight"><span class="k">val</span> <span class="n">budget</span><span class="p">:</span> <span class="nc">Int</span></code> | The evaluation count the schedule is scaled to — normally the iteration count. |
 | <a id="glsladsurrogate-kt--adannealing--families"></a><code class="highlight"><span class="k">val</span> <span class="n">families</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">AdSurrogateFamily</span><span class="p">&gt;</span></code> | Which families the schedule anneals. |
-| <a id="glsladsurrogate-kt--adannealing--temperatureat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">temperatureAt</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L252) | The temperature at evaluation `index`, counting from zero. Pure — no state is touched. |
-| <a id="glsladsurrogate-kt--adannealing--next"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">next</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">AdSurrogate</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L259) | The surrogate for the *next* evaluation, and advance. Call once per loss evaluation. |
-| <a id="glsladsurrogate-kt--adannealing--used"></a>[<code class="highlight"><span class="k">val</span> <span class="n">used</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L266) | How many times [`next`](languages.md#glsladsurrogate-kt--adannealing--next) has been called. |
-| <a id="glsladsurrogate-kt--adannealing--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L268) |  |
+| <a id="glsladsurrogate-kt--adannealing--temperatureat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">temperatureAt</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L251) | The temperature at evaluation `index`, counting from zero. Pure — no state is touched. |
+| <a id="glsladsurrogate-kt--adannealing--next"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">next</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">AdSurrogate</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L258) | The surrogate for the *next* evaluation, and advance. Call once per loss evaluation. |
+| <a id="glsladsurrogate-kt--adannealing--used"></a>[<code class="highlight"><span class="k">val</span> <span class="n">used</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L265) | How many times [`next`](languages.md#glsladsurrogate-kt--adannealing--next) has been called. |
+| <a id="glsladsurrogate-kt--adannealing--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/stacksl/cpu/GlslAdSurrogate/#L267) |  |
 
 ## GlslInterpreter.kt { #glslinterpreter-kt }
 

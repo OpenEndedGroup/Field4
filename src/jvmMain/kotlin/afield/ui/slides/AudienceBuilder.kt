@@ -3,6 +3,25 @@ package afield.ui.slides
 import afield.ui.output.FieldMarkdown
 import kotlinx.html.*
 
+/**
+ * The HTML an audience slide is written in: kotlinx.html's builders, with scoped Markdown,
+ * stylesheets and two picture layouts added.
+ *
+ * [SlideStepBuilder.audience] runs its block against an [AudienceBuilder], which is a kotlinx.html
+ * `DIV` carrying the slide's class, so every standard tag works inside it, along with Kotlin's own
+ * loops, functions and completion. Text added with `+` is escaped by the library; `"# Heading".md`
+ * renders Markdown instead, and the unary plus on the [AudienceMarkdown] it returns inserts the
+ * generated tags unescaped. That pair is how one slide mixes written prose with built HTML.
+ *
+ * Use [AudienceBuilder.div] rather than kotlinx.html's own `div` for a nested container, since only
+ * this one keeps the Markdown syntax available inside it. [AudienceBuilder.stylesheet] links a CSS
+ * file from the document's files directory; the audience fetches it past the browser cache each time
+ * a slide is drawn, so an edit to it appears on Refresh slide.
+ * [AudienceBuilder.fullScreenImage] and [AudienceBuilder.imageBeside] are the picture layouts. Both
+ * want alt text and take an optional visible credit, and [AudienceImageFit] chooses between
+ * containing the whole picture and cropping it to fill.
+ */
+
 /** A rendered Markdown fragment, inserted with unary plus inside [AudienceBuilder]. */
 class AudienceMarkdown internal constructor(internal val html: String)
 

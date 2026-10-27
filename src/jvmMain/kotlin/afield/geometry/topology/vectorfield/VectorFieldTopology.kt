@@ -15,6 +15,30 @@ import kotlin.math.hypot
 import kotlin.math.sqrt
 
 /**
+ * The topology of a 2-D flow field: where it stands still, and the curves that divide it up.
+ *
+ * [VectorFieldTopology.compute] reads the flow either as two images, u and v in their first
+ * channel, or as one RGB image with u in channel 0 and v in channel 1. It finds the field's zeros
+ * as [FlowCriticalPoint]s, classified by [FlowCriticalType] into sources, sinks, saddles, the two
+ * kinds of focus and centres, together with the [Separatrix] curves that leave each saddle along
+ * its eigen-directions.
+ * Those curves cut the frame into regions inside which every streamline starts at the same place
+ * and ends at the same place, so they summarise the whole field rather than sampling it.
+ *
+ * What comes back is ready to draw: [VectorFieldTopology.streamlines] for a grid-seeded picture of
+ * the flow, [VectorFieldTopology.toFLines] for the separatrices and
+ * [VectorFieldTopology.criticalPointsFLine] for the points, coloured by type.
+ * [VectorFieldTopology.features] hands the critical points to
+ * [afield.geometry.topology.tracking.FeatureTracker], so a flow that changes can be followed frame
+ * by frame, and [VectorFieldTopology.network] gives the same topology as a [GeometryNetwork],
+ * which is what the other geometry modules read.
+ *
+ * Everything here is Kotlin, with no optional native library behind it. A scalar field can be read
+ * the same way through [VectorFieldTopology.gradientOf], which turns one into its gradient, or into
+ * the flow along its contours. The worked account is `public/docs/vector_field_topology.md`.
+ */
+
+/**
  * What a flow does near a critical point: flows out ([SOURCE]), in ([SINK]), spirals out or in
  * ([REPELLING_FOCUS], [ATTRACTING_FOCUS]), circles ([CENTER]), or comes in along one direction and
  * leaves along another ([SADDLE]).

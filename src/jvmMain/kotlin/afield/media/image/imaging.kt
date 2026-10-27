@@ -16,13 +16,12 @@ import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /**
- * CPU image / computer-vision family for the Field stdlib — the raster counterpart to the
- * time-domain [timeseries.kt] and frequency-domain [spectral.kt] families.
+ * CPU image and computer-vision family for the Field stdlib: the raster counterpart to the
+ * time-domain `timeseries.kt` and frequency-domain `spectral.kt` families.
  *
- * Field's stated target domains include computer vision, but until now the stdlib had no image
- * layer at all: no convolution, no gradients, no pyramids, no features, no warps. This file (plus
- * `imaging_filters.kt`, `imaging_features.kt`, `imaging_geometry.kt`, `imaging_field.kt`) closes
- * that gap with a small, dependency-free core.
+ * This file, with `imaging_filters.kt`, `imaging_features.kt`, `imaging_geometry.kt` and
+ * `imaging_field.kt`, is the stdlib's image layer: convolution and blurs, gradients, pyramids,
+ * corner and edge features, and warps, over a dependency-free core.
  *
  * The whole family is built on one value type, [Img]:
  *
@@ -34,7 +33,7 @@ import kotlin.math.sqrt
  * canny.toFLines()                           // .. straight into Field's drawing layer
  * ```
  *
- * Design choices, all deliberate:
+ * What the family commits to:
  *
  * - **Float channels, not bytes.** Every operation is float math in `0..1` (or unbounded, for
  *   gradients and Laplacians, which legitimately go negative). Nothing quantises mid-pipeline, so
@@ -43,8 +42,8 @@ import kotlin.math.sqrt
  *   public (`data`) so a hot inner loop in a box can write it directly if it wants to.
  *   Interleaved channel-major-last layout (`data[(y*width + x)*channels + c]`), the same layout
  *   `BufferedImage`/GL/Vulkan uploads want.
- * - **1, 3 or 4 channels.** 1 = scalar/gray/mask, 3 = RGB, 4 = RGBA. Nothing else; a "12-channel
- *   feature tensor" is a different (and non-existent) problem.
+ * - **1, 3 or 4 channels.** 1 = scalar/gray/mask, 3 = RGB, 4 = RGBA. Nothing else; a 12-channel
+ *   feature tensor is a different problem, and not one this family takes on.
  * - **No external dependency.** Pure Kotlin plus `javax.imageio` for load/save and
  *   `afield.media.image.util.PngEncoder` for the AWT-free path used by box output.
  * - **Live-codeable.** [Img] implements [ToHTML], so evaluating an `Img` in a box (or `img.h`)

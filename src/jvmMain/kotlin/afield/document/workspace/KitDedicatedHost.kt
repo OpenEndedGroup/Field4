@@ -9,6 +9,31 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
 
+/**
+ * The compatibility route for a project that already has its own launcher, workspace and document
+ * conventions and wants to appear in Welcome's kit library without adopting Field's. Such a kit
+ * declares a `host` block in its `field-kit.json` naming a launcher script, a loopback HTTP endpoint
+ * and the workspace that launcher owns, and Field then treats it as something to start rather than
+ * something to load: none of its runtime declarations join the calling host's classpath, and its
+ * documents keep whatever versioning scheme the project already uses.
+ *
+ * [KitDedicatedHosts.open] is the whole action, and it runs only from an explicit **Open kit host**
+ * or **Create in kit host** in Welcome, never from adding a kit. It probes `/api/instance-info` at
+ * the declared endpoint first and reuses a host that is already up, refusing outright when a
+ * different workspace answers there; otherwise it runs the launcher from the kit's source directory
+ * with Field's own port and path variables stripped from the environment, appends its output to
+ * `logs/<id>.log` under the kits directory, and polls for up to three minutes. Creating a document
+ * is then a POST to that host's own starting-point API, so the running project copies the seed by
+ * its own rules and hands back the URL to open.
+ *
+ * Two checks hold the arrangement together. [KitPackages.read] calls [KitDedicatedHosts.validate] on
+ * every manifest, so a non-loopback endpoint, a query string, user info in the URL, or a launcher
+ * path escaping the package is refused when the kit is added rather than when it is run. And
+ * [KitDedicatedHosts.open] compares the launcher's hash in the source directory against the one in
+ * the installed snapshot, so the script that executes is the script that was there when the kit was
+ * added.
+ */
+
 /** Compatibility for an existing project launcher. Its original workspace and runtime remain authoritative. */
 @Serializable
 data class KitDedicatedHost(val launcher: String, val endpoint: String, val workspace: String,

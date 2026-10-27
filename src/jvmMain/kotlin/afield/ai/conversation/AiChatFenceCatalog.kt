@@ -3,6 +3,23 @@ package afield.ai.conversation
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
+/**
+ * The fenced blocks AI4 chat draws as pictures rather than printing as code, read on the JVM from
+ * the same catalog the browser renderers read.
+ *
+ * `src/commonMain/resources/ai4-fence-renderers.json` holds one entry per language, each naming the
+ * renderer module and export that draws it in the chat panel alongside the syntax guidance and the
+ * worked example the model is shown. There are two today, `mermaid` and `math`. The JVM reads that
+ * file out of its resources and turns it into the paragraph of fence instructions added to the
+ * chat system prompt, so a language the model is told about always has a renderer behind it and a
+ * language the browser cannot draw is never offered. Only chat mode gets that paragraph; the other
+ * instruction modes describe no fences.
+ *
+ * The catalog is checked on first read for a known schema version, one entry per language, a
+ * lowercase language name and no blank field. A malformed or absent catalog stops the read and says
+ * what is wrong with it, instead of leaving the panel one renderer short of what it advertised.
+ */
+
 /** The same packaged catalog that registers preview renderers in the browser. */
 internal object AiChatFenceCatalog {
     @Serializable
