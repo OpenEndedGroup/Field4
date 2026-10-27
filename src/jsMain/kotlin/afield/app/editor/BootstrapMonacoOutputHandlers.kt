@@ -499,6 +499,11 @@ fun routeMonacoOutput(payload: Output, uidOverride: String = ""): Boolean {
                 addOutput(embeddedEditor.editor, html, line, "normal", annotation, frameMarker, -1, -1, -1)
             }
         }
+        // A compiler warning on a run that compiled: shown on its line, and it changes no status or error.
+        "warning" -> {
+            if (routeToMain) addOutput(w.globalEditor, html, line, "warning", annotation, frameMarker, startColumn, endLine, endColumn)
+            if (embeddedEditor != null) addOutput(embeddedEditor.editor, html, line, "warning", annotation, frameMarker, startColumn, endLine, endColumn)
+        }
         "ok" -> {
             monacoSetStatus(uid, true, html)
             if (routeToMain) {
