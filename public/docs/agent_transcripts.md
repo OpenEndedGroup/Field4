@@ -1817,6 +1817,19 @@ wants an audio device.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/faust_polyphony/metadata.edn)
 
+### agent_eval_corpus
+
+**The eval corpus Field's own agent is measured on.** `AgentEvalCorpus` turns the boxes in this corpus
+into tasks for the in-Field agent: a box the transcript ran whole, that prints or displays, and that
+needs no renderer, audio, files or clock becomes a goal (its name, its parents, its own leading comment,
+the text its output must include), a setup (its ancestors), a solution (its real code) and checks (the
+output it gave twice in a row). Two boxes: *What was mined* prints how many tasks came from how many
+transcripts and tabulates them by kind and split beside the reasons the other boxes were dropped; *One
+task* prints a held-out task's goal and checks as the agent receives them. The method and the live
+before/after are in `dev_docs/ai/IN_FIELD_AGENT_HARNESS.md` ("Mined corpus").
+
+[Open ↗](offline.html?file=assets/agent_transcripts/agent_eval_corpus/metadata.edn)
+
 ### alife_script
 
 **Giving one agent a program.** `afield.simulation.agents`' `alife_script.kt` adds a per-agent behaviour layer to ALife:
