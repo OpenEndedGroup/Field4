@@ -9039,15 +9039,53 @@ One ray-tracing shader: its name, stage kind and GLSL source.
 
 ## ReloadCarryOver.kt { #reloadcarryover-kt }
 
+What survives when a module compiles a new shader and swaps it in: which uniform buffers keep
+their contents, which are reallocated, which are retired, and which of the values already written
+into them are re-applied.
+
+Every module pointer finishes a reload through `ReloadCarryOver.finishAndNotify`, which runs this
+generic policy first and the [`ModuleRebuild`](graphics.md#modulerebuild-kt-modulerebuild) hooks second, so a hook only fills in what the policy
+left. The policy reads the [`ShaderInterfaceTransition`](graphics.md#shaderinterfacetransition-kt-shaderinterfacetransition) between the old and new introspections. A
+uniform block whose layout is unchanged keeps its buffer and its bytes, including across a rename,
+since the same members at the same offsets still mean what they meant. A block that was resized or
+retyped gets a fresh buffer, zeroed before anything writes it, and the values set on the old one
+are re-applied wherever they still fit the new reflection. A buffer the old module allocated and
+the new one does not use goes through the renderer's retirement queue rather than being freed under
+a frame that may still be reading it.
+
+Only a buffer the module allocated for itself is zeroed, carried by layout or retired. One that
+came from the surrounding context, or that a resolver the box supplied handed back, is resolved
+again the way it was the first time and is never freed here. Zeroing applies to uniform blocks
+only: a storage buffer has its values carried and is retired the same way, but its contents are
+left as they are.
+
+[`ModuleReloadReport`](graphics.md#reloadcarryover-kt-modulereloadreport) is what the box side reads back: the transition, and one note per value that
+could not be carried, so a reload that silently dropped a uniform says which one.
+
 `src/jvmMain/kotlin/afield/graphics/render/ReloadCarryOver.kt` — [read the source](source/jvmMain/afield/graphics/render/ReloadCarryOver/)
 
 ### ModuleReloadReport { #reloadcarryover-kt-modulereloadreport }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ModuleReloadReport</span><span class="p">(</span><span class="k">val</span> <span class="n">transition</span><span class="p">:</span> <span class="nc">ShaderInterfaceTransition</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">notes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/render/ReloadCarryOver/#L25)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ModuleReloadReport</span><span class="p">(</span><span class="k">val</span> <span class="n">transition</span><span class="p">:</span> <span class="nc">ShaderInterfaceTransition</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">notes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/render/ReloadCarryOver/#L50)
 
 What a module pointer's full `reload` did to the interface: the `transition` old→new (null when the pointer could not compare, for want of an introspection) and `notes`, one per value that could not be carried to the new module. Read by the box-side reload (`reloadShader` and siblings) to say it.
 
 ## ReloadResolvers.kt { #reloadresolvers-kt }
+
+Keeps a module's resource resolvers one layer deep across repeated shader reloads.
+
+Each module pointer installs its carry-over behaviour by replacing the resolvers on its
+[`Parameters`](graphics.md#module-kt-parameters). [`Module`](graphics.md#module-kt-module), [`ComputeModule`](graphics.md#computemodule-kt-computemodule) and [`MeshModule`](graphics.md#meshmodule-kt-meshmodule) replace all three of `uboResolver`,
+`ssboResolver` and `textureResolver`; [`RayTracingModule`](graphics.md#raytracingmodule-kt-raytracingmodule) replaces the latter two. A reload is
+handed a copy of the parameters, and a copy brings the resolvers across as they are, so each
+wrap would otherwise land on the one the previous reload installed and every uniform, buffer and
+texture lookup would walk one closure more than it did on the run before.
+
+`reloadWrap` unwraps before it wraps, so what sits underneath stays the resolver the box or
+`moduleHere` supplied and the depth stays at one however often a shader is reloaded.
+`reloadWrapDepth` reports that depth; `ReloadResolversTest` holds it at one across a hundred
+reloads, and checks that replacing the resolver yourself makes the replacement what the next
+reload wraps.
 
 `src/jvmMain/kotlin/afield/graphics/render/ReloadResolvers.kt` — [read the source](source/jvmMain/afield/graphics/render/ReloadResolvers/)
 
@@ -9612,11 +9650,30 @@ Optional GPU acceptance check: build the pinned shaders before run-jvm-main.
 
 ## RtxdiProgram.kt { #rtxdiprogram-kt }
 
+Loads the optional RTXDI shaders, and refuses a binary whose interface disagrees with the host
+code written against it.
+
+Field does not ship NVIDIA's sampling SDK and loads nothing from it at startup. Running
+`tools/lighting/build_rtxdi.py --prepare` clones the SDK and fetches a shader compiler into
+ignored build storage, and the build leaves a manifest under
+`build/lighting-experiment/rtxdi-shaders/`. `load` reads that manifest; with no manifest there it
+fails with the command to run.
+
+What `load` then checks is the interface rather than the file. The manifest has to record the SDK
+commit this source was written against, the SPIR-V has to hash to what the manifest recorded, and
+the shader's own reflection has to still carry the workgroup size, the push-constant block's size
+and member offsets, the reservoir and offset array strides, and the surface and light struct
+layouts that the host side writes into. Shaders rebuilt from a different SDK revision therefore
+fail to load, instead of being handed the host's bytes at offsets that have moved.
+
+A loaded program is passed to [`DirectLighting`](graphics.md#directlighting-kt-directlighting) through `enableRtxdi`, which builds the pass and
+leaves the current one in place if that fails.
+
 `src/jvmMain/kotlin/afield/graphics/render/lighting/RtxdiProgram.kt` — [read the source](source/jvmMain/afield/graphics/render/lighting/RtxdiProgram/)
 
 ### RtxdiProgram { #rtxdiprogram-kt-rtxdiprogram }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">RtxdiProgram</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">manifest</span><span class="p">:</span> <span class="nc">JSONObject</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">reflection</span><span class="p">:</span> <span class="nc">Introspection</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/render/lighting/RtxdiProgram/#L10)
+[<code class="highlight"><span class="k">class</span> <span class="nc">RtxdiProgram</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">manifest</span><span class="p">:</span> <span class="nc">JSONObject</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">reflection</span><span class="p">:</span> <span class="nc">Introspection</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/render/lighting/RtxdiProgram/#L31)
 
 Optional compiled SDK shaders. Build with tools/lighting/build_rtxdi.py; no SDK is loaded at startup.
 
@@ -12891,13 +12948,36 @@ An [`EmbeddingSimplex`](data.md#embeddingsimplex-kt-embeddingsimplex) drawn as t
 
 ## SolidInspection.kt { #solidinspection-kt }
 
+The three things the solid inspector measures off a part's boundary: which edges are worth
+drawing, which triangles belong to the same face, and one string that identifies the whole set of
+parts.
+
+A boundary arrives as a [`SolidPlanarMesh`](graphics.md#solidplanarmesh-kt-solidplanarmesh) whose triangles carry the diagonals its triangulator
+needed and the coplanar edges its Boolean history left behind, so drawing every edge buries the
+shape under both. `solidOutlineEdges` keeps an edge unless exactly two triangles meet along it and
+those two are one flat face: normals parallel and facing the same way, and each triangle's
+vertices within tolerance of the other's plane. An edge where some other number of triangles meet,
+or where a triangle is too degenerate to have a normal, stays visible, so an open surface keeps
+its perimeter rather than reading as a closed solid. The tolerance is the mesh's own
+`nativeTolerance` or sixty-four ulps of the part's largest coordinate, whichever is larger, so a
+part modelled in metres and the same part in millimetres get the same answer.
+
+`solidPartTopology` groups the triangles into faces by merging across every edge that is not one
+of those creases. It keeps the canonical double-precision positions and the original triangle
+order, because a pick is resolved against this copy rather than against the render mesh, whose
+vertices shading has already split.
+
+`solidArtifactDigest` hashes part names, positions, indices and faces in sorted name order, so the
+same boundaries hash the same however the parts were collected. That digest is the geometry
+identity a review note is pinned to, which is what lets a note outlive a relaunch.
+
 `src/jvmMain/kotlin/afield/graphics/three/SolidInspection.kt` — [read the source](source/jvmMain/afield/graphics/three/SolidInspection/)
 
 ### Top-level functions { #solidinspection-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="solidinspection-kt--solidartifactdigest"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">solidArtifactDigest</span><span class="p">(</span><span class="n">parts</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span><span class="nc">SolidPlanarMesh</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/graphics/three/SolidInspection/#L22) | Exact boundary identity, including part names and topology; independent of input map order. |
+| <a id="solidinspection-kt--solidartifactdigest"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">solidArtifactDigest</span><span class="p">(</span><span class="n">parts</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span><span class="nc">SolidPlanarMesh</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/graphics/three/SolidInspection/#L47) | Exact boundary identity, including part names and topology; independent of input map order. |
 
 ## SolidParts.kt { #solidparts-kt }
 
@@ -13521,6 +13601,24 @@ every solid is unchanged.
 `src/jvmMain/kotlin/afield/graphics/three/ThreeReview.kt` — [read the source](source/jvmMain/afield/graphics/three/ThreeReview/)
 
 ## ThreeReviewEvidence.kt { #threereviewevidence-kt }
+
+Stores the screenshots a geometry review note carries as PNG files beside the document rather than
+as base64 inside it.
+
+The browser sends a context image and a crop of it, each as a data URL, with the viewport and crop
+rectangle they were taken from. Kept in the note, those would put megabytes of base64 into a text
+property that is saved, versioned and diffed on every edit. `store` writes each image into the
+document's `.geometry-review` directory under its own SHA-256 and returns the note's metadata with
+a `/three-review-image` URL in place of the bytes, so a second note of the same pixels adds a
+reference and no file.
+
+The validation is what makes those files safe to serve back. The images have to agree with the
+note about geometry digest, view and panel; the payload has to be a PNG by signature and by
+decoding, at the dimensions the browser declared, within 1600 px for the context image and 1024 px
+for the crop; no image may exceed two million bytes and the directory may not exceed sixty-four
+million. `read` answers only for a 64-character hex name that one of the notes it was handed
+actually cites, so the route cannot be talked into returning a path of the caller's choosing or an
+image belonging to another view.
 
 `src/jvmMain/kotlin/afield/graphics/three/ThreeReviewEvidence.kt` — [read the source](source/jvmMain/afield/graphics/three/ThreeReviewEvidence/)
 
@@ -14996,6 +15094,32 @@ Marker for uniforms that progress over time and need to keep being written until
 | <a id="structure-kt--structure--getgpuaddress"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">getGPUAddress</span><span class="p">(</span><span class="n">cmd</span><span class="p">:</span> <span class="nc">CommandBuffer</span><span class="p">)</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/graphics/vulkan/buffers/Structure/#L660) |  |
 
 ## StructureTypeCheck.kt { #structuretypecheck-kt }
+
+Decides what a Kotlin value set on a shader's uniform member is written as, or why the shader
+cannot be given it.
+
+A [`Structure`](graphics.md#structure-kt-structure) is set by member name, and the member that name refers to is whatever the shader's
+[`Introspection`](graphics.md#introspection-kt-introspection) last reported. Value and slot can therefore disagree: a `Vector3f` on a member the
+shader now declares `float`, an `Int` on a `float`, a `Float` on a `float16_t`. Judged by the
+value's Kotlin type alone, each of those writes the wrong number of bytes, or the right number
+meaning something else.
+
+The rule is to convert what converts without loss and to refuse a different shape. Shape is
+checked first: a scalar belongs in a scalar, a vector in a vector of the same length, a matrix in
+a matrix of the same size, and nothing but a buffer-writing value in a struct. Within one shape
+the value is converted to the type the member declares whenever that type can hold it, which
+covers any integer into a wider one, a narrower or differently signed integer that is in range, an
+integer into `float` while it stays exactly representable, a whole float into an integer, and a
+`Double` into a `float`. A float set on a half is rounded to the half's precision, which is what
+the member asked for. Anything else is refused, naming the value that would not fit. Array
+members, device pointers and values whose width is not knowable here are written as given.
+
+Three callers ask this question. `Structure.set` asks it when the value arrives and declines to
+store a value it would not be able to write, so the answer reaches whoever is typing. Writing a
+block to its buffer asks it per member, and skips the member rather than writing nonsense into the
+slot. `Structure.carryValuesFrom` asks it of every value a shader reload is trying to keep, which
+is how a reload reports the uniforms it had to drop. Each distinct refusal is reported once, not
+once a frame.
 
 `src/jvmMain/kotlin/afield/graphics/vulkan/buffers/StructureTypeCheck.kt` — [read the source](source/jvmMain/afield/graphics/vulkan/buffers/StructureTypeCheck/)
 
@@ -16844,6 +16968,21 @@ A camera body transform plus the look-at focus distance needed to reconstruct Fi
 | <a id="camerapose-kt--camerapose--sclerp"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">sclerp</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">CameraPose</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span><span class="p">:</span> <span class="nc">CameraPose</span></code>](source/jvmMain/afield/graphics/vulkan/util/CameraPose/#L81) | Blends toward `other` by screw interpolation, so the camera turns and travels at a constant rate about a single screw axis. [`focusDistance`](graphics.md#camerapose-kt--camerapose--focusdistance) is interpolated linearly alongside. |
 
 ## DeferredCleanup.kt { #deferredcleanup-kt }
+
+Releases a renderer's deferred GPU resources at shutdown, when no later frame will come to age
+them out.
+
+While a renderer is running, a resource retired by one frame waits in a queue until the frames
+that might still be reading it have finished. Shutdown removes that guarantee, so [`Renderer`](graphics.md#renderer-kt-renderer)
+drains the queues by hand: once the present queue, the graph queue and the device are idle, and
+then again after releasing the resources a document still held, because releasing those enqueues
+more work of its own.
+
+Each batch is cleared before it is invoked, so a destructor may enqueue dependent work, and a
+destructor that throws does not strand the resources queued behind it. Failures are collected and
+handed back for the owner to report once the rest of its teardown is done, which is why a broken
+release shows up as one exception with the others suppressed on it rather than as a half-finished
+shutdown.
 
 `src/jvmMain/kotlin/afield/graphics/vulkan/util/DeferredCleanup.kt` — [read the source](source/jvmMain/afield/graphics/vulkan/util/DeferredCleanup/)
 

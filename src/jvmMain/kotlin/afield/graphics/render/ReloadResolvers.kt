@@ -1,6 +1,23 @@
 package afield.graphics.render
 
 /**
+ * Keeps a module's resource resolvers one layer deep across repeated shader reloads.
+ *
+ * Each module pointer installs its carry-over behaviour by replacing the resolvers on its
+ * [Parameters]. [Module], [ComputeModule] and [MeshModule] replace all three of `uboResolver`,
+ * `ssboResolver` and `textureResolver`; [RayTracingModule] replaces the latter two. A reload is
+ * handed a copy of the parameters, and a copy brings the resolvers across as they are, so each
+ * wrap would otherwise land on the one the previous reload installed and every uniform, buffer and
+ * texture lookup would walk one closure more than it did on the run before.
+ *
+ * `reloadWrap` unwraps before it wraps, so what sits underneath stays the resolver the box or
+ * `moduleHere` supplied and the depth stays at one however often a shader is reloaded.
+ * `reloadWrapDepth` reports that depth; `ReloadResolversTest` holds it at one across a hundred
+ * reloads, and checks that replacing the resolver yourself makes the replacement what the next
+ * reload wraps.
+ */
+
+/**
  * A resolver a module pointer's `reload` installed on a [Parameters] to carry resources over from the
  * module being replaced, remembering the resolver it wrapped.
  *
