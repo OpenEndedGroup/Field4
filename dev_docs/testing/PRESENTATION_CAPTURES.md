@@ -63,3 +63,20 @@ Enter and repeated hops, unchanged audience while typing, accent matching, multi
 results, refreshed search text, and Escape returning to normal navigation. It restores the starter
 file and reruns Presentation before capturing the real 11-slide search view to `search.png`, with
 source and image hashes in `search.json`. Its finally block restores the disposable source on failure.
+
+## Lecture layouts and automatic staggering
+
+Create a disposable copy of the starter, then replace its Presentation box source with the bundled
+`files/examples/lecture.kt` before opening it in Electron. Keep its `files/themes/lecture.css` and
+`files/examples/lecture-*.svg` files unchanged. Run:
+
+```sh
+node tools/presentation/rehearse-lecture.mjs http://127.0.0.1:29495 /tmp/workspace/lecture-layouts
+```
+
+The driver checks the actual four-slide audience, loaded images, frame bounds, right-aligned
+banner tagline, visible incoming content during the native crossfade, intermediate opacity and
+increasing list delays. It also checks completed Back/Refresh and the real reduced-motion media
+preference. `lecture.json` records source hashes, motion samples and image hashes. Inspect the four
+`lecture-*.png` captures; `lecture.css` is the matching downloadable theme, not a screenshot asset.
+The example uses Field's own editable SVG studies rather than reproductions of reference artworks.

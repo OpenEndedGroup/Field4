@@ -152,7 +152,7 @@ Steps cross-fade by default. Set `transitionMs` on `presentation` to a duration 
 
 ## Themes and simple builds
 
-The starter includes **Black**, **Paper** and **Slate** in `files/themes/`. Each is one CSS file,
+The starter includes **Black**, **Paper**, **Slate** and **Lecture** in `files/themes/`. Each is one CSS file,
 with Iosevka type, solid backgrounds and matching image credits. Black is the default.
 Copy the contents of `themes/paper.css` or `themes/slate.css` into the editable **presentation.css**
 box, save, then **Refresh slide**. That changes every starter slide which uses that stylesheet.
@@ -165,6 +165,85 @@ Image layouts and credits use them too. Images keep their original colours.
 | Black | Paper | Slate |
 | --- | --- | --- |
 | ![Black theme in the native audience window.](assets/presentation_studio/theme-black.png) | ![Paper theme in the native audience window.](assets/presentation_studio/theme-paper.png) | ![Slate theme in the native audience window.](assets/presentation_studio/theme-slate.png) |
+
+### Lecture: images, banners and airy lists
+
+**Lecture** follows a quiet teaching-slide layout: an ink-blue background, warm Iosevka lettering,
+a fine inset frame and small, right-aligned image credits. It is one [editable CSS file](assets/presentation_studio/lecture.css).
+Use `stylesheet("themes/lecture.css")` on a slide, or copy it into **presentation.css** for a whole talk.
+The standard `fullScreenImage` and `imageBeside` helpers pick up the image layouts automatically.
+Use `lecture-banner` with a `lecture-tagline` for a big title and its right-aligned aside, or
+`lecture-list` for a heading and generously spaced, unbulleted list.
+
+| Large image with a credit | Image and text |
+| --- | --- |
+| ![A large editable line-study figure with a quiet credit in the Lecture theme.](assets/presentation_studio/lecture-image.png) | ![A square line study beside explanatory text, with a separate attribution.](assets/presentation_studio/lecture-split.png) |
+| Banner and tagline | Airy list |
+| ![A large italic Mapping banner with New physics aligned to its right edge.](assets/presentation_studio/lecture-banner.png) | ![A heading and seven light italic list entries in the Lecture theme.](assets/presentation_studio/lecture-list.png) |
+
+On forward entry the theme gives the picture, words and credit a small stagger, with a four-pixel
+settle on text. Pictures stay almost fully visible during the crossfade. Back and Refresh show the
+finished layout immediately; retained content stays still, and reduced motion disables the animation.
+No `fadeIn` wrappers or slide scripts are needed. Edit `--lecture-beat` (45 ms between parts),
+`--lecture-settle` (360 ms) or `--lecture-banner-size` in the CSS to adjust it.
+
+The starter includes this complete example as `files/examples/lecture.kt`. Paste it into a new box
+and run it. The pictures are Field's editable SVG studies; replace their filenames and credits with
+your own. Each image is referenced from `files/`, so it can be shared by many slides.
+
+```diffstatic {data-lang=kotlin}
+// Paste into a new Field box and run. Uses shared files beside this example's parent folder.
+import afield.ui.slides.*
+import kotlinx.html.*
+
+presentation(title = "Lecture layouts", transitionMs = 450) {
+    step("A large image") {
+        audience {
+            stylesheet("themes/lecture.css")
+            fullScreenImage("examples/lecture-comparison.svg",
+                alt = "Two editable line studies: a regular field and a field with interruptions",
+                citation = "Field · editable SVG line studies · examples/lecture-comparison.svg")
+        }
+    }
+    step("A figure and some text") {
+        audience {
+            stylesheet("themes/lecture.css")
+            imageBeside("examples/lecture-lines.svg",
+                alt = "A square field of short diagonal lines, with a few intentional gaps",
+                citation = "Field · editable line study · examples/lecture-lines.svg") {
+                h2 { +"A rule with room for interruption" }
+                p { +"A small omission changes the rhythm of the whole field." }
+                p(classes = "muted") { +"Make a prediction. Change the rule. Look again." }
+            }
+        }
+    }
+    step("Mapping") {
+        audience {
+            stylesheet("themes/lecture.css")
+            div(classes = "lecture-banner") {
+                h1 { +"Mapping" }
+                p(classes = "lecture-tagline") { +"New physics" }
+            }
+        }
+    }
+    step("Media art and design") {
+        audience {
+            stylesheet("themes/lecture.css")
+            div(classes = "lecture-list") {
+                h1 { +"Media art and design = everything else" }
+                ul {
+                    for (topic in ["Net art", "Installation art", "VFX", "Experimental film",
+                        "Computer games", "Odd music", "Emerging and dying technologies"]) {
+                        li { +topic }
+                    }
+                }
+            }
+        }
+    }
+}.present()
+```
+
+### Explicit fades and layered builds
 
 `fadeIn` fades a text block, image or group from transparent to opaque. It starts after the
 whole-slide crossfade finishes. Back and Refresh show the completed build immediately;
