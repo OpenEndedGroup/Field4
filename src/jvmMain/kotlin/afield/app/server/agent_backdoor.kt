@@ -490,8 +490,7 @@ internal fun attachDocumentSession(
         scheduleStartupActionDocumentResync(found)
         found.topologyGeneration++
         found.scheduleAutorunBoxes()
-        // Study cards are drawn by library code, not by a run this page could see; give it the last of each.
-        afield.study.source.BoxStudies.replayTo(session, found)
+        // Study cards and other retained panels reach this page through its own replay-output-areas request.
         return found
     }
 

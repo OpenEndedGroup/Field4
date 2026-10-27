@@ -405,24 +405,6 @@ object BoxStudies {
         afield.ui.output.sendBoxOutput(box, afield.app.protocol.Message("output-control").payload(afield.app.protocol.OutputControl(uid = box.id, action = "open", channel = channel)))
     }
 
-    /** How long a page that has just attached is given to receive its boxes before their cards follow. */
-    private const val REPLAY_DELAY_MS = 2500L
-
-    /**
-     * Replay the current output inventory to a newly attached [session] after its boxes arrive.
-     * Library cards and ordinary output share this inventory, including replacements and clears.
-     * The frontend's normal output replay also uses it; neither path resurrects a cleared card.
-     */
-    @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
-    fun replayTo(session: io.ktor.websocket.WebSocketSession, document: afield.app.server.SessionInformation) {
-        kotlinx.coroutines.GlobalScope.launch {
-            kotlinx.coroutines.delay(REPLAY_DELAY_MS)
-            document.boxes.values.toList().forEach { box ->
-                box.output.retainedAreas.snapshot(box.id).forEach { afield.app.protocol._send(session, it) }
-            }
-        }
-    }
-
     /**
      * The running renderer a live program draws in: the nearest box, starting at [box] and walking up
      * its parents, that holds an open `renderer` — the same population `prop<Renderer>(renderer)` searches.
