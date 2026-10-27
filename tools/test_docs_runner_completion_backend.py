@@ -111,7 +111,31 @@ class CompletionBackendGuardTests(unittest.TestCase):
 
     def test_a_capture_that_never_completed_is_not_a_failure(self):
         self.log.write_text("[info,docs] drive warmCompletion for box=x took 900ms\n", encoding="utf-8")
-        self.guard(offset=0)
+        with unittest.mock.patch.object(docs_hooks, "COMPLETION_LOG_SETTLE_SEC", 0.3):
+            self.guard(offset=0)
+
+    def _append_later(self, line: str, delay: float = 0.5) -> threading.Thread:
+        """Field writes the backend line after the drive returns; reproduce that order."""
+        def write():
+            threading.Event().wait(delay)
+            with self.log.open("a", encoding="utf-8") as handle:
+                handle.write(line)
+        writer = threading.Thread(target=write)
+        writer.start()
+        self.addCleanup(writer.join)
+        return writer
+
+    def test_a_backend_line_that_lands_after_the_drive_is_still_read(self):
+        self.log.write_text("", encoding="utf-8")
+        self._append_later(AA_LINE)
+        with self.assertNoLogs(docs_hooks.LOG, level="WARNING"):
+            self.guard(offset=0)
+
+    def test_a_late_fallback_still_fails(self):
+        self.log.write_text("", encoding="utf-8")
+        self._append_later(NO_SIDECAR_LINE)
+        with self.assertRaises(RuntimeError):
+            self.guard(offset=0)
 
     def test_the_quoted_line_is_stripped_of_terminal_escapes(self):
         # Field's log is written for a terminal. Verbatim, the tag arrives as

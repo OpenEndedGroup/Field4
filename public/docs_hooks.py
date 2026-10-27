@@ -196,6 +196,8 @@ SIDECAR_START_DEADLINE_SEC = float(os.environ.get("AFIELD_DOCS_SIDECAR_START_TIM
 # serving (`(AA→K1: <why>)`) -- only the latter is a defect in a capture.
 COMPLETION_AA_FALLBACK_RE = re.compile(r"^.*completion backend=K1.*\(AA→K1:.*$", re.MULTILINE)
 COMPLETION_BACKEND_RE = re.compile(r"completion backend=(\w+)")
+# How long a completion capture waits for Field's `completion backend=` line to reach the log file.
+COMPLETION_LOG_SETTLE_SEC = 5.0
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 RUNNER_MODE_ALIASES = {
     "incremental": "incremental",
@@ -1261,8 +1263,16 @@ class RunnerState:
 
         Only an `AA→K1` fallback fails. A build that deliberately selects K1
         (`-Dafield.kotlin.completion=k1`) logs `(backend=k1)` and is left alone.
+
+        The backend line can reach the log file after the drive has returned -- in a full build it
+        landed behind the next drive's code -- so the slice is re-read for up to
+        COMPLETION_LOG_SETTLE_SEC before concluding no completion was requested.
         """
         slice_text = self._shared_log_since(log_offset)
+        deadline = time.monotonic() + COMPLETION_LOG_SETTLE_SEC
+        while not COMPLETION_BACKEND_RE.search(slice_text) and time.monotonic() < deadline:
+            time.sleep(0.2)
+            slice_text = self._shared_log_since(log_offset)
         fallbacks = COMPLETION_AA_FALLBACK_RE.findall(slice_text)
         if fallbacks:
             # Field's log is written for a terminal, so the channel tag arrives wrapped in ANSI. Strip it:
