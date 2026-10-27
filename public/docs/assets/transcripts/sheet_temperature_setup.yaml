@@ -11,7 +11,7 @@ operations:
       frame: { x: 60, y: 60, w: 200, h: 50 }
       properties:
         code: |
-          sheet(height = 200) {
+          sheet(height = 260) {
               rows = 4
               cols = 2
               columnWidth("A", 140)

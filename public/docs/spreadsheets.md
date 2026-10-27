@@ -198,8 +198,8 @@ variable can be edited this way, so in a sheet where `=B2 eq B1 * 9.0 / 5.0 + 32
 Celsius cell `B1` and a Fahrenheit cell `B2`, typing into either one moves the other. Both are
 variables, and one assertion ties them together:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/spreadsheets/temperature.png" alt="A temperature spreadsheet. Celsius and Fahrenheit, both free variables, read 100 and 212, Kelvin reads 373.15, and the assertion 'F from C' shows a tick" capture="box" open-outputs="true" wait-output=true wait-output-kind=display wait-output-channel="spreadsheet" wait="12" timeout="180" embed=true name="sheet-temperature" w="620" h="320" padding="12"}
-sheet(height = 200) {
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spreadsheets/temperature.png" alt="A temperature spreadsheet. Celsius and Fahrenheit, both free variables, read 100 and 212, Kelvin reads 373.15, and the assertion 'F from C' shows a tick" capture="box" open-outputs="true" wait-output=true wait-output-kind=display wait-output-channel="spreadsheet" wait="12" timeout="180" embed=true name="sheet-temperature" w="620" h="370" padding="12"}
+sheet(height = 260) {
     rows = 4
     cols = 2
     columnWidth("A", 140)
