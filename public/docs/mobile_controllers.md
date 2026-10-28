@@ -214,6 +214,57 @@ The Pad does not send values to a box. It edits code, the way Field's [OSC edito
 - **Save** and **Restore** remember the number under the cursor and put it back. **Lock** (⌖) pins the pad to that number, so it keeps scrubbing it after the cursor moves on; **Unlock** releases it.
 - **Launch** and **Stop** launch and stop the box being edited.
 
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1320x900" hide-toasts=true transcript="../../dev_docs/agents/transcripts/docs_capture/pad_scrub.yaml" video="assets/mobile_controllers/pad_scrub.mp4" fps="20" padding="0" wait="0" timeout="180" embed=true hidden=true name="mobile-controller-pad-scrub" alt="On the left, the Field mobile controller's Pad at phone size; on the right, the desktop editor open on a box named brightness whose first line is val brightness = 0.50, with the cursor on the number. A finger drags up the Pad and back down: each time the drag pauses, the number in the editor changes to the pad's height, between 0 and 1, and the box runs again, its output panel on the canvas showing the new value in a colour that brightens and darkens with it."}
+ui.openEditor("pad_box")
+ui.pause(800)
+ui.eval("""
+    const c = document.querySelector(".monaco-editor-container")
+    if (c) for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
+    window.globalEditor?.layout?.()
+    const box = [...document.querySelectorAll(".box")].find(b => b.uid === "pad_box" || b.name === "brightness")
+    if (box && typeof window.selectBox === "function") {
+        ;(window.selectedList || []).slice().forEach(b => window.deselectBox(b))
+        window.selectBox(box)
+        window.selectionContextChanged?.()
+    }
+    const ed = window.globalEditor
+    const line = ed.getModel().getLineContent(1)
+    const col = line.indexOf("0.50") + 2
+    ed.setPosition({ lineNumber: 1, column: col })
+    ed.focus()
+    const params = new URLSearchParams(window.location.search)
+    params.set("page", "pad")
+    const frame = document.createElement("iframe")
+    frame.id = "docs-mobile-controller-pad-scrub"
+    frame.setAttribute("title", "Field mobile controller pad")
+    frame.setAttribute("src", "/controllers?" + params.toString())
+    frame.setAttribute("style", "position:fixed;left:24px;top:24px;width:360px;height:780px;border:0;outline:1px solid rgba(72,201,255,.75);background:#050505;z-index:2147483000")
+    document.body.appendChild(frame)
+    return col
+""".trimIndent())
+ui.waitForSelector("#docs-mobile-controller-pad-scrub", 8000.0)
+ui.pause(4000)
+val area = ui.eval("""
+    const frame = document.getElementById("docs-mobile-controller-pad-scrub")
+    const r = frame.getBoundingClientRect()
+    const a = frame.contentDocument.getElementById("touch-area").getBoundingClientRect()
+    return [r.left + a.left, r.top + a.top, a.width, a.height].join(",")
+""".trimIndent()).toString().trim('"').split(",").map { it.toDouble() }
+val x = area[0] + area[2] / 2
+val top = area[1]
+val h = area[3]
+fun yAt(v: Double) = top + h * (1.0 - v)
+ui.moveMouse(x, yAt(0.5), 8)
+ui.pause(400)
+ui.mouseDown()
+for (v in listOf(0.6, 0.7, 0.8, 0.9, 0.7, 0.5, 0.3, 0.15, 0.4)) {
+    ui.moveMouse(x, yAt(v), 14)
+    ui.pause(900)
+}
+ui.mouseUp()
+ui.pause(1500)
+```
+
 The Pad works without the OSC editor being switched on in the welcome page; it talks to Field over the controller's own connection.
 
 ## Link straight to a tab
