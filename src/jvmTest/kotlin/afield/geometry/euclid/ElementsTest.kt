@@ -186,4 +186,34 @@ class ElementsTest {
         assertTrue(p(2, 2) in square && p(5, 2) !in square)
         assertEquals(16.0, square.area, 1e-12)
     }
+
+    @Test fun solutionsCountTheRealAlternatives() {
+        val ab = Segment2(p(0, 0), p(160, 0))
+        val one = Elements.solutions { prop1(ab) }
+        assertEquals(2, one.size)
+        assertEquals(Elements.prop1(ab).result, one.first().result) // the plain call is the first solution
+        assertTrue(one.map { it.result.c.y }.let { ys -> ys.any { it > 0 } && ys.any { it < 0 } })
+
+        // I.2: Proclus' four cases, every one a line from A as long as BC
+        val bc = Segment2(p(90, 40), p(150, 100))
+        val two = Elements.solutions { prop2(p(0, 0), bc) }
+        assertEquals(4, two.size)
+        two.forEach { assertEquals(p(0, 0), it.result.a); assertEquals(bc.length, it.result.length, 1e-9) }
+
+        assertEquals(2, Elements.solutions { prop11(Segment2(p(0, 0), p(200, 0)), p(80, 0)) }.size)
+        assertEquals(1, Elements.solutions { prop31(p(60, -90), Segment2(p(0, 0), p(200, 0))) }.size) // only one copy is parallel
+        assertEquals(2, Elements.solutions { prop46(Segment2(p(0, 0), p(120, 0))) }.size)
+        assertEquals(1, Elements.solutions { prop47(Triangle2(p(0, 0), p(120, 0), p(0, -90))) }.size) // the squares must stand outside
+        assertEquals(2, Elements.solutions { book3prop17(Circle2(p(0, 0), 60.0), p(170, 40)) }.size) // two tangents
+        assertEquals(2, Elements.solutions { book4prop10(Segment2(p(0, -150), p(0, 0))) }.size)
+        assertEquals(1, Elements.solutions { book4prop16(Circle2(p(0, 0), 100.0)) }.size)
+    }
+
+    @Test fun chooseASolutionByWhereItLands() {
+        val all = Elements.solutions { prop46(Segment2(p(0, 0), p(120, 0))) }
+        assertTrue(all.nearest(p(60, 500)).location.y > 0)
+        assertTrue(all.farthest(p(60, 500)).location.y < 0)
+        val rays = Elements.solutions { prop11(Segment2(p(0, 0), p(200, 0)), p(80, 0)) }
+        assertTrue(rays[0].location != rays[1].location)
+    }
 }

@@ -166,6 +166,47 @@ lines(c.toFLines(width = 560.0, height = 560.0), w = 560.0, h = 560.0)
 markdown(c.markdown())
 ```
 
+## Every solution
+
+A construction makes choices as it goes. Two circles cross at two points, and I.1 takes one of
+them; take the other and the triangle lands on the opposite side of the line. A proposition that
+cites I.1 inherits that choice, along with every choice of its own. Called plainly, a proposition
+takes Euclid's choice, or the one its `side` argument asks for. `Elements.solutions { ... }` tries
+every combination instead. It drops the ones whose geometry breaks the proposition's claim (in
+I.31, one of the two copied angles gives a line that is not parallel), and keeps once each result
+that lands in a different place.
+
+I.2 has four solutions, the four cases Proclus described: each is a line from A as long as BC,
+pointing a different way.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/euclid_elements/prop2_solutions.png" wait="3" capture="box" open-outputs="true" w="1000" h="760" padding="14" timeout="90" name="euclid-elements-prop2-solutions" embed=true alt="Four of Byrne's figures for I.2 in a two-by-two grid, one for each solution. In every one the blue line BC and the point A are the same, but the triangle, the two circles and the yellow result AL differ, and AL points a different way from A in each."}
+import afield.geometry.euclid.*
+
+val bc = Segment2(point2(90, 40), point2(150, 100))
+val all = Elements.solutions { prop2(point2(0, 0), bc) }
+print("${all.size} ways to place BC at A")
+lines(
+    all.flatMapIndexed { i, c ->
+        c.toFLines(style = ByrneStyle.PLATE.copy(thickness = 1.8), width = 240.0, height = 240.0)
+            .map { line -> line.transform { v -> Vec3(v.x + 250f * (i % 2), v.y + 250f * (i / 2), v.z) } }
+    },
+    w = 490.0, h = 490.0,
+)
+```
+
+The solutions come back with the usual one first, so `solutions { ... }.first()` is the plain
+call. To choose by position, every `Construction` has a `location`, the middle of its result, and
+the list has `nearest(point)` and `farthest(point)`:
+
+```diffstatic {data-lang=kotlin}
+val square = Elements.solutions { prop46(ab) }.nearest(mouse)
+```
+
+A cited proposition counts as one choice among its own distinct solutions, so the search grows
+with the number of different answers, not with every crossing inside them. The deepest
+constructions on these pages, the pentagon and the fifteen-sided figure, take about a tenth of a
+second.
+
 ## How a construction is styled
 
 A proposition says what each element is for, not how to draw it. Every figure has one of three
