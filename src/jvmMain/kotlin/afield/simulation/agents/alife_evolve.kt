@@ -213,18 +213,17 @@ fun lifeRuleSignature(rule: LifeRule): String =
 
 /**
  * What one CA rule did to one soup: where its density settled and how much it was still changing.
- *
- * @property density fraction of live cells at the end
- * @property activity mean fraction of cells that changed state per step, over the scored window
- * @property entropyBits [IntGrid.stateEntropyBits] of the final grid
- * @property extinct `true` if the grid emptied
- * @property finalGrid the grid the run ended on, so a figure can show what was selected
  */
 class CaRunSummary(
+    /** Fraction of live cells at the end. */
     val density: Double,
+    /** Mean fraction of cells that changed state per step, over the scored window. */
     val activity: Double,
+    /** [IntGrid.stateEntropyBits] of the final grid. */
     val entropyBits: Double,
+    /** `true` if the grid emptied. */
     val extinct: Boolean,
+    /** The grid the run ended on, so a figure can show what was selected. */
     val finalGrid: IntGrid
 ) {
     override fun toString(): String =
@@ -590,23 +589,26 @@ fun balanceBrackets(s: String): String {
 
 /**
  * What one L-system grammar drew: the branching structure and the two numbers it is scored on.
- *
- * @property dimension mass–radius dimension of the drawn points, from [massRadiusDimension]
- * @property rSquared how straight the log–log fit was. Below ~0.95 the object has no scaling regime
- *   over this range and [dimension] is a slope through a curve, which is not a dimension.
- * @property totalLength [flineTotalLength] of the drawing
- * @property branches how many separate drawn runs the turtle produced
- * @property raster the drawing, rasterised, ready for a contact sheet
- * @property drawable `false` when the grammar drew too little to measure; every number above is then
- *   meaningless and the objective says so instead of fitting three points.
  */
 class LSystemDrawing(
+    /** Mass–radius dimension of the drawn points, from [massRadiusDimension]. */
     val dimension: Double,
+    /**
+     * How straight the log–log fit was. Below ~0.95 the object has no scaling regime over this range and
+     * [dimension] is a slope through a curve, which is not a dimension.
+     */
     val rSquared: Double,
+    /** [flineTotalLength] of the drawing. */
     val totalLength: Double,
+    /** How many separate drawn runs the turtle produced. */
     val branches: Int,
     val segments: Int,
+    /** The drawing, rasterised, ready for a contact sheet. */
     val raster: Img,
+    /**
+     * `false` when the grammar drew too little to measure; every number above is then meaningless and the
+     * objective says so instead of fitting three points.
+     */
     val drawable: Boolean
 ) {
     override fun toString(): String = if (!drawable) "LSystemDrawing(not drawable)" else

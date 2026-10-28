@@ -158,18 +158,19 @@ import kotlin.math.sqrt
  * Life in floats invites `0.999f == 1` questions that have no business existing, and a `2f` state in a
  * cyclic CA with 12 states would lose precision silently at the top of the range. Convert at the
  * boundary with [toImg] / [Img.toIntGrid].
- *
- * @property width cells across, >= 1
- * @property height cells down, >= 1
- * @property cells state per cell, `cells[y * width + x]`
- * @property wrap `true` for a torus (out-of-range reads wrap), `false` for a bounded board whose
- *   outside counts as state 0. The distinction is not cosmetic: a glider crossing a torus seam
- *   reappears, and the R-pentomino's known 1103-generation history needs room, not a wrap.
  */
 class IntGrid(
+    /** Cells across, >= 1. */
     val width: Int,
+    /** Cells down, >= 1. */
     val height: Int,
+    /** State per cell, `cells[y * width + x]`. */
     val cells: IntArray,
+    /**
+     * `true` for a torus (out-of-range reads wrap), `false` for a bounded board whose outside counts as state
+     * 0. A glider crossing a torus seam reappears; the R-pentomino's 1103-generation history needs room rather
+     * than a wrap.
+     */
     val wrap: Boolean = true
 ) : afield.ui.visualization.ToHTML {
     init {
@@ -564,17 +565,18 @@ fun quantileOf(values: DoubleArray, p: Double): Double {
  * Shape statistics of one connected blob: pixel [area], the **crack perimeter** (the number of unit
  * cell edges separating the blob from anything else, including the image border), and the
  * dimensionless [isoperimetricRatio].
- *
- * @property label the blob's label in the [ComponentLabelling] it came from
- * @property area foreground pixel count
- * @property crackPerimeter unit edges on the blob's boundary
- * @property isoperimetricRatio `P² / (4πA)` with the crack perimeter corrected by `π/4`; see
- *   [blobShapes] for why that factor is there and what the resulting scale means
  */
 data class BlobShape(
+    /** The blob's label in the [ComponentLabelling] it came from. */
     val label: Int,
+    /** Foreground pixel count. */
     val area: Int,
+    /** Unit edges on the blob's boundary. */
     val crackPerimeter: Int,
+    /**
+     * `P² / (4πA)` with the crack perimeter corrected by `π/4`; see [blobShapes] for why that factor is there
+     * and what the resulting scale means.
+     */
     val isoperimetricRatio: Double
 )
 
@@ -744,17 +746,19 @@ fun Img.topShare(fraction: Double = 0.05): Double {
 
 /**
  * Result of a mass–radius fractal-dimension fit.
- *
- * @property dimension the fitted slope of `log N(r)` against `log r` — the mass dimension
- * @property points the `(log r, log N)` pairs that were fitted, so a caller can plot the fit and see
- *   whether it really is a line rather than trusting a single number
- * @property rSquared coefficient of determination of the fit; a genuine scaling regime is `> 0.99`,
- *   and a low value means "this object has no fractal dimension over this range", not "the dimension
- *   is uncertain"
  */
 data class MassRadiusFit(
+    /** The fitted slope of `log N(r)` against `log r` — the mass dimension. */
     val dimension: Double,
+    /**
+     * The `(log r, log N)` pairs that were fitted, so a caller can plot the fit and see whether it really is a
+     * line rather than trusting a single number.
+     */
     val points: List<Pair<Double, Double>>,
+    /**
+     * Coefficient of determination of the fit; a genuine scaling regime is `> 0.99`, and a low value means
+     * "this object has no fractal dimension over this range", not "the dimension is uncertain".
+     */
     val rSquared: Double
 )
 
