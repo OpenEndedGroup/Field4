@@ -207,21 +207,24 @@
         }
 
         .view-toggle button {
-            padding: 3px 8px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3px;
+            background: transparent;
+            border: 0;
             border-radius: 3px;
-            color: var(--field-text);
+            color: #aaa;
             cursor: pointer;
-            font-size: 10px;
-            line-height: 1.1;
             height: 23px;
-            min-width: 64px;
+            width: 24px;
         }
 
-        .view-toggle button:hover {
-            background: rgba(255, 255, 255, 0.14);
+        .view-toggle button:hover, .view-toggle button[aria-pressed="true"] {
+            color: #eee;
+            background: rgba(255, 255, 255, 0.08);
         }
+        .view-toggle button:focus-visible { outline: 1px solid #777; outline-offset: 2px; }
 
         .property-tab {
             padding: 4px 8px;
@@ -365,18 +368,10 @@
             pointer-events: none;
         }
 
-        .panel-title {
-            align-self: center;
-            padding: 3px 10px 3px 6px;
-            color: var(--field-cyan);
-            font-size: 12px;
-            white-space: nowrap;
-        }
-
         .property-tabs {
             flex: 0 0 auto;
             flex-wrap: wrap;
-            padding-right: 70px;
+            padding-right: 30px;
         }
 
         /* A box's notes, as Markdown, above its code. */
@@ -512,7 +507,7 @@
     <div class="monaco-editor-container" id="editor-container">
         <div class="editor-resize-handle" id="editor-resize-handle" role="separator" aria-label="Resize editor" aria-orientation="vertical" aria-controls="editor-container" tabindex="0"></div>
         <div class="property-tabs" id="property-tabs"></div>
-        <div class="view-toggle"><button id="literate-toggle">reader</button></div>
+        <div class="view-toggle"><button id="literate-toggle" type="button" aria-label="Toggle reader view" aria-pressed="false" title="Show reader view"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7c-2-2-6-2-9-1v14c3-1 7-1 9 1 2-2 6-2 9-1V6c-3-1-7-1-9 1Z"/><path d="M12 7v14"/></svg></button></div>
         <div class="notes-view" id="notes-view"></div>
         <div id="editor"></div>
         <div class="literate-view" id="literate-view"></div>

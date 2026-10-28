@@ -978,8 +978,6 @@ function applyUrlState(params) {
     }
     if (params.get('reader') === '1') {
         literateMode = true;
-        const toggle = document.getElementById('literate-toggle');
-        if (toggle) toggle.textContent = 'editor';
     }
     const box = findBoxByIdOrName(params.get('select'));
     if (box) {
@@ -1246,11 +1244,6 @@ function showEditorForBox(box) {
     const tabsContainer = document.getElementById('property-tabs');
     tabsContainer.innerHTML = '';
 
-    const title = document.createElement('div');
-    title.className = 'panel-title';
-    title.textContent = props.name || box.id;
-    tabsContainer.appendChild(title);
-
     if (codeProperties.length > 0) {
         codeProperties.forEach(prop => {
             const tab = document.createElement('div');
@@ -1467,7 +1460,6 @@ function setupLiterateToggle() {
     if (!toggle) return;
     toggle.addEventListener('click', () => {
         literateMode = !literateMode;
-        toggle.textContent = literateMode ? 'editor' : 'reader';
         updateEditorVisibility();
         // Re-render current content to ensure view is fresh
         if (selectedBox && currentProperty) loadProperty(selectedBox, currentProperty);
@@ -1475,6 +1467,11 @@ function setupLiterateToggle() {
 }
 
 function updateEditorVisibility() {
+    const toggle = document.getElementById('literate-toggle');
+    if (toggle) {
+        toggle.setAttribute('aria-pressed', String(literateMode));
+        toggle.title = literateMode ? 'Show code' : 'Show reader view';
+    }
     const editorEl = document.getElementById('editor');
     if (!editorEl || !literateViewEl) return;
     if (!currentProperty || (selectedBox && contentProperties(selectedBox.properties || {}).length === 0)) {
