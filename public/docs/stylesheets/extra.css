@@ -1197,6 +1197,10 @@ button.md-search__icon[aria-label="Clear"] {
     display: none;
 }
 
+.field-reading-rail.is-obscured {
+    visibility: hidden;
+}
+
 .field-reading-rail__progress {
     position: absolute;
     inset: 0;
