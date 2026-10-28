@@ -648,7 +648,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**34912 public symbols across 1579 source files**, 19470 of them (55%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34912 public symbols across 1579 source files**, 19478 of them (55%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -679,7 +679,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Workspace](workspace.md) | 232 | 3165 | 1150 (36%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 110 | 2545 | 1018 (40%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
-| [Output](output.md) | 1 | 25 | 17 (68%) |  |
+| [Output](output.md) | 1 | 25 | 25 (100%) |  |
 
 ## Every file
 
@@ -1478,7 +1478,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>osc/<wbr>query/<wbr></small> [Mdns.kt](networking.md#mdns-kt) | Networking | 9 | 4 | A dependency-free multicast DNS and DNS-SD implementation, sized to advertise and find OSCQuery services on the local network. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>mesh/<wbr></small> [MeasurementHelpers.kt](graphics.md#measurementhelpers-kt) | Graphics | 4 | 4 | Small helpers for checking a mesh measurement against a known answer in a box. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr>pressure/<wbr></small> [Mechanics.kt](simulation.md#mechanics-kt) | Simulation | 13 | 3 | The membrane energy and its gradient: `Mechanics` evaluates film, tape, tether, gravity, ground contact and gas work for one set of node positions under a `LoadCase`. | [Pressure membranes](../pressure_membranes.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [MediaSlots.kt](output.md#mediaslots-kt) | Output | 25 | 17 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [MediaSlots.kt](output.md#mediaslots-kt) | Output | 25 | 25 | A row of input slots for pictures and text, in a box's output: what a program that compares a few things (CLIP embeddings, a style transfer, a classifier) reads its inputs from. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>mega/<wbr></small> [MegaTexture.kt](graphics.md#megatexture-kt) | Graphics | 82 | 39 | A virtual texture over thousands of source images, paged into a fixed GPU atlas on demand. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>mega/<wbr></small> [MegaTextureCatalog.kt](graphics.md#megatexturecatalog-kt) | Graphics | 24 | 14 | The stable image-to-index catalog behind a `MegaTexture`, and the on-disk pyramid cache keyed to it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>mega/<wbr></small> [MegaTextureDecoder.kt](graphics.md#megatexturedecoder-kt) | Graphics | 26 | 9 | Background decoding of source images into downsampled `MegaTexture` pages. |  |
