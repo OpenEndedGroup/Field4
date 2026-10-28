@@ -4057,7 +4057,7 @@ private fun generalizedFresnel(a: Double, b: Double, c: Double): Pair<Double, Do
     return Pair(re * h / 3.0, im * h / 3.0)
 }
 
-private fun wrapAngle(a: Double): Double {
+private fun wrapToPi(a: Double): Double {
     var x = a
     while (x > PI) x -= 2 * PI
     while (x <= -PI) x += 2 * PI
@@ -4130,8 +4130,8 @@ private fun eulerSpiralCore3D(
     val chordAngle = atan2(dy, dx)
     val theta0 = headingOf(startDir, chordAngle)
     val theta1 = headingOf(endDir, chordAngle)
-    val phi0 = wrapAngle(theta0 - chordAngle)
-    val phi1 = wrapAngle(phi0 + wrapAngle(theta1 - theta0) * headingScale) + turn
+    val phi0 = wrapToPi(theta0 - chordAngle)
+    val phi1 = wrapToPi(phi0 + wrapToPi(theta1 - theta0) * headingScale) + turn
 
     val fit = fitClothoidG1(dx, dy, phi0, phi1, max(iterations, 40))
         ?: return List(sampleCount) { i ->
