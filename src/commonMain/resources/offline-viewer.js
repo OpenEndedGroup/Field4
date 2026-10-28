@@ -506,6 +506,8 @@ if (typeof window !== 'undefined') window.addEventListener('DOMContentLoaded', a
         const data = parseEdn(ednText);
         currentDocumentData = data;
 
+        await window.FieldOfflineOutputs?.load(params);
+
         if (!data || !data.boxes) {
             showError('Invalid EDN format: missing boxes array');
             return;
@@ -525,6 +527,11 @@ if (typeof window !== 'undefined') window.addEventListener('DOMContentLoaded', a
 
         // Show document info
         showDocumentInfo(data, ednFileUrl, sidecarStatus);
+        const outputInfo = window.FieldOfflineOutputs?.info();
+        if (outputInfo) {
+            const info = document.createElement('span'); info.textContent = outputInfo;
+            document.querySelector('.offline-banner').append(info);
+        }
         setupDocumentPanel(data);
 
         // Initialize Monaco editor. A failure here (e.g. the Monaco bundle isn't
@@ -555,7 +562,8 @@ if (typeof window !== 'undefined') window.addEventListener('DOMContentLoaded', a
 
         // Field loads a sidecar from its loose file and keeps the inline copy as a fallback; read
         // the loose files now, and refresh the open box if one of them differs.
-        resolveSidecars(data, ednBaseUrl, fetchSidecarText, { includeInline: true }).then(status => {
+        // Publications contain an immutable, fully inlined export from the live server.
+        if (!params.get('outputs')) resolveSidecars(data, ednBaseUrl, fetchSidecarText, { includeInline: true }).then(status => {
             if (status.refreshed > 0) {
                 showDocumentInfo(data, ednFileUrl, { ...sidecarStatus, refreshed: status.refreshed });
                 if (selectedBox) showEditorForBox(selectedBox);
@@ -694,7 +702,8 @@ function renderBoxes(boxes) {
 
     visibleBoxes = boxes.filter(box => {
         const props = box.properties || {};
-        return props._tombstone !== true && box.id !== 'root' && hasDisplayableCode(props) && hasDisplayableName(props) &&
+        const hasOutput = window.FieldOfflineOutputs?.forBox(box.id).length;
+        return props._tombstone !== true && (hasOutput || (box.id !== 'root' && hasDisplayableCode(props) && hasDisplayableName(props))) &&
             (!activeLayer || boxLayers(props).includes(activeLayer));
     });
 
@@ -720,7 +729,7 @@ function renderBoxes(boxes) {
         // Box name
         const nameEl = document.createElement('div');
         nameEl.className = 'box-name';
-        nameEl.textContent = props.name || box.id;
+        nameEl.textContent = props.name || (box.id === 'root' ? 'Document outputs' : box.id);
         boxEl.appendChild(nameEl);
 
         if (typeof props.notes === 'string' && props.notes.trim()) {
@@ -739,6 +748,7 @@ function renderBoxes(boxes) {
         });
 
         canvas.appendChild(boxEl);
+        window.FieldOfflineOutputs?.mount(boxEl,box.id);
 
         // Update canvas size
         maxX = Math.max(maxX, x + w);
@@ -888,7 +898,7 @@ function contentBounds() {
     };
     visibleBoxes.forEach(box => {
         const [x, y, w, h] = (box.properties || {}).frame || [0, 0, 300, 200];
-        add({ x, y, w, h });
+        add(window.FieldOfflineOutputs?.bounds(box) || { x, y, w, h });
     });
     if (showDrawing && drawingInfo) add(drawingInfo.bounds);
     return Number.isFinite(minX) ? { x: minX, y: minY, w: maxX - minX, h: maxY - minY } : null;
@@ -1355,7 +1365,12 @@ async function initializeMonaco() {
             settled = true;
             reject(new Error('Monaco editor timed out while loading'));
         }, 15000);
-        require.config({ paths: { vs: './min/vs' } });
+        const vs = new URL('./min/vs', window.location.href).href;
+        window.MonacoEnvironment = {
+            ...(window.MonacoEnvironment || {}),
+            getWorkerUrl: () => `${vs}/base/worker/workerMain.js`
+        };
+        require.config({ paths: { vs } });
         require(['vs/editor/editor.main'], () => {
             if (settled) return;
             settled = true;

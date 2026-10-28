@@ -1201,6 +1201,14 @@ data class CopyBoxesResult(val edn: String, val filename: String = "")
 @Serializable
 data class ExportDocumentResult(val edn: String, val filename: String = "")
 
+/** A live publication's source document, retained output channels and bundled viewer files. */
+@Serializable
+data class ExportWebDocumentResult(
+    val document: ExportDocumentResult,
+    val outputs: List<Set_output>,
+    val assets: List<String>
+)
+
 @Serializable
 data class PasteBoxes(val edn: String)
 

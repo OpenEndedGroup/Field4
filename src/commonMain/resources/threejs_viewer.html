@@ -531,6 +531,7 @@ const viewerTools = createViewerTools({
 });
 let captureState = {ready:false, error:null, revision:null};
 window.FieldViewer = Object.freeze({renderStats: () => renderScheduler.stats(), exportGLB, tools:viewerTools,
+    snapshotImage: () => { render(); return renderer.domElement.toDataURL('image/png'); },
     turntable: () => turntable.status(), cameraLink: () => cameraLink.status(), shot: () => shot.status(),
     film: Object.freeze({begin: filmBegin, at: filmAt, end: filmEnd, status: filmStatus}),
     captureStatus: () => {
