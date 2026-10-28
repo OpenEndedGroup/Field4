@@ -59,6 +59,11 @@ panel per eye:
 Each eye looks tall and narrow because the two eye views share the window's width, so each is
 horizontally squished by half; the headset (or the crop above) stretches it back out.
 
+When using OpenXR, let `Renderer.run()` drive the frame loop. Field samples the current
+predicted head and controller poses before rendering the stereo image, then submits that
+image with the same poses and display time. Keep custom stereo rendering inside this loop
+so the image and the headset's reprojection agree about where your head was.
+
 ## Aiming and clicking
 
 A controller ray drives the panel. Each frame Field:

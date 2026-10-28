@@ -1248,97 +1248,100 @@ class Renderer(
             }
         }
 
-        windowContexts.forEachIndexed { ctxIndex, ctx ->
-            val w = ctx.window
-            if (w.width <= 0 || w.height <= 0) return@forEachIndexed
+        // OpenXR must locate the current predicted views BEFORE stereo preTargets render.
+        // The mirror and compute work keep their existing threads; only the frame boundary moves.
+        val renderScene = {
+            windowContexts.forEachIndexed { ctxIndex, ctx ->
+                val w = ctx.window
+                if (w.width <= 0 || w.height <= 0) return@forEachIndexed
 
-            var imageIndex = 0
-            val preAcquiredImage = if (ctxIndex == 0) peekPreAcquiredPrimaryImageForFrame(frameId) else null
+                var imageIndex = 0
+                val preAcquiredImage = if (ctxIndex == 0) peekPreAcquiredPrimaryImageForFrame(frameId) else null
 
-            try {
-                imageIndex = preAcquiredImage ?: acquireFrameImage(ctxIndex)
+                try {
+                    imageIndex = preAcquiredImage ?: acquireFrameImage(ctxIndex)
 
-                ctx.currentImage = imageIndex
-                if (ctxIndex == 0) {
-                    currentImage = imageIndex
-                    if (preAcquiredImage == null) {
-                        runGeometryPhase(
-                            GeometryFrameToken(
-                                frameId = frameId,
-                                imageIndex = imageIndex,
-                                windowIndex = ctxIndex
+                    ctx.currentImage = imageIndex
+                    if (ctxIndex == 0) {
+                        currentImage = imageIndex
+                        if (preAcquiredImage == null) {
+                            runGeometryPhase(
+                                GeometryFrameToken(
+                                    frameId = frameId,
+                                    imageIndex = imageIndex,
+                                    windowIndex = ctxIndex
+                                )
                             )
-                        )
-                    }
-                }
-                ctx.profilerState?.let { ps ->
-                    synchronized(ps.lock) {
-                        ps.profiler.beginFrame(imageIndex)
-                        ps.perImageModuleMarks.getOrNull(imageIndex)?.clear()
-                    }
-                }
-
-                withWorkerParallelism {
-                    runBlocking {
-                        val runComputeForWindow = !Options.computeOncePerFrame || !computeSubmittedThisFrame
-                        val computeRecording = if (runComputeForWindow) {
-                            asyncWorker {
-                                recordComputePass(ctx, ctxIndex, imageIndex, frameId)
-                            }
-                        } else null
-                        val graphicsRecording = asyncWorker {
-                            recordGraphicsPass(ctx, ctxIndex, imageIndex, frameId)
                         }
+                    }
+                    ctx.profilerState?.let { ps ->
+                        synchronized(ps.lock) {
+                            ps.profiler.beginFrame(imageIndex)
+                            ps.perImageModuleMarks.getOrNull(imageIndex)?.clear()
+                        }
+                    }
 
-                        computeRecording?.await()
-                        if (runComputeForWindow) {
-                            CPUSpan.time("submit_cs[$ctxIndex]") {
-                                submitCompute(
+                    withWorkerParallelism {
+                        runBlocking {
+                            val runComputeForWindow = !Options.computeOncePerFrame || !computeSubmittedThisFrame
+                            val computeRecording = if (runComputeForWindow) {
+                                asyncWorker {
+                                    recordComputePass(ctx, ctxIndex, imageIndex, frameId)
+                                }
+                            } else null
+                            val graphicsRecording = asyncWorker {
+                                recordGraphicsPass(ctx, ctxIndex, imageIndex, frameId)
+                            }
+
+                            computeRecording?.await()
+                            if (runComputeForWindow) {
+                                CPUSpan.time("submit_cs[$ctxIndex]") {
+                                    submitCompute(
+                                        ctx,
+                                        ctx.computeCommandBuffers[imageIndex],
+                                        ctx.computeFences[imageIndex],
+                                        ctx.computeFinishedSemaphores[imageIndex],
+                                        graphQueue
+                                    )
+                                }
+                                drainComputeSubmissionCallbacks(ctxIndex, imageIndex, ctx.computeFences[imageIndex])
+                                computeSubmittedThisFrame = true
+                            }
+
+                            val recordedWindowCaptures = graphicsRecording.await()
+                            CPUSpan.time("submit_gfx[$ctxIndex]") {
+                                submit(
                                     ctx,
-                                    ctx.computeCommandBuffers[imageIndex],
-                                    ctx.computeFences[imageIndex],
-                                    ctx.computeFinishedSemaphores[imageIndex],
-                                    graphQueue
+                                    ctx.commandBuffers[imageIndex],
+                                    ctx.fences[imageIndex],
+                                    graphQueue,
+                                    ctx.computeFinishedSemaphores[imageIndex].takeIf { runComputeForWindow }
                                 )
                             }
-                            drainComputeSubmissionCallbacks(ctxIndex, imageIndex, ctx.computeFences[imageIndex])
-                            computeSubmittedThisFrame = true
-                        }
-
-                        val recordedWindowCaptures = graphicsRecording.await()
-                        CPUSpan.time("submit_gfx[$ctxIndex]") {
-                            submit(
-                                ctx,
-                                ctx.commandBuffers[imageIndex],
-                                ctx.fences[imageIndex],
-                                graphQueue,
-                                ctx.computeFinishedSemaphores[imageIndex].takeIf { runComputeForWindow }
-                            )
-                        }
-                        if (recordedWindowCaptures.isNotEmpty()) {
-                            ctx.fences[imageIndex].fenceWait()
-                            recordedWindowCaptures.forEach { capture ->
-                                completeWindowCapture(capture)
+                            if (recordedWindowCaptures.isNotEmpty()) {
+                                ctx.fences[imageIndex].fenceWait()
+                                recordedWindowCaptures.forEach { capture ->
+                                    completeWindowCapture(capture)
+                                }
                             }
                         }
                     }
-                }
 
-                CPUSpan.time("present[$ctxIndex]") {
-                    runOnQueueThread {
-                        if (ctx.swapChain.presentImage(presentQueue, imageIndex, frameId, ctxIndex).resize) w.isResized = true
+                    CPUSpan.time("present[$ctxIndex]") {
+                        runOnQueueThread {
+                            if (ctx.swapChain.presentImage(presentQueue, imageIndex, frameId, ctxIndex).resize) w.isResized = true
+                        }
                     }
-                }
 
-                ctx.profilerState?.pending?.addLast(Pending(imageIndex))
-            } catch (e: ImageNotAvailable) {
-                unavailableWindows.putIfAbsent(ctxIndex,System.nanoTime())
-                if (!e.retryable) lprintln("warning,graphics", e.message ?: "ImageNotAvailable")
+                    ctx.profilerState?.pending?.addLast(Pending(imageIndex))
+                } catch (e: ImageNotAvailable) {
+                    unavailableWindows.putIfAbsent(ctxIndex,System.nanoTime())
+                    if (!e.retryable) lprintln("warning,graphics", e.message ?: "ImageNotAvailable")
+                }
             }
         }
-
-        // Render to OpenXR HMD once per frame.
-        openXRHmdTarget?.renderFrame()
+        val xr = openXRHmdTarget
+        if (xr == null) renderScene() else xr.renderFrame(renderScene)
         clearPreAcquiredPrimaryImageForFrame(frameId)
 
         // Deferred cleanup queue (use max frames-in-flight across all contexts)

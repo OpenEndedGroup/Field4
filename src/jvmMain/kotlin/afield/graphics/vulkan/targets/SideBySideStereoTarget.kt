@@ -100,8 +100,8 @@ class SideBySideStereoTarget(
     var poseSource: StereoPoseSource? = null
 
     /**
-     * Identity of the pose the most recent frame was rendered from, or -1 when [poseSource] is unset
-     * or has never latched.
+     * Identity of the pose the most recent frame was rendered from, or -1 before either the
+     * remote source or OpenXR has located a pose.
      *
      * This is the frame/pose association: whatever ships the rendered image onward can say which pose
      * it was drawn for, so a later stage can reproject it instead of assuming it is current.
@@ -109,7 +109,7 @@ class SideBySideStereoTarget(
     var renderedPoseFrameId: Long = -1L
         private set
 
-    /** The head's predicted display time for [renderedPoseFrameId], in *the head's* clock. */
+    /** Predicted display time for [renderedPoseFrameId], in seconds in the selected source's clock. */
     var renderedPoseDisplayTime: Double = 0.0
         private set
 
@@ -312,6 +312,10 @@ class SideBySideStereoTarget(
             source.latch()
             renderedPoseFrameId = source.latchedFrameId
             renderedPoseDisplayTime = source.latchedDisplayTime
+        }
+        if (poseSource == null) {
+            renderedPoseFrameId = openXR?.locatedViewFrameId ?: -1L
+            renderedPoseDisplayTime = (openXR?.locatedViewDisplayTime ?: 0L) / 1_000_000_000.0
         }
 
         // Render each eye into its own RTT.
