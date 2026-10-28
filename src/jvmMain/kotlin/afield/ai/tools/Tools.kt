@@ -247,6 +247,7 @@ data class EditFileResponse(val success: Boolean, val message: String? = null)
 data class CompileKotlinRequest(
     @JsonPropertyDescription("Which box: its name or uid, or its file ref afield://<document>/<box uid>/code exactly as ListContents reports it. Empty = the box this chat belongs to, where there is one.")
     val file: String = "",
+    @param:JsonPropertyDescription("Optional replacement source to compile instead of the box's code. Omit it, or leave it empty, to compile the box's saved code.")
     val source: String? = null,
     val runSetupBlocks: Boolean = true
 )
