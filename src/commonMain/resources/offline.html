@@ -123,6 +123,7 @@
             right: 5px;
             height: calc(100vh - 10px);
             width: min(calc(70vw - 10px), 900px);
+            max-width: calc(100vw - 10px);
             border: 5px solid black;
             border-radius: 5px;
             padding: 5px;
@@ -141,12 +142,41 @@
             transform: translateX(0);
         }
 
-        .monaco-editor {
+        #editor {
             width: 100%;
             flex: 1 1 auto;
             min-height: 0;
             font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif !important;
         }
+
+        #editor .monaco-editor { outline: none !important; }
+
+        .editor-resize-handle {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: -5px;
+            width: 10px;
+            z-index: 22;
+            cursor: ew-resize;
+            touch-action: none;
+            outline: none;
+        }
+
+        .editor-resize-handle::after {
+            content: '';
+            position: absolute;
+            left: 4px;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: #777;
+            opacity: 0;
+        }
+
+        .editor-resize-handle:hover::after,
+        .editor-resize-handle:focus-visible::after { opacity: 1; }
+        html.editor-resizing, html.editor-resizing * { cursor: ew-resize !important; user-select: none !important; }
 
         .literate-view {
             display: none;
@@ -480,10 +510,11 @@
     </div>
 
     <div class="monaco-editor-container" id="editor-container">
+        <div class="editor-resize-handle" id="editor-resize-handle" role="separator" aria-label="Resize editor" aria-orientation="vertical" aria-controls="editor-container" tabindex="0"></div>
         <div class="property-tabs" id="property-tabs"></div>
         <div class="view-toggle"><button id="literate-toggle">reader</button></div>
         <div class="notes-view" id="notes-view"></div>
-        <div class="monaco-editor" id="editor"></div>
+        <div id="editor"></div>
         <div class="literate-view" id="literate-view"></div>
     </div>
 
