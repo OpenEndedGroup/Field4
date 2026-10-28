@@ -1091,6 +1091,8 @@ letters, and `labelSize` and `labelDistance` (both in multiples of `thickness`) 
 
 ## See also
 
+- [Byrne's Euclid](https://www.c82.net/euclid/), Nicholas Rougeux's online edition of Byrne's
+  1847 *Elements*, with every plate redrawn: the book these figures are drawn after.
 - The shapes and their intersections:
   [Euclid.kt](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/euclid/Euclid.kt).
 - The propositions:
