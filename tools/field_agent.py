@@ -1,5 +1,6 @@
 """Which coding agent Field's tools hand work to: `claude` (Claude Code), `codex` (Codex CLI), or `field`
-(Field's own AI4, through `tools/field_repo_agent.py`: repo tools confined to the working directory, no shell).
+(Field's own AI4, through `tools/field_repo_agent.py`: repo tools confined to the working directory, no shell;
+with edits, a bounded allow-list of named commands to reproduce and confirm a fix).
 
 The landing queue's fixer and its `huh?`/`bouncy?`, the docs-notes revision pass, and the
 docs-pass page's terminals all ask here. The choice is, first match:
@@ -58,10 +59,12 @@ def headless_argv(agent: str | None = None, *, edits: bool = False) -> list[str]
     agent = agent or configured_agent()
     if agent == "field":
         # AI4 in a running (or backdoor-started) Field; it reads the prompt on stdin like the others.
-        # Confined to the cwd: it reads everything there and, with [edits], writes everything but .git.
-        # A caller that knows which files a job owns passes narrower globs to field_repo_agent itself.
+        # Confined to the cwd: it reads everything there and, with [edits], writes everything but .git
+        # and may run the fixer's named commands (scoped Gradle tasks, tools/test_*.py, tools/check_*.py,
+        # read-only git; RepoCommandTools.kt). A caller that knows which files a job owns passes
+        # narrower globs to field_repo_agent itself.
         import sys
-        return [sys.executable, str(REPO_AGENT), "--root", "."] + (["--write", "**"] if edits else [])
+        return [sys.executable, str(REPO_AGENT), "--root", "."] + (["--write", "**", "--run", "fixer"] if edits else [])
     exe = find_executable(agent)
     if exe is None:
         return None

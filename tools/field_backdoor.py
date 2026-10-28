@@ -3845,6 +3845,9 @@ def build_command_parser() -> argparse.ArgumentParser:
     agent_task_parser.add_argument("--repo-root", default="", help="A checkout the repo tools work in (blank: no repo tools)")
     agent_task_parser.add_argument("--repo-read", action="append", default=[], help="Readable glob under --repo-root; repeatable (default **)")
     agent_task_parser.add_argument("--repo-write", action="append", default=[], help="Writable glob under --repo-root; repeatable (default none)")
+    agent_task_parser.add_argument("--repo-command", action="append", default=[],
+                                   help="A named command (RepoCommandTemplates: gradle, python-test, check, git-status, git-diff, git-log, git-show, land-precheck) the job may run in --repo-root; repeatable (default none)")
+    agent_task_parser.add_argument("--repo-command-max-sec", type=int, default=900, help="Wall-clock cap for any one --repo-command run")
     agent_task_parser.add_argument("--check", dest="checks", action="append", default=[])
     agent_task_parser.add_argument("--mode", choices=("live", "scripted"), default="live")
     agent_task_parser.add_argument("--script", help="Path (or - for stdin) to a JSON script for --mode scripted")
@@ -5091,6 +5094,8 @@ async def dispatch_command(
             payload["repoRoot"] = str(Path(args.repo_root).expanduser().resolve())
             payload["repoRead"] = list(args.repo_read)
             payload["repoWrite"] = list(args.repo_write)
+            payload["repoCommands"] = list(args.repo_command)
+            payload["repoCommandMaxSec"] = args.repo_command_max_sec
         if args.script:
             payload["script"] = client.read_text_source(args.script, command_line=command_line)
         if args.setup:
