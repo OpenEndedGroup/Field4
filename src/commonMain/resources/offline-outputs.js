@@ -32,7 +32,7 @@
             details.append(summary);
             if (output.path && /^outputs\/\d+\.html$/.test(output.path)) {
                 const frame = document.createElement('iframe'); frame.title = `Captured ${output.channel}`;
-                frame.setAttribute('sandbox','allow-scripts'); frame.src = new URL(output.path,base).href;
+                frame.setAttribute('sandbox','allow-scripts allow-downloads'); frame.src = new URL(output.path,base).href;
                 const width = Math.max(160,Math.min(4096,Number(output.width) || 640));
                 const height = Math.max(40,Math.min(8192,Number(output.height) || 420));
                 details.style.width = `${width}px`; frame.style.height = `${height}px`;

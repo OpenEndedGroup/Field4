@@ -167,10 +167,15 @@ The published document works without Field or an internet connection once served
 | HTML and `.h` values | Rendered contents, styles and images |
 | Plotly, including charts inside local iframes | Frozen trace data with browser zoom and hover |
 | `.h2`, tree and column inspectors | Current view and materialized rows |
-| Three.js | A still image of the rendered view |
+| Three.js | Frozen geometry with orbit, zoom, parts visibility, X-ray and local GLB download |
 
 Plots that depend on external image or map data are captured as still images and listed with a
 capture warning.
+
+Published Three.js views use the same renderer as Field. Drag to rotate, scroll to zoom, expand
+**Parts** to hide or restore geometry, or enable **X-ray** and adjust its opacity. Camera linking,
+review notes and editing controls are hidden because they need Field. A view with custom viewer
+tools or an animated shot falls back to a still image with its controls removed.
 
 Controls that call back into Field are disabled. Inspector rows that have not been loaded are
 outside the snapshot. A channel that cannot be captured is listed with its reason in the

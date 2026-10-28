@@ -21,7 +21,7 @@ operations:
   - create:
       box: published_value
       name: Frozen value
-      frame: {x: 500, y: 40, w: 360, h: 60}
+      frame: {x: 600, y: 40, w: 360, h: 60}
       properties:
         notes: "# Values\nThe browser renders the value before publication."
         code: |
@@ -31,7 +31,7 @@ operations:
   - create:
       box: published_plot
       name: Plotly chart
-      frame: {x: 960, y: 40, w: 420, h: 60}
+      frame: {x: 1180, y: 40, w: 420, h: 60}
       properties:
         notes: "# Plotly\nHover and zoom work with the frozen trace data."
         code: |
@@ -57,7 +57,7 @@ operations:
       name: Three.js helix
       frame: {x: 600, y: 630, w: 480, h: 60}
       properties:
-        notes: "# Three.js\nA real rendered frame of a frozen helix."
+        notes: "# Three.js\nOrbit and inspect frozen geometry without Field."
         code: |
           val helix = fline {
               color = vec(0.9, 0.9, 0.9, 1.0)
@@ -70,6 +70,11 @@ operations:
           }
           threeLines(listOf(helix), channel = "model", width = 480, height = 320)
           displayOpen("model")
+          three(channel = "parts", name = "publication-parts", width = 480, height = 360) {
+              mesh(boxMesh(2, 2, 2), label = "Outer shell", id = "outer", wireframe = false, edges = true)
+              mesh(boxMesh(0.8, 0.8, 0.8), label = "Inner block", id = "inner", wireframe = false, edges = true)
+          }
+          displayOpen("parts")
   - execute: {box: published_lines, property: code}
   - execute: {box: published_value, property: code}
   - execute: {box: published_plot, property: code}

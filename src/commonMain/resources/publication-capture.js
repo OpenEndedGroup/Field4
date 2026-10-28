@@ -1,5 +1,6 @@
 /** Capture the rendered output boundary. Live transports and original scripts never enter the export. */
 import { zipFiles } from './publication-zip.js';
+import { prepareThreePublication, threePublicationDocument } from './publication-three.js';
 
 const literal = value => JSON.stringify(value, (_, v) => ArrayBuffer.isView(v) ? Array.from(v) : v).replace(/</g, '\\u003c');
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -56,8 +57,25 @@ async function freezeNode(node, ctx, depth = 0) {
             const child = node.contentDocument;
             if (!child?.body || !child.defaultView || child.readyState === 'loading') throw new Error('frame has not loaded or is from another origin');
             const frame = doc.createElement('iframe');
-            frame.setAttribute('sandbox', 'allow-scripts'); frame.setAttribute('title', node.title || 'Captured output');
+            frame.setAttribute('sandbox', 'allow-scripts allow-downloads'); frame.setAttribute('title', node.title || 'Captured output');
             frame.style.cssText = `border:0;width:${node.clientWidth || 640}px;height:${node.clientHeight || 420}px;display:block;background:#000`;
+            const viewer = child.defaultView.FieldViewer;
+            if (viewer) {
+                try {
+                    if (!viewer.snapshotForPublication || !ctx.three) throw new Error('Rebuild Field to export interactive Three.js views');
+                    const snapshot = viewer.snapshotForPublication();
+                    frame.srcdoc = threePublicationDocument(snapshot,ctx.three,ctx.fontCss);
+                    ctx.kinds.add('three');
+                } catch (error) {
+                    // A still fallback contains only the real canvas image, never inert viewer controls.
+                    const image = doc.createElement('img'); image.src = viewer.snapshotImage();
+                    image.alt = 'Three.js view at publication time'; image.style.cssText='display:block;width:100%;height:100%;object-fit:contain';
+                    image.style.background = child.defaultView.getComputedStyle(child.querySelector('#canvas-wrap') || child.body).backgroundColor;
+                    frame.srcdoc = '<!doctype html><body style="margin:0;background:#000">' + image.outerHTML;
+                    ctx.kinds.add('three-image'); failure(ctx,`Three.js still image: ${error.message}`);
+                }
+                return frame;
+            }
             frame.srcdoc = await freezeDocument(child.body, ctx, depth + 1);
             if (/\/(h2-explorer|tree|browse)(\?|$)/.test(node.getAttribute('src') || '')) {
                 failure(ctx, 'Lazy inspector: only the materialized rows and current view are captured');
@@ -150,7 +168,7 @@ async function freezeDocument(root, parent, depth = 0) {
     const plotScripts = ctx.plots.length ? '<script src="../plotly-2.24.1.min.js"></script>' : '';
     const initialize = `Promise.resolve().then(()=>Promise.all(${literal(ctx.plots)}.map(p=>Plotly.newPlot(p.id,p.data,p.layout,{responsive:true,displaylogo:false})))).then(()=>{document.querySelectorAll('[data-frozen-scroll]').forEach(n=>{const [x,y]=n.dataset.frozenScroll.split(',').map(Number);n.scrollTo(x,y)});document.documentElement.dataset.captureReady='true'}).catch(e=>{document.documentElement.dataset.captureError=e.message;document.body.append(document.createTextNode('Plot could not be loaded: '+e.message))})`;
     return '<!doctype html><html><head><meta charset="utf-8"><meta name="color-scheme" content="dark">' +
-        '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data:; font-src data:; style-src \'unsafe-inline\'; script-src \'self\' \'unsafe-inline\'; connect-src \'none\'; base-uri \'none\'; form-action \'none\'">' +
+        '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data: blob:; font-src data:; style-src \'unsafe-inline\'; script-src \'self\' \'unsafe-inline\' blob:; connect-src \'none\'; base-uri \'none\'; form-action \'none\'">' +
         `<style>${parent.fontCss}html,body{margin:0;background:#000;color:#ddd;font-family:'Iosevka Web',monospace}</style></head><body>` +
         frozen.outerHTML + plotScripts + `<script>${initialize}</script></body></html>`;
 }
@@ -179,7 +197,7 @@ async function waitForContent(root, deadline) {
 }
 
 /** Each channel gets an isolated HTML file and explicit fidelity/warning information. */
-export async function captureOutputs(sources, {fontCss = '', progress = () => {}} = {}) {
+export async function captureOutputs(sources, {fontCss = '', three = null, progress = () => {}} = {}) {
     // Some panels are installed directly by frontend tools or outlive the server replay budget.
     sources = [...sources];
     for (const box of document.querySelectorAll('.box')) {
@@ -207,7 +225,7 @@ export async function captureOutputs(sources, {fontCss = '', progress = () => {}
             await waitForContent(root, Date.now() + 12000);
             entry.width = Math.max(160, Math.min(4096, root.offsetWidth || 640));
             entry.height = Math.max(40, Math.min(8192, root.offsetHeight || 420));
-            const ctx = {resources, warnings:new Set(), kinds:new Set(), nodes:0, deadline:Date.now() + 30000, fontCss};
+            const ctx = {resources, warnings:new Set(), kinds:new Set(), nodes:0, deadline:Date.now() + 30000, fontCss, three};
             const html = await freezeDocument(root, ctx);
             entry.path = `outputs/${i}.html`; entry.kinds = [...ctx.kinds]; entry.warnings = [...ctx.warnings];
             if (root.offsetWidth > 4096 || root.offsetHeight > 8192) entry.warnings.push('Output viewport limited to 4096 × 8192 pixels');
@@ -237,14 +255,19 @@ export async function buildPublication(source, {progress = () => {}} = {}) {
     files.set('iosevka.css', css);
     const font = files.get('woff2/iosevka-semicondensedlight.woff2');
     const fontCss = font ? `@font-face{font-family:'Iosevka Web';font-weight:300;src:url('${dataUrl(font,'font/woff2')}') format('woff2')}` : '';
-    const captured = await captureOutputs(source.outputs, {fontCss, progress});
+    const three = files.has('threejs_viewer.html') ? prepareThreePublication(files) : null;
+    if (three) {
+        files.set('three-publication-runtime.js',three.runtime);
+        for (const path of three.sourcePaths) files.delete(path);
+    }
+    const captured = await captureOutputs(source.outputs, {fontCss, three, progress});
     for (const [path, html] of captured.files) files.set(path, html);
     const manifest = {version:1, capturedAt:new Date().toISOString(), documentName:source.document.filename,
         outputs:captured.outputs};
     files.set('document/metadata.edn', source.document.edn);
     files.set('document/outputs.json', JSON.stringify(manifest,null,2));
     files.set('index.html', '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=offline.html?file=document/metadata.edn&amp;outputs=document/outputs.json"><a href="offline.html?file=document/metadata.edn&amp;outputs=document/outputs.json">Open published Field document</a>');
-    files.set('README.md', `# ${source.document.filename}\n\nUnzip and serve this directory with any static web server. Open index.html.\n\nCode, notes and captured outputs are included. Field is not required.\nCaptured outputs use frozen values; controls that need Field are disabled. Three.js is a still image.\nLazy inspectors contain the rows materialized in the captured browser.\nSee document/outputs.json for capture warnings.\n`);
+    files.set('README.md', `# ${source.document.filename}\n\nUnzip and serve this directory with any static web server. Open index.html.\n\nCode, notes and captured outputs are included. Field is not required.\nThree.js views retain orbit, zoom, parts, X-ray and local GLB download over frozen geometry. Field-only controls are hidden.\nUnsupported custom viewer tools and animated shots use an image fallback with no controls.\nLazy inspectors contain the rows materialized in the captured browser.\nSee document/outputs.json for capture warnings.\n`);
     const warnings = manifest.outputs.flatMap(o => o.warnings.map(w => `${o.channel}: ${w}`));
     progress('Packing the publication');
     return {blob:await zipFiles(files), files, manifest, warnings};

@@ -38,6 +38,33 @@ class FakeBrowser:
 
 
 class FieldPublicationTest(unittest.TestCase):
+    def test_canonical_three_dependencies_bundle_without_a_server(self):
+        node, why = runnable_node()
+        if node is None:
+            self.skipTest(why)
+        module = (ROOT / "src/commonMain/resources/publication-three.js").read_bytes()
+        source_url = "data:text/javascript;base64," + base64.b64encode(module).decode()
+        script = """
+            import fs from 'node:fs'; import path from 'node:path'; import vm from 'node:vm';
+            const {prepareThreePublication,rewriteViewerImports}=await import(MODULE);
+            const root='src/commonMain/resources',files=new Map();
+            for(const name of ['threejs_viewer.html','threejs_tools.js','threejs_camera_link.js','threejs_shot.js','threejs_export.js','geometry_review_inbox.js','geometry_review_controls.js']) files.set(name,fs.readFileSync(path.join(root,name)));
+            function add(dir){for(const item of fs.readdirSync(path.join(root,dir),{withFileTypes:true})){const name=dir+'/'+item.name;if(item.isDirectory())add(name);else files.set(name,fs.readFileSync(path.join(root,name)));}}
+            add('vendor/three');
+            const prepared=prepareThreePublication(files);
+            if(!prepared.runtime.includes('createObjectURL')||!prepared.template.includes('id="part-inspector"'))throw new Error('Viewer not bundled');
+            if(/<script\\b/.test(prepared.template)||prepared.template.includes('@import'))throw new Error('Original scripts or server fonts survived');
+            const names=new Set(prepared.sourcePaths.filter(p=>p.endsWith('.js')));names.add('viewer.js');
+            const entries=[...files].filter(([p])=>p.endsWith('.js'));
+            entries.push(['viewer.js',Buffer.from(files.get('threejs_viewer.html').toString().match(/<script type="module">([\\s\\S]*?)<\\/script>/)[1])]);
+            for(const [p,bytes] of entries){const m=new vm.SourceTextModule(rewriteViewerImports(bytes.toString(),p,names));for(const spec of m.dependencySpecifiers)if(!spec.startsWith('field-publication/'))throw new Error('External module: '+spec);}
+            files.delete('vendor/three/0.184.0/addons/controls/OrbitControls.js');
+            let failed=false;try{prepareThreePublication(files)}catch(e){failed=e.message.includes('Unbundled viewer dependency')}
+            if(!failed)throw new Error('Missing viewer dependency was not rejected');
+        """.replace("MODULE", json.dumps(source_url))
+        proc = subprocess.run([node,"--experimental-vm-modules","--input-type=module","-e",script],cwd=ROOT,capture_output=True,text=True,timeout=30)
+        self.assertEqual(proc.returncode,0,proc.stdout + proc.stderr)
+
     def test_transfer_crosses_chunk_boundaries_and_cleans_browser(self):
         content = bytes(range(256)) * 1900
         client = FakeBrowser(content)
