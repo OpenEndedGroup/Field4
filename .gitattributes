@@ -65,5 +65,6 @@ dev_docs/**/*.md merge=field-counts
 public/docs/reference/** merge=field-generated
 dev_docs/kdoc_worklist.md merge=field-generated
 public/docs/assets/agent_transcripts/** merge=field-generated
+public/docs/assets/web_publications/** merge=field-generated
 tools/completion-corpus/boxes/** merge=field-generated
 dev_docs/GUARD_CORPORA.md merge=field-generated

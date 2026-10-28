@@ -99,7 +99,8 @@ async function freezeNode(node, ctx, depth = 0) {
         const id = `published-plot-${ctx.plots.length}`, placeholder = doc.createElement('div');
         placeholder.id = id; placeholder.style.cssText = `width:${node.clientWidth || 640}px;height:${node.clientHeight || 420}px;max-width:100%`;
         // Copy now: an asynchronous publication must not follow later Plotly updates.
-        ctx.plots.push(JSON.parse(literal({id, data:node.data, layout:node.layout || {}})));
+        const fontFamily = win.getComputedStyle(node.querySelector('text') || node).fontFamily;
+        ctx.plots.push(JSON.parse(literal({id, data:node.data, layout:node.layout || {}, fontFamily})));
         ctx.kinds.add('plotly'); return placeholder;
     }
     if (tag === 'canvas') {
@@ -189,11 +190,13 @@ async function freezeDocument(root, parent, depth = 0) {
     parent.nodes = ctx.nodes;
     frozen.style.margin = '0'; frozen.style.transform = 'none';
     const presentation = compactStyles(frozen);
+    // Plotly recreates its SVG, so computed styles copied from the old SVG would be lost.
+    const plotTypography = ctx.plots.map(p => `#${p.id} text{font-family:${p.fontFamily}!important}`).join('').replace(/</g,'\\3c ');
     const plotScripts = ctx.plots.length ? '<script src="../plotly-2.24.1.min.js"></script>' : '';
-    const initialize = `Promise.resolve().then(()=>Promise.all(${literal(ctx.plots)}.map(p=>Plotly.newPlot(p.id,p.data,p.layout,{responsive:true,displaylogo:false})))).then(()=>{document.querySelectorAll('[data-frozen-scroll]').forEach(n=>{const [x,y]=n.dataset.frozenScroll.split(',').map(Number);n.scrollTo(x,y)});document.documentElement.dataset.captureReady='true'}).catch(e=>{document.documentElement.dataset.captureError=e.message;document.body.append(document.createTextNode('Plot could not be loaded: '+e.message))})`;
+    const initialize = `document.fonts.load('300 12px "Iosevka Web"').then(()=>Promise.all(${literal(ctx.plots)}.map(p=>Plotly.newPlot(p.id,p.data,p.layout,{responsive:true,displaylogo:false})))).then(()=>{document.querySelectorAll('[data-frozen-scroll]').forEach(n=>{const [x,y]=n.dataset.frozenScroll.split(',').map(Number);n.scrollTo(x,y)});document.documentElement.dataset.captureReady='true'}).catch(e=>{document.documentElement.dataset.captureError=e.message;document.body.append(document.createTextNode('Plot could not be loaded: '+e.message))})`;
     return '<!doctype html><html><head><meta charset="utf-8"><meta name="color-scheme" content="dark">' +
         '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data: blob:; font-src data:; style-src \'unsafe-inline\'; script-src \'self\' \'unsafe-inline\' blob:; connect-src \'none\'; base-uri \'none\'; form-action \'none\'">' +
-        `<script src="../publication-font.js"></script><style>html,body{margin:0;background:#000;color:#ddd;font-family:'Iosevka Web',monospace}${presentation}</style></head><body>` +
+        `<script src="../publication-font.js"></script><style>html,body{margin:0;background:#000;color:#ddd;font-family:'Iosevka Web',monospace}${presentation}${plotTypography}</style></head><body>` +
         frozen.outerHTML + plotScripts + `<script>${initialize}</script></body></html>`;
 }
 

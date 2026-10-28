@@ -42,17 +42,146 @@ def catalog() -> dict:
     return json.loads(CATALOG.read_text()) if CATALOG.exists() else {"version": 1, "documents": {}}
 
 
-def registry(*, verify: bool = True) -> dict:
+def write_catalog(index: dict) -> None:
+    CATALOG.parent.mkdir(parents=True, exist_ok=True)
+    pending = CATALOG.with_suffix('.new.json')
+    pending.write_text(json.dumps(index, indent=2, sort_keys=True) + "\n")
+    pending.replace(CATALOG)
+
+
+def recipe_sources(recipe: dict) -> dict[str, str]:
+    return source_files(recipe['source'], recipe.get('transcript'))
+
+
+def snapshot_hashes(entry: dict) -> dict[str, str]:
+    manifest_path = DOCS / entry['outputs']
+    base = manifest_path.parent.parent
+    paths = [DOCS / entry['file'], manifest_path]
+    paths += [base / output['path'] for output in json.loads(manifest_path.read_text())['outputs']]
+    return {path.relative_to(DOCS).as_posix(): digest(path) for path in paths}
+
+
+def publication_problem(entry: dict) -> str | None:
+    """Check the exported file graph without executing code or needing a browser."""
+    if not all((DOCS / entry[key]).is_file() for key in ('file', 'outputs')):
+        return 'snapshot or output manifest missing'
+    for name, expected in entry.get('files', {}).items():
+        path = DOCS / name
+        if not path.is_file() or digest(path) != expected:
+            return f'captured file changed: {name}'
+    try:
+        manifest_path = DOCS / entry['outputs']
+        manifest = json.loads(manifest_path.read_text())
+        outputs = manifest['outputs']
+        if manifest.get('version') != 1 or not outputs or len(outputs) != entry['channels']:
+            return 'invalid output manifest'
+        base = manifest_path.parent.parent
+        for output in outputs:
+            path = output.get('path', '')
+            if not re.fullmatch(r'outputs/\d+\.html', path) or not (base / path).is_file():
+                return f'missing captured channel: {path}'
+            for runtime in re.findall(r'(?:src|href)="(\.\./\.\./runtime/[a-f0-9]{20}/[a-zA-Z0-9_.-]+)"', (base / path).read_text()):
+                runtime_path = (base / path).parent.joinpath(runtime)
+                if not runtime_path.is_file():
+                    return f'missing runtime: {runtime}'
+                if digest(runtime_path)[:20] != runtime_path.parent.name:
+                    return f'shared runtime changed: {runtime}'
+    except (ValueError, KeyError, TypeError) as error:
+        return f'invalid output manifest: {error}'
+    return None
+
+
+def pending_recipes(available: list[dict], *, mode: str) -> list[dict]:
+    index = catalog()
+    pending = []
+    for recipe in available:
+        previous = index['documents'].get(recipe['source']) or index.get('emptyDocuments', {}).get(recipe['source'])
+        if (mode == 'always' or not previous or previous['sources'] != recipe_sources(recipe)
+                or previous.get('captureDigest') != capture_digest()
+                or (previous.get('file') and publication_problem(previous))):
+            pending.append(recipe)
+    return pending
+
+
+def record_empty(recipe: dict, sources: dict[str, str]) -> None:
+    index = catalog()
+    index['documents'].pop(recipe['source'], None)
+    index.setdefault('emptyDocuments', {})[recipe['source']] = {
+        'sources': sources, 'captureDigest': capture_digest(), 'channels': 0,
+        'reason': 'No output-area channels; the code remains available.',
+    }
+    write_catalog(index)
+
+
+def sync_publications(*, mode: str = 'incremental', port: int | None = None) -> dict:
+    """Refresh supported documents before building the site; an unchanged tree starts no Field."""
+    available = recipes('pilot') + recipes('gallery')
+    pending = pending_recipes(available, mode=mode)
+    supported = {r['source'] for r in available}
+    index = catalog()
+    orphaned = (set(index['documents']) | set(index.get('emptyDocuments', {}))) - supported
+    if pending and mode == 'never':
+        raise ValueError(f"{len(pending)} publications need refresh: " + ', '.join(r['name'] for r in pending)
+                         + '; run tools/docs_publications.py sync or build with FIELD_DOCS_RUNNER_MODE=incremental')
+    if mode == 'never':
+        if orphaned:
+            raise ValueError(f'Publications for removed recipes: {sorted(orphaned)}; run tools/docs_publications.py sync')
+        if any(not entry.get('files') for entry in index['documents'].values()):
+            raise ValueError('Publication file integrity metadata needs an upgrade; run tools/docs_publications.py sync')
+        registry()
+        summary = {'captured': len(index['documents']), 'codeOnly': len(index.get('emptyDocuments', {})),
+                   'refreshed': 0, 'retained': len(available)}
+        print('Docs publications: ' + json.dumps(summary), flush=True)
+        return summary
+    report = asyncio.run(capture(pending, port=port, force=True)) if pending else []
+    retry_names = {r['name'] for r in report if not r['ok'] and 'Output capture exceeded' in r.get('error', '')}
+    if retry_names:
+        print('Retrying timed-out captures in a fresh Field session: ' + ', '.join(sorted(retry_names)), flush=True)
+        retried = asyncio.run(capture([r for r in pending if r['name'] in retry_names], port=port, force=True))
+        by_name = {r['name']: {**r, 'attempts': 2} for r in retried}
+        report = [by_name.get(r['name'], r) for r in report]
+    report_path = ROOT / 'build/docs-publications-refresh.json'
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(json.dumps(report, indent=2) + '\n')
+    failed = [r for r in report if not r['ok']]
+    if failed:
+        raise ValueError('Publication capture failed: ' + '; '.join(f"{r['name']}: {r['error']}" for r in failed))
+    # Removed or reclassified recipes must not leave a misleading publication behind.
+    index = catalog()
+    for section in ('documents', 'emptyDocuments'):
+        for source in list(index.get(section, {})):
+            if source not in supported:
+                del index[section][source]
+    registry(index=index)
+    # Upgrade existing snapshots without altering their captured data. Future merge damage is
+    # detected by these hashes and repaired by replaying the affected recipe.
+    for entry in index['documents'].values():
+        if not entry.get('files'):
+            entry['files'] = snapshot_hashes(entry)
+    write_catalog(index)
+    registry()
+    summary = {'captured': len(index['documents']), 'codeOnly': len(index.get('emptyDocuments', {})),
+               'refreshed': len(report), 'retained': len(available) - len(report)}
+    print('Docs publications: ' + json.dumps(summary), flush=True)
+    return summary
+
+
+def registry(*, verify: bool = True, index: dict | None = None) -> dict:
     result = {"version": 1, "documents": {}}
-    for source, entry in catalog()["documents"].items():
+    for source, entry in (catalog() if index is None else index)["documents"].items():
         if verify:
             for name, expected in entry["sources"].items():
                 path = ROOT / name
                 if not path.is_file() or digest(path) != expected:
                     raise ValueError(f"Stale publication {source}: {name}; recapture with tools/docs_publications.py")
+            transcript = next((name for name in entry['sources'] if name.startswith('dev_docs/agents/transcripts/')), None)
+            if source_files(source, transcript) != entry['sources']:
+                raise ValueError(f"Stale publication {source}: source file set changed; run tools/docs_publications.py sync")
             for key in ("file", "outputs"):
                 if not (DOCS / entry[key]).is_file():
                     raise ValueError(f"Missing publication asset: {entry[key]}")
+            if problem := publication_problem(entry):
+                raise ValueError(f"Invalid publication {source}: {problem}; run tools/docs_publications.py sync")
         result["documents"][source] = {k: entry[k] for k in ("file", "outputs")}
     return result
 
@@ -85,7 +214,8 @@ def install(archive: Path, *, name: str, source: str, sources: dict[str, str]) -
         manifest = json.loads(bundle.read("document/outputs.json"))
         if not manifest["outputs"] or not any(o.get("path") for o in manifest["outputs"]):
             raise ValueError("Document has no captured output channels")
-        failed = [o["channel"] for o in manifest["outputs"] if not o.get("path")]
+        failed = [f"{o.get('uid', '?')}/{o['channel']}: {'; '.join(o.get('warnings', []))}"
+                  for o in manifest["outputs"] if not o.get("path")]
         if failed:
             raise ValueError(f"Uncaptured channels: {failed}")
         replacements = {}
@@ -125,11 +255,11 @@ def install(archive: Path, *, name: str, source: str, sources: dict[str, str]) -
         "sources": sources,
         "captureDigest": capture_digest(),
     }
+    entry['files'] = snapshot_hashes(entry)
     index = catalog()
     index["documents"][source] = entry
-    pending = CATALOG.with_suffix('.new.json')
-    pending.write_text(json.dumps(index, indent=2, sort_keys=True) + "\n")
-    pending.replace(CATALOG)
+    index.get('emptyDocuments', {}).pop(source, None)
+    write_catalog(index)
     return entry
 
 
@@ -139,10 +269,13 @@ def recipes(group: str) -> list[dict]:
     # The existing smoke harness is the authority for which transcripts may execute headless.
     text = (ROOT / "src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt").read_text()
     block = text.split("internal val EXECUTE = setOf(", 1)[1].split("internal val COMPILE_ONLY", 1)[0]
-    names = re.findall(r'^\s*"([a-z0-9_-]+)"', block, re.M)
+    block = re.sub(r'/\*.*?\*/|//[^\n]*', '', block, flags=re.S)
+    names = re.findall(r'"([a-z0-9_-]+)"', block)
     return [{"name": name, "source": f"assets/agent_transcripts/{name}/metadata.edn",
              "transcript": f"dev_docs/agents/transcripts/{name}.yaml",
-             "longCompute": name == 'petri_tala_layout'} for name in names
+             # The execution harness records ~67s for Morpho's synchronous search; both
+             # benchmarks need a dedicated budget rather than the interactive watchdog.
+             "longCompute": name in {'petri_tala_layout', 'morpho_circuit_search'}} for name in names
             if (DOCS / f"assets/agent_transcripts/{name}/metadata.edn").is_file()]
 
 
@@ -257,6 +390,7 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
                     path = Path(temp) / f"{name}.zip"
                     result = await publish_document(client, str(path), timeout=240, include_viewer=False)
                     if not result['capturedOutputs']:
+                        record_empty(recipe, sources)
                         report.append({'name': name, 'ok': True, 'channels': 0,
                                        'reason': 'No output-area channels; the code remains available.'})
                         print(f"SKIP {name}: no output-area channels", flush=True)
@@ -283,19 +417,19 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("capture", "check", "list", "prune"))
+    parser.add_argument("action", choices=("capture", "sync", "check", "list", "prune"))
+    parser.add_argument('--mode', choices=('never', 'incremental', 'strict', 'always'), default='incremental')
     parser.add_argument("--group", choices=("pilot", "gallery"), default="pilot")
     parser.add_argument("--name", action="append", help="Select named recipes within the group")
     parser.add_argument("--port", type=int)
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--report", type=Path, default=ROOT / "build/docs-publications-report.json")
     args = parser.parse_args()
+    if args.action in ('sync', 'check'):
+        sync_publications(mode='never' if args.action == 'check' else args.mode, port=args.port)
+        return 0
     if args.action == 'prune':
         print(f'Removed {prune_runtimes()} unused runtime files')
-        return 0
-    if args.action == "check":
-        result = registry()
-        print(f"{len(result['documents'])} current publications")
         return 0
     available = recipes(args.group)
     if args.name and (unknown := set(args.name) - {r['name'] for r in available}):
@@ -311,4 +445,6 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    from verification_runtime import verification_lock
+    with verification_lock(ROOT, label='Docs publication refresh', progress=lambda message: print(message, flush=True)):
+        raise SystemExit(main())

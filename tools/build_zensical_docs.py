@@ -1454,6 +1454,10 @@ def run(args: argparse.Namespace) -> int:
             print("Source pages are missing. Failing because --strict.", file=sys.stderr)
             return 1
 
+    # Refresh before copying docs assets; unchanged publications need neither Field nor a browser.
+    import docs_publications
+    docs_publications.sync_publications(
+        mode=docs_hooks.resolve_runner_mode(os.environ.get(docs_hooks.RUNNER_MODE_ENV)))
     preprocess_docs(public_dir=public_dir, generated_docs=generated_docs, page_filters=tuple(args.page))
     generated_config = build_generated_config(
         public_dir=public_dir,

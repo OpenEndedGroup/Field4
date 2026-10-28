@@ -1,16 +1,16 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-28T16:13:38.015Z",
+  "capturedAt": "2026-10-28T21:08:27.128Z",
   "documentName": "ai4_paint_studio",
   "outputs": [
     {
       "uid": "ai4_paint_studio",
-      "channel": "output",
+      "channel": "main",
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 469,
-      "height": 45,
+      "width": 912,
+      "height": 728,
       "path": "outputs/0.html"
     }
   ]
