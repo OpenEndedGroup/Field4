@@ -24,6 +24,22 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 
+/**
+ * Where Field remembers the document you had open, keyed by workspace rather than by checkout.
+ *
+ * This is the store behind [lastFn], which is what a window opened without `--document` falls back
+ * to. The name is kept in a file named for the SHA-256 of the workspace's canonical path, under
+ * `last-documents` in the machine-wide user config directory, so two workspaces opened from one
+ * checkout remember different documents and one workspace opened from two checkouts remembers the
+ * same one.
+ *
+ * Both directions are checked against the disk rather than trusted. A remembered name comes back
+ * only while a document by that name is still there, a name is written only if it resolves to
+ * something inside the workspace, and a name holding a path separator or naming one of the app's own
+ * routes is refused at both ends. The write goes to a temporary file beside the target and is moved
+ * into place, atomically where the filesystem supports it.
+ */
+
 /** Remembers a local document per canonical workspace, independently of the launching checkout. */
 internal class WorkspaceLastDocument(workspace: File, stateDirectory: File) {
     private val workspace = workspace.canonicalFile

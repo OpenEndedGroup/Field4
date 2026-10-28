@@ -2072,6 +2072,20 @@ Capture all log events (while still emitting to stdout) and expose a lightweight
 
 ## refactorPass.kt { #refactorpass-kt }
 
+The server side of the refactor-pass review panel: two routes that drive `tools/refactor_pass.py`
+in the docs-improvement checkout, one job at a time.
+
+`GET /api/refactor-pass` answers status, a review item, a change or the delivery diff by running
+the CLI and parsing its JSON; `POST` starts an action, or cancels the running one. Both refuse a
+request that is not a same-site docs client, because the answers carry private workspace source.
+
+No part of a request reaches a shell. The browser sends an action name and fields, and
+`refactorPassArguments` rebuilds the argument list from a fixed set of actions, so a field that
+fails its length, character-class or absolute-path check yields no command at all. A started job
+streams its output to a log file under the checkout's `.field-backdoor/refactor-pass/jobs`,
+keeping the last 24,000 characters in memory for the panel to poll; a query that has not answered
+in a minute is killed along with its descendants and reported as a timeout.
+
 `src/jvmMain/kotlin/afield/app/server/refactorPass.kt` — [read the source](source/jvmMain/afield/app/server/refactorPass/)
 
 ## rendererBrowsing.kt { #rendererbrowsing-kt }
@@ -2086,13 +2100,26 @@ Capture all log events (while still emitting to stdout) and expose a lightweight
 
 ## signalViewer.kt { #signalviewer-kt }
 
+The HTTP side of the frontend signal viewer: one route that answers range queries over a
+[`SignalViewer`](visualization.md#signalviewer-kt-signalviewer) a box is currently showing.
+
+`GET /signal-viewer/{id}` takes a `start`, an `end` and a `points` count and returns that much of
+the signal as JSON, which is how the plot zooms and pans without the box running again. The id
+names an entry in the viewer's weak registry, so once a box replaces its output the viewer it was
+showing becomes collectable and the route answers `410 Gone` rather than resampling a signal whose
+evaluators have been released.
+
+Sampling is confined to two threads and abandoned after twelve seconds, and the window call is
+handed a check that throws once the client has gone, so an abandoned zoom stops between sample
+batches instead of finishing a query nobody will read.
+
 `src/jvmMain/kotlin/afield/app/server/signalViewer.kt` — [read the source](source/jvmMain/afield/app/server/signalViewer/)
 
 ### Top-level functions { #signalviewer-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="signalviewer-kt--installsignalviewerroutes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Route</span><span class="p">.</span><span class="nf">installSignalViewerRoutes</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/signalViewer/#L16) | Read-only, opaque source IDs; never accepts or compiles code from a browser request. |
+| <a id="signalviewer-kt--installsignalviewerroutes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Route</span><span class="p">.</span><span class="nf">installSignalViewerRoutes</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/signalViewer/#L31) | Read-only, opaque source IDs; never accepts or compiles code from a browser request. |
 
 ## templating.kt { #templating-kt }
 
@@ -4011,6 +4038,20 @@ One addressable file: its `afield:` [`uri`](workspace.md#virtualfilesystem-kt--v
 | <a id="virtualfilesystem-kt--afieldvirtualfilesystem--read"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">read</span><span class="p">(</span><span class="n">uri</span><span class="p">:</span> <span class="nc">URI</span><span class="p">)</span><span class="p">:</span> <span class="nc">VirtualTextFile</span><span class="o">?</span></code>](source/jvmMain/afield/document/workspace/VirtualFileSystem/#L82) |  |
 
 ## WorkspaceLastDocument.kt { #workspacelastdocument-kt }
+
+Where Field remembers the document you had open, keyed by workspace rather than by checkout.
+
+This is the store behind [`lastFn`](workspace.md#server-kt--lastfn), which is what a window opened without `--document` falls back
+to. The name is kept in a file named for the SHA-256 of the workspace's canonical path, under
+`last-documents` in the machine-wide user config directory, so two workspaces opened from one
+checkout remember different documents and one workspace opened from two checkouts remembers the
+same one.
+
+Both directions are checked against the disk rather than trusted. A remembered name comes back
+only while a document by that name is still there, a name is written only if it resolves to
+something inside the workspace, and a name holding a path separator or naming one of the app's own
+routes is refused at both ends. The write goes to a temporary file beside the target and is moved
+into place, atomically where the filesystem supports it.
 
 `src/jvmMain/kotlin/afield/document/workspace/WorkspaceLastDocument.kt` — [read the source](source/jvmMain/afield/document/workspace/WorkspaceLastDocument/)
 
@@ -7059,7 +7100,7 @@ nothing outside the file uses them. `dev_docs/RUNAWAY_BOX_INTERRUPT.md` has the 
 
 [<code class="highlight"><span class="k">object</span> <span class="nc">BoxInterrupt</span></code>](source/jvmMain/afield/runtime/lifecycle/BoxInterrupt/#L53)
 
-Box code that never returns no longer freezes Field: a stall watchdog plus a cooperative escape.
+A stall watchdog and a cooperative escape, for box code that never returns.
 
 | Declaration | Summary |
 | --- | --- |
@@ -7827,7 +7868,7 @@ prompt go to the model through [`AiMacroBridge`](workspace.md#ai-macro-kt-aimacr
 | <a id="ai-macro-kt--extractparamnames"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">extractParamNames</span><span class="p">(</span><span class="n">parameterList</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/macros/ai_macro/#L143) |  |
 | <a id="ai-macro-kt--stripaigenmetadata"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">stripAiGenMetadata</span><span class="p">(</span><span class="n">attic</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/macros/ai_macro/#L152) |  |
 | <a id="ai-macro-kt--macro-ai"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;ai</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">containingFunction</span><span class="p">:</span> <span class="nc">ContainingFunction</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/macros/ai_macro/#L215) |  |
-| <a id="ai-macro-kt--resolvepatternrewriteai"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">resolvePatternRewriteAi</span><span class="p">(</span><span class="n">req</span><span class="p">:</span> <span class="nc">PatternRewrite</span><span class="p">.</span><span class="nc">AiRequest</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/macros/ai_macro/#L527) | Resolve a pattern-rewrite `ai("…")` clause (see [`PatternRewrite`](workspace.md#patternrewrite-kt-patternrewrite)). If the box attic already holds a cached block for this request's stable key, do nothing — a cache hit, no model call. Otherwise generate the code once via [`AiMacroBridge`](workspace.md#ai-macro-kt-aimacrobridge), append it to the attic keyed by `PatternRewrite.AiRequest.key`, and deliberately leave `_attic` stale so [`checkAtticAndExecute`](workspace.md#macros-kt--checkatticandexecute) compiles/executes the freshly generated code on this run. |
+| <a id="ai-macro-kt--resolvepatternrewriteai"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">resolvePatternRewriteAi</span><span class="p">(</span><span class="n">req</span><span class="p">:</span> <span class="nc">PatternRewrite</span><span class="p">.</span><span class="nc">AiRequest</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/macros/ai_macro/#L527) | Resolve a pattern-rewrite `ai("…")` clause (see [`PatternRewrite`](workspace.md#patternrewrite-kt-patternrewrite)). If the box attic already holds a cached block for this request's stable key, do nothing — a cache hit, no model call. Otherwise generate the code once via [`AiMacroBridge`](workspace.md#ai-macro-kt-aimacrobridge), append it to the attic keyed by `PatternRewrite.AiRequest.key`, and leave `_attic` stale so that [`checkAtticAndExecute`](workspace.md#macros-kt--checkatticandexecute) compiles and executes the freshly generated code on this run. |
 | <a id="ai-macro-kt--registeraimacro"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">registerAiMacro</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/macros/ai_macro/#L554) |  |
 
 ### AtticBlock { #ai-macro-kt-atticblock }
@@ -7981,6 +8022,20 @@ other's stages through `dependsOn(runner, stage)`.
 
 ## StudyBuildFindings.kt { #studybuildfindings-kt }
 
+What a study build's reviewers said, collected from the boxes that own the review surfaces.
+
+A build's outputs get reviewed where everything else does — the three-view panels and the geometry
+review surfaces a box owns — so this gathers the notes a build run left behind and a build card
+can show them without the reviewing machinery knowing that builds exist. A note is kept when it
+names one of the run ids asked for and its kind is an error, a warning or a question; notes are
+deduplicated by their source box and note id, first one wins.
+
+What comes back points at the discussion rather than restating it: ids for the note, the view and
+the two boxes, a count of replies, and the first 240 characters of the text for a label. A source
+whose surfaces have stopped is read too, from the review notes saved on the box itself, which is
+how a finished run keeps its history; those are marked as not live, and their staleness is left
+unanswered rather than guessed.
+
 `src/jvmMain/kotlin/afield/study/build/StudyBuildFindings.kt` — [read the source](source/jvmMain/afield/study/build/StudyBuildFindings/)
 
 ## StudyBuildHelpers.kt { #studybuildhelpers-kt }
@@ -8012,6 +8067,19 @@ last progress message.
 What [`StudyBuildContext.runProcess`](workspace.md#studybuilds-kt--studybuildcontext--runprocess) saw: the exit code, the retained [`log`](machine-learning.md#logging-kt--log), and the last progress message.
 
 ## StudyBuildPanel.kt { #studybuildpanel-kt }
+
+The build card a box shows for one study build runner: every stage, with its buttons, progress and
+diagnostics.
+
+[`showStudyBuilds`](workspace.md#boxstudybuilds-kt--showstudybuilds) mounts one of these per output channel. The card drives the real runner through
+Field's ordinary button transport, so a stage's Build and Cancel are the same controls any box
+output gets, and its HTML is built from the stage list by one function, which is what lets the
+panel re-publish only when that HTML has actually changed.
+
+Reading the stages is not free — it re-reads the design's inputs and checks result files — so the
+card reads them twice a second only while a build is queued or running, or when [`StudyBuilds`](workspace.md#studybuilds-kt-studybuilds)
+reports a new revision, and otherwise every five seconds, which is how long an unannounced edit to
+the design can take to show up.
 
 `src/jvmMain/kotlin/afield/study/build/StudyBuildPanel.kt` — [read the source](source/jvmMain/afield/study/build/StudyBuildPanel/)
 
