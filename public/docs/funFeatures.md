@@ -588,6 +588,10 @@ Each row has:
 - the number of boxes on the layer
 - **Solo**, which shows only this layer and makes it active
 
+Once the [drawing](#drawing-on-the-canvas) has anything on it, it gets a row too, called
+`drawing`, with an eye to show or hide it and a count of its marks. It has no radio button or
+**Solo**, since boxes can't go on it. **Show all** brings it back with the rest.
+
 **Show all** brings every layer back, and **Move selection to active layer** puts the selected boxes
 on the active layer, and only on it. `alt-]` solos the next layer and `alt-[` the previous one; the
 command palette labels include the target layer names. **Show All Layers** in the command palette

@@ -115,4 +115,105 @@ class ElementsTest {
         val text = Elements.prop1(Segment2(p(0, 0), p(1, 0))).toString()
         assertTrue(text.startsWith("I.1. On a given finite straight line"))
     }
+
+    private val phi = (1 + sqrt(5.0)) / 2
+
+    @Test fun i47Pythagoras() {
+        val c = Elements.prop47(Triangle2(p(0, 0), p(4, 0), p(0, 3)))
+        val (bc, ba, ac) = c.result
+        assertEquals(25.0, bc.polygon.area, 1e-9); assertEquals(16.0, ba.polygon.area, 1e-9); assertEquals(9.0, ac.polygon.area, 1e-9)
+        // each square lies outside the triangle
+        assertTrue(p(4.0 / 3, 1.0) !in bc.polygon && p(4.0 / 3, 1.0) !in ba.polygon && p(4.0 / 3, 1.0) !in ac.polygon)
+        drawsSomething(c)
+    }
+
+    @Test fun iiGnomonsEqualTheirRectangles() {
+        val five = Elements.book2prop5(Segment2(p(0, 0), p(10, 0)))
+        assertEquals(7.0 * 3.0, five.result.area, 1e-9) // AD·DB with D at 7
+        val six = Elements.book2prop6(Segment2(p(0, 0), p(10, 0)))
+        assertEquals(13.5 * 3.5, six.result.area, 1e-9) // AD·DB with D at 13.5
+        drawsSomething(five); drawsSomething(six)
+    }
+
+    @Test fun ii11GoldenSection() {
+        val h = Elements.book2prop11(Segment2(p(0, 0), p(10, 0))).result
+        assertEquals(10.0 / phi, h.x, 1e-9); assertEquals(0.0, h.y, 1e-9)
+        assertEquals(h.x * h.x, 10.0 * (10.0 - h.x), 1e-9)
+    }
+
+    @Test fun ii14SquaresARectangle() {
+        val sq = Elements.book2prop14(Quadrilateral2(p(0, 0), p(9, 0), p(9, 4), p(0, 4))).result
+        assertEquals(36.0, sq.polygon.area, 1e-9)
+        sq.sides.forEach { assertEquals(6.0, it.length, 1e-9) }
+    }
+
+    @Test fun iii17Tangent() {
+        val circle = Circle2(p(0, 0), 3.0)
+        val ab = Elements.book3prop17(circle, p(5, 0)).result
+        assertEquals(3.0, ab.b.length, 1e-9)
+        assertEquals(0.0, (ab.b - circle.center) dot (ab.a - ab.b), 1e-9)
+    }
+
+    @Test fun ivGoldenTriangleAndPolygons() {
+        val t = Elements.book4prop10(Segment2(p(0, 0), p(0, 10))).result
+        assertEquals(10.0, d(t.a, t.c), 1e-9)
+        assertEquals(2 * angle(t.a, t.b, t.c), angle(t.b, t.a, t.c), 1e-9)
+        for ((n, c) in listOf(5 to Elements.book4prop11(Circle2(p(3, 4), 2.0)), 6 to Elements.book4prop15(Circle2(p(3, 4), 2.0)), 15 to Elements.book4prop16(Circle2(p(3, 4), 2.0)))) {
+            val poly = c.result
+            assertEquals(n, poly.points.size)
+            val side = 2 * 2.0 * kotlin.math.sin(kotlin.math.PI / n)
+            poly.edges.forEach { assertEquals(side, it.length, 1e-7) }
+            poly.points.forEach { assertEquals(2.0, d(it, p(3, 4)), 1e-9) }
+        }
+    }
+
+    @Test fun viProportions() {
+        assertEquals(4.0, Elements.book6prop9(Segment2(p(0, 0), p(12, 0))).result.length, 1e-9)
+        val cut = Elements.book6prop10(Segment2(p(0, 0), p(12, 0)), Segment2(p(0, 0), p(3, -6)), listOf(p(1, -2), p(2.5, -5))).result
+        assertEquals(4.0, cut[0].x, 1e-9); assertEquals(10.0, cut[1].x, 1e-9)
+        val ce = Elements.book6prop11(Segment2(p(0, 0), p(4, 0)), Segment2(p(0, 0), p(0, -6))).result
+        assertEquals(9.0, ce.length, 1e-9) // 4 : 6 = 6 : 9
+        val hl = Elements.book6prop12(Segment2(p(0, 50), p(2, 50)), Segment2(p(0, 60), p(5, 60)), Segment2(p(0, 70), p(3, 70))).result
+        assertEquals(7.5, hl.length, 1e-9) // 2 : 5 = 3 : 7.5
+        val e = Elements.book6prop30(Segment2(p(0, 0), p(10, 0))).result
+        assertEquals(10.0 / phi, e.x, 1e-9)
+    }
+
+    @Test fun polygonsMeetLikeTheirEdges() {
+        val square = Polygon2(p(0, 0), p(4, 0), p(4, 4), p(0, 4))
+        assertEquals(2, square.intersect(Line2(p(-1, 2), p(1, 0))).points.size)
+        assertEquals(1.0, square.distanceTo(Circle2(p(7, 2), 2.0)), 1e-9)
+        assertTrue(p(2, 2) in square && p(5, 2) !in square)
+        assertEquals(16.0, square.area, 1e-12)
+    }
+
+    @Test fun solutionsCountTheRealAlternatives() {
+        val ab = Segment2(p(0, 0), p(160, 0))
+        val one = Elements.solutions { prop1(ab) }
+        assertEquals(2, one.size)
+        assertEquals(Elements.prop1(ab).result, one.first().result) // the plain call is the first solution
+        assertTrue(one.map { it.result.c.y }.let { ys -> ys.any { it > 0 } && ys.any { it < 0 } })
+
+        // I.2: Proclus' four cases, every one a line from A as long as BC
+        val bc = Segment2(p(90, 40), p(150, 100))
+        val two = Elements.solutions { prop2(p(0, 0), bc) }
+        assertEquals(4, two.size)
+        two.forEach { assertEquals(p(0, 0), it.result.a); assertEquals(bc.length, it.result.length, 1e-9) }
+
+        assertEquals(2, Elements.solutions { prop11(Segment2(p(0, 0), p(200, 0)), p(80, 0)) }.size)
+        assertEquals(1, Elements.solutions { prop31(p(60, -90), Segment2(p(0, 0), p(200, 0))) }.size) // only one copy is parallel
+        assertEquals(2, Elements.solutions { prop46(Segment2(p(0, 0), p(120, 0))) }.size)
+        assertEquals(1, Elements.solutions { prop47(Triangle2(p(0, 0), p(120, 0), p(0, -90))) }.size) // the squares must stand outside
+        assertEquals(2, Elements.solutions { book3prop17(Circle2(p(0, 0), 60.0), p(170, 40)) }.size) // two tangents
+        assertEquals(2, Elements.solutions { book4prop10(Segment2(p(0, -150), p(0, 0))) }.size)
+        assertEquals(1, Elements.solutions { book4prop16(Circle2(p(0, 0), 100.0)) }.size)
+    }
+
+    @Test fun chooseASolutionByWhereItLands() {
+        val all = Elements.solutions { prop46(Segment2(p(0, 0), p(120, 0))) }
+        assertTrue(all.nearest(p(60, 500)).location.y > 0)
+        assertTrue(all.farthest(p(60, 500)).location.y < 0)
+        val rays = Elements.solutions { prop11(Segment2(p(0, 0), p(200, 0)), p(80, 0)) }
+        assertTrue(rays[0].location != rays[1].location)
+    }
 }
