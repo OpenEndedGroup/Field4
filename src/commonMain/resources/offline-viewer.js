@@ -548,6 +548,7 @@ if (typeof window !== 'undefined') window.addEventListener('DOMContentLoaded', a
 
         // Setup view toggle
         setupLiterateToggle();
+        setupEditorResize();
 
         // Setup the "Open in Field·4" button
         setupOpenLocalButton(ednFileUrl, ednText, data);
@@ -1400,6 +1401,64 @@ async function initializeMonaco() {
                 reject(error);
             }
         });
+    });
+}
+
+function setupEditorResize() {
+    const panel = document.getElementById('editor-container');
+    const handle = document.getElementById('editor-resize-handle');
+    if (!panel || !handle) return;
+    let drag = null;
+    const limits = () => {
+        const max = Math.max(0, window.innerWidth - 10);
+        return { min: Math.min(320, max), max };
+    };
+    const describe = () => {
+        const { min, max } = limits();
+        const width = Math.round(panel.getBoundingClientRect().width);
+        handle.setAttribute('aria-valuemin', String(min));
+        handle.setAttribute('aria-valuemax', String(max));
+        handle.setAttribute('aria-valuenow', String(width));
+        handle.setAttribute('aria-valuetext', `${width} pixels wide`);
+    };
+    const setWidth = width => {
+        const { min, max } = limits();
+        panel.style.width = `${Math.round(Math.max(min, Math.min(max, width)))}px`;
+        if (monacoEditor) monacoEditor.layout();
+        describe();
+    };
+    handle.addEventListener('pointerdown', event => {
+        if (event.button !== 0 || drag) return;
+        event.preventDefault();
+        event.stopPropagation();
+        drag = { id: event.pointerId, x: event.clientX, width: panel.getBoundingClientRect().width };
+        handle.setPointerCapture(event.pointerId);
+        document.documentElement.classList.add('editor-resizing');
+    });
+    handle.addEventListener('pointermove', event => {
+        if (drag && event.pointerId === drag.id) setWidth(drag.width + drag.x - event.clientX);
+    });
+    const stop = event => {
+        if (!drag || event.pointerId !== drag.id) return;
+        drag = null;
+        document.documentElement.classList.remove('editor-resizing');
+    };
+    handle.addEventListener('pointerup', stop);
+    handle.addEventListener('pointercancel', stop);
+    handle.addEventListener('lostpointercapture', stop);
+    handle.addEventListener('keydown', event => {
+        const step = event.shiftKey ? 80 : 20;
+        const width = panel.getBoundingClientRect().width;
+        const { min, max } = limits();
+        const next = { ArrowLeft: width + step, ArrowRight: width - step, Home: min, End: max }[event.key];
+        if (next === undefined) return;
+        event.preventDefault();
+        event.stopPropagation();
+        setWidth(next);
+    });
+    new ResizeObserver(describe).observe(panel);
+    window.addEventListener('resize', () => {
+        if (panel.style.width) setWidth(parseFloat(panel.style.width));
     });
 }
 
