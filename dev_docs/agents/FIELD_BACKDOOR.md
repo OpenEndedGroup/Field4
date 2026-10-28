@@ -267,6 +267,15 @@ prints its own JSON object**, concatenated with no enclosing array. `json.load` 
 whole stream raises `Extra data`. Decode it as a sequence with
 `json.JSONDecoder().raw_decode` in a loop, or pass one `--command` per invocation.
 
+## Web publication
+
+`publish-document <path.zip> [--timeout 180]` captures the current browser's rendered output
+channels and packages them with the document, notes, code and offline viewer. Open Playwright
+before running the boxes. The command uses the same publisher as the palette's
+**Publish document for the web (.zip)**, refuses an existing destination, and reports capture
+warnings per channel. It never re-runs boxes. See [Offline output publication](../OFFLINE_PUBLICATION.md)
+for the format and the independent browser verification.
+
 ## Session and execution contracts
 
 - Scratch is the default and is scoped to one `field_backdoor.py` process.

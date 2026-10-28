@@ -20,6 +20,7 @@ OFFLINE_FILES = (
     "offline.html",
     "edn-parser.js",
     "offline-viewer.js",
+    "offline-outputs.js",
     "examples-gallery.html",
 )
 

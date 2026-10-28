@@ -153,6 +153,30 @@ A few channel names belong to Field: `nested` holds a box's nested child boxes (
 functions never remove it), `ai-chat` is the box's AI chat, `layers` is the layers palette, and
 `editor:<property>` is an embedded editor for one property. Pick other names for your own output.
 
+## Publishing a document
+
+Run the boxes whose outputs you want to share, then choose **Publish document for the web (.zip)**
+from the command palette. The publication panel reports how many output channels were captured
+and lists any capture warnings. Download the archive, unzip it, and serve the folder with any
+static web host. Open its `index.html` to browse the boxes, notes, code and captured outputs.
+The published document works without Field or an internet connection once served locally.
+
+| Output | Published form |
+| --- | --- |
+| FLine and SVG drawings | Vector markup at the captured view |
+| HTML and `.h` values | Rendered contents, styles and images |
+| Plotly, including charts inside local iframes | Frozen trace data with browser zoom and hover |
+| `.h2`, tree and column inspectors | Current view and materialized rows |
+| Three.js | A still image of the rendered view |
+
+Plots that depend on external image or map data are captured as still images and listed with a
+capture warning.
+
+Controls that call back into Field are disabled. Inspector rows that have not been loaded are
+outside the snapshot. A channel that cannot be captured is listed with its reason in the
+publication panel and in the published document. Cross-origin frames and live audio/video need
+their own exported media.
+
 ## See also
 
 - [Visualizers & Controls](visualizers.md): what to display, from `.h` to sliders.

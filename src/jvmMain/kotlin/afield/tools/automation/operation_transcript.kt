@@ -383,7 +383,8 @@ object OperationTranscript {
         val wrote = file.safeSave(contents.trimEnd() + "\n", createBackup = true, maxBackups = 10, atomic = true)
         val count = runCatching { loadMacroOperations(file).size }.getOrDefault(0)
         return MacroResult(
-            success = wrote,
+            // safeSave returns false when the requested contents are already on disk.
+            success = true,
             message = if (wrote) "Wrote macro '$cleanName'." else "Macro '$cleanName' was unchanged.",
             name = cleanName,
             path = file.absolutePath,

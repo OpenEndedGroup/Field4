@@ -54,6 +54,21 @@ class OperationTranscriptReadOnlyTest {
     }
 
     @Test
+    fun writingTheSameMacroAgainSucceedsWithoutTouchingTheFile() {
+        inDocument(false) { session, directory, _ ->
+            val first = OperationTranscript.writeMacro(session.filename, "repeat", YAML)
+            assertTrue(first.success, first.message)
+            val file = File(directory, "macros/repeat.yaml")
+            val modified = file.lastModified()
+            val repeated = OperationTranscript.writeMacro(session.filename, "repeat", YAML)
+            assertTrue(repeated.success, repeated.message)
+            assertTrue(repeated.message.contains("unchanged"))
+            assertEquals(first.content, repeated.content)
+            assertEquals(modified, file.lastModified())
+        }
+    }
+
+    @Test
     fun checkpointKeepsReadOnlyEditsInMemory() {
         for (readOnly in listOf(false, true)) inDocument(readOnly) { session, directory, subject ->
             OperationTranscript.recordEdit(subject, "code", "before", "after")
