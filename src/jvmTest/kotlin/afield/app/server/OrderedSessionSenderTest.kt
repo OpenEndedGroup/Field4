@@ -38,4 +38,16 @@ class OrderedSessionSenderTest {
         assertEquals(listOf("a", "c"), out.toList())
         scope.cancel()
     }
+
+    @Test
+    fun `a send after close does not recreate the session's sender`() {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val senders = java.util.concurrent.ConcurrentHashMap<String, OrderedSessionSender>()
+        sendInOrder(senders, "s", closed = false, send = {}, scope = scope)
+        assertEquals(1, senders.size)
+        senders.remove("s")?.close() // the close handler
+        sendInOrder(senders, "s", closed = true, send = {}, scope = scope)
+        assertEquals(0, senders.size)
+        scope.cancel()
+    }
 }

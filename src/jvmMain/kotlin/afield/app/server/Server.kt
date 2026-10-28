@@ -1046,9 +1046,11 @@ class OutputBackPressure(val maxPending: Int = 8, val bufferSize: Int = 4) {
     /**
      * Buffer a message for later delivery (call when [tryAcquire] returns -1).
      *
-     * A message with a [coalesceKey] (a `set-output`: one box's one output panel) replaces the
-     * buffered message with the same key in place, since only the newest content of a panel is
-     * worth showing, and is never evicted to make room: evicting it would lose a panel, not a
+     * A message with a [coalesceKey] (a `set-output`: one box's one output panel) removes the
+     * buffered message with the same key and joins the tail, since only the newest content of a
+     * panel is worth showing. It does not take the old entry's slot: that would move it ahead of
+     * frames buffered between the two (a clear, a line), reordering what the box sent. It is
+     * never evicted to make room: evicting it would lose a panel, not a
      * line. Otherwise the rolling buffer holds the last [bufferSize] unkeyed messages; older
      * entries are evicted and their count is added to [skipped] so the frontend knows how many
      * were truly dropped.
@@ -1057,10 +1059,7 @@ class OutputBackPressure(val maxPending: Int = 8, val bufferSize: Int = 4) {
         synchronized(this) {
             if (coalesceKey != null) {
                 val i = buffer.indexOfFirst { it.first == coalesceKey }
-                if (i >= 0) {
-                    buffer[i] = coalesceKey to message
-                    return
-                }
+                if (i >= 0) buffer.removeAt(i)
                 buffer.addLast(coalesceKey to message)
                 return
             }
@@ -1781,6 +1780,10 @@ internal fun outputBackPressureLog(
  * those coroutines raced on the default dispatcher, so two messages sent back to back could reach
  * the browser swapped: a box's `display("a", ..)` then `display("b", ..)` built its output panels
  * in either order (and a `set-output` could overtake the `output-control` sent after it).
+ *
+ * Head-of-line blocking is intended: one slow send holds every later frame for that session
+ * (and only that session) until it completes. Order is the point; a stalled socket was already
+ * stalling that client's output.
  */
 internal class OrderedSessionSender(scope: CoroutineScope) {
     private val queue = kotlinx.coroutines.channels.Channel<suspend () -> Unit>(kotlinx.coroutines.channels.Channel.UNLIMITED)
@@ -1801,7 +1804,26 @@ private val sessionOrderedSenders = ConcurrentHashMap<WebSocketSession, OrderedS
 /** Queue [send] behind everything already queued for [session]; see [OrderedSessionSender]. */
 @OptIn(DelicateCoroutinesApi::class)
 internal fun sendInOrder(session: WebSocketSession, send: suspend () -> Unit) {
-    sessionOrderedSenders.computeIfAbsent(session) { OrderedSessionSender(GlobalScope) }.submit(send)
+    sendInOrder(sessionOrderedSenders, session, session.outgoing.isClosedForSend, send)
+}
+
+/**
+ * A send that arrives after the session closed is dropped rather than recreating the sender the
+ * close handler removed, which would otherwise live (and hold the session) forever.
+ */
+@OptIn(DelicateCoroutinesApi::class)
+internal fun <K : Any> sendInOrder(
+    senders: ConcurrentHashMap<K, OrderedSessionSender>,
+    key: K,
+    closed: Boolean,
+    send: suspend () -> Unit,
+    scope: CoroutineScope = GlobalScope
+) {
+    if (closed) {
+        senders.remove(key)?.close()
+        return
+    }
+    senders.computeIfAbsent(key) { OrderedSessionSender(scope) }.submit(send)
 }
 
 @OptIn(DelicateCoroutinesApi::class)

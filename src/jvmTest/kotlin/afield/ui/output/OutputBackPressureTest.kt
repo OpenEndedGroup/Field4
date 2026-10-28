@@ -43,9 +43,22 @@ class OutputBackPressureTest {
         val out = mutableListOf<String>()
         repeat(20) { pressure.release(); out += pressure.drainBuffer() }
         kotlin.test.assertEquals(
-            listOf("panel a", "panel b", "panel c again", "panel d", "panel e", "panel f", "panel g", "panel h", "line 2", "line 3"),
+            listOf("panel a", "panel b", "panel d", "panel e", "panel f", "panel g", "panel h", "line 2", "line 3", "panel c again"),
             out
         )
         kotlin.test.assertEquals(1, pressure.takeSkipped()) // only "line 1" was dropped
+    }
+
+    @Test
+    fun aReplacedPanelDoesNotJumpAheadOfAFrameBufferedAfterIt() {
+        val pressure = OutputBackPressure(maxPending = 1, bufferSize = 4)
+        assertTrue(pressure.tryAcquire() >= 0)
+        pressure.bufferMessage("panel old", coalesceKey = "box/main")
+        pressure.bufferMessage("clear")
+        pressure.bufferMessage("panel new", coalesceKey = "box/main")
+        val out = mutableListOf<String>()
+        repeat(5) { pressure.release(); out += pressure.drainBuffer() }
+        // "panel new" was sent after "clear"; it must arrive after it, or the clear wipes it.
+        kotlin.test.assertEquals(listOf("clear", "panel new"), out)
     }
 }
