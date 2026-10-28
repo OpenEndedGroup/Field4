@@ -649,7 +649,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**34844 public symbols across 1585 source files**, 18291 of them (52%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34859 public symbols across 1585 source files**, 18295 of them (52%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -662,7 +662,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 134 | 50 (37%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 47 | 2156 | 1522 (70%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1061 | 463 (43%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 322 | 7906 | 4335 (54%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 322 | 7921 | 4339 (54%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 797 | 427 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
@@ -1042,7 +1042,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [ElectronBrowserTextureSession.kt](imaging.md#electronbrowsertexturesession-kt) | Imaging | 0 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [ElectronCaptureBrowser.kt](workspace.md#electroncapturebrowser-kt) | Workspace · internal | 5 | 2 | This checkout's Field Electron app, driven by the server's Playwright over CDP. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>stream/<wbr></small> [ElectronRTTView.kt](imaging.md#electronrttview-kt) | Imaging | 12 | 4 | Shows a Field 4 render target live in a box's output area in the Field Electron app, sharing GPU surfaces with Electron instead of reading pixels back. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>euclid/<wbr></small> [Elements.kt](graphics.md#elements-kt) | Graphics | 23 | 21 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>euclid/<wbr></small> [Elements.kt](graphics.md#elements-kt) | Graphics | 38 | 25 |  | [Euclid's Elements, Book I](../euclid_elements.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>rectsl/<wbr>study/<wbr></small> [EmbeddedRectSL.kt](languages.md#embeddedrectsl-kt) | Languages | 5 | 5 | Completion and line notes for RectSL written inside a Kotlin box's `code`, as a string whose first line is `#rectsl` (`EmbeddedRectSL`). |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>study/<wbr></small> [EmbeddedStackSL.kt](languages.md#embeddedstacksl-kt) | Languages | 8 | 8 | Editor help for StackSL written as a string inside a Kotlin box: completion with the StackSL vocabulary, and each line's stage as a line note. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>statistics/<wbr></small> [EmbeddingSimplex.kt](data.md#embeddingsimplex-kt) | Data | 25 | 12 |  |  |
@@ -1050,7 +1050,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Enums.kt](audio.md#enums-kt) | Audio | 40 | 26 | Kotlin enumerations mirroring Steam Audio's C enums (log levels, scene types, HRTF and reflection options, baking variations and the rest), each carrying the native value that crosses the FFM boundary. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [Envelopes.kt](synthesis.md#envelopes-kt) | Synthesis | 46 | 10 | Control shapes: `Gate`, `ADSR`, `AR`, `Line` and `BreakpointEnvelope` generate one, `Slew` limits how fast one can move, and `EnvelopeFollower` recovers one from a signal that already exists. | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>analysis/<wbr></small> [essentiaAnalysis.kt](audio.md#essentiaanalysis-kt) | Audio | 126 | 0 | Readers for two on-disk audio-analysis products, so a box can query them by time. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>euclid/<wbr></small> [Euclid.kt](graphics.md#euclid-kt) | Graphics | 56 | 30 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>euclid/<wbr></small> [Euclid.kt](graphics.md#euclid-kt) | Graphics | 56 | 30 |  | [Euclid's Elements, Book I](../euclid_elements.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>core/<wbr></small> [Evaluator.kt](languages.md#evaluator-kt) | Languages | 26 | 26 | The FieldML runtime: it walks a lowered `CoreExpr` tree and returns the `FieldMLValue` the tree evaluates to. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>functions/<wbr></small> [EvolveWorkedExample.kt](examples.md#evolveworkedexample-kt) | Examples | 13 | 3 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [executing.kt](workspace.md#executing-kt) | Workspace · internal | 1 | 0 |  |  |
