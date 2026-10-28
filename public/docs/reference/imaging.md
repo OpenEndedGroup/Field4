@@ -50,6 +50,19 @@ The platform-independent half of all native browser receivers. A backend only im
 
 ## ElectronBrowserTextureSession.kt { #electronbrowsertexturesession-kt }
 
+The Electron process that paints a web page for Field, and the ways a frame of it crosses into
+this process.
+
+`ElectronBrowserTextureSession` starts `electron/browser-texture-producer.js` under the Electron
+that `./gradlew electronInstall` put in the checkout, passes it the page, the surface size and
+the rest as `FIELD_BROWSER_TEXTURE_*` environment variables, and talks to it in JSON lines over a
+loopback socket the session opens for the purpose. All of that is platform-neutral; only the GPU
+handle transfer is not, and each `BrowserHandleTransport` here is one way to do it: a Mach send
+right on macOS, a dma-buf descriptor over `SCM_RIGHTS` on Linux, and an opt-in fallback that
+carries the pixels themselves over a second socket for when no handle can cross. The receiver
+side of the contract is `ExternalBrowserSurface`, described in
+`dev_docs/external_browser_surfaces.md`.
+
 `src/jvmMain/kotlin/afield/media/browser/ElectronBrowserTextureSession.kt` — [read the source](source/jvmMain/afield/media/browser/ElectronBrowserTextureSession/)
 
 ## ExternalBrowserSurface.kt { #externalbrowsersurface-kt }
@@ -197,6 +210,18 @@ The platform-neutral construction point; Windows and Linux backends can fill in 
 | <a id="externalbrowsersurface-kt--externalbrowsersurfaces--create"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">create</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="n">graphics</span><span class="p">.</span><span class="n">vulkan</span><span class="p">.</span><span class="nc">Renderer</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">ExternalBrowserSurfaceSpec</span><span class="p">,</span> <span class="n">releaseListener</span><span class="p">:</span> <span class="nc">BrowserFrameReleaseListener</span> <span class="o">=</span> <span class="nc">BrowserFrameReleaseListener</span> <span class="p">{</span> <span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">ExternalBrowserSurface</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L254) |  |
 
 ## ExternalBrowserVulkanImports.kt { #externalbrowservulkanimports-kt }
+
+Turning a browser's own GPU allocation into a Vulkan image this process can read: the Windows
+D3D11 shared-handle import and the Linux dma-buf import.
+
+Both create a `VkImage` that declares its external handle type, allocate memory dedicated to that
+image which imports the handle, and bind the two. The image is only ever a transfer source and a
+sampled texture. The Linux side asks the driver whether it can import that format, DRM modifier
+and usage before building anything from it, passes each plane's stride and offset as an explicit
+layout, and requires the planes to share one allocation, which is what the first Linux backend
+supports. macOS does not come through this file: an IOSurface is imported by
+`MacExternalBrowserSurface`. What the receivers do with the result, and how far each platform has
+got, is in `dev_docs/external_browser_surfaces.md`.
 
 `src/jvmMain/kotlin/afield/media/browser/ExternalBrowserVulkanImports.kt` — [read the source](source/jvmMain/afield/media/browser/ExternalBrowserVulkanImports/)
 
@@ -1335,13 +1360,22 @@ The result of a sparse optical-flow run.
 
 ## imaging_overlay.kt { #imaging-overlay-kt }
 
+Drawing [`FLine`](graphics.md#fline-kt-fline)s into an [`Img`](imaging.md#imaging-kt-img), in software and without AWT.
+
+[`Img.drawFLines`](imaging.md#imaging-overlay-kt--drawflines) is the whole surface. It resamples the image up by a scale factor and blends
+each line over it, reading `color`, `thickness`, `pointed`, `filled` and the rest from the line's
+own properties the way Field draws it on the canvas; round-capped segments and even-odd fills are
+rasterised here, each with a pixel of antialiasing. What comes back is another [`Img`](imaging.md#imaging-kt-img), so an
+overlay costs no GPU, no window and no AWT font or toolkit, and `showImgGrid` can show it
+wherever a box runs.
+
 `src/jvmMain/kotlin/afield/media/image/imaging_overlay.kt` — [read the source](source/jvmMain/afield/media/image/imaging_overlay/)
 
 ### Top-level functions { #imaging-overlay-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="imaging-overlay-kt--drawflines"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">drawFLines</span><span class="p">(</span><span class="n">lines</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nc">Vec4</span><span class="p">(</span><span class="mi">1f</span><span class="p">,</span> <span class="mf">0.3f</span><span class="p">,</span> <span class="mf">0.1f</span><span class="p">,</span> <span class="mi">1f</span><span class="p">)</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code>](source/jvmMain/afield/media/image/imaging_overlay/#L27) | This image as RGB with `lines` drawn over it, antialiased and without AWT. Line coordinates are in this image's pixels; the result is `scale` times larger, so thin curves over a small image stay crisp. |
+| <a id="imaging-overlay-kt--drawflines"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">drawFLines</span><span class="p">(</span><span class="n">lines</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nc">Vec4</span><span class="p">(</span><span class="mi">1f</span><span class="p">,</span> <span class="mf">0.3f</span><span class="p">,</span> <span class="mf">0.1f</span><span class="p">,</span> <span class="mi">1f</span><span class="p">)</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code>](source/jvmMain/afield/media/image/imaging_overlay/#L38) | This image as RGB with `lines` drawn over it, antialiased and without AWT. Line coordinates are in this image's pixels; the result is `scale` times larger, so thin curves over a small image stay crisp. |
 
 ## imaging_simd.kt { #imaging-simd-kt }
 
@@ -1679,11 +1713,18 @@ Existing Fabricate G-buffer and RTXDI, with interchangeable reconstruction at na
 
 ## ReconstructionDemo.kt { #reconstructiondemo-kt }
 
+A small editable raster scene for trying DLAA and DLSS super resolution without ray tracing.
+
+[`ReconstructionDemo`](imaging.md#reconstructiondemo-kt-reconstructiondemo) renders color, depth and motion at the input resolution recommended for its
+[`ReconstructionMode`](imaging.md#ngxsupport-kt-reconstructionmode) and hands the three to [`DlssReconstruction`](imaging.md#dlssreconstruction-kt-dlssreconstruction). Leave `mode` null to see the
+unjittered source at output resolution. `reload` swaps in new vertex and fragment shaders, and
+`reset` discards reconstruction history after a scene edit.
+
 `src/jvmMain/kotlin/afield/media/reconstruction/ReconstructionDemo.kt` — [read the source](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/)
 
 ### ReconstructionDemo { #reconstructiondemo-kt-reconstructiondemo }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">ReconstructionDemo</span><span class="p">(</span><span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="k">val</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">ReconstructionMode</span><span class="o">?</span> <span class="o">=</span> <span class="nc">ReconstructionMode</span><span class="p">.</span><span class="nc">DLAA</span><span class="p">,</span> <span class="k">val</span> <span class="n">outputSize</span><span class="p">:</span> <span class="nc">ReconstructionSize</span> <span class="o">=</span> <span class="nc">ReconstructionSize</span><span class="p">(</span><span class="mi">1920</span><span class="p">,</span> <span class="mi">1080</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;neural-aa&quot;</span><span class="p">,</span> <span class="n">attach</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">inputSize</span><span class="p">:</span> <span class="nc">ReconstructionSize</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Target</span><span class="p">,</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L28)
+[<code class="highlight"><span class="k">class</span> <span class="nf">ReconstructionDemo</span><span class="p">(</span><span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="k">val</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">ReconstructionMode</span><span class="o">?</span> <span class="o">=</span> <span class="nc">ReconstructionMode</span><span class="p">.</span><span class="nc">DLAA</span><span class="p">,</span> <span class="k">val</span> <span class="n">outputSize</span><span class="p">:</span> <span class="nc">ReconstructionSize</span> <span class="o">=</span> <span class="nc">ReconstructionSize</span><span class="p">(</span><span class="mi">1920</span><span class="p">,</span> <span class="mi">1080</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;neural-aa&quot;</span><span class="p">,</span> <span class="n">attach</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">inputSize</span><span class="p">:</span> <span class="nc">ReconstructionSize</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Target</span><span class="p">,</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L30)
 
 Editable mono raster experiment; no ray tracing is needed. Replace at a frame boundary when changing mode/resolution. Leave [`mode`](imaging.md#reconstructiondemo-kt--reconstructiondemo--mode) null for the unjittered source at native output resolution.
 
@@ -1693,22 +1734,22 @@ Editable mono raster experiment; no ray tracing is needed. Replace at a frame bo
 | <a id="reconstructiondemo-kt--reconstructiondemo--mode"></a><code class="highlight"><span class="k">val</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">ReconstructionMode</span><span class="o">?</span></code> |  |
 | <a id="reconstructiondemo-kt--reconstructiondemo--outputsize"></a><code class="highlight"><span class="k">val</span> <span class="n">outputSize</span><span class="p">:</span> <span class="nc">ReconstructionSize</span></code> |  |
 | <a id="reconstructiondemo-kt--reconstructiondemo--name"></a><code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <a id="reconstructiondemo-kt--reconstructiondemo--inputsize"></a>[<code class="highlight"><span class="k">val</span> <span class="n">inputSize</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L36) |  |
-| <a id="reconstructiondemo-kt--reconstructiondemo--color"></a>[<code class="highlight"><span class="k">val</span> <span class="n">color</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L52) |  |
-| <a id="reconstructiondemo-kt--reconstructiondemo--depth"></a>[<code class="highlight"><span class="k">val</span> <span class="n">depth</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L55) |  |
-| <a id="reconstructiondemo-kt--reconstructiondemo--motion"></a>[<code class="highlight"><span class="k">val</span> <span class="n">motion</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L58) |  |
-| <a id="reconstructiondemo-kt--reconstructiondemo--reconstruction"></a>[<code class="highlight"><span class="k">val</span> <span class="n">reconstruction</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L61) |  |
-| <a id="reconstructiondemo-kt--reconstructiondemo--output"></a>[<code class="highlight"><span class="k">val</span> <span class="n">output</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L62) |  |
-| <a id="reconstructiondemo-kt--reconstructiondemo--time"></a>[<code class="highlight"><span class="k">var</span> <span class="n">time</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L81) |  |
-| <a id="reconstructiondemo-kt--reconstructiondemo--abstractscene"></a>[<code class="highlight"><span class="k">var</span> <span class="n">abstractScene</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L82) |  |
-| <a id="reconstructiondemo-kt--reconstructiondemo--cameramotion"></a>[<code class="highlight"><span class="k">var</span> <span class="n">cameraMotion</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L83) |  |
-| <a id="reconstructiondemo-kt--reconstructiondemo--animate"></a>[<code class="highlight"><span class="k">var</span> <span class="n">animate</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L84) |  |
-| <a id="reconstructiondemo-kt--reconstructiondemo--horizontalshiftpixels"></a>[<code class="highlight"><span class="k">var</span> <span class="n">horizontalShiftPixels</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L85) |  |
-| <a id="reconstructiondemo-kt--reconstructiondemo--attach"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">attach</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ReconstructionDemo</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L99) |  |
-| <a id="reconstructiondemo-kt--reconstructiondemo--reset"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="n">reason</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;scene edit&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L106) |  |
-| <a id="reconstructiondemo-kt--reconstructiondemo--reload"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">reload</span><span class="p">(</span><span class="n">vertex</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nf">shader</span><span class="p">(</span><span class="s">&quot;scene.vert&quot;</span><span class="p">)</span><span class="p">,</span> <span class="n">fragment</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nf">shader</span><span class="p">(</span><span class="s">&quot;scene.frag&quot;</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Result</span><span class="p">&lt;</span><span class="nc">Unit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L113) | Compile and reflect both shaders, reject changed layouts, then commit at a frame boundary. |
-| <a id="reconstructiondemo-kt--reconstructiondemo--render"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nc">CommandBuffer</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L126) |  |
-| <a id="reconstructiondemo-kt--reconstructiondemo--close"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L149) |  |
+| <a id="reconstructiondemo-kt--reconstructiondemo--inputsize"></a>[<code class="highlight"><span class="k">val</span> <span class="n">inputSize</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L38) |  |
+| <a id="reconstructiondemo-kt--reconstructiondemo--color"></a>[<code class="highlight"><span class="k">val</span> <span class="n">color</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L54) |  |
+| <a id="reconstructiondemo-kt--reconstructiondemo--depth"></a>[<code class="highlight"><span class="k">val</span> <span class="n">depth</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L57) |  |
+| <a id="reconstructiondemo-kt--reconstructiondemo--motion"></a>[<code class="highlight"><span class="k">val</span> <span class="n">motion</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L60) |  |
+| <a id="reconstructiondemo-kt--reconstructiondemo--reconstruction"></a>[<code class="highlight"><span class="k">val</span> <span class="n">reconstruction</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L63) |  |
+| <a id="reconstructiondemo-kt--reconstructiondemo--output"></a>[<code class="highlight"><span class="k">val</span> <span class="n">output</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L64) |  |
+| <a id="reconstructiondemo-kt--reconstructiondemo--time"></a>[<code class="highlight"><span class="k">var</span> <span class="n">time</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L83) |  |
+| <a id="reconstructiondemo-kt--reconstructiondemo--abstractscene"></a>[<code class="highlight"><span class="k">var</span> <span class="n">abstractScene</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L84) |  |
+| <a id="reconstructiondemo-kt--reconstructiondemo--cameramotion"></a>[<code class="highlight"><span class="k">var</span> <span class="n">cameraMotion</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L85) |  |
+| <a id="reconstructiondemo-kt--reconstructiondemo--animate"></a>[<code class="highlight"><span class="k">var</span> <span class="n">animate</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L86) |  |
+| <a id="reconstructiondemo-kt--reconstructiondemo--horizontalshiftpixels"></a>[<code class="highlight"><span class="k">var</span> <span class="n">horizontalShiftPixels</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L87) |  |
+| <a id="reconstructiondemo-kt--reconstructiondemo--attach"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">attach</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ReconstructionDemo</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L101) |  |
+| <a id="reconstructiondemo-kt--reconstructiondemo--reset"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="n">reason</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;scene edit&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L108) |  |
+| <a id="reconstructiondemo-kt--reconstructiondemo--reload"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">reload</span><span class="p">(</span><span class="n">vertex</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nf">shader</span><span class="p">(</span><span class="s">&quot;scene.vert&quot;</span><span class="p">)</span><span class="p">,</span> <span class="n">fragment</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nf">shader</span><span class="p">(</span><span class="s">&quot;scene.frag&quot;</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Result</span><span class="p">&lt;</span><span class="nc">Unit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L115) | Compile and reflect both shaders, reject changed layouts, then commit at a frame boundary. |
+| <a id="reconstructiondemo-kt--reconstructiondemo--render"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nc">CommandBuffer</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L128) |  |
+| <a id="reconstructiondemo-kt--reconstructiondemo--close"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L151) |  |
 
 ## ReconstructionMotionGpuSmoke.kt { #reconstructionmotiongpusmoke-kt }
 
@@ -1853,17 +1894,28 @@ The head pose a streamed frame was rendered from, as the media wire carries it.
 
 ## LinuxElectronImportProbe.kt { #linuxelectronimportprobe-kt }
 
+A standalone Linux probe that hands Electron one finished Vulkan image and reads back its verdict
+on the pixels.
+
+It clears a 64×64 dma-buf-exportable [`RenderToTexture`](graphics.md#rendertotexture-kt-rendertotexture) to a known colour, copies that back through
+a staging buffer to confirm the Field side is not blank, releases the image to
+`VK_QUEUE_FAMILY_EXTERNAL` behind a waited fence, and sends the descriptor over [`UnixFdPass`](graphics.md#unixfdpass-kt-unixfdpass) with
+the plane's stride and offset and the allocation's DRM modifier written beside it as
+`texture.json`. Then it waits up to a minute for the Node side's `result.json`. Start
+`tools/electron_dmabuf_probe/main.js` first; the single argument is the directory the two sides
+exchange evidence in, and `native/field-fdpass` has to be built.
+
 `src/jvmMain/kotlin/afield/media/stream/LinuxElectronImportProbe.kt` — [read the source](source/jvmMain/afield/media/stream/LinuxElectronImportProbe/)
 
 ### LinuxElectronImportProbe { #linuxelectronimportprobe-kt-linuxelectronimportprobe }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">LinuxElectronImportProbe</span></code>](source/jvmMain/afield/media/stream/LinuxElectronImportProbe/#L23)
+[<code class="highlight"><span class="k">object</span> <span class="nc">LinuxElectronImportProbe</span></code>](source/jvmMain/afield/media/stream/LinuxElectronImportProbe/#L34)
 
-One immutable, fence-completed Vulkan image for the Electron nativePixmap import spike. Arguments: evidence directory. Start tools/electron_dmabuf_probe/main.js first.
+One immutable, fence-completed Vulkan image for the Electron nativePixmap import.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="linuxelectronimportprobe-kt--linuxelectronimportprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/LinuxElectronImportProbe/#L24) |  |
+| <a id="linuxelectronimportprobe-kt--linuxelectronimportprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/LinuxElectronImportProbe/#L35) |  |
 
 ## HardwareOpticalFlow.kt { #hardwareopticalflow-kt }
 
@@ -2130,15 +2182,36 @@ Who is publishing on a network, kept live: [`names`](imaging.md#webrtc-kt--webrt
 
 ## WebRTCPublish.kt { #webrtcpublish-kt }
 
+Publishing what Field renders as a WebRTC stream, and the colour conversion that makes the stream
+look like the window.
+
+[`webrtcPublish`](imaging.md#webrtcpublish-kt--webrtcpublish) is the one call a box makes: it creates a sink of the size you ask for and adds a
+copy pass that samples your source into it every frame. The copy is a full-screen triangle whose
+fragment shader is written for the source and target formats it finds, so an 8-bit UNORM source
+holding display values and a float or `_SRGB` one holding linear light both come out looking the
+same. `WebRTCPublishTest` pins which of the four pairings converts and which passes the colour
+through, and compiles every variant. The sink itself, the sources and the networks are in
+`WebRTC.kt`.
+
 `src/jvmMain/kotlin/afield/media/webrtc/WebRTCPublish.kt` — [read the source](source/jvmMain/afield/media/webrtc/WebRTCPublish/)
 
 ### Top-level functions { #webrtcpublish-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="webrtcpublish-kt--webrtcpublish"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">webrtcPublish</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nf">sampleableSize</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="mi">640</span> <span class="n">to</span> <span class="mi">360</span><span class="p">)</span><span class="p">.</span><span class="n">first</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nf">sampleableSize</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="mi">640</span> <span class="n">to</span> <span class="mi">360</span><span class="p">)</span><span class="p">.</span><span class="n">second</span><span class="p">,</span> <span class="n">network</span><span class="p">:</span> <span class="nc">WebRTCNetwork</span> <span class="o">=</span> <span class="nc">WebRTCNetwork</span><span class="p">.</span><span class="n">default</span><span class="p">,</span> <span class="n">show</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="s">&quot;main&quot;</span><span class="p">,</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span> <span class="o">=</span> <span class="nf">fromContext</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">WebRTCSink</span></code>](source/jvmMain/afield/media/webrtc/WebRTCPublish/#L40) | Publish anything Field can sample — a [`RenderToTexture`](graphics.md#rendertotexture-kt-rendertotexture), a shadertoy canvas's `rtt`, a camera, a received stream — as the WebRTC stream `login/name`, and show its preview and status in this box's `show` output channel (`null` to show nothing). |
+| <a id="webrtcpublish-kt--webrtcpublish"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">webrtcPublish</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nf">sampleableSize</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="mi">640</span> <span class="n">to</span> <span class="mi">360</span><span class="p">)</span><span class="p">.</span><span class="n">first</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nf">sampleableSize</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="mi">640</span> <span class="n">to</span> <span class="mi">360</span><span class="p">)</span><span class="p">.</span><span class="n">second</span><span class="p">,</span> <span class="n">network</span><span class="p">:</span> <span class="nc">WebRTCNetwork</span> <span class="o">=</span> <span class="nc">WebRTCNetwork</span><span class="p">.</span><span class="n">default</span><span class="p">,</span> <span class="n">show</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="s">&quot;main&quot;</span><span class="p">,</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span> <span class="o">=</span> <span class="nf">fromContext</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">WebRTCSink</span></code>](source/jvmMain/afield/media/webrtc/WebRTCPublish/#L53) | Publish anything Field can sample — a [`RenderToTexture`](graphics.md#rendertotexture-kt-rendertotexture), a shadertoy canvas's `rtt`, a camera, a received stream — as the WebRTC stream `login/name`, and show its preview and status in this box's `show` output channel (`null` to show nothing). |
 
 ## WebRTCRoutes.kt { #webrtcroutes-kt }
+
+The signalling a Field WebRTC sink or source gets from its own server: the
+`/ws/webrtc-signaling?network=<id>` WebSocket its page exchanges signalling over, and
+`/api/webrtc-config?network=<id>`, which answers with that network's login and ICE servers.
+
+Installed beside Field's other WebSockets. Both answer only for networks box code has registered
+(`WebRTCNetwork.aaaframe`/`join`, or the local relay), so a client cannot make Field connect
+anywhere else; the guard decisions are in `dev_docs/server_surface_inventory.md`. A local network
+is relayed inside this process and every other one is forwarded upstream to aaaframe;
+`WebRTCSignalingTest` drives the socket both ways.
 
 `src/jvmMain/kotlin/afield/media/webrtc/WebRTCRoutes.kt` — [read the source](source/jvmMain/afield/media/webrtc/WebRTCRoutes/)
 
@@ -2146,7 +2219,7 @@ Who is publishing on a network, kept live: [`names`](imaging.md#webrtc-kt--webrt
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="webrtcroutes-kt--installwebrtcsignalingroutes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Route</span><span class="p">.</span><span class="nf">installWebRTCSignalingRoutes</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/webrtc/WebRTCRoutes/#L28) | `/ws/webrtc-signaling?network=<id>` and `/api/webrtc-config?network=<id>`: what the sink and source pages talk to. Installed beside Field's other WebSockets. Both answer only for networks box code has registered (`WebRTCNetwork.aaaframe`/`join`, or the local relay), so a client cannot make Field connect anywhere else; the guard decisions are in `dev_docs/server_surface_inventory.md`. |
+| <a id="webrtcroutes-kt--installwebrtcsignalingroutes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Route</span><span class="p">.</span><span class="nf">installWebRTCSignalingRoutes</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/webrtc/WebRTCRoutes/#L35) | Adds both signalling endpoints to a Ktor route. |
 
 ## WebRTCSignaling.kt { #webrtcsignaling-kt }
 

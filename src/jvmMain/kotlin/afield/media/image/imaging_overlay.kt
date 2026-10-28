@@ -10,6 +10,17 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
+ * Drawing [FLine]s into an [Img], in software and without AWT.
+ *
+ * [Img.drawFLines] is the whole surface. It resamples the image up by a scale factor and blends
+ * each line over it, reading `color`, `thickness`, `pointed`, `filled` and the rest from the line's
+ * own properties the way Field draws it on the canvas; round-capped segments and even-odd fills are
+ * rasterised here, each with a pixel of antialiasing. What comes back is another [Img], so an
+ * overlay costs no GPU, no window and no AWT font or toolkit, and `showImgGrid` can show it
+ * wherever a box runs.
+ */
+
+/**
  * This image as RGB with [lines] drawn over it, antialiased and without AWT. Line coordinates are
  * in this image's pixels; the result is [scale] times larger, so thin curves over a small image stay
  * crisp.
