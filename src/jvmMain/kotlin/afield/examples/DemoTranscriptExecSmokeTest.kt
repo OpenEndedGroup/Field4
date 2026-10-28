@@ -744,6 +744,8 @@ object DemoTranscriptExecSmokeTest {
         // JavaScript on one.
         "madp_boids",
         "imgui_vr_panel",
+        // Desktop Vulkan stereo/FXAA; OpenXR is opt-in. Live capture is on its public page.
+        "stereo_rtt_composite",
         // A hidden Electron window renders Field itself into Chromium shared textures; the live
         // macOS replay crosses IOSurface Mach rights and samples them in Vulkan. CI compiles the
         // self-contained starting scene without starting Electron or opening a native window.
