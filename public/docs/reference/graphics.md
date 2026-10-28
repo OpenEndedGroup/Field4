@@ -6696,17 +6696,31 @@ Where `field_polyvector` is, and whether it is there. Field runs without it; [`d
 
 ## PolyvectorRequiredGraph.kt { #polyvectorrequiredgraph-kt }
 
+Polyvector tracing under a graph the result has to reproduce: a [`Polyvector.vectorize`](graphics.md#polyvectorrequiredgraph-kt--vectorize) overload
+that takes the curves the trace must keep, and a [`RequiredGraphDrawing`](graphics.md#polyvectorrequiredgraph-kt-requiredgraphdrawing) saying which of them it
+kept.
+
+The required graph is evidence rather than a hard constraint. Its curves are drawn into the field
+the tracer fits, so strokes follow them; traced ends landing within the snap tolerance of a
+required node are then moved onto that node and take its id, and a required node no traced end
+reached adopts a nearby traced junction instead. A connection can still be lost, which is what
+[`RequiredGraphDrawing.missingCurves`](graphics.md#polyvectorrequiredgraph-kt--requiredgraphdrawing--missingcurves) and [`RequiredGraphDrawing.missingNodes`](graphics.md#polyvectorrequiredgraph-kt--requiredgraphdrawing--missingnodes) report and
+[`RequiredGraphDrawing.satisfied`](graphics.md#polyvectorrequiredgraph-kt--requiredgraphdrawing--satisfied) answers in one call.
+
+The graph usually comes from another reading of the same image, a Morse–Smale complex's network
+say, so that the traced curves share its nodes and their ids.
+
 `src/jvmMain/kotlin/afield/geometry/vectorize/polyvector/PolyvectorRequiredGraph.kt` — [read the source](source/jvmMain/afield/geometry/vectorize/polyvector/PolyvectorRequiredGraph/)
 
 ### Top-level functions { #polyvectorrequiredgraph-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="polyvectorrequiredgraph-kt--vectorize"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Polyvector</span><span class="p">.</span><span class="nf">vectorize</span><span class="p">(</span><span class="n">drawing</span><span class="p">:</span> <span class="nc">Img</span><span class="p">,</span> <span class="n">required</span><span class="p">:</span> <span class="nc">GeometryNetwork</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.6</span><span class="p">,</span> <span class="n">snapTolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">,</span> <span class="n">reach</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">12.0</span><span class="p">,</span> <span class="n">field</span><span class="p">:</span> <span class="nc">FrameFieldParameters</span> <span class="o">=</span> <span class="nc">FrameFieldParameters</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">trace</span><span class="p">:</span> <span class="nc">TraceParameters</span> <span class="o">=</span> <span class="nc">TraceParameters</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">RequiredGraphDrawing</span></code>](source/jvmMain/afield/geometry/vectorize/polyvector/PolyvectorRequiredGraph/#L53) | [`Polyvector.vectorize`](graphics.md#polyvectorrequiredgraph-kt--vectorize) for a drawing whose connectivity must agree with `required`, a 2-D [`GeometryNetwork`](graphics.md#geometrynetwork-kt-geometrynetwork) in the drawing's pixel coordinates (a Morse–Smale complex's network, say). |
+| <a id="polyvectorrequiredgraph-kt--vectorize"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Polyvector</span><span class="p">.</span><span class="nf">vectorize</span><span class="p">(</span><span class="n">drawing</span><span class="p">:</span> <span class="nc">Img</span><span class="p">,</span> <span class="n">required</span><span class="p">:</span> <span class="nc">GeometryNetwork</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.6</span><span class="p">,</span> <span class="n">snapTolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">,</span> <span class="n">reach</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">12.0</span><span class="p">,</span> <span class="n">field</span><span class="p">:</span> <span class="nc">FrameFieldParameters</span> <span class="o">=</span> <span class="nc">FrameFieldParameters</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">trace</span><span class="p">:</span> <span class="nc">TraceParameters</span> <span class="o">=</span> <span class="nc">TraceParameters</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">RequiredGraphDrawing</span></code>](source/jvmMain/afield/geometry/vectorize/polyvector/PolyvectorRequiredGraph/#L69) | [`Polyvector.vectorize`](graphics.md#polyvectorrequiredgraph-kt--vectorize) for a drawing whose connectivity must agree with `required`, a 2-D [`GeometryNetwork`](graphics.md#geometrynetwork-kt-geometrynetwork) in the drawing's pixel coordinates (a Morse–Smale complex's network, say). |
 
 ### RequiredGraphDrawing { #polyvectorrequiredgraph-kt-requiredgraphdrawing }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">RequiredGraphDrawing</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">drawing</span><span class="p">:</span> <span class="nc">PolyvectorDrawing</span><span class="p">,</span> <span class="k">val</span> <span class="n">required</span><span class="p">:</span> <span class="nc">GeometryNetwork</span><span class="p">,</span> <span class="k">val</span> <span class="n">network</span><span class="p">:</span> <span class="nc">GeometryNetwork</span><span class="p">,</span> <span class="k">val</span> <span class="n">missingCurves</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">missingNodes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/vectorize/polyvector/PolyvectorRequiredGraph/#L22)
+[<code class="highlight"><span class="k">class</span> <span class="nc">RequiredGraphDrawing</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">drawing</span><span class="p">:</span> <span class="nc">PolyvectorDrawing</span><span class="p">,</span> <span class="k">val</span> <span class="n">required</span><span class="p">:</span> <span class="nc">GeometryNetwork</span><span class="p">,</span> <span class="k">val</span> <span class="n">network</span><span class="p">:</span> <span class="nc">GeometryNetwork</span><span class="p">,</span> <span class="k">val</span> <span class="n">missingCurves</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">missingNodes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/vectorize/polyvector/PolyvectorRequiredGraph/#L38)
 
 A [`PolyvectorDrawing`](graphics.md#polyvector-kt-polyvectordrawing) traced under a required graph, and how far its connectivity keeps that graph's. [`network`](graphics.md#polyvectorrequiredgraph-kt--requiredgraphdrawing--network) is the traced curves with every end within the snap tolerance of a required node moved onto that node and given its id; other shared ends become new nodes, numbered after the required ones. A required curve between nodes `a` and `b` is kept when some chain of traced curves joins `a` to `b` without passing through another required node.
 
@@ -6717,8 +6731,8 @@ A [`PolyvectorDrawing`](graphics.md#polyvector-kt-polyvectordrawing) traced unde
 | <a id="polyvectorrequiredgraph-kt--requiredgraphdrawing--network"></a><code class="highlight"><span class="k">val</span> <span class="n">network</span><span class="p">:</span> <span class="nc">GeometryNetwork</span></code> |  |
 | <a id="polyvectorrequiredgraph-kt--requiredgraphdrawing--missingcurves"></a><code class="highlight"><span class="k">val</span> <span class="n">missingCurves</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> | Ids of the required curves (between two nodes) that no chain of traced curves reproduces. |
 | <a id="polyvectorrequiredgraph-kt--requiredgraphdrawing--missingnodes"></a><code class="highlight"><span class="k">val</span> <span class="n">missingNodes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> | Ids of required nodes (those a required curve ends at) that no traced curve end reached. |
-| <a id="polyvectorrequiredgraph-kt--requiredgraphdrawing--satisfied"></a>[<code class="highlight"><span class="k">val</span> <span class="n">satisfied</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/geometry/vectorize/polyvector/PolyvectorRequiredGraph/#L31) |  |
-| <a id="polyvectorrequiredgraph-kt--requiredgraphdrawing--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/vectorize/polyvector/PolyvectorRequiredGraph/#L33) |  |
+| <a id="polyvectorrequiredgraph-kt--requiredgraphdrawing--satisfied"></a>[<code class="highlight"><span class="k">val</span> <span class="n">satisfied</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/geometry/vectorize/polyvector/PolyvectorRequiredGraph/#L47) |  |
+| <a id="polyvectorrequiredgraph-kt--requiredgraphdrawing--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/vectorize/polyvector/PolyvectorRequiredGraph/#L49) |  |
 
 ## Colormaps.kt { #colormaps-kt }
 
@@ -9628,6 +9642,24 @@ Static BLAS per geometry identity; a new TLAS for each explicit instance edit. N
 
 ## RtxdiEngine.kt { #rtxdiengine-kt }
 
+The RTXDI implementation behind [`DirectLighting`](graphics.md#directlighting-kt-directlighting)'s two RTXDI modes: reservoir resampling run
+entirely as compute passes over GPU buffers, with none of the SDK's CPU-side wrapper linked in.
+
+An engine is built when RTXDI is enabled and sized from the render dimensions it finds then, and
+it owns what that sizing implies: a packed surface buffer, host-visible buffers per swapchain
+image for the camera matrices and for this frame's and the previous frame's area lights, and
+reservoir storage of three slices of 24 bytes a pixel, rounded up to whole 16×16 tiles. That
+allocation is checked against the device's `maxStorageBufferRange` as the engine is built, so an
+oversized render resolution is refused there rather than inside a descriptor write. Ray queries
+are required.
+
+Reuse across frames holds only while the history does. Every frame compares the projection, the
+camera (a view difference over 0.75 counts as a cut), the acceleration structure's build count and
+a signature of the sampling settings, and any change resets the history and records which of them
+it was. A reference render runs a single reference estimator in place of the four resampling
+stages and leaves no history behind. The reconstruction filter that can follow runs over the
+radiance view alone, and feeds neither the estimator nor the reservoirs.
+
 `src/jvmMain/kotlin/afield/graphics/render/lighting/RtxdiEngine.kt` — [read the source](source/jvmMain/afield/graphics/render/lighting/RtxdiEngine/)
 
 ## RtxdiLightingSmoke.kt { #rtxdilightingsmoke-kt }
@@ -9823,7 +9855,7 @@ Constants: `SRGB_CODE`, `LINEAR_LDR`, `LINEAR_HDR`.
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">OpenDlssNrControls</span><span class="p">(</span><span class="k">val</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Int</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="k">val</span> <span class="n">style</span><span class="p">:</span> <span class="nc">Int</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="k">val</span> <span class="n">tone</span><span class="p">:</span> <span class="nc">Float</span><span class="o">=</span><span class="mi">1f</span><span class="p">,</span><span class="k">val</span> <span class="n">structure</span><span class="p">:</span> <span class="nc">Float</span><span class="o">=</span><span class="mi">1f</span><span class="p">,</span> <span class="k">val</span> <span class="n">skin</span><span class="p">:</span> <span class="nc">Float</span><span class="o">=</span><span class="p">-</span><span class="mi">1f</span><span class="p">,</span><span class="k">val</span> <span class="n">autoMask</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">=</span><span class="kc">false</span><span class="p">,</span><span class="k">val</span> <span class="n">intensity</span><span class="p">:</span> <span class="nc">Float</span><span class="o">=</span><span class="mi">1f</span><span class="p">,</span><span class="k">val</span> <span class="n">temporal</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">=</span><span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/render/neural/OpenDlssNrPass/#L33)
 
-Style is the network condition, independently of grading after the pass. Tone/structure are deliberately unrestricted within finite binary16 range: -10..30 is useful for image exploration. Skin is active only with autoMask; negative skin inherits structure. Fixed seed is the default.
+Style is the network condition, independently of grading after the pass. Tone and structure take any finite binary16 value: -10..30 is useful for image exploration. Skin is active only with autoMask; negative skin inherits structure. Fixed seed is the default.
 
 | Declaration | Summary |
 | --- | --- |
@@ -10633,7 +10665,7 @@ reflection does not carry. Field's modules use this to allocate and bind each sh
 | Declaration | Summary |
 | --- | --- |
 | <a id="introspection-kt--parseglslmembercomments"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">parseGlslMemberComments</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/graphics/shader/Introspection/#L213) | Scrape the `// trailing comment` off every member declaration inside a GLSL block — the push-constant block, a `struct`, a UBO, an SSBO — so a human note written next to a uniform can travel to the Kotlin accessor generated for it (see `afield.graphics.shader.insertForShader`, which appends it to the generated preamble line, and `afield.tools.docs.ShaderBindingDocs`, which reads it back for the completion popup). |
-| <a id="introspection-kt--layoutsizeinbytes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Either</span><span class="p">&lt;</span><span class="nc">PrimitiveType</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Introspected</span><span class="p">.</span><span class="nc">Member</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">layoutSizeInBytes</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/graphics/shader/Introspection/#L744) | Byte size of a member's type: a primitive's size, or the maximum offset+size across nested members. Shared with `Structure.kt` and `shaders.kt`, which previously each hand-rolled this walk. |
+| <a id="introspection-kt--layoutsizeinbytes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Either</span><span class="p">&lt;</span><span class="nc">PrimitiveType</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Introspected</span><span class="p">.</span><span class="nc">Member</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">layoutSizeInBytes</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/graphics/shader/Introspection/#L744) | Byte size of a member's type: a primitive's size, or the maximum offset+size across nested members. `Structure.kt` sizes a buffer's members with it. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nc">Introspected</span><span class="p">.</span><span class="nc">Member</span><span class="p">.</span><span class="nf">layoutSizeInBytes</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/graphics/shader/Introspection/#L752) | Byte size of a member: a device pointer's size if physical-pointer, else its type's layout size. |
 | <a id="introspection-kt--memberslayoutsizeinbytes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Introspected</span><span class="p">.</span><span class="nc">Member</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">membersLayoutSizeInBytes</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/graphics/shader/Introspection/#L755) |  |
 
@@ -11004,13 +11036,16 @@ The picture a document's shadertoy boxes draw into, like ShaderTrinket's canvas:
 
 ## ShadertoyPublish.kt { #shadertoypublish-kt }
 
+ShaderTrinket's Publish, as a function: [`publishShadertoyCanvas`](graphics.md#shadertoypublish-kt--publishshadertoycanvas) streams a shader canvas over
+WebRTC under a name, so what a viewer sees is whatever that canvas is showing, presets included.
+
 `src/jvmMain/kotlin/afield/graphics/shader/ShadertoyPublish.kt` — [read the source](source/jvmMain/afield/graphics/shader/ShadertoyPublish/)
 
 ### Top-level functions { #shadertoypublish-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="shadertoypublish-kt--publishshadertoycanvas"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">publishShadertoyCanvas</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;field-shader&quot;</span><span class="p">,</span> <span class="n">canvas</span><span class="p">:</span> <span class="nc">ShadertoyCanvas</span> <span class="o">=</span> <span class="nf">shadertoyCanvas</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">network</span><span class="p">:</span> <span class="nc">WebRTCNetwork</span> <span class="o">=</span> <span class="nc">WebRTCNetwork</span><span class="p">.</span><span class="n">default</span><span class="p">)</span><span class="p">:</span> <span class="nc">WebRTCSink</span></code>](source/jvmMain/afield/graphics/shader/ShadertoyPublish/#L16) | ShaderTrinket's **Publish**: stream `canvas` to the class as `login/name`, with the stream's preview and status in this box's output. |
+| <a id="shadertoypublish-kt--publishshadertoycanvas"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">publishShadertoyCanvas</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;field-shader&quot;</span><span class="p">,</span> <span class="n">canvas</span><span class="p">:</span> <span class="nc">ShadertoyCanvas</span> <span class="o">=</span> <span class="nf">shadertoyCanvas</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">network</span><span class="p">:</span> <span class="nc">WebRTCNetwork</span> <span class="o">=</span> <span class="nc">WebRTCNetwork</span><span class="p">.</span><span class="n">default</span><span class="p">)</span><span class="p">:</span> <span class="nc">WebRTCSink</span></code>](source/jvmMain/afield/graphics/shader/ShadertoyPublish/#L21) | ShaderTrinket's **Publish**: stream `canvas` to the class as `login/name`, with the stream's preview and status in this box's output. |
 
 ## SlangCompiler.kt { #slangcompiler-kt }
 
@@ -16111,6 +16146,17 @@ Records named compute modules, ray-tracing modules and other [`Target`](graphics
 
 ## ExtEyeGazeInteraction.kt { #exteyegazeinteraction-kt }
 
+Combined eye gaze from OpenXR's `XR_EXT_eye_gaze_interaction`, as a single pose action inside the
+HMD target's existing gameplay action set.
+
+Creation returns null on a runtime that does not advertise the extension, reports no eye-gaze
+support in its system properties, or refuses the action, its suggested binding or its action
+space, so a target asks once and then has either gaze or none. It has to happen before the action
+sets are attached to the session. Each frame the gaze pose is located against the target's
+reference space and written into an [`EyeGazeState`](graphics.md#openxreyetracking-kt-eyegazestate) with the sample time the runtime reports for
+it; the state is invalidated first, so a frame in which the action is not active reads as inactive
+rather than as the last pose that worked.
+
 `src/jvmMain/kotlin/afield/graphics/vulkan/targets/ExtEyeGazeInteraction.kt` — [read the source](source/jvmMain/afield/graphics/vulkan/targets/ExtEyeGazeInteraction/)
 
 ## FrameHistory.kt { #framehistory-kt }
@@ -16412,6 +16458,17 @@ OpenXR HMD render target.
 | <a id="openxrhmdtarget-kt--openxrhmdtarget--cleanup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">cleanup</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/vulkan/targets/OpenXRHmdTarget/#L2820) |  |
 
 ## OwnedModules.kt { #ownedmodules-kt }
+
+Ownership for the modules a box puts into a renderer's target maps, which is what
+`renderer += "name" to module` records so that something can take the module out again.
+
+The map belongs to the renderer and the module to the box that compiled it, a split the map alone
+cannot express: a deleted box's module would otherwise go on drawing, holding the snippet
+classloader that built it. Each put therefore files a lifecycle claim under
+`afield.runtime.lifecycle.ReleasePolicy.KEYED`, so stopping the box leaves the module drawing, a
+re-run under the same name replaces it, and retiring the box (delete, document close) removes it.
+The claim is filed under the renderer as well, and disposing the renderer ends the ones whose
+device has gone.
 
 `src/jvmMain/kotlin/afield/graphics/vulkan/targets/OwnedModules.kt` — [read the source](source/jvmMain/afield/graphics/vulkan/targets/OwnedModules/)
 

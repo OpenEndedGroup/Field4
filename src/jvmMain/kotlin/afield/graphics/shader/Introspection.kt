@@ -739,7 +739,7 @@ private fun slangPushConstantMembersFromFields(blockName: String, fields: org.js
 
 /**
  * Byte size of a member's type: a primitive's size, or the maximum offset+size across nested
- * members. Shared with `Structure.kt` and `shaders.kt`, which previously each hand-rolled this walk.
+ * members. `Structure.kt` sizes a buffer's members with it.
  */
 fun Either<PrimitiveType, List<Introspected.Member>>.layoutSizeInBytes(): Int =
     fold({ it.sizeInBytes.toInt() }, { members ->
