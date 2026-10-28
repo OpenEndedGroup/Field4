@@ -130,6 +130,7 @@ async function freezeNode(node, ctx, depth = 0) {
         clone.style.setProperty(property, value.includes('url(') ? await freezeCss(value, doc.baseURI, ctx) : value);
     }
     clone.style.animation = 'none'; clone.style.transition = 'none'; clone.style.caretColor = 'transparent';
+    clone.style.resize = 'none';
     if (tag === 'a') {
         const href = node.getAttribute('href') || '';
         if (/^https?:\/\//.test(href) && new URL(href).origin !== new URL(doc.baseURI).origin) { clone.setAttribute('href', href); clone.setAttribute('target','_blank'); clone.setAttribute('rel','noopener noreferrer'); }

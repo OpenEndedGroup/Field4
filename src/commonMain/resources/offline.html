@@ -10,8 +10,9 @@
     <link rel="stylesheet" href="outputareas.css">
     <style>
         .published-outputs { position:absolute; left:0; top:100%; padding-top:8px; cursor:auto; text-align:left; }
-        .published-output { background:#080808; border:1px solid #444; margin-bottom:6px; color:#ddd; }
+        .published-output { background:#080808; border:0; margin-bottom:6px; color:#ddd; }
         .published-output summary { padding:6px 10px; cursor:pointer; font:12px "Iosevka Web",monospace; }
+        .published-output:focus, .published-output summary:focus { outline:none; box-shadow:none; }
         .published-output iframe { display:block; width:100%; border:0; background:#000; }
         .published-output-warning { padding:6px 10px; max-width:640px; color:#aaa; font-size:12px; user-select:text; }
         body {
