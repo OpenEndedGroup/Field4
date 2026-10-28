@@ -649,7 +649,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**34901 public symbols across 1586 source files**, 18331 of them (52%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34907 public symbols across 1586 source files**, 18334 of them (52%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -678,7 +678,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio AI](audio-ai.md) | 22 | 584 | 397 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 123 | 3096 | 1519 (49%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 235 | 3178 | 1157 (36%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [Machine learning](machine-learning.md) | 110 | 2510 | 852 (33%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
+| [Machine learning](machine-learning.md) | 110 | 2516 | 855 (33%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 | [Output](output.md) | 1 | 25 | 17 (68%) |  |
 
@@ -2182,7 +2182,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr>program/<wbr></small> [ToolProgramRunner.kt](machine-learning.md#toolprogramrunner-kt) | Machine learning | 0 | 0 | The sandbox a tool program runs in: one `RunToolProgramRequest`'s JavaScript, in a fresh GraalJS context that can reach the conversation's tools and nothing else. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr>program/<wbr></small> [ToolProgramTools.kt](machine-learning.md#toolprogramtools-kt) | Machine learning | 42 | 12 | # Tool programs: the model writes the loop, Field runs it |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [ToolRunloopDispatch.kt](machine-learning.md#toolrunloopdispatch-kt) | Machine learning | 0 | 0 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [Tools.kt](machine-learning.md#tools-kt) | Machine learning | 367 | 37 | The request and result classes of the tools Field's AI agent can call, and the registry that dispatches a call by name to its handler. | [AI4's built-in tools](../ai4_tools.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [Tools.kt](machine-learning.md#tools-kt) | Machine learning | 373 | 40 | The request and result classes of the tools Field's AI agent can call, and the registry that dispatches a call by name to its handler. | [AI4's built-in tools](../ai4_tools.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>polytope/<wbr></small> [Topology.kt](polytopes.md#topology-kt) | Polytopes | 91 | 63 | The abstract incidence complex — the authoritative value in `afield.geometry.polytope`, and the one layer that knows nothing about coordinates. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>ai/<wbr></small> [TrackedAnalysis.kt](audio-ai.md#trackedanalysis-kt) | Audio AI | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [TrackedPhase.kt](synthesis.md#trackedphase-kt) | Synthesis | 33 | 6 | Pitch-tracked phase for voice banks: a tracker reduces one periodic sound to phase, phase advance, pitch, level and confidence, and a bank gives every voice its own phase accumulator. |  |
