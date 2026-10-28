@@ -70,7 +70,6 @@ class RepoCommandToolsTest {
         assertFalse(r.success)
         assertTrue(r.message.contains("allowed: git-status"), r.message)
         assertFailsWith<IllegalArgumentException> { RepoCommandTools(f.files, RepoCommandScope(setOf("rm"))) }
-        Unit
     }
 
     @Test fun runsInTheRootWithoutAShell() = Fixture(allowed = setOf("gradle")).use { f ->
@@ -85,7 +84,7 @@ class RepoCommandToolsTest {
     }
 
     @Test fun environmentDropsGitVariablesAndTheLockOwner() = Fixture().use { f ->
-        val env = f.tools.environment(mapOf("GIT_DIR" to "/x", "GIT_INDEX_FILE" to "/y", "AFIELD_VERIFICATION_LOCK_OWNER" to "1", "PATH" to "/bin"))
+        val env = f.tools.environment(mapOf("GIT_DIR" to "/x", "GIT_INDEX_FILE" to "/y", "AFIELD_VERIFICATION_LOCK_OWNER" to "1", "VIRTUAL_ENV" to "/v", "PATH" to "/bin"))
         assertEquals(mapOf("PATH" to "/bin", "AFIELD_VERIFICATION_LOCK" to "fail", "GIT_TERMINAL_PROMPT" to "0", "GIT_PAGER" to "cat", "PAGER" to "cat"), env)
     }
 

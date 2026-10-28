@@ -1,0 +1,13 @@
+diff --git a/tools/test_field_agent.py b/tools/test_field_agent.py
+index d9aad44af..c36a09ef3 100644
+--- a/tools/test_field_agent.py
++++ b/tools/test_field_agent.py
+@@ -67,7 +67,7 @@ class FieldAgentTest(unittest.TestCase):
+         self.assertEqual(argv[2:], ["--root", "."], "read-only unless edits: no --write glob")
+         self.assertEqual(field_agent.headless_argv("field", edits=True)[4:], ["--write", "**", "--run", "fixer"],
+                          "with edits AI4 may also run the fixer's named commands")
+-        self.assertEqual(field_agent.describe("field"), "Field AI4")
++        self.assertEqual(field_agent.describe("field"), "Field AI4 (repo agent)")
+ 
+ 
+ class FieldRepoAgentTest(unittest.TestCase):

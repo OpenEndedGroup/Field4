@@ -19,8 +19,8 @@ import java.util.concurrent.TimeUnit
  *
  * - is started from an argv list (no shell, no interpolation), with the job's root as its cwd and
  *   stdin closed;
- * - gets the Field JVM's environment minus every `GIT_*` variable and the verification-lock owner
- *   marker, plus `AFIELD_VERIFICATION_LOCK=fail`, `GIT_TERMINAL_PROMPT=0` and `GIT_PAGER=cat`;
+ * - gets the Field JVM's environment minus every `GIT_*` variable, `VIRTUAL_ENV` (uv would warn and
+ *   ignore it) and the verification-lock owner marker, plus `AFIELD_VERIFICATION_LOCK=fail`, `GIT_TERMINAL_PROMPT=0` and `GIT_PAGER=cat`;
  * - is refused outright while another live process holds the root's `.field-backdoor/verification.lock`
  *   (unless that process is an ancestor of this JVM, i.e. the job's own runner);
  * - is stopped with its whole process tree (TERM, then KILL after a grace) at its wall-clock cap. A
@@ -231,7 +231,7 @@ class RepoCommandTools(val files: RepoFileTools, val scope: RepoCommandScope) {
         return text.take(300)
     }
 
-    internal fun environment(base: Map<String, String>): Map<String, String> = base.filterKeys { !it.startsWith("GIT_") && it != OWNER_ENV } + mapOf(
+    internal fun environment(base: Map<String, String>): Map<String, String> = base.filterKeys { !it.startsWith("GIT_") && it != OWNER_ENV && it != "VIRTUAL_ENV" } + mapOf(
         "AFIELD_VERIFICATION_LOCK" to "fail", "GIT_TERMINAL_PROMPT" to "0", "GIT_PAGER" to "cat", "PAGER" to "cat",
     )
 
