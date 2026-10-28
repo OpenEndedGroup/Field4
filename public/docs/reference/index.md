@@ -649,7 +649,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**34907 public symbols across 1586 source files**, 18334 of them (52%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34907 public symbols across 1587 source files**, 18334 of them (52%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -677,7 +677,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 77 | 2092 | 1013 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 584 | 397 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 123 | 3096 | 1519 (49%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 235 | 3178 | 1157 (36%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 236 | 3178 | 1157 (36%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 110 | 2516 | 855 (33%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 | [Output](output.md) | 1 | 25 | 17 (68%) |  |
@@ -1979,6 +1979,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>statistics/<wbr></small> [smile_mds.kt](data.md#smile-mds-kt) | Data | 35 | 35 | Classical multidimensional scaling and t-SNE, over equal-length vectors or over a distance matrix you computed yourself, wrapping Smile. | [Projecting a distance matrix](../projection_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>statistics/<wbr></small> [smile_neighbors.kt](data.md#smile-neighbors-kt) | Data | 26 | 26 | Nearest-neighbour indexes over `Vec2` / `Vec3` point lists, wrapping Smile's `KDTree` and `LSH`. | [Neighbours and graphs on a point cloud](../graph_connectivity_examples.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [SmileStdlibSmokeTest.kt](examples.md#smilestdlibsmoketest-kt) | Examples · internal | 3 | 1 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [SnippetClassReceiverCrash.kt](workspace.md#snippetclassreceivercrash-kt) | Workspace · internal | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>solid/<wbr>manifold/<wbr></small> [Solid.kt](graphics.md#solid-kt) | Graphics | 54 | 46 | Closed 3D volumes from the Manifold library: primitives, transforms, union, difference and intersection, with results that stay closed manifolds. | [Solids that cannot fail: Manifold in Field](../manifold.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>solidsl/<wbr></small> [SolidAgreement.kt](graphics.md#solidagreement-kt) | Graphics | 28 | 17 | The measurement this package exists for: **one written shape, evaluated two completely independent ways, and the disagreement reported as a number.** |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>solid/<wbr>solidcraft/<wbr></small> [SolidCraft.kt](graphics.md#solidcraft-kt) | Graphics | 15 | 4 | An optional bridge to the SolidCraft B-rep document engine, whose model stays in native Rust code. | [SolidCraft: edit the design, then see the part](../solidcraft.md) |
