@@ -22,11 +22,20 @@ import java.math.MathContext
 import kotlin.math.abs
 import kotlin.math.max
 
-/*
+/**
  * Constraint-solving spreadsheets: cells that hold Ceres variables, formulas that trace back to them,
- * and assertion cells the sheet solves for. Design, strengths and measurements:
- * dev_docs/SPREADSHEET_CONSTRAINTS.md. User page: public/docs/spreadsheets.md, "Solving for cells".
+ * and assertion cells the sheet solves for.
+ *
+ * A cell whose formula is `free(4)` is a variable the sheet may move, starting at 4. Arithmetic over
+ * one yields a [SpreadsheetTraced], a number that also carries the expression that produced it, so a
+ * cell written `B3 eq 40` (or `le`, or `ge`) becomes a [SpreadsheetAssertion] the solver can act on:
+ * Ceres moves the variables until every assertion holds, each variable preferring the value it had.
+ * The three types here are what such a cell holds; the collector and the solver around them are
+ * internal to this file.
  */
+
+// Design, strengths and measurements: dev_docs/SPREADSHEET_CONSTRAINTS.md.
+// User page: public/docs/spreadsheets.md, "Solving for cells".
 
 /**
  * A number a formula computed from one or more variable cells (`=free(3)`), carrying the expression it
@@ -34,6 +43,7 @@ import kotlin.math.max
  * assertion over it can move the variables it came from.
  */
 class SpreadsheetTraced internal constructor(val value: Double, internal val expr: CeresExpr) {
+    /** The [value] alone, so a traced cell reads as the number it currently is. */
     override fun toString(): String = value.toString()
 }
 
@@ -45,8 +55,11 @@ enum class SpreadsheetRelation(val symbol: String) { EQ("="), LE("≤"), GE("≥
  * that every assertion holds; one that still does not after the solve is shown violated, with how far.
  */
 class SpreadsheetAssertion internal constructor(
+    /** Which of the three comparisons the cell states. */
     val relation: SpreadsheetRelation,
+    /** The left-hand side at the sheet's current numbers. */
     val left: Double,
+    /** The right-hand side at the sheet's current numbers. */
     val right: Double,
     internal val leftExpr: CeresExpr?,
     internal val rightExpr: CeresExpr?,
@@ -59,6 +72,11 @@ class SpreadsheetAssertion internal constructor(
             SpreadsheetRelation.GE -> max(0.0, right - left)
         }
 
+    /**
+     * Whether [violation] is inside a tolerance that scales with the two sides,
+     * `1e-6 × (1 + |left| + |right|)`, so a comparison between large numbers is not held to an
+     * absolute one.
+     */
     val satisfied: Boolean get() = violation <= assertionTolerance(left, right)
 
     /** True when either side depends on a variable cell, so the solver can do something about it. */
@@ -74,6 +92,7 @@ class SpreadsheetAssertion internal constructor(
         }
     }
 
+    /** A tick or a cross, then the comparison as the sheet currently reads it. */
     override fun toString(): String = "${if (satisfied) "✓" else "✗"} $left ${relation.symbol} $right"
 }
 

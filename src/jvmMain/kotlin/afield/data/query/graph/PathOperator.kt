@@ -8,7 +8,7 @@ package afield.data.query.graph
  * ```
  *
  * Path syntax already uses `/` as its separator, so the operator and the string it takes are
- * spelled the same way — `rig / "carrier" / "freq"` and `rig / "carrier/freq"` are the same
+ * spelled the same way: `rig / "carrier" / "freq"` and `rig / "carrier/freq"` are the same
  * query, and both report `carrier/freq`.
  *
  * ### What defining this on `Any?` costs
@@ -16,18 +16,18 @@ package afield.data.query.graph
  * It is a wide extension, in the same spirit as `patch matches "**\/cutoff"`, and it is
  * auto-imported into every box. Three consequences:
  *
- * - **Nothing that used to compile changes meaning.** A member operator always beats an
+ * - **It claims only the case no other `div` wants.** A member operator always beats an
  *   extension, so every `Float / Float`, `Vec3 / Float`, `Signal / Signal` keeps its own
  *   `div`. Between two extensions the more specific receiver wins, so
- *   `kotlin.io.path`'s `Path / "sub"` still builds a `Path`. What this adds is only the case
- *   that was previously a compile error: a *String* on the right of `/`.
- * - **A leaf on the left is still a compile error.** `"a" / "b"`, a number or a boolean over a
+ *   `kotlin.io.path`'s `Path / "sub"` still builds a `Path`. That leaves this overload a
+ *   *String* on the right of `/`, and nothing else.
+ * - **A leaf on the left is a compile error.** `"a" / "b"`, a number or a boolean over a
  *   string resolve to deprecated-at-ERROR overloads ([String.div] and its siblings), so the
  *   typo is caught at the `/` with a message pointing at [graphPaths].
  * - **`div` appears on every receiver in completion.** One extra entry, everywhere.
  *
- * When you need [GraphWalkOptions] — a depth cap, private properties, a custom `descendInto`
- * — call [graphPaths] directly; the operator has nowhere to put them.
+ * When you need [GraphWalkOptions] (a depth cap, private properties, a custom `descendInto`),
+ * call [graphPaths] directly; the operator has nowhere to put them.
  */
 
 /** Queries this object's graph with a path [pattern]; the same as `graphPaths(pattern)`. */
