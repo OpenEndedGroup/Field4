@@ -98,7 +98,10 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
                     relatedExamples = related.examples
                 )
             } else {
+                // WorkspaceSearch's FIELD_KOTLIN_SOURCE paths are relative to src/; accept them as given.
                 ctx.resolveAttachment?.invoke(requested)
+                    ?: ctx.resolveAttachment?.takeIf { !normalizedRequested.startsWith("/") && !normalizedRequested.startsWith("src/") }
+                        ?.invoke("src/$normalizedRequested")
                     ?: throw IllegalArgumentException(
                         "No attachment or resolvable file named '$requested'. Call ListAttachments first."
                     )
