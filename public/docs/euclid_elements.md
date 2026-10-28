@@ -151,6 +151,21 @@ lines(c.toFLines(extent = 160.0, width = 520.0, height = 420.0), w = 520.0, h = 
 markdown(c.markdown())
 ```
 
+## I.47: the squares on a right triangle
+
+Book I ends with Pythagoras. Squares go on all three sides of a right triangle (I.46), and a
+parallel through the right angle (I.31) splits the square on the long side into two rectangles.
+Each rectangle equals one of the other squares, which Byrne shows by colour: red equals red, blue
+equals blue.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/euclid_elements/prop47.png" wait="3" capture="box" open-outputs="true" w="1000" h="900" padding="14" timeout="90" name="euclid-elements-prop47" embed=true alt="Byrne's figure for I.47: a right triangle ABC with squares on its three sides. The square on BA is filled red and the square on AC blue. The large square on BC, outlined in yellow, is split by the line AL into a red rectangle under B and a blue rectangle under C, with the dotted joins AD and FC crossing it."}
+import afield.geometry.euclid.*
+
+val c = Elements.prop47(Triangle2(point2(0, 0), point2(120, 0), point2(0, -90)))
+lines(c.toFLines(width = 560.0, height = 560.0), w = 560.0, h = 560.0)
+markdown(c.markdown())
+```
+
 ## How a construction is styled
 
 A proposition says what each element is for, not how to draw it. Every figure has one of three
@@ -160,6 +175,8 @@ roles:
 - **construction**: circles and lines drawn only to find a point. Circles are thin; straight
   construction lines (joins and productions) are dotted, as Byrne printed them.
 - **result**: what the proposition was asked to make. Heavier.
+- **area**: a region filled with colour, drawn under every line. Equal areas share a colour, as
+  in I.47.
 
 `ByrneStyle` turns roles into pens, so every diagram is styled in one place. Steps that come from
 a cited proposition draw only what they produce, which keeps I.46 a square and not a tangle of
@@ -183,7 +200,8 @@ letters, and `labelSize` and `labelDistance` (both in multiples of `thickness`) 
 
 - The shapes and their intersections:
   [Euclid.kt](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/euclid/Euclid.kt).
-- The propositions, including III.1 (the centre of a circle), IV.4 and IV.5 (a triangle's
-  incircle and circumcircle) and VI.13 (a mean proportional):
+- The propositions:
   [Elements.kt](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/euclid/Elements.kt).
+- [Euclid's Elements, Books II–VI](euclid_elements_later.md): the gnomons, the golden section,
+  the pentagon and the fifteen-sided figure, and proportion.
 - [Typography as Geometry](typography_examples.md), where the letters come from.
