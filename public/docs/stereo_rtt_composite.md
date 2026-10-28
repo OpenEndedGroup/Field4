@@ -51,7 +51,7 @@ slider has changed the running texture.
 
 The graph is:
 
-```text
+```diffstatic {data-lang=text}
 scene geometry → left/right eye RTTs → packed stereo RTT
                                           ↓
                                     FXAA composite RTT
@@ -83,7 +83,7 @@ opening a window; the image above runs the actual desktop Vulkan path.
 The native regression check exercises first-frame sampling, one render pass per eye and square-eye
 projection on a non-square window, with Vulkan validation enabled:
 
-```bash
+```diffstatic {data-lang=bash}
 uv run --project . --group backdoor python tools/run_field_tests.py --id four.stereo-packing.smoke
 ```
 
