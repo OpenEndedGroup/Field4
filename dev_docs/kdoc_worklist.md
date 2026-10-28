@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 19122 of 34877 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 19305 of 34877 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2058 undocumented entry points** (types, top-level functions and values) and 13000 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2048 undocumented entry points** (types, top-level functions and values) and 12856 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -307,7 +307,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [LlmBridge.kt](../src/jvmMain/kotlin/afield/ai/models/LlmBridge.kt) | Machine learning | — | 6 | 6 | 29% |
 | [metadata.kt](../src/jvmMain/kotlin/afield/document/workspace/metadata.kt) | Workspace | — | 6 | 0 | 14% |
 | [SimpleSpatialAudio.kt](../src/jvmMain/kotlin/afield/audio/engine/SimpleSpatialAudio.kt) | Audio | — | 5 | 78 | 23% |
-| [ArchitecturalGeometry.kt](../src/jvmMain/kotlin/afield/math/optimization/ceres/ArchitecturalGeometry.kt) | Solvers | — | 5 | 62 | 50% |
 | [ForthInterpreter.kt](../src/jvmMain/kotlin/afield/lang/forth/ForthInterpreter.kt) | Languages | — | 5 | 38 | 15% |
 | [Spectral.kt](../src/jvmMain/kotlin/afield/audio/synth/Spectral.kt) | Synthesis | — | 5 | 32 | 33% |
 | [VisionMetal.kt](../src/jvmMain/kotlin/afield/graphics/visionos/VisionMetal.kt) | Graphics | — | 5 | 30 | 50% |
@@ -346,7 +345,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ComputeModule.kt](../src/jvmMain/kotlin/afield/graphics/render/ComputeModule.kt) | Graphics | — | 3 | 27 | 12% |
 | [MeshModule.kt](../src/jvmMain/kotlin/afield/graphics/render/MeshModule.kt) | Graphics | — | 3 | 27 | 5% |
 | [JSONLineServer.kt](../src/jvmMain/kotlin/afield/io/process/JSONLineServer.kt) | Data | — | 3 | 27 | 3% |
-| [CeresExpression.kt](../src/jvmMain/kotlin/afield/math/optimization/ceres/CeresExpression.kt) | Solvers | — | 3 | 25 | 57% |
 | [KotlinJsHeadProfiles.kt](../src/jvmMain/kotlin/afield/lang/remotejs/KotlinJsHeadProfiles.kt) | Languages | — | 3 | 22 | 13% |
 | [Projection.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/Projection.kt) | Graphics | — | 3 | 20 | 25% |
 | [MeshMesh.kt](../src/jvmMain/kotlin/afield/graphics/render/MeshMesh.kt) | Graphics | — | 3 | 11 | 0% |
@@ -391,7 +389,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FrameBufferGroup.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/buffers/FrameBufferGroup.kt) | Graphics | — | 1 | 28 | 3% |
 | [KotlinInterface.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/KotlinInterface.kt) | Workspace | — | 1 | 28 | 12% |
 | [textures.kt](../src/jvmMain/kotlin/afield/graphics/texture/textures.kt) | Graphics | — | 1 | 27 | 17% |
-| [Brief.kt](../src/jvmMain/kotlin/afield/lang/brief/Brief.kt) | Solvers | — | 1 | 25 | 54% |
 | [FLine.kt](../src/jvmMain/kotlin/afield/geometry/path/FLine.kt) | Graphics | — | 1 | 22 | 71% |
 | [docsPass.kt](../src/jvmMain/kotlin/afield/app/server/docsPass.kt) | Workspace | — | 1 | 21 | 18% |
 | [operation_transcript.kt](../src/jvmMain/kotlin/afield/tools/automation/operation_transcript.kt) | Workspace | — | 1 | 21 | 31% |
@@ -471,7 +468,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FourVisualizers.kt](../src/jvmMain/kotlin/afield/graphics/render/FourVisualizers.kt) | Graphics | — | 1 | 2 | 50% |
 | [MslEditorLanguage.kt](../src/jvmMain/kotlin/afield/graphics/shader/MslEditorLanguage.kt) | Graphics | — | 1 | 2 | 40% |
 | [Surface.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/device/Surface.kt) | Graphics | — | 1 | 2 | 0% |
-| [BriefEditorExtension.kt](../src/jvmMain/kotlin/afield/lang/brief/BriefEditorExtension.kt) | Solvers | — | 1 | 2 | 40% |
 | [PatternRewriteSmokeTest.kt](../src/jvmMain/kotlin/afield/math/functions/PatternRewriteSmokeTest.kt) | Math | — | 1 | 2 | 0% |
 | [SharedTypesSmokeTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/SharedTypesSmokeTest.kt) | Workspace | — | 1 | 2 | 0% |
 | [WitherSmokeTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/WitherSmokeTest.kt) | Workspace | — | 1 | 2 | 0% |
@@ -607,9 +603,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [history.kt](../src/jvmMain/kotlin/afield/document/history/history.kt) | Workspace | — | 0 | 15 | 48% |
 | [Summaries.kt](../src/jvmMain/kotlin/afield/geometry/polytope/Summaries.kt) | Polytopes | — | 0 | 15 | 74% |
 | [OpenDlssNrStudy.kt](../src/jvmMain/kotlin/afield/graphics/render/neural/OpenDlssNrStudy.kt) | Graphics | — | 0 | 15 | 25% |
-| [BriefLowering.kt](../src/jvmMain/kotlin/afield/lang/brief/BriefLowering.kt) | Solvers | — | 0 | 15 | 60% |
 | [Asta.kt](../src/jvmMain/kotlin/afield/lang/remotejs/Asta.kt) | Languages | — | 0 | 15 | 6% |
-| [InteractiveSolving.kt](../src/jvmMain/kotlin/afield/math/optimization/ceres/InteractiveSolving.kt) | Solvers | — | 0 | 15 | 65% |
 | [FabricatePostStack.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricatePostStack.kt) | Renderers | — | 0 | 14 | 17% |
 | [ParallelGeometryPool.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/buffers/ParallelGeometryPool.kt) | Graphics | — | 0 | 14 | 27% |
 | [MorphoNetlist.kt](../src/jvmMain/kotlin/afield/lang/morpho/MorphoNetlist.kt) | Languages | — | 0 | 14 | 51% |
@@ -1218,4 +1212,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `AllpassFilter` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:344` |
 | `DCBlocker` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:382` |
 
-…and **1938 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **1928 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
