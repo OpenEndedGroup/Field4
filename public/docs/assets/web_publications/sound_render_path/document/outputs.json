@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:13:19.129Z",
+  "documentName": "sound_render_path",
+  "outputs": [
+    {
+      "uid": "sound_path_fallback",
+      "channel": "main",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "sound_path_roll",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 275,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "sound_path_stand_in",
+      "channel": "main",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "sound_path_dirt",
+      "channel": "main",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/3.html"
+    }
+  ]
+}

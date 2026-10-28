@@ -4,10 +4,11 @@
 
 All of the code below runs inside a box in Field. Each snippet ends with a `lines(...)` so you can actually see what you've drawn.
 
-If you want to run these examples, this embedded viewer's "Open in Field4" button will do just that, if you have Field already running.
+The document below includes captured drawings. Pan and zoom to explore them, or click a box to
+read its code. **Open in Field·4** imports an editable copy into a running Field.
 
 <iframe
-    src="offline.html?file=assets/fline_examples/metadata.edn"
+    src="offline.html?file=assets/fline_examples/metadata.edn&amp;focus=outputs"
     title="FLine examples (offline viewer)"
     style="width:100%; height:720px; border:1px solid #444; border-radius:8px; background:#111;"
     loading="lazy"

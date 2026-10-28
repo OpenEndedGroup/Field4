@@ -40,7 +40,7 @@ min/vs/..., woff2/..., iosevka.css, outputareas.css, plotly-2.24.1.min.js
 document/metadata.edn
 document/outputs.json
 outputs/0.html, outputs/1.html, ...
-three-publication-runtime.js
+three-publication-runtime.js, publication-font.js
 README.md
 ```
 
@@ -94,7 +94,42 @@ Plotly zoom, mouse orbit, parts visibility, X-ray pixel changes and a local GLB 
 captures actual browser evidence. Archive/transfer and module-graph regressions are in
 `tools/test_field_publication.py` and run with the ordinary Python tools gate.
 
-## Extensions
+## Documentation publications
+
+`tools/docs_publications.py capture --group pilot` opens copies of the existing FLine and
+Three.js companion documents in an isolated Field, runs their boxes, and captures the actual
+outputs. `--group gallery` uses the existing `DemoTranscriptExecSmokeTest.EXECUTE` classification
+to replay headless transcript scenes. Create-only transcripts also run their prepared boxes in
+creation order. `--name` narrows either batch and `--force` refreshes a retained capture.
+Capture failures are reported, never replaced with fabricated output. Documents without
+output-area channels retain ordinary code browsing.
+
+The installer stores frozen metadata and outputs under `public/docs/assets/web_publications/`.
+Font, Plotly and Three.js runtimes are shared by content hash. Repeated computed style
+declarations are factored into document-local CSS rules; the captured property values are
+preserved. This avoids repeating a complete computed style on every path in a dense SVG.
+
+`catalog.json` records source-file hashes and capture results. The docs build verifies those
+hashes before emitting `offline-publications.json` beside the common viewer. Existing
+`offline.html?file=assets/.../metadata.edn` links discover the matching publication automatically.
+The captured metadata travels with its outputs, so code and output are from the same run;
+source documents and editable starting points remain separate. A source change requires
+recapture before the docs build can publish that entry again.
+
+Capture batches replace their owned Field JVM after sixteen documents, bounding compiler and
+browser state. The synchronous `petri_tala_layout` benchmark gets a separate JVM with a 120-second
+watchdog budget; ordinary capture JVMs use Field's normal 30-second limit.
+
+The transcript gallery intercepts ordinary Open links to show one viewer beside the selected
+entry. A new selection removes the old iframe. Narrow windows place the viewer below the entry;
+modifier clicks and the separate-tab button retain ordinary navigation.
+
+Serve the built site and verify the embeds, gallery placement and every captured channel with
+`node tools/check_docs_publications.mjs http://localhost:9880/field4/ build/docs-publication-evidence`.
+It rejects missing assets, browser errors, external requests and websockets. Use the same
+`FIELD_PLAYWRIGHT_MODULE` and `FIELD_CHROMIUM_EXECUTABLE` overrides as the standalone verifier.
+
+## Further extensions
 
 Bounded inspector-data snapshots can make more rows and branches available locally. These can
 extend version 1's per-channel kinds while the

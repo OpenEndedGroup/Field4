@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T15:52:18.282Z",
+  "documentName": "mesh_geometry_examples",
+  "outputs": [
+    {
+      "uid": "mesh_marching",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 768,
+      "height": 578,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "mesh_bridges",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 908,
+      "height": 233,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "mesh_bridges",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "mesh_modelling",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 908,
+      "height": 458,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "mesh_process",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 878,
+      "height": 660,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "mesh_measure",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 908,
+      "height": 233,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "mesh_primitives",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 908,
+      "height": 458,
+      "path": "outputs/6.html"
+    }
+  ]
+}

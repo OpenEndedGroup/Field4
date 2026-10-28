@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:05:09.182Z",
+  "documentName": "statistics_examples",
+  "outputs": [
+    {
+      "uid": "stats_histogram",
+      "channel": "histograms",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 783,
+      "height": 244,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "stats_dependence",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 838,
+      "height": 1021,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "stats_summary",
+      "channel": "card",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 636,
+      "height": 438,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "stats_rolling",
+      "channel": "traces",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "stats_rolling",
+      "channel": "numbers",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 916,
+      "height": 130,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "stats_warp",
+      "channel": "the fitted curve",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "stats_warp",
+      "channel": "distributions",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 783,
+      "height": 228,
+      "path": "outputs/6.html"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:14:30.374Z",
+  "documentName": "madp_ga",
+  "outputs": [
+    {
+      "uid": "madp_ga_lead",
+      "channel": "ga",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 709,
+      "height": 1059,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "madp_ga_fbm",
+      "channel": "ga",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 709,
+      "height": 1052,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "madp_ga_numbers",
+      "channel": "ga",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 709,
+      "height": 1052,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "madp_ga_noise",
+      "channel": "ga",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 709,
+      "height": 1059,
+      "path": "outputs/3.html"
+    }
+  ]
+}

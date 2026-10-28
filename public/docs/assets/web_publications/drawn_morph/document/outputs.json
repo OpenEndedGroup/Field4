@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T15:49:59.731Z",
+  "documentName": "drawn_morph",
+  "outputs": [
+    {
+      "uid": "dm_spread",
+      "channel": "spread",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "dm_play",
+      "channel": "matched",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "dm_play",
+      "channel": "by list index",
+      "open": false,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 200,
+      "height": 40,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "dm_paired",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "dm_morph",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/4.html"
+    }
+  ]
+}

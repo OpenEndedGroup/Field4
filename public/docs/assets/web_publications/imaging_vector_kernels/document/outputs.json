@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T15:52:05.273Z",
+  "documentName": "imaging_vector_kernels",
+  "outputs": [
+    {
+      "uid": "imaging_perf_boxblur",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 642,
+      "height": 420,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "imaging_perf_bilateral",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 642,
+      "height": 532,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "imaging_perf_pyrdown",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 642,
+      "height": 420,
+      "path": "outputs/2.html"
+    }
+  ]
+}

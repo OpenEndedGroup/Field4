@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T15:50:22.179Z",
+  "documentName": "simulation_clock",
+  "outputs": [
+    {
+      "uid": "simulation_owner",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 436,
+      "height": 281,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "simulation_owner",
+      "channel": "status",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 40,
+      "path": "outputs/1.html"
+    }
+  ]
+}

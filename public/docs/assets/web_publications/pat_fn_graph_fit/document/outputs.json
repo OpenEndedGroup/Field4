@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T15:52:52.583Z",
+  "documentName": "pat_fn_graph_fit",
+  "outputs": [
+    {
+      "uid": "pat_fn_fit",
+      "channel": "1 target",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "width": 1008,
+      "height": 471,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "pat_fn_fit",
+      "channel": "2 fitted",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "width": 1008,
+      "height": 471,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "pat_fn_fit",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 433,
+      "height": 67,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "pat_fn_inspect",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 509,
+      "height": 314,
+      "path": "outputs/3.html"
+    }
+  ]
+}

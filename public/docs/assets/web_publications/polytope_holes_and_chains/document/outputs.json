@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:11:08.794Z",
+  "documentName": "polytope_holes_and_chains",
+  "outputs": [
+    {
+      "uid": "polytope_chained_vocabulary",
+      "channel": "chains",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 1048,
+      "height": 448,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "polytope_chained_vocabulary",
+      "channel": "chain",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 349,
+      "height": 1033,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "polytope_plate_with_and_without",
+      "channel": "plates",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 608,
+      "height": 268,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "polytope_face_with_a_hole",
+      "channel": "polytope-holes",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 200,
+      "height": 528,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "polytope_face_with_a_hole",
+      "channel": "topology",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 207,
+      "height": 259,
+      "path": "outputs/4.html"
+    }
+  ]
+}

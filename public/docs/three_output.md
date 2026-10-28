@@ -759,13 +759,13 @@ offline.
 
 ## Play with it
 
-[Open the gallery](offline.html?file=assets/three_output_gallery/metadata.edn), a loadable Field document with the five
-boxes on this page, laid out top to bottom. Open it in a fresh Field 4 and run the boxes; then orbit
-the gyroid, change `facts = true` to `false`, or set the grid's `columns` to `4` and watch the
-panels re-tile.
+[Open the gallery](offline.html?file=assets/three_output_gallery/metadata.edn), with the five boxes
+on this page and their captured outputs. Drag a 3D view to orbit it; use **Parts** and **X-ray**
+to explore its geometry. Click a box to read its code. To change `facts = true` to `false`, or
+set the grid's `columns` to `4`, use **Open in Field·4** and run the edited box.
 
 <iframe
-    src="offline.html?file=assets/three_output_gallery/metadata.edn"
+    src="offline.html?file=assets/three_output_gallery/metadata.edn&amp;focus=outputs"
     title="Field's 3D Output — offline viewer"
     style="width:100%; height:560px; border:1px solid #444; border-radius:8px; background:#111;"
     loading="lazy"

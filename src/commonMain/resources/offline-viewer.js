@@ -492,6 +492,7 @@ if (typeof window !== 'undefined') window.addEventListener('DOMContentLoaded', a
     try {
         // Get EDN file URL from query parameter
         const params = new URLSearchParams(window.location.search);
+        await window.FieldOfflineOutputs?.resolvePublication?.(params);
         ednFileUrl = params.get('file');
 
         if (!ednFileUrl) {
@@ -529,7 +530,7 @@ if (typeof window !== 'undefined') window.addEventListener('DOMContentLoaded', a
         showDocumentInfo(data, ednFileUrl, sidecarStatus);
         const outputInfo = window.FieldOfflineOutputs?.info();
         if (outputInfo) {
-            const info = document.createElement('span'); info.textContent = outputInfo;
+            const info = document.createElement('span'); info.textContent = ` • ${outputInfo}`;
             document.querySelector('.offline-banner').append(info);
         }
         setupDocumentPanel(data);
@@ -971,6 +972,12 @@ function findBoxByIdOrName(key) {
 }
 
 function applyUrlState(params) {
+    if (params.get('focus') === 'outputs') {
+        const first = visibleBoxes.filter(b => window.FieldOfflineOutputs?.forBox(b.id).some(o => o.path))
+            .sort((a,b) => (a.properties.frame?.[1] || 0) - (b.properties.frame?.[1] || 0) ||
+                (a.properties.frame?.[0] || 0) - (b.properties.frame?.[0] || 0))[0];
+        if (first) frameWorldRect(window.FieldOfflineOutputs.bounds(first),1,30);
+    }
     const bookmarkSlot = Number(params.get('bookmark'));
     if (bookmarkSlot) {
         const bookmark = bookmarks.find(b => b.slot === bookmarkSlot);
@@ -1370,10 +1377,15 @@ async function initializeMonaco() {
             settled = true;
             clearTimeout(timer);
             try {
+                monaco.editor.defineTheme('field-offline-dark', {
+                    base: 'vs-dark', inherit: true, rules: [],
+                    colors: { 'editor.background':'#1e1e1e', 'editorGutter.background':'#000000',
+                        'editor.lineHighlightBorder':'#00000000', 'editorCursor.foreground':'#dddddd' }
+                });
                 monacoEditor = monaco.editor.create(document.getElementById('editor'), {
                     value: '',
                     language: 'kotlin',
-                    theme: 'vs-dark',
+                    theme: 'field-offline-dark',
                     readOnly: true,
                     minimap: { enabled: false },
                     scrollBeyondLastLine: false,
@@ -1384,9 +1396,10 @@ async function initializeMonaco() {
                     lineNumbers: 'on',
                     glyphMargin: false,
                     folding: true,
-                    lineDecorationsWidth: 0,
-                    lineNumbersMinChars: 3,
-                    renderLineHighlight: 'all',
+                    lineDecorationsWidth: 12,
+                    lineNumbersMinChars: 2,
+                    padding: {top:2,bottom:2},
+                    renderLineHighlight: 'none',
                     automaticLayout: true
                 });
                 resolve();
@@ -1884,6 +1897,8 @@ function nameFromPathSegments(segments) {
 }
 
 function deriveRecommendedName(fileUrl) {
+    const published = window.FieldOfflineOutputs?.documentName?.();
+    if (typeof published === 'string' && published.trim() && !['.','..'].includes(published) && !/[\\/\0]/.test(published)) return published;
     try {
         const url = new URL(fileUrl, window.location.href);
         const parts = url.pathname.split('/').filter(Boolean);

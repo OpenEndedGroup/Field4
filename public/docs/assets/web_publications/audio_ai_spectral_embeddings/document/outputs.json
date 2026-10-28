@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:02:45.205Z",
+  "documentName": "audio_ai_spectral_embeddings",
+  "outputs": [
+    {
+      "uid": "spectral_embedding_guide",
+      "channel": "guide",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 441,
+      "height": 309,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "spectral_embedding_guide",
+      "channel": "all durable jobs",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 768,
+      "height": 438,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "spectral_embedding_visualizer_gallery",
+      "channel": "spectral spaces",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "canvas-image"
+      ],
+      "width": 1052,
+      "height": 1316,
+      "path": "outputs/2.html"
+    }
+  ]
+}

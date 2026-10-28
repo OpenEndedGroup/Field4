@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:12:59.529Z",
+  "documentName": "fline_hit_records",
+  "outputs": [
+    {
+      "uid": "fline-hit-records-wall",
+      "channel": "inspect — what you clicked",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 73,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "fline-hit-records-wall",
+      "channel": "inspect",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    }
+  ]
+}

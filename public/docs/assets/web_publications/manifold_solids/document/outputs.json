@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:13:30.636Z",
+  "documentName": "manifold_solids",
+  "outputs": [
+    {
+      "uid": "manifold_bracket",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 768,
+      "height": 478,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "manifold_levelset_slices",
+      "channel": "solid",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 708,
+      "height": 438,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "manifold_levelset_slices",
+      "channel": "slices",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 474,
+      "height": 1457,
+      "path": "outputs/2.html"
+    }
+  ]
+}

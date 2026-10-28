@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T15:49:33.235Z",
+  "documentName": "drawn_score",
+  "outputs": [
+    {
+      "uid": "ds_pentatonic",
+      "channel": "roll",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 275,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "ds_pentatonic",
+      "channel": "audio",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "ds_listen",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "ds_play",
+      "channel": "roll",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 191,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "ds_play",
+      "channel": "audio",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/4.html"
+    }
+  ]
+}

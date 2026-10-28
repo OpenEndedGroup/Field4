@@ -1,6 +1,21 @@
 /** Optional captured channels for the read-only viewer. No Field connection or original box script. */
 (() => {
     let manifest = null, base = null;
+    async function resolvePublication(params) {
+        if (params.has('outputs') || !params.get('file')) return;
+        const root = new URL('./',location.href), source = new URL(params.get('file'),root);
+        if (source.origin !== root.origin || !source.pathname.startsWith(root.pathname)) return;
+        const response = await fetch(new URL('offline-publications.json',root));
+        if (response.status === 404) return; // Older standalone distributions have no registry.
+        if (!response.ok) throw new Error(`Published documents: HTTP ${response.status}`);
+        const registry = await response.json();
+        if (registry.version !== 1 || !registry.documents || typeof registry.documents !== 'object') throw new Error('Invalid publication registry');
+        const entry = registry.documents[decodeURIComponent(source.pathname.slice(root.pathname.length))];
+        if (!entry) return;
+        if (!/^assets\/web_publications\/[a-z0-9_-]+\/document\/metadata\.edn$/.test(entry.file) ||
+            entry.outputs !== entry.file.replace('metadata.edn','outputs.json')) throw new Error('Invalid publication location');
+        params.set('file',entry.file); params.set('outputs',entry.outputs);
+    }
     async function load(params) {
         const path = params.get('outputs');
         if (!path) return;
@@ -63,5 +78,6 @@
         const warnings = manifest.outputs.reduce((n,o) => n + (o.warnings?.length || 0),0);
         return `${count} captured outputs${warnings ? ` · ${warnings} capture warnings` : ''}`;
     }
-    window.FieldOfflineOutputs = Object.freeze({load,forBox,mount,bounds,info});
+    const documentName = () => manifest?.documentName;
+    window.FieldOfflineOutputs = Object.freeze({resolvePublication,load,forBox,mount,bounds,info,documentName});
 })();

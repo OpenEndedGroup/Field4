@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T15:50:37.078Z",
+  "documentName": "keyframe_editor",
+  "outputs": [
+    {
+      "uid": "kf_shape",
+      "channel": "shape",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 576,
+      "height": 240,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "kf_smoothed",
+      "channel": "wobble",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 576,
+      "height": 240,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "kf_brightness",
+      "channel": "brightness",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 576,
+      "height": 240,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "kf_brightness",
+      "channel": "level",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 536,
+      "height": 60,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "kf_custom",
+      "channel": "custom",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 576,
+      "height": 240,
+      "path": "outputs/4.html"
+    }
+  ]
+}

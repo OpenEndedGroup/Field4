@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T15:51:52.055Z",
+  "documentName": "imaging_cv_examples",
+  "outputs": [
+    {
+      "uid": "imaging_basics",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 832,
+      "height": 472,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "imaging_basics",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "imaging_filters",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 832,
+      "height": 472,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "imaging_features",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 832,
+      "height": 310,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "imaging_features",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "imaging_morphology",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 802,
+      "height": 492,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "imaging_morphology",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "imaging_motion",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 602,
+      "height": 642,
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "imaging_motion",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/8.html"
+    },
+    {
+      "uid": "imaging_edges",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 832,
+      "height": 472,
+      "path": "outputs/9.html"
+    },
+    {
+      "uid": "imaging_edges",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/10.html"
+    }
+  ]
+}

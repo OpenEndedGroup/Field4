@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:10:57.848Z",
+  "documentName": "polytope_conway_gallery",
+  "outputs": [
+    {
+      "uid": "polytope_expression_gallery",
+      "channel": "gallery",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 908,
+      "height": 764,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "polytope_realization_relax",
+      "channel": "relax",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 1268,
+      "height": 368,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "polytope_realization_relax",
+      "channel": "diagnostics",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 956,
+      "height": 172,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "polytope_parameter_field",
+      "channel": "parameter-field",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 480,
+      "height": 528,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "polytope_abstract_dual",
+      "channel": "dual",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 916,
+      "height": 218,
+      "path": "outputs/4.html"
+    }
+  ]
+}

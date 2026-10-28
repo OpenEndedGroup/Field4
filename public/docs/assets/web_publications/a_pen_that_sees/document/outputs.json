@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:12:56.974Z",
+  "documentName": "a_pen_that_sees",
+  "outputs": [
+    {
+      "uid": "ps_hatch",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "ps_draw",
+      "channel": "draw here",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 548,
+      "height": 348,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "ps_shape",
+      "channel": "draw here",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 548,
+      "height": 348,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "ps_field",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "ps_doodle",
+      "channel": "draw here",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 548,
+      "height": 348,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "ps_doodle",
+      "channel": "hand",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 50,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "ps_sees",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "ps_cracks",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "ps_measure",
+      "channel": "measures",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 282,
+      "height": 77,
+      "path": "outputs/8.html"
+    },
+    {
+      "uid": "ps_word",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/9.html"
+    }
+  ]
+}

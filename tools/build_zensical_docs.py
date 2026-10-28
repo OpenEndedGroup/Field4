@@ -1084,6 +1084,11 @@ def emit_offline_viewer(*, site_dir: Path) -> None:
     import sync_offline_assets  # type: ignore[import-not-found]
 
     sync_offline_assets.sync_target(site_dir, metadata=False, docs=False)
+    import docs_publications
+
+    (site_dir / "offline-publications.json").write_text(
+        json.dumps(docs_publications.registry(), indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def remove_tree(path: Path, *, attempts: int = 5) -> bool:
