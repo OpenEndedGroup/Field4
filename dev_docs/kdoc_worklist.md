@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 18334 of 34907 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 18336 of 34909 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2081 undocumented entry points** (types, top-level functions and values) and 13770 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -15,7 +15,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [RectSL.kt](../src/jvmMain/kotlin/afield/lang/rectsl/RectSL.kt) | Languages | rectsl_inverse_animation, rectsl_examples, rectsl_cheatsheet | 104 | 409 | 8% |
 | [spreadsheet.kt](../src/jvmMain/kotlin/afield/data/table/spreadsheet.kt) | Data | spreadsheets | 62 | 91 | 8% |
 | [FLineGeometry.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt) | Graphics | fline_examples, polyvector, euclid_elements | 58 | 41 | 43% |
-| [Tools.kt](../src/jvmMain/kotlin/afield/ai/tools/Tools.kt) | Machine learning | ai4_tools | 53 | 280 | 10% |
+| [Tools.kt](../src/jvmMain/kotlin/afield/ai/tools/Tools.kt) | Machine learning | ai4_tools | 53 | 280 | 11% |
 | [synth.kt](../src/jvmMain/kotlin/afield/audio/synth/synth.kt) | Synthesis | pure_data, sound_paths | 52 | 0 | 25% |
 | [TidalPatterns.kt](../src/jvmMain/kotlin/afield/audio/synth/TidalPatterns.kt) | Patterns | pattern_language, marf, petri_nets | 43 | 78 | 21% |
 | [Visualizers.kt](../src/jvmMain/kotlin/afield/audio/synth/Visualizers.kt) | Synthesis | visualizers | 37 | 11 | 5% |
@@ -1240,11 +1240,11 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `ChecklistItem` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:632` |
 | `ChecklistResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:638` |
 | `AgentMemoryState` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:644` |
-| `WorkspaceSymbolSearchResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:888` |
-| `WorkspaceSymbolMatch` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:894` |
-| `Remember` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:914` |
-| `Recall` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:917` |
-| `ToolExecutionContext` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:919` |
+| `WorkspaceSymbolSearchResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:908` |
+| `WorkspaceSymbolMatch` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:914` |
+| `Remember` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:934` |
+| `Recall` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:937` |
+| `ToolExecutionContext` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:939` |
 | `Keyframe` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:638` |
 | `Handles` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:647` |
 | `Handle` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:653` |
