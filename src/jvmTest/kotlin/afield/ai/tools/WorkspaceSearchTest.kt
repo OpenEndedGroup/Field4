@@ -54,12 +54,29 @@ class WorkspaceSearchTest {
         assertEquals(listOf("notes.md"), f.search(request().copy(extensions = listOf(".md"))).matches.map { it.path })
         assertEquals(listOf("jvmMain/code.kt"),
             f.search(request(WorkspaceSearchScope.FIELD_KOTLIN_SOURCE).copy(pathPrefix = "src/jvmMain")).matches.map { it.path })
+        // 2026-10-28: pathPrefix "src" (the root's own name) cost a local model a round.
+        assertEquals(listOf("jvmMain/code.kt"),
+            f.search(request(WorkspaceSearchScope.FIELD_KOTLIN_SOURCE).copy(pathPrefix = "src")).matches.map { it.path })
         val docs = f.search(request(WorkspaceSearchScope.FIELD_KOTLIN_SOURCE).copy(extensions = listOf(".md")))
         assertFalse(docs.success)
-        assertTrue("SemanticRetrievalSearchRequest" in docs.message, docs.message)
+        assertTrue("FIELD_DOCS" in docs.message, docs.message)
         val missing = f.search(request(WorkspaceSearchScope.FIELD_KOTLIN_SOURCE).copy(pathPrefix = "public/docs"))
         assertFalse(missing.success)
         assertTrue("src/" in missing.message && "documentation" in missing.message, missing.message)
+    }
+
+    /** 2026-10-28: a local model hunted "Byrne" through every scope while euclid_elements.md sat unindexed in public/docs. */
+    @Test
+    fun fieldDocsSearchesSavedDocsPagesLiterally() = Fixture().use { f ->
+        f.file("app/public/docs/euclid_elements.md", "drawn the way Oliver Byrne printed them")
+        f.file("app/public/docs/sub/page.md", "Byrne again")
+        f.file("app/public/docs/hooks.py", "Byrne in code")
+        val all = f.search(request(WorkspaceSearchScope.FIELD_DOCS, "Byrne"))
+        assertTrue(all.complete, all.toString())
+        assertEquals(setOf("euclid_elements.md", "sub/page.md"), all.matches.map { it.path }.toSet())
+        for (prefix in listOf("sub", "docs/sub", "public/docs/sub"))
+            assertEquals(listOf("sub/page.md"), f.search(request(WorkspaceSearchScope.FIELD_DOCS, "Byrne").copy(pathPrefix = prefix)).matches.map { it.path })
+        assertFalse(f.search(request(WorkspaceSearchScope.FIELD_DOCS, "Byrne").copy(extensions = listOf("py"))).success)
     }
 
     @Test fun literalWhitespaceAndLineCoordinatesArePreserved() = Fixture().use { f ->

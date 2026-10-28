@@ -106,20 +106,25 @@ fun Vec2.toPoint2() = Point2(x.toDouble(), y.toDouble())
 
 /**
  * Anything Euclid can intersect and measure against anything else: [Point2], [Line2], [Ray2],
- * [Segment2], [Circle2] and [Arc2].
+ * [Segment2], [Circle2], [Arc2] and [Polygon2] (which is measured by its boundary).
  */
 sealed interface Shape2 {
     /** Where this meets [other]: crossing and touching points, plus any shared stretch. */
-    fun intersect(other: Shape2): Intersection2 = intersectPrims(prim(this), prim(other))
+    fun intersect(other: Shape2): Intersection2 =
+        if (this is Polygon2 || other is Polygon2) intersectPieces(this, other) else intersectPrims(prim(this), prim(other))
 
     /** True when this and [other] share at least one point. */
     fun intersects(other: Shape2): Boolean = !intersect(other).isEmpty
 
     /** The point of this shape nearest [p]. */
-    fun closestPoint(p: Point2): Point2 = closestOn(prim(this), p)
+    fun closestPoint(p: Point2): Point2 =
+        if (this is Polygon2) edges.map { it.closestPoint(p) }.minBy { (it - p).lengthSquared } else closestOn(prim(this), p)
 
     /** A nearest pair of points, the first on this shape and the second on [other]. */
-    fun closestPoints(other: Shape2): Pair<Point2, Point2> = closestPair(prim(this), prim(other))
+    fun closestPoints(other: Shape2): Pair<Point2, Point2> =
+        if (this is Polygon2 || other is Polygon2) {
+            pieces(this).flatMap { a -> pieces(other).map { b -> a.closestPoints(b) } }.minBy { (a, b) -> (b - a).lengthSquared }
+        } else closestPair(prim(this), prim(other))
 
     /** The shortest distance between this and [other]; zero when they meet. */
     fun distanceTo(other: Shape2): Double = closestPoints(other).let { (a, b) -> (b - a).length }
@@ -369,6 +374,41 @@ data class Arc2(val center: Point2, val radius: Double, val start: Double, val s
 }
 
 /**
+ * The closed polygon through [points] in order. Intersections and distances are with its boundary,
+ * its edges; [contains] asks about its inside.
+ */
+data class Polygon2(val points: List<Point2>) : Shape2 {
+    constructor(vararg points: Point2) : this(points.toList())
+
+    val edges get() = points.indices.map { Segment2(points[it], points[(it + 1) % points.size]) }
+
+    /** Signed area: positive when the points run counter-clockwise (in a y-up frame). */
+    val signedArea get() = points.indices.sumOf { points[it] cross points[(it + 1) % points.size] } / 2
+
+    val area get() = abs(signedArea)
+    val perimeter get() = edges.sumOf { it.length }
+
+    /** True when [p] is inside the polygon or on its boundary (even-odd rule). */
+    operator fun contains(p: Point2): Boolean {
+        if (edges.any { (it.closestPoint(p) - p).length <= tol(it.a, it.b) }) return true
+        var inside = false
+        for (e in edges) {
+            val (a, b) = e
+            if ((a.y > p.y) != (b.y > p.y) && p.x < a.x + (p.y - a.y) / (b.y - a.y) * (b.x - a.x)) inside = !inside
+        }
+        return inside
+    }
+
+    override fun toFLine(extent: Double): FLine {
+        val f = FLine()
+        if (points.isEmpty()) return f
+        f.moveTo(points[0].x, points[0].y)
+        for (p in points.drop(1)) f.lineTo(p.x, p.y)
+        return f.close()
+    }
+}
+
+/**
  * The result of intersecting two shapes: isolated crossing or touching [points], and any
  * stretch the shapes share in [overlaps] (a [Segment2], [Ray2], [Line2], [Arc2] or
  * [Circle2]).
@@ -410,7 +450,22 @@ private data class Circ(val c: Point2, val r: Double, val a0: Double, val s: Dou
 
 private data class Pnt(val p: Point2) : Prim
 
+private fun pieces(s: Shape2): List<Shape2> = if (s is Polygon2) s.edges else listOf(s)
+
+/** Every edge against every piece of the other shape, with shared corners counted once. */
+private fun intersectPieces(a: Shape2, b: Shape2): Intersection2 {
+    val points = mutableListOf<Point2>(); val overlaps = mutableListOf<Shape2>()
+    for (p in pieces(a)) for (q in pieces(b)) {
+        val m = intersectPrims(prim(p), prim(q))
+        val e = tolFor(prim(p), prim(q))
+        m.points.forEach { pt -> if (points.none { near(it, pt, e) }) points += pt }
+        overlaps += m.overlaps
+    }
+    return Intersection2(points.filter { pt -> overlaps.none { o -> near(o.closestPoint(pt), pt, Euclid.epsilon * (1 + abs(pt.x) + abs(pt.y))) } }, overlaps)
+}
+
 private fun prim(s: Shape2): Prim = when (s) {
+    is Polygon2 -> error("a polygon is handled edge by edge")
     is Point2 -> Pnt(s)
     is Line2 -> if (s.direction.lengthSquared == 0.0) Pnt(s.point) else Lin(s.point, s.direction, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY)
     is Ray2 -> if (s.direction.lengthSquared == 0.0) Pnt(s.origin) else Lin(s.origin, s.direction, 0.0, Double.POSITIVE_INFINITY)
@@ -596,4 +651,5 @@ private fun anyPointOf(s: Shape2): Point2 = when (s) {
     is Segment2 -> s.a
     is Circle2 -> s.at(0.0)
     is Arc2 -> s.startPoint
+    is Polygon2 -> s.points.first()
 }

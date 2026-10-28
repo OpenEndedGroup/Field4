@@ -1866,7 +1866,7 @@ class CaptureSignatureDocTests(unittest.TestCase):
                 )
 
     QUICK_REF = REPO_ROOT / "dev_docs" / "agents" / "AGENT_QUICK_REF.md"
-    _ROLE = {"path": "path", "box": "uid"}
+    _ROLE = {"path": "path", "box": "uid", "script": "script"}
 
     def _quick_ref_positionals(self, line: str) -> list[str]:
         """The positional region of a terse usage line: everything before the first option.

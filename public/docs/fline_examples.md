@@ -2795,31 +2795,27 @@ val end =
         .byScaling2D(0.78f, 1.24f, center = vec(0f, 0f))
         .byShearing2D(0.18f, -0.08f)
 
-val vanillaMid = start.interpolatorTo(end).lineAt(0.5f).apply {
-    filled = false
-    stroked = true
-    thickness = 3.0
-    color = vec(1.0, 0.58, 0.22, 0.8)
-}
+val vanilla = start.interpolatorTo(end)
+val aligned = start.interpolatorTo(
+    end,
+    config = FLineInterpolationConfig(
+        alignment = FLineInterpolationAlignment(
+            rotationMode = FLineInterpolationRotationMode.FIT_LINE_2D,
+            scaleMode = FLineInterpolationScaleMode.BOUNDS_DIAGONAL,
+        ),
+    ),
+)
 
-val alignedMid =
-    start
-        .interpolatorTo(
-            end,
-            config = FLineInterpolationConfig(
-                alignment = FLineInterpolationAlignment(
-                    rotationMode = FLineInterpolationRotationMode.FIT_LINE_2D,
-                    scaleMode = FLineInterpolationScaleMode.BOUNDS_DIAGONAL,
-                ),
-            ),
-        )
-        .lineAt(0.5f)
-        .apply {
-            filled = false
-            stroked = true
-            thickness = 3.0
-            color = vec(0.42, 1.0, 0.68, 0.8)
-        }
+// Nine in-between shapes, t = 0.1 ... 0.9, shaded from the start's blue to the end's orange.
+fun sweep(interpolator: FLineInterpolator) = (1..9).map { i ->
+    val t = i / 10f
+    interpolator.lineAt(t).apply {
+        filled = false
+        stroked = true
+        thickness = 1.6
+        color = vec(0.45 + 0.55 * t, 0.75 - 0.2 * t, 1.0 - 0.75 * t, 0.85)
+    }
+}
 
 fun ghost(line: FLine, tint: Vec4) = line.copy().apply {
     filled = false
@@ -2849,17 +2845,15 @@ val panels = [
 val alignedLines: List<FLine> = [
     ghost(start, vec(0.76, 0.9, 1.0, 0.20)) + leftShift,
     ghost(end, vec(1.0, 0.8, 0.5, 0.20)) + leftShift,
-    vanillaMid + leftShift,
     ghost(start, vec(0.76, 0.9, 1.0, 0.20)) + rightShift,
     ghost(end, vec(1.0, 0.8, 0.5, 0.20)) + rightShift,
-    alignedMid + rightShift,
-]
+] + sweep(vanilla).map { it + leftShift } + sweep(aligned).map { it + rightShift }
 val comparison = panels + alignedLines
 
 lines(comparison, w = 720.0, h = 360.0, fitToSize = true)
 ```
 
-Left is the default midpoint. Right pre-aligns the shapes before correspondence using `FIT_LINE_2D`, which is much better once the target has been rotated and rescaled.
+Both panels show nine in-between shapes from `t = 0.1` (blue) to `t = 0.9` (orange). On the left, the default interpolator moves each point straight to its partner, so the in-between shapes zigzag and collapse toward the centre as they cut across the rotation. On the right, `FIT_LINE_2D` aligns the shapes before matching points, so the in-between strokes sweep around more smoothly, though they still pinch near the centre.
 
 #### Spicy 2: extra motion at evaluation time
 
@@ -2942,7 +2936,7 @@ These are more specialized tools that are still extremely useful when you need t
 
 ### Euler spiral in 3D (clothoid-ish connection)
 
-This builds a smooth-ish curve between two points with start/end direction constraints in 3D. It’s great for “motion paths” and connecting strokes while controlling how the heading evolves.
+This builds the curve between two points that leaves along one direction and arrives along another, with curvature changing at a constant rate along its length. It’s good for motion paths and for joining strokes without a kink. The curve is solved in the plane of the two directions; if the end point is out of that plane, the curve climbs to it at a constant slope.
 
 ```diffstatic {data-lang=kotlin}
 :::static

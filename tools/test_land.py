@@ -588,6 +588,35 @@ while kill -0 "$pid" 2>/dev/null; do sleep 0.1; done
         self.assertNotIn("branch: sigma", context)
         self.assertIn("a guard failed", context)
 
+    def test_a_bounce_whose_changes_landed_another_way_leaves_status_and_bouncy(self) -> None:
+        # The bounced branch's commit reaches main as a copy with a new SHA (cherry-picked onto a
+        # branch that landed). Its changes are on main, so the bounce is history.
+        tau = self.branch_with("tau", "BREAKS")
+        self.land(tau, "enqueue")
+        self.run_lander()
+        self.assertEqual(self.states(), {"tau": "bounced"})
+        self.assertIn("tau", self.land(self.primary, "status").stdout, "a live bounce must show")
+        (self.primary / "other.txt").write_text("main moves first\n")
+        self.git(self.primary, "add", "-A")
+        self.git(self.primary, "commit", "-qm", "main moves")
+        self.git(self.primary, "cherry-pick", self.git(tau, "rev-parse", "HEAD"))
+        self.assertNotEqual(self.git(self.primary, "rev-parse", "main"), self.git(tau, "rev-parse", "HEAD"))
+        status = self.land(self.primary, "status").stdout
+        self.assertIn("resolved", status)
+        self.assertNotIn("a guard failed", status)
+        self.assertNotIn("branch: tau", self.land(self.primary, "bouncy", "--context").stdout)
+
+    def test_a_bounce_whose_branch_was_deleted_is_resolved(self) -> None:
+        upsilon = self.branch_with("upsilon", "BREAKS")
+        self.land(upsilon, "enqueue")
+        self.run_lander()
+        self.assertIn("a guard failed", self.land(self.primary, "status").stdout)
+        self.git(self.primary, "worktree", "remove", "--force", str(upsilon))
+        self.git(self.primary, "branch", "-D", "upsilon")
+        status = self.land(self.primary, "status").stdout
+        self.assertIn("its branch was deleted", status)
+        self.assertNotIn("a guard failed", status)
+        self.assertNotIn("branch: upsilon", self.land(self.primary, "bouncy", "--context").stdout)
 
 if __name__ == "__main__":
     unittest.main()

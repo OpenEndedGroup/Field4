@@ -149,7 +149,8 @@ data class SemanticRetrievalStatus(
     val corpusFingerprint: String = "",
     val currentCorpusFingerprint: String = "",
     val indexStale: Boolean = false,
-    // Documents added, removed or saved since the index was built (-1: the index predates this count).
+    // Workspace documents added, removed or saved since the index was built (-1: the index predates this count).
+    // Docs pages and source are not counted; [indexStale] covers them.
     val staleDocuments: Int = -1,
     val message: String = ""
 )
@@ -967,12 +968,14 @@ object SemanticRetrievalService {
                     } else {
                         requestedCorpora.joinToString(",")
                     }
+                    val currentStatus = status()
                     SemanticRetrievalQueryResult(
                         success = true,
-                        message = "Returned ${fused.size} semantic retrieval hit(s) from $scope. Vector backend=${currentEmbedder?.backend ?: "disabled"}" +
+                        message = staleWarning(currentStatus) +
+                            "Returned ${fused.size} semantic retrieval hit(s) from $scope. Vector backend=${currentEmbedder?.backend ?: "disabled"}" +
                             (if (!vectorsUsable) " (not used: the index's vectors predate the embedding fix; rebuild the index)" else "") +
                             "; capsule backend=source-index-capsules.",
-                        status = status(),
+                        status = currentStatus,
                         results = fused
                     )
                 }
@@ -1034,6 +1037,19 @@ object SemanticRetrievalService {
         )
         lastStatus = status
         return status
+    }
+
+    /**
+     * A stale index misses whatever changed since it was built, so a miss is not evidence of absence.
+     * This leads the message because a model reads the message and skips the status block; a local
+     * model searching for a docs page written that morning reported "zero hits anywhere" on 2026-10-28.
+     */
+    internal fun staleWarning(status: SemanticRetrievalStatus): String {
+        if (!status.indexStale) return ""
+        val built = if (status.lastBuildEpochMs > 0) " built ${java.time.Instant.ofEpochMilli(status.lastBuildEpochMs)}" else ""
+        return "WARNING: the index$built is stale, so pages, source and documents written or changed since then are missing " +
+            "from these results; a miss here is not evidence that something does not exist. Confirm with a literal " +
+            "WorkspaceSearchRequest (scope FIELD_DOCS for docs pages, FIELD_KOTLIN_SOURCE for source, WORKSPACE_FILES for documents). "
     }
 
     private fun staleDocumentCount(): Int {
