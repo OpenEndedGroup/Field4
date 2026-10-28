@@ -15,9 +15,11 @@ internal fun webPublicationAssets(): List<String> {
     val js = File("src/jsMain/resources")
     val paths = mutableListOf("offline.html", "offline-viewer.js", "offline-outputs.js", "edn-parser.js",
         "iosevka.css", "outputareas.css", "plotly-2.24.1.min.js")
+    paths.addAll(listOf("threejs_viewer.html", "threejs_tools.js", "threejs_camera_link.js", "threejs_shot.js",
+        "threejs_export.js", "geometry_review_inbox.js", "geometry_review_controls.js"))
     listOf("regular", "light", "lightitalic", "bold", "italic", "semicondensedlight", "semicondensedlightitalic")
         .forEach { paths.add("woff2/iosevka-$it.woff2") }
-    listOf(File(js, "monaco/min") to "min").forEach { (dir, prefix) ->
+    listOf(File(js, "monaco/min") to "min", File(common, "vendor/three") to "vendor/three").forEach { (dir, prefix) ->
         require(dir.isDirectory) { "Missing publication assets: $dir" }
         dir.walkTopDown().filter { it.isFile }.forEach { file ->
             paths.add("$prefix/${file.relativeTo(dir).invariantSeparatorsPath}")

@@ -17,8 +17,19 @@ same-origin iframes, embeds image resources and Iosevka, and removes original sc
 handlers. Field controls become disabled. A Plotly adapter records `data` and the current
 `layout`, then initializes the bundled Plotly against those fixed values. Plots requiring external
 map or image data use Plotly's actual image capture and report that fallback. The Three.js viewer's
-`snapshotImage()` renders and reads the WebGL canvas in one task, before the buffer is cleared.
-An unknown WebGL surface requires an adapter and is reported instead of exporting a blank canvas.
+`snapshotForPublication()` copies the current normalized geometry payload and inspector/camera
+state. It retains typed arrays as ordinary numeric arrays for the static viewer. Unknown WebGL
+surfaces require an adapter and are reported instead of exporting a blank canvas.
+
+`publication-three.js` packages the canonical viewer and vendored module graph into one shared
+`three-publication-runtime.js` file. Within each sandbox, the runtime makes Blob URLs and an
+import map for those modules. This avoids HTTP module requests from an opaque iframe origin,
+so the static host needs no special CORS headers. Missing literal dependencies fail the bundle
+check. No renderer fork or generated viewer source is maintained. Original author tool modules
+are never imported. The output keeps orbit, zoom, parts visibility, light and X-ray controls,
+and GLB export without server compression. Camera linking, review notes and editing controls are
+hidden; live websocket startup is bypassed. An unsupported custom tool or animated shot uses the
+real canvas image with all viewer controls omitted.
 
 The archive contains:
 
@@ -29,6 +40,7 @@ min/vs/..., woff2/..., iosevka.css, outputareas.css, plotly-2.24.1.min.js
 document/metadata.edn
 document/outputs.json
 outputs/0.html, outputs/1.html, ...
+three-publication-runtime.js
 README.md
 ```
 
@@ -40,7 +52,7 @@ parameter opts the viewer into this format; ordinary EDN browsing continues with
 Publication EDN is immutable and fully inlined, so the viewer skips loose-sidecar refreshes.
 
 Captured documents are loaded in sandboxed frames without same-origin privileges. Only generated
-initialization code and the bundled Plotly run. The capture's CSP forbids network connections,
+initialization code, bundled Plotly and the canonical frozen Three.js viewer run. The capture's CSP forbids network connections,
 forms and remote images; images and fonts are embedded. The native browser ZIP writer uses raw
 deflate for text where available, with stored ZIP entries as a compatible fallback.
 
@@ -48,11 +60,12 @@ Capture limits are explicit: 30,000 nodes and 30 seconds per channel, four neste
 15 seconds per fetched resource and 32 MB per resource. The automation archive transfer is
 bounded at 256 MB. Lazy inspectors capture materialized DOM, rather than traversing arbitrary
 JVM objects. Current limitations include cross-origin frames, live media, unmaterialized inspector
-branches, generic WebGL canvases without adapters, and 3D interaction after publication.
+branches and generic WebGL canvases without adapters.
 
 ## Verification
 
-The pilot uses actual `lines`, `.h`, `.h2`, Plotly inline and iframe outputs, and `threeLines`.
+The pilot uses actual `lines`, `.h`, `.h2`, Plotly inline and iframe outputs, `threeLines` and a
+two-part solid scene with `three { }`.
 Open the capture browser before running it:
 
 ```bash
@@ -77,13 +90,13 @@ The verifier requires Node's `playwright` module (override its location with
 `FIELD_PLAYWRIGHT_MODULE`) and an installed Chromium (optionally
 `FIELD_CHROMIUM_EXECUTABLE`). It serves the export under `/nested/publication/`, blocks requests
 outside that directory, rejects missing assets and websocket attempts, checks code browsing and
-Plotly zoom, and captures actual browser evidence. Archive/transfer regressions are in
+Plotly zoom, mouse orbit, parts visibility, X-ray pixel changes and a local GLB download, and
+captures actual browser evidence. Archive/transfer and module-graph regressions are in
 `tools/test_field_publication.py` and run with the ordinary Python tools gate.
 
 ## Extensions
 
-An adapter can later export the Three.js payload plus geometry buffers and camera state to retain
-orbit/inspection over a frozen scene. Bounded inspector-data snapshots can similarly make more
-rows and branches available locally. Both can extend version 1's per-channel kinds while the
+Bounded inspector-data snapshots can make more rows and branches available locally. These can
+extend version 1's per-channel kinds while the
 generic HTML capture remains the fallback. Backend DSP, shaders and box code still need their
 own runtime or rendered media if they are to continue changing after export.

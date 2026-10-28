@@ -43,7 +43,7 @@ window.fieldPublishDocument = async () => {
         const captured = result.manifest.outputs.filter(o => o.path).length;
         status.textContent = `${captured}/${result.manifest.outputs.length} outputs captured. Code and notes included.`;
         const description = document.createElement('p');
-        description.textContent = 'Download, unzip, and upload the folder to any static web host. Plot data is frozen; Three.js views are still images.';
+        description.textContent = 'Download, unzip, and upload the folder to any static web host. Plot data and 3D geometry are frozen; Three.js views retain orbit, parts and X-ray.';
         panel.insertBefore(description,close);
         if (result.warnings.length) {
             const warnings = document.createElement('ul');

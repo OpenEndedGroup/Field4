@@ -38,6 +38,7 @@ CANONICAL_FILES = (
     "src/commonMain/resources/edn-parser.js",
     "src/commonMain/resources/offline-viewer.js",
     "src/commonMain/resources/offline-outputs.js",
+    "src/commonMain/resources/publication-three.js",
     "src/commonMain/resources/examples-gallery.html",
     "src/jsMain/resources/iosevka.css",
     "src/jsMain/resources/outputareas.css",
