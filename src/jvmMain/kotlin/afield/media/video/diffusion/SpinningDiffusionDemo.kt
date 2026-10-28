@@ -21,10 +21,19 @@ import kotlin.math.*
  */
 
 /** Native Field geometry for the video study's five curves. Left: live source; right: causal output. */
-class SpinningDiffusionDemo(val renderer: Renderer, config: StreamDiffusionConfig,
-    val whiteOnBlack: Boolean = false, val name: String = "spinning-diffusion") : AutoCloseable {
+class SpinningDiffusionDemo(
+    /** The renderer that draws the curves and carries the comparison to the screen. */
+    val renderer: Renderer,
+    config: StreamDiffusionConfig,
+    /** Draw light curves on a dark ground instead of dark ones on pale paper, which is what the
+     * white-on-black prompts in [StreamDiffusionPresets] expect to be given. */
+    val whiteOnBlack: Boolean = false,
+    /** The name the demo and its view register under; two demos need two names. */
+    val name: String = "spinning-diffusion"
+) : AutoCloseable {
     private val background = if (whiteOnBlack) doubleArrayOf(8.0, 8.0, 10.0) else doubleArrayOf(244.0, 241.0, 234.0)
     private fun linear(v: Double): Double = (v / 255).let { if (it <= .04045) it / 12.92 else ((it + .055) / 1.055).pow(2.4) }
+    /** The 512 by 512 target the curves are drawn into, and the only thing the worker is shown. */
     val source = RenderToTexture(renderer) {
         width = 512; height = 512; useDepth = false
         clearColor = vec(linear(background[0]), linear(background[1]), linear(background[2]), 1)
@@ -36,9 +45,13 @@ class SpinningDiffusionDemo(val renderer: Renderer, config: StreamDiffusionConfi
     private val linePointer = lines.pointer()
     private val mesh = Mesh(renderer, linePointer)
     private var motion: SpinningDiffusionMotion? = null
+    /** The view over [source], with the demo's own motion provider. Change the prompt or the
+     * strength while it runs through its `reset`, and read its counters for what the worker is doing. */
     val view: StreamDiffusionView
     private val comparison: Module
     private var closed = false
+    /** Where the curves are in their turn, in radians; it also tilts them out of the plane. Set it
+     * once a frame to animate, which is what gives the worker something to follow. */
     var angle: Float = 0f
         set(value) { field = value; mesh.push["angle"] = value }
 
@@ -110,6 +123,7 @@ class SpinningDiffusionDemo(val renderer: Renderer, config: StreamDiffusionConfi
         source.imageViewArray.forEach { it.imageView.cleanup() }
         source.colorImageRefs.forEach { it?.cleanup() }; source.defaultSampler?.cleanup()
     }
+    /** Takes the comparison off the screen, stops the worker, and releases the demo's targets. */
     override fun close() {
         if (closed) return
         closed = true

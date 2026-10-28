@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 18741 of 34814 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 18883 of 34872 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2074 undocumented entry points** (types, top-level functions and values) and 13294 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2072 undocumented entry points** (types, top-level functions and values) and 13212 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -82,7 +82,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [GeometryAgentTools.kt](../src/jvmMain/kotlin/afield/graphics/render/GeometryAgentTools.kt) | Graphics | geometry_from_disk | 2 | 33 | 27% |
 | [Runloop.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/Runloop.kt) | Workspace | profiling_timeline, animation_time_model | 2 | 13 | 21% |
 | [actors.kt](../src/jvmMain/kotlin/afield/runtime/execution/actors.kt) | Internal | terminal | 2 | 8 | 62% |
-| [StreamDiffusionMotion.kt](../src/jvmMain/kotlin/afield/media/video/diffusion/StreamDiffusionMotion.kt) | Video | streaming_diffusion | 2 | 3 | 44% |
 | [MatrixProfile.kt](../src/jvmMain/kotlin/afield/math/matrixprofile/MatrixProfile.kt) | Math | matrix_profile | 2 | 0 | 86% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/math/functions/Functions.kt) | Math | functions_examples | 1 | 47 | 84% |
 | [GaussianProcess.kt](../src/jvmMain/kotlin/afield/math/gp/GaussianProcess.kt) | Math | gaussian_processes | 1 | 21 | 52% |
@@ -135,10 +134,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [MorphoSpec.kt](../src/jvmMain/kotlin/afield/lang/morpho/MorphoSpec.kt) | Languages | morpho_search | 0 | 24 | 45% |
 | [keyframeSweep.kt](../src/jvmMain/kotlin/afield/animation/keyframes/keyframeSweep.kt) | Graphics | keyframe_autosweep | 0 | 22 | 78% |
 | [FaustPattern.kt](../src/jvmMain/kotlin/afield/audio/synth/FaustPattern.kt) | Synthesis | faust | 0 | 22 | 57% |
-| [StreamDiffusionConfig.kt](../src/jvmMain/kotlin/afield/media/video/diffusion/StreamDiffusionConfig.kt) | Video | streaming_diffusion | 0 | 21 | 12% |
 | [alife_evolve.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_evolve.kt) | ALife | alife_examples | 0 | 21 | 59% |
 | [PatSynth.kt](../src/jvmMain/kotlin/afield/audio/synth/PatSynth.kt) | Patterns | chain_pattern_particles | 0 | 20 | 52% |
-| [particlevideo.kt](../src/jvmMain/kotlin/afield/media/video/particlevideo.kt) | Video | particle_video | 0 | 20 | 45% |
 | [Orca.kt](../src/jvmMain/kotlin/afield/audio/synth/Orca.kt) | Patterns | orca | 0 | 19 | 67% |
 | [Transforms.kt](../src/jvmMain/kotlin/afield/geometry/polytope/Transforms.kt) | Polytopes | polytope_examples | 0 | 19 | 76% |
 | [FunctionEvolve.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionEvolve.kt) | Function | functions_examples | 0 | 19 | 50% |
@@ -205,7 +202,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [lp_trajectories.kt](../src/jvmMain/kotlin/afield/geometry/spatial/lp_trajectories.kt) | Graphics | lp_curves | 0 | 7 | 84% |
 | [Mapper.kt](../src/jvmMain/kotlin/afield/geometry/topology/mapper/Mapper.kt) | Graphics | mapper | 0 | 7 | 60% |
 | [ClusterGeometry.kt](../src/jvmMain/kotlin/afield/graphics/render/ClusterGeometry.kt) | Graphics | computed_ray_geometry | 0 | 7 | 41% |
-| [particletracker.kt](../src/jvmMain/kotlin/afield/media/video/particletracker.kt) | Video | particle_video | 0 | 7 | 50% |
 | [WebRTC.kt](../src/jvmMain/kotlin/afield/media/webrtc/WebRTC.kt) | Imaging | webrtc | 0 | 7 | 79% |
 | [booleannetworks.kt](../src/jvmMain/kotlin/afield/simulation/automata/booleannetworks.kt) | Data | boolean_networks_examples, boolean_network_music_examples | 0 | 7 | 78% |
 | [wfc_field.kt](../src/jvmMain/kotlin/afield/simulation/automata/wfc_field.kt) | Data | wfc_examples | 0 | 7 | 78% |
@@ -613,7 +609,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [MegaTextureDecoder.kt](../src/jvmMain/kotlin/afield/graphics/texture/mega/MegaTextureDecoder.kt) | Graphics | — | 0 | 17 | 34% |
 | [SwapChain.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/device/SwapChain.kt) | Graphics | — | 0 | 17 | 19% |
 | [MorphoGenerator.kt](../src/jvmMain/kotlin/afield/lang/morpho/MorphoGenerator.kt) | Languages | — | 0 | 17 | 39% |
-| [StreamDiffusionView.kt](../src/jvmMain/kotlin/afield/media/video/diffusion/StreamDiffusionView.kt) | Video | — | 0 | 17 | 10% |
 | [SimdVerletWind.kt](../src/jvmMain/kotlin/afield/simulation/physics/SimdVerletWind.kt) | Simulation | — | 0 | 17 | 46% |
 | [keyframeBrowser.kt](../src/jvmMain/kotlin/afield/animation/keyframes/keyframeBrowser.kt) | Visualization | — | 0 | 16 | 75% |
 | [ShaderInterfaceTransition.kt](../src/jvmMain/kotlin/afield/graphics/shader/ShaderInterfaceTransition.kt) | Graphics | — | 0 | 16 | 46% |
@@ -697,7 +692,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [RtpMidiCodec.kt](../src/jvmMain/kotlin/afield/io/midi/rtp/RtpMidiCodec.kt) | Networking | — | 0 | 9 | 43% |
 | [RectSLStudyRender.kt](../src/jvmMain/kotlin/afield/lang/rectsl/study/RectSLStudyRender.kt) | Languages | — | 0 | 9 | 64% |
 | [GlslValue.kt](../src/jvmMain/kotlin/afield/lang/stacksl/cpu/GlslValue.kt) | Languages | — | 0 | 9 | 52% |
-| [StreamDiffusionSession.kt](../src/jvmMain/kotlin/afield/media/video/diffusion/StreamDiffusionSession.kt) | Video | — | 0 | 9 | 25% |
 | [HardwareOpticalFlow.kt](../src/jvmMain/kotlin/afield/media/vision/HardwareOpticalFlow.kt) | Imaging | — | 0 | 9 | 30% |
 | [ReactiveRuns.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/ReactiveRuns.kt) | Workspace | — | 0 | 9 | 67% |
 | [decorations.kt](../src/jvmMain/kotlin/afield/ui/output/decorations.kt) | Visualization | — | 0 | 9 | 71% |
@@ -788,7 +782,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [NumpyShared.kt](../src/jvmMain/kotlin/afield/lang/python/NumpyShared.kt) | Languages | — | 0 | 5 | 70% |
 | [PhaseNoise.kt](../src/jvmMain/kotlin/afield/lang/stacksl/PhaseNoise.kt) | Languages | — | 0 | 5 | 66% |
 | [StackSLLpipsLoss.kt](../src/jvmMain/kotlin/afield/lang/stacksl/cpu/StackSLLpipsLoss.kt) | Languages | — | 0 | 5 | 44% |
-| [SpinningDiffusionDemo.kt](../src/jvmMain/kotlin/afield/media/video/diffusion/SpinningDiffusionDemo.kt) | Video | — | 0 | 5 | 16% |
 | [CSVReader.kt](../src/jvmMain/kotlin/afield/simulation/physics/CSVReader.kt) | Simulation | — | 0 | 5 | 50% |
 | [ControlLaw.kt](../src/jvmMain/kotlin/afield/ui/controls/ControlLaw.kt) | Visualization | — | 0 | 5 | 58% |
 | [AgentTaskTranscript.kt](../src/jvmMain/kotlin/afield/ai/agent/AgentTaskTranscript.kt) | Machine learning | — | 0 | 4 | 42% |
@@ -1237,4 +1230,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `DirtSampleToken` | class | `src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt:126` |
 | `DirtSampleDescriptor` | class | `src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt:145` |
 
-…and **1954 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **1952 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
