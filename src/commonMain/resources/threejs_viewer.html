@@ -325,6 +325,12 @@
         #hud-left { flex: 1; min-width: 0; flex-wrap: wrap; }
         #hud-right { flex-shrink: 1; }
         @media (max-width: 760px) { #hud { flex-wrap: wrap; } #hud-left, #hud-right { flex-basis: 100%; max-width: 100%; } }
+        /* Published views have fewer tools, so both sides fit on the top row in a box. */
+        @media (min-width: 440px) {
+            body.publication #hud { flex-wrap: nowrap; }
+            body.publication #hud-left, body.publication #hud-right { flex-basis: auto; }
+            body.publication #hud-right { max-width: calc(100% - 70px); }
+        }
         #inspector-group { flex-wrap: wrap; }
         .viewer-tool select {
             appearance: none; max-width: 110px; height: 28px; padding: 4px 30px 4px 10px;
@@ -475,6 +481,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const publicationSnapshot = window.__fieldThreePublication || null;
 const isPublication = publicationSnapshot !== null;
 if (isPublication) {
+    document.body.classList.add('publication');
     const style = document.createElement('style');
     style.textContent = '#camera-link,#feature-tools,#feature-review,#review-inbox,#viewer-tools,#mode-group,#mask-group{display:none!important}';
     document.head.append(style);

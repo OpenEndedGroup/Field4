@@ -91,6 +91,9 @@ try {
             assert.ok(restored.current.every((v,i) => Math.abs(v-restored.saved[i]) < 1e-5),'Published camera was not preserved');
             assert.equal(await frame.locator('#camera-link').isVisible(),false);
             assert.equal(await frame.locator('#feature-tools').isVisible(),false);
+            const partsBar = await frame.locator('#part-inspector').boundingBox();
+            const xrayBar = await frame.locator('#xray-tools').boundingBox();
+            assert.ok(Math.abs(partsBar.y-xrayBar.y) < 1,'Parts should share the top row with X-ray');
             const before = await frame.evaluate(() => FieldInspector.snapshot().camera);
             const canvas = frame.locator('#canvas-wrap canvas'), rect = await canvas.boundingBox();
             assert.ok(rect && rect.width > 100 && rect.height > 100);
