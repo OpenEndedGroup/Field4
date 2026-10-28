@@ -508,12 +508,19 @@ private fun addExtrudedRingGroup(
  * [GlyphContour.signedArea]'s. That is not an inconsistency to fix: an area's sign says which way a
  * ring runs, a distance's sign says which side of the ink you are on, and the two live in different
  * files for different consumers.
- *
- * @property bounds the region the grid covers, in text space.
  */
 class TextDistanceField internal constructor(
+    /**
+     * The region the grid covers, in text space: the layout's inked bounds grown by the margin the
+     * build asked for. Samples sit on its edges, not half a cell inside them.
+     */
     val bounds: Rect,
+    /** Samples across [TextDistanceField.bounds], at least 4. */
     val nx: Int,
+    /**
+     * Samples down [TextDistanceField.bounds], at least 4. Only the longer side of the grid gets
+     * the resolution that was asked for; the shorter one is scaled to keep the cells square.
+     */
     val ny: Int,
     internal val values: FloatArray,
 ) {
@@ -521,9 +528,9 @@ class TextDistanceField internal constructor(
     private val dy = bounds.h / (ny - 1).coerceAtLeast(1)
 
     /**
-     * Bilinear sample. Outside [bounds] the nearest edge value is used plus the distance to the
-     * box — which keeps the field monotone far away, so a marcher never finds a spurious surface out
-     * there.
+     * Bilinear sample. Outside [TextDistanceField.bounds] the nearest edge value is used plus the
+     * distance to the box — which keeps the field monotone far away, so a marcher never finds a
+     * spurious surface out there.
      */
     fun at(x: Double, y: Double): Double {
         val cx = x.coerceIn(bounds.x, bounds.x + bounds.w)
@@ -675,17 +682,21 @@ fun TextLayout.toSdf(
 
 /**
  * A layout's SDF plus the bounds it lives in — the pair `marchingCubes` wants.
- *
- * @property field negative inside the letters; safe to compose with any `ScalarField3D`.
- * @property bounds a box comfortably containing the surface, so [march] needs no arguments.
- * @property distanceField the 2D grid underneath, if you want to look at it or measure it.
- * @property scale text-space units per normalised unit's reciprocal — multiply a text-space length by
- *   this to get a normalised one.
  */
 class TextSdf internal constructor(
+    /**
+     * The field itself, negative inside the letters, in normalised y-up coordinates. Safe to
+     * compose with any `ScalarField3D`.
+     */
     val field: ScalarField3D,
+    /** A box comfortably containing the surface, so [march] needs no arguments. */
     val bounds: AxisAlignedBoundingBox3D,
+    /** The 2D grid underneath, if you want to look at it or measure it. */
     val distanceField: TextDistanceField,
+    /**
+     * Normalised units per text-space unit, which is one over the layout's ascent: multiply a
+     * text-space length by this to get a normalised one.
+     */
     val scale: Double,
 ) {
     /** March the field. `resolution` is cells along the longest axis, as in `marchingCubes`. */
