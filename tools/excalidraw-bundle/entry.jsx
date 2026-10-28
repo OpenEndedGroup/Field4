@@ -24,6 +24,9 @@ import "@excalidraw/excalidraw/index.css";
 
 const SCENE_DEBOUNCE_MS = 250;
 
+// Field's Iosevka, added to Excalidraw's font table by build.mjs; new text uses it.
+const IOSEVKA_FAMILY = 42;
+
 /** Cheap change detector: Excalidraw bumps `version` on every element mutation. */
 function sceneVersion(elements) {
     let sum = elements.length;
@@ -133,6 +136,7 @@ export function mountDrawingLayer(host, opts) {
                     elements: initialElements,
                     appState: {
                         viewBackgroundColor: "transparent",
+                        currentItemFontFamily: IOSEVKA_FAMILY,
                         scrollX: initialX,
                         scrollY: initialY,
                         zoom: { value: initialZoom },
