@@ -18,8 +18,10 @@ class ElementsTest {
 
     private fun <T> drawsSomething(c: Construction<T>) {
         assertTrue(c.steps.isNotEmpty() && c.figures.isNotEmpty())
-        assertEquals(c.figures.size, c.toFLines().size)
-        assertTrue(c.toFLines(upTo = 1).size < c.toFLines().size)
+        val everything = c.toFLines(cited = true, labels = false, paper = false)
+        assertEquals(c.figures.size, everything.size)
+        assertTrue(c.toFLines(upTo = 1, paper = false).size < everything.size)
+        assertTrue(c.toFLines(labels = false, paper = false).size <= everything.size) // cited steps hidden
     }
 
     @Test fun i1EquilateralTriangle() {

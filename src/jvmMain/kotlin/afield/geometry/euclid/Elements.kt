@@ -27,7 +27,16 @@ import afield.graphics.render.label
 import afield.graphics.render.pointSize
 import afield.graphics.render.pointed
 import afield.graphics.render.thickness
+import afield.graphics.render.filled
+import afield.graphics.render.stroked
+import afield.graphics.text.layoutText
+import afield.graphics.text.toFLines
+import afield.graphics.text.typeface
+import afield.math.linalg.Vec3
 import afield.math.linalg.vec
+import java.awt.Font
+import kotlin.math.max
+import kotlin.math.min
 
 /** Byrne's palette, plus black. */
 enum class Byrne(val r: Double, val g: Double, val b: Double) {
@@ -40,8 +49,8 @@ enum class Byrne(val r: Double, val g: Double, val b: Double) {
 /** One drawn element of a construction: a [shape] in [color], perhaps lettered with [label]. */
 data class Figure(val shape: Shape2, val color: Byrne, val label: String? = null, val auxiliary: Boolean = false)
 
-/** One sentence of a proof and what it draws. */
-data class Step(val text: String, val figures: List<Figure>)
+/** One sentence of a proof and what it draws; [cited] names the earlier proposition it comes from, if any. */
+data class Step(val text: String, val figures: List<Figure>, val cited: String? = null)
 
 /** A triangle by its three corners. */
 data class Triangle2(val a: Point2, val b: Point2, val c: Point2) {
@@ -58,18 +67,63 @@ class Construction<out T>(val proposition: String, val enunciation: String, val 
     val figures get() = steps.flatMap { it.figures }
 
     /**
-     * The diagram as coloured FLines, through step [upTo] (all of them by default). Lines and rays
-     * are drawn [extent] long; auxiliary figures are thinner; lettered points are dots.
+     * The diagram as coloured FLines, through step [upTo] (all of them by default).
+     *
+     * Like Byrne's plates, the steps of cited propositions are left out unless [cited] is true:
+     * their results appear, the circles that made them do not. Lines and rays are drawn [extent]
+     * long; auxiliary figures are thinner; lettered points are dots with their letter beside them
+     * when [labels] is true. [paper] puts a cream sheet behind everything, which black needs on a
+     * dark output.
      */
-    fun toFLines(upTo: Int = steps.size, extent: Double = 400.0, thickness: Double = 2.0): List<FLine> =
-        steps.take(upTo).flatMap { it.figures }.map { f ->
-            f.shape.toFLine(extent).also {
+    fun toFLines(
+        upTo: Int = steps.size,
+        extent: Double = 400.0,
+        thickness: Double = 2.0,
+        cited: Boolean = false,
+        labels: Boolean = true,
+        paper: Boolean = true,
+    ): List<FLine> {
+        val shown = steps.take(upTo).filter { cited || it.cited == null }.flatMap { it.figures }
+        val out = mutableListOf<FLine>()
+        if (paper) out += paperBehind(shown, extent, thickness)
+        for (f in shown) {
+            out += f.shape.toFLine(extent).also {
                 it.color = vec(f.color.r, f.color.g, f.color.b, 1.0)
                 it.thickness = if (f.auxiliary) thickness / 2 else thickness
-                if (f.shape is Point2) { it.pointed = true; it.pointSize = thickness * 3 }
+                if (f.shape is Point2) { it.pointed = true; it.pointSize = thickness * 1.5 }
                 f.label?.let { l -> it.label = l }
             }
+            val p = f.shape as? Point2
+            if (labels && p != null && f.label != null) out += letter(f.label, p, thickness)
         }
+        return out
+    }
+
+    private fun letter(text: String, at: Point2, thickness: Double): List<FLine> = try {
+        val size = 8.0 * thickness
+        layoutText(text, typeface(Font.SERIF, size, italic = true)).toFLines(
+            color = vec(Byrne.BLACK.r, Byrne.BLACK.g, Byrne.BLACK.b, 1.0), thickness = 0.0, filled = true, stroked = false,
+        ).map { g -> g.transform { v -> Vec3((v.x + at.x + size * 0.3).toFloat(), (v.y + at.y - size * 0.3).toFloat(), v.z) } }
+    } catch (_: Exception) {
+        emptyList() // a headless JVM without fonts gets an unlettered diagram
+    }
+
+    private fun paperBehind(shown: List<Figure>, extent: Double, thickness: Double): FLine {
+        var x0 = Double.MAX_VALUE; var y0 = Double.MAX_VALUE; var x1 = -Double.MAX_VALUE; var y1 = -Double.MAX_VALUE
+        fun take(p: Point2, r: Double = 0.0) { x0 = min(x0, p.x - r); y0 = min(y0, p.y - r); x1 = max(x1, p.x + r); y1 = max(y1, p.y + r) }
+        for (f in shown) when (val s = f.shape) {
+            is Point2 -> take(s)
+            is Segment2 -> { take(s.a); take(s.b) }
+            is Circle2 -> take(s.center, s.radius)
+            is Arc2 -> take(s.center, s.radius)
+            is Ray2 -> { take(s.origin); take(s.at(extent / s.direction.length)) }
+            is Line2 -> { val u = s.direction.normalized() * extent; take(s.point - u); take(s.point + u) }
+        }
+        val m = 12 * thickness
+        return FLine().moveTo(x0 - m, y0 - m).lineTo(x1 + m, y0 - m).lineTo(x1 + m, y1 + m).lineTo(x0 - m, y1 + m).close().also {
+            it.color = vec(0.96, 0.93, 0.85, 1.0); it.filled = true; it.stroked = false
+        }
+    }
 
     override fun toString() = buildString {
         appendLine("$proposition. $enunciation")
@@ -83,7 +137,7 @@ private class Builder {
 
     /** Cites an earlier proposition: its steps, unlettered, under its name. Returns its result. */
     fun <T> by(c: Construction<T>): T {
-        c.steps.forEach { s -> steps += Step("By ${c.proposition}: ${s.text}", s.figures.map { it.copy(label = null) }) }
+        c.steps.forEach { s -> steps += Step("By ${c.proposition}: ${s.text}", s.figures.map { it.copy(label = null) }, c.proposition) }
         return c.result
     }
 }
@@ -133,7 +187,7 @@ object Elements {
         }
         s.step("Join AB.", Segment2(a, b).drawn(Byrne.BLACK, auxiliary = true))
         val d = s.by(prop1(Segment2(a, b))).c
-        s.step("On AB construct the equilateral triangle DAB.", d.named("D"))
+        s.step("On AB construct the equilateral triangle DAB.", Segment2(d, a).drawn(Byrne.BLACK, auxiliary = true), Segment2(d, b).drawn(Byrne.BLACK, auxiliary = true), d.named("D"))
         val circleB = Circle2(b, r)
         val g = meet(Ray2(b, b - d), circleB, "I.2").first()
         s.step(
@@ -193,7 +247,7 @@ object Elements {
         val s = Builder()
         s.step("Let AB be the given straight line.", ab.drawn(Byrne.BLACK), a.named("A"), b.named("B"))
         val c = s.by(prop1(ab)).c
-        s.step("On AB construct the equilateral triangle ABC.", c.named("C"))
+        s.step("On AB construct the equilateral triangle ABC.", Segment2(c, a).drawn(Byrne.BLACK, auxiliary = true), Segment2(c, b).drawn(Byrne.BLACK, auxiliary = true), c.named("C"))
         val bisector = s.by(prop9(c, a, b))
         val d = meet(bisector, ab, "I.10").first()
         s.step("Bisect the angle ACB by CD, meeting AB at D. Then AD = DB.", Segment2(c, d).drawn(Byrne.RED), d.named("D"), Segment2(a, d).drawn(Byrne.YELLOW), Segment2(d, b).drawn(Byrne.BLUE))
@@ -291,7 +345,7 @@ object Elements {
         val up = s.by(prop11(ab, a, side))
         val circle = Circle2(a, ab.length)
         val d = meet(up, circle, "I.46").first()
-        s.step("Draw AC at right angles to AB from A, and cut off AD equal to AB.", circle.drawn(Byrne.BLUE, auxiliary = true), d.named("D"), Segment2(a, d).drawn(Byrne.RED))
+        s.step("Draw AC at right angles to AB from A, and cut off AD equal to AB.", up.drawn(Byrne.BLACK, auxiliary = true), circle.drawn(Byrne.BLUE, auxiliary = true), d.named("D"), Segment2(a, d).drawn(Byrne.RED))
         val de = s.by(prop31(d, ab))
         val be = s.by(prop31(b, Segment2(a, d)))
         val e = meet(de, be, "I.46").first()
