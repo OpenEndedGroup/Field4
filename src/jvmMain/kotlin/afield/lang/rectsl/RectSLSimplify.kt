@@ -3,19 +3,17 @@ package afield.lang.rectsl
 import kotlin.math.abs
 
 /**
- * An algebraic simplifier over the track IR — the last of the four capabilities `ddf732260` said a
- * symbolic IR would allow.
+ * An algebraic simplifier over the track IR, under a requirement that every rewrite be bit-exact.
  *
- * That commit's message named five things a closure cannot do: be printed, compared, serialized,
- * rewritten, or emitted as GLSL. GLSL shipped with it. `describe()` is the printing and
- * `substituteParameters` is a first, targeted rewrite. **Comparison came free** — the IR is data
- * classes, so two tracks built by the same `array` body are already `==`, which is exactly what the
- * GLSL emitter's function deduplication has been quietly relying on. This is the general rewriter,
- * and it is the one that needed comparison to exist: half the rules below fire on two subtrees being
- * structurally equal.
+ * The IR is data classes, so two tracks built by the same `array` body compare `==`. The GLSL
+ * emitter's function deduplication rests on that, keying emitted functions by the track itself so
+ * that a hundred array copies share one function, and so does the `min(x, x)` rule below, which
+ * compares two subtrees directly. The narrower rewrites over the same IR are `describe()`, which
+ * prints a track, and `substituteParameters`, which sets named free parameters to numbers; this is
+ * the general one.
  *
- * Serialization is the fifth, and it has not shipped: nothing in `afield.lang.rectsl` writes a track out
- * or reads one back. A symbolic IR makes it possible; no one has needed it yet.
+ * Nothing in `afield.lang.rectsl` writes a track out or reads one back, so a track cannot be
+ * serialized, although being data rather than closures would allow it.
  *
  * # What it is for
  *
@@ -85,7 +83,7 @@ fun Track<Double>.nodeCount(): Int = 1 + trackChildren(this).sumOf { it.nodeCoun
  *
  * A pure function returning a new tree; nothing mutates. Sampling is preserved bit-for-bit on the
  * whole gallery corpus (2754 channels, 16.5% fewer nodes, 112,914 samples compared) — see this
- * file's KDoc for how that is checked, and for the table of rewrites deliberately left out.
+ * file's KDoc for how that is checked, and for the table of rewrites left out, with their reasons.
  */
 fun Track<Double>.simplify(): Track<Double> = mapTrack(this) { node -> rewriteNode(node) }
 

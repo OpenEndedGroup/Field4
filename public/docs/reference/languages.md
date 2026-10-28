@@ -4,7 +4,7 @@
 
 Field's small languages, from the host side. A box can be *written* in one of them — a per-box property picks the language and a `BoxExecution` runs it, which is how `datalog`, `forth`, `nano`, `morpho`, `clojure`, `python`, FieldML and the two `remotejs` runtimes work — or a program can be *embedded*, a triple-quoted Kotlin string whose first line names the language and whose contents are compiled on the JVM, which is how RectSL and StackSL work. What is documented below is the Kotlin that either shape hands you: the compiler you give a program to, the result and the diagnostics it gives back, and the bridge a running program calls host values through. The notation itself is on the cheatsheets, and that is where the pictures are. Read `Datalog.kt` first — it is the smallest complete example of the shape all of these have, a value you add source to, query, and then ask `why` of — then `DatalogEngine.kt` for what the implementation underneath actually costs, `StackSL.kt` for the compile-and-diagnose surface both embedded languages share, `ForthInterpreter.kt` and `NanoVM.kt` for the two implementations you can read end to end in a sitting, and `HostBridge.kt` for FieldML's reflective JVM bridge — the file to read before wiring any language to Kotlin values. `dev_docs/` carries the map of what a new language has to touch on the way in, in `small_language_anatomy.md`, which is also the guarded list of which languages exist. The prose, with pictures: [Language extensions](../language_extensions.md) for the route decision, then [Datalog](../datalog.md), [RectSL](../rectsl_cheatsheet.md), [StackSL](../stacksl_cheatsheet.md), [FieldML](../fieldml_cheatsheet.md), [MorphoHDL](../morpho_examples.md), [Nano](../nano_examples.md), [Forth](../forth_examples.md) and [Python](../python.md).
 
-123 source file(s), 3096 public symbol(s), 1519 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+123 source file(s), 3096 public symbol(s), 1520 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -3799,15 +3799,15 @@ A snapshot of a MorphoHDL circuit, as produced by morpho's own compiler and copi
 | <a id="morphonetlist-kt--morphonetlist--name"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">name</span><span class="p">(</span><span class="n">cell</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L73) |  |
 | <a id="morphonetlist-kt--morphonetlist--islut"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">isLut</span><span class="p">(</span><span class="n">cell</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L75) |  |
 | <a id="morphonetlist-kt--morphonetlist--activecells"></a>[<code class="highlight"><span class="k">val</span> <span class="n">activeCells</span><span class="p">:</span> <span class="nc">IntArray</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L78) | Every cell index that survived expansion and optimisation. |
-| <a id="morphonetlist-kt--morphonetlist--activecount"></a>[<code class="highlight"><span class="k">val</span> <span class="n">activeCount</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L85) |  |
-| <a id="morphonetlist-kt--morphonetlist--lutcount"></a>[<code class="highlight"><span class="k">val</span> <span class="n">lutCount</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L88) | Active LUT cells. Not the gate count — see [`slots`](languages.md#morphonetlist-kt--morphonetlist--slots). |
-| <a id="morphonetlist-kt--morphonetlist--gatecount"></a>[<code class="highlight"><span class="k">val</span> <span class="n">gateCount</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L91) | Total gates, counting each broadcast LUT slot separately. |
-| <a id="morphonetlist-kt--morphonetlist--lutinputnet"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">lutInputNet</span><span class="p">(</span><span class="n">cell</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L97) | The input port index of a LUT's pin. LUT input pins are stored slot-major (`pinStart + slot * arity + port`) so that splitting a broadcast cell is a contiguous copy. |
-| <a id="morphonetlist-kt--morphonetlist--inputwidths"></a>[<code class="highlight"><span class="k">val</span> <span class="n">inputWidths</span><span class="p">:</span> <span class="nc">IntArray</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L101) | Widths of the design's input ports, in declaration order. |
-| <a id="morphonetlist-kt--morphonetlist--outputwidths"></a>[<code class="highlight"><span class="k">val</span> <span class="n">outputWidths</span><span class="p">:</span> <span class="nc">IntArray</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L104) | Widths of the design's output ports, in declaration order. |
-| <a id="morphonetlist-kt--morphonetlist--edges"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">edges</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L112) | Driver-to-consumer edges between active cells, one per connected input pin. |
-| <a id="morphonetlist-kt--morphonetlist--topologicalorder"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">topologicalOrder</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L136) | Active cells in dependency order: every cell appears after the cells driving its inputs. |
-| <a id="morphonetlist-kt--morphonetlist--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L183) |  |
+| <a id="morphonetlist-kt--morphonetlist--activecount"></a>[<code class="highlight"><span class="k">val</span> <span class="n">activeCount</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L86) | How many cells survived expansion and optimisation: the length of [`activeCells`](languages.md#morphonetlist-kt--morphonetlist--activecells). |
+| <a id="morphonetlist-kt--morphonetlist--lutcount"></a>[<code class="highlight"><span class="k">val</span> <span class="n">lutCount</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L89) | Active LUT cells. Not the gate count — see [`slots`](languages.md#morphonetlist-kt--morphonetlist--slots). |
+| <a id="morphonetlist-kt--morphonetlist--gatecount"></a>[<code class="highlight"><span class="k">val</span> <span class="n">gateCount</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L92) | Total gates, counting each broadcast LUT slot separately. |
+| <a id="morphonetlist-kt--morphonetlist--lutinputnet"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">lutInputNet</span><span class="p">(</span><span class="n">cell</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L98) | The input port index of a LUT's pin. LUT input pins are stored slot-major (`pinStart + slot * arity + port`) so that splitting a broadcast cell is a contiguous copy. |
+| <a id="morphonetlist-kt--morphonetlist--inputwidths"></a>[<code class="highlight"><span class="k">val</span> <span class="n">inputWidths</span><span class="p">:</span> <span class="nc">IntArray</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L102) | Widths of the design's input ports, in declaration order. |
+| <a id="morphonetlist-kt--morphonetlist--outputwidths"></a>[<code class="highlight"><span class="k">val</span> <span class="n">outputWidths</span><span class="p">:</span> <span class="nc">IntArray</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L105) | Widths of the design's output ports, in declaration order. |
+| <a id="morphonetlist-kt--morphonetlist--edges"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">edges</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L113) | Driver-to-consumer edges between active cells, one per connected input pin. |
+| <a id="morphonetlist-kt--morphonetlist--topologicalorder"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">topologicalOrder</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L137) | Active cells in dependency order: every cell appears after the cells driving its inputs. |
+| <a id="morphonetlist-kt--morphonetlist--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/morpho/MorphoNetlist/#L184) |  |
 
 ## MorphoProblems.kt { #morphoproblems-kt }
 
@@ -6002,8 +6002,8 @@ So this file computes the thing there is no argument about: the **area** of a pi
 scene, in closed form. A rect is a convex quadrilateral and a pixel is a convex box, so a single
 rect's coverage is a convex-convex clip ([`clipConvexToBox`](languages.md#rectslcoverage-kt--clipconvextobox), Sutherland–Hodgman) followed by the
 shoelace formula ([`polygonArea`](languages.md#rectslcoverage-kt--polygonarea)) — exact in the arithmetic, with no sampling anywhere. A *union* of
-rects is not convex, so that case goes to JTS, which is an external implementation of the same
-quantity and therefore an oracle rather than a second opinion from the same author.
+rects is not convex, so that case goes to JTS, an outside implementation of the same quantity,
+which makes it a check on this file rather than a restatement of it.
 `RectSLSoftRasterTest` cross-checks the two on the single-rect case where both apply.
 
 ### The three biases, named
@@ -6014,9 +6014,9 @@ number that means nothing:
 
 1. **Obliquity.** Every kernel in [`CoverageKernel`](languages.md#rectslsoftraster-kt-coveragekernel) is a function of a single signed distance, so it
    is implicitly assuming the edge is axis-aligned. For an axis-aligned edge the exact area of a
-   unit pixel on one side of it *is* `clamp(0.5 - d)`, so `CoverageKernel.LINEAR` at `beta` = one
-   pixel has **zero** obliquity bias there — a fact worth checking, because if it does not come out
-   at machine precision then either the kernel or the exact reference is wrong. As the edge rotates
+   unit pixel on one side of it *is* `clamp(0.5 - d)`, so [`CoverageKernel`](languages.md#rectslsoftraster-kt-coveragekernel)'s `LINEAR` at `beta` =
+   one pixel has **zero** obliquity bias there, which is itself a check: if that case does not come
+   out at machine precision, either the kernel or the exact reference is wrong. As the edge rotates
    the true coverage curve becomes piecewise quadratic and the ramp cannot follow it.
 2. **Feature scale.** A rect thinner than the band never lets coverage saturate. As
    width/`beta` → 0 the error tends to the whole of the feature's coverage, which is the regime
@@ -6399,7 +6399,7 @@ a sampler bug introduced since. Nothing should be re-derived from those four as 
 | <a id="rectslfn-kt--freeparameterslots"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">freeParameterSlots</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/rectsl/RectSLFn/#L1281) | **Every** θ index each named free parameter occupies, in graph order. [`freeParameterIndices`](languages.md#rectslfn-kt--freeparameterindices) returns the first of them and no more, so this is the one to read when a parameter can occupy several. |
 | <a id="rectslfn-kt--freeparameters"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">freeParameters</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/rectsl/RectSLFn/#L1305) | Every named free parameter in this track tree, with its current value, in first-seen order. |
 | <a id="rectslfn-kt--substituteparameters"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">substituteParameters</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/rectsl/RectSLFn/#L1319) | This track with each named free parameter set to the value `values` gives for it, leaving anything the map does not mention alone. |
-| <a id="rectslfn-kt--describe"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/rectsl/RectSLFn/#L1414) | The track tree as one line of prose — the *printing* half of what `ddf732260` promised. |
+| <a id="rectslfn-kt--describe"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/rectsl/RectSLFn/#L1414) | The track tree as one line of prose, showing the algebra rather than a data class's fields. |
 
 ### Top-level values { #rectslfn-kt-values }
 
@@ -6912,19 +6912,17 @@ Assembles a complete, compilable pair of shaders around an emitted field.
 
 ## RectSLSimplify.kt { #rectslsimplify-kt }
 
-An algebraic simplifier over the track IR — the last of the four capabilities `ddf732260` said a
-symbolic IR would allow.
+An algebraic simplifier over the track IR, under a requirement that every rewrite be bit-exact.
 
-That commit's message named five things a closure cannot do: be printed, compared, serialized,
-rewritten, or emitted as GLSL. GLSL shipped with it. `describe()` is the printing and
-`substituteParameters` is a first, targeted rewrite. **Comparison came free** — the IR is data
-classes, so two tracks built by the same `array` body are already `==`, which is exactly what the
-GLSL emitter's function deduplication has been quietly relying on. This is the general rewriter,
-and it is the one that needed comparison to exist: half the rules below fire on two subtrees being
-structurally equal.
+The IR is data classes, so two tracks built by the same `array` body compare `==`. The GLSL
+emitter's function deduplication rests on that, keying emitted functions by the track itself so
+that a hundred array copies share one function, and so does the `min(x, x)` rule below, which
+compares two subtrees directly. The narrower rewrites over the same IR are `describe()`, which
+prints a track, and `substituteParameters`, which sets named free parameters to numbers; this is
+the general one.
 
-Serialization is the fifth, and it has not shipped: nothing in `afield.lang.rectsl` writes a track out
-or reads one back. A symbolic IR makes it possible; no one has needed it yet.
+Nothing in `afield.lang.rectsl` writes a track out or reads one back, so a track cannot be
+serialized, although being data rather than closures would allow it.
 
 ### What it is for
 
@@ -6991,8 +6989,8 @@ bit-identity over the corpus already assembled for the differentiable backend is
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="rectslsimplify-kt--nodecount"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">nodeCount</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSimplify/#L81) | Total nodes in this track's tree, counting a shared subtree once per path — the size a backend pays. |
-| <a id="rectslsimplify-kt--simplify"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">simplify</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSimplify/#L90) | This track with constants folded and the algebraic identities applied, bottom-up. |
+| <a id="rectslsimplify-kt--nodecount"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">nodeCount</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSimplify/#L79) | Total nodes in this track's tree, counting a shared subtree once per path — the size a backend pays. |
+| <a id="rectslsimplify-kt--simplify"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">simplify</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSimplify/#L88) | This track with constants folded and the algebraic identities applied, bottom-up. |
 
 ## RectSLSoftRaster.kt { #rectslsoftraster-kt }
 
@@ -8478,9 +8476,10 @@ through `sin` — a quadrature pair — so the result is `(Nc, Ns)` and every ph
 is `Nc·cos θ − Ns·sin θ`, exactly. Each octave is divided by the square root of its own window
 energy, which is independent of phase, so the identity survives normalisation.
 
-Octave `o` is the lattice scaled by `lacunarity^o` and rotated by
-`PhaseNoiseConstants.OCTAVE_ROTATION`, so a kernel's frequency in cycles per unit of the input
-coordinate is its carrier times `lacunarity^o`. That number is what a phase response sees.
+Octave `o` is the lattice scaled by `lacunarity^o` and rotated once per octave by the fixed
+([`PhaseNoiseConstants.OCTAVE_ROTATION_COS`](languages.md#phasenoise-kt--phasenoiseconstants--octave-rotation-cos), [`PhaseNoiseConstants.OCTAVE_ROTATION_SIN`](languages.md#phasenoise-kt--phasenoiseconstants--octave-rotation-sin)) pair, so a
+kernel's frequency in cycles per unit of the input coordinate is its carrier times
+`lacunarity^o`. That number is what a phase response sees.
 
 ### Output and range
 
@@ -8502,26 +8501,26 @@ Phase is in **turns** throughout, like `phacelle`'s offset and unlike `rotate`'s
 
 ### PhaseNoiseConstants { #phasenoise-kt-phasenoiseconstants }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">PhaseNoiseConstants</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L54)
+[<code class="highlight"><span class="k">object</span> <span class="nc">PhaseNoiseConstants</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L55)
 
 The fixed numbers of the phase noise construction, read by the emitted GLSL.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="phasenoise-kt--phasenoiseconstants--max-octaves"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MAX&#95;OCTAVES</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L56) | Loop bound in the emitted GLSL, shared with the volumetric family. |
-| <a id="phasenoise-kt--phasenoiseconstants--carrier"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CARRIER</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L63) | Cycles of the carrier per lattice cell, before jitter. With a window of standard deviation half a cell the band is about ±0.32 cycles wide around this, so at lacunarity 2 consecutive octaves' bands meet rather than leaving gaps. |
-| <a id="phasenoise-kt--phasenoiseconstants--carrier-jitter-octaves"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CARRIER&#95;JITTER&#95;OCTAVES</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L66) | Per-kernel carrier jitter, as a total width in octaves (±half of it). |
-| <a id="phasenoise-kt--phasenoiseconstants--window-falloff"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">WINDOW&#95;FALLOFF</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L69) | The window `exp(-WINDOW_FALLOFF r²)`. |
-| <a id="phasenoise-kt--phasenoiseconstants--window-floor"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">WINDOW&#95;FLOOR</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L76) | `exp(-WINDOW_FALLOFF * 1.5²)`, subtracted from the window so it reaches zero at 1.5 cells. A 4x4 neighbourhood with jitter of ±half a cell is complete for that radius, so no kernel that should contribute is ever skipped and the field has no seams. |
-| <a id="phasenoise-kt--phasenoiseconstants--energy-epsilon"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">ENERGY&#95;EPSILON</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L79) | Added under the energy square root so an octave never divides by zero. |
-| <a id="phasenoise-kt--phasenoiseconstants--output-scale"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OUTPUT&#95;SCALE</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L82) | Final scale on the quadrature pair; see the class notes for the resulting RMS. |
-| <a id="phasenoise-kt--phasenoiseconstants--octave-rotation-cos"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OCTAVE&#95;ROTATION&#95;COS</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L85) | Per-octave lattice rotation (cos, sin) — a 3-4-5 triangle, so it is exactly orthonormal. |
-| <a id="phasenoise-kt--phasenoiseconstants--octave-rotation-sin"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OCTAVE&#95;ROTATION&#95;SIN</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L86) |  |
-| <a id="phasenoise-kt--phasenoiseconstants--octave-offset-x"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OCTAVE&#95;OFFSET&#95;X</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L89) | Translation after each octave's rotate-and-scale, so the lattices do not share an origin. |
-| <a id="phasenoise-kt--phasenoiseconstants--octave-offset-y"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OCTAVE&#95;OFFSET&#95;Y</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L90) |  |
-| <a id="phasenoise-kt--phasenoiseconstants--default-octaves"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEFAULT&#95;OCTAVES</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L92) |  |
-| <a id="phasenoise-kt--phasenoiseconstants--default-lacunarity"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEFAULT&#95;LACUNARITY</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L93) |  |
-| <a id="phasenoise-kt--phasenoiseconstants--default-gain"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEFAULT&#95;GAIN</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L94) |  |
+| <a id="phasenoise-kt--phasenoiseconstants--max-octaves"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MAX&#95;OCTAVES</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L57) | Loop bound in the emitted GLSL, shared with the volumetric family. |
+| <a id="phasenoise-kt--phasenoiseconstants--carrier"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CARRIER</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L64) | Cycles of the carrier per lattice cell, before jitter. With a window of standard deviation half a cell the band is about ±0.32 cycles wide around this, so at lacunarity 2 consecutive octaves' bands meet rather than leaving gaps. |
+| <a id="phasenoise-kt--phasenoiseconstants--carrier-jitter-octaves"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CARRIER&#95;JITTER&#95;OCTAVES</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L67) | Per-kernel carrier jitter, as a total width in octaves (±half of it). |
+| <a id="phasenoise-kt--phasenoiseconstants--window-falloff"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">WINDOW&#95;FALLOFF</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L70) | The window `exp(-WINDOW_FALLOFF r²)`. |
+| <a id="phasenoise-kt--phasenoiseconstants--window-floor"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">WINDOW&#95;FLOOR</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L77) | `exp(-WINDOW_FALLOFF * 1.5²)`, subtracted from the window so it reaches zero at 1.5 cells. A 4x4 neighbourhood with jitter of ±half a cell is complete for that radius, so no kernel that should contribute is ever skipped and the field has no seams. |
+| <a id="phasenoise-kt--phasenoiseconstants--energy-epsilon"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">ENERGY&#95;EPSILON</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L80) | Added under the energy square root so an octave never divides by zero. |
+| <a id="phasenoise-kt--phasenoiseconstants--output-scale"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OUTPUT&#95;SCALE</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L83) | Final scale on the quadrature pair; see the class notes for the resulting RMS. |
+| <a id="phasenoise-kt--phasenoiseconstants--octave-rotation-cos"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OCTAVE&#95;ROTATION&#95;COS</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L86) | Per-octave lattice rotation (cos, sin) — a 3-4-5 triangle, so it is exactly orthonormal. |
+| <a id="phasenoise-kt--phasenoiseconstants--octave-rotation-sin"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OCTAVE&#95;ROTATION&#95;SIN</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L87) |  |
+| <a id="phasenoise-kt--phasenoiseconstants--octave-offset-x"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OCTAVE&#95;OFFSET&#95;X</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L90) | Translation after each octave's rotate-and-scale, so the lattices do not share an origin. |
+| <a id="phasenoise-kt--phasenoiseconstants--octave-offset-y"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OCTAVE&#95;OFFSET&#95;Y</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L91) |  |
+| <a id="phasenoise-kt--phasenoiseconstants--default-octaves"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEFAULT&#95;OCTAVES</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L93) |  |
+| <a id="phasenoise-kt--phasenoiseconstants--default-lacunarity"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEFAULT&#95;LACUNARITY</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L94) |  |
+| <a id="phasenoise-kt--phasenoiseconstants--default-gain"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEFAULT&#95;GAIN</span></code>](source/jvmMain/afield/lang/stacksl/PhaseNoise/#L95) |  |
 
 ## StackSL.kt { #stacksl-kt }
 
@@ -8818,7 +8817,7 @@ rather than a tunable value.
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">NoiseVec3</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>](source/jvmMain/afield/lang/stacksl/VolumetricNoise/#L60)
 
-A float triple. Deliberately `Float`, not `Double`: GLSL `float` is what is being mirrored.
+A float triple. `Float` rather than `Double`, because the GLSL this mirrors works in `float`.
 
 | Declaration | Summary |
 | --- | --- |
@@ -9570,7 +9569,7 @@ One square of a [`StackSLIntervals.certifiedTiles`](languages.md#stackslinterval
 
 [<code class="highlight"><span class="k">object</span> <span class="nc">StackSLIntervals</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLIntervals/#L56)
 
-Interval evaluation of StackSL programs: what a shader can output over a rectangle of pixels, as a proof rather than a render. The rules are in `GlslInterval.kt`; this is the face a box or a test uses.
+Interval evaluation of StackSL programs: the range a shader can output over a rectangle of pixels, bounded without drawing any of them. The rules are in `GlslInterval.kt`; this is the face a box or a test uses.
 
 | Declaration | Summary |
 | --- | --- |
