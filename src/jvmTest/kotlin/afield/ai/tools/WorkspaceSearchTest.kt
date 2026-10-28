@@ -54,6 +54,9 @@ class WorkspaceSearchTest {
         assertEquals(listOf("notes.md"), f.search(request().copy(extensions = listOf(".md"))).matches.map { it.path })
         assertEquals(listOf("jvmMain/code.kt"),
             f.search(request(WorkspaceSearchScope.FIELD_KOTLIN_SOURCE).copy(pathPrefix = "src/jvmMain")).matches.map { it.path })
+        // 2026-10-28: pathPrefix "src" (the root's own name) cost a local model a round.
+        assertEquals(listOf("jvmMain/code.kt"),
+            f.search(request(WorkspaceSearchScope.FIELD_KOTLIN_SOURCE).copy(pathPrefix = "src")).matches.map { it.path })
         val docs = f.search(request(WorkspaceSearchScope.FIELD_KOTLIN_SOURCE).copy(extensions = listOf(".md")))
         assertFalse(docs.success)
         assertTrue("FIELD_DOCS" in docs.message, docs.message)

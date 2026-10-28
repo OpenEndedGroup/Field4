@@ -1120,7 +1120,7 @@ class OpenAiIdeCodexBridge(
                 ) {
                     val attempt = ledger.attempt()
                     try {
-                        createResponseOnce(prepared, onTextDelta?.let { sink -> { chunk -> emittedText = true; sink(chunk) } }, attempt).also { response ->
+                        createResponseOnce(prepared, onTextDelta?.let { sink -> { chunk -> emittedText = true; sink(chunk) } }, attempt, onProgress).also { response ->
                             attempt.response(response)
                             validateModelResponse(response)
                             attempt.finish()
@@ -1175,12 +1175,17 @@ class OpenAiIdeCodexBridge(
         }
     }
 
-    private fun createResponseOnce(params: ResponseCreateParams, onTextDelta: ((String) -> Unit)?, attempt: AiRequestLedger.Attempt): Response {
+    private fun createResponseOnce(
+        params: ResponseCreateParams, onTextDelta: ((String) -> Unit)?, attempt: AiRequestLedger.Attempt,
+        onProgress: ((ProgressUpdate) -> Unit)? = null
+    ): Response {
         if (onTextDelta == null) return responses.create(params)
         val acc = ResponseAccumulator.create()
         val stream = asyncResponses.createStreaming(params)
+        val activity = StreamActivity(onProgress)
         try {
             stream.subscribe({ event ->
+                activity.observe(event)
                 // The accumulator only yields completed responses. Error/failed/incomplete
                 // events need explicit handling or their cause becomes "Completed response
                 // is not yet received", hiding both rate-limit recovery and useful feedback.
@@ -1200,6 +1205,44 @@ class OpenAiIdeCodexBridge(
         } finally {
             stream.close()
         }
+    }
+
+    /**
+     * Turns the stream's invisible deltas (reasoning, tool-call arguments) into a progress line, at most
+     * once a second, so a long generation reads as work rather than a stall. On 2026-10-28 a local model
+     * spent minutes writing a large tool call under nothing but "Waiting for model".
+     */
+    private class StreamActivity(private val onProgress: ((ProgressUpdate) -> Unit)?) {
+        private val started = System.nanoTime()
+        private var lastReport = 0L
+        private var reasoningChars = 0
+        private var toolChars = 0
+        private var textChars = 0
+
+        fun observe(event: com.openai.models.responses.ResponseStreamEvent) {
+            if (onProgress == null) return
+            event.reasoningTextDelta().ifPresent { reasoningChars += it.delta().length }
+            event.reasoningSummaryTextDelta().ifPresent { reasoningChars += it.delta().length }
+            event.functionCallArgumentsDelta().ifPresent { toolChars += it.delta().length }
+            event.customToolCallInputDelta().ifPresent { toolChars += it.delta().length }
+            event.outputTextDelta().ifPresent { textChars += it.delta().length }
+            val now = System.nanoTime()
+            if (now - lastReport < 1_000_000_000L || reasoningChars + toolChars == 0) return
+            lastReport = now
+            val seconds = (now - started) / 1_000_000_000L
+            val doing = when {
+                toolChars > 0 -> "Writing a tool call · ${kilo(toolChars)} chars"
+                else -> "Thinking · ${kilo(reasoningChars)} chars"
+            }
+            val detail = listOfNotNull(
+                "${seconds}s",
+                reasoningChars.takeIf { it > 0 && toolChars > 0 }?.let { "thought ${kilo(it)} chars" },
+                textChars.takeIf { it > 0 }?.let { "answered ${kilo(it)} chars" }
+            ).joinToString(" · ")
+            onProgress.invoke(ProgressUpdate(doing, detail, phase = "model"))
+        }
+
+        private fun kilo(n: Int) = if (n < 1000) "$n" else "%.1fk".format(n / 1000.0)
     }
 
     private fun validateModelResponse(response: Response) {

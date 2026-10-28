@@ -142,7 +142,7 @@ internal class WorkspaceSearch(
             return failure("FIELD_DOCS searches only .md files under Field's public/docs/ directory; use FIELD_KOTLIN_SOURCE for .kt.")
         // Each root is spelled the way the repository spells it, so "src/jvmMain/..." means "jvmMain/...".
         val prefix = when (request.scope) {
-            WorkspaceSearchScope.FIELD_KOTLIN_SOURCE -> request.pathPrefix.removePrefix("src/")
+            WorkspaceSearchScope.FIELD_KOTLIN_SOURCE -> request.pathPrefix.removePrefix("src/").let { if (it == "src") "" else it }
             WorkspaceSearchScope.FIELD_DOCS -> request.pathPrefix.removePrefix("public/").removePrefix("docs/").let { if (it == "docs") "" else it }
             else -> request.pathPrefix
         }

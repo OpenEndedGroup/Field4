@@ -125,7 +125,12 @@ data class AttachmentResponse(
     val nextOffset: Int? = null,
     val isExcerpt: Boolean = false,
     val searchMatched: Boolean? = null,
-    val matchOffset: Int? = null
+    val matchOffset: Int? = null,
+    /** 1-based line of [offset] and of [matchOffset]: offsets are not line numbers, so cite these. */
+    val startLine: Int? = null,
+    val matchLine: Int? = null,
+    /** When `find` missed: up to eight `line: text` rows containing its longest identifier. */
+    val nearMatches: List<String> = emptyList()
 )
 
 // Kotlin-only tools ---------------------------------------------------------
@@ -879,7 +884,12 @@ interface CarriesToolImages {
 @AgentToolMeta("symbols", effects = [ToolEffect.FILESYSTEM_READ])
 data class WorkspaceSymbolSearch(val query: String, val limit: Int = 25, val includeRelatedContext: Boolean = false)
 
-data class WorkspaceSymbolSearchResult(val matches: List<WorkspaceSymbolMatch>)
+data class WorkspaceSymbolSearchResult(
+    val matches: List<WorkspaceSymbolMatch>,
+    /** Source files saved since the index was built whose text contains the query; their symbols may be missing above. */
+    val unindexedMatches: List<String> = emptyList(),
+    val message: String = ""
+)
 data class WorkspaceSymbolMatch(
     val symbol: String,
     val kind: String,
