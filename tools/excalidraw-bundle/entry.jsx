@@ -137,6 +137,13 @@ export function mountDrawingLayer(host, opts) {
                     appState: {
                         viewBackgroundColor: "transparent",
                         currentItemFontFamily: IOSEVKA_FAMILY,
+                        // Crisp rather than sketchy: Excalidraw's "architect" roughness, thin solid lines,
+                        // square corners and solid fills.
+                        currentItemRoughness: 0,
+                        currentItemStrokeWidth: 1,
+                        currentItemStrokeStyle: "solid",
+                        currentItemFillStyle: "solid",
+                        currentItemRoundness: "sharp",
                         scrollX: initialX,
                         scrollY: initialY,
                         zoom: { value: initialZoom },

@@ -586,8 +586,8 @@ class NotationBuilder internal constructor(private val owner: Box, private val k
 
     var stroke: String = "#1e1e1e"
     var fill: String = "transparent"
-    var strokeWidth: Double = 2.0
-    var roughness: Double = 1.0
+    var strokeWidth: Double = 1.0
+    var roughness: Double = 0.0
     var opacity: Double = 100.0
     var dashed: Boolean = false
     var fontSize: Double = 20.0
@@ -726,7 +726,6 @@ class NotationBuilder internal constructor(private val owner: Box, private val k
         var e = base(id, type, x.toDouble(), y.toDouble(), w.toDouble(), h.toDouble(), name, stroke, fill)
             .with("opacity" to JsonPrimitive(opacity))
         if (fillStyle != null && fill != "transparent") e = e.with("fillStyle" to JsonPrimitive(fillStyle))
-        if (type == "rectangle") e = e.with("roundness" to buildJsonObject { put("type", JsonPrimitive(3)) })
         val ref = add(e)
         if (label != null) addLabel(ref.id, label, e.worldBounds())
         return ref
