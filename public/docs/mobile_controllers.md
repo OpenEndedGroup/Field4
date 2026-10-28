@@ -257,7 +257,7 @@ fun yAt(v: Double) = top + h * (1.0 - v)
 ui.moveMouse(x, yAt(0.5), 8)
 ui.pause(400)
 ui.mouseDown()
-for (v in listOf(0.6, 0.7, 0.8, 0.9, 0.7, 0.5, 0.3, 0.15, 0.4)) {
+for (v in [0.6, 0.7, 0.8, 0.9, 0.7, 0.5, 0.3, 0.15, 0.4]) {
     ui.moveMouse(x, yAt(v), 14)
     ui.pause(900)
 }
