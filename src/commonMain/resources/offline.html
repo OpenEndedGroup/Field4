@@ -10,8 +10,13 @@
     <link rel="stylesheet" href="outputareas.css">
     <style>
         .published-outputs { position:absolute; left:0; top:100%; padding-top:8px; cursor:auto; text-align:left; }
-        .published-output { background:#080808; border:0; margin-bottom:6px; color:#ddd; }
-        .published-output summary { padding:6px 10px; cursor:pointer; font:12px "Iosevka Web",monospace; }
+        .published-output { background:transparent; border:0; margin-bottom:6px; color:#ddd; }
+        .published-output summary { position:relative; display:block; width:max-content; padding:4px 8px; min-height:24px; background:#000; cursor:pointer; font:italic 12px "Iosevka Web",monospace; }
+        .published-output summary::-webkit-details-marker { display:none; }
+        .published-output summary::before { content:''; position:absolute; left:-18px; top:8px; width:0; height:0; border-top:5px solid transparent; border-bottom:5px solid transparent; border-left:7px solid #000; }
+        .published-output[open] > summary::before { transform:rotate(90deg); }
+        .published-output summary:hover { background:#191919; }
+        .published-output summary:hover::before { border-left-color:#ddd; }
         .published-output:focus, .published-output summary:focus { outline:none; box-shadow:none; }
         .published-output iframe { display:block; width:100%; border:0; background:#000; }
         .published-output-warning { padding:6px 10px; max-width:640px; color:#aaa; font-size:12px; user-select:text; }
@@ -111,9 +116,11 @@
             padding: 8px;
             display: block;
             text-align: center;
-            white-space: nowrap;
-            overflow: visible;
-            word-break: normal;
+            max-width: 100%;
+            max-height: 100%;
+            white-space: normal;
+            overflow: hidden;
+            overflow-wrap: anywhere;
             hyphens: manual;
         }
 
@@ -247,13 +254,18 @@
             border-color: var(--field-cyan);
         }
 
-        /* Keep Monaco's line metrics so the gutter shares the code's baseline. */
+        #editor .margin { background:#000 !important; border-right:8px solid #000; }
+        /* Small folio numbers, centred inside Monaco's own full-height line boxes. */
         .monaco-editor .margin-view-overlays .line-numbers {
-            color: rgba(255, 255, 255, 0.3) !important;
+            color: rgba(255, 255, 255, 0.63) !important;
+            font-size:70% !important;
+            display:flex;
+            align-items:center;
+            justify-content:flex-end;
         }
 
         .monaco-editor .margin-view-overlays .line-numbers.active-line-number {
-            color: rgba(var(--field-cyan-rgb), 0.6) !important;
+            color: rgba(255, 255, 255, 0.9) !important;
         }
 
         .lit-code-block {

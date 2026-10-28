@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T15:51:18.728Z",
+  "documentName": "spreadsheet_tour",
+  "outputs": [
+    {
+      "uid": "spreadsheet_tour_sheet",
+      "channel": "spreadsheet",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 670,
+      "height": 328,
+      "path": "outputs/0.html"
+    }
+  ]
+}

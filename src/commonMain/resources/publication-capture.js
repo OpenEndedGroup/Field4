@@ -160,17 +160,40 @@ async function freezeNode(node, ctx, depth = 0) {
     return clone;
 }
 
+/** Factor identical computed declarations without dropping any of the captured presentation. */
+function compactStyles(root) {
+    const bases = new Map(), rules = [];
+    for (const node of [root,...root.querySelectorAll('[style]')]) {
+        const properties = [...node.style];
+        if (!properties.length) continue;
+        const key = node.namespaceURI + ':' + node.localName + ':' + properties.join(',');
+        let base = bases.get(key);
+        if (!base) {
+            base = {id:bases.size,values:new Map(properties.map(p=>[p,node.style.getPropertyValue(p)]))};
+            bases.set(key,base);
+            rules.push(`[data-field-published-style="${base.id}"]{${node.style.cssText}}`);
+        }
+        for (const property of properties) {
+            if (base.values.get(property) === node.style.getPropertyValue(property)) node.style.removeProperty(property);
+        }
+        node.setAttribute('data-field-published-style',String(base.id));
+        if (!node.style.length) node.removeAttribute('style');
+    }
+    return rules.join('\n').replace(/</g,'\\3c ');
+}
+
 async function freezeDocument(root, parent, depth = 0) {
     // Each iframe owns its plot IDs and initialization; resource cache and warnings are shared.
     const ctx = {...parent, plots:[]};
     const frozen = await freezeNode(root, ctx, depth);
     parent.nodes = ctx.nodes;
     frozen.style.margin = '0'; frozen.style.transform = 'none';
+    const presentation = compactStyles(frozen);
     const plotScripts = ctx.plots.length ? '<script src="../plotly-2.24.1.min.js"></script>' : '';
     const initialize = `Promise.resolve().then(()=>Promise.all(${literal(ctx.plots)}.map(p=>Plotly.newPlot(p.id,p.data,p.layout,{responsive:true,displaylogo:false})))).then(()=>{document.querySelectorAll('[data-frozen-scroll]').forEach(n=>{const [x,y]=n.dataset.frozenScroll.split(',').map(Number);n.scrollTo(x,y)});document.documentElement.dataset.captureReady='true'}).catch(e=>{document.documentElement.dataset.captureError=e.message;document.body.append(document.createTextNode('Plot could not be loaded: '+e.message))})`;
     return '<!doctype html><html><head><meta charset="utf-8"><meta name="color-scheme" content="dark">' +
         '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data: blob:; font-src data:; style-src \'unsafe-inline\'; script-src \'self\' \'unsafe-inline\' blob:; connect-src \'none\'; base-uri \'none\'; form-action \'none\'">' +
-        `<style>${parent.fontCss}html,body{margin:0;background:#000;color:#ddd;font-family:'Iosevka Web',monospace}</style></head><body>` +
+        `<script src="../publication-font.js"></script><style>html,body{margin:0;background:#000;color:#ddd;font-family:'Iosevka Web',monospace}${presentation}</style></head><body>` +
         frozen.outerHTML + plotScripts + `<script>${initialize}</script></body></html>`;
 }
 
@@ -239,12 +262,14 @@ export async function captureOutputs(sources, {fontCss = '', three = null, progr
 }
 
 /** Build a relocatable static site; callers may save the Blob or inspect its files before download. */
-export async function buildPublication(source, {progress = () => {}} = {}) {
+export async function buildPublication(source, {progress = () => {}, includeViewer = true} = {}) {
     const files = new Map();
     progress('Bundling the viewer and local fonts');
     // Fetch in small batches rather than issuing hundreds of simultaneous requests for Monaco.
     for (let i = 0; i < source.assets.length; i += 8) {
-        await Promise.all(source.assets.slice(i,i+8).map(async path => {
+        await Promise.all(source.assets.slice(i,i+8).filter(path => includeViewer ||
+            path === 'iosevka.css' || path.startsWith('woff2/') || path === 'threejs_viewer.html' ||
+            /^(threejs_|geometry_review_).*\.js$/.test(path) || path.startsWith('vendor/three/')).map(async path => {
             const {bytes} = await fetchBytes(new URL(path, location.href)); files.set(path, bytes);
         }));
     }
@@ -262,6 +287,14 @@ export async function buildPublication(source, {progress = () => {}} = {}) {
         for (const path of three.sourcePaths) files.delete(path);
     }
     const captured = await captureOutputs(source.outputs, {fontCss, three, progress});
+    if (!includeViewer) {
+        for (const path of [...files.keys()]) if (path !== 'three-publication-runtime.js') files.delete(path);
+        if (captured.outputs.some(o => o.kinds.includes('plotly'))) {
+            files.set('plotly-2.24.1.min.js', (await fetchBytes(new URL('plotly-2.24.1.min.js',location.href))).bytes);
+        }
+        if (!captured.outputs.some(o => o.kinds.includes('three'))) files.delete('three-publication-runtime.js');
+    }
+    files.set('publication-font.js', `(()=>{const style=document.createElement('style');style.textContent=${literal(fontCss)};document.head.append(style)})();`);
     for (const [path, html] of captured.files) files.set(path, html);
     const manifest = {version:1, capturedAt:new Date().toISOString(), documentName:source.document.filename,
         outputs:captured.outputs};

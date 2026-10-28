@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:07:15.077Z",
+  "documentName": "autodiff_worked_example",
+  "outputs": [
+    {
+      "uid": "autodiff_optimizers",
+      "channel": "1 trajectories",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "autodiff_fn_fit",
+      "channel": "1 target",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "width": 1008,
+      "height": 471,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "autodiff_fn_fit",
+      "channel": "2 fitted",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "width": 1008,
+      "height": 471,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "autodiff_fn_fit",
+      "channel": "3 loss",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "autodiff_pack",
+      "channel": "1 packing",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 838,
+      "height": 395,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "autodiff_pack",
+      "channel": "2 loss",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "autodiff_ik",
+      "channel": "1 poses",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 894,
+      "height": 301,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "autodiff_ik",
+      "channel": "2 loss",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "autodiff_basics",
+      "channel": "1 derivatives",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 733,
+      "height": 458,
+      "path": "outputs/8.html"
+    }
+  ]
+}

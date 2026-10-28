@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:08:38.017Z",
+  "documentName": "matrix_profile",
+  "outputs": [
+    {
+      "uid": "mp_contrast",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 1012,
+      "height": 428,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "mp_motifs",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 1012,
+      "height": 428,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "mp_multidimensional",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 1012,
+      "height": 428,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "mp_discords",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 1012,
+      "height": 428,
+      "path": "outputs/3.html"
+    }
+  ]
+}

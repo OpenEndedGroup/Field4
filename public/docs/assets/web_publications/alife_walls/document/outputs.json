@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:07:35.399Z",
+  "documentName": "alife_walls",
+  "outputs": [
+    {
+      "uid": "cling_and_climb",
+      "channel": "arena",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "hit_a_wall",
+      "channel": "wall",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "route_vs_seek",
+      "channel": "arrivals",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/2.html"
+    }
+  ]
+}

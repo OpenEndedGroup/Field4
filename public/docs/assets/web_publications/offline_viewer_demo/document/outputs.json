@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T15:49:22.091Z",
+  "documentName": "offline_viewer_demo",
+  "outputs": [
+    {
+      "uid": "b4fffaa4-cf67-48c0-8108-2cd3b969a7df",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 306,
+      "height": 151,
+      "path": "outputs/0.html"
+    }
+  ]
+}

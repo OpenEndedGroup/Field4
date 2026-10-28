@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:08:47.810Z",
+  "documentName": "gp_drawing",
+  "outputs": [
+    {
+      "uid": "gp_field2d",
+      "channel": "mean, two draws",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 732,
+      "height": 240,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "gp_field2d",
+      "channel": "standard deviation",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 252,
+      "height": 248,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "gp_loop",
+      "channel": "pins",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1576,
+      "height": 508,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "gp_loop",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "gp_conditioning",
+      "channel": "controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 536,
+      "height": 116,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "gp_conditioning",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/5.html"
+    }
+  ]
+}

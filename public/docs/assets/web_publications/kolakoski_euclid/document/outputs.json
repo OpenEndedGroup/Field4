@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:09:48.944Z",
+  "documentName": "kolakoski_euclid",
+  "outputs": [
+    {
+      "uid": "kolakoski_tree",
+      "channel": "tree",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 611,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "kolakoski_tree",
+      "channel": "levels",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 443,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "kolakoski_tree",
+      "channel": "audio",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "kolakoski_tree",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 463,
+      "height": 67,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "kolakoski_x_euclid",
+      "channel": "roll",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 359,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "kolakoski_x_euclid",
+      "channel": "audio",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "kolakoski_x_euclid",
+      "channel": "audio-even",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "kolakoski_x_euclid",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 475,
+      "height": 151,
+      "path": "outputs/7.html"
+    }
+  ]
+}

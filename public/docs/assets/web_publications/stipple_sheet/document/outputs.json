@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:11:40.887Z",
+  "documentName": "stipple_sheet",
+  "outputs": [
+    {
+      "uid": "stipple_sheet",
+      "channel": "transport plane",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 536,
+      "height": 172,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "stipple_sheet",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "stipple_sheet",
+      "channel": "times",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 326,
+      "height": 40,
+      "path": "outputs/2.html"
+    }
+  ]
+}

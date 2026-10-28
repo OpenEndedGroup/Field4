@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:13:22.880Z",
+  "documentName": "ceres_free_variables",
+  "outputs": [
+    {
+      "uid": "ceres_free_variables_planes",
+      "channel": "ceres",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 475,
+      "height": 159,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "ceres_free_variables_planes",
+      "channel": "solid",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 480,
+      "height": 528,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "ceres_free_variables_sphere",
+      "channel": "fit",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 479,
+      "height": 113,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "ceres_free_variables_sphere",
+      "channel": "fit3d",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 480,
+      "height": 488,
+      "path": "outputs/3.html"
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T15:49:17.722Z",
+  "documentName": "staged_project",
+  "outputs": [
+    {
+      "uid": "staged_rule",
+      "channel": "loot",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 696,
+      "height": 89,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "staged_corpus",
+      "channel": "gallery",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 41,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "staged_level",
+      "channel": "plan",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "staged_start",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 536,
+      "height": 436,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "staged_builds",
+      "channel": "builds",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 648,
+      "height": 266,
+      "path": "outputs/4.html"
+    }
+  ]
+}

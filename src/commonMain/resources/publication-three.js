@@ -43,7 +43,7 @@ export function prepareThreePublication(files) {
 
 export function threePublicationDocument(snapshot, prepared, fontCss) {
     const head = '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'self\' \'unsafe-inline\' blob:; style-src \'unsafe-inline\'; img-src data: blob:; font-src data:; connect-src \'none\'; base-uri \'none\'; form-action \'none\'">' +
-        `<style>${fontCss}</style>`;
+        '<script src="../publication-font.js"></script>';
     const bootstrap = `<script>window.__fieldThreePublication=${literal(snapshot)};</script><script src="../three-publication-runtime.js"></script>`;
     return prepared.template.replace('<head>','<head>' + head).replace('</body>',bootstrap + '</body>');
 }

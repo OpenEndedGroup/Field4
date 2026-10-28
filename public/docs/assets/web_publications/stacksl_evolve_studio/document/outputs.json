@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:13:39.865Z",
+  "documentName": "stacksl_evolve_studio",
+  "outputs": [
+    {
+      "uid": "stacksl_evolve_studio",
+      "channel": "evolve",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 450,
+      "height": 201,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "stacksl_evolve_studio",
+      "channel": "ai-chat",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 208,
+      "path": "outputs/1.html"
+    }
+  ]
+}

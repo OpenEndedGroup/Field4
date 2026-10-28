@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:08:32.211Z",
+  "documentName": "midi_clip",
+  "outputs": [
+    {
+      "uid": "midi_devices",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 480,
+      "height": 355,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "midi_audition",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "midi_audition",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 479,
+      "height": 236,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "midi_write",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "midi_write",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 447,
+      "height": 181,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "midi_read",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "midi_read",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 460,
+      "height": 273,
+      "path": "outputs/6.html"
+    }
+  ]
+}

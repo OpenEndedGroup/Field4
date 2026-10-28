@@ -1,5 +1,7 @@
 # Agent transcript gallery
 
+<div data-field-transcript-gallery hidden></div>
+
 An **operation transcript** is a short YAML macro that builds a whole Field document (boxes, code,
 graph wiring) from a blank canvas. Field ships a small, curated corpus of them, and they are the
 worked examples an agent copies, runs, and adapts when [automating Field](automating_field.md).
@@ -15,6 +17,10 @@ device you own.
 
 Every transcript in `dev_docs/agents/transcripts/` has an entry below. Each entry says what the
 scene builds and which numbers it prints.
+
+**Open ↗** shows a document beside its entry. Open another to replace it, or use the viewer's
+arrow to open a separate tab. Documents with captured outputs show their results immediately;
+**Open in Field·4** imports an editable copy into Field.
 
 About half the entries carry a figure captured from that scene's own code. The rest have none,
 because the scene publishes to a headset, wants a camera or an external service, or opens a window

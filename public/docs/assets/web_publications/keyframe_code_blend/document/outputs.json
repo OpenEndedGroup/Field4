@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T15:51:09.616Z",
+  "documentName": "keyframe_code_blend",
+  "outputs": [
+    {
+      "uid": "kfb_static",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 465,
+      "height": 165,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "kfb_kotlin_run",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 426,
+      "height": 176,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "kfb_breakdown",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 472,
+      "height": 163,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "kfb_kotlin",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 426,
+      "height": 176,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "kfb_runtime",
+      "channel": "blend-strip",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 604,
+      "height": 132,
+      "path": "outputs/4.html"
+    }
+  ]
+}

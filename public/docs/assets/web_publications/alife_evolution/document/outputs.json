@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:04:09.178Z",
+  "documentName": "alife_evolution",
+  "outputs": [
+    {
+      "uid": "map_elites",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 720,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "shared_core",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "evolve_ca",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 484,
+      "height": 412,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "evolve_lenia",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 484,
+      "height": 394,
+      "path": "outputs/3.html"
+    }
+  ]
+}

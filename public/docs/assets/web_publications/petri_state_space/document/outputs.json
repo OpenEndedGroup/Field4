@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T15:53:59.185Z",
+  "documentName": "petri_state_space",
+  "outputs": [
+    {
+      "uid": "petri_ss_philosophers",
+      "channel": "statespace",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "petri_ss_philosophers",
+      "channel": "statespace-summary",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 467,
+      "height": 131,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "petri_ss_exclusion",
+      "channel": "petri",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "petri_ss_exclusion",
+      "channel": "petri-summary",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 467,
+      "height": 153,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "petri_ss_asymmetric",
+      "channel": "statespace",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "petri_ss_asymmetric",
+      "channel": "statespace-summary",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 467,
+      "height": 76,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "petri_ss_reduction",
+      "channel": "statespace",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "petri_ss_reduction",
+      "channel": "statespace-summary",
+      "open": false,
+      "warnings": [],
+      "kinds": [],
+      "width": 467,
+      "height": 149,
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "petri_ss_buffer",
+      "channel": "statespace",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/8.html"
+    },
+    {
+      "uid": "petri_ss_buffer",
+      "channel": "statespace-summary",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 467,
+      "height": 76,
+      "path": "outputs/9.html"
+    }
+  ]
+}

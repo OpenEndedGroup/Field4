@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T15:50:25.109Z",
+  "documentName": "cloth_simdverlet_start",
+  "outputs": [
+    {
+      "uid": "cloth_start",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 762,
+      "height": 603,
+      "path": "outputs/0.html"
+    }
+  ]
+}

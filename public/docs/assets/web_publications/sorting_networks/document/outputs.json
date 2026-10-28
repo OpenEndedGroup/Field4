@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:14:12.267Z",
+  "documentName": "sorting_networks",
+  "outputs": [
+    {
+      "uid": "sorting_topology",
+      "channel": "sorting-topology",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "sorting_disorder",
+      "channel": "sorting-disorder",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 488,
+      "path": "outputs/1.html"
+    }
+  ]
+}

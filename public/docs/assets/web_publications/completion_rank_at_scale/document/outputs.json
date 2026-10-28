@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:08:20.235Z",
+  "documentName": "completion_rank_at_scale",
+  "outputs": [
+    {
+      "uid": "corpus",
+      "channel": "plot",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/0.html"
+    }
+  ]
+}

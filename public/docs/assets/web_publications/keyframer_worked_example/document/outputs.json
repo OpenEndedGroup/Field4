@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T16:09:53.292Z",
+  "documentName": "keyframer_worked_example",
+  "outputs": [
+    {
+      "uid": "keyframe_targets",
+      "channel": "keys",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 816,
+      "height": 572,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "keyframe_persist",
+      "channel": "persist",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 836,
+      "height": 792,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "keyframe_updatecode",
+      "channel": "code",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 396,
+      "height": 158,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "keyframe_camera",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 958,
+      "height": 479,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "keyframe_camera",
+      "channel": "aim",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 457,
+      "height": 45,
+      "path": "outputs/4.html"
+    }
+  ]
+}
