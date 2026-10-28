@@ -11,12 +11,10 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /**
- * # A box that extends the agent, live
- *
- * `aiTool { }` lets a box give the AI one tool. `agentExtension { }` lets it extend its document's AI
- * agent more broadly:
- * tools, context it should know before every turn, a look at — or a veto over — every
- * tool call, and slash commands in the chat. Pi (earendil-works/pi) has extensions with this shape; what
+ * `agentExtension { }` lets a box extend its document's AI agent, beyond the single tool
+ * `aiTool { }` gives it. An extension can register tools, context the agent should know before
+ * every turn, a look at — or a veto over — every tool call, and slash commands in the chat.
+ * Pi (earendil-works/pi) has extensions with this shape; what
  * Field adds is that they are live-coded. Every part is an ownership in the [afield.runtime.lifecycle.LifecycleLedger], owned
  * by the run that registered it, so re-running the box replaces its whole extension at once, a run that
  * stops registering a part drops it, and deleting the box retires it.
@@ -31,7 +29,7 @@ import java.util.concurrent.TimeUnit
  * }
  * ```
  *
- * ## What the hooks may do
+ * #### What the hooks may do
  *
  * They run on the agent's thread, with a deadline ([HOOK_DEADLINE_MS]); a hook that throws or overruns is
  * treated as "proceed" and reported, because a broken observer must not stop the agent. A `beforeTool`
