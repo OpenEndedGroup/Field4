@@ -1028,7 +1028,8 @@ data class OutputBackPressureSnapshot(
 class OutputBackPressure(val maxPending: Int = 8, val bufferSize: Int = 4) {
     private val pending = java.util.concurrent.atomic.AtomicInteger(0)
     private val skipped = java.util.concurrent.atomic.AtomicInteger(0)
-    private val buffer = ArrayDeque<String>()   // guarded by synchronized(this)
+    /** Buffered frames with their coalesce key (null: none); guarded by synchronized(this). */
+    private val buffer = kotlin.collections.ArrayDeque<Pair<String?, String>>()
 
     /**
      * Try to acquire a send slot.
@@ -1044,18 +1045,35 @@ class OutputBackPressure(val maxPending: Int = 8, val bufferSize: Int = 4) {
 
     /**
      * Buffer a message for later delivery (call when [tryAcquire] returns -1).
-     * The rolling buffer holds the last [bufferSize] messages; older entries are evicted and
-     * their count is added to [skipped] so the frontend knows how many were truly dropped.
+     *
+     * A message with a [coalesceKey] (a `set-output`: one box's one output panel) replaces the
+     * buffered message with the same key in place, since only the newest content of a panel is
+     * worth showing, and is never evicted to make room: evicting it would lose a panel, not a
+     * line. Otherwise the rolling buffer holds the last [bufferSize] unkeyed messages; older
+     * entries are evicted and their count is added to [skipped] so the frontend knows how many
+     * were truly dropped.
      */
-    fun bufferMessage(message: String) {
+    fun bufferMessage(message: String, coalesceKey: String? = null) {
         synchronized(this) {
-            if (buffer.size >= bufferSize) {
-                buffer.removeFirst()
+            if (coalesceKey != null) {
+                val i = buffer.indexOfFirst { it.first == coalesceKey }
+                if (i >= 0) {
+                    buffer[i] = coalesceKey to message
+                    return
+                }
+                buffer.addLast(coalesceKey to message)
+                return
+            }
+            if (buffer.count { it.first == null } >= bufferSize) {
+                buffer.removeAt(buffer.indexOfFirst { it.first == null })
                 skipped.incrementAndGet()   // evicted from buffer — truly skipped
             }
-            buffer.addLast(message)
+            buffer.addLast(null to message)
         }
     }
+
+    /** The skipped count since it was last taken, reset to zero. */
+    fun takeSkipped(): Int = skipped.getAndSet(0)
 
     fun hasBufferedMessages(): Boolean = synchronized(this) {
         buffer.isNotEmpty()
@@ -1086,7 +1104,7 @@ class OutputBackPressure(val maxPending: Int = 8, val bufferSize: Int = 4) {
             while (buffer.isNotEmpty()) {
                 val prev = pending.getAndUpdate { cur -> if (cur >= maxPending) cur else cur + 1 }
                 if (prev >= maxPending) break
-                result.add(buffer.removeFirst())
+                result.add(buffer.removeFirst().second)
             }
         }
         return result
@@ -1756,6 +1774,36 @@ internal fun outputBackPressureLog(
     lprintln("debug,output-backpressure", "session=$sessionId event=$event$msg $state$suffix")
 }
 
+
+/**
+ * One sender per websocket session that runs its sends one at a time, in the order they were
+ * submitted. `sendWithOutputBackPressure` used to start a `GlobalScope.launch` per message, and
+ * those coroutines raced on the default dispatcher, so two messages sent back to back could reach
+ * the browser swapped: a box's `display("a", ..)` then `display("b", ..)` built its output panels
+ * in either order (and a `set-output` could overtake the `output-control` sent after it).
+ */
+internal class OrderedSessionSender(scope: CoroutineScope) {
+    private val queue = kotlinx.coroutines.channels.Channel<suspend () -> Unit>(kotlinx.coroutines.channels.Channel.UNLIMITED)
+    private val consumer = scope.launch {
+        for (send in queue) {
+            try { send() } catch (c: CancellationException) { throw c } catch (_: Throwable) { }
+        }
+    }
+
+    fun submit(send: suspend () -> Unit) { queue.trySend(send) }
+
+    fun close() { queue.close() }
+}
+
+@OptIn(DelicateCoroutinesApi::class)
+private val sessionOrderedSenders = ConcurrentHashMap<WebSocketSession, OrderedSessionSender>()
+
+/** Queue [send] behind everything already queued for [session]; see [OrderedSessionSender]. */
+@OptIn(DelicateCoroutinesApi::class)
+internal fun sendInOrder(session: WebSocketSession, send: suspend () -> Unit) {
+    sessionOrderedSenders.computeIfAbsent(session) { OrderedSessionSender(GlobalScope) }.submit(send)
+}
+
 @OptIn(DelicateCoroutinesApi::class)
 internal fun sendWithOutputBackPressure(
     session: WebSocketSession,
@@ -1768,46 +1816,64 @@ internal fun sendWithOutputBackPressure(
     }
     NetStats.sent(encoded.length) // one text frame per session; _send() fans out through here
     if (!isBackPressuredOutputMessage(message)) {
-        GlobalScope.launch {
-            session.send(encoded)
-        }
+        sendInOrder(session) { session.send(encoded) }
         return
     }
 
     val bp = sessionOutputPressure.getOrPut(session) { OutputBackPressure() }
-    val skipCount = bp.tryAcquire()
-    if (skipCount < 0) {
-        bp.bufferMessage(encoded)
+    // Frames leave in the order they were sent: this one joins the tail of the buffer, and the
+    // buffer drains from its head as far as there are slots. Taking and queueing happen under the
+    // pressure's lock, so a concurrent send or ack cannot interleave its share ahead of ours.
+    val skipCount: Int
+    val toSend: List<String>
+    synchronized(bp) {
+        bp.bufferMessage(encoded, outputCoalesceKey(message))
+        toSend = bp.drainBuffer()
+        skipCount = if (toSend.isEmpty()) 0 else bp.takeSkipped()
+        if (toSend.isNotEmpty()) sendBuffered(session, bp, message, toSend)
+    }
+    if (toSend.isEmpty()) {
         outputBackPressureLog(session, "buffer", message, bp, detail = "encodedBytes=${encoded.length}")
         return
     }
-
-    val buffered = if (skipCount > 0 || bp.hasBufferedMessages()) bp.drainBuffer() else emptyList()
-    if (skipCount > 0 || buffered.isNotEmpty()) {
+    if (skipCount > 0 || toSend.size > 1) {
         outputBackPressureLog(
             session,
             "send-with-buffer",
             message,
             bp,
-            detail = "drained=${buffered.size} skippedToNotify=$skipCount encodedBytes=${encoded.length}",
+            detail = "drained=${toSend.size - 1} skippedToNotify=$skipCount encodedBytes=${encoded.length}",
             force = true
         )
     }
     noteSkippedOutputs(session, skipCount)
-    GlobalScope.launch {
+}
+
+/** A `set-output` replaces its own panel's buffered content; nothing else coalesces. */
+internal fun outputCoalesceKey(message: Message): String? {
+    if (message.name != "set-output") return null
+    val payload = message.payload as? kotlinx.serialization.json.JsonObject ?: return null
+    fun field(name: String) = (payload[name] as? kotlinx.serialization.json.JsonPrimitive)?.content
+    val uid = field("uid") ?: return null
+    return "$uid\u0000${field("property")}\u0000${field("channel")}"
+}
+
+private fun sendBuffered(session: WebSocketSession, bp: OutputBackPressure, message: Message?, frames: List<String>) {
+    sendInOrder(session) {
+        var sent = 0
         try {
-            for (bufferedMsg in buffered) {
-                session.send(bufferedMsg)
+            for (frame in frames) {
+                session.send(frame)
+                sent++
             }
-            session.send(encoded)
         } catch (_: Exception) {
-            repeat(1 + buffered.size) { bp.release() }
+            repeat(frames.size - sent) { bp.release() }
             outputBackPressureLog(
                 session,
                 "send-failed-release",
                 message,
                 bp,
-                detail = "released=${1 + buffered.size}",
+                detail = "released=${frames.size - sent}",
                 force = true
             )
         }
@@ -1817,7 +1883,14 @@ internal fun sendWithOutputBackPressure(
 @OptIn(DelicateCoroutinesApi::class)
 private fun releaseAndFlushOutputBackPressure(session: WebSocketSession) {
     val bp = sessionOutputPressure[session] ?: return
-    val (skipCount, buffered) = bp.releaseAndDrain()
+    val skipCount: Int
+    val buffered: List<String>
+    synchronized(bp) {
+        val drained = bp.releaseAndDrain()
+        skipCount = drained.first
+        buffered = drained.second
+        if (buffered.isNotEmpty()) sendBuffered(session, bp, null, buffered)
+    }
     outputBackPressureLog(
         session,
         "ack",
@@ -1825,27 +1898,8 @@ private fun releaseAndFlushOutputBackPressure(session: WebSocketSession) {
         detail = "drained=${buffered.size} skippedToNotify=$skipCount",
         force = skipCount > 0 || buffered.isNotEmpty()
     )
-    if (skipCount <= 0 && buffered.isEmpty()) return
-
-    noteSkippedOutputs(session, skipCount)
     // Skips alone have nothing to send here — the accumulator decides when a toast is due.
-    if (buffered.isEmpty()) return
-    GlobalScope.launch {
-        try {
-            for (bufferedMsg in buffered) {
-                session.send(bufferedMsg)
-            }
-        } catch (_: Exception) {
-            repeat(buffered.size) { bp.release() }
-            outputBackPressureLog(
-                session,
-                "flush-failed-release",
-                pressure = bp,
-                detail = "released=${buffered.size}",
-                force = true
-            )
-        }
-    }
+    noteSkippedOutputs(session, skipCount)
 }
 
 @OptIn(DelicateCoroutinesApi::class)
@@ -5527,6 +5581,7 @@ class Server {
                                 afield.graphics.visionos.VisionPoseStream.detach(ts)
                                 // Clean up back pressure state for this session.
                                 sessionOutputPressure.remove(ts)
+                                sessionOrderedSenders.remove(ts)?.close()
                                 sessionControlUpdatePumps.remove(ts)
                                 sessionSkippedOutputNotifiers.remove(ts)
                             }
