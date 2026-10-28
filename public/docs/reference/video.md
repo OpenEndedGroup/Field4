@@ -10,6 +10,18 @@ Video sources, shared GPU frames and live diffusion sessions, with controls for 
 
 ## SharedGpuSlot.kt { #sharedgpuslot-kt }
 
+One slot of the GPU memory a diffusion session shares with its worker: a device-local buffer and
+a timeline semaphore, both exported to the worker as file descriptors.
+
+A [`StreamDiffusionSession`](video.md#streamdiffusionsession-kt-streamdiffusionsession) allocates a ring of these for the frames it sends and another for the
+results it reads back, passes their descriptors over a Unix socket, and afterwards exchanges
+only slot indices and semaphore values with the worker. Pixels are written and read by the GPU at
+both ends: a slot is a dedicated device-local allocation and is never mapped for the CPU. Its
+barrier moves the buffer between Field's graphics queue and the external queue CUDA works on, and
+the device UUID it reports names the GPU the worker is to import onto. Construction asks the
+driver whether it can export this buffer and this kind of semaphore, and fails rather than
+handing over a descriptor the worker cannot use.
+
 `src/jvmMain/kotlin/afield/media/video/diffusion/SharedGpuSlot.kt` — [read the source](source/jvmMain/afield/media/video/diffusion/SharedGpuSlot/)
 
 ## SpinningDiffusionDemo.kt { #spinningdiffusiondemo-kt }
@@ -37,6 +49,22 @@ Native Field geometry for the video study's five curves. Left: live source; righ
 | <a id="spinningdiffusiondemo-kt--spinningdiffusiondemo--close"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/video/diffusion/SpinningDiffusionDemo/#L113) |  |
 
 ## SpinningDiffusionMotion.kt { #spinningdiffusionmotion-kt }
+
+The motion provider behind the spinning-curves demo, which derives per-pixel correspondence from
+the geometry Field drew rather than from the two images.
+
+[`SpinningDiffusionDemo`](video.md#spinningdiffusiondemo-kt-spinningdiffusiondemo)'s five curves are ribbons carrying a surface id per vertex, and the
+rotation that drew each frame is kept against that frame's id. To answer a request this projects
+every pixel's surface point back through the reference frame's rotation, which is the position
+that point had then; an id pass rendered at the reference angle says whether the surface visible
+there is the same one, so a ribbon that has turned behind another is rejected instead of carrying
+the wrong colour across. The correspondence ribbon is widened well past the drawn line, so the
+broader marks the model returns are covered too, and confidence falls off toward its edge.
+
+The fallback pass covers what the mask rejected. Where the current frame shows bare paper it
+fills from paper near that pixel in the reference image, so the rejected band carries no bright
+impression of the reference frame's curves into empty paper, and it leaves every pixel the
+current source actually drew.
 
 `src/jvmMain/kotlin/afield/media/video/diffusion/SpinningDiffusionMotion.kt` — [read the source](source/jvmMain/afield/media/video/diffusion/SpinningDiffusionMotion/)
 
@@ -172,15 +200,44 @@ Owns one isolated worker and its bounded GPU rings. Pixels never enter this prot
 
 ## StreamDiffusionSupport.kt { #streamdiffusionsupport-kt }
 
+The preflight check for local streaming diffusion: whether this machine can run it, and a
+sentence saying what is missing when it cannot.
+
+`probe` reports the first absent piece, looking at the platform, the renderer, the selected
+Vulkan device's external memory and semaphore FD support, an NVIDIA device that can export
+buffers and timeline semaphores, the backend root and its Python environment, the Field worker
+script, the model files a `diffusion` backend needs, and the native handle-passing helper. It
+allocates nothing on the GPU, starts no Python and reads no weights, so box code can call it and
+show the reason instead of a view. [`StreamDiffusionView`](video.md#streamdiffusionview-kt-streamdiffusionview) and [`StreamDiffusionSession`](video.md#streamdiffusionsession-kt-streamdiffusionsession) each check
+it as they are constructed and fail with the same sentence; CUDA, the Python packages, the
+weights and TensorRT are checked later, when the worker starts.
+
+`configuredRoot` is where the installation path comes from: `FIELD_STREAMDIFFUSION_ROOT`, or the
+one line in `~/.afield/streamdiffusion-root.txt`, which is read on every call so a Field that is
+already running finds a backend installed after it started.
+
 `src/jvmMain/kotlin/afield/media/video/diffusion/StreamDiffusionSupport.kt` — [read the source](source/jvmMain/afield/media/video/diffusion/StreamDiffusionSupport/)
 
 ### StreamDiffusionSupport { #streamdiffusionsupport-kt-streamdiffusionsupport }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">StreamDiffusionSupport</span><span class="p">(</span><span class="k">val</span> <span class="n">available</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/media/video/diffusion/StreamDiffusionSupport/#L11)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">StreamDiffusionSupport</span><span class="p">(</span><span class="k">val</span> <span class="n">available</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/media/video/diffusion/StreamDiffusionSupport/#L29)
 
 Availability without creating GPU allocations, starting Python, or loading model weights.
 
 ## StreamDiffusionTemporalOutput.kt { #streamdiffusiontemporaloutput-kt }
+
+The temporal half of a diffusion view: it holds the last two results the worker returned and
+renders the texture the view publishes.
+
+Results arrive late and in groups, so geometry has moved on by the time a frame can be shown.
+Given a [`StreamDiffusionMotionProvider`](video.md#streamdiffusionmotion-kt-streamdiffusionmotionprovider), a [`StreamDiffusionView`](video.md#streamdiffusionview-kt-streamdiffusionview) routes its output through this
+file to settle both ends of that delay; without one it publishes the worker's output directly.
+Each arriving result is written into one of two history targets while the other is read, blended
+with the previous result where the provider's correspondence agrees and both came from the same
+worker generation, and the carried colours are clamped to the 3x3 neighbourhood of the fresh ones
+so a stroke that moved does not trail. The display target reprojects the newest history onto the
+current frame and mixes it with the live source where confidence runs out; with no correspondence
+for the current frame it shows that history as it stands.
 
 `src/jvmMain/kotlin/afield/media/video/diffusion/StreamDiffusionTemporalOutput.kt` — [read the source](source/jvmMain/afield/media/video/diffusion/StreamDiffusionTemporalOutput/)
 
@@ -467,13 +524,21 @@ inference.
 
 ## videoFrames.kt { #videoframes-kt }
 
+Reading a video file frame by frame as Field images, through ffmpeg.
+
+[`videoFrames`](video.md#videoframes-kt--videoframes) is the lazy sequence of frames for a path on disk, and [`videoSize`](video.md#videoframes-kt--videosize) answers the
+extent they will arrive at. ffmpeg does the decoding, the frame-rate conversion and the scaling;
+[`FFMPEG`](workspace.md#doc-kt--ffmpeg) is the binary, and the ffprobe beside it reports a clip's native size. Frames arrive as
+[`Img`](imaging.md#imaging-kt-img), with channel values in 0..1, so Field's imaging and sampling work on them without a
+conversion step.
+
 `src/jvmMain/kotlin/afield/media/video/videoFrames.kt` — [read the source](source/jvmMain/afield/media/video/videoFrames/)
 
 ### Top-level functions { #videoframes-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="videoframes-kt--videoframes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">videoFrames</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">fps</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">gray</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">Sequence</span><span class="p">&lt;</span><span class="nc">Img</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/video/videoFrames/#L24) | The frames of a video file as [`Img`](imaging.md#imaging-kt-img)s, decoded by ffmpeg ([`FFMPEG`](workspace.md#doc-kt--ffmpeg) says which). |
-| <a id="videoframes-kt--videosize"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">videoSize</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/video/videoFrames/#L63) | The (width, height) frames come out at for `width` (0 = native), via ffprobe beside [`FFMPEG`](workspace.md#doc-kt--ffmpeg). |
+| <a id="videoframes-kt--videoframes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">videoFrames</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">fps</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">gray</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">Sequence</span><span class="p">&lt;</span><span class="nc">Img</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/video/videoFrames/#L34) | The frames of a video file as [`Img`](imaging.md#imaging-kt-img)s, decoded by ffmpeg ([`FFMPEG`](workspace.md#doc-kt--ffmpeg) says which). |
+| <a id="videoframes-kt--videosize"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">videoSize</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/video/videoFrames/#L73) | The (width, height) frames come out at for `width` (0 = native), via ffprobe beside [`FFMPEG`](workspace.md#doc-kt--ffmpeg). |
 
 </div>
