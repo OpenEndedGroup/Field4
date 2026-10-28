@@ -2987,6 +2987,14 @@ refresh about once a second while the renderer runs. See
 
 [Open ↗](offline.html?file=assets/agent_transcripts/renderer_browsing/metadata.edn)
 
+### assimp_browsing
+
+**A glTF file, as Assimp loads it, opened in `column(...)` and `tree(...)`**, in one box and with no
+renderer: the scene's root node and its transform, meshes, materials and animations. See
+[Browsing a glTF scene](visualizers.md#browsing-a-gltf-scene).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/assimp_browsing/metadata.edn)
+
 ### flow_grain
 
 A bounded pool of scrolling fluid tiles, flow-oriented grain, smoothed-velocity particle

@@ -904,6 +904,21 @@ check(columns() >= 6) { inFrame("return d.body.innerText.slice(0, 600)") }
 check("shaders" in inFrame("return d.body.innerText")) { inFrame("return d.body.innerText") }
 ```
 
+### Browsing a glTF scene
+
+A scene file opens the same way. `GltfSupport.loadModel` gives Assimp's own view of a glTF (or any
+file Assimp reads), and `column(...)` or `tree(...)` lists its root node with its transform and
+children, then its meshes, materials and animations. A `GltfModel` loaded for drawing browses as its
+meshes, each with its buffers, material, texture slots and transform.
+
+```kotlin
+import afield.graphics.scene.GltfSupport
+
+val scene = GltfSupport.loadModel("dev_docs/agents/fixtures/path_tracing/transforms.gltf")!!
+column("columns", scene, width = 1300)
+tree("tree", scene, width = 700)
+```
+
 And while it is not a “visualizer” in the chart sense, `logs(...)` belongs in the same family. This box shows only the `demo` channel and logs a small job into it; rows that share a block id are grouped under the block's first line:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-logs.png" alt="A logs embed with a channels: demo chip, a find box and a clear button. Below, one grouped block in the demo channel, each row with its time: starting a job, then step 1 of 3, step 2 of 3 and step 3 of 3, the block running on below the bottom of the panel." wait="3.0" capture="box" open-outputs="true" w="900" h="200" embed=true name="logs-demo"}
