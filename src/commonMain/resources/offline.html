@@ -247,12 +247,9 @@
             border-color: var(--field-cyan);
         }
 
-        /* Make Monaco line numbers lighter and smaller */
+        /* Keep Monaco's line metrics so the gutter shares the code's baseline. */
         .monaco-editor .margin-view-overlays .line-numbers {
             color: rgba(255, 255, 255, 0.3) !important;
-            font-size: 10px !important;
-            line-height: 1.2;
-            transform: translateY(-1px);
         }
 
         .monaco-editor .margin-view-overlays .line-numbers.active-line-number {
