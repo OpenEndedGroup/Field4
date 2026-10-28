@@ -134,7 +134,7 @@
   {"doc": "completion_rank_at_scale", "box": "sweep", "codeSha256": "94265aea783048a7", "codeLines": 41, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "computed_ray_geometry", "box": "agent_graphics_context", "codeSha256": "0925cc7e55ed8f46", "codeLines": 17, "receivers": ["afield.document.graph.Box"], "preamble": "computed_ray_geometry__agent_graphics_context.preamble.kt"},
   {"doc": "computed_ray_geometry", "box": "computed_ray_geometry", "codeSha256": "a9eaaba6328f1bd2", "codeLines": 32, "receivers": ["afield.document.graph.Box"], "preamble": "computed_ray_geometry__computed_ray_geometry.preamble.kt"},
-  {"doc": "confluence_grid", "box": "confluence_grid", "codeSha256": "956f1d5abac4d3b3", "codeLines": 363, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "confluence_grid", "box": "confluence_grid", "codeSha256": "e79c64c975ae25a8", "codeLines": 366, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "contour_trees_explorer", "box": "contour_tree_landscape", "codeSha256": "4aabee2312625f7c", "codeLines": 41, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "contour_trees_explorer", "box": "contour_tree_photo", "codeSha256": "de1a6288bcd28799", "codeLines": 14, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "control_surface_laws", "box": "control_surface_button", "codeSha256": "4e7a9c030d1c50a2", "codeLines": 27, "receivers": ["afield.document.graph.Box"], "preamble": ""},
