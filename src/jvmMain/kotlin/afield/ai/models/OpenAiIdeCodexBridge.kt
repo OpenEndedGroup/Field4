@@ -693,6 +693,9 @@ class OpenAiIdeCodexBridge(
                     toolOutputs += ResponseInputItem.ofMessage(builder.build())
                 }
             }
+            roundBudgetNote(rounds + 1, maxToolRounds)?.let { note ->
+                toolOutputs += buildMessageItem(ResponseInputItem.Message.Role.USER, note)
+            }
             // A tool ended the turn (AwaitStudyBuildsRequest, AskUserQuestionRequest): no follow-up request. The outputs go with the
             // next turn, and whatever the person wrote meanwhile stays in the inbox, which becomes a turn of its own.
             // An image a co-scheduled call returned is not carried over; its JSON output is.
@@ -1294,7 +1297,12 @@ class OpenAiIdeCodexBridge(
         // where it keeps the cached prefix. As `instructions` it made this request read nothing from cache:
         // 100,750 of 100,823 input tokens were uncached on house-machine-11.
         val inputItems = pendingCalls.map { notRunOutput(it.callId(), it.name()) } +
-            buildMessageItem(ResponseInputItem.Message.Role.DEVELOPER, FORCED_FINAL_INSTRUCTION)
+            // Qwen's chat template (llama.cpp maps developer to system) raises on a system message after the
+            // first, so this stop crashed a local turn with HTTP 500 on 2026-10-28 instead of summarizing it.
+            buildMessageItem(
+                if (runtimeConfig.provider == "local") ResponseInputItem.Message.Role.USER else ResponseInputItem.Message.Role.DEVELOPER,
+                FORCED_FINAL_INSTRUCTION
+            )
 
         val builder = ResponseCreateParams.builder()
             .model(chatModel)
@@ -1713,6 +1721,19 @@ class OpenAiIdeCodexBridge(
     }
 
     companion object {
+        /**
+         * From halfway through a turn's tool budget, tell the model how much is left: on 2026-10-28 a local
+         * model spent 17 of 24 rounds reading, wrote its code in round 18, and reached the cap before the
+         * code had compiled once. It could not plan against a budget it never saw.
+         */
+        internal fun roundBudgetNote(used: Int, max: Int): String? {
+            val left = max - used
+            if (used * 2 < max || left < 0) return null
+            return if (left <= 3) "Tool round $used of $max: $left left in this turn. Run and check what you have now; " +
+                "leave the last round for a fix, not new reading."
+            else "Tool round $used of $max: $left left in this turn. Leave rounds to run what you write and look at it."
+        }
+
         internal fun retryDelayMsForRateLimitMessage(message: String, multiplier: Double = 1.5): Long? {
             if (!Regex("(?i)rate[ _-]?limit|\\b429\\b|slow_down|server_is_overloaded").containsMatchIn(message)) return null
             val hintedMs = retryHintMs(message) ?: return null
