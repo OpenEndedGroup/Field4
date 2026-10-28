@@ -311,13 +311,25 @@ class Offspring<G>(val genome: G, val note: String = "")
  * breeds a new generation from the same parents. [choices], when given, makes it a menu.
  */
 class EyeSetting(
+    /** Identifies the control in the toolbar; the browser sends it back to say which one moved. */
     val name: String,
+    /** The current value, which the toolbar shows and a change replaces. */
     var value: Double,
+    /**
+     * The smallest value this accepts. A value arriving from the toolbar is clamped into
+     * [min]`..`[max], including when [choices] is a menu, so a menu entry outside the range is
+     * silently pulled back into it.
+     */
     val min: Double,
+    /** The largest value this accepts; see [min] for the clamp. */
     val max: Double,
+    /** The number field's increment. Ignored when [choices] makes this a menu. */
     val step: Double = 1.0,
+    /** When non-empty, the control is a menu of exactly these values rather than a number field. */
     val choices: List<Double> = emptyList(),
+    /** The text shown beside the control; [name] by default. */
     val label: String = name,
+    /** Called with the new value once it is clamped, before the next generation is bred. */
     val onChange: (Double) -> Unit,
 ) {
     internal companion object {
