@@ -54,14 +54,20 @@ def packagers_for_paths(paths: Iterable[str], repo: Path = ROOT) -> list[Package
     return [p for p in packagers(repo) if any(p.feeds(path) for path in changed)]
 
 
-def repackage_stale(repo: Path, python: str = sys.executable) -> tuple[int, list[str]]:
-    """Run every packager's ``--check``; repackage the stale ones. Returns (exit code, outputs written)."""
+def repackage_stale(repo: Path) -> tuple[int, list[str]]:
+    """Check and regenerate with the same docs environment as ConversationDemoTest.
+
+    The lander may run in another checkout's Python. Its zlib can produce different ZIP bytes
+    (e.g. system zlib-ng versus uv's zlib), which made every guard undo the preceding regeneration.
+    Both operations must use this checkout's repository environment.
+    """
     written: list[str] = []
     for p in packagers(repo):
-        if subprocess.run([python, p.script, "--check"], cwd=repo, capture_output=True).returncode == 0:
+        command = ["uv", "run", "--project", ".", "--group", "docs", "--frozen", "python", p.script]
+        if subprocess.run([*command, "--check"], cwd=repo, capture_output=True).returncode == 0:
             continue
         print(f"conversation packagers: {p.stem} is stale; running {p.script}")
-        if subprocess.run([python, p.script], cwd=repo).returncode != 0:
+        if subprocess.run(command, cwd=repo).returncode != 0:
             print(f"conversation packagers: {p.script} failed", file=sys.stderr)
             return 1, written
         written += [o for o in p.outputs if (repo / o).exists()]

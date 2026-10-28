@@ -398,6 +398,7 @@ nav:
       - Kotlin in the Head: kotlin_in_the_head.md
       - Apple Vision Pro (WiP): vision.md
       - Geometry in the Headset: vision_geometry.md
+      - Stereo RTT composite: stereo_rtt_composite.md
       - ImGui as a VR Panel: imgui_vr_panel.md
   - AI & Agents:
     # First, ahead of the explanations: a showcase of whole documents agents built from a blank

@@ -85,6 +85,8 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 
 ## Files
 
+- `stereo_rtt_composite.yaml`: desktop-first stereo cubes, resolution chart, editable per-eye-safe FXAA RTT, and optional OpenXR presentation. Launch 1, 2, 2b, 3, 4; the last box owns the render loop. See `public/docs/stereo_rtt_composite.md`.
+
 - `profiling_timeline.yaml`: three editable CPU/allocation workloads plus a capture box. Replay to
   get a checked, latched three-second capture in **Show Profiling Timeline**. Workers stop at the
   end; brush, zoom, inspect a resume, or explore JVM classes and sampled box lines in **Hot code**.
