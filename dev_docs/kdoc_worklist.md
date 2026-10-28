@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 18933 of 34875 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 19122 of 34877 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2072 undocumented entry points** (types, top-level functions and values) and 13172 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2058 undocumented entry points** (types, top-level functions and values) and 13000 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -32,7 +32,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [GeometryReviewTools.kt](../src/jvmMain/kotlin/afield/ai/agent/GeometryReviewTools.kt) | Machine learning | ai4_tools, geometry_review | 12 | 26 | 0% |
 | [PuppetBrowser.kt](../src/jvmMain/kotlin/afield/media/browser/PuppetBrowser.kt) | Imaging | puppet_browser | 11 | 70 | 10% |
 | [ThreeJsViewer.kt](../src/jvmMain/kotlin/afield/graphics/three/ThreeJsViewer.kt) | Graphics | three_output, fline_examples | 11 | 64 | 36% |
-| [Protocol.kt](../src/jvmMain/kotlin/afield/audio/ai/Protocol.kt) | Audio AI | field_audio_service_reference, audio_ai_corpus_microscope, visualizers | 11 | 61 | 73% |
 | [StackSL.kt](../src/jvmMain/kotlin/afield/lang/stacksl/StackSL.kt) | Languages | stacksl_examples | 11 | 47 | 15% |
 | [Filters.kt](../src/jvmMain/kotlin/afield/audio/synth/Filters.kt) | Synthesis | subharmonic_sound, agent_transcripts | 11 | 28 | 15% |
 | [Signal.kt](../src/jvmMain/kotlin/afield/audio/synth/Signal.kt) | Synthesis | sound_paths, faust, chain_pattern_particles | 10 | 53 | 26% |
@@ -70,7 +69,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SonicPi.kt](../src/jvmMain/kotlin/afield/audio/synth/SonicPi.kt) | Audio | sonic_pi | 3 | 46 | 34% |
 | [VisionPose.kt](../src/jvmMain/kotlin/afield/graphics/visionos/VisionPose.kt) | Graphics | vision | 3 | 42 | 40% |
 | [SlideShow.kt](../src/jvmMain/kotlin/afield/ui/slides/SlideShow.kt) | Visualization | interactive_guides, presentation_studio | 3 | 34 | 49% |
-| [SpectralEmbeddingProjection.kt](../src/jvmMain/kotlin/afield/audio/ai/SpectralEmbeddingProjection.kt) | Audio AI | audio_ai_spectral_embeddings, visualizers | 3 | 29 | 21% |
 | [Mesh.kt](../src/jvmMain/kotlin/afield/graphics/render/Mesh.kt) | Graphics | afield_four_graphics, field_probes, fieldml_host_bridge | 3 | 20 | 14% |
 | [saving.kt](../src/jvmMain/kotlin/afield/document/persistence/saving.kt) | Workspace | document_on_disk | 3 | 19 | 31% |
 | [FLineGaussianProcess.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineGaussianProcess.kt) | Graphics | gaussian_processes | 3 | 16 | 45% |
@@ -151,11 +149,9 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PathTraceScene.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceScene.kt) | Renderers | path_tracing, chain_polytope_render | 0 | 16 | 33% |
 | [RtpMidiBox.kt](../src/jvmMain/kotlin/afield/io/midi/rtp/RtpMidiBox.kt) | Networking | rtp_midi | 0 | 16 | 45% |
 | [OscQueryServer.kt](../src/jvmMain/kotlin/afield/io/osc/query/OscQueryServer.kt) | Networking | oscquery | 0 | 16 | 44% |
-| [MusicTranscription.kt](../src/jvmMain/kotlin/afield/audio/ai/MusicTranscription.kt) | Audio AI | audio_ai_muscriptor | 0 | 15 | 25% |
 | [Symmetry.kt](../src/jvmMain/kotlin/afield/geometry/polytope/Symmetry.kt) | Polytopes | polytope_examples | 0 | 15 | 53% |
 | [FeatureTracking.kt](../src/jvmMain/kotlin/afield/geometry/topology/tracking/FeatureTracking.kt) | Graphics | topology_tracking, vector_field_topology | 0 | 15 | 56% |
 | [QualifiedSource.kt](../src/jvmMain/kotlin/afield/study/source/QualifiedSource.kt) | Workspace | qualified_sources | 0 | 15 | 75% |
-| [RenderedAudioAnalysis.kt](../src/jvmMain/kotlin/afield/audio/ai/RenderedAudioAnalysis.kt) | Audio AI | audio_render_analysis, visualizers | 0 | 14 | 50% |
 | [MorphoGenome.kt](../src/jvmMain/kotlin/afield/lang/morpho/MorphoGenome.kt) | Languages | morpho_search | 0 | 13 | 62% |
 | [PetriStateSpace.kt](../src/jvmMain/kotlin/afield/simulation/petri/PetriStateSpace.kt) | Visualization | petri_nets, chain_petri_sculpture, petri_cheatsheet | 0 | 13 | 76% |
 | [BooleanNetworkSequencing.kt](../src/jvmMain/kotlin/afield/audio/synth/BooleanNetworkSequencing.kt) | Patterns | boolean_network_music_examples | 0 | 12 | 58% |
@@ -163,7 +159,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [alife_walls.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_walls.kt) | ALife | alife_examples | 0 | 12 | 72% |
 | [SourceFramesStudy.kt](../src/jvmMain/kotlin/afield/study/source/SourceFramesStudy.kt) | Workspace | studies | 0 | 12 | 40% |
 | [intervalPicture.kt](../src/jvmMain/kotlin/afield/ui/visualization/intervalPicture.kt) | Visualization | fn_intervals | 0 | 12 | 25% |
-| [UnderfitOperations.kt](../src/jvmMain/kotlin/afield/audio/ai/UnderfitOperations.kt) | Audio AI | field_audio_ai | 0 | 11 | 50% |
 | [DrawnScoreDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/DrawnScoreDocs.kt) | Patterns | chain_drawn_score | 0 | 11 | 65% |
 | [FaustPoly.kt](../src/jvmMain/kotlin/afield/audio/synth/FaustPoly.kt) | Synthesis | sound_paths | 0 | 11 | 70% |
 | [PdBox.kt](../src/jvmMain/kotlin/afield/audio/synth/PdBox.kt) | Synthesis | pure_data, agent_transcripts | 0 | 11 | 70% |
@@ -567,7 +562,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PatTranscription.kt](../src/jvmMain/kotlin/afield/audio/synth/PatTranscription.kt) | Patterns | — | 0 | 49 | 33% |
 | [Midi.kt](../src/jvmMain/kotlin/afield/audio/synth/Midi.kt) | Audio | — | 0 | 46 | 43% |
 | [Options.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/Options.kt) | Graphics | — | 0 | 43 | 15% |
-| [SpeechEmbeddingMds.kt](../src/jvmMain/kotlin/afield/audio/ai/SpeechEmbeddingMds.kt) | Audio AI | — | 0 | 42 | 22% |
 | [MegaTexture.kt](../src/jvmMain/kotlin/afield/graphics/texture/mega/MegaTexture.kt) | Graphics | — | 0 | 42 | 47% |
 | [KratosStudy.kt](../src/jvmMain/kotlin/afield/simulation/kratos/KratosStudy.kt) | Simulation | — | 0 | 39 | 45% |
 | [GestureReplayMain.kt](../src/jvmMain/kotlin/afield/graphics/paint/GestureReplayMain.kt) | Internal | — | 0 | 35 | 10% |
@@ -1209,19 +1203,19 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `Keyframe` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:638` |
 | `Handles` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:647` |
 | `Handle` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:653` |
-| `GestureCurveKind` | class | `src/jvmMain/kotlin/afield/audio/ai/Protocol.kt:224` |
-| `GesturePoint` | class | `src/jvmMain/kotlin/afield/audio/ai/Protocol.kt:232` |
-| `GestureCurve` | class | `src/jvmMain/kotlin/afield/audio/ai/Protocol.kt:238` |
-| `GestureEvent` | class | `src/jvmMain/kotlin/afield/audio/ai/Protocol.kt:247` |
-| `GesturePromptRegion` | class | `src/jvmMain/kotlin/afield/audio/ai/Protocol.kt:256` |
-| `GestureBoard` | class | `src/jvmMain/kotlin/afield/audio/ai/Protocol.kt:265` |
-| `GestureBinding` | class | `src/jvmMain/kotlin/afield/audio/ai/Protocol.kt:275` |
-| `GestureCompileRequest` | class | `src/jvmMain/kotlin/afield/audio/ai/Protocol.kt:284` |
-| `GestureCompilation` | class | `src/jvmMain/kotlin/afield/audio/ai/Protocol.kt:291` |
-| `GestureEvaluation` | class | `src/jvmMain/kotlin/afield/audio/ai/Protocol.kt:300` |
-| `ModelOperation` | class | `src/jvmMain/kotlin/afield/audio/ai/Protocol.kt:307` |
 | `StereoAudioSample` | class | `src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt:89` |
 | `DirtSampleToken` | class | `src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt:126` |
 | `DirtSampleDescriptor` | class | `src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt:145` |
+| `DirtSampleFamily` | class | `src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt:194` |
+| `DirtSampleLibrary` | class | `src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt:216` |
+| `DirtSamplePlayer` | class | `src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt:354` |
+| `BiquadType` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:67` |
+| `Biquad` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:82` |
+| `SVFMode` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:189` |
+| `SVF` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:191` |
+| `MoogLadder` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:240` |
+| `CombFilter` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:285` |
+| `AllpassFilter` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:344` |
+| `DCBlocker` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:382` |
 
-…and **1952 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **1938 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

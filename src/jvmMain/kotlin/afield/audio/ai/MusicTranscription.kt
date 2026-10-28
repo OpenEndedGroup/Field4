@@ -34,28 +34,46 @@ import java.util.concurrent.CompletableFuture
 
 /** One source-aligned note recovered by a multi-instrument transcription worker. */
 data class MusicTranscriptionNote(
+    /** Where the note begins, in seconds. The decoder rejects a negative onset. */
     val startSeconds: Double,
+    /** Where the note ends, in seconds. Never earlier than [startSeconds]; the decoder rejects a pair that is. */
     val endSeconds: Double,
+    /** MIDI note number, 60 being middle C. The decoder rejects anything outside 0..127. */
     val midi: Int,
+    /**
+     * The worker's own name for the instrument group it put this note in. It is a model's reading of
+     * a mixed recording rather than a record of what played the note.
+     */
     val instrument: String,
 )
 
 /** Tempo, meter, and the measured model-onset correction retained with a transcription. */
 data class MusicTranscriptionBeatGrid(
+    /** Tempo in beats per minute. The decoder rejects a grid whose bpm is not positive. */
     val bpm: Double,
+    /** Beats to the bar, or null where the artifact records no meter. */
     val beatsPerBar: Int?,
+    /** Where the first downbeat falls, in seconds. */
     val firstDownbeatSeconds: Double,
+    /** The onset correction the worker recorded, in seconds, or null where it recorded none. */
     val onsetDelaySeconds: Double?,
+    /** How many parts the worker divided each beat into, or null where the artifact records no subdivision. */
     val beatSubdivision: Int?,
 )
 
 /** Typed contents of the versioned MuScriptor MessagePack artifact. */
 data class MusicTranscription(
+    /** Every note in the artifact, in the order it lists them. */
     val notes: List<MusicTranscriptionNote>,
+    /** Tempo and meter, or null where the artifact carries no beat grid or an explicitly nil one. */
     val beatGrid: MusicTranscriptionBeatGrid?,
+    /** Which transcription backend the worker ran, from the artifact's metadata. Null where it recorded nothing. */
     val backend: String?,
+    /** The model the backend loaded, from the artifact's metadata. Null where it recorded nothing. */
     val modelId: String?,
+    /** The revision of that model, from the artifact's metadata. Null where it recorded nothing. */
     val modelRevision: String?,
+    /** SHA-256 of the checkpoint weights, from the artifact's metadata. Null where it recorded nothing. */
     val checkpointSha256: String?,
 )
 
