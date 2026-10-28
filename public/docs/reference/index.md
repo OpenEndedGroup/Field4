@@ -649,7 +649,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**34909 public symbols across 1587 source files**, 18336 of them (52%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34932 public symbols across 1588 source files**, 18343 of them (52%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -678,7 +678,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio AI](audio-ai.md) | 22 | 584 | 397 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 123 | 3096 | 1519 (49%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 236 | 3178 | 1157 (36%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [Machine learning](machine-learning.md) | 110 | 2518 | 857 (34%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
+| [Machine learning](machine-learning.md) | 111 | 2541 | 864 (34%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 | [Output](output.md) | 1 | 25 | 17 (68%) |  |
 
@@ -1110,7 +1110,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [fieldAudioProxy.kt](workspace.md#fieldaudioproxy-kt) | Workspace · internal | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [FieldBackdoorCatalogExamples.kt](examples.md#fieldbackdoorcatalogexamples-kt) | Examples | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>stream/<wbr></small> [FieldEncodeProcess.kt](imaging.md#fieldencodeprocess-kt) | Imaging | 14 | 8 | The JVM side of the `field-encode` helper, which encodes Field render targets (VideoToolbox on macOS, the `field-encode-linux` build on Linux) and streams them to the visionOS app. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [FieldGraphTools.kt](machine-learning.md#fieldgraphtools-kt) | Machine learning | 130 | 19 | The box graph and execution tools of Field's own agent: list, create, delete, edit, connect, run, launch, stop and read the output of boxes in the current document. | [AI4's built-in tools](../ai4_tools.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [FieldGraphTools.kt](machine-learning.md#fieldgraphtools-kt) | Machine learning | 131 | 20 | The box graph and execution tools of Field's own agent: list, create, delete, edit, connect, run, launch, stop and read the output of boxes in the current document. | [AI4's built-in tools](../ai4_tools.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [FieldKtParser.kt](workspace.md#fieldktparser-kt) | Workspace · internal | 3 | 2 | Kotlin source to a parse tree, without compiling it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr></small> [FieldMLCompiler.kt](languages.md#fieldmlcompiler-kt) | Languages | 10 | 10 | FieldML's front end behind one call: source text in, and whatever its four stages managed to produce out. | [FieldML stage by stage](../fieldml_stages.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr></small> [FieldMLCompletionEngine.kt](languages.md#fieldmlcompletionengine-kt) | Languages | 3 | 3 | Completion and hover for a FieldML box: what the editor offers under the caret, and what the card over a symbol says. |  |
@@ -2136,6 +2136,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [superpc.kt](graphics.md#superpc-kt) | Graphics | 22 | 15 | Push constants as a Kotlin class, and the GLSL that reads them back. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [Surface.kt](graphics.md#surface-kt) | Graphics | 3 | 0 | The Vulkan presentation surface for a GLFW window. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [SwapChain.kt](graphics.md#swapchain-kt) | Graphics | 21 | 4 | The window's presentation chain: `SwapChain` creates the swapchain images and their views for a surface, acquires the next image each frame and presents it on a `Queue.PresentQueue`. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [SymbolAtTool.kt](machine-learning.md#symbolattool-kt) | Machine learning | 22 | 6 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>polytope/<wbr></small> [Symmetry.kt](polytopes.md#symmetry-kt) | Polytopes | 32 | 17 | Symmetry as a combinatorial fact, and as something a solver can be asked for. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [synth.kt](synthesis.md#synth-kt) | Synthesis | 78 | 20 | The terse surface a box imports: `audio { … }` to close a graph, `.p` to make a number a `Param`, and lowercase names for the things reached for constantly. | [Pure Data](../pure_data.md), [How to make sound in Field](../sound_paths.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [SynthCookbookCompileDemo.kt](audio.md#synthcookbookcompiledemo-kt) | Audio · internal | 0 | 0 |  |  |
