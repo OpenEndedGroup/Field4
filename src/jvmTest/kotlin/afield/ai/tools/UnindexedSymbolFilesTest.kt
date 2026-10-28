@@ -18,6 +18,8 @@ class UnindexedSymbolFilesTest {
             Files.setLastModifiedTime(old, FileTime.fromMillis(1_000))
             dir.resolve("New.kt").also { Files.writeString(it, "fun Shape2.drawn() = 2") }
             dir.resolve("Other.kt").also { Files.writeString(it, "fun unrelated() = 3") }
+            // Never indexed and older than the build: a tree the index does not cover, not news.
+            dir.resolve("Snapshot.kt").also { Files.writeString(it, "fun drawn() = 4"); Files.setLastModifiedTime(it, FileTime.fromMillis(500)) }
             val index = KotlinSourceIndexDb(root = root.toString(), apiKeyHash = null, updatedAtEpochMs = 1_000,
                 files = listOf(KotlinSourceFileRecord("src/jvmMain/kotlin/Old.kt", "h", null, 15, 1_000)), definitions = emptyList())
             assertEquals(listOf("src/jvmMain/kotlin/New.kt"), unindexedFilesMentioning(index, "drawn"))
