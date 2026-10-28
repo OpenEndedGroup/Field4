@@ -647,6 +647,23 @@ class AgentMemoryState {
     private val checklist = mutableListOf<ChecklistItem>()
     private var nextChecklistId = 1
 
+    // Turn counter and the turn the checklist last changed in: a list set in round 1 and never touched again
+    // was re-shown at every turn's end as if current, and read as "nothing done" (2026-10-28).
+    private var turn = 0
+    private var checklistChangedInTurn = -1
+
+    /** Called when an agent turn starts. */
+    fun beginTurn() = lock.write { turn++ }
+
+    /** `"2 of 6 done, 1 in progress"`, plus `"; not updated this turn"` when it is stale; null when empty. */
+    fun checklistSummary(): String? = lock.read {
+        if (checklist.isEmpty()) return@read null
+        val done = checklist.count { it.status == "done" }
+        val active = checklist.count { it.status == "in_progress" }
+        "$done of ${checklist.size} done" + (if (active > 0) ", $active in progress" else "") +
+            if (checklistChangedInTurn < turn) "; not updated this turn" else ""
+    }
+
     /**
      * The scratchpad and checklist as they are, for the session tree: memory is branch state, so a rewound
      * conversation gets back the memory of the turn it was rewound to (AiSessionTree).
@@ -714,6 +731,7 @@ class AgentMemoryState {
     }
 
     fun updateChecklist(request: ChecklistUpdateRequest): ChecklistResult = lock.write {
+        checklistChangedInTurn = turn
         fun normalizedStatus(raw: String): String = when (raw.trim().lowercase()) {
             "done", "complete", "completed", "checked" -> "done"
             "in_progress", "in-progress", "active", "doing" -> "in_progress"
@@ -810,9 +828,11 @@ class AgentMemoryState {
     fun checklistMarkdown(): String = lock.read {
         if (checklist.isEmpty()) return@read ""
         buildString {
-            appendLine("**Checklist**")
+            append("**Checklist**")
+            if (checklistChangedInTurn < turn) append(" _(not updated this turn)_")
+            appendLine()
             checklist.forEach { item ->
-                append(if (item.status == "done") "- [x] " else "- [ ] ")
+                append(when (item.status) { "done" -> "- [x] "; "in_progress" -> "- [~] "; else -> "- [ ] " })
                 append(item.text)
                 append(" ")
                 append("`#${item.id}`")

@@ -15,4 +15,20 @@ class RoundBudgetNoteTest {
         val late = OpenAiIdeCodexBridge.roundBudgetNote(22, 24)!!
         assertTrue(late.startsWith("Tool round 22 of 24: 2 left") && "Run and check" in late, late)
     }
+
+    @Test
+    fun theNoteCarriesTheChecklistAndNudgesAStaleOne() {
+        val memory = afield.ai.tools.AgentMemoryState()
+        memory.beginTurn()
+        memory.updateChecklist(afield.ai.tools.ChecklistUpdateRequest("replace", items = listOf(
+            afield.ai.tools.ChecklistItemInput("survey", "doing"), afield.ai.tools.ChecklistItemInput("build"))))
+        assertEquals("0 of 2 done, 1 in progress", memory.checklistSummary())
+        assertTrue("- [~] survey" in memory.checklistMarkdown(), memory.checklistMarkdown())
+        memory.beginTurn()
+        val stale = memory.checklistSummary()!!
+        assertTrue(stale.endsWith("; not updated this turn"), stale)
+        assertTrue("_(not updated this turn)_" in memory.checklistMarkdown())
+        val note = OpenAiIdeCodexBridge.roundBudgetNote(12, 24, stale)!!
+        assertTrue(note.endsWith("Checklist: 0 of 2 done, 1 in progress; not updated this turn; update it as items finish."), note)
+    }
 }
