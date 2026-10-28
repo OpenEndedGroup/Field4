@@ -64,7 +64,8 @@ import org.jetbrains.ktfmt.format.ParseError
  * while it is being typed. This file holds the one parser they share: a `KotlinCoreEnvironment`
  * built once and reused, and a `parse` that returns the tree or throws on the first syntax error.
  *
- * It is derived from ktfmt's own parser, and the Apache 2.0 notice above is ktfmt's.
+ * It is derived from ktfmt's own parser; the Apache 2.0 notice at the top of the source file is
+ * ktfmt's.
  */
 
 /**
@@ -73,10 +74,8 @@ import org.jetbrains.ktfmt.format.ParseError
  * `boxImports.kt`, the labelled-argument macro, the RemoteJS instrumenter, and the pattern-rewrite
  * smoke test.
  *
- * Until 2026-09-30 this was a copy of ktfmt's `Parser` under ktfmt's own class name, meant to
- * replace it on the classpath. It did not: ktfmt's jar won, and the copy only worked because
- * ktfmt 0.64's `Parser` had the same `parse(String)`. It is Field's own class now; ktfmt keeps its
- * parser. Derived from ktfmt's `Parser` (Apache 2.0, notice above).
+ * Field's own class, derived from ktfmt's `Parser` (Apache 2.0; the notice is at the top of this
+ * file). ktfmt keeps its own parser on the classpath.
  */
 object FieldKtParser {
 

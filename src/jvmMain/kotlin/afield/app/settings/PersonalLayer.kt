@@ -233,12 +233,16 @@ object PersonalLayer {
 
     private val retired = mutableListOf<Retired>()
 
-    /** Has anything been retired yet? The cheap gate that keeps the scan off the normal path. */
+    /**
+     * Whether [advance] has retired a layer that is still listed. `PersonalReload.kt`'s staleness
+     * checks return early when it is false, so nothing walks the retired list on the normal path.
+     */
     val hasRetiredLayers: Boolean @Synchronized get() = retired.isNotEmpty()
 
     /**
-     * The generation that owned [type], if it came from a layer that has since been retired — i.e.
-     * "this object is stale". Null for everything else, including classes from the *live* layer.
+     * The generation that owned [type], when [type] came from a layer a later reload retired, which
+     * is what makes an object holding it stale. Null for everything else, including classes from the
+     * *live* layer.
      */
     @Synchronized
     fun retiredGenerationOf(type: Class<*>?): Int? {
