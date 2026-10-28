@@ -142,6 +142,7 @@ def _transcript_input(path: str) -> bool:
         _under(path, "dev_docs/agents/transcripts")
         or _under(path, "public/docs/assets/agent_transcripts")
         or path == "public/docs/agent_transcripts.md"
+        or path == "src/jvmMain/kotlin/afield/examples/AgentTranscriptMaterializer.kt"
         # Every starting point ships a copy of this as its AGENTS.md.
         or path == "templates/WORKSPACE_AGENTS.md"
     )
@@ -401,6 +402,17 @@ def _python_tool_input(path: str) -> bool:
     )
 
 
+def _publication_input(path: str) -> bool:
+    return (_transcript_input(path) or _under(path, 'public/docs/assets/web_publications')
+            or _under(path, 'public/docs/assets/fline_examples')
+            or _under(path, 'public/docs/assets/three_output_gallery')
+            or path in {'tools/docs_publications.py', 'tools/build_zensical_docs.py',
+                        'src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt',
+                        'src/jvmMain/kotlin/afield/examples/AgentTranscriptMaterializer.kt',
+                        'src/commonMain/resources/publication-capture.js',
+                        'src/commonMain/resources/publication-three.js'})
+
+
 GUARDS = (
     Guard(
         "checkCodebaseReference",
@@ -416,6 +428,7 @@ GUARDS = (
         ("public/docs/assets/agent_transcripts",),
     ),
     Guard("checkAgentTranscriptIndex", "agent transcript index", _transcript_input),
+    Guard("checkDocsPublications", "published document freshness and coverage", _publication_input),
     Guard("checkAgentTranscriptLayouts", "agent transcript and demo layouts", _demo_input),
     Guard("checkAgentDemos", "saved demo consistency", _demo_input),
     Guard("checkPythonTools", "Python tools and their corpus contracts", _python_tool_input),

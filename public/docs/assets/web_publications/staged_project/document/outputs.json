@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-28T15:49:17.722Z",
+  "capturedAt": "2026-10-28T20:53:29.640Z",
   "documentName": "staged_project",
   "outputs": [
     {
@@ -31,8 +31,8 @@
       "kinds": [
         "svg"
       ],
-      "width": 480,
-      "height": 150,
+      "width": 478,
+      "height": 228,
       "path": "outputs/2.html"
     },
     {

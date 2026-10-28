@@ -32,6 +32,18 @@ def task_names(paths: list[str]) -> list[str]:
 
 
 class GeneratedArtifactSelectionTests(unittest.TestCase):
+    def test_publication_inputs_select_freshness_guard(self) -> None:
+        for path in ('dev_docs/agents/transcripts/new.yaml',
+                     'public/docs/assets/fline_examples/metadata.edn',
+                     'public/docs/assets/agent_transcripts/new/box_code_.kt',
+                     'public/docs/assets/web_publications/catalog.json',
+                     'src/commonMain/resources/publication-capture.js'):
+            self.assertIn('checkDocsPublications', task_names([path]))
+        self.assertNotIn('checkDocsPublications', task_names(['public/docs/stylesheets/extra.css']))
+        producer = task_names(['src/jvmMain/kotlin/afield/examples/AgentTranscriptMaterializer.kt'])
+        self.assertIn('checkAgentTranscripts', producer)
+        self.assertIn('checkDocsPublications', producer)
+
     def test_completion_scrape_selects_its_producer_inputs_and_outputs(self) -> None:
         from tools.scrape_completion_corpus import DOCS
 
@@ -108,7 +120,7 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
             # committed inside one as literal text, so it can leak a private import.
             [
                 "checkAgentTranscripts",
-                "checkAgentTranscriptIndex",
+                "checkAgentTranscriptIndex", "checkDocsPublications",
                 "checkCompletionCorpusFixtures",
                 "checkBoxIdioms",
                 "checkBoxCodeCompiles",
@@ -143,7 +155,7 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
             task_names(["public/docs/assets/agent_transcripts/hello/metadata.edn"]),
             [
                 "checkAgentTranscripts",
-                "checkAgentTranscriptIndex",
+                "checkAgentTranscriptIndex", "checkDocsPublications",
                 "checkCompletionCorpusFixtures",
                 "citationGates",
             ],
@@ -348,7 +360,7 @@ class MergeSelectionTests(unittest.TestCase):
                 "checkCodebaseReference",
                 "checkKDocAttachment",
                 "checkAgentTranscripts",
-                "checkAgentTranscriptIndex",
+                "checkAgentTranscriptIndex", "checkDocsPublications",
                 "checkCompletionCorpusFixtures",
                 "citationGates",
             ],

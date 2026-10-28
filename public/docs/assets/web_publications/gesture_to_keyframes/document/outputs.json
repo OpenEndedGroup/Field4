@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-28T15:50:38.922Z",
+  "capturedAt": "2026-10-28T20:54:41.433Z",
   "documentName": "gesture_to_keyframes",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 576,
-      "height": 246,
+      "height": 240,
       "path": "outputs/0.html"
     },
     {
@@ -24,7 +24,7 @@
         "svg"
       ],
       "width": 576,
-      "height": 246,
+      "height": 240,
       "path": "outputs/1.html"
     },
     {

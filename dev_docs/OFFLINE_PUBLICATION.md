@@ -96,6 +96,27 @@ captures actual browser evidence. Archive/transfer and module-graph regressions 
 
 ## Documentation publications
 
+Publication refresh is part of the normal docs build. `FIELD_DOCS_RUNNER_MODE=incremental`
+(the default) captures new or changed supported documents before copying site assets. `strict`
+does the same freshness check, `always` recaptures every supported recipe, and `never` starts no
+Field process and fails if a publication needs refresh. CSS-only edits do not invalidate captures.
+
+Run `uv run python tools/docs_publications.py sync` to refresh without rendering the site.
+Unchanged documents start no Field JVM or browser. Documents with no output-area channels have
+their own source fingerprints in `catalog.json`'s `emptyDocuments`; they remain code-only and
+are reconsidered when their sources change. The supported population is the two pilot documents
+plus the existing headless-safe transcript classification; native/device/service scenes stay
+outside this automatic capture pass.
+
+`checkDocsPublications`, included in `check` and `docsGates`, checks recipe coverage, source and
+publisher fingerprints, manifests, output files and shared-runtime references without launching
+Field. Captured-file checksums detect inconsistent generated-file merges; shared runtimes are
+checked against their content-addressed names. The landing regenerator refreshes publications after transcript materialization and before
+running this guard. A failed capture retains the previous files but fails the refresh; stale data
+cannot be presented as a successful new publication. Removed or reclassified recipes are retired
+from the registry. Refresh results are written to `build/docs-publications-refresh.json`.
+Capture timeouts get one retry in a fresh Field session; a second timeout still fails the build.
+
 `tools/docs_publications.py capture --group pilot` opens copies of the existing FLine and
 Three.js companion documents in an isolated Field, runs their boxes, and captures the actual
 outputs. `--group gallery` uses the existing `DemoTranscriptExecSmokeTest.EXECUTE` classification
@@ -108,6 +129,8 @@ The installer stores frozen metadata and outputs under `public/docs/assets/web_p
 Font, Plotly and Three.js runtimes are shared by content hash. Repeated computed style
 declarations are factored into document-local CSS rules; the captured property values are
 preserved. This avoids repeating a complete computed style on every path in a dense SVG.
+Plotly's SVG text is rebuilt from data, so its rendered font family is recorded separately and
+reapplied before drawing. The bundled Iosevka font loads before Plotly measures tick labels.
 
 `catalog.json` records source-file hashes and capture results. The docs build verifies those
 hashes before emitting `offline-publications.json` beside the common viewer. Existing
@@ -117,7 +140,7 @@ source documents and editable starting points remain separate. A source change r
 recapture before the docs build can publish that entry again.
 
 Capture batches replace their owned Field JVM after sixteen documents, bounding compiler and
-browser state. The synchronous `petri_tala_layout` benchmark gets a separate JVM with a 120-second
+browser state. The synchronous `petri_tala_layout` and `morpho_circuit_search` benchmarks get a separate JVM with a 120-second
 watchdog budget; ordinary capture JVMs use Field's normal 30-second limit.
 
 The transcript gallery intercepts ordinary Open links to show one viewer beside the selected

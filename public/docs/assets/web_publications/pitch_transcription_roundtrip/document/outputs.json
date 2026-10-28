@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-28T15:53:28.783Z",
+  "capturedAt": "2026-10-28T20:57:36.046Z",
   "documentName": "pitch_transcription_roundtrip",
   "outputs": [
     {
@@ -92,7 +92,7 @@
     {
       "uid": "pitch_roundtrip_refusal",
       "channel": "verdict",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
       "width": 478,
@@ -102,7 +102,7 @@
     {
       "uid": "pitch_roundtrip_refusal",
       "channel": "warnings",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
       "width": 474,
@@ -112,7 +112,7 @@
     {
       "uid": "pitch_roundtrip_refusal",
       "channel": "how it knows",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
       "width": 478,
