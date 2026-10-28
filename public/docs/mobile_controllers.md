@@ -34,7 +34,7 @@ Replace `FIELD-HOST` with the machine's LAN name or address and `YOUR-DOCUMENT` 
 
 </div>
 
-Below are Pad, Group, Outputs and Edit at iPhone size, each showing a box that publishes a small `controlGroup(...)` and one output channel. Chat and Select have their own sections further down.
+Below are Pad, Group and Outputs at iPhone size, showing a box that publishes a small `controlGroup(...)` and one output channel. Chat and Select have their own sections further down.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-mobile-controller-pad" screenshot="assets/mobile_controllers/pad.png" alt="The Pad tab of the Field mobile controller at iPhone size" padding="0" wait="0" timeout="120" embed=true hidden=true name="mobile-controller-pad"}
 ui.eval("""
@@ -180,18 +180,15 @@ ui.waitForSelector("#docs-mobile-controller-outputs", 8000.0)
 ui.pause(6000)
 ```
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-mobile-controller-edit" screenshot="assets/mobile_controllers/edit.png" alt="The Edit tab of the Field mobile controller with Monaco open on a box's code at iPhone size" padding="0" wait="0" timeout="120" embed=true hidden=true name="mobile-controller-edit"}
-// A box with a few live controls, open in the phone's editor.
-controlGroup("controls") {
-    slider("gain", min = 0.0, max = 1.0, step = 0.01, initialValue = 0.35) { }
-    checkbox("armed", initialValue = true) { }
-}
+The **Edit** tab, open on the sequencer's code:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-mobile-controller-edit" transcript="../../dev_docs/agents/transcripts/docs_capture/phone_sequencer.yaml" screenshot="assets/mobile_controllers/edit.png" alt="The Edit tab of the Field mobile controller at iPhone size, with Monaco open on the Kotlin of the box named sequencer" padding="0" wait="0" timeout="180" embed=true hidden=true name="mobile-controller-edit"}
 ui.eval("""
     document.getElementById("docs-mobile-controller-edit")?.remove()
-    const driveBox = [...document.querySelectorAll(".box")].find(box => box.uid === "__docs_drive__" || box.name === "__docs_drive__")
-    if (driveBox && typeof window.selectBox === "function") {
+    const seq = [...document.querySelectorAll(".box")].find(box => box.uid === "seq_box" || box.name === "sequencer")
+    if (seq && typeof window.selectBox === "function") {
         ;(window.selectedList || []).slice().forEach(box => window.deselectBox(box))
-        window.selectBox(driveBox)
+        window.selectBox(seq)
         window.selectionContextChanged?.()
     }
     const params = new URLSearchParams(window.location.search)
@@ -207,6 +204,87 @@ ui.eval("""
 ui.waitForSelector("#docs-mobile-controller-edit", 8000.0)
 ui.pause(10000)
 ```
+
+## The Pad scrubs a number in your code
+
+The Pad does not send values to a box. It edits code, the way Field's [OSC editor](osc.md#fields-own-osc-editor) does: dragging replaces the number under the editor's cursor with the pad's value and, after a short pause, runs the box again. Put the cursor on a constant, either in the desktop editor or in the phone's **Edit** tab, then drag.
+
+- **Value.** In absolute mode the number becomes the finger's position, from 0 at the bottom (or left) edge to 1 at the top (or right). In delta mode the drag's movement is added to it. *Both* does each in turn.
+- **XY.** With the XY axis, a cursor on either number of a pair such as `Vector2f(0.2f, 0.7f)` sets both numbers at once.
+- **Save** and **Restore** remember the number under the cursor and put it back. **Lock** (⌖) pins the pad to that number, so it keeps scrubbing it after the cursor moves on; **Unlock** releases it.
+- **Launch** and **Stop** launch and stop the box being edited.
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1320x900" hide-toasts=true transcript="../../dev_docs/agents/transcripts/docs_capture/pad_scrub.yaml" video="assets/mobile_controllers/pad_scrub.mp4" fps="20" padding="0" wait="0" timeout="180" embed=true hidden=true name="mobile-controller-pad-scrub" alt="On the left, the Field mobile controller's Pad at phone size; on the right, the desktop editor open on a box named brightness whose first line is val brightness = 0.50, with the cursor on the number. A finger drags up the Pad and back down: each time the drag pauses, the number in the editor changes to the pad's height, between 0 and 1, and the box runs again, its output panel on the canvas showing the new value in a colour that brightens and darkens with it."}
+ui.openEditor("pad_box")
+ui.pause(800)
+ui.eval("""
+    const c = document.querySelector(".monaco-editor-container")
+    if (c) for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
+    window.globalEditor?.layout?.()
+    const box = [...document.querySelectorAll(".box")].find(b => b.uid === "pad_box" || b.name === "brightness")
+    if (box && typeof window.selectBox === "function") {
+        ;(window.selectedList || []).slice().forEach(b => window.deselectBox(b))
+        window.selectBox(box)
+        window.selectionContextChanged?.()
+    }
+    const ed = window.globalEditor
+    const line = ed.getModel().getLineContent(1)
+    const col = line.indexOf("0.50") + 2
+    ed.setPosition({ lineNumber: 1, column: col })
+    ed.focus()
+    const params = new URLSearchParams(window.location.search)
+    params.set("page", "pad")
+    const frame = document.createElement("iframe")
+    frame.id = "docs-mobile-controller-pad-scrub"
+    frame.setAttribute("title", "Field mobile controller pad")
+    frame.setAttribute("src", "/controllers?" + params.toString())
+    frame.setAttribute("style", "position:fixed;left:24px;top:24px;width:360px;height:780px;border:0;outline:1px solid rgba(72,201,255,.75);background:#050505;z-index:2147483000")
+    document.body.appendChild(frame)
+    return col
+""".trimIndent())
+ui.waitForSelector("#docs-mobile-controller-pad-scrub", 8000.0)
+ui.pause(4000)
+val area = ui.eval("""
+    const frame = document.getElementById("docs-mobile-controller-pad-scrub")
+    const r = frame.getBoundingClientRect()
+    const a = frame.contentDocument.getElementById("touch-area").getBoundingClientRect()
+    return [r.left + a.left, r.top + a.top, a.width, a.height].join(",")
+""".trimIndent()).toString().trim('"').split(",").map { it.toDouble() }
+val x = area[0] + area[2] / 2
+val top = area[1]
+val h = area[3]
+fun yAt(v: Double) = top + h * (1.0 - v)
+ui.moveMouse(x, yAt(0.5), 8)
+ui.pause(400)
+ui.mouseDown()
+for (v in [0.6, 0.7, 0.8, 0.9, 0.7, 0.5, 0.3, 0.15, 0.4]) {
+    ui.moveMouse(x, yAt(v), 14)
+    ui.pause(900)
+}
+ui.mouseUp()
+ui.pause(1500)
+```
+
+The Pad works without the OSC editor being switched on in the welcome page; it talks to Field over the controller's own connection.
+
+## Link straight to a tab
+
+The page reads its settings from the address, so a Home Screen bookmark can open exactly the surface you want:
+
+<div class="field-data-table" markdown>
+
+| Parameter | Values | Default |
+| --- | --- | --- |
+| `file` (or `document`) | The document's name | The active document |
+| `page` | `pad`, `controls` (Group), `outputs`, `chat`, `select`, `editor` (Edit) | `pad` |
+| `axis` | `y`, `x`, `xy` | `y` |
+| `send` | `absolute`, `delta`, `both` | `absolute` |
+| `debounceMs` | How long the Pad waits after the last change before running the box, 0 to 5000 | 200 |
+| `maxExecutionMs` | During a continuous drag, the longest the Pad waits before running the box anyway, 0 to 60000 (0 waits for the drag to pause) | 750 |
+
+</div>
+
+For example, `/controllers?file=YOUR-DOCUMENT&page=controls` opens on the Group tab.
 
 ## Chat without the desktop
 
