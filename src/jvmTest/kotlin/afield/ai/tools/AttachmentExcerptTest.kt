@@ -95,7 +95,7 @@ class AttachmentExcerptTest {
     /** 2026-10-28: a local model's `find` misses came back empty, and it cited a char offset as a line. */
     @Test
     fun findReportsLinesAndAMissShowsWhereItsIdentifierOccurs() {
-        val source = "package x\n\nclass Proof {\n    fun Shape2.drawn(color: Byrne) = Figure(this)\n}\n"
+        val source = "package afield.x\n\nclass Proof {\n    fun Shape2.drawn(color: Byrne) = Figure(this)\n}\n"
         val ctx = ToolExecutionContext(attachments = listOf(ContextAttachment("Elements.kt", "kotlin", source)))
         val hit = read(ctx, AttachmentRequest("Elements.kt", find = "Shape2.drawn"))
         assertEquals(4, hit.matchLine)
