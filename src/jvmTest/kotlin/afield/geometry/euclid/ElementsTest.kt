@@ -18,10 +18,13 @@ class ElementsTest {
 
     private fun <T> drawsSomething(c: Construction<T>) {
         assertTrue(c.steps.isNotEmpty() && c.figures.isNotEmpty())
-        val everything = c.toFLines(cited = true, labels = false, paper = false)
-        assertEquals(c.figures.size, everything.size)
-        assertTrue(c.toFLines(upTo = 1, paper = false).size < everything.size)
-        assertTrue(c.toFLines(labels = false, paper = false).size <= everything.size) // cited steps hidden
+        val bare = ByrneStyle(constructionLines = Pen(0.6), cited = Pen(0.5), labels = false, paper = null)
+        val everything = c.toFLines(style = bare)
+        val drawable = c.steps.sumOf { s -> s.figures.count { s.cited == null || it.shape !is Point2 } }
+        assertEquals(drawable, everything.size)
+        assertTrue(c.toFLines(upTo = 1, style = bare).size < everything.size)
+        assertTrue(c.toFLines(style = bare.copy(cited = null)).size <= everything.size) // cited steps hidden
+        assertTrue(c.markdown().startsWith("**${c.proposition}.**"))
     }
 
     @Test fun i1EquilateralTriangle() {
