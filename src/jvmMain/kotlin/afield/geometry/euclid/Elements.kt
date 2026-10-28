@@ -167,6 +167,7 @@ class Construction<out T>(val proposition: String, val enunciation: String, val 
         }
         val out = mutableListOf<FLine>()
         val letters = mutableListOf<FLine>() // on top of everything, so no stroke hides a letter
+        val halos = mutableListOf<FLine>() // under every letter, over every line
         style.paper?.let { out += paperBehind(box, t, it) }
         // areas lie under every line, as Byrne's coloured fields lie under his lines
         for (step in shown) for (f in step.figures) if (f.role == Role.AREA && step.cited == null) {
@@ -195,9 +196,9 @@ class Construction<out T>(val proposition: String, val enunciation: String, val 
                 out += piece
             }
             val p = f.shape as? Point2
-            if (style.labels && p != null && f.label != null) letters += letter(f.label, p, style, t)
+            if (style.labels && p != null && f.label != null) letter(f.label, p, style, t).let { (h, g) -> halos += h; letters += g }
         }
-        return out + letters
+        return out + halos + letters
     }
 
     /** The enunciation and the numbered proof, as Markdown; cited steps are included when [cited] is true. */
@@ -207,14 +208,26 @@ class Construction<out T>(val proposition: String, val enunciation: String, val 
         steps.filter { cited || it.cited == null }.forEachIndexed { i, s -> appendLine("${i + 1}. ${s.text}") }
     }
 
-    private fun letter(text: String, at: Point2, style: ByrneStyle, t: Double): List<FLine> = try {
+    /**
+     * The glyphs of [text] beside [at]: a halo of each in the paper colour, so a letter that lands
+     * on a line still reads, and the black letter itself.
+     */
+    private fun letter(text: String, at: Point2, style: ByrneStyle, t: Double): Pair<List<FLine>, List<FLine>> = try {
         val size = style.labelSize * t
         val off = style.labelDistance * t
-        layoutText(text, typeface(Font.SERIF, size, italic = true)).toFLines(
+        val glyphs = layoutText(text, typeface(Font.SERIF, size, italic = true)).toFLines(
             color = vec(Byrne.BLACK.r, Byrne.BLACK.g, Byrne.BLACK.b, 1.0), thickness = 0.0, filled = true, stroked = false,
         ).map { g -> g.transform { v -> Vec3((v.x + at.x + off).toFloat(), (v.y + at.y - off).toFloat(), v.z) } }
+        val halos = style.paper?.let { (r, g, b) ->
+            glyphs.map { glyph ->
+                glyph.transform { it }.also {
+                    it.color = vec(r, g, b, 1.0); it.filled = true; it.stroked = true; it.thickness = 1.2 * t
+                }
+            }
+        } ?: emptyList()
+        halos to glyphs
     } catch (_: Exception) {
-        emptyList() // a headless JVM without fonts gets an unlettered diagram
+        emptyList<FLine>() to emptyList() // a headless JVM without fonts gets an unlettered diagram
     }
 
     /** `[x0, y0, x1, y1]` around everything in [shown]. */
