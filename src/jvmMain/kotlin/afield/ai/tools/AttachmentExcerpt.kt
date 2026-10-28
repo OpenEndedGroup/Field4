@@ -14,12 +14,16 @@ internal fun AttachmentResponse.excerpt(request: AttachmentRequest): AttachmentR
     fun splitsPair(at: Int) = at > 0 && at < content.length &&
         content[at - 1].isHighSurrogate() && content[at].isLowSurrogate()
     require(!splitsPair(request.offset)) { "offset splits a Unicode character; use the previous nextOffset" }
-    val match = request.find.takeIf { it.isNotEmpty() }?.let { content.indexOf(it, request.offset) }
+    // From offset, then from the start: a model that guessed an offset past the text (2026-10-28, offset
+    // 8000 for a declaration at 3054) got an empty excerpt for text the file does contain.
+    val match = request.find.takeIf { it.isNotEmpty() }?.let { find ->
+        content.indexOf(find, request.offset).takeIf { it >= 0 } ?: content.indexOf(find)
+    }
     fun lineAt(at: Int) = 1 + (0 until at).count { content[it] == '\n' }
     if (match == -1) return copy(content = "", offset = request.offset, totalChars = content.length,
         sourceHash = hash, nextOffset = null, isExcerpt = true, searchMatched = false, matchOffset = null,
         startLine = lineAt(request.offset), nearMatches = nearMatches(content, request.find))
-    var start = if (match != null) (match - minOf(1000, request.maxChars / 4)).coerceAtLeast(request.offset) else request.offset
+    var start = if (match != null) (match - minOf(1000, request.maxChars / 4)).coerceAtLeast(minOf(request.offset, match)) else request.offset
     if (splitsPair(start)) start--
     var end = (start.toLong() + request.maxChars).coerceAtMost(content.length.toLong()).toInt()
     if (splitsPair(end)) end--
