@@ -119,9 +119,9 @@ internal fun constrainToRequired(
         for ((at, i) in cuts) {
             while (k + 1 <= at.toInt() && k + 1 < n) { k++; piece.add(c[2 * k]); piece.add(c[2 * k + 1]) }
             val p = rn.position(i)
-            piece.add(p.x.toFloat()); piece.add(p.y.toFloat())
+            piece.add(p.x); piece.add(p.y)
             pieces.add(piece.toFloatArray())
-            piece = arrayListOf(p.x.toFloat(), p.y.toFloat())
+            piece = arrayListOf(p.x, p.y)
         }
         while (k + 1 < n) { k++; piece.add(c[2 * k]); piece.add(c[2 * k + 1]) }
         pieces.add(piece.toFloatArray())
