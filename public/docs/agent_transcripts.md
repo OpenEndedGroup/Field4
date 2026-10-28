@@ -4132,3 +4132,34 @@ Requires cooperative-vector training and the optional Slang shader build.
 See [Learn from a shader on the GPU](gpu_shader_learning.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/gpu_shader_learning/metadata.edn)
+
+## Saved documents
+
+<!-- transcript-index: bundled -->
+
+These starting points are not built from a transcript. Each is a saved document that ships with
+Field and is copied into your workspace as it is when you open it, because what it holds cannot be
+replayed: a lesson sequence, or a conversation's revisions, variants and chat.
+
+### canonical_graphics
+
+The graphics lessons: cameras, compute shaders and particles, texturing, render-to-texture, blur
+kernels, a GPU radix sort and more, one box per lesson, each running against a live renderer. Its
+index is [the lesson list](assets/canonical_graphics/LESSONS.md), and
+[Field 4 graphics](afield_four_graphics.md) walks through it.
+
+### stacksl_conversation_ink
+
+The ink-in-amber-water session from [Talking a shader into existence](stacksl_conversation.md):
+four AI4 turns and two edits made in the shader card. Opening it draws the finished program; the
+chat, every checked revision and the variants offered along the way are in the program box.
+
+### stacksl_conversation_tiles
+
+The zellige-tiles session from [Talking a shader into existence](stacksl_conversation.md), ending
+with grout the person drew in by hand.
+
+### stacksl_conversation_aurora
+
+The aurora-over-hills session from [Talking a shader into existence](stacksl_conversation.md),
+including the turn that traced the mound and the measured half-speed slowdown.

@@ -1,5 +1,6 @@
 package afield.tools.docs
 
+import afield.document.workspace.BUNDLED_DOCUMENT_STARTING_POINTS
 import afield.examples.AgentTranscriptMaterializer
 import afield.examples.DemoTranscriptExecSmokeTest
 import java.io.File
@@ -75,6 +76,11 @@ expect:
  *    there. The counts live in `DemoTranscriptExecSmokeTest`, which prints them; the prose names the
  *    three depths without them.
  *
+ * One section is not about transcripts: the `##` section marked
+ * `<!-- transcript-index: bundled -->` lists the saved documents the welcome screen offers as they
+ * are ([BUNDLED_DOCUMENT_STARTING_POINTS]). Its entries are held to that map in both directions
+ * instead of to the corpus, each document must be committed, and checks 3 and 4 do not apply.
+ *
  * ### Running it
  *
  * ```
@@ -103,11 +109,12 @@ object AgentTranscriptIndexGuard {
     private data class Entry(val name: String, val line: Int, val section: Section?, val openTarget: String?)
 
     /** One `##` heading, with the CI levels its marker line declares. */
-    private data class Section(val title: String, val line: Int, val levels: Set<Level>)
+    private data class Section(val title: String, val line: Int, val levels: Set<Level>, val bundled: Boolean = false)
 
     private val ENTRY = Regex("""^###\s+([a-z0-9_]+)\s*$""")
     private val HEADING = Regex("""^##\s+(.*\S)\s*$""")
     private val VERIFIED_BY = Regex("""<!--\s*transcript-index:\s*verified-by\s*=\s*([a-z, ]+?)\s*-->""")
+    private val BUNDLED = Regex("""<!--\s*transcript-index:\s*bundled\s*-->""")
     private val TOTALS = Regex("""<!--\s*transcript-index:\s*totals\s*-->""")
     // Deliberately prefix-agnostic: this guard answers "which transcript does the link name?", and
     // the *shape* of the link is `tools/check_doc_offline_links.py`'s question. Both halves have to
@@ -151,7 +158,8 @@ object AgentTranscriptIndexGuard {
             val heading = HEADING.find(raw)
             if (heading != null) {
                 val title = heading.groupValues[1]
-                current = Section(title, i + 1, declaredLevels(lines, i, title, problems))
+                val bundled = (i + 1 until minOf(i + 5, lines.size)).any { BUNDLED.containsMatchIn(lines[it]) }
+                current = Section(title, i + 1, if (bundled) emptySet() else declaredLevels(lines, i, title, problems), bundled)
                 sections.add(current)
             }
             val entry = ENTRY.find(raw)
@@ -162,6 +170,26 @@ object AgentTranscriptIndexGuard {
                 totalsParagraph = lines.drop(i + 1).takeWhile { it.isNotBlank() }.joinToString(" ")
             }
         }
+
+        // ---- bundled documents: their own section, held to BUNDLED_DOCUMENT_STARTING_POINTS ----
+        val bundledEntries = entries.filter { it.section?.bundled == true }
+        val bundledByName = bundledEntries.groupBy { it.name }
+        for ((name, rel) in BUNDLED_DOCUMENT_STARTING_POINTS) {
+            val found = bundledByName[name]
+            if (found == null) problems.add(
+                "$name: a bundled starting point (BUNDLED_DOCUMENT_STARTING_POINTS) with NO entry under the " +
+                    "`<!-- transcript-index: bundled -->` section of $INDEX_REL. Write a `### $name` entry there."
+            ) else if (found.size > 1) problems.add("$name: ${found.size} bundled entries on $INDEX_REL — keep one.")
+            if (!File(File(repo, "public/docs/assets/$rel").canonicalFile, "metadata.edn").isFile) problems.add(
+                "$name: BUNDLED_DOCUMENT_STARTING_POINTS points at public/docs/assets/$rel, which holds no metadata.edn."
+            )
+        }
+        for (entry in bundledEntries) if (entry.name !in BUNDLED_DOCUMENT_STARTING_POINTS) problems.add(
+            "line ${entry.line}: entry `### ${entry.name}` is in the bundled section but is not in " +
+                "BUNDLED_DOCUMENT_STARTING_POINTS, so the welcome screen does not offer it."
+        )
+        entries.removeAll(bundledEntries)
+        for (section in sections.filter { it.bundled }) sections.remove(section)
 
         // ---- 1 & 2: completeness and orphans ----
         val byName = entries.groupBy { it.name }
