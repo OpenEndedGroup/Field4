@@ -307,8 +307,63 @@ private fun <T> enumerate(limit: Int, block: () -> Construction<T>): List<Constr
     }
 }
 
-private class Builder {
-    val steps = mutableListOf<Step>()
+/**
+ * Writes a proposition of your own, the way every proposition in [Elements] is written: [build]
+ * draws it step by step with [Proof.step] and returns its result.
+ *
+ * ```kotlin
+ * fun midpoint(ab: Segment2) = construction("Mid", "To bisect a line.") {
+ *     val d = by { Elements.prop10(ab) }        // cite an earlier proposition
+ *     step("D halves AB.", d.named("D"))
+ *     d
+ * }
+ * ```
+ */
+fun <T> construction(proposition: String, enunciation: String, build: Proof.() -> T): Construction<T> {
+    val proof = Proof()
+    val result = proof.build()
+    return Construction(proposition, enunciation, result, proof.steps)
+}
+
+/**
+ * What a proposition is written with inside [construction]: numbered steps, the figures they draw,
+ * the choices it makes ([pick], [pickSide]), the claim it checks ([check]) and the propositions it
+ * cites ([by]), plus the small measures proofs keep needing.
+ */
+class Proof internal constructor() {
+    internal val steps = mutableListOf<Step>()
+
+    /** A figure: this shape in [color], playing [role]. */
+    fun Shape2.drawn(color: Byrne, role: Role = Role.GIVEN) = Figure(this, color, role = role)
+
+    /** A lettered point. */
+    fun Point2.named(label: String) = Figure(this, Byrne.BLACK, label)
+
+    /** Where [a] and [b] cross; a branch where they do not is dropped (or, called plainly, fails naming [what]). */
+    fun meet(a: Shape2, b: Shape2, what: String = "construction"): List<Point2> = afield.geometry.euclid.meet(a, b, what)
+
+    fun Point2.dist(o: Point2) = (o - this).length
+
+    /** Equal to a relative tolerance, for [check]. */
+    fun eq(x: Double, y: Double) = afield.geometry.euclid.eq(x, y)
+
+    /** The angle at [v] between the arms through [a] and [b], in [0, π]. */
+    fun angleAt(v: Point2, a: Point2, b: Point2) = afield.geometry.euclid.angleAt(v, a, b)
+
+    fun centroid(vararg ps: Point2) = afield.geometry.euclid.centroid(*ps)
+    fun isSquare(q: Quadrilateral2) = afield.geometry.euclid.isSquare(q)
+    fun isRegular(p: Polygon2, n: Int) = afield.geometry.euclid.isRegular(p, n)
+
+    /** Of [points], the one farthest from [from]: where a line through [from] leaves a circle. */
+    fun far(points: List<Point2>, from: Point2) = afield.geometry.euclid.far(points, from)
+
+    /** How far round the circle about [o], counter-clockwise from [p], the point [q] is, in [0, 2π). */
+    fun offset(o: Point2, p: Point2, q: Point2) = afield.geometry.euclid.offset(o, p, q)
+
+    /** The polygon through [points] in order round [o], starting at angle [at]. */
+    fun aroundCentre(o: Point2, at: Double, points: List<Point2>) = afield.geometry.euclid.aroundCentre(o, at, points)
+
+    /** One numbered sentence of the proof, drawing [figures]. */
     fun step(text: String, vararg figures: Figure) { steps += Step(text, figures.toList()) }
 
     /**
@@ -445,7 +500,7 @@ object Elements {
      */
     fun prop1(ab: Segment2, side: Int = 1): Construction<Triangle2> {
         val (a, b) = ab
-        val s = Builder()
+        val s = Proof()
         val around = Circle2(a, a.dist(b))
         val around2 = Circle2(b, a.dist(b))
         s.step("Let AB be the given straight line.", ab.drawn(Byrne.BLACK), a.named("A"), b.named("B"))
@@ -462,7 +517,7 @@ object Elements {
     /** I.2. To place at a given point [a] a straight line equal to a given straight line [bc]. */
     fun prop2(a: Point2, bc: Segment2): Construction<Segment2> {
         val (b, c) = bc
-        val s = Builder()
+        val s = Proof()
         val r = b.dist(c)
         s.step("Let A be the given point and BC the given straight line.", a.named("A"), bc.drawn(Byrne.BLUE), b.named("B"), c.named("C"))
         if (a.dist(b) <= Euclid.epsilon * (1 + r)) {
@@ -498,7 +553,7 @@ object Elements {
     fun prop3(greater: Segment2, less: Segment2): Construction<Segment2> {
         require(greater.length >= less.length) { "I.3: the first line must be the greater" }
         val (a, b) = greater
-        val s = Builder()
+        val s = Proof()
         s.step("Let AB be the greater and C the less.", greater.drawn(Byrne.BLACK), a.named("A"), b.named("B"), less.drawn(Byrne.BLUE))
         val ad = s.by { prop2(a, less) }
         s.step("At A place AD equal to C.", ad.drawn(Byrne.BLUE), ad.b.named("D"))
@@ -513,7 +568,7 @@ object Elements {
     /** I.9. To bisect a given rectilineal angle: the angle at [vertex] between the arms through [b] and [c]. */
     fun prop9(vertex: Point2, b: Point2, c: Point2): Construction<Ray2> {
         val a = vertex
-        val s = Builder()
+        val s = Proof()
         s.step("Let BAC be the given angle.", Segment2(a, b).drawn(Byrne.BLACK), Segment2(a, c).drawn(Byrne.BLACK), a.named("A"), b.named("B"), c.named("C"))
         val r = minOf(a.dist(b), a.dist(c)) / 2
         val d = s.pick(meet(Ray2(a, b - a), Circle2(a, r), "I.9"))
@@ -533,7 +588,7 @@ object Elements {
     /** I.10. To bisect a given finite straight line. */
     fun prop10(ab: Segment2): Construction<Point2> {
         val (a, b) = ab
-        val s = Builder()
+        val s = Proof()
         s.step("Let AB be the given straight line.", ab.drawn(Byrne.BLACK), a.named("A"), b.named("B"))
         val c = s.by { prop1(ab) }.c
         s.step("On AB construct the equilateral triangle ABC.", Segment2(c, a).drawn(Byrne.BLACK, Role.CONSTRUCTION), Segment2(c, b).drawn(Byrne.BLACK, Role.CONSTRUCTION), c.named("C"))
@@ -549,7 +604,7 @@ object Elements {
      * [c] on it. The perpendicular goes to the left of `a`→`b` when [side] is +1.
      */
     fun prop11(ab: Segment2, c: Point2, side: Int = 1): Construction<Ray2> {
-        val s = Builder()
+        val s = Proof()
         val line = ab.line
         s.step("Let AB be the given straight line and C the given point on it.", ab.drawn(Byrne.BLACK), ab.a.named("A"), ab.b.named("B"), c.named("C"))
         val circle = Circle2(c, ab.length / 4)
@@ -564,7 +619,7 @@ object Elements {
 
     /** I.12. To draw a perpendicular to a given infinite straight line [ab] from a given point [c] not on it. */
     fun prop12(ab: Line2, c: Point2): Construction<Segment2> {
-        val s = Builder()
+        val s = Proof()
         require(ab.side(c) != 0) { "I.12: the point is on the line" }
         s.step("Let AB be the given straight line and C the given point not on it.", ab.drawn(Byrne.BLACK), c.named("C"))
         val d = ab.point + (ab.point - c) * 0.3
@@ -588,7 +643,7 @@ object Elements {
      */
     fun prop23(along: Ray2, vertex: Point2, d: Point2, e: Point2, side: Int = 1): Construction<Ray2> {
         val a = along.origin
-        val s = Builder()
+        val s = Proof()
         s.step(
             "Let AB be the given line, A the point on it, and DCE the given angle.",
             along.drawn(Byrne.BLACK), a.named("A"), Segment2(vertex, d).drawn(Byrne.BLACK), Segment2(vertex, e).drawn(Byrne.BLACK), vertex.named("C"),
@@ -614,7 +669,7 @@ object Elements {
 
     /** I.31. Through a given point [a] to draw a straight line parallel to a given straight line [bc]. */
     fun prop31(a: Point2, bc: Segment2): Construction<Line2> {
-        val s = Builder()
+        val s = Proof()
         require(bc.line.side(a) != 0) { "I.31: the point is on the line" }
         s.step("Let A be the given point and BC the given straight line.", a.named("A"), bc.drawn(Byrne.BLACK), bc.a.named("B"), bc.b.named("C"))
         val d = bc.midpoint
@@ -634,7 +689,7 @@ object Elements {
     /** I.46. On a given straight line to describe a square, on the left of `a`→`b` when [side] is +1. */
     fun prop46(ab: Segment2, side: Int = 1): Construction<Quadrilateral2> {
         val (a, b) = ab
-        val s = Builder()
+        val s = Proof()
         s.step("Let AB be the given straight line.", ab.drawn(Byrne.BLACK), a.named("A"), b.named("B"))
         val up = s.by { prop11(ab, a, side) }
         val circle = Circle2(a, ab.length)
@@ -654,7 +709,7 @@ object Elements {
 
     /** III.1. To find the centre of a given circle (drawn, so its centre is not consulted). */
     fun book3prop1(circle: Circle2): Construction<Point2> {
-        val s = Builder()
+        val s = Proof()
         val a = circle.at(0.4); val b = circle.at(2.3)
         s.step("Let ABC be the given circle, and draw through it any straight line AB.", circle.drawn(Byrne.BLACK), Segment2(a, b).drawn(Byrne.BLUE), a.named("A"), b.named("B"))
         val d = s.by { prop10(Segment2(a, b)) }
@@ -669,7 +724,7 @@ object Elements {
 
     /** IV.4. In a given triangle to inscribe a circle. */
     fun book4prop4(t: Triangle2): Construction<Circle2> {
-        val s = Builder()
+        val s = Proof()
         s.step("Let ABC be the given triangle.", *t.sides.map { it.drawn(Byrne.BLACK) }.toTypedArray(), t.a.named("A"), t.b.named("B"), t.c.named("C"))
         val atB = s.by { prop9(t.b, t.a, t.c) }
         val atC = s.by { prop9(t.c, t.a, t.b) }
@@ -684,7 +739,7 @@ object Elements {
 
     /** IV.5. About a given triangle to circumscribe a circle. */
     fun book4prop5(t: Triangle2): Construction<Circle2> {
-        val s = Builder()
+        val s = Proof()
         s.step("Let ABC be the given triangle.", *t.sides.map { it.drawn(Byrne.BLACK) }.toTypedArray(), t.a.named("A"), t.b.named("B"), t.c.named("C"))
         val d = s.by { prop10(Segment2(t.a, t.b)) }
         val e = s.by { prop10(Segment2(t.a, t.c)) }
@@ -705,7 +760,7 @@ object Elements {
      * to end, meeting at [b]. The result BD has BD² = AB · BC.
      */
     fun book6prop13(ac: Segment2, b: Point2): Construction<Segment2> {
-        val s = Builder()
+        val s = Proof()
         s.step("Let AB and BC be the two given straight lines, placed in a straight line.", Segment2(ac.a, b).drawn(Byrne.RED), Segment2(b, ac.b).drawn(Byrne.BLUE), ac.a.named("A"), b.named("B"), ac.b.named("C"))
         val centre = s.by { prop10(ac) }
         val semicircle = Arc2(centre, centre.dist(ac.a), (ac.b - centre).angle, Math.PI)
@@ -727,7 +782,7 @@ object Elements {
      */
     fun prop47(t: Triangle2): Construction<Triple<Quadrilateral2, Quadrilateral2, Quadrilateral2>> {
         val (a, b, c) = t
-        val s = Builder()
+        val s = Proof()
         s.step("Let ABC be a right-angled triangle with the right angle at A.", *t.sides.map { it.drawn(Byrne.BLACK) }.toTypedArray(), a.named("A"), b.named("B"), c.named("C"))
         val onBC = s.by { prop46(Segment2(b, c), -Line2.through(b, c).side(a)) }
         val onBA = s.by { prop46(Segment2(b, a), -Line2.through(b, a).side(c)) }
@@ -765,7 +820,7 @@ object Elements {
      */
     fun book2prop5(ab: Segment2, side: Int = 1): Construction<Polygon2> {
         val (a, b) = ab
-        val s = Builder()
+        val s = Proof()
         s.step("Let AB be the given straight line.", ab.drawn(Byrne.BLACK), a.named("A"), b.named("B"))
         val c = s.by { prop10(ab) }
         val d = c.lerp(b, 0.4)
@@ -805,7 +860,7 @@ object Elements {
      */
     fun book2prop6(ab: Segment2, side: Int = 1): Construction<Polygon2> {
         val (a, b) = ab
-        val s = Builder()
+        val s = Proof()
         s.step("Let AB be the given straight line.", ab.drawn(Byrne.BLACK), a.named("A"), b.named("B"))
         val c = s.by { prop10(ab) }
         val d = s.pick(meet(Ray2(b, b - a), Circle2(b, ab.length * 0.35), "II.6"))
@@ -845,7 +900,7 @@ object Elements {
      */
     fun book2prop11(ab: Segment2, side: Int = 1): Construction<Point2> {
         val (a, b) = ab
-        val s = Builder()
+        val s = Proof()
         s.step("Let AB be the given straight line.", ab.drawn(Byrne.BLACK), a.named("A"), b.named("B"))
         val sq = s.by { prop46(ab, side) }
         val c = sq.d; val d = sq.c
@@ -875,7 +930,7 @@ object Elements {
      */
     fun book2prop14(rect: Quadrilateral2): Construction<Quadrilateral2> {
         val b = rect.a; val e = rect.b; val d = rect.c; val c = rect.d
-        val s = Builder()
+        val s = Proof()
         s.step(
             "Let BEDC be the rectangle equal to the given rectilineal figure (I.45).",
             rect.polygon.drawn(Byrne.RED, Role.AREA), *rect.sides.map { it.drawn(Byrne.BLACK) }.toTypedArray(),
@@ -906,7 +961,7 @@ object Elements {
     /** III.17. From a given point [a] to draw a straight line touching a given circle. */
     fun book3prop17(circle: Circle2, a: Point2): Construction<Segment2> {
         val e = circle.center
-        val s = Builder()
+        val s = Proof()
         require(a !in circle) { "III.17: the point is inside the circle" }
         s.step("Let BCD be the given circle, E its centre, and A the given point.", circle.drawn(Byrne.BLACK), e.named("E"), a.named("A"))
         val d = s.pick(meet(Segment2(a, e), circle, "III.17"))
@@ -934,7 +989,7 @@ object Elements {
      */
     fun book4prop10(ab: Segment2): Construction<Triangle2> {
         val (a, b) = ab
-        val s = Builder()
+        val s = Proof()
         s.step("Let AB be any straight line.", ab.drawn(Byrne.BLACK), a.named("A"), b.named("B"))
         val c = s.by { book2prop11(ab) }
         s.step("Cut AB at C so that the rectangle AB·BC equals the square on AC (II.11).", c.named("C"), Segment2(a, c).drawn(Byrne.RED))
@@ -957,7 +1012,7 @@ object Elements {
      */
     fun book4prop11(circle: Circle2, at: Double = -PI / 2): Construction<Polygon2> {
         val o = circle.center; val r = circle.radius
-        val s = Builder()
+        val s = Proof()
         val a = circle.at(at)
         s.step("Let ABCDE be the given circle.", circle.drawn(Byrne.BLACK), a.named("A"))
         val gt = s.by { book4prop10(Segment2(o + Point2(-2.5 * r, -0.95 * r), o + Point2(-2.5 * r, 0.95 * r))) }
@@ -993,7 +1048,7 @@ object Elements {
     /** IV.15. In a given circle to inscribe an equilateral and equiangular hexagon, a corner at angle [at]. */
     fun book4prop15(circle: Circle2, at: Double = -PI / 2): Construction<Polygon2> {
         val g = circle.center
-        val s = Builder()
+        val s = Proof()
         val a = circle.at(at)
         s.step("Let ABCDEF be the given circle, and G its centre.", circle.drawn(Byrne.BLACK), g.named("G"), a.named("A"))
         val d = far(meet(Line2.through(a, g), circle, "IV.15"), a)
@@ -1016,7 +1071,7 @@ object Elements {
     /** IV.16. In a given circle to inscribe a fifteen-angled figure, equilateral and equiangular. */
     fun book4prop16(circle: Circle2, at: Double = -PI / 2): Construction<Polygon2> {
         val o = circle.center
-        val s = Builder()
+        val s = Proof()
         val a = circle.at(at)
         s.step("Let ABCD be the given circle.", circle.drawn(Byrne.BLACK), a.named("A"))
         val hexagon = s.by { book4prop15(circle, at) }.points
@@ -1056,7 +1111,7 @@ object Elements {
     fun book6prop9(ab: Segment2, parts: Int = 3): Construction<Segment2> {
         require(parts >= 2) { "VI.9: cut off at least a half" }
         val (a, b) = ab
-        val s = Builder()
+        val s = Proof()
         s.step("Let AB be the given straight line.", ab.drawn(Byrne.BLACK), a.named("A"), b.named("B"))
         val dir = ab.direction.rotated(-PI / 6).normalized()
         val unit = ab.length * 0.9 / parts
@@ -1091,7 +1146,7 @@ object Elements {
      */
     fun book6prop10(ab: Segment2, ac: Segment2, cuts: List<Point2>): Construction<List<Point2>> {
         val a = ab.a; val b = ab.b; val c = ac.b
-        val s = Builder()
+        val s = Proof()
         val colors = listOf(Byrne.RED, Byrne.YELLOW, Byrne.BLUE, Byrne.BLACK)
         val along = (listOf(a) + cuts + c)
         s.step(
@@ -1118,7 +1173,7 @@ object Elements {
      */
     fun book6prop11(ab: Segment2, ac: Segment2): Construction<Segment2> {
         val a = ab.a; val b = ab.b; val c = ac.b
-        val s = Builder()
+        val s = Proof()
         s.step("Let AB and AC be the two given straight lines, set at any angle.", ab.drawn(Byrne.RED), ac.drawn(Byrne.BLUE), a.named("A"), b.named("B"), c.named("C"))
         val circle = Circle2(b, ac.length)
         val d = s.pick(meet(Ray2(b, b - a), circle, "VI.11"))
@@ -1141,7 +1196,7 @@ object Elements {
      */
     fun book6prop12(first: Segment2, second: Segment2, third: Segment2, at: Point2 = Point2.ORIGIN): Construction<Segment2> {
         val d = at
-        val s = Builder()
+        val s = Proof()
         s.step(
             "Let A, B, C be the three given straight lines, and DE, DF two straight lines from D at any angle.",
             first.drawn(Byrne.RED), second.drawn(Byrne.BLUE), third.drawn(Byrne.BLACK), d.named("D"),
@@ -1178,7 +1233,7 @@ object Elements {
      */
     fun book6prop30(ab: Segment2, side: Int = 1): Construction<Point2> {
         val (a, b) = ab
-        val s = Builder()
+        val s = Proof()
         s.step("Let AB be the given straight line.", ab.drawn(Byrne.BLACK), a.named("A"), b.named("B"))
         val sq = s.by { prop46(ab, side) }
         val f = sq.c; val g = sq.d
