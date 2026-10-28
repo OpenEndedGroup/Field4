@@ -648,7 +648,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**34764 public symbols across 1583 source files**, 18239 of them (52%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34765 public symbols across 1583 source files**, 18240 of them (52%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -676,7 +676,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 77 | 2092 | 1013 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 584 | 397 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 123 | 3096 | 1519 (49%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 234 | 3177 | 1156 (36%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 234 | 3178 | 1157 (36%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 110 | 2510 | 852 (33%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 | [Output](output.md) | 1 | 25 | 17 (68%) |  |
@@ -986,7 +986,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Devices.kt](audio.md#devices-kt) | Audio | 36 | 18 | Optional compute devices for Steam Audio: `EmbreeDevice` for the Embree ray tracer, `OpenClDeviceList` and `OpenClDevice` for GPU work, and the `RadeonRaysDevice` and `TrueAudioNextDevice` built on OpenCL. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>lifecycle/<wbr></small> [di.kt](workspace.md#di-kt) | Workspace | 11 | 3 | Startup phases: functions annotated `RunsAt` are found by a classpath scan and called by `runAll` at a named phase. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>diag/<wbr></small> [Diagnostics.kt](languages.md#diagnostics-kt) | Languages | 13 | 13 | Where a FieldML compile says something is wrong, and how badly. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [dir.kt](workspace.md#dir-kt) | Workspace | 409 | 19 | The server side of the workspace browser: listing, searching, tagging and copying the documents under a workspace folder. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [dir.kt](workspace.md#dir-kt) | Workspace | 410 | 20 | The server side of the workspace browser: listing, searching, tagging and copying the documents under a workspace folder. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [DirectEffect.kt](audio.md#directeffect-kt) | Audio | 22 | 17 | Rendering the direct sound path: distance attenuation, air absorption, directivity, occlusion and transmission. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>lighting/<wbr></small> [DirectLighting.kt](graphics.md#directlighting-kt) | Graphics | 25 | 7 | Direct lighting from one-sided rectangular area emitters, shaded over a raster G-buffer. | [Direct lighting](../direct_lighting.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>lighting/<wbr></small> [DirectLightingDemo.kt](graphics.md#directlightingdemo-kt) | Graphics | 13 | 1 | A small scene for trying `DirectLighting`: a floor, three cubes and a moving area light. |  |
