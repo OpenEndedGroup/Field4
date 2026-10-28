@@ -200,9 +200,9 @@ class MegaTextureLayout(
     fun encodeAbsent(averageColor: Int): IntArray = intArrayOf(0, 0, averageColor, 0)
 
     /**
-     * Read an entry back. The inverse of [encode], and the Kotlin twin of what the GLSL does —
-     * which is the point: a test can assert that a page put in a slot comes back out as the same
-     * page, in the same layer, with the same aspect, without a GPU.
+     * Read an entry back. The inverse of [encode], and the Kotlin twin of what the GLSL does, so a
+     * test can assert that a page put in a slot comes back out as the same page, in the same layer,
+     * with the same aspect, without a GPU.
      */
     fun decode(entry: IntArray, at: Int = 0): Entry {
         val x = entry[at]

@@ -200,8 +200,8 @@ object Options {
     /**
      * Choose the Vulkan loader and driver. Must run before LWJGL first loads Vulkan, after which
      * `VULKAN_LIBRARY_NAME` is ignored. `Window` and `Instance` call it themselves, because an
-     * entrypoint that forgot to — seven GPU smoke tests on 2026-09-29 — silently got LWJGL's
-     * bundled MoltenVK: no loader, no validation layers, no KosmicKrisp. Repeat calls do nothing.
+     * entrypoint that does not silently gets LWJGL's bundled MoltenVK: no loader, no validation
+     * layers, no KosmicKrisp. Repeat calls do nothing.
      */
     @Synchronized
     fun doVulkanSDK() {
