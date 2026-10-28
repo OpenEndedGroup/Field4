@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-320 source file(s), 7827 public symbol(s), 4284 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+321 source file(s), 7883 public symbol(s), 4314 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1413,6 +1413,140 @@ Where `field_principal_curves` is, and whether it is there. Field runs without i
 | <a id="principalcurvesnative-kt--principalcurveslibrary--isavailable"></a>[<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">isAvailable</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/geometry/curves/principal/PrincipalCurvesNative/#L83) |  |
 | <a id="principalcurvesnative-kt--principalcurveslibrary--how-to-build"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">HOW&#95;TO&#95;BUILD</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/curves/principal/PrincipalCurvesNative/#L85) |  |
 | <a id="principalcurvesnative-kt--principalcurveslibrary--describe"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/curves/principal/PrincipalCurvesNative/#L89) |  |
+
+## Euclid.kt { #euclid-kt }
+
+`src/jvmMain/kotlin/afield/geometry/euclid/Euclid.kt` — [read the source](source/jvmMain/afield/geometry/euclid/Euclid/)
+
+### Top-level functions { #euclid-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="euclid-kt--point2"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">point2</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L103) | A [`Point2`](graphics.md#euclid-kt-point2) from any numbers. |
+| <a id="euclid-kt--topoint2"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Vec2</span><span class="p">.</span><span class="nf">toPoint2</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L105) |  |
+
+### Euclid { #euclid-kt-euclid }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">Euclid</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L46)
+
+Tolerance settings shared by every Euclid computation.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="euclid-kt--euclid--epsilon"></a>[<code class="highlight"><span class="k">var</span> <span class="n">epsilon</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L48) | Relative distance tolerance; scaled by the magnitude of the inputs of each computation. |
+
+### Point2 { #euclid-kt-point2 }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Point2</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Shape2</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L54)
+
+A point (or vector) in the plane.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="euclid-kt--point2--plus"></a>[<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">plus</span><span class="p">(</span><span class="n">o</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L55) |  |
+| <a id="euclid-kt--point2--minus"></a>[<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">minus</span><span class="p">(</span><span class="n">o</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L56) |  |
+| <a id="euclid-kt--point2--times"></a>[<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">times</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L57) |  |
+| <a id="euclid-kt--point2--div"></a>[<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">div</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L58) |  |
+| <a id="euclid-kt--point2--unaryminus"></a>[<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">unaryMinus</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L59) |  |
+| <a id="euclid-kt--point2--dot"></a>[<code class="highlight"><span class="k">infix</span> <span class="k">fun</span> <span class="nf">dot</span><span class="p">(</span><span class="n">o</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L61) |  |
+| <a id="euclid-kt--point2--cross"></a>[<code class="highlight"><span class="k">infix</span> <span class="k">fun</span> <span class="nf">cross</span><span class="p">(</span><span class="n">o</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L64) | The z component of the 3D cross product: positive when `o` is counter-clockwise of this. |
+| <a id="euclid-kt--point2--normalized"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">normalized</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Point2</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L76) | Unit vector in this direction; the zero vector stays zero. |
+| <a id="euclid-kt--point2--rotated"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">rotated</span><span class="p">(</span><span class="n">radians</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">about</span><span class="p">:</span> <span class="nc">Point2</span> <span class="o">=</span> <span class="nc">ORIGIN</span><span class="p">)</span><span class="p">:</span> <span class="nc">Point2</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L78) |  |
+| <a id="euclid-kt--point2--lerp"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">lerp</span><span class="p">(</span><span class="n">o</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L84) |  |
+| <a id="euclid-kt--point2--midpoint"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">midpoint</span><span class="p">(</span><span class="n">o</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L86) |  |
+| <a id="euclid-kt--point2--tovec2"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">toVec2</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L88) |  |
+| <a id="euclid-kt--point2--tofline"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toFLine</span><span class="p">(</span><span class="n">extent</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L90) |  |
+
+### Shape2 { #euclid-kt-shape2 }
+
+[<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">Shape2</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L111)
+
+Anything Euclid can intersect and measure against anything else: [`Point2`](graphics.md#euclid-kt-point2), [`Line2`](graphics.md#euclid-kt-line2), [`Ray2`](graphics.md#euclid-kt-ray2), [`Segment2`](graphics.md#euclid-kt-segment2), [`Circle2`](graphics.md#euclid-kt-circle2) and [`Arc2`](graphics.md#euclid-kt-arc2).
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="euclid-kt--shape2--intersect"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">intersect</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Shape2</span><span class="p">)</span><span class="p">:</span> <span class="nc">Intersection2</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L113) | Where this meets `other`: crossing and touching points, plus any shared stretch. |
+| <a id="euclid-kt--shape2--intersects"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">intersects</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Shape2</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L116) | True when this and `other` share at least one point. |
+| <a id="euclid-kt--shape2--closestpoint"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">closestPoint</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">)</span><span class="p">:</span> <span class="nc">Point2</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L119) | The point of this shape nearest `p`. |
+| <a id="euclid-kt--shape2--closestpoints"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">closestPoints</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Shape2</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Point2</span><span class="p">,</span> <span class="nc">Point2</span><span class="p">&gt;</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L122) | A nearest pair of points, the first on this shape and the second on `other`. |
+| <a id="euclid-kt--shape2--distanceto"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">distanceTo</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Shape2</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L125) | The shortest distance between this and `other`; zero when they meet. |
+| <a id="euclid-kt--shape2--tofline"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">toFLine</span><span class="p">(</span><span class="n">extent</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1000.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L128) | An FLine drawing of this shape; unbounded lines and rays are drawn `extent` long each way. |
+
+### Line2 { #euclid-kt-line2 }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Line2</span><span class="p">(</span><span class="k">val</span> <span class="n">point</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">,</span> <span class="k">val</span> <span class="n">direction</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Shape2</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L132)
+
+The infinite line through [`point`](simulation.md#model-kt--point) in `direction` (any nonzero length).
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="euclid-kt--line2--at"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">at</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L133) |  |
+| <a id="euclid-kt--line2--signeddistance"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">signedDistance</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L136) | Distance to `p`, positive on the left of `direction` (counter-clockwise side). |
+| <a id="euclid-kt--line2--side"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">side</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L139) | +1 left of the line, -1 right, 0 on it (within tolerance). |
+| <a id="euclid-kt--line2--project"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">project</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L145) | The foot of the perpendicular from `p`; same as [`closestPoint`](graphics.md#euclid-kt--shape2--closestpoint). |
+| <a id="euclid-kt--line2--reflect"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">reflect</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L148) | `p` mirrored across this line. |
+| <a id="euclid-kt--line2--perpendicularthrough"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">perpendicularThrough</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L150) |  |
+| <a id="euclid-kt--line2--parallelthrough"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">parallelThrough</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L151) |  |
+| <a id="euclid-kt--line2--offset"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">offset</span><span class="p">(</span><span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L154) | The line moved `distance` to its left (negative moves it right). |
+| <a id="euclid-kt--line2--tofline"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toFLine</span><span class="p">(</span><span class="n">extent</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L156) |  |
+
+### Ray2 { #euclid-kt-ray2 }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Ray2</span><span class="p">(</span><span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">,</span> <span class="k">val</span> <span class="n">direction</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Shape2</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L186)
+
+The half-line from `origin` in `direction`.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="euclid-kt--ray2--at"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">at</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L187) |  |
+| <a id="euclid-kt--ray2--tofline"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toFLine</span><span class="p">(</span><span class="n">extent</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L190) |  |
+
+### Segment2 { #euclid-kt-segment2 }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Segment2</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Shape2</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L197)
+
+The finite segment from `a` to `b`.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="euclid-kt--segment2--at"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">at</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L198) |  |
+| <a id="euclid-kt--segment2--reversed"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">reversed</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L204) |  |
+| <a id="euclid-kt--segment2--tofline"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toFLine</span><span class="p">(</span><span class="n">extent</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L206) |  |
+
+### Circle2 { #euclid-kt-circle2 }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Circle2</span><span class="p">(</span><span class="k">val</span> <span class="n">center</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">,</span> <span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Shape2</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L210)
+
+The circle of `radius` about `center`.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="euclid-kt--circle2--at"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">at</span><span class="p">(</span><span class="n">angle</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L211) |  |
+| <a id="euclid-kt--circle2--contains"></a>[<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">contains</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L216) | True when `p` is inside or on the circle. |
+| <a id="euclid-kt--circle2--tangentpointsfrom"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">tangentPointsFrom</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Point2</span><span class="p">&gt;</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L219) | The points where the two tangent lines from `p` touch this circle (one if `p` is on it). |
+| <a id="euclid-kt--circle2--tangentlinesfrom"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">tangentLinesFrom</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Line2</span><span class="p">&gt;</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L230) | The tangent lines from `p`; the single tangent at `p` when it lies on the circle. |
+| <a id="euclid-kt--circle2--tangentat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">tangentAt</span><span class="p">(</span><span class="n">angle</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L235) | The tangent line at `angle`. |
+| <a id="euclid-kt--circle2--commontangents"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">commonTangents</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Circle2</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Segment2</span><span class="p">&gt;</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L242) | Every line tangent to both circles (up to four: two outer, two inner), each as the segment from its touching point on this circle to its touching point on `other`. Where the circles touch, the shared tangent there comes back as a zero-length segment. |
+| <a id="euclid-kt--circle2--tofline"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toFLine</span><span class="p">(</span><span class="n">extent</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L261) |  |
+
+### Arc2 { #euclid-kt-arc2 }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Arc2</span><span class="p">(</span><span class="k">val</span> <span class="n">center</span><span class="p">:</span> <span class="nc">Point2</span><span class="p">,</span> <span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">sweep</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Shape2</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L312)
+
+The part of the circle about `center` of `radius` from angle `start` through signed `sweep` (radians, positive counter-clockwise). A sweep of 2π or more is the whole circle.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="euclid-kt--arc2--at"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">at</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L319) |  |
+| <a id="euclid-kt--arc2--reversed"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">reversed</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L320) |  |
+| <a id="euclid-kt--arc2--containsangle"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">containsAngle</span><span class="p">(</span><span class="n">angle</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L323) | True when the direction `angle` (from `center`) falls within the arc. |
+| <a id="euclid-kt--arc2--tofline"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toFLine</span><span class="p">(</span><span class="n">extent</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L325) |  |
+
+### Intersection2 { #euclid-kt-intersection2 }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Intersection2</span><span class="p">(</span><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Point2</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">overlaps</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Shape2</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/euclid/Euclid/#L376)
+
+The result of intersecting two shapes: isolated crossing or touching `points`, and any stretch the shapes share in `overlaps` (a [`Segment2`](graphics.md#euclid-kt-segment2), [`Ray2`](graphics.md#euclid-kt-ray2), [`Line2`](graphics.md#euclid-kt-line2), [`Arc2`](graphics.md#euclid-kt-arc2) or [`Circle2`](graphics.md#euclid-kt-circle2)).
 
 ## GeometryBuilder.kt { #geometrybuilder-kt }
 
