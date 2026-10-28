@@ -79,7 +79,7 @@ class Hatcher(
 
     /** Hatch everything; returns [hatching]. */
     fun finish(): List<FLine> {
-        while (grow(256)) Unit
+        while (grow(256)) {}
         return hatching
     }
 
