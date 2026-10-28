@@ -6464,6 +6464,11 @@ and that Field's Kotlin fork (and, for the last group, Field's build of the With
    Y, with Z1 to Z4 covering the name-based forms that reach the same path.
 5. **A statement-level call to a function with no `callableId`**: a local function, or a member
    of a local or anonymous class, which Wither's IR pass has to tolerate. Cases LF1 to LF9.
+6. **A class or object that reaches the box receiver**, such as
+   `class C { fun g() { println("hi") } }` -- a bare `println` or `display` is a member of the box.
+   The REPL lowering makes no class capturing, so the read had no snippet `this` and crashed with
+   "Unexpected script transformation state"; the fork now reads the snippet's own instance from the
+   REPL state. Cases CR1 to CR6; CR6 constructs the class from a later snippet.
 
 One case is still open: a declaration from an earlier snippet can shadow a later one of the
 same name, and the test records that behaviour rather than asserting a fix.
@@ -6476,17 +6481,17 @@ launched box runs through.
 
 ### ReplSnippetDeclarationsSmokeTest { #replsnippetdeclarationssmoketest-kt-replsnippetdeclarationssmoketest }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">ReplSnippetDeclarationsSmokeTest</span></code>](source/jvmMain/afield/runtime/ReplSnippetDeclarationsSmokeTest/#L83)
+[<code class="highlight"><span class="k">object</span> <span class="nc">ReplSnippetDeclarationsSmokeTest</span></code>](source/jvmMain/afield/runtime/ReplSnippetDeclarationsSmokeTest/#L88)
 
 Runs every top-level declaration case on a fresh engine; `main` exits non-zero if any case failed.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="replsnippetdeclarationssmoketest-kt--replsnippetdeclarationssmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/ReplSnippetDeclarationsSmokeTest/#L244) |  |
-| <a id="replsnippetdeclarationssmoketest-kt--replsnippetdeclarationssmoketest--providedelegateprovider"></a>[<code class="highlight"><span class="k">class</span> <span class="nc">ProvideDelegateProvider</span></code>](source/jvmMain/afield/runtime/ReplSnippetDeclarationsSmokeTest/#L630) | Needs `provideDelegate`, the shape `keyCamera()` / `orbitControls()` have. |
-| <a id="replsnippetdeclarationssmoketest-kt--replsnippetdeclarationssmoketest--plaindelegate"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">PlainDelegate</span><span class="p">(</span><span class="k">private</span> <span class="k">var</span> <span class="n">v</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">7</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/ReplSnippetDeclarationsSmokeTest/#L640) | The same value through a plain delegate — no `provideDelegate`. |
-| <a id="replsnippetdeclarationssmoketest-kt--replsnippetdeclarationssmoketest--providedelegateprovider-2"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">provideDelegateProvider</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/ReplSnippetDeclarationsSmokeTest/#L645) |  |
-| <a id="replsnippetdeclarationssmoketest-kt--replsnippetdeclarationssmoketest--plaindelegate-2"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">plainDelegate</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/ReplSnippetDeclarationsSmokeTest/#L647) |  |
+| <a id="replsnippetdeclarationssmoketest-kt--replsnippetdeclarationssmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/ReplSnippetDeclarationsSmokeTest/#L249) |  |
+| <a id="replsnippetdeclarationssmoketest-kt--replsnippetdeclarationssmoketest--providedelegateprovider"></a>[<code class="highlight"><span class="k">class</span> <span class="nc">ProvideDelegateProvider</span></code>](source/jvmMain/afield/runtime/ReplSnippetDeclarationsSmokeTest/#L650) | Needs `provideDelegate`, the shape `keyCamera()` / `orbitControls()` have. |
+| <a id="replsnippetdeclarationssmoketest-kt--replsnippetdeclarationssmoketest--plaindelegate"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">PlainDelegate</span><span class="p">(</span><span class="k">private</span> <span class="k">var</span> <span class="n">v</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">7</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/ReplSnippetDeclarationsSmokeTest/#L660) | The same value through a plain delegate — no `provideDelegate`. |
+| <a id="replsnippetdeclarationssmoketest-kt--replsnippetdeclarationssmoketest--providedelegateprovider-2"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">provideDelegateProvider</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/ReplSnippetDeclarationsSmokeTest/#L665) |  |
+| <a id="replsnippetdeclarationssmoketest-kt--replsnippetdeclarationssmoketest--plaindelegate-2"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">plainDelegate</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/ReplSnippetDeclarationsSmokeTest/#L667) |  |
 
 ## ReplVariableRebindingSmokeTest.kt { #replvariablerebindingsmoketest-kt }
 
