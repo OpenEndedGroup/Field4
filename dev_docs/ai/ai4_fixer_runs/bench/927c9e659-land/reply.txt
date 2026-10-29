@@ -1,0 +1,3 @@
+Changed only the opening fence at `public/docs/three_output.md:263` to the exact treatment required by the test; snippet content is unchanged. `check_box_idioms.py` passes; the Kotlin fence test was verified by source inspection only because Gradle is unavailable.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "claude/madp-geometry-d1fb28", "reason": "The branch added a bare Kotlin fence where the published-docs check requires diffstatic treatment, corrected with a one-line edit."}

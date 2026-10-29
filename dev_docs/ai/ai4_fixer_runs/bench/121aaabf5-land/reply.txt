@@ -1,0 +1,3 @@
+Fixed the stacked KDoc in `StdlibReferenceGenerator.kt` by moving the intervening declarations; the Python regression test failed before the fix and passes afterward. Gradle verification remains unavailable in this checkout.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "docs/kdoc-symbol-links-2", "reason": "The branch inserted declarations between TypeAnchors and its KDoc; relocating them restores correct attachment, verified by a failing-then-passing Python regression test."}

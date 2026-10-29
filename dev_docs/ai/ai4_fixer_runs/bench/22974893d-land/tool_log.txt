@@ -1,0 +1,17 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":180,"path":"src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":180,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**/*","ignoreCase":false,"maxMatches":45,"query":"KDocAttachment","regex":false}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":30}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":221}
+[field] ok  RepoReadFileRequest {"endLine":340,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":195}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":30,"query":"kdoc","regex":false}
+[field] ok  RepoRunCommandRequest {"args":["871f8f497614e163fc78de2bb0e41f9633e44cda","--","src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt"],"command":"git-diff","timeoutSec":30}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":60,"query":"KDocAttachment|kdoc_attachment|parseDeclaration","regex":true}
+[field] ok  RepoPatchFileRequest {"newText":" * short query-tail to neighbour-head judgement rather than another aligned view.\n *\n * @param placeControlIds One control id per neighbour, for a
+[field] ok  RepoPatchFileRequest {"newText":"","oldText":"    /** One control id per neighbour, for a **place** button on its card; [showCorpusMicroscope] supplies them. */\n","path":"src/jvmMa
+[field] ok  RepoReadFileRequest {"endLine":70,"path":"src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt","startLine":42}
+[field] ok  RepoRunCommandRequest {"args":["--","src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt"],"command":"git-diff","timeoutSec":30}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/**/KDocExtractor.kt","ignoreCase":false,"maxMatches":15,"query":"fun |startsWith(\"fun","regex":false}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":30}
+[field] model=openai/gpt-6.1-sol rounds=7/40 wall=42s tokens in=292083 out=1153 cacheRead=254404 wrote=['src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt', 'src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt'] ran=['git-status  -> 0', 'git-diff 871f8f497614e163fc78de2bb0e41f9633e44cda -- src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt -> 0', 'git-diff -- src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt -> 0', 'git-status  -> 0'] verdict=unchecked error=-

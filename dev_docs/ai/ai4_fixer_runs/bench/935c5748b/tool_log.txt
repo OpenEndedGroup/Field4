@@ -1,0 +1,34 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/app/server/Server.kt","ignoreCase":false,"maxMatches":20,"query":"stacksl-regions","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":250,"path":"dev_docs/server_surface_inventory.md","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"**/ServerSurfaceLedgerTest.kt"}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":30,"query":"server_surface","regex":false}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":3090,"path":"src/jvmMain/kotlin/afield/app/server/Server.kt","startLine":2980}
+[field] ok  RepoReadFileRequest {"endLine":500,"path":"dev_docs/server_surface_inventory.md","startLine":280}
+[field] ok  RepoReadFileRequest {"endLine":240,"path":"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*.py"}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":400}
+[field] ok  RepoReadFileRequest {"endLine":460,"path":"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt","startLine":255}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/lang/stacksl/study/EmbeddedStackSL.kt","ignoreCase":false,"maxMatches":20,"query":"fun ","regex":false}
+[field] ok  RepoRunCommandRequest {"args":["e70ec3e7a0df50a915ddc6bf28121f930a719418","--","src/jvmMain/kotlin/afield/app/server/Server.kt"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":281,"path":"dev_docs/server_surface_inventory.md","startLine":268}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":false,"maxMatches":25,"query":"ServerSurfaceLedgerTest","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":74,"path":"src/jvmMain/kotlin/afield/lang/stacksl/study/EmbeddedStackSL.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":590,"path":"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt","startLine":510}
+[field] ok  RepoReadFileRequest {"endLine":110,"path":"src/jvmTest/kotlin/afield/app/server/KotlinRouteScan.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":380,"path":"tools/check_staged_generated_artifacts.py","startLine":330}
+[field] ok  RepoSearchRequest {"glob":"src/jvmTest/kotlin/afield/app/server/*.kt","ignoreCase":false,"maxMatches":20,"query":"fun serverKotlinFiles|thePerFileCommandCountsOnThePageMatchTheCo
+[field] ok  RepoReadFileRequest {"endLine":178,"path":"src/jvmTest/kotlin/afield/app/server/KotlinRouteScan.kt","startLine":148}
+[field] ok  RepoReadFileRequest {"endLine":719,"path":"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt","startLine":650}
+[field] ok  RunToolProgramRequest {"code":"const found=tools.RepoSearch({glob:'src/jvmMain/kotlin/afield/**/*.kt',ignoreCase:false,maxMatches:500,query:'(?<![A-Za-z0-9_])handlers\\\\[\\\\s*\"([A
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/**/*.kt","ignoreCase":false,"maxMatches":500,"query":"(?<![A-Za-z0-9_])handlers\\[\\s*\"([A-Za-z0-9_.:-]+)\"\\s*]","regex":tr
+[field] ok  RepoReadFileRequest {"path":"dev_docs/server_surface_inventory.md","startLine":1,"endLine":670}
+[field] ok  RepoPatchFileRequest {"newText":"| `Server.kt` | 53 |","oldText":"| `Server.kt` | 52 |","path":"dev_docs/server_surface_inventory.md","replaceAll":false}
+[field] ok  RepoPatchFileRequest {"newText":"| `stacksl-regions` | `Server.kt` |\n| `stop-all` | `executing.kt` |","oldText":"| `stop-all` | `executing.kt` |","path":"dev_docs/server_surface_in
+[field] ok  RepoPatchFileRequest {"newText":"`stacksl-regions` uses the existing `/ws` boundary, like `symbol-context`: it scans client-supplied\ncode and the box's shader-slot names for editor
+[field] ok  RunToolProgramRequest {"code":"const found=tools.RepoSearch({glob:'src/jvmMain/kotlin/afield/**/*.kt',ignoreCase:false,maxMatches:500,query:'(?<![A-Za-z0-9_])handlers\\\\[\\\\s*\"([A
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/**/*.kt","ignoreCase":false,"maxMatches":500,"query":"(?<![A-Za-z0-9_])handlers\\[\\s*\"([A-Za-z0-9_.:-]+)\"\\s*]","regex":tr
+[field] ok  RepoReadFileRequest {"path":"dev_docs/server_surface_inventory.md","startLine":1,"endLine":680}
+[field] ok  RepoRunCommandRequest {"args":["--","dev_docs/server_surface_inventory.md"],"command":"git-diff","timeoutSec":10}
+[field] model=openai/gpt-6.1-sol rounds=13/40 wall=83s tokens in=647134 out=2979 cacheRead=596710 wrote=['dev_docs/server_surface_inventory.md', 'dev_docs/server_surface_inventory.md', 'dev_docs/server_surface_inventory.md'] ran=['git-status  -> 0', 'git-diff e70ec3e7a0df50a915ddc6bf28121f930a719418 -- src/jvmMain/kotlin/afield/app/server/Server.kt -> 0', 'git-diff -- dev_docs/server_surface_inventory.md -> 0'] verdict=unchecked error=-

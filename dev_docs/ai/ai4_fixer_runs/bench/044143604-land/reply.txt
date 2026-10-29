@@ -1,0 +1,3 @@
+Split the flagged `@Test` onto its own line in `StereoTest.kt`; source inspection confirms this matches the guard’s attachment rules. Gradle is unavailable, and the Python guard-selection test could not start due to `ModuleNotFoundError: tools`, so no passing execution is claimed.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "claude/physical-media-expansion-stages-d589a3", "reason": "The branch placed an annotation and its KDoc-documented test declaration on one line; separating them is the exact mechanical repair prescribed by the guard."}

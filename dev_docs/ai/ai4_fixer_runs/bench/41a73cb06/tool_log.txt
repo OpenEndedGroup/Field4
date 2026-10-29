@@ -1,0 +1,14 @@
+[field] ok  RepoReadFileRequest {"endLine":200,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":140,"path":"public/docs/editing_from_outside.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**/*","ignoreCase":false,"maxMatches":50,"query":"class DocsFenceTreatmentTest","regex":false}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":60,"query":"diffstatic","regex":false}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":240,"path":"src/jvmTest/kotlin/afield/tools/docs/DocsFenceTreatmentTest.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":201}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*fence*"}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":30,"query":"fence treatment|raw fence|published.*fence|DocsFenceTreatment","regex":true}
+[field] ok  RepoPatchFileRequest {"newText":"```diffstatic {data-lang=text}\n","oldText":"```text\n","path":"public/docs/editing_from_outside.md","replaceAll":false}
+[field] ok  RepoReadFileRequest {"endLine":26,"path":"public/docs/editing_from_outside.md","startLine":11}
+[field] ok  RepoRunCommandRequest {"args":["--","public/docs/editing_from_outside.md"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] model=openai/gpt-6.1-sol rounds=5/40 wall=38s tokens in=177793 out=824 cacheRead=145906 wrote=['public/docs/editing_from_outside.md'] ran=['git-status  -> 0', 'git-diff -- public/docs/editing_from_outside.md -> 0', 'git-status  -> 0'] verdict=unchecked error=-

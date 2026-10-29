@@ -1,0 +1,3 @@
+Moved the misplaced parameter KDoc into the function’s `@param` documentation; only one file changed. Source review confirms the mechanical fix, but execution verification was blocked by unavailable Gradle and a Python `tools` import error.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "handoffs/code-20261016-1144", "reason": "The branch placed KDoc above a plain function parameter that the attachment checker cannot parse, so I moved it into the function’s @param documentation."}

@@ -1,0 +1,3 @@
+Replaced the three JSON-builder `put` calls with an equivalent `JsonObject(mapOf(...))`; the ledger’s offending-call regex now finds zero matches in `Server.kt`. JVM verification is unavailable in this replay; the unrelated missing-`simdjson` failures remain untouched.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "nightly/2026-10-22/3-layers-guide", "reason": "The branch introduced JSON-builder calls that collide with route discovery, and the equivalent constructor removes that ambiguity without changing the payload or guard."}

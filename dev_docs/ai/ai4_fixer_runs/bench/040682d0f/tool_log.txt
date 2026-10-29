@@ -1,0 +1,44 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**/*","ignoreCase":false,"maxMatches":40,"query":"PUBLIC_IMPORT_ROOTS","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":240,"path":"src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"tools/*kdoc*"}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":340,"path":"src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt","startLine":120}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt","ignoreCase":false,"maxMatches":20,"query":"importlib","regex":false}
+[field] ok  RepoSearchRequest {"glob":"**/*","ignoreCase":false,"maxMatches":35,"query":"checkKDocAttachment","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":400}
+[field] ok  RepoRunCommandRequest {"args":["dec98aa7b1423d78133280e54805ce402bc112e1","--","src/jvmMain/kotlin"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":240,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*"}
+[field] ok  RepoReadFileRequest {"endLine":315,"path":"src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt","startLine":223}
+[field] ok  RepoReadFileRequest {"endLine":340,"path":"src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt","startLine":260}
+[field] ok  RepoReadFileRequest {"endLine":85,"path":"dev_docs/private_boundary.md","startLine":48}
+[field] ok  RepoReadFileRequest {"endLine":180,"path":"tools/check_module_imports.py","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":375,"path":"src/jvmTest/kotlin/afield/tools/docs/ProseNumeralContractTest.kt","startLine":330}
+[field] ok  RepoReadFileRequest {"endLine":312,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":226}
+[field] ok  RepoReadFileRequest {"endLine":120,"path":"src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt","startLine":70}
+[field] ok  RepoReadFileRequest {"endLine":65,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":75,"path":"tools/check_box_idioms.py","startLine":1}
+[field] ok  RunToolProgramRequest {"code":"const paths = ['src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt','src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt','src/jvmTest/k
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt","startLine":1,"endLine":2000}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt","startLine":1,"endLine":2000}
+[field] ok  RepoReadFileRequest {"path":"src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt","startLine":1,"endLine":2000}
+[field] ok  RepoReadFileRequest {"path":"dev_docs/private_boundary.md","startLine":1,"endLine":2000}
+[field] ok  RunToolProgramRequest {"code":"const g='src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt';\nconst f='src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt';\nfunction 
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt","startLine":1,"endLine":2000}
+[field] ok  RepoPatchFileRequest {"path":"src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt","oldText":"        /**\n         * Upload this instance's buffers and set the push const
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt","startLine":1,"endLine":2000}
+[field] ok  RepoPatchFileRequest {"path":"src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt","oldText":"/**\n * Fits the numeric leaves of [seed] to [target] by Adam descent on the RMSE l
+[field] ok  RepoPatchFileRequest {"path":"src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt","oldText":"The three Python roots are here","newText":"The four Python roots are here","r
+[field] ok  RepoPatchFileRequest {"path":"src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt","oldText":"            \"my\", \"urllib\", \"matplotlib\", \"asyncio\",","newText":"     
+[field] ok  RepoPatchFileRequest {"path":"dev_docs/private_boundary.md","oldText":"**29**<!--count:publicImportRoots-->","newText":"**30**<!--count:publicImportRoots-->","replaceAll":false}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-diff","timeoutSec":10}
+[field] ok  RunToolProgramRequest {"code":"function read(path) {return tools.RepoReadFile({path,startLine:1,endLine:2000}).text.split('\\n').map(l=>l.replace(/^\\d+\\t/,'')).join('\\n');}\nconst
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt","startLine":1,"endLine":2000}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt","startLine":1,"endLine":2000}
+[field] ok  RepoReadFileRequest {"path":"src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt","startLine":1,"endLine":2000}
+[field] ok  RepoReadFileRequest {"path":"dev_docs/private_boundary.md","startLine":1,"endLine":2000}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt","startLine":1,"endLine":2000}
+[field] ok  RepoReadFileRequest {"endLine":2125,"path":"src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt","startLine":2001}
+[field] ok  RepoRunCommandRequest {"args":["--stat"],"command":"git-diff","timeoutSec":10}
+[field] model=openai/gpt-6.1-sol rounds=11/40 wall=82s tokens in=586493 out=3284 cacheRead=525066 wrote=['src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt', 'src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt', 'src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt', 'src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt', 'dev_docs/private_boundary.md'] ran=['git-status  -> 0', 'git-diff dec98aa7b1423d78133280e54805ce402bc112e1 -- src/jvmMain/kotlin -> 0', 'git-diff  -> 0', 'git-diff --stat -> 0'] verdict=unchecked error=-

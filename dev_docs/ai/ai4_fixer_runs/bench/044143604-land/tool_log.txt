@@ -1,0 +1,19 @@
+[field] ok  RepoReadFileRequest {"endLine":200,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":120,"path":"src/jvmTest/kotlin/afield/paint/StereoTest.kt","startLine":55}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":60,"query":"kdoc","regex":false}
+[field] ok  RepoSearchRequest {"glob":"src/**/*.kt","ignoreCase":false,"maxMatches":20,"query":"puts an annotation and the declaration together","regex":false}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":30}
+[field] ok  RepoReadFileRequest {"endLine":320,"path":"src/jvmMain/kotlin/afield/docs/KDocAttachmentGuard.kt","startLine":200}
+[field] ok  RepoListFilesRequest {"glob":"tools/*kdoc*"}
+[field] ok  RepoReadFileRequest {"endLine":540,"path":"AGENTS.md","startLine":360}
+[field] ok  RepoReadFileRequest {"endLine":160,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":80,"query":"attachment","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":90,"path":"tools/test_check_staged_generated_artifacts.py","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/ai/core/completion/KDocExtractor.kt","ignoreCase":false,"maxMatches":20,"query":"startsWith(\"@\")","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":360,"path":"AGENTS.md","startLine":201}
+[field] ERR RepoRunCommandRequest {"args":["tools/test_check_staged_generated_artifacts.py","GeneratedArtifactSelectionTests.test_ordinary_kotlin_source_does_not_become_a_corpus_input"],"command
+[field] ok  RepoPatchFileRequest {"newText":"    @Test\n    fun aStrokeRecedingInDepthRunsOutAtTheSameWorldLengthInBothEyes() {","oldText":"    @Test fun aStrokeRecedingInDepthRunsOutAtTheSameW
+[field] ok  RepoReadFileRequest {"endLine":92,"path":"src/jvmTest/kotlin/afield/paint/StereoTest.kt","startLine":81}
+[field] ok  RepoReadFileRequest {"endLine":145,"path":"src/jvmMain/kotlin/afield/ai/core/completion/KDocExtractor.kt","startLine":96}
+[field] ok  RepoRunCommandRequest {"args":["--","src/jvmTest/kotlin/afield/paint/StereoTest.kt"],"command":"git-diff","timeoutSec":30}
+[field] model=openai/gpt-6.1-sol rounds=8/40 wall=44s tokens in=293929 out=1238 cacheRead=258843 wrote=['src/jvmTest/kotlin/afield/paint/StereoTest.kt'] ran=['git-status  -> 0', 'python-test tools/test_check_staged_generated_artifacts.py GeneratedArtifactSelectionTests.test_ordinary_kotlin_source_does_not_become_a_corpus_input -> 1', 'git-diff -- src/jvmTest/kotlin/afield/paint/StereoTest.kt -> 0'] verdict=unchecked error=-

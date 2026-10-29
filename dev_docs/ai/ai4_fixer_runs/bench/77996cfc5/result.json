@@ -1,0 +1,182 @@
+{
+ "taskId": "task-0a83f0a5",
+ "mode": "live",
+ "provider": "openai",
+ "model": "gpt-6.1-sol",
+ "verdict": "unchecked",
+ "checks": [],
+ "toolCalls": [
+  {
+   "index": 1,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":200,\"path\":\"AGENTS.md\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-200 of 552\",\"path\":\"AGENTS.md\",\"text\":\"1\\t# AField / Field\u00b74 \u2014 Repo Guide for Agents\\n2\\t\\n3\\tA corrective paragraph in this file is a bug report against a tool, and it stays only until the\\n4\\ttool enforces it. When you add a \\\"do not\\\", name the tool change that would retire it. Histories\\n5\\tof rules that became code live in\\n6\\t[`dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md`](dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md).\\n7\\t\\n8\\t---\\n9\\t\\n10\\t## 1. What this is\\n11\\t\\n12\\t**Field\u00b74** is a Kotlin live-coding environment for graphics and exploratory dat... [921 more chars]"
+  },
+  {
+   "index": 2,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"**\",\"ignoreCase\":true,\"maxMatches\":50,\"query\":\"checkKDocAttachment\",\"regex\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"36 match(es) in 8787 file(s)\",\"matches\":[{\"path\":\"build.gradle.kts\",\"line\":2071,\"text\":\"tasks.register<JavaExec>(\\\"checkKDocAttachment\\\") {\"},{\"path\":\"build.gradle.kts\",\"line\":2459,\"text\":\"    dependsOn(\\\"checkKDocAttachment\\\")\"},{\"path\":\"build.gradle.kts\",\"line\":2490,\"text\":\"// :jvmTest failed, and checkKDocAttachment, checkCodebaseReference and checkCompletionCorpusFixtures\"},{\"path\":\"build.gradle.kts\",\"line\":2504,\"text\":\"    dependsOn(\\\"checkKDocAttachment\\\")\"},{\"path\":\"build.gradle.kts\",\"line\":2529,\"text\":\"        \\\"checkKDocAttachment\\\",\"},{\"path\":\"dev_docs/BUIL... [921 more chars]"
+  },
+  {
+   "index": 3,
+   "tool": "RepoListFilesRequest",
+   "arguments": "{\"glob\":\"tools/*kdoc*\"}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"0 file(s)\",\"files\":[],\"complete\":true}"
+  },
+  {
+   "index": 4,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":552,\"path\":\"AGENTS.md\",\"startLine\":400}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 400-552 of 552\",\"path\":\"AGENTS.md\",\"text\":\"400\\t- Ctrl/pinch-wheel zooms the box canvas about the cursor (`setCanvasZoom`, 0.1\u00d7\u20134\u00d7); **Reset Canvas Zoom** in the palette returns to 100%. Translation stays in screen pixels, so pan deltas and centring are zoom-independent.\\n401\\t- Anything that turns a screen measurement into a world one goes through a pane: `CanvasCamera.paneAt(x, y)` for a pointer, `CanvasCamera.paneOf(element)` for a box, then `worldX`/`worldY`/`worldRect` (box drag/resize deltas still divide by `mainZoom`). Rectangles that mean \\\"the visible ... [921 more chars]"
+  },
+  {
+   "index": 5,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":300,\"path\":\"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-300 of 501\",\"path\":\"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt\",\"text\":\"1\\tpackage afield.tools.docs\\n2\\t\\n3\\timport afield.tools.docs.index.KDocExtractor\\n4\\timport afield.runtime.completion.KotlinSourceIndex\\n5\\timport java.io.File\\n6\\timport kotlin.system.exitProcess\\n7\\t\\n8\\t/*\\n9\\tFIELD_TEST\\n10\\tid: docs.kdoc-attachment.guard\\n11\\trunner: jvm-main\\n12\\tentrypoint: afield.tools.docs.KDocAttachmentGuard\\n13\\ttags: [smoke, docs, reference, kdoc, verification]\\n14\\ttimeoutSec: 180\\n15\\texpect:\\n16\\t  exitCode: 0\\n17\\t  stdoutContains:\\n18\\t... [921 more chars]"
+  },
+  {
+   "index": 6,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"f903419088fba11d6a37a4248fee508976201018\",\"--\",\"src\"],\"command\":\"git-diff\",\"timeoutSec\":30}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv f903419088fba11d6a37a4248fee508976201018 -- src\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":191,\"output\":\"diff --git a/src/commonMain/resources/code-use.html b/src/commonMain/resources/code-use.html\\nindex bd16a71dc..cf1364886 100644\\n--- a/src/commonMain/resources/code-use.html\\n+++ b/src/commonMain/resources/code-use.html\\n@@ -67,7 +67,7 @@\\n <main>\\n     <header>\\n         <div>\\n-            <h1>Code-use telemetry</h1>\\n+            <h1>Local cod... [921 more chars]"
+  },
+  {
+   "index": 7,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":120,\"path\":\"dev_docs/kdoc_reference_contract.md\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-120 of 503\",\"path\":\"dev_docs/kdoc_reference_contract.md\",\"text\":\"1\\t# The KDoc \u2192 reference contract\\n2\\t\\n3\\tEverything Field says about its own API in the editor and on the docs site comes from one place: the\\n4\\t`/** \u2026 */` blocks in `src/`. There is no second source, no hand-maintained API page, and no Dokka.\\n5\\tThat makes the pipeline cheap and honest \u2014 and it means a KDoc that fails to *attach* to the right\\n6\\tdeclaration is published as another symbol's description, silently.\\n7\\t\\n8\\tThis note is the contract: what the extractor can and cannot see, wh... [921 more chars]"
+  },
+  {
+   "index": 8,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"f3248592c^\",\"f3248592c\",\"--\",\"src/jvmMain/kotlin/afield/audio/synth/PatSynth.kt\",\"src/jvmMain/kotlin/afield/geometry/mesh/mesh_topology.kt\",\"src/jvmMain/kotlin/afield/document/workspace/dir.kt\",\"src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceScene.kt\"],\"command\":\"git-diff\",\"timeoutSec\":30}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv f3248592c^ f3248592c -- src/jvmMain/kotlin/afield/audio/synth/PatSynth.kt src/jvmMain/kotlin/afield/geometry/mesh/mesh_topology.kt src/jvmMain/kotlin/afield/document/workspace/dir.kt src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceScene.kt\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":81,\"output\":\"\",\"outputBytes\":0,\"truncated\":false}"
+  },
+  {
+   "index": 9,
+   "tool": "RepoListFilesRequest",
+   "arguments": "{\"glob\":\"tools/check_*.py\"}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"12 file(s)\",\"files\":[\"tools/check_box_idioms.py\",\"tools/check_doc_assets.py\",\"tools/check_doc_offline_links.py\",\"tools/check_doc_site_links.py\",\"tools/check_docs_native_prerequisites.py\",\"tools/check_expected_test_failures.py\",\"tools/check_module_imports.py\",\"tools/check_native_selfcontained.py\",\"tools/check_offline_assets.py\",\"tools/check_staged_generated_artifacts.py\",\"tools/check_study_tools.py\",\"tools/check_test_tree_writes.py\"],\"complete\":true}"
+  },
+  {
+   "index": 10,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[],\"command\":\"git-status\",\"timeoutSec\":30}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= status --short --branch\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":140,\"output\":\"## HEAD (no branch)\\n\",\"outputBytes\":20,\"truncated\":false}"
+  },
+  {
+   "index": 11,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"f903419088fba11d6a37a4248fee508976201018\",\"--\",\"src/jvmMain/kotlin/afield/audio/synth/PatSynth.kt\",\"src/jvmMain/kotlin/afield/geometry/mesh/mesh_topology.kt\",\"src/jvmMain/kotlin/afield/document/workspace/dir.kt\",\"src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceScene.kt\"],\"command\":\"git-diff\",\"timeoutSec\":30}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv f903419088fba11d6a37a4248fee508976201018 -- src/jvmMain/kotlin/afield/audio/synth/PatSynth.kt src/jvmMain/kotlin/afield/geometry/mesh/mesh_topology.kt src/jvmMain/kotlin/afield/document/workspace/dir.kt src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceScene.kt\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":72,\"output\":\"diff --git a/src/jvmMain/kotlin/afield/audio/synth/PatSynth.kt b/src/jvmMain/kotlin/afield/audio/synth/PatSynth.kt\\nindex 2c... [921 more chars]"
+  },
+  {
+   "index": 12,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"tools/*.py\",\"ignoreCase\":true,\"maxMatches\":40,\"query\":\"kdoc\",\"regex\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"stopped at 40 matches\",\"matches\":[{\"path\":\"tools/check_box_idioms.py\",\"line\":97,\"text\":\"# reference pages are generated from KDoc. Widen this once the refactor lands.\"},{\"path\":\"tools/check_doc_site_links.py\",\"line\":222,\"text\":\"#                                          published as a paragraph because its KDoc indent was\"},{\"path\":\"tools/check_staged_generated_artifacts.py\",\"line\":390,\"text\":\"        \\\"codebase reference and KDoc worklist\\\",\"},{\"path\":\"tools/check_staged_generated_artifacts.py\",\"line\":392,\"text\":\"        (\\\"public/docs/reference\\\", \\\"dev_docs/kdoc_w... [921 more chars]"
+  },
+  {
+   "index": 13,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":1338,\"path\":\"src/jvmMain/kotlin/afield/document/workspace/dir.kt\",\"startLine\":1280}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1280-1338 of 1982\",\"path\":\"src/jvmMain/kotlin/afield/document/workspace/dir.kt\",\"text\":\"1280\\t    return false\\n1281\\t}\\n1282\\t\\n1283\\tprivate fun fileContainsQuery(file: File, query: String, checkSearchActive: () -> Unit): Boolean {\\n1284\\t    if (!file.isFile) return false\\n1285\\t\\n1286\\t    return try {\\n1287\\t        var found = false\\n1288\\t        file.bufferedReader(Charsets.UTF_8).useLines { lines ->\\n1289\\t            var lineNumber = 0\\n1290\\t            for (line in lines) {\\n1291\\t                if (lineNumber++ % 128 == 0) checkSearchActive()\\n129... [920 more chars]"
+  },
+  {
+   "index": 14,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"**/KDocExtractor.kt\",\"ignoreCase\":false,\"maxMatches\":20,\"query\":\"fun parseDeclaration\",\"regex\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"1 match(es) in 1 file(s)\",\"matches\":[{\"path\":\"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt\",\"line\":172,\"text\":\"    internal fun parseDeclaration(line: String): Pair<String, String>? {\"}],\"complete\":true,\"filesSearched\":1}"
+  },
+  {
+   "index": 15,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"-n\",\"4\"],\"command\":\"git-log\",\"timeoutSec\":30}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= log --oneline --no-color --no-ext-diff -n 4\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":44,\"output\":\"f3248592c Regenerate transcript bundles and completion-corpus fixtures for the edited transcripts\\nf33d8c2d8 Recapture life3d, photo_to_solid and physics pages after the levelSet, asDensityField and +y-up changes\\n86d6cc104 Refile the sourceBlock self-box hydration handoff as a decision\\ne66f01641 Refile the patRenderStereo frame-exactness handoff with what the attempt found\\n\",\"outputBytes\":37... [20 more chars]"
+  },
+  {
+   "index": 16,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"f903419088fba11d6a37a4248fee508976201018\",\"--\",\"src/jvmMain/kotlin/afield/examples/chain/PhotoToSolidChain.kt\",\"src/jvmMain/kotlin/afield/geometry/mesh/mesh_field.kt\",\"src/jvmMain/kotlin/afield/geometry/solid/manifold/ManifoldNative.kt\",\"src/jvmMain/kotlin/afield/geometry/solid/manifold/ManifoldSmokeTest.kt\",\"src/jvmMain/kotlin/afield/geometry/solid/manifold/Solid.kt\",\"src/jvmMain/kotlin/afield/graphics/text/typography_field.kt\",\"src/jvmMain/kotlin/afield/graphics/three/Three.kt\",\"src/jvmMain/kotlin/afield/lang/solidsl/SolidExact.kt\",\"src/jvmMain/kotlin/afield/lang/solidsl/SolidField... [103 more chars]",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv f903419088fba11d6a37a4248fee508976201018 -- src/jvmMain/kotlin/afield/examples/chain/PhotoToSolidChain.kt src/jvmMain/kotlin/afield/geometry/mesh/mesh_field.kt src/jvmMain/kotlin/afield/geometry/solid/manifold/ManifoldNative.kt src/jvmMain/kotlin/afield/geometry/solid/manifold/ManifoldSmokeTest.kt src/jvmMain/kotlin/afield/geometry/solid/manifold/Solid.kt src/jvmMain/kotlin/afield/graphics/text/typography_field.kt src/jvmMain/kotlin/afield/graphics/... [921 more chars]"
+  },
+  {
+   "index": 17,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":270,\"path\":\"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt\",\"startLine\":172}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 172-270 of 308\",\"path\":\"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt\",\"text\":\"172\\t    internal fun parseDeclaration(line: String): Pair<String, String>? {\\n173\\t        var s = line.trimStart()\\n174\\t        if (s.isEmpty()) return null\\n175\\t        if (s.startsWith(\\\"package \\\") || s.startsWith(\\\"import \\\")) return null\\n176\\t        if (s.startsWith(\\\"//\\\")) return null\\n177\\t        \\n178\\t        // Skip annotations\\n179\\t        val annotationRegex = Regex(\\\"^@\\\\\\\\w[\\\\\\\\w\\\\\\\\.]*\\\\\\\\s*(\\\\\\\\([^)]*\\\\\\\\))?\\\\\\\\s*\\\")\\n180\\t        while (true) {... [921 more chars]"
+  },
+  {
+   "index": 18,
+   "tool": "RepoPatchFileRequest",
+   "arguments": "{\"newText\":\"    // Listed names for additionalDocuments that differ from their directory's, by canonical path.\",\"oldText\":\"    /** Listed names for [additionalDocuments] that differ from their directory's, by canonical path. */\",\"path\":\"src/jvmMain/kotlin/afield/document/workspace/dir.kt\",\"replaceAll\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"replaced 1 occurrence(s) in src/jvmMain/kotlin/afield/document/workspace/dir.kt\",\"path\":\"src/jvmMain/kotlin/afield/document/workspace/dir.kt\",\"text\":\"\",\"totalLines\":0,\"truncated\":false}"
+  },
+  {
+   "index": 19,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":1330,\"path\":\"src/jvmMain/kotlin/afield/document/workspace/dir.kt\",\"startLine\":1316}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1316-1330 of 1982\",\"path\":\"src/jvmMain/kotlin/afield/document/workspace/dir.kt\",\"text\":\"1316\\tprivate fun searchWorkspaceIncludingDocuments(\\n1317\\t    base: String?,\\n1318\\t    rawQuery: String,\\n1319\\t    maxDocuments: Int,\\n1320\\t    maxMatchesPerDocument: Int,\\n1321\\t    maxScanMillis: Long,\\n1322\\t    cancellationCheck: () -> Unit,\\n1323\\t    additionalDocuments: List<File>,\\n1324\\t    // Listed names for additionalDocuments that differ from their directory's, by canonical path.\\n1325\\t    documentNames: Map<String, String> = emptyMap(),\\n1326\\t): Workspac... [208 more chars]"
+  },
+  {
+   "index": 20,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[],\"command\":\"git-diff\",\"timeoutSec\":30}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":57,\"output\":\"diff --git a/src/jvmMain/kotlin/afield/document/workspace/dir.kt b/src/jvmMain/kotlin/afield/document/workspace/dir.kt\\nindex 2ea4f4c33..a5ec7d073 100644\\n--- a/src/jvmMain/kotlin/afield/document/workspace/dir.kt\\n+++ b/src/jvmMain/kotlin/afield/document/workspace/dir.kt\\n@@ -1321,7 +1321,7 @@ private fun searchWorkspaceIncludingDocuments(\\n     maxScanMillis: Long,\\n     cancellationCheck: () ... [415 more chars]"
+  },
+  {
+   "index": 21,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":320,\"path\":\"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt\",\"startLine\":296}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 296-320 of 501\",\"path\":\"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt\",\"text\":\"296\\t            if (KDocExtractor.parseDeclaration(trimmed) != null) return null\\n297\\t\\n298\\t            if (trimmed.startsWith(\\\"package \\\") || trimmed.startsWith(\\\"import \\\") || trimmed == \\\"package\\\") {\\n299\\t                return Verdict.Benign(\\\"file header above the package directive\\\", i + 1)\\n300\\t            }\\n301\\t            return Verdict.Hit(\\n302\\t                Finding(\\n303\\t                    path, block.startLine, Kind.DROPPED,\\n304\\t            ... [919 more chars]"
+  }
+ ],
+ "finalText": "Changed the misplaced parameter KDoc in `dir.kt` to an ordinary comment\u2014a one-line, behavior-neutral fix. Checker-source inspection confirms the cause; Gradle is unavailable and no Python equivalent exists, so the guard could not be rerun.\n\nFIXER-VERDICT: {\"verdict\": \"fix\", \"culprit\": \"handoffs/code-20261015-2234\", \"reason\": \"The branch added KDoc above a bare function parameter that the attachment guard cannot parse, fixed by converting it to an ordinary comment.\"}",
+ "rounds": 10,
+ "maxToolRounds": 40,
+ "hitToolRoundCap": false,
+ "elapsedMs": 52344,
+ "inputTokens": 548760,
+ "outputTokens": 1722,
+ "cacheReadTokens": 486624,
+ "documentName": "scratch",
+ "lessons": true,
+ "documentRef": "8d79fde9-e06a-4067-b3b9-288ad092f1ce",
+ "programs": true,
+ "contextPlacement": "developer-once+input",
+ "repoWritten": [
+  "src/jvmMain/kotlin/afield/document/workspace/dir.kt"
+ ],
+ "repoRuns": [
+  "git-diff f903419088fba11d6a37a4248fee508976201018 -- src -> 0",
+  "git-diff f3248592c^ f3248592c -- src/jvmMain/kotlin/afield/audio/synth/PatSynth.kt src/jvmMain/kotlin/afield/geometry/mesh/mesh_topology.kt src/jvmMain/kotlin/afield/document/workspace/dir.kt src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceScene.kt -> 0",
+  "git-status  -> 0",
+  "git-diff f903419088fba11d6a37a4248fee508976201018 -- src/jvmMain/kotlin/afield/audio/synth/PatSynth.kt src/jvmMain/kotlin/afield/geometry/mesh/mesh_topology.kt src/jvmMain/kotlin/afield/document/workspace/dir.kt src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceScene.kt -> 0",
+  "git-log -n 4 -> 0",
+  "git-diff f903419088fba11d6a37a4248fee508976201018 -- src/jvmMain/kotlin/afield/examples/chain/PhotoToSolidChain.kt src/jvmMain/kotlin/afield/geometry/mesh/mesh_field.kt src/jvmMain/kotlin/afield/geometry/solid/manifold/ManifoldNative.kt src/jvmMain/kotlin/afield/geometry/solid/manifold/ManifoldSmokeTest.kt src/jvmMain/kotlin/afield/geometry/solid/manifold/Solid.kt src/jvmMain/kotlin/afield/graphics/text/typography_field.kt src/jvmMain/kotlin/afield/graphics/three/Three.kt src/jvmMain/kotlin/afield/lang/solidsl/SolidExact.kt src/jvmMain/kotlin/afield/lang/solidsl/SolidField.kt src/jvmMain/kotlin/afield/simulation/automata/alife_ca.kt -> 0",
+  "git-diff  -> 0"
+ ]
+}

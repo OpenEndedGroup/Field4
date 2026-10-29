@@ -1,0 +1,28 @@
+[field] ok  RepoReadFileRequest {"endLine":200,"path":"AGENTS.md","startLine":1}
+[field] ERR RepoRunCommandRequest {"args":["tools/test_guard_corpora.py"],"command":"python-test","timeoutSec":120}
+[field] ok  RepoReadFileRequest {"endLine":260,"path":"tools/test_guard_corpora.py","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":280,"path":"tools/guard_corpora.py","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":20}
+[field] ok  RepoReadFileRequest {"endLine":260,"path":"dev_docs/GUARD_CORPORA.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":120,"path":"tools/test_demo_build_scripts.py","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":110,"path":"tools/test_inventory_box_code.py","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":["94d81abe357fa7d110f4321250b42c94dac871be","--","tools/test_demo_build_scripts.py","dev_docs/GUARD_CORPORA.md","src/jvmTest/kotlin/afield/tools/docs/Ag
+[field] ok  RepoSearchRequest {"glob":"tools/test_*.py","ignoreCase":false,"maxMatches":35,"query":"sys.path.insert","regex":false}
+[field] ERR RepoRunCommandRequest {"args":["tools/test_field_backdoor.py","tools.test_guard_corpora"],"command":"python-test","timeoutSec":120}
+[field] ERR RepoRunCommandRequest {"args":["tools/test_field_backdoor.py","discover","-s","tools","-p","test_guard_corpora.py"],"command":"python-test","timeoutSec":120}
+[field] ok  RepoSearchRequest {"glob":"tools/check_*.py","ignoreCase":false,"maxMatches":40,"query":"guard_corpora|unittest|sys.path|argparse","regex":true}
+[field] ERR RepoRunCommandRequest {"args":["tools/test_demo_build_scripts.py"],"command":"python-test","timeoutSec":120}
+[field] ok  RepoSearchRequest {"glob":"tools/test_*.py","ignoreCase":false,"maxMatches":40,"query":"guard_corpora|import tools|from tools import","regex":true}
+[field] ok  RepoReadFileRequest {"endLine":170,"path":"tools/test_demo_build_scripts.py","startLine":120}
+[field] ok  RepoSearchRequest {"glob":"public/docs/agent_transcripts.md","ignoreCase":false,"maxMatches":10,"query":"python_box_parity","regex":false}
+[field] ok  RepoPatchFileRequest {"newText":"    \"pattern_condense\",\n    \"python_box_parity\",\n    \"python_cells\",","oldText":"    \"pattern_condense\",\n    \"python_cells\",","path":"t
+[field] ok  RepoSearchRequest {"glob":"public/docs/agent_transcripts.md","ignoreCase":false,"maxMatches":500,"query":"^### [a-z0-9_]+$","regex":true}
+[field] ok  RepoReadFileRequest {"endLine":130,"path":"tools/test_refactor_session.py","startLine":1}
+[field] ok  RepoPatchFileRequest {"newText":"import sys\nsys.path.insert(0, str(Path(__file__).resolve().parent.parent))\nfrom tools import guard_corpora as gc","oldText":"from tools import gua
+[field] ERR RepoRunCommandRequest {"args":["tools/test_guard_corpora.py"],"command":"python-test","timeoutSec":120}
+[field] ok  RepoPatchFileRequest {"newText":"| entries on `public/docs/agent_transcripts.md` | 234 |","oldText":"| entries on `public/docs/agent_transcripts.md` | 233 |","path":"dev_docs/GUARD_
+[field] ok  RepoRunCommandRequest {"args":["tools/test_guard_corpora.py"],"command":"python-test","timeoutSec":120}
+[field] ok  RepoRunCommandRequest {"args":["tools/test_demo_build_scripts.py"],"command":"python-test","timeoutSec":120}
+[field] ok  RepoPatchFileRequest {"newText":"from tools import guard_corpora as gc","oldText":"import sys\nsys.path.insert(0, str(Path(__file__).resolve().parent.parent))\nfrom tools import gua
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-diff","timeoutSec":20}
+[field] model=openai/gpt-6.1-sol rounds=17/40 wall=118s tokens in=768672 out=3030 cacheRead=720179 wrote=['tools/test_demo_build_scripts.py', 'tools/test_guard_corpora.py', 'dev_docs/GUARD_CORPORA.md', 'tools/test_guard_corpora.py'] ran=['python-test tools/test_guard_corpora.py -> 1', 'git-status  -> 0', 'git-diff 94d81abe357fa7d110f4321250b42c94dac871be -- tools/test_demo_build_scripts.py dev_docs/GUARD_CORPORA.md src/jvmTest/kotlin/afield/tools/docs/AgentDemoRegistrationTest.kt -> 0', 'python-test tools/test_field_backdoor.py tools.test_guard_corpora -> 1', 'python-test tools/test_demo_build_scripts.py -> 1', 'python-test tools/test_guard_corpora.py -> 1', 'python-test tools/test_guard_corpora.py -> 0', 'python-test tools/test_demo_build_scripts.py -> 0', 'git-diff  -> 0'] verdict=unchecked error=-

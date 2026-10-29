@@ -1,0 +1,175 @@
+{
+ "taskId": "task-0b7b7312",
+ "mode": "live",
+ "provider": "openai",
+ "model": "gpt-6.1-sol",
+ "verdict": "unchecked",
+ "checks": [],
+ "toolCalls": [
+  {
+   "index": 1,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":200,\"path\":\"AGENTS.md\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-200 of 552\",\"path\":\"AGENTS.md\",\"text\":\"1\\t# AField / Field\u00b74 \u2014 Repo Guide for Agents\\n2\\t\\n3\\tA corrective paragraph in this file is a bug report against a tool, and it stays only until the\\n4\\ttool enforces it. When you add a \\\"do not\\\", name the tool change that would retire it. Histories\\n5\\tof rules that became code live in\\n6\\t[`dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md`](dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md).\\n7\\t\\n8\\t---\\n9\\t\\n10\\t## 1. What this is\\n11\\t\\n12\\t**Field\u00b74** is a Kotlin live-coding environment for graphics and exploratory dat... [921 more chars]"
+  },
+  {
+   "index": 2,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":220,\"path\":\"tools/run_python_tests.py\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-137 of 137\",\"path\":\"tools/run_python_tests.py\",\"text\":\"1\\t#!/usr/bin/env python3\\n2\\t\\\"\\\"\\\"Run every `tools/test_*.py` unittest suite and report each one's pass count.\\n3\\t\\n4\\tThese suites pin parts of the automation substrate that nothing else covers \u2014 the shared\\n5\\t`run_field_tests.py` backdoor argument emitter, the docs-capture freshness classifier, and the\\n6\\tsmoke runner's worktree-scoped JVM reaper \u2014 and until 2026-07-30 they were referenced by no\\n7\\tGradle task, no FIELD_TEST and no CI entrypoint, so they ran only when a human happened to type\\n8\\t... [921 more chars]"
+  },
+  {
+   "index": 3,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[],\"command\":\"git-status\",\"timeoutSec\":10}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= status --short --branch\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":107,\"output\":\"## HEAD (no branch)\\n\",\"outputBytes\":20,\"truncated\":false}"
+  },
+  {
+   "index": 4,
+   "tool": "RepoListFilesRequest",
+   "arguments": "{\"glob\":\"tools/test_*python*\"}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"1 file(s)\",\"files\":[\"tools/test_field_python_env.py\"],\"complete\":true}"
+  },
+  {
+   "index": 5,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"tools/test_*.py\",\"ignoreCase\":true,\"maxMatches\":80,\"query\":\"python_box_parity\",\"regex\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"0 match(es) in 83 file(s)\",\"matches\":[],\"complete\":true,\"filesSearched\":83}"
+  },
+  {
+   "index": 6,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"tools/test_*.py\",\"ignoreCase\":false,\"maxMatches\":100,\"query\":\"(manifest|corpus|transcript|languages|PythonInterface|PythonErrors)\",\"regex\":true}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"stopped at 100 matches\",\"matches\":[{\"path\":\"tools/test_ai_chat_persistence.py\",\"line\":18,\"text\":\"    transcript = ('<<you>>\\\\nMake three drifting sine waves.\\\\n<<ai>>\\\\n'\"},{\"path\":\"tools/test_ai_chat_persistence.py\",\"line\":38,\"text\":\"                        'afield.ai.conversation.AiBoxConversation.write(owner, ' + json.dumps(transcript) + ')\\\\n')\"},{\"path\":\"tools/test_ai_chat_persistence.py\",\"line\":42,\"text\":\"                expected = transcript\"},{\"path\":\"tools/test_ai_chat_persistence.py\",\"line\":45,\"text\":\"                expected = transcript if phase == 1 else... [921 more chars]"
+  },
+  {
+   "index": 7,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":552,\"path\":\"AGENTS.md\",\"startLine\":400}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 400-552 of 552\",\"path\":\"AGENTS.md\",\"text\":\"400\\t- Ctrl/pinch-wheel zooms the box canvas about the cursor (`setCanvasZoom`, 0.1\u00d7\u20134\u00d7); **Reset Canvas Zoom** in the palette returns to 100%. Translation stays in screen pixels, so pan deltas and centring are zoom-independent.\\n401\\t- Anything that turns a screen measurement into a world one goes through a pane: `CanvasCamera.paneAt(x, y)` for a pointer, `CanvasCamera.paneOf(element)` for a box, then `worldX`/`worldY`/`worldRect` (box drag/resize deltas still divide by `mainZoom`). Rectangles that mean \\\"the visible ... [921 more chars]"
+  },
+  {
+   "index": 8,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":220,\"path\":\"tools/test_field_python_env.py\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-82 of 82\",\"path\":\"tools/test_field_python_env.py\",\"text\":\"1\\timport importlib\\n2\\timport os\\n3\\timport sys\\n4\\timport unittest\\n5\\tfrom unittest import mock\\n6\\t\\n7\\tfrom tools import field_python_env\\n8\\t\\n9\\t\\n10\\tclass FieldPythonEnvironmentTest(unittest.TestCase):\\n11\\t    def test_importing_backdoor_does_not_bootstrap_the_importing_process(self):\\n12\\t        previous = sys.modules.pop(\\\"tools.field_backdoor\\\", None)\\n13\\t        try:\\n14\\t            with mock.patch(\\\"tools.field_python_env.ensure_repo_python\\\") as ensure:\\n15\\t                importlib... [921 more chars]"
+  },
+  {
+   "index": 9,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"fac4f8498\",\"--\",\"tools/completion-corpus/boxes/manifest.json\"],\"command\":\"git-diff\",\"timeoutSec\":10}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv fac4f8498 -- tools/completion-corpus/boxes/manifest.json\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":25,\"output\":\"\",\"outputBytes\":0,\"truncated\":false}"
+  },
+  {
+   "index": 10,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":290,\"path\":\"tools/test_demo_build_scripts.py\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-269 of 269\",\"path\":\"tools/test_demo_build_scripts.py\",\"text\":\"1\\t#!/usr/bin/env python3\\n2\\t\\\"\\\"\\\"Hold each demo's `build.yaml` to the document it claims to have built.\\n3\\t\\n4\\tNine of the twenty-one documents under `dev_docs/agents/demos/` ship an agent-authored\\n5\\t`build.yaml` beside the saved `metadata.edn`, and each one says, in its own description, some\\n6\\tversion of \\\"this transcript is what built this document; re-running it rebuilds it\\\". Nothing\\n7\\tchecked that. On 2026-09-18 the promotion sweep (`ad06001ac`) discovered by hand that two of the\\n8... [921 more chars]"
+  },
+  {
+   "index": 11,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"tools/test_demo_build_scripts.py\"],\"command\":\"python-test\",\"timeoutSec\":60}",
+   "ok": false,
+   "result": "{\"success\":false,\"message\":\"exit 1\",\"command\":\"uv run --project . --group backdoor python tools/test_demo_build_scripts.py\",\"exitCode\":1,\"timedOut\":false,\"elapsedMs\":267,\"output\":\"..F\\n======================================================================\\nFAIL: test_the_corpus_is_where_it_was_measured (__main__.DemoBuildScriptTest.test_the_corpus_is_where_it_was_measured)\\nA demo that gains or loses a build script should make someone look at this file.\\n----------------------------------------------------------------------\\nTraceback (most recent call last):\\n  File \\\"/Users/marc/field4-workt... [620 more chars]"
+  },
+  {
+   "index": 12,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":180,\"path\":\"src/jvmTest/kotlin/afield/tools/docs/AgentDemoRegistrationTest.kt\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-180 of 524\",\"path\":\"src/jvmTest/kotlin/afield/tools/docs/AgentDemoRegistrationTest.kt\",\"text\":\"1\\tpackage afield.tools.docs\\n2\\t\\n3\\timport afield.examples.DemoTranscriptExecSmokeTest\\n4\\timport java.io.File\\n5\\timport java.nio.file.Files\\n6\\timport kotlin.test.Test\\n7\\timport kotlin.test.assertEquals\\n8\\timport kotlin.test.assertTrue\\n9\\t\\n10\\t/**\\n11\\t * Every loadable document under `dev_docs/agents/demos/` is *verified by something*, and named here.\\n12\\t *\\n13\\t * ## The hole this closes\\n14\\t *\\n15\\t * [DemoTranscriptExecSmokeTest] iterates every yaml i... [921 more chars]"
+  },
+  {
+   "index": 13,
+   "tool": "RepoListFilesRequest",
+   "arguments": "{\"glob\":\"dev_docs/agents/demos/python_box_parity/**\"}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"7 file(s)\",\"files\":[\"dev_docs/agents/demos/python_box_parity/README.md\",\"dev_docs/agents/demos/python_box_parity/metadata.edn\",\"dev_docs/agents/demos/python_box_parity/parity_controls_code_.py\",\"dev_docs/agents/demos/python_box_parity/parity_controls_customization_.js\",\"dev_docs/agents/demos/python_box_parity/parity_error_code_.py\",\"dev_docs/agents/demos/python_box_parity/parity_error_customization_.js\",\"dev_docs/agents/demos/python_box_parity/parity_root_code_.kt\"],\"complete\":true}"
+  },
+  {
+   "index": 14,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":170,\"path\":\"tools/test_guard_corpora.py\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-156 of 156\",\"path\":\"tools/test_guard_corpora.py\",\"text\":\"1\\t#!/usr/bin/env python3\\n2\\t\\\"\\\"\\\"`dev_docs/GUARD_CORPORA.md`'s numbers are re-derived, not typed \u2014 and this is what says so.\\n3\\t\\n4\\tThe page exists to name one defect: *a guard whose failure message states a rule over one population\\n5\\twhile the guard enforces it over a smaller one.* It was published on 2026-09-20 and was false in\\n6\\tfive rows the next morning, **against its own published re-derivation commands** \u2014 `tools/test_*.py`\\n7\\tsaid 29 against 31, `*Guard*.kt` + `*ContractTest.kt` said 2... [921 more chars]"
+  },
+  {
+   "index": 15,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":100,\"path\":\"dev_docs/agents/demos/python_box_parity/README.md\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-13 of 13\",\"path\":\"dev_docs/agents/demos/python_box_parity/README.md\",\"text\":\"1\\t# Python box parity \u2014 a document you can open\\n2\\t\\n3\\tOpen `metadata.edn` in Field (**File \u25b8 Open**, or `./field.sh <path to this folder>/metadata.edn`).\\n4\\tIt is the saved form of `dev_docs/agents/transcripts/python_box_parity.yaml`; the written-up\\n5\\tversion is [Python in a box](../../../../public/docs/python.md).\\n6\\t\\n7\\t- **an error is marked where it happened** \u2014 run it: the red marker sits under line 6, inside\\n8\\t  `mean`, where the division by zero happened.\\n9\\t- **a ... [393 more chars]"
+  },
+  {
+   "index": 16,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"tools/test_guard_corpora.py\"],\"command\":\"python-test\",\"timeoutSec\":60}",
+   "ok": false,
+   "result": "{\"success\":false,\"message\":\"exit 1\",\"command\":\"uv run --project . --group backdoor python tools/test_guard_corpora.py\",\"exitCode\":1,\"timedOut\":false,\"elapsedMs\":155,\"output\":\"Traceback (most recent call last):\\n  File \\\"/Users/marc/field4-worktrees/2026-10-29-1-ai4-fixer-bench/.nightly-tmp/replay/tools/test_guard_corpora.py\\\", line 43, in <module>\\n    from tools import guard_corpora as gc\\nModuleNotFoundError: No module named 'tools'\\n\",\"outputBytes\":259,\"truncated\":false}"
+  },
+  {
+   "index": 17,
+   "tool": "RepoListFilesRequest",
+   "arguments": "{\"glob\":\"tools/check_*\"}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"12 file(s)\",\"files\":[\"tools/check_box_idioms.py\",\"tools/check_doc_assets.py\",\"tools/check_doc_offline_links.py\",\"tools/check_doc_site_links.py\",\"tools/check_docs_native_prerequisites.py\",\"tools/check_expected_test_failures.py\",\"tools/check_module_imports.py\",\"tools/check_native_selfcontained.py\",\"tools/check_offline_assets.py\",\"tools/check_staged_generated_artifacts.py\",\"tools/check_study_tools.py\",\"tools/check_test_tree_writes.py\"],\"complete\":true}"
+  },
+  {
+   "index": 18,
+   "tool": "RepoPatchFileRequest",
+   "arguments": "{\"newText\":\"    \\\"pattern_condense\\\",\\n    \\\"python_box_parity\\\",\\n    \\\"python_cells\\\",\",\"oldText\":\"    \\\"pattern_condense\\\",\\n    \\\"python_cells\\\",\",\"path\":\"tools/test_demo_build_scripts.py\",\"replaceAll\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"replaced 1 occurrence(s) in tools/test_demo_build_scripts.py\",\"path\":\"tools/test_demo_build_scripts.py\",\"text\":\"\",\"totalLines\":0,\"truncated\":false}"
+  },
+  {
+   "index": 19,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"tools/test_demo_build_scripts.py\"],\"command\":\"python-test\",\"timeoutSec\":60}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"uv run --project . --group backdoor python tools/test_demo_build_scripts.py\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":246,\"output\":\"...\\n----------------------------------------------------------------------\\nRan 3 tests in 0.110s\\n\\nOK\\n\",\"outputBytes\":101,\"truncated\":false}"
+  },
+  {
+   "index": 20,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"--\",\"tools/test_demo_build_scripts.py\"],\"command\":\"git-diff\",\"timeoutSec\":10}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv -- tools/test_demo_build_scripts.py\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":23,\"output\":\"diff --git a/tools/test_demo_build_scripts.py b/tools/test_demo_build_scripts.py\\nindex 8a0cd3049..1e590f1e1 100644\\n--- a/tools/test_demo_build_scripts.py\\n+++ b/tools/test_demo_build_scripts.py\\n@@ -137,6 +137,7 @@ CORPUS = {\\n     \\\"path_tracing_emitters\\\",\\n     \\\"path_tracing_medium\\\",\\n     \\\"pattern_condense\\\",\\n+    \\\"python_box_parity\\\",\\n     \\\"pyth... [110 more chars]"
+  }
+ ],
+ "finalText": "Added the missing `python_box_parity` corpus entry in `tools/test_demo_build_scripts.py`; all three tests now pass. The diff is one added line.\n\nFIXER-VERDICT: {\"verdict\": \"fix\", \"culprit\": \"nightly/2026-10-15/1-python-box-parity\", \"reason\": \"The branch added a demo but omitted its Python corpus entry; adding that entry makes the previously failing test suite pass.\"}",
+ "rounds": 11,
+ "maxToolRounds": 40,
+ "hitToolRoundCap": false,
+ "elapsedMs": 53458,
+ "inputTokens": 430998,
+ "outputTokens": 1134,
+ "cacheReadTokens": 393420,
+ "documentName": "scratch",
+ "misuseCalls": 2,
+ "lessons": true,
+ "documentRef": "87b2985c-2ad6-4ed3-93d0-67009b98657e",
+ "programs": true,
+ "contextPlacement": "developer-once+input",
+ "repoWritten": [
+  "tools/test_demo_build_scripts.py"
+ ],
+ "repoRuns": [
+  "git-status  -> 0",
+  "git-diff fac4f8498 -- tools/completion-corpus/boxes/manifest.json -> 0",
+  "python-test tools/test_demo_build_scripts.py -> 1",
+  "python-test tools/test_guard_corpora.py -> 1",
+  "python-test tools/test_demo_build_scripts.py -> 0",
+  "git-diff -- tools/test_demo_build_scripts.py -> 0"
+ ]
+}

@@ -1,0 +1,4 @@
+The diff contains only the annotation split, which matches the guard’s accepted form. Verification is limited: Gradle is unavailable, and the Python guard-selection test failed before running with `ModuleNotFoundError: No module named 'tools'`; I won’t change unrelated tooling to work around that.
+Split `@Test` onto its own line in `StereoTest.kt`, matching the KDoc extractor’s attachment rules. The diff is limited to that change; executable verification was blocked by unavailable Gradle and a Python import error.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "claude/physical-media-expansion-stages-d589a3", "reason": "The branch placed an annotation and its documented declaration on one line; separating them mechanically fixes the reported attachment failure, though executable verification was blocked by the replay environment."}

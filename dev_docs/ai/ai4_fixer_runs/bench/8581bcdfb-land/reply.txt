@@ -1,0 +1,3 @@
+Added the missing `python_box_parity` corpus entry and corrected the stale index count from 233 to 234. Both targeted Python suites passed (8 tests total); the temporary import-path adjustment was removed, leaving only two one-line fixes.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "nightly/2026-10-15/1-python-box-parity", "reason": "The branch added python_box_parity without updating the Python corpus registry and left the generated index-entry count stale; both targeted suites now pass."}

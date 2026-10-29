@@ -1,0 +1,16 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":205,"path":"src/jvmMain/kotlin/afield/server/terminal.kt","startLine":140}
+[field] ok  RepoSearchRequest {"glob":"tools/*","ignoreCase":true,"maxMatches":60,"query":"kdoc","regex":false}
+[field] ok  RepoSearchRequest {"glob":"src/**/*.kt","ignoreCase":false,"maxMatches":15,"query":"object KDocAttachmentGuard","regex":false}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":550,"path":"AGENTS.md","startLine":221}
+[field] ok  RepoReadFileRequest {"endLine":300,"path":"src/jvmMain/kotlin/afield/docs/KDocAttachmentGuard.kt","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*"}
+[field] ok  RepoReadFileRequest {"endLine":170,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":["b44882c9cf74268dc94ea038655827442bef531d","--","src/jvmMain/kotlin/afield/server/terminal.kt"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":520,"path":"tools/check_staged_generated_artifacts.py","startLine":330}
+[field] ok  RepoPatchFileRequest {"newText":"    @Volatile\n    var lastOutputAtMs = 0L","oldText":"    @Volatile var lastOutputAtMs = 0L","path":"src/jvmMain/kotlin/afield/server/terminal.kt",
+[field] ok  RepoReadFileRequest {"endLine":181,"path":"src/jvmMain/kotlin/afield/server/terminal.kt","startLine":169}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/ai/**/KDocExtractor.kt","ignoreCase":false,"maxMatches":20,"query":"startsWith(\"@\")","regex":false}
+[field] model=openai/gpt-6.1-sol rounds=6/40 wall=35s tokens in=242786 out=941 cacheRead=204814 wrote=['src/jvmMain/kotlin/afield/server/terminal.kt'] ran=['git-status  -> 0', 'git-diff b44882c9cf74268dc94ea038655827442bef531d -- src/jvmMain/kotlin/afield/server/terminal.kt -> 0', 'git-diff  -> 0'] verdict=unchecked error=-

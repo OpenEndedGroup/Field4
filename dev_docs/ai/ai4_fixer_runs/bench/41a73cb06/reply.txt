@@ -1,0 +1,3 @@
+Updated the single fence opening to `diffstatic {data-lang=text}`, leaving its contents unchanged. Source review confirms it satisfies the failing check; Gradle is unavailable and no equivalent Python check was found.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "nightly/2026-10-18/3-external-edit-guide", "reason": "The new page omitted the required diffstatic fence treatment, corrected with a one-line edit verified against the test source but not executed because Gradle is unavailable."}
