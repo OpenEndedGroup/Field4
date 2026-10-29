@@ -39,6 +39,23 @@ import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.Executors
 
+/**
+ * The stack-sampling half of the profiling panel: a JFR recording that runs alongside a coroutine
+ * capture, read back as frames, samples and the source each frame came from.
+ *
+ * [CoroutineProfiles] starts one only when a capture asks for stacks. It records execution samples
+ * every 10 ms, throttled allocation samples and GC pauses, under a size ceiling and a recording
+ * length the capture cannot outrun. Nothing is parsed while the capture is live: stopping the
+ * recording hands the dump to a single daemon thread, and the panel is told how far that has got.
+ *
+ * Two things keep the result bounded and safe to hold. Registering a box's snippet copies its source
+ * text and a few identifiers, never the box, its classloader or its coroutines, and every list has a
+ * cap past which samples are counted as dropped rather than kept. A frame that is not box code is
+ * traced back to a file by reading the class's own SourceFile attribute and then requiring the
+ * declared package to agree, so two files of the same name in different packages are never guessed
+ * between.
+ */
+
 /** Optional, bounded JFR sampling. Parsing and source lookup never run on the game thread. */
 internal class JvmProfileCapture {
     private val recording = Recording().apply {

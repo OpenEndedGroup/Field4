@@ -1404,7 +1404,7 @@ private fun List<TcbKey>.describeKeys(): String = joinToString(" ") { key ->
 }
 
 /**
- * The track tree as one line of prose — the *printing* half of what `ddf732260` promised.
+ * The track tree as one line of prose, showing the algebra rather than a data class's fields.
  *
  * Deliberately not `toString`: a data class already prints its fields, and what is wanted here is
  * the algebra, so `x + sin(t)` reads as `(k(3) + SIN(linear[0..2]))` rather than as three nested

@@ -59,13 +59,52 @@ import java.util.concurrent.TimeUnit
  * still follow the current frame. [stillSpeed] and [mergeDistance] are disabled at zero.
  */
 data class ParticleTrackingOptions(
-    val width: Int = 0, val fps: Double? = null, val frames: Int = 0,
-    val particles: Int = 3000, val minTrack: Int = 10, val grace: Int = 5,
-    val spacing: Double = 0.0, val confidence: Double = .25, val seedConfidence: Double = .45,
-    val colorLimit: Double = .18, val stillSpeed: Double = 0.0,
-    val mergeDistance: Double = 0.0, val mergeAge: Int = 30, val mergeVelocity: Double = 1.5,
-    val seedBudget: Int = 16, val seed: Long = 1,
-    val iterations: Int = 20, val weights: String = "C_T_SKHT_V2", val device: String = "cuda", val threads: Int = 4,
+    /** Resize the video to this width before tracking, keeping its aspect ratio. Zero keeps the
+     * source resolution, and every distance below is in the pixels that choice produces. */
+    val width: Int = 0,
+    /** Resample the video to this frame rate; null tracks it at its own average rate. */
+    val fps: Double? = null,
+    /** Stop after this many frames. Zero runs to the end of the clip. */
+    val frames: Int = 0,
+    /** How many particles to keep alive. A frame that cannot be filled is left underfilled. */
+    val particles: Int = 3000,
+    /** Discard a trajectory that never reached this many samples. */
+    val minTrack: Int = 10,
+    /** How many frames in a row a condition has to hold before it retires the particle. */
+    val grace: Int = 5,
+    /** The closest two particles may be born, in pixels. Zero spaces them for the target count and
+     * the image area, which is usually what you want. */
+    val spacing: Double = 0.0,
+    /** The score a match needs to move a particle. Below it the particle holds its position. */
+    val confidence: Double = .25,
+    /** The score a new particle needs where it is proposed, stricter than [ParticleTrackingOptions.confidence] by default. */
+    val seedConfidence: Double = .45,
+    /** How far the colour under a particle may drift from its birth colour before it is retired,
+     * measured as an RGB root mean square. Use 1.0 to switch this off for recoloured or relit
+     * footage; the colours recorded with each sample still come from the current frame. */
+    val colorLimit: Double = .18,
+    /** Retire a particle moving slower than this, in pixels per frame. Zero keeps them all. */
+    val stillSpeed: Double = 0.0,
+    /** Coalesce two particles that stay this close, in pixels. Zero never merges. */
+    val mergeDistance: Double = 0.0,
+    /** How many frames old both particles must be before they are allowed to merge. */
+    val mergeAge: Int = 30,
+    /** How much two particles' velocities may disagree and still count as one, in pixels a frame. */
+    val mergeVelocity: Double = 1.5,
+    /** How hard to work at filling a gap: this many batches of eight candidate positions for each
+     * missing particle, every batch keeping the best-spaced position it found. */
+    val seedBudget: Int = 16,
+    /** Seeds the placement of new particles, so the same video and options give the same run. */
+    val seed: Long = 1,
+    /** Refinement steps the flow network runs on each frame pair; more of them cost more time. */
+    val iterations: Int = 20,
+    /** Which pretrained RAFT-large checkpoint to load, by its torchvision name. */
+    val weights: String = "C_T_SKHT_V2",
+    /** Where the flow network runs: `cuda`, `cuda:1`, `cpu` or `mps`. The particle bookkeeping is
+     * on the CPU either way, and a different backend is a different cache entry. */
+    val device: String = "cuda",
+    /** Threads for the per-particle work, which runs in its own process alongside the network. */
+    val threads: Int = 4,
 ) {
     internal fun json(): JSONObject {
         require(width == 0 || width in 32..16384)
@@ -89,7 +128,19 @@ data class ParticleTrackingOptions(
 }
 
 /** A finalized cached tracking result. The binary can be copied and loaded without the launcher. */
-data class ParticleTrackingRun(val key: String, val cacheHit: Boolean, val tracksFile: Path, val manifest: Path, val log: Path) {
+data class ParticleTrackingRun(
+    /** The content key this run is filed under: the video, every option, the tools and the
+     * environment they ran in. Two calls that agree on all of it are one run. */
+    val key: String,
+    /** Whether a finished run was already on disk, so no inference happened on this call. */
+    val cacheHit: Boolean,
+    /** The PVTRACK1 file, which [ParticleTrackingRun.load] reads and which can be copied anywhere. */
+    val tracksFile: Path,
+    /** The receipt beside it: what was asked for, what came out, and checksums of both. */
+    val manifest: Path,
+    /** Everything the tracker printed while producing it. */
+    val log: Path
+) {
     /** Memory-map and validate the recorded tracks; this does not run inference. */
     fun load(): ParticleVideo = loadParticleVideo(tracksFile.toFile())
 }
@@ -118,7 +169,14 @@ fun particleTracker(
  * Cache keys include video content, every algorithm option, tool source, compiler, model weights,
  * Torch/Torchvision versions and FFmpeg. An explicit CPU or MPS backend uses a different key.
  */
-class ParticleTracker internal constructor(val tools: Path, val python: String, val cache: Path) {
+class ParticleTracker internal constructor(
+    /** The `optional/particle-tracker` directory holding the wrapper, the engine and its tests. */
+    val tools: Path,
+    /** The interpreter to run it with, which needs a matched Torch and Torchvision. */
+    val python: String,
+    /** Where finished runs are kept, by default under `~/.afield/particle-tracker`. */
+    val cache: Path
+) {
     /**
      * Tracks a local video, or returns the identical cached run. [offline] refuses a missing
      * pretrained checkpoint without downloading it. [force] recomputes this key while preserving

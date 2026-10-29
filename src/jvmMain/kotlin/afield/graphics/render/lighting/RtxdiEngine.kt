@@ -13,6 +13,26 @@ import afield.math.linalg.Rectanglef
 import org.lwjgl.vulkan.VK13.*
 import kotlin.math.*
 
+/**
+ * The RTXDI implementation behind [DirectLighting]'s two RTXDI modes: reservoir resampling run
+ * entirely as compute passes over GPU buffers, with none of the SDK's CPU-side wrapper linked in.
+ *
+ * An engine is built when RTXDI is enabled and sized from the render dimensions it finds then, and
+ * it owns what that sizing implies: a packed surface buffer, host-visible buffers per swapchain
+ * image for the camera matrices and for this frame's and the previous frame's area lights, and
+ * reservoir storage of three slices of 24 bytes a pixel, rounded up to whole 16×16 tiles. That
+ * allocation is checked against the device's `maxStorageBufferRange` as the engine is built, so an
+ * oversized render resolution is refused there rather than inside a descriptor write. Ray queries
+ * are required.
+ *
+ * Reuse across frames holds only while the history does. Every frame compares the projection, the
+ * camera (a view difference over 0.75 counts as a cut), the acceleration structure's build count and
+ * a signature of the sampling settings, and any change resets the history and records which of them
+ * it was. A reference render runs a single reference estimator in place of the four resampling
+ * stages and leaves no history behind. The reconstruction filter that can follow runs over the
+ * radiance view alone, and feeds neither the estimator nor the reservoirs.
+ */
+
 /** One graphics queue, two surface pages, three SDK reservoir slices. No native CPU SDK wrapper. */
 @Suppress("UNNECESSARY_LATEINIT") // cleanup also handles partially constructed pipelines
 internal class RtxdiEngine(private val owner: DirectLighting, program: RtxdiProgram, val settings: RtxdiSettings,

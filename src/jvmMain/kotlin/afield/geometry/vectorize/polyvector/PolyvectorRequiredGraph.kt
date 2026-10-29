@@ -9,6 +9,22 @@ import kotlin.math.exp
 import kotlin.math.hypot
 
 /**
+ * Polyvector tracing under a graph the result has to reproduce: a [Polyvector.vectorize] overload
+ * that takes the curves the trace must keep, and a [RequiredGraphDrawing] saying which of them it
+ * kept.
+ *
+ * The required graph is evidence rather than a hard constraint. Its curves are drawn into the field
+ * the tracer fits, so strokes follow them; traced ends landing within the snap tolerance of a
+ * required node are then moved onto that node and take its id, and a required node no traced end
+ * reached adopts a nearby traced junction instead. A connection can still be lost, which is what
+ * [RequiredGraphDrawing.missingCurves] and [RequiredGraphDrawing.missingNodes] report and
+ * [RequiredGraphDrawing.satisfied] answers in one call.
+ *
+ * The graph usually comes from another reading of the same image, a Morse–Smale complex's network
+ * say, so that the traced curves share its nodes and their ids.
+ */
+
+/**
  * A [PolyvectorDrawing] traced under a required graph, and how far its connectivity keeps that
  * graph's. [network] is the traced curves with every end within the snap tolerance of a required
  * node moved onto that node and given its id; other shared ends become new nodes, numbered after the

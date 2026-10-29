@@ -47,6 +47,7 @@ import kotlin.math.max
  * - `otherPassIndex` (-1 outside other-pass block, otherwise 0..otherPassCount-1)
  */
 class MultiPingPongRenderToTexture(
+    /** The renderer the two internal targets are built on. */
     val renderer: Renderer = fromContext(),
     configure: RTTParameters.() -> Unit = {}
 ) : Target, HasImageView, HasImageViewArray, HasDefaultTextureSampler {
@@ -58,6 +59,12 @@ class MultiPingPongRenderToTexture(
         NONE
     }
 
+    /**
+     * The [RTTParameters] both internal targets were built from. One color attachment and no
+     * external views, which the constructor requires; depth is forced off, and the size, format,
+     * mip and clearing fields are copied into each target when it is created, so editing them
+     * afterwards does not reach the images.
+     */
     var parameters = RTTParameters().apply(configure)
     override var defaultSampler: TextureSampler? = null
 
@@ -156,20 +163,33 @@ class MultiPingPongRenderToTexture(
     private var lastWrittenIndex = 0
 
 
+    /** Which pass is recording, counted from 0 over every pass in the frame, and -1 between frames and whenever the frame has no passes at all. The same number the shaders read as `passIndex`. */
     var currentPassIndex: Int = -1
         private set
 
+    /** Which phase is recording: the init pass, one of the middle passes, or the final one, and `PassKind.NONE` outside a pass. */
     var currentPassKind: PassKind = PassKind.NONE
         private set
 
+    /** How many middle passes to run each frame, between the init and final ones. This is the dial an iterated kernel turns: four blur passes, or forty relaxation steps. A negative value is read as none. */
     var otherPassCount: Int = 1
+
+    /** Whether to run the init pass, the one that seeds the image the middle passes iterate. */
     var runInitPass: Boolean = true
+
+    /** Whether to run the final pass, the one that reads the last middle pass and writes the image this target then publishes as its own view. */
     var runFinalPass: Boolean = true
 
+    /** The modules the init pass draws, by name. Added with `addInit`. */
     val initModules = mutableMapOf<String, ModulePointer>()
+
+    /** The modules every middle pass draws, by name: the same modules re-recorded once per pass, reading what the pass before them wrote. Added with `+=`, or with `addOther`. */
     val otherPassModules = mutableMapOf<String, ModulePointer>()
+
+    /** The modules the final pass draws, by name. Added with `addFinal`. */
     val finalModules = mutableMapOf<String, ModulePointer>()
 
+    /** The image the recording pass reads: whichever of the two targets the pass before it wrote. Bind this where a module samples the previous pass's output; the object is fixed and its view follows the swap. */
     val inputImageView: HasImageView = object : HasImageView, HasDefaultTextureSampler {
         override val imageView: ImageView
             get() = targets[readIndex].imageView
@@ -180,6 +200,7 @@ class MultiPingPongRenderToTexture(
             }
     }
 
+    /** [inputImageView] as a one-element array, for a binding that takes an image array rather than a single image. */
     val inputImageViewArray: HasImageViewArray = object : HasImageViewArray, HasDefaultTextureSampler {
         override val imageViewArray: List<HasImageView>
             get() = listOf(inputImageView)
@@ -191,6 +212,7 @@ class MultiPingPongRenderToTexture(
 
     }
 
+    /** The image the recording pass is writing — the other target from [inputImageView]. Reading it while that pass runs is reading an attachment the pass has not finished, so the frame's result is the view this target itself publishes. */
     val writeImageView: HasImageView = object : HasImageView, HasDefaultTextureSampler {
         override val imageView: ImageView
             get() = targets[writeIndex].imageView

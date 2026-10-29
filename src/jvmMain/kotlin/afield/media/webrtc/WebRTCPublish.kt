@@ -18,6 +18,19 @@ import afield.graphics.vulkan.targets.RenderToTexture
 import afield.document.context.fromContext
 
 /**
+ * Publishing what Field renders as a WebRTC stream, and the colour conversion that makes the stream
+ * look like the window.
+ *
+ * [webrtcPublish] is the one call a box makes: it creates a sink of the size you ask for and adds a
+ * copy pass that samples your source into it every frame. The copy is a full-screen triangle whose
+ * fragment shader is written for the source and target formats it finds, so an 8-bit UNORM source
+ * holding display values and a float or `_SRGB` one holding linear light both come out looking the
+ * same. `WebRTCPublishTest` pins which of the four pairings converts and which passes the colour
+ * through, and compiles every variant. The sink itself, the sources and the networks are in
+ * `WebRTC.kt`.
+ */
+
+/**
  * Publish anything Field can sample — a [RenderToTexture], a shadertoy canvas's `rtt`, a camera, a
  * received stream — as the WebRTC stream `login/name`, and show its preview and status in this box's
  * [show] output channel (`null` to show nothing).

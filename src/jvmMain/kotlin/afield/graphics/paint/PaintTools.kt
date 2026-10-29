@@ -429,6 +429,7 @@ class WaterBrush internal constructor(internal val handle: MemorySegment) : Pain
     /** Its water over its capacity. */
     val fill: Double get() = waterMm3 / capacityMm3
 
+    /** A snapshot of the brush and the water and pigment in it, for [restore]. */
     fun state(): ByteArray = PaintNative.wbrushStateBytes(handle)
     override fun close() = cleanable.clean()
 
@@ -528,6 +529,7 @@ class DynamicBrush internal constructor(internal val handle: MemorySegment, val 
 
 /** What a segmented-brush stroke did ([PaintCanvas.stroke] with a [DynamicBrush]). */
 data class DynamicReport(
+    /** How many steps the engine moved the hairs in — what [contacts] is summed over. */
     val substeps: Long,
     val seconds: Double,
     /** Hair contacts summed over the substeps. */
@@ -560,6 +562,7 @@ data class Carried(
 
 /** One tube paint in the crate's catalogue. Colours are sRGB. */
 data class Tube(
+    /** What the crate calls it, and the name [Tubes] looks a tube up by. */
     val name: String,
     /** What it is made of. */
     val pigment: String,

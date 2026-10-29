@@ -19,8 +19,6 @@ import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 
 /**
- * #### An index of GLSL include libraries for AI grounding
- *
  * [GlslIncludeLibraryIndex] scans directories of GLSL include files, Lygia by default plus any roots
  * named in `AFIELD_GLSL_INCLUDE_DIRS` or repositories in `AFIELD_GLSL_INCLUDE_REPOS`, and records each
  * file's include path, content hash and declared functions and macros in `glsl_include_index.json`

@@ -75,9 +75,9 @@ import kotlinx.coroutines.launch
  * What the language adds is one function, [SourceStudy]'s `admit`: compile and check a candidate,
  * returning a value (whatever the language's tools need — a composition, a compiled shader report)
  * or throwing [StudyRejection] with a message a person or a model can act on. The StackSL, RectSL,
- * stack.auto and function studies are all adapters over it; `FunctionStudy` predated it and kept a
- * private copy of the protocol until 2026-09-29, with the same file layout, so a revision directory
- * written before then still reads.
+ * stack.auto and function studies are all adapters over it. `FunctionStudy` keeps the file layout it
+ * used while it carried its own private copy of the protocol, so a revision directory written by that
+ * older code still reads.
  *
  * ### On disk
  *

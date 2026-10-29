@@ -51,39 +51,74 @@ fun defaultBuffer(
 
 
 class BufferParameters(
+    /**
+     * The reflected shader block this buffer is for, when there is one. It supplies the default
+     * [name] and is recorded on every buffer allocated from these parameters, which is what later
+     * bindings compare themselves against; sizing from it is the caller's own `size = source.size`.
+     */
     var source: Introspected.UBO? = null,
+    /** What the buffer is called: the name `linkBuffer` matches in the box context so two boxes can reach the same allocation, and the name the incompatibility message quotes. */
     var name: String = source?.name ?: "unnamed"
 ) {
 
+    /** Whether to allocate one buffer per swapchain image rather than a single shared one, so the CPU can write next frame's contents while the GPU still reads this frame's. [streamWrites] sets it; [writeOnce] clears it. */
     var perFrame: Boolean = false
 
-    //std430
+    /** `n.floats` — the std430 size in bytes of `n` floats. */
     val Int.floats: Long
         get() = this * 4L
+
+    /** `n.ints` — the std430 size in bytes of `n` 32-bit integers. */
     val Int.ints: Long
         get() = this * 4L
+
+    /** `n.bytes` — `n`, for a size already counted in bytes. */
     val Int.bytes: Long
         get() = this * 1L
+
+    /** `n.vec2s` — the std430 size in bytes of `n` `vec2`s, 8 apiece. */
     val Int.vec2s: Long
         get() = this * 8L
+
+    /** `n.vec3s` — 16 bytes apiece, not 12: std430 pads a `vec3` out to a `vec4`, and a host-side writer that packs them tightly will be read back misaligned. */
     val Int.vec3s: Long
         get() = this * 16L // expanded to vec4
+
+    /** `n.vec4s` — the std430 size in bytes of `n` `vec4`s, 16 apiece. */
     val Int.vec4s: Long
         get() = this * 16L
 
+    /** The blocks that configure these parameters, run in order at allocation rather than when they are added, so a size written in terms of a count the box has not computed yet still works. [mergeFrom] puts a donor's blocks in front of these. */
     val customize = mutableListOf<BufferParameters.() -> Unit>()
 
+    /** Whether the contents live in plain host memory, pushed inline where they are used, instead of in a `VkBuffer` the GPU reads for itself. Such a buffer has nothing to bind to a descriptor and no device address, so asking for [addressable] as well throws. */
     var inlined = false
 
+    /** Size of the buffer in bytes; the `n.floats`-style helpers above count std430 bytes for a given element count. */
     var size: Long = 0
+
+    /** The raw `VkBufferUsageFlags`. Set it through [storage], [uniform], [indirect], [addressable] and the transfer pair `dest()` and `source()`, each of which adds its bit rather than replacing the field. */
     var usage: Int = 0
+
+    /** The raw `VkMemoryPropertyFlags` the allocation is placed by. [hosted], [writeOnce], [streamWrites], [streamReads] and [zeroInitialized] each set a coherent combination of this and [accessPattern]. */
     var memory: Int = 0
+
+    /** Whether the buffer's GPU address is fetched after allocation, so a shader can reach it by pointer instead of through a descriptor. [addressable] sets it. */
     var needsDeviceAddress = false
+
+    /** How the buffer is written and read over its life. It is compared exactly when an existing allocation is offered for this binding, so a buffer tuned for readback will not stand in for a plain [hosted] one even though both are host visible. */
     var accessPattern: BufferAccessPattern = BufferAccessPattern.HOST_VISIBLE
+
+    /** Whether writes go through a host-visible staging buffer and a transfer, rather than into device memory the host can see directly. Allocates a second buffer of the same [size]. */
     var stagedUploads = false
+
+    /** Whether a host-cached buffer is allocated to read results back into, which is what [readOccasionallyForDebugging] is asking for. */
     var readbackStaging = false
 
+    /** Blocks run on each [VulkanBuffer] as it is created, while the group is still being built, so [perFrame] runs them once per swapchain image. Nothing in the tree registers one yet. */
     var postAdaptation = mutableListOf<(VulkanBuffer) -> Unit>();
+
+    /** The allocation these parameters produced, held so that asking for the buffer twice does not allocate twice. Set it yourself to bind an allocation you already have, and [toBuffer] will refuse it rather than silently allocate a fresh one if its parameters do not match. */
     var result: FrameBufferGroup? = null
 
     /**

@@ -18,11 +18,17 @@ import kotlin.math.*
 
 /** Numerical regularisation is separate from observation noise, and its actual value is reported. */
 data class GpNumerics(
+    /** The first jitter tried when the training Cholesky fails, as a fraction of the largest covariance diagonal. */
     val relativeJitter: Double = 1e-12,
+    /** The ceiling on that jitter, in the same units. Each retry multiplies it by ten, and the fit throws rather than go past this. */
     val maxRelativeJitter: Double = 1e-6,
+    /** Relative slack on kernel symmetry, on a posterior variance that comes out slightly negative, and on the noiseless-consistency check. */
     val covarianceTolerance: Double = 1e-10,
+    /** Relative rank tolerance for the pivoted factorisation behind sampling: it decides when a direction of the joint counts as exactly pinned. */
     val samplingTolerance: Double = 1e-12,
+    /** The largest number of observations, values and slopes together, that [GaussianProcess.fit] accepts. */
     val maxTrainingSize: Int = 4096,
+    /** The largest joint query [GaussianProcess.posterior] accepts, and the default point budget of a sampled path. */
     val maxJointSize: Int = 4096
 ) {
     init {
@@ -37,7 +43,12 @@ data class GpNumerics(
 /** Latent function uncertainty, excluding any future measurement noise. */
 data class GpPrediction(val mean: Double, val variance: Double) {
     init { require(mean.isFinite() && variance.isFinite() && variance >= 0) }
+    /** The standard deviation, the square root of [variance]. */
     val std: Double get() = sqrt(variance)
+    /**
+     * The predicted mean plus or minus [standardDeviations] standard deviations; the default 1.96
+     * is the central 95% of a normal. Latent, like the variance it is built from.
+     */
     fun interval(standardDeviations: Double = 1.96): ClosedFloatingPointRange<Double> {
         gpNonnegative(standardDeviations, "interval width")
         return (mean - standardDeviations * std)..(mean + standardDeviations * std)
@@ -46,8 +57,11 @@ data class GpPrediction(val mean: Double, val variance: Double) {
 
 /** The posterior gradient at one point: its mean vector and full covariance between axes. */
 class GpGradient internal constructor(private val mu: DoubleArray, private val cov: Array<DoubleArray>) {
+    /** The mean gradient, one component per input axis. A fresh copy on each read. */
     val mean: DoubleArray get() = mu.copyOf()
+    /** Covariance between the gradient components, which the per-axis variances alone would lose. A fresh copy on each read. */
     val covariance: Array<DoubleArray> get() = Array(cov.size) { cov[it].copyOf() }
+    /** The per-axis variances, the diagonal of [covariance]. */
     val variance: DoubleArray get() = DoubleArray(mu.size) { cov[it][it] }
 }
 
@@ -60,6 +74,7 @@ data class GpLeaveOneOut(val mean: DoubleArray, val variance: DoubleArray, val s
  */
 class GpFunctional private constructor(point: DoubleArray, val axis: Int?) {
     private val p = point.copyOf()
+    /** Where the functional is evaluated. A fresh copy on each read, so the query cannot be moved after the fact. */
     val point: DoubleArray get() = p.copyOf()
     internal val raw: DoubleArray get() = p
     internal val code: Int get() = axis ?: -1
@@ -75,6 +90,7 @@ class GpFunctional private constructor(point: DoubleArray, val axis: Int?) {
 /** A measured slope ∂f/∂x[axis] = [value] at [point]; train on these alongside values. */
 class GpDerivativeObservation(point: DoubleArray, val axis: Int, val value: Double, val noiseStd: Double = 0.0) {
     private val p = point.copyOf()
+    /** Where the slope was measured. A fresh copy on each read. */
     val point: DoubleArray get() = p.copyOf()
     init {
         require(axis in p.indices && value.isFinite())
@@ -96,13 +112,16 @@ class GpDerivativeObservation(point: DoubleArray, val axis: Int, val value: Doub
  * a mean function is taken by central difference; the default zero mean has none.
  */
 class GaussianProcess private constructor(
+    /** The input dimension fixed at the fit. Every query point must carry this many coordinates. */
     val dimensions: Int,
+    /** The covariance function this fit used. Querying or training on slopes needs a [GpDifferentiableKernel]. */
     val kernel: GpKernel,
     private val priorMean: (DoubleArray) -> Double,
     private val x: Array<DoubleArray>,
     private val axes: IntArray,
     private val y: DoubleArray,
     private val noise: DoubleArray,
+    /** The jitter and size limits in force. [jitterUsed] reports what the factorisation actually needed. */
     val numerics: GpNumerics
 ) {
     /** Training values and slopes together. */
@@ -202,9 +221,11 @@ class GaussianProcess private constructor(
 
     /** A point prediction; pass one, two or three coordinates (or *aDoubleArray). */
     fun predict(vararg coordinates: Double): GpPrediction = predictFunctional(point(coordinates), -1)
+    /** The posterior mean, so a fitted process can be called like the function it estimates. */
     operator fun invoke(vararg coordinates: Double): Double = mean(*coordinates)
     /** Mean-only prediction avoids a triangular solve, O(n) kernel work. */
     fun mean(vararg coordinates: Double): Double { val p = point(coordinates); return checkedMean(p) + gpDot(cross(p), alpha) }
+    /** The latent variance on its own, by way of a full [predict] — so it pays the triangular solve that [GaussianProcess.mean] skips. */
     fun variance(vararg coordinates: Double): Double = predict(*coordinates).variance
     /** The latent slope ∂f/∂x[axis] at a point, with its uncertainty. */
     fun derivative(axis: Int, vararg coordinates: Double): GpPrediction {
@@ -234,13 +255,16 @@ class GaussianProcess private constructor(
     }
     /** Marginals in O(m n²) time and O(n) working storage, without an m×m query covariance. */
     fun marginals(points: Array<DoubleArray>): List<GpPrediction> = points.map { predict(*it) }
+    /** One prediction per x, for a 1D fit, with no m×m query covariance formed. Throws unless the process was fitted in one dimension. */
     fun marginals(xs: DoubleArray): List<GpPrediction> { require(dimensions == 1); return xs.map { predict(it) } }
     /** Full latent joint distribution. Query order is preserved; repeated points are allowed. */
     fun posterior(points: Array<DoubleArray>): GpJoint = posterior(points.map { GpFunctional.value(*it) })
+    /** The full joint over a 1D fit's values at the given xs, so a draw from it is a coherent curve. Throws unless the process was fitted in one dimension. */
     fun posterior(xs: DoubleArray): GpJoint { require(dimensions == 1); return posterior(Array(xs.size) { doubleArrayOf(xs[it]) }) }
     /** The joint slope ∂f/∂x[axis] at every point, e.g. a 1D derivative curve with coherent draws. */
     fun derivativePosterior(points: Array<DoubleArray>, axis: Int = 0): GpJoint =
         posterior(points.map { GpFunctional.derivative(axis, *it) })
+    /** The joint slope along a 1D fit's only input axis at each x. Throws unless the process was fitted in one dimension. */
     fun derivativePosterior(xs: DoubleArray): GpJoint { require(dimensions == 1); return derivativePosterior(Array(xs.size) { doubleArrayOf(xs[it]) }) }
     /** One joint over any mix of values and slopes, in the order given. */
     fun posterior(functionals: List<GpFunctional>): GpJoint {
@@ -327,6 +351,7 @@ fun gp1D(xs: DoubleArray, values: DoubleArray, kernel: GpKernel = GpKernels.rbf(
          mean: (Double) -> Double = { 0.0 }, numerics: GpNumerics = GpNumerics(),
          slopes: List<GpDerivativeObservation> = emptyList()): GaussianProcess =
     gp1D(xs, values, DoubleArray(values.size) { noiseStd }, kernel, mean, numerics, slopes)
+/** Per-observation noise: one standard deviation for each value, rather than one for all of them. Slopes carry their own. */
 fun gp1D(xs: DoubleArray, values: DoubleArray, noiseStd: DoubleArray, kernel: GpKernel = GpKernels.rbf(),
          mean: (Double) -> Double = { 0.0 }, numerics: GpNumerics = GpNumerics(),
          slopes: List<GpDerivativeObservation> = emptyList()): GaussianProcess =

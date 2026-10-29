@@ -174,25 +174,28 @@ class LpPolygon(points: List<Vec2>) {
 
 /**
  * One step of a trajectory.
- *
- * @property x the iterate's x.
- * @property y the iterate's y.
- * @property iteration the step number, starting at 0.
- * @property objective `c·x` with `c` the normalised objective direction.
- * @property violation the largest constraint violation, zero for a feasible iterate.
- * @property scale the method's own measure at this step: the barrier weight μ for [centralPath],
- *   the duality measure μ for [primalDual], the dual norm for [pdhg], `√det` of the ellipse for
- *   [ellipsoid], the remaining area for [cuttingPlanes], and `NaN` for [simplexWalk].
- * @property tag what kind of step this is: the method's name, or for [ellipsoid] whether the cut
- *   was a feasibility or an objective cut.
  */
 data class LpSample(
+    /** The iterate's x. */
     val x: Double,
+    /** The iterate's y. */
     val y: Double,
+    /** The step number, starting at 0. */
     val iteration: Int,
+    /** `c·x` with `c` the normalised objective direction. */
     val objective: Double,
+    /** The largest constraint violation, zero for a feasible iterate. */
     val violation: Double,
+    /**
+     * The method's own measure at this step: the barrier weight μ for [centralPath], the duality
+     * measure μ for [primalDual], the dual norm for [pdhg], `√det` of the ellipse for [ellipsoid],
+     * the remaining area for [cuttingPlanes], and `NaN` for [simplexWalk].
+     */
     val scale: Double,
+    /**
+     * What kind of step this is: the method's name, or for [ellipsoid] which cut was taken —
+     * `feasibility-cut`, `objective-cut`, or `final` at the last step.
+     */
     val tag: String,
 ) {
     /** The iterate as a [Vec2], for drawing. */

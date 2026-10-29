@@ -29,9 +29,10 @@ package afield.lang.stacksl
  * is `Nc·cos θ − Ns·sin θ`, exactly. Each octave is divided by the square root of its own window
  * energy, which is independent of phase, so the identity survives normalisation.
  *
- * Octave `o` is the lattice scaled by `lacunarity^o` and rotated by
- * [PhaseNoiseConstants.OCTAVE_ROTATION], so a kernel's frequency in cycles per unit of the input
- * coordinate is its carrier times `lacunarity^o`. That number is what a phase response sees.
+ * Octave `o` is the lattice scaled by `lacunarity^o` and rotated once per octave by the fixed
+ * ([PhaseNoiseConstants.OCTAVE_ROTATION_COS], [PhaseNoiseConstants.OCTAVE_ROTATION_SIN]) pair, so a
+ * kernel's frequency in cycles per unit of the input coordinate is its carrier times
+ * `lacunarity^o`. That number is what a phase response sees.
  *
  * #### Output and range
  *

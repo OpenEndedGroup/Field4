@@ -43,6 +43,20 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
+ * One websocket handler, `dependency-graph`, which is how the dependency layer asks what it draws.
+ *
+ * The reply is [PropertyDependencies]' record for the document of the page that asked: every
+ * producer to consumer flow it has seen, and every read that found nothing. Sending it with
+ * `action = "clear"` forgets that document's record first, which is the palette's Clear Dependency
+ * Record.
+ *
+ * Nothing calls [dependencyGraphHandlers]; the startup scan finds it by its `@RunsAt` annotation and
+ * runs it while handlers are being installed. A page with no document session yet, or a record that
+ * fails to build, is answered with an empty graph carrying the reason rather than with an error, so
+ * the layer can say why it is empty.
+ */
+
+/**
  * `dependency-graph`: the dependency layer's view of [PropertyDependencies] for the asking page's
  * document — every producer → consumer flow and every unanswered read — or, with `action = "clear"`,
  * forget the document's record first.

@@ -42,10 +42,15 @@ data class GpComparison(val winner: Map<String, Double>, val loser: Map<String, 
  */
 class GpPreference(
     parameters: List<GpRange>,
+    /** RBF length scale of the latent utility, in the unit cube every parameter is rescaled to. */
     val lengthScale: Double = 0.25,
+    /** How inconsistent the judge is allowed to be. Smaller trusts each answer more. */
     val noise: Double = 0.1,
+    /** How far [nextPair]'s challenger reaches past the mean: it maximises mean + this · std. */
     val exploration: Double = 1.0,
+    /** Seeds the candidate draws, so the same answers in the same order propose the same pairs. */
     val seed: Long = 1L,
+    /** How many uniform random candidates go into [nextPair]'s pool, besides 32 jitters of the favourite. */
     val candidates: Int = 512,
 ) {
     constructor(
@@ -53,7 +58,9 @@ class GpPreference(
         lengthScale: Double = 0.25, noise: Double = 0.1, exploration: Double = 1.0, seed: Long = 1L,
     ) : this(ranges.map { GpRange(it.first, it.second.start, it.second.endInclusive) }, lengthScale, noise, exploration, seed)
 
+    /** The parameters being compared over, in the order their coordinates are held. */
     val parameters: List<GpRange> = parameters.toList()
+    /** How many parameters there are. */
     val dimensions: Int get() = parameters.size
     init {
         require(parameters.isNotEmpty() && parameters.map { it.name }.distinct().size == parameters.size)

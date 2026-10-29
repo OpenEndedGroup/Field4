@@ -46,12 +46,25 @@ enum class Paper(internal val id: String) {
  * [Watercolors] has named ones; [WaterPigment.of] makes one from a colour.
  */
 data class WaterPigment(
+    /** What to call it. [Watercolors] uses the common name, and [WaterPigment.of] takes any. */
     val name: String,
+    /** Kubelka–Munk absorption per µg/mm²: three entries, one per channel, in `r, g, b` order. */
     val k: List<Double>,
+    /** Kubelka–Munk scattering per µg/mm². Low is a dye, high a body colour. */
     val s: Double,
+    /** Particle density, g/cm³. With [diameterUm], this is what decides how fast it settles. */
     val density: Double,
+    /**
+     * Particle diameter, µm. Dense, coarse pigment settles onto the paper within a minute; fine
+     * pigment stays suspended and travels with the water.
+     */
     val diameterUm: Double,
+    /** Per second, how much adsorbs onto fibres from water in the sheet; after that it will not lift. */
     val stain: Double,
+    /**
+     * Per second, how much of a deposit goes back into still water standing on it. A moving brush
+     * lifts much faster than this.
+     */
     val lift: Double,
 ) {
     internal fun params(): FloatArray = floatArrayOf(k[0].toFloat(), k[1].toFloat(), k[2].toFloat(), s.toFloat(),
@@ -107,6 +120,7 @@ object Watercolors {
 
 /** Pigments dissolved in water, each at a concentration in µg per mm³ of water. Add two with `+`. */
 data class WaterPaint(val pigments: Map<WaterPigment, Double>) {
+    /** Both paints at once: concentrations add pigment by pigment, so two washes make a stronger one rather than an average. */
     operator fun plus(o: WaterPaint) = WaterPaint((pigments.keys + o.pigments.keys).associateWith { (pigments[it] ?: 0.0) + (o.pigments[it] ?: 0.0) })
 
     companion object {
@@ -120,6 +134,7 @@ data class WashReport(val waterLaid: Double, val waterTaken: Double, val pigment
 
 /** One pigment's books on a sheet, µg. */
 data class PigmentLedger(
+    /** The pigment these books are for, by [WaterPigment.name]. */
     val name: String,
     /** In the surface water, moving with it. */
     val suspended: Double,
@@ -131,8 +146,11 @@ data class PigmentLedger(
     val glued: Double,
     /** Stained into the fibres: it no longer lifts. */
     val bound: Double,
+    /** All of it that has been laid on the sheet, however it has since moved. */
     val added: Double,
+    /** All of it a brush has lifted back off. */
     val taken: Double,
+    /** All of it carried off the edge of the sheet by water that ran away. */
     val runoff: Double,
     /** Sealed into the picture under paint laid over it. */
     val sealed: Double,
@@ -143,15 +161,26 @@ data class PigmentLedger(
 
 /** The water on a sheet and every volume that came or went, mm³ (µl), at [clockSeconds]. */
 data class WaterLedger(
+    /**
+     * The canvas's own clock when these numbers were read. It advances as strokes are painted and
+     * as [PaintCanvas.waitSeconds] and [PaintCanvas.wait] let time pass, not with wall time.
+     */
     val clockSeconds: Double,
+    /** Standing on the sheet right now. */
     val surfaceMm3: Double,
+    /** In the sheet's pores right now. */
     val absorbedMm3: Double,
+    /** All the water a brush has laid down. */
     val addedMm3: Double,
+    /** All the water a brush has lifted back off. */
     val takenMm3: Double,
+    /** All the water that has evaporated. */
     val evaporatedMm3: Double,
+    /** All the water that has run off the edge of the sheet. */
     val runoffMm3: Double,
     /** All the surface water that has gone into the sheet so far. */
     val absorbedInAllMm3: Double,
+    /** The same books kept per pigment, one entry for each the sheet has seen. */
     val pigments: List<PigmentLedger>,
 ) {
     /** Water on and in the sheet, less what the ledger says should be: rounding only. */

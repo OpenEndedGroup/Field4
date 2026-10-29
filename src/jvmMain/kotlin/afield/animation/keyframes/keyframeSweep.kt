@@ -33,7 +33,7 @@
  *
  * Three things the fold alone gets wrong, and this file handles — see [DiscreteBlend],
  * [MissingSlots] and [SweepConfig.preserveNumericKind]. All three are recorded per render rather
- * than assumed, because an archive you cannot interrogate later is a wasted night.
+ * than assumed, so a later pass over the archive can see which of them applied to any given render.
  *
  * ## What a night survives
  *

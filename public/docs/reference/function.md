@@ -544,6 +544,16 @@ A pluggable distance metric between a target signal and a candidate, evaluated o
 
 ## FnShapedFormulas.kt { #fnshapedformulas-kt }
 
+Formulas for the three ops whose shape is chosen by data on the node rather than by the op name.
+`ease` and `tween` read a [`Functions.Easing`](math.md#functions-kt--functions--easing) out of `strings["easing"]`; `pulseTrain` reads a
+[`Functions.PulseEdge`](math.md#functions-kt--functions--pulseedge), a [`Functions.PulseProfile`](math.md#functions-kt--functions--pulseprofile), `booleans["bipolar"]` and `longs["seed"]`.
+
+Each is a transcription of the matching closure in `Functions.kt` (`shapeAlpha`, `bounceOut`,
+`edgeRamp`, `pulseProfileValue`, `pulseShape`, and `pulseTrain`'s own body), operation for
+operation and in Kotlin's association order, which [`FnExpr`](function.md#autodiff-formula-kt-fnexpr)'s operator overloads reproduce:
+`c3 * t * t * t` here is `((c3·t)·t)·t` there. `FnShapedFormulaAgreementTest` pins every variant to
+`Fn.eval`'s own bits. Formulas are built once per variant and cached.
+
 `src/jvmMain/kotlin/afield/math/functions/FnShapedFormulas.kt` — [read the source](source/jvmMain/afield/math/functions/FnShapedFormulas/)
 
 ## FunctionEvolve.kt { #functionevolve-kt }

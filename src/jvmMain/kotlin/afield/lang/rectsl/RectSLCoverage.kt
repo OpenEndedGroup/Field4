@@ -25,8 +25,8 @@ import kotlin.math.sin
  * scene, in closed form. A rect is a convex quadrilateral and a pixel is a convex box, so a single
  * rect's coverage is a convex-convex clip ([clipConvexToBox], Sutherland–Hodgman) followed by the
  * shoelace formula ([polygonArea]) — exact in the arithmetic, with no sampling anywhere. A *union* of
- * rects is not convex, so that case goes to JTS, which is an external implementation of the same
- * quantity and therefore an oracle rather than a second opinion from the same author.
+ * rects is not convex, so that case goes to JTS, an outside implementation of the same quantity,
+ * which makes it a check on this file rather than a restatement of it.
  * `RectSLSoftRasterTest` cross-checks the two on the single-rect case where both apply.
  *
  * # The three biases, named
@@ -37,9 +37,9 @@ import kotlin.math.sin
  *
  * 1. **Obliquity.** Every kernel in [CoverageKernel] is a function of a single signed distance, so it
  *    is implicitly assuming the edge is axis-aligned. For an axis-aligned edge the exact area of a
- *    unit pixel on one side of it *is* `clamp(0.5 - d)`, so [CoverageKernel.LINEAR] at `beta` = one
- *    pixel has **zero** obliquity bias there — a fact worth checking, because if it does not come out
- *    at machine precision then either the kernel or the exact reference is wrong. As the edge rotates
+ *    unit pixel on one side of it *is* `clamp(0.5 - d)`, so [CoverageKernel]'s `LINEAR` at `beta` =
+ *    one pixel has **zero** obliquity bias there, which is itself a check: if that case does not come
+ *    out at machine precision, either the kernel or the exact reference is wrong. As the edge rotates
  *    the true coverage curve becomes piecewise quadratic and the ramp cannot follow it.
  * 2. **Feature scale.** A rect thinner than the band never lets coverage saturate. As
  *    width/`beta` → 0 the error tends to the whole of the feature's coverage, which is the regime

@@ -479,8 +479,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
 
     /**
      * Install [engine] as this box's engine, disposing the one it replaces and forgetting what that one
-     * had run — the single way to swap engines, for the sites that used to assign `ki = makeKI…` and
-     * leak the old K2 compilation state (the `reset` action, execute-all, [afield.workspace.copyBox]).
+     * had run — the single way to swap engines, and what the `reset` action, execute-all and
+     * [afield.workspace.copyBox] all go through. Assigning `ki` directly leaks the old engine's K2
+     * compilation state.
      *
      * Only an engine that was actually built is disposed, so a box that never ran costs nothing, and
      * installing the engine already current is a no-op: `makeKIHere` hands back the existing engine for
@@ -512,8 +513,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     var frame by Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onFrameChange)
 
     /**
-     * A colour the canvas lays over this box, to show some state of it at a glance: a CSS colour
-     * such as `"hsla(28, 80%, 56%, 0.2)"` or `"rgba(255, 184, 108, 0.15)"`, or `""` for none.
+     * A colour the canvas lays over this box, to show some state of it: a CSS colour such as
+     * `"hsla(28, 80%, 56%, 0.2)"` or `"rgba(255, 184, 108, 0.15)"`, or `""` for none.
      *
      * The colour, at its own alpha, washes the box, over the running stripes and under its title;
      * the same colour made nearly opaque edges it and glows faintly. Change it as often as you

@@ -47,16 +47,18 @@ import afield.math.linalg.x
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Formulas for the ops whose shape is chosen by **data on the node** rather than by the op name:
- * `ease` and `tween` (an [Functions.Easing] in `strings["easing"]`) and `pulseTrain` (a
- * [Functions.PulseEdge], a [Functions.PulseProfile], `booleans["bipolar"]` and `longs["seed"]`).
+ * Formulas for the three ops whose shape is chosen by data on the node rather than by the op name.
+ * `ease` and `tween` read a [Functions.Easing] out of `strings["easing"]`; `pulseTrain` reads a
+ * [Functions.PulseEdge], a [Functions.PulseProfile], `booleans["bipolar"]` and `longs["seed"]`.
  *
- * Each is a transcription of the closure in `Functions.kt` — `shapeAlpha`, `bounceOut`, `edgeRamp`,
- * `pulseProfileValue`, `pulseShape` and `pulseTrain`'s own body — operation for operation and in
- * Kotlin's association order, which the operator overloads below reproduce: `c3 * t * t * t` here is
- * `((c3·t)·t)·t` there. `FnShapedFormulaAgreementTest` holds every variant bit-identical to `Fn.eval`.
- * Formulas are built once per variant and cached.
+ * Each is a transcription of the matching closure in `Functions.kt` (`shapeAlpha`, `bounceOut`,
+ * `edgeRamp`, `pulseProfileValue`, `pulseShape`, and `pulseTrain`'s own body), operation for
+ * operation and in Kotlin's association order, which [FnExpr]'s operator overloads reproduce:
+ * `c3 * t * t * t` here is `((c3·t)·t)·t` there. `FnShapedFormulaAgreementTest` pins every variant to
+ * `Fn.eval`'s own bits. Formulas are built once per variant and cached.
  */
+
+/** The transcriptions, keyed by op together with the node data that selects a variant. */
 internal object FnShapedFormulas {
 
     private const val TAU = Math.PI * 2.0
