@@ -29,6 +29,8 @@ class WebPublicationTest {
             unrelated.output.retainedAreas.put("value", "another document")
 
             val result = exportWebDocument(info)
+            assertTrue(nativePublicationTargets(info).isEmpty())
+            assertTrue(box.liveKi == null, "Discovering native windows initialized a scripting engine")
             assertEquals(listOf("latest", "root content"), result.outputs.map { it.value })
             assertEquals(listOf("shared-id", "root"), result.outputs.map { it.uid })
             val restored = SavingContext().readEdnTransfersFromString(result.document.edn)

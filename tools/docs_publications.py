@@ -10,6 +10,9 @@ import re
 import shutil
 import tempfile
 import zipfile
+import shlex
+import base64
+import struct
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,7 +28,9 @@ def digest(path: Path) -> str:
 
 def capture_digest() -> str:
     paths = [ROOT / 'src/commonMain/resources' / name for name in
-             ('publication-capture.js', 'publication-three.js')]
+             ('publication-capture.js', 'publication-three.js', 'publishDocument.js',
+              'threejs_viewer.html', 'threejs_tools.js', 'threejs_shot.js', 'threejs_camera_link.js')]
+    paths.append(ROOT / 'src/jvmMain/kotlin/afield/document/workspace/WebPublication.kt')
     return hashlib.sha256(b''.join(p.read_bytes() for p in paths if p.is_file())).hexdigest()
 
 
@@ -50,7 +55,12 @@ def write_catalog(index: dict) -> None:
 
 
 def recipe_sources(recipe: dict) -> dict[str, str]:
-    return source_files(recipe['source'], recipe.get('transcript'))
+    sources = source_files(recipe['source'], recipe.get('transcript'))
+    for image in recipe.get('nativeCaptures', []):
+        for name in (image['path'], image['page']):
+            path = DOCS / name
+            sources[str(path.relative_to(ROOT))] = digest(path)
+    return sources
 
 
 def snapshot_hashes(entry: dict) -> dict[str, str]:
@@ -175,7 +185,10 @@ def registry(*, verify: bool = True, index: dict | None = None) -> dict:
                 if not path.is_file() or digest(path) != expected:
                     raise ValueError(f"Stale publication {source}: {name}; recapture with tools/docs_publications.py")
             transcript = next((name for name in entry['sources'] if name.startswith('dev_docs/agents/transcripts/')), None)
-            if source_files(source, transcript) != entry['sources']:
+            document_sources = source_files(source, transcript)
+            tracked_sources = {name: value for name, value in entry['sources'].items()
+                               if name not in entry.get('supplementalSources', [])}
+            if document_sources != tracked_sources:
                 raise ValueError(f"Stale publication {source}: source file set changed; run tools/docs_publications.py sync")
             for key in ("file", "outputs"):
                 if not (DOCS / entry[key]).is_file():
@@ -255,6 +268,10 @@ def install(archive: Path, *, name: str, source: str, sources: dict[str, str]) -
         "sources": sources,
         "captureDigest": capture_digest(),
     }
+    transcript = next((name for name in sources if name.startswith('dev_docs/agents/transcripts/')), None)
+    supplemental = sorted(set(sources) - set(source_files(source, transcript)))
+    if supplemental:
+        entry['supplementalSources'] = supplemental
     entry['files'] = snapshot_hashes(entry)
     index = catalog()
     index["documents"][source] = entry
@@ -271,12 +288,38 @@ def recipes(group: str) -> list[dict]:
     block = text.split("internal val EXECUTE = setOf(", 1)[1].split("internal val COMPILE_ONLY", 1)[0]
     block = re.sub(r'/\*.*?\*/|//[^\n]*', '', block, flags=re.S)
     names = re.findall(r'"([a-z0-9_-]+)"', block)
-    return [{"name": name, "source": f"assets/agent_transcripts/{name}/metadata.edn",
+    result = [{"name": name, "source": f"assets/agent_transcripts/{name}/metadata.edn",
              "transcript": f"dev_docs/agents/transcripts/{name}.yaml",
              # The execution harness records ~67s for Morpho's synchronous search; both
              # benchmarks need a dedicated budget rather than the interactive watchdog.
              "longCompute": name in {'petri_tala_layout', 'morpho_circuit_search'}} for name in names
             if (DOCS / f"assets/agent_transcripts/{name}/metadata.edn").is_file()]
+    # Reuse genuine native captures owned by docs. Their hardware profiles and refresh timing
+    # stay with the existing runner; publishing never executes arbitrary compile-only recipes.
+    native = {}
+    for page in sorted(DOCS.glob('*.md')):
+        for fence in re.findall(r'^```diffstatic_runner\s+\{([^\n]+)\}', page.read_text(), re.M):
+            attrs = dict(part.split('=', 1) for part in shlex.split(fence) if '=' in part)
+            macro = attrs.get('macro-file', '')
+            match = re.fullmatch(r'../../dev_docs/agents/transcripts/([a-z0-9_-]+)\.yaml', macro)
+            if attrs.get('capture') != 'native-window' or not match or not attrs.get('capture-box'):
+                continue
+            image = page.parent / attrs.get('screenshot', '')
+            if not image.is_file() or image.suffix.lower() != '.png':
+                continue
+            native.setdefault(match[1], []).append({'uid':attrs['capture-box'], 'page':page.relative_to(DOCS).as_posix(),
+                'path':image.relative_to(DOCS).as_posix(), 'alt':attrs.get('alt', 'Vulkan window at docs capture time')})
+    by_name = {r['name']: r for r in result}
+    for name, images in native.items():
+        if not (DOCS / f'assets/agent_transcripts/{name}/metadata.edn').is_file():
+            continue
+        recipe = by_name.get(name)
+        if recipe is None:
+            recipe = {'name':name, 'source':f'assets/agent_transcripts/{name}/metadata.edn',
+                      'transcript':f'dev_docs/agents/transcripts/{name}.yaml', 'retainedNative':True}
+            result.append(recipe)
+        recipe['nativeCaptures'] = images
+    return result
 
 
 async def command(client, text: str) -> dict:
@@ -296,7 +339,7 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
         workspace = Path(temp) / "workspace"
         workspace.mkdir()
         for recipe in selected:
-            if not recipe.get("transcript"):
+            if not recipe.get("transcript") or recipe.get('retainedNative'):
                 shutil.copytree((DOCS / recipe["source"]).parent, workspace / recipe["name"])
         async def start(watchdog_ms: int = 30000):
             log = fb.SessionLogger(fb.LOG_ROOT, ["docs-publications"])
@@ -328,7 +371,7 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
         try:
             for recipe in selected:
                 name, source = recipe["name"], recipe["source"]
-                sources = source_files(source, recipe.get("transcript"))
+                sources = recipe_sources(recipe)
                 previous = catalog()["documents"].get(source)
                 if not force and previous and previous["sources"] == sources and previous.get('captureDigest') == capture_digest():
                     print(f"RETAIN {name}: {previous['channels']} channels", flush=True)
@@ -346,7 +389,11 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
                 try:
                     await client.open_document(name, scratch=False, timeout=180)
                     await client.open_playwright(timeout=90)
-                    if transcript := recipe.get("transcript"):
+                    if recipe.get('retainedNative'):
+                        # The materialized document contains the authored code. Its matching
+                        # native image is already a verified docs-runner capture.
+                        pass
+                    elif transcript := recipe.get("transcript"):
                         await client.macro_transcript_command(command="write", name=name,
                             content=(ROOT / transcript).read_text(), timeout=60)
                         result = await client.macro_transcript_command(command="run", name=name, timeout=180)
@@ -388,7 +435,16 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
                             y += {"three-output-grid": 960, "three-output-renderers": 1060,
                                   "three-output-winding": 1060}.get(box["uid"], 700)
                     path = Path(temp) / f"{name}.zip"
-                    result = await publish_document(client, str(path), timeout=240, include_viewer=False)
+                    native_images = []
+                    for image in recipe.get('nativeCaptures', []):
+                        data = (DOCS / image['path']).read_bytes()
+                        if data[:8] != b'\x89PNG\r\n\x1a\n':
+                            raise ValueError(f"Not a PNG capture: {image['path']}")
+                        width, height = struct.unpack('>II', data[16:24])
+                        native_images.append({'uid':image['uid'], 'width':width, 'height':height,
+                            'dataUrl':'data:image/png;base64,' + base64.b64encode(data).decode(), 'alt':image['alt']})
+                    result = await publish_document(client, str(path), timeout=240, include_viewer=False,
+                                                    native_images=native_images)
                     if not result['capturedOutputs']:
                         record_empty(recipe, sources)
                         report.append({'name': name, 'ok': True, 'channels': 0,

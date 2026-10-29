@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T15:21:09.868Z",
+  "documentName": "threebox",
+  "outputs": [
+    {
+      "uid": "tb_compute",
+      "channel": "probe",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 560,
+      "height": 448,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "tb_renderer",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/1.html",
+      "width": 4112,
+      "height": 2524,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

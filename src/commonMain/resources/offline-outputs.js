@@ -5,7 +5,7 @@
         if (params.has('outputs') || !params.get('file')) return;
         const root = new URL('./',location.href), source = new URL(params.get('file'),root);
         if (source.origin !== root.origin || !source.pathname.startsWith(root.pathname)) return;
-        const response = await fetch(new URL('offline-publications.json',root));
+        const response = await fetch(new URL('offline-publications.json',root), {cache:'no-cache'});
         if (response.status === 404) return; // Older standalone distributions have no registry.
         if (!response.ok) throw new Error(`Published documents: HTTP ${response.status}`);
         const registry = await response.json();
@@ -21,7 +21,7 @@
         if (!path) return;
         const url = new URL(path, location.href);
         if (url.origin !== location.origin) throw new Error('Output manifest must be served beside the publication');
-        const response = await fetch(url);
+        const response = await fetch(url, {cache:'no-cache'});
         if (!response.ok) throw new Error(`Captured outputs: HTTP ${response.status}`);
         const data = await response.json();
         if (data.version !== 1 || !Array.isArray(data.outputs)) throw new Error('Unsupported output snapshot format');
@@ -47,11 +47,16 @@
             details.append(summary);
             if (output.path && /^outputs\/\d+\.html$/.test(output.path)) {
                 const frame = document.createElement('iframe'); frame.title = `Captured ${output.channel}`;
-                frame.setAttribute('sandbox','allow-scripts allow-downloads'); frame.src = new URL(output.path,base).href;
+                frame.setAttribute('sandbox','allow-scripts allow-downloads');
+                const url = new URL(output.path,base);
+                if (manifest.capturedAt) url.searchParams.set('v',manifest.capturedAt);
+                frame.src = url.href;
                 const width = Math.max(160,Math.min(4096,Number(output.width) || 640));
                 const height = Math.max(40,Math.min(8192,Number(output.height) || 420));
                 details.style.width = `${width}px`; frame.style.height = `${height}px`;
-                frame.loading = 'lazy'; details.append(frame);
+                // Canvas transforms and overlapping boxes can leave lazy frames asleep even
+                // though their open output is visible. Open panels must initialize eagerly.
+                frame.loading = output.open ? 'eager' : 'lazy'; details.append(frame);
             }
             for (const warning of output.warnings || []) {
                 const note = document.createElement('p'); note.className = 'published-output-warning'; note.textContent = warning;

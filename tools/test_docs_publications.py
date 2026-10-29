@@ -12,6 +12,33 @@ import docs_publications as publications
 
 
 class DocsPublicationsTest(unittest.TestCase):
+    def test_native_recipes_reuse_real_docs_captures_without_executing_compile_only(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root/'src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt'
+            source.parent.mkdir(parents=True)
+            source.write_text('internal val EXECUTE = setOf()\ninternal val COMPILE_ONLY = setOf("gpu")')
+            docs = root/'public/docs'
+            document = docs/'assets/agent_transcripts/gpu/metadata.edn'
+            document.parent.mkdir(parents=True)
+            document.write_text('authored document')
+            transcript = root/'dev_docs/agents/transcripts/gpu.yaml'
+            transcript.parent.mkdir(parents=True)
+            transcript.write_text('operations: []')
+            image = docs/'assets/gpu.png'
+            image.write_bytes(b'real runner image fixture')
+            (docs/'graphics.md').write_text('```diffstatic_runner {capture="native-window" '
+                'capture-profile="linux-nvidia" screenshot="assets/gpu.png" '
+                'macro-file="../../dev_docs/agents/transcripts/gpu.yaml" capture-box="renderer"}\n```')
+            with patch.multiple(publications, ROOT=root, DOCS=docs):
+                recipe, = publications.recipes('gallery')
+                self.assertTrue(recipe['retainedNative'])
+                self.assertEqual(recipe['nativeCaptures'][0]['uid'], 'renderer')
+                before = publications.recipe_sources(recipe)
+                self.assertIn('public/docs/assets/gpu.png', before)
+                image.write_bytes(b'refreshed real capture fixture')
+                self.assertNotEqual(publications.recipe_sources(recipe), before)
+
     def test_classification_accepts_multiple_names_on_a_line_and_ignores_comments(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

@@ -406,11 +406,18 @@ def _publication_input(path: str) -> bool:
     return (_transcript_input(path) or _under(path, 'public/docs/assets/web_publications')
             or _under(path, 'public/docs/assets/fline_examples')
             or _under(path, 'public/docs/assets/three_output_gallery')
+            or (path.startswith('public/docs/') and path.endswith(('.md', '.png')))
             or path in {'tools/docs_publications.py', 'tools/build_zensical_docs.py',
                         'src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt',
                         'src/jvmMain/kotlin/afield/examples/AgentTranscriptMaterializer.kt',
                         'src/commonMain/resources/publication-capture.js',
-                        'src/commonMain/resources/publication-three.js'})
+                        'src/commonMain/resources/publication-three.js',
+                        'src/commonMain/resources/publishDocument.js',
+                        'src/commonMain/resources/threejs_viewer.html',
+                        'src/commonMain/resources/threejs_tools.js',
+                        'src/commonMain/resources/threejs_shot.js',
+                        'src/commonMain/resources/threejs_camera_link.js',
+                        'src/jvmMain/kotlin/afield/document/workspace/WebPublication.kt'})
 
 
 GUARDS = (

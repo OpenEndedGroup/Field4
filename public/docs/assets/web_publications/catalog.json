@@ -3078,6 +3078,35 @@
         "public/docs/assets/agent_transcripts/three_inspector_wall/three-inspector-wall_code_.kt": "d2a70ad8df481301fad229ea1ef1bbcd8b91aad510a98df7ee661c7d7dd513a8"
       }
     },
+    "assets/agent_transcripts/threebox/metadata.edn": {
+      "captureDigest": "241150031827a720c3fa2e5d3f4af7ffd6fca7b924473db3640e2d7a02018f58",
+      "capturedAt": "2026-10-29T15:21:09.868Z",
+      "channels": 2,
+      "file": "assets/web_publications/threebox/document/metadata.edn",
+      "files": {
+        "assets/web_publications/threebox/document/metadata.edn": "a745a8bb54b9c1e7a2a71ae023d04ddef54345acca66ac377ade53332a364066",
+        "assets/web_publications/threebox/document/outputs.json": "70877bac29a54c8654a605ba249860f5aa87f0af2313d1459113918e5408ee1d",
+        "assets/web_publications/threebox/outputs/0.html": "cd1411b827cdff91f7261b99da373d4964d2fa0e125b6cee60897972c09e9fb7",
+        "assets/web_publications/threebox/outputs/1.html": "dbb7841ddbe71f4c231387ba10f1fce33093cb0dcd700c410c86231b33fcfa16"
+      },
+      "kinds": [
+        "native-image",
+        "svg"
+      ],
+      "outputs": "assets/web_publications/threebox/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/threebox.yaml": "aaa8511c2141d23863f2c5da970f2b8ae3b23d183e2701c4536b50a82e3b5497",
+        "public/docs/assets/agent_transcripts/threebox/guides/afield_four_graphics.md": "a13f2e9a2771dc072863ea75e0492150cb81e2853b2ee604bb55d7a343cd5d08",
+        "public/docs/assets/agent_transcripts/threebox/guides/field_probes.md": "491fd38858a00c867df2101bc9d6ac6c9a3eb688dd32ce7ea5d598f4f13ada85",
+        "public/docs/assets/agent_transcripts/threebox/metadata.edn": "4b5ae071c4255eaf976b28239fae06a10ed5f564ed52e31f92fc91e63ec3d801",
+        "public/docs/assets/agent_transcripts/threebox/tb_compute_code_.kt": "f3d046be8037154031c0c6c163dd6b3c162f3181b7fde1f88172684cdaa88bc1",
+        "public/docs/assets/agent_transcripts/threebox/tb_compute_compute_.glsl": "817c9f667f61952741d442d986e0004318c9bfef7c510faf1d5fb933751e40ab",
+        "public/docs/assets/agent_transcripts/threebox/tb_draw_code_.kt": "60e8d9bb841f8f308e594ff0e9e44b06c4eb33880e976247aef79e5945573461",
+        "public/docs/assets/agent_transcripts/threebox/tb_draw_fragment_.glsl": "739c6e5b6ad0ac8fd506d6926fe7af6eac86d734807a1a8c121ca6d00585c25e",
+        "public/docs/assets/agent_transcripts/threebox/tb_draw_vertex_.glsl": "2c8e11634cdf55e1666a96f3bd1411949e77074c7a19dbac24f48c5380aa07f1",
+        "public/docs/assets/agent_transcripts/threebox/tb_renderer_code_.kt": "5adb4383d6451544289629b5958e7ac4767f497841dc5b8c0797e2c4f4ea53af"
+      }
+    },
     "assets/agent_transcripts/typography_worked_example/metadata.edn": {
       "captureDigest": "4922bf78986077d52bc6fd50098fb5a7043066bf6f51f472927f50cba41685f5",
       "capturedAt": "2026-10-28T21:05:40.079Z",

@@ -3456,9 +3456,14 @@ class Server {
             })
 
             handlers["export-web-document"] = mutableSetOf({ _, reply ->
-                reply(Message("export-web-document").payload(
-                    afield.document.workspace.exportWebDocument(thisSessionInfo.get())
-                ))
+                val info = thisSessionInfo.get()
+                val source = afield.document.workspace.exportWebDocument(info)
+                val native = afield.document.workspace.nativePublicationTargets(info)
+                controlUpdateScope.launch {
+                    reply(Message("export-web-document").payload(
+                        afield.document.workspace.captureNativePublication(source, native)
+                    ))
+                }
                 Handled.yes
             })
 
