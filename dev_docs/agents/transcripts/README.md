@@ -448,6 +448,17 @@ The FIELD_TEST `examples.agent-transcripts.materialize` re-materializes to a tem
 the committed bundle is out of date** — or absent entirely — so a transcript edit without a regenerate
 is caught in CI. `./gradlew checkAgentTranscripts` is the same guard inside `check`.
 
+### Publishing the frozen outputs
+
+After materialization, the normal incremental docs build discovers new eligible transcripts and
+captures their output areas for the gallery's offline viewer. Existing unchanged captures are
+reused, so adding one scene does not require replaying the corpus. Eligibility comes from the
+execution classification above; native scenes can reuse real retained docs captures.
+
+Follow [Adding a transcript: the routine path](../../OFFLINE_PUBLICATION.md#adding-a-transcript-the-routine-path)
+for the authoring, capture, verification and landing checklist. That guide also covers broad
+refactors, focused recaptures and diagnosing a scene that remains code-only.
+
 ### Documentation pages for a starting point
 
 A top-level `docs:` list names the one or two documentation pages someone with the document open
