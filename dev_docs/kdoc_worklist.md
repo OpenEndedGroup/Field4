@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 19549 of 34916 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 19579 of 34918 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**1998 undocumented entry points** (types, top-level functions and values) and 12702 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**1994 undocumented entry points** (types, top-level functions and values) and 12679 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -71,14 +71,12 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Mechanics.kt](../src/jvmMain/kotlin/afield/simulation/physics/pressure/Mechanics.kt) | Simulation | pressure_membranes | 3 | 7 | 23% |
 | [PlanarContact.kt](../src/jvmMain/kotlin/afield/geometry/solid/manifold/PlanarContact.kt) | Graphics | manifold | 3 | 5 | 38% |
 | [NgxSupport.kt](../src/jvmMain/kotlin/afield/media/reconstruction/NgxSupport.kt) | Imaging | neural_reconstruction, reconstruction_plumbing | 3 | 4 | 22% |
-| [GpFields.kt](../src/jvmMain/kotlin/afield/math/gp/GpFields.kt) | Math | gaussian_processes | 3 | 0 | 33% |
 | [Renderer.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/Renderer.kt) | Graphics | open_dlss_nr, profiling_timeline | 2 | 64 | 13% |
 | [GeometryAgentTools.kt](../src/jvmMain/kotlin/afield/graphics/render/GeometryAgentTools.kt) | Graphics | geometry_from_disk | 2 | 33 | 27% |
 | [Runloop.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/Runloop.kt) | Workspace | profiling_timeline, animation_time_model | 2 | 13 | 21% |
 | [actors.kt](../src/jvmMain/kotlin/afield/runtime/execution/actors.kt) | Internal | terminal | 2 | 8 | 62% |
 | [MatrixProfile.kt](../src/jvmMain/kotlin/afield/math/matrixprofile/MatrixProfile.kt) | Math | matrix_profile | 2 | 0 | 86% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/math/functions/Functions.kt) | Math | functions_examples | 1 | 47 | 84% |
-| [GaussianProcess.kt](../src/jvmMain/kotlin/afield/math/gp/GaussianProcess.kt) | Math | gaussian_processes | 1 | 21 | 52% |
 | [FunctionStudy.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionStudy.kt) | Function | function_conversation | 1 | 12 | 51% |
 | [OpenDlssNrPass.kt](../src/jvmMain/kotlin/afield/graphics/render/neural/OpenDlssNrPass.kt) | Graphics | open_dlss_nr | 1 | 11 | 36% |
 | [DlssReconstruction.kt](../src/jvmMain/kotlin/afield/media/reconstruction/DlssReconstruction.kt) | Imaging | reconstruction_plumbing, neural_reconstruction, ray_reconstruction | 1 | 11 | 29% |
@@ -236,7 +234,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SolidField.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidField.kt) | Graphics | solid_notation | 0 | 2 | 80% |
 | [autodiff_optimize.kt](../src/jvmMain/kotlin/afield/math/autodiff/autodiff_optimize.kt) | Math | autodiff_examples | 0 | 2 | 94% |
 | [FunctionRewritePattern.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionRewritePattern.kt) | Function | functions_examples | 0 | 2 | 84% |
-| [GpSmile.kt](../src/jvmMain/kotlin/afield/math/gp/GpSmile.kt) | Math | gaussian_processes | 0 | 2 | 60% |
 | [alife_continuous.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_continuous.kt) | ALife | alife_examples | 0 | 2 | 91% |
 | [terminalOutput.kt](../src/jvmMain/kotlin/afield/ui/output/terminalOutput.kt) | Visualization | terminal | 0 | 2 | 80% |
 | [corpora.kt](../src/jvmMain/kotlin/afield/ai/learning/pen/corpora.kt) | Machine learning | teaching_a_pen, a_pen_that_sees | 0 | 1 | 96% |
@@ -1197,4 +1194,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `Neighbor` | class | `src/jvmMain/kotlin/afield/data/graph/dynamic_graph_systems.kt:521` |
 | `DynamicGraphSystem` | interface | `src/jvmMain/kotlin/afield/data/graph/dynamic_graph_systems.kt:523` |
 
-…and **1878 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **1874 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
