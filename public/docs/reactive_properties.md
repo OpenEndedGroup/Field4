@@ -1,13 +1,11 @@
 # Properties that re-run boxes
 
-A box can read a value that another box set. `prop<Int>(bpm)` in one box declares a typed property,
-`bpm`, that every box connected beneath it can read; the read walks up the box graph to the nearest
-box that has a value. That much is [property
-inheritance](running_code.md#property-inheritance-how-children-see-a-parents-values), and with plain
-`prop` nothing runs on its own: when the parent's value changes, a child sees the new value the next
-time *you* run the child.
+A parent box can publish a value for the boxes beneath it. With an ordinary `prop`, a child reads
+the latest value when you run it. But what if you want the child to update as soon as the value
+changes, or want a missing value to run the box that supplies it?
 
-Swap `prop` for one of three variants and Field does the running for you:
+The reactive properties do that for you. Each declares an inherited property, just as
+`prop<Int>(bpm)` does; the difference is when Field runs the boxes:
 
 | Declare | What it adds |
 | --- | --- |
@@ -15,8 +13,8 @@ Swap `prop` for one of three variants and Field does the running for you:
 | `propUp<T>(name)` | Reading a value nobody has set yet runs the box that sets it first. |
 | `propUpDown<T>(name)` | Both. |
 
-Each declares the same inherited property `prop` does, read and written the same way. Only the
-re-running differs.
+You read and write these just like `prop`. For how Field finds an inherited value, see
+[property inheritance](running_code.md#property-inheritance-how-children-see-a-parents-values).
 
 Any of them can be assigned where it is declared, `propDown<Int>(bpm) = 120`, and any of them takes
 a default for when no box up the graph has a value yet: with `prop<Int>(runs, 0)`, a first
@@ -145,9 +143,9 @@ for (i in 0 until 40) {
 ui.pause(500)
 ```
 
-Accent's arrow starts at Tempo, not at Beat: an inherited value comes from the box that holds it,
-however many levels up. An arrow is bright (amber) for a couple of seconds after a read, solid for a read
-seen since Field started, and faint and dashed for one only remembered from an earlier session. A
+Accent's arrow starts at Tempo, the box that holds the inherited value. An arrow is bright (amber)
+for a couple of seconds after a read, solid for a read seen since Field started, and faint and
+dashed for one only remembered from an earlier session. A
 read that found nothing puts a red `? name` tag on the reader. **Clear Dependency Record** forgets
 what the document has recorded.
 

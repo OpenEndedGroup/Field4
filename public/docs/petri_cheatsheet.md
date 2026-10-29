@@ -1,10 +1,10 @@
 # Petri notation cheatsheet
 
-*The code is `afield.simulation.petri.*`: the model and DSL in `PetriNets.kt`, this notation's parser in
-`PetriNotation.kt`. The worked examples are on [Petri nets](petri_nets.md).*
+The `#petri` notation gives you a compact way to write a net: each arc takes a line, so you can
+edit it while it plays. For a guided introduction, see [Petri nets](petri_nets.md).
 
-The `#petri` notation is the short way to write a net: a whole net fits on screen and one arc is one
-line, so you can edit it while it plays. The Kotlin DSL can express everything the notation can,
+The model and Kotlin DSL are in `afield.simulation.petri.PetriNets.kt`; the notation's parser is in
+`PetriNotation.kt`. The Kotlin DSL can express everything the notation can,
 and more, because its arcs can take a lambda.
 
 ```diffstatic {data-lang=petri}

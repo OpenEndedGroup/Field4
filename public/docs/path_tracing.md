@@ -1,12 +1,13 @@
 # Progressive path tracing
 
-[`PathTracingRenderer`](reference/renderers.md#pathtracingrenderer-kt-pathtracingrenderer) is a GPU
-path tracer for Field 4. It runs on ordinary
-Vulkan compute devices, including MoltenVK on macOS. When Field has enabled
-`VK_KHR_ray_query`, `AUTO` selects hardware triangle traversal. Both backends use
-the same lighting, material evaluation and accumulation code. Every type this page
-uses is documented on the [Renderers](reference/renderers.md) reference page, alongside
-the real-time deferred renderer and the splat renderer.
+Field's progressive path tracer lets you light a scene with materials, reflections and environment
+maps, then watch the image settle as samples accumulate. The examples below build scenes you can
+change and render yourself.
+
+[`PathTracingRenderer`](reference/renderers.md#pathtracingrenderer-kt-pathtracingrenderer) runs on
+Vulkan compute devices, including MoltenVK on macOS. When Field has enabled `VK_KHR_ray_query`,
+`AUTO` selects hardware triangle traversal. Both backends share lighting, material evaluation and
+accumulation code. The [Renderers](reference/renderers.md) reference covers the types used here.
 
 ```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/materials.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="materials study converged" embed=true hidden=true timeout="150" name="path-tracing-materials" alt="Plastic, polished gold and rough metal spheres lit by a Venice sunset environment, rendered by Field’s progressive path tracer" macro-file="../../dev_docs/agents/transcripts/path_tracing_materials.yaml" capture-box="path_trace_materials"}
 // Built and launched from dev_docs/agents/transcripts/path_tracing_materials.yaml.
@@ -886,8 +887,7 @@ With temporal reuse disabled, use `tracer.samples` to compare views at the same 
 
 ## Sampling the lamps directly
 
-The clamp above gives a clean preview at the cost of some bias. Specks from small,
-bright emissive triangles can be removed without bias by sampling the lamps directly.
+The clamp above gives a clean preview at the cost of some bias. Sampling small, bright emissive triangles directly can reduce those specks without adding bias.
 Without it, a path finds a lamp only by scattering into it by chance; the smaller and
 brighter the lamp, the rarer and spikier those hits. With it, emissive triangles are
 importance-sampled from a cumulative table and connected with a shadow ray, as the

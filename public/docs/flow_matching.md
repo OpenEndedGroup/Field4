@@ -1,8 +1,8 @@
 # Flow Matching
 
-`flowMatch` fits a velocity field that carries one cloud of points onto another. Integrating that
-field from `t = 0` to `t = 1` moves the first distribution onto the second, and stopping part-way
-gives every stage in between. The input is a few hundred to a few thousand points in two or three
+`flowMatch` fits a velocity field to carry one cloud of points toward another. Integrating that
+field from `t = 0` to `t = 1` moves the first distribution toward the second; stopping part-way
+gives you an intermediate stage. The input is a few hundred to a few thousand points in two or three
 dimensions — a sampled `FLine` with noise around it is the usual case — and training takes about a
 second.
 
@@ -11,9 +11,9 @@ point `x1` from where you want to end up, and declare that the straight line bet
 path a particle should take: at time `t` it sits at `xt = (1-t)·x0 + t·x1` travelling at `x1 - x0`.
 Then fit a network `v(x, t)` to that velocity by least squares over many random `(x0, x1, t)`
 triples. No two straight lines agree where they cross, so the fit cannot reproduce any one of them;
-it converges to the average velocity through each point at each time, and integrating that average
-transports the whole starting distribution onto the whole target one. The loss is a regression mean
-squared error, so there is no adversary and nothing to diverge.
+the fit seeks the average velocity through each point at each time. In the ideal case, integrating
+that field transports the starting distribution to the target. The loss is a regression mean squared
+error; the examples below show how closely a finite model gets.
 
 ```diffstatic {data-lang=kotlin}
 :::static

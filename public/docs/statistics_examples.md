@@ -1,8 +1,5 @@
 # Measuring dependence between two signals
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference:
-[Math](reference/math.md) and [Data](reference/data.md).*
-
 You have two streams of numbers and want to know whether they are related. Field's tools for that
 live in the `afield.math.statistics` package, in three files:
 [`stats.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/math/statistics/stats.kt),
@@ -303,16 +300,16 @@ possible `x`. Cheap, too: O(n log n) against the O(n²) of `kendallTauB` and `di
 **Distance correlation answers "is there any dependence at all".** It is the only entry in the
 table that is non-zero on *every* dependent row, including the last interesting one: the
 growing-spread panel, where `y` has the same mean everywhere and only its *scale* depends on `x`.
-Pearson, Spearman and Kendall read 0.00 there. So does xi (0.026), and rightly so: `y` is not a
-function of `x`, it is a random variable whose spread is. Distance correlation reads 0.193, and the
+Pearson, Spearman and Kendall read 0.00 there. Xi is also small in this example (0.026); the relationship changes the spread of `y` rather
+than making it a deterministic function of `x`. Distance correlation reads 0.193, and the
 next section puts that against the null it would have to beat.
 
 **And the trap in reading distance correlation**: it is *not* a measure of how strong the
 dependence is. dCor is 1 only for an exactly linear relationship (`distanceCorrelation(x, 3x+1)` is
 exactly `1.0`, and so is `distanceCorrelation(x, −2x+5)`; it is unsigned). On the parabola,
-where `y` is a perfect function of `x`, it reads 0.491; on the sine, 0.286. Lower dCor does not
-mean weaker dependence, it means less *linear* dependence. Use it to decide whether to keep
-looking, then use something else to describe what you found.
+where `y` is a perfect function of `x`, it reads 0.491; on the sine, 0.286. A lower dCor need not mean a relationship is unimportant; its value depends on the shape and
+distribution of the data. Use it to decide whether to keep looking, then use other views and
+measures to describe what you found.
 
 ??? note "How `xi` handles a tied predictor"
 
@@ -449,14 +446,14 @@ markdown(
 Read the verdict line. The observed 0.1934 is beyond every one of 400 random re-pairings
 (**0 / 400**), whose 95th percentile is 0.1262 and whose maximum is 0.1758. The dependence is real
 even though `pearson` reads −0.002. And in the same run xi reads 0.0263 against its own null's 95th
-percentile of 0.0520, with **76 / 400** re-pairings doing at least as well: xi has correctly
-declined to call this a functional relationship.
+percentile of 0.0520, with **76 / 400** re-pairings doing at least as well: this run does not give strong evidence from xi.
 
 The second figure gives you the shortcut for next time. Plotted against `1/√n` rather than `n`, the
 measured 95th percentile falls on a **straight line through the origin**, and the line's slope is
 about 2.5. Read the measured-against-predicted pairs off the bottom of the figure: 0.335/0.354 at
 n = 50 through 0.123/0.125 at n = 400, with the rule erring safely high at n = 25 (0.466 measured
-against 0.500 predicted). So: **a dCor you cannot beat 2.5/√n with is noise.** Note what that means
+against 0.500 predicted). For these independent Gaussian samples, `2.5/√n` is a useful rough reference, not a universal
+significance threshold. Measure the null for your own data. Note what the example means
 for short signals. At n = 50 the threshold is around 0.34, so anything short of a strong
 relationship is invisible; distance correlation needs a few hundred samples before it can see a
 subtle one.
@@ -729,8 +726,9 @@ updates the warp and calls your `apply` callback with the new state.
 
 ## Choosing, in one paragraph
 
-Start with `distanceCorrelation`: it is the only one that is zero *only* under independence, so it
-is the right screen. Beat `2.5/√n` or you have found nothing. If it fires, ask what shape: `pearson`
+Start with `distanceCorrelation` as one screen for dependence. Its population value is zero under
+independence, but finite samples have a noise floor: estimate that floor for your data, for example
+with the permutation test above. If it fires, ask what shape: `pearson`
 for a line, `spearman` or `kendallTauB` for monotone-but-curved, `xi` for "is `y` a function of
 `x`" including non-monotone ones. Hand `xi` its two arrays in the order you mean them, since it is
 the one coefficient here that answers a different question when you swap them. Reach for
@@ -752,3 +750,6 @@ measurements, [State estimation](state_estimation_examples.md); and for the roll
 fences in their original setting, [Values Over Time](interpolants_examples.md). For a
 distribution over whole functions, curves and fields — means, uncertainty and coherent draws from a few observations — see
 [Drawing with Gaussian processes](gaussian_processes.md).
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference:
+[Math](reference/math.md) and [Data](reference/data.md).*

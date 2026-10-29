@@ -201,7 +201,7 @@ pluck.setInvalue("gain", 0.5) // invalue "gain"
 pluck.noteOn(0, 64, 90) // MIDI, to massign'ed instruments
 ```
 
-What each of these does, and on which thread:
+Here's how those calls work, and which thread they use:
 
 - **Control and string channels.** `setChannel`, `channel`, `setStringChannel` and `stringChannel`
   read and write Csound's channel bus directly. Csound locks the bus itself, so they are safe from

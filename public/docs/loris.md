@@ -425,7 +425,7 @@ Breakpoints that a transposition or tilt pushes above 0.49 × the sample rate ar
 ## A document to explore
 
 The [`loris_partial_explorer`](agent_transcripts.md#loris_partial_explorer) starting point has a box for each step on this page: playing the source, analysis with its status, picking
-partials, removing noise, the spectral whirlpool, resynthesis, and a fine-time against
+partials, removing noise, the spectral whirlpool, resynthesis, a fine-time against
 fine-frequency comparison, and the label, align and morph pipeline. Each box runs its own analysis, so you can start from any of them.
 
 ## Setup and caching

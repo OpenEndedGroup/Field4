@@ -119,8 +119,9 @@ displayOpen("lines")
 
 The plan's `toString` reports its cost, how many iterations it took and how far its marginals are
 from the weights. Smaller `epsilon` takes more iterations: here 20 at `5000` and 5200 at `50`.
-As `epsilon` shrinks the cost falls toward the exact `assignment` cost, and with equal sizes
-and weights each source's `strongest()` target becomes its assigned one.
+As `epsilon` shrinks, the cost approaches the exact `assignment` cost. For equal sizes and
+weights, `strongest()` shows the target receiving the most mass from each source; inspect the full
+plan when you need a one-to-one assignment.
 
 Two things to do with a plan:
 

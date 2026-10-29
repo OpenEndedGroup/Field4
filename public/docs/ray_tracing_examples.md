@@ -1,6 +1,9 @@
 # Ray Tracing Examples
 
-Field's ray tracing support is built around Vulkan `VK_KHR_ray_tracing_pipeline`. The four examples below run from a raygen shader writing straight into a storage image to procedural spheres reflecting a traced floor, and between them they cover image binding, acceleration structures, shader groups, dispatch, and GLSL.
+These four examples build up a ray-traced image in Field, from a ray-generation shader writing
+into a storage image to procedural spheres reflected in a traced floor. Along the way you'll set
+up image bindings, acceleration structures, shader groups and dispatch using Vulkan's
+`VK_KHR_ray_tracing_pipeline`.
 
 The figures are 1024 × 1024 captures from Field on Linux with an RTX 4090. The examples
 require an enabled `VK_KHR_ray_tracing_pipeline`; Field checks device features, independently

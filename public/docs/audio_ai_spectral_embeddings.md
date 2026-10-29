@@ -1,11 +1,11 @@
 # Short-time spectral spaces
 
-*To run the examples on this page, open the [audio_ai_spectral_embeddings](agent_transcripts.md#audio_ai_spectral_embeddings) starting point.*
-
 A resonance sliding upward, a hiss that thickens, a room closing in around a voice: none of that
 needs a trained model to notice, only a record of which frequencies are loud from one moment to the
 next. `analysis.embed_spectral` keeps that record as mel bands, log-mel bands and MFCCs, and Field
 lays the frames out as a map you can play through.
+
+*To run the examples on this page, open the [audio_ai_spectral_embeddings](agent_transcripts.md#audio_ai_spectral_embeddings) starting point.*
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_spectral_embeddings/spectral_spaces.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-spectral" alt="Three real Field t-SNE projections of librosa mel, log-mel and MFCC frames"}
 :::static

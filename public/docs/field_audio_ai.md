@@ -1,14 +1,13 @@
 # Field Audio AI
 
-Point Field at a recording you already have, name four and a half seconds of it, and ask for eight
-variations that keep its room and its grain. Or ask which other stretches of the same folder sound
-like that one. Generating from a source and navigating a corpus are the two things Field Audio AI
-is for.
+Point Field at a recording you already have, choose four and a half seconds of it, and ask for
+eight variations that keep its room and its grain. Or ask which other stretches in a folder sound
+like the passage you picked. Field Audio AI lets you generate from recordings and explore a
+collection by how it sounds.
 
-The models are not in Field. They run in long-lived Python workers behind a model-neutral HTTP and
-WebSocket protocol, so swapping a checkpoint does not take the piece with it: Field keeps the source
-selections, the operations, the candidate sets, the ratings and annotations, the provenance and the
-arrangement.
+The models run in long-lived Python workers behind an HTTP and WebSocket protocol. Swap a
+checkpoint and Field keeps the rest of your work together: source selections, operations,
+candidate sets, ratings, annotations, provenance and arrangement.
 
 The companion service is experimental, and pinned under `services/field-audio-ai` as a Git submodule
 while its architecture moves. In a box its API needs no import; it names

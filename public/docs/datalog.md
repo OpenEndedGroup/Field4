@@ -1,15 +1,12 @@
 # Datalog in a box
 
-A Field document is a graph. Boxes have parents and children, they nest, they carry properties,
-and the questions you end up asking about one are recursive: what runs downstream of this, what
-does nothing feed into, which two boxes both write the same property. `graphPaths`
-([Querying Object Graphs](graph_query.md)) can address a slot by pattern, but it cannot follow an
-edge and then follow it again.
+Which boxes run downstream of this one? Which two write the same property? A Field document is a
+graph, and questions like these often need to follow its connections more than once.
 
-`afield.data.query.datalog` can. It is a small deductive database: you state facts, you write rules that
-derive more facts from them, and the engine runs the rules to exhaustion. Recursion is the normal
-case rather than a special one, so transitive closure is two lines. Facts can come from Datalog
-text, from Kotlin collections, or from the document you have open.
+Datalog gives you a way to ask them. State some facts, write rules that derive more facts, and the
+engine follows those rules until it has the answers. Facts can come from Datalog text, Kotlin
+collections, or the document you have open. For finding values by pattern inside an object, see
+[Querying Object Graphs](graph_query.md).
 
 ## Facts, rules, and a question
 
@@ -361,8 +358,8 @@ what you want to ask about, where a walk of a `Box` object turns up every intern
 
 ## Drawing what it derived
 
-Query results are rows of ordinary values, so anything that eats values can eat them. Below, the
-rules separate stated edges from the ones that follow, and the drawing gives each set a weight:
+Query results are rows of values you can use elsewhere in Field. Here the rules separate stated
+edges from the ones that follow, and the drawing gives each set a different weight:
 
 <!--
 FIELD_TEST

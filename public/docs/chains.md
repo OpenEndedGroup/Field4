@@ -1,16 +1,17 @@
 # Long way round
 
-Most pages in these docs stay inside one part of Field: the pattern language, the Boolean kernel,
-the path tracer, the drawing layer. The pages in this section each take one thing and pass it
-through three or four of those parts, which were not written with each other in mind. A
-cellular automaton becomes a rhythm. A cloth simulation becomes a welded solid you can count the
-holes in, and then a render. A photograph becomes a plaque you could print. A drawing becomes a
-score and then a `.wav`, and the `.wav` is taken apart again and laid over the drawing.
+What happens when you connect things that weren't designed together? A cellular automaton becomes
+a rhythm. A cloth simulation becomes a welded solid whose holes you can count, and then a render.
+A photograph becomes a plaque you could print. A drawing becomes a score, then a `.wav`, and the
+sound is taken apart again and laid over the drawing.
+
+Each page here follows an idea through several parts of Field. Pick one that interests you and
+follow it as far as you like; the individual steps also lead to pages where you can learn more.
 
 Each one is also a check. Every step has to hand the next one something it can use, and the
 pages say what that is, what gets lost on the way, and which number shows whether it arrived
-intact. When the areas of a sliced solid fail to add up to its volume, the surface passes through
-itself. A function played as sound comes back late, and the page measures by how much, to the
+intact. Comparing the areas of a sliced solid with its volume can reveal a surface that passes
+through itself. A function played as sound can come back late; the page measures the delay to the
 sample.
 
 Many of these pages begin as an [agent transcript](agent_transcripts.md): a short YAML macro
@@ -27,8 +28,8 @@ These chains end in the GPU path tracer, and each starts somewhere a renderer wo
 -   ![A path-traced truncated icosidodecahedron: brushed-gold decagons, deep blue hexagons and transparent squares](assets/chain_polytope_render/lineage.png)
 
     **[A Polytope, Cut Open and Traced](chain_polytope_render.md).** Conway operators build the
-    shape and remember where every face came from. That record survives the Booleans, so the
-    render can colour each face by its origin.
+    shape and remember where every face came from. The render colours each face by its origin;
+    the page also follows what happens to that record through the Boolean operations.
 
 -   ![A lattice of pale gold rods draped over an unseen sphere and pooling on a floor](assets/chain_physics_render/drape.png)
 
@@ -71,7 +72,7 @@ These chains end in something you can listen to, or start from it.
 
     **[A Cellular Automaton You Can Hear](chain_ca_sound.md).** A row of an elementary CA
     becomes a step mask. `patCondense` runs the mini-notation parser backwards to spell it,
-    and how short the spelling is tells you how structured the rule is.
+    and the length of the spelling gives you a way to compare the resulting rhythms.
 
 -   ![Four concentric rings of particles in blue, orange, green and amber](assets/chain_pattern_particles/rings.png)
 

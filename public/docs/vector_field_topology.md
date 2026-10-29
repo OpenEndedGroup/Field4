@@ -52,8 +52,9 @@ showImgGrid(
 )
 ```
 
-The flow is treated as linear across each small triangle of the grid, so every critical point is
-found exactly, with its own Jacobian, and nothing is missed between samples. The type comes from
+The flow is treated as linear across each small triangle of the grid. Critical points are found
+within that interpolated field, each with its own Jacobian; detail absent from the samples cannot
+be recovered. The type comes from
 the Jacobian: a negative determinant is a saddle; otherwise the sign of the divergence says out or
 in, and complex eigenvalues add the spiral.
 

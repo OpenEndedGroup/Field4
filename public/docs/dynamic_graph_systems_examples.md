@@ -1,13 +1,8 @@
 # Graphs that change while you watch
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference:
-[`dynamic_graph_systems.kt`](reference/data.md#dynamic-graph-systems-kt) and
-[`dynamic_graph_field.kt`](reference/data.md#dynamic-graph-field-kt). Start from
-[what's already in the box](reference/index.md).*
-
-The graphs on this page record what has been near what, and slowly forget it. Points move every
-frame, and edges are proposed, strengthened and allowed to fade as they go, so the structure you
-see is whatever keeps being proposed.
+Watch points move and connect to their neighbours. As they travel, new edges appear, familiar
+connections grow stronger, and old ones fade. The graph remembers where the points have been
+near each other, then slowly forgets.
 
 Three things work differently from a static graph:
 
@@ -212,7 +207,7 @@ showSignals(
 ![two decay curves over four seconds of simulated time: the exponential one falls smoothly and is still above 0.2 at the end, the linear one reaches zero at about 2.9 seconds and stays there](assets/dynamic_graph_systems_examples/decay.png)
 
 The two laws give different memories. Under exponential decay a weight halves every `ln 2 / λ`
-seconds and is never quite gone. Under linear decay it reaches zero at a fixed time, and the edge is
+seconds and approaches zero. Under linear decay it reaches zero at a fixed time, and the edge is
 removed then. `ttl` is separate from both: an edge expires when its `ttl` runs out, whatever its
 weight, so an edge that keeps being proposed at the ceiling still dies eventually.
 
@@ -749,3 +744,8 @@ whole run from one that arrived a frame ago. A weighted, decaying graph can.
 - [Voronoi, contours & clusters](spatial_geometry_examples.md) — when what you want from a moving cloud
   is a *partition* rather than a graph.
 - [Meshes & 3D geometry](mesh_examples.md) — where a triangulated dynamic graph wants to end up.
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference:
+[`dynamic_graph_systems.kt`](reference/data.md#dynamic-graph-systems-kt) and
+[`dynamic_graph_field.kt`](reference/data.md#dynamic-graph-field-kt). Start from
+[what's already in the box](reference/index.md).*

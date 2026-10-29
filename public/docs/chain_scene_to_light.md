@@ -1,10 +1,12 @@
 # A RectSL scene on a light rig
 
-A RectSL scene is a picture that changes over time, and an LED matrix is a screen with very few
-pixels. This page plays a RectSL scene on a light rig. `RectSLImager` draws the scene on the CPU into an `Img`. `Patch.mapImage` colours 128 RGB
-pixels and four RGBWA washes from that image. `DmxOutput` sends the resulting universes as sACN to
-this machine, and `DmxInput` receives them. Then `Fixture.decode` turns the received bytes back into
-colours, laid out as the rig is, so they can be checked against the pixels the rig was given.
+An LED matrix is a screen with very few pixels. Let's play a RectSL animation on one, then read
+the signal back to see what the lights received.
+
+`RectSLImager` draws the scene into an `Img`, and `Patch.mapImage` uses it to colour 128 RGB pixels
+and four RGBWA washes. `DmxOutput` sends those colours over sACN to this machine, where `DmxInput`
+receives them. `Fixture.decode` turns the received bytes back into colours so we can compare them
+with what was sent.
 
 The box below draws one frame, lights the rig from it, sends it over sACN, and draws what came back.
 
@@ -151,9 +153,8 @@ ${timing.ticks} looks computed; ${timing.arrivalMillis.size + 1} frames of unive
 :::endfold
 ```
 
-No slot byte changes on the way: sACN over loopback is lossless, so the network adds no error. What
-error remains is quantisation. An
-RGB pixel's colour is rounded to 8 bits once, so it comes back within half a level. A wash is
+In this run, no slot byte changes on its way over loopback. The remaining error comes from
+quantisation. An RGB pixel's colour is rounded to 8 bits once, so it comes back within half a level. A wash is
 further off because `writeInto` splits its colour into red, green, blue, white and amber, and
 rounds each of those separately. `decode` adds white back into all three primaries and amber into
 red and green, so up to three rounded values combine in the red channel. The washes in this scene

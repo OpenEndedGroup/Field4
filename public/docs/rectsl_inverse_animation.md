@@ -1,8 +1,8 @@
 # RectSL Inverse Animation
 
-A RectSL animation is normally read forwards: you write the tracks, and the sampler tells you where
-the rectangles went. This page runs that arrow backwards. You say **where a rect should be, and
-when**, and a gradient works out the numbers that put it there.
+You can animate a rectangle by writing its motion tracks. You can also work backwards: say
+**where it should be, and when**, and let Field fit the numbers that put it there. Let's try that
+with a rectangle passing through three points.
 
 The box below asks a rect to pass through three points at three given times. Its motion is a
 circle with six unknown numbers (an amplitude, a phase and a centre on each axis), and
@@ -265,8 +265,7 @@ RectSL source.
 
 ## How the fit works
 
-The rest of this page explains how a track becomes something a gradient can be taken of, and what
-cannot be fitted. You do not need it to use `free-param`.
+The rest of the page looks at how Field differentiates a track and which tracks can be fitted.
 
 ### The three backends
 
@@ -401,8 +400,8 @@ dividing by zero.
 a gate or a hold has a zero derivative, and `fitParameters` names it instead of returning a residual
 that never moved. A parameter alongside a gate, rather than under it, fits normally.
 
-Every lowered track is tested against the sampler, and the gradient against finite differences, so a
-poor residual means a poor fit and not a lowering error.
+Tests compare lowered tracks with the sampler and their gradients with finite differences. If a
+fit leaves a large residual, inspect the track, targets and convergence before relying on it.
 
 ### Printing, comparing and simplifying tracks
 

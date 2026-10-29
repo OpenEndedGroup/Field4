@@ -1,11 +1,10 @@
 # Speech-reactive learned spaces
 
-*To run the examples on this page, open the [audio_ai_speech_embeddings](agent_transcripts.md#audio_ai_speech_embeddings) starting point.*
+Listen to a recording of someone talking and you can hear changes in timbre, prosody and the
+sounds of the words. `analysis.embed_speech` lets you explore those changes as a path through a
+learned space. Two models are available, each attentive to different aspects of speech.
 
-A field recording of someone talking gives a beat tracker almost nothing to hold onto. What moves
-in it is voice activity, vocal timbre, prosody and phonetic motion, and that is what
-`analysis.embed_speech` measures. Two speech models sit behind that one operation, and which of
-them you ask changes what the motion is about.
+*To run the examples on this page, open the [audio_ai_speech_embeddings](agent_transcripts.md#audio_ai_speech_embeddings) starting point.*
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_speech_embeddings/learned_spaces.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-speech" alt="Real emotion2vec and WavLM learned phase portraits with voice activity, energy and novelty"}
 :::static
@@ -49,10 +48,9 @@ separate from Field's.
 
 ## Plotting a recording
 
-This box first reuses a previously imported content-addressed asset. If none exists, it imports
-`~/Downloads/near_drowning.wav`. Then it displays the source immediately, submits both jobs,
-streams progress into replaceable cards, awaits the durable results, and gives all four phase
-portraits the source player's time bus.
+This box uses an imported recording if one is available, or imports
+`~/Downloads/near_drowning.wav`. It displays the source, starts both analyses and shows their
+progress. When they finish, four views share a timeline with the audio player.
 
 ```diffstatic {data-lang=kotlin}
 import java.nio.file.Files

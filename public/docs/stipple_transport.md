@@ -1,8 +1,8 @@
 # Stipple transport
 
-A stippled image can be represented as a deformation that redistributes a uniform particle sheet.
-The useful result is the learned velocity field and its flow map: particles, coordinate lattices,
-curves and sampling coordinates can all pass through the same field.
+Start with a sheet of evenly spaced particles and move them until they form a stippled image.
+The learned velocity field can move more than the particles: pass a grid, a curve or a set of
+sampling coordinates through it to see the same transformation from another angle.
 
 This page extends [Field's static flow matching](flow_matching.md) with an optional PyTorch
 trainer and a portable CPU model loader. A movie uses one network:

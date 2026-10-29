@@ -1,12 +1,14 @@
 # Field 4 Graphics
 
+Build a window, draw into it, and then start changing what the GPU does. This curriculum takes you
+from a triangle through cameras, textures, compute shaders and particles, with each lesson in a
+box you can run and edit. For a shorter first encounter, try [Graphics on the GPU](tour_gpu_graphics.md).
+
 Open **Welcome → Starting points → canonical_graphics** to get an editable copy
 of this complete graphics curriculum, including its code and shader sidecars.
 Launch the **window** box first, then the lesson you want to explore. The bundled
 original stays unchanged, and opening it again makes another fresh copy.
 
-
-For the experimental raster-primary area lights, Vulkan ray-query shadows and optional RTXDI resampling, see [Direct lighting](direct_lighting.md).
 
 `Field 4` is Field's direct Vulkan path. A graphics box usually has three parts:
 
@@ -1839,6 +1841,8 @@ repository does not ship, or produces something other than a picture. For the tw
 `threebox` and `spin_glass` [agent transcripts](agent_transcripts.md) are runnable versions.
 
 ## Fabricate Renderer
+
+For experimental area lights, Vulkan ray-query shadows and optional RTXDI resampling, see [Direct lighting](direct_lighting.md).
 
 These examples cover the low-level pieces: modules, meshes, buffers, cameras, compute dispatch,
 textures, offscreen targets, shader includes and templating, and the debugging tools. Once that

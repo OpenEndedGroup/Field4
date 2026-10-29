@@ -1,9 +1,5 @@
 # Wave Function Collapse examples
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference:
-[`wfc.kt`](reference/data.md#wfc-kt) and [`wfc_field.kt`](reference/data.md#wfc-field-kt). Start from
-[what's already in the box](reference/index.md).*
-
 Wave Function Collapse (WFC) is a constraint solver that is mostly used to make textures and maps. Give it a
 grid, a set of tiles, and a table of which tiles may sit next to which, and it fills the grid: every
 cell starts holding *every* tile as a possibility, and the solver repeatedly picks the cell with the
@@ -13,11 +9,9 @@ with quantum mechanics; there is no physics involved. Usually the constraints ar
 draw one small example of the thing you want, and the solver reads the adjacency table off it and
 produces more.
 
-Unlike noise or an L-system, you describe neither the output nor a process that makes it. You
-describe what is *locally legal*, and a search finds a whole arrangement that never breaks a local
-rule. That is why WFC output tends to look designed. It also fails the way constraint solvers fail:
-too many constraints and it deadlocks, too few and every cell is legal but the result is shapeless.
-Most of the work is in the rules, not the solver.
+You describe what is *locally legal*, and the solver searches for an arrangement that obeys those
+rules. That can make the output look designed, but the rules take care: too many constraints can
+lead to a contradiction, while too few can leave a shapeless result.
 
 ## Source files
 
@@ -826,9 +820,8 @@ with an explicit `lo = 0f, hi = tileCount` so the colours mean the same thing in
 to the default, the range would rescale per frame and an animation of the collapse would appear to go
 nowhere.)
 
-Read either row and the algorithm is legible. It nucleates. The first collapse creates an island of
-certainty, and every decision after it spreads outward from what is already decided, because
-lowest-entropy always means "next to something known". The bright rim in the entropy row is the
+Read either row and you can see this run grow. The first collapse creates an island of certainty;
+later decisions spread outward as propagation narrows the choices around it. The bright rim in the entropy row is the
 frontier: cells that have been constrained but not yet decided. Interior cells stay at the full
 option count, untouched, until the front reaches them. That is also why WFC is fast in practice
 despite being a constraint solver on a large grid: almost all of the work is local to a moving
@@ -1518,8 +1511,7 @@ it when an unplaceable edge tile is the actual problem, and read the header afte
 The learned set is the last two cases at once. Its fault is in the weights strip, where tile 2 sits
 off the ramp because the sample never contained it and it can therefore never be chosen, and
 because it never appeared, all four of its masks were empty, so widening them leaves that model 87%
-invented. A tile the sample never showed does not merely fail to contribute; it dilutes everything
-the sample did show.
+invented. That unseen tile also dilutes the patterns the sample did show.
 
 ## Recipes
 
@@ -1607,3 +1599,7 @@ Everything above as a Field document you can open and edit:
 
     Three further checks hold particular claims about the terrain to account; they are listed in
     `dev_docs/WFC_GALLERY.md`.
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference:
+[`wfc.kt`](reference/data.md#wfc-kt) and [`wfc_field.kt`](reference/data.md#wfc-field-kt). Start from
+[what's already in the box](reference/index.md).*

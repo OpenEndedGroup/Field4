@@ -1,7 +1,5 @@
 # Springs, dampers, and a character with mass
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`movement.kt`](reference/simulation.md#movement-kt). Start from [what's already in the box](reference/index.md).*
-
 `Springs` is a handful of one-line functions for making a value arrive somewhere
 without a hard edge, and `MovementState` is what you get when you stack four of
 them into a character that can be steered. Both are ports of Daniel Holden's
@@ -655,3 +653,5 @@ interpolant that keeps its velocity through a change of mind, see
 constraint solve rather than a steering instruction, see
 [Physics](physics.md); for what `dt` should be when any of this runs in a real
 loop, [Frames and the animation loop](animation_time_model.md).
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`movement.kt`](reference/simulation.md#movement-kt). Start from [what's already in the box](reference/index.md).*

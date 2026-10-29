@@ -1,5 +1,9 @@
 # DataFrames in a Box
 
+Use a DataFrame when your data has columns you want to select, filter or transform. This page
+shows how to work with those columns in a box and how to keep their types across separate runs.
+For a first look at values and plots in Field, start with [Looking at Data](tour_data.md).
+
 Field boxes can use [Kotlin DataFrame](https://kotlin.github.io/dataframe/) with its compiler plugin switched on, so a frame's columns are typed members you can name directly:
 
 ```diffstatic {data-lang=kotlin}
@@ -18,7 +22,7 @@ val people = dataFrameOf("name", "age")(
 people.age // resolves. Not people["age"], not a cast, not a generated file.
 ```
 
-`people.age` is not a string lookup and not something you generated ahead of time. The plugin reads the `dataFrameOf("name", "age")(...)` call at compile time, works out the schema it produces, and gives the expression a type whose members are its columns. There is no `@DataSchema` in your project, no build step, and nothing on disk to keep in sync.
+You can write `people.age` directly. The plugin reads the `dataFrameOf("name", "age")(...)` call at compile time, works out the schema it produces, and gives the expression a type whose members are its columns. There is no `@DataSchema` in your project, no build step, and nothing on disk to keep in sync.
 
 The typing does not survive from one execution to the next on its own; `typed()`, below, carries it across.
 

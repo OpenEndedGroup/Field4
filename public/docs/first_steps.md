@@ -1,8 +1,8 @@
 # Your first five minutes
 
-Field opens on its Welcome page. Click **Start here: a moving drawing** at the top. Field copies the bundled example into your
-workspace as `first-steps` (or `first-steps-2` if that name is already taken). Your copy is editable;
-opening it never changes the shipped example. No GPU driver, Python or AI key is needed.
+Field opens on its Welcome page. Click **Start here: a moving drawing** at the top. Field copies
+the example into your workspace as `first-steps` (or `first-steps-2` if that name is already taken).
+You can edit your copy freely. For this example, you won't need a GPU driver, Python or an AI key.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x900" clip-selector="#docs-first-welcome" screenshot="assets/first_steps/welcome.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="first-welcome" alt="Welcome with the Start here: a moving drawing button at the top, beside the five-minute guide and Next: native graphics."}
 // Capture the compact Welcome action row and the first-document prompt.
@@ -51,6 +51,10 @@ with a small delay, making the lines bunch together and spread apart. The code i
 including the comments that walk through these steps.
 
 The fine-line motion takes inspiration from [Étienne Jacob’s animation gallery](https://bleuje.com/animationsite/2024_1/).
+
+Try another edit: change `petals` again while the drawing runs. The line you run becomes part of
+the state the loop is already using. That's a useful way to work in Field: keep the thing you're
+making alive while you change it.
 
 ## See it happen
 
@@ -109,7 +113,11 @@ ui.pause(1200)
 ```
 
 
-## Next: a native graphics window
+## Try a native graphics window { #next-a-native-graphics-window }
+
+The drawing above runs in a box's output panel. If you'd like to try a separate GPU graphics
+window too, the next starting point takes you there. You can skip it and continue to the
+[Survival Guide](survivalGuide.md) if you want to stay with the basics for now.
 
 Return to Welcome and click **Next: native graphics**. This opens an editable `first-graphics`
 copy with two connected boxes. Check Welcome's **Vulkan** panel first: you need a working GPU
@@ -144,6 +152,7 @@ The Kotlin code and GLSL shader properties come from the worked
 // The setup macro launches both boxes with their shipped code and shader properties.
 ```
 
-Continue with the [Survival Guide](survivalGuide.md), [Drawing with FLines](fline_examples.md),
-[Box Output](box_output.md) (where `println` and `display` put things, and how to open and close
-output panels), or [Your code, AI and local history](privacy.md).
+From here, the [Survival Guide](survivalGuide.md) gives you the moves you'll use every day. To
+make more drawings like the first one, go to [Drawing with FLines](fline_examples.md). To learn
+where `println` and `display` put their results, see [Box Output](box_output.md); for where your
+work and AI history are kept, see [Your code, AI and local history](privacy.md).

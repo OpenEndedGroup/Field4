@@ -1,6 +1,13 @@
 # Where to Go Next
 
-The [Tour](funFeatures.md) this page ends is an arc under *Start Here*, meant to be read in order. This is the map for afterwards: what is in each section, and which page inside it to open first.
+You've seen some of the ways Field can work with code, images, sound and data. Now pick something
+you want to make. This page maps the documentation and suggests a place to start in each section.
+If you haven't taken the [Tour](funFeatures.md) yet, that's a good place to begin.
+
+Looking for a particular kind of work? Try [drawing from data](#drawing-from-data),
+[graphics on the GPU](#graphics-gpu-and-headsets), or [AI and agents](#ai-and-agents). To find a
+call by name, go straight to the [reference](reference/index.md). For a project that crosses several
+of these sections, start with the chains below.
 
 ## Chains across subsystems
 
@@ -26,9 +33,12 @@ The document itself: moving around it, finding things in it, and getting back wh
 
 What happens when a box ends on a value, which is most of what working in Field feels like.
 
-- [Visualizers & Controls](visualizers.md) is the one to read first: `.h`, the output panel, sliders and the value visualizer that draws anything you hand it.
+- [Box Output](box_output.md) explains where printed values and display panels appear.
+  [Visualizers & Controls](visualizers.md) goes on to `.h`, sliders and the value visualizer.
 - [Interactive Guides](interactive_guides.md) shows how boxes can walk a reader through a document with slide notes, selections, callbacks, templated values, per-slide chat and callout lines.
-- [Charts as FLines](chart.md) and [DataFrames in a Box](dataframe.md) cover the two shapes tabular data usually arrives in, and take over where the Tour's [Looking at Data](tour_data.md) stops.
+- [DataFrames in a Box](dataframe.md) works with typed tables; [Charts as FLines](chart.md) turns
+  data into plots that can sit alongside your other geometry. Both take over where the Tour's
+  [Looking at Data](tour_data.md) stops.
 
 ## Drawing from data
 
@@ -90,6 +100,8 @@ Neither section is a worked example. The reference is for looking something up; 
 
 ## How these pages are built
 
-The pictures and videos on these pages come from running each page's code in Field when the docs are built, so an example pasted into a box gives the same result.
+Many pictures and videos on these pages are captured by running their examples in Field. Some
+captures are retained from machines with particular hardware; the build guide explains when they
+are reused or regenerated.
 
 [Building the Docs & Running the Tests](building_and_testing.md) has the build command and its capture modes. [Code Diff Player](diff-player.md) lists the attributes a single capture fence can carry, and [Automating Field](automating_field.md) covers the transcript format the graphics captures replay.

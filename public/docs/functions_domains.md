@@ -1,7 +1,5 @@
 # Function domains
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`Functions.kt`](reference/math.md#functions-kt). Start from [what's already in the box](reference/index.md).*
-
 Every `Fn` in the Functions small language carries one interval: its `domain`, the stretch of the number line the function is meant to be looked at over. A `hannWindow()` is shaped across `0.0..1.0` and is silent outside it. A `ramp` rises across the interval you give it. An oscillator goes on forever.
 
 Domains matter because arithmetic intersects them. Add two functions and the sum is only defined where *both* operands are defined, so an operand carrying the wrong domain narrows every expression it enters.
@@ -126,7 +124,7 @@ sin(3.0).toFLine() // no window — previews the fallback
 
 ## The exception: `gaussian` stays local
 
-Not every generator is periodic. `gaussian` is a localized bump: it has meaningful value near its center and falls away to nothing on either side. It is *not* defined on all of ℝ in any useful sense, so it keeps `Domain.DEFAULT`:
+Not every generator is periodic. `gaussian` is a localized bump: it has meaningful value near its center and falls away to nothing on either side. Its useful shape is local, so it keeps `Domain.DEFAULT`:
 
 ```diffstatic {data-lang=kotlin}
 val bump = gaussian() // Domain.DEFAULT — a local feature, not a signal
@@ -144,3 +142,5 @@ The question a constructor has to answer is whether its function is defined ever
 - `gaussian` keeps `Domain.DEFAULT`: it is local, not periodic.
 
 See also the [Functions examples](functions_examples.md) page, whose *Domains and timeline composition* section covers `domain = ...` versus `over`, `stretch`, and the timeline helpers in more depth.
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`Functions.kt`](reference/math.md#functions-kt). Start from [what's already in the box](reference/index.md).*

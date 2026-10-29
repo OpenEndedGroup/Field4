@@ -1,12 +1,11 @@
 # Notes on the Documentation, Revised by Agents
 
-When you read these pages inside Field, you can leave a note on any sentence. The notes form a
-queue. An agent, or several running in parallel with one per page, works through that queue,
-edits the Markdown behind each note, and records what it did. You can read what happened later,
-answer any questions the agents asked, and run the queue again.
+When you read these pages inside Field, you can leave a note on any sentence: point out something
+unclear, suggest an example, or ask for a correction. The notes form a queue that agents can work
+through, editing the Markdown and recording what they did. You can review their changes, answer
+questions and run the queue again.
 
-This page covers writing notes, what an agent sees when it picks one up, and how to run the
-agents.
+Let's start with leaving a note.
 
 ## Writing a note
 
@@ -137,11 +136,10 @@ A handoff has one of two scopes:
   moving or renaming pages, reorganising the navigation, or a change of terms across several
   pages.
 
-A handoff can also **block**. That means the rest of the page should not be polished until the
-handoff is dealt with, for example because the page is about to be merged away. The agent stops
-as soon as it has filed a blocking handoff. Every open note on the page then waits, including
-notes written later, and `revise` skips the page. A handoff that does not block holds only the
-notes it came from, and the agent carries on with the rest.
+A handoff can **block** further work on its page—for example, if the page is about to be merged
+into another. The agent stops, and `revise` skips the page until the handoff is dealt with. Notes
+added in the meantime wait too. A non-blocking handoff holds only the notes that led to it, so
+the agent can continue with the rest.
 
 Handoffs are meant to be worked through separately, in an interactive session where the
 questions can be answered as they come up:
@@ -159,9 +157,9 @@ sentence in the page's brief, and so brings the page in line with whatever was d
 
 ## How a note keeps its place
 
-A note is written against the page as it was rendered, but agents edit Markdown, often long
-after the note was written and after other edits to the same file. Two things keep a note on
-the right sentence.
+A note refers to the page you saw, while agents edit its Markdown source. The page may have
+changed in between, so Field first finds the selected text and then follows its source lines as
+the file changes.
 
 **Finding it.** Every documentation build records the commit it was built from, and the panel
 stores that commit with each note. `docs_notes.py sync` looks for the quoted text in that

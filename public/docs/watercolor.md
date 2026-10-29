@@ -52,9 +52,8 @@ What is new compared with oil:
 
 ## Papers
 
-`Paper` has five sheets. Each is a physical make-up, how much water it holds, how fast it drinks
-and wicks, its grain, tooth and sizing, so the same drop behaves differently on each because the
-water does. Below, one 15 µl drop of sumi ink on each, left to dry: cold press, hot press, rough,
+`Paper` has five sheets. Each has its own capacity, absorbency, wicking, grain, tooth and sizing. The same drop
+behaves differently on each sheet. Below, one 15 µl drop of sumi ink on each, left to dry: cold press, hot press, rough,
 xuan (rice paper) and blotting paper. On the sized cotton sheets the drop stands as a small dome
 and dries where it stood, a crisp black dot; xuan drinks it at once and feathers it out along its
 long fibres; blotting paper takes it in quickly and softens its edge.

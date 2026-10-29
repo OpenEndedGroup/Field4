@@ -1,6 +1,11 @@
 # Nano examples
 
-Nano has 32 bytes of RAM, and `load` copies your whole program into them starting at address 0. Code and data therefore share one address space (a store past the end of the program writes into the same bytes the instructions came out of, and reads wrap round at 32), which is why one screenshot of a finished run holds the entire machine. There are four registers, `r0` to `r3`, and a handful of arithmetic and branch instructions; the eight-deep stack that `call` and `ret` use is the only piece kept outside the 32 bytes.
+Nano is a tiny machine you can watch as it runs. It has four registers, a handful of arithmetic
+and branch instructions, and just 32 bytes of RAM. Load a program and its code goes into that RAM
+alongside its data, so a single view can show the whole machine at once.
+
+A store past the end of the program writes into the same bytes that hold instructions, and reads
+wrap around at 32. The eight-deep stack used by `call` and `ret` lives outside those bytes.
 
 A RAM cell's border says what happened to that byte, and where two things are true of the same cell the earlier case in this list wins. Brightest orange with a fill is the cell the last step wrote. Cyan with a fill is the program counter. Plain orange is a byte that changed earlier in the run, cyan is a program byte still holding the value it was loaded with, and dim is a byte no program ever occupied. The run of dim cells at the end of the grid is where RAM stops being code.
 
@@ -18,7 +23,8 @@ In a fresh document, Nano boxes live under a parent box that is a language root:
 
 ## Registers, output, and the first RAM write
 
-The smallest useful Nano sketch does a piece of arithmetic, emits it with `out`, and parks it in RAM so you can see the machine mutate.
+Let's start with arithmetic: compute a value, emit it with `out`, and put it in RAM where we can
+see it.
 
 ```diffstatic_runner {data-lang=nano screenshot="assets/nano_examples/registers_output_first_write.png" wait="1.0" capture="box" embed=true name="nano-registers-output-first-write" alt="Nano state panel: steps 6, pc 0x08, state halted. R0 holds 0x10 (16), R1 holds 0x09, and the output stream's one entry is 16. In the 32-byte RAM grid the nine program bytes 0x00 to 0x08 are outlined in cyan with 0x08 filled as the program counter, and 0x18 is the single orange cell, holding 0x10. The disassembly lists ldi, ldi, add, sta, out and a highlighted hlt."}
 :::static

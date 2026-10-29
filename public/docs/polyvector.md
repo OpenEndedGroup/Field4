@@ -1,8 +1,7 @@
 # Vectorizing line drawings: polyvector fields
 
-A scanned sketch is pixels. `Polyvector.vectorize` turns it into curves: one smooth curve down the
-middle of each stroke, continuing straight through places where strokes cross and meeting at
-T-junctions. The method is Bessmeltsev and Solomon's *Vectorization of Line Drawings via Polyvector
+`Polyvector.vectorize` turns a scanned sketch into curves, tracing the middle of each stroke and
+trying to follow it through crossings and T-junctions. The method is Bessmeltsev and Solomon's *Vectorization of Line Drawings via Polyvector
 Fields* (ACM Transactions on Graphics, 2019), and Field runs the authors' own implementation.
 
 The idea that makes it work at crossings is the **polyvector field**. At every inked pixel it holds two
@@ -89,7 +88,7 @@ curve, in pixel coordinates.
 
 ## From pixels to geometry
 
-What comes out is not a cleaned-up image but curves: each one an ordinary `FLine` that you can
+What comes out is a set of curves, each an ordinary `FLine` that you can
 measure, offset, resample, warp or extrude like any other Field geometry. This example vectorizes the
 same sketch, drops any fragment shorter than 12 pixels, and then gives the curves three treatments
 that would be awkward to do to the pixels: parallel outlines, a comb of normals, and a wave.

@@ -1,6 +1,8 @@
 # Ray Reconstruction for the path tracer
 
-The path tracer can send its current frame directly to the same Ray Reconstruction adapter used by [RTXDI lighting](ray_reconstruction.md). This includes indirect bounces, glossy reflections and an area emitter. The raw signal and progressive accumulation remain available for comparison.
+The path tracer can send its current frame to the Ray Reconstruction adapter used by
+[RTXDI lighting](ray_reconstruction.md). This scene includes indirect bounces, glossy reflections
+and an area emitter. You can compare the result with the raw signal and progressive accumulation.
 
 ![Multi-bounce path tracing reconstructed at 1920 by 1080](assets/path_traced_reconstruction/reconstructed.png)
 

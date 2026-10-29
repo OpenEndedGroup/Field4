@@ -101,10 +101,9 @@ guide lines and tick marks show what the box has snapped to.
 
 ## Even spacing
 
-If a dragged box can land between two other boxes with equal spacing, Field offers that as a snap
-target and draws ticks on the guide line. That is how you lay out an evenly spaced row or column
-without measuring. Gaps under 5 px do not count as spacing, so a
-tight cluster of boxes offers nothing to space evenly.
+Drag a box between two others and Field offers to space them evenly, marking the gaps with ticks
+on the guide line. This makes it easy to lay out a row or column without measuring. Gaps under
+5 px don't count as spacing, so a very tight cluster won't offer this snap.
 
 ## Resize snapping
 

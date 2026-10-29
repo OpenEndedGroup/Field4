@@ -67,9 +67,9 @@ the complex's exact topology, use the complex.
 
 ## Strokes to smooth curves
 
-Polyvector vectorization gets a drawing's topology right, with junctions where strokes meet and
-crossings where they cross, but its curves keep the wobble of the hand. Principal curves can smooth
-them without changing which curves meet where. This example vectorizes the pencil sketch from the
+Polyvector vectorization traces a drawing into curves, junctions and crossings, retaining the
+wobble of the hand. Principal curves can smooth the result while preserving the starting graph's
+connections. This example vectorizes the pencil sketch from the
 [polyvector page](polyvector.md), uses the resulting curves as the starting graph of a forest, and
 refits that graph to the inked pixels with `Growth.REFINE`, which only adds nodes along curves that
 already exist:

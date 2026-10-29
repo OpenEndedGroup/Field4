@@ -1,10 +1,11 @@
 # A Drawn Score, Heard
 
-This page reads a drawing as a score and plays it. The drawing layer holds the score:
-rectangles, a pen stroke, a level line. `notation.space` reads it as time across and pitch up. A
-dozen lines of box code decide what each mark means as music and build a pattern from the notes,
-and `patRenderStereo` plays the pattern offline into a `.wav`. Then the `.wav` is taken apart again,
-onsets and pitches, and put next to what was drawn.
+Draw a score on Field's canvas and turn it into sound. Here the score is made of rectangles, a
+pen stroke and a level line. `notation.space` reads the drawing with time across and pitch up; a
+dozen lines of box code decide what the marks mean and build a pattern to play.
+
+We'll render that pattern to a `.wav`, then analyse its onsets and pitches and put them next to
+the original drawing.
 
 The score on this page is drawn by code, but a rectangle you draw by hand in the same frame is read
 the same way. Here is the score in Field with the drawing layer switched on:
@@ -64,9 +65,9 @@ start at 6, and the playhead does not cross itself.
 
 ## From a reading to a pattern
 
-`score.events` gives every mark in the frame with where it starts and ends in beats, and the pitch
-at its two ends. What those mean as music is not the drawing's business, so it is written out here,
-in the box, where you can change it. This reading makes three decisions:
+`score.events` gives every mark in the frame, where it starts and ends in beats, and the pitch
+at each end. The box decides what those marks mean as music, and you can change its interpretation.
+This reading makes three decisions:
 
 * A **rectangle**, or a **stroke that stays level**, is one note: from its left edge to its right, at
   its pitch. "Level" is its two ends within half a semitone, so the held note's wobble does not make

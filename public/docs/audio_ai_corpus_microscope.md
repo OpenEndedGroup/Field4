@@ -1,12 +1,13 @@
 # Corpus microscope: from recordings to related windows
 
-*To run the examples on this page, open the [audio_ai_corpus_microscope](agent_transcripts.md#audio_ai_corpus_microscope) starting point.*
+Pick a passage from a recording and the corpus microscope finds other stretches that sound like
+it. It compares harmony, pitch, texture, rhythm and dynamics, and you can choose how much each
+matters to the match.
 
-The corpus microscope finds the stretches of a set of recordings that sound most like a passage you
-pick. It first cuts every recording into overlapping windows of 1.5, 3, 6 and 12 seconds and
-measures each one; the audio files themselves are left unchanged. Distance is made of five
-measurements (harmony, pitch, texture, rhythm and dynamics), and you choose how much each one
-counts. The examples here query six seconds of Nancy against Final Out at Candlestick Park.
+To prepare a collection, it measures overlapping windows of 1.5, 3, 6 and 12 seconds; your audio
+files stay unchanged. Here we'll search for six seconds of Nancy in *Final Out at Candlestick Park*.
+
+*To run the examples on this page, open the [audio_ai_corpus_microscope](agent_transcripts.md#audio_ai_corpus_microscope) starting point.*
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_corpus_microscope/neighbours.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-corpus" alt="Real Nancy query and two Candlestick neighbour windows with waveforms, distance bars and splice players" capture-profile="linux-nvidia"}
 :::static
@@ -159,10 +160,9 @@ it.
 
 ## Place a neighbour as a box
 
-Show the microscope with `showCorpusMicroscope` instead of `display`, and every neighbour card gets a
-**place** button. Run this fragment after the query has produced its microscope. Pressing it makes a new box beside this one, named after the recording and the
-window, whose code plays that window. It is ordinary box code: edit the times to move or stretch the
-window, then run it.
+Show the microscope with `showCorpusMicroscope` and each neighbour card gets a **place** button.
+After the query finishes, press it to make a box that plays that window. The new box is named for
+the recording and window; edit its times and run it to move or stretch the excerpt.
 
 ```diffstatic {data-lang=kotlin}
 showCorpusMicroscope(preview, canonical)

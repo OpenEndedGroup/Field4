@@ -1,22 +1,17 @@
 # Visualizers, Displays, and Little Instruments
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`ValueVisualizer.kt`](reference/visualization.md#valuevisualizer-kt), [`ImagingVisualizer.kt`](reference/visualization.md#imagingvisualizer-kt), [`plotly.kt`](reference/visualization.md#plotly-kt). Start from [what's already in the box](reference/index.md).*
-
 Field has many ways to show a value, and the quickest takes two keystrokes: put `.h` on the end of an expression and run the line.
 
-What comes back can land in several places. Some visuals appear **inline in the editor**, beside the line you ran. Some fill an **output area** under the box. Some output areas become **inspectors**, or **little control panels** whose sliders you drag while the code around them keeps running. And helpers like `.h` and `.h2` are about turning an arbitrary Kotlin value into something formatted well enough to read.
-
-This page is a tour of the whole family.
+The result might appear **inline in the editor**, beside the line you ran, or in an **output area**
+under the box. An output area can also become an inspector or a little control panel, with sliders
+you can move while the surrounding code keeps running. Let's look at the ways to show and work
+with values, starting with `.h` and `.h2`.
 
 ## The value visualizer: what `.h` draws
 
-Most environments answer "what is this
-value?" with a line of `toString()`. Field answers with a *picture*: whenever you
-ask Field to show a value, the **value visualizer** turns it into a compact HTML
-view — a reflective tree for arbitrary objects, and, for the types Field draws
-with, a little inline graphic. You reach it three ways, all
-of which call the same renderer (`ValueVisualizer.visualize(...)`, in
-`src/jvmMain/kotlin/afield/ui/visualization/ValueVisualizer.kt`):
+Ask Field to show a value and the **value visualizer** makes a compact HTML view of it. An object
+becomes a tree you can open; a vector, path or function can also get a small drawing. These three
+calls reach the same visualizer:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -60,10 +55,8 @@ cam.h
 
 ![Reflective tree for a Camera data class](assets/value_visualizers/reflective_tree.png){ width="516" }
 
-Notice that the tree is not flat text: the nested `position` is itself rendered as
-a `vec3`, and `layers` collapses to a list with a size count. The renderer keeps
-only a handful of fields inline (with a "… +N more fields" expander for the rest)
-so a large object never floods the output.
+The nested `position` is drawn as a `vec3`, and `layers` collapses to a list with a size count.
+For a larger object, open the "… +N more fields" expander to see the rest.
 
 ### Numeric collections, with stats
 
@@ -86,9 +79,7 @@ visible immediately, without a plot. The same treatment applies to `IntArray`,
 
 ### Vectors, matrices, and quaternions
 
-Field's generated linear-algebra types render as compact, colour-coded tokens
-rather than as reflective trees — the point of a `vec3` is its three numbers, not
-its class internals:
+Vectors render as compact, colour-coded tokens, making their components easy to pick out:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -125,10 +116,8 @@ types, see [Linear Algebra](linear_algebra.md).
 
 ### An `FLine`, drawn
 
-An [`FLine`](fline_examples.md) — Field's core drawable path — is where the
-renderer stops summarising and starts *drawing*. Alongside its node counts,
-bounding box, length, and a compressed path signature, it appends a small inline
-SVG thumbnail of the actual geometry:
+For an [`FLine`](fline_examples.md), Field shows the node counts, bounding box, length and a
+compressed path signature, followed by a small SVG drawing of the path:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -180,13 +169,9 @@ on its own — the value display is never allowed to fail.
 
 ### Images, edges, corners and flow
 
-The [imaging / computer-vision family](imaging_examples.md) gets the same
-treatment, and it is the case where the picture most obviously beats the text: an
-`Img` is a `FloatArray` you cannot read, a `List<Corner>` is forty records of
-three doubles each, and a `GaussianPyramid` is `GaussianPyramid@3f1a2b`. Every
-imaging value below is rendered by
-`src/jvmMain/kotlin/afield/ui/visualization/ImagingVisualizer.kt`, reached through the
-same `.h` you have been using all along.
+The same `.h` also helps you look at [images and computer-vision results](imaging_examples.md).
+Instead of reading a long array or a list of coordinates, you can see the pixels, detected corners,
+gradients or motion directly.
 
 Evaluate an `Img` and you get the actual pixels, aspect-correct, plus a `<details>`
 disclosure holding the per-channel strip, a per-channel histogram computed over the
@@ -202,10 +187,9 @@ scene.h
 
 #### The range policy
 
-This family is **float-channel and unbounded**. A Sobel `dx` is signed. An unnormalised response exceeds 1. An upstream division produces a NaN. A
-visualizer that just clamps everything to `0…1` answers all three questions with a
-flat white rectangle. So the renderer picks one of three modes and **always names
-the one it picked**:
+Image channels can contain values outside `0…1`: a Sobel `dx` has negative values, for example,
+and an unnormalised response can exceed 1. The visualizer chooses a display range for the data
+and names the mode it used:
 
 `direct` — every finite sample is already in `0…1`. Nothing is rescaled, and the
 caption says `direct`. That is the picture above.
@@ -245,10 +229,8 @@ painted **magenta**:
 
 ![An image with a NaN block and one infinity, painted magenta](assets/imaging_visualizers/img_non_finite.png){ width="752" }
 
-Magenta because the alternative is silence: one NaN poisons `min()`/`max()`,
-`normalized()` returns an all-NaN image, and the PNG quantiser turns NaN into
-`0`, so a broken image comes back as an **all-black** thumbnail captioned
-`range NaN…NaN`. An image that is wrong should look wrong.
+The magenta pixels make missing or invalid values visible, and the count tells you how many
+samples need attention.
 
 Four-channel images sit on a checkerboard, so transparent black and opaque black
 are different pictures:
@@ -264,7 +246,7 @@ build:
 ![A Gradient shown as dx, dy, magnitude and hue-by-direction](assets/imaging_visualizers/gradient.png){ width="752" }
 
 A pyramid is drawn as a **ladder of rungs at true relative scale**, bottom-aligned,
-so the halving is the visible fact rather than a number in a caption:
+so you can see each level halve in size:
 
 ![A GaussianPyramid as five rungs at true relative scale](assets/imaging_visualizers/gaussian_pyramid.png){ width="752" }
 
@@ -300,11 +282,9 @@ A circle *does* have an extent, so no assumption is needed:
 
 ![Hough circles drawn over their own extent](assets/imaging_visualizers/hough_circles.png){ width="752" }
 
-A `FlowField` is a quiver — one arrow per converged track, hue by direction, and
-**failed tracks drawn as grey crosses** rather than dropped. A tracker that never
-reports failure is lying, and so is a picture that hides the failures.
-Displacements are drawn at true pixel scale unless the median motion is too small
-to see, in which case an integer exaggeration factor is applied and named:
+A `FlowField` shows one arrow per converged track, coloured by direction; grey crosses mark tracks
+that failed. Displacements are drawn at their pixel scale unless the median motion is too small to
+see. In that case the view enlarges them and reports the factor:
 
 ![An optical-flow field as a hue-coded quiver, tracing a planted rotation](assets/imaging_visualizers/flow_field.png){ width="752" }
 
@@ -393,10 +373,8 @@ showRow("panels", panels)
 println("imaging visualizers ready")
 ```
 
-Note what is *not* in that code: no `showImg`, no PNG encoding, no colour-map
-choice, no normalisation, no per-type branching. `.h` is the whole interface, and
-the renderer decides per value whether it is looking at colour data, a signed
-response, a pyramid, or a list of detections.
+Each value ends in `.h`. Field chooses a view suited to it, whether it is colour data, a signed
+response, a pyramid or a list of detections.
 
 !!! tip "Open the demo document"
     The [imaging_visualizers_demo](agent_transcripts.md#imaging_visualizers_demo)
@@ -405,9 +383,8 @@ response, a pyramid, or a list of detections.
     ends with one imaging value, and Field draws it; no `display(...)` call is
     needed. Then change a sigma or a threshold and re-run a box.
 
-The rest of this page is the *instruments* built on top of this renderer: inline
-probes that live next to a line of code, display channels, control surfaces, and
-synth scopes.
+Next, let's put visualizers beside running code, display larger results under a box, and add
+controls you can move while the code runs.
 
 ## Inline editor visualizers
 
@@ -419,7 +396,7 @@ val m = __m("some-marker")
 m.histogram(0.42)
 ```
 
-The marker remembers a little state and renders HTML back into the editor gutter / inline output location for that line.
+The marker keeps the values it needs and draws the result beside that line in the editor.
 
 ### Histogram, history, and summary stats
 
@@ -495,7 +472,7 @@ These functions are **passthroughs**. They return the value they were given, so 
 val filtered = __m("cutoff").history(rawCutoff)
 ```
 
-That makes them excellent debugging instruments: tiny scopes for values, not transformations of values.
+They make handy little scopes for seeing a value as it passes through your code.
 
 If you want a **live** feed rather than a one-shot summary, write a loop and **launch** the box:
 
@@ -657,7 +634,8 @@ display("heavy", big.h2)
 println("display helpers ready")
 ```
 
-Use `.h` when the structure is small enough that you want a pleasant, immediate rendering. Use `.h2` when you want to browse instead of read. That covers a large map, list, array or buffer without turning the output area into soup, and it covers your own data classes and Field's own types too.
+Use `.h` for a compact view, and `.h2` when you want to browse a larger map, list, array or buffer.
+Both work with your own data classes as well as Field's types.
 
 `.h2` on a plain object gives you its properties as a scrollable table: one row per property, with its declared type and its value. Above the table sit `outliner` and `columns` links, which open the same value in the full tree and column browsers. There is nothing to register; it reflects. If a property's getter throws, the row is still there, marked, with the exception text in its value cell.
 
@@ -669,9 +647,8 @@ To see all of it at once, insert the **h2 Explorer Examples** template and run i
 
 ### Markdown for captions and tables
 
-The escape hatch above has a way of taking over. A figure that wants a heading, a key/value table and a block of computed text ends up as a hundred lines of string concatenation, with a hand-picked font stack, a `<tr><td style=…>` builder and a local `fun esc(s: String)`, often longer than the code it illustrates.
-
-`markdown("channel", "…")` says the same thing in markdown, and picks up Field's own `--field-*` tokens instead of re-inventing them:
+For a heading, a table and some text, Markdown is often easier to write than a string of HTML.
+`markdown("channel", "…")` displays it using Field's styles:
 
 <!--
 FIELD_TEST
@@ -919,7 +896,8 @@ column("columns", scene, width = 1300)
 tree("tree", scene, width = 700)
 ```
 
-And while it is not a “visualizer” in the chart sense, `logs(...)` belongs in the same family. This box shows only the `demo` channel and logs a small job into it; rows that share a block id are grouped under the block's first line:
+For a live log in an output panel, use `logs(...)`. This box shows the `demo` channel and logs a
+small job into it; rows with the same block ID are grouped under the block's first line:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-logs.png" alt="A logs embed with a channels: demo chip, a find box and a clear button. Below, one grouped block in the demo channel, each row with its time: starting a job, then step 1 of 3, step 2 of 3 and step 3 of 3, the block running on below the bottom of the panel." wait="3.0" capture="box" open-outputs="true" w="900" h="200" embed=true name="logs-demo"}
 logs("logs") { channel("demo") }
@@ -939,7 +917,7 @@ log.log(
 )
 ```
 
-It gives you a live log iframe inside an output channel, which is often exactly what you want while instrumenting a system.
+The log updates as the job runs.
 
 The embed has a find box (`/`) that hides rows not containing its text, a **clear** button (or `k`), and, when you have scrolled up to read something, a `↓ N new` button instead of jumping away from what you were reading. If Field restarts, the embed reconnects by itself.
 
@@ -1003,11 +981,11 @@ Available pieces include:
 - `colorPicker(...)`
 - `controlGroup(...) { ... }`
 
-The `vec2Control(...)` is the “xy thing” in the nicest sense: an XY pad with a vector line, magnitude, and angle readout.
+`vec2Control(...)` gives you an XY pad with a vector line and readouts for its length and angle.
 
 ### Handling a slider
 
-Every slider, standalone, in `sliders(...)`, or in a `controlGroup`, answers the same hand:
+Standalone sliders, `sliders(...)` and sliders in a `controlGroup` share the same gestures:
 
 This recording drags a live `controlGroup` slider, nudges it with the arrow key, then double-clicks
 the track to return to its starting value. The large bar is updated by the slider's callback, so it
@@ -1205,7 +1183,7 @@ This pattern is good for surfaces that combine parameter editing with a compact 
 
 ### Sequencer controls: multisliders, grids, ranges and menus
 
-Four controls hold more than one number, after the Max objects they borrow from:
+These controls take their names and ideas from Max objects:
 
 - `multiSlider(...)` is a bank of bars you draw by sweeping across them, like Max's `multislider`. A fast sweep fills every bar it passes.
 - `matrix(...)` is a grid of cells, like `matrixctrl`. A press advances a cell to its next state, and dragging paints that state across every cell you cross. Cells are on or off by default; pass `states = 4` and each cell cycles through 0 to 3. State 0 is black and the others are equally spaced colours.
@@ -1322,7 +1300,10 @@ loop {
 
 `gesture(...)` is an XY pad that remembers what you did with it. A plain drag works like `vec2Control(...)`, and the callback gets each position. **Shift-drag** records a take: the whole stroke and its timing, kept with the box like any other control value. On a phone, tap **rec**, then draw. The trail of the take stays on the pad.
 
-The box replays the take, and the box keeps the time. `at(seconds)` returns where the take is that far into its loop, interpolated between the recorded samples, and `playhead(seconds)` puts a ring on the pad there. Read both off the clock in a `loop`, as the sequencer does, and the replay never drifts and keeps going with the browser closed. `initialTake` gives the pad something to play before you have recorded anything; here it is a figure eight:
+The box controls playback. `at(seconds)` returns the position at a given time in the loop,
+interpolating between recorded samples; `playhead(seconds)` shows that position on the pad. Read
+both from the clock in a `loop` and playback continues even with the browser closed. `initialTake`
+gives the pad something to play before you record: here it is a figure eight:
 
 <!--
 FIELD_TEST
@@ -1607,9 +1588,8 @@ so a bin's min and max rarely land on a peak. Zoom in and it becomes the wavefor
 
 ![Nancy’s source waveform above real beat, pYIN pitch and Basic Pitch note panels.](assets/audio_ai_analysis/synchronized_analysis.png)
 
-The Field Audio integration keeps full-resolution analysis tensors as immutable NPZ assets and sends
-only bounded preview trajectories to the browser. `analysisVisualizationHtml(...)` presents three
-different operations in the same zoomable, pannable timeline:
+Field Audio can show beat and pitch analyses alongside a recording. The full results stay in NPZ
+files, while `analysisVisualizationHtml(...)` draws previews on a timeline you can zoom and pan:
 
 - multi-scale tempo curves, onset strength, and beat markers;
 - monophonic pYIN pitch and voicing confidence;
@@ -1638,12 +1618,11 @@ Replace the request with `monophonicPitchAnalysis(region)` or
 The visualization endpoint caps previews at 4096 points; zoom and pan never turn the full activation
 tensor into a large JSON response.
 
-For comparative inspection, `analysisDashboardHtml(listOf(beats, mono, poly))` aligns all three
-results and synchronizes zoom, pan, hover, seeking and playback time. `analysisPreviewVisualizationHtml(...)` and
-`analysisPreviewDashboardHtml(...)` use the identical renderer with an already-fetched or synthetic
-`AnalysisPreview`, which is useful for offline documents and small reproducible fixtures. Per-job
-progress can replace a named output with `fieldAudioJobStatusHtml(accepted, event)`, while
-`fieldAudioJobMonitor()` embeds the complete durable queue.
+To compare results, `analysisDashboardHtml(listOf(beats, mono, poly))` lines them up and keeps
+zoom, pan, hover and playback together. If you already have an `AnalysisPreview`, use
+`analysisPreviewVisualizationHtml(...)` or `analysisPreviewDashboardHtml(...)` to show it without
+fetching again. For progress, `fieldAudioJobStatusHtml(accepted, event)` displays one job and
+`fieldAudioJobMonitor()` shows the queue.
 
 The [beat and pitch analysis walkthrough](audio_ai_analysis.md) and loadable
 `audio_ai_analysis` operation transcript contain the full source → submit → monitor → await →
@@ -1740,9 +1719,8 @@ client
     }
 ```
 
-The complete [short-time spectral walkthrough](audio_ai_spectral_embeddings.md) and
-`audio_ai_spectral_embeddings` transcript show source lookup/import → durable job → progress →
-binary artifact → temporal pooling → three Field Smile spaces → bidirectional audition.
+The [short-time spectral walkthrough](audio_ai_spectral_embeddings.md) takes a recording through
+analysis and projection into all three spaces, then lets you listen while exploring them.
 
 ### Instrument-labelled transcription
 
@@ -1772,9 +1750,8 @@ display(
 )
 ```
 
-The complete [MuScriptor walkthrough](audio_ai_muscriptor.md) and `audio_ai_muscriptor` transcript
-show the source lookup, typed request, durable job monitoring, synchronized result, typed MessagePack
-note access, and MIDI export.
+The [MuScriptor walkthrough](audio_ai_muscriptor.md) follows a recording through transcription,
+the synchronized display and MIDI export.
 
 The same visualizer can begin with sound generated inside Field. `renderPatWav`, `renderDirtWav`,
 `renderDoughWav`, `renderFaustWavAsync`, and `recordSonicPiWav` all produce a
@@ -1800,9 +1777,8 @@ and the immutable query-to-neighbour splice preview returned by Field Audio. Tha
 a general pattern for comparing aligned excerpts: produce a `CorpusPreview`, choose the query WAV
 representation, and let the range-aware player request only the visible envelopes.
 
-The [corpus microscope walkthrough](audio_ai_corpus_microscope.md) and
-`audio_ai_corpus_microscope` transcript show the complete index → submit → monitor → query →
-visualize path.
+The [corpus microscope walkthrough](audio_ai_corpus_microscope.md) shows how to index a collection
+and compare a passage with its neighbours.
 
 ### Waveform-summary endpoint contract
 
@@ -1837,9 +1813,8 @@ the user pans and asks for a fresh, pixel-sized envelope after zooming or resizi
 
 ## Signal and synth visualizers
 
-Field's synth layer also comes with ready-made HTML and SVG visualizers for audio patches, scopes, envelopes, compressors, and related objects.
-
-These are display-based rather than inline, which is usually the right choice because they want a bit more space.
+Field's synth layer has HTML and SVG views for audio patches, scopes, envelopes and compressors.
+They appear in an output panel, with room to show more than fits beside a line of code.
 
 <!--
 FIELD_TEST
@@ -1901,7 +1876,7 @@ Good things to know here:
 - `env.stateSvg()` and `comp.stateSvg()` are compact SVG views for modulators / processors.
 - `noteProcess.pianoRollSvg()` is great when you want the piano roll in an output area instead of inline in the editor.
 
-So the choice is mostly about **where you want the visual to live**.
+Choose the view that gives your patch or signal enough room.
 
 ## Choosing between inline and display
 
@@ -1915,3 +1890,5 @@ Here is the practical rule of thumb:
 `histogram(...)` and `history(...)` return the value they were given, so you can leave them in a computation while you debug it.
 
 All of these tools compose. One box can have a little inline history, a piano roll, a browser in one output channel, and a control surface in another. Field is very happy when code is also an interface.
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`ValueVisualizer.kt`](reference/visualization.md#valuevisualizer-kt), [`ImagingVisualizer.kt`](reference/visualization.md#imagingvisualizer-kt), [`plotly.kt`](reference/visualization.md#plotly-kt). Start from [what's already in the box](reference/index.md).*

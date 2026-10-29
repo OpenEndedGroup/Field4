@@ -1,6 +1,8 @@
 # Ray Reconstruction
 
-Ray Reconstruction turns the raw samples from [RTXDI](direct_lighting.md) into a temporally reconstructed image. In the lighting experiment you can compare it directly with Field's spatial filter, and with that filter followed by DLAA.
+Ray Reconstruction turns raw samples from [RTXDI](direct_lighting.md) into a temporally
+reconstructed image. In this lighting experiment you can compare it with Field's spatial filter,
+and with that filter followed by DLAA.
 
 ![Field RTXDI lighting reconstructed at 1920 × 1080](assets/ray_reconstruction/ray_reconstruction.png)
 

@@ -417,7 +417,7 @@ A box whose code binds a slot has these in its AI4 chat, from
 | `RestoreStackAutoRevision` | An earlier revision made current again. |
 
 Edit, Patch and Observe take `over`, in seconds, and then answer with a numbered sheet of frames
-across that long, captured from the window as it draws. The host's time cannot be set from outside,
+across that interval, captured from the window as it draws. The host's time cannot be set from outside,
 so the tools wait for it. An edit returns once the new pipeline is drawing and says so with
 `boundLive`. Every revision is kept under the box's `studies/`.
 
