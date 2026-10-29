@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 18353 of 34966 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 18358 of 34971 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2086 undocumented entry points** (types, top-level functions and values) and 13805 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -288,7 +288,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [dir.kt](../src/jvmMain/kotlin/afield/document/workspace/dir.kt) | Workspace | — | 71 | 319 | 4% |
 | [AI4.kt](../src/jvmMain/kotlin/afield/ai/compat/AI4.kt) | Machine learning | — | 63 | 0 | 1% |
 | [PolynomialTreeFitting.kt](../src/jvmMain/kotlin/afield/geometry/path/PolynomialTreeFitting.kt) | Graphics | — | 32 | 152 | 2% |
-| [Server.kt](../src/jvmMain/kotlin/afield/app/server/Server.kt) | Workspace | — | 28 | 29 | 29% |
+| [Server.kt](../src/jvmMain/kotlin/afield/app/server/Server.kt) | Workspace | — | 28 | 29 | 32% |
 | [OpenAiCredentials.kt](../src/jvmMain/kotlin/afield/ai/models/OpenAiCredentials.kt) | Machine learning | — | 27 | 31 | 4% |
 | [AbletonSet.kt](../src/jvmMain/kotlin/afield/audio/synth/AbletonSet.kt) | Audio | — | 26 | 163 | 0% |
 | [LanguageSpecs.kt](../src/jvmMain/kotlin/afield/runtime/languages/LanguageSpecs.kt) | Workspace | — | 26 | 3 | 14% |
@@ -304,7 +304,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [modelling.kt](../src/jvmMain/kotlin/afield/math/control/modelling.kt) | Graphics | — | 13 | 54 | 0% |
 | [PythonInterface.kt](../src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt) | Languages | — | 13 | 34 | 6% |
 | [Ai4Installer.kt](../src/jvmMain/kotlin/afield/ai/models/Ai4Installer.kt) | Machine learning | — | 13 | 8 | 12% |
-| [browsing.kt](../src/jvmMain/kotlin/afield/app/server/browsing.kt) | Workspace | — | 12 | 23 | 18% |
+| [browsing.kt](../src/jvmMain/kotlin/afield/app/server/browsing.kt) | Workspace | — | 12 | 23 | 20% |
 | [util.kt](../src/jvmMain/kotlin/afield/app/diagnostics/util.kt) | Workspace | — | 12 | 1 | 7% |
 | [JoltPhysicsWorld.kt](../src/jvmMain/kotlin/afield/simulation/physics/JoltPhysicsWorld.kt) | Simulation | — | 11 | 70 | 30% |
 | [KotlinJsBinding.kt](../src/jvmMain/kotlin/afield/lang/remotejs/KotlinJsBinding.kt) | Languages | — | 11 | 44 | 28% |
