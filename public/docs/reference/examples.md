@@ -2061,23 +2061,23 @@ Verify negative caching and explicit recovery against a real idle box's Kotlin c
 
 ### SourceBackedBlockSelfBoxProbe { #fnrewritekotlinliveboxprobe-kt-sourcebackedblockselfboxprobe }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">SourceBackedBlockSelfBoxProbe</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L451)
+[<code class="highlight"><span class="k">object</span> <span class="nc">SourceBackedBlockSelfBoxProbe</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L454)
 
 [`afield.study.source.SourceBackedBlock`](internal.md#sourcebackedblock-kt-sourcebackedblock)'s own route into the self-box trap, measured rather than inferred.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="fnrewritekotlinliveboxprobe-kt--sourcebackedblockselfboxprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L453) |  |
+| <a id="fnrewritekotlinliveboxprobe-kt--sourcebackedblockselfboxprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L456) |  |
 
 ### SourceBackedBlockTwoBoxProbe { #fnrewritekotlinliveboxprobe-kt-sourcebackedblocktwoboxprobe }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">SourceBackedBlockTwoBoxProbe</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L471)
+[<code class="highlight"><span class="k">object</span> <span class="nc">SourceBackedBlockTwoBoxProbe</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L474)
 
 The same block hydrated in an idle parent box — the positive control for the one above.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="fnrewritekotlinliveboxprobe-kt--sourcebackedblocktwoboxprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L473) |  |
+| <a id="fnrewritekotlinliveboxprobe-kt--sourcebackedblocktwoboxprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L476) |  |
 
 ## FunctionsPlotGallery.kt { #functionsplotgallery-kt }
 
