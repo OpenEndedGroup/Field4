@@ -82,6 +82,10 @@ internal fun sampleableSize(view: Any, fallback: Pair<Int, Int> = 512 to 512): P
  * render target, so it lives as long as its source.
  */
 class ShadertoyChannel private constructor(
+    /**
+     * The renderer this channel's flip pass runs on, and the first half of the key it is cached
+     * under: one channel per renderer and per source view.
+     */
     val renderer: Renderer,
     source: Pair<HasImageViewArray, TextureSampler>,
     /** The source's width in pixels (and so this channel's `iChannelResolution`). */
@@ -186,9 +190,23 @@ void main() {
  * shares it. A canvas that is only an input for another shader passes `inWindow = false`.
  */
 class ShadertoyCanvas internal constructor(
+    /**
+     * The renderer that holds the canvas and composites it. Its window supplies the aspect the
+     * canvas is letterboxed into and the cursor that becomes `iMouse`.
+     */
     val renderer: Renderer,
+    /**
+     * What this canvas is called, `shadertrinket` by default. Canvases are shared per renderer and
+     * per name, so two boxes asking for the same name draw into the same picture; it also names the
+     * render target and the compositing module in the renderer's lists.
+     */
     val name: String,
+    /**
+     * The canvas's width in pixels, and the x of `iResolution` for every module drawn into it. Fixed
+     * at first use: asking for the same name at another size keeps this one and logs a warning.
+     */
     val width: Int,
+    /** The canvas's height in pixels, fixed at first use in the same way as the width. */
     val height: Int,
     inWindow: Boolean
 ) {

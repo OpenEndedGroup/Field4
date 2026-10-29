@@ -7,15 +7,33 @@ import arrow.core.Either
  * Decides whether a recompiled shader can be swapped in without a full reload.
  *
  * [graphicsShaderAbiCheck] and [computeShaderAbiCheck] compare the old and new [Introspection] of each
- * stage; a changed stage set or a changed interface returns a [ShaderAbiCheck] that is not compatible,
- * with a message asking for a full reload.
+ * stage; a changed interface in any stage returns a [ShaderAbiCheck] that is not compatible, with a
+ * message asking for a full reload.
  */
 
 data class ShaderAbiCheck(
+    /**
+     * True when every stage presents the same interface after the recompile as before it, so the
+     * running pipeline can take the new code instead of being rebuilt.
+     */
     val compatible: Boolean,
+    /**
+     * Empty when compatible; otherwise names the stage that changed and prints its old and new
+     * interface signatures in full. This is the text a refused *Update Shader* reports on the box,
+     * below the summary of what changed.
+     */
     val message: String = ""
 )
 
+/**
+ * Compares a graphics shader's vertex and fragment interfaces across a recompile.
+ *
+ * The comparison covers each stage's inputs and outputs by location, its uniform buffers, storage
+ * buffers, textures, images and acceleration structures by set and binding, its push constants and
+ * its buffer-reference structures — and within each of those, member names, offsets and array
+ * strides. A renamed uniform therefore reports incompatible even though the memory layout is
+ * unchanged.
+ */
 fun graphicsShaderAbiCheck(
     oldVertex: Introspection,
     oldFragment: Introspection,
@@ -27,6 +45,10 @@ fun graphicsShaderAbiCheck(
         new = listOf("vertex" to newVertex, "fragment" to newFragment)
     )
 
+/**
+ * Compares a compute shader's interface across a recompile, on the same terms
+ * [graphicsShaderAbiCheck] applies to each graphics stage.
+ */
 fun computeShaderAbiCheck(
     oldCompute: Introspection,
     newCompute: Introspection

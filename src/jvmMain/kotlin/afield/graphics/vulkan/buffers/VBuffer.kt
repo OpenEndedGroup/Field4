@@ -28,19 +28,31 @@ import java.nio.IntBuffer
  * this is, as far as I can tell, completely decoy — with resizable BAR (or unified memory on Apple Silicon) this staging buffer thing is just excess engineering _and_ writing shaders that do their own pulling is better _and_ device pointers set through push constants is faster and architecturally skips all of the descriptor nonsense
  */
 class VertexBuffer(
+    /** The renderer whose device both allocations are made on, and whose graphics queue carries the copy. */
     val renderer: Renderer,
+    /** Bytes. Both the staging and the device-local allocation are this size, for the life of the buffer; [trimTo] narrows what is copied, not what is allocated. */
     val size: Long,
-    val usage: Int = VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, val createCPU: Boolean = false
+    /** The `VkBufferUsageFlags` the device-local buffer carries beyond transfer-destination. It also decides which reads the transfer barriers cover: vertex-attribute reads for a vertex buffer, index reads for an index buffer, and no barrier at all for a usage with neither bit. */
+    val usage: Int = VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+    /** Whether to allocate the spare host-side [cpu] buffer. Nothing in the transfer path reads it. */
+    val createCPU: Boolean = false
 ) : HasBuffer, BufferWriteable {
 
+    /**
+     * A plain host [size]-byte buffer, allocated only when `createCPU` was asked for, and null
+     * otherwise. It is not the staging buffer and is not part of the upload: nothing here writes to
+     * it or reads from it, and the renderer's buffer inspector only reports whether it exists.
+     */
     val cpu = if (createCPU) BufferUtils.createByteBuffer(size.toInt()) else null
 
+    /** The host-visible, host-coherent staging buffer. The `mapAndWrite` family writes here, and a transfer copies it into [dest]. */
     val src = VulkanBuffer(
         renderer,
         size,
         VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
     )
+    /** The device-local buffer the GPU draws from, carrying [usage] on top of transfer-destination. This is the handle [getBuffer] returns. */
     val dest = VulkanBuffer(
         renderer,
         size,
@@ -48,15 +60,40 @@ class VertexBuffer(
         VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     )
 
+    /** Counts host writes: every `mapAndWrite` call raises it by one, whether or not the block it ran completed. */
     var watermark = 0
+
+    /**
+     * The [watermark] the last transfer copied. While the two differ the device-local buffer is
+     * behind the staging one, and [clean] or [transfer] will copy; a transfer sets them equal. It
+     * starts at -1 so that a buffer written once before its first transfer is copied.
+     */
     var transferWatermark = -1
+
+    /**
+     * How many bytes a transfer copies, starting at the whole [size] and narrowed by [trimTo].
+     * At zero or less the copy and both barriers are skipped entirely, so a trimmed-to-nothing
+     * buffer still reports itself clean after a transfer.
+     */
     var neededSize = size
 
+    /** Size, usage and whether the staging copy is still ahead of the device one, as `DIRTY` or `clean`. */
     override fun toString(): String {
         val status = if (watermark != transferWatermark) "DIRTY" else "clean"
         return "VertexBuffer(render, size=$size, usage=$usage $status)"
     }
 
+    /**
+     * Brings the device-local buffer up to date with the staging one, if it is not already.
+     *
+     * With a [cmd] to record into, the copy is recorded there and happens in queue order with the
+     * rest of that command buffer. Without one, or when [cmd] is already inside a render pass
+     * instance, the copy instead goes out on its own command buffer and is waited on before this
+     * returns, because `vkCmdCopyBuffer` may not be recorded inside a render pass.
+     *
+     * [hostReading] means the caller is about to read on the host, which this buffer has no path
+     * for, so nothing is done.
+     */
     override fun clean(hostReading: Boolean, cmd: CommandBuffer?): VertexBuffer {
         if (!hostReading) {
             if (transferWatermark != watermark) {
@@ -76,6 +113,12 @@ class VertexBuffer(
         return this
     }
 
+    /**
+     * Maps the staging buffer and hands [builder] a float view of the whole allocation, then
+     * unmaps and marks the device copy out of date. The view holds [size] / 4 floats and starts at
+     * position zero on every call, so a partial write leaves the rest of the previous contents in
+     * place. The buffer is unmapped and the watermark raised even if the block throws.
+     */
     override fun mapAndWrite(builder: FloatBuffer.() -> Unit): VertexBuffer {
         val rawMemory = src.map()
         try {
@@ -87,6 +130,7 @@ class VertexBuffer(
         return this
     }
 
+    /** [mapAndWrite] with an integer view of the same memory, [size] / 4 ints wide. Index data goes here. */
     override fun mapAndWrite_ints(builder: IntBuffer.() -> Unit): VertexBuffer {
         val rawMemory = src.map()
         try {
@@ -98,6 +142,7 @@ class VertexBuffer(
         return this
     }
 
+    /** [mapAndWrite] with a byte view of the same memory, the full [size]. Use it for packed or mixed vertex formats. */
     override fun mapAndWrite_bytes(builder: ByteBuffer.() -> Unit): VertexBuffer {
         val rawMemory = src.map()
         try {
@@ -182,6 +227,14 @@ class VertexBuffer(
         }
     }
 
+    /**
+     * Records the staging-to-device copy into [cmd], bracketed by the two barriers that move the
+     * buffer between vertex input and transfer, and then counts it as clean. A buffer already at
+     * its transfer watermark records nothing.
+     *
+     * [immediate] is for the renderer's upload accounting only: it decides which of the two
+     * per-frame byte totals this copy lands in, and does not change what is recorded.
+     */
     fun transfer(cmd: CommandBuffer, immediate: Boolean = false) {
 
         if (transferWatermark != watermark) {
@@ -200,6 +253,13 @@ class VertexBuffer(
         }
     }
 
+    /**
+     * Does the transfer on a command buffer of its own and blocks until the GPU has finished it.
+     *
+     * This is the path [clean] takes when it has nowhere to record. The fence it waits on is a
+     * single one shared by every [VertexBuffer], which is reset here before the submit, so two of
+     * these running at once on two threads are not safe.
+     */
     fun transferNow() {
         val cmd = CommandBuffer(renderer.commandPool, true, true)
 
@@ -237,6 +297,11 @@ class VertexBuffer(
         }
     }
 
+    /**
+     * Queues both allocations for release on the renderer's cleanup list rather than freeing them
+     * here, so a frame still reading this buffer finishes first. The buffer is unusable from the
+     * moment that list runs, not from the moment this is called.
+     */
     fun cleanup() {
         renderer.cleanup.add {
             src.cleanup()
@@ -244,15 +309,25 @@ class VertexBuffer(
         }
     }
 
+    /**
+     * Narrows the copy to the first [neededSize] bytes, for the common case of a buffer allocated
+     * for a worst-case vertex count and filled with fewer. It changes neither allocation, and it
+     * takes effect on the next transfer rather than marking the buffer dirty.
+     */
     fun trimTo(neededSize: Long) {
         this.neededSize = neededSize
     }
 
-    // returns the dest buffer (the one for the GPU)
+    /** The device-local [dest] handle, which is what a draw binds; the staging buffer is never handed out. */
     override fun getBuffer(): Long {
         return dest.buffer
     }
 
+    /**
+     * Always throws: neither allocation is created with the device-address usage bit, so this
+     * buffer cannot be reached by pointer. Shader-pulled geometry wants a [VulkanBuffer] built
+     * with `addressable()` instead.
+     */
     override fun getGPUAddress(cmd : CommandBuffer): Long {
         throw IllegalStateException("Not supported")
     }
