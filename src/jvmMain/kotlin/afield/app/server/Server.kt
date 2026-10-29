@@ -1028,8 +1028,17 @@ data class OutputBackPressureSnapshot(
 class OutputBackPressure(val maxPending: Int = 8, val bufferSize: Int = 4) {
     private val pending = java.util.concurrent.atomic.AtomicInteger(0)
     private val skipped = java.util.concurrent.atomic.AtomicInteger(0)
-    /** Buffered frames with their coalesce key (null: none); guarded by synchronized(this). */
-    private val buffer = kotlin.collections.ArrayDeque<Pair<String?, String>>()
+    /**
+     * One buffered frame. [slotted] frames are back-pressured outputs and take a pending slot when
+     * they leave; unslotted ones (see [enqueueBehind]) only wait their turn.
+     */
+    private data class Entry(val key: String?, val frame: String, val slotted: Boolean = true)
+
+    /** A frame [drainFrames] released, and whether it took a pending slot. */
+    data class Drained(val frame: String, val slotted: Boolean)
+
+    /** Buffered frames in send order; guarded by synchronized(this). */
+    private val buffer = kotlin.collections.ArrayDeque<Entry>()
 
     /**
      * Try to acquire a send slot.
@@ -1058,17 +1067,29 @@ class OutputBackPressure(val maxPending: Int = 8, val bufferSize: Int = 4) {
     fun bufferMessage(message: String, coalesceKey: String? = null) {
         synchronized(this) {
             if (coalesceKey != null) {
-                val i = buffer.indexOfFirst { it.first == coalesceKey }
+                val i = buffer.indexOfFirst { it.key == coalesceKey }
                 if (i >= 0) buffer.removeAt(i)
-                buffer.addLast(coalesceKey to message)
+                buffer.addLast(Entry(coalesceKey, message))
                 return
             }
-            if (buffer.count { it.first == null } >= bufferSize) {
-                buffer.removeAt(buffer.indexOfFirst { it.first == null })
+            if (buffer.count { it.key == null && it.slotted } >= bufferSize) {
+                buffer.removeAt(buffer.indexOfFirst { it.key == null && it.slotted })
                 skipped.incrementAndGet()   // evicted from buffer — truly skipped
             }
-            buffer.addLast(null to message)
+            buffer.addLast(Entry(null, message))
         }
+    }
+
+    /**
+     * Queue a frame that is not back-pressured (an `output-control` clear or open, say) behind
+     * the buffered outputs, so it cannot overtake them. Returns false, queueing nothing, when the
+     * buffer is empty: the caller sends it directly. The frame takes no slot, is never evicted
+     * and never coalesces.
+     */
+    fun enqueueBehind(message: String): Boolean = synchronized(this) {
+        if (buffer.isEmpty()) return false
+        buffer.addLast(Entry(null, message, slotted = false))
+        true
     }
 
     /** The skipped count since it was last taken, reset to zero. */
@@ -1097,13 +1118,20 @@ class OutputBackPressure(val maxPending: Int = 8, val bufferSize: Int = 4) {
      * Returns messages that were successfully acquired; messages that still cannot
      * acquire a slot remain buffered for the next acknowledgement cycle.
      */
-    fun drainBuffer(): List<String> {
-        val result = mutableListOf<String>()
+    fun drainBuffer(): List<String> = drainFrames().map { it.frame }
+
+    /** [drainBuffer], saying which frames took a slot; unslotted frames leave as soon as they reach the head. */
+    fun drainFrames(): List<Drained> {
+        val result = mutableListOf<Drained>()
         synchronized(this) {
             while (buffer.isNotEmpty()) {
-                val prev = pending.getAndUpdate { cur -> if (cur >= maxPending) cur else cur + 1 }
-                if (prev >= maxPending) break
-                result.add(buffer.removeFirst().second)
+                val head = buffer.first()
+                if (head.slotted) {
+                    val prev = pending.getAndUpdate { cur -> if (cur >= maxPending) cur else cur + 1 }
+                    if (prev >= maxPending) break
+                }
+                buffer.removeFirst()
+                result.add(Drained(head.frame, head.slotted))
             }
         }
         return result
@@ -1115,10 +1143,10 @@ class OutputBackPressure(val maxPending: Int = 8, val bufferSize: Int = 4) {
         pending.updateAndGet { maxOf(0, it - 1) }
     }
 
-    fun releaseAndDrain(): Pair<Int, List<String>> {
+    fun releaseAndDrain(): Pair<Int, List<Drained>> {
         release()
         val skipCount = skipped.getAndSet(0)
-        return skipCount to drainBuffer()
+        return skipCount to drainFrames()
     }
 }
 
@@ -1838,7 +1866,14 @@ internal fun sendWithOutputBackPressure(
     }
     NetStats.sent(encoded.length) // one text frame per session; _send() fans out through here
     if (!isBackPressuredOutputMessage(message)) {
-        sendInOrder(session) { session.send(encoded) }
+        // While outputs wait in this session's buffer, this frame waits behind them; checking and
+        // sending under the pressure's lock keeps it from slipping between a drain and its send.
+        val pressure = sessionOutputPressure[session]
+        if (pressure == null) {
+            sendInOrder(session) { session.send(encoded) }
+        } else synchronized(pressure) {
+            if (!pressure.enqueueBehind(encoded)) sendInOrder(session) { session.send(encoded) }
+        }
         return
     }
 
@@ -1847,10 +1882,10 @@ internal fun sendWithOutputBackPressure(
     // buffer drains from its head as far as there are slots. Taking and queueing happen under the
     // pressure's lock, so a concurrent send or ack cannot interleave its share ahead of ours.
     val skipCount: Int
-    val toSend: List<String>
+    val toSend: List<OutputBackPressure.Drained>
     synchronized(bp) {
         bp.bufferMessage(encoded, outputCoalesceKey(message))
-        toSend = bp.drainBuffer()
+        toSend = bp.drainFrames()
         skipCount = if (toSend.isEmpty()) 0 else bp.takeSkipped()
         if (toSend.isNotEmpty()) sendBuffered(session, bp, message, toSend)
     }
@@ -1880,16 +1915,17 @@ internal fun outputCoalesceKey(message: Message): String? {
     return "$uid\u0000${field("property")}\u0000${field("channel")}"
 }
 
-private fun sendBuffered(session: WebSocketSession, bp: OutputBackPressure, message: Message?, frames: List<String>) {
+private fun sendBuffered(session: WebSocketSession, bp: OutputBackPressure, message: Message?, frames: List<OutputBackPressure.Drained>) {
     sendInOrder(session) {
         var sent = 0
         try {
             for (frame in frames) {
-                session.send(frame)
+                session.send(frame.frame)
                 sent++
             }
         } catch (_: Exception) {
-            repeat(frames.size - sent) { bp.release() }
+            // Only the frames that took a slot give one back.
+            repeat(frames.drop(sent).count { it.slotted }) { bp.release() }
             outputBackPressureLog(
                 session,
                 "send-failed-release",
@@ -1906,7 +1942,7 @@ private fun sendBuffered(session: WebSocketSession, bp: OutputBackPressure, mess
 private fun releaseAndFlushOutputBackPressure(session: WebSocketSession) {
     val bp = sessionOutputPressure[session] ?: return
     val skipCount: Int
-    val buffered: List<String>
+    val buffered: List<OutputBackPressure.Drained>
     synchronized(bp) {
         val drained = bp.releaseAndDrain()
         skipCount = drained.first

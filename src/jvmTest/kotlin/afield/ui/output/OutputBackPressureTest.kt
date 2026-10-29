@@ -61,4 +61,19 @@ class OutputBackPressureTest {
         // "panel new" was sent after "clear"; it must arrive after it, or the clear wipes it.
         kotlin.test.assertEquals(listOf("clear", "panel new"), out)
     }
+
+    @Test
+    fun anUnpressuredFrameWaitsBehindBufferedOutputWithoutTakingASlot() {
+        val pressure = OutputBackPressure(maxPending = 1, bufferSize = 4)
+        assertFalse(pressure.enqueueBehind("early clear")) // nothing buffered: the caller sends it now
+        assertTrue(pressure.tryAcquire() >= 0)
+        pressure.bufferMessage("panel", coalesceKey = "box/main")
+        assertTrue(pressure.enqueueBehind("clear"))
+        pressure.bufferMessage("panel 2", coalesceKey = "box/other")
+        pressure.release()
+        // "clear" was sent after "panel", so it leaves after it, and it does not use up the slot "panel" took.
+        kotlin.test.assertEquals(listOf("panel", "clear"), pressure.drainBuffer())
+        pressure.release()
+        kotlin.test.assertEquals(listOf("panel 2"), pressure.drainBuffer())
+    }
 }
