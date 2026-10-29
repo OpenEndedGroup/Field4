@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T15:30:08.214Z",
+  "capturedAt": "2026-10-29T22:27:58.526Z",
   "documentName": "simdverlet_world",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 762,
-      "height": 603,
+      "height": 606,
       "path": "outputs/0.html"
     },
     {
@@ -24,7 +24,7 @@
         "svg"
       ],
       "width": 762,
-      "height": 603,
+      "height": 606,
       "path": "outputs/1.html"
     },
     {
@@ -36,7 +36,7 @@
         "svg"
       ],
       "width": 762,
-      "height": 603,
+      "height": 606,
       "path": "outputs/2.html"
     },
     {
@@ -48,7 +48,7 @@
         "svg"
       ],
       "width": 762,
-      "height": 603,
+      "height": 606,
       "path": "outputs/3.html"
     }
   ]

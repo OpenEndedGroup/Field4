@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T15:42:26.528Z",
+  "capturedAt": "2026-10-29T22:37:28.718Z",
   "documentName": "alife_script",
   "outputs": [
     {
@@ -11,7 +11,7 @@
       "kinds": [
         "plotly"
       ],
-      "width": 712,
+      "width": 724,
       "height": 458,
       "path": "outputs/0.html"
     },
@@ -23,8 +23,8 @@
       "kinds": [
         "plotly"
       ],
-      "width": 712,
-      "height": 446,
+      "width": 717,
+      "height": 445,
       "path": "outputs/1.html"
     },
     {

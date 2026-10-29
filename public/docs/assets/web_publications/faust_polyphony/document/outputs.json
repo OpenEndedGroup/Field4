@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T15:33:56.486Z",
+  "capturedAt": "2026-10-29T22:30:41.295Z",
   "documentName": "faust_polyphony",
   "outputs": [
     {
@@ -23,7 +23,7 @@
       "kinds": [
         "plotly"
       ],
-      "width": 877,
+      "width": 912,
       "height": 458,
       "path": "outputs/1.html"
     },
@@ -42,13 +42,13 @@
     {
       "uid": "faust_polyphony_steal",
       "channel": "steal=1440",
-      "open": true,
+      "open": false,
       "warnings": [
         "Live media omitted"
       ],
       "kinds": [],
-      "width": 428,
-      "height": 62,
+      "width": 200,
+      "height": 40,
       "path": "outputs/3.html"
     },
     {

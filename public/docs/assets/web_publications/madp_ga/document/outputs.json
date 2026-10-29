@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T15:50:11.153Z",
+  "capturedAt": "2026-10-29T22:44:42.740Z",
   "documentName": "madp_ga",
   "outputs": [
     {
@@ -9,8 +9,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 709,
-      "height": 1059,
+      "width": 690,
+      "height": 1049,
       "path": "outputs/0.html"
     },
     {
@@ -19,8 +19,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 704,
-      "height": 1059,
+      "width": 690,
+      "height": 1049,
       "path": "outputs/1.html"
     },
     {
@@ -29,8 +29,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 704,
-      "height": 1052,
+      "width": 685,
+      "height": 1049,
       "path": "outputs/2.html"
     },
     {
@@ -39,8 +39,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 709,
-      "height": 1066,
+      "width": 690,
+      "height": 1056,
       "path": "outputs/3.html"
     }
   ]

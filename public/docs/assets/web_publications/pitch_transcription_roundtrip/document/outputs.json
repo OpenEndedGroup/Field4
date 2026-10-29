@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T15:34:51.358Z",
+  "capturedAt": "2026-10-29T22:31:26.197Z",
   "documentName": "pitch_transcription_roundtrip",
   "outputs": [
     {
@@ -21,7 +21,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 382,
+      "width": 417,
       "height": 40,
       "path": "outputs/1.html"
     },
@@ -41,7 +41,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 433,
+      "width": 473,
       "height": 40,
       "path": "outputs/3.html"
     },
@@ -51,8 +51,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 464,
-      "height": 59,
+      "width": 478,
+      "height": 60,
       "path": "outputs/4.html"
     },
     {
@@ -82,7 +82,7 @@
     {
       "uid": "pitch_roundtrip_refusal",
       "channel": "named",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
       "width": 200,
@@ -92,31 +92,31 @@
     {
       "uid": "pitch_roundtrip_refusal",
       "channel": "verdict",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 478,
-      "height": 40,
+      "width": 473,
+      "height": 47,
       "path": "outputs/8.html"
     },
     {
       "uid": "pitch_roundtrip_refusal",
       "channel": "warnings",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 474,
-      "height": 59,
+      "width": 473,
+      "height": 73,
       "path": "outputs/9.html"
     },
     {
       "uid": "pitch_roundtrip_refusal",
       "channel": "how it knows",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
       "width": 478,
-      "height": 72,
+      "height": 73,
       "path": "outputs/10.html"
     },
     {
@@ -137,7 +137,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 246,
+      "width": 268,
       "height": 40,
       "path": "outputs/12.html"
     },
@@ -147,7 +147,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 309,
+      "width": 338,
       "height": 40,
       "path": "outputs/13.html"
     },
@@ -157,8 +157,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 474,
-      "height": 72,
+      "width": 478,
+      "height": 73,
       "path": "outputs/14.html"
     },
     {
@@ -168,7 +168,7 @@
       "warnings": [],
       "kinds": [],
       "width": 478,
-      "height": 72,
+      "height": 73,
       "path": "outputs/15.html"
     },
     {
@@ -178,7 +178,7 @@
       "warnings": [],
       "kinds": [],
       "width": 461,
-      "height": 535,
+      "height": 531,
       "path": "outputs/16.html"
     },
     {
@@ -187,8 +187,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 474,
-      "height": 46,
+      "width": 478,
+      "height": 60,
       "path": "outputs/17.html"
     }
   ]

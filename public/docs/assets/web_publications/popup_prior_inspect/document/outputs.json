@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T15:49:51.172Z",
+  "capturedAt": "2026-10-29T22:44:26.502Z",
   "documentName": "popup_prior_inspect",
   "outputs": [
     {
@@ -9,8 +9,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 479,
-      "height": 309,
+      "width": 439,
+      "height": 272,
       "path": "outputs/0.html"
     }
   ]
