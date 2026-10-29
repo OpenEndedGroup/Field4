@@ -436,17 +436,20 @@ timeoutSec: 120
 expect:
   exitCode: 0
   stdoutContains:
-    # The hydration is refused before the body can run a second time: one entry, and the error.
-    - "PROBE completed=false entries=1"
-    - "whose code is running now"
+    # The block hydrates on the box's side engine while the body runs: the body runs once, and the block returns.
+    - "PROBE completed=true entries=1"
+    - "PROBE out normal: FN_REWRITE_DONE 3.0"
   stdoutNotContains:
+    - "whose code is running now"
     - "whose body it therefore re-runs"
 */
 /**
  * [afield.study.source.SourceBackedBlock]'s own route into the self-box trap, measured rather than inferred.
  *
  * Its KDoc has documented the hazard at 327 nested runs since the `keyframe_code_blend` split; this is
- * the first test that actually drives it, and what gates `SourceBackedBlockSelfBoxReentry`.
+ * the first test that actually drives it. A block invoked from its own box's running body now hydrates
+ * on a side engine for that box, so the gate is one body entry and the block's value, with neither
+ * `SourceBackedBlockDuringOwnBody` nor `SourceBackedBlockSelfBoxReentry` raised.
  */
 object SourceBackedBlockSelfBoxProbe {
     @JvmStatic
