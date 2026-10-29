@@ -78,6 +78,28 @@ Ray interaction:
   controller pose — `direction = rotation · localForward`, matching Field's mock and OpenXR
   controllers.
 
+## OpenXR frame timing
+
+`Renderer.render()` runs the scene inside `OpenXRHmdTarget.renderFrame(renderScene)`.
+The target first waits for the runtime frame, begins it, and locates the views and inputs
+for its predicted display time. The scene callback then records the stereo RTT on the
+caller's existing graphics workers. Finally, OpenXR copies or renders the eyes and submits
+the retained views with the same display time. No queue executor waits on scene workers.
+
+Previously the whole desktop/stereo render ran before `xrWaitFrame` and `xrLocateViews`.
+The packed image therefore contained the previous pose, while its projection layer named
+the new pose. A steady headset frame rate did not reveal that mismatch.
+
+`SideBySideStereoTarget.renderedPoseFrameId` records `OpenXRHmdTarget.locatedViewFrameId`
+when OpenXR supplies the views. Its `renderedPoseDisplayTime` is in seconds; the target's
+`locatedViewDisplayTime` is the native OpenXR time in nanoseconds. These values let a live
+check verify that scene rendering and submission use the same frame. Remote pose sources
+retain their own frame identities and clocks.
+
+A sleeping or inactive runtime still lets the scene callback update the desktop. A failed
+scene ends the begun XR frame with no projection layer, then releases its retained views.
+`OpenXRFrameTest` checks ordering, matching pose/time, inactive frames, and failure cleanup.
+
 ## Interaction model (controller ray)
 
 Every frame the demo's `updateRayHit()`:

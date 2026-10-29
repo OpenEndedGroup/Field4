@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-216 source file(s), 686 public symbol(s), 302 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+217 source file(s), 688 public symbol(s), 303 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -321,7 +321,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L923) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L925) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -1996,6 +1996,20 @@ Real analytic coverage, alpha and immutable atlas replacement on the GPU.
 | Declaration | Summary |
 | --- | --- |
 | <a id="slugrendersmoke-kt--slugrendersmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/SlugRenderSmoke/#L43) |  |
+
+## StereoPackingSmokeTest.kt { #stereopackingsmoketest-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/StereoPackingSmokeTest.kt` — [read the source](source/jvmMain/afield/examples/four/StereoPackingSmokeTest/)
+
+### StereoPackingSmokeTest { #stereopackingsmoketest-kt-stereopackingsmoketest }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">StereoPackingSmokeTest</span></code>](source/jvmMain/afield/examples/four/StereoPackingSmokeTest/#L33)
+
+Checks the first packed-image sampling, eye draw count, and eye aspect on a non-square window.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="stereopackingsmoketest-kt--stereopackingsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StereoPackingSmokeTest/#L35) |  |
 
 ## EvolveWorkedExample.kt { #evolveworkedexample-kt }
 

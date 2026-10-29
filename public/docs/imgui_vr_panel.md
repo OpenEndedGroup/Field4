@@ -6,6 +6,10 @@ texture is mapped onto a quad, the quad is rendered once per eye into a side-by-
 and a controller ray is hit-tested against it so buttons and sliders respond to it. On a headset the
 same stereo image feeds the eye swapchains; on the desktop it previews in the window.
 
+For a smaller scene with an editable post-processing pass, start with
+[Stereo RTT composite](stereo_rtt_composite.md): desktop preview, an FXAA toggle and optional OpenXR
+output in five boxes.
+
 The side-by-side stereo target underneath this demo is the same one the Vision Pro front end renders
 through. See [Apple Vision Pro](vision.md), where those eye matrices can come from an uplinked
 head pose instead of from OpenXR or the desktop mock.
@@ -58,6 +62,11 @@ panel per eye:
 
 Each eye looks tall and narrow because the two eye views share the window's width, so each is
 horizontally squished by half; the headset (or the crop above) stretches it back out.
+
+When using OpenXR, let `Renderer.run()` drive the frame loop. Field samples the current
+predicted head and controller poses before rendering the stereo image, then submits that
+image with the same poses and display time. Keep custom stereo rendering inside this loop
+so the image and the headset's reprojection agree about where your head was.
 
 ## Aiming and clicking
 

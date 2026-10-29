@@ -4139,6 +4139,17 @@ See [Learn from a shader on the GPU](gpu_shader_learning.md).
 
 [Open →](offline.html?file=assets/agent_transcripts/gpu_shader_learning/metadata.edn)
 
+### stereo_rtt_composite
+
+[An editable stereo RTT composite](stereo_rtt_composite.md): three wireframe cubes, a floor and
+resolution chart render once per eye, then pass through FXAA into both the desktop mirror and,
+optionally, an OpenXR headset. The five-box graph starts in desktop preview mode; its guide gives
+the launch order and the explicit headset switch. The FXAA shader clamps every tap to its own eye
+and the output checkbox compares the same image with and without AA. Requires Vulkan; compiled
+without opening a window in CI, with a real desktop capture on the walkthrough page.
+
+[Open →](offline.html?file=assets/agent_transcripts/stereo_rtt_composite/metadata.edn)
+
 ## Saved documents
 
 <!-- transcript-index: bundled -->

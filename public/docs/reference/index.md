@@ -649,20 +649,20 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**34909 public symbols across 1587 source files**, 18336 of them (52%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**34913 public symbols across 1589 source files**, 18339 of them (52%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Examples](examples.md) | 216 | 686 | 302 (44%) | Runnable examples, galleries and verification programs. |
+| [Examples](examples.md) | 217 | 688 | 303 (44%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 16 | 156 | 55 (35%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 203 | 156 (76%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 134 | 50 (37%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 47 | 2156 | 1522 (70%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1061 | 463 (43%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 322 | 7963 | 4375 (54%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 323 | 7965 | 4377 (54%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 797 | 427 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
@@ -1603,7 +1603,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [OpenDlssNrTeardownSmoke.kt](examples.md#opendlssnrteardownsmoke-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>neural/<wbr></small> [OpenDlssNrTemporalSmoke.kt](internal.md#opendlssnrtemporalsmoke-kt) | Internal · internal | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [OpenXREyeTracking.kt](graphics.md#openxreyetracking-kt) | Graphics | 30 | 10 | Plain state holders for OpenXR eye tracking: the combined gaze of `XR_EXT_eye_gaze_interaction` and the per-eye gaze, pupil and geometry streams of `XR_HTC_eye_tracker`. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [OpenXRHmdTarget.kt](graphics.md#openxrhmdtarget-kt) | Graphics | 45 | 17 | The OpenXR headset as a render target: `OpenXRHmdTarget` acquires each eye's swapchain image, renders registered modules into it, and submits the frame with a projection layer. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [OpenXRFrame.kt](graphics.md#openxrframe-kt) | Graphics | 0 | 0 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [OpenXRHmdTarget.kt](graphics.md#openxrhmdtarget-kt) | Graphics | 47 | 19 | The OpenXR headset as a render target: `OpenXRHmdTarget` acquires each eye's swapchain image, renders registered modules into it, and submits the frame with a projection layer. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>automation/<wbr></small> [operation_transcript.kt](workspace.md#operation-transcript-kt) | Workspace · internal | 32 | 10 | Records the operations a person or agent performs on a document and replays them as named macros. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [OperationTranscriptMacroSmokeTest.kt](examples.md#operationtranscriptmacrosmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [OperationTranscriptPromoteSmokeTest.kt](examples.md#operationtranscriptpromotesmoketest-kt) | Examples · internal | 2 | 0 |  |  |
@@ -2100,6 +2101,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [SteamAudioContext.kt](audio.md#steamaudiocontext-kt) | Audio | 11 | 7 | The `SteamAudioContext` every Steam Audio object is created from, with the `LogCallback` and `MemoryAllocator` hooks it can install. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [SteamAudioException.kt](audio.md#steamaudioexception-kt) | Audio | 3 | 2 | How Steam Audio failures reach Kotlin: a native status code becomes a `SteamAudioError`, and anything other than success is thrown as a `SteamAudioException` carrying it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [SteamAudioNatives.kt](audio.md#steamaudionatives-kt) | Audio | 9 | 9 | Locates and loads the Steam Audio shared library, through `SteamAudioNatives`. |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [StereoPackingSmokeTest.kt](examples.md#stereopackingsmoketest-kt) | Examples · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [StereoPoseSource.kt](graphics.md#stereoposesource-kt) | Graphics | 9 | 9 | The interface for a stereo head pose that arrives from somewhere other than OpenXR, such as a remote headset. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>paint/<wbr></small> [StereoWarp.kt](graphics.md#stereowarp-kt) | Graphics | 4 | 4 | A smooth map between the two canvases of a stereo pair, so canvas texture such as weave and grain sits on the painted surface in both eyes: `StereoWarp`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [stippletransport.kt](machine-learning.md#stippletransport-kt) | Machine learning | 13 | 13 | Runs a learned stipple transport on the CPU: a small SiLU network, trained by the optional PyTorch tool in `optional/transport-flow`, that moves points from a uniform source rectangle toward an image's density. |  |
