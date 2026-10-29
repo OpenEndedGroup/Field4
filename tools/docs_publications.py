@@ -3,12 +3,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import hashlib
 import json
 import os
 import re
 import shutil
 import tempfile
+import time
 import zipfile
 from pathlib import Path
 
@@ -288,11 +290,37 @@ async def command(client, text: str) -> dict:
     return result
 
 
+@contextlib.contextmanager
+def _capture_temp_dir():
+    """A temp workspace whose removal outlasts the managed Field's shutdown save.
+
+    The backdoor's `close()` returns once the launcher process exits, but Field can still be
+    writing the document it saves on shutdown, so an immediate `rmtree` failed with Errno 66
+    ("Directory not empty") and took the whole docs build down with it. Retry for a few seconds,
+    then leave the directory to the OS and say so: a leftover temp dir is not a failed build.
+    """
+    temp = tempfile.mkdtemp(prefix="field-doc-publications-")
+    try:
+        yield temp
+    finally:
+        for attempt in range(10):
+            try:
+                shutil.rmtree(temp)
+                break
+            except FileNotFoundError:
+                break
+            except OSError as error:
+                if attempt == 9:
+                    print(f"WARN could not remove {temp}: {error}", flush=True)
+                else:
+                    time.sleep(0.5)
+
+
 async def capture(selected: list[dict], *, port: int | None, force: bool) -> list[dict]:
     import field_backdoor as fb
     from field_publication import publish_document
     report = []
-    with tempfile.TemporaryDirectory(prefix="field-doc-publications-") as temp:
+    with _capture_temp_dir() as temp:
         workspace = Path(temp) / "workspace"
         workspace.mkdir()
         for recipe in selected:
