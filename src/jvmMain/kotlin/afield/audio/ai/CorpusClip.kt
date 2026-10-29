@@ -45,6 +45,7 @@ class CorpusClip(
     /** A [Sampler] over the window, already triggered, so it plays as soon as it is launched. */
     fun sampler(): Sampler = Sampler(sample).also { it.trigger() }
 
+    /** The recording and the window, with both times to two decimal places: `CorpusClip(sha256:…, 21.00–27.00 s)`. */
     override fun toString(): String =
         "CorpusClip($assetId, ${"%.2f".format(Locale.US, startSeconds)}–${"%.2f".format(Locale.US, endSeconds)} s)"
 

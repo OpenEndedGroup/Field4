@@ -14,8 +14,19 @@ package afield.graphics.texture.video
  * Call from one render thread. [K] must be an immutable source-frame identity.
  */
 class FrameSetBarrier<K : Any> {
+    /**
+     * The frame identity [select] is holding back, or null when nothing is waiting. It survives
+     * ordinary clock ticks, and is cleared by [presentIfReady], by [revise] with a new revision,
+     * or by [reset].
+     */
     var pending: K? = null
         private set
+
+    /**
+     * The frame identity the set is showing, or null before the first one. [presentIfReady] moves
+     * [pending] here once its upload callback has returned, so this names images the caller has
+     * committed to rather than ones it has asked for.
+     */
     var presented: K? = null
         private set
     private var revision: Long? = null

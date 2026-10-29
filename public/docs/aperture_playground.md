@@ -12,7 +12,7 @@ order. Use **Stop Box** (Alt–Down in the renderer's editor) to stop. Repeat th
 Shift–Alt stroke to rebuild and restart the passes, preserving your shader edits.
 
 You can also launch the renderer alone, then execute boxes 2–8 in number order.
-The shaders are ordinary shader properties, and edit and reload as they do in any box. Change a
+The shaders are ordinary shader properties: edit and reload them as you would in any box. Change a
 texture's size and execute its box again, and the passes that read the texture are rebuilt with it,
 in order: each texture is a `propDown` slot.
 

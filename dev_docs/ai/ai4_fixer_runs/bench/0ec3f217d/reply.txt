@@ -1,0 +1,3 @@
+Added source citations inside the failing bullet in `dev_docs/SPREADSHEET_CONSTRAINTS.md`; inspection confirmed both anchors exist and satisfy the checker’s evidence rule. Gradle is unavailable in this replay, and no Python check covers this contract, so the test was not rerun.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "nightly/2026-10-26/4-sheet-constraints", "reason": "The branch added an impossibility claim without evidence, now repaired with source citations inside its claim unit."}

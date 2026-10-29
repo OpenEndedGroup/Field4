@@ -1,23 +1,21 @@
 # Gesture board: drawing toward a sound
 
-*To run the examples on this page, open the [audio_ai_gesture_board](agent_transcripts.md#audio_ai_gesture_board) starting point.*
-
 A `gestureBoard` describes a sound you want over time: text prompts for stretches of the piece,
 marked events, and curves for how busy, bright or high it should be. A generator then works toward
 it from a few seconds of an existing recording, producing one candidate per seed.
 
-Only some of the board reaches the MusicGen-Style worker as a condition. The rest is measured
-against what comes back:
+*To run the examples on this page, open the [audio_ai_gesture_board](agent_transcripts.md#audio_ai_gesture_board) starting point.*
 
-- the base prompt is a **direct** global text condition;
-- prompt regions are **compiled** into time-worded global text;
-- activity, density, register and brightness curves are **evaluative** targets;
-- events reward an onset near the marked time.
+Different marks guide the generator in different ways:
 
-After each candidate is generated, the service measures its waveform, compares the measured
-trajectories with the board, and stores an overall score plus every lane score in the candidate's
-provenance. The candidate browser shows those scores next to the usual listening, rating and
-selection.
+- The base prompt is sent directly as a description of the whole piece.
+- Prompt regions are combined into a description that includes their times.
+- Activity, density, register and brightness curves are targets used to score the result.
+- Events reward an onset near the marked time.
+
+After generating each candidate, Field measures its waveform against the board. The candidate
+browser shows the overall score and the scores for each lane alongside the controls for listening,
+rating and selecting.
 
 The example below sketches eighteen seconds of an uneasy orchestral piece: still low strings,
 woodwinds entering around five seconds, a dark accent at 13.1 s, and four curves.

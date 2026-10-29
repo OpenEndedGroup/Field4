@@ -1,0 +1,3 @@
+Moved `Raster`’s KDoc back above its declaration in `ChartGallery.kt`, removing the stacked blocks rejected by the guard. Source review confirms the repair; execution verification was blocked by unavailable Gradle and the Python test’s `ModuleNotFoundError: tools`.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "handoffs/code-20261015-2234", "reason": "The branch inserted staleCommittedFigures between Raster and its KDoc, so moving that comment back restores correct attachment without changing executable code."}

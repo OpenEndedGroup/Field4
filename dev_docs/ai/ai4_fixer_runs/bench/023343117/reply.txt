@@ -1,0 +1,3 @@
+Updated the two placeholder packages and matching Kotlin paths to use `afield.*`; source inspection confirms they satisfy the boundary rule. Gradle was unavailable, and the related Python tests could not start because of `ModuleNotFoundError: No module named 'tools'`.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "codex/kit-library", "reason": "The branch introduced two non-public placeholder package roots, now mechanically renamed under afield with matching paths and expected text."}

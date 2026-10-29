@@ -1,6 +1,6 @@
 # A pattern that moves particles
 
-On this page a rhythm written as `pat("bd*4, ~ 52 ~ 52, hh*16")` drives a GPU compute shader.
+Can a rhythm move a picture? Here `pat("bd*4, ~ 52 ~ 52, hh*16")` drives a GPU compute shader.
 The pattern language schedules the notes, `patSynth` turns the schedule into samples in real time,
 four band-pass filters turn the samples into four numbers, and the renderer hands those numbers to a
 shader that moves 24,000 particles.
@@ -29,10 +29,9 @@ Three parts, split by where they run:
 | `PatSynthBank` | the audio thread | starts a note on the frame it was given, and synthesises |
 | `PatSynthLaunch` | neither | owns both, and closes both |
 
-Querying a pattern allocates, and a cycle of a large composed pattern is not a 2.67 ms job, so the
-query cannot be on the audio thread. It does not have to be. What the query produces is *frames*, and
-being 400 ms early is the same sound as being exactly on time, so the audio thread is left with an
-integer comparison. `DirtSamplePlayer` and `FaustPatternFeeder` divide the work the same way.
+Querying a pattern allocates, and a cycle of a large composed pattern may take longer than the
+audio thread has to spare. The feeder can do that work ahead of time: it produces frame numbers,
+and the audio thread only needs to compare them with the current frame. `DirtSamplePlayer` and `FaustPatternFeeder` divide the work the same way.
 
 Playing it is one call, and returning it from the box is what ties the sound to the box:
 

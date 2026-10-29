@@ -21,34 +21,76 @@ import kotlin.math.*
  * - Scroll: dolly (zoom)
  */
 class OrbitControls(
+    /** The renderer whose window supplies the mouse events, the key state for the drag modifiers and the poll loop that damping runs in. */
     val renderer: Renderer = fromContext(),
+    /** The camera these controls move. Its `at`, `target` and `up` are written on every [update]. */
     val camera: Camera = fromContext(),
     mouseEvents: MouseEvents? = renderer.window.mouseEvents,
+    /** The name the mouse handlers and the poll-loop entry are registered under, so a second set of controls on the same window does not displace the first. */
     val name: String = "__orbitcontrols__"
 ) {
+    /**
+     * The mouse stream these controls listen on: the window's own [MouseEvents] when the constructor
+     * was given one, otherwise a private stream named `<name>__mouse__`.
+     */
     val mouse: MouseEvents = mouseEvents ?: MouseEvents(renderer, name = "${name}__mouse__")
 
+    /** Whether drags and scrolls move the camera at all. While false the handlers return early and damping stops advancing, so the camera holds its pose. */
     var enabled = true
 
+    /** Whether a plain left-drag orbits the camera around the camera's target. */
     var enableRotate = true
+
+    /** Whether a right-drag, or shift and left-drag, slides camera and target together. */
     var enablePan = true
+
+    /** Whether the scroll wheel, a middle-drag and ctrl (or alt) with a left-drag change the distance to the target. */
     var enableZoom = true
 
+    /** Radians of orbit per pixel dragged, as a multiple of a full turn across the window: at 1.0, dragging the window's own height turns 360° about either axis. */
     var rotateSpeed = 1.0
+
+    /** How sharply scrolling and dollying change the distance to the target: an event of `d` units multiplies it by `0.95` raised to `zoomSpeed * d / 100`, inwards or outwards according to the sign. */
     var zoomSpeed = 1.0
+
+    /** Pan distance per pixel dragged, as a multiple of what the camera can see: at 1.0, dragging the window's own height moves the target by the full visible height at the target's distance, so the scene keeps pace with the pointer. */
     var panSpeed = 1.0
 
+    /**
+     * Whether a drag or scroll leaves momentum behind. While it is set, [update] keeps being called
+     * from the window's poll loop after the mouse stops, each call applying and then shrinking
+     * what is left, until the pending angles are under a millionth of a radian and the pending pan
+     * under a thousandth of a world unit.
+     */
     var enableDamping = false
+
+    /** The fraction of the pending orbit, pan and zoom that each damped [update] discards: 0.1 keeps nine tenths of the momentum per frame, 1.0 spends it all in one frame, and 0.0 never settles. Read only while [enableDamping] is set. */
     var dampingFactor = 0.1
 
+    /** The closest the camera may come to its target; the distance is clamped into this range by every [update], not only by the drag that crossed it. */
     var minDistance = 0.001
+
+    /** The farthest the camera may sit from its target, infinite by default; clamped like [minDistance]. */
     var maxDistance = Double.POSITIVE_INFINITY
 
+    /** The smallest angle, in radians, between [upAxis] and the direction from target to camera: 0 is directly overhead, and the camera is held a millionth of a radian inside the limit so the pole itself stays unreachable. */
     var minPolarAngle = 0.0
+
+    /** The largest such angle, `PI` (directly underneath) by default; held just inside the limit like [minPolarAngle], which is what keeps the picture from flipping over at the pole. */
     var maxPolarAngle = PI
 
+    /**
+     * Which plane a pan moves the target in. Set, the drag moves it in the plane of the screen,
+     * along the camera's own up; clear, it moves in the plane that [upAxis] is normal to, so a
+     * vertical drag travels along the ground rather than lifting the target off it.
+     */
     var screenSpacePanning = true
 
+    /**
+     * The axis the camera orbits about and the one the polar limits are measured from: the camera's
+     * `up` as it stood when the controls were built, normalized. Every [update] writes it back into
+     * the camera, so the horizon stays level however far the orbit has travelled.
+     */
     val upAxis = Vector3f(camera.up).normalize()
 
     private var sphericalDeltaTheta = 0.0
@@ -74,6 +116,7 @@ class OrbitControls(
         }
     }
 
+    /** Records the camera's present position, target, up and [upAxis] as the pose [reset] returns to. The constructor records it once, so a reset with no save behind it returns the camera to where it stood when the controls were built. */
     fun saveState() {
         initialAt = Vector3f(camera.at)
         initialTarget = Vector3f(camera.target)
@@ -81,6 +124,7 @@ class OrbitControls(
         initialUpAxis = Vector3f(upAxis)
     }
 
+    /** Puts the camera back to the pose [saveState] recorded and drops whatever orbit, pan or zoom was still pending. */
     fun reset() {
         camera.at.set(initialAt)
         camera.target.set(initialTarget)
@@ -197,6 +241,13 @@ class OrbitControls(
         return 0.95.pow(zoomSpeed * normalized)
     }
 
+    /**
+     * Applies the pending orbit, pan and zoom to the camera, clamping the distance and the polar
+     * angle on the way, and returns whether damping has left anything worth another call — which is
+     * what keeps the poll loop going while the camera coasts to a stop. The drag and scroll handlers
+     * call it themselves; with nothing pending it still clamps, so it also brings a camera that
+     * other code has moved back inside the limits.
+     */
     fun update(): Boolean {
         val offset = Vector3f(camera.at).sub(camera.target)
         if (offset.lengthSquared() < 1e-12f) {

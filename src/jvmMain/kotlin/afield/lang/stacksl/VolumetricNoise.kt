@@ -56,7 +56,7 @@ import kotlin.math.sqrt
  * rather than a tunable value.
  */
 
-/** A float triple. Deliberately `Float`, not `Double`: GLSL `float` is what is being mirrored. */
+/** A float triple. `Float` rather than `Double`, because the GLSL this mirrors works in `float`. */
 data class NoiseVec3(val x: Float, val y: Float, val z: Float) {
     operator fun plus(o: NoiseVec3) = NoiseVec3(x + o.x, y + o.y, z + o.z)
     operator fun minus(o: NoiseVec3) = NoiseVec3(x - o.x, y - o.y, z - o.z)

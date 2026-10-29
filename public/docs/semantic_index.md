@@ -1,10 +1,10 @@
 # The Semantic Index
 
-The search field on [`/welcome`](history_overview.md) takes the keyboard focus
-as soon as the page opens, and what you type into it runs two searches over the
-current workspace at once. One is the ordinary workspace search, over document
-metadata and box text. The other is the semantic index, which joins in when
-semantic search is enabled and an index has been built.
+Looking for a piece of code but can't remember what you called it? With a semantic model
+configured, Field can find indexed code from a description of what it does. Enable semantic
+search, choose a model and build the index, then type into the search field on
+[`/welcome`](history_overview.md). Field searches the index alongside the ordinary workspace
+search, which looks through document metadata and box text.
 
 Results from both are merged by document. Semantic hits are labelled, ranked
 ahead of ordinary matches within each document, and limited to short source

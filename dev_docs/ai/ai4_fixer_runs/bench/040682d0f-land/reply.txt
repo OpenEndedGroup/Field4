@@ -1,0 +1,3 @@
+Fixed both misplaced KDocs and changed the embedded Python import to equivalent Python-specific syntax without modifying guards. Source inspection confirms the reported failure patterns are removed; the diff is 44 changed lines across three files, but Gradle verification was unavailable in this replay.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "handoffs/code-20261015-2234", "reason": "The branch introduced two mechanically misplaced KDocs and an embedded Python import mistaken for Kotlin, all corrected without changing guard rules."}

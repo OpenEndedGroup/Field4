@@ -6,8 +6,12 @@
 Reads the prompt from --prompt, --prompt-file, or stdin; hands it to a running (or backdoor-started) Field
 as an `agent-task` whose `repo` tools (RepoReadFileRequest, RepoListFilesRequest, RepoSearchRequest,
 RepoPatchFileRequest, RepoWriteFileRequest) are confined to --root and the --read / --write globs; prints
-AI4's final answer on stdout and a one-line-per-call tool log on stderr. AI4 has no shell: a prompt that
-says "run this command" has to be answered through the files (the docs-notes outcomes file, say).
+AI4's final answer on stdout and a one-line-per-call tool log on stderr. AI4 has no shell. Each --run NAME
+allows one named argv template (RepoRunCommandRequest; `RepoCommandTemplates` in
+src/jvmMain/kotlin/afield/ai/tools/RepoCommandTools.kt: gradle, python-test, check, git-status, git-diff,
+git-log, git-show, land-precheck) with cwd --root, a wall-clock cap (--run-max-sec) and an output cap;
+`--run fixer` is the lander fixer's set. Without --run, a prompt that says "run this command" has to be
+answered through the files (the docs-notes outcomes file, say).
 
 Environment: FIELD_AGENT_PORT (the Field to use; default: the backdoor's first free port from 9477),
 FIELD_AGENT_MODEL, FIELD_AGENT_MAX_ROUNDS (default 40), FIELD_AGENT_READ / FIELD_AGENT_WRITE (extra globs,
@@ -35,8 +39,21 @@ def _globs(values: list[str], env: str) -> list[str]:
     return [*values, *extra]
 
 
+FIXER_COMMANDS = ("gradle", "python-test", "check", "git-status", "git-diff", "git-log", "git-show")
+
+
+def expand_runs(runs: list[str]) -> list[str]:
+    """--run values with `fixer` expanded to FIXER_COMMANDS (= RepoCommandTemplates.FIXER_SET), de-duplicated in order."""
+    out: list[str] = []
+    for r in runs:
+        for name in (FIXER_COMMANDS if r == "fixer" else (r,)):
+            if name not in out:
+                out.append(name)
+    return out
+
+
 def build_backdoor_argv(*, root: Path, read: list[str], write: list[str], goal_file: Path, model: str,
-                        max_rounds: int, port: str, timeout: float) -> list[str]:
+                        max_rounds: int, port: str, timeout: float, runs: list[str] = (), run_max_sec: int = 900) -> list[str]:
     """The `field_backdoor.py` line one job runs (separate so the tests can check it without a Field)."""
     task = ["agent-task", "--goal-file", str(goal_file), "--repo-root", str(root), "--max-rounds", str(max_rounds),
             "--timeout", str(int(timeout))]
@@ -44,6 +61,10 @@ def build_backdoor_argv(*, root: Path, read: list[str], write: list[str], goal_f
         task += ["--repo-read", g]
     for g in write:
         task += ["--repo-write", g]
+    for name in expand_runs(list(runs)):
+        task += ["--repo-command", name]
+    if runs:
+        task += ["--repo-command-max-sec", str(run_max_sec)]
     if model:
         task += ["--model", model]
     argv = [sys.executable, str(HERE / "field_backdoor.py"), "--json", "--timeout", str(int(timeout) + 60)]
@@ -80,6 +101,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--root", default=".", help="the checkout the repo tools are confined to (default: cwd)")
     p.add_argument("--read", action="append", default=[], help="readable glob, repeatable (default **)")
     p.add_argument("--write", action="append", default=[], help="writable glob, repeatable (default: nothing)")
+    p.add_argument("--run", action="append", default=[], help="a named command AI4 may run (repeatable; `fixer` = the fixer's set)")
+    p.add_argument("--run-max-sec", type=int, default=int(os.environ.get("FIELD_AGENT_RUN_MAX_SEC", "900")))
     p.add_argument("--prompt", default="")
     p.add_argument("--prompt-file", default="")
     p.add_argument("--model", default=os.environ.get("FIELD_AGENT_MODEL", ""))
@@ -102,7 +125,8 @@ def main(argv: list[str] | None = None) -> int:
         f.write(prompt)
         goal_file = Path(f.name)
     cmd = build_backdoor_argv(root=root, read=read, write=write, goal_file=goal_file, model=args.model,
-                              max_rounds=args.max_rounds, port=args.port, timeout=args.timeout)
+                              max_rounds=args.max_rounds, port=args.port, timeout=args.timeout,
+                              runs=args.run, run_max_sec=args.run_max_sec)
     started = time.monotonic()
     try:
         done = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, timeout=args.timeout + 300)
@@ -121,7 +145,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[field] {mark} {call.get('tool')} {str(call.get('arguments', ''))[:160]}", file=sys.stderr)
     print(f"[field] model={data.get('provider')}/{data.get('model')} rounds={data.get('rounds')}/{data.get('maxToolRounds')} "
           f"wall={time.monotonic() - started:.0f}s tokens in={data.get('inputTokens')} out={data.get('outputTokens')} "
-          f"cacheRead={data.get('cacheReadTokens')} wrote={data.get('repoWritten')} verdict={data.get('verdict')} "
+          f"cacheRead={data.get('cacheReadTokens')} wrote={data.get('repoWritten')} ran={data.get('repoRuns')} verdict={data.get('verdict')} "
           f"error={data.get('error') or '-'}", file=sys.stderr)
     print(data.get("finalText", ""))
     return 1 if data.get("error") or data.get("hitToolRoundCap") or data.get("verdict") == "error" else 0

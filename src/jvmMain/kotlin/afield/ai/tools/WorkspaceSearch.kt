@@ -21,8 +21,6 @@ import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
 
 /**
- * #### Literal-text search over saved files, for AI agents
- *
  * `WorkspaceSearchRequest` is the agent tool that finds literal text in exactly one
  * [WorkspaceSearchScope]: the current document's files, its history, the whole workspace, or Field's
  * own Kotlin source. It reads one bounded file at a time under byte, match and time limits, and the

@@ -1,10 +1,11 @@
 # A Petri net that throws sparks
 
-On this page one Petri net plays a drum part from the Dirt-Samples and, at the same time, drives a
-GPU particle system. Each time a transition fires, a burst of sparks leaves the place its token
-came from, in that transition's colour. The net knows nothing about the particles, and the
-particle shader knows nothing about Petri nets: the box in between asks the net what has fired
-recently and writes the answer into a buffer.
+A Petri net can play a drum part and throw sparks at the same time. Each time a transition fires
+in this example, you hear a sample from Dirt-Samples and see a burst of particles leave the place
+its token came from.
+
+A box connects the net to the GPU particle system: it asks what has fired recently and writes the
+answer into a buffer for the shader.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_petri_sparks/sparks.png" capture="native-window" native-wait-frames="215" wait-output=true wait-output-kind="all" wait-output-contains="sparks ready" embed=true hidden=true timeout="240" name="chain-petri-sparks-hero" alt="Three concentric rings of faint dust on black, cyan inside, orange in the middle and gold outside, each with a bright comet where its token is. A fresh pale-gold burst of streaks is leaving the hat ring at the lower left, a larger orange burst from the kick ring is spreading at the lower right, and older cyan and green bursts are falling as fading rain near the top" macro-file="../../dev_docs/agents/transcripts/petri_sparks.yaml" capture-box="ps_sparks"}
 // Built and launched from dev_docs/agents/transcripts/petri_sparks.yaml.
@@ -77,8 +78,8 @@ displayOpen("main")
 :::endfold
 ```
 
-The text after each colon is what a transition emits, and these are Dirt-Samples folder names, so
-`net.emits()` is already a drum pattern.
+The text after each colon names what a transition emits. These are Dirt-Samples folder names,
+so `net.emits()` gives us a drum pattern.
 
 ## What it sounds like
 

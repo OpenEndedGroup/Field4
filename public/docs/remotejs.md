@@ -6,8 +6,8 @@ serves and keeps connected. That page can sit right on the canvas next to your c
 browser window, or on a phone or headset. Printing, errors, `launch` and Stop, output channels and
 sliders all work the way they do in a Kotlin box.
 
-This page is about sketching on a desktop. The same page also runs WebXR on a phone or headset; for
-that, see [RemoteJS and WebXR](ar_reference.md).
+We'll start by sketching on a desktop. You can also use that browser page for WebXR on a phone or
+headset; see [RemoteJS and WebXR](ar_reference.md).
 
 ## A Javascript box in three steps
 

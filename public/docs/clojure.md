@@ -9,7 +9,7 @@ directly, with nothing to convert and no second runtime to start.
 
 ## A Clojure box is a child of a Clojure root
 
-A box becomes Clojure by being childed to a Clojure root. Select a box and run
+To make a Clojure box, connect it beneath a Clojure root. Select a box and run
 *Set Main Language: Clojure* from the command palette (`set-main-language-clojure`). Every box
 childed to it from then on runs as Clojure. This works the same way it does for
 [Python](python.md#a-python-box-is-a-child-of-a-python-root):
@@ -309,9 +309,8 @@ expect:
 
 The function runs every frame; `(def n 160)` ran once, when the box was launched.
 
-**Stop** ends an animation. It does not interrupt a form that is still evaluating, so a box stuck
-in an infinite `loop` cannot be stopped, just as a Kotlin box in a `while (true)` that never
-suspends cannot.
+**Stop** ends an animation. It does not interrupt a Clojure form that is still evaluating, so avoid
+an infinite `loop` in code that runs before the animation.
 
 ## When something throws
 

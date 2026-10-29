@@ -1,0 +1,3 @@
+Separated two `@Test` annotations from their KDoc-documented functions in `GesturePaintReplayTest.kt`, matching the guard’s explicit attachment rule. The diff contains only those formatting changes; executable verification was unavailable because this checkout has no Gradle command or Python KDoc checker.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "nightly/2026-10-13/1-gesture-paint-replay", "reason": "Two documented tests put @Test and fun on the same line, which the KDoc guard explicitly rejects; splitting those lines fixes the mechanical attachment error."}

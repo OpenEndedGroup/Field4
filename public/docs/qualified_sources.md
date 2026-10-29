@@ -1,11 +1,9 @@
 # Change a rule without breaking what already works
 
-Some of a document's source is a rule that other builds follow: how loot is placed in a level, how
-a wall is split into panels, which fallback a solver tries next. When an agent improves a rule for
-the case in front of it, the danger is the cases it is not looking at. A qualified source keeps the
-rule together with the real cases it has already handled and what it did with each one, and lets
-the rule change only when a new version handles all of them the same way, or a person has looked at
-every difference and approved it.
+A rule might place loot in a level, divide a wall into panels or choose a solver's fallback. When
+you improve it for one case, how do you know it still handles the others? A qualified source keeps
+the rule alongside cases it has already handled and their recorded outcomes. Before a new rule is
+applied, Field replays those cases; a person can review and approve any outcomes that should change.
 
 It has three parts:
 
@@ -181,11 +179,10 @@ val first = loot.candidate(
 loot.test(first.id)
 ```
 
-The card in the box's `loot` output shows the replay: each fixture came out the **same**,
-**changed**, or **held**, which means the rule or its checks refused it. Here the crypt is held:
-its tomb is five doors in, and the game has no legendary tier. The control failed with the message
-it names, which is what it must do. A control that passes means the checks are not running, and
-then no candidate is admitted.
+The replay card in the box's `loot` output marks each fixture **same**, **changed** or **held**.
+Held means the rule or its checks refused the case. Here the crypt is held because its tomb is five
+doors in and the game has no legendary tier. The control fails as intended; if it passes, the
+candidate cannot be admitted.
 
 `loot.apply` refuses this candidate and names the held fixture and its reason, so the agent can
 revise the change. The live rule is unchanged.

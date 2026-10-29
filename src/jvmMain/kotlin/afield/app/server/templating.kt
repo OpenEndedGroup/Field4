@@ -42,6 +42,7 @@ import afield.ui.visualization.*
 import afield.app.diagnostics.logging.lprintln
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -52,6 +53,7 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -85,8 +87,13 @@ val templateServers: List<String> by lazy {
 // Cache for remote templates - populated on startup
 private val remoteTemplatesCache = ConcurrentHashMap<String, List<String>>()
 
-// HTTP client for fetching templates
-private val httpClient = HttpClient.newBuilder().build()
+// HTTP client for fetching templates. Both timeouts bound how long a template server that is down or
+// stalled can hold a fetch; a download is never made on a websocket event loop (see insert-template).
+private val httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build()
+private val templateRequestTimeout = Duration.ofSeconds(10)
+
+// Template listing and remote downloads run here, off the Netty event loop serving the page's websocket.
+private val templateIoScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
 /**
  * Fetch templates from a remote server's /list endpoint
@@ -96,6 +103,7 @@ private fun fetchTemplatesFromServer(serverUrl: String): List<String> {
         val listUrl = if (serverUrl.endsWith("/")) "${serverUrl}list" else "$serverUrl/list"
         val request = HttpRequest.newBuilder()
             .uri(URI.create(listUrl))
+            .timeout(templateRequestTimeout)
             .GET()
             .build()
 
@@ -121,6 +129,7 @@ private fun downloadTemplateFromServer(serverUrl: String, templateName: String):
         val downloadUrl = if (serverUrl.endsWith("/")) "${serverUrl}download/$templateName" else "$serverUrl/download/$templateName"
         val request = HttpRequest.newBuilder()
             .uri(URI.create(downloadUrl))
+            .timeout(templateRequestTimeout)
             .GET()
             .build()
 
@@ -320,67 +329,81 @@ private fun initializeTemplateServers() {
     }
 }
 
+/**
+ * Every template the palette offers, with its documentation: documents directly beneath `$home`,
+ * `$home/templates`, bundled templates and cached remote names. Reads every document's
+ * `metadata.edn` and sidecars, so in a real workspace this is hundreds of files.
+ */
+internal fun listTemplatesWithMetadata(): Directory {
+    val templates2 = SavingContext().listTemplates(app + "/templates/")
+    val templates = SavingContext().listTemplates(home)
+    val templatesHome = SavingContext().listTemplates("$home/templates")
+
+    // Include remote templates from all configured servers
+    val remoteTemplates = remoteTemplatesCache.values.flatten()
+
+    val sourceByName = mutableMapOf<String, String>()
+    templates.forEach { sourceByName.putIfAbsent(it, "workspace") }
+    templatesHome.forEach { sourceByName.putIfAbsent(it, "workspace-template") }
+    templates2.forEach { sourceByName.putIfAbsent(it, "bundled-template") }
+    remoteTemplates.forEach { sourceByName.putIfAbsent(it, "remote-template") }
+
+    val allTemplateNames = templates + templatesHome + templates2 + remoteTemplates
+
+    // Extract metadata for each template
+    val templateMetadataList = allTemplateNames.mapNotNull { templateName ->
+        val source = sourceByName[templateName] ?: "template"
+        // Try to find the template file in order of preference
+        val paths = listOf(
+            "$home/$templateName.edn" to "$home",
+            "$home/$templateName/metadata.edn" to "$home/$templateName",
+            "$home/templates/$templateName.edn" to "$home/templates",
+            "$home/templates/$templateName/metadata.edn" to "$home/templates/$templateName",
+            "$app/templates/$templateName.edn" to "$app/templates",
+            "$app/templates/$templateName/metadata.edn" to "$app/templates/$templateName"
+        )
+
+        for ((templateFile, directory) in paths) {
+            val file = File(templateFile)
+            if (file.exists()) {
+                return@mapNotNull extractTemplateMetadata(templateFile, templateName, source)
+            }
+        }
+
+        // For remote templates, we don't have metadata yet
+        TemplateMetadata(
+            name = templateName,
+            lastModified = 0,
+            boxDocumentation = "",
+            source = source
+        )
+    }
+
+    return Directory(
+        command = "list",
+        value = allTemplateNames,
+        metadata = Json.encodeToJsonElement(templateMetadataList)
+    )
+}
+
+/** The palette's reply to `request-templates`: [list]'s result, or an empty list when it throws. */
+internal fun templateListingOrEmpty(list: () -> Directory = ::listTemplatesWithMetadata): Directory =
+    runCatching(list)
+        .onFailure { lprintln("warning,template", "Failed to list templates: ${it.javaClass.simpleName}: ${it.message}") }
+        .getOrElse { Directory(command = "list") }
+
 @OptIn(ExperimentalUuidApi::class)
 @RunsAt(installHandlers)
 fun templating() {
     // Initialize remote template servers in the background
     initializeTemplateServers()
     handlers["request-templates"] = mutableSetOf({ message, reply ->
-
-        val exec = Json.decodeFromJsonElement<Directory>(message.payload!!)
-
-        val templates2 = SavingContext().listTemplates(app + "/templates/")
-        val templates = SavingContext().listTemplates(home)
-        val templatesHome = SavingContext().listTemplates("$home/templates")
-
-        // Include remote templates from all configured servers
-        val remoteTemplates = remoteTemplatesCache.values.flatten()
-
-        val sourceByName = mutableMapOf<String, String>()
-        templates.forEach { sourceByName.putIfAbsent(it, "workspace") }
-        templatesHome.forEach { sourceByName.putIfAbsent(it, "workspace-template") }
-        templates2.forEach { sourceByName.putIfAbsent(it, "bundled-template") }
-        remoteTemplates.forEach { sourceByName.putIfAbsent(it, "remote-template") }
-
-        val allTemplateNames = templates + templatesHome + templates2 + remoteTemplates
-
-        // Extract metadata for each template
-        val templateMetadataList = allTemplateNames.mapNotNull { templateName ->
-            val source = sourceByName[templateName] ?: "template"
-            // Try to find the template file in order of preference
-            val paths = listOf(
-                "$home/$templateName.edn" to "$home",
-                "$home/$templateName/metadata.edn" to "$home/$templateName",
-                "$home/templates/$templateName.edn" to "$home/templates",
-                "$home/templates/$templateName/metadata.edn" to "$home/templates/$templateName",
-                "$app/templates/$templateName.edn" to "$app/templates",
-                "$app/templates/$templateName/metadata.edn" to "$app/templates/$templateName"
-            )
-
-            for ((templateFile, directory) in paths) {
-                val file = File(templateFile)
-                if (file.exists()) {
-                    return@mapNotNull extractTemplateMetadata(templateFile, templateName, source)
-                }
-            }
-
-            // For remote templates, we don't have metadata yet
-            TemplateMetadata(
-                name = templateName,
-                lastModified = 0,
-                boxDocumentation = "",
-                source = source
-            )
+        // This runs on the Netty event loop serving the page's websocket, and the listing reads every
+        // document in the workspace. It touches no session state, so it runs off the loop and replies
+        // from there; a throw still replies, with an empty list, so the palette is never left waiting.
+        templateIoScope.launch {
+            reply(Message("list").payload(templateListingOrEmpty()))
         }
-
-        reply(Message("list").payload(
-            Directory(
-                command = "list",
-                value = allTemplateNames,
-                metadata = Json.encodeToJsonElement(templateMetadataList)
-            )
-        ))
-
         Handled.yes
     })
 
@@ -391,93 +414,119 @@ fun templating() {
         val templatesHome = SavingContext().listTemplates("$home/templates")
         val templatesApp = SavingContext().listTemplates("$app/templates")
 
+        val session = thisSession.get()
         val si = thisSessionInfo.get()
 
-        val loadedBoxes = exec.value.flatMap { templateName ->
-            // Try local templates first
-            // A template's header names become the receiving document's, so its boxes keep saving them.
-            fun cloneTemplate(path: String): Set<afield.document.graph.Box> =
-                SavingContext().cloneInto(path).also {
-                    afield.document.graph.Box.recordDocumentPersistentProperties(
-                        si.filename,
-                        // `load` records a standalone `.edn` template's header against its folder
-                        afield.document.graph.Box.persistentPropertiesFor(
-                            File(path).let { if (it.isFile) it.absoluteFile.parent else it.path }))
-                }
-            val boxes = if (templatesHome.contains(templateName)) {
-                cloneTemplate(resolveTemplatePath("$home/templates", templateName))
-            } else if (templatesApp.contains(templateName)) {
-                cloneTemplate(resolveTemplatePath("$app/templates", templateName))
-            } else {
-                // Try remote templates
-                var boxes = emptySet<afield.document.graph.Box>()
-                for ((serverUrl, serverTemplates) in remoteTemplatesCache) {
-                    if (serverTemplates.contains(templateName)) {
-                        val ednContent = downloadTemplateFromServer(serverUrl, templateName)
-                        if (ednContent != null) {
-                            // Use same ID transformation as cloneInto to generate new UUIDs
-                            @OptIn(ExperimentalUuidApi::class)
-                            val seen = mutableMapOf<String, String>("root" to "root")
-                            boxes = SavingContext().loadFromEdnText(
-                                ednContent,
-                                si.filename,
-                                filterId = { id ->
-                                    seen.computeIfAbsent(id) { Uuid.random().toString() }
-                                }
-                            )
-                            lprintln("info,template", "Imported template '$templateName' from remote server $serverUrl")
-                            break
-                        }
+        // Inserts the whole request as one unit (the mouse translation is over all of its boxes).
+        // `downloaded` holds each remote template's (server, metadata.edn), or null when no server served it.
+        fun insert(downloaded: Map<String, Pair<String, String>?>) {
+            val loadedBoxes = exec.value.flatMap { templateName ->
+                // Try local templates first
+                // A template's header names become the receiving document's, so its boxes keep saving them.
+                fun cloneTemplate(path: String): Set<afield.document.graph.Box> =
+                    SavingContext().cloneInto(path).also {
+                        afield.document.graph.Box.recordDocumentPersistentProperties(
+                            si.filename,
+                            // `load` records a standalone `.edn` template's header against its folder
+                            afield.document.graph.Box.persistentPropertiesFor(
+                                File(path).let { if (it.isFile) it.absoluteFile.parent else it.path }))
+                    }
+                val boxes = if (templatesHome.contains(templateName)) {
+                    cloneTemplate(resolveTemplatePath("$home/templates", templateName))
+                } else if (templatesApp.contains(templateName)) {
+                    cloneTemplate(resolveTemplatePath("$app/templates", templateName))
+                } else {
+                    val remote = downloaded[templateName]
+                    if (remote == null) {
+                        if (templateName in downloaded) notify("Could not download template '$templateName'", "error")
+                        emptySet()
+                    } else {
+                        val (serverUrl, ednContent) = remote
+                        // Use same ID transformation as cloneInto to generate new UUIDs
+                        val seen = mutableMapOf<String, String>("root" to "root")
+                        SavingContext().loadFromEdnText(
+                            ednContent,
+                            si.filename,
+                            filterId = { id ->
+                                seen.computeIfAbsent(id) { Uuid.random().toString() }
+                            }
+                        ).also { lprintln("info,template", "Imported template '$templateName' from remote server $serverUrl") }
                     }
                 }
+
+                // Set templateId on all loaded boxes
+                boxes.forEach { box ->
+                    box.templateId = templateName
+                }
+
                 boxes
             }
-            
-            // Set templateId on all loaded boxes
-            boxes.forEach { box ->
-                box.templateId = templateName
-            }
-            
-            boxes
-        }
 
-        // Calculate center of mass and translate boxes to mouse position if provided
-        if (loadedBoxes.isNotEmpty() && exec.mouseX != null && exec.mouseY != null) {
-            // Only translate top-level boxes, not nested children. Nested boxes have frames that are
-            // relative to their parent's position (offset by -parent.x, -(parent.y + parent.h)).
-            // Translating them would incorrectly add the offset twice since they move with their parent.
-            val nestedBoxes = loadedBoxes.flatMap { it.nested }.toSet()
-            val topLevelBoxes = loadedBoxes.filter { it !in nestedBoxes }
+            // Calculate center of mass and translate boxes to mouse position if provided
+            if (loadedBoxes.isNotEmpty() && exec.mouseX != null && exec.mouseY != null) {
+                // Only translate top-level boxes, not nested children. Nested boxes have frames that are
+                // relative to their parent's position (offset by -parent.x, -(parent.y + parent.h)).
+                // Translating them would incorrectly add the offset twice since they move with their parent.
+                val nestedBoxes = loadedBoxes.flatMap { it.nested }.toSet()
+                val topLevelBoxes = loadedBoxes.filter { it !in nestedBoxes }
 
-            if (topLevelBoxes.isNotEmpty()) {
-                // Calculate center of mass (average of all top-level box centers)
-                val centers = topLevelBoxes.map { box ->
-                    val frame = box.frame
-                    Pair(frame.cx, frame.cy)
+                if (topLevelBoxes.isNotEmpty()) {
+                    // Calculate center of mass (average of all top-level box centers)
+                    val centers = topLevelBoxes.map { box ->
+                        val frame = box.frame
+                        Pair(frame.cx, frame.cy)
+                    }
+
+                    val centerX = centers.map { it.first }.average()
+                    val centerY = centers.map { it.second }.average()
+
+                    // Calculate translation needed to move center of mass to mouse position
+                    val deltaX = exec.mouseX - centerX
+                    val deltaY = exec.mouseY - centerY
+
+                    // Apply translation only to top-level boxes
+                    topLevelBoxes.forEach { box ->
+                        val frame = box.frame
+                        box.frame = frame.copy(x = frame.x + deltaX, y = frame.y + deltaY)
+                    }
+
+                    lprintln("info,templating", "Translated ${topLevelBoxes.size} boxes by ($deltaX, $deltaY) to center at mouse position (${exec.mouseX}, ${exec.mouseY})")
                 }
+            }
 
-                val centerX = centers.map { it.first }.average()
-                val centerY = centers.map { it.second }.average()
+            loadedBoxes.forEach { box ->
+                box.resyncAll()
+            }
+            si.topologyGeneration++
+            si.autorunBoxes(loadedBoxes)
+        }
 
-                // Calculate translation needed to move center of mass to mouse position
-                val deltaX = exec.mouseX - centerX
-                val deltaY = exec.mouseY - centerY
-
-                // Apply translation only to top-level boxes
-                topLevelBoxes.forEach { box ->
-                    val frame = box.frame
-                    box.frame = frame.copy(x = frame.x + deltaX, y = frame.y + deltaY)
+        val remoteNames = exec.value.filter { name ->
+            name !in templatesHome && name !in templatesApp && remoteTemplatesCache.values.any { name in it }
+        }
+        if (remoteNames.isEmpty()) {
+            insert(emptyMap())
+        } else {
+            // The download leaves this socket's event loop; the insertion comes back to the session, so it
+            // stays serialised with the session's other handlers. Messages that arrive during the download
+            // are handled first, which is the point: the socket keeps answering, keepalive pongs included.
+            templateIoScope.launch {
+                val downloaded = remoteNames.associateWith { name ->
+                    remoteTemplatesCache.entries.filter { name in it.value }.firstNotNullOfOrNull { (serverUrl, _) ->
+                        downloadTemplateFromServer(serverUrl, name)?.let { serverUrl to it }
+                    }
                 }
-
-                lprintln("info,templating", "Translated ${topLevelBoxes.size} boxes by ($deltaX, $deltaY) to center at mouse position (${exec.mouseX}, ${exec.mouseY})")
+                session.launch {
+                    thisSession.set(session)
+                    thisSessionInfo.set(si)
+                    try {
+                        insert(downloaded)
+                    } catch (t: Throwable) {
+                        t.printStackTrace()
+                    }
+                }
             }
         }
-
-        loadedBoxes.forEach { box ->
-            box.resyncAll()
-        }
-        si.topologyGeneration++
-        si.autorunBoxes(loadedBoxes)
 
         Handled.yes
     })

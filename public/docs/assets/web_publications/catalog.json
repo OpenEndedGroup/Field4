@@ -273,6 +273,25 @@
         "public/docs/assets/agent_transcripts/arclength_spacing_demo/metadata.edn": "b1233b4d5ec92497f79f56aa3e896d9138302504bb50ceb6dfe20c597fba22d8"
       }
     },
+    "assets/agent_transcripts/assimp_browsing/metadata.edn": {
+      "captureDigest": "4922bf78986077d52bc6fd50098fb5a7043066bf6f51f472927f50cba41685f5",
+      "capturedAt": "2026-10-29T15:21:50.283Z",
+      "channels": 2,
+      "file": "assets/web_publications/assimp_browsing/document/metadata.edn",
+      "files": {
+        "assets/web_publications/assimp_browsing/document/metadata.edn": "324f5c0726810ff83b6793be22608015b7d866736c2d212f924fc6fbf58800e7",
+        "assets/web_publications/assimp_browsing/document/outputs.json": "9848a9efd73b098b49107ac71a3762dbcb03e83aee10bde9a021fe46a2906eca",
+        "assets/web_publications/assimp_browsing/outputs/0.html": "6f56e766d4e9f90203ecc614a99bc6753562e2b736e2d0b8da4896b1a1b2e5e0",
+        "assets/web_publications/assimp_browsing/outputs/1.html": "7d450ca01c33fe47afbd5414b4da02535cbdede154258c72db1871411d0612a2"
+      },
+      "kinds": [],
+      "outputs": "assets/web_publications/assimp_browsing/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/assimp_browsing.yaml": "16183859d71b94780411a7b5dcad05dd895dae10bc19c318812669853db6e236",
+        "public/docs/assets/agent_transcripts/assimp_browsing/assimp_scene_code_.kt": "a7f4634209d2ee421f2daa62461833116a9a29f5e945978623f8b121d96ebd91",
+        "public/docs/assets/agent_transcripts/assimp_browsing/metadata.edn": "944ba9cf0bd3f16acacbbaa54b3c4ae67c48ed0f9cc976eca921ca34f24777dd"
+      }
+    },
     "assets/agent_transcripts/audio_ai_analysis/metadata.edn": {
       "captureDigest": "4922bf78986077d52bc6fd50098fb5a7043066bf6f51f472927f50cba41685f5",
       "capturedAt": "2026-10-28T17:38:24.147Z",
@@ -774,6 +793,29 @@
         "public/docs/assets/agent_transcripts/control_surface_laws/control_surface_meter_code_.kt": "4accb0c4da5ef517213525672c50f834fcdac0b4a4b1e9fa0e27a0c85a76e47a",
         "public/docs/assets/agent_transcripts/control_surface_laws/guides/visualizers-controls-sliders-toggles-colors-text-and-xy-pads.md": "1af25ea187c3e2924c400047774258fc39a42d791a78677bf1a5fcbcc2d28c72",
         "public/docs/assets/agent_transcripts/control_surface_laws/metadata.edn": "f73f058f3e1fa4fb5791bae3c16c38456969f942384212091620d17036a34803"
+      }
+    },
+    "assets/agent_transcripts/controls_surface/metadata.edn": {
+      "captureDigest": "4922bf78986077d52bc6fd50098fb5a7043066bf6f51f472927f50cba41685f5",
+      "capturedAt": "2026-10-29T14:48:26.370Z",
+      "channels": 3,
+      "file": "assets/web_publications/controls_surface/document/metadata.edn",
+      "files": {
+        "assets/web_publications/controls_surface/document/metadata.edn": "5f51db3bbf637a8bd85cefa8a556e3ec554686d960fa1f17535e7dad671a1adf",
+        "assets/web_publications/controls_surface/document/outputs.json": "ae229e34fd4f7c409a8919f5fd34898ef713663026c25124c3f72f1210f763cb",
+        "assets/web_publications/controls_surface/outputs/0.html": "27ec07706156c402168d4e07b16a777fed199dee0201b45ce1c3cc30730f106a",
+        "assets/web_publications/controls_surface/outputs/1.html": "20659c1d4a210a6f6d29449ddf246ffab14765f74196902e5f0a41561d7549a7",
+        "assets/web_publications/controls_surface/outputs/2.html": "d57c7c87f79c17c9d9db9faf90e5cf7577fa9584b9d3d898525a9dfe8fa966db"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/controls_surface/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/controls_surface.yaml": "b0e9f8a92fa40ed7b235f5d6e419635890a90a9eae7cffcb2d3db32041dcab23",
+        "public/docs/assets/agent_transcripts/controls_surface/metadata.edn": "d8b48c5a9325027ac84f84af6d1c1d8dcd7d7c7ebbc4b3bff3d15c842a8718f2",
+        "public/docs/assets/agent_transcripts/controls_surface/rerender_code_.kt": "11bf4014e380a625b19afe2da738e0077b4b12d75699755d0177a1981c95bfc2",
+        "public/docs/assets/agent_transcripts/controls_surface/surface_code_.kt": "1c58622b2e0718c980b2e76a643a5a6172847382887e5d45ffbfe5cc85888411"
       }
     },
     "assets/agent_transcripts/drawn_morph/metadata.edn": {
@@ -3557,6 +3599,19 @@
         "public/docs/assets/agent_transcripts/slideshow_guide/sg_numbers_code_.kt": "15499b73372165adfd132edd147d917cca851e385f50f2de191562ae82c85b97",
         "public/docs/assets/agent_transcripts/slideshow_guide/sg_squares_code_.kt": "7287b9c10ffb51d366e3ed0ca9b7e2dd8c40001c7003b6304f2a252b7f7f19c3",
         "public/docs/assets/agent_transcripts/slideshow_guide/sg_tour_code_.kt": "efe4049d4553f884fd4303dbc71b1a22b99c22d82fcca6f2401a252fd2767dd8"
+      }
+    },
+    "assets/agent_transcripts/slideshow_own_tour/metadata.edn": {
+      "captureDigest": "4922bf78986077d52bc6fd50098fb5a7043066bf6f51f472927f50cba41685f5",
+      "channels": 0,
+      "reason": "No output-area channels; the code remains available.",
+      "sources": {
+        "dev_docs/agents/transcripts/slideshow_own_tour.yaml": "ba3e6694572a1af84dcefcafa3fcfce03c0388dba12811347fd2825fa806c654",
+        "public/docs/assets/agent_transcripts/slideshow_own_tour/guides/interactive_guides.md": "a1f063927644ff3fb07cb658423ba89d128233109b83c854ea39a7a5aa8a42ac",
+        "public/docs/assets/agent_transcripts/slideshow_own_tour/metadata.edn": "c426f92b9d92f839012f4e6687ef9037a7d6eeec8e62a3f08514b0835f5d6196",
+        "public/docs/assets/agent_transcripts/slideshow_own_tour/sot_numbers_code_.kt": "15499b73372165adfd132edd147d917cca851e385f50f2de191562ae82c85b97",
+        "public/docs/assets/agent_transcripts/slideshow_own_tour/sot_squares_code_.kt": "7287b9c10ffb51d366e3ed0ca9b7e2dd8c40001c7003b6304f2a252b7f7f19c3",
+        "public/docs/assets/agent_transcripts/slideshow_own_tour/sot_tour_code_.kt": "bfa9d1c91014129f8632b10546a13bf5c37e86e808ddf545801f486b2a56a5c4"
       }
     },
     "assets/agent_transcripts/two_box_context/metadata.edn": {

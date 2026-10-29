@@ -1,0 +1,12 @@
+diff --git a/tools/test_demo_build_scripts.py b/tools/test_demo_build_scripts.py
+index 8a0cd3049..1e590f1e1 100644
+--- a/tools/test_demo_build_scripts.py
++++ b/tools/test_demo_build_scripts.py
+@@ -137,6 +137,7 @@ CORPUS = {
+     "path_tracing_emitters",
+     "path_tracing_medium",
+     "pattern_condense",
++    "python_box_parity",
+     "python_cells",
+     "read_only_session",
+     "skinned_characters",

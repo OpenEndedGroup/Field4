@@ -1,26 +1,24 @@
 # Particles, welded, and traced
 
-A cloth simulation holds particles and distances between them. A path tracer wants closed geometry.
-Field's Boolean kernel connects the two: it can weld hundreds of overlapping capsules into one solid
-and tell you exactly how many holes it has. This page drapes a sheet over a sphere, turns each of its
-distance constraints into a rod, welds the rods, checks the number of holes, and traces the result.
+Drape a simulated sheet over a sphere, replace its connections with rods, and weld those rods into
+one solid. You can then count the holes in the lattice and render it with the path tracer. The
+simulation supplies the shape; Field's Boolean kernel joins the overlapping pieces.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_physics_render/drape.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="cloth study converged" embed=true hidden=true timeout="420" name="chain-physics-drape" alt="A path-traced lattice of pale gold rods draped over an unseen sphere and pooling on a floor, the Venice lagoon behind it" macro-file="../../dev_docs/agents/transcripts/physics_manifold_path_trace.yaml" capture-box="physics_manifold_trace"}
 // Built and launched from dev_docs/agents/transcripts/physics_manifold_path_trace.yaml.
 ```
 
-The sphere the sheet is hanging on is not in the scene. It is a `SphereCollider`, which is a
-post-solve position projection rather than a piece of geometry, so it shapes the drape and then has
-nothing to contribute to a render.
+The sphere supporting the sheet is a `SphereCollider`: it shapes the drape by projecting positions
+after the solver runs, but contributes no geometry to the render.
 
 The document that makes this figure is a starting point:
 [physics_manifold_path_trace](agent_transcripts.md#physics_manifold_path_trace).
 
 ## From the cloth to the tracer
 
-`afield.simulation.physics` runs the simulation, `afield.geometry.solid.manifold` welds, and `afield.graphics.scene.fabricated`
-traces. Positions come out of the cloth as `cloth.position(col, row)`, and the welded solid goes into
-the scene as a `TriMesh`. Nothing else passes between them.
+`afield.simulation.physics` runs the simulation, `afield.geometry.solid.manifold` welds the rods,
+and `afield.graphics.scene.fabricated` traces them. We read positions from the cloth with
+`cloth.position(col, row)` and pass the welded solid to the scene as a `TriMesh`.
 
 ```diffstatic {data-lang=kotlin}
 val sim = SimdVerlet(SimdVerlet.State3.empty())
@@ -45,9 +43,8 @@ repeat(settleFrames) { cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = -9.8
 
 ## A capsule is the hull of two balls
 
-A rod along an arbitrary segment usually means building an orthonormal basis from its direction.
-There is no need. The convex hull of a ball at each end *is* the capsule, and `Solid.hullOf` computes
-it, so the orientation arithmetic never gets written:
+To make a rod between two points, put a ball at each end and take their convex hull. The result is
+a capsule, and `Solid.hullOf` computes it without any orientation arithmetic:
 
 ```diffstatic {data-lang=kotlin}
 val rods = struts.map { (a, b) ->

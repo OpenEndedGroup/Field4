@@ -17,7 +17,17 @@ import kotlin.script.experimental.jvm.impl.KJvmCompiledModuleInMemory
 import kotlin.script.experimental.jvm.impl.KJvmCompiledScript
 
 /**
- * Box code that never returns no longer freezes Field: a stall watchdog plus a cooperative escape.
+ * Getting out of box code that will not return: a stall watchdog, and the bytecode rewriting that
+ * gives the interrupt somewhere to land.
+ *
+ * The whole public surface is [BoxInterrupt]: request an interrupt, poll for one, instrument a
+ * freshly compiled snippet, and the nested watchdog that notices a Runloop which has stopped making
+ * frames. The rest of the file is the ASM class and method visitors that insert the poll call, and
+ * nothing outside the file uses them. `dev_docs/RUNAWAY_BOX_INTERRUPT.md` has the design.
+ */
+
+/**
+ * A stall watchdog and a cooperative escape, for box code that never returns.
  *
  * Box code runs on the [Runloop] thread, so a `while (true) {}` in a box stops every frame, every
  * other box, and every coroutine that would have run `stop`. Java no longer offers a way to stop a

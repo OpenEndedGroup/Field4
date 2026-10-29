@@ -1,0 +1,18 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**","ignoreCase":false,"maxMatches":35,"query":"checkKDocAttachment","regex":false}
+[field] ok  RepoRunCommandRequest {"args":["26724ca25cb8cc126c6cf9b4f6a6ce2744e1a800","--","src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt","src/jvmTest/kotlin/afield/runtime/c
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":30}
+[field] ok  RepoReadFileRequest {"endLine":556,"path":"AGENTS.md","startLine":350}
+[field] ok  RepoReadFileRequest {"endLine":260,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":130,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"tools/*kdoc*"}
+[field] ok  RepoReadFileRequest {"endLine":2135,"path":"build.gradle.kts","startLine":2100}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":50,"query":"kdoc","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":340,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":275}
+[field] ok  RepoReadFileRequest {"endLine":100,"path":"src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt","startLine":60}
+[field] ok  RepoSearchRequest {"glob":"tools/*check*.py","ignoreCase":false,"maxMatches":50,"query":"KDocAttachment|STACKED|stacked KDoc","regex":true}
+[field] ok  RepoPatchFileRequest {"newText":"    /** The id a document's root box has; `document.md` lists it as a parent without a record of its own. */\n    const val ROOT_ID = \"root\"\n\n  
+[field] ok  RepoReadFileRequest {"endLine":89,"path":"src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt","startLine":79}
+[field] ok  RepoRunCommandRequest {"args":["--","src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt"],"command":"git-diff","timeoutSec":30}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt","ignoreCase":false,"maxMatches":15,"query":"const|MODIFIERS|parseDeclaration","regex":true
+[field] model=openai/gpt-6.1-sol rounds=7/40 wall=39s tokens in=276555 out=1293 cacheRead=239684 wrote=['src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt'] ran=['git-diff 26724ca25cb8cc126c6cf9b4f6a6ce2744e1a800 -- src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt src/jvmTest/kotlin/afield/runtime/completion/CompletionCorpusBoxGraphTest.kt -> 0', 'git-status  -> 0', 'git-diff -- src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt -> 0'] verdict=unchecked error=-

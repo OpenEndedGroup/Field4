@@ -1,8 +1,6 @@
 package afield.ai.tools
 
 /**
- * # What a tool is, besides its schema: where it belongs, how the model meets it, what it touches
- *
  * Tool metadata answers three questions beyond the schema: which namespace a tool belongs to, how the
  * model discovers it ([ToolExposure]), and what calling it does ([ToolEffect]). Both of the last two
  * follow Pi (earendil-works/pi). Exposure decides whether a tool's schema is sent with every request or

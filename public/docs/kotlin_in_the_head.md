@@ -5,10 +5,9 @@ box's Kotlin, compile it to JavaScript *in-process*, and ship it over a WebSocke
 else entirely, into a **head**: a browser tab showing a THREE.js/WebXR scene, an Apple Vision Pro
 running a native Metal shader, or a Tone.js computer-music engine. We call this "Kotlin in the head".
 
-You keep writing real Kotlin throughout: `data class`es, `operator fun`, the standard library,
-compile-time type errors on the right source line. That Kotlin then runs, unchanged in meaning,
-somewhere the JVM cannot reach. Operator overloading works as it does on the JVM, so vector and matrix
-math reads the way it should.
+You can use Kotlin's `data class`es, `operator fun` and standard library, with compile-time errors
+reported on the corresponding source line. Operator overloading works in the head too, so you can
+write vector and matrix math in the same style.
 
 If Kotlin itself is new to you, read the [Kotlin Syntax Overview](kotlin_overview.md) first. This
 page assumes you can read a `data class` and a lambda.

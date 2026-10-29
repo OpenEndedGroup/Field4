@@ -43,9 +43,9 @@ class StackSLRegionBound(
 class StackSLTile(val x: Int, val y: Int, val size: Int, val bound: StackSLRegionBound, val settled: Boolean)
 
 /**
- * Interval evaluation of StackSL programs: what a shader can output over a rectangle of pixels, as
- * a proof rather than a render. The rules are in `GlslInterval.kt`; this is the face a box or a
- * test uses.
+ * Interval evaluation of StackSL programs: the range a shader can output over a rectangle of
+ * pixels, bounded without drawing any of them. The rules are in `GlslInterval.kt`; this is the
+ * face a box or a test uses.
  *
  * ```kotlin
  * val glsl = StackSLCpu.expandStackAuto(StackSLCpu.stillTemplate(), "uv x 3 * sin 0.5 * 0.5 + gray")

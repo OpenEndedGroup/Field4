@@ -1,0 +1,3 @@
+Added the documented `importlib` allowlist entry and restored two displaced KDoc attachments: 3 files, 44 changed lines. Source-level assertions pass; Gradle is unavailable, and neither guard has a Python checker.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "handoffs/code-20261015-2234", "reason": "The branch omitted a Python standard-library allowlist entry and inserted helpers between existing KDocs and their declarations; all three mechanical slips are repaired."}

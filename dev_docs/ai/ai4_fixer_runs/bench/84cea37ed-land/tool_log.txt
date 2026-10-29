@@ -1,0 +1,14 @@
+[field] ok  RepoReadFileRequest {"endLine":200,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**/*","ignoreCase":false,"maxMatches":40,"query":"checkKDocAttachment","regex":false}
+[field] ok  RepoRunCommandRequest {"args":["9a352ad91b43...ab1853f77946","--","src/jvmMain/kotlin/afield/tools/docs/screenshot.kt"],"command":"git-diff","timeoutSec":30}
+[field] ok  RepoReadFileRequest {"endLine":280,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":2355,"path":"src/jvmMain/kotlin/afield/tools/docs/screenshot.kt","startLine":2195}
+[field] ok  RepoListFilesRequest {"glob":"tools/*kdoc*"}
+[field] ok  RepoReadFileRequest {"endLine":120,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*.py"}
+[field] ok  RepoPatchFileRequest {"newText":"/**\n * Has a relaunched docs-video target reached the point the movie may start?","oldText":"/**\n * Return a callback that starts (or simply admit
+[field] ok  RepoPatchFileRequest {"newText":"/**\n * Return a callback that starts (or simply admits) frame-synchronous capture.\n *\n * Docs captures prepare their clip against the already-run
+[field] ok  RepoReadFileRequest {"endLine":2275,"path":"src/jvmMain/kotlin/afield/tools/docs/screenshot.kt","startLine":2228}
+[field] ok  RepoRunCommandRequest {"args":["--","src/jvmMain/kotlin/afield/tools/docs/screenshot.kt"],"command":"git-diff","timeoutSec":30}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":30}
+[field] model=openai/gpt-6.1-sol rounds=6/40 wall=38s tokens in=202308 out=1104 cacheRead=175236 wrote=['src/jvmMain/kotlin/afield/tools/docs/screenshot.kt', 'src/jvmMain/kotlin/afield/tools/docs/screenshot.kt'] ran=['git-diff 9a352ad91b43...ab1853f77946 -- src/jvmMain/kotlin/afield/tools/docs/screenshot.kt -> 0', 'git-diff -- src/jvmMain/kotlin/afield/tools/docs/screenshot.kt -> 0', 'git-status  -> 0'] verdict=unchecked error=-

@@ -76,6 +76,7 @@ class DmxUniverse(val number: Int) : afield.ui.visualization.ToHTML {
         afield.ui.visualization.linesToHTML(universeToFLines(data, length = length), 384.0, 192.0, fitToSize = true) +
             "<div style='font-family:monospace;font-size:11px'>universe $number</div>"
 
+    /** The universe number and its first twelve slot values, or all of them if [length] is shorter. */
     override fun toString() = "DmxUniverse($number, first slots ${(1..minOf(12, length)).map { get(it) }})"
 }
 
@@ -111,16 +112,61 @@ class DmxUniverse(val number: Int) : afield.ui.visualization.ToHTML {
  * re-runs and close it when the box is stopped.
  */
 class DmxOutput(
+    /** Which wire format goes out. It also decides the default [port] and whether [host] is required. */
     val protocol: DmxProtocol,
+    /**
+     * Where packets are sent. Art-Net needs one — a node's IP, or a broadcast address — and the
+     * constructor refuses to build without it. sACN unicasts to it when it is given and otherwise
+     * sends to each universe's multicast group.
+     */
     val host: String? = null,
+    /** UDP port to send to: 6454 for Art-Net, 5568 for sACN. */
     val port: Int = if (protocol == DmxProtocol.ARTNET) ArtNet.PORT else Sacn.PORT,
+    /**
+     * The name this source announces in sACN data and discovery packets, at most 63 bytes of UTF-8
+     * in a 64-byte field. ArtDmx has no source-name field, so Art-Net ignores it.
+     */
     val sourceName: String = "Field4",
+    /**
+     * sACN priority, 0..200. A receiver uses only the highest priority live on a universe and merges
+     * within it, so raising this takes a universe over from a lower-priority source. Art-Net has no
+     * equivalent field.
+     */
     val priority: Int = Sacn.DEFAULT_PRIORITY,
+    /**
+     * This source's sACN component identifier, a fresh UUID per output. It is how a receiver tells
+     * two sources on one universe apart, so an output that is closed and rebuilt arrives as a new
+     * source rather than as a continuation of the old one.
+     */
     val cid: UUID = UUID.randomUUID(),
+    /**
+     * Sender ticks per second, at most 1000. A tick sends the universes that changed, so this is the
+     * ceiling on how often one universe goes out rather than a rate it is held to: an unchanging rig
+     * sends only keep-alives. 44 Hz is the DMX512 full-frame rate both protocols treat as the limit.
+     */
     val maxRateHz: Double = 44.0,
+    /**
+     * How long an unchanged universe may go unsent before it is re-sent. The default of 900 ms sits
+     * inside E1.31's 800–1000 ms keep-alive window with a tick period to spare, and well inside both
+     * protocols' data-loss timeouts.
+     */
     val keepAliveMs: Long = 900,
+    /**
+     * End every tick that sent anything with one synchronization packet, so a rig spread over
+     * several universes latches in one step instead of tearing across them.
+     */
     val sync: Boolean = false,
+    /**
+     * The sACN synchronization address: carried by data packets and used for the synchronization
+     * packet when [sync] is on. Art-Net's ArtSync addresses nothing, so Art-Net ignores it.
+     */
     val syncUniverse: Int = 7962,
+    /**
+     * Send sACN universe-discovery pages every 10 seconds listing the universes this output has been
+     * asked for. They go to one well-known universe, so a tool learns what this source transmits
+     * without joining the multicast group of every universe it might be on. On by default for sACN,
+     * and unused for Art-Net, where discovery runs the other way round as ArtPoll.
+     */
     val discovery: Boolean = protocol == DmxProtocol.SACN,
     autoStart: Boolean = true,
 ) : AutoCloseable {
@@ -146,6 +192,10 @@ class DmxOutput(
     private val startNanos = System.nanoTime()
     private var executor: ScheduledExecutorService? = null
 
+    /**
+     * True once [close] has run. A closed output does not restart: [start] returns, [tick] sends
+     * nothing, and the socket is gone.
+     */
     @Volatile
     var isClosed = false
         private set
@@ -313,6 +363,10 @@ class DmxOutput(
         runCatching { socket.close() }
     }
 
+    /**
+     * The protocol, where packets go, the universes this output has been asked for, [packetsSent],
+     * and `closed` once it is. Enough to tell a live sender from one that never found a destination.
+     */
     override fun toString() =
         "DmxOutput(${protocol.name}, -> ${host ?: "multicast"}:$port, universes=${universes}, sent=$packetsSent${if (isClosed) ", closed" else ""})"
 }

@@ -79,6 +79,9 @@ CORPUS = {
     "certified_envelope",
     "chart_clip",
     "chart_primitive",
+    # 2026-10-29, controls renewal surface. Ships a `build.yaml`, so the count below moved
+    # 10 -> 11; its two boxes were replayed (applied=5 skipped=0 errors=0) and saved on arrival.
+    "controls_surface",
     "completion_rank_at_scale",
     "confluence_grid",
     # Lighting/neural examples use transcript sources and their separate GPU verification.
@@ -99,7 +102,7 @@ CORPUS = {
     "reconstruction_plumbing",
     "rr_plumbing",
     # 2026-10-29, a slideshow tour over two existing boxes (interactive_guides.md). Ships a
-    # `build.yaml`, so the count below moved 10 -> 11.
+    # `build.yaml`, so the count below moved 11 -> 12 (it landed after controls_surface).
     "slideshow_own_tour",
     # Landed 2026-09-22 in `b5b9ad9e0`, the twenty-second directory and the only one that is not a
     # saved document: no `metadata.edn`, no `build.yaml` (so the nine below is unchanged), and no
@@ -232,7 +235,7 @@ class DemoBuildScriptTest(unittest.TestCase):
             "dev_docs/DEMO_CORPUS_AUDIT.md together",
         )
         self.assertEqual(
-            11,
+            12,
             len(self.scripts),
             "the number of demos shipping a build.yaml has changed; a new one is unchecked "
             "until it is measured",

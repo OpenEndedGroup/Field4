@@ -1,0 +1,18 @@
+[field] ok  RepoReadFileRequest {"endLine":240,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":241}
+[field] ok  RepoReadFileRequest {"endLine":300,"path":"src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt","startLine":240}
+[field] ok  RepoReadFileRequest {"endLine":200,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**/*","ignoreCase":false,"maxMatches":70,"query":"KDocAttachment","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":330,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":200}
+[field] ok  RepoReadFileRequest {"endLine":250,"path":"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt","startLine":160}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":40,"query":"kdoc","regex":false}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ok  RepoRunCommandRequest {"args":["61c617906850dbe73ff5c63fbdbba927baa28e4a...685a90e2f189","--","src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt"],"command":"git-diff",
+[field] ok  RepoSearchRequest {"glob":"tools/test_*.py","ignoreCase":true,"maxMatches":80,"query":"kdoc|attachment","regex":true}
+[field] ok  RepoPatchFileRequest {"newText":"    @Synchronized\n    fun markLane(lane: Int, state: String) {","oldText":"    @Synchronized fun markLane(lane: Int, state: String) {","path":"src/
+[field] ok  RepoReadFileRequest {"endLine":85,"path":"tools/test_check_staged_generated_artifacts.py","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":283,"path":"src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt","startLine":270}
+[field] ok  RepoReadFileRequest {"endLine":110,"path":"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt","startLine":65}
+[field] ok  RepoRunCommandRequest {"args":["--","src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt"],"command":"git-diff","timeoutSec":10}
+[field] ERR RepoRunCommandRequest {"args":["tools/test_check_staged_generated_artifacts.py","GeneratedArtifactSelectionTests.test_ordinary_kotlin_source_does_not_become_a_corpus_input"],"command
+[field] model=openai/gpt-6.1-sol rounds=7/40 wall=42s tokens in=310438 out=1173 cacheRead=268529 wrote=['src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt'] ran=['git-status  -> 0', 'git-diff 61c617906850dbe73ff5c63fbdbba927baa28e4a...685a90e2f189 -- src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt -> 0', 'git-diff -- src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt -> 0', 'python-test tools/test_check_staged_generated_artifacts.py GeneratedArtifactSelectionTests.test_ordinary_kotlin_source_does_not_become_a_corpus_input -> 1'] verdict=unchecked error=-

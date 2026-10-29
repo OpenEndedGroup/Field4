@@ -1,11 +1,10 @@
 # Filling a solid: tetrahedral meshing with TetGen
 
-[Manifold](manifold.md) gives Field surfaces that are guaranteed closed. A closed surface is a
-boundary: it says where the part stops. It says nothing about the inside, and every question worth
-asking about a part — how much does it deflect, where does it get hot, where does it crack — is a
-question about the inside.
+How much will a part deflect? Where will it get hot, or crack? To investigate its interior, you
+need more than its outer surface. A tetrahedral mesh divides the enclosed volume into elements you
+can use for those calculations.
 
-A tetrahedral mesh is the inside, written down. [TetGen](https://wias-berlin.de/software/tetgen/)
+[Manifold](manifold.md) gives Field closed surfaces to start from. [TetGen](https://wias-berlin.de/software/tetgen/)
 takes the closed triangle surface and fills the volume it bounds with tetrahedra whose faces match
 that surface exactly. In a box, `Tetgen.tetrahedralize` takes a closed `TriMesh` and returns a
 `TetMesh`. This one fills an L-shaped part built with Manifold:
@@ -672,9 +671,8 @@ level set does not sharpen an edge; it makes a smaller rounded one.
 
 TetGen's worst node lies `0.0` outside the true box, exactly, because it never resamples the
 surface: Manifold's triangulation goes in as a piecewise-linear complex whose facet edges are
-constraints, and TetGen's output honours them. So this is the one choice on the page that is not a
-trade-off — if your part has a sharp edge and you care what happens there, the level-set route cannot
-get you closer by refining. [`dev_docs/TETGEN.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/TETGEN.md) has the per-resolution errors, and the same
+constraints, and TetGen's output honours them. For a part with a sharp edge, a body-fitted mesh preserves that edge directly. A refined level-set
+mesh approaches it, but still rounds it at the scale of the grid. [`dev_docs/TETGEN.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/TETGEN.md) has the per-resolution errors, and the same
 comparison run against MMG rather than marching cubes.
 
 ### Mesh the `Solid` for full precision

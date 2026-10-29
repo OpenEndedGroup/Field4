@@ -17,8 +17,8 @@ import java.nio.ByteOrder
 import kotlin.io.path.*
 
 /** Managed-runner entry point: real Field device, native pass, caller-owned submission and head readback.
- * Arguments: image, output-directory, [tone], [structure], [style]. Diagnostics intentionally use CPU
- * readback; the normal pass does not. Pair the resulting head with the standalone render for parity.
+ * Arguments: image, output-directory, [tone], [structure], [style]. Diagnostics use CPU readback;
+ * the normal pass does not. Pair the resulting head with the standalone render for parity.
  */
 object OpenDlssNrGpuSmoke {
     @JvmStatic fun main(args: Array<String>) {

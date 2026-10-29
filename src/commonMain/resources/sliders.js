@@ -2032,9 +2032,14 @@ function startSliderDrag(container, event) {
     window.addEventListener('pointerup', endSliderDrag);
 }
 
+function liveSlider(container) {
+    const id = container?.dataset?.sliderId;
+    return id ? liveControl(container, `.field-slider[data-slider-id="${cssEscape(id)}"]`) : container;
+}
+
 function dragSliderMove(event) {
-    const container = sliderState.active;
-    if (!container) return;
+    if (!sliderState.active) return;
+    const container = sliderState.active = liveSlider(sliderState.active);
     const dx = event.clientX - (sliderState.lastX ?? event.clientX);
     sliderState.lastX = event.clientX;
     if (event.shiftKey || sliderState.relative) {
@@ -2053,7 +2058,7 @@ function dragSliderMove(event) {
 }
 
 function endSliderDrag() {
-    if (sliderState.active) sliderState.active.classList.remove('fine');
+    if (sliderState.active) liveSlider(sliderState.active).classList.remove('fine');
     sliderState.active = null;
     sliderState.relative = false;
     window.removeEventListener('pointermove', dragSliderMove);
@@ -2320,7 +2325,8 @@ function updateVec2(container, x, y, { send = false } = {}) {
             const ly = center + (arcR + 6) * Math.sin(midA);
             angleLabelSvg.setAttribute('x', lx);
             angleLabelSvg.setAttribute('y', ly);
-            angleLabelSvg.textContent = `${Math.atan2(dy, dx) * 180 / Math.PI >= 0 ? '' : ''}${(Math.atan2(dy, dx) * 180 / Math.PI).toFixed(0)}°`;
+            // Screen y grows downward; the readout's θ (and the value) has +y up, so the label negates dy.
+            angleLabelSvg.textContent = `${(Math.atan2(-dy, dx) * 180 / Math.PI).toFixed(0)}°`;
             angleLabelSvg.setAttribute('text-anchor', 'middle');
         }
         if (magLabelSvg) {
@@ -2367,32 +2373,134 @@ function updateVec2(container, x, y, { send = false } = {}) {
     }
 }
 
+/**
+ * The live element for a control id. A box that re-runs while its control is being dragged replaces
+ * the control's DOM with a fresh copy under the same id; a drag holding the old element would go on
+ * moving a detached node and sending nothing the performer can see. Every drag step re-finds it.
+ */
+function liveControl(container, selector) {
+    if (!container || container.isConnected) return container;
+    const fresh = document.querySelector(selector);
+    return fresh || container;
+}
+
+function liveVec2(container) {
+    const id = container?.dataset?.controlId;
+    return id ? liveControl(container, `.field-vec2[data-control-id="${cssEscape(id)}"]`) : container;
+}
+
+function vec2Unlaid(container) {
+    const svg = container.querySelector('.vec2-visual');
+    const r = svg?.getBoundingClientRect();
+    return !r || !(r.width > 0 && r.height > 0);
+}
+
+/**
+ * A plain press puts the handle under the pointer. Shift makes the drag relative and ten times finer,
+ * as on a slider: the handle walks from where it is, so a value can be eased into place. A press on a
+ * collapsed (unlaid-out) pad is ignored: it has no geometry, and used to send a corner value.
+ */
 function startVec2Drag(container, event) {
     event.preventDefault();
+    if (vec2Unlaid(container)) return;
     if (event.target?.setPointerCapture && event.pointerId !== undefined) {
         try { event.target.setPointerCapture(event.pointerId); } catch (_) {}
     }
-    const next = vec2ValueFromPointer(container, event);
-    if (next) {
-        updateVec2(container, next.x, next.y, { send: true });
+    try { container.focus({ preventScroll: true }); } catch (_) {}
+    const relative = !!event.shiftKey;
+    if (!relative) {
+        const next = vec2ValueFromPointer(container, event);
+        if (next) updateVec2(container, next.x, next.y, { send: true });
     }
     vec2State.active = container;
+    vec2State.relative = relative;
+    vec2State.lastX = event.clientX;
+    vec2State.lastY = event.clientY;
+    vec2State.fx = vec2State.fy = undefined;
+    container.classList.toggle('fine', relative);
     window.addEventListener('pointermove', dragVec2Move);
     window.addEventListener('pointerup', endVec2Drag);
 }
 
+function vec2AreaPixels(container) {
+    const svg = container.querySelector('.vec2-visual');
+    const viewSize = parseFloat(container.dataset.viewSize || '150');
+    const padding = parseFloat(container.dataset.padding || '10');
+    const area = Math.max(viewSize - padding * 2, 1);
+    if (!svg) return area;
+    return Math.max(1, svgPointFromClient(svg, 0, 0, viewSize, viewSize).scale * area);
+}
+
 function dragVec2Move(event) {
     if (!vec2State.active) return;
-    const next = vec2ValueFromPointer(vec2State.active, event);
-    if (next) {
-        updateVec2(vec2State.active, next.x, next.y, { send: true });
+    const container = vec2State.active = liveVec2(vec2State.active);
+    const dx = event.clientX - (vec2State.lastX ?? event.clientX);
+    const dy = event.clientY - (vec2State.lastY ?? event.clientY);
+    vec2State.lastX = event.clientX;
+    vec2State.lastY = event.clientY;
+    if (event.shiftKey || vec2State.relative) {
+        vec2State.relative = true;
+        const gain = (event.shiftKey ? SLIDER_FINE : 1) / vec2AreaPixels(container);
+        const spanX = parseFloat(container.dataset.maxX) - parseFloat(container.dataset.minX);
+        const spanY = parseFloat(container.dataset.maxY) - parseFloat(container.dataset.minY);
+        // Accumulated unsnapped, shown and sent snapped (as a slider's fine drag keeps `t`): a step is
+        // still the value's grain, but many sub-step moves add up instead of each snapping back.
+        if (vec2State.fx === undefined) {
+            vec2State.fx = parseFloat(container.dataset.x || '0');
+            vec2State.fy = parseFloat(container.dataset.y || '0');
+        }
+        vec2State.fx = clamp(vec2State.fx + dx * gain * spanX, parseFloat(container.dataset.minX), parseFloat(container.dataset.maxX));
+        vec2State.fy = clamp(vec2State.fy - dy * gain * spanY, parseFloat(container.dataset.minY), parseFloat(container.dataset.maxY));
+        container.classList.toggle('fine', !!event.shiftKey);
+        updateVec2(container, vec2State.fx, vec2State.fy, { send: true });
+        return;
     }
+    const next = vec2ValueFromPointer(container, event);
+    if (next) updateVec2(container, next.x, next.y, { send: true });
+    vec2State.fx = vec2State.fy = undefined;
 }
 
 function endVec2Drag() {
+    vec2State.fx = vec2State.fy = undefined;
+    if (vec2State.active) liveVec2(vec2State.active).classList.remove('fine');
     vec2State.active = null;
+    vec2State.relative = false;
     window.removeEventListener('pointermove', dragVec2Move);
     window.removeEventListener('pointerup', endVec2Drag);
+}
+
+/** Double-click on the pad, or Backspace/Delete while it is focused: back to the declared value. */
+function resetVec2(container) {
+    const x = parseFloat(container.dataset.defaultX);
+    const y = parseFloat(container.dataset.defaultY);
+    if (Number.isFinite(x) && Number.isFinite(y)) updateVec2(container, x, y, { send: true });
+}
+
+/**
+ * Arrow keys nudge a focused pad by one `step` on that axis (shift ×10, up is +y);
+ * Backspace/Delete resets, Enter types "(x, y)", Escape lets go of focus.
+ */
+function vec2KeyDown(container, event) {
+    const d = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[event.key];
+    if (d) {
+        const step = parseFloat(container.dataset.step || '0') ||
+            (parseFloat(container.dataset.maxX) - parseFloat(container.dataset.minX)) / 100;
+        const mult = event.shiftKey ? 10 : 1;
+        const x = parseFloat(container.dataset.x || '0') + d[0] * step * mult;
+        const y = parseFloat(container.dataset.y || '0') + d[1] * step * mult;
+        updateVec2(container, x, y, { send: true });
+        return true;
+    }
+    switch (event.key) {
+        case 'Backspace': case 'Delete': resetVec2(container); return true;
+        case 'Enter': {
+            const readout = document.getElementById(`${container.dataset.controlId}-value`);
+            if (readout) beginVec2ValueEdit(container, readout);
+            return true;
+        }
+        case 'Escape': container.blur(); return true;
+    }
+    return false;
 }
 
 // Momentary button ---------------------------------------------------------
@@ -2588,6 +2696,13 @@ function addDelegatedListeners() {
 
     // Sliders: double-click the track to reset, click the readout to type, keys when focused.
     document.addEventListener('dblclick', (evt) => {
+        const pad = evt.target.closest?.('.vec2-visual')?.closest('.field-vec2');
+        if (pad) {
+            evt.preventDefault();
+            evt.stopPropagation();
+            resetVec2(pad);
+            return;
+        }
         const vis = evt.target.closest?.('.field-slider-visual');
         const container = vis?.closest('.field-slider');
         if (!container) return;
@@ -2609,12 +2724,25 @@ function addDelegatedListeners() {
     }, true);
     document.addEventListener('keydown', (evt) => {
         const container = evt.target;
-        if (!container?.classList?.contains('field-slider')) return;
-        if (sliderKeyDown(container, evt)) {
+        const handled = container?.classList?.contains('field-slider') ? sliderKeyDown(container, evt)
+            : container?.classList?.contains('field-vec2') ? vec2KeyDown(container, evt) : false;
+        if (handled) {
             evt.preventDefault();
             evt.stopPropagation();
         }
     }, true);
+    // The wheel turns a slider only once it has focus (a click or Tab gave it one): an unfocused
+    // slider under a passing wheel must not steal the canvas scroll. One notch is one arrow press;
+    // shift ×10 (many mice report shift-wheel as deltaX), alt ÷10.
+    document.addEventListener('wheel', (evt) => {
+        const container = evt.target.closest?.('.field-slider');
+        if (!container || document.activeElement !== container) return;
+        const delta = Math.abs(evt.deltaY) >= Math.abs(evt.deltaX) ? evt.deltaY : evt.deltaX;
+        if (!delta) return;
+        evt.preventDefault();
+        evt.stopPropagation();
+        sliderKeyDown(container, { key: delta < 0 ? 'ArrowUp' : 'ArrowDown', shiftKey: evt.shiftKey, altKey: evt.altKey });
+    }, { capture: true, passive: false });
 }
 
 document.addEventListener('DOMContentLoaded', () => {

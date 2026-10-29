@@ -13,6 +13,24 @@ import afield.graphics.texture.HasImageViewArray
 import afield.graphics.texture.PreparesSampledImages
 import org.lwjgl.vulkan.VK10.*
 
+/**
+ * The motion provider behind the spinning-curves demo, which derives per-pixel correspondence from
+ * the geometry Field drew rather than from the two images.
+ *
+ * [SpinningDiffusionDemo]'s five curves are ribbons carrying a surface id per vertex, and the
+ * rotation that drew each frame is kept against that frame's id. To answer a request this projects
+ * every pixel's surface point back through the reference frame's rotation, which is the position
+ * that point had then; an id pass rendered at the reference angle says whether the surface visible
+ * there is the same one, so a ribbon that has turned behind another is rejected instead of carrying
+ * the wrong colour across. The correspondence ribbon is widened well past the drawn line, so the
+ * broader marks the model returns are covered too, and confidence falls off toward its edge.
+ *
+ * The fallback pass covers what the mask rejected. Where the current frame shows bare paper it
+ * fills from paper near that pixel in the reference image, so the rejected band carries no bright
+ * impression of the reference frame's curves into empty paper, and it leaves every pixel the
+ * current source actually drew.
+ */
+
 /** Renderer-derived correspondence for the demo ribbons; reference IDs reject hidden crossings. */
 internal class SpinningDiffusionMotion(
     private val renderer: Renderer, private val source: RenderToTexture,

@@ -1,0 +1,16 @@
+[field] ok  RepoReadFileRequest {"endLine":200,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":170,"path":"src/jvmTest/kotlin/afield/paint/GesturePaintReplayTest.kt","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**/*","ignoreCase":false,"maxMatches":40,"query":"KDocAttachment","regex":false}
+[field] ok  RepoListFilesRequest {"glob":"tools/*kdoc*"}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":260,"path":"src/jvmMain/kotlin/afield/ai/core/completion/KDocExtractor.kt","startLine":145}
+[field] ok  RepoReadFileRequest {"endLine":280,"path":"src/jvmMain/kotlin/afield/docs/KDocAttachmentGuard.kt","startLine":135}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":40,"query":"kdoc","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":80,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"tools/*check*.py","ignoreCase":true,"maxMatches":30,"query":"kdoc|attachment","regex":true}
+[field] ok  RepoPatchFileRequest {"newText":"    @Test\n    fun anEditedTakePaintsWhereTheEditMovedIt() {","oldText":"    @Test fun anEditedTakePaintsWhereTheEditMovedIt() {","path":"src/jvmTes
+[field] ok  RepoPatchFileRequest {"newText":"    @Test\n    fun aPensPressurePressesTheHairsWhereThePenPressed() {","oldText":"    @Test fun aPensPressurePressesTheHairsWhereThePenPressed() {",
+[field] ok  RepoReadFileRequest {"endLine":140,"path":"src/jvmTest/kotlin/afield/paint/GesturePaintReplayTest.kt","startLine":91}
+[field] ok  RepoRunCommandRequest {"args":["--","src/jvmTest/kotlin/afield/paint/GesturePaintReplayTest.kt"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":120,"path":"src/jvmMain/kotlin/afield/ai/core/completion/KDocExtractor.kt","startLine":80}
+[field] model=openai/gpt-6.1-sol rounds=7/40 wall=36s tokens in=230928 out=1008 cacheRead=202107 wrote=['src/jvmTest/kotlin/afield/paint/GesturePaintReplayTest.kt', 'src/jvmTest/kotlin/afield/paint/GesturePaintReplayTest.kt'] ran=['git-status  -> 0', 'git-diff -- src/jvmTest/kotlin/afield/paint/GesturePaintReplayTest.kt -> 0'] verdict=unchecked error=-

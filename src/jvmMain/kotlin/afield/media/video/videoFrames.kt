@@ -7,6 +7,16 @@ import java.io.EOFException
 import java.io.File
 
 /**
+ * Reading a video file frame by frame as Field images, through ffmpeg.
+ *
+ * [videoFrames] is the lazy sequence of frames for a path on disk, and [videoSize] answers the
+ * extent they will arrive at. ffmpeg does the decoding, the frame-rate conversion and the scaling;
+ * [FFMPEG] is the binary, and the ffprobe beside it reports a clip's native size. Frames arrive as
+ * [Img], with channel values in 0..1, so Field's imaging and sampling work on them without a
+ * conversion step.
+ */
+
+/**
  * The frames of a video file as [Img]s, decoded by ffmpeg ([FFMPEG] says which).
  *
  * ```

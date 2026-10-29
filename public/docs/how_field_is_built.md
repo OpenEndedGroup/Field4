@@ -3,8 +3,7 @@
 Field is written by a few people and a lot of agents, all at once, in many separate checkouts.
 That only works because the machinery around the code is unusually strict about one thing: a
 green result has to come from running the real code, now. This page tours that machinery, with
-emphasis on the parts that are unusual, that you can see and use from Field itself, and that
-are worth copying into a project of your own:
+emphasis on the parts you can see and use from Field itself, and take into a project of your own:
 
 - documentation whose every figure is a test,
 - numbers in prose that are recomputed from the code,

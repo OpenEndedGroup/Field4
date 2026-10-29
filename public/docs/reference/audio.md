@@ -423,13 +423,23 @@ Reproducible real-audio documentation fixture; never substitutes synthetic track
 
 ## LorisStudy.kt { #lorisstudy-kt }
 
+One worked Loris gesture, written in the same breakpoint arithmetic that LorisTransforms.kt
+applies one edit at a time.
+
+[`spectralWhirlpool`](audio.md#lorisstudy-kt--spectralwhirlpool) reshapes a window of a [`LorisModel`](audio.md#loris-kt-lorismodel) rather than the whole of it. A `sin²` bell
+rises and falls across the window, so the edit begins and ends at zero and every breakpoint
+outside the window is returned unchanged. Under that bell each partial sweeps four times through
+±18 semitones, its amplitude is shuttered at 12 Hz, and its noise bandwidth is pushed towards 0.85
+at the peak: a vibrato that turns breathy in the middle and settles again. Pass the result to
+[`LorisClient.synthesize`](audio.md#loris-kt--lorisclient--synthesize) to hear it.
+
 `src/jvmMain/kotlin/afield/audio/analysis/loris/LorisStudy.kt` — [read the source](source/jvmMain/afield/audio/analysis/loris/LorisStudy/)
 
 ### Top-level functions { #lorisstudy-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="lorisstudy-kt--spectralwhirlpool"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">LorisModel</span><span class="p">.</span><span class="nf">spectralWhirlpool</span><span class="p">(</span><span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">6.0</span><span class="p">,</span> <span class="n">durationSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">LorisModel</span></code>](source/jvmMain/afield/audio/analysis/loris/LorisStudy/#L10) | Example gesture: smooth local ±18-semitone sweeps, 12 Hz amplitude shutters and noisy peaks. |
+| <a id="lorisstudy-kt--spectralwhirlpool"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">LorisModel</span><span class="p">.</span><span class="nf">spectralWhirlpool</span><span class="p">(</span><span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">6.0</span><span class="p">,</span> <span class="n">durationSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">LorisModel</span></code>](source/jvmMain/afield/audio/analysis/loris/LorisStudy/#L22) | Example gesture: smooth local ±18-semitone sweeps, 12 Hz amplitude shutters and noisy peaks. |
 
 ## LorisTransforms.kt { #loristransforms-kt }
 

@@ -1,6 +1,8 @@
 # From modules to reconstruction
 
-Your module still renders the scene, and reconstruction reads the images it produces. Start with a `moduleHere()` module drawing into a `RenderToTexture`, give that render the depth and motion it needs for history, then record DLAA or Super Resolution after the source pass. Ray Reconstruction extends the same graph with raw lighting and material guides.
+Start with a `moduleHere()` module drawing into a `RenderToTexture`, and give it the depth and
+motion images reconstruction needs for history. Then record DLAA or Super Resolution after the
+source pass. Ray Reconstruction extends the graph with raw lighting and material guides.
 
 Open the [reconstruction_plumbing](agent_transcripts.md#reconstruction_plumbing) starting point for the complete DLAA/SR wiring, or [rr_plumbing](agent_transcripts.md#rr_plumbing) for the RTXDI/RR version. Both put the scheduling in the editable Kotlin box and the attachment writes in its **vertex** and **fragment** properties. Run the **renderer** box, then the scene box. The [Neural reconstruction](neural_reconstruction.md) and [Ray reconstruction](ray_reconstruction.md) pages have starting points with more controls for comparing modes.
 

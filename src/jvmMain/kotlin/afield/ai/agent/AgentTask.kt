@@ -91,6 +91,12 @@ data class AgentTaskRequest(
     val repoRoot: String = "",
     val repoRead: List<String> = emptyList(),
     val repoWrite: List<String> = emptyList(),
+    /**
+     * Names from [afield.ai.tools.RepoCommandTemplates] this job may run with `RepoRunCommandRequest`, in [repoRoot]
+     * (empty = no command tool); [repoCommandMaxSec] caps any one run's wall clock.
+     */
+    val repoCommands: List<String> = emptyList(),
+    val repoCommandMaxSec: Int = 900,
 )
 
 /**
@@ -229,6 +235,8 @@ data class AgentTaskResult(
     val leakedVia: String = "",
     /** Root-relative paths the `repo` tools wrote, in order (a path written twice appears twice). */
     val repoWritten: List<String> = emptyList(),
+    /** The job's command runs, `name args -> exit code` (or `timeout`), in order. */
+    val repoRuns: List<String> = emptyList(),
 )
 
 /**
@@ -287,8 +295,12 @@ object AgentTaskRunner {
                 if (request.repoRoot.isBlank()) base else {
                     val root = java.io.File(request.repoRoot)
                     require(root.isDirectory) { "repoRoot '${request.repoRoot}' is not a directory" }
-                    base.copy(repoFiles = afield.ai.tools.RepoFileTools(afield.ai.tools.RepoScope(root.toPath(),
-                        request.repoRead.ifEmpty { listOf("**") }, request.repoWrite)))
+                    val files = afield.ai.tools.RepoFileTools(afield.ai.tools.RepoScope(root.toPath(),
+                        request.repoRead.ifEmpty { listOf("**") }, request.repoWrite))
+                    base.copy(repoFiles = files, repoCommands = request.repoCommands.takeIf { it.isNotEmpty() }?.let {
+                        afield.ai.tools.RepoCommandTools(files, afield.ai.tools.RepoCommandScope(it.map(String::trim).toSet(),
+                            maxTimeoutSec = request.repoCommandMaxSec.coerceIn(10, 3600)))
+                    })
                 }
             }
 
@@ -326,7 +338,10 @@ object AgentTaskRunner {
                     appendLine("Repository: ${s.root}. Work on its files with the repo tools (RepoReadFileRequest, RepoListFilesRequest, " +
                         "RepoSearchRequest, RepoPatchFileRequest, RepoWriteFileRequest); paths are relative to that root. " +
                         "Readable: ${s.readable.joinToString(", ")}. Writable: ${s.writable.joinToString(", ").ifBlank { "(nothing)" }}. " +
-                        "There is no shell: anything the goal says to run as a command, do through these tools instead.")
+                        (if (ctx.repoCommands == null) "There is no shell: anything the goal says to run as a command, do through these tools instead."
+                        else "There is no shell, but RepoRunCommandRequest runs these named commands in the root (argv templates; " +
+                            "use them to reproduce a failure before you edit and to confirm the fix after):"))
+                    ctx.repoCommands?.let { appendLine(it.describeAllowed()) }
                 }
             }
             val helpers = afield.ai.conversation.IdeChatHelpers(b,
@@ -370,6 +385,7 @@ object AgentTaskRunner {
                 turns = 1 + request.followUps.size,
                 contextPlacement = sent.contextReport?.placement ?: "inline",
                 repoWritten = ctx.repoFiles?.written?.toList().orEmpty(),
+                repoRuns = ctx.repoCommands?.runs?.toList().orEmpty(),
             )
         } catch (t: Throwable) {
             failure("${t.javaClass.simpleName}: ${t.message}")

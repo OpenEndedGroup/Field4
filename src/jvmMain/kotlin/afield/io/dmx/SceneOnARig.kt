@@ -80,12 +80,16 @@ object SceneOnARig {
         ;
     """.trimIndent()
 
-    /** Grid columns and rows: one fixture per wall unit. */
+    /** Grid columns: one fixture per wall unit across, matching the scene's `->wall 16 8`. */
     const val COLS = 16
+
+    /** Grid rows: one fixture per wall unit down. */
     const val ROWS = 8
 
-    /** Frame size the scene is drawn at before it meets the rig: 16 pixels per fixture each way. */
+    /** Width the scene is drawn at before it meets the rig: 16 pixels per fixture across. */
     const val FRAME_W = 256
+
+    /** Height the scene is drawn at: 16 pixels per fixture down, so pixels are square. */
     const val FRAME_H = 128
 
     /**
@@ -284,21 +288,44 @@ object SceneOnARig {
     // ---- timing ----------------------------------------------------------------------------------
 
     /**
-     * Frame cost and delivery while the scene animates for [seconds] on a [DmxOutput]'s own 44 Hz
-     * clock ([Patch.animate]), sent to and received from 127.0.0.1:[port]. [frameMillis] is the
-     * sender-side cost of one look (draw, shrink, map); [arrivalMillis] the gaps between successive
-     * universe-1 frames at the receiver. `port = 0` (the default) binds a free port, as [roundTrip] does.
+     * What one `timing` run measured: what each look cost to make, and how the frames arrived.
+     *
+     * [frameMillis] holds the sender-side cost of one look — draw the RectSL frame, shrink it, map
+     * it onto the rig — one entry per sender tick, and [ticks] is how many of those ran.
+     * [arrivalMillis] holds the gaps between successive universe-1 frames at the receiver, so
+     * [receivedHz] is the rate delivered rather than the rate asked for. [lastError] is the output's
+     * last send failure, since sends never throw into Field code.
      */
     class Timing(val seconds: Double, val ticks: Int, val frameMillis: DoubleArray, val arrivalMillis: DoubleArray, val lastError: Throwable?) {
         private fun pct(a: DoubleArray, p: Double) = if (a.isEmpty()) Double.NaN else a.sorted()[((a.size - 1) * p).roundToInt()]
-        val frameMedian get() = pct(frameMillis, 0.5)
-        val frameP95 get() = pct(frameMillis, 0.95)
-        val arrivalMedian get() = pct(arrivalMillis, 0.5)
-        val arrivalP95 get() = pct(arrivalMillis, 0.95)
+
+        /** Median cost of one look, in milliseconds; `NaN` if no tick ran. */
+        val frameMedian: Double get() = pct(frameMillis, 0.5)
+
+        /** 95th-percentile cost of one look, in milliseconds: what the slow frames cost. */
+        val frameP95: Double get() = pct(frameMillis, 0.95)
+
+        /** Median gap between universe-1 frames at the receiver, in milliseconds. */
+        val arrivalMedian: Double get() = pct(arrivalMillis, 0.5)
+
+        /** 95th-percentile gap between frames at the receiver: the longest a light waits. */
+        val arrivalP95: Double get() = pct(arrivalMillis, 0.95)
+
         /** Received frames per second of universe 1. */
-        val receivedHz get() = arrivalMillis.size / seconds
+        val receivedHz: Double get() = arrivalMillis.size / seconds
     }
 
+    /**
+     * Animate the scene on an output's own sender clock for [seconds], and measure what each look
+     * costs and what arrives.
+     *
+     * The look is recomputed inside [Patch.animate], so it runs on the sender thread at the
+     * [DmxOutput] default of 44 Hz and keeps going whether or not anything else in Field is ticking.
+     * The output sends sACN to 127.0.0.1 and a [DmxInput] on the same machine timestamps each
+     * universe-1 frame it accepts. With `port = 0`, the default, the receiver binds a free port and
+     * the sender is pointed at it, as `roundTrip` does, so nothing has to hold 5568. [scene] is the
+     * RectSL source to animate, [SCENE] by default.
+     */
     fun timing(port: Int = 0, seconds: Double = 3.0, scene: RectSLImager = RectSLImager(SCENE)): Timing {
         val rig = Rig()
         val input = DmxInput(DmxProtocol.SACN, port = port, bindAddress = "127.0.0.1")

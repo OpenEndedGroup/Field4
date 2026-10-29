@@ -2,6 +2,13 @@
 
 Field aims to be full of unexpectedly fun features that help you interact with code. This page is going to be a long list of things that delight, things that you didn't think you'd need, and things that help when you are puzzled.
 
+You don't have to read it straight through. Start with running and displaying things, or jump to
+[AI support](#ai-support), [drawing on the canvas](#drawing-on-the-canvas), or
+[making bigger things](#making-bigger-things). If you want something to run before you look
+around, [Your First Five Minutes](first_steps.md) begins with a moving drawing.
+The next stop on the Tour is [Frames and the Animation Loop](animation_time_model.md), where a box
+keeps drawing as time passes.
+
 ## The Welcome page
 
 The first page of Field is the welcome page: the first tab in our desktop app, and at `https://localhost:9092/welcome` in any web browser:
@@ -291,7 +298,7 @@ Finally this documentation itself is both part of the agent's search context, th
 
 # Multi-language, multi-paradigm
 
-Field's primary language for live coding is Kotlin, which we've found to be expressive and fun (but by no means flawless). We've added a compile-time macro system to it for extra flexibility and joy and the graphics system does some GLSL-driven code-generation. All in all it's working for it quite well. However, being on the JVM does give us access to some other options.
+Field's primary language for live coding is Kotlin, which we've found to be expressive and fun (but by no means flawless). We've added a compile-time macro system to it for extra flexibility and joy and the graphics system does some GLSL-driven code-generation. All in all, it's working quite well. Being on the JVM also gives us access to some other options.
 
 ## Kotlin, with macros
 

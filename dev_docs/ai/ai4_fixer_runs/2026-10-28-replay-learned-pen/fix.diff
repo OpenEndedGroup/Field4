@@ -1,0 +1,39 @@
+diff --git a/public/docs/learned_pen.md b/public/docs/learned_pen.md
+index 697f3371b..ed34a6fb5 100644
+--- a/public/docs/learned_pen.md
++++ b/public/docs/learned_pen.md
+@@ -209,7 +209,7 @@ result for Kotlin.
+ Record your drawings as JSON, one file per drawing, each a list of strokes and each stroke a list of
+ `[x, y]` points in the order they were drawn:
+ 
+-```json
++```diffstatic {data-lang=json}
+ {"strokes": [[[0, 0], [8, 2], [16, -1]], [[30, 10], [31, 18]]]}
+ ```
+ 
+@@ -217,7 +217,7 @@ An FLine is already ordered, so drawings made in Field are the easiest source. K
+ validation drawings in separate folders, holding out whole drawings rather than pieces of ones you
+ train on, then:
+ 
+-```bash
++```diffstatic {data-lang=bash}
+ uv run --project . --group pen python -m fieldpen.prepare drawings/train train.npz --scale 8
+ uv run --project . --group pen python -m fieldpen.prepare drawings/valid valid.npz --scale 8
+ uv run --project . --group pen python -m fieldpen.train --train train.npz --valid valid.npz \
+@@ -231,14 +231,14 @@ it trains on a laptop CPU; `--device cuda` uses a GPU if there is one.
+ 
+ Kotlin reads its own format rather than PyTorch's, so export the best checkpoint:
+ 
+-```python
++```diffstatic {data-lang=python}
+ import fieldpen
+ fieldpen.export_for_field(fieldpen.load_model("runs/mine/best.pt"), "mine.fieldpen.json")
+ ```
+ 
+ and pass it to anything on this page:
+ 
+-```kotlin
++```diffstatic {data-lang=kotlin}
+ val mine = PenModel.load("/path/to/mine.fieldpen.json")
+ lines(start, start.continueWith(mine))
+ ```

@@ -75,8 +75,9 @@ ui.drag("tour_swatch", -120.0, 40.0, 30)
 ui.pause(1200)
 ```
 
-The line follows the boxes when you move them. `u` with the same two boxes selected disconnects
-them. A box can have several parents and several children; the lines are the document's structure, and they are saved with it.
+The line follows the boxes when you move them. To disconnect them, select both and press `u`.
+A box can have several parents and several children. The connections are part of the document and
+are saved with it.
 
 ## A parent publishes, a child reads
 
@@ -87,7 +88,7 @@ it:
 prop<Int>(petals) = 5
 ```
 
-**Swatch**, connected beneath Palette, uses `petals` as if it had declared it itself:
+**Swatch**, connected beneath Palette, can now use `petals`:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/tour_connecting_boxes/five.png" capture="box" open-outputs="true" wait="1.5" timeout="180" embed=true name="tour-connect-prop" macro-file="../../dev_docs/agents/transcripts/docs_capture/tour_connect_prop.yaml" capture-box="tc_swatch" w="560" h="80" alt="Swatch's output, one line: A flower with 5 petals, followed by five flower symbols"}
 markdown("A flower with $petals petals: " + "✿".repeat(petals))

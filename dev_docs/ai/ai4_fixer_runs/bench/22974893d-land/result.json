@@ -1,0 +1,145 @@
+{
+ "taskId": "task-72f5f21e",
+ "mode": "live",
+ "provider": "openai",
+ "model": "gpt-6.1-sol",
+ "verdict": "unchecked",
+ "checks": [],
+ "toolCalls": [
+  {
+   "index": 1,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":220,\"path\":\"AGENTS.md\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-220 of 552\",\"path\":\"AGENTS.md\",\"text\":\"1\\t# AField / Field\u00b74 \u2014 Repo Guide for Agents\\n2\\t\\n3\\tA corrective paragraph in this file is a bug report against a tool, and it stays only until the\\n4\\ttool enforces it. When you add a \\\"do not\\\", name the tool change that would retire it. Histories\\n5\\tof rules that became code live in\\n6\\t[`dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md`](dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md).\\n7\\t\\n8\\t---\\n9\\t\\n10\\t## 1. What this is\\n11\\t\\n12\\t**Field\u00b74** is a Kotlin live-coding environment for graphics and exploratory dat... [921 more chars]"
+  },
+  {
+   "index": 2,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":180,\"path\":\"src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-180 of 189\",\"path\":\"src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\",\"text\":\"1\\t@file:afield.runtime.completion.CompletionCategory(\\\"Audio AI\\\")\\n2\\t\\n3\\tpackage afield.audio.ai\\n4\\t\\n5\\timport afield.document.graph.Box\\n6\\timport afield.ui.visualization.AudioVisualizer\\n7\\timport afield.ui.visualization.AudioVisualizerOptions\\n8\\timport afield.ui.visualization.AudioVisualizerSource\\n9\\timport kotlinx.serialization.json.contentOrNull\\n10\\timport kotlinx.serialization.json.jsonPrimitive\\n11\\timport java.util.Locale\\n12\\timport kotlin.math.max\\n13\\timpor... [921 more chars]"
+  },
+  {
+   "index": 3,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":180,\"path\":\"dev_docs/kdoc_reference_contract.md\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-180 of 503\",\"path\":\"dev_docs/kdoc_reference_contract.md\",\"text\":\"1\\t# The KDoc \u2192 reference contract\\n2\\t\\n3\\tEverything Field says about its own API in the editor and on the docs site comes from one place: the\\n4\\t`/** \u2026 */` blocks in `src/`. There is no second source, no hand-maintained API page, and no Dokka.\\n5\\tThat makes the pipeline cheap and honest \u2014 and it means a KDoc that fails to *attach* to the right\\n6\\tdeclaration is published as another symbol's description, silently.\\n7\\t\\n8\\tThis note is the contract: what the extractor can and cannot see, wh... [921 more chars]"
+  },
+  {
+   "index": 4,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"**/*\",\"ignoreCase\":false,\"maxMatches\":45,\"query\":\"KDocAttachment\",\"regex\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"stopped at 45 matches\",\"matches\":[{\"path\":\"dev_docs/BUILD_INFRASTRUCTURE.md\",\"line\":100,\"text\":\"| Drift checks and guards | `checkCodebaseReference`, `checkKDocAttachment`, `checkSourcePartition`, `checkSourcePages`, `checkAgentTranscripts`, `checkAgentTranscriptIndex`, `checkAgentTranscriptLayouts`, `checkAgentDemos`, `checkBoxOutputChannels`, `checkCompletionCorpusFixtures`, `checkGeneratedL\"},{\"path\":\"dev_docs/BUILD_INFRASTRUCTURE.md\",\"line\":144,\"text\":\"guards: `checkCodebaseReference`, `checkKDocAttachment`, `checkAgentTranscripts`,\"},{\"path\":\"dev_docs/GUARD_CORP... [921 more chars]"
+  },
+  {
+   "index": 5,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[],\"command\":\"git-status\",\"timeoutSec\":30}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= status --short --branch\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":85,\"output\":\"## HEAD (no branch)\\n\",\"outputBytes\":20,\"truncated\":false}"
+  },
+  {
+   "index": 6,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":552,\"path\":\"AGENTS.md\",\"startLine\":221}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 221-552 of 552\",\"path\":\"AGENTS.md\",\"text\":\"221\\t  on 9092 takes `--attach-existing`.\\n222\\t- **Session lifetime.** A scratch session lasts one `field_backdoor.py` process, not the life of\\n223\\t  the port: put dependent commands in one invocation; a later process cannot reuse earlier box\\n224\\t  uids. Use `--document <name>` when state must span invocations.\\n225\\t- **Workspaces.** When the session *starts* the server, pass `--workspace <parent>` with a\\n226\\t  relative `--document <name>`. When it *attaches*, the workspace is the server's: pass exactly\\n227\\t ... [921 more chars]"
+  },
+  {
+   "index": 7,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":340,\"path\":\"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt\",\"startLine\":195}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 195-340 of 501\",\"path\":\"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt\",\"text\":\"195\\t            |Each of these is either dropped or attached to the WRONG declaration, and a dropped\\n196\\t            |block's prose is published under whatever symbol parses next. Fix by either\\n197\\t            |  - moving the block so the very next line is a declaration\\n198\\t            |    (KDocExtractor.parseDeclaration reads: class / interface / object / fun / val / var /\\n199\\t            |    typealias, after modifiers and after annotations *on their own lin... [921 more chars]"
+  },
+  {
+   "index": 8,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"tools/*.py\",\"ignoreCase\":true,\"maxMatches\":30,\"query\":\"kdoc\",\"regex\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"stopped at 30 matches\",\"matches\":[{\"path\":\"tools/check_box_idioms.py\",\"line\":101,\"text\":\"# reference pages are generated from KDoc. Widen this once the refactor lands.\"},{\"path\":\"tools/check_doc_site_links.py\",\"line\":222,\"text\":\"#                                          published as a paragraph because its KDoc indent was\"},{\"path\":\"tools/check_staged_generated_artifacts.py\",\"line\":393,\"text\":\"        \\\"codebase reference and KDoc worklist\\\",\"},{\"path\":\"tools/check_staged_generated_artifacts.py\",\"line\":395,\"text\":\"        (\\\"public/docs/reference\\\", \\\"dev_docs/kdoc_... [921 more chars]"
+  },
+  {
+   "index": 9,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"871f8f497614e163fc78de2bb0e41f9633e44cda\",\"--\",\"src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\"],\"command\":\"git-diff\",\"timeoutSec\":30}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv 871f8f497614e163fc78de2bb0e41f9633e44cda -- src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":22,\"output\":\"diff --git a/src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt b/src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\\nindex c6ba74f39..2ef6b2cab 100644\\n--- a/src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\\n+++ b/src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\\n@@ -2,6 +2,7 ... [921 more chars]"
+  },
+  {
+   "index": 10,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"tools/*.py\",\"ignoreCase\":true,\"maxMatches\":60,\"query\":\"KDocAttachment|kdoc_attachment|parseDeclaration\",\"regex\":true}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"7 match(es) in 190 file(s)\",\"matches\":[{\"path\":\"tools/check_staged_generated_artifacts.py\",\"line\":397,\"text\":\"    Guard(\\\"checkKDocAttachment\\\", \\\"KDoc attachment\\\", _kotlin_source),\"},{\"path\":\"tools/test_check_staged_generated_artifacts.py\",\"line\":34,\"text\":\"            [\\\"checkCodebaseReference\\\", \\\"checkKDocAttachment\\\", \\\"citationGates\\\"],\"},{\"path\":\"tools/test_check_staged_generated_artifacts.py\",\"line\":42,\"text\":\"                \\\"checkKDocAttachment\\\",\"},{\"path\":\"tools/test_check_staged_generated_artifacts.py\",\"line\":51,\"text\":\"            [\\\"checkCodebaseRefe... [573 more chars]"
+  },
+  {
+   "index": 11,
+   "tool": "RepoPatchFileRequest",
+   "arguments": "{\"newText\":\" * short query-tail to neighbour-head judgement rather than another aligned view.\\n *\\n * @param placeControlIds One control id per neighbour, for a **place** button on its card;\\n * [showCorpusMicroscope] supplies them.\\n */\",\"oldText\":\" * short query-tail to neighbour-head judgement rather than another aligned view.\\n */\",\"path\":\"src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\",\"replaceAll\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"replaced 1 occurrence(s) in src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\",\"path\":\"src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\",\"text\":\"\",\"totalLines\":0,\"truncated\":false}"
+  },
+  {
+   "index": 12,
+   "tool": "RepoPatchFileRequest",
+   "arguments": "{\"newText\":\"\",\"oldText\":\"    /** One control id per neighbour, for a **place** button on its card; [showCorpusMicroscope] supplies them. */\\n\",\"path\":\"src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\",\"replaceAll\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"replaced 1 occurrence(s) in src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\",\"path\":\"src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\",\"text\":\"\",\"totalLines\":0,\"truncated\":false}"
+  },
+  {
+   "index": 13,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":70,\"path\":\"src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\",\"startLine\":42}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 42-70 of 191\",\"path\":\"src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\",\"text\":\"42\\tprivate fun corpusNumber(value: Double): String = String.format(Locale.US, \\\"%.3f\\\", value)\\n43\\tprivate fun corpusTime(value: Double): String = String.format(Locale.US, \\\"%.2f\\\", value)\\n44\\t\\n45\\t/**\\n46\\t * A source-relative audition board for [CorpusPreview.neighbours].\\n47\\t *\\n48\\t * Every player maps its own absolute file position back to zero at the beginning of its segment.\\n49\\t * The general audio visualizer's event bus can therefore share hover, zoom, seeking a... [920 more chars]"
+  },
+  {
+   "index": 14,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"--\",\"src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\"],\"command\":\"git-diff\",\"timeoutSec\":30}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv -- src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":40,\"output\":\"diff --git a/src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt b/src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\\nindex 2ef6b2cab..b268922b1 100644\\n--- a/src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\\n+++ b/src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\\n@@ -49,6 +49,9 @@ private fun corpusTime(value: Double... [920 more chars]"
+  },
+  {
+   "index": 15,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"src/jvmMain/kotlin/**/KDocExtractor.kt\",\"ignoreCase\":false,\"maxMatches\":15,\"query\":\"fun |startsWith(\\\"fun\",\"regex\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"0 match(es) in 1 file(s)\",\"matches\":[],\"complete\":true,\"filesSearched\":1}"
+  },
+  {
+   "index": 16,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[],\"command\":\"git-status\",\"timeoutSec\":30}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= status --short --branch\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":78,\"output\":\"## HEAD (no branch)\\n M src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt\\n\",\"outputBytes\":78,\"truncated\":false}"
+  }
+ ],
+ "finalText": "Moved the parameter documentation into the function\u2019s KDoc as `@param placeControlIds`; the diff confirms a documentation-only change in one file. Guard-source review confirms the attachment is now valid, but Gradle is unavailable and no Python check covers this guard.\n\nFIXER-VERDICT: {\"verdict\": \"fix\", \"culprit\": \"handoffs/code-20261016-1144\", \"reason\": \"The branch added KDoc above an unsupported bare parameter, now moved into the function's KDoc as an @param entry; verification was limited to source inspection because Gradle is unavailable.\"}",
+ "rounds": 7,
+ "maxToolRounds": 40,
+ "hitToolRoundCap": false,
+ "elapsedMs": 42126,
+ "inputTokens": 292083,
+ "outputTokens": 1153,
+ "cacheReadTokens": 254404,
+ "documentName": "scratch",
+ "lessons": true,
+ "documentRef": "efa164bd-4a8e-4154-bf43-87ce28c48f17",
+ "programs": true,
+ "contextPlacement": "developer-once+input",
+ "repoWritten": [
+  "src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt",
+  "src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt"
+ ],
+ "repoRuns": [
+  "git-status  -> 0",
+  "git-diff 871f8f497614e163fc78de2bb0e41f9633e44cda -- src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt -> 0",
+  "git-diff -- src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt -> 0",
+  "git-status  -> 0"
+ ]
+}

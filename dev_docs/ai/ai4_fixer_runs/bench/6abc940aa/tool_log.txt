@@ -1,0 +1,19 @@
+[field] ok  RepoReadFileRequest {"endLine":240,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":3910,"path":"src/jvmMain/kotlin/afield/app/server/Server.kt","startLine":3810}
+[field] ok  RepoReadFileRequest {"endLine":550,"path":"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt","startLine":425}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ERR RepoReadFileRequest {"endLine":210,"path":"tools/test_offline_viewer_js.py","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":["bf8e431dcbeee8a942072a216bc66e74e223eb60","--","src/jvmMain/kotlin/afield/app/server/Server.kt"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoListFilesRequest {"glob":"tools/*server*"}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":false,"maxMatches":30,"query":"ServerSurfaceLedger","regex":false}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/**/*.kt","ignoreCase":false,"maxMatches":15,"query":"JsonObject(mapOf(","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":180,"path":"tools/check_box_idioms.py","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":150,"path":"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":1570,"path":"src/jvmMain/kotlin/afield/app/server/agent_backdoor.kt","startLine":1534}
+[field] ok  RepoReadFileRequest {"endLine":555,"path":"AGENTS.md","startLine":450}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/app/server/Server.kt","ignoreCase":false,"maxMatches":20,"query":"^[ \\t]*(get|post|put|delete|patch)\\(\\s*\"([^/{\"][^\"]*)
+[field] ok  RepoPatchFileRequest {"newText":"                            kotlinx.serialization.json.JsonObject(mapOf(\n                                \"uid\" to kotlinx.serialization.json.Json
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/app/server/Server.kt","ignoreCase":false,"maxMatches":20,"query":"^[ \\t]*(get|post|put|delete|patch)\\(\\s*\"([^/{\"][^\"]*)
+[field] ok  RepoRunCommandRequest {"args":["--","src/jvmMain/kotlin/afield/app/server/Server.kt"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":3890,"path":"src/jvmMain/kotlin/afield/app/server/Server.kt","startLine":3876}
+[field] model=openai/gpt-6.1-sol rounds=7/40 wall=48s tokens in=252125 out=1498 cacheRead=219440 wrote=['src/jvmMain/kotlin/afield/app/server/Server.kt'] ran=['git-status  -> 0', 'git-diff bf8e431dcbeee8a942072a216bc66e74e223eb60 -- src/jvmMain/kotlin/afield/app/server/Server.kt -> 0', 'git-diff -- src/jvmMain/kotlin/afield/app/server/Server.kt -> 0'] verdict=unchecked error=-

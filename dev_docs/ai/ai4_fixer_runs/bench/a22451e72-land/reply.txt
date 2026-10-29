@@ -1,0 +1,3 @@
+Split `@Volatile` onto its own line above `lastOutputAtMs` in `terminal.kt`; the diff contains only that formatting fix. Guard-source inspection confirms this form is accepted, but execution verification was unavailable: this checkout has no Gradle command or Python check covering KDoc attachment.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "claude/terminal-output-area-160980", "reason": "The branch placed an annotation and its documented property on one line; splitting them fixes the exact attachment issue identified by the guard."}

@@ -278,3 +278,18 @@ tools/katex-bundle/node_modules/
 !src/jvmMain/kotlin/afield/study/build/*.kt
 !src/jvmTest/kotlin/afield/study/build/
 !src/jvmTest/kotlin/afield/study/build/*.kt
+
+# The fixer bench rebuilds each brief from the fixup commit; keep only what AI4 produced.
+dev_docs/ai/ai4_fixer_runs/bench/*/prompt.md
+# These four cases fixed the personal-boundary guard itself; their diffs quote private paths and
+# fixture packages, which PersonalBoundaryTest rightly refuses in tracked files.
+dev_docs/ai/ai4_fixer_runs/bench/023343117-land/fix.diff
+dev_docs/ai/ai4_fixer_runs/bench/023343117/fix.diff
+dev_docs/ai/ai4_fixer_runs/bench/040682d0f-after1/fix.diff
+dev_docs/ai/ai4_fixer_runs/bench/040682d0f-after2/fix.diff
+dev_docs/ai/ai4_fixer_runs/bench/040682d0f-after3/fix.diff
+dev_docs/ai/ai4_fixer_runs/bench/040682d0f-land/fix.diff
+dev_docs/ai/ai4_fixer_runs/bench/36addffcd-land/fix.diff
+dev_docs/ai/ai4_fixer_runs/bench/36addffcd/fix.diff
+dev_docs/ai/ai4_fixer_runs/bench/96753d9c2-land/fix.diff
+dev_docs/ai/ai4_fixer_runs/bench/96753d9c2/fix.diff

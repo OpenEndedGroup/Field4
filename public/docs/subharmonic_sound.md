@@ -1,9 +1,9 @@
 # Subharmonic Synthesis: an Octave Below
 
 A subharmonic synthesizer listens to a line that is already playing and adds a new tone underneath
-it, at half its pitch, or a third, or any fraction you like. Octave-divider pedals do this for bass
-guitar, and dub engineers use it to put weight under a kick drum. It also produces the giant voice
-in every film trailer.
+it: half its pitch, a third, or another fraction you choose. Octave-divider pedals do this for bass
+guitar, and dub engineers use it to put weight under a kick drum. It can make a voice sound enormous,
+too.
 
 Field has three of these trackers in [`Subharmonic.kt`](https://github.com/OpenEndedGroup/field4/blob/main/src/jvmMain/kotlin/afield/audio/synth/Subharmonic.kt).
 This page runs them on a synth bassline, on a kick drum and a pluck from the

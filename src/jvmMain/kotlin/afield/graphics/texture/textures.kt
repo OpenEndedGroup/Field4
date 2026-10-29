@@ -47,6 +47,7 @@ import kotlin.math.sqrt
 
 open class LoadedTexture protected constructor(
     private val sourceName: String,
+    /** The renderer whose device holds the image and whose command pool records the upload. */
     val renderer: Renderer = fromContext(),
     imageFormat: Int = VK_FORMAT_R8G8B8A8_SRGB,
     decoded: DecodedImage,
@@ -66,15 +67,28 @@ open class LoadedTexture protected constructor(
     }
     private data class MipUpload(val level: Int, val width: Int, val height: Int, val bufferOffset: Long)
 
+    /** What the texture was loaded from — a path for a file, or the synthetic name a generated or streamed texture was given. Its last path segment, with the size, is the Vulkan debug label on the image and its view. */
     val fileName: String
+
+    /** Height of mip 0, in pixels, taken from the decoded image. */
     var height = 0
+
     @Suppress("UNNECESSARY_LATEINIT")
     lateinit var image: Image
+
     @Suppress("UNNECESSARY_LATEINIT")
     override lateinit var imageView: ImageView
+
+    /** How many mip levels the image has: the number the decoded source already carried, or else the requested count, which a request of zero or less turns into the full chain for the longest axis. */
     var mipLevels = 0
+
+    /** Width of mip 0, in pixels, taken from the decoded image. */
     var width = 0
+
+    /** Whether the upload and the layout transition into shader-read have been recorded. The recording is gated on it, so the copy happens once however often a frame asks for the texture. */
     var recordedTransition: Boolean
+
+    /** The host-visible staging buffer holding the decoded pixels, the whole mip chain one level after another, until the copy into the image is recorded. It stays allocated after that; `cleanupStgBuffer` releases it. */
     var stgBuffer: VulkanBuffer? = null
     override var defaultSampler: TextureSampler? = null
     private var mipUploads: List<MipUpload> = emptyList()
@@ -786,6 +800,11 @@ open class LoadedTexture protected constructor(
  * - Tearing is acceptable (CPU may write while GPU reads).
  */
 open class StreamingTexture(
+    /**
+     * The buffer each upload reads from, by default: `width * height * bytesPerPixel` bytes from
+     * its current position, which the upload duplicates rather than consumes, so the position is
+     * where you left it. Writing into it between uploads is how the texture changes.
+     */
     val source: ByteBuffer,
     width: Int,
     height: Int,
@@ -1358,12 +1377,22 @@ class MappedMonochromeTexture(
     }
 }
 
-class StorageImage(val renderer: Renderer, val width: Int, val height: Int, val imageFormat: Int) : HasImageView {
+class StorageImage(
+    /** The renderer whose device allocates the image. */
+    val renderer: Renderer,
+    /** Width of the image, in pixels. */
+    val width: Int,
+    /** Height of the image, in pixels. */
+    val height: Int,
+    /** The image's `VK_FORMAT_*`, which a shader writing it has to declare to match. */
+    val imageFormat: Int
+) : HasImageView {
     @Suppress("UNNECESSARY_LATEINIT")
     lateinit var image: Image
     @Suppress("UNNECESSARY_LATEINIT")
     lateinit override var imageView: ImageView
 
+    /** Whether the one transition this image needs, from undefined into the general layout a shader reads and writes it in, has been recorded. */
     var recordedTransition = false
     init {
         var buf: ByteBuffer? = null

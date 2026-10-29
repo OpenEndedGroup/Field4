@@ -1,0 +1,34 @@
+name: assimp_browsing
+description: >
+  Browse a glTF file as Assimp loads it: column() and tree() over the AIScene open its node
+  hierarchy, meshes, materials and animations through the Assimp browsing adapters. No renderer needed.
+operations:
+  - create:
+      box: assimp_scene
+      name: browse a glTF scene
+      frame: {x: 40.0, y: 40.0, w: 420.0, h: 120.0}
+      properties:
+        code: |
+          import afield.graphics.scene.GltfSupport
+
+          // Assimp's view of a glTF file: nodes, meshes, materials, animations
+          val scene = GltfSupport.loadModel("dev_docs/agents/fixtures/path_tracing/transforms.gltf")!!
+          column("columns", scene, width = 1300)
+          tree("tree", scene, width = 700)
+          displayOpen("columns")
+          displayOpen("tree")
+  - execute:
+      box: assimp_scene
+      property: code
+      type: code
+      code: |
+        import afield.graphics.scene.GltfSupport
+
+        // Assimp's view of a glTF file: nodes, meshes, materials, animations
+        val scene = GltfSupport.loadModel("dev_docs/agents/fixtures/path_tracing/transforms.gltf")!!
+        column("columns", scene, width = 1300)
+        tree("tree", scene, width = 700)
+        displayOpen("columns")
+        displayOpen("tree")
+  - wait:
+      millis: 3000

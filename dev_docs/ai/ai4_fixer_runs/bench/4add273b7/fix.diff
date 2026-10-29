@@ -1,0 +1,51 @@
+diff --git a/public/docs/agent_transcripts.md b/public/docs/agent_transcripts.md
+index 11c599747..e092f1ce8 100644
+--- a/public/docs/agent_transcripts.md
++++ b/public/docs/agent_transcripts.md
+@@ -1950,6 +1950,16 @@ you can paste into a shader.
+ 
+ [Open ↗](offline.html?file=assets/agent_transcripts/stacksl_fit_demo/metadata.edn)
+ 
++### contour_trees_explorer
++
++[Merge trees and contour trees](contour_trees.md). The first box shows a landscape of hills and
++hollows with its contour tree's nodes, the regions its arcs stand for, and the tree drawn as a plot,
++with a slider that prunes branches by persistence. The second divides the brightness of the leaf
++print into contour-tree regions, lightly and strongly simplified. Plain Kotlin, no optional
++libraries.
++
++[Open ↗](offline.html?file=assets/agent_transcripts/contour_trees_explorer/metadata.edn)
++
+ ## Service-backed composition scenes
+ 
+ <!-- transcript-index: verified-by = execute -->
+@@ -2432,16 +2442,6 @@ largest blur it survives. Needs the optional Morse–Smale library: `./gradlew b
+ 
+ [Open ↗](offline.html?file=assets/agent_transcripts/tracking_explorer/metadata.edn)
+ 
+-### contour_trees_explorer
+-
+-[Merge trees and contour trees](contour_trees.md). The first box shows a landscape of hills and
+-hollows with its contour tree's nodes, the regions its arcs stand for, and the tree drawn as a plot,
+-with a slider that prunes branches by persistence. The second divides the brightness of the leaf
+-print into contour-tree regions, lightly and strongly simplified. Plain Kotlin, no optional
+-libraries.
+-
+-[Open ↗](offline.html?file=assets/agent_transcripts/contour_trees_explorer/metadata.edn)
+-
+ ## FieldML scenes
+ 
+ <!-- transcript-index: verified-by = compile -->
+diff --git a/public/docs/contour_trees.md b/public/docs/contour_trees.md
+index 6c2188899..b121d5065 100644
+--- a/public/docs/contour_trees.md
++++ b/public/docs/contour_trees.md
+@@ -26,7 +26,7 @@ val tree = ContourTrees.contourTree(field).simplify(persistence = 0.03)
+ val dots = FLine().also { f -> tree.nodes.forEach { f.moveTo(it.x, it.y) }; f.properties["pointed"] = true; f.properties["pointSize"] = 5.0 }
+ val plot = Img(200, 150, 3, FloatArray(200 * 150 * 3)).drawFLines(tree.plot(200.0, 150.0, margin = 15.0), scale = 2.0)
+ showImgGrid(
+-    "field: ${tree.nodes.size} nodes" to field.normalized().colormap("viridis").drawFLines(listOf(dots), scale = 2.0, color = Vec4(1f, 1f, 1f, 1f)),
++    "field: ${tree.nodes.size} nodes" to field.normalized().colormap("viridis").drawFLines([dots], scale = 2.0, color = Vec4(1f, 1f, 1f, 1f)),
+     "regions: ${tree.arcs.size} arcs" to tree.segmentationImage().scaleBy(2.0),
+     "tree" to plot,
+     columns = 3, cellSide = 300,

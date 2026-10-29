@@ -2,8 +2,8 @@
 
 A Field 4 render target can draw straight into a box's output area, next to its code,
 instead of into a separate render window. Frames go from the GPU to the panel without being
-copied back to the CPU or encoded, so a 640×360 view keeps up with the renderer, which is
-85 to 120 frames a second on an Apple silicon Mac.
+copied back to the CPU or encoded. In our 640×360 example on an Apple silicon Mac, the view keeps
+up with the renderer at 85 to 120 frames a second.
 
 !!! note "Field desktop app required"
     The view works in Field's Electron app on macOS and on Linux using native Wayland.

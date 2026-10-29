@@ -185,13 +185,17 @@ class BehaviourCancelled internal constructor(val reason: String) : RuntimeExcep
  * Deterministic like everything else, so [ScriptWorld.eventSignature] is a second, *symbolic* witness
  * to reproducibility beside the numeric [ScriptWorld.state]: two runs can agree on every coordinate
  * and still have made different decisions if the drives happened to cancel out.
- *
- * @property tick the step it was recorded on; 0 means "before the first step"
- * @property actorId the agent it belongs to, or -1 for a world-level event
- * @property kind a short stable tag — `phase`, `phase-end`, `log`, `died`, `failed`
- * @property detail the phase name, message or exception text
  */
-data class ScriptEvent(val tick: Long, val actorId: Int, val kind: String, val detail: String) {
+data class ScriptEvent(
+    /** The step it was recorded on; 0 means "before the first step". */
+    val tick: Long,
+    /** The agent it belongs to, or -1 for a world-level event. */
+    val actorId: Int,
+    /** A short stable tag — `phase`, `phase-end`, `log`, `died`, `failed`. */
+    val kind: String,
+    /** The phase name, message or exception text. */
+    val detail: String
+) {
     override fun toString(): String = "t$tick #$actorId $kind ${if (detail.isEmpty()) "" else detail}".trim()
 }
 
@@ -242,13 +246,11 @@ internal class MotorSet(val speed: Double, val drives: List<WeightedDrive>)
  * agent 1 read agent 0's new position, and the result depends on the iteration order of a collection;
  * with everyone reading the same snapshot it does not, and a `separate()` between two agents is
  * symmetric instead of giving whichever went first the advantage.
- *
- * @property speed the speed the currently-evaluating behaviour asked for — scale desired velocities
- *   by this
  */
 class ScriptSense internal constructor(
     val world: ScriptWorld,
     val self: ScriptActor,
+    /** The speed the currently-evaluating behaviour asked for — scale desired velocities by this. */
     val speed: Double
 ) {
     /** [self]'s position as at the start of this step. */
@@ -326,29 +328,32 @@ fun interface ScriptTarget {
  *
  * Create these with [ScriptWorld.spawn]; the constructor is internal because an agent that is not in
  * a world has nothing to step it.
- *
- * @property maxSpeed hard cap on speed, whatever a behaviour asks for
- * @property steerResponse how much of the gap between current and desired velocity is closed per
- *   step, in `0..1`. 1 is instant turning (correct for a projectile, wrong for anything with inertia);
- *   the default 0.25 gives a visible arc without the overshoot a spring would.
- * @property rng this agent's own random stream, seeded from the world seed and the agent id. Per-agent
- *   rather than shared, so inserting an agent does not reshuffle every other agent's future.
- * @property wallResponse what happens when this agent's swept path meets one of the world's
- *   obstacles. [WallResponse.SLIDE] by default — see `alife_walls.kt`. Irrelevant in a world with no
- *   obstacles, where the integrator does not even look.
- * @property restitution how much of the normal velocity survives a [WallResponse.BOUNCE], in `0..1`.
- *   Ignored by the other two responses.
  */
 class ScriptActor internal constructor(
     val world: ScriptWorld,
     val id: Int,
     x: Double,
     y: Double,
+    /** Hard cap on speed, whatever a behaviour asks for. */
     val maxSpeed: Double,
     val radius: Double,
+    /**
+     * How much of the gap between current and desired velocity is closed per step, in `0..1`. 1 is instant
+     * turning (correct for a projectile, wrong for anything with inertia); the default 0.25 gives a visible arc
+     * without the overshoot a spring would.
+     */
     val steerResponse: Double,
     val tag: String,
+    /**
+     * What happens when this agent's swept path meets one of the world's obstacles: one of [WallResponse]'s
+     * three, `SLIDE` by default. Irrelevant in a world with no obstacles, where the integrator does not even
+     * look.
+     */
     val wallResponse: WallResponse = WallResponse.SLIDE,
+    /**
+     * How much of the normal velocity survives a [WallResponse] `BOUNCE`, in `0..1`. Ignored by the other two
+     * responses.
+     */
     val restitution: Double = 0.8
 ) {
     internal var x: Double = x
@@ -370,6 +375,10 @@ class ScriptActor internal constructor(
     var phase: String? = null
         internal set
 
+    /**
+     * This agent's own random stream, seeded from the world seed and the agent id. Per-agent rather than
+     * shared, so inserting an agent does not reshuffle every other agent's future.
+     */
     val rng: Random = Random(world.seed * -0x61c8864680b583ebL + id * 0x2545f4914f6cdd1dL)
 
     internal val motors = LinkedHashMap<Long, MotorSet>()
@@ -490,42 +499,56 @@ internal class Sleeper(
  * ```
  *
  * The same seed, the same spawns and the same step count give the same [state], bit for bit.
- *
- * @property fixedStep seconds per tick. Also the quantum every [BehaviourScope.wait] is rounded up to,
- *   so it sets the time resolution of every script in the world.
- * @property wrap true for a torus (the metric [BoidFlock] uses, and what `asBoidFlock` assumes);
- *   false to clamp at the walls, which stops agents but does not make them avoid them — that is
- *   [BehaviourSteering.avoidEdges]' job.
- * @property maxParallelPerActor the cap [BehaviourScope.parallel] checks. A behaviour that launches a
- *   sub-behaviour inside a `forever` and never cancels it is the standard way to fill a scheduler with
- *   garbage, and it presents as a gradual slowdown rather than an error. This turns it into an error.
- * @property maxResumptionsPerStep how many behaviour resumptions one step may take before the world
- *   declares a livelock. Catches the two shapes that otherwise hang: a `while (true)` with no `wait`,
- *   and a `wait` short enough to round to zero (it cannot — `wait` has a one-tick floor — but a
- *   hand-rolled `forever` over an empty body would still spin).
- * @property recordTrails whether to accumulate per-agent trails for [trailFLines]. On by default
- *   because the trail is the picture; turn it off for long runs where only the final state matters.
- * @property maxRouteSearchesPerStep how many [BehaviourSteering.route] drives may run a fresh A\*
- *   in one step. A grid search is the one thing in this file that is not `O(1)` per agent, and a
- *   population that all repaths on the same tick is the frame that drops. Agents over the budget
- *   keep steering to the route they already have and try again next step; the budget is spent in
- *   agent-id order, so which agents get it is reproducible.
- * @property maxRouteExpansions cells one A\* may expand before giving up. A search that hits this
- *   returns no route rather than a bad one, and the drive falls back to a direct seek.
- * @property maxNavCells the cap on a [NavGrid]'s cell count. Exceeding it enlarges the cells and
- *   sets [NavGrid.coarse] rather than allocating a grid proportional to the arena.
  */
 class ScriptWorld(
     val width: Double = 200.0,
     val height: Double = 200.0,
+    /**
+     * Seconds per tick. Also the quantum every [BehaviourScope.wait] is rounded up to, so it sets the time
+     * resolution of every script in the world.
+     */
     val fixedStep: Double = 1.0 / 60.0,
     val seed: Long = 1L,
+    /**
+     * True for a torus (the metric [BoidFlock] uses, and what `asBoidFlock` assumes); false to clamp at the
+     * walls, which stops agents but does not make them avoid them — that is [BehaviourSteering.avoidEdges]'
+     * job.
+     */
     val wrap: Boolean = true,
+    /**
+     * The cap [BehaviourScope.parallel] checks. A behaviour that launches a sub-behaviour inside a `forever`
+     * and never cancels it is the standard way to fill a scheduler with garbage, and it presents as a gradual
+     * slowdown rather than an error. This turns it into an error.
+     */
     val maxParallelPerActor: Int = 8,
+    /**
+     * How many behaviour resumptions one step may take before the world declares a livelock. Catches the two
+     * shapes that otherwise hang: a `while (true)` with no `wait`, and a `wait` short enough to round to zero
+     * (it cannot — `wait` has a one-tick floor — but a hand-rolled `forever` over an empty body would still
+     * spin).
+     */
     val maxResumptionsPerStep: Int = 200_000,
+    /**
+     * Whether to accumulate per-agent trails for [trailFLines]. On by default because the trail is the picture;
+     * turn it off for long runs where only the final state matters.
+     */
     val recordTrails: Boolean = true,
+    /**
+     * How many [BehaviourSteering.route] drives may run a fresh A\* in one step. A grid search is the one thing
+     * in this file that is not `O(1)` per agent, and a population that all repaths on the same tick is the
+     * frame that drops. Agents over the budget keep steering to the route they already have and try again next
+     * step; the budget is spent in agent-id order, so which agents get it is reproducible.
+     */
     val maxRouteSearchesPerStep: Int = 8,
+    /**
+     * Cells one A\* may expand before giving up. A search that hits this returns no route rather than a bad
+     * one, and the drive falls back to a direct seek.
+     */
     val maxRouteExpansions: Int = 20_000,
+    /**
+     * The cap on a [NavGrid]'s cell count. Exceeding it enlarges the cells and sets [NavGrid.coarse] rather
+     * than allocating a grid proportional to the arena.
+     */
     val maxNavCells: Int = 40_000
 ) {
     init {

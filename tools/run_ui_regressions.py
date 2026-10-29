@@ -4015,6 +4015,36 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-editor", "@last", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="controls-vec2-keys",
+            description="A vec2 pad takes focus, arrow keys nudge it a step per axis (shift x10), Backspace and double-click reset it, and its angle label agrees in sign with the readout.",
+            commands=[
+                "new-box --name ControlsVec2Keys",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/controls-vec2-keys.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/controls-vec2-keys.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="controls-vec2-fine",
+            description="A shift-drag on a vec2 pad is relative and ten times finer, reaches the Kotlin callback, and a collapsed pad ignores a press.",
+            commands=[
+                "new-box --name ControlsVec2Fine",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/controls-vec2-fine.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/controls-vec2-fine.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="controls-slider-wheel-rerun",
+            description="The wheel steps a focused slider (an unfocused one keeps the canvas scroll), and a drag survives the box re-rendering the slider mid-gesture.",
+            commands=[
+                "new-box --name ControlsSliderWheelRerun",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/controls-slider-wheel-rerun.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/controls-slider-wheel-rerun.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="keyframe-linked-simplify",
             description="The keyframe editor's Simplify slider simplifies lanes that share key times to the same times, and leaves other lanes alone.",
             commands=[

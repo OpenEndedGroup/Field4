@@ -82,6 +82,7 @@ class MorphoNetlist(
         out.copyOf(n)
     }
 
+    /** How many cells survived expansion and optimisation: the length of [activeCells]. */
     val activeCount: Int get() = activeCells.size
 
     /** Active LUT cells. Not the gate count — see [slots]. */

@@ -2058,6 +2058,18 @@ The `#petri` editor extension's id and source.
 
 ## PetriLayoutSolver.kt { #petrilayoutsolver-kt }
 
+The force-directed layout behind `PetriLayout.FORCE`: a spring relaxation run many times from
+different random starts, each scored for legibility, with the best drawing kept.
+
+A spring model settles into *a* local minimum of its own energy, which is not the same thing as
+a drawing you can read: thirty nodes of dining philosophers reach a respectable energy and still
+come out as a hairball. So the energy is not the verdict. Each restart is scored on what makes a
+graph legible, crossings first, then overlapping nodes, then nodes standing on an edge, and the
+best-scoring drawing wins. A restart with none of the three ends the search early.
+
+Random, but repeatable. Every restart is seeded from a hash of the net's own structure, so the
+same net draws the same way on every machine and every run.
+
 `src/jvmMain/kotlin/afield/simulation/petri/PetriLayoutSolver.kt` — [read the source](source/jvmMain/afield/simulation/petri/PetriLayoutSolver/)
 
 ## PetriSmokeTest.kt { #petrismoketest-kt }
@@ -3687,17 +3699,27 @@ The handle for one rope: node indices, the bending projection, and the ties to o
 
 ## FastMechanics.kt { #fastmechanics-kt }
 
+The packed kernel for the membrane energy: [`FastMechanics`](simulation.md#fastmechanics-kt-fastmechanics) computes the same energy and gradient
+as [`Mechanics`](simulation.md#mechanics-kt-mechanics) from flat arrays prepacked once per solve.
+
+[`InflationSolver`](simulation.md#solver-kt-inflationsolver) builds one when [`SolveOptions`](simulation.md#solver-kt-solveoptions) has `fastKernel` set and minimises against it,
+then re-evaluates each step through [`Mechanics`](simulation.md#mechanics-kt-mechanics), so every residual and per-step figure it
+reports comes from the reference kernel. The [`Evaluation`](simulation.md#mechanics-kt-evaluation) returned here carries no [`FilmState`](simulation.md#mechanics-kt-filmstate)
+or [`TapeState`](simulation.md#mechanics-kt-tapestate); per-triangle and per-tape detail exists only on the reference path.
+`PressureTest.materialBranchesForcesAndPackedKernelAgree` holds the two kernels to 1e-7 on
+energy and on every gradient component, across both gas modes and three deformations.
+
 `src/jvmMain/kotlin/afield/simulation/physics/pressure/FastMechanics.kt` — [read the source](source/jvmMain/afield/simulation/physics/pressure/FastMechanics/)
 
 ### FastMechanics { #fastmechanics-kt-fastmechanics }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">FastMechanics</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">model</span><span class="p">:</span><span class="nc">Envelope</span><span class="p">,</span><span class="k">private</span> <span class="k">val</span> <span class="n">load</span><span class="p">:</span><span class="nc">LoadCase</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/physics/pressure/FastMechanics/#L6)
+[<code class="highlight"><span class="k">class</span> <span class="nf">FastMechanics</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">model</span><span class="p">:</span><span class="nc">Envelope</span><span class="p">,</span><span class="k">private</span> <span class="k">val</span> <span class="n">load</span><span class="p">:</span><span class="nc">LoadCase</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/physics/pressure/FastMechanics/#L18)
 
 Per-solve prepacked element data; numeric force path avoids per-element vectors and lists.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="fastmechanics-kt--fastmechanics--evaluate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">x</span><span class="p">:</span><span class="nc">DoubleArray</span><span class="p">,</span><span class="n">fraction</span><span class="p">:</span><span class="nc">Double</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span><span class="p">:</span><span class="nc">Evaluation</span></code>](source/jvmMain/afield/simulation/physics/pressure/FastMechanics/#L31) |  |
+| <a id="fastmechanics-kt--fastmechanics--evaluate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">x</span><span class="p">:</span><span class="nc">DoubleArray</span><span class="p">,</span><span class="n">fraction</span><span class="p">:</span><span class="nc">Double</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span><span class="p">:</span><span class="nc">Evaluation</span></code>](source/jvmMain/afield/simulation/physics/pressure/FastMechanics/#L43) |  |
 
 ## Mechanics.kt { #mechanics-kt }
 
@@ -3923,17 +3945,27 @@ Closed oriented pressure mesh with independent material coordinates and optional
 
 ## NewtonPolish.kt { #newtonpolish-kt }
 
+The optional Newton step that finishes an inflation solve: [`NewtonPolish`](simulation.md#newtonpolish-kt-newtonpolish) takes the positions
+L-BFGS reached and drives the free-node force residual down further.
+
+[`InflationSolver`](simulation.md#solver-kt-inflationsolver) runs it once per pressure step, and only when that residual sits above the
+step's acceptance gate but close to it. Curvature enters as Hessian-vector products built from
+central differences of the gradient, two energy evaluations each, so no Hessian is ever
+assembled. The conjugate-gradient inner solve is preconditioned by the energy diagonal from
+[`MinimumSearch`](simulation.md#minimumsearch-kt-minimumsearch) and truncated at the trust-region boundary or on negative curvature, and anchors
+with no stiffness stay out of the free set. [`SolveOptions`](simulation.md#solver-kt-solveoptions) carries the flag that turns it off.
+
 `src/jvmMain/kotlin/afield/simulation/physics/pressure/NewtonPolish.kt` — [read the source](source/jvmMain/afield/simulation/physics/pressure/NewtonPolish/)
 
 ### NewtonPolish { #newtonpolish-kt-newtonpolish }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">NewtonPolish</span></code>](source/jvmMain/afield/simulation/physics/pressure/NewtonPolish/#L7)
+[<code class="highlight"><span class="k">object</span> <span class="nc">NewtonPolish</span></code>](source/jvmMain/afield/simulation/physics/pressure/NewtonPolish/#L19)
 
 Truncated preconditioned CG in a trust region. A final force correction, not a stability certificate.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="newtonpolish-kt--newtonpolish--improve"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">improve</span><span class="p">(</span><span class="n">model</span><span class="p">:</span><span class="nc">Envelope</span><span class="p">,</span><span class="n">initial</span><span class="p">:</span><span class="nc">DoubleArray</span><span class="p">,</span><span class="n">fraction</span><span class="p">:</span><span class="nc">Double</span><span class="p">,</span><span class="n">options</span><span class="p">:</span><span class="nc">SolveOptions</span><span class="p">,</span> <span class="n">evaluate</span><span class="p">:</span><span class="p">(</span><span class="nc">DoubleArray</span><span class="p">)</span><span class="o">-&gt;</span><span class="nc">Evaluation</span><span class="p">,</span><span class="n">cancelled</span><span class="p">:</span><span class="p">(</span><span class="p">)</span><span class="o">-&gt;</span><span class="nc">Boolean</span><span class="p">,</span><span class="n">trace</span><span class="p">:</span><span class="nc">SolveTrace</span><span class="p">,</span> <span class="n">progress</span><span class="p">:</span><span class="p">(</span><span class="nc">SolveProgress</span><span class="p">)</span><span class="o">-&gt;</span><span class="nc">Unit</span><span class="p">)</span><span class="p">:</span><span class="nc">DoubleArray</span></code>](source/jvmMain/afield/simulation/physics/pressure/NewtonPolish/#L8) |  |
+| <a id="newtonpolish-kt--newtonpolish--improve"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">improve</span><span class="p">(</span><span class="n">model</span><span class="p">:</span><span class="nc">Envelope</span><span class="p">,</span><span class="n">initial</span><span class="p">:</span><span class="nc">DoubleArray</span><span class="p">,</span><span class="n">fraction</span><span class="p">:</span><span class="nc">Double</span><span class="p">,</span><span class="n">options</span><span class="p">:</span><span class="nc">SolveOptions</span><span class="p">,</span> <span class="n">evaluate</span><span class="p">:</span><span class="p">(</span><span class="nc">DoubleArray</span><span class="p">)</span><span class="o">-&gt;</span><span class="nc">Evaluation</span><span class="p">,</span><span class="n">cancelled</span><span class="p">:</span><span class="p">(</span><span class="p">)</span><span class="o">-&gt;</span><span class="nc">Boolean</span><span class="p">,</span><span class="n">trace</span><span class="p">:</span><span class="nc">SolveTrace</span><span class="p">,</span> <span class="n">progress</span><span class="p">:</span><span class="p">(</span><span class="nc">SolveProgress</span><span class="p">)</span><span class="o">-&gt;</span><span class="nc">Unit</span><span class="p">)</span><span class="p">:</span><span class="nc">DoubleArray</span></code>](source/jvmMain/afield/simulation/physics/pressure/NewtonPolish/#L20) |  |
 
 ## ShapeAudit.kt { #shapeaudit-kt }
 

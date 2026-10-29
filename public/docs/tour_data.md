@@ -1,9 +1,12 @@
 # Looking at Data
 
-Field is meant for looking at data while you work on it. This stop takes one small, real dataset
-through the tools you will use most: get the data, browse it with `.h` and `.h2`, see its
-distribution next to the code that made it, plot it with Plotly, and then watch a value that is
-changing too fast to print.
+How is the world divided up by time zone? We'll take the zones already on your machine and look
+at their UTC offsets: first as values, then as a distribution beside the code, then as a plot.
+Along the way you'll use `.h`, `.h2` and Plotly. At the end we'll try a different kind of data:
+a value inside a GPU shader, changing too fast to print.
+
+The time-zone examples run without a GPU. The final probe looks inside a compute shader; you can
+read it as a preview and come back to it after trying [Graphics on the GPU](tour_gpu_graphics.md).
 
 ## Get some data
 
@@ -104,16 +107,15 @@ FLines, so it can sit in the same drawing as your other geometry, use a `Chart`;
 
 ## Probe a live value
 
-Some values cannot be printed at all. The particles of a compute shader live on the GPU, a
-hundred thousand of them, and change every frame. `fieldProbe` is one line in the shader that
-records a value:
+How do you inspect a value inside a compute shader? Its particles live on the GPU, and a hundred
+thousand of them might change every frame. Add `fieldProbe` to the shader to record a value:
 
 ```diffstatic {data-lang=glsl}
 :::static
 fieldProbe(length(delta)); // how far this particle moved this step
 ```
 
-and one line in the box that turns it on and shows what it recorded:
+Then turn the probe on from the box and show what it recorded:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -142,3 +144,5 @@ the same statistics on the GPU and hands them back to the shader.
   typed columns, shown with the same `.h` and `.h2`.
 - The *Drawing From Data* section starts at [Linear Algebra](linear_algebra.md) and goes on to
   functions, signals over time, simulation and spatial data.
+
+Next on the Tour, [Sound](sound.md) turns a pattern into something you can hear.

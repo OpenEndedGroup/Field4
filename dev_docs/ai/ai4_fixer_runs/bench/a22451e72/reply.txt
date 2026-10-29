@@ -1,0 +1,3 @@
+Split `@Volatile` onto its own line above `lastOutputAtMs`; the diff confirms only that formatting change. Source inspection confirms it follows the guard’s attachment rule, but Gradle is unavailable and no Python checker independently covers it, so the gate was not rerun.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "claude/terminal-output-area-160980", "reason": "The branch placed an annotation and its documented declaration on one line; splitting them matches the guard’s explicit requirement, though Gradle verification is unavailable in this checkout."}

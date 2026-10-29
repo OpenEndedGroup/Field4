@@ -1,0 +1,16 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":555,"path":"AGENTS.md","startLine":221}
+[field] ok  RepoReadFileRequest {"endLine":140,"path":"public/docs/presentation_studio.md","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"**/*DocsFenceTreatment*"}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":40,"query":"diffstatic","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":230,"path":"src/jvmTest/kotlin/afield/tools/docs/DocsFenceTreatmentTest.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"tools/test_docs_hooks_fence_markers.py","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"**/AGENTS.md"}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ok  RepoRunCommandRequest {"args":["tools/test_docs_hooks_fence_markers.py"],"command":"python-test","timeoutSec":60}
+[field] ok  RepoPatchFileRequest {"newText":"```diffstatic {data-lang=sh}\n","oldText":"```sh\n","path":"public/docs/presentation_studio.md","replaceAll":true}
+[field] ok  RepoPatchFileRequest {"newText":"```diffstatic {data-lang=json}\n","oldText":"```json\n","path":"public/docs/presentation_studio.md","replaceAll":false}
+[field] ok  RepoRunCommandRequest {"args":["tools/test_docs_hooks_fence_markers.py"],"command":"python-test","timeoutSec":60}
+[field] ok  RepoRunCommandRequest {"args":["--","public/docs/presentation_studio.md"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":67,"path":"public/docs/presentation_studio.md","startLine":1}
+[field] model=openai/gpt-6.1-sol rounds=7/40 wall=39s tokens in=298887 out=853 cacheRead=259322 wrote=['public/docs/presentation_studio.md', 'public/docs/presentation_studio.md'] ran=['git-status  -> 0', 'python-test tools/test_docs_hooks_fence_markers.py -> 0', 'python-test tools/test_docs_hooks_fence_markers.py -> 0', 'git-diff -- public/docs/presentation_studio.md -> 0'] verdict=unchecked error=-

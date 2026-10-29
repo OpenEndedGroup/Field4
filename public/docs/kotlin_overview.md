@@ -414,7 +414,9 @@ val x = 10
 val label = if (x > 0) "positive" else "non-positive"
 ```
 
-Python uses an inline-if expression (`label = "positive" if x > 0 else "non-positive"`). JavaScript, Swift, and C# typically use the ternary operator.
+Python uses an inline-if expression (`label = "positive" if x > 0 else "non-positive"`).
+JavaScript and C# use the ternary operator; Swift has one too, as well as `if` expressions in recent
+versions.
 
 ### Loops and ranges
 
@@ -583,8 +585,6 @@ fun describe(x: Any): String = when (x) {
     else -> "something else"
 }
 ```
-
-Kotlin `when` can match values, ranges, types, and more.
 
 Swift’s closest equivalent is `switch`, which also supports ranges and pattern matching. C# has `switch` expressions with rich pattern matching as well.
 

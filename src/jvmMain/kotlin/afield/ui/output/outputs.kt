@@ -1410,7 +1410,8 @@ private fun buildVec2Html(
     yRange: Pair<Double, Double>,
     step: Double,
     decimalPlaces: Int,
-    initialValue: Vector2f
+    initialValue: Vector2f,
+    defaultValue: Vector2f = initialValue
 ): String {
     val viewSize = 150
     val padding = 10
@@ -1461,6 +1462,9 @@ private fun buildVec2Html(
              data-max-y="${yRange.second}"
              data-x="${initialValue.x}"
              data-y="${initialValue.y}"
+             data-default-x="${clamp(defaultValue.x.toDouble(), xRange)}"
+             data-default-y="${clamp(defaultValue.y.toDouble(), yRange)}"
+             tabindex="0" role="group" aria-label="${label.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")}"
              data-step="$step"
              data-decimal-places="$decimalPlaces"
              data-view-size="$viewSize"
@@ -2426,7 +2430,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
             onUpdate(Vector2f(value))
         }
         val decimalPlaces = calculateDecimalPlaces(step)
-        htmlParts += buildVec2Html(controlId, label, xRange, yRange, step, decimalPlaces, value)
+        htmlParts += buildVec2Html(controlId, label, xRange, yRange, step, decimalPlaces, value, defaultValue = initialValue)
         val control = ControllerControl(
             id = controlId,
             type = "vec2",

@@ -55,11 +55,19 @@ enum class Slot {
  * controllers expose), [RGBW], [RGBWA], a plain [DIMMER], a 16-bit [DIMMER16], [RGB16] with
  * coarse/fine pairs, and [DRGB] (master dimmer then colour). Anything else is
  * `FixtureProfile("my par", listOf(Slot.DIMMER, Slot.RED, …))`.
- *
- * @property gamma exponent applied to every 0..1 level before quantisation; 1.0 is linear. LED
- *   drivers are linear in PWM, so 2.2 makes a ramp look even to the eye.
  */
-class FixtureProfile(val name: String, val slots: List<Slot>, val gamma: Double = 1.0) {
+class FixtureProfile(
+    /** What to call this layout. It appears in [toString] and in a [Fixture]'s; nothing matches on it. */
+    val name: String,
+    /** Which [Slot] sits at each offset from a fixture's start address, in order; 1..512 of them. */
+    val slots: List<Slot>,
+    /**
+     * Exponent applied to every 0..1 level before quantisation; 1.0 is linear. LED drivers are
+     * linear in PWM, so 2.2 makes a ramp look even to the eye. [Fixture] `decode` undoes it, so a
+     * look read back off the wire is comparable with the one sent whatever the gamma.
+     */
+    val gamma: Double = 1.0,
+) {
     init {
         require(slots.isNotEmpty() && slots.size <= 512) { "a fixture has 1..512 slots" }
     }
@@ -73,6 +81,7 @@ class FixtureProfile(val name: String, val slots: List<Slot>, val gamma: Double 
     /** The same layout with a different [gamma]. */
     fun withGamma(gamma: Double) = FixtureProfile(name, slots, gamma)
 
+    /** The profile name and how many slots it occupies. */
     override fun toString() = "FixtureProfile($name, $footprint slots)"
 
     companion object {
@@ -95,10 +104,26 @@ class FixtureProfile(val name: String, val slots: List<Slot>, val gamma: Double 
  * wire until the owning [Patch] is rendered into a [DmxOutput].
  */
 class Fixture(
+    /**
+     * What to call this fixture. The run builders take one name for a whole run and index each
+     * member off it: `strip` and `stripAlong` count from zero as `pixel 0`, and `grid` gives column
+     * and row as `pixel 0,0`.
+     */
     val name: String,
+    /** The channel layout: which [Slot] sits at each offset from [address]. */
     val profile: FixtureProfile,
+    /** Which universe the fixture is in. A [Patch] renders each one into the matching [DmxUniverse]. */
     val universe: Int,
+    /**
+     * 1-based start address, 1..512, as a console and a fixture manual give it. The constructor
+     * refuses an address whose [FixtureProfile.footprint] would run past slot 512, which is why the
+     * run builders roll a long strip over to the next universe rather than straddling the boundary.
+     */
     val address: Int,
+    /**
+     * Where the fixture sits in whatever 2D units the rig is laid out in; the mappers and the
+     * drawing use the same ones. Writable, so a patched rig can still be moved.
+     */
     var position: Vec2,
 ) {
     init {
@@ -212,6 +237,7 @@ class Fixture(
         }
     }
 
+    /** Name, profile, and the slots occupied as `universe/first..last`. */
     override fun toString() = "Fixture($name, ${profile.name} @ $universe/$address..$lastAddress)"
 }
 
@@ -392,6 +418,10 @@ class Patch(val startUniverse: Int = 1) : ToHTML {
         return "<div class='afield-dmx-patch'>$picture<div style='font-family:monospace;font-size:11px'>$summary</div></div>"
     }
 
+    /**
+     * How many fixtures there are, a count per profile name, and the universes they occupy. This is
+     * also the caption under the drawing when a patch is evaluated in a box.
+     */
     override fun toString(): String {
         val byProfile = fixtures.groupingBy { it.profile.name }.eachCount()
         return "Patch(${fixtures.size} fixtures $byProfile, universes $universes)"

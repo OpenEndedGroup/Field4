@@ -1,0 +1,26 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":300,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"tools/*kdoc*"}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":390}
+[field] ok  RepoReadFileRequest {"endLine":185,"path":"src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":410,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":300}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":60,"query":"kdoc","regex":false}
+[field] ok  RepoRunCommandRequest {"args":["-n","3"],"command":"git-log","timeoutSec":10}
+[field] ok  RepoSearchRequest {"glob":"src/**/*.kt","ignoreCase":false,"maxMatches":50,"query":"\\*/\\s*\\n\\s*/\\*\\*","regex":true}
+[field] ok  RepoSearchRequest {"glob":"tools/test_*.py","ignoreCase":false,"maxMatches":100,"query":"KDocAttachment","regex":false}
+[field] ok  RepoRunCommandRequest {"args":["1eff3d30d24e9974b1b521348b66c819fe9d317f","--","src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt"],"command":"git-diff","timeoutSec":1
+[field] ok  RepoReadFileRequest {"endLine":1695,"path":"src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt","startLine":1590}
+[field] ok  RepoReadFileRequest {"endLine":165,"path":"tools/test_check_staged_generated_artifacts.py","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*.py"}
+[field] ok  RepoSearchRequest {"glob":"src/jvmTest/**/*.kt","ignoreCase":false,"maxMatches":30,"query":"STACKED","regex":false}
+[field] ok  RepoWriteFileRequest {"content":"import unittest\nfrom pathlib import Path\n\n\nclass ReferenceKDocAttachmentTest(unittest.TestCase):\n    def test_no_stacked_kdoc(self):\n        s
+[field] ERR RepoRunCommandRequest {"args":["tools/test_reference_kdoc_attachment.py"],"command":"python-test","timeoutSec":60}
+[field] ok  RepoPatchFileRequest {"newText":"    // ── cross-references ────────────────────────────────────────────────────────────────────────\n\n    /**\n     * One published declaration as 
+[field] ok  RepoPatchFileRequest {"newText":"    internal class TypeAnchors(entries: List<AnchorEntry>, private val scopes: Map<String, FileScope> = emptyMap()) {","oldText":"    /**\n     * On
+[field] ok  RepoRunCommandRequest {"args":["tools/test_reference_kdoc_attachment.py"],"command":"python-test","timeoutSec":60}
+[field] ok  RepoRunCommandRequest {"args":["--stat"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":1685,"path":"src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt","startLine":1612}
+[field] ok  RepoReadFileRequest {"endLine":30,"path":"tools/test_reference_kdoc_attachment.py","startLine":1}
+[field] model=openai/gpt-6.1-sol rounds=11/40 wall=83s tokens in=729721 out=3014 cacheRead=656899 wrote=['tools/test_reference_kdoc_attachment.py', 'src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt', 'src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt'] ran=['git-status  -> 0', 'git-log -n 3 -> 0', 'git-diff 1eff3d30d24e9974b1b521348b66c819fe9d317f -- src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt -> 0', 'python-test tools/test_reference_kdoc_attachment.py -> 1', 'python-test tools/test_reference_kdoc_attachment.py -> 0', 'git-diff --stat -> 0', 'git-diff  -> 0'] verdict=unchecked error=-

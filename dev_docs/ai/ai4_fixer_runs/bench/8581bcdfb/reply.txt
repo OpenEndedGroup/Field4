@@ -1,0 +1,3 @@
+Added the missing `python_box_parity` corpus entry in `tools/test_demo_build_scripts.py`; all three tests now pass. The diff is one added line.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "nightly/2026-10-15/1-python-box-parity", "reason": "The branch added a demo but omitted its Python corpus entry; adding that entry makes the previously failing test suite pass."}

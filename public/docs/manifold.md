@@ -1,16 +1,12 @@
 # Solids that cannot fail: Manifold in Field
 
-Field's mesh family makes triangles. [`TriMesh`](mesh_examples.md) generates them, marches them out
-of an SDF, subdivides, smooths, decimates, measures and writes them to disk; the
-[ray tracer](ray_tracing_examples.md) intersects analytic solids; [`FLine`](fline_examples.md) draws
-outlines. What none of them can do is subtract one mesh from another and be certain the answer is
-still a closed solid, which is what you need to make a part.
+Build a part from solid shapes, subtract holes, measure it and slice it into layers. Field's
+[Manifold](https://github.com/elalish/manifold) binding gives you `Solid` for 3D work and `Section`
+for 2D outlines. Its Boolean operations keep the result a closed manifold, including difficult
+cases such as coincident faces.
 
-Coincident faces, near-degenerate triangles and features below the floating-point noise floor are
-what make that hard. [Manifold](https://github.com/elalish/manifold) is a library that handles them,
-and `afield.geometry.solid.manifold` makes it available in a box as `Solid` (3D) and `Section` (2D). Both carry
-KDoc, and the [manifold_solids](agent_transcripts.md) starting point has the examples below ready to
-run. This plate with four bores drilled through it is typical:
+The [manifold_solids](agent_transcripts.md) starting point has the examples below ready to run.
+We'll begin with a plate and drill four bores through it:
 
 ```diffstatic {data-lang=kotlin}
 val plate = Solid.cube(60.0, 40.0, 8.0, center = true)
@@ -50,9 +46,8 @@ the four-bore plate above is genus 4.
 
 ## Booleans
 
-A chain of these cannot stop being a solid without saying so. Note `Solid.union(list)` rather than
-folding `+` (Manifold plans the whole batch instead of nesting *n−1* operations), and
-`Solid.scope { }`, which releases the intermediates instead of leaving them to a `Cleaner`.
+Use `Solid.union(list)` to combine a batch: Manifold can plan the operations together.
+`Solid.scope { }` releases intermediate solids when the block ends.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/booleans.png" alt="an output panel headed 'Four bored bosses and a rounded slot, from eleven Booleans', holding a flat-shaded grey triangle mesh of a rectangular plate seen in perspective. A large rectangular window is cut through the middle, a rounded boss stands at each of the four corners with a cylindrical bore through it, and a rounded slot runs along one side. The corner header reads 3312 tri; the footer reads 1648 verts, 3312 tris, extent 60.000 x 40.000 x 14.000, chi=-8 genus 5, watertight, volume 15420.9314, and beneath it 'genus 5 - 3312 triangles - every step guaranteed closed'" wait="4" capture="box" open-outputs="true" padding="20" requires="manifold" name="booleans" embed=true}
 :::static

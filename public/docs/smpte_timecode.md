@@ -18,8 +18,8 @@ A `Timecode` is a frame count at a `TimecodeRate`: `FPS_24`, `FPS_25`, `FPS_30`,
 29.97 frames a second with drop-frame labels. Adding and subtracting frames is integer arithmetic on
 the count; the hours, minutes, seconds and frame fields are worked out from it.
 
-Counting frames this way is what makes drop-frame simple. NTSC video runs at 30000/1001 frames a second, slightly slower than 30,
-so a clock that labelled 30 frames a second would fall 3.6 seconds behind the wall each hour.
+NTSC video runs at 30000/1001 frames a second, slightly slower than 30. Without drop-frame labels,
+timecode counting 30 frames per second would fall about 3.6 seconds behind the clock each hour.
 Drop-frame keeps up by skipping the labels `;00` and `;01` at the start of every minute except every
 tenth minute. No frames are dropped, only labels. A `;` before the frames marks a drop-frame
 timecode, and `parse` reads it that way:
