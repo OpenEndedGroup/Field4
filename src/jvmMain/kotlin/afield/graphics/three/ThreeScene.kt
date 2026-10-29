@@ -69,7 +69,7 @@ data class ThreeDrawStyle(
     val wireframe: Boolean = false,
     /** Wireframe colour as `[r, g, b, a]` in `[0, 1]`, or `null` for the viewer's default. */
     val wireframeColor: FloatArray? = null,
-    /** Shade per triangle rather than per vertex — a faceted look that shows a coarse mesh instead of smoothing it over. */
+    /** Shade per triangle rather than per vertex: faceted, so a coarse mesh reads as coarse. */
     val flatShading: Boolean = false,
     /** Multiplied into the per-vertex alpha. */
     val opacity: Float = 1f,
@@ -252,9 +252,9 @@ enum class ThreeSurfaceHitKind {
  *
  * # Why the barycentric coordinates are here
  *
- * [u], [v], [w] are the hit's barycentric coordinates in the triangle, summing to 1. They are the only
- * honest way to interpolate anything the mesh carries per vertex — a colour, a UV, a scalar field, a
- * displacement — at the point that was clicked, and they cost nothing to compute once the triangle is
+ * [u], [v], [w] are the hit's barycentric coordinates in the triangle, summing to 1. They are what
+ * interpolates anything the mesh carries per vertex (a colour, a UV, a scalar field, a displacement)
+ * at the point that was clicked, and they cost nothing to compute once the triangle is
  * known. `FLineIntersection`'s `u`/`v` are a *surface parameterisation* of a quad and are a different
  * animal; the names collide because both are "where in the element", and [w] is the tell that this one
  * is barycentric.
@@ -561,13 +561,13 @@ internal val THREE_DEFAULT_SURFACE: FloatArray get() = DEFAULT_SURFACE
 /**
  * This mesh as something the viewer can draw.
  *
- * Mirrors [afield.geometry.mesh.toCapturedMesh]'s preparation exactly, which is the point: the GPU and the
- * CPU renderer must be shading the *same* mesh, so that a difference between their outputs is a
- * difference in shading model and never a difference in input.
+ * Mirrors [afield.geometry.mesh.toCapturedMesh]'s preparation exactly: the GPU and the CPU renderer
+ * must be shading the *same* mesh, so that a difference between their outputs is a difference in
+ * shading model and never a difference in input.
  *
  *  * **Normals.** A mesh with none is run through [shadedNormals] at the same 35° crease angle the
  *    rasterizer uses — so a box stays a box and a cylinder comes out smooth-sided. Doing it here
- *    rather than leaning on three.js's `computeVertexNormals()` is what keeps the two honest;
+ *    rather than leaning on three.js's `computeVertexNormals()` is what keeps the two in agreement;
  *    `computeVertexNormals` is an unconditional smooth average and would round every hard edge off a
  *    cube.
  *  * **Colours.** [TriMesh.colors] when present, else [THREE_DEFAULT_SURFACE].

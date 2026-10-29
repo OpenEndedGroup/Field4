@@ -329,7 +329,10 @@ object VisionPoseStream {
     /** Messages on the channel that were not usable: wrong version, malformed, wrong shape. */
     val rejectedCount: Long get() = rejected.get()
 
-    /** Smoothed arrival interval in milliseconds — what the stream delivers, against the refresh rate the head announced when it said hello. */
+    /**
+     * Smoothed arrival interval in milliseconds, an EWMA over the gaps between arriving frames. This
+     * is the rate the head is delivering, which need not be the rate it advertises.
+     */
     val intervalMillis: Double get() = intervalMillisEwma
 
     /** Heads that have said hello on a still-open session. */
