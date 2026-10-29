@@ -21,6 +21,7 @@ class OutcomeTest(unittest.TestCase):
         self.assertEqual(bench.outcome(row(identical=True)), "identical")
         self.assertEqual(bench.outcome(row()), "check passes")
         self.assertEqual(bench.outcome(row(check_pass=False)), "check red")
+        self.assertEqual(bench.outcome(row(check_pass=False, edited_check=["src/FooTest.kt"])), "edited the check")
         self.assertEqual(bench.outcome(row(controls=False, check_pass=None)), "ungraded")
         self.assertEqual(bench.outcome(row(lander_problem="it deletes a file", identical=True)), "rejected")
         self.assertEqual(bench.outcome(row(ai4_verdict="decline", touched=[])), "declined")

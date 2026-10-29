@@ -1444,6 +1444,9 @@ Hard rules (the lander rejects a fix that breaks them):
   The lander commits your edit itself.
 - Do not edit dev_docs/testing/expected_*.json, tools/check_*.py, tools/land.py, tools/merge_regen.py,
   the git hooks, or the Gradle build files; do not delete files; do not disable or skip a test.
+- Do not clear a finding by widening the guard that made it: no new allowlist entry, exemption, root
+  or known-benign site in the check's own source. Change what it flagged. Adding the row or entry a
+  ledger check asks for (a missing inventory row, a COMPILE_ONLY entry, a corpus name) is not widening.
 - At most {max_files} files and {max_lines} changed lines.
 - The fix must belong to ONE branch below: the one whose change the failure follows from.
 
