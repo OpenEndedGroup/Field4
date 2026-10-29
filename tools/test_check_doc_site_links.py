@@ -82,7 +82,8 @@ class PrefixDerivation(unittest.TestCase):
         site_url, site_dir = read_config(CONFIG)
         # Pinned because the whole guard is meaningless if the site stops being prefixed and
         # nobody notices that the guard silently started checking nothing interesting.
-        self.assertEqual(prefix_from_site_url(site_url), "/Field4/")
+        self.assertEqual(site_url, "https://openendedgroup.com/field4/")
+        self.assertEqual(prefix_from_site_url(site_url), "/field4/")
         self.assertEqual(site_dir, "field4")
 
     def test_config_with_python_tags_is_parsed_without_importing_them(self) -> None:
