@@ -31,11 +31,30 @@ class AudioDecoder(private val audioPath: String) {
     private var frame: AVFrame? = null
     private var resampledFrame: AVFrame? = null
 
+    /**
+     * Index of the stream [open] decodes, or -1 before a successful open. [open] takes the first
+     * stream the container reports as audio, and fails if there is none.
+     */
     var audioStreamIndex: Int = -1
+
+    /**
+     * Sample rate of the source stream in Hz, which need not be the rate of the frames you get:
+     * [open] resamples to the rate it was asked for, and [AudioFrame.sampleRate] reports that one.
+     */
     var sampleRate: Int = 44100
         private set
+
+    /**
+     * Channel count of the source stream, which is likewise the source's and not the output's:
+     * [open] converts to the count it was asked for, and [AudioFrame.channels] reports that one.
+     */
     var channels: Int = 2
         private set
+
+    /**
+     * Length of the audio in seconds, taken from the stream header or, when the stream declares
+     * none, from the container's own duration. 0.0 when neither declares one.
+     */
     var duration: Double = 0.0
         private set
 
@@ -366,9 +385,21 @@ class AudioDecoder(private val audioPath: String) {
  * Data class representing a decoded audio frame in PCM format.
  */
 data class AudioFrame(
-    val data: ByteBuffer,      // PCM audio data (16-bit signed, interleaved)
-    val samples: Int,          // Number of samples per channel
-    val sampleRate: Int,       // Sample rate in Hz
-    val channels: Int,         // Number of channels (1=mono, 2=stereo)
-    val timestamp: Double      // Timestamp in seconds
+    /**
+     * Interleaved PCM samples, signed 16-bit, in native byte order. The decoder owns this buffer
+     * and refills it on the next [AudioDecoder.decodeFrame], so queue or copy the samples before
+     * decoding again.
+     */
+    val data: ByteBuffer,
+    /** Samples per channel in [data], which therefore holds this many times [channels] values. */
+    val samples: Int,
+    /**
+     * Sample rate of [data] in Hz, which is the rate asked of [AudioDecoder.open] rather than the
+     * source's own [AudioDecoder.sampleRate].
+     */
+    val sampleRate: Int,
+    /** Channel count of [data], likewise the count asked of [AudioDecoder.open]: 1 mono, 2 stereo. */
+    val channels: Int,
+    /** When the first sample is heard, in seconds on the source stream's own timeline. */
+    val timestamp: Double
 )
