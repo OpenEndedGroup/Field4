@@ -442,8 +442,10 @@ class KotlinInterface2(
             ?: throwable.javaClass.name
     }
 
-    private fun compilerExceptionDiagnostic(throwable: Throwable): ScriptDiagnostic {
+    private fun compilerExceptionDiagnostic(throwable: Throwable, source: String): ScriptDiagnostic {
         val chain = throwable.causeChain()
+        val boxMemberInClass = SnippetClassReceiverCrash.matches(chain.map { it.message })
+        val site = if (boxMemberInClass) SnippetClassReceiverCrash.locate(source) else null
         val root = chain.lastOrNull() ?: throwable
         val hasImplicitReceiverFailure = chain.any {
             it.message?.contains("SCRIPT_IMPLICIT_RECEIVER") == true ||
@@ -463,6 +465,8 @@ class KotlinInterface2(
                 append(firstMessageLine(root))
             }
 
+            if (boxMemberInClass) append(SnippetClassReceiverCrash.explain(site))
+
             if (hasImplicitReceiverFailure) {
                 append("\n\nK2 could not codegen a named function that captures the script's implicit Box receiver. ")
                 append("Make that receiver explicit, for example `fun Box.show() { ... }`, ")
@@ -475,7 +479,7 @@ class KotlinInterface2(
             message,
             ScriptDiagnostic.Severity.ERROR,
             null,
-            null,
+            site?.let { SourceCode.Location(SourceCode.Position(it.line, it.column)) },
             throwable
         )
     }
@@ -526,7 +530,7 @@ class KotlinInterface2(
                 context.debugScripts.discard(snapshot)
                 lprintln("error,kotlin", "compiler exception while compiling snippet")
                 lprintln("error,kotlin", t.stackTraceToString())
-                r = ResultWithDiagnostics.Failure(compilerExceptionDiagnostic(t))
+                r = ResultWithDiagnostics.Failure(compilerExceptionDiagnostic(t, s))
             }
         }
         compileNanos += ns

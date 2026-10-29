@@ -2362,6 +2362,13 @@ val checkRefactorEngine = tasks.register<Exec>("checkRefactorEngine") {
     commandLine(wrapper + listOf("--no-daemon", "--console=plain", "-p", "tools/refactor-engine", "test", "installDist"))
 }
 
+tasks.register<Exec>("checkDocsPublications") {
+    group = "verification"
+    description = "Checks captured docs against their sources and accounts for every supported publication recipe, without launching Field."
+    workingDir = rootDir
+    commandLine("uv", "run", "--project", ".", "--group", "backdoor", "--frozen", "python", "tools/docs_publications.py", "check")
+}
+
 tasks.register<Exec>("checkPythonTools") {
     dependsOn(checkRefactorEngine)
     group = "verification"
@@ -2507,6 +2514,7 @@ tasks.named("check") {
     dependsOn("checkPythonTools")
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
+    dependsOn("checkDocsPublications")
     dependsOn("checkAgentTranscriptLayouts")
     dependsOn("checkBoxOutputChannels")
     dependsOn("checkCompletionCorpusFixtures")
@@ -2551,6 +2559,7 @@ tasks.register("docsGates") {
     dependsOn("checkSourcePages")
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
+    dependsOn("checkDocsPublications")
     dependsOn("checkAgentTranscriptLayouts")
     dependsOn("checkBoxOutputChannels")
     dependsOn("checkCompletionCorpusFixtures")

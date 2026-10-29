@@ -5803,6 +5803,11 @@ body.mode-editor-only .field-toast {
     pointer-events: none;
 }
 
+/* Hidden from the layers panel's "drawing" row. */
+.field-drawing-layer.field-drawing-hidden {
+    visibility: hidden;
+}
+
 .field-drawing-inactive .layer-ui__wrapper,
 .field-drawing-inactive .App-bottom-bar,
 .field-drawing-inactive .footer-center {
@@ -5991,7 +5996,8 @@ body.mode-editor-only .field-toast {
 .bookmark-options { display: flex; flex-wrap: wrap; gap: 4px 10px; }
 
 /* Layers panel (layersPanel.kt) */
-#layers-panel { width: min(420px, calc(100vw - 20px)); }
+/* Bottom-left, with the history viewer and the macro recorder. */
+#layers-panel { top: auto; right: auto; left: 10px; bottom: 10px; width: min(420px, calc(100vw - 20px)); }
 .layer-row .field-panel-card-head { grid-template-columns: 30px 18px minmax(0, 1fr) 64px auto; }
 .layer-row .field-panel-meta { text-align: right; }
 .field-panel button.layer-eye { width: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; opacity: 0.35; }

@@ -2,7 +2,7 @@
 
 Press `alt/option-D` and the canvas becomes a drawing surface. Press it again and you are back with the boxes.
 
-The drawing surface is [Excalidraw](https://excalidraw.com), the open-source whiteboard ([source on GitHub](https://github.com/excalidraw/excalidraw)), running inside Field and laid over your boxes. It is the whole thing, not a sketch pad built to look like it: pens, shapes, arrows and text in its hand-drawn style, its toolbar and its keyboard shortcuts. What you draw stays where you put it, pans and zooms with the canvas, and is saved with the document.
+The drawing surface is [Excalidraw](https://excalidraw.com), the open-source whiteboard ([source on GitHub](https://github.com/excalidraw/excalidraw)), running inside Field and laid over your boxes. It is the whole thing, not a sketch pad built to look like it: pens, shapes, arrows and text in a plain style (Iosevka text, crisp lines and square corners; the "sloppiness" and font controls bring back the hand-drawn look), its toolbar and its keyboard shortcuts. What you draw stays where you put it, pans and zooms with the canvas, and is saved with the document.
 
 Your code can read the drawing and write to it. Every stroke is data a box can ask about, and every box can draw.
 

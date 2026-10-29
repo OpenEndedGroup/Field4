@@ -365,9 +365,10 @@ object DemoTranscriptExecSmokeTest {
         // Its 3D companion: the same reductions, twenty at once, five terms by four schedulers.
         // EXECUTE for the same reason — the 3D is a Three.js viewer in the box's own output panel
         // (the `three(channel = …)` helper, which `polytope_canonical_gallery` and three other
-        // EXECUTE demos already use headlessly), not a Window and not a Renderer. The box's driver
-        // is its own sleep loop rather than `frames { }`, and it exits when all twenty cells have
-        // landed or after a 2600-frame cap, so it terminates without a render clock.
+        // EXECUTE demos already use headlessly), not a Window and not a Renderer. The box is a
+        // launched `frames { }` loop the runloop steps once per tick (it used to block the runloop in
+        // a sleep loop for over 30 s, which the runaway-box watchdog now interrupts); it ends when all
+        // twenty cells have landed or after a 2600-frame cap and then prints `GRID3D DONE`.
         "confluence_grid",
         // 2026-10-26: reads the checked-in agent eval corpus (src/jvmMain/resources/ai4/) and prints it. Pure CPU.
         "agent_eval_corpus",

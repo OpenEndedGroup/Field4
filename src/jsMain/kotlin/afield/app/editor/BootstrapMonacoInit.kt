@@ -336,7 +336,10 @@ fun monacoInit(monaco: dynamic): dynamic {
     val fontOptions = js("{}")
     fontOptions.fontFamily = "Iosevka Web"
     fontOptions.fontWeight = "300"
-    fontOptions.fontSize = 15
+    // The phone controller's Edit tab is a narrow editor-only projection: 20% smaller text shows more code.
+    val bodyClasses = document.body?.classList
+    val phoneEditor = bodyClasses?.contains("mode-controller-mobile") == true && bodyClasses.contains("mode-editor-only")
+    fontOptions.fontSize = if (phoneEditor) 12 else 15
     fontOptions.fontLigatures = "\"liga\" on, \"calt\" on, \"dlig\" on, \"TXTR\" on"
     fontOptions.margin = "5px"
     ed.updateOptions(fontOptions)

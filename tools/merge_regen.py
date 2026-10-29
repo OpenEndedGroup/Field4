@@ -94,6 +94,14 @@ def regenerate(repo: Path, changed: set[str]) -> tuple[int, set[str]]:
             if roots:
                 _git(repo, "add", "-A", "--", *roots)
 
+    # Run after materialization and outside Gradle: capturing may need its own Field build.
+    if any(g.task == 'checkDocsPublications' for g in guards_for_paths(changed)):
+        code = subprocess.run([sys.executable, str(repo / 'tools/docs_publications.py'), 'sync'], cwd=repo).returncode
+        if code != 0:
+            print('merge_regen: publication refresh failed; merge remains uncommitted', file=sys.stderr)
+            return code, set()
+        _git(repo, 'add', '-A', '--', 'public/docs/assets/web_publications')
+
     # GUARD_CORPORA.md counts corpora across the whole tree, so any merge can move it. Cheap: no Gradle.
     print("merge_regen: regenerating dev_docs/GUARD_CORPORA.md")
     if subprocess.run([sys.executable, str(repo / "tools/guard_corpora.py"), "--write"], cwd=repo).returncode != 0:

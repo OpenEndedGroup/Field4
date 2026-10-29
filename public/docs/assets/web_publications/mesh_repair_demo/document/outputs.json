@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T21:08:41.543Z",
+  "documentName": "mesh_repair_demo",
+  "outputs": [
+    {
+      "uid": "mesh-repair-fix",
+      "channel": "defects",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 474,
+      "height": 293,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "mesh-repair-fix",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 908,
+      "height": 233,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "mesh-repair-diagnose",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 475,
+      "height": 633,
+      "path": "outputs/2.html"
+    }
+  ]
+}

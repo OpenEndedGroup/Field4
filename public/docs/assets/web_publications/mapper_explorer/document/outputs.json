@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T20:53:24.404Z",
+  "documentName": "mapper_explorer",
+  "outputs": [
+    {
+      "uid": "mapper_ring",
+      "channel": "mapper",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 536,
+      "height": 172,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "mapper_ring",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 632,
+      "height": 560,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "mapper_letters",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 523,
+      "height": 270,
+      "path": "outputs/2.html"
+    }
+  ]
+}

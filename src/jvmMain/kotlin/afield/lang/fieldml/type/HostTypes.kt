@@ -588,6 +588,10 @@ object FieldMLHostTypes {
      * violate on its first run. Nullability is not visible to plain reflection (JetBrains'
      * `@Nullable` is `CLASS`-retention), so this is the one place that reaches for `kotlin-reflect`:
      * once per method, cached, and falling back to non-null when the metadata cannot be read.
+     *
+     * A `@JvmOverloads` overload has no metadata of its own (`kotlinFunction` is null), but it returns
+     * what the full function returns, so it borrows the answer from the same-named methods of its
+     * class that return the same erased type. Any one of them being nullable makes it nullable.
      */
     private fun resultTypeOf(method: java.lang.reflect.Method): Type =
         if (returnsNullable(method)) opaque else fieldMLTypeOf(method.genericReturnType)
@@ -596,7 +600,11 @@ object FieldMLHostTypes {
 
     private fun returnsNullable(method: java.lang.reflect.Method): Boolean =
         nullableReturns.getOrPut(method) {
-            runCatching { method.kotlinFunction?.returnType?.isMarkedNullable }.getOrNull() ?: false
+            val own = runCatching { method.kotlinFunction }.getOrNull()
+            if (own != null) return@getOrPut own.returnType.isMarkedNullable
+            method.declaringClass.methods
+                .filter { it != method && it.name == method.name && it.returnType == method.returnType }
+                .any { runCatching { it.kotlinFunction?.returnType?.isMarkedNullable }.getOrNull() == true }
         }
 
     /** Members `hostGet` can read, for completion. Static members when [receiver] is a class handle. */

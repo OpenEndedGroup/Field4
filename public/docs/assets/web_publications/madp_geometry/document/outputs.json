@@ -1,0 +1,139 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T21:01:02.993Z",
+  "documentName": "madp_geometry",
+  "outputs": [
+    {
+      "uid": "breathing_sheet",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 688,
+      "height": 468,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "fungal_tree",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 688,
+      "height": 468,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "spiral_fronds",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 688,
+      "height": 468,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "signal_tear",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 688,
+      "height": 468,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "knot_tube",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 688,
+      "height": 468,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "city_blocks",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 688,
+      "height": 468,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "triangle_lesson",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 688,
+      "height": 468,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "crystal_bloom",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 688,
+      "height": 468,
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "lathe_vessel",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 688,
+      "height": 468,
+      "path": "outputs/8.html"
+    },
+    {
+      "uid": "ripple_terrain",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 688,
+      "height": 468,
+      "path": "outputs/9.html"
+    },
+    {
+      "uid": "menger_lesson",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 688,
+      "height": 468,
+      "path": "outputs/10.html"
+    }
+  ]
+}

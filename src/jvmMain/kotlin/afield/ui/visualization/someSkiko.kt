@@ -133,6 +133,7 @@ fun linesToHTML(
  * @param onEditCommitted With [editable], receives detached copies of the lines each time a drag
  *   finishes. Keep it short; it runs on the server's message thread.
  */
+@JvmOverloads
 fun Box.lines(
     vararg m: FLine,
     channel: String = "lines",
@@ -169,6 +170,7 @@ fun Box.lines(
  * @param onEditCommitted With [editable], receives detached copies of the lines each time a drag
  *   finishes. Keep it short; it runs on the server's message thread.
  */
+@JvmOverloads
 fun Box.lines(
     m: List<FLine>,
     channel: String = "lines",
@@ -203,6 +205,7 @@ fun Box.lines(
  * @param splitByChannel If true, each map entry is displayed in its own channel key.
  * @param channel When [splitByChannel] is false, all lines are combined and displayed here.
  */
+@JvmOverloads
 fun Box.lines(
     linesByChannel: Map<String, List<FLine>>,
     w: Double = -1.0,

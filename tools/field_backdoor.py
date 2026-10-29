@@ -3691,6 +3691,10 @@ def build_command_parser() -> argparse.ArgumentParser:
     page_eval.add_argument("--wait-ms", type=float, default=0.0)
     page_eval.add_argument("--timeout", type=float)
 
+    publication = subparsers.add_parser("publish-document", add_help=False)
+    publication.add_argument("path", help="New .zip file for a static web publication of the current document")
+    publication.add_argument("--timeout", type=float, default=180.0)
+
     click_box = subparsers.add_parser("click-box", add_help=False)
     click_box.add_argument("uid")
     click_box.add_argument("--wait-ms", type=float, default=0.0)
@@ -4997,6 +5001,11 @@ async def dispatch_command(
         if args.save and data.get("ok"):
             Path(args.save).write_text(json.dumps(data.get("result"), indent=2))
         return command_result(command_line, bool(data.get("ok")), data=data, events=[])
+
+    if args.command == "publish-document":
+        from field_publication import publish_document
+        data = await publish_document(client, args.path, timeout=args.timeout)
+        return command_result(command_line, True, data=data, events=[])
 
     if args.command == "page-eval":
         if (args.script is None) == (args.file is None):

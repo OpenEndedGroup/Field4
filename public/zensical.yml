@@ -246,6 +246,7 @@ nav:
       - Geometry From Disk (OBJ, STL, PLY, glTF): geometry_from_disk.md
       - Polytopes & the Conway Algebra: polytope_examples.md
       - Typography as Geometry: typography_examples.md
+      - Euclid's Elements: euclid_elements.md
       - Voronoi, Contours & Clusters: spatial_geometry_examples.md
       - Linear Programs as Curves: lp_curves.md
     # sound.md is the Tour's sound stop, so this group starts at the pattern language that feeds
@@ -593,6 +594,7 @@ extra_javascript:
   - assets/sticky-headings.js
   - assets/lesswrong-rail.js
   - assets/image-lightbox.js
+  - assets/transcript-viewer.js
   - assets/code-diff-player/fence-upgrade.js
   - assets/code-diff-player/code-diff-player.js
   - assets/code-diff-player/field-doc-export.js

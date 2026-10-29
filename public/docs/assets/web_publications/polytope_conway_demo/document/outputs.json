@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T21:05:11.028Z",
+  "documentName": "polytope_conway_demo",
+  "outputs": [
+    {
+      "uid": "polytope_selective_kis",
+      "channel": "polytope",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 480,
+      "height": 568,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "polytope_selective_kis",
+      "channel": "inspection",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 274,
+      "height": 781,
+      "path": "outputs/1.html"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+name: pad_scrub
+description: >
+  One box whose code holds a single number, for the Pad video in
+  `public/docs/mobile_controllers.md`: the phone's Pad replaces the number under the desktop
+  editor's cursor and the box re-runs, displaying the new value. Capture-only, so it lives under
+  transcripts/docs_capture/.
+operations:
+  - create:
+      box: pad_box
+      name: brightness
+      frame: { x: 440.0, y: 80.0, w: 200.0, h: 80.0 }
+      properties:
+        code: |
+          val brightness = 0.50
+
+          display("main", "<div style='font:600 28px sans-serif;padding:12px;color:#fff;background:rgb(${(brightness * 255).toInt()},${(brightness * 160).toInt()},40)'>brightness $brightness</div>")
+  - execute: { box: pad_box, property: code }
+  - await: {}
+  - wait:
+      millis: 800

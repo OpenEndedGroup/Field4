@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T17:38:24.147Z",
+  "documentName": "audio_ai_analysis",
+  "outputs": [
+    {
+      "uid": "analysis_guide",
+      "channel": "guide",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 461,
+      "height": 709,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "analysis_guide",
+      "channel": "all durable jobs",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 768,
+      "height": 438,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "analysis_visualizer_gallery",
+      "channel": "source",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 309,
+      "height": 40,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "analysis_visualizer_gallery",
+      "channel": "analysis board",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "width": 1052,
+      "height": 1117,
+      "path": "outputs/3.html"
+    }
+  ]
+}

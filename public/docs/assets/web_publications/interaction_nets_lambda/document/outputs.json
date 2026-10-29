@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T21:02:36.525Z",
+  "documentName": "interaction_nets_lambda",
+  "outputs": [
+    {
+      "uid": "lambda_reduction",
+      "channel": "reduction",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 2385,
+      "height": 2240,
+      "path": "outputs/0.html"
+    }
+  ]
+}

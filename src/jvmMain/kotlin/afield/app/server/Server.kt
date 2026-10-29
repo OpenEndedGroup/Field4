@@ -3567,6 +3567,13 @@ class Server {
                 Handled.yes
             })
 
+            handlers["export-web-document"] = mutableSetOf({ _, reply ->
+                reply(Message("export-web-document").payload(
+                    afield.document.workspace.exportWebDocument(thisSessionInfo.get())
+                ))
+                Handled.yes
+            })
+
             handlers["paste-boxes"] = mutableSetOf({ message, reply ->
                 val req = Json.decodeFromJsonElement<PasteBoxes>(message.payload!!)
                 val info = thisSessionInfo.get()

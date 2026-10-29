@@ -911,7 +911,7 @@ file Assimp reads), and `column(...)` or `tree(...)` lists its root node with it
 children, then its meshes, materials and animations. A `GltfModel` loaded for drawing browses as its
 meshes, each with its buffers, material, texture slots and transform.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 import afield.graphics.scene.GltfSupport
 
 val scene = GltfSupport.loadModel("dev_docs/agents/fixtures/path_tracing/transforms.gltf")!!

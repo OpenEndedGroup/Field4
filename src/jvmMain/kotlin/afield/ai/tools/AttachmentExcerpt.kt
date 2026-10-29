@@ -14,10 +14,16 @@ internal fun AttachmentResponse.excerpt(request: AttachmentRequest): AttachmentR
     fun splitsPair(at: Int) = at > 0 && at < content.length &&
         content[at - 1].isHighSurrogate() && content[at].isLowSurrogate()
     require(!splitsPair(request.offset)) { "offset splits a Unicode character; use the previous nextOffset" }
-    val match = request.find.takeIf { it.isNotEmpty() }?.let { content.indexOf(it, request.offset) }
+    // From offset, then from the start: a model that guessed an offset past the text (2026-10-28, offset
+    // 8000 for a declaration at 3054) got an empty excerpt for text the file does contain.
+    val match = request.find.takeIf { it.isNotEmpty() }?.let { find ->
+        content.indexOf(find, request.offset).takeIf { it >= 0 } ?: content.indexOf(find)
+    }
+    fun lineAt(at: Int) = 1 + (0 until at).count { content[it] == '\n' }
     if (match == -1) return copy(content = "", offset = request.offset, totalChars = content.length,
-        sourceHash = hash, nextOffset = null, isExcerpt = true, searchMatched = false, matchOffset = null)
-    var start = if (match != null) (match - minOf(1000, request.maxChars / 4)).coerceAtLeast(request.offset) else request.offset
+        sourceHash = hash, nextOffset = null, isExcerpt = true, searchMatched = false, matchOffset = null,
+        startLine = lineAt(request.offset), nearMatches = nearMatches(content, request.find))
+    var start = if (match != null) (match - minOf(1000, request.maxChars / 4)).coerceAtLeast(minOf(request.offset, match)) else request.offset
     if (splitsPair(start)) start--
     var end = (start.toLong() + request.maxChars).coerceAtMost(content.length.toLong()).toInt()
     if (splitsPair(end)) end--
@@ -26,6 +32,21 @@ internal fun AttachmentResponse.excerpt(request: AttachmentRequest): AttachmentR
         totalChars = content.length, sourceHash = hash,
         nextOffset = end.takeIf { it < content.length },
         isExcerpt = start != 0 || end != content.length,
-        searchMatched = match?.let { true }, matchOffset = match
+        searchMatched = match?.let { true }, matchOffset = match,
+        startLine = lineAt(start), matchLine = match?.let(::lineAt)
     )
+}
+
+/**
+ * On 2026-10-28 a local model asked for `fun drawn(` (the declaration is `fun Shape2.drawn(`) and then
+ * guessed `penFor(`, getting an empty excerpt each time. The longest identifier in the search text
+ * usually survives the misremembering, so show where it does occur.
+ */
+private fun nearMatches(content: String, find: String, limit: Int = 8): List<String> {
+    val word = Regex("[A-Za-z_][A-Za-z0-9_]{2,}").findAll(find).map { it.value }.maxByOrNull { it.length } ?: return emptyList()
+    return content.lineSequence().withIndex()
+        .filter { (_, line) -> line.contains(word) }
+        .take(limit)
+        .map { (i, line) -> "${i + 1}: ${line.trim().take(160)}" }
+        .toList()
 }

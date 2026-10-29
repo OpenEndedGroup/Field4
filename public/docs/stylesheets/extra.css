@@ -10,6 +10,26 @@
    two; without them all of that was faux-bold. */
 @import url("fonts.css");
 
+/* A gallery document opens beside its entry, using the space beyond the reading column. */
+html.field-transcript-open { overflow-x:auto !important; }
+html.field-transcript-open body { overflow-x:visible !important; }
+.md-content__inner:has([data-field-transcript-gallery]) p:has(> a[href*="offline.html?file=assets/agent_transcripts/"]) {
+    text-align:right;
+}
+.field-transcript-viewer {
+    position:absolute; z-index:8; display:flex; flex-direction:column;
+    width:clamp(600px,55vw,960px); height:min(780px,calc(100vh - 96px)); min-height:360px;
+    background:#080808; border:1px solid #333; border-radius:5px;
+    scroll-margin-top:72px; scroll-margin-right:24px;
+    font:12px "Iosevka Web",monospace; color:#ccc;
+}
+.field-transcript-viewer__header { display:flex; align-items:center; gap:12px; padding:6px 10px; }
+.field-transcript-viewer__header span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.field-transcript-viewer__header a, .field-transcript-viewer__header button { color:#aaa; background:none; border:0; padding:0 4px; font:inherit; font-size:18px; cursor:pointer; text-decoration:none; }
+.field-transcript-viewer__header a:hover, .field-transcript-viewer__header button:hover { color:#fff; }
+.field-transcript-viewer iframe { display:block; width:100%; flex:1; min-height:0; border:0; }
+.field-transcript-viewer--below { position:relative; width:100%; margin:12px 0 24px; }
+
 /* ── palette ─────────────────────────────────────────────────── */
 :root {
     --mono-bg: #0e0e0e;
@@ -1175,6 +1195,10 @@ button.md-search__icon[aria-label="Clear"] {
 
 .field-reading-rail.is-hidden {
     display: none;
+}
+
+.field-reading-rail.is-obscured {
+    visibility: hidden;
 }
 
 .field-reading-rail__progress {

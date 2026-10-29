@@ -267,6 +267,15 @@ prints its own JSON object**, concatenated with no enclosing array. `json.load` 
 whole stream raises `Extra data`. Decode it as a sequence with
 `json.JSONDecoder().raw_decode` in a loop, or pass one `--command` per invocation.
 
+## Web publication
+
+`publish-document <path.zip> [--timeout 180]` captures the current browser's rendered output
+channels and packages them with the document, notes, code and offline viewer. Open Playwright
+before running the boxes. The command uses the same publisher as the palette's
+**Publish document for the web (.zip)**, refuses an existing destination, and reports capture
+warnings per channel. It never re-runs boxes. See [Offline output publication](../OFFLINE_PUBLICATION.md)
+for the format and the independent browser verification.
+
 ## Session and execution contracts
 
 - Scratch is the default and is scoped to one `field_backdoor.py` process.
@@ -400,9 +409,18 @@ What each family actually captures:
   Chromium's `Page.captureScreenshot`; the docs fence attribute is `scale="3"`.
 - `native-screenshot`: the native renderer window rather than browser DOM. Needs a
   live native renderer, so `wait-native-renderer <uid> --frames 3` first.
-- `page-eval`: JSON-serializable DOM probes. Use `--file` for anything with
-  meaningful quoting; `--body` needs an explicit JavaScript `return` (without one the
-  result carries a `warnings` entry and a stderr line, since it will be null).
+- `page-eval`: run JavaScript in the Field page and get a JSON-serializable result back
+  (`data.result`). This is how to drive frontend UI that has no backdoor verb: dispatch a
+  `KeyboardEvent` on `window` for a shortcut, click a button, read `getBoundingClientRect()`.
+  Use `--file` for anything with meaningful quoting. A file is still an *expression* unless
+  you add `--body`, so a multi-statement file needs `page-eval --body --file <path>`
+  ("Illegal return statement" means `--body` is missing). `--body` needs an explicit
+  JavaScript `return` (without one the result carries a `warnings` entry and a stderr line,
+  since it will be null). The body is not async: to `await`, write
+  `return (async () => { ...; return {...}; })();` and the promise is awaited for you.
+  Example: `page-eval --body --file probe.js` then `screenshot-window out.png`.
+  `@JsExport` functions are module exports, not `window` globals, so reach them through
+  their key chord or palette action rather than calling them by name.
 
 - `canvas-flight`: flies the canvas through bookmarks (names or slots), live in the document's
   windows, or with `--record <mp4>` filmed frame by frame: the flight's clock is set per frame and
