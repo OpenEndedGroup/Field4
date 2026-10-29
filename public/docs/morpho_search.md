@@ -1,16 +1,16 @@
 # Searching for MorphoHDL Circuits
 
-[MorphoHDL](morpho_examples.md) circuits can be written by hand, or searched for: you say what a
-circuit should compute, and Field generates MorphoHDL programs until one does. `afield.lang.morpho` has
-the pieces:
-`MorphoSpec` / `MorphoEvaluator` (what a circuit should compute, at which widths, and what it
-costs), `MorphoGenome` / `MorphoProgramGenerator` (candidate programs, and small changes to them),
-and `MorphoSearch` (random sampling, hill climbing, a (μ+λ) population, and a width curriculum).
+Describe what you want a circuit to compute and Field can search for a
+[MorphoHDL](morpho_examples.md) program that does it. The result is source code you can read, edit
+and run in a Morpho box.
 
-The genome is **MorphoHDL source text**. Every candidate is compiled by upstream's own
-`compileModule()` and run by `MorphoSim`. A search result is a program you can read and paste into a
-morpho box, and the search is optimising against MorphoHDL itself rather than against Field's idea
-of it.
+The search tools live in `afield.lang.morpho`. `MorphoSpec` and `MorphoEvaluator` describe and
+check the task; `MorphoGenome` and `MorphoProgramGenerator` produce candidates and variations;
+`MorphoSearch` offers random sampling, hill climbing, a (μ+λ) population and a width curriculum.
+
+The genome is **MorphoHDL source text**. Every candidate is compiled by MorphoHDL's own
+`compileModule()` and run by `MorphoSim`. What the search finds is the program itself, ready to
+read, change or paste into a Morpho box.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/search-control.png" wait="40.0" timeout="360" capture="box" open-outputs="true" padding="20" name="morpho-search-control"}
 :::static
@@ -89,9 +89,9 @@ a bit-error rate of 0.125: that is `sum = Xor3(a, b, c)` with `c_out = And(a, b)
 the eight truth-table rows and one gate swap short. Evolution finds it every time, in 165 to 1152
 invocations. Same generator, same seeds, same budget: the only difference is selection.
 
-**And it is the only row where selection helps.** On the two reductions, random sampling matches
-evolution (3/5 each) and hill climbing finds nothing at all: it converges on a two-gate design
-that is 3% wrong and cannot get off it. Those spaces are small enough that sampling them is a
+In these runs, the full adder is the only row where selection helps. On the two reductions, random
+sampling matches evolution (3/5 each) and hill climbing finds nothing at all: it converges on a
+two-gate design that is 3% wrong and cannot get off it. Those spaces are small enough that sampling them is a
 perfectly good algorithm.
 
 **Or-reduce cannot be done without recursion**, which is what makes it the positive result.

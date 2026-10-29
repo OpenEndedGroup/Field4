@@ -1,27 +1,18 @@
 # Running code in a box
 
-This page is about what Field does behind the scenes when you run a box. You do not need it to
-start writing boxes. It is for when something that looks like an ordinary call turns out not to be
-one, or when a child box cannot see a value its parent set.
+A box can run a line, a selection, or a whole program; it can also keep code running in Field's
+animation loop. Once you've tried the shortcuts, you may want to know how fragments find their
+variables, how boxes share values, or why a familiar-looking call behaves differently in Field.
+This page takes you through what happens when code runs.
 
-- **Running versus launching.** `alt/option-enter` runs a selection, a line, or its outer enclosing block;
-  `alt/option-0` runs everything in the box; `alt/option-click` and `alt/option-up` *launch* it, and `alt/option-1` relaunches
-  just the code `alt/option-enter` would run, without rerunning the rest of the box. Running evaluates and
-  stops. Launching gives the code a
-  chance to put something into the animation loop and keep going. The keys themselves, the `?`
-  cheat sheet and the `ctrl/command-shift-P` palette are in the [Survival Guide](survivalGuide.md).
-- **What happens between the keystroke and the compiler** — fragments, macro expansion, the
-  preamble, inheritance from parent boxes, `@exported` — is the rest of this page.
-- **What happens after the last line evaluates**, when what you returned is a `Frames`, is
-  [Frames and the animation loop](animation_time_model.md). Launching a box is exactly the case where
-  that page takes over from this one.
-- **When a value comes from a box you did not expect**, [Why does this value resolve
-  here?](why.md) asks Field which box supplied it and by what path. It is the inheritance walk
-  described below, reported for one name.
+We'll start with the shortcuts for running part or all of a box, then follow the code through
+fragments, macros and the preamble that lets boxes share values. If you're looking for a quicker
+introduction, try the [Tour](funFeatures.md) or the [Survival Guide](survivalGuide.md).
 
-For a friendly tour of `connect` / `prop` / `once` in use, rather than in mechanism, read the
-[Feature Overview](funFeatures.md); for the graphics-box API on top of all this, see
-[Field 4 Graphics](afield_four_graphics.md). This page is the layer underneath both.
+For code that keeps running, [Frames and the animation loop](animation_time_model.md) picks up
+where this page leaves off. To find where an inherited value came from, try
+[Why does this value resolve here?](why.md). The graphics APIs built on these ideas are in
+[Field 4 Graphics](afield_four_graphics.md).
 
 ---
 
@@ -176,7 +167,8 @@ Expansion produces an **`Insert`** with three parts that matter:
 The expander walks your code's syntax tree, asks the macro registry to rewrite each recognised call, and applies the edits. Two consequences follow from that:
 
 - **Macro expansion is not pure.** Besides rewriting text, it mutates box state. `moduleHere { }`, for instance, seeds the box's `vertex`/`fragment` shader properties and *compiles those shaders* during expansion (it needs the shader interface to generate typed accessors — see **Generated GLSL accessors** below). This is why the ordering of `//%-` fragments matters (see **The `//%-` fragment break** below).
-- **A macro's output lands in the preamble**, so it becomes available not just to the rest of your code but — if tagged for inheritance — to child boxes too.
+- **A macro's output lands in the preamble**, making it available to the rest of your code and,
+  when tagged for inheritance, to child boxes too.
 
 ### `sourceBlock` and `interpolant`: code that keeps its own source
 
@@ -242,7 +234,7 @@ val Why.savemarker by Whying() /**/
 - **Reading** `savemarker` returns this box's value if set, otherwise walks *up the box graph* to the first ancestor that has one (that is what `Inheritance` does — see **Property inheritance** below).
 - **`why.savemarker`** says which box that value came from; see [Why does this value resolve here?](why.md).
 
-The name is written unquoted: it is a name, not a string.
+Write the name without quotes, as in the example.
 
 ### `once`: fill the slot the first time
 
@@ -304,8 +296,8 @@ you; it changes nothing. It saves keeping that code commented out and uncommenti
 
 ### `flipbox`: a block with a checkbox
 
-A `flipbox` sits between `once` and `aside`: a block you switch on and off with a checkbox. Press ctrl/command-shift-. to insert a marker (drawn
-as a single rune), then write `.flipbox(true) { … }` after it:
+A `flipbox` is a block you switch on and off with a checkbox. Press ctrl/command-shift-. to insert
+a marker (drawn as a single rune), then write `.flipbox(true) { … }` after it:
 
 ```diffstatic {data-lang=kotlin}
 __m("Zk3q-a1").flipbox(true) {
@@ -411,7 +403,7 @@ pass it in, rather than looking it up inside a block that may run after the box 
 
 ### When a lookup fails
 
-Three different failures, and the message says which one you have.
+The error message can help you tell these three failures apart.
 
 **`Unresolved reference 'petals'`** is a compile error: no box above this one declares `petals`.
 The box is not connected where you think it is, or the declaring box uses another name.
@@ -468,7 +460,9 @@ Three variants set **where** the accessor goes:
 
 That makes `@rootExported`/`@metarootExported` the tidy way to define a helper once and share it across boxes.
 
-`prop` and `@exported` are two front-ends to the same back-end: both write a ` /**/`-tagged `Inheritance…` accessor into the preamble, and both rely on the graph-walking delegate to resolve the value at read time. `prop` is a macro for a *value slot* you assign; `@exported` promotes *declarations you already wrote*.
+Both `prop` and `@exported` write a ` /**/`-tagged `Inheritance…` accessor into the preamble, and
+both resolve the value by walking the graph when you read it. Use `prop` to make a slot you can
+assign; use `@exported` to share a declaration you have already written.
 
 ---
 

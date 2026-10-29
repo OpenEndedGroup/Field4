@@ -4,6 +4,10 @@ Field is distributed as source. The checkout is the installation; the launcher d
 Java and Node runtimes, builds Field, and opens the desktop app. You do not need to install Java,
 Gradle, Node, Python, an AI API key, or the optional submodules to get started.
 
+Once Field opens, [Your First Five Minutes](first_steps.md) takes you from the Welcome page to a
+moving drawing you can edit. If you are choosing a machine or troubleshooting an installation,
+the platform requirements and recovery steps are on this page.
+
 ## Before cloning
 
 Install **Git and Git LFS**, and run `git lfs install` before cloning. The compiler fork is stored
@@ -15,9 +19,9 @@ caches and build output, and **16 GB of RAM**. The Kotlin compiler is allowed a 
 desktop and graphics work on 8 GB machines has not been tested.
 
 The first launch needs internet access to download dependencies and compile the project; allow
-20–25 minutes, depending on your machine and connection. Later launches reuse the
-downloads and compiled code. A Gradle task that runs for a long time is normal; `BUILD FAILED` is
-not.
+20–25 minutes, depending on your machine and connection. Later launches reuse the downloads and
+compiled code. A long-running Gradle task is normal on the first launch. If you see `BUILD FAILED`,
+check the first error in the terminal.
 
 <div class="field-data-table" markdown>
 

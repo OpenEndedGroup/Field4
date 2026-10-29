@@ -862,7 +862,7 @@ movement becomes 9, and the pitch-class sets are identical.
 
 ## A rhythm as a curve — and as a graph you can fit
 
-A pattern schedules *events*. Sometimes what you want from those events is not a note but a
+A pattern schedules *events*. Sometimes you want those events to trigger something other than a note, such as a
 **continuous curve**: an envelope to drive a parameter, a gesture to animate something with.
 `patFn` does that: each event becomes a little kernel, and the value at any time is the
 blend of the kernels around it. The kernel is chosen per atom, and its numbers are written

@@ -10,9 +10,8 @@ The simplest box starts your login shell in the document's directory:
 terminal()
 ```
 
-The process belongs to Field, not to the page. Closing the panel or reloading the page leaves it
-running, and opening it again shows everything it printed. The **Kill** button in the panel's
-header ends it.
+Closing the panel or reloading the page leaves the process running. Open the panel again to see
+its output, or use **Kill** in the header to end it.
 
 ## Running a program
 

@@ -1,14 +1,12 @@
 # Your History with Field
 
-Field remembers what you did, and each part remembers it differently. Saved versions of a
-document stay on disk, so you can take the whole document back to an earlier save, or scrub one
-line back through its versions without leaving the editor. A running box can keep a short
-in-memory window of the values it produced. Every send to AI4 leaves a log of the tools it called,
-and Field can read those logs back to suggest how the agents should work next time. The semantic
-index keeps the workspace code it last indexed, arranged by what the code does, so you can find it
-again by describing it.
+Want to get back to an earlier version of a document, or see what a line of code looked like
+before you changed it? Field keeps saved versions on disk, and lets you browse them without leaving
+the editor. A running box can also keep a short in-memory history of the values it produces.
 
-Each keeps its own record, for its own length of time. The tools:
+There are other ways back into your work, too. AI4 records its tool calls, which Field can use to
+suggest improvements for future work. The semantic index helps you find indexed workspace code by
+describing what it does. Each of these tools keeps its own record:
 
 - **[Document history](document_history.md)** — every earlier save of a document as a timeline; put back the whole document or just the boxes you pick, and compare any save with now.
 - **[Inline history: Code History](history_lens.md)** — scrub a single line or selection back through its versions without leaving the editor.

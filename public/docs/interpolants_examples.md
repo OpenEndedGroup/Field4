@@ -1,15 +1,11 @@
 # Values over time: interpolants & keyframes
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`interpolants.kt`](reference/math.md#interpolants-kt), [`keyframer.kt`](reference/graphics.md#keyframer-kt). Start from [what's already in the box](reference/index.md).*
+A value can ease towards its target instead of jumping there. That makes a control feel different
+to drag, and the same idea can morph a whole set of parameters between saved looks. You can also
+follow the relationship between two signals as it changes over time.
 
-Some values are supposed to *move* rather than jump. The simplest case is a
-single control that eases towards its target instead of snapping to it, so that
-when you drag it the result feels like aiming at a value rather than setting one.
-The same idea scales up to a whole parameter state morphing between two saved
-looks, and out again to a relationship between two signals drifting as they play.
-This page collects the tools for all three and draws the motion in each, with a
-`showSignals` plot where the value is a signal over time and an `FLine` where the
-shape is spatial.
+The examples draw each of these: `showSignals` plots values over time, while `FLine`s show motion
+in space.
 For recovering a hidden value from noisy measurements, see
 [State estimation](state_estimation_examples.md). To draw a value over time by
 hand rather than ease it from code, see [The keyframe editor](keyframe_editor.md).
@@ -178,8 +174,8 @@ markdown(
 
 ![Step-based versus time-based smoothing under an uneven sampling cadence](assets/interpolants_examples/smooth_duration.png)
 
-The orange trace arrives as soon as 140 calls have happened; the green trace
-arrives at the requested duration whatever the cadence. The example passes in its own clock, so
+The orange trace arrives after 140 calls; the green trace reaches the target on the first read at
+or after the requested duration. The example passes in its own clock, so
 the uneven cadence is the same on every run. For a film or
 offline render, use `clock = frameClock(24.0) { renderer.frameCounter }`: repeated reads in one frame
 see the same time, and each rendered frame advances exactly 1/24 second. Use the
@@ -600,3 +596,5 @@ For recovering a hidden value from noisy measurements, see
 [State estimation](state_estimation_examples.md); for raw and filtered *signals*
 rather than these derived quantities, continue with the
 [time-domain signal examples](spectral_examples.md#filter-chains-as-layered-curves).
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`interpolants.kt`](reference/math.md#interpolants-kt), [`keyframer.kt`](reference/graphics.md#keyframer-kt). Start from [what's already in the box](reference/index.md).*

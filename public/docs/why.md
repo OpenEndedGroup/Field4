@@ -1,11 +1,13 @@
 # Why does this value resolve here?
 
-A box reads values it did not set: a setting through a `prop`, a variable a parent's code left
-behind, a `Renderer` through `fromContext()`. The value comes from the nearest box up the graph that
-has one, and when two boxes are equally near, `parents` order decides. [Property
-inheritance](running_code.md#property-inheritance-how-children-see-a-parents-values) describes that
-walk. `why.speed` asks the box to report it for `speed`: which box supplied the value, by what path,
-and which other boxes also had an answer. Nothing runs; it is the walk the box's own read performs.
+When a box reads a value inherited from another box, where did that value come from? Ask
+`why.speed` and Field will show you which box supplied `speed`, the path to it, and any other
+boxes that had an answer. You can inspect the lookup without running the code that uses it.
+
+This works for inherited properties, variables left by a parent's code, and context values such as
+`Renderer`. Field looks for the nearest answer up the graph; if two are equally near, their order
+in `parents` decides. For the full search, see [Property
+inheritance](running_code.md#property-inheritance-how-children-see-a-parents-values).
 
 ## A tie and a shadowed ancestor
 
@@ -24,11 +26,10 @@ Mover's code is one line:
 display("main", why.speed.h)
 ```
 
-Fast and Slow are both one edge from Mover and hold different values, so Slow is listed as
-**competing**, and the answer depends on the order the two parents were connected in. **Shadowed**
-lists every other box that also has an answer: Slow again, and Settings, which is farther away. The
-sentence under the table says the same, and names the preamble line that declared `speed` and the
-box it came from.
+Fast and Slow are both one edge from Mover and hold different values. Slow appears as
+**competing**: the answer depends on the order in which the parents were connected. **Shadowed**
+lists the other boxes with an answer, including Slow and the more distant Settings. The sentence
+under the table also names the preamble line that declared `speed` and where it came from.
 
 `why.speed` exists because `prop<Double>(speed)` writes three lines into the preamble, and children
 inherit all three: `var Box.speed by Inheritance<Double>()`, `val Once.speed by Onceing<Double>()`, and
@@ -44,8 +45,8 @@ values also writes a warning on the `context` log channel.
 
 ## Names no `prop` declared
 
-A plain variable has no accessor in the preamble, so there is no `why.gear`. Ask
-`ContextResolution.explain` directly, which is what `why.speed` calls. Gearbox's code:
+A plain variable has no accessor in the preamble, so there is no `why.gear`. You can call
+`ContextResolution.explain` directly, as `why.speed` does. Here's Gearbox's code:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/why/gear.png" alt="Gearbox's main output, a card headed why gear: supplier Slow (variable) = 2; path Gearbox → Slow; competing and shadowed both empty; and the sentence saying Gearbox reads gear from variable gear of Slow" capture="box" open-outputs="true" wait="1.5" timeout="180" embed=true name="why-gear" macro-file="../../dev_docs/agents/transcripts/docs_capture/context_why_graph.yaml" capture-box="why_gearbox" w="760" h="200"}
 display("main", ContextResolution.explain(thisBox, "gear").h)

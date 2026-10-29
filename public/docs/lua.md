@@ -143,8 +143,8 @@ draw(slider("radius", 5, 90, 40, draw))
 
 ## Sound
 
-A Lua box does not make audio itself; it decides the notes, and Field's own pattern voice plays them,
-as a norns script decides notes for its engine. A sequence is a list: a number is a MIDI note, `false`
+A Lua box can decide the notes and let Field's pattern voice play them, much as a norns script
+sends notes to its engine. A sequence is a list: a number is a MIDI note, `false`
 or `"~"` a rest, and a nested list a step divided (`{60, {64, 67}, false, 72}`). A string is taken as
 [mini-notation](pattern_language.md) as it stands.
 

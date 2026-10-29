@@ -1,8 +1,7 @@
 # Colors to FLine examples
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`colors.kt`](reference/graphics.md#colors-kt). Start from [what's already in the box](reference/index.md).*
-
-This page builds palettes, sets of colors that have to work together on one drawing. Both examples draw the whole palette as geometry, because a drawing shows which entry is weak far sooner than a list of hex values does.
+A colour can look good on its own and disappear beside its neighbours. These examples draw a
+whole palette as geometry, so you can see how its colours work together.
 
 Every constructor returns an sRGB-encoded `Vec4` with components in `[0,1]`. There are four color spaces to build from:
 
@@ -82,3 +81,5 @@ lines(rings, channel = "colors-rings", w = 1120.0, h = 740.0, fitToSize = true)
 ![Seven nested rings in paletteForBackground colors on a dark background](assets/colors_examples/palette_background_paths.png)
 
 Every ring stays readable and none sinks into the background. If nothing reaches `minContrast` the best candidate found is returned rather than an exception, so the call always hands back the count you asked for and it is the picture that tells you whether it managed. For more on constructing the underlying paths, see [FLine examples](fline_examples.md); for functional signal stacks that can drive color or geometry, see [Functions examples](functions_examples.md).
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`colors.kt`](reference/graphics.md#colors-kt). Start from [what's already in the box](reference/index.md).*

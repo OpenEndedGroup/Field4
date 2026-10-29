@@ -134,7 +134,9 @@ template, described next.
 
 ## Add callbacks and live template values
 
-An interactive step uses a `#custom:name` link in the note body, a `linkCallback("name") { ... }` handler in the step to receive it, and `{{propertyName}}` template expansion for the live values. Together they cover choices, branching, and notes that update while the guide stays on the same step.
+A note can offer choices and show values that change while the reader stays on the same step.
+Use a `#custom:name` link with a `linkCallback("name") { ... }` handler for a choice, and
+`{{propertyName}}` to put a live value in the note.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/callbacks_and_templates.png" wait="1.5" capture="box" outputs="none" embed=true name="callbacks-and-templates" w="560" h="140" padding="28" alt="The guide box beside its note, headed Interactive Guides with Callbacks. Three blue callback links are listed as bullets: Increment, Choose performance mode, Choose quality mode. Above them the line reads Version: 1.0.0, and the footer reads Count: 3 and Choice: Balanced Mode."}
 :::static
@@ -206,7 +208,7 @@ Annotations let a note point at an exact target.
 - `annotate(...)` points from the note to a box.
 - `annotateToLine(...)` points to an exact property and line inside the editor.
 
-Use them when a sentence is about one box, one property, or one line.
+Add a callout wherever it will help the reader find what the note describes.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/annotations.png" wait="5" capture="window-editor" outputs="none" embed=true name="guide-annotations" w="240" h="60" padding="12" alt="The Field window. On the left the small guide box, selected, with a green arrowhead at its top-right corner, and beside it the note headed Annotation Lines with its two bullets. An orange dashed line runs from the note across the canvas and curves down to the editor's left edge, ending at the top of line 17. On the right the editor shows the snippet, with a red mark in the gutter at line 17, the selectBox call."}
 :::static
@@ -327,7 +329,7 @@ Most guides are written in this order:
 7. `annotate(...)` or `annotateToLine(...)`, when a sentence is about one exact target.
 8. `withChat()`, when a step needs discussion.
 
-Steps 4 to 8 go only on the steps that ask for them.
+Add the later features wherever the guide needs them.
 
 ## A guide to open
 

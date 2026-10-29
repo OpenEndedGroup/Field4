@@ -1,8 +1,8 @@
 # FieldML stage by stage
 
-This page follows one FieldML program through the compiler and shows what each stage produces from
-it: tokens, syntax tree, types, the tree the evaluator runs, and the value. Read it when you want to
-know what the compiler does with your code, or why an error or a completion looks the way it does.
+What happens to a FieldML program between typing it and seeing a result? We'll follow one program
+through the compiler, from tokens and syntax tree to types, evaluation and the final value. Along
+the way you can see where errors and completion suggestions come from.
 
 The [FieldML Cheatsheet](fieldml_cheatsheet.md) is the reference for the prelude, [FieldML
 Examples](fieldml_examples.md) is the tour of the language, and the [FieldML JVM
@@ -32,10 +32,9 @@ tree; the section on the surface AST shows what that means.
 `CompilationResult` with one field per stage: `tokens`, `surface`, `typed`, `core`. It stops at the
 first stage that reports an error, and a field is `null` when its stage was not reached.
 
-So a partial compile still gives you the early stages. `bump "five"` is a type error, so its `core`
-is `null`, but its `tokens` and `surface` are both there because lexing and parsing succeeded. The
-completion engine uses this: it compiles a half-written line and reads the names in scope from
-whatever tree came back.
+You can still inspect the stages reached by a partial compile. For example, `bump "five"` has a
+type error: its `core` is `null`, but its `tokens` and `surface` are available. Completion uses
+the same idea, reading names in scope from the tree it can build for a half-written line.
 
 A non-`null` tree does not mean the program is correct. Check `successful` before evaluating
 anything.

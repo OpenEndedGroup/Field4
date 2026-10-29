@@ -1,10 +1,10 @@
 # Functions to FLine examples (Field graphics)
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`Functions.kt`](reference/math.md#functions-kt). Start from [what's already in the box](reference/index.md).*
+Plot a function as you build it and you can see what each operation does. Make an envelope for a
+sound, inspect a transform, or pair two functions and let them draw an ornament.
 
-The examples here turn `Functions` stacks into drawable FLines. One-dimensional graphs come first, since a single stack sampled along x is the plainest case; the two-dimensional parametric curves are then a pair of those graphs read as x and y.
-
-A function stack is often easier to design by eye than by algebra alone. In creative coding it gives you a quick route from signal to ornament. In data work it makes transforms and envelopes visible. In music it turns oscillation, modulation, and shaping into something you can draw.
+These examples turn `Functions` stacks into FLines. We'll start by sampling one stack along x to
+make a graph, then use two stacks for the x and y coordinates of a parametric curve.
 
 ## 1D stack: harmonic blend to graph FLine
 
@@ -123,9 +123,9 @@ The three traces separate cleanly: one jagged, one softened, one quantized into 
 
 ## 1D stack: fit a graph to a target (differentiable)
 
-So far we have *built* stacks by hand. You can also let Field *fit* one for you. A `Functions.Fn` is not only a function but an inspectable graph, and its numeric leaves (frequencies, amplitudes, offsets) are tunable "genes". `fitBest(target, seed, ...)` — the differentiable cousin of the genetic `evolve(...)` — tunes those numbers by gradient descent (Adam) so the seed's curve slides onto a target signal.
+So far we have *built* stacks by hand. You can also let Field *fit* one for you. A `Functions.Fn` is an inspectable graph whose numeric leaves (frequencies, amplitudes, offsets) are tunable "genes". `fitBest(target, seed, ...)` — the differentiable cousin of the genetic `evolve(...)` — tunes those numbers by gradient descent (Adam) so the seed's curve slides onto a target signal.
 
-Amplitude and offset are easy to fit. **Oscillator frequency is not.** The error surface in frequency is bumpy, full of local minima, so a single descent from a wrong frequency gets stuck. `fitBest` handles that by running several jittered restarts and keeping the best, which reliably escapes into the true basin. Here the target is a *product* of two oscillators and the seed starts with badly wrong frequencies:
+Amplitude and offset are easy to fit. **Oscillator frequency is not.** The error surface in frequency is bumpy, full of local minima, so a single descent from a wrong frequency gets stuck. `fitBest` handles that by running several jittered restarts and keeping the best, which gives the search more chances to find the right basin. Here the target is a *product* of two oscillators and the seed starts with badly wrong frequencies:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/fit_to_target_box.png" wait="1.5" capture="box" w="1200"}
 :::static
@@ -1513,7 +1513,7 @@ with(Functions) {
 
 **Simple**
 
-Compresses the sine wave horizontally by sampling it at half the input coordinate.
+Stretches the sine wave horizontally by sampling it at half the input coordinate.
 
 ```diffstatic {data-lang=kotlin}
 val f = sin(2.0).mapX { x -> x * 0.5 }
@@ -4164,7 +4164,7 @@ with(Functions) {
 
 The grey curve is the seed cosine; the red curve is the target; the blue curve is `run.best`. The blue tracks the red almost exactly: the fitness (negative RMSE minus a small complexity penalty) climbs from **−0.8421** at the seed to **−0.1568** at the best, an ~81% reduction in error.
 
-The order the accepted mutations arrive in is what each operator is for. The first one accepted is the structural leap: `substituteOp` turns the cosine into a sine and more than halves the error in a single step — no amount of `jitter` on a cosine's leaves would have got there. From then on `jitter` and `nudge` walk the amplitude leaf down from 1.0 toward 0.5, interleaved with `prune` steps that shed now-redundant structure without hurting the fit, because the small `complexityWeight` rewards the simpler graph. The search stops improving well inside its 120-iteration bound, and every draw goes through one seeded `Random`, so it reproduces exactly. The iteration-by-iteration trace is in [`FUNCTIONS_EVOLVE_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/FUNCTIONS_EVOLVE_MEASUREMENTS.md).
+The order the accepted mutations arrive in is what each operator is for. The first one accepted is the structural leap: `substituteOp` turns the cosine into a sine and more than halves the error in a single step. From then on `jitter` and `nudge` walk the amplitude leaf down from 1.0 toward 0.5, interleaved with `prune` steps that shed now-redundant structure without hurting the fit, because the small `complexityWeight` rewards the simpler graph. The search stops improving well inside its 120-iteration bound, and every draw goes through one seeded `Random`, so it reproduces exactly. The iteration-by-iteration trace is in [`FUNCTIONS_EVOLVE_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/FUNCTIONS_EVOLVE_MEASUREMENTS.md).
 
 #### Variety generation: novelty search for a *set* of gestures
 
@@ -4185,7 +4185,10 @@ println("spread = ${variety.meanPairwiseDistance}")
 variety.results.forEachIndexed { i, fn -> fn.browseGraph(channel = "variety-$i") }
 ```
 
-`FnVarietyRun` exposes the `results`, their `behaviours`, the underlying per-slot `runs`, and `meanPairwiseDistance` (the average behavioural distance across the set). Because novelty is scored purely from sampled behaviour, the returned graphs are spread out in *what they do*, not merely distinct in structure. The run is deterministic like any other: the same `rngSeed` and inputs reproduce the identical family, so an evolved *set* of gestures is as repeatable in live art as a single evolved one.
+`FnVarietyRun` exposes the `results`, their `behaviours`, the per-slot `runs`, and
+`meanPairwiseDistance`, the average distance across the set. Novelty is scored from sampled
+behaviour, so the returned functions differ in what they do. Run it again with the same `rngSeed`
+and inputs to reproduce the family.
 
 ##### Shape vs amplitude: the `normalize` flag
 
@@ -4323,3 +4326,5 @@ Finally, rewrite rules run during graph copy, bottom-up through children before 
     Every figure on this page is executed by the docs build: each is a `diffstatic_runner` fence, so the
     image or video under it is that box's own output, drawn with `lines(...)` like everything else here.
     The convergence video is a launched box whose `loop` runs one truncated `fitGradient` per frame.
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`Functions.kt`](reference/math.md#functions-kt). Start from [what's already in the box](reference/index.md).*

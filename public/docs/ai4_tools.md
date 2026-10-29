@@ -5,10 +5,9 @@ boxes, runs them, reads what they printed, looks at what they display, searches 
 and source. This page lists every tool Field gives a chat without any setup, and shows the
 common ones at work.
 
-Every example below is a real call. A script opens an empty document, makes each call on this
-page in order through the same tool registry a chat uses, and writes back what came back. A
-model would send the same arguments and read the same results. Long strings and lists are cut
-short, and box uids are written `<uid of Name>`.
+The examples show real calls and their results, starting with an empty document. A model sends
+the same arguments and reads the same responses during a chat. Long strings and lists are
+shortened here, and box IDs are shown as `<uid of Name>`.
 
 Your own tools join these when you register them; see
 [Give the AI a tool of your own](aiFeatures.md#give-the-ai-a-tool-of-your-own).

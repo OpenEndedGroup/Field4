@@ -108,7 +108,8 @@ Code History and the [document history panel](document_history.md) read the same
 - **History panel** — whole document, its own view, restore or cherry-pick whole boxes.
 - **Code History** — one line or selection, inline in the editor, lift a single past value back.
 
-Reach for Code History when the question is "what did *this* used to be?" and for the panel when the question is "what did the *document* used to be?".
+Use Code History to follow a line while you edit, and the history panel to inspect or restore a
+larger part of the document.
 
 ## Not the `history()` visualizer
 

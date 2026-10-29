@@ -5,15 +5,22 @@ rest, round and round. This stop follows that one line until you can hear it —
 small synthesiser built into Field, then through real drum samples — and then runs the path
 backwards, from a recording to a pattern you can play again.
 
-A pattern on its own is only a schedule. It says what happens and exactly when, but it makes no
-sound; something has to turn each event into samples. Nothing on this page needs an audio device:
-every figure is rendered to a file you can play right here, and each one says which voice made it.
+A pattern is a schedule: it says what happens and exactly when. To hear it, we need something to
+turn its events into samples. Nothing on this page needs an audio device for rendering; each clip
+is a file you can play here, with a caption naming the voice that made it.
 
 Other pages cover the other voices. A pattern can play a
 [Faust program](faust.md#a-pattern-plays-it) as a polyphonic instrument, or be placed in space with
 [`patSpatial`](pat_spatial.md), which places each sound with Steam Audio.
 [How to make sound in Field](sound_paths.md) lists every way Field makes sound and helps you pick
 one.
+
+You can listen to the clips here before setting anything up. To make a pattern of your own, follow
+the stand-in voice first; [Getting real drums in your own box](#getting-real-drums-in-your-own-box)
+then shows how to use samples.
+
+Next on the Tour, [Field from your phone](mobile_controllers.md) puts the controls of a running
+document within reach of a phone browser.
 
 ---
 
@@ -31,9 +38,9 @@ one.
 | `patTranscribeAuto` | the same, with the register estimated instead of declared | `PatTranscription.kt` |
 | `showPatTranscriptionOf` | notated against recovered, overlaid on one MIDI axis | `PatTranscriptionGallery.kt` |
 
-The pattern language itself is documented on [its own page](pattern_language.md) and this one
-does not restate it. All that carries over here is that a pattern is a *function from a query to
-a list of events*, and that both voices below consume exactly the same list.
+A pattern answers a query with a list of events. Both voices below play the same list, so you can
+hear what changes when you change the sound source. For more on writing patterns, see
+[Patterns & Rhythm](pattern_language.md).
 
 
 ## The events, before anything makes a sound
@@ -65,9 +72,9 @@ positions. Nothing so far has an opinion about what a kick drum sounds like.
 
 ## The stand-in voice
 
-`patVoice` is that opinion, and it is a small one: **one oscillator, one
-one-pole lowpass, one exponential-decay envelope**, per event. Pitch comes from the event's
-value when it parses as a MIDI number, and otherwise from a drum map with five entries in it:
+`patVoice` gives each event a simple sound: an oscillator, a one-pole lowpass and an exponential
+decay envelope. An event containing a MIDI number supplies its pitch; named drums use this small
+map:
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
@@ -92,18 +99,16 @@ Here is the beat:
 
 **Voice: the stand-in synth (`patVoice`).** No sample library was used.
 
-That is not a drum machine. It is a sine and some filtered white noise, arranged in the shape
-of a drum machine. It is the default because it needs nothing installed and sounds the same on
-every machine, every time.
+This little stand-in uses a sine wave and filtered white noise to sketch the sounds of a drum
+machine. It needs nothing installed and sounds the same each time you run it.
 
 ---
 
 ## The real samples
 
-`DirtRender` (`src/jvmMain/kotlin/afield/audio/synth/DirtRender.kt`) is the other half.
-`DirtSamples.kt` plays the genuine Tidal sample set **live** and only live: `playDirt` needs
-`respondAhead`, a clock and an audio device, none of which exist in a docs build or a headless
-box. `patRenderStereoDirt` mixes the same library straight into a buffer instead.
+To hear the same pattern with Tidal's Dirt-Samples, use `patRenderStereoDirt` to render the
+samples into a buffer. For live playback, `playDirt` uses `respondAhead`, a clock and an audio
+device.
 
 The same beat, the same ten events a cycle, the same `gain` / `pan` / `speed` annotations:
 
@@ -114,8 +119,7 @@ The same beat, the same ten events a cycle, the same `gain` / `pan` / `speed` an
 
 **Voice: real Dirt-Samples one-shots, every token matched.**
 
-Two details do most of the work in making that sound like drums rather than like a sampler
-being triggered:
+Two details determine how the samples follow the pattern:
 
 * **Hits are one-shots.** A sample plays to its natural end rather than being gated by the
   length of the arc that triggered it. That is what SuperDirt does, and it is the reason a
@@ -232,23 +236,20 @@ side by side. Open it from the welcome screen, then play box 1 and box 2 back to
 
 ## From audio back to a pattern
 
-The last rows of [the path](#the-path) go the other way. `patTranscribe` takes a finite buffer and returns pitched
-note events plus the mini-notation that reproduces them, so the output of analysis is the same kind
-of object as the input to synthesis, and you can feed it straight back to the renderer.
+`patTranscribe` takes a finite audio buffer and finds pitched note events. It also returns
+mini-notation you can feed back to the renderer, so you can listen to what the analysis recovered.
 
-It is monophonic and says so: a triad is reported as `POLYPHONIC` and named as nothing rather than
-reported as its loudest note, while a sawtooth's full harmonic stack is not refused, because timbre
-is not polyphony.
+The transcriber is for one melodic line. It reports a triad as `POLYPHONIC` rather than choosing
+its loudest note, while accepting the harmonics of a single sawtooth as one note.
 
-One parameter dominates all the thresholds: **the register you declare.** It sets the analysis
-window and therefore the shortest note that can be resolved, and on identical audio the difference
-between declaring it and not is onset recall 0.91 against 0.03. If you cannot declare one, call
+The **register you declare** sets the analysis window and therefore the shortest note that can be
+resolved. In one test on identical audio, onset recall was 0.91 with the register declared and
+0.03 without it. If you cannot declare one, call
 `patTranscribeAuto`, which estimates it from a cheap wide first pass; estimating is about as good
 as being told, and much better than leaving the wide default in place. It refuses rather than
 transcribing when the first pass says the material is not one line.
 
-It does not promise a correct answer, but it never gives a wrong one silently: a wrong output
-carries a warning that says where it is wrong. Check the warnings before you trust the result.
+Check the warnings and listen back before relying on a transcription.
 
 To try it, open the [`pitch_transcription_roundtrip`](agent_transcripts.md#pitch_transcription_roundtrip) starting point.
 

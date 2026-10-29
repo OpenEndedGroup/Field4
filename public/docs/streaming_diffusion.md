@@ -1,9 +1,9 @@
 # Streaming diffusion
 
-Restyle a rendered texture with a text prompt using StreamDiffusionV2.
-Describe the appearance you want; charcoal, ink and barbed wire are example prompts. The source and returned image stay on the GPU, and the result
-is a normal Field render-to-texture target (RTT) that you can sample in another
-shader or composite into a scene.
+Restyle a rendered texture with a text prompt using StreamDiffusionV2. Try charcoal, ink or barbed
+wire, or describe an appearance of your own. The source and returned image stay on the GPU, and the
+result is a Field render-to-texture target (RTT) you can sample in another shader or composite into
+a scene.
 
 [Open the streaming diffusion starting point ↗](offline.html?file=assets/agent_transcripts/streaming_diffusion/metadata.edn)
 

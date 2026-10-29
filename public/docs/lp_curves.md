@@ -2,12 +2,9 @@
 
 <!-- capture-sources: src/jvmMain/kotlin/afield/geometry/spatial/lp_trajectories.kt src/jvmMain/kotlin/afield/geometry/spatial/lp_polytope.kt -->
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference:
-[Graphics](reference/graphics.md).*
-
 A two-dimensional linear program asks for the point of a convex polygon that goes furthest in one
-direction: maximise `c·x` over the polygon. The answer is always a vertex, and every classical
-algorithm for it gets there. What differs is the route. The barrier method follows a smooth arc out
+direction: maximise `c·x` over the polygon. An optimum can be found at a vertex, though an entire
+edge can tie. The methods here take different routes towards it. The barrier method follows a smooth arc out
 of the polygon's centre, the primal-dual method takes a few long strides, PDHG spirals in from
 outside, the ellipsoid method shrinks a sequence of ellipses around the answer, and the simplex
 method hops round the boundary. [lpviz.net](https://lpviz.net) draws these routes in a browser.
@@ -855,3 +852,6 @@ In three dimensions:
     animated starting point is `dev_docs/agents/transcripts/lp_curves_3d.yaml`.
 
 Source: `src/jvmMain/kotlin/afield/geometry/spatial/lp_trajectories.kt`, `src/jvmMain/kotlin/afield/geometry/spatial/lp_fan_map.kt` and `src/jvmMain/kotlin/afield/geometry/spatial/lp_polytope.kt`.
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference:
+[Graphics](reference/graphics.md).*

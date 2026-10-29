@@ -90,7 +90,9 @@ ui.moveMouse(5.0, 5.0, 2)
 ui.pause(800)
 ```
 
-Above, an earlier save of the box `sketch` is selected in the timeline, and the editor shows how it differs from the current code. To scrub one line back through its versions without leaving the editor, use [Code History](history_lens.md) instead.
+Above, an earlier save of the box `sketch` is selected in the timeline, and the editor shows how it
+differs from the current code. To scrub one line back through its versions without leaving the
+editor, use [Code History](history_lens.md).
 
 ## Get back an earlier version
 
@@ -101,10 +103,9 @@ Above, an earlier save of the box `sketch` is selected in the timeline, and the 
    the current text as a read-only inline diff, so you can read the change before you commit to it.
 3. Choose **Apply — full restore** and confirm ("Restore the whole document to version #N?").
 
-The restore is itself saved, so the state you restored *from* becomes the newest backup and
-stays in the timeline: a restore can always be undone by restoring again. Edits made since the
-last autosave (5 s) are not in any backup, so let the document save before you restore over work
-you care about. Every edit that changes what is saved counts: a new box, a move, a rename, a
+Field saves the restore as a new change and keeps the state you restored *from* in the timeline,
+so you can return to it. Edits made since the last autosave (5 s) are not in a backup yet; let the
+document save before restoring over work you care about. Every edit that changes what is saved counts: a new box, a move, a rename, a
 deletion or a connection as well as code. Closing the document and stopping Field both save what the
 autosave has not reached yet.
 
