@@ -75,12 +75,28 @@ class WebcamTexture(
     private var warnedAboutResize = false
     private var lastError: Throwable? = null
 
+    /**
+     * Width in pixels of the frames the camera is actually delivering, which need not be the size
+     * this texture asked for. 0 until the camera opens, and 0 again after [cleanup]; [stop] leaves
+     * it, since the last frame stays in the texture.
+     */
     val width: Int
         get() = synchronized(stateLock) { cameraWidth }
 
+    /**
+     * Height in pixels of the delivered frames, on [width]'s terms. A camera that changes
+     * resolution part way through is not followed: those frames are dropped, one warning is
+     * logged, and the texture keeps the size it opened at.
+     */
     val height: Int
         get() = synchronized(stateLock) { cameraHeight }
 
+    /**
+     * True while the capture thread is grabbing frames: set when the camera opens, cleared by
+     * [stop] and [cleanup], and cleared as well if the capture loop throws. A false value after
+     * frames had been arriving means capture has stopped, and [latestFrameId] still names the
+     * last frame that got through.
+     */
     val active: Boolean
         get() = synchronized(stateLock) { running }
 
