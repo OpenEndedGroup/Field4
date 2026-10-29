@@ -213,6 +213,32 @@ after 03:50 on both nights. What the three runs showed:
   released (IntelliJ's static `Disposer` held its compiler project). Fixed in `112212f6c`; the heap
   now grows ~2.5 MB per edit, from K2 REPL snippet history.
 
+## Reruns: the preamble and the compiler's scopes in the spare, 2026-10-29
+
+A rerun (`execute-all`) of a one-line `println` spent 75–110 ms compiling. The server log split it:
+the preamble was compiled twice per run (`makeKIHere` ran `box.preamble`, then
+`checkPreambleAndExecute` ran all of it again after `_preamble` was cleared), and the first user
+compile in a fresh engine paid ~60 ms more than later ones. A probe of bare K2 engines put that on
+the bootstrap's star imports: the first compile after them fills the compiler's scopes for those
+packages (`println` after the intro: 88 ms first, then ~30 ms; after a no-effect warm-up snippet, 30
+ms first). Beside that, each run built a new K1 completion delegate, a ~130 ms K1 compile of the
+intro, because the delegate died with its engine.
+
+Now a spare runs the box's gathered preamble when it is imports only, then `if (false) listOf(0)`;
+`Box.replaceKi` records that preamble as run, and refuses the spare if the preamble has changed
+since; `makeKIHere` no longer runs the preamble; and `replaceKi` hands the delegate to the next
+engine. `kotlin-println`, 30 reps on mi2-2 the same evening: warm rerun 144 → 51 ms, edit + rerun
+111 → 47 ms, same code again 184 → 67 ms (p90s 174 → 62, 148 → 54).
+
+Where a warm compile goes now (JFR, 300 compiles of `println("hello N")` in one engine, median 37
+ms): ~37% resolution, most of it in `FirCachingCompositeSymbolProvider` filling per-package name
+sets (`computeTopLevelClassifierNames`, `addAll` alone 10% of samples) because every snippet's
+source session builds a fresh composite over the libraries and all earlier snippets; ~29% FIR → IR,
+mostly `Fir2IrLazyClass.getDeclarations` building lazy IR for a referenced class's members; ~22%
+lowering and codegen. Both of the first two are per-snippet rebuilds of things that do not change
+between snippets, in `K2ReplCompiler.compileImpl` / `FirJvmSessionFactory.createSourceSession` in
+the compiler fork.
+
 ## What the baseline says to fix next
 
 1. **The first run of a box builds its engine on the spot.** The engine the box made when it was
