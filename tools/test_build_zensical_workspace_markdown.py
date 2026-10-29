@@ -16,6 +16,10 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from types import SimpleNamespace
+from unittest.mock import patch
+import build_zensical_docs as build_docs
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -27,6 +31,27 @@ from build_zensical_docs import (  # noqa: E402
 
 
 class WorkspaceMarkdownDetectionTests(unittest.TestCase):
+    def test_publications_see_new_native_captures_before_assets_are_copied(self):
+        with TemporaryDirectory() as temp:
+            public = Path(temp)/'public'
+            source = public/'docs'
+            source.mkdir(parents=True)
+            (source/'graphics.md').write_text('# Native scene')
+            image = source/'native.png'
+            image.write_bytes(b'old capture fixture')
+            def capture(**kwargs):
+                image.write_bytes(b'new capture fixture')
+                return kwargs['markdown']
+            def publish():
+                self.assertEqual(image.read_bytes(), b'new capture fixture')
+                (source/'publication.png').write_bytes(image.read_bytes())
+            hooks = SimpleNamespace(ensure_state=lambda _:SimpleNamespace(runner_mode='incremental'),
+                process_markdown=capture, on_post_build=lambda _:None)
+            with patch.dict(sys.modules, docs_hooks=hooks), patch.object(sys, 'path', sys.path.copy()), \
+                 patch.object(build_docs, 'normalize_over_climbing_refs', return_value=('# Native scene', [])):
+                build_docs.preprocess_docs(public_dir=public, generated_docs=public/'generated', before_asset_copy=publish)
+            self.assertEqual((public/'generated/publication.png').read_bytes(), b'new capture fixture')
+
     def test_markdown_inside_the_asset_tree_is_workspace_markdown(self):
         for relative in (
             "assets/agent_transcripts/alife_worked_example/README.md",

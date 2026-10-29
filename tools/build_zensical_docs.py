@@ -916,7 +916,8 @@ def build_generated_config(
     return build_config
 
 
-def preprocess_docs(*, public_dir: Path, generated_docs: Path, page_filters: tuple[str, ...] = ()) -> None:
+def preprocess_docs(*, public_dir: Path, generated_docs: Path, page_filters: tuple[str, ...] = (),
+                    before_asset_copy: Callable[[], None] | None = None) -> None:
     _configure_logging()
     sys.path.insert(0, str(public_dir))
     import docs_hooks  # type: ignore[import-not-found]
@@ -997,6 +998,8 @@ def preprocess_docs(*, public_dir: Path, generated_docs: Path, page_filters: tup
     if page_filters:
         print(f"Processed {matched_pages}/{total_pages} docs page(s) with runner mode {runner_mode}; non-matching pages used runner mode never.")
 
+    if before_asset_copy is not None:
+        before_asset_copy()
     copy_non_markdown_files(source_docs, generated_docs)
 
 
@@ -1454,15 +1457,16 @@ def run(args: argparse.Namespace) -> int:
             print("Source pages are missing. Failing because --strict.", file=sys.stderr)
             return 1
 
-    # Refresh before copying docs assets; unchanged publications need neither Field nor a browser.
+    # Native captures may change during preprocessing. Publish after those captures finish and
+    # before the asset copy, so the site and its publications share this build's actual images.
     import docs_publications
     # `--page` recaptures only the named pages: publications are other pages' captures, so they are
     # refreshed only where stale. `always --page x.md` used to recapture every publication too.
     publication_mode = docs_hooks.resolve_runner_mode(os.environ.get(docs_hooks.RUNNER_MODE_ENV))
     if args.page and publication_mode == 'always':
         publication_mode = 'incremental'
-    docs_publications.sync_publications(mode=publication_mode)
-    preprocess_docs(public_dir=public_dir, generated_docs=generated_docs, page_filters=tuple(args.page))
+    preprocess_docs(public_dir=public_dir, generated_docs=generated_docs, page_filters=tuple(args.page),
+        before_asset_copy=lambda: docs_publications.sync_publications(mode=publication_mode))
     generated_config = build_generated_config(
         public_dir=public_dir,
         generated_root=generated_root,

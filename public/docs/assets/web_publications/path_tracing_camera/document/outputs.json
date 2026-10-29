@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T15:51:31.644Z",
+  "documentName": "path_tracing_camera",
+  "outputs": [
+    {
+      "uid": "path_trace_camera",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 6528,
+      "height": 3672,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-28T21:05:27.072Z",
+  "capturedAt": "2026-10-29T15:46:43.995Z",
   "documentName": "polytope_holes_and_chains",
   "outputs": [
     {
@@ -45,7 +45,7 @@
       "kinds": [
         "three"
       ],
-      "width": 200,
+      "width": 480,
       "height": 528,
       "path": "outputs/3.html"
     },

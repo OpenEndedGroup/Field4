@@ -105,8 +105,17 @@ Run `uv run python tools/docs_publications.py sync` to refresh without rendering
 Unchanged documents start no Field JVM or browser. Documents with no output-area channels have
 their own source fingerprints in `catalog.json`'s `emptyDocuments`; they remain code-only and
 are reconsidered when their sources change. The supported population is the two pilot documents
-plus the existing headless-safe transcript classification; native/device/service scenes stay
-outside this automatic capture pass.
+plus the existing headless-safe transcript classification. Native scenes with a matching
+`capture="native-window"` docs recipe also receive the real retained screenshot, attached to its
+`capture-box`; these scenes are opened for export without executing their compile-only code.
+Their image and authoring page fingerprints trigger a refresh when the docs runner changes them.
+Hardware capture profiles remain owned by that runner, so publishing does not require the GPU
+that originally rendered a retained image. Device/service scenes without a docs capture stay
+code-only.
+
+Publishing a running document also captures each already open Vulkan window through the same
+native-window screenshot operation used by the backdoor. Each renderer gets a frozen image;
+publishing does not launch renderers. Capture failures are reported alongside the exported outputs.
 
 `checkDocsPublications`, included in `check` and `docsGates`, checks recipe coverage, source and
 publisher fingerprints, manifests, output files and shared-runtime references without launching

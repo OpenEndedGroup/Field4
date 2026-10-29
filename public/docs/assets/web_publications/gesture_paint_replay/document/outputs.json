@@ -1,27 +1,17 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-28T20:54:44.724Z",
+  "capturedAt": "2026-10-29T15:30:24.836Z",
   "documentName": "gesture_paint_replay",
   "outputs": [
     {
       "uid": "gpr_dimensions",
-      "channel": "main",
+      "channel": "output",
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 912,
-      "height": 226,
+      "width": 469,
+      "height": 45,
       "path": "outputs/0.html"
-    },
-    {
-      "uid": "gpr_dimensions",
-      "channel": "ways",
-      "open": true,
-      "warnings": [],
-      "kinds": [],
-      "width": 245,
-      "height": 87,
-      "path": "outputs/1.html"
     },
     {
       "uid": "gpr_pad",
@@ -33,7 +23,7 @@
       ],
       "width": 576,
       "height": 240,
-      "path": "outputs/2.html"
+      "path": "outputs/1.html"
     },
     {
       "uid": "gpr_pad",
@@ -45,7 +35,7 @@
       ],
       "width": 576,
       "height": 240,
-      "path": "outputs/3.html"
+      "path": "outputs/2.html"
     },
     {
       "uid": "gpr_pad",
@@ -57,7 +47,7 @@
       ],
       "width": 576,
       "height": 240,
-      "path": "outputs/4.html"
+      "path": "outputs/3.html"
     },
     {
       "uid": "gpr_pad",
@@ -69,17 +59,17 @@
       ],
       "width": 536,
       "height": 484,
-      "path": "outputs/5.html"
+      "path": "outputs/4.html"
     },
     {
       "uid": "gpr_pad",
-      "channel": "main",
+      "channel": "output",
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 612,
-      "height": 608,
-      "path": "outputs/6.html"
+      "width": 469,
+      "height": 45,
+      "path": "outputs/5.html"
     }
   ]
 }

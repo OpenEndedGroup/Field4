@@ -746,7 +746,38 @@ function renderBoxes(boxes) {
         // Click handler to select box
         boxEl.addEventListener('click', (e) => {
             e.stopPropagation();
+            if (boxEl.dataset.dragMoved) { delete boxEl.dataset.dragMoved; return; }
             selectBox(box, boxEl);
+        });
+        boxEl.addEventListener('pointerdown', e => {
+            if (e.button !== 0 || e.shiftKey || e.target.closest('.published-outputs')) return;
+            e.preventDefault();
+            e.stopPropagation();
+            bringBoxToFront(boxEl);
+            delete boxEl.dataset.dragMoved;
+            const startX = e.clientX, startY = e.clientY;
+            const original = [...(props.frame || [0, 0, 300, 200])];
+            boxEl.setPointerCapture(e.pointerId);
+            const move = event => {
+                const dx = event.clientX - startX, dy = event.clientY - startY;
+                if (!boxEl.dataset.dragMoved && Math.hypot(dx, dy) < 4) return;
+                boxEl.dataset.dragMoved = '1';
+                props.frame = [original[0] + dx / zoom, original[1] + dy / zoom, original[2], original[3]];
+                boxEl.style.left = `${props.frame[0]}px`;
+                boxEl.style.top = `${props.frame[1]}px`;
+                boxEl.style.cursor = 'grabbing';
+                drawConnections();
+            };
+            const end = () => {
+                boxEl.removeEventListener('pointermove', move);
+                boxEl.removeEventListener('pointerup', end);
+                boxEl.removeEventListener('pointercancel', end);
+                boxEl.style.cursor = '';
+                if (boxEl.hasPointerCapture(e.pointerId)) boxEl.releasePointerCapture(e.pointerId);
+            };
+            boxEl.addEventListener('pointermove', move);
+            boxEl.addEventListener('pointerup', end);
+            boxEl.addEventListener('pointercancel', end);
         });
 
         canvas.appendChild(boxEl);
@@ -1130,6 +1161,14 @@ function isEditorFocused() {
     return active && active.closest('.monaco-editor-container');
 }
 
+function bringBoxToFront(boxEl) {
+    // Keep iframe nodes mounted: moving them in the DOM would restart their viewers.
+    const boxes = [...boxEl.parentElement.querySelectorAll(':scope > .box')]
+        .sort((a, b) => (Number(a.style.zIndex) || 0) - (Number(b.style.zIndex) || 0));
+    boxes.filter(node => node !== boxEl).forEach((node, i) => node.style.zIndex = String(i + 1));
+    boxEl.style.zIndex = String(boxes.length);
+}
+
 function selectBox(box, boxEl, reveal = false) {
     // Deselect previous box
     if (selectedBox) {
@@ -1141,6 +1180,7 @@ function selectBox(box, boxEl, reveal = false) {
 
     // Select new box
     selectedBox = box;
+    bringBoxToFront(boxEl);
     boxEl.classList.add('selected');
 
     // Show editor with box properties
