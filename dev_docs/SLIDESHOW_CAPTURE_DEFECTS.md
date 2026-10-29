@@ -13,12 +13,14 @@ into it and delete them from here.
 ## Status, re-verified 2026-10-29
 
 Each item below was checked against the fences now on `public/docs/interactive_guides.md` and
-the PNGs a `FIELD_DOCS_RUNNER_MODE=always --page interactive_guides.md` run produced that night.
+the committed PNGs from the 2026-10-28 strict recapture (37f90fe9e), opened and read. A fresh
+`always --page interactive_guides.md` run that night failed in the web-publications prestep
+(JDWP bind race, then an rmtree error) before reaching this page, so it is not evidence here.
 
 | # | defect | status | evidence |
 | --- | --- | --- | --- |
-| 1 | `basic_slideshow.png` caught mid-animation | **fixed** | the figure was replaced by `three_step_tour.png` (`wait="8"`, commit 88ebd849e); the recapture shows the heading, both sentences and the Next link |
-| 2 | `callbacks_and_templates.png` template slots empty | **fixed** | commit 6cf29f6cf redraws the open note once the running code has declared its values; the recapture reads `Version: 1.0.0`, `Count: 3`, `Choice: Balanced Mode` |
+| 1 | `basic_slideshow.png` caught mid-animation | **fixed** | the figure was replaced by `three_step_tour.png` (`wait="8"`, commit 88ebd849e); `three_step_tour.png` shows the heading, both sentences and the Next link |
+| 2 | `callbacks_and_templates.png` template slots empty | **fixed** | commit 6cf29f6cf redraws the open note once the running code has declared its values; `callbacks_and_templates.png` reads `Version: 1.0.0`, `Count: 3`, `Choice: Balanced Mode` |
 | 3 | `\"templateId\"` backslashes inside a raw string | **fixed** | the fence now spells `withChat(id = "templateId")`; `slide_chat.png` renders it without backslashes |
 | open | no guard on `animated = true` with a short `wait` | **still open** | unchanged; every animated fence on the page now waits 5 s or more |
 
