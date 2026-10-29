@@ -2060,6 +2060,17 @@ which is why every demo under `dev_docs/agents/demos/` tells you to pass the fla
 
 [Open →](offline.html?file=assets/agent_transcripts/read_only_session/metadata.edn)
 
+### controls_surface
+
+**A performer's control surface.** Two pure-CPU boxes built from the `controlGroup` DSL. The first
+puts a log-law cutoff slider, an XY pad, a toggle, a name and a colour beside a live figure drawn from
+whatever the box last received: click the pad, then use the arrow keys (shift for ten times the step),
+Backspace or a double-click to reset, and shift-drag to ease it into place; click a slider and turn
+the wheel. The second box's slider rebuilds its own group once dragged past 0.5, replacing the DOM
+under the pointer, and the drag carries on. `dev_docs/CONTROLS_RENEWAL.md` is the write-up.
+
+[Open →](offline.html?file=assets/agent_transcripts/controls_surface/metadata.edn)
+
 ### certified_envelope
 
 **A bound no feature can slip between.** Five pure-CPU boxes, no window and no setup. The signal is
@@ -2079,6 +2090,18 @@ x = 284.999942779541, where the original lambda returns 1.0000000000000009 and t
 grid never looks. `dev_docs/FN_INTERVAL.md` is the write-up.
 
 [Open →](offline.html?file=assets/agent_transcripts/certified_envelope/metadata.edn)
+
+### slideshow_own_tour
+
+**A guide over boxes that are already there.** Two ordinary boxes, `numbers` and `squares`, and a
+third, `tour`, whose `slideShow` walks through them in three steps. Each step finds the box it
+describes by name with `selectBoxByName`, so the guide works on any document that has boxes with
+those names; the second step opens `squares` at line 3 and marks it, and the last offers Start
+again and Finish. Run `numbers` and `squares` (they print `[1, 2, …, 10]` and
+`[1, 4, 9, …, 100]`), then run `tour` and follow its links. This is the "tour of your own
+document" example on [Interactive guides](interactive_guides.md), as a document you can open.
+
+[Open →](offline.html?file=assets/agent_transcripts/slideshow_own_tour/metadata.edn)
 
 ### solidsl_inverse
 

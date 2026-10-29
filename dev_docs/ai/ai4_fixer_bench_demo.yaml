@@ -1,0 +1,66 @@
+name: ai4_fixer_bench_demo
+description: >
+  What AI4 did with the lander's real fixups, read from the committed bench results. Two boxes;
+  replay into a fresh document in a Field started from this checkout (they read
+  dev_docs/ai/ai4_fixer_runs/bench/ relative to the working directory), then run them one at a time.
+
+    1. Bench — the results table: one row per past `Lander fixup:` commit replayed through AI4 by
+       tools/field_fixer_bench.py, with the outcome, the brief it was given (v0 = land.py before
+       2026-10-29, land = after), rounds, tokens and wall time, and the count of each outcome.
+    2. Case — one case side by side: AI4's diff and the lander's real fixup for the case named in
+       `val case` (default 040682d0f, the guard-widening one, in both its runs). Change the id and
+       run it again to look at another.
+
+  To replay one case through AI4 yourself (needs a Field on the port and a configured model):
+  uv run --project . --group backdoor python tools/field_fixer_bench.py run --id 64c03befa --port 9611
+  See dev_docs/ai/AI4_FIXER_BENCH.md.
+operations:
+  - create:
+      box: ai4_fixer_bench_table
+      name: Bench
+      frame: { x: 80.0, y: 80.0, w: 320.0, h: 60.0 }
+      properties:
+        code: |
+          import java.io.File
+
+          val rows = File("dev_docs/ai/ai4_fixer_runs/bench/results.jsonl").readLines().filter { it.isNotBlank() }
+          fun field(line: String, key: String): String =
+              Regex("\"$key\": (\"(?:[^\"\\\\]|\\\\.)*\"|[^,}]*)").find(line)?.groupValues?.get(1)?.trim('"') ?: ""
+          fun outcome(line: String): String = when {
+              field(line, "ai4_verdict") != "fix" -> if (field(line, "ai4_verdict") == "decline") "declined" else "no verdict"
+              field(line, "lander_problem") != "null" -> "rejected"
+              field(line, "identical") == "true" -> "identical"
+              field(line, "edited_check").contains(".kt") -> "edited the check"
+              field(line, "check_pass") == "true" -> "check passes"
+              else -> "check red"
+          }
+          val counts = rows.groupingBy { outcome(it) }.eachCount()
+          val body = rows.joinToString("") { r ->
+              "<tr><td><code>${field(r, "id")}</code></td><td>${field(r, "context")}</td><td><b>${outcome(r)}</b></td>" +
+                  "<td>${field(r, "similarity")}</td><td>${field(r, "rounds")}</td><td>${field(r, "input_tokens")}</td><td>${field(r, "wall_s")} s</td></tr>"
+          }
+          display(
+              "main",
+              "<p>${rows.size} replays: " + counts.entries.joinToString(", ") { "${it.value} ${it.key}" } + "</p>" +
+                  "<table style='font: 12px monospace; border-collapse: collapse'><tr><th>case</th><th>brief</th><th>outcome</th>" +
+                  "<th>sim</th><th>rounds</th><th>tokens in</th><th>wall</th></tr>$body</table>",
+          )
+          println("${rows.size} replays: $counts")
+  - create:
+      box: ai4_fixer_bench_case
+      name: Case
+      frame: { x: 480.0, y: 80.0, w: 320.0, h: 60.0 }
+      properties:
+        code: |
+          import java.io.File
+
+          val case = "040682d0f"
+          val runs = File("dev_docs/ai/ai4_fixer_runs/bench").listFiles()!!.filter { it.name.startsWith(case) }.sortedBy { it.name }
+          fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;")
+          val real = ProcessBuilder("git", "diff", "$case^", case).redirectErrorStream(true).start().inputStream.bufferedReader().readText()
+          val panes = runs.joinToString("") { dir ->
+              val verdict = File(dir, "reply.txt").readLines().lastOrNull { it.startsWith("FIXER-VERDICT:") } ?: "(no verdict)"
+              "<h4>AI4, ${dir.name}</h4><p>${esc(verdict)}</p><pre style='font-size:11px'>${esc(File(dir, "fix.diff").readText())}</pre>"
+          }
+          display("main", "$panes<h4>The lander's real fixup</h4><pre style='font-size:11px'>${esc(real)}</pre>")
+          println("${runs.size} run(s) of $case; real fix is ${real.lines().size} lines of diff")

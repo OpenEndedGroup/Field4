@@ -1,0 +1,16 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":555,"path":"AGENTS.md","startLine":221}
+[field] ok  RepoReadFileRequest {"endLine":100,"path":"public/docs/presentation_studio.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**/*","ignoreCase":false,"maxMatches":35,"query":"DocsFenceTreatment","regex":false}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":50,"query":"diffstatic","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":170,"path":"src/jvmTest/kotlin/afield/tools/docs/DocsFenceTreatmentTest.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":200,"path":"tools/test_docs_hooks_fence_markers.py","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":20}
+[field] ok  RepoSearchRequest {"glob":"tools/**/*.py","ignoreCase":true,"maxMatches":25,"query":"bare.fence|fence.treatment|data-lang=sh","regex":true}
+[field] ok  RepoRunCommandRequest {"args":["tools/test_docs_hooks_fence_markers.py"],"command":"python-test","timeoutSec":120}
+[field] ok  RepoPatchFileRequest {"newText":"```diffstatic {data-lang=sh}","oldText":"```sh","path":"public/docs/presentation_studio.md","replaceAll":true}
+[field] ok  RepoPatchFileRequest {"newText":"```diffstatic {data-lang=json}","oldText":"```json","path":"public/docs/presentation_studio.md","replaceAll":false}
+[field] ok  RepoRunCommandRequest {"args":["--","public/docs/presentation_studio.md"],"command":"git-diff","timeoutSec":20}
+[field] ok  RepoRunCommandRequest {"args":["tools/test_docs_hooks_fence_markers.py"],"command":"python-test","timeoutSec":120}
+[field] ok  RepoReadFileRequest {"endLine":67,"path":"public/docs/presentation_studio.md","startLine":1}
+[field] model=openai/gpt-6.1-sol rounds=8/40 wall=45s tokens in=313889 out=936 cacheRead=279274 wrote=['public/docs/presentation_studio.md', 'public/docs/presentation_studio.md'] ran=['git-status  -> 0', 'python-test tools/test_docs_hooks_fence_markers.py -> 0', 'git-diff -- public/docs/presentation_studio.md -> 0', 'python-test tools/test_docs_hooks_fence_markers.py -> 0'] verdict=unchecked error=-

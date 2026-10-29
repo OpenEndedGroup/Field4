@@ -89,6 +89,8 @@ class AgentDemoRegistrationTest {
             "certified_envelope",
             "chart_clip",
             "chart_primitive",
+            // 2026-10-29: controls renewal surface and a self-rebuilding slider; registered EXECUTE.
+            "controls_surface",
             "completion_rank_at_scale",
             "confluence_grid",
             // Transcript sources, registered COMPILE_ONLY with separate Vulkan GPU checks.
@@ -107,6 +109,8 @@ class AgentDemoRegistrationTest {
             "path_traced_reconstruction",
             "reconstruction_plumbing",
             "rr_plumbing",
+            // 2026-10-29: a slideshow tour over two existing boxes; registered EXECUTE.
+            "slideshow_own_tour",
             // Landed 2026-09-22 in `b5b9ad9e0`. Not a document — no `metadata.edn` — so it is named
             // here (this set is the directory listing) and is invisible to the two assertions that
             // range over `demoDocuments()`. It is verified: `flow_grain.yaml` under

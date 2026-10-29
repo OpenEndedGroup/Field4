@@ -1,0 +1,23 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**/*","ignoreCase":true,"maxMatches":65,"query":"checkKDocAttachment","regex":false}
+[field] ERR RepoRunCommandRequest {"args":["dba69727ae8424b559948501d097383c8d26a2c8","--","src/"],"command":"git-diff","timeoutSec":30}
+[field] ok  RepoReadFileRequest {"endLine":280,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":160,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":400}
+[field] ok  RepoRunCommandRequest {"args":["dba69727ae8424b559948501d097383c8d26a2c8","--","src"],"command":"git-diff","timeoutSec":30}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":30}
+[field] ok  RepoRunCommandRequest {"args":["6a33f6ebd^","6a33f6ebd","--","src/jvmMain/kotlin/afield/examples/visualization/ChartGallery.kt"],"command":"git-diff","timeoutSec":30}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":50,"query":"kdoc","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":885,"path":"src/jvmMain/kotlin/afield/examples/visualization/ChartGallery.kt","startLine":815}
+[field] ok  RepoRunCommandRequest {"args":["-n","5"],"command":"git-log","timeoutSec":30}
+[field] ok  RepoSearchRequest {"glob":"tools/test_*.py","ignoreCase":true,"maxMatches":40,"query":"kdoc","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":325,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":280}
+[field] ok  RepoRunCommandRequest {"args":["--","src/jvmMain/kotlin/afield/examples/visualization/ChartGallery.kt"],"command":"git-diff","timeoutSec":30}
+[field] ok  RepoPatchFileRequest {"newText":"    /**\n     * The gallery figures in [dir]","oldText":"    /** One rendered figure: its pixels, and the PNG bytes for the same. */\n/**\n     * Th
+[field] ok  RepoPatchFileRequest {"newText":"    /** One rendered figure: its pixels, and the PNG bytes for the same. */\n    private class Raster(val width: Int, val height: Int, val pixels: I
+[field] ok  RepoReadFileRequest {"endLine":1195,"path":"tools/test_docs_notes.py","startLine":1109}
+[field] ERR RepoRunCommandRequest {"args":["tools/test_docs_notes.py","KDocDraftTest.test_import_takes_only_undocumented_declarations_in_our_tree"],"command":"python-test","timeoutSec":120}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-diff","timeoutSec":30}
+[field] ok  RepoReadFileRequest {"endLine":859,"path":"src/jvmMain/kotlin/afield/examples/visualization/ChartGallery.kt","startLine":823}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":30}
+[field] model=openai/gpt-6.1-sol rounds=11/40 wall=83s tokens in=536762 out=1615 cacheRead=484387 wrote=['src/jvmMain/kotlin/afield/examples/visualization/ChartGallery.kt', 'src/jvmMain/kotlin/afield/examples/visualization/ChartGallery.kt'] ran=['git-diff dba69727ae8424b559948501d097383c8d26a2c8 -- src -> 0', 'git-status  -> 0', 'git-diff 6a33f6ebd^ 6a33f6ebd -- src/jvmMain/kotlin/afield/examples/visualization/ChartGallery.kt -> 0', 'git-log -n 5 -> 0', 'git-diff -- src/jvmMain/kotlin/afield/examples/visualization/ChartGallery.kt -> 0', 'python-test tools/test_docs_notes.py KDocDraftTest.test_import_takes_only_undocumented_declarations_in_our_tree -> 1', 'git-diff  -> 0', 'git-status  -> 0'] verdict=unchecked error=-

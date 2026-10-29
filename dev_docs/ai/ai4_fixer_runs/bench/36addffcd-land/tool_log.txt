@@ -1,0 +1,16 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":260,"path":"src/jvmTest/kotlin/afield/ai/tools/AttachmentExcerptTest.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":430,"path":"src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt","startLine":300}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":299,"path":"src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":50,"query":"PersonalBoundary|offendingPackages|PUBLIC_IMPORT_ROOTS|package_re","regex":true}
+[field] ok  RepoReadFileRequest {"endLine":559,"path":"AGENTS.md","startLine":300}
+[field] ok  RepoRunCommandRequest {"args":["cb1cf4b0c163d4779762c06f1e61b68b81f96ffb","--","src/jvmTest/kotlin/afield/ai/tools/AttachmentExcerptTest.kt"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":350,"path":"tools/test_check_staged_generated_artifacts.py","startLine":280}
+[field] ERR RepoRunCommandRequest {"args":["tools/test_check_staged_generated_artifacts.py","PrivateBoundarySelectionTests"],"command":"python-test","timeoutSec":60}
+[field] ok  RepoReadFileRequest {"endLine":80,"path":"tools/check_staged_generated_artifacts.py","startLine":1}
+[field] ok  RepoPatchFileRequest {"newText":"val source = \"package afield.example\\n\\nclass Proof {\\n    fun Shape2.drawn(color: Byrne) = Figure(this)\\n}\\n\"","oldText":"val source = \"pac
+[field] ok  RepoReadFileRequest {"endLine":106,"path":"src/jvmTest/kotlin/afield/ai/tools/AttachmentExcerptTest.kt","startLine":95}
+[field] ok  RepoRunCommandRequest {"args":["--","src/jvmTest/kotlin/afield/ai/tools/AttachmentExcerptTest.kt"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] model=openai/gpt-6.1-sol rounds=7/40 wall=52s tokens in=298691 out=1273 cacheRead=261487 wrote=['src/jvmTest/kotlin/afield/ai/tools/AttachmentExcerptTest.kt'] ran=['git-status  -> 0', 'git-diff cb1cf4b0c163d4779762c06f1e61b68b81f96ffb -- src/jvmTest/kotlin/afield/ai/tools/AttachmentExcerptTest.kt -> 0', 'python-test tools/test_check_staged_generated_artifacts.py PrivateBoundarySelectionTests -> 1', 'git-diff -- src/jvmTest/kotlin/afield/ai/tools/AttachmentExcerptTest.kt -> 0', 'git-status  -> 0'] verdict=unchecked error=-

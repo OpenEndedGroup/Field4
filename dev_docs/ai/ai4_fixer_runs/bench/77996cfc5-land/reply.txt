@@ -1,0 +1,3 @@
+Changed the misplaced parameter KDoc in `dir.kt` to a regular line comment; the diff confirms only that line changed. Guard-source inspection confirms `//` comments are ignored; Gradle is unavailable, and no Python checker covers this guard.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "handoffs/code-20261015-2234", "reason": "Converted the branch's mis-attached parameter KDoc to an ordinary comment, verified against the guard source because Gradle is unavailable."}

@@ -1,0 +1,3 @@
+Added the missing `stacksl-regions` ledger row, updated the count to 53, and documented its existing trust boundary. Source-equivalent checks now pass both comparisons; Gradle is unavailable, and no Python checker covers this ledger.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "handoffs/code-20261016-1144", "reason": "The branch added stacksl-regions without updating the server surface ledger; the minimal documentation fix passes source-equivalent comparisons for both reported failures."}

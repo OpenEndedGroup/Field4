@@ -1,0 +1,3 @@
+Updated only the three fence openers in `public/docs/presentation_studio.md`, matching the guard’s prescribed replacements without changing content. All five related Python fence-marker tests pass; the JVM guard could not run because Gradle is unavailable.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "codex/presentation-studio", "reason": "The branch added three bare code fences, now mechanically converted to the required diffstatic treatment with related Python tests passing."}

@@ -1,0 +1,15 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":210,"path":"src/jvmMain/kotlin/afield/server/terminal.kt","startLine":85}
+[field] ok  RepoSearchRequest {"glob":"**/*","ignoreCase":false,"maxMatches":35,"query":"STACKED","regex":false}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*kdoc*"}
+[field] ok  RepoReadFileRequest {"endLine":275,"path":"src/jvmMain/kotlin/afield/docs/KDocAttachmentGuard.kt","startLine":175}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*.py"}
+[field] ok  RepoRunCommandRequest {"args":["35c998efa6177c9c7bc78b9bc8e62d19562eaf11","--","src/jvmMain/kotlin/afield/server/terminal.kt"],"command":"git-diff","timeoutSec":30}
+[field] ok  RepoReadFileRequest {"endLine":541,"path":"AGENTS.md","startLine":420}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":35,"query":"kdoc|checkKDocAttachment","regex":true}
+[field] ok  RepoPatchFileRequest {"newText":"/**\n * The coding agent Field starts: `claude` or `codex`.","oldText":"/** [name] on PATH or in the usual install places: a Field started from the 
+[field] ok  RepoPatchFileRequest {"newText":"/** [name] on PATH or in the usual install places: a Field started from the Dock has a thin PATH. */\ninternal fun terminalExecutable(name: String):
+[field] ok  RepoReadFileRequest {"endLine":152,"path":"src/jvmMain/kotlin/afield/server/terminal.kt","startLine":130}
+[field] ok  RepoRunCommandRequest {"args":["--","src/jvmMain/kotlin/afield/server/terminal.kt"],"command":"git-diff","timeoutSec":30}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":30}
+[field] model=openai/gpt-6.1-sol rounds=6/40 wall=38s tokens in=194761 out=1055 cacheRead=169025 wrote=['src/jvmMain/kotlin/afield/server/terminal.kt', 'src/jvmMain/kotlin/afield/server/terminal.kt'] ran=['git-diff 35c998efa6177c9c7bc78b9bc8e62d19562eaf11 -- src/jvmMain/kotlin/afield/server/terminal.kt -> 0', 'git-diff -- src/jvmMain/kotlin/afield/server/terminal.kt -> 0', 'git-status  -> 0'] verdict=unchecked error=-

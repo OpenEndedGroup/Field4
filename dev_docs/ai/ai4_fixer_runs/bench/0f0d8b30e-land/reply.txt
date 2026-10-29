@@ -1,0 +1,3 @@
+Added the missing `set-viewports` ledger row, updated `Server.kt`’s count to 52, and documented its existing trust boundary. Source-equivalent checks now show no command or count mismatches; Gradle is unavailable, and no Python check covers this ledger.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "handoffs/code-20261015-2234", "reason": "The branch added set-viewports without updating the server inventory, and the corrected ledger now matches both failing checks' source comparisons."}

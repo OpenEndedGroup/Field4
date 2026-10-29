@@ -1,0 +1,17 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"src/jvmMain/kotlin/afield/server/terminal.kt","startLine":85}
+[field] ok  RepoSearchRequest {"glob":"**/*","ignoreCase":false,"maxMatches":35,"query":"STACKED","regex":false}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":20}
+[field] ok  RepoReadFileRequest {"endLine":290,"path":"src/jvmMain/kotlin/afield/docs/KDocAttachmentGuard.kt","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"tools/*kdoc*"}
+[field] ok  RepoReadFileRequest {"endLine":541,"path":"AGENTS.md","startLine":350}
+[field] ok  RepoRunCommandRequest {"args":["35c998efa6177c9c7bc78b9bc8e62d19562eaf11","HEAD","--","src/jvmMain/kotlin/afield/server/terminal.kt"],"command":"git-diff","timeoutSec":20}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":40,"query":"kdoc","regex":false}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":false,"maxMatches":60,"query":"KDocAttachment","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":145,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":325,"path":"src/jvmMain/kotlin/afield/docs/KDocAttachmentGuard.kt","startLine":290}
+[field] ok  RepoPatchFileRequest {"newText":"/**\n * The coding agent Field starts: `claude` or `codex`.","oldText":"/** [name] on PATH or in the usual install places: a Field started from the 
+[field] ok  RepoPatchFileRequest {"newText":"/** [name] on PATH or in the usual install places: a Field started from the Dock has a thin PATH. */\ninternal fun terminalExecutable(name: String):
+[field] ok  RepoReadFileRequest {"endLine":153,"path":"src/jvmMain/kotlin/afield/server/terminal.kt","startLine":130}
+[field] ok  RepoRunCommandRequest {"args":["--","src/jvmMain/kotlin/afield/server/terminal.kt"],"command":"git-diff","timeoutSec":20}
+[field] model=openai/gpt-6.1-sol rounds=6/40 wall=41s tokens in=236186 out=1167 cacheRead=201936 wrote=['src/jvmMain/kotlin/afield/server/terminal.kt', 'src/jvmMain/kotlin/afield/server/terminal.kt'] ran=['git-status  -> 0', 'git-diff 35c998efa6177c9c7bc78b9bc8e62d19562eaf11 HEAD -- src/jvmMain/kotlin/afield/server/terminal.kt -> 0', 'git-diff -- src/jvmMain/kotlin/afield/server/terminal.kt -> 0'] verdict=unchecked error=-

@@ -13,9 +13,34 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import java.io.File
 
+/**
+ * The HTTP surface behind Welcome's kit library, one route per action that panel offers.
+ *
+ * `GET /api/kits` is the list: every registered package with its manifest and its state, whether
+ * the registry and the revisions this host launched with have diverged, and the packages bundled in
+ * the checkout's `templates/`. `install` and `remove` edit the registry; `restart-status` and
+ * `restart` drive [afield.document.workspace.KitRestarts]; `create` copies a starting point into the
+ * workspace and announces the new document; `open-host` starts a kit that brings its own host and
+ * answers with a URL into it; `guide` renders the package's Markdown guide as a standalone page,
+ * served under a sandboxing Content-Security-Policy because that text belongs to the package rather
+ * than to Field.
+ *
+ * The three routes that touch an existing document are the careful ones. `instances` and `inspect`
+ * report a three-way comparison and write nothing; `migrate` refuses unless the document is closed,
+ * flushing and unloading one that is loaded with nothing attached to it first; and `activate`
+ * starts the kit's runtime for a loaded document and launches its boxes in order, or answers with
+ * the URL that would open it when it is not loaded. A document is addressed by name and has to
+ * resolve to a direct child of the workspace, so a path cannot reach outside it.
+ *
+ * Nothing here runs code from a package. Installing is validation and copying; it is the next
+ * launch that puts a kit's classes on the classpath.
+ */
+
+/** One request body for every kit route; each reads the fields its own action needs. */
 @Serializable
 data class KitPackageRequest(val path: String = "", val id: String = "", val startingPoint: String = "", val name: String = "", val document: String = "")
 
+/** The whole kit library as Welcome draws it, including packages bundled in `templates/`. */
 @Serializable
 data class KitLibraryResponse(val kits: List<KitPackageStatus>, val restartRequired: Boolean, val bundled: List<String>)
 

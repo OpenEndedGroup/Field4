@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-236 source file(s), 3183 public symbol(s), 1162 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+236 source file(s), 3183 public symbol(s), 1164 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1108,21 +1108,46 @@ Makes `kill -INT` (and Ctrl-C) stop Field even when Field was started with SIGIN
 
 ## KitRoutes.kt { #kitroutes-kt }
 
+The HTTP surface behind Welcome's kit library, one route per action that panel offers.
+
+`GET /api/kits` is the list: every registered package with its manifest and its state, whether
+the registry and the revisions this host launched with have diverged, and the packages bundled in
+the checkout's `templates/`. `install` and `remove` edit the registry; `restart-status` and
+`restart` drive [`afield.document.workspace.KitRestarts`](workspace.md#kitrestarts-kt-kitrestarts); `create` copies a starting point into the
+workspace and announces the new document; `open-host` starts a kit that brings its own host and
+answers with a URL into it; `guide` renders the package's Markdown guide as a standalone page,
+served under a sandboxing Content-Security-Policy because that text belongs to the package rather
+than to Field.
+
+The three routes that touch an existing document are the careful ones. `instances` and `inspect`
+report a three-way comparison and write nothing; `migrate` refuses unless the document is closed,
+flushing and unloading one that is loaded with nothing attached to it first; and `activate`
+starts the kit's runtime for a loaded document and launches its boxes in order, or answers with
+the URL that would open it when it is not loaded. A document is addressed by name and has to
+resolve to a direct child of the workspace, so a path cannot reach outside it.
+
+Nothing here runs code from a package. Installing is validation and copying; it is the next
+launch that puts a kit's classes on the classpath.
+
 `src/jvmMain/kotlin/afield/app/server/KitRoutes.kt` — [read the source](source/jvmMain/afield/app/server/KitRoutes/)
 
 ### Top-level functions { #kitroutes-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="kitroutes-kt--installkitroutes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Route</span><span class="p">.</span><span class="nf">installKitRoutes</span><span class="p">(</span><span class="n">restart</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/KitRoutes/#L23) | Local kit lifecycle APIs used by Welcome; registration never executes the package's code. |
+| <a id="kitroutes-kt--installkitroutes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Route</span><span class="p">.</span><span class="nf">installKitRoutes</span><span class="p">(</span><span class="n">restart</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/KitRoutes/#L48) | Local kit lifecycle APIs used by Welcome; registration never executes the package's code. |
 
 ### KitPackageRequest { #kitroutes-kt-kitpackagerequest }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitPackageRequest</span><span class="p">(</span><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">startingPoint</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">document</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/KitRoutes/#L17)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitPackageRequest</span><span class="p">(</span><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">startingPoint</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">document</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/KitRoutes/#L41)
+
+One request body for every kit route; each reads the fields its own action needs.
 
 ### KitLibraryResponse { #kitroutes-kt-kitlibraryresponse }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitLibraryResponse</span><span class="p">(</span><span class="k">val</span> <span class="n">kits</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KitPackageStatus</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">restartRequired</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">bundled</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/KitRoutes/#L20)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KitLibraryResponse</span><span class="p">(</span><span class="k">val</span> <span class="n">kits</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KitPackageStatus</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">restartRequired</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">bundled</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/KitRoutes/#L45)
+
+The whole kit library as Welcome draws it, including packages bundled in `templates/`.
 
 ## NetStats.kt { #netstats-kt }
 
@@ -1203,7 +1228,7 @@ options such as `--workspace` and `--document` are read here as [`home`](workspa
 | <a id="server-kt--parselayerslist"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">parseLayersList</span><span class="p">(</span><span class="n">layersString</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/app/server/Server/#L817) |  |
 | <a id="server-kt--scheduleautorunboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SessionInformation</span><span class="p">.</span><span class="nf">scheduleAutorunBoxes</span><span class="p">(</span><span class="n">delayMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">500L</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L827) |  |
 | <a id="server-kt--autorunboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SessionInformation</span><span class="p">.</span><span class="nf">autorunBoxes</span><span class="p">(</span><span class="n">targetBoxes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">delayMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">500L</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L838) |  |
-| <a id="server-kt--languagenameforproperty"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">languageNameForProperty</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/Server/#L6260) |  |
+| <a id="server-kt--languagenameforproperty"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">languageNameForProperty</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/Server/#L6268) |  |
 
 ### Top-level values { #server-kt-values }
 

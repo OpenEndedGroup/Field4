@@ -1,0 +1,25 @@
+[field] ok  RepoReadFileRequest {"endLine":200,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**/*","ignoreCase":true,"maxMatches":60,"query":"checkKDocAttachment","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":250,"path":"src/jvmMain/kotlin/afield/docs/KDocAttachmentGuard.kt","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*kdoc*"}
+[field] ok  RepoReadFileRequest {"endLine":150,"path":"src/jvmTest/kotlin/afield/paint/GesturePaintReplayTest.kt","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*.py"}
+[field] ok  RepoReadFileRequest {"endLine":320,"path":"src/jvmMain/kotlin/afield/docs/KDocAttachmentGuard.kt","startLine":246}
+[field] ok  RepoReadFileRequest {"endLine":180,"path":"src/jvmMain/kotlin/afield/paint/gestureReplay.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":170,"path":"src/jvmMain/kotlin/afield/paint/GestureReplayMain.kt","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":30,"query":"kdoc","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":90,"path":"tools/check_box_idioms.py","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":["396a36f5b","--","src/jvmTest/kotlin/afield/paint/GesturePaintReplayTest.kt"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":130,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/ai/KDocExtractor.kt","ignoreCase":false,"maxMatches":20,"query":"startsWith(\"@\")","regex":false}
+[field] ok  RepoRunCommandRequest {"args":["396a36f5b^","396a36f5b","--","src/jvmMain/kotlin/afield/visualizers.kt","src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt"],"command"
+[field] ok  RepoRunCommandRequest {"args":["-n","5"],"command":"git-log","timeoutSec":10}
+[field] ok  RepoListFilesRequest {"glob":"src/**/KDocExtractor.kt"}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/visualizers.kt","ignoreCase":false,"maxMatches":40,"query":"/**","regex":false}
+[field] ok  RepoPatchFileRequest {"newText":"    @Test\n    fun anEditedTakePaintsWhereTheEditMovedIt() {","oldText":"    @Test fun anEditedTakePaintsWhereTheEditMovedIt() {","path":"src/jvmTes
+[field] ok  RepoPatchFileRequest {"newText":"    @Test\n    fun aPensPressurePressesTheHairsWhereThePenPressed() {","oldText":"    @Test fun aPensPressurePressesTheHairsWhereThePenPressed() {",
+[field] ok  RepoReadFileRequest {"endLine":140,"path":"src/jvmTest/kotlin/afield/paint/GesturePaintReplayTest.kt","startLine":90}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/ai/core/completion/KDocExtractor.kt","ignoreCase":false,"maxMatches":10,"query":"startsWith(\"@\")","regex":false}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-diff","timeoutSec":10}
+[field] model=openai/gpt-6.1-sol rounds=11/40 wall=63s tokens in=403968 out=1634 cacheRead=366177 wrote=['src/jvmTest/kotlin/afield/paint/GesturePaintReplayTest.kt', 'src/jvmTest/kotlin/afield/paint/GesturePaintReplayTest.kt'] ran=['git-status  -> 0', 'git-diff 396a36f5b -- src/jvmTest/kotlin/afield/paint/GesturePaintReplayTest.kt -> 0', 'git-diff 396a36f5b^ 396a36f5b -- src/jvmMain/kotlin/afield/visualizers.kt src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt -> 0', 'git-log -n 5 -> 0', 'git-diff  -> 0'] verdict=unchecked error=-

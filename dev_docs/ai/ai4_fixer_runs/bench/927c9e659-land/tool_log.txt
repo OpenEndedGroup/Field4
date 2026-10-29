@@ -1,0 +1,12 @@
+[field] ok  RepoReadFileRequest {"endLine":200,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":160,"path":"src/jvmTest/kotlin/afield/tools/docs/DocsFenceTreatmentTest.kt","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":60,"query":"diffstatic","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":290,"path":"public/docs/three_output.md","startLine":245}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*docs*.py"}
+[field] ok  RepoReadFileRequest {"endLine":230,"path":"tools/check_box_idioms.py","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":["tools/check_box_idioms.py"],"command":"check","timeoutSec":60}
+[field] ok  RepoPatchFileRequest {"newText":"```diffstatic {data-lang=kotlin}\nthree {\n    mesh(vase, wireframe = false, cullBackFaces = false,","oldText":"```kotlin\nthree {\n    mesh(vase, w
+[field] ok  RepoReadFileRequest {"endLine":270,"path":"public/docs/three_output.md","startLine":257}
+[field] ok  RepoRunCommandRequest {"args":["tools/check_box_idioms.py"],"command":"check","timeoutSec":60}
+[field] ok  RepoRunCommandRequest {"args":["--","public/docs/three_output.md"],"command":"git-diff","timeoutSec":60}
+[field] model=openai/gpt-6.1-sol rounds=11/40 wall=45s tokens in=358902 out=721 cacheRead=330883 wrote=['public/docs/three_output.md'] ran=['check tools/check_box_idioms.py -> 0', 'check tools/check_box_idioms.py -> 0', 'git-diff -- public/docs/three_output.md -> 0'] verdict=unchecked error=-

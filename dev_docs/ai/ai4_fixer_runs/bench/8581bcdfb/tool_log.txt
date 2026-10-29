@@ -1,0 +1,21 @@
+[field] ok  RepoReadFileRequest {"endLine":200,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"tools/run_python_tests.py","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ok  RepoListFilesRequest {"glob":"tools/test_*python*"}
+[field] ok  RepoSearchRequest {"glob":"tools/test_*.py","ignoreCase":true,"maxMatches":80,"query":"python_box_parity","regex":false}
+[field] ok  RepoSearchRequest {"glob":"tools/test_*.py","ignoreCase":false,"maxMatches":100,"query":"(manifest|corpus|transcript|languages|PythonInterface|PythonErrors)","regex":true}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":400}
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"tools/test_field_python_env.py","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":["fac4f8498","--","tools/completion-corpus/boxes/manifest.json"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":290,"path":"tools/test_demo_build_scripts.py","startLine":1}
+[field] ERR RepoRunCommandRequest {"args":["tools/test_demo_build_scripts.py"],"command":"python-test","timeoutSec":60}
+[field] ok  RepoReadFileRequest {"endLine":180,"path":"src/jvmTest/kotlin/afield/tools/docs/AgentDemoRegistrationTest.kt","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"dev_docs/agents/demos/python_box_parity/**"}
+[field] ok  RepoReadFileRequest {"endLine":170,"path":"tools/test_guard_corpora.py","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":100,"path":"dev_docs/agents/demos/python_box_parity/README.md","startLine":1}
+[field] ERR RepoRunCommandRequest {"args":["tools/test_guard_corpora.py"],"command":"python-test","timeoutSec":60}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*"}
+[field] ok  RepoPatchFileRequest {"newText":"    \"pattern_condense\",\n    \"python_box_parity\",\n    \"python_cells\",","oldText":"    \"pattern_condense\",\n    \"python_cells\",","path":"t
+[field] ok  RepoRunCommandRequest {"args":["tools/test_demo_build_scripts.py"],"command":"python-test","timeoutSec":60}
+[field] ok  RepoRunCommandRequest {"args":["--","tools/test_demo_build_scripts.py"],"command":"git-diff","timeoutSec":10}
+[field] model=openai/gpt-6.1-sol rounds=11/40 wall=54s tokens in=430998 out=1134 cacheRead=393420 wrote=['tools/test_demo_build_scripts.py'] ran=['git-status  -> 0', 'git-diff fac4f8498 -- tools/completion-corpus/boxes/manifest.json -> 0', 'python-test tools/test_demo_build_scripts.py -> 1', 'python-test tools/test_guard_corpora.py -> 1', 'python-test tools/test_demo_build_scripts.py -> 0', 'git-diff -- tools/test_demo_build_scripts.py -> 0'] verdict=unchecked error=-

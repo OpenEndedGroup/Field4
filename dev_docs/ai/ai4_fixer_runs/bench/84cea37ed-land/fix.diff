@@ -1,0 +1,34 @@
+diff --git a/src/jvmMain/kotlin/afield/tools/docs/screenshot.kt b/src/jvmMain/kotlin/afield/tools/docs/screenshot.kt
+index 8da25a7d4..46085db74 100644
+--- a/src/jvmMain/kotlin/afield/tools/docs/screenshot.kt
++++ b/src/jvmMain/kotlin/afield/tools/docs/screenshot.kt
+@@ -2228,14 +2228,6 @@ internal fun awaitPaintedFrames(page: Page, what: String, timeoutMs: Int = VIDEO
+     check(painted == true) { "$what: the page rendered no frame within $timeoutMs ms" }
+ }
+ 
+-/**
+- * Return a callback that starts (or simply admits) frame-synchronous capture.
+- *
+- * Docs captures prepare their clip against the already-running box, then restart the
+- * same property only after the runloop capture hook is installed. The readiness
+- * predicate keeps compilation/setup frames out of the movie and opens on the first
+- * active frame of the relaunched value.
+- */
+ /**
+  * Has a relaunched docs-video target reached the point the movie may start?
+  *
+@@ -2256,6 +2248,14 @@ internal fun relaunchedVideoTargetReady(
+     return runGeneration > stoppedGeneration && jobs == 0
+ }
+ 
++/**
++ * Return a callback that starts (or simply admits) frame-synchronous capture.
++ *
++ * Docs captures prepare their clip against the already-running box, then restart the
++ * same property only after the runloop capture hook is installed. The readiness
++ * predicate keeps compilation/setup frames out of the movie and opens on the first
++ * active frame of the relaunched value.
++ */
+ private fun videoCapturePreparation(
+     info: SessionInformation,
+     page: Page,

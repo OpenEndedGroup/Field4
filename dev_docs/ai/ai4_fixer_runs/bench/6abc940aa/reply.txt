@@ -1,0 +1,3 @@
+Replaced the JSON builder with an equivalent `JsonObject(mapOf(...))`; the guard’s exact regex now finds zero offenders in `Server.kt`, down from three. Gradle verification was unavailable; the separate simdjson environment failure remains untouched.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "nightly/2026-10-22/3-layers-guide", "reason": "The branch introduced three JSON-builder calls misidentified as routes, and an equivalent five-line constructor change removes those matches without changing the payload or guard."}

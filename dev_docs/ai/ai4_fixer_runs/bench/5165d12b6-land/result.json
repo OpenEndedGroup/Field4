@@ -1,0 +1,150 @@
+{
+ "taskId": "task-bfda1928",
+ "mode": "live",
+ "provider": "openai",
+ "model": "gpt-6.1-sol",
+ "verdict": "unchecked",
+ "checks": [],
+ "toolCalls": [
+  {
+   "index": 1,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":220,\"path\":\"AGENTS.md\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-220 of 556\",\"path\":\"AGENTS.md\",\"text\":\"1\\t# AField / Field\u00b74 \u2014 Repo Guide for Agents\\n2\\t\\n3\\tA corrective paragraph in this file is a bug report against a tool, and it stays only until the\\n4\\ttool enforces it. When you add a \\\"do not\\\", name the tool change that would retire it. Histories\\n5\\tof rules that became code live in\\n6\\t[`dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md`](dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md).\\n7\\t\\n8\\t---\\n9\\t\\n10\\t## 1. What this is\\n11\\t\\n12\\t**Field\u00b74** is a Kotlin live-coding environment for graphics and exploratory dat... [921 more chars]"
+  },
+  {
+   "index": 2,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"**\",\"ignoreCase\":false,\"maxMatches\":35,\"query\":\"checkKDocAttachment\",\"regex\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"stopped at 35 matches\",\"matches\":[{\"path\":\"build.gradle.kts\",\"line\":2110,\"text\":\"tasks.register<JavaExec>(\\\"checkKDocAttachment\\\") {\"},{\"path\":\"build.gradle.kts\",\"line\":2498,\"text\":\"    dependsOn(\\\"checkKDocAttachment\\\")\"},{\"path\":\"build.gradle.kts\",\"line\":2529,\"text\":\"// :jvmTest failed, and checkKDocAttachment, checkCodebaseReference and checkCompletionCorpusFixtures\"},{\"path\":\"build.gradle.kts\",\"line\":2543,\"text\":\"    dependsOn(\\\"checkKDocAttachment\\\")\"},{\"path\":\"build.gradle.kts\",\"line\":2568,\"text\":\"        \\\"checkKDocAttachment\\\",\"},{\"path\":\"dev_docs/BUILD_INFRA... [921 more chars]"
+  },
+  {
+   "index": 3,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"26724ca25cb8cc126c6cf9b4f6a6ce2744e1a800\",\"--\",\"src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt\",\"src/jvmTest/kotlin/afield/runtime/completion/CompletionCorpusBoxGraphTest.kt\"],\"command\":\"git-diff\",\"timeoutSec\":30}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv 26724ca25cb8cc126c6cf9b4f6a6ce2744e1a800 -- src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt src/jvmTest/kotlin/afield/runtime/completion/CompletionCorpusBoxGraphTest.kt\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":33,\"output\":\"diff --git a/src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt b/src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt\\nindex 28ab443fb..804adfbd3 100644\\n--- a/src/jvmMain/kotlin/afiel... [921 more chars]"
+  },
+  {
+   "index": 4,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[],\"command\":\"git-status\",\"timeoutSec\":30}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= status --short --branch\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":113,\"output\":\"## HEAD (no branch)\\n\",\"outputBytes\":20,\"truncated\":false}"
+  },
+  {
+   "index": 5,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":556,\"path\":\"AGENTS.md\",\"startLine\":350}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 350-556 of 556\",\"path\":\"AGENTS.md\",\"text\":\"350\\t  beneath it, or the lookup happened after an async boundary. Fix the graph or capture the\\n351\\t  `Renderer` before `start(...)`; never solve it with sleeps.\\n352\\t\\n353\\t### Outputs\\n354\\t\\n355\\t- Each box has an output area of resizable \\\"disclosure\\\" panels, one per channel.\\n356\\t- `display(\\\"channel\\\", \\\"<b>hello</b>\\\")` (`HasOutput`/`DefaultOutput` in `afield/outputs.kt`) goes\\n357\\t  through the `displayProxy` installed by execution (`execution.kt` \u2192 `Set_output` in `rpc.kt`);\\n358\\t  the frontend inserts ... [921 more chars]"
+  },
+  {
+   "index": 6,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":260,\"path\":\"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-260 of 509\",\"path\":\"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt\",\"text\":\"1\\tpackage afield.tools.docs\\n2\\t\\n3\\timport afield.tools.docs.index.KDocExtractor\\n4\\timport afield.runtime.completion.KotlinSourceIndex\\n5\\timport java.io.File\\n6\\timport kotlin.system.exitProcess\\n7\\t\\n8\\t/*\\n9\\tFIELD_TEST\\n10\\tid: docs.kdoc-attachment.guard\\n11\\trunner: jvm-main\\n12\\tentrypoint: afield.tools.docs.KDocAttachmentGuard\\n13\\ttags: [smoke, docs, reference, kdoc, verification]\\n14\\ttimeoutSec: 180\\n15\\texpect:\\n16\\t  exitCode: 0\\n17\\t  stdoutContains:\\n18\\t... [921 more chars]"
+  },
+  {
+   "index": 7,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":130,\"path\":\"dev_docs/kdoc_reference_contract.md\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-130 of 503\",\"path\":\"dev_docs/kdoc_reference_contract.md\",\"text\":\"1\\t# The KDoc \u2192 reference contract\\n2\\t\\n3\\tEverything Field says about its own API in the editor and on the docs site comes from one place: the\\n4\\t`/** \u2026 */` blocks in `src/`. There is no second source, no hand-maintained API page, and no Dokka.\\n5\\tThat makes the pipeline cheap and honest \u2014 and it means a KDoc that fails to *attach* to the right\\n6\\tdeclaration is published as another symbol's description, silently.\\n7\\t\\n8\\tThis note is the contract: what the extractor can and cannot see, wh... [921 more chars]"
+  },
+  {
+   "index": 8,
+   "tool": "RepoListFilesRequest",
+   "arguments": "{\"glob\":\"tools/*kdoc*\"}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"0 file(s)\",\"files\":[],\"complete\":true}"
+  },
+  {
+   "index": 9,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":2135,\"path\":\"build.gradle.kts\",\"startLine\":2100}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 2100-2135 of 4457\",\"path\":\"build.gradle.kts\",\"text\":\"2100\\t// two roots and so was blind to 232 of the generator's 402 tracked input files. Wiring the\\n2101\\t// byte-exact guard into `check` means the\\n2102\\t// staleness is caught by an ordinary build rather than only by the docs.codebase-reference.generate\\n2103\\t// FIELD_TEST, which needs the test catalog to be run. Fix a failure with:\\n2104\\t//   ./gradlew generateCodebaseReference\\n2105\\t// A KDoc block that the extractor cannot attach to the declaration below it is *not* caught by the\\n2106\\t// byte-exact ... [921 more chars]"
+  },
+  {
+   "index": 10,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"tools/*.py\",\"ignoreCase\":true,\"maxMatches\":50,\"query\":\"kdoc\",\"regex\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"stopped at 50 matches\",\"matches\":[{\"path\":\"tools/check_box_idioms.py\",\"line\":101,\"text\":\"# reference pages are generated from KDoc. Widen this once the refactor lands.\"},{\"path\":\"tools/check_doc_site_links.py\",\"line\":222,\"text\":\"#                                          published as a paragraph because its KDoc indent was\"},{\"path\":\"tools/check_staged_generated_artifacts.py\",\"line\":393,\"text\":\"        \\\"codebase reference and KDoc worklist\\\",\"},{\"path\":\"tools/check_staged_generated_artifacts.py\",\"line\":395,\"text\":\"        (\\\"public/docs/reference\\\", \\\"dev_docs/kdoc_... [921 more chars]"
+  },
+  {
+   "index": 11,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":340,\"path\":\"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt\",\"startLine\":275}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 275-340 of 509\",\"path\":\"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt\",\"text\":\"275\\t\\n276\\t            // The extractor skips any line beginning with `@`, so an annotation alone on its line is\\n277\\t            // transparent. An annotation with the declaration behind it on the same line takes that\\n278\\t            // declaration with it, and the block slides.\\n279\\t            if (trimmed.startsWith(\\\"@\\\")) {\\n280\\t                if (declarationPart.isNotEmpty() && KDocExtractor.parseDeclaration(declarationPart) != null) {\\n281\\t               ... [921 more chars]"
+  },
+  {
+   "index": 12,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":100,\"path\":\"src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt\",\"startLine\":60}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 60-100 of 399\",\"path\":\"src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt\",\"text\":\"60\\t * `var Box.sgL by Inheritance<Int>()`, `moduleHere { }` becomes the `/*supermap*/ class MappedStructure` +\\n61\\t * `fun Mesh.set(\u2026, builder: MappedStructure.() -> Unit)` pair, `@exported` republishes a box's own values.\\n62\\t * None of that exists in a document as materialised on disk; all of it exists the moment the box runs.\\n63\\t *\\n64\\t * So a corpus read straight off disk measures a context no user ever has. `CompletionLoweringProbe`'s\\n65\\t * first run sa... [921 more chars]"
+  },
+  {
+   "index": 13,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"tools/*check*.py\",\"ignoreCase\":false,\"maxMatches\":50,\"query\":\"KDocAttachment|STACKED|stacked KDoc\",\"regex\":true}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"9 match(es) in 26 file(s)\",\"matches\":[{\"path\":\"tools/check_staged_generated_artifacts.py\",\"line\":397,\"text\":\"    Guard(\\\"checkKDocAttachment\\\", \\\"KDoc attachment\\\", _kotlin_source),\"},{\"path\":\"tools/land_precheck.py\",\"line\":157,\"text\":\"        \\\"checkKDocAttachment (WebRTC: an annotation on the same line as its declaration)\\\",\"},{\"path\":\"tools/land_precheck.py\",\"line\":159,\"text\":\"        gradle=(\\\"checkKDocAttachment\\\",),\"},{\"path\":\"tools/test_check_staged_generated_artifacts.py\",\"line\":38,\"text\":\"            [\\\"checkCodebaseReference\\\", \\\"checkKDocAttachment\\\", \\\"ci... [815 more chars]"
+  },
+  {
+   "index": 14,
+   "tool": "RepoPatchFileRequest",
+   "arguments": "{\"newText\":\"    /** The id a document's root box has; `document.md` lists it as a parent without a record of its own. */\\n    const val ROOT_ID = \\\"root\\\"\\n\\n    /** Where the bundled starting points and templates live, relative to the repo root. */\\n    val defaultDirs: List<String> = listOf(\\\"public/docs/assets/agent_transcripts\\\", \\\"templates\\\")\",\"oldText\":\"    /** Where the bundled starting points and templates live, relative to the repo root. */\\n    /** The id a document's root box has; `document.md` lists it as a parent without a record of its own. */\\n    const val ROOT_ID = \\\"root\\\"\\n... [196 more chars]",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"replaced 1 occurrence(s) in src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt\",\"path\":\"src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt\",\"text\":\"\",\"totalLines\":0,\"truncated\":false}"
+  },
+  {
+   "index": 15,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":89,\"path\":\"src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt\",\"startLine\":79}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 79-89 of 399\",\"path\":\"src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt\",\"text\":\"79\\tobject CompletionCorpus {\\n80\\t\\n81\\t    /** The id a document's root box has; `document.md` lists it as a parent without a record of its own. */\\n82\\t    const val ROOT_ID = \\\"root\\\"\\n83\\t\\n84\\t    /** Where the bundled starting points and templates live, relative to the repo root. */\\n85\\t    val defaultDirs: List<String> = listOf(\\\"public/docs/assets/agent_transcripts\\\", \\\"templates\\\")\\n86\\t\\n87\\t    /** Checked-in harvest output. */\\n88\\t    const val FIXTURE... [83 more chars]"
+  },
+  {
+   "index": 16,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"--\",\"src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt\"],\"command\":\"git-diff\",\"timeoutSec\":30}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv -- src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":41,\"output\":\"diff --git a/src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt b/src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt\\nindex 804adfbd3..6225ade10 100644\\n--- a/src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt\\n+++ b/src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt\\n@@ -... [609 more chars]"
+  },
+  {
+   "index": 17,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt\",\"ignoreCase\":false,\"maxMatches\":15,\"query\":\"const|MODIFIERS|parseDeclaration\",\"regex\":true}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"10 match(es) in 1 file(s)\",\"matches\":[{\"path\":\"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt\",\"line\":19,\"text\":\" * `parseDeclaration` recognises; `KDocAttachmentGuard` reports blocks that would attach to the wrong\"},{\"path\":\"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt\",\"line\":44,\"text\":\"        \\\"const\\\", \\\"lateinit\\\", \\\"companion\\\", \\\"inner\\\",\"},{\"path\":\"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt\",\"line\":139,\"text\":\"                        declaration = parseDeclaration(declLineText)\"},{\"path\":\"src/jvmMain/kotlin/afield... [920 more chars]"
+  }
+ ],
+ "finalText": "Moved `defaultDirs`\u2019 KDoc back above its declaration, removing the branch\u2019s stacked-KDoc error with one comment relocation. Source inspection confirms both comments now attach correctly; Gradle is unavailable, and no Python check covers this guard.\n\nFIXER-VERDICT: {\"verdict\": \"fix\", \"culprit\": \"claude/demo-timeline-harvest\", \"reason\": \"The branch inserted ROOT_ID beneath defaultDirs\u2019 existing KDoc, and moving that comment back restores correct attachment without changing executable code.\"}",
+ "rounds": 7,
+ "maxToolRounds": 40,
+ "hitToolRoundCap": false,
+ "elapsedMs": 38380,
+ "inputTokens": 276555,
+ "outputTokens": 1293,
+ "cacheReadTokens": 239684,
+ "documentName": "scratch",
+ "lessons": true,
+ "documentRef": "43da6dca-88d5-4a24-aad0-9d913e7a8aec",
+ "programs": true,
+ "contextPlacement": "developer-once+input",
+ "repoWritten": [
+  "src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt"
+ ],
+ "repoRuns": [
+  "git-diff 26724ca25cb8cc126c6cf9b4f6a6ce2744e1a800 -- src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt src/jvmTest/kotlin/afield/runtime/completion/CompletionCorpusBoxGraphTest.kt -> 0",
+  "git-status  -> 0",
+  "git-diff -- src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt -> 0"
+ ]
+}

@@ -1,0 +1,13 @@
+diff --git a/src/jvmMain/kotlin/afield/document/workspace/dir.kt b/src/jvmMain/kotlin/afield/document/workspace/dir.kt
+index 2ea4f4c33..a5ec7d073 100644
+--- a/src/jvmMain/kotlin/afield/document/workspace/dir.kt
++++ b/src/jvmMain/kotlin/afield/document/workspace/dir.kt
+@@ -1321,7 +1321,7 @@ private fun searchWorkspaceIncludingDocuments(
+     maxScanMillis: Long,
+     cancellationCheck: () -> Unit,
+     additionalDocuments: List<File>,
+-    /** Listed names for [additionalDocuments] that differ from their directory's, by canonical path. */
++    // Listed names for additionalDocuments that differ from their directory's, by canonical path.
+     documentNames: Map<String, String> = emptyMap(),
+ ): WorkspaceSearchResponse {
+     val query = rawQuery.trim()

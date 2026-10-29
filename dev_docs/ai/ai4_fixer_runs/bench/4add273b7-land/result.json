@@ -1,0 +1,212 @@
+{
+ "taskId": "task-1c8da05d",
+ "mode": "live",
+ "provider": "openai",
+ "model": "gpt-6.1-sol",
+ "verdict": "unchecked",
+ "checks": [],
+ "toolCalls": [
+  {
+   "index": 1,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":200,\"path\":\"AGENTS.md\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-200 of 552\",\"path\":\"AGENTS.md\",\"text\":\"1\\t# AField / Field\u00b74 \u2014 Repo Guide for Agents\\n2\\t\\n3\\tA corrective paragraph in this file is a bug report against a tool, and it stays only until the\\n4\\ttool enforces it. When you add a \\\"do not\\\", name the tool change that would retire it. Histories\\n5\\tof rules that became code live in\\n6\\t[`dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md`](dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md).\\n7\\t\\n8\\t---\\n9\\t\\n10\\t## 1. What this is\\n11\\t\\n12\\t**Field\u00b74** is a Kotlin live-coding environment for graphics and exploratory dat... [921 more chars]"
+  },
+  {
+   "index": 2,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"**/*\",\"ignoreCase\":false,\"maxMatches\":60,\"query\":\"checkAgentTranscriptIndex\",\"regex\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"19 match(es) in 9627 file(s)\",\"matches\":[{\"path\":\"dev_docs/BUILD_INFRASTRUCTURE.md\",\"line\":100,\"text\":\"| Drift checks and guards | `checkCodebaseReference`, `checkKDocAttachment`, `checkSourcePartition`, `checkSourcePages`, `checkAgentTranscripts`, `checkAgentTranscriptIndex`, `checkAgentTranscriptLayouts`, `checkAgentDemos`, `checkBoxOutputChannels`, `checkCompletionCorpusFixtures`, `checkGeneratedL\"},{\"path\":\"dev_docs/BUILD_INFRASTRUCTURE.md\",\"line\":145,\"text\":\"`checkAgentTranscriptIndex`, `checkAgentTranscriptLayouts`, `checkAgentDemos`, `checkPythonTools`,\"},{\"pa... [921 more chars]"
+  },
+  {
+   "index": 3,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":552,\"path\":\"AGENTS.md\",\"startLine\":370}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 370-552 of 552\",\"path\":\"AGENTS.md\",\"text\":\"370\\t  `afield/slideshow_example.kt`; notes in `dev_docs/SLIDESHOW_FEATURE.md`,\\n371\\t  `SLIDESHOW_ANNOTATIONS.md`, `INTERACTIVE_GUIDES.md`).\\n372\\t- A step can show an anchored note (`note(...)` / `markdownNote(...)` via `ShowSlideNote`,\\n373\\t  rendered by the `show-slide-note` handler in `Main.kt`); select a box, switch property and\\n374\\t  highlight a line (`selectBox(...)`, `SelectAndEditBox`); draw annotation lines to boxes or code\\n375\\t  lines (`annotate(...)`, `annotateToLine(...)` \u2192 `SlideAnnotation`); and te... [921 more chars]"
+  },
+  {
+   "index": 4,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[],\"command\":\"git-status\",\"timeoutSec\":10}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= status --short --branch\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":93,\"output\":\"## HEAD (no branch)\\n\",\"outputBytes\":20,\"truncated\":false}"
+  },
+  {
+   "index": 5,
+   "tool": "RepoListFilesRequest",
+   "arguments": "{\"glob\":\"tools/check_*idiom*\"}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"1 file(s)\",\"files\":[\"tools/check_box_idioms.py\"],\"complete\":true}"
+  },
+  {
+   "index": 6,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":300,\"path\":\"src/jvmMain/kotlin/afield/tools/docs/AgentTranscriptIndexGuard.kt\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-300 of 340\",\"path\":\"src/jvmMain/kotlin/afield/tools/docs/AgentTranscriptIndexGuard.kt\",\"text\":\"1\\tpackage afield.tools.docs\\n2\\t\\n3\\timport afield.examples.AgentTranscriptMaterializer\\n4\\timport afield.examples.DemoTranscriptExecSmokeTest\\n5\\timport java.io.File\\n6\\timport kotlin.system.exitProcess\\n7\\t\\n8\\t/*\\n9\\tFIELD_TEST\\n10\\tid: docs.agent-transcript-index.guard\\n11\\trunner: jvm-main\\n12\\tentrypoint: afield.tools.docs.AgentTranscriptIndexGuard\\n13\\ttags: [smoke, docs, agents, transcript, verification]\\n14\\ttimeoutSec: 120\\n15\\texpect:\\n16\\t  exitCode: 0\\... [921 more chars]"
+  },
+  {
+   "index": 7,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"tools/check_box_idioms.py\"],\"command\":\"check\",\"timeoutSec\":120}",
+   "ok": false,
+   "result": "{\"success\":false,\"message\":\"exit 1\",\"command\":\"uv run --project . --group backdoor python tools/check_box_idioms.py\",\"exitCode\":1,\"timedOut\":false,\"elapsedMs\":560,\"output\":\"check_box_idioms: 1 finding(s) in 1 file(s) (re-run with --fix)\\ndev_docs/agents/demos/function_conversation_example/document.md:178: note [box-alias] `owner` is the box this code runs in, already the implicit receiver; unless it earns its line, write `foo` for `owner.foo` and `thisBox` where the box is an argument\\ndev_docs/agents/transcripts/slideshow_guide.yaml:39: note [box-alias] `guide` is the box this code runs in, a... [921 more chars]"
+  },
+  {
+   "index": 8,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":120,\"path\":\"dev_docs/agents/transcripts/contour_trees_explorer.yaml\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-56 of 56\",\"path\":\"dev_docs/agents/transcripts/contour_trees_explorer.yaml\",\"text\":\"1\\tname: contour_trees_explorer\\n2\\tdescription: >\\n3\\t  Merge trees and contour trees of 2D fields. A landscape of hills and hollows with its contour\\n4\\t  tree's nodes, the regions its arcs stand for, and the tree drawn as a plot, simplified by a\\n5\\t  persistence slider; and the brightness of a photograph divided into contour-tree regions.\\n6\\t  Plain Kotlin, no optional libraries.\\n7\\toperations:\\n8\\t  - create:\\n9\\t      box: contour_tree_landscape\\n10\\t      name: 1 - A l... [921 more chars]"
+  },
+  {
+   "index": 9,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"2be5ed1b1b8549297e1b0a58e14d2e776e2f636b\",\"--\",\"public/docs/agent_transcripts.md\"],\"command\":\"git-diff\",\"timeoutSec\":10}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv 2be5ed1b1b8549297e1b0a58e14d2e776e2f636b -- public/docs/agent_transcripts.md\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":22,\"output\":\"diff --git a/public/docs/agent_transcripts.md b/public/docs/agent_transcripts.md\\nindex 3ab068b8f..11c599747 100644\\n--- a/public/docs/agent_transcripts.md\\n+++ b/public/docs/agent_transcripts.md\\n@@ -1053,9 +1053,6 @@ spiral, the ellipsoid method with its ellipses, the simplex walk and cutting pla\\n with its own numbe... [920 more chars]"
+  },
+  {
+   "index": 10,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":100,\"path\":\"public/docs/contour_trees.md\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-94 of 94\",\"path\":\"public/docs/contour_trees.md\",\"text\":\"1\\t# Merge trees and contour trees\\n2\\t\\n3\\tSlice a landscape at a height and you get islands: the places above that height. Raise the cut and\\n4\\tislands shrink, split in two and vanish. Lower it and they grow and join. A **contour tree** records\\n5\\tall of that as one drawing: every island that ever exists is an arc, born at a peak (or a pit),\\n6\\tsplitting or joining at a saddle. It is the shape of a field's topography with the geometry taken\\n7\\tout, and it is often the most legible summary of a fiel... [921 more chars]"
+  },
+  {
+   "index": 11,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"public/docs/agent_transcripts.md\",\"ignoreCase\":false,\"maxMatches\":60,\"query\":\"^## |verified-by\",\"regex\":true}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"18 match(es) in 1 file(s)\",\"matches\":[{\"path\":\"public/docs/agent_transcripts.md\",\"line\":23,\"text\":\"## Running one\"},{\"path\":\"public/docs/agent_transcripts.md\",\"line\":37,\"text\":\"## How CI checks them\"},{\"path\":\"public/docs/agent_transcripts.md\",\"line\":72,\"text\":\"## Pure-compute scenes\"},{\"path\":\"public/docs/agent_transcripts.md\",\"line\":74,\"text\":\"<!-- transcript-index: verified-by = execute -->\"},{\"path\":\"public/docs/agent_transcripts.md\",\"line\":1953,\"text\":\"## Service-backed composition scenes\"},{\"path\":\"public/docs/agent_transcripts.md\",\"line\":1955,\"text\":\"<!-- tran... [920 more chars]"
+  },
+  {
+   "index": 12,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"src/jvmMain/kotlin/afield/examples/*.kt\",\"ignoreCase\":false,\"maxMatches\":20,\"query\":\"contour_trees_explorer\",\"regex\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"1 match(es) in 81 file(s)\",\"matches\":[{\"path\":\"src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt\",\"line\":105,\"text\":\"        \\\"contour_trees_explorer\\\",\"}],\"complete\":true,\"filesSearched\":81}"
+  },
+  {
+   "index": 13,
+   "tool": "RepoListFilesRequest",
+   "arguments": "{\"glob\":\"public/docs/assets/agent_transcripts/contour_trees_explorer/*\"}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"0 file(s)\",\"files\":[],\"complete\":true}"
+  },
+  {
+   "index": 14,
+   "tool": "RepoListFilesRequest",
+   "arguments": "{\"glob\":\"tools/*transcript*\"}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"0 file(s)\",\"files\":[],\"complete\":true}"
+  },
+  {
+   "index": 15,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":115,\"path\":\"src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt\",\"startLine\":65}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 65-115 of 1219\",\"path\":\"src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt\",\"text\":\"65\\t * Why this exists: on 2026-07-18 `fn_differentiable_fit_demo.yaml` shipped with two compile errors\\n66\\t * in its box body and merged, because nothing in CI ever *ran* the box Kotlin \u2014\\n67\\t * [OperationTranscriptMacroSmokeTest] only *applies* transcript ops and diffs the `code` string.\\n68\\t * This test closes that gap by driving the REAL engine (no toy compiler):\\n69\\t *\\n70\\t *  - EXECUTE demos (pure-compute; no Window/Renderer): replayed end-to-end throug... [921 more chars]"
+  },
+  {
+   "index": 16,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":110,\"path\":\"dev_docs/agent_transcript_index.md\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-110 of 137\",\"path\":\"dev_docs/agent_transcript_index.md\",\"text\":\"1\\t# Keeping the agent transcript index true\\n2\\t\\n3\\t`public/docs/agent_transcripts.md` is the published index of the transcript corpus in\\n4\\t`dev_docs/agents/transcripts/`. This note is about the contract that keeps it accurate, and about why\\n5\\tthat contract is a guard rather than a generator.\\n6\\t\\n7\\t## What broke, and the shape of the failure\\n8\\t\\n9\\tOn 2026-08-06 the page listed 28 of 52 transcripts while its opening paragraph asserted that \\\"every\\n10\\tone of them is exercised end-to-e... [921 more chars]"
+  },
+  {
+   "index": 17,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":220,\"path\":\"tools/check_box_idioms.py\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-220 of 514\",\"path\":\"tools/check_box_idioms.py\",\"text\":\"1\\t#!/usr/bin/env python3\\n2\\t\\\"\\\"\\\"Flag (and with --fix, rewrite) box-code idioms that agents keep writing and Field does not need.\\n3\\t\\n4\\tBox code is read by every agent that starts from it, so a redundant line in a transcript or a\\n5\\tlesson is copied into the next fifty boxes. AGENTS.md said so in prose; agents kept writing them.\\n6\\tThis is the check that retires the prose. The rules:\\n7\\t\\n8\\t- ``redundant-renderer``: ``val renderer: Renderer = fromContext()`` (or ``fromContext<Renderer>()``).\\n9\\... [921 more chars]"
+  },
+  {
+   "index": 18,
+   "tool": "RepoListFilesRequest",
+   "arguments": "{\"glob\":\"tools/check_*.py\"}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"12 file(s)\",\"files\":[\"tools/check_box_idioms.py\",\"tools/check_doc_assets.py\",\"tools/check_doc_offline_links.py\",\"tools/check_doc_site_links.py\",\"tools/check_docs_native_prerequisites.py\",\"tools/check_expected_test_failures.py\",\"tools/check_module_imports.py\",\"tools/check_native_selfcontained.py\",\"tools/check_offline_assets.py\",\"tools/check_staged_generated_artifacts.py\",\"tools/check_study_tools.py\",\"tools/check_test_tree_writes.py\"],\"complete\":true}"
+  },
+  {
+   "index": 19,
+   "tool": "RepoListFilesRequest",
+   "arguments": "{\"glob\":\"public/docs/assets/agent_transcripts/*/metadata.edn\"}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"234 file(s)\",\"files\":[\"public/docs/assets/agent_transcripts/ai4_chat_archive/metadata.edn\",\"public/docs/assets/agent_transcripts/ai4_iframe_hello/metadata.edn\",\"public/docs/assets/agent_transcripts/ai4_paint_studio/metadata.edn\",\"public/docs/assets/agent_transcripts/ai_tool_demo/metadata.edn\",\"public/docs/assets/agent_transcripts/alife_evolution/metadata.edn\",\"public/docs/assets/agent_transcripts/alife_script/metadata.edn\",\"public/docs/assets/agent_transcripts/alife_walls/metadata.edn\",\"public/docs/assets/agent_transcripts/alife_worked_example/metadata.edn\",\"public/d... [921 more chars]"
+  },
+  {
+   "index": 20,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":130,\"path\":\"src/jvmMain/kotlin/afield/examples/AgentTranscriptMaterializer.kt\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-130 of 373\",\"path\":\"src/jvmMain/kotlin/afield/examples/AgentTranscriptMaterializer.kt\",\"text\":\"1\\tpackage afield.examples\\n2\\t\\n3\\timport afield.document.graph.Box\\n4\\timport afield.document.graph.METAROOT_ID\\n5\\timport afield.tools.automation.OperationTranscript\\n6\\timport afield.document.persistence.SavingContext\\n7\\timport afield.app.server.SessionInformation\\n8\\timport afield.document.graph.isTrue\\n9\\timport afield.app.server.thisSessionInfo\\n10\\timport org.yaml.snakeyaml.Yaml\\n11\\timport java.io.File\\n12\\timport java.nio.file.Files\\n13\\timport java.util.... [921 more chars]"
+  },
+  {
+   "index": 21,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":1960,\"path\":\"public/docs/agent_transcripts.md\",\"startLine\":1925}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1925-1960 of 3626\",\"path\":\"public/docs/agent_transcripts.md\",\"text\":\"1925\\t\\n1926\\t[Open \u2197](offline.html?file=assets/agent_transcripts/certified_envelope/metadata.edn)\\n1927\\t\\n1928\\t### solidsl_inverse\\n1929\\t\\n1930\\t**A Solid you can differentiate \u2014 and therefore solve.** `afield.lang.solidsl` writes a 3D solid down as a\\n1931\\tvalue and had two readings of it, a marchable distance field and Manifold's exact CSG; both are\\n1932\\t*evaluations*, and neither changes what you can ask the notation for. This is the third reading. Three\\n1933\\tboxes, no Manifold, no... [920 more chars]"
+  },
+  {
+   "index": 22,
+   "tool": "RepoListFilesRequest",
+   "arguments": "{\"glob\":\"tools/test_*idiom*\"}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"1 file(s)\",\"files\":[\"tools/test_check_box_idioms.py\"],\"complete\":true}"
+  },
+  {
+   "index": 23,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":280,\"path\":\"src/jvmMain/kotlin/afield/examples/AgentTranscriptMaterializer.kt\",\"startLine\":150}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 150-280 of 373\",\"path\":\"src/jvmMain/kotlin/afield/examples/AgentTranscriptMaterializer.kt\",\"text\":\"150\\t                // Defensive for any future structural op that explicitly reaches a Kotlin engine.\\n151\\t                // Ordinary create ops skip KI initialization in materializeOne: pristine starting\\n152\\t                // points need box state, not hundreds of asynchronously bootstrapped compilers.\\n153\\t                thisSessionInfo.get()?.boxes?.values?.forEach { box ->\\n154\\t                    if (box.id != \\\"root\\\" && box.id != METAROOT_ID) {\\n1... [921 more chars]"
+  },
+  {
+   "index": 24,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":45,\"path\":\"public/docs/assets/agent_transcripts/principal_curves_explorer/metadata.edn\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-1 of 1\",\"path\":\"public/docs/assets/agent_transcripts/principal_curves_explorer/metadata.edn\",\"text\":\"1\\t{\\\"version\\\" 2 \\\"boxes\\\" [{\\\"id\\\" \\\"pc_strands\\\" \\\"properties\\\" {\\\"children\\\" #{} \\\"parents\\\" #{#afield/box \\\"root\\\"} \\\"name\\\" \\\"1 - Three strands, under a bending slider\\\" \\\"_tombstone\\\" false \\\"frame\\\" #afield/rect [60.0 60.0 420.0 120.0] \\\"code\\\" #afield/file-inline {\\\"path\\\" \\\"pc_strands_code_.kt\\\" \\\"inline\\\" \\\"import afield.geometry.curves.principal.*\\\\n\\\\n// Three noisy strands of different thickness, 1000 points each.\\\\nval random = java.util.Random(... [921 more chars]"
+  },
+  {
+   "index": 25,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":120,\"path\":\"tools/check_doc_assets.py\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-120 of 449\",\"path\":\"tools/check_doc_assets.py\",\"text\":\"1\\t#!/usr/bin/env python3\\n2\\t\\\"\\\"\\\"Lint: every asset a *published* docs page references must be committed to git.\\n3\\t\\n4\\tA docs page can point at an image/video that exists in a warm working tree but was\\n5\\tnever ``git add``-ed \u2014 a ``diffstatic_runner`` capture that the docs build regenerated,\\n6\\tor a hand-placed hero/still. It renders fine locally and 404s on a clean checkout or in\\n7\\tCI. This script catches that class before it merges.\\n8\\t\\n9\\tScope\\n10\\t-----\\n11\\tBy default only pages listed in... [921 more chars]"
+  },
+  {
+   "index": 26,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"--stat\"],\"command\":\"git-diff\",\"timeoutSec\":10}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv --stat\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":48,\"output\":\"\",\"outputBytes\":0,\"truncated\":false}"
+  }
+ ],
+ "finalText": "The new page has one `listOf(dots)` call that the Python check rejects, and its transcript index entry is under `compile` even though the transcript is registered as `execute`. The linked starting-point bundle is also absent; I\u2019m checking the materializer contract before deciding whether this fits the permitted small fix.\nNo files changed: the branch introduces a rejected `listOf(dots)` call, an `execute` transcript indexed under `compile`, and a missing generated starting-point bundle. The Python idiom check reproduced the first failure; completing the repair requires the JVM materializer, which is unavailable in this replay.\n\nFIXER-VERDICT: {\"verdict\": \"decline\", \"culprit\": \"claude/contour-trees\", \"reason\": \"The two mechanical documentation slips are clear, but the required starting-point bundle is also missing and cannot be faithfully regenerated or verified without the unavailable JVM build.\"}",
+ "rounds": 7,
+ "maxToolRounds": 40,
+ "hitToolRoundCap": false,
+ "elapsedMs": 54339,
+ "inputTokens": 288931,
+ "outputTokens": 1789,
+ "cacheReadTokens": 238345,
+ "documentName": "scratch",
+ "misuseCalls": 1,
+ "lessons": true,
+ "documentRef": "ad901cfc-86ef-44c4-86d8-c0dac1999d3b",
+ "programs": true,
+ "contextPlacement": "developer-once+input",
+ "repoRuns": [
+  "git-status  -> 0",
+  "check tools/check_box_idioms.py -> 1",
+  "git-diff 2be5ed1b1b8549297e1b0a58e14d2e776e2f636b -- public/docs/agent_transcripts.md -> 0",
+  "git-diff --stat -> 0"
+ ]
+}

@@ -1,0 +1,48 @@
+[field] ok  RepoReadFileRequest {"endLine":240,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**/*","ignoreCase":false,"maxMatches":45,"query":"checkKDocAttachment","regex":false}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt","ignoreCase":false,"maxMatches":40,"query":"importlib","regex":false}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":390,"path":"src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":280,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":["dec98aa7b1423d78133280e54805ce402bc112e1","--","src/jvmMain"],"command":"git-diff","timeoutSec":15}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":380}
+[field] ok  RepoListFilesRequest {"glob":"tools/*kdoc*"}
+[field] ok  RepoListFilesRequest {"glob":"tools/*personal*"}
+[field] ok  RepoReadFileRequest {"endLine":300,"path":"src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt","startLine":215}
+[field] ok  RepoReadFileRequest {"endLine":355,"path":"src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt","startLine":255}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*.py"}
+[field] ok  RepoReadFileRequest {"endLine":230,"path":"tools/check_module_imports.py","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":35,"query":"KDocAttachment|PersonalBoundary|PUBLIC_IMPORT_ROOTS","regex":true}
+[field] ok  RepoReadFileRequest {"endLine":330,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":263}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/tools/docs/index/*.kt","ignoreCase":false,"maxMatches":10,"query":"fun parseDeclaration","regex":false}
+[field] ok  RunToolProgramRequest {"code":"const paths = ['src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt','src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt','src/jvmMain/k
+[field] ok  RepoReadFileRequest {"path":"src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt","startLine":1,"endLine":2000}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt","startLine":1,"endLine":2000}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt","startLine":1,"endLine":2000}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt","startLine":1,"endLine":2000}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt","startLine":1985,"endLine":2005}
+[field] ok  RunToolProgramRequest {"code":"const gltf = 'src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt';\nconst model = '        /**\\n         * `view * model` for this primitiv
+[field] ok  RepoPatchFileRequest {"path":"src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt","oldText":"        /**\n         * `view * model` for this primitive under [camera], wit
+[field] ok  RepoPatchFileRequest {"path":"src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt","oldText":"        /**\n         * Upload this instance's buffers and set the push const
+[field] ok  RepoPatchFileRequest {"path":"src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt","oldText":"/**\n * The name-node prefix a lowering gives a number that is meant to be solved f
+[field] ok  RepoPatchFileRequest {"path":"src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt","oldText":"/**\n * Fits the numeric leaves of [seed] to [target] by Adam descent on the RMSE l
+[field] ok  RepoPatchFileRequest {"path":"src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt","oldText":"The three Python roots are here","newText":"The Python roots are here","replac
+[field] ok  RepoPatchFileRequest {"path":"src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt","oldText":"            \"my\", \"urllib\", \"matplotlib\", \"asyncio\",","newText":"     
+[field] ok  RepoReadFileRequest {"endLine":255,"path":"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt","startLine":150}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":165,"path":"src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt","startLine":128}
+[field] ERR RunToolProgramRequest {"code":"function read(path, startLine=1, endLine=2000) {const r=tools.RepoReadFile({path,startLine,endLine}); return r.text.split('\\n').map(l=>l.replace(/^\\d
+[field] ok  RepoReadFileRequest {"path":"src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt","startLine":1,"endLine":2000}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt","startLine":1,"endLine":2000}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt","startLine":2001,"endLine":2125}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt","startLine":1,"endLine":2000}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt","startLine":1,"endLine":2000}
+[field] ok  RepoReadFileRequest {"endLine":100,"path":"src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt","startLine":1}
+[field] ok  RunToolProgramRequest {"code":"function read(path,startLine=1,endLine=2000){return tools.RepoReadFile({path,startLine,endLine}).text.split('\\n').map(l=>l.replace(/^\\d+\\t/,'')).joi
+[field] ok  RepoReadFileRequest {"path":"src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt","startLine":1,"endLine":2000}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt","startLine":1,"endLine":2000}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt","startLine":2001,"endLine":2125}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt","startLine":1,"endLine":2000}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt","startLine":1,"endLine":2000}
+[field] ok  RepoRunCommandRequest {"command":"git-diff","args":[],"timeoutSec":10}
+[field] model=openai/gpt-6.1-sol rounds=10/40 wall=92s tokens in=579067 out=4400 cacheRead=517440 wrote=['src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt', 'src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt', 'src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt', 'src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt', 'src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt', 'src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt'] ran=['git-status  -> 0', 'git-diff dec98aa7b1423d78133280e54805ce402bc112e1 -- src/jvmMain -> 0', 'git-diff  -> 0', 'git-diff  -> 0'] verdict=unchecked error=-

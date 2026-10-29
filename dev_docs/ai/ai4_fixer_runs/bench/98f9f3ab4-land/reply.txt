@@ -1,0 +1,3 @@
+Moved `@Volatile` onto its own line above `revision`; source inspection confirms the KDoc now reaches the intended declaration. The diff is limited to that formatting change; Gradle is unavailable, and no Python checker covers this guard.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "claude/field4-timestral-vmo-8f092b", "reason": "Separating the annotation from revision mechanically fixes the reported KDoc attachment failure, as confirmed against the guard and extractor source."}

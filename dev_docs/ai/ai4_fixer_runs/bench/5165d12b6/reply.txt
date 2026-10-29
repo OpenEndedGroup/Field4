@@ -1,0 +1,3 @@
+Moved `defaultDirs`’ KDoc back above its declaration, removing the stacked blocks introduced by the branch. Source review confirms both comments now attach correctly; Gradle is unavailable, and no Python checker covers KDoc attachment.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "claude/demo-timeline-harvest", "reason": "The branch inserted ROOT_ID beneath defaultDirs’ KDoc, and moving that comment back restores correct attachment without changing executable code."}

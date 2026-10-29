@@ -1,0 +1,29 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":460,"path":"src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":280,"path":"src/jvmTest/kotlin/afield/document/workspace/KitPackagesTest.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":260,"path":"public/docs/kits.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":60,"query":"personal_boundary","regex":false}
+[field] ok  RepoSearchRequest {"glob":"tools/check_*.py","ignoreCase":true,"maxMatches":65,"query":"package","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":555,"path":"AGENTS.md","startLine":360}
+[field] ok  RepoSearchRequest {"glob":"**","ignoreCase":false,"maxMatches":40,"query":"example.Lifecycle","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":160,"path":"tools/check_staged_generated_artifacts.py","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":335,"path":"tools/test_check_staged_generated_artifacts.py","startLine":270}
+[field] ok  RepoReadFileRequest {"endLine":360,"path":"tools/check_staged_generated_artifacts.py","startLine":290}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ok  RepoSearchRequest {"glob":"{public/docs/kits.md,src/jvmTest/kotlin/afield/document/workspace/KitPackagesTest.kt}","ignoreCase":false,"maxMatches":30,"query":"package (example|dem
+[field] ERR RepoRunCommandRequest {"args":["tools/test_check_staged_generated_artifacts.py","PrivateBoundarySelectionTests"],"command":"python-test","timeoutSec":60}
+[field] ok  RepoReadFileRequest {"endLine":240,"path":"tools/test_guard_corpora.py","startLine":1}
+[field] ok  RunToolProgramRequest {"code":"const edits = [\n{path:'public/docs/kits.md',oldText:'kotlin/example/Tools.kt',newText:'kotlin/afield/example/Tools.kt',replaceAll:false},\n{path:'publ
+[field] ok  RepoPatchFileRequest {"path":"public/docs/kits.md","oldText":"kotlin/example/Tools.kt","newText":"kotlin/afield/example/Tools.kt","replaceAll":false}
+[field] ok  RepoPatchFileRequest {"path":"public/docs/kits.md","oldText":"package example","newText":"package afield.example","replaceAll":false}
+[field] ok  RepoPatchFileRequest {"path":"src/jvmTest/kotlin/afield/document/workspace/KitPackagesTest.kt","oldText":"extensions/kotlin/demo/Extra.kt","newText":"extensions/kotlin/afield/demo/E
+[field] ok  RepoPatchFileRequest {"path":"src/jvmTest/kotlin/afield/document/workspace/KitPackagesTest.kt","oldText":"package demo","newText":"package afield.demo","replaceAll":true}
+[field] ok  RepoRunCommandRequest {"args":["--","public/docs/kits.md","src/jvmTest/kotlin/afield/document/workspace/KitPackagesTest.kt"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":510,"path":"tools/check_box_idioms.py","startLine":420}
+[field] ok  RepoSearchRequest {"glob":"{public/docs/kits.md,src/jvmTest/kotlin/afield/document/workspace/KitPackagesTest.kt}","ignoreCase":false,"maxMatches":30,"query":"package (example|dem
+[field] ok  RepoReadFileRequest {"endLine":103,"path":"src/jvmTest/kotlin/afield/document/workspace/KitPackagesTest.kt","startLine":29}
+[field] ERR RepoRunCommandRequest {"args":["tools/check_box_idioms.py","--paths","public/docs/kits.md"],"command":"check","timeoutSec":60}
+[field] ok  RepoRunCommandRequest {"args":["tools/check_box_idioms.py"],"command":"check","timeoutSec":60}
+[field] ok  RepoReadFileRequest {"endLine":116,"path":"public/docs/kits.md","startLine":107}
+[field] ok  RepoRunCommandRequest {"args":["--stat"],"command":"git-diff","timeoutSec":10}
+[field] model=openai/gpt-6.1-sol rounds=11/40 wall=59s tokens in=570344 out=1798 cacheRead=517881 wrote=['public/docs/kits.md', 'public/docs/kits.md', 'src/jvmTest/kotlin/afield/document/workspace/KitPackagesTest.kt', 'src/jvmTest/kotlin/afield/document/workspace/KitPackagesTest.kt'] ran=['git-status  -> 0', 'python-test tools/test_check_staged_generated_artifacts.py PrivateBoundarySelectionTests -> 1', 'git-diff -- public/docs/kits.md src/jvmTest/kotlin/afield/document/workspace/KitPackagesTest.kt -> 0', 'check tools/check_box_idioms.py -> 0', 'git-diff --stat -> 0'] verdict=unchecked error=-
