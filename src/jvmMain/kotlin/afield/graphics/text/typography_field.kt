@@ -132,9 +132,8 @@ import kotlin.math.sqrt
  * The bridges out of a [TextLayout] and into the four families Field already has.
  *
  * `typography.kt` answers with *structure* — rings, depths, advances, handles — and structure is not
- * yet a drawing, a mesh, an image or a point cloud. This file is the missing hop, and it is the
- * reason the typography family is worth having at all: once a string is contours, letters get to be
- * inputs to machinery that never knew about text.
+ * yet a drawing, a mesh, an image or a point cloud. This file converts it: once a string is
+ * contours, letters are inputs to machinery that never knew about text.
  *
  * It is the typographic counterpart of `spatial_field.kt` (plane geometry → `FLine`) and
  * `mesh_field.kt` (`TriMesh` → `FLine`), and it is written to the same rule: every function here
@@ -149,8 +148,8 @@ import kotlin.math.sqrt
  *     Java2D both fill non-zero, so a counter is a hole precisely because its ring runs the other
  *     way. [TextLayout.toFLines] takes `honourHoles = false` to show you the blob you get without a
  *     convention, which is the control arm the docs figure uses.
- *  2. **→ [TriMesh]** ([TextLayout.toMesh]). Hole-aware extrusion: `extrudeMesh` in
- *     `mesh_generate.kt:619` and `triangulatePolygon` (`:547`) explicitly cannot do holes, so the
+ *  2. **→ [TriMesh]** ([TextLayout.toMesh]). Hole-aware extrusion: [extrudeMesh] and
+ *     [triangulatePolygon] each take a single ring and cannot do holes, so the
  *     caps here go through `FloatEarcut` with hole indices and the walls are emitted ring by ring
  *     from the *same* flattened vertices, which is what makes the result watertight — and makes an
  *     extruded `o` genus 1 and an extruded `l` genus 0.
@@ -158,9 +157,9 @@ import kotlin.math.sqrt
  *     in z, so letters compose with `sdfSphere`, `sdfSmoothUnion`, `.twisted()` and everything else
  *     in `mesh_sdf.kt`, and `marchingCubes` will mesh the result.
  *  4. **→ [Img]** ([rasterizeText]). An analytic even-odd scanline fill of the layout's own rings —
- *     *not* `Graphics2D.drawString`, both because AWT text rendering in-process is what
- *     `imaging_field.kt:417` forbids and because filling our own outlines means a legible PNG is
- *     evidence about *this* code rather than about AWT's rasteriser.
+ *     *not* `Graphics2D.drawString`, both because a stdlib call every box might make must not be
+ *     able to initialise AWT's font manager and because filling our own outlines means a legible PNG
+ *     is evidence about *this* code rather than about AWT's rasteriser.
  *  5. **→ points** ([TextLayout.samplePoints], [TextLayout.toPointFLine]). Even-by-arc-length
  *     samples along the outlines, which is what the alife agents, the clusterers and the
  *     contourers in `clustering.kt` / `alife_agents.kt` consume.

@@ -162,9 +162,9 @@ import kotlin.math.sqrt
  *
  * # AWT and the main run loop
  *
- * `imaging_field.kt:417` explains why `montage` captions with a bitmap table instead of
- * `Graphics2D.drawString`: on macOS, touching the AWT font manager pulls in AppKit, which competes
- * with GLFW for the main run loop, and `Server.main` never initialises the toolkit. This
+ * `imaging_field.kt` captions `montage` with a bitmap table instead of `Graphics2D.drawString`, for
+ * a reason that reaches this file: on macOS, touching the AWT font manager pulls in AppKit, which
+ * competes with GLFW for the main run loop, and `Server.main` never initialises the toolkit. This
  * family cannot avoid the font manager — it *is* the font manager — so it contains the hazard in one
  * place, [Typefaces.warm], whose KDoc carries the measured stack trace and the conclusion:
  *

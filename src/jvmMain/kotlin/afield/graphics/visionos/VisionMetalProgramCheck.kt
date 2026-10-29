@@ -25,8 +25,8 @@ import afield.lang.remotejs.KotlinJsHeadProfiles
  * what this does. It is the uniform-shaped companion to
  * [VisionGeometryPreview.CapturedMesh.windingAgreement].
  *
- * Nothing here compiles MSL; Metal's compiler is not available on this machine. These are the
- * checks that need only the ABI the head documents.
+ * Nothing here compiles MSL. These are the checks that need only the ABI the head documents, so
+ * they run wherever Field runs; the real Metal compile happens on the device.
  */
 
 object VisionMetalProgramCheck {
