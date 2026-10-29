@@ -45,6 +45,7 @@ import land  # noqa: E402
 OUT = REPO / "dev_docs" / "ai" / "ai4_fixer_runs" / "bench"
 SCRATCH = Path(os.environ.get("FIELD_FIXER_BENCH_SCRATCH", REPO / ".nightly-tmp" / "replay"))
 CP_FILE = REPO / ".nightly-tmp" / "test.cp"
+KDOC_GUARD = "afield.tools.docs.KDocAttachmentGuard"
 RUNS = ["python-test", "check", "git-status", "git-diff", "git-log", "git-show"]
 
 
@@ -112,7 +113,7 @@ def check_spec(case: dict, root: Path) -> list[list[str]]:
             if fq:
                 specs.append(["junit", fq])
     if "checkKDocAttachment" in text or re.search(r"doc comments? (?:stacked|back above)|two doc comments", text):
-        specs.append(["main", "afield.tools.docs.KDocAttachmentGuard"])
+        specs.append(["main", KDOC_GUARD])
     if "checkAgentTranscriptIndex" in text:
         specs.append(["main", "afield.tools.docs.AgentTranscriptIndexGuard"])
     if "checkBoxIdioms" in text or "idiom check" in text:
@@ -146,7 +147,7 @@ def run_checks(specs: list[list[str]], root: Path) -> tuple[bool | None, str]:
     for spec in specs:
         if spec[0] == "junit":
             argv = [_java(), "-cp", cp, "org.junit.runner.JUnitCore", spec[1]]
-        elif spec[0] == "main":
+        elif spec[0] in ("main", "main-scoped"):
             argv = [_java(), "-cp", cp, spec[1]]
         else:
             argv = [sys.executable, *spec[1:]]
@@ -157,7 +158,13 @@ def run_checks(specs: list[list[str]], root: Path) -> tuple[bool | None, str]:
         tail = [l for l in done.stdout.splitlines() if l.strip()][-1:] or [""]
         notes.append(f"{spec[0]}:{spec[1].split('.')[-1] if spec[0] != 'python' else spec[1]}="
                      f"{'green' if done.returncode == 0 else 'red'}")
-        ok = ok and done.returncode == 0
+        green = done.returncode == 0
+        if spec[0] == "main-scoped":
+            # Today's guard on an older tree also flags files the round never touched; judge only
+            # the files the real fixup edited (spec[2:]).
+            green = not any(f in line for line in done.stdout.splitlines() for f in spec[2:])
+            notes[-1] = f"{spec[1].split('.')[-1]}[scoped]={'green' if green else 'red'}"
+        ok = ok and green
     return ok, " ".join(notes)
 
 
@@ -317,6 +324,14 @@ def run_case(case: dict, args) -> dict:
     reset(root, case["parent"])
     red_on_parent, note_parent = run_checks(specs, root)
     controls = green_on_fix is True and red_on_parent is False
+    scoped = [["main-scoped", s[1], *case["files"]] if s == ["main", KDOC_GUARD] else s for s in specs]
+    if not controls and scoped != specs:
+        specs = scoped
+        reset(root, case["sha"])
+        green_on_fix, note_fix = run_checks(specs, root)
+        reset(root, case["parent"])
+        red_on_parent, note_parent = run_checks(specs, root)
+        controls = green_on_fix is True and red_on_parent is False
     if args.corpus and not controls:
         return {"id": case["id"], "skipped": f"controls do not hold (F^: {note_parent}; F: {note_fix})"}
     out = OUT / f"{case['id']}{args.suffix}"
