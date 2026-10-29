@@ -304,4 +304,28 @@ class InspectorTest {
         assertEquals("dir", r.str("type"))
         assertEquals(listOf("a", "b"), rows(open(r.str("id"))).map { it.name })
     }
+
+    @Test
+    fun `the server's adapter registration reaches the Assimp and glTF adapters`() {
+        registerAllBrowsingAdapters()
+        val trs = afield.graphics.scene.GltfSupport.TRS(
+            afield.math.linalg.Vector3f(1f, 2f, 3f), afield.math.linalg.Quaternionf(), afield.math.linalg.Vector3f(1f, 1f, 1f)
+        )
+        val adapted = assertNotNull(BrowsableAdapters.adapt(trs, null, null), "no adapter for GltfSupport.TRS")
+        assertEquals("Transform", adapted.heading())
+    }
+
+    @Test
+    fun `every register-BrowsingAdapters function is called from registerAllBrowsingAdapters`() {
+        val src = java.io.File("src/jvmMain/kotlin")
+        assertTrue(src.isDirectory, "run from the repo root: ${src.absolutePath}")
+        val defined = src.walkTopDown().filter { it.extension == "kt" }
+            .flatMap { Regex("""\bfun\s+(register\w*BrowsingAdapters)\s*\(""").findAll(it.readText()).map { m -> m.groupValues[1] } }
+            .toSortedSet()
+        assertTrue("registerRendererBrowsingAdapters" in defined, defined.toString())
+        val browsing = java.io.File(src, "afield/app/server/browsing.kt").readText()
+        val body = browsing.substringAfter("fun registerAllBrowsingAdapters()").substringBefore("\n}\n")
+        val missing = defined.filter { it != "registerAllBrowsingAdapters" && !Regex("""\b$it\s*\(\s*\)""").containsMatchIn(body) }
+        assertTrue(missing.isEmpty(), "defined but never registered with the server: $missing")
+    }
 }

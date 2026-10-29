@@ -88,6 +88,29 @@ Facts that cost time:
 - `column(..., width = px, open = "a/b/c")`: a pixel panel width, and a path opened on load.
   `open` exists because a docs `capture="ui"` drive under `graphics-context=true` could not get
   inspector replies during `ui.pause` (columns stayed empty); opening during the setup
-  transcript's `wait` works. Not root-caused.
+  transcript's `wait` works. Root-caused 2026-10-28: replies were never lost. The same commit's
+  `reopenNode` fix was the cause: before it, the renderer root's version tick (about 1 Hz) folded
+  every column right of the root. Measured through a `drive` under a live renderer: with the old
+  `reopenNode` restored, a clicked `render` column was there 250 ms after the click and gone 3 s
+  later; with the fix, it stays. Non-graphics values and a reloaded iframe answered during
+  `ui.pause` either way. `open=` is still useful but is not a workaround.
 - Demo: `dev_docs/agents/transcripts/renderer_browsing.yaml`; capture:
   `docs_capture/renderer_column.yaml` -> `visualizers.md#browsing-the-renderer`.
+
+## Registration and ordering (2026-10-28)
+
+- Every adapter registration goes through `registerAllBrowsingAdapters()` (`browsing.kt`), called by
+  `installInspectorHandler`. `registerAssimpBrowsingAdapters()` had never been called, so an
+  `AIScene`, `GltfModel`, `MeshInstance` or `TRS` browsed by reflection. `InspectorTest` scans
+  `src/jvmMain` for `fun register*BrowsingAdapters(` and fails on one that is not called from
+  there. Demo: `dev_docs/agents/transcripts/assimp_browsing.yaml`.
+- Output panels came out in different orders, and a burst of `display()` lost panels. There were
+  three causes in `sendWithOutputBackPressure` (`Server.kt`): one `GlobalScope.launch` per frame,
+  so frames to one socket raced each other; a frame that got a slot went ahead of older buffered
+  frames; and the 4-deep rolling buffer evicted `set-output` frames just as it evicts `println` lines.
+  Now each session sends FIFO (`OrderedSessionSender`). A frame joins the buffer tail and the head
+  drains, under the pressure lock. A `set-output` replaces its own panel's buffered frame and is
+  never evicted. Probe: 6 boxes each running `display()` on 12 channels read `abcdefghijkl` every
+  time (two runs). With only the FIFO sender, the same probe gave `abcdefghikl`.
+- Renderer column capture: the panel was 1700 px wide but its box sat at x = 380 in a
+  1900 px viewport, so the clip lost the card on the right. The box now sits at x = 40, under the triangle.

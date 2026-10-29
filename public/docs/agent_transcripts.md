@@ -2130,6 +2130,14 @@ any genome with a picture; design notes in `dev_docs/madp/ga.md`.
 
 [Open →](offline.html?file=assets/agent_transcripts/madp_ga/metadata.edn)
 
+### assimp_browsing
+
+**A glTF file, as Assimp loads it, opened in `column(...)` and `tree(...)`**, in one box and with no
+renderer: the scene's root node and its transform, meshes, materials and animations. See
+[Browsing a glTF scene](visualizers.md#browsing-a-gltf-scene).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/assimp_browsing/metadata.edn)
+
 ## Service-backed composition scenes
 
 <!-- transcript-index: verified-by = execute -->

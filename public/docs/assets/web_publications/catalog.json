@@ -273,6 +273,25 @@
         "public/docs/assets/agent_transcripts/arclength_spacing_demo/metadata.edn": "b1233b4d5ec92497f79f56aa3e896d9138302504bb50ceb6dfe20c597fba22d8"
       }
     },
+    "assets/agent_transcripts/assimp_browsing/metadata.edn": {
+      "captureDigest": "4922bf78986077d52bc6fd50098fb5a7043066bf6f51f472927f50cba41685f5",
+      "capturedAt": "2026-10-29T09:54:30.666Z",
+      "channels": 2,
+      "file": "assets/web_publications/assimp_browsing/document/metadata.edn",
+      "files": {
+        "assets/web_publications/assimp_browsing/document/metadata.edn": "324f5c0726810ff83b6793be22608015b7d866736c2d212f924fc6fbf58800e7",
+        "assets/web_publications/assimp_browsing/document/outputs.json": "575acee2b6323ce77ef29189330328279b92f467c00600bb5d2b384d24f67216",
+        "assets/web_publications/assimp_browsing/outputs/0.html": "a6d7eadf1b1c0e9f0f4d77184e1f81e3cb877107e2af07ab7ec096040776f3e5",
+        "assets/web_publications/assimp_browsing/outputs/1.html": "cae29c23e8e20d94f550bed28e91300291a58c3d8d58abfed45d05aee87d0421"
+      },
+      "kinds": [],
+      "outputs": "assets/web_publications/assimp_browsing/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/assimp_browsing.yaml": "16183859d71b94780411a7b5dcad05dd895dae10bc19c318812669853db6e236",
+        "public/docs/assets/agent_transcripts/assimp_browsing/assimp_scene_code_.kt": "a7f4634209d2ee421f2daa62461833116a9a29f5e945978623f8b121d96ebd91",
+        "public/docs/assets/agent_transcripts/assimp_browsing/metadata.edn": "944ba9cf0bd3f16acacbbaa54b3c4ae67c48ed0f9cc976eca921ca34f24777dd"
+      }
+    },
     "assets/agent_transcripts/audio_ai_analysis/metadata.edn": {
       "captureDigest": "4922bf78986077d52bc6fd50098fb5a7043066bf6f51f472927f50cba41685f5",
       "capturedAt": "2026-10-28T17:38:24.147Z",
