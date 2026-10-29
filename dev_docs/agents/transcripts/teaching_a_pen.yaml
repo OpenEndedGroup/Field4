@@ -1,0 +1,300 @@
+name: teaching_a_pen
+description: 'Teaching a learned pen other hands (`afield.ai.learning.pen` corpora): Hershey plotter fonts and four drawing generators (harmonograph, L-system plants, Truchet curves, boid trails) as ordered stroke corpora; the six pens Field ships trained on them, each drawing on its own; one stroke continued by every pen; a pen trained on two hands whose hidden switch a probe finds in one cell, held high and low; a futures grid you click to keep the ones you like, written out as a corpus to fine-tune on; and the handwriting pen against its self-distilled "rounder" version. Pure CPU; training itself is the optional `pen` Python group. Docs page: public/docs/teaching_a_pen.md.'
+docs:
+- page: teaching_a_pen.md
+  why: Explains the corpora, the training recipe, the hidden-switch probe and self-distillation used here.
+operations:
+- create:
+    box: tp_corpora
+    name: 1 - the corpora
+    frame:
+      x: 60.0
+      y: 60.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.ai.learning.pen.*
+
+        // Three drawings from each generator, every one drawn in the order a hand or a plotter would.
+        // That order is all a pen learns from, and the thing a scanned drawing cannot give you.
+        val rows = [
+            (0 until 3).map { PenDrawings.hershey(it.toLong(), HersheyFont.names[it * 3], words = 2) },
+            (0 until 3).map { PenDrawings.harmonograph(it.toLong()) },
+            (0 until 3).map { PenDrawings.plant(it.toLong()) },
+            (0 until 3).map { PenDrawings.truchet(it.toLong(), columns = 5, rows = 3) },
+            (0 until 3).map { PenDrawings.boids(it.toLong(), count = 6, steps = 100, size = 100.0) },
+            (0 until 2).map { PenDrawings.twoHands(it.toLong(), words = 4) },
+        ]
+        var y = 0.0
+        val all = mutableListOf<FLine>()
+        for (row in rows) {
+            val laid = sideBySide(row.map { [it.apply { color = vec(0.85, 0.9, 1.0, 1.0) }] }, gap = 30.0, y = y)
+            all += laid
+            y = laid.maxOf { it.fast2DBounds().let { b -> (b.y + b.h).toDouble() } } + 30
+        }
+        lines(all, w = 520.0, h = 640.0, fitToSize = true)
+- create:
+    box: tp_pens
+    name: 2 - six pens, drawing alone
+    frame:
+      x: 60.0
+      y: 860.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.ai.learning.pen.*
+
+        /*
+        Each pen that ships with Field, given nothing and left to draw: a grey drawing from its
+        corpus on the left, then three of its own. What each one learned, and what it missed,
+        is easiest to see side by side.
+        */
+        val pens = [
+            "hershey" to { s: Long -> PenDrawings.hershey(s, words = 2) },
+            "harmonograph" to { s: Long -> PenDrawings.harmonograph(s) },
+            "plants" to { s: Long -> PenDrawings.plant(s) },
+            "truchet" to { s: Long -> PenDrawings.truchet(s, columns = 5, rows = 3) },
+            "boids" to { s: Long -> PenDrawings.boids(s, count = 6, steps = 100, size = 100.0) },
+            "mixed" to { s: Long -> PenDrawings.twoHands(s, words = 3) },
+        ]
+        val rows = pens.map { (name, corpus) ->
+            val pen = PenModel.bundled(name)
+            val own =
+                (0 until 3).map { seed ->
+                    PenLine(model = pen, seed = seed.toLong())
+                        .also { it.grow(300) }
+                        .line
+                        .apply { color = vec(0.6, 0.85, 1.0, 1.0) }
+                }
+            sideBySide([[corpus(900).apply { color = vec(1, 1, 1, 0.5) }]] + own.map { [it] }, gap = 30.0)
+        }
+        lines(stacked(rows, gap = 30.0), w = 520.0, h = 700.0, fitToSize = true)
+- create:
+    box: tp_hands
+    name: 3 - one stroke, seven hands
+    frame:
+      x: 60.0
+      y: 1660.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.ai.learning.pen.*
+
+        // The same yellow stroke, continued by the handwriting pen and by each of the six synthetic
+        // ones. continueWith takes any model: this is the whole difference between the rows.
+        val start = fline {
+            moveTo(0, 0)
+            cubicTo(4, -14, 12, -14, 12, 0)
+            cubicTo(12, 8, 20, 8, 24, 0)
+            color = vec(1.0, 0.85, 0.3, 1.0)
+            thickness = 2.0
+        }
+        val models =
+            [PenModel.distill] + ["hershey", "harmonograph", "plants", "truchet", "boids", "mixed"].map { PenModel.bundled(it) }
+        val rows = models.map { model ->
+            [
+                start.copy().apply {
+                    color = vec(1.0, 0.85, 0.3, 1.0)
+                    thickness = 2.0
+                },
+                start.continueWith(model, steps = 260, seed = 2).apply { color = vec(0.85, 0.9, 1.0, 1.0) },
+            ]
+        }
+        // two columns: handwriting, Hershey, harmonograph and plants; then truchet, boids and two hands
+        lines(
+            sideBySide([stacked(rows.take(4), gap = 24.0), stacked(rows.drop(4), gap = 24.0)], gap = 60.0),
+            w = 520.0,
+            h = 420.0,
+            fitToSize = true,
+        )
+- create:
+    box: tp_switch
+    name: 4 - two hands, one switch
+    frame:
+      x: 60.0
+      y: 2460.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.ai.learning.pen.*
+
+        /*
+        The "mixed" pen learned words in two hands, loops (hand 0) and zigzags (hand 1). probe shows
+        it forty labelled drawings it has never seen and ranks its cells by how well each tracks the
+        hand. The top row is the pen's own writing coloured by the best of them. Below, pairs of rows
+        from the same seed with the top 1, 4 and 16 cells held towards loops (green) or zigzags (red).
+        */
+        val pen = PenModel.bundled("mixed")
+        val hands = (0 until 40).map { mutableListOf<Int>() }
+        val drawings = (0 until 40).map { PenDrawings.twoHands(5000L + it, hands = hands[it]) }
+        val ranked = pen.probe(drawings, hands)
+        print("best cells: " + ranked.take(5).joinToString { (cell, r) -> "$cell (r = ${r.f2})" })
+
+        fun held(towards: Int, cells: Int) =
+            PenLine(model = pen, seed = 3)
+                .also { writer ->
+                    repeat(700) {
+                        for ((cell, r) in ranked.take(cells)) (writer.pen as Pen).setCell(
+                            cell,
+                            if ((r > 0) == (towards == 1)) 3.0 else -3.0,
+                        )
+                        writer.grow()
+                    }
+                }
+                .line
+        val own = PenLine(model = pen, seed = 3, recordMemory = true).also { it.grow(700) }
+        val rows =
+            [own.coloredByCell(ranked[0].first, thickness = 2.0, range = null)] +
+                [1, 4, 16].flatMap { n ->
+                    [
+                        [held(0, n).apply { color = vec(0.5, 1.0, 0.6, 1.0) }],
+                        [held(1, n).apply { color = vec(1.0, 0.55, 0.6, 1.0) }],
+                    ]
+                }
+        lines(stacked(rows, gap = 14.0), w = 520.0, h = 520.0, fitToSize = true)
+- create:
+    box: tp_taste
+    name: 5 - keep the ones you like (launch)
+    frame:
+      x: 60.0
+      y: 3260.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.ai.learning.pen.*
+
+        /*
+        Twelve scribbles from the handwriting pen. Click the ones you like: they turn green and are
+        added to a corpus in this document's files/taste folder. "next twelve" draws twelve more. With a few
+        hundred kept, fine-tune on them (the command is printed below) and load the result with
+        PenModel.load: a pen that has learned your taste from its own work.
+        */
+        val folder = "taste".file
+        val kept = mutableListOf<FLine>()
+        var round = 0
+        var redraw = true
+        fun scribbles() = (0 until 12).map { k -> PenLine(seed = round * 12L + k).also { it.grow(120) }.drawn }
+        var current = scribbles()
+        controlGroup("taste") {
+            // buttons report press and release; act on the press
+            button("next twelve") { down ->
+                if (down) {
+                    round++
+                    current = scribbles()
+                    redraw = true
+                }
+            }
+            button("save corpus") { down ->
+                if (down) {
+                    PenCorpus.write(folder.path, kept)
+                    print(
+                        "${kept.size} kept -> ${folder.path}\n" +
+                            "uv run --project . --group pen python -m fieldpen.prepare ${folder.path}/train taste_train.npz --scale 8 (and valid), then\n" +
+                            "uv run --project . --group pen python -m fieldpen.train --init src/jvmMain/resources/afield/pen/distill-b64.json --crop 256 --input-noise 0.02 ...",
+                    )
+                }
+            }
+        }
+        frames {
+            while (frame()) {
+                if (!redraw) continue
+                redraw = false
+                val groups = current.map { s ->
+                    val chosen = kept.any { it === s }
+                    // a faint frame around each scribble, so you can see which marks are one choice
+                    val b = s.fast2DBounds()
+                    val frame = fline {
+                        moveTo(b.x - 6, b.y - 6)
+                        lineTo(b.x + b.w + 6, b.y - 6)
+                        lineTo(b.x + b.w + 6, b.y + b.h + 6)
+                        lineTo(b.x - 6, b.y + b.h + 6)
+                        lineTo(b.x - 6, b.y - 6)
+                        color = vec(1, 1, 1, 0.15)
+                    }
+                    [
+                        frame,
+                        s.apply {
+                            color = if (chosen) vec(0.5, 1.0, 0.6, 1.0) else vec(0.85, 0.9, 1.0, 1.0)
+                            thickness = 1.5
+                            hoverColor = vec(1.0, 0.85, 0.3, 1.0)
+                            onClick = {
+                                if (kept.none { it === s }) kept += s else kept.removeAll { it === s }
+                                redraw = true
+                            }
+                        },
+                    ]
+                }
+                val rows = groups.chunked(4).map { sideBySide(it, gap = 30.0) }
+                lines(stacked(rows, gap = 30.0), channel = "scribbles", w = 520.0, h = 300.0, fitToSize = true)
+                markdown("kept", "**${kept.size}** kept")
+            }
+        }
+- create:
+    box: tp_rounder
+    name: 6 - a pen that learned a taste
+    frame:
+      x: 60.0
+      y: 4060.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.ai.learning.pen.*
+
+        /*
+        The "rounder" pen is the handwriting pen fine-tuned on the curliest eighth of 2400 of its own
+        scribbles, chosen by curliness() instead of by hand. Same seeds, both pens: white is the
+        original, gold the one that learned the taste. The numbers are mean curliness over 40 each.
+        */
+        val rounder = PenModel.bundled("rounder")
+        fun scribble(model: StrokeModel, seed: Long) = PenLine(model = model, seed = seed).also { it.grow(160) }.drawn
+        val before = (0 until 6).map { scribble(PenModel.distill, it.toLong()).apply { color = vec(0.85, 0.9, 1.0, 1.0) } }
+        val after = (0 until 6).map { scribble(rounder, it.toLong()).apply { color = vec(1.0, 0.8, 0.35, 1.0) } }
+        lines(
+            stacked(
+                [sideBySide(before.map { [it] }, gap = 25.0), sideBySide(after.map { [it] }, gap = 25.0)],
+                gap = 30.0,
+            ),
+            w = 520.0,
+            h = 260.0,
+            fitToSize = true,
+        )
+        val c0 = (0 until 40).map { curliness(scribble(PenModel.distill, 100L + it)) }.average()
+        val c1 = (0 until 40).map { curliness(scribble(rounder, 100L + it)) }.average()
+        print("curliness: handwriting ${c0.f3}, rounder ${c1.f3}")
+- create:
+    box: tp_yours
+    name: 7 - a corpus of your own
+    frame:
+      x: 60.0
+      y: 4560.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.ai.learning.pen.*
+
+        // Any function that draws an FLine in order is a corpus. This one draws spirals that wobble;
+        // PenCorpus.write resamples each one the way a pen reads a line and saves it for fieldpen.
+        fun spiral(seed: Long): FLine {
+            val r = kotlin.random.Random(seed)
+            val turns = 3 + r.nextDouble() * 3
+            val wobble = r.nextDouble() * 4
+            return fline {
+                breakNext()
+                for (i in 0..(turns * 80).toInt()) {
+                    val t = i / 80.0 * 2 * PI
+                    val radius = 4 + t * 3 + sin(t * 7) * wobble
+                    lineTo(cos(t) * radius, sin(t) * radius)
+                }
+            }
+        }
+        val drawings = (0 until 300).map { spiral(it.toLong()) }
+        val points = PenCorpus.write("spirals".file.path, drawings)
+        print("$points points in ${drawings.size} drawings -> ${"spirals".file.path}")
+        lines(sideBySide(drawings.take(6).map { [it] }, gap = 20.0), w = 520.0, h = 140.0, fitToSize = true)

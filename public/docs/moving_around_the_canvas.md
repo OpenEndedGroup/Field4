@@ -439,7 +439,8 @@ quickest way to clear a crowded document down to the part you are working on. `a
 count. Click a layer's eye to show or hide it (shift-click to show only that one), and pick the
 active layer with its radio button. **Solo** shows only that layer and makes it active, **Show all**
 brings every layer back, and **Move selection to active layer** puts the selected boxes on the
-active layer. The last visible layer cannot be hidden. [Layers](layers.md) covers how a box names
+active layer. The last visible layer cannot be hidden. If the document has a drawing, it has a
+`drawing` row of its own, whose eye shows or hides it. [Layers](layers.md) covers how a box names
 its layers, and how each layer keeps its own layout.
 
 ## How the neighbours are chosen

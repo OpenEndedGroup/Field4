@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T17:37:49.588Z",
+  "documentName": "fn_rewrite_kotlin_boxes",
+  "outputs": [
+    {
+      "uid": "fnrw_working",
+      "channel": "before",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "width": 1008,
+      "height": 331,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "fnrw_working",
+      "channel": "after",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "width": 1008,
+      "height": 331,
+      "path": "outputs/1.html"
+    }
+  ]
+}

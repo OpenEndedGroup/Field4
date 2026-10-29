@@ -22,25 +22,18 @@ import afield.ui.output.controlGroup
 import afield.ui.output.displayOpen
 
 /**
- * Installing the splat-shader demo on Field's renderer: the cloud, the settings and the toolbar.
+ * The splat-shader box: a cloud of Gaussian splats uploaded once, a few lines of GLSL that
+ * rewrite every splat each frame, and Field's Vulkan splat renderer drawing the result.
  *
- * [SplatShader] is the one call box code makes. Hand it a compute module and a [SplatSet] and it
- * builds the source buffer, the renderer's cloud, the per-frame dispatch that runs the insert and
- * the accumulation target the splats are drawn into, then installs the lot under one name.
- * [SplatShaderSettings] is everything that call can be told, each property carrying the demo's own
- * default, and [showControls] puts the demo's toolbar in a box output, so the demo's sliders are
- * here too.
+ * [SplatShader] does the work. It uploads the parametric splats, binds them to the box's compute
+ * module as `splatsIn` and the renderer's cloud as `splatsOut`, dispatches the insert once per
+ * splat before the sort runs, and installs the cloud in an accumulation target, so a trail is a
+ * setting rather than a second code path. [SplatShaderSettings] is everything a viewer can change
+ * while it runs, from the camera and the turn rate to the opacity and gamma the splats are
+ * blended with, and `showControls` puts the demo's sliders in the box's `controls` output.
  *
- * One thing to know before reading the class: re-running a box must not leak a GPU buffer or a
- * window-sized accumulation target, and nothing in this stack frees either. So the buffers and the
- * cloud are kept per renderer, keyed by name, splat count and sort mode, and a re-run of the same
- * shape takes the previous run's back rather than allocating its own. The same bookkeeping is why
- * two SplatShaders under one name replace each other instead of stacking up.
- *
- * The GLSL a box's compute tab includes lives beside the class rather than in the box:
- * `include("insert")` and `include("end")` read the two packaged files out of Field's resources,
- * and `computeSource` assembles the whole shader for code building a module outside a box, which
- * is how the GPU smoke runs an insert with no editor in the picture.
+ * The clouds come from [SplatSet] and [ProceduralSplats]; the sort, the packed covariance form
+ * and the splat shaders themselves are [GaussianSplatRenderer]'s.
  */
 
 /**

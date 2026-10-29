@@ -22,6 +22,20 @@ import kotlin.reflect.full.isSubclassOf
 
 
 /**
+ * The two calls that find a value somewhere up a box's parent chain: [fromContext] by type,
+ * [fromContextWithNameOrNull] by name.
+ *
+ * Both are inline wrappers over [ContextResolution]'s walk, which does the searching. What they add
+ * is the reified type argument and the lookup of the box that is asking, so outside a running box
+ * there is nothing to search: [fromContext] throws unless it was given a default, and
+ * [fromContextWithNameOrNull] returns the default or null.
+ *
+ * Neither searches the asking box's own top-level variables unless `includeLocalVariables` is set.
+ * That is what keeps `val x = fromContext<X>()` resolving from a parent on every later run instead
+ * of finding the answer it left behind last time.
+ */
+
+/**
  * Resolve a value of type [A] from the box context: this box first, then its ancestors,
  * breadth-first.
  *

@@ -17,9 +17,9 @@ public walkthrough is `public/docs/stacksl_conversation.md`.
 This session was recorded again after the first recording (2026-09-26, gpt-6-astra), so that its
 trace shows the value each store line stored.
 
-To look at it: copy this folder into your workspace and open it; the window opens and draws the
-program, and the program box shows its study card. The recorded chat is in the program box's AI4 chat. Continuing the chat
-adds to this document's history, which is why a copy is better than opening it in place.
+To look at it: open `stacksl_conversation_aurora` from Starting points on the welcome screen, which
+puts a copy in your workspace; the window opens and draws the
+program, and the program box shows its study card. The recorded chat is in the program box's AI4 chat.
 
 What is here:
 

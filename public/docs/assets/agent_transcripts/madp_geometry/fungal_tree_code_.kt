@@ -25,12 +25,15 @@ geometry {
             push()
             translate(end)
             scale(radius * 4.4, radius * 0.9, radius * 4.4)
-            revolve(listOf(
-                profile(0.04, 0.0, hsl(36, 0.9, 0.72)),
-                profile(0.58, 0.08, hsl(32, 0.72, 0.55)),
-                profile(1.0, 0.0, hsl(24, 0.75, 0.44)),
-                profile(0.42, -0.16, hsl(42, 0.58, 0.62)),
-            ), 18)
+            revolve(
+                [
+                    profile(0.04, 0.0, hsl(36, 0.9, 0.72)),
+                    profile(0.58, 0.08, hsl(32, 0.72, 0.55)),
+                    profile(1.0, 0.0, hsl(24, 0.75, 0.44)),
+                    profile(0.42, -0.16, hsl(42, 0.58, 0.62)),
+                ],
+                18,
+            )
             pop()
             return
         }
@@ -39,11 +42,13 @@ geometry {
         for (i in 0 until branches) {
             val turn = i.toDouble() / branches * TAU + rand(-0.5, 0.5)
             val lift = 0.48 + rand(0.0, 0.32)
-            val next = vec(
-                dir.x * 0.62 + cos(turn) * (0.45 + rand(0.0, 0.22)),
-                dir.y * 0.52 + lift,
-                dir.z * 0.62 + sin(turn) * (0.45 + rand(0.0, 0.22)),
-            ).normalize()
+            val next =
+                vec(
+                        dir.x * 0.62 + cos(turn) * (0.45 + rand(0.0, 0.22)),
+                        dir.y * 0.52 + lift,
+                        dir.z * 0.62 + sin(turn) * (0.45 + rand(0.0, 0.22)),
+                    )
+                    .normalize()
             branch(end - (radius * 0.6) * dir, next, length * rand(0.56, 0.76), radius * rand(0.58, 0.72), depth - 1)
         }
     }

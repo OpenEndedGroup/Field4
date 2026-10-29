@@ -65,56 +65,28 @@ import javax.imageio.ImageIO
 import kotlin.math.tan
 
 /**
- * The four ray tracing figures on `ray_tracing_examples.md`, and the live window scene
- * that page closes with.
+ * The figures on Field's ray tracing pages: the [StandardRendererDocsHarness] shape, over the ray
+ * tracing pipeline instead of the rasterizer.
  *
- * Each capture method builds its own acceleration structures, ray tracing pipeline and
- * storage image, dispatches, and reads the storage image back to a PNG — the storage
- * image rather than the window, so a figure does not inherit the window's size or
- * exposure. The page runs those methods from hidden runner fences and quotes the GLSL and
- * the module setup separately, as prose; `tools/test_ray_tracing_docs.py` tokenises the
- * quoted shader blocks and compares them against the shader sources at the foot of this
- * file, so the listing a reader copies cannot drift from the shader that drew the picture
- * above it. That test needs no GPU and runs under `checkPythonTools`.
+ * Every public render method runs a deterministic ray tracing example and captures the output to a
+ * PNG. If ray tracing is unavailable, or the module fails to build, the method throws rather than
+ * writing a stand-in image, so a page's figure is either a render or nothing. A placeholder is a
+ * valid PNG, and a build that accepts one cannot tell a capture from a picture of its own failure.
  *
- * Every entry point refuses a device without `VK_KHR_ray_tracing_pipeline` instead of
- * writing something in its place: the capture methods throw before building anything, and
- * the live-window installers fail a `require`. The four figures are therefore committed
- * captures marked `capture-profile="linux-nvidia"`, retained on any machine that cannot
- * regenerate them, and `tools/check_doc_assets.py` rejects a published figure whose
- * pixels match a known availability card.
+ * `tools/check_doc_assets.py` guards the other side of that: it rejects a published figure whose
+ * pixels match the "Ray Tracing / Not Available" card a harness could once write in place of a
+ * render on a device without `VK_KHR_ray_tracing_pipeline`.
  *
- * [installMirrorBallsSceneInWindow] is the one path here that captures nothing. It
- * dispatches into a persistent storage image every frame and blits the result into the
- * renderer's own window target, returning a [LiveMirrorBallsScene] whose spheres and
- * camera can be moved from box code while the window is up.
- */
-
-/**
- * Docs and smoke-test harness for ray tracing shader support.
+ * From a box connected beneath a renderer, a figure is three lines:
  *
- * Every public render method runs a deterministic ray tracing example and captures
- * the output to a PNG.  If ray tracing is unavailable, or the module fails to build,
- * the method *throws*: it does not write a stand-in image.
- *
- * It used to write a "Ray Tracing / Not Available" card instead, so that docs builds
- * and tests would succeed on hardware with no RT support.  They did succeed -- and on
- * 2026-07-09 four of those cards were committed as the worked-example figures on
- * `public/docs/ray_tracing_examples.md`, under a page that claimed every image on it
- * was rendered by Field.  Nothing in the build could tell the difference, because a
- * placeholder is a perfectly valid PNG.  A capture that cannot happen is an honest
- * gap; a capture that quietly substitutes a picture of its own failure is not.
- *
- * `tools/check_doc_assets.py` is the backstop: it rejects a published figure whose
- * pixels match the card this harness used to write.
- *
- * Usage pattern (mirrors StandardRendererDocsHarness):
  * ```kotlin
  * val image = RayTracingDocsHarness.renderUvGradient("/tmp/rt-uv.png")
  * display("render", RayTracingDocsHarness.htmlForImage(image, "UV gradient"))
  * println("ray tracing example ready")
  * ```
  */
+
+/** Renders the ray tracing documentation's examples offscreen, or throws if the device cannot. */
 object RayTracingDocsHarness {
 
     private const val WAIT_FRAMES = 60

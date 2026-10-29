@@ -1,5 +1,5 @@
-import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.learnedRule by Inheritance<afield.ai.learning.EquivariantWeights>() /**/
 val Once.learnedRule by Onceing<afield.ai.learning.EquivariantWeights>() /**/
 val Why.learnedRule by Whying() /**/

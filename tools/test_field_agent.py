@@ -58,6 +58,71 @@ class FieldAgentTest(unittest.TestCase):
         with mock.patch.object(field_agent, "INSTALL_DIRS", ()):
             self.assertIsNone(field_agent.headless_argv("codex"))
 
+    def test_field_is_a_third_choice_that_needs_no_executable(self) -> None:
+        os.environ["FIELD_AGENT"] = "field"
+        self.assertEqual(field_agent.configured_agent(), "field")
+        argv = field_agent.headless_argv()
+        self.assertEqual(argv[0], sys.executable)
+        self.assertTrue(argv[1].endswith("field_repo_agent.py"))
+        self.assertEqual(argv[2:], ["--root", "."], "read-only unless edits: no --write glob")
+        self.assertEqual(field_agent.headless_argv("field", edits=True)[4:], ["--write", "**", "--run", "fixer"],
+                         "with edits AI4 may also run the fixer's named commands")
+        self.assertEqual(field_agent.describe("field"), "Field AI4")
+
+
+class FieldRepoAgentTest(unittest.TestCase):
+    def test_backdoor_line_carries_root_globs_and_caps(self) -> None:
+        import field_repo_agent
+        argv = field_repo_agent.build_backdoor_argv(root=Path("/r"), read=["**"], write=["a.md", "b/*"],
+                                                    goal_file=Path("/g.md"), model="m", max_rounds=7, port="9631", timeout=100)
+        self.assertIn("--port", argv)
+        task = argv[argv.index("--command") + 1]
+        self.assertEqual(task, "agent-task --goal-file /g.md --repo-root /r --max-rounds 7 --timeout 100 "
+                               "--repo-read '**' --repo-write a.md --repo-write 'b/*' --model m")
+
+    def test_runs_become_named_repo_commands_with_a_cap(self) -> None:
+        import field_repo_agent
+        argv = field_repo_agent.build_backdoor_argv(root=Path("/r"), read=["**"], write=[], goal_file=Path("/g.md"), model="",
+                                                    max_rounds=7, port="", timeout=100, runs=["fixer", "gradle", "land-precheck"],
+                                                    run_max_sec=120)
+        task = argv[argv.index("--command") + 1].split()
+        names = [task[i + 1] for i, a in enumerate(task) if a == "--repo-command"]
+        self.assertEqual(names, [*field_repo_agent.FIXER_COMMANDS, "land-precheck"], "fixer expands, duplicates drop")
+        self.assertEqual(task[task.index("--repo-command-max-sec") + 1], "120")
+        bare = field_repo_agent.build_backdoor_argv(root=Path("/r"), read=["**"], write=[], goal_file=Path("/g.md"), model="",
+                                                    max_rounds=7, port="", timeout=100)
+        self.assertNotIn("--repo-command", bare[bare.index("--command") + 1], "no --run, no command tool")
+
+    def test_fixer_set_matches_the_kotlin_templates(self) -> None:
+        import re
+        import field_repo_agent
+        src = (Path(__file__).resolve().parent.parent / "src/jvmMain/kotlin/afield/ai/tools/RepoCommandTools.kt").read_text()
+        kotlin = re.search(r"FIXER_SET: List<String> = listOf\(([^)]*)\)", src).group(1)
+        self.assertEqual(tuple(re.findall(r'"([\w-]+)"', kotlin)), field_repo_agent.FIXER_COMMANDS)
+        templates = set(re.findall(r'RepoCommandTemplate\("([\w-]+)"', src))
+        self.assertTrue(set(field_repo_agent.FIXER_COMMANDS) <= templates)
+
+    def test_backdoor_forwards_repo_commands(self) -> None:
+        src = (Path(__file__).resolve().parent / "field_backdoor.py").read_text()
+        self.assertIn('payload["repoCommands"] = list(args.repo_command)', src)
+        self.assertIn('payload["repoCommandMaxSec"] = args.repo_command_max_sec', src)
+
+    def test_result_is_found_in_backdoor_json(self) -> None:
+        import field_repo_agent
+        out = '{"ok": false, "results": [{"command": "agent-task", "ok": false, "data": {"finalText": "done", "rounds": 3}}]}'
+        self.assertEqual(field_repo_agent._result(out)["finalText"], "done")
+        self.assertEqual(field_repo_agent._result("not json"), {})
+
+    def test_docs_notes_field_agent_writes_only_its_partition(self) -> None:
+        import docs_notes
+        part = docs_notes.Partition(key="k", pages=["p.md"], files=["public/docs/p.md"], notes=[{"id": "n"}], generated=[])
+        argv = docs_notes.AGENTS["field"].argv("PROMPT", Path("/r"), part, "cli")
+        writes = [argv[i + 1] for i, a in enumerate(argv) if a == "--write"]
+        self.assertEqual(writes[0], "public/docs/p.md")
+        self.assertTrue(all(w == "public/docs/p.md" or part.slug in w for w in writes))
+        prompt = argv[argv.index("--prompt") + 1]
+        self.assertTrue(prompt.startswith(docs_notes.FIELD_AGENT_NOTE) and prompt.endswith("PROMPT"))
+
 
 if __name__ == "__main__":
     unittest.main()

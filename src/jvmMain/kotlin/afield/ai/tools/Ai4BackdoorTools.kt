@@ -76,7 +76,7 @@ internal object Ai4BackdoorTools {
             refResolver = refResolver,
             boxByIdOrNull = boxByIdOrNull,
             stagedOrCurrentSource = { target, property, explicit ->
-                explicit ?: (target.getPropertyRaw(property) as? String)?.takeIf { it.isNotBlank() }
+                explicit?.takeIf { it.isNotBlank() } ?: (target.getPropertyRaw(property) as? String)?.takeIf { it.isNotBlank() }
             }
         )
 

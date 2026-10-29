@@ -869,6 +869,56 @@ ui.pause(300)
 
 Private properties are left out, as `graphPaths` leaves them out by default. Pass `includePrivate = true` to `tree` or `column` to list them; their paths then need `graphPaths(pattern, GraphWalkOptions(includePrivate = true))`. A row has no path when nothing reaches it by name: an element of a primitive array, a map key that is an object, the second of two map keys that print alike.
 
+#### Browsing the renderer
+
+A box beneath a renderer box can open the renderer itself. It answers "what am I drawing, in what order, and where does the frame time go?" without a debugger:
+
+```diffstatic {data-lang=kotlin}
+column("renderer", renderer, width = 1100)
+```
+
+`renderer` is already in scope beneath the renderer box. `width` gives the panel room for several columns side by side, and `open = "render/modules"` opens the columns down to that path when the browser loads (the **path** button on a row copies its path). The renderer opens to:
+
+- `render`: the window's render target. Its children are listed in the order the target records them each frame: `preTargets` (render-to-texture passes drawn first), `modules` (one per `moduleHere`, in the order they were added), `meshModules`, then `others`.
+- A module opens to its `parameters` (name, colour attachments and format, depth, primitive type, blend), its `uniforms` and texture bindings with their set and binding numbers, and its `meshes` with vertex, triangle and instance counts.
+- `compute`: the compute target and its modules, drawn before graphics.
+- `cpu`: the CPU spans of the frame loop (acquire, record, submit, present), with p1 to p99 times in milliseconds.
+- `windows`, `contexts`, `queues`, `device`: the swapchain, its format and size, and the Vulkan objects behind them.
+
+Every node with children starts with a `summary` row: choose it to see that node's card. The renderer's card has the frame number, module counts, the window and the p50/p90 of each CPU span. Cards follow the running renderer, refreshing about once a second. `tree("renderer", renderer)` shows the same nodes as an outline.
+
+Here the column browser is open on a running renderer that draws one triangle, down to the triangle's module and its card:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1900x900" clip-selector="iframe.field-inspector" screenshot="assets/visualizers-renderer-column.png" transcript="../../dev_docs/agents/transcripts/docs_capture/renderer_column.yaml" graphics-context=true padding="6" wait="0" timeout="240" embed=true hidden=true name="renderer-column" alt="Six columns of a column browser over a running renderer. Renderer lists summary, render, compute, contexts, windows, queues, cpu (6 spans), device and pipelineCache; render lists summary, preTargets, modules, meshModules, others and preRecorded; modules holds the triangle box's module; the module lists summary, parameters, shaders (2 entries), uniforms, liveUniforms and meshes (1 entry); the last column is the module's card: valid true, enabled true, pipelines built, uniforms 0, meshes 1, shaders vertex and fragment, cut off at the right edge."}
+val frame = "document.querySelector('iframe.field-inspector')"
+ui.waitForSelector("iframe.field-inspector", 8000.0)
+ui.eval("document.body.classList.add('mode-no-editor'); return true")
+ui.pause(1500)
+fun inFrame(js: String) = ui.eval("const w = $frame.contentWindow, d = $frame.contentDocument; $js").toString()
+fun columns() = inFrame("return d.querySelectorAll('#columns .column').length").trim('"').toIntOrNull() ?: 0
+for (i in 0 until 40) {
+    if (columns() >= 6) break
+    ui.pause(250)
+}
+check(columns() >= 6) { inFrame("return d.body.innerText.slice(0, 600)") }
+check("shaders" in inFrame("return d.body.innerText")) { inFrame("return d.body.innerText") }
+```
+
+### Browsing a glTF scene
+
+A scene file opens the same way. `GltfSupport.loadModel` gives Assimp's own view of a glTF (or any
+file Assimp reads), and `column(...)` or `tree(...)` lists its root node with its transform and
+children, then its meshes, materials and animations. A `GltfModel` loaded for drawing browses as its
+meshes, each with its buffers, material, texture slots and transform.
+
+```diffstatic {data-lang=kotlin}
+import afield.graphics.scene.GltfSupport
+
+val scene = GltfSupport.loadModel("dev_docs/agents/fixtures/path_tracing/transforms.gltf")!!
+column("columns", scene, width = 1300)
+tree("tree", scene, width = 700)
+```
+
 And while it is not a “visualizer” in the chart sense, `logs(...)` belongs in the same family. This box shows only the `demo` channel and logs a small job into it; rows that share a block id are grouped under the block's first line:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-logs.png" alt="A logs embed with a channels: demo chip, a find box and a clear button. Below, one grouped block in the demo channel, each row with its time: starting a job, then step 1 of 3, step 2 of 3 and step 3 of 3, the block running on below the bottom of the panel." wait="3.0" capture="box" open-outputs="true" w="900" h="200" embed=true name="logs-demo"}

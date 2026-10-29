@@ -380,6 +380,11 @@ fun activeAiProviderRuntimeConfig(): AiProviderRuntimeConfig {
     )
 }
 
+internal val localRequestTimeout: com.openai.core.Timeout = com.openai.core.Timeout.builder()
+    .request(java.time.Duration.ofMinutes(45))
+    .read(java.time.Duration.ofMinutes(5))
+    .build()
+
 fun openAiClientFromFieldConfig(): OpenAIClient {
     val config = activeAiProviderRuntimeConfig()
     return try {
@@ -387,6 +392,10 @@ fun openAiClientFromFieldConfig(): OpenAIClient {
             .apiKey(config.apiKey)
             .baseUrl(config.baseUrl)
             .apply {
+                // The SDK's default caps a whole request at 10 minutes. A local model at ~15 tokens/s cannot
+                // write a large tool call in that time: on 2026-10-28 a round was cut at 602 s, mid-answer.
+                // Allow a long generation, but fail one that goes silent between chunks.
+                if (config.provider == "local") timeout(localRequestTimeout)
                 if (config.isOpenRouter) {
                     putHeader("HTTP-Referer", "https://localhost:9092")
                     putHeader("X-OpenRouter-Title", "Field4")

@@ -66,12 +66,44 @@ enum class MergeMode {
  * In a box, use [artnetIn] / [sacnIn]: they close the socket when the box is stopped.
  */
 class DmxInput(
+    /**
+     * Which wire format is understood. Packets of the other protocol arriving on this port are
+     * counted in [packetsDiscarded] rather than decoded. It also sets the default [port] and how
+     * long a silent source is kept: 2.5 s for sACN, 10 s for Art-Net.
+     */
     val protocol: DmxProtocol,
+    /**
+     * UDP port to bind: 6454 for Art-Net, 5568 for sACN. Pass 0 to let the system pick a free one
+     * and read [localPort] back, which is how a sender and a receiver run side by side in one
+     * process without claiming a port something else may hold.
+     */
     val port: Int = if (protocol == DmxProtocol.ARTNET) ArtNet.PORT else Sacn.PORT,
+    /**
+     * How several live sources on one universe are combined. Under sACN this applies within the
+     * highest priority live on that universe, since lower-priority sources do not count at all.
+     */
     val merge: MergeMode = MergeMode.HTP,
+    /**
+     * Universes whose sACN multicast group the socket joins, which is what it takes to hear
+     * multicast traffic at all. A sender unicasting to this machine needs none of them, and Art-Net
+     * ignores the list.
+     */
     val multicastUniverses: List<Int> = emptyList(),
+    /**
+     * What Field says about itself when it answers an ArtPoll. The net, subnet and port list of the
+     * reply are replaced by the universes actually arriving, so what this carries to the wire is the
+     * identity: the short and long name, the status report string, the advertised IP and MAC.
+     */
     val node: ArtNet.NodeInfo = ArtNet.NodeInfo(),
+    /**
+     * Answer an ArtPoll with an ArtPollReply, so consoles and discovery tools list Field as a node.
+     * Art-Net only; turn it off to listen without advertising.
+     */
     val answerPolls: Boolean = true,
+    /**
+     * Accept sACN data whose preview bit is set. Preview data is meant for visualisers rather than
+     * for driving lights, so by default it is counted in [packetsDiscarded] and otherwise ignored.
+     */
     val acceptPreview: Boolean = false,
     bindAddress: String = "0.0.0.0",
 ) : AutoCloseable {
@@ -125,6 +157,10 @@ class DmxInput(
     private val socket: DatagramSocket
     private val thread: Thread
 
+    /**
+     * True once [close] has run. The receive thread stops at the next loop and the socket is
+     * released; a closed input does not reopen.
+     */
     @Volatile
     var isClosed = false
         private set
@@ -141,8 +177,15 @@ class DmxInput(
     var lastError: Throwable? = null
         private set
 
-    /** Packets received (any kind), and packets discarded (sequence rule, malformed, preview). */
+    /** Datagrams the socket handed over, of any kind, decoded or not. */
     val packetsReceived: Long get() = received.get()
+
+    /**
+     * Packets that arrived and were not used: a malformed or truncated one, an OpCode or vector this
+     * input does not handle, an sACN sequence number the E1.31 §6.7.2 rule rejects, or preview data
+     * with [acceptPreview] off. Every datagram counts in [packetsReceived] first, so this rising one
+     * for one with that usually means the other protocol is on the port.
+     */
     val packetsDiscarded: Long get() = discarded.get()
 
     /** ArtPollReplies this input has sent in answer to ArtPolls. */
@@ -385,6 +428,12 @@ class DmxInput(
         const val ART_SYNC_TIMEOUT_NANOS = 4_000_000_000L
     }
 
+    /**
+     * The protocol and port, the merge mode, the universes with a live source right now, and
+     * [packetsReceived]. An empty universe list with a rising count is the signature of traffic that
+     * arrives and is not accepted. The port shown is the one asked for, so it reads `0` when the
+     * system chose one; [localPort] has the number actually bound.
+     */
     override fun toString() =
         "DmxInput(${protocol.name} :$port, ${merge.name}, universes=$universes, received=$packetsReceived${if (isClosed) ", closed" else ""})"
 }

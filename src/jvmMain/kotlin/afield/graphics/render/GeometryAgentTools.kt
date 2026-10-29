@@ -98,14 +98,14 @@ object GeometryAgentTools {
         if (roots.none { it == canonical }) roots.add(canonical)
     }
 
-    /** Take every root away, which also closes the gate. Symmetric with [addSearchRoot], and for tests. */
+    /** Take every root away, which also makes [enabled] false. Symmetric with [addSearchRoot], and for tests. */
     fun clearSearchRoots() = roots.clear()
 
     /** The roots, canonicalised, in the order they were added. */
     fun searchRoots(): List<File> = roots.toList()
 
     /**
-     * The gate both tools share: is there anywhere to look?
+     * Whether there is anywhere to look at all. Both tools check this before they run.
      *
      * Asked on every turn, which is why it is a field check and not a directory walk.
      */

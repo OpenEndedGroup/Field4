@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T21:03:16.953Z",
+  "documentName": "logging_layer",
+  "outputs": [
+    {
+      "uid": "log_blocks",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 480,
+      "height": 284,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "log_mute",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 480,
+      "height": 211,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "log_mute_is_console_only",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 480,
+      "height": 142,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "log_channels",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 400,
+      "height": 121,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "log_filter",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 480,
+      "height": 165,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "log_stats",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 480,
+      "height": 599,
+      "path": "outputs/5.html"
+    }
+  ]
+}

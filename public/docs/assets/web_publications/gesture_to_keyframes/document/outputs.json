@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T20:54:41.433Z",
+  "documentName": "gesture_to_keyframes",
+  "outputs": [
+    {
+      "uid": "gk_bake",
+      "channel": "lanes/x",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 576,
+      "height": 240,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "gk_bake",
+      "channel": "lanes/y",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 576,
+      "height": 240,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "gk_bake",
+      "channel": "gesture",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 536,
+      "height": 436,
+      "path": "outputs/2.html"
+    }
+  ]
+}

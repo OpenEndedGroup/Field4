@@ -1,6 +1,6 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
 import afield.graphics.render.lighting.DirectLightingDemo
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.lab by Inheritance<DirectLightingDemo>() /**/
 val Once.lab by Onceing<DirectLightingDemo>() /**/
 val Why.lab by Whying() /**/

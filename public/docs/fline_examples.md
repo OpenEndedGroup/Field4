@@ -4,10 +4,11 @@
 
 All of the code below runs inside a box in Field. Each snippet ends with a `lines(...)` so you can actually see what you've drawn.
 
-If you want to run these examples, this embedded viewer's "Open in Field4" button will do just that, if you have Field already running.
+The document below includes captured drawings. Pan and zoom to explore them, or click a box to
+read its code. **Open in Field·4** imports an editable copy into a running Field.
 
 <iframe
-    src="offline.html?file=assets/fline_examples/metadata.edn"
+    src="offline.html?file=assets/fline_examples/metadata.edn&amp;focus=outputs"
     title="FLine examples (offline viewer)"
     style="width:100%; height:720px; border:1px solid #444; border-radius:8px; background:#111;"
     loading="lazy"
@@ -733,8 +734,12 @@ lines(
     strokedOnly,
     filledOnly + vec(400, 0),
     debugPoints + vec(800, 0),
-    filledOnly + vec(1200, 0), strokedOnly + vec(1200, 0), debugPoints + vec(1200, 0),
-    w = 1000.0, h = 260.0, fitToSize = true,
+    filledOnly + vec(1200, 0),
+    strokedOnly + vec(1200, 0),
+    debugPoints + vec(1200, 0),
+    w = 1000.0,
+    h = 260.0,
+    fitToSize = true,
 )
 ```
 
@@ -1423,10 +1428,15 @@ fun dot(p: Vec2, c: Vec4) = fline {
 
 val white = vec(1, 1, 1, 1)
 lines(
-    f1, f2,
-    dot(a, white), dot(b, white),
-    dot(vec(a.x, a.y - 60), white), dot(vec(b.x, b.y - 60), white),
-    w = 420.0, h = 260.0, fitToSize = true,
+    f1,
+    f2,
+    dot(a, white),
+    dot(b, white),
+    dot(vec(a.x, a.y - 60), white),
+    dot(vec(b.x, b.y - 60), white),
+    w = 420.0,
+    h = 260.0,
+    fitToSize = true,
 )
 ```
 
@@ -1567,8 +1577,18 @@ val reflected = styled(house().byReflecting2D(vec(50f, 0f), vec(50f, 100f)), 340
 val sheared = styled(house().byShearing2D(shearX = 0.4f, shearY = 0f), 510.0, vec(0.4, 1.0, 0.6, 0.45))
 
 lines(
-    ghost(0.0), rot, ghost(170.0), scaled, ghost(340.0), mirror, reflected, ghost(510.0), sheared,
-    w = 720.0, h = 220.0, fitToSize = true,
+    ghost(0.0),
+    rot,
+    ghost(170.0),
+    scaled,
+    ghost(340.0),
+    mirror,
+    reflected,
+    ghost(510.0),
+    sheared,
+    w = 720.0,
+    h = 220.0,
+    fitToSize = true,
 )
 ```
 
@@ -1916,10 +1936,13 @@ val gauss = base(0.0).byGaussianNoising(amplitude = 6f, seed = 1L, samples = 140
     color = vec(1.0, 0.6, 0.2, 0.9)
 }
 
-val oriented = base(110.0).byOrientedGaussianNoising(normalAmplitude = 10f, tangentAmplitude = 1.5f, seed = 2L, samples = 140).apply {
-    thickness = 2.5
-    color = vec(0.4, 1.0, 0.6, 0.9)
-}
+val oriented =
+    base(110.0)
+        .byOrientedGaussianNoising(normalAmplitude = 10f, tangentAmplitude = 1.5f, seed = 2L, samples = 140)
+        .apply {
+            thickness = 2.5
+            color = vec(0.4, 1.0, 0.6, 0.9)
+        }
 
 val perlin = base(220.0).byPerlinNoising(amplitude = 12f, frequency = 0.02f, octaves = 4, seed = 3L, samples = 140).apply {
     thickness = 2.5
@@ -2038,19 +2061,24 @@ fun styled(f: FLine, c: Vec4) = f.apply {
 // A grid: each filter over a faint copy of the same noisy input.
 val ema = styled(raw(0.0, 0.0).byEmaFiltering(alpha = 0.10f, samples = 220), vec(0.7, 0.9, 1.0, 0.95))
 val oneEuro = styled(
-    raw(400.0, 0.0).byOneEuroFiltering(minCutoffHz = 1.0f, beta = 0.05f, dCutoffHz = 1.0f, fpsHint = 60f, samples = 220),
+    raw(400.0, 0.0)
+        .byOneEuroFiltering(minCutoffHz = 1.0f, beta = 0.05f, dCutoffHz = 1.0f, fpsHint = 60f, samples = 220),
     vec(0.4, 1.0, 0.6, 0.95),
 )
-val ab = styled(raw(0.0, 170.0).byAlphaBetaFiltering(alpha = 0.25f, beta = 0.08f, fpsHint = 60f, samples = 220), vec(1.0, 0.6, 0.2, 0.95))
+val ab = styled(
+    raw(0.0, 170.0).byAlphaBetaFiltering(alpha = 0.25f, beta = 0.08f, fpsHint = 60f, samples = 220),
+    vec(1.0, 0.6, 0.2, 0.95),
+)
 val gpMean = styled(
-    raw(400.0, 170.0).byGaussianProcessInterpolating(
-        trainingSamples = 44,
-        samples = 220,
-        lengthScale = 0.11f,
-        variance = 1f,
-        noise = 0.02f,
-        drawSamples = false,
-    ),
+    raw(400.0, 170.0)
+        .byGaussianProcessInterpolating(
+            trainingSamples = 44,
+            samples = 220,
+            lengthScale = 0.11f,
+            variance = 1f,
+            noise = 0.02f,
+            drawSamples = false,
+        ),
     vec(1.0, 0.4, 0.4, 0.95),
 )
 // One-Dollar normalizes the gesture around the origin (rotated, scaled to 220, resampled), so it gets its own cell.
@@ -2060,10 +2088,18 @@ val oneDollar = styled(
 ) + vec(370, 340, 0)
 
 lines(
-    ghost(0.0, 0.0), ema, ghost(400.0, 0.0), oneEuro,
-    ghost(0.0, 170.0), ab, ghost(400.0, 170.0), gpMean,
+    ghost(0.0, 0.0),
+    ema,
+    ghost(400.0, 0.0),
+    oneEuro,
+    ghost(0.0, 170.0),
+    ab,
+    ghost(400.0, 170.0),
+    gpMean,
     oneDollar,
-    w = 720.0, h = 480.0, fitToSize = true,
+    w = 720.0,
+    h = 480.0,
+    fitToSize = true,
 )
 ```
 
@@ -2641,10 +2677,17 @@ val snippet = a.byExtracting(tStart = 0.3f, tEnd = 0.8f).apply {
 val dx = vec(260.0, 0.0)
 val dx2 = vec(520.0, 0.0)
 lines(
-    a, b, startDot,
-    a + dx, flat + dx, mid + dx,
-    a + dx2, snippet + dx2,
-    w = 720.0, h = 220.0, fitToSize = true,
+    a,
+    b,
+    startDot,
+    a + dx,
+    flat + dx,
+    mid + dx,
+    a + dx2,
+    snippet + dx2,
+    w = 720.0,
+    h = 220.0,
+    fitToSize = true,
 )
 ```
 
@@ -2713,10 +2756,11 @@ val step = 140.0
 val ii = FLineInterpolator(f, f2)
 
 // One frame per column, left to right, rather than all of them on top of each other.
-val frames = (0 until n).map { i ->
-    val t = i / (n - 1f)
-    ink(ii.lineAt(t), tint(t), 3.0) + vec(i * step, 0.0)
-}
+val frames =
+    (0 until n).map { i ->
+        val t = i / (n - 1f)
+        ink(ii.lineAt(t), tint(t), 3.0) + vec(i * step, 0.0)
+    }
 
 lines(frames, w = 720.0, h = 160.0, fitToSize = true)
 ```
@@ -2751,31 +2795,27 @@ val end =
         .byScaling2D(0.78f, 1.24f, center = vec(0f, 0f))
         .byShearing2D(0.18f, -0.08f)
 
-val vanillaMid = start.interpolatorTo(end).lineAt(0.5f).apply {
-    filled = false
-    stroked = true
-    thickness = 3.0
-    color = vec(1.0, 0.58, 0.22, 0.8)
-}
+val vanilla = start.interpolatorTo(end)
+val aligned = start.interpolatorTo(
+    end,
+    config = FLineInterpolationConfig(
+        alignment = FLineInterpolationAlignment(
+            rotationMode = FLineInterpolationRotationMode.FIT_LINE_2D,
+            scaleMode = FLineInterpolationScaleMode.BOUNDS_DIAGONAL,
+        ),
+    ),
+)
 
-val alignedMid =
-    start
-        .interpolatorTo(
-            end,
-            config = FLineInterpolationConfig(
-                alignment = FLineInterpolationAlignment(
-                    rotationMode = FLineInterpolationRotationMode.FIT_LINE_2D,
-                    scaleMode = FLineInterpolationScaleMode.BOUNDS_DIAGONAL,
-                ),
-            ),
-        )
-        .lineAt(0.5f)
-        .apply {
-            filled = false
-            stroked = true
-            thickness = 3.0
-            color = vec(0.42, 1.0, 0.68, 0.8)
-        }
+// Nine in-between shapes, t = 0.1 ... 0.9, shaded from the start's blue to the end's orange.
+fun sweep(interpolator: FLineInterpolator) = (1..9).map { i ->
+    val t = i / 10f
+    interpolator.lineAt(t).apply {
+        filled = false
+        stroked = true
+        thickness = 1.6
+        color = vec(0.45 + 0.55 * t, 0.75 - 0.2 * t, 1.0 - 0.75 * t, 0.85)
+    }
+}
 
 fun ghost(line: FLine, tint: Vec4) = line.copy().apply {
     filled = false
@@ -2805,17 +2845,15 @@ val panels = [
 val alignedLines: List<FLine> = [
     ghost(start, vec(0.76, 0.9, 1.0, 0.20)) + leftShift,
     ghost(end, vec(1.0, 0.8, 0.5, 0.20)) + leftShift,
-    vanillaMid + leftShift,
     ghost(start, vec(0.76, 0.9, 1.0, 0.20)) + rightShift,
     ghost(end, vec(1.0, 0.8, 0.5, 0.20)) + rightShift,
-    alignedMid + rightShift,
-]
+] + sweep(vanilla).map { it + leftShift } + sweep(aligned).map { it + rightShift }
 val comparison = panels + alignedLines
 
 lines(comparison, w = 720.0, h = 360.0, fitToSize = true)
 ```
 
-Left is the default midpoint. Right pre-aligns the shapes before correspondence using `FIT_LINE_2D`, which is much better once the target has been rotated and rescaled.
+Both panels show nine in-between shapes from `t = 0.1` (blue) to `t = 0.9` (orange). On the left, the default interpolator moves each point straight to its partner, so the in-between shapes zigzag and collapse toward the centre as they cut across the rotation. On the right, `FIT_LINE_2D` aligns the shapes before matching points, so the in-between strokes sweep around more smoothly, though they still pinch near the centre.
 
 #### Spicy 2: extra motion at evaluation time
 
@@ -2864,14 +2902,15 @@ val spun = FLineInterpolator(
 fun seen(line: FLine) = line.byPerspectiveProjecting(cameraPos = vec(50f, 50f, -400f))
 
 // Top row: the plain morph. Bottom row: the same morph with the spin.
-val frames = (0 until n).flatMap { i ->
-    val t = i / (n - 1f)
-    val at = vec(i * step, 0.0)
-    [
-        ink(seen(plain.lineAt(t)), vec(1.0, 1.0, 1.0, 0.45), 2.0) + at,
-        ink(seen(spun.lineAt(t)), tint(t), 3.0) + at + vec(0.0, 150.0),
-    ]
-}
+val frames =
+    (0 until n).flatMap { i ->
+        val t = i / (n - 1f)
+        val at = vec(i * step, 0.0)
+        [
+            ink(seen(plain.lineAt(t)), vec(1.0, 1.0, 1.0, 0.45), 2.0) + at,
+            ink(seen(spun.lineAt(t)), tint(t), 3.0) + at + vec(0.0, 150.0),
+        ]
+    }
 
 lines(frames, w = 720.0, h = 300.0, fitToSize = true)
 ```
@@ -2897,7 +2936,7 @@ These are more specialized tools that are still extremely useful when you need t
 
 ### Euler spiral in 3D (clothoid-ish connection)
 
-This builds a smooth-ish curve between two points with start/end direction constraints in 3D. It’s great for “motion paths” and connecting strokes while controlling how the heading evolves.
+This builds the curve between two points that leaves along one direction and arrives along another, with curvature changing at a constant rate along its length. It’s good for motion paths and for joining strokes without a kink. The curve is solved in the plane of the two directions; if the end point is out of that plane, the curve climbs to it at a constant slope.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -3117,14 +3156,11 @@ Blue is the default `tension = 1.0`; orange is `tension = 0.45`, which shortens 
 
 </div>
 
-By default these use Java2D `Area` (via `FLinesAndJavaShapes`). Both inputs are read as filled regions under the non-zero rule, and an open line is closed with a straight segment. Pass `exact = true` to get the curve-preserving engine described under [Exact booleans and offsets](#exact-booleans-and-offsets) below.
-
-!!! note
-    An input with `thickness` (or `thicken`) set is read as the outline of its stroke, not as the filled shape, so a union of two drawn squares comes back as a union of two square rings. Build the shapes without style and style the result.
+By default these use Java2D `Area` (via `FLinesAndJavaShapes`). Both inputs are read as filled regions under the non-zero rule, whatever their `thickness`, and an open line is closed with a straight segment; pass `stroke = true` to use a styled input's stroke outline instead. Pass `exact = true` to get the curve-preserving engine described under [Exact booleans and offsets](#exact-booleans-and-offsets) below.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_ops_2d.png" embed=true}
 :::static
-// The shapes themselves carry no style: a line with a `thickness` is read as the outline of its stroke.
+// The inputs' style does not enter the boolean; the results are styled below.
 val a = fline {
     moveTo(80, 80)
     lineTo(260, 80)
@@ -3167,10 +3203,17 @@ val dx = vec(340.0, 0.0)
 val dx2 = vec(680.0, 0.0)
 val none = vec(0.0, 0.0)
 lines(
-    ghost(a, none), ghost(b, none),
-    ghost(a, dx), ghost(b, dx), u + dx,
-    ghost(a, dx2), ghost(b, dx2), i + dx2,
-    w = 720.0, h = 220.0, fitToSize = true,
+    ghost(a, none),
+    ghost(b, none),
+    ghost(a, dx),
+    ghost(b, dx),
+    u + dx,
+    ghost(a, dx2),
+    ghost(b, dx2),
+    i + dx2,
+    w = 720.0,
+    h = 220.0,
+    fitToSize = true,
 )
 ```
 

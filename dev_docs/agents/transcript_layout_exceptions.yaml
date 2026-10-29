@@ -22,3 +22,6 @@ largeFrames:
   interaction_nets_lambda/metadata.edn#lambda-oracle: Saved demo document; the box holds the 25-row corpus table and its four-scheduler summary.
   madp_score.yaml#madp_score_playhead: The playhead is a 12-wide line whose height is the score's span; playScore resizes it to that span every run.
   demo_document.yaml#demo_timeline: The timeline is a 40-wide time slider whose height spans the boxes it scrubs; dragging it sideways starts each box it enters and stops each box it leaves.
+  docs_capture/renderer_column.yaml#browse_renderer: Capture subject for visualizers.md; 820 wide so the renderer's column browser shows several columns side by side (84e89cf6e).
+  renderer_browsing.yaml#browse_renderer: Same column browser as the renderer_column capture; the width is what gives the columns room (84e89cf6e).
+  spreadsheet_tour.yaml#spreadsheet_tour_sheet: The sheet box is 640 wide, 20 over the ceiling, as it landed in 0a037a857; the sheet shows its columns in the box's own output area.

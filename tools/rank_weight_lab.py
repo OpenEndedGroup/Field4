@@ -5,13 +5,13 @@ This exists so that "should `CATEGORY_WEIGHT` learn the server's category vocabu
 running it rather than by arguing about it — and so that the answer recorded in
 `dev_docs/completion_rank_at_scale.md` can be re-checked by anyone in ten seconds.
 
-    ./gradlew jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'   # writes the spec, once
     python3 tools/rank_weight_lab.py                                  # the recorded experiments
     python3 tools/rank_weight_lab.py --set math=24,audio=24 --universal -40
 
 It stages the shipped `fieldSuggest.js` into a temp directory with one constant rewritten, next to the
 probe harness, and runs `probe.mjs rankmetrics` over the spec the test dropped in
-`build/completion-corpus/rank-spec.json`. Nothing in the repository is modified: a weight table that
+`build/completion-corpus/rank-spec.json`. When that file is missing, the tool runs the one test that
+writes it (`SPEC_TEST`, a minute or two the first time) before measuring. Nothing in the repository is modified: a weight table that
 only exists in a temp directory cannot accidentally ship.
 
 The spec has to come from the test because the two server-side ranking inputs on every row — the
@@ -93,6 +93,18 @@ def run(workspace: Path, spec: Path, name: str, extra, universal, quiet: bool) -
     sys.stdout.flush()
 
 
+SPEC_TEST = "afield.runtime.completion.FieldSuggestPresentationTest.writes the rank spec the weight lab reads"
+
+
+def write_spec(workspace: Path, spec: Path) -> None:
+    """Runs the test that writes [spec]; only the server's own classifier and prior can produce it."""
+    gradlew = workspace / ("gradlew.bat" if os.name == "nt" else "gradlew")
+    print(f"{spec} is missing; writing it with the test that produces it ({SPEC_TEST})", flush=True)
+    result = subprocess.run([str(gradlew), "--console=plain", "jvmTest", "--tests", SPEC_TEST], cwd=workspace)
+    if result.returncode != 0 or not spec.exists():
+        sys.exit(f"could not write {spec}: `gradlew jvmTest --tests '{SPEC_TEST}'` exited {result.returncode}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--workspace", default=os.getcwd())
@@ -105,8 +117,7 @@ def main() -> int:
     workspace = Path(args.workspace).resolve()
     spec = workspace / args.spec
     if not spec.exists():
-        sys.exit(f"{spec} is missing — run `./gradlew jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'` "
-                 "once to have the test drop it")
+        write_spec(workspace, spec)
 
     if args.set or args.universal is not None:
         extra = [(k.strip(), int(v)) for k, v in

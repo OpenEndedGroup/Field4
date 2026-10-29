@@ -61,7 +61,7 @@ import clojure.lang.*
 import java.io.PrintWriter
 import java.io.Writer
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.concurrent.thread
 
 /**
  * Clojure as a Field main language: a box whose source is Clojure, evaluated by the real Clojure
@@ -298,14 +298,14 @@ private fun atLine(error: CompileError, line: Int): CompileError =
  */
 class ClojureHost(private val defaultNs: String = "user") {
 
-    private val bootOnce = AtomicBoolean(false)
+    // Synchronized: a completion arriving while [warmInBackground] loads Compliment waits for it.
+    private val booted = lazy { try { requireNs("compliment.core") } catch (_: Throwable) { /* completions optional */ } }
 
-    private fun boot() {
-        if (bootOnce.getAndSet(true)) return
-        try {
-            requireNs("compliment.core")
-        } catch (_: Throwable) { /* completions optional */
-        }
+    private fun boot() = booted.value
+
+    /** Load Compliment off the runloop; its first load is about the popup's 15 s reply timeout. */
+    fun warmInBackground() {
+        thread(isDaemon = true, name = "clojure-compliment-warm") { boot() }
     }
 
 
@@ -1150,7 +1150,7 @@ private const val PENDING_LAUNCH_MODE = "launching"
 private const val ACTIVE_LAUNCH_MODE = "launch"
 
 class ClojureExecution(val inside: Box) : BoxExecution {
-    val clj = ClojureHost(defaultNs = "live.user")
+    val clj = ClojureHost(defaultNs = "live.user").also { it.warmInBackground() }
 
     /**
      * What one evaluation of a box came to: whether it got to the end, and the value of its last

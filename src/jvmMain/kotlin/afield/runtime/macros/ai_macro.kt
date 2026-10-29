@@ -518,8 +518,8 @@ private fun removeFunctionByName(code: String, functionName: String): String {
  * Resolve a pattern-rewrite `ai("…")` clause (see [PatternRewrite]). If the box attic already holds
  * a cached block for this request's stable key, do nothing — a cache hit, no model call. Otherwise
  * generate the code once via [AiMacroBridge], append it to the attic keyed by
- * [PatternRewrite.AiRequest.key], and deliberately leave `_attic` stale so [checkAtticAndExecute]
- * compiles/executes the freshly generated code on this run.
+ * [PatternRewrite.AiRequest.key], and leave `_attic` stale so that [checkAtticAndExecute] compiles
+ * and executes the freshly generated code on this run.
  *
  * Live (cache-miss) generation reuses the same bridge as [macro_ai]; only the cache-HIT path is
  * exercised by the smoke test — a real model is not available in CI.

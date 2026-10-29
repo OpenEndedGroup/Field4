@@ -55,6 +55,9 @@ class OfflineViewerJsTest(unittest.TestCase):
     def test_viewer_renderers(self) -> None:
         self.run_node("test_offline_viewer_render.js")
 
+    def test_published_output_manifest(self) -> None:
+        self.run_node("test_offline_outputs.js")
+
     def test_parser_handles_every_tag_saving_registers(self) -> None:
         tags = set(re.findall(r'register(?:Edn|StringPayload)\([^,]+,\s*"([^"]+)"', SAVING.read_text()))
         self.assertTrue(tags, "found no registered tags in saving.kt")

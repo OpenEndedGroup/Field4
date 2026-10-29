@@ -245,6 +245,7 @@ class TraceLogger private constructor(
             append(clipped)
             append("\n\n")
         }
+        LogDispatcher.log(CHANNEL, "$section: ${payload.length} chars -> $path")
         synchronized(lock) {
             Files.createDirectories(path.parent)
             Files.newBufferedWriter(
@@ -257,6 +258,9 @@ class TraceLogger private constructor(
     }
 
     companion object {
+        /** The channel each trace entry is announced on (one line; the payload stays in the file). */
+        const val CHANNEL = "info,ai.trace"
+
         fun fromEnv(): TraceLogger? {
             val raw = System.getProperty("afield.ai4.trace")
                 ?: System.getProperty("afield.ai4.trace.path")

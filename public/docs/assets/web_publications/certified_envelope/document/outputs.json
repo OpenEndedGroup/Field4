@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T17:42:28.268Z",
+  "documentName": "certified_envelope",
+  "outputs": [
+    {
+      "uid": "range",
+      "channel": "range",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 312,
+      "height": 99,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "range",
+      "channel": "claims",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 370,
+      "height": 100,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "certified",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "width": 1108,
+      "height": 295,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "certified",
+      "channel": "numbers",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 234,
+      "height": 144,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "workbench",
+      "channel": "claims",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 480,
+      "height": 256,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "workbench",
+      "channel": "max",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 204,
+      "height": 144,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "sampled",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "width": 1108,
+      "height": 295,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "sampled",
+      "channel": "numbers",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 234,
+      "height": 144,
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "limits",
+      "channel": "limits",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 480,
+      "height": 279,
+      "path": "outputs/8.html"
+    }
+  ]
+}

@@ -138,9 +138,15 @@ fun searchWorkspaceSymbols(
         )
     }
 
+    val unindexed = unindexedFilesMentioning(index!!, query.substringAfterLast('.'))
+    fun result(matches: List<WorkspaceSymbolMatch>) = WorkspaceSymbolSearchResult(matches, unindexed,
+        if (unindexed.isEmpty()) "" else "WARNING: ${unindexed.size} source file(s) saved since the symbol index was built " +
+            "mention '$query' and their declarations may be missing from matches: ${unindexed.joinToString()}. " +
+            "Read them with WorkspaceSearchRequest(scope=FIELD_KOTLIN_SOURCE, query=\"$query\").")
+
     // Avoid reading and scoring every source file for an exact indexed symbol.
     val exact = definitions.filter { it.name == query || it.name.endsWith(".$query") }
-    if (exact.isNotEmpty()) return WorkspaceSymbolSearchResult(withBodyBudget(exact.take(limit.coerceIn(1, 100)).map(::toMatch)))
+    if (exact.isNotEmpty()) return result(withBodyBudget(exact.take(limit.coerceIn(1, 100)).map(::toMatch)))
 
     val ranked = LinkedHashMap<String, RankedWorkspaceSymbolMatch>()
     definitions.forEachIndexed { definitionIndex, def ->
@@ -174,7 +180,34 @@ fun searchWorkspaceSymbols(
         .take(limit.coerceAtLeast(1))
         .map { toMatch(it.definition) }
 
-    return WorkspaceSymbolSearchResult(withBodyBudget(matches))
+    return result(withBodyBudget(matches))
+}
+
+/**
+ * `.kt` files under the index root's src/ saved after the index was built (and after their own record)
+ * that contain [name] literally, at most ten. A file with no record is not enough: the index never covers
+ * some trees (`src/personal/verification`, tests), and listing those on every search was noise. On 2026-10-28 a local model asked for `drawn` an hour after
+ * `Shape2.drawn` was written, got eight unrelated hits, and could not tell the index was behind.
+ */
+internal fun unindexedFilesMentioning(index: KotlinSourceIndexDb, name: String, limit: Int = 10): List<String> {
+    if (name.isBlank()) return emptyList()
+    val root = Paths.get(index.root)
+    val src = root.resolve("src")
+    if (!Files.isDirectory(src)) return emptyList()
+    val recorded = index.files.associate { root.resolve(it.path).normalize().toString() to it.modifiedEpochMs }
+    return runCatching {
+        Files.walk(src).use { paths ->
+            paths.filter { it.toString().endsWith(".kt") && Files.isRegularFile(it) }
+                .filter { path ->
+                    val mtime = Files.getLastModifiedTime(path).toMillis()
+                    mtime > index.updatedAtEpochMs && mtime > (recorded[path.normalize().toString()] ?: Long.MIN_VALUE)
+                }
+                .filter { runCatching { Files.readString(it).contains(name) }.getOrDefault(false) }
+                .limit(limit.toLong())
+                .map { root.relativize(it).toString() }
+                .toList()
+        }
+    }.getOrDefault(emptyList())
 }
 
 private fun analyzeWorkspaceSymbolQuery(rawQuery: String): WorkspaceQueryAnalysis {

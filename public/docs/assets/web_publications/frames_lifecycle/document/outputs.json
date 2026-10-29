@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T21:05:44.065Z",
+  "documentName": "frames_lifecycle",
+  "outputs": [
+    {
+      "uid": "frames_lifecycle_rerun",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 466,
+      "height": 75,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "frames_lifecycle_forever",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "frames_lifecycle_stops",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/2.html"
+    }
+  ]
+}

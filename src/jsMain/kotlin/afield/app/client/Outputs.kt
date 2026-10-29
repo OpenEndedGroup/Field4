@@ -1645,7 +1645,8 @@ fun addOutput(
     if (!richHtml && extraClass != "error") {
         belowLine = normalizeInlineOutputTargetLine(editor, belowLine)
     }
-    val canInline = !textClean.contains("<br>") && extraClass != "error" && !richHtml
+    // A warning takes its own zone, as an error does: an inline tick would be replaced by the next print on its line.
+    val canInline = !textClean.contains("<br>") && extraClass != "error" && extraClass != "warning" && !richHtml
 
     val edDecor = editorDecorationsFor(editor)
     var repeatedInlineOutput = false

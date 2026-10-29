@@ -81,7 +81,7 @@ operations:
           charStream { } is the other time model: one long program in which every SET waits a tick (see
           the 10 PRINT box). `sounds` gives each glyph index a dough path, so every SET of it plays.
           */
-          val sounds = listOf(
+          val sounds = [
               "/dough/play/note/48/duration/0.12/s/tri/fm/2/fmd/0.1/lpf/600/lpe/3/lpd/0.08/release/0.06/verb/0.3",
               "/dough/play/note/50/duration/0.12/s/tri/fm/2/fmd/0.1/lpf/700/lpe/3/lpd/0.08/release/0.06/verb/0.3",
               "/dough/play/note/53/duration/0.12/s/tri/fm/3/fmd/0.1/lpf/800/lpe/3/lpd/0.08/release/0.06/verb/0.3",
@@ -92,7 +92,7 @@ operations:
               "/dough/play/note/64/duration/0.08/s/pulse/pw/0.3/lpf/500/lpe/2/lpd/0.06/release/0.04",
               "/dough/play/note/65/duration/0.06/s/saw/lpf/400/lpe/4/lpd/0.05/release/0.03",
               "/dough/play/note/67/duration/0.06/s/saw/lpf/400/lpe/4/lpd/0.05/release/0.03",
-          )
+          ]
 
           charGrid(glyphs = "░▒▓█╔╗╚╝║═", sounds = sounds) {
               for (y in 0 until ROWS) {
@@ -119,13 +119,15 @@ operations:
           out one cell at a time and scrolls when it reaches the bottom. Each diagonal is its own pulse note,
           so the maze is also a random two-note melody. Try a third glyph, or `fps = 120.0`.
         code: |
-          // 10 PRINT CHR$(205.5+RND(1)); : GOTO 10
-          // Stream mode: one long program, and every SET waits for the next tick, so the maze types itself
-          // out a cell at a time and scrolls when it reaches the bottom. Each diagonal is a note.
-          val sounds = listOf(
+          /*
+          10 PRINT CHR$(205.5+RND(1)); : GOTO 10
+          Stream mode: one long program, and every SET waits for the next tick, so the maze types itself
+          out a cell at a time and scrolls when it reaches the bottom. Each diagonal is a note.
+          */
+          val sounds = [
               "/dough/play/note/64/duration/0.08/s/pulse/pw/0.35/lpf/700/lpe/3/lpd/0.05/release/0.04/delay/0.15/delaytime/0.06",
               "/dough/play/note/67/duration/0.08/s/pulse/pw/0.45/lpf/700/lpe/3/lpd/0.05/release/0.04/delay/0.15/delaytime/0.08",
-          )
+          ]
 
           charStream(glyphs = "╱╲", sounds = sounds) {
               clearGrid()
@@ -148,7 +150,13 @@ operations:
         code: |
           // Conway's Game of Life: PREV() reads the grid as the last tick left it. Only cells that change
           // are SET, so the sound marks the births.
-          charGrid(glyphs = " █", sounds = listOf("", "/dough/play/note/57/duration/0.1/s/tri/fm/1.5/fmd/0.08/lpf/500/lpe/2/lpd/0.06/release/0.05/verb/0.2/chorus/0.1")) {
+          charGrid(
+              glyphs = " █",
+              sounds = [
+                  "",
+                  "/dough/play/note/57/duration/0.1/s/tri/fm/1.5/fmd/0.08/lpf/500/lpe/2/lpd/0.06/release/0.05/verb/0.2/chorus/0.1",
+              ],
+          ) {
               if (frame == 0) {
                   clearGrid()
                   for (y in 0 until ROWS) for (x in 0 until COLS) if (rand() < 0.35) SET(x, y, 1, "#50fa7b")
@@ -186,7 +194,7 @@ operations:
 
           val drops = mutableListOf<Drop>()
           // The sixteen digits and letters ring, high and bright; the nine symbols are silent.
-          val sounds = listOf(
+          val sounds = [
               "/dough/play/note/72/duration/0.06/s/sine/fm/1/fmd/0.03/lpf/3000/release/0.03/verb/0.4/verbdecay/0.6/pan/0.3",
               "/dough/play/note/74/duration/0.06/s/sine/fm/1/fmd/0.03/lpf/3200/release/0.03/verb/0.4/pan/0.35",
               "/dough/play/note/76/duration/0.06/s/sine/fm/1.5/fmd/0.03/lpf/3400/release/0.03/verb/0.4/pan/0.4",
@@ -203,7 +211,7 @@ operations:
               "/dough/play/note/95/duration/0.04/s/sine/lpf/5500/release/0.02/delay/0.15",
               "/dough/play/note/96/duration/0.04/s/sine/lpf/5500/release/0.02/delay/0.15",
               "/dough/play/note/98/duration/0.04/s/sine/lpf/6000/release/0.02/delay/0.1",
-          )
+          ]
 
           charGrid(glyphs = "0123456789ABCDEF:.*+=@#$%", sounds = sounds) {
               if (drops.isEmpty()) repeat(COLS) { drops += Drop(-rand(25), 5 + rand(14)) }
@@ -212,7 +220,8 @@ operations:
                   val d = drops[x]
                   for (i in 0 until d.len) {
                       val y = d.y - i
-                      if (y in 0 until ROWS) SET(x, y, rand(glyphs.length), if (i == 0) "#fff" else "hsl(120,80%,${max(15, 65 - i * 4)}%)")
+                      if (y in 0 until ROWS)
+                          SET(x, y, rand(glyphs.length), if (i == 0) "#fff" else "hsl(120,80%,${max(15, 65 - i * 4)}%)")
                   }
                   d.y++
                   if (d.y - d.len > ROWS) {
@@ -234,23 +243,26 @@ operations:
           score you can read. Stream mode: each `SET` waits a tick and two `waitFrame()`s hold the note. Edit
           `patterns` to compose.
         code: |
-          // Philip Glass: minimalist additive arpeggios, and here the glyphs are notes. The eight bars of the
-          // charset are A minor from E2 to E4, so a taller bar is a higher note. Stream mode: each SET
-          // waits a tick and two waitFrame()s hold the note, three ticks a note.
-          val notes = listOf(40, 45, 48, 52, 55, 57, 60, 64)
-          val cutoffs = listOf(500, 550, 600, 650, 700, 750, 800, 900)
-          val sounds = notes.indices.map { i ->
-              "/dough/play/note/${notes[i]}/duration/0.4/s/saw/attack/0.02/decay/0.15/sustain/0.3/release/0.2" +
-                  "/vib/4/vibmod/0.15/lpf/${cutoffs[i]}/lpe/2/lpd/0.25/lpq/0.15/verb/0.3/verbdecay/0.5/chorus/0.05"
-          }
-          val patterns = listOf(
-              listOf(0, 2, 4, 5, 4, 2),       // i: A minor, low
-              listOf(1, 3, 5, 6, 5, 3),       // ii: rising
-              listOf(0, 2, 4, 6, 7, 6, 4, 2), // iii: the full sweep
-              listOf(2, 4, 5, 7, 5, 4),       // iv: upper
-              listOf(0, 3, 5, 7, 5, 3, 0, 2), // v: wide
-              listOf(1, 2, 4, 5, 7, 5, 4, 2), // vi: opening
-          )
+          /*
+          Philip Glass: minimalist additive arpeggios, and here the glyphs are notes. The eight bars of the
+          charset are A minor from E2 to E4, so a taller bar is a higher note. Stream mode: each SET
+          waits a tick and two waitFrame()s hold the note, three ticks a note.
+          */
+          val notes = [40, 45, 48, 52, 55, 57, 60, 64]
+          val cutoffs = [500, 550, 600, 650, 700, 750, 800, 900]
+          val sounds =
+              notes.indices.map { i ->
+                  "/dough/play/note/${notes[i]}/duration/0.4/s/saw/attack/0.02/decay/0.15/sustain/0.3/release/0.2" +
+                      "/vib/4/vibmod/0.15/lpf/${cutoffs[i]}/lpe/2/lpd/0.25/lpq/0.15/verb/0.3/verbdecay/0.5/chorus/0.05"
+              }
+          val patterns = [
+              [0, 2, 4, 5, 4, 2], // i: A minor, low
+              [1, 3, 5, 6, 5, 3], // ii: rising
+              [0, 2, 4, 6, 7, 6, 4, 2], // iii: the full sweep
+              [2, 4, 5, 7, 5, 4], // iv: upper
+              [0, 3, 5, 7, 5, 3, 0, 2], // v: wide
+              [1, 2, 4, 5, 7, 5, 4, 2], // vi: opening
+          ]
 
           charStream(glyphs = "▁▂▃▄▅▆▇█", sounds = sounds) {
               clearGrid()
@@ -281,8 +293,10 @@ operations:
         code: |
           // Per-cell rotation from a wave, plus one CSS variable that every cell adds to its own angle, so the
           // whole field spins with a single CSSVAR call a tick.
-          val notes = listOf(60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79)
-          val sounds = notes.mapIndexed { i, note -> "/dough/play/note/$note/duration/0.06/s/sine/lpf/${2000 + i * 200}/release/0.03/verb/0.3" }
+          val notes = [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79]
+          val sounds = notes.mapIndexed { i, note ->
+              "/dough/play/note/$note/duration/0.06/s/sine/lpf/${2000 + i * 200}/release/0.03/verb/0.3"
+          }
 
           charGrid(glyphs = "|/-\\+×•◦○●★✶", sounds = sounds) {
               CSSVAR("--spin", "${frame * 6 % 360}deg")
@@ -292,7 +306,13 @@ operations:
                       val wave = sin(x * 0.4 + t) * cos(y * 0.3 + t * 0.6)
                       val g = ((wave + 1) / 2 * glyphs.length).toInt()
                       val hue = (x * 12 + y * 8 + frame * 3) % 360
-                      SET(x, y, g, "hsl($hue,70%,50%)", "transform:rotate(calc(${(wave * 180).roundToInt()}deg + var(--spin,0deg)))")
+                      SET(
+                          x,
+                          y,
+                          g,
+                          "hsl($hue,70%,50%)",
+                          "transform:rotate(calc(${(wave * 180).roundToInt()}deg + var(--spin,0deg)))",
+                      )
                   }
               }
           }

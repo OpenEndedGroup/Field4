@@ -30,10 +30,10 @@ import java.io.File
  *    OBJ, STL and PLY — into a packed 12-float GPU buffer plus materials.
  *  - `afield.graphics.scene.fabricated.FabricateGltfBridge` takes that same model into the PBR `StandardRenderer`.
  *
- * Both GPU loaders produce plain host memory — `memAlloc`, not a Vulkan allocation — so nothing
- * except a missing function stopped their output from becoming a [TriMesh]. These are those
- * functions: [PlySupport.PlyModel.toTriMesh], [assimpToTriMesh] and the dispatcher
- * [meshFromAnyFile], plus a [Box.showMesh] overload that takes a [File].
+ * Both GPU loaders produce plain host memory — `memAlloc`, not a Vulkan allocation — which is what
+ * lets their output be read back into a [TriMesh] on the CPU: [PlySupport.PlyModel.toTriMesh],
+ * [assimpToTriMesh] and the dispatcher [meshFromAnyFile], plus a [Box.showMesh] overload that takes
+ * a [File].
  *
  * ```kotlin
  * showMesh(File("/path/to/thing.glb"))                     // straight to the orbitable viewer
@@ -46,8 +46,8 @@ import java.io.File
  * (see `afield.document.graph.intro`), so a box can call them without an import anyway.
  *
  * What is *not* here, because nothing in the tree can read it: **STEP / IGES / BREP**. There is no CAD
- * kernel on the classpath, and a NURBS-to-mesh tessellation is not a weekend's work — see
- * `public/docs/geometry_from_disk.md` for the full list of what does and does not load.
+ * kernel on the classpath, and those formats need NURBS-to-mesh tessellation rather than a parser —
+ * see `public/docs/geometry_from_disk.md` for the full list of what does and does not load.
  */
 
 // ==============================================================================================

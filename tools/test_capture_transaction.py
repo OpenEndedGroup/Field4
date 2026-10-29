@@ -132,6 +132,59 @@ class CaptureTransactionTests(unittest.TestCase):
         self.assertIn('"new"', state.cache_path.read_text())
 
 
+class RunnerCacheAssetBytesTests(unittest.TestCase):
+    """A cache entry certifies the bytes its capture published, not whatever file is at the path."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.asset = self.root / "meter.png"
+        self.asset.write_bytes(b"captured by this run")
+
+    def state(self):
+        state = docs_hooks.RunnerState.__new__(docs_hooks.RunnerState)
+        state.cache_path = self.root / "cache.json"
+        state.runner_mode = "strict"
+        state.cache, state.cache_metadata = state._load_cache()
+        state.dirty = True
+        return state
+
+    def saved(self, digest="d1"):
+        state = self.state()
+        state.cache[str(self.asset)] = digest
+        state.cache_metadata[str(self.asset)] = {"kind": "screenshot"}
+        state.save()
+
+    def test_an_asset_replaced_after_its_capture_is_not_a_cache_hit(self):
+        # 2026-10-27: run 3's PNGs were stashed, the worktree went back to main's copies, and
+        # strict counted 895 of those older files as hits because the digests still matched.
+        self.saved()
+        self.asset.write_bytes(b"main's older copy")
+        self.assertNotIn(str(self.asset), self.state().cache)
+
+    def test_the_same_bytes_rewritten_stay_a_hit(self):
+        self.saved()
+        stat = self.asset.stat()
+        self.asset.write_bytes(b"captured by this run")
+        os.utime(self.asset, ns=(stat.st_atime_ns, stat.st_mtime_ns + 5_000_000_000))
+        self.assertEqual(self.state().cache[str(self.asset)], "d1")
+
+    def test_a_missing_asset_is_not_a_hit(self):
+        self.saved()
+        self.asset.unlink()
+        self.assertNotIn(str(self.asset), self.state().cache)
+
+    def test_an_entry_from_before_fingerprints_is_kept_and_fingerprinted(self):
+        (self.root / "cache.json").write_text(
+            '{"entries": {"%s": {"digest": "d0", "metadata": {}}}}' % self.asset)
+        state = self.state()
+        self.assertEqual(state.cache[str(self.asset)], "d0")
+        state.save()
+        self.asset.write_bytes(b"changed")
+        self.assertNotIn(str(self.asset), self.state().cache)
+
+
 class RunnerCaptureTransactionTests(unittest.TestCase):
     """Run the real ensure_* methods, faking only their external Field child."""
 

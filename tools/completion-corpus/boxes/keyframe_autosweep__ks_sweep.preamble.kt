@@ -1,6 +1,6 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
 import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.bundle by Inheritance<StandardRenderer.Bundle>() /*from:ks_rig*/ /**/
 val Once.bundle by Onceing<StandardRenderer.Bundle>() /*from:ks_rig*/ /**/
 val Why.bundle by Whying() /*from:ks_rig*/ /**/

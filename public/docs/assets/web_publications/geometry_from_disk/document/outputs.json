@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T20:56:30.932Z",
+  "documentName": "geometry_from_disk",
+  "outputs": [
+    {
+      "uid": "disk_roundtrip",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 713,
+      "height": 208,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "disk_glb",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 568,
+      "height": 428,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "disk_ply",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 480,
+      "height": 323,
+      "path": "outputs/2.html"
+    }
+  ]
+}

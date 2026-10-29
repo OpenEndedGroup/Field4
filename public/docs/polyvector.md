@@ -250,7 +250,7 @@ pixels wide. On those it reproduces the authors' published results exactly. Outs
 - **It is not fast.** A drawing of a few hundred pixels takes seconds to a minute, and only one
   vectorization runs at a time in a Field process.
 
-??? aside "How this is checked"
+??? aside "Agents: how this is checked"
     `tools/validate_polyvector.py` builds the authors' command-line program from the same pinned
     commit and runs it and Field's library on the authors' six sample drawings: the curves are
     identical point for point. Getting there turned up two places where the first port differed: the

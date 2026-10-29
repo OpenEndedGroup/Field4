@@ -31,17 +31,28 @@ import org.lwjgl.vulkan.VK13.*
 
 /** Records a window's frame from its named modules, mesh modules and other [Target]s, in insertion order. */
 class RenderTarget(
+    /** The renderer that owns the window this target draws, and that submits the command buffer the passes record into. */
     val renderer: Renderer,
     private val contextProvider: () -> Renderer.WindowContext = { renderer.windowContext(0) },
+    /** Which of the renderer's windows this target draws, matching the context it reads its swapchain and depth attachments from. `renderer.renderTargetFor(windowIndex)` is how a box reaches the one it wants, and the main window's is [Renderer.renderList]. */
     val windowIndex: Int = 0
 ) : Target {
 
     private val ctx get() = contextProvider()
 
+    /** The modules drawn into this window, by name, recorded in insertion order before [meshModules]. Add with `+=`; passing a name-to-[ModulePointer] pair takes any entry already under that name out first, so re-adding one moves it to the end of the order. */
     var modules = mutableMapOf<String, ModulePointer>()
+
+    /** The mesh-shader modules drawn into this window, by name, recorded after [modules] and in their own insertion order. */
     var meshModules = mutableMapOf<String, MeshModulePointer>()
+
+    /** Targets rendered after this one's pass has ended, by name — the render-to-textures and compute targets chained behind the window. A [RendersAfter] entry is moved behind the target it names before the list runs. */
     var others = mutableMapOf<String, Target>()
+
+    /** Secondary command buffers to execute inside the rendering instance in place of recording [modules] and [meshModules] this frame. It is consumed: the field is set back to null once the frame has used it. */
     var preRecordedInsideRendering: List<CommandBuffer>? = null
+
+    /** Targets rendered before any of this one's render-pass work, by name — where an upload or streaming copy goes, since a transfer cannot be recorded inside dynamic rendering. */
     var preTargets = mutableMapOf<String, Target>()
 
     @JvmName("plusAssign")
@@ -80,6 +91,11 @@ class RenderTarget(
         others.putOwned(m.first, m.second, renderer)
     }
 
+    /**
+     * The swapchain image indices this target has already presented, which decide whether a
+     * frame's first barrier declares the old layout as present-source or undefined. It is cleared
+     * when the swapchain is recreated, since a resize hands back brand-new images.
+     */
     var seenBefore = mutableSetOf<Int>()
 
     // Identity of the swapchain `seenBefore` was populated against. When the swapchain is recreated
@@ -338,6 +354,7 @@ class RenderTarget(
  * publishes. Wherever it was added, [RenderTarget] moves it behind [rendersAfter] before it iterates.
  */
 interface RendersAfter {
+    /** The target this pass has to follow. [RenderTarget] looks for it in the same `others` map and moves this entry behind it; a target that is not in that map leaves the order alone. */
     val rendersAfter: Target
 }
 

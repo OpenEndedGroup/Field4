@@ -29,6 +29,16 @@ commit and host, so `compare` can show a change against the previous run on this
   uv run --project . --group backdoor python tools/feel_bench.py compare            # last two on this host
   uv run --project . --group backdoor python tools/feel_bench.py compare A.json B.json
 
+The ratchet: a committed baseline per machine (`dev_docs/testing/feel_baselines/<host>.json`), made
+from several runs so each step's band reflects how much that step moves between runs, and a check
+that fails when a run falls outside it. `dev_docs/testing/FEEL_BENCHMARK_BASELINES.md` is generated
+from the baselines.
+
+  ... feel_bench.py run --reps 100 --cold-runs 10 --require-ac --max-load 4     # a nightly-sized run
+  ... feel_bench.py noise R1.json R2.json R3.json     # step-by-step spread of several runs
+  ... feel_bench.py baseline R1.json R2.json R3.json  # write this host's baseline, regenerate the page
+  ... feel_bench.py check [RESULT] [--page OUT.md]    # exit 1 on a regression against the baseline
+
 Numbers are only comparable on one machine with the same load: close the Electron app and other
 Fields first, and keep the laptop on power (long verifications are power-gated).
 """
@@ -39,6 +49,7 @@ import asyncio
 import json
 import os
 import platform
+import re
 import shlex
 import shutil
 import socket
@@ -47,7 +58,7 @@ import subprocess
 import sys
 import time
 import urllib.request
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
@@ -453,7 +464,19 @@ def machine_info() -> dict[str, Any]:
         info["memBytes"] = int(sh("sysctl", "-n", "hw.memsize") or 0)
         info["onPower"] = "AC Power" in sh("pmset", "-g", "batt")
     info["cores"] = os.cpu_count()
+    info["loadAverage"] = [round(x, 2) for x in os.getloadavg()]
     return info
+
+
+def environment_problem(args: argparse.Namespace) -> str | None:
+    """Why this machine should not be measured right now, or None. Numbers taken on battery or under
+    load measure the machine, not Field, so a gated run is skipped rather than recorded."""
+    info = machine_info()
+    if args.require_ac and info.get("onPower") is False:
+        return "on battery"
+    if args.max_load is not None and info["loadAverage"][0] > args.max_load:
+        return f"load average {info['loadAverage'][0]} > --max-load {args.max_load}"
+    return None
 
 
 def git_info() -> dict[str, Any]:
@@ -477,6 +500,8 @@ def pct(values: list[float], q: float) -> float:
 
 # Phases measured once per scenario, summarized under their own label; the rest repeat and group by phase.
 SINGLE_PHASES = {"first", "second", "frame", "stop"}
+# What a cold round keeps: the steps whose cost depends on the JVM being fresh.
+COLD_PHASES = {"first", "frame"}
 
 
 def summarize(steps: list[Step]) -> dict[str, dict[str, Any]]:
@@ -493,6 +518,9 @@ def summarize(steps: list[Step]) -> dict[str, dict[str, Any]]:
             entry["wallMs"] = round(statistics.median(wall), 1)
             if len(wall) > 2:
                 entry["wallP90Ms"] = round(pct(wall, 0.9), 1)
+            if len(wall) >= 50:
+                # Below ~50 samples the 99th percentile is just the slowest run.
+                entry["wallP99Ms"] = round(pct(wall, 0.99), 1)
             outs = [s.firstOutputMs for s in good if s.firstOutputMs is not None]
             if outs:
                 entry["firstOutputMs"] = round(statistics.median(outs), 1)
@@ -528,17 +556,33 @@ def print_summary(result: dict[str, Any]) -> None:
 # --------------------------------------------------------------------------- #
 # Commands
 # --------------------------------------------------------------------------- #
+SKIPPED = 3  # exit code: the environment refused the run; see environment_problem
+
+
 async def run_bench(args: argparse.Namespace) -> int:
     names = args.scenario or [n for n in SCENARIOS if not (args.no_graphics and n in GRAPHICS)]
     stamp = time.strftime("%Y%m%d-%H%M%S")
+    problem = environment_problem(args)
+    if problem:
+        print(f"feel_bench: skipped, {problem}", flush=True)
+        ledger = Path(args.ledger).expanduser()
+        ledger.parent.mkdir(parents=True, exist_ok=True)
+        with ledger.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps({"schema": SCHEMA, "stamp": stamp, "skipped": problem,
+                                     "git": git_info(), "machine": machine_info()}) + "\n")
+        return SKIPPED
+    start_load = os.getloadavg()[0]
     OUT_ROOT.mkdir(parents=True, exist_ok=True)
     workspace = prepare_workspace(OUT_ROOT / "workspace")
     port = args.port or free_port()
-    groups = [[n] for n in names] if args.fresh_jvm_per_scenario else [names]
+    # (scenarios, reps, cold): the measured run, then --cold-runs rounds of one fresh JVM per
+    # scenario at one rep, kept only for the steps a fresh JVM measures (first launch, its frames).
+    rounds = [([n], args.reps, False) for n in names] if args.fresh_jvm_per_scenario else [(names, args.reps, False)]
+    rounds += [([n], 1, True) for _ in range(args.cold_runs) for n in names]
 
     steps: list[Step] = []
     boots: list[dict[str, Any]] = []
-    for group in groups:
+    for group, reps, cold in rounds:
         log_path = OUT_ROOT / f"field-{stamp}-{port}.log"
         print(f"Starting Field on {port} (log {log_path}) ...", flush=True)
         proc, boot = start_field(port, workspace, log_path)
@@ -553,13 +597,17 @@ async def run_bench(args: argparse.Namespace) -> int:
             boot["readyMillis"] = bench.spans_since(0).get("readyMillis")
             boot["clockOffsetMs"] = round(bench.calibrate() * 1000, 2)
             boot["scenarios"] = group
+            boot["cold"] = cold
             boots.append(boot)
-            print(f"  boot {boot}", flush=True)
+            print(f"  boot {boot}" + ("  (cold round)" if cold else ""), flush=True)
             try:
                 for name in group:
-                    await SCENARIOS[name](bench, args.reps)
+                    await SCENARIOS[name](bench, reps)
             finally:
-                steps.extend(bench.steps)
+                if cold:
+                    steps.extend(replace(s, label="cold " + s.label) for s in bench.steps if s.phase in COLD_PHASES)
+                else:
+                    steps.extend(bench.steps)
                 await client.close()
         finally:
             stop_field(proc, port)
@@ -572,6 +620,8 @@ async def run_bench(args: argparse.Namespace) -> int:
         "reps": args.reps,
         "thinkSeconds": args.think,
         "freshJvmPerScenario": args.fresh_jvm_per_scenario,
+        "coldRuns": args.cold_runs,
+        "loadAverageStartEnd": [round(start_load, 2), round(os.getloadavg()[0], 2)],
         "boot": boots[0],
         "boots": boots,
         "summary": summarize(steps),
@@ -583,7 +633,8 @@ async def run_bench(args: argparse.Namespace) -> int:
     ledger.parent.mkdir(parents=True, exist_ok=True)
     with ledger.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps({k: result[k] for k in ("schema", "stamp", "git", "machine", "reps", "thinkSeconds",
-                                                        "freshJvmPerScenario", "boot", "summary")}) + "\n")
+                                                        "freshJvmPerScenario", "coldRuns", "loadAverageStartEnd",
+                                                        "boot", "summary")}) + "\n")
     print_summary(result)
     print(f"\nwrote {out_path}\nappended {ledger}")
     return 0 if all(s.ok for s in steps) else 1
@@ -629,6 +680,260 @@ def compare(args: argparse.Namespace) -> int:
     return 0
 
 
+# --------------------------------------------------------------------------- #
+# Baselines, the ratchet, and the page
+# --------------------------------------------------------------------------- #
+BASELINE_ROOT = REPO_ROOT / "dev_docs" / "testing" / "feel_baselines"
+BASELINE_PAGE = REPO_ROOT / "dev_docs" / "testing" / "FEEL_BENCHMARK_BASELINES.md"
+# The narrowest band a step gets, whatever its measured spread: a median may move this much and a
+# p90 this much before `check` calls it a regression. A step's own band is three times the largest
+# deviation of one run from the others in the runs its baseline was made from, if that is wider.
+MIN_MEDIAN_PCT = 15.0
+MIN_P90_PCT = 25.0
+SPREAD_MULTIPLE = 3.0
+# Below this many milliseconds a change is not a regression however large in percent: a 10 ms
+# shader reload that becomes 13 ms is +30% and nothing anyone feels.
+FLOOR_MS = 5.0
+
+
+def host_slug(host: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", host.lower().removesuffix(".local")).strip("-")
+
+
+def baseline_path(host: str) -> Path:
+    return BASELINE_ROOT / f"{host_slug(host)}.json"
+
+
+def newest_result() -> Path:
+    results = sorted(OUT_ROOT.glob("2*.json"))
+    if not results:
+        raise SystemExit(f"no results in {OUT_ROOT}; run `feel_bench.py run` first")
+    return results[-1]
+
+
+def step_entries(result: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any]]:
+    return {(scenario, key): entry for scenario, phases in result["summary"].items()
+            for key, entry in phases.items() if "wallMs" in entry}
+
+
+def spread(runs: list[dict[str, Any]]) -> dict[tuple[str, str], dict[str, float]]:
+    """Per step measured by at least two runs: the largest deviation, in percent, of one run's median
+    (and p90) from the median of the runs that measured it. A run where the step failed has no
+    timing for it and does not count."""
+    entries = [step_entries(r) for r in runs]
+    out: dict[tuple[str, str], dict[str, float]] = {}
+    for key in set().union(*entries):
+        row: dict[str, float] = {}
+        for field_name, label in (("wallMs", "medianPct"), ("wallP90Ms", "p90Pct")):
+            values = [e[key][field_name] for e in entries if key in e and field_name in e[key]]
+            if len(values) < 2:
+                continue
+            centre = statistics.median(values)
+            row[label] = round(max(abs(v - centre) for v in values) / centre * 100, 1) if centre else 0.0
+        out[key] = row
+    return out
+
+
+def make_baseline(runs: list[dict[str, Any]]) -> dict[str, Any]:
+    hosts = {r["machine"]["host"] for r in runs}
+    thinks = {r.get("thinkSeconds") for r in runs}
+    if len(hosts) != 1 or len(thinks) != 1:
+        raise SystemExit(f"a baseline is one host at one think time; got hosts {hosts}, think {thinks}")
+    entries = [step_entries(r) for r in runs]
+    noise = spread(runs) if len(runs) > 1 else {}
+    steps: dict[str, dict[str, Any]] = {}
+    # Every step some run measured, each from the runs that measured it (a step that failed in one
+    # run still gets a baseline from the others), in the order the runs met them: first launch
+    # before its frames before the reruns.
+    order = list(dict.fromkeys(k for e in reversed(entries) for k in e))
+    for key in order:
+        measuring = [e[key] for e in entries if key in e]
+        def mid(field_name: str) -> float | None:
+            values = [m[field_name] for m in measuring if field_name in m]
+            return round(statistics.median(values), 1) if values else None
+        last = measuring[-1]
+        row: dict[str, Any] = {"n": last["n"], "runs": len(measuring), "wallMs": mid("wallMs")}
+        for field_name in ("wallP90Ms", "wallP99Ms"):
+            if (value := mid(field_name)) is not None:
+                row[field_name] = value
+        measured = noise.get(key, {})
+        row["spreadPct"] = measured
+        row["tolMedianPct"] = max(MIN_MEDIAN_PCT, round(SPREAD_MULTIPLE * measured.get("medianPct", 0.0), 1))
+        row["tolP90Pct"] = max(MIN_P90_PCT, round(SPREAD_MULTIPLE * measured.get("p90Pct", 0.0), 1))
+        row["spansMs"] = dict(sorted(last.get("spansMs", {}).items(), key=lambda kv: -kv[1])[:3])
+        steps.setdefault(key[0], {})[key[1]] = row
+    head = runs[-1]
+    return {
+        "schema": SCHEMA,
+        "host": head["machine"]["host"],
+        "machine": {k: head["machine"].get(k) for k in ("cpu", "cores", "memBytes", "os")},
+        "commit": head["git"]["commit"],
+        "stamps": [r["stamp"] for r in runs],
+        "reps": head["reps"],
+        "coldRuns": head.get("coldRuns", 0),
+        "thinkSeconds": head.get("thinkSeconds"),
+        "loadAverages": [r.get("loadAverageStartEnd") for r in runs],
+        "steps": steps,
+    }
+
+
+def check_against(result: dict[str, Any], baseline: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
+    """Each baseline step's verdict for [result]: ok, faster, regressed or missing; and problems that
+    make the comparison meaningless (another host, another think time)."""
+    problems = []
+    if result["machine"]["host"] != baseline["host"]:
+        problems.append(f"result is from {result['machine']['host']}, baseline from {baseline['host']}")
+    if result.get("thinkSeconds") != baseline.get("thinkSeconds"):
+        problems.append(f"think time {result.get('thinkSeconds')} s against the baseline's {baseline.get('thinkSeconds')} s")
+    head = {(sc, k): e for (sc, k), e in step_entries(result).items()}
+    failed = {(sc, k) for sc, phases in result["summary"].items() for k, e in phases.items() if e.get("failed")}
+    rows = []
+    for scenario, phases in baseline["steps"].items():
+        for key, base in phases.items():
+            now = head.get((scenario, key))
+            row: dict[str, Any] = {"scenario": scenario, "step": key, "base": base, "now": now}
+            if now is None or (scenario, key) in failed:
+                row["verdict"] = "missing" if now is None else "failed"
+            else:
+                verdict = "ok"
+                for field_name, tol_name, floor in (("wallMs", "tolMedianPct", FLOOR_MS), ("wallP90Ms", "tolP90Pct", 2 * FLOOR_MS)):
+                    if field_name not in base or field_name not in now:
+                        continue
+                    b, n, tol = base[field_name], now[field_name], base[tol_name] / 100
+                    if n > b * (1 + tol) and n - b > floor:
+                        verdict = "regressed"
+                    elif field_name == "wallMs" and n < b * (1 - tol) and b - n > floor and verdict == "ok":
+                        verdict = "faster"
+                row["verdict"] = verdict
+            rows.append(row)
+    return rows, problems
+
+
+def pct_change(base: float, now: float) -> str:
+    return f"{100 * (now - base) / base:+.0f}%" if base else "n/a"
+
+
+def ms(value: float | None) -> str:
+    return "" if value is None else f"{value:,.0f}" if value >= 100 else f"{value:.1f}"
+
+
+def one_run(step: dict[str, Any]) -> str:
+    """A note on a band no spread was measured for: the step's timing came from a single run."""
+    return " (1 run)" if step.get("runs", 2) < 2 else ""
+
+
+def render_baseline(baseline: dict[str, Any], rows: list[dict[str, Any]] | None = None, result: dict[str, Any] | None = None) -> str:
+    """One host's baseline as Markdown; with [rows] from `check_against`, the result beside it."""
+    m = baseline["machine"]
+    out = [f"## {baseline['host']}", ""]
+    out.append(f"{m.get('cpu') or ''}, {m.get('cores')} cores, {(m.get('memBytes') or 0) // 2**30} GB. "
+               f"Commit `{baseline['commit'][:9]}`; runs {', '.join(baseline['stamps'])}; "
+               f"{baseline['reps']} reps, {baseline.get('coldRuns', 0)} cold rounds, think {baseline.get('thinkSeconds')} s.")
+    if result is not None:
+        out.append("")
+        out.append(f"Compared with run {result['stamp']} at commit `{result['git']['commit'][:9]}`"
+                   f"{' (dirty)' if result['git']['dirty'] else ''}, load {result.get('loadAverageStartEnd')}.")
+    by_step = {(r["scenario"], r["step"]): r for r in rows or []}
+    for scenario, phases in baseline["steps"].items():
+        out += ["", f"### `{scenario}`", ""]
+        header = "| Step | n | median ms | p90 ms | p99 ms | band (median / p90) | where the time goes |"
+        rule = "| --- | ---: | ---: | ---: | ---: | ---: | --- |"
+        if rows is not None:
+            header += " now median | now p90 | change | verdict |"
+            rule += " ---: | ---: | ---: | --- |"
+        out += [header, rule]
+        for key, b in phases.items():
+            spans = ", ".join(f"{k} {v:,.0f}" for k, v in b.get("spansMs", {}).items() if v >= 1)
+            line = (f"| {key} | {b['n']} | {ms(b['wallMs'])} | {ms(b.get('wallP90Ms'))} | {ms(b.get('wallP99Ms'))} | "
+                    f"±{b['tolMedianPct']:.0f}% / ±{b['tolP90Pct']:.0f}%{one_run(b)} | {spans} |")
+            if rows is not None:
+                r = by_step.get((scenario, key), {})
+                now = r.get("now") or {}
+                change = pct_change(b["wallMs"], now["wallMs"]) if "wallMs" in now else ""
+                verdict = r.get("verdict", "")
+                line += f" {ms(now.get('wallMs'))} | {ms(now.get('wallP90Ms'))} | {change} | {'**' + verdict + '**' if verdict not in ('ok', '') else verdict} |"
+            out.append(line)
+    return "\n".join(out) + "\n"
+
+
+PAGE_HEADER = """<!-- Generated by `tools/feel_bench.py page` from dev_docs/testing/feel_baselines/*.json. Do not edit. -->
+# Feel benchmark baselines
+
+The committed baseline for each machine that has one, and the band `tools/feel_bench.py check`
+allows each step before calling it a regression. Method, scenarios and spans:
+[FEEL_BENCHMARKS.md](FEEL_BENCHMARKS.md). Times are client wall clock, command sent to verdict.
+A baseline changes only by `feel_bench.py baseline`, in its own commit.
+"""
+
+
+CHECK_PAGE_HEADER = """<!-- Generated by `tools/feel_bench.py check --page`. Do not edit. -->
+# Feel benchmark: a run against the baseline
+
+One run of `tools/feel_bench.py` beside this machine's committed baseline. A step is **regressed**
+when its median or p90 leaves the band and moved by more than a few milliseconds, **faster** when its
+median left the band downwards (re-baseline if that was deliberate). Method:
+[FEEL_BENCHMARKS.md](FEEL_BENCHMARKS.md).
+"""
+
+
+def render_page() -> str:
+    parts = [PAGE_HEADER]
+    for path in sorted(BASELINE_ROOT.glob("*.json")):
+        parts.append(render_baseline(json.loads(path.read_text(encoding="utf-8"))))
+    if len(parts) == 1:
+        parts.append("No baselines yet.\n")
+    return "\n".join(parts)
+
+
+def write_page() -> None:
+    BASELINE_PAGE.write_text(render_page(), encoding="utf-8")
+    print(f"wrote {BASELINE_PAGE}")
+
+
+def cmd_baseline(args: argparse.Namespace) -> int:
+    runs = [load(f) for f in args.results] if args.results else [load(newest_result())]
+    baseline = make_baseline(runs)
+    out = Path(args.out) if args.out else baseline_path(baseline["host"])
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(baseline, indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {out} from {len(runs)} run(s)")
+    write_page()
+    return 0
+
+
+def cmd_check(args: argparse.Namespace) -> int:
+    result = load(args.result or newest_result())
+    path = Path(args.baseline) if args.baseline else baseline_path(result["machine"]["host"])
+    if not path.exists():
+        print(f"no baseline at {path}; make one with `feel_bench.py baseline`")
+        return 2
+    baseline = json.loads(path.read_text(encoding="utf-8"))
+    rows, problems = check_against(result, baseline)
+    for problem in problems:
+        print(f"not comparable: {problem}")
+    if problems:
+        return 2
+    for r in rows:
+        now = r["now"] or {}
+        print(f"  {r['verdict']:9s} {r['scenario']:15s} {r['step']:30s} {ms(r['base']['wallMs']):>8s} -> {ms(now.get('wallMs')):>8s} ms")
+    if args.page:
+        Path(args.page).write_text(CHECK_PAGE_HEADER + "\n" + render_baseline(baseline, rows, result), encoding="utf-8")
+        print(f"wrote {args.page}")
+    bad = [r for r in rows if r["verdict"] in ("regressed", "failed", "missing")]
+    faster = [r for r in rows if r["verdict"] == "faster"]
+    if faster:
+        print(f"{len(faster)} step(s) faster than the band: if that is a deliberate improvement, re-baseline.")
+    print(f"{len(bad)} regression(s)" if bad else "no regressions")
+    return 1 if bad else 0
+
+
+def cmd_noise(args: argparse.Namespace) -> int:
+    runs = [load(f) for f in args.results]
+    for (scenario, key), row in sorted(spread(runs).items()):
+        print(f"  {scenario:15s} {key:30s} median ±{row.get('medianPct', 0):5.1f}%   p90 ±{row.get('p90Pct', 0):5.1f}%")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="mode", required=True)
@@ -642,13 +947,36 @@ def main() -> int:
     p_run.add_argument("--no-graphics", action="store_true", help="Skip scenarios that need Vulkan.")
     p_run.add_argument("--fresh-jvm-per-scenario", action="store_true",
                        help="Boot a new Field for each scenario, so every one sees a cold JVM.")
+    p_run.add_argument("--cold-runs", type=int, default=0,
+                       help="Extra rounds of one fresh JVM per scenario, for first-launch samples (labelled 'cold ...').")
+    p_run.add_argument("--require-ac", action="store_true", help="Skip (exit 3) on battery.")
+    p_run.add_argument("--max-load", type=float, help="Skip (exit 3) when the 1-minute load average is above this.")
     p_run.add_argument("--ledger", default=str(DEFAULT_LEDGER))
     p_cmp = sub.add_parser("compare", help="Compare two results (default: last two ledger entries on this host).")
     p_cmp.add_argument("files", nargs="*")
     p_cmp.add_argument("--ledger", default=str(DEFAULT_LEDGER))
+    p_base = sub.add_parser("baseline", help="Write this host's baseline from one or more results, and the page.")
+    p_base.add_argument("results", nargs="*", help="Result files (default: the newest); several set each step's band from their spread.")
+    p_base.add_argument("--out")
+    p_check = sub.add_parser("check", help="The ratchet: compare a result with this host's baseline; exit 1 on a regression.")
+    p_check.add_argument("result", nargs="?")
+    p_check.add_argument("--baseline")
+    p_check.add_argument("--page", help="Also write the comparison as a Markdown page here.")
+    sub.add_parser("page", help=f"Regenerate {BASELINE_PAGE.relative_to(REPO_ROOT)} from the committed baselines.")
+    p_noise = sub.add_parser("noise", help="How far apart several runs are, step by step.")
+    p_noise.add_argument("results", nargs="+")
     args = parser.parse_args()
     if args.mode == "run":
         return asyncio.run(run_bench(args))
+    if args.mode == "baseline":
+        return cmd_baseline(args)
+    if args.mode == "check":
+        return cmd_check(args)
+    if args.mode == "page":
+        write_page()
+        return 0
+    if args.mode == "noise":
+        return cmd_noise(args)
     return compare(args)
 
 

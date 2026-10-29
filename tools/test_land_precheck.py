@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import argparse
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -155,6 +158,74 @@ class ConflictTest(unittest.TestCase):
         self.assertFalse((self.repo / "theirs.md").exists())
         after = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True).stdout
         self.assertEqual(head, after)
+
+    def _inventory_merge(self, *, generator_fails: bool = False) -> None:
+        (self.repo / "tools").mkdir()
+        (self.repo / "dev_docs").mkdir()
+        (self.repo / "tools/guard_corpora.py").write_text(
+            "from pathlib import Path\n"
+            "Path('dev_docs/GUARD_CORPORA.md').write_text(str(len(list(Path('tools').glob('test_*.py')))) + '\\n')\n"
+            + ("raise SystemExit(1)\n" if generator_fails else "")
+        )
+        (self.repo / "dev_docs/GUARD_CORPORA.md").write_text("0\n")
+        self.git("add", ".")
+        self.git("commit", "-qm", "inventory scaffold")
+        for branch, filename in [("topic", "test_topic.py"), ("main", "test_main.py")]:
+            self.git("checkout", "-qb", branch) if branch == "topic" else self.git("checkout", "-q", branch)
+            (self.repo / "tools" / filename).write_text("# fixture\n")
+            (self.repo / "dev_docs/GUARD_CORPORA.md").write_text("1\n")
+            self.git("add", ".")
+            self.git("commit", "-qm", branch)
+        self.git("checkout", "-q", "topic")
+
+    def _run_inventory_precheck(self, *, keep: bool = False, result: int = 0, raises: bool = False) -> int:
+        def check_inventory(script: str) -> int:
+            self.assertEqual(script, "tools/run_python_tests.py")
+            self.assertEqual((self.repo / "dev_docs/GUARD_CORPORA.md").read_text(), "2\n")
+            if raises:
+                raise RuntimeError("interrupted check")
+            return result
+
+        cwd = Path.cwd()
+        try:
+            os.chdir(self.repo)
+            with patch.object(precheck, "_run_python", side_effect=check_inventory):
+                return precheck.run(argparse.Namespace(base="main", no_merge=False, plan=False, keep_merge=keep))
+        finally:
+            os.chdir(cwd)
+
+    def _assert_inventory_restored(self) -> None:
+        self.assertEqual((self.repo / "dev_docs/GUARD_CORPORA.md").read_text(), "1\n")
+        self.assertFalse((self.repo / "tools/test_main.py").exists())
+        self.assertEqual(precheck._git("status", "--porcelain").stdout, "")
+
+    def test_trial_merge_refreshes_inventory_and_restores_it(self) -> None:
+        self._inventory_merge()
+        self.assertEqual(self._run_inventory_precheck(), 0)
+        self._assert_inventory_restored()
+
+    def test_kept_merge_commits_the_refreshed_inventory(self) -> None:
+        self._inventory_merge()
+        self.assertEqual(self._run_inventory_precheck(keep=True), 0)
+        self.assertEqual((self.repo / "dev_docs/GUARD_CORPORA.md").read_text(), "2\n")
+        self.assertTrue((self.repo / "tools/test_main.py").exists())
+        self.assertEqual(precheck._git("status", "--porcelain").stdout, "")
+
+    def test_a_failed_check_restores_the_inventory(self) -> None:
+        self._inventory_merge()
+        self.assertEqual(self._run_inventory_precheck(result=1), 1)
+        self._assert_inventory_restored()
+
+    def test_an_interrupted_check_restores_the_inventory(self) -> None:
+        self._inventory_merge()
+        with self.assertRaisesRegex(RuntimeError, "interrupted check"):
+            self._run_inventory_precheck(raises=True)
+        self._assert_inventory_restored()
+
+    def test_a_failed_generator_cannot_leave_a_partial_inventory(self) -> None:
+        self._inventory_merge(generator_fails=True)
+        self.assertEqual(self._run_inventory_precheck(), 1)
+        self._assert_inventory_restored()
 
 
 if __name__ == "__main__":

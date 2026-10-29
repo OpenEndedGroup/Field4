@@ -29,15 +29,37 @@ import kotlin.math.tan
  * input point indices are uniformly spaced along that primitive.
  */
 data class LowSegmentFLineFitConfig(
+    /** Most primitives the fit may use; also capped at one fewer than the number of input points. */
     val maxSegments: Int = 3,
+    /** An extra segment must cut the RMS error by at least this fraction of the current error. */
     val minSplitRelativeImprovement: Double = 0.30,
+    /**
+     * And by at least this much outright — as a fraction of the points' bounding-box diagonal
+     * (floored at 1), not as a distance in the input's own units.
+     */
     val minSplitAbsoluteImprovement: Double = 0.02,
+    /**
+     * Charged per primitive beyond the first when comparing two fits, in the same bounding-box
+     * diagonal units: the cheaper fit wins even when both pass the improvement tests.
+     */
     val complexityPenalty: Double = 0.015,
+    /** An arc must beat the straight line's RMS error by at least this fraction of it. */
     val minArcRelativeImprovement: Double = 0.15,
+    /** And by at least this much outright, in bounding-box diagonal units as above. */
     val minArcAbsoluteImprovement: Double = 0.005,
+    /** Largest sweep a single arc primitive may cover, radians. Clamped to just under a full turn. */
     val maxArcSweep: Double = PI * 1.75,
+    /**
+     * Largest sweep carried by one cubic when the arc is written out; longer arcs are split into
+     * that many cubics. Clamped to at most π.
+     */
     val maxArcSweepPerCubic: Double = PI / 2.0,
+    /**
+     * Rejects the near-straight arcs: drops any candidate whose circle centre would sit farther
+     * from the chord than this multiple of the chord's length.
+     */
     val maxArcRadiusToChordRatio: Double = 1_000.0,
+    /** How many candidate arc heights to score per chord; at least 3. */
     val arcCandidateCount: Int = 17
 )
 

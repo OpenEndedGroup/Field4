@@ -11,22 +11,30 @@ operations:
         h: 70.0
       properties:
         code: |
-          val points = (0..120).joinToString(" ") { i ->
-              val x = i * 5
-              val y = 95 - 55 * kotlin.math.sin(i * 0.17)
-              "$x,$y"
-          }
-          display("wave", """<div style="background:#050505;padding:16px"><svg viewBox="0 0 600 190" width="480" height="152"><polyline points="$points" fill="none" stroke="#f4f4f4" stroke-width="3"/></svg></div>""")
+          val points =
+              (0..120).joinToString(" ") { i ->
+                  val x = i * 5
+                  val y = 95 - 55 * kotlin.math.sin(i * 0.17)
+                  "$x,$y"
+              }
+          display(
+              "wave",
+              """<div style="background:#050505;padding:16px"><svg viewBox="0 0 600 190" width="480" height="152"><polyline points="$points" fill="none" stroke="#f4f4f4" stroke-width="3"/></svg></div>""",
+          )
           displayOpen("wave")
   - execute:
       box: present_wave
       property: code
       type: fragment
       code: |
-        val points = (0..120).joinToString(" ") { i ->
-            val x = i * 5
-            val y = 95 - 55 * kotlin.math.sin(i * 0.17)
-            "$x,$y"
-        }
-        display("wave", """<div style="background:#050505;padding:16px"><svg viewBox="0 0 600 190" width="480" height="152"><polyline points="$points" fill="none" stroke="#f4f4f4" stroke-width="3"/></svg></div>""")
+        val points =
+            (0..120).joinToString(" ") { i ->
+                val x = i * 5
+                val y = 95 - 55 * kotlin.math.sin(i * 0.17)
+                "$x,$y"
+            }
+        display(
+            "wave",
+            """<div style="background:#050505;padding:16px"><svg viewBox="0 0 600 190" width="480" height="152"><polyline points="$points" fill="none" stroke="#f4f4f4" stroke-width="3"/></svg></div>""",
+        )
         displayOpen("wave")

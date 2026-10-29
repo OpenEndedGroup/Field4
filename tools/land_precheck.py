@@ -381,6 +381,18 @@ def run(args: argparse.Namespace) -> int:
             return 0
 
         checks = [c for c, _ in selected]
+        if merged and any(c.key == "python-tools" for c in checks):
+            # The lander regenerates this inventory on its merged tree. A trial merge can combine
+            # two individually current inventories into a stale one; checking it before refreshing
+            # only buys a false red. Stage the refreshed artifact so merge --abort restores it too.
+            _say("refreshing the guard inventory on the trial merge")
+            if subprocess.run(
+                [sys.executable, "tools/guard_corpora.py", "--write"], cwd=REPO
+            ).returncode != 0:
+                _git("restore", "--worktree", "--", "dev_docs/GUARD_CORPORA.md", check=False)
+                _say("guard inventory regeneration failed")
+                return 1
+            _git("add", "--", "dev_docs/GUARD_CORPORA.md")
         failed: list[str] = []
         with tempfile.TemporaryDirectory(prefix="precheck-reference-") as reference_out:
             if any(c.gradle or c.citation_test for c in checks):

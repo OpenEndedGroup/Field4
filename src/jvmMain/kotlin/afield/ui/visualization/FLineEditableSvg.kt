@@ -72,10 +72,11 @@ internal fun buildEditableSVGWidget(
     w: Double,
     h: Double,
     drawingEnabled: Boolean = false,
-    liveDrawingEnabled: Boolean = false
+    liveDrawingEnabled: Boolean = false,
+    onEditCommitted: ((List<FLine>) -> Unit)? = null,
 ): EditableSvgWidget {
     val scaledLines = pairs.map { it.second }
-    val session = registerFLineEditSession(pairs.map { it.first }, fitTransform)
+    val session = registerFLineEditSession(pairs.map { it.first }, fitTransform, onEditCommitted)
     val frame = resolveEditorFrame(scaledLines, w, h)
     val scene = EditableSvgScene(
         sessionId = session.sessionId,

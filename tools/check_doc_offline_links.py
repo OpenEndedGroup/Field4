@@ -61,7 +61,7 @@ CONFIG_REL = "public/zensical.yml"
 # Every way the viewer is referenced today: a markdown link target and a raw-HTML `src`. The
 # pattern is deliberately loose on the left so a *wrong* form is matched and reported rather than
 # silently skipped — a guard whose regex only matches the correct shape selects nothing.
-OFFLINE_REF = re.compile(r"""(?P<lead>[^\s"'()]*?)offline\.html\?file=(?P<file>[^)\s"'>]*)""")
+OFFLINE_REF = re.compile(r"""(?P<lead>[^\s"'()]*?)offline\.html\?file=(?P<file>[^)\s"'>&]*)""")
 
 # There is no hand-kept list of carrier pages. Until 2026-10-10 a `CARRIER_PAGES` set was held
 # here with set equality both ways, on the theory that a new page growing an offline link was the

@@ -2,6 +2,18 @@ package afield.simulation.physics.pressure
 
 import kotlin.math.*
 
+/**
+ * The packed kernel for the membrane energy: [FastMechanics] computes the same energy and gradient
+ * as [Mechanics] from flat arrays prepacked once per solve.
+ *
+ * [InflationSolver] builds one when [SolveOptions] has `fastKernel` set and minimises against it,
+ * then re-evaluates each step through [Mechanics], so every residual and per-step figure it
+ * reports comes from the reference kernel. The [Evaluation] returned here carries no [FilmState]
+ * or [TapeState]; per-triangle and per-tape detail exists only on the reference path.
+ * `PressureTest.materialBranchesForcesAndPackedKernelAgree` holds the two kernels to 1e-7 on
+ * energy and on every gradient component, across both gas modes and three deformations.
+ */
+
 /** Per-solve prepacked element data; numeric force path avoids per-element vectors and lists. */
 class FastMechanics(private val model:Envelope,private val load:LoadCase) {
     private val fs=model.triangles

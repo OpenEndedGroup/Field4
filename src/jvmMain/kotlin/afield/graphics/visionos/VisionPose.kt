@@ -522,10 +522,7 @@ object VisionPoseStream {
         )
     }
 
-    /**
-     * Drops every accumulated statistic, the last pose, the known heads and sessions, and every
-     * registered listener. For tests.
-     */
+    /** Forget every pose, statistic, listener and connected head, so a test can start from an empty stream. */
     fun reset() {
         latest = null
         heads.clear()

@@ -6,6 +6,19 @@ import org.lwjgl.openxr.EXTEyeGazeInteraction.*
 import org.lwjgl.openxr.XR10.*
 import org.lwjgl.system.MemoryStack
 
+/**
+ * Combined eye gaze from OpenXR's `XR_EXT_eye_gaze_interaction`, as a single pose action inside the
+ * HMD target's existing gameplay action set.
+ *
+ * Creation returns null on a runtime that does not advertise the extension, reports no eye-gaze
+ * support in its system properties, or refuses the action, its suggested binding or its action
+ * space, so a target asks once and then has either gaze or none. It has to happen before the action
+ * sets are attached to the session. Each frame the gaze pose is located against the target's
+ * reference space and written into an [EyeGazeState] with the sample time the runtime reports for
+ * it; the state is invalidated first, so a frame in which the action is not active reads as inactive
+ * rather than as the last pose that worked.
+ */
+
 /** Optional combined gaze action, owned by the target's existing gameplay action set. */
 internal class ExtEyeGazeInteraction private constructor(
     private val action: XrAction,

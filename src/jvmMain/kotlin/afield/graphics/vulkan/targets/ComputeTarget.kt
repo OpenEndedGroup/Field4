@@ -20,10 +20,18 @@ import org.lwjgl.system.MemoryStack
  */
 
 /** Records named compute modules, ray-tracing modules and other [Target]s into the frame's command buffer. */
-class ComputeTarget(val renderer: Renderer) : Target {
+class ComputeTarget(
+    /** The renderer this target records into, and the identity each added module's lifecycle claim is filed under. */
+    val renderer: Renderer
+) : Target {
 
+    /** The compute modules dispatched each frame, by name, in insertion order and before [rayTracingModules]. Add with `+=`. */
     var modules = mutableMapOf<String, ComputeModulePointer>()
+
+    /** The ray-tracing modules traced each frame, by name, after every compute module has been recorded. */
     var rayTracingModules = mutableMapOf<String, RayTracingModulePointer>()
+
+    /** Targets recorded after this one's own modules, by name. A `(name, (CommandBuffer, Int) -> Unit)` pair added with `+=` lands here too, wrapped as a target, which is how plain recording code joins the frame. */
     var others = mutableMapOf<String, Target>()
 
     @JvmName("plusAssign")

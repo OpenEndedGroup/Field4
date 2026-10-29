@@ -12,22 +12,21 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription
 import com.fasterxml.jackson.databind.JsonNode
 
 /**
- * # Tool programs: the model writes the loop, Field runs it
- *
- * A model working through tools one call per round pays for every round twice: a request carrying
- * the whole conversation so far, and a result that lands in that conversation for good. For "run
- * each of these twelve boxes and tell me which ones fail" that is twelve rounds and twelve results
- * the model reads in full, when what it needed was three names.
- *
- * [RunToolProgramRequest] is one tool whose argument is a short JavaScript program. The program can
+ * [RunToolProgramRequest] is one tool whose argument is a short JavaScript program, so a model that
+ * would have spent twelve rounds calling twelve tools spends one. The program can
  * call every other tool the conversation has, as a function — `tools.RunBox({box: "Cell03"})` — and
  * only what it returns, or prints with `text(...)`, goes back to the model, plus a one-line record per
  * call. The intermediate results stay in the program. The idea is Pi's "codemode"
  * (earendil-works/pi); the mapping onto Field is in `dev_docs/ai/AI4_PI_LESSONS.md`.
  *
- * ## What a program can reach
+ * The saving is in what a round costs. A model working through tools one call per round pays for
+ * every round twice: a request carrying the whole conversation so far, and a result that lands in
+ * that conversation for good. For "run each of these twelve boxes and tell me which ones fail" that
+ * is twelve rounds and twelve results the model reads in full, when what it needed was three names.
  *
- * Only the tools, and only through one string-in, string-out bridge: [ToolProgramRunner] builds a
+ * #### What a program can reach
+ *
+ * Only the tools, and only through one string-in, string-out bridge: the runner builds a
  * GraalJS context with no host access, no IO, no threads, no processes, no environment and a
  * statement limit, so there is no `Java.type`, no `require`, no `fetch` and no timers. A tool call
  * from a program goes through [ToolRegistry.executeByName] — the same dispatcher a model's own call
@@ -37,7 +36,7 @@ import com.fasterxml.jackson.databind.JsonNode
  * A program is not a transaction. One that fails halfway leaves its earlier edits in place; they are
  * recorded and undoable like any other agent edit, but nothing rolls them back.
  *
- * ## Why JavaScript and not the macro YAML
+ * #### Why JavaScript and not the macro YAML
  *
  * What makes this pay is the middle of the program — filter, loop, branch on a result — and the
  * OperationTranscript YAML has no data flow at all: it is the durable, reversible record of
@@ -120,7 +119,7 @@ data class RunToolProgramResult(
     /** `ok`, `tool-failed`, `check-failed`, `runtime`, `syntax`, `timeout`, `statement-limit`, `call-cap` or `unsettled`. */
     val stage: String,
     val message: String,
-    /** What the program passed to text(...), one line per call, at most [ToolProgramRunner.MAX_OUTPUT_CHARS]. */
+    /** What the program passed to text(...), one line per call, at most 16000 characters. */
     val output: String,
     /** What the program returned, or `{"truncated": N, "preview": ...}` when it was too large. */
     val returned: JsonNode?,

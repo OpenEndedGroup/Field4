@@ -68,7 +68,6 @@ import afield.math.linalg.plus
 import smile.data.DataFrame
 import smile.data.formula.Formula
 import smile.regression.OLS
-import java.awt.geom.Area
 import kotlin.math.*
 
 /**
@@ -1036,58 +1035,33 @@ fun FLine.byCreatingOsculatingCircles(samples: Int = 20, circleSegments: Int = 3
 /**
  * Union of two curves (using Java2D Area).
  *
+ * Both operands are read as filled regions, whatever their `thickness` or `thicken`; pass
+ * `stroke = true` to read a styled operand as the outline of its stroke instead.
+ *
  * With `exact = true` the four boolean ops go through [booleanExact] instead: the result keeps the
  * operands' cubic pieces, cut exactly at the crossings, and falls back to this Area path only when
  * the exact engine cannot verify its answer.
  */
-fun FLine.byUnionWith(other: FLine, exact: Boolean = false): FLine {
-    if (exact) return booleanExact(other, FLineBooleanOp.Union).line
-    val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
-    val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
-    val area1 = Area(shape1)
-    val area2 = Area(shape2)
-    area1.add(area2)
-    return FLinesAndJavaShapes.javaShapeToFLine(area1)
-}
+fun FLine.byUnionWith(other: FLine, exact: Boolean = false, stroke: Boolean = false): FLine =
+    if (exact) booleanExact(other, FLineBooleanOp.Union, stroke).line else FLineExact.awt(this, other, FLineBooleanOp.Union, stroke)
 
 /**
  * Difference of two curves (line1 - line2).
  */
-fun FLine.byDifferenceWith(other: FLine, exact: Boolean = false): FLine {
-    if (exact) return booleanExact(other, FLineBooleanOp.Subtract).line
-    val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
-    val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
-    val area1 = Area(shape1)
-    val area2 = Area(shape2)
-    area1.subtract(area2)
-    return FLinesAndJavaShapes.javaShapeToFLine(area1)
-}
+fun FLine.byDifferenceWith(other: FLine, exact: Boolean = false, stroke: Boolean = false): FLine =
+    if (exact) booleanExact(other, FLineBooleanOp.Subtract, stroke).line else FLineExact.awt(this, other, FLineBooleanOp.Subtract, stroke)
 
 /**
  * Intersection of two curves.
  */
-fun FLine.byIntersectionWith(other: FLine, exact: Boolean = false): FLine {
-    if (exact) return booleanExact(other, FLineBooleanOp.Intersect).line
-    val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
-    val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
-    val area1 = Area(shape1)
-    val area2 = Area(shape2)
-    area1.intersect(area2)
-    return FLinesAndJavaShapes.javaShapeToFLine(area1)
-}
+fun FLine.byIntersectionWith(other: FLine, exact: Boolean = false, stroke: Boolean = false): FLine =
+    if (exact) booleanExact(other, FLineBooleanOp.Intersect, stroke).line else FLineExact.awt(this, other, FLineBooleanOp.Intersect, stroke)
 
 /**
  * XOR (exclusive or) of two curves.
  */
-fun FLine.byExclusiveOrWith(other: FLine, exact: Boolean = false): FLine {
-    if (exact) return booleanExact(other, FLineBooleanOp.Xor).line
-    val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
-    val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
-    val area1 = Area(shape1)
-    val area2 = Area(shape2)
-    area1.exclusiveOr(area2)
-    return FLinesAndJavaShapes.javaShapeToFLine(area1)
-}
+fun FLine.byExclusiveOrWith(other: FLine, exact: Boolean = false, stroke: Boolean = false): FLine =
+    if (exact) booleanExact(other, FLineBooleanOp.Xor, stroke).line else FLineExact.awt(this, other, FLineBooleanOp.Xor, stroke)
 
 // ==================== GEOMETRIC QUERIES ====================
 
@@ -4063,6 +4037,73 @@ private fun signedAngleOnPlane(from: Vec3, to: Vec3, normal: Vec3): Float {
     return atan2(cross.dot(normal), dot)
 }
 
+/**
+ * Generalised Fresnel integral `∫₀¹ exp(i(a/2·t² + b·t + c)) dt`, returned as (real, imaginary).
+ * Composite Simpson in doubles; the fit below keeps |a| small enough that 1024 panels are exact
+ * to well under a float ulp.
+ */
+private fun generalizedFresnel(a: Double, b: Double, c: Double): Pair<Double, Double> {
+    val n = 1024
+    val h = 1.0 / n
+    var re = 0.0
+    var im = 0.0
+    for (k in 0..n) {
+        val t = k * h
+        val w = if (k == 0 || k == n) 1.0 else if (k % 2 == 1) 4.0 else 2.0
+        val phase = 0.5 * a * t * t + b * t + c
+        re += w * cos(phase)
+        im += w * sin(phase)
+    }
+    return Pair(re * h / 3.0, im * h / 3.0)
+}
+
+private fun wrapToPi(a: Double): Double {
+    var x = a
+    while (x > PI) x -= 2 * PI
+    while (x <= -PI) x += 2 * PI
+    return x
+}
+
+/**
+ * Planar G1 Hermite clothoid (Bertolazzi & Frego, "G1 fitting with clothoids", 2015).
+ *
+ * Finds the curve with heading `θ(s) = θ0 + κ·s + ½κ'·s²` that leaves the origin at [theta0]
+ * and reaches ([dx], [dy]) heading [theta0] + `(φ1 − φ0)`. Returns (κ, κ', L), or null when the
+ * Newton solve for the single unknown `A` does not converge.
+ */
+private fun fitClothoidG1(dx: Double, dy: Double, phi0: Double, phi1: Double, maxIterations: Int): Triple<Double, Double, Double>? {
+    val r = hypot(dx, dy)
+    if (r < 1e-12) return null
+    val delta = phi1 - phi0
+    fun g(A: Double) = generalizedFresnel(2 * A, delta - A, phi0).second
+
+    var A = 3.0 * (phi0 + phi1)
+    var converged = false
+    for (i in 0 until maxIterations) {
+        val gA = g(A)
+        if (abs(gA) < 1e-12) { converged = true; break }
+        val h = 1e-6 * max(1.0, abs(A))
+        val dg = (g(A + h) - g(A - h)) / (2 * h)
+        if (abs(dg) < 1e-14) break
+        A -= gA / dg
+    }
+    if (!converged && abs(g(A)) > 1e-9) return null
+
+    val x = generalizedFresnel(2 * A, delta - A, phi0).first
+    if (x <= 1e-12) return null
+    val length = r / x
+    return Triple((delta - A) / length, 2 * A / (length * length), length)
+}
+
+/**
+ * Euler spiral (clothoid) between two points, solved exactly in a plane.
+ *
+ * The plane is the one spanned by the two directions (or the chord, when they are parallel).
+ * Within it the curve meets both endpoints and both projected directions exactly; there is
+ * no residual correction. Any part of `end − start` that leaves that plane is added as a
+ * linear lift along the curve, so in 3D the curve is "planar clothoid plus a ramp" and its
+ * tangents tilt out of the plane by `atan(lift / L)`.
+ */
 private fun eulerSpiralCore3D(
     start: Vec3,
     startDir: Vec3,
@@ -4070,76 +4111,82 @@ private fun eulerSpiralCore3D(
     endDir: Vec3,
     samples: Int,
     iterations: Int,
-    lengthScale: Float,
     headingScale: Float,
     turn: Float
 ): List<Vec3> {
     val frame = buildSpiralFrame(start, end, startDir, endDir)
     val targetVec = Vec3(end).sub(start)
-    val normalOffset = targetVec.dot(frame.n)
-    val baseLength = targetVec.length().coerceAtLeast(1e-5f) * lengthScale
-
-    val startForward = projectOntoPlane(startDir, frame.n).let { d ->
-        if (d.lengthSquared() > 1e-10f) Vec3(d).normalize() else Vec3(frame.u)
-    }
-    val endForward = projectOntoPlane(endDir, frame.n).let { d ->
-        if (d.lengthSquared() > 1e-10f) Vec3(d).normalize() else Vec3(frame.u)
-    }
-
-    val totalTurn = signedAngleOnPlane(startForward, endForward, frame.n) * headingScale + turn
+    val normalOffset = targetVec.dot(frame.n).toDouble()
+    val dx = targetVec.dot(frame.u).toDouble()
+    val dy = targetVec.dot(frame.v).toDouble()
     val sampleCount = max(samples, 2)
 
-    fun integrate(L: Float): List<Vec3> {
-        val pts = ArrayList<Vec3>(sampleCount)
-        val ds = L / (sampleCount - 1).toFloat()
-        val curvatureRate = 2f * totalTurn / (L * L).coerceAtLeast(1e-6f)
-        var orientation = Quaternionf().rotationToField(frame.u, startForward)
-        var posPlane = vec(0f, 0f, 0f)
-        pts.add(Vec3(start))
-        var sAcc = 0f
+    fun headingOf(d: Vec3, fallback: Double): Double {
+        val a = d.dot(frame.u).toDouble()
+        val b = d.dot(frame.v).toDouble()
+        return if (a * a + b * b > 1e-20) atan2(b, a) else fallback
+    }
 
-        for (i in 1 until sampleCount) {
-            val curvature = curvatureRate * sAcc
-            val deltaQuat = Quaternionf().setAngleAxis(curvature * ds, frame.n.x, frame.n.y, frame.n.z)
-            orientation = Quaternionf(deltaQuat).mul(orientation)
-            val forward = frame.u * orientation
-            posPlane = Vec3(posPlane).add(Vec3(forward).mul(ds))
+    val chordAngle = atan2(dy, dx)
+    val theta0 = headingOf(startDir, chordAngle)
+    val theta1 = headingOf(endDir, chordAngle)
+    val phi0 = wrapToPi(theta0 - chordAngle)
+    val phi1 = wrapToPi(phi0 + wrapToPi(theta1 - theta0) * headingScale) + turn
 
-            val t = i.toFloat() / (sampleCount - 1)
-            val normalDelta = Vec3(frame.n).mul(normalOffset * t)
-            pts.add(Vec3(start).add(posPlane).add(normalDelta))
-            sAcc += ds
+    val fit = fitClothoidG1(dx, dy, phi0, phi1, max(iterations, 40))
+        ?: return List(sampleCount) { i ->
+            Vec3(start).add(Vec3(targetVec).mul(i.toFloat() / (sampleCount - 1)))
         }
-        return pts
+    val (kappa, kappaPrime, length) = fit
+
+    fun heading(s: Double) = theta0 + kappa * s + 0.5 * kappaPrime * s * s
+
+    val pts = ArrayList<Vec3>(sampleCount)
+    pts.add(Vec3(start))
+    val ds = length / (sampleCount - 1)
+    var x = 0.0
+    var y = 0.0
+    for (i in 1 until sampleCount) {
+        // Simpson over [s0, s0 + ds] with 8 panels.
+        val s0 = (i - 1) * ds
+        val panels = 8
+        val hh = ds / panels
+        var cx = 0.0
+        var cy = 0.0
+        for (k in 0..panels) {
+            val w = if (k == 0 || k == panels) 1.0 else if (k % 2 == 1) 4.0 else 2.0
+            val th = heading(s0 + k * hh)
+            cx += w * cos(th)
+            cy += w * sin(th)
+        }
+        x += cx * hh / 3.0
+        y += cy * hh / 3.0
+        val t = i.toDouble() / (sampleCount - 1)
+        val p = Vec3(start)
+            .add(Vec3(frame.u).mul(x.toFloat()))
+            .add(Vec3(frame.v).mul(y.toFloat()))
+            .add(Vec3(frame.n).mul((normalOffset * t).toFloat()))
+        pts.add(p)
     }
-
-    fun endpoint(L: Float): Vec3 = integrate(L).last()
-
-    var length = baseLength
-    var pts = integrate(length)
-    repeat(iterations) {
-        val err = Vec3(pts.last()).sub(end)
-        if (err.lengthSquared() < 1e-10f) return@repeat
-
-        val eps = (length * 1e-3f).coerceAtLeast(1e-4f)
-        val endNext = endpoint(length + eps)
-        val deriv = Vec3(endNext).sub(pts.last()).mul(1f / eps)
-        val denom = deriv.lengthSquared().coerceAtLeast(1e-12f)
-        val step = err.dot(deriv) / denom
-
-        length = (length - step).coerceAtLeast(1e-4f)
-        pts = integrate(length)
-    }
-
-    val residual = Vec3(end).sub(pts.last())
-    return pts.mapIndexed { i, p ->
-        val t = if (pts.size <= 1) 0f else i.toFloat() / (pts.size - 1)
-        Vec3(p).add(Vec3(residual).mul(t))
-    }
+    // Float rounding only: the integration is exact to ~1e-9 of the chord.
+    pts[pts.lastIndex] = Vec3(end)
+    return pts
 }
 
 /**
- * Build a 3D Euler spiral between two points with specified directions.
+ * Build an Euler spiral (clothoid) from [start] to [end] that leaves along [startDirection]
+ * and arrives along [endDirection].
+ *
+ * The curve is solved exactly in the plane of the two directions: both endpoints and both
+ * directions (projected into that plane) are met, and curvature changes linearly with arc
+ * length. If [end] is out of that plane, the difference is added as a linear lift, so the
+ * 3D tangents tilt by the lift's slope.
+ *
+ * @param samples number of points in the returned polyline
+ * @param iterations maximum Newton iterations for the fit (at least 40 are always used)
+ * @param lengthScale ignored: a clothoid meeting both ends is unique; kept for source compatibility
+ * @param headingScale scales the turn from start to end direction (1 meets [endDirection])
+ * @param turn extra heading, in radians, added at the end (2π adds a loop)
  */
 fun eulerSpiralBetween3D(
     start: Vec3,
@@ -4159,7 +4206,6 @@ fun eulerSpiralBetween3D(
         endDir = endDirection,
         samples = samples,
         iterations = iterations,
-        lengthScale = lengthScale,
         headingScale = headingScale,
         turn = turn
     )

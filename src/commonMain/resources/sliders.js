@@ -1750,6 +1750,7 @@ window.__flineHoverOut = function(groupEl) {
                 if (dx !== 0 || dy !== 0) {
                     translatePointRefs(state.scene, state.dragging.refs, dx, dy);
                     sendFLineTranslate(state.scene.sessionId, state.dragging.refs, dx, dy);
+                    state.dragging.moved = true;
                     state.dragging.lastX = pt.x;
                     state.dragging.lastY = pt.y;
                     renderFLineEditor(state);
@@ -1794,6 +1795,8 @@ window.__flineHoverOut = function(groupEl) {
                 applySelection(state, keys, additive);
             }
             if (state.dragging && state.dragging.pointerId === event.pointerId) {
+                // a finished drag reaches the box's onEditCommitted, after every translate it sent
+                if (state.dragging.moved) sendViaAfield('fline-edit-commit', { sessionId: state.scene.sessionId });
                 state.dragging = null;
                 renderFLineEditor(state);
             }

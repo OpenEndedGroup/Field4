@@ -96,6 +96,8 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `MacroReplayOptions(asCopy = true, offsetY = ...)` three times, `steps` replays it one operation
   at a time. Open the Macro Recorder afterwards to run, rename or delete it from the panel.
 - `hello_display.yaml`: smallest useful blank-canvas transcript; creates one box, displays HTML, and can be undone.
+- `spreadsheet_tour.yaml`: a bill kept as a spreadsheet in one box (`sheet { }`, Kotlin formulas, a quantity with units), priced by `tax` and `discount` variables in a second box that the formulas read with `box("...")["tax"]`. Run the Rates box, then the Bill box; change a rate and run Rates again, and the open sheet recomputes on the next frame (`public/docs/spreadsheets.md`).
+- `spreadsheet_constraints.yaml`: two sheets that solve for their cells with Ceres: a temperature sheet (`=free(100)` Celsius, `=free(212)` Fahrenheit, `B2 eq B1 * 9.0 / 5.0 + 32.0`) where editing either moves the other, and a rectangle held to `area eq 40` and `width le 6`. Run each box; then type into a variable cell (`public/docs/spreadsheets.md#solving-for-cells`).
 - `ai4_iframe_hello.yaml`: one Field-served webpage in an output iframe, with a textbox and opt-in AI4 tools for inspecting and driving that live page. Run the host box after opening its starting point.
 - `orca_hello.yaml`: ORCA in a box output (`orca()`), playing through a returned `PatSynthBank`, with `exposeTools()` so AI4 can read and write the grid. Compiled only: running it opens an audio device, and ORCA plays only in a browser; `run_ui_regressions.py --id orca-io` is its live check.
 - `orca_jam.yaml`: one ORCA with four voiced channels and `exposeTools(about = ...)`: AI4 plays it with `orca_write`/`orca_look` while it runs, and its board and tempo follow the chat (`branchState`). Compiled only, like `orca_hello`.
@@ -251,6 +253,16 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `sound_render_path.yaml`: **one beat, three ways of sounding it** — roll, synth stand-in, Dirt
   samples, the per-event fallback and the library search, the companion to `sound.md`. Promoted from
   `public/docs/assets/sound_render_path/` on 2026-10-02; the page's wavs and roll stay there.
+- `learned_pen.yaml`: **the learned pen** — the starting point of `public/docs/learned_pen.md`.
+  Six pure-CPU boxes on `afield.ai.learning.pen`: `continueWith`, `futuresWith` as small multiples, a
+  launched `PenLine` writing on from an editable drawing panel, `Pen.setCell` on one memory cell, a
+  launched tip magnifier with next-step ellipses, and a cell-colouring slider.
+- `a_pen_that_sees.yaml`: **a pen that sees** — the starting point of `public/docs/a_pen_that_sees.md`.
+  Seven pure-CPU boxes on the sensing pens (`PenSense`): what one sees, Michaux hatching and cracks against
+  blind twins, a field of lines, the following/joins measures, and two launched drawing panels.
+- `teaching_a_pen.yaml`: **teaching a pen** — the starting point of `public/docs/teaching_a_pen.md`.
+  Seven pure-CPU boxes on the synthetic corpora and bundled pens: the corpora, each pen alone, one stroke
+  in seven hands, the two-hands probe and held cells, a click-to-keep taste box, rounder, a corpus of your own.
 - `stipple_sheet.yaml`: **the stipple transport sheet** — the companion to
   `stipple_transport.md`. Loads the committed two-image model and deforms particles and a lattice
   under transport-time, movie-time and step sliders. Pure CPU.
@@ -275,6 +287,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `euclid(12,24)` at the same density, the same rule run recursively as a branching tree whose level
   sizes are the word's own partial sums, and a `.wav` player pinned to the canvas through
   `customization`. Sample-backed through `showDirtAudio`; falls back to `patVoice` with no library.
+- `renderer_browsing.yaml`: **the Vulkan renderer in `column(...)` and `tree(...)`** — a renderer box,
+  a triangle module beneath it, and a box that opens the renderer: targets in draw order, modules
+  with shaders, bindings and meshes, CPU span timings. GPU. See `dev_docs/INSPECTOR_EMBEDS.md`.
 - `browse_embeds.yaml`: **the three inspector embeds**, one box each — `tree(...)` over a data class,
   a `DoubleArray`, a 5000-item list paged 200 rows at a time, object keys and a two-node loop;
   `column(...)`; a **launched** box whose list grows without a re-run; and `logs(...)` filtered to one

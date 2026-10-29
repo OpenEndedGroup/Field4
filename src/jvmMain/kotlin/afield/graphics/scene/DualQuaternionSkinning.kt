@@ -11,17 +11,23 @@ import kotlin.math.abs
 import kotlin.math.sqrt
 
 /**
- * The alternative to [GltfSkinning]'s matrix blend, for a rig whose joints twist.
+ * The second of Field's two skinning blends: joint motions averaged as dual quaternions, for rigs
+ * that twist far enough to break the usual one.
  *
- * One object, with the same [DualQuaternionSkinning.skin] signature as [GltfSkinning.skin], so a
- * caller swaps one for the other and changes nothing else. It averages rigid motions rather than
- * matrices, which is what stops a twisted joint's cross-section collapsing, and
- * [DualQuaternionSkinning.candyWrapperRadius] is the measurement that separates the two methods.
+ * Most callers arrive here without naming the file. [GltfSkinning.skin] is the entry point, and
+ * passing it `SkinningOptions(method = SkinningMethod.DUAL_QUATERNION)` hands the vertices
+ * straight to [DualQuaternionSkinning.skin], which takes the same arguments and returns the same
+ * type. Linear blending averages the joint matrices, which is what every other engine defaults to
+ * and what the GPU path does by default; it holds up until two influences disagree by a large
+ * rotation, at which point the average of two rotations stops being a rotation and the
+ * cross-section of a twisted limb flattens. Averaging rigid motions instead keeps it round.
  *
- * Neither method is correct everywhere, and the block below gives the terms: what a unit dual
- * quaternion cannot carry and what [DualQuaternionSkinning.split] does with the remainder, the sign
- * convention two influences have to agree on, and the edge lengths each method gets wrong in opposite
- * directions.
+ * Three things qualify that, and [DualQuaternionSkinning] sets out each of them with its
+ * measurement. A dual quaternion is a rigid motion and nothing else, so a joint that scales or
+ * shears needs a residual matrix carried beside it. Two influences stored with opposite signs
+ * cancel rather than average, unless one of them is chosen as a pivot and the others are flipped
+ * to agree with it. And the comparison with linear blending is a trade rather than a win: this
+ * bulges a joint ring where linear blending pinches it.
  */
 
 /**
@@ -107,7 +113,7 @@ object DualQuaternionSkinning {
     }
 
     /**
-     * Factor `m` into a rigid motion and a residual 3×3, by Gram-Schmidt on the upper 3×3.
+     * Factor [m] into a rigid motion and a residual 3×3, by Gram-Schmidt on the upper 3×3.
      *
      * Gram-Schmidt rather than a polar decomposition: it is exact for the rigid case (which is
      * almost every joint in almost every rig), it cannot fail to converge, and the residual it

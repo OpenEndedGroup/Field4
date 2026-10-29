@@ -1,6 +1,6 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
 import afield.simulation.physics.ShaderBoids
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.written by Inheritance<afield.simulation.physics.ShaderBoids>() /**/
 val Once.written by Onceing<afield.simulation.physics.ShaderBoids>() /**/
 val Why.written by Whying() /**/

@@ -20,9 +20,9 @@ program's input; that is why a stage that ends in a store now compares the value
 session was recorded again after that change. Its 04 prompt says "green centres" where the first
 said "green diamonds", because this recolour put the green in the centres.
 
-To look at it: copy this folder into your workspace and open it; the window opens and draws the
-program, and the program box shows its study card. The recorded chat is in the program box's AI4 chat. Continuing the chat
-adds to this document's history, which is why a copy is better than opening it in place.
+To look at it: open `stacksl_conversation_tiles` from Starting points on the welcome screen, which
+puts a copy in your workspace; the window opens and draws the
+program, and the program box shows its study card. The recorded chat is in the program box's AI4 chat.
 
 What is here:
 

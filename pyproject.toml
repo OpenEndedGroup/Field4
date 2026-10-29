@@ -41,6 +41,13 @@ cv = [
     # helper) when any landmarker is created, CPU delegate or not; inside Field that kills the JVM.
     "mediapipe>=0.10.14,<1.0",
 ]
+pen = [
+    # Optional training, fine-tuning and the browser lab for the learned pen (`python/fieldpen`).
+    # Continuing an FLine needs none of it: `afield.ai.learning.pen` runs the model in Kotlin.
+    # Install with `uv sync --inexact --group pen` into the venv Field's JEP is bound to.
+    "numpy>=1.26",
+    "torch>=2.2",
+]
 vmo = [
     # Cheng-i Wang's reference Variable Markov Oracle (GPL-3.0, fine under Field's AGPL-3.0+).
     # `afield.math.oracle` is a Kotlin port; this group only regenerates the fixture that

@@ -1,0 +1,3 @@
+Updated the single stale test expectation from 20 to 30 to match the branch’s new default. The previously failing test now passes; only one line in one file changed, and the full guard was not run.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "nightly/2026-10-28/1-scratch-bounce-kt", "reason": "The branch changed the default git-log count to 30 but left its test expecting 20; updating that stale expectation makes the narrow reproducer pass."}

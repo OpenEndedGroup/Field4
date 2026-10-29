@@ -24,8 +24,17 @@ import java.util.concurrent.atomic.AtomicLong
 
 /** Owns one isolated worker and its bounded GPU rings. Pixels never enter this protocol. */
 class StreamDiffusionSession internal constructor(
-    private val renderer: Renderer, val width: Int, val height: Int, val format: Int,
-    val config: StreamDiffusionConfig, val motionEnabled: Boolean = false
+    private val renderer: Renderer,
+    /** Width of every shared slot, fixed for the life of the session. */
+    val width: Int,
+    /** Height of every shared slot, fixed for the life of the session. */
+    val height: Int,
+    /** The Vulkan colour format of the frames in the rings, taken from the source target. */
+    val format: Int,
+    /** The settings this worker was started with; [StreamDiffusionSession.reset] can change prompt, strength and seed. */
+    val config: StreamDiffusionConfig,
+    /** Whether each input slot carries a motion texture after its colour, which makes it larger. */
+    val motionEnabled: Boolean = false
 ) : AutoCloseable {
     // Float texels require a 16-byte-aligned copy offset, including odd identity-mode extents.
     internal val motionOffset = (width.toLong() * height * 4 + 15) and -16L
@@ -39,18 +48,29 @@ class StreamDiffusionSession internal constructor(
     private val imported = CountDownLatch(1)
     private val closing = AtomicBoolean(false)
     private val closeComplete = CountDownLatch(1)
+    /** True from the first call to [StreamDiffusionSession.close], before the worker process has finished exiting. */
     val isClosed: Boolean get() = closing.get()
     private val version = AtomicLong(1)
+    /** Counts [StreamDiffusionSession.reset] calls from 1. Results tagged with an earlier one are discarded by the view. */
     val generation: Long get() = version.get()
-    @Volatile var ready = false; private set
-    @Volatile var status = "Starting worker"; private set
-    @Volatile var capabilities = JSONObject(); private set
-    @Volatile var lastStats = JSONObject(); private set
+    /** True once the worker has imported the shared slots and loaded its models. */
+    @Volatile
+    var ready = false; private set
+    /** A sentence to show a reader: the worker's own progress, then `Ready`, or why it stopped. */
+    @Volatile
+    var status = "Starting worker"; private set
+    /** What the worker says it is running: the backend, its decoder, and TensorRT. Every event
+     * it sends carries this, so it stays current for the life of the process. */
+    @Volatile
+    var capabilities = JSONObject(); private set
+    /** The last timing report: seconds for that batch of frames, and CUDA memory in use. */
+    @Volatile
+    var lastStats = JSONObject(); private set
 
     /**
      * Whether a TensorRT engine actually executed, as the worker reports it; null until it says.
      * Asking for TensorRT ([StreamDiffusionConfig.useTensorRT]) does not make it active, so when
-     * it was asked for and is not, [status] says so.
+     * it was asked for and is not, [StreamDiffusionSession.status] says so.
      */
     val tensorRtActive: Boolean? get() = capabilities.opt("tensorrt_active") as? Boolean
 
@@ -66,6 +86,7 @@ class StreamDiffusionSession internal constructor(
         Files.createTempDirectory("field-diffusion-",
             PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")))
     }
+    /** The worker's stderr, in a private temporary directory. [StreamDiffusionSession.status] names it when startup fails. */
     val logFile = sessionDir.resolve("worker.log").toFile()
     private val shutdown = Runnable { close() }
     private val setupThread = Thread({ startWorker() }, "field-diffusion-setup").apply { isDaemon = true }
@@ -173,6 +194,12 @@ class StreamDiffusionSession internal constructor(
         enqueue(JSONObject().put("op", "reset").put("generation", version.incrementAndGet()).put("settings", settings))
     }
 
+    /**
+     * Stops the worker and gives its shared memory back. Call it from any thread and as often as
+     * you like: a second caller waits for the first to finish. The process is asked to exit and
+     * killed if it has not after three seconds, and the slots are freed from the renderer's own
+     * cleanup, since CUDA's mappings have to go before the Vulkan allocations under them.
+     */
     override fun close() {
         if (!closing.compareAndSet(false, true)) {
             if (Thread.currentThread() !== setupThread) closeComplete.await()

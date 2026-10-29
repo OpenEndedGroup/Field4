@@ -60,38 +60,76 @@ enum class SpectralEmbeddingDistance(val label: String) {
 
 /** A bounded and optionally pooled range decoded from a spectral MessagePack artifact. */
 data class SpectralEmbeddingFrames(
+    /** When each retained frame sits in the recording, in seconds, read from the artifact's own clock. */
     val timesSeconds: DoubleArray,
+    /**
+     * One mel distribution per retained frame, each renormalized to sum to one so it can be read as
+     * a distribution over mel-bin position. Columns line up with [melFrequenciesHz].
+     */
     val melDistributions: Array<FloatArray>,
+    /** One log-mel spectrum per retained frame, in decibels, pooled by mean. Columns line up with [melFrequenciesHz]. */
     val logMelDb: Array<FloatArray>,
+    /** One MFCC vector per retained frame, pooled by mean. */
     val mfcc: Array<FloatArray>,
+    /** The frequency in hertz the artifact gives for each mel bin, one per column of [melDistributions]. */
     val melFrequenciesHz: FloatArray,
+    /** For each retained frame, its index in the artifact's own frame numbering. */
     val sampledFrameIndices: IntArray,
+    /** Frames in the whole artifact, before any time window was applied. */
     val sourceFrameCount: Int,
+    /**
+     * Pooled rows the chosen window produced, before sampling down to `maxFrames`. The retained
+     * frame count is this or `maxFrames`, whichever is smaller.
+     */
     val pooledFrameCount: Int,
+    /** The artifact's native frame rate, which sets the smallest pool and hop that can be asked for. */
     val frameRateHz: Double,
+    /**
+     * The pooling window actually used, in milliseconds. A request is rounded to a whole number of
+     * native frames and held to at least one, so this can differ from what was asked for.
+     */
     val poolMillis: Double,
+    /** The hop actually used, in milliseconds, rounded the same way as [SpectralEmbeddingFrames.poolMillis]. */
     val hopMillis: Double,
+    /** Which analysis backend wrote the artifact. */
     val backend: String,
+    /** The version of that backend's own library, as the artifact records it. */
     val libraryVersion: String,
 )
 
 /** A Field-owned spectral projection with exact frame times for synchronized audition. */
 data class SpectralEmbeddingProjection(
+    /** When each projected frame sits in the recording, in seconds, carried over from the frames it came from. */
     val timesSeconds: DoubleArray,
+    /** One point per projected frame, each as long as the number of dimensions asked for. */
     val coordinates: Array<DoubleArray>,
+    /** For each projected frame, its index in the artifact's own frame numbering. */
     val sampledFrameIndices: IntArray,
+    /** [SpectralEmbeddingFrames.sourceFrameCount] of the frames this was projected from. */
     val sourceFrameCount: Int,
+    /** [SpectralEmbeddingFrames.pooledFrameCount] of the frames this was projected from. */
     val pooledFrameCount: Int,
+    /** The pooling window those frames were built with, in milliseconds. */
     val poolMillis: Double,
+    /** The hop those frames were built with, in milliseconds. */
     val hopMillis: Double,
+    /** Which analysis backend wrote the artifact underneath. */
     val backend: String,
+    /** The version of that backend's own library. */
     val libraryVersion: String,
+    /** Which of the five metrics the distances were measured with. */
     val distance: SpectralEmbeddingDistance,
+    /** `MDS` or `t-SNE`. `withSpectralProjection` names its series from this. */
     val method: String,
+    /** The MDS eigenvalue scores. Empty for a t-SNE projection. */
     val scores: DoubleArray = doubleArrayOf(),
+    /** The share of the total each MDS dimension retains. Empty for a t-SNE projection. */
     val proportion: DoubleArray = doubleArrayOf(),
+    /** The perplexity t-SNE ran with. Null for an MDS projection. */
     val perplexity: Double? = null,
+    /** The seed t-SNE ran with, which is fixed by default so a projection repeats. Null for MDS. */
     val seed: Long? = null,
+    /** The divergence t-SNE finished at, lower being a closer fit. Null for an MDS projection. */
     val cost: Double? = null,
 )
 
@@ -399,6 +437,10 @@ fun AnalysisPreview.withSpectralProjection(projection: SpectralEmbeddingProjecti
     )
 }
 
+/**
+ * Download a finished spectral job's artifact and decode it, with the same windowing, pooling and
+ * sampling arguments [decodeSpectralEmbeddingMessagePack] takes.
+ */
 fun FieldAudioClient.spectralEmbeddingFrames(
     result: AnalysisResult,
     maxFrames: Int = 600,
@@ -413,6 +455,12 @@ fun FieldAudioClient.spectralEmbeddingFrames(
         )
     }
 
+/**
+ * The service's lightweight preview curves with locally computed MDS axes attached, in one call.
+ *
+ * The preview and the spectral artifact are fetched together, the frames are projected with
+ * `mds`, and the axes arrive as `mds_0`, `mds_1`, … series on the preview.
+ */
 fun FieldAudioClient.spectralEmbeddingSmilePreview(
     result: AnalysisResult,
     maxFrames: Int = 600,
@@ -429,6 +477,13 @@ fun FieldAudioClient.spectralEmbeddingSmilePreview(
         spectralEmbeddingFrames(result, maxFrames, startSeconds, durationSeconds, poolMillis, hopMillis)
     ) { preview, frames -> preview.withSpectralProjection(frames.mds(dimensions, distance, positiveCorrection)) }
 
+/**
+ * The same preview with t-SNE axes instead, arriving as `tsne_0`, `tsne_1`, … series.
+ *
+ * `durationSeconds` defaults to ten here rather than to the whole recording: the mel Wasserstein
+ * metric builds a full frame-by-frame distance matrix, so the work grows with the square of the
+ * window.
+ */
 fun FieldAudioClient.spectralEmbeddingSmileTsnePreview(
     result: AnalysisResult,
     maxFrames: Int = 600,

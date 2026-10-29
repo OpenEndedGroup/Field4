@@ -13,25 +13,43 @@ the parent down to the child:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="900x560" clip="0,0,460,360" video="assets/tour_connecting_boxes/connect.mp4" fps="10" transcript="assets/transcripts/tour_connecting_setup.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="tour-connect-g" alt="Two boxes on the canvas, Palette above Swatch, with no line between them. A click selects Palette, a shift-click adds Swatch to the selection, and pressing g draws a connection line from Palette down to Swatch. Swatch is then dragged off to the right, and the line bends to follow it."}
 // The setup transcript makes two unconnected boxes, Palette and Swatch.
-fun boxAt(name: String): List<Double> = ui.eval("""
+fun boxAt(name: String): List<Double> =
+    ui.eval(
+            """
     const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
     if (!b) return null
     const r = b.getBoundingClientRect()
     return [r.left + r.width / 2, r.top + r.height / 2].join(",")
-""".trimIndent()).toString().trim('"').split(",").let { [it[0].toDouble(), it[1].toDouble()] }
-fun splineCount(): Int = ui.eval("return document.querySelectorAll('#connectionsplinelayer *').length").toString().trim('"').toDouble().toInt()
+"""
+                .trimIndent(),
+        )
+        .toString()
+        .trim('"')
+        .split(",")
+        .let { [it[0].toDouble(), it[1].toDouble()] }
+fun splineCount(): Int =
+    ui.eval("return document.querySelectorAll('#connectionsplinelayer *').length")
+        .toString()
+        .trim('"')
+        .toDouble()
+        .toInt()
 // Lay the editor pane out for this window, as a user's browser would: screenshot prep pins it to a
 // size meant for a larger page, and pinned it covers Swatch.
 fun freeEditorLayout() {
-    ui.eval("""
+    ui.eval(
+        """
         const c = document.querySelector(".monaco-editor-container")
         if (c) for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
         if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
         return true
-    """.trimIndent())
+    """
+            .trimIndent(),
+    )
 }
 // The page-load toasts are hidden the way screenshot prep hides them.
-ui.eval("document.querySelectorAll('.bubble').forEach(b => { b.style.visibility = 'hidden'; b.style.opacity = '0' }); return true")
+ui.eval(
+    "document.querySelectorAll('.bubble').forEach(b => { b.style.visibility = 'hidden'; b.style.opacity = '0' }); return true",
+)
 freeEditorLayout()
 val palette = boxAt("Palette")
 val swatch = boxAt("Swatch")
@@ -58,8 +76,7 @@ ui.pause(1200)
 ```
 
 The line follows the boxes when you move them. `u` with the same two boxes selected disconnects
-them. A box can have several parents and several
-children; the lines are the document's structure, and they are saved with it.
+them. A box can have several parents and several children; the lines are the document's structure, and they are saved with it.
 
 ## A parent publishes, a child reads
 

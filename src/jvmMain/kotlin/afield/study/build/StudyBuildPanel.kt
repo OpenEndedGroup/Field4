@@ -60,6 +60,21 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /**
+ * The build card a box shows for one study build runner: every stage, with its buttons, progress and
+ * diagnostics.
+ *
+ * [showStudyBuilds] mounts one of these per output channel. The card drives the real runner through
+ * Field's ordinary button transport, so a stage's Build and Cancel are the same controls any box
+ * output gets, and its HTML is built from the stage list by one function, which is what lets the
+ * panel re-publish only when that HTML has actually changed.
+ *
+ * Reading the stages is not free — it re-reads the design's inputs and checks result files — so the
+ * card reads them twice a second only while a build is queued or running, or when [StudyBuilds]
+ * reports a new revision, and otherwise every five seconds, which is how long an unannounced edit to
+ * the design can take to show up.
+ */
+
+/**
  * A small output card over the real runner, using Field's existing button transport. Reading the
  * stages re-reads the design's inputs and checks result files, so the card reads them every
  * [STUDY_BUILD_POLL_MS] only while a build is queued or running, or when the runner's [StudyBuilds.revision]

@@ -81,24 +81,27 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * The short vector aliases ([Vec2], [Vec3], [Vec4], [Quat], [DualQuat]) plus the constructors and
- * point-cloud helpers that sit on top of Field's generated `afield.math.linalg` types.
+ * What a collection of points adds up to: centroids, outlier-resistant centres, and the bounding
+ * boxes that enclose them.
  *
- * `vec(...)` is the usual way to make one — from numbers, by copying, or by concatenating a
- * scalar with a smaller vector — and `quat` / `dualquat` do the same for rotations. Collections
- * of vectors gain `center`, `median` / `medianVec` and `aabbBounds` in 2D, 3D and 4D; 3D also
- * gets `obbBounds` (a box aligned to the covariance matrix's principal axes, found by power
- * iteration, so a PCA fit rather than a minimal-volume one),
- * `convexHull`, which goes through the QuickHull3D library and returns the input unchanged if the
- * hull cannot be built, and `convexHullPeelingMedian`, which peels hulls away and returns the
- * centre of what is left — a single point, not a cloud. [Cuboid] is a separate plain 3D
- * box-with-size type used for layout-style union / inset / intersects work.
+ * `center` is the plain mean and `medianVec` the per-axis median, both available for [Vec2], [Vec3]
+ * and [Vec4] collections and both returning a fresh vector. `aabbBounds` gives the axis-aligned box
+ * over those same three dimensions, as [AxisAlignedBoundingBox2D], [AxisAlignedBoundingBox3D] or
+ * [AxisAlignedBoundingBox4D]. `closest` is a linear scan for the nearest member of a collection.
  *
- * These vector types are mutable and most operations mutate the receiver, so copy first
- * (`Vec3(existing)`) when you need to keep the original. Swizzles and the *vector* `invoke`, `%=`
- * and `len` operators are absent here: they are generated for every float vector into
- * `Swizzles.kt` and `VectorOperators.kt` by `tools/linalg-generator`. `%=` for [Quat] and
- * [DualQuat] is defined here, because no generator emits those.
+ * Two summaries exist only in 3D. `obbBounds` returns an [OrientedBoundingBox] whose axes come from
+ * a PCA of the cloud, so an elongated diagonal cluster gets a tight box where `aabbBounds` gets a
+ * loose one; its own documentation sets out how far the power-iteration axes can be trusted.
+ * `convexHullPeelingMedian` strips hulls off the outside of the cloud and averages what is left,
+ * which discards outliers instead of averaging them in.
+ *
+ * `asQuickHullPoints` packs a collection into the flat `DoubleArray` that QuickHull3D and other
+ * array-based libraries expect; the hull itself is in `linalg_mesh.kt`, and the vector types and
+ * their constructors are in `linalg.kt`.
+ *
+ * [Cuboid] is a different thing from the bounding boxes above: an immutable corner-plus-size 3D box
+ * for layout arithmetic, with union, inset, translate and containment, rather than a fit to
+ * geometry.
  */
 
 /**

@@ -6,24 +6,18 @@ import java.util.concurrent.atomic.AtomicLong
 import kotlinx.serialization.Serializable
 
 /**
- * Field's server-side latency instrument: a ring of 8192 named spans covering the waits a person
- * notices, readable over HTTP while the host runs. A span carries a sequence number, a name, a
- * start in epoch microseconds, a duration, the thread, and optionally the box it belongs to and a
- * detail string. The names are a flat dotted vocabulary owned by the call sites, grouped by prefix
- * into `engine.`, `kotlin.`, `shader.`, `pipeline.`, `renderer.`, `execute.` and `transcript.`, as
- * in `engine.bootstrap`, `kotlin.compile` and `renderer.toFirstFrame`.
+ * Where a Field server's own time goes during the moments someone is waiting on it.
  *
- * Start times are absolute rather than relative to the host's own start, because whatever reads them
- * is a different process. [LatencySpans] anchors `nanoTime` against the wall clock once, keeping the
- * tightest of sixteen reads, and every span converts through that anchor. A [LatencySpans.Snapshot]
- * also reports this clock's own now, so a client can measure its offset instead of assuming none,
- * and how many spans the ring dropped since the sequence number the client asked from.
+ * Each phase worth attributing is wrapped in [LatencySpans.time] (creating and bootstrapping a
+ * box's Kotlin engine, compiling a snippet, compiling a shader, building or updating a pipeline,
+ * running a transcript operation) and lands in a ring buffer with its name, the box it belongs to,
+ * the thread it ran on, and a start time in epoch microseconds.
+ * `GET /api/perf/spans?since=<seq>` serves everything recorded after a sequence number.
  *
- * `tools/feel_bench.py` is the consumer this exists for. It records what a client waited for, then
- * asks which server phases ran inside that wait, so a slower first run can be attributed to
- * compilation rather than to round-trip or UI time; `dev_docs/testing/FEEL_BENCHMARKS.md` is that
- * harness's guide. Time new work by wrapping it in [LatencySpans.time], or by calling
- * [LatencySpans.record] with a `nanoTime` taken earlier where the work does not nest in a block.
+ * `tools/feel_bench.py` is what reads it: it measures a step from the client side, then asks the
+ * server which of its own phases that wall time was spent in, and the shared epoch clock is what
+ * lets the two be laid against each other. Recording is always on, because a span costs one
+ * `nanoTime` pair and one array write against work that costs milliseconds.
  */
 
 /**

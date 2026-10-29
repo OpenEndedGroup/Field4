@@ -1,5 +1,7 @@
 package afield.runtime.kotlin
 
+import afield.app.server.SessionInformation
+import afield.document.graph.Box
 import afield.app.diagnostics.named
 import afield.data.table.div
 import afield.data.table.get
@@ -87,6 +89,7 @@ data class Foo(val a: Double, val b: Double) {
             )
 
             val first = testPublishProducesLoadableClasses()
+            testReadOnlyPublication()
             testPublishedTypeIsExportable()
             testFreshEngineGetsFullFidelity()
             measureRepublish(first)
@@ -124,6 +127,29 @@ data class Foo(val a: Double, val b: Double) {
         require(loaded.name == "shared.Foo") { "unexpected class: ${loaded.name}" }
         println("  published gen-${published.generation} -> ${published.classFiles}, loadable as ${loaded.name}")
         return published
+    }
+
+    private fun testReadOnlyPublication() {
+        val document = Files.createTempDirectory("shared-types-readonly-smoke").toFile()
+        val metadata = File(document, "metadata.edn").apply { writeText("{}\n") }
+        val before = metadata.readBytes()
+        val root = Box("root")
+        val session = SessionInformation(document.absolutePath, document.name, root = root, readOnly = true)
+        root.inside = session
+        val published = SharedTypes.publish(
+            "package readonlyshared; data class Sample(val value: Int)", document,
+            refreshOthers = false, session = session
+        )
+        require(published.ok) { "read-only publish failed: ${published.log}" }
+        val output = requireNotNull(published.dir)
+        require(!output.toPath().startsWith(document.toPath())) { "classes were written into the document" }
+        require(document.list()!!.toList() == listOf("metadata.edn") && metadata.readBytes().contentEquals(before)) {
+            "read-only publication changed the document"
+        }
+        val type = KotlinInterface2.sharedClassLoader!!.loadClass("readonlyshared.Sample")
+        require(type.getConstructor(Int::class.javaPrimitiveType).newInstance(7).toString() == "Sample(value=7)")
+        println("  read-only publication: real classes load from temporary storage; document unchanged")
+        document.deleteRecursively()
     }
 
     /**

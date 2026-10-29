@@ -55,55 +55,111 @@ import java.util.concurrent.CompletableFuture
 
 /** A bounded, time-preserving frame range decoded from a speech embedding MessagePack artifact. */
 data class SpeechEmbeddingFrames(
+    /** When each retained frame sits in the recording, in seconds, read from the payload's own clock. */
     val timesSeconds: DoubleArray,
+    /** One model vector per retained frame, each [sourceDimensions] long, pooled by centred mean. */
     val vectors: Array<FloatArray>,
+    /** For each retained frame, its index in the payload's own frame numbering. */
     val sampledFrameIndices: IntArray,
+    /** Frames in the whole payload, before any time range was applied. */
     val sourceFrameCount: Int,
+    /**
+     * Pooled rows the chosen range produced, before sampling down to `maxFrames`. The retained
+     * frame count is this or `maxFrames`, whichever is smaller.
+     */
     val pooledFrameCount: Int,
+    /** The width of the model's own vectors, and so of every row of [vectors]. */
     val sourceDimensions: Int,
+    /** The model's native frame rate, which sets the smallest pool and hop that can be asked for. */
     val frameRateHz: Double,
+    /**
+     * The pooling window actually used, in milliseconds. A request is rounded to a whole number of
+     * native frames and held to at least one, so this can differ from what was asked for.
+     */
     val poolMillis: Double,
+    /** The hop actually used, in milliseconds, rounded the same way as [SpeechEmbeddingFrames.poolMillis]. */
     val hopMillis: Double,
+    /** Which speech worker produced the payload. */
     val backend: String,
+    /** The model it ran. */
     val modelId: String,
+    /** The revision of that model, so a trajectory can be traced back to one checkpoint. */
     val modelRevision: String,
+    /** Which WavLM layer the vectors were read from, or null where the backend recorded none. */
     val wavlmLayer: Int?,
 )
 
 /** Smile MDS coordinates attached to the exact speech-frame times that were projected. */
 data class SpeechEmbeddingMds(
+    /** When each projected frame sits in the recording, in seconds, carried over from the frames it was fitted from. */
     val timesSeconds: DoubleArray,
+    /**
+     * One point per projected frame, as long as the number of dimensions asked for. These axes are
+     * for navigating a single fit: the numbering belongs to this fit alone, so coordinate 0 of two
+     * separately fitted recordings are not comparable. Compare [SpeechEmbeddingFrames.vectors] instead.
+     */
     val coordinates: Array<DoubleArray>,
+    /** For each projected frame, its index in the payload's own frame numbering. */
     val sampledFrameIndices: IntArray,
+    /** [SpeechEmbeddingFrames.sourceFrameCount] of the frames this was fitted from. */
     val sourceFrameCount: Int,
+    /** [SpeechEmbeddingFrames.pooledFrameCount] of the frames this was fitted from. */
     val pooledFrameCount: Int,
+    /** The pooling window those frames were built with, in milliseconds. */
     val poolMillis: Double,
+    /** The hop those frames were built with, in milliseconds. */
     val hopMillis: Double,
+    /** Which speech worker produced the payload underneath. */
     val backend: String,
+    /** The model it ran. */
     val modelId: String,
+    /** The revision of that model. */
     val modelRevision: String,
+    /** Which WavLM layer the vectors were read from, or null where the backend recorded none. */
     val wavlmLayer: Int?,
+    /** The metric the distances were measured with. */
     val distance: SmileMdsDistance,
+    /** The eigenvalue scores of the fit, one per dimension. */
     val scores: DoubleArray,
+    /** The share of the total each dimension retains, one per dimension. */
     val proportion: DoubleArray,
 )
 
 /** Smile t-SNE coordinates attached to the exact speech-frame times that were projected. */
 data class SpeechEmbeddingTsne(
+    /** When each projected frame sits in the recording, in seconds, carried over from the frames it was fitted from. */
     val timesSeconds: DoubleArray,
+    /**
+     * One point per projected frame, as long as the number of dimensions asked for. As with MDS
+     * these axes are for navigating a single fit, and t-SNE adds its own caution: the distances
+     * between well-separated clusters carry much less than the grouping does.
+     */
     val coordinates: Array<DoubleArray>,
+    /** For each projected frame, its index in the payload's own frame numbering. */
     val sampledFrameIndices: IntArray,
+    /** [SpeechEmbeddingFrames.sourceFrameCount] of the frames this was fitted from. */
     val sourceFrameCount: Int,
+    /** [SpeechEmbeddingFrames.pooledFrameCount] of the frames this was fitted from. */
     val pooledFrameCount: Int,
+    /** The pooling window those frames were built with, in milliseconds. */
     val poolMillis: Double,
+    /** The hop those frames were built with, in milliseconds. */
     val hopMillis: Double,
+    /** Which speech worker produced the payload underneath. */
     val backend: String,
+    /** The model it ran. */
     val modelId: String,
+    /** The revision of that model. */
     val modelRevision: String,
+    /** Which WavLM layer the vectors were read from, or null where the backend recorded none. */
     val wavlmLayer: Int?,
+    /** The metric the distances were measured with. */
     val distance: SmileMdsDistance,
+    /** The perplexity the fit ran with, which sets how large a neighbourhood each frame is placed against. */
     val perplexity: Double,
+    /** The seed the fit ran with. It is fixed by default, so the same frames give the same picture. */
     val seed: Long,
+    /** The divergence the fit finished at, lower being a closer one. */
     val cost: Double,
 )
 

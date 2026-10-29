@@ -20,6 +20,20 @@ import afield.audio.synth.*
 import afield.graphics.vulkan.*
 import afield.media.stream.*
 import afield.media.video.*
+
+/**
+ * The panels a live box has shown, kept so that a page attaching after the box ran still sees them.
+ *
+ * Every [DefaultOutput] holds one as `retainedAreas`: `display(...)` puts the rendered HTML in
+ * under its channel name, `displayOpen` and `displayClose` record whether a panel was open, and
+ * `snapshot` replays both as the `set-output` and `output-control` messages a client would have
+ * received live. A client asks for them with `replay-output-areas` on attaching, which is also what
+ * lets a capture run a box first and look at its output later.
+ *
+ * Only the latest HTML per channel is held, bounded at 128 channels and eight million characters
+ * with the earliest channel dropped first, and none of it is written to disk.
+ */
+
 /** Latest rendered panels owned by a live box; never persisted or used to execute code. */
 internal class OutputAreaReplay(private val maxCharacters: Int = 8_000_000) {
     private data class Panel(val html: String, var open: Boolean? = null)

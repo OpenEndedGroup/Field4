@@ -21,7 +21,7 @@ From `code`
 The same as the box above, a fifth higher and a little narrower.
 
 ```edn [field-box id="madp_score_glass_b" role="properties"]
-{"id" "madp_score_glass_b" "index" 0 "name" "Glass phase · 67" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Glass phase · 67" "_tombstone" false "frame" #afield/rect [1140.0 450.0 260.0 110.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_glass_b_notes_.md" "lines" 3 "characters" 120 "sha256" "ebabcef57329a3cffb1f1e41caba72629638c360b2c4cfeab2799b468d0df338"} {"name" "code" "language" "kotlin" "path" "madp_score_glass_b_code_.kt" "lines" 9 "characters" 489 "sha256" "a89c3a2ace4680a2f4fc6f7a5d94b159cf5a8bfe62aa874210d60d52f5241a54"}]}
+{"id" "madp_score_glass_b" "index" 0 "name" "Glass phase · 67" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Glass phase · 67" "_tombstone" false "frame" #afield/rect [1140.0 450.0 260.0 110.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_glass_b_notes_.md" "lines" 3 "characters" 120 "sha256" "ebabcef57329a3cffb1f1e41caba72629638c360b2c4cfeab2799b468d0df338"} {"name" "code" "language" "kotlin" "path" "madp_score_glass_b_code_.kt" "lines" 20 "characters" 615 "sha256" "a8193e1661cccff817abbf6232430137944abfa846bc98ac0d65a5ca7d3d9e08"}]}
 ```
 
 ```markdown [field-property box="madp_score_glass_b" name="notes" path="madp_score_glass_b_notes_.md"]
@@ -36,9 +36,20 @@ score {
     for (i in 0 until 8) {
         val u = i / 7.0
         val p = boxPoint(u, 0.5 + sin(localT * 2 + i * 0.4) * 0.06)
-        draw.line(p.x, boxPoint(u, 0.2).y, p.x, boxPoint(u, 0.8).y, stroke = "rgba(174, 246, 255, 0.8)", width = 1.2 + thisRMS * 2)
+        draw.line(
+            p.x,
+            boxPoint(u, 0.2).y,
+            p.x,
+            boxPoint(u, 0.8).y,
+            stroke = "rgba(174, 246, 255, 0.8)",
+            width = 1.2 + thisRMS * 2,
+        )
     }
-    if (onSubdivision(6, "phase")) sound("/dough/play/note/67/duration/0.1/s/tri/gain/0.15/lpf/1200/release/0.08/verb/0.26/pan/0.62", minInterval = 0.05)
+    if (onSubdivision(6, "phase"))
+        sound(
+            "/dough/play/note/67/duration/0.1/s/tri/gain/0.15/lpf/1200/release/0.08/verb/0.26/pan/0.62",
+            minInterval = 0.05,
+        )
 }
 ```
 
@@ -59,7 +70,7 @@ way across, it jumps near the playhead and leaves a fading ghost of where it was
 really moves on the canvas; its frame is part of the instrument.
 
 ```edn [field-box id="madp_score_jump" role="properties"]
-{"id" "madp_score_jump" "index" 1 "name" "jump cut" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "jump cut" "_tombstone" false "frame" #afield/rect [1430.0 110.0 160.0 120.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_jump_notes_.md" "lines" 6 "characters" 326 "sha256" "748bc1c009322a10b90a84ee5bb952ecadd66baf8654d2ff39e54e0e13a78962"} {"name" "code" "language" "kotlin" "path" "madp_score_jump_code_.kt" "lines" 49 "characters" 2237 "sha256" "9c2bd7e67a3ea25a5bf42b581079bbbf2f9f997ebbb0a8d4dc678e4b38026e45"}]}
+{"id" "madp_score_jump" "index" 1 "name" "jump cut" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "jump cut" "_tombstone" false "frame" #afield/rect [1430.0 110.0 160.0 120.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_jump_notes_.md" "lines" 6 "characters" 326 "sha256" "748bc1c009322a10b90a84ee5bb952ecadd66baf8654d2ff39e54e0e13a78962"} {"name" "code" "language" "kotlin" "path" "madp_score_jump_code_.kt" "lines" 61 "characters" 2352 "sha256" "e4de11aa52a0842687497970949b3d3f736faea2c1f8b9c42a2cbbe9bd1e9b80"}]}
 ```
 
 ```markdown [field-property box="madp_score_jump" name="notes" path="madp_score_jump_notes_.md"]
@@ -72,9 +83,11 @@ like.
 ```
 
 ```kotlin [field-property box="madp_score_jump" name="code" path="madp_score_jump_code_.kt"]
-// A box that cuts itself to somewhere else in the score: on the way in, and five times on the
-// way across, it jumps near the playhead and leaves a fading ghost of where it was. The box
-// really moves on the canvas; its frame is part of the instrument.
+/*
+A box that cuts itself to somewhere else in the score: on the way in, and five times on the
+way across, it jumps near the playhead and leaves a fading ghost of where it was. The box
+really moves on the canvas; its frame is part of the instrument.
+*/
 class Ghost(val x: Double, val y: Double, val w: Double, val h: Double, var life: Double = 1.0)
 
 val ghosts = mutableListOf<Ghost>()
@@ -98,7 +111,11 @@ score {
         )
         flash = 1.0
         jumps++
-        sound("/dough/play/note/${55 + (jumps % 5) * 2}/duration/0.06/s/pulse/pw/0.22/gain/0.13/lpf/${700 + (jumps % 7) * 220}/release/0.04/pan/0.18", key = "jump", minInterval = 0.03)
+        sound(
+            "/dough/play/note/${55 + (jumps % 5) * 2}/duration/0.06/s/pulse/pw/0.22/gain/0.13/lpf/${700 + (jumps % 7) * 220}/release/0.04/pan/0.18",
+            key = "jump",
+            minInterval = 0.03,
+        )
     }
 
     if (justEntered) jump()
@@ -108,7 +125,13 @@ score {
     ghosts.removeAll { it.life < 0.06 }
     for (g in ghosts) {
         val p = fromScore(g.x, g.y)
-        draw.rect(p.x - g.w * scaleX / 2, p.y - g.h * scaleY / 2, g.w * scaleX, g.h * scaleY, stroke = "rgba(255,255,255,${g.life * 0.28})")
+        draw.rect(
+            p.x - g.w * scaleX / 2,
+            p.y - g.h * scaleY / 2,
+            g.w * scaleX,
+            g.h * scaleY,
+            stroke = "rgba(255,255,255,${g.life * 0.28})",
+        )
     }
 
     flash *= 0.82
@@ -140,7 +163,7 @@ six pulses a pass each, but a wider box takes longer to cross, so the two pulses
 Stretch either box and listen to the phase move.
 
 ```edn [field-box id="madp_score_glass_a" role="properties"]
-{"id" "madp_score_glass_a" "index" 2 "name" "Glass phase · 60" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Glass phase · 60" "_tombstone" false "frame" #afield/rect [1070.0 300.0 320.0 110.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_glass_a_notes_.md" "lines" 6 "characters" 351 "sha256" "4d7f3e76aca499b045f1cb9446750a0601682d66a40aee2de6a771262d06b3ee"} {"name" "code" "language" "kotlin" "path" "madp_score_glass_a_code_.kt" "lines" 11 "characters" 665 "sha256" "d86cc42aeaf5e529c58f47ed5781d1155df0ea2b10176c0d2099b33f8341fa01"}]}
+{"id" "madp_score_glass_a" "index" 2 "name" "Glass phase · 60" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Glass phase · 60" "_tombstone" false "frame" #afield/rect [1070.0 300.0 320.0 110.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_glass_a_notes_.md" "lines" 6 "characters" 351 "sha256" "4d7f3e76aca499b045f1cb9446750a0601682d66a40aee2de6a771262d06b3ee"} {"name" "code" "language" "kotlin" "path" "madp_score_glass_a_code_.kt" "lines" 24 "characters" 788 "sha256" "b31275cfe876ae8f815189f661b7f8be99512a9e042959af0e9dcf0cbc41880c"}]}
 ```
 
 ```markdown [field-property box="madp_score_glass_a" name="notes" path="madp_score_glass_a_notes_.md"]
@@ -153,16 +176,29 @@ listen to the phase change.
 ```
 
 ```kotlin [field-property box="madp_score_glass_a" name="code" path="madp_score_glass_a_code_.kt"]
-// Philip Glass's phasing, done with box widths: this box and the one below run the same code,
-// six pulses a pass each, but a wider box takes longer to cross, so the two pulses drift apart.
-// Stretch either box and listen to the phase move.
+/*
+Philip Glass's phasing, done with box widths: this box and the one below run the same code,
+six pulses a pass each, but a wider box takes longer to cross, so the two pulses drift apart.
+Stretch either box and listen to the phase move.
+*/
 score {
     for (i in 0 until 8) {
         val u = i / 7.0
         val p = boxPoint(u, 0.5 + sin(localT * 2 + i * 0.4) * 0.06)
-        draw.line(p.x, boxPoint(u, 0.2).y, p.x, boxPoint(u, 0.8).y, stroke = "rgba(255, 186, 129, 0.8)", width = 1.2 + thisRMS * 2)
+        draw.line(
+            p.x,
+            boxPoint(u, 0.2).y,
+            p.x,
+            boxPoint(u, 0.8).y,
+            stroke = "rgba(255, 186, 129, 0.8)",
+            width = 1.2 + thisRMS * 2,
+        )
     }
-    if (onSubdivision(6, "phase")) sound("/dough/play/note/60/duration/0.1/s/tri/gain/0.15/lpf/1200/release/0.08/verb/0.26/pan/0.22", minInterval = 0.05)
+    if (onSubdivision(6, "phase"))
+        sound(
+            "/dough/play/note/60/duration/0.1/s/tri/gain/0.15/lpf/1200/release/0.08/verb/0.26/pan/0.22",
+            minInterval = 0.05,
+        )
 }
 ```
 
@@ -326,7 +362,7 @@ Norman McLaren scratched straight onto film: nine lines that twitch every frame,
 noise seven times on the way across, and a click on the way in.
 
 ```edn [field-box id="madp_score_scratches" role="properties"]
-{"id" "madp_score_scratches" "index" 5 "name" "McLaren scratches" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "McLaren scratches" "_tombstone" false "frame" #afield/rect [620.0 330.0 180.0 160.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_scratches_notes_.md" "lines" 5 "characters" 317 "sha256" "0932e2a14d24b1dbe8deeba75069645d4aaf5ef1760e2dfdb352493d20474e98"} {"name" "code" "language" "kotlin" "path" "madp_score_scratches_code_.kt" "lines" 15 "characters" 862 "sha256" "18aabb0ee57fdb7f4fe143a41a391e91651bbbe28f202f8be6f71a18f6afcd4d"}]}
+{"id" "madp_score_scratches" "index" 5 "name" "McLaren scratches" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "McLaren scratches" "_tombstone" false "frame" #afield/rect [620.0 330.0 180.0 160.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_scratches_notes_.md" "lines" 5 "characters" 317 "sha256" "0932e2a14d24b1dbe8deeba75069645d4aaf5ef1760e2dfdb352493d20474e98"} {"name" "code" "language" "kotlin" "path" "madp_score_scratches_code_.kt" "lines" 23 "characters" 953 "sha256" "55238076b20bc350ecc2752631d5fba76dc59ed3e047680307f48a7c116b7d16"}]}
 ```
 
 ```markdown [field-property box="madp_score_scratches" name="notes" path="madp_score_scratches_notes_.md"]
@@ -346,11 +382,19 @@ score {
         val a = boxPoint(0.0, u)
         val b = boxPoint(1.0, 1 - u)
         val kick = sin(localT * 26 + 0.1 + i * 0.75) * (10 + thisRMS * 24)
-        draw.line(a.x, a.y + kick, b.x, b.y - kick, stroke = "rgba(255,255,255,${0.12 + u * 0.62})", width = 1 + u * 1.2)
+        draw.line(
+            a.x,
+            a.y + kick,
+            b.x,
+            b.y - kick,
+            stroke = "rgba(255,255,255,${0.12 + u * 0.62})",
+            width = 1 + u * 1.2,
+        )
     }
     draw.circle(boxPoint(0.5 + sin(localT * 18 + 0.1) * 0.2, 0.5), 4 + thisRMS * 11, fill = "rgba(255, 107, 107, 0.88)")
 
-    if (onSubdivision(7, "grain")) sound("/dough/play/s/white/duration/0.03/gain/0.11/lpf/5200/release/0.02/pan/0.45", minInterval = 0.035)
+    if (onSubdivision(7, "grain"))
+        sound("/dough/play/s/white/duration/0.03/gain/0.11/lpf/5200/release/0.02/pan/0.45", minInterval = 0.035)
     if (justEntered) sound("/dough/play/note/72/duration/0.04/s/pulse/gain/0.12/lpf/1800/release/0.03")
 }
 ```
@@ -371,7 +415,7 @@ A silly one, done rigorously: a duck that bobs, drifts a little across the score
 (box.move), and quacks twice.
 
 ```edn [field-box id="madp_score_duck" role="properties"]
-{"id" "madp_score_duck" "index" 6 "name" "duck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "duck" "_tombstone" false "frame" #afield/rect [1640.0 300.0 200.0 150.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_duck_notes_.md" "lines" 4 "characters" 186 "sha256" "e4d9586405e697ab05a3cdf26e60d2e878e5b839508dc8426b00e95fd9eb1276"} {"name" "code" "language" "kotlin" "path" "madp_score_duck_code_.kt" "lines" 21 "characters" 1068 "sha256" "0b89aea66b2713c627685e14aa7841a7580b288603af0682b4db801aeae32162"}]}
+{"id" "madp_score_duck" "index" 6 "name" "duck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "duck" "_tombstone" false "frame" #afield/rect [1640.0 300.0 200.0 150.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_duck_notes_.md" "lines" 4 "characters" 186 "sha256" "e4d9586405e697ab05a3cdf26e60d2e878e5b839508dc8426b00e95fd9eb1276"} {"name" "code" "language" "kotlin" "path" "madp_score_duck_code_.kt" "lines" 22 "characters" 1070 "sha256" "03fc524f35cb48b5987bf696c4faebbee8f16d6fe993cbbe5472eef68302e42d"}]}
 ```
 
 ```markdown [field-property box="madp_score_duck" name="notes" path="madp_score_duck_notes_.md"]
@@ -393,7 +437,7 @@ score {
     draw.circle(head, 14 + thisRMS * 8, fill = "rgba(255, 224, 96, 0.94)")
     draw.circle(head.x + 5, head.y - 4, 3.0, fill = "rgba(18,18,18,0.95)")
     draw.polyline(
-        listOf(pt(head.x + 10, head.y - 6), pt(head.x + 30 + thisRMS * 10, head.y), pt(head.x + 10, head.y + 6)),
+        [pt(head.x + 10, head.y - 6), pt(head.x + 30 + thisRMS * 10, head.y), pt(head.x + 10, head.y + 6)],
         closed = true,
         fill = "rgba(255, 128, 52, 0.96)",
         stroke = "rgba(255, 153, 74, 0.96)",
@@ -401,7 +445,8 @@ score {
     )
 
     if (justEntered) sound("/dough/play/note/64/duration/0.08/s/pulse/pw/0.42/gain/0.16/lpf/1500/release/0.05")
-    if (onSubdivision(2, "quack")) sound("/dough/play/note/69/duration/0.06/s/pulse/pw/0.28/gain/0.16/lpf/1300/release/0.05", minInterval = 0.08)
+    if (onSubdivision(2, "quack"))
+        sound("/dough/play/note/69/duration/0.06/s/pulse/pw/0.28/gain/0.16/lpf/1300/release/0.05", minInterval = 0.08)
 }
 ```
 
@@ -420,7 +465,7 @@ From `code`
 Oskar Fischinger's geometry: a planet on a ring, and a bell three times a pass.
 
 ```edn [field-box id="madp_score_orbits" role="properties"]
-{"id" "madp_score_orbits" "index" 7 "name" "Fischinger orbits" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Fischinger orbits" "_tombstone" false "frame" #afield/rect [840.0 70.0 200.0 150.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_orbits_notes_.md" "lines" 4 "characters" 207 "sha256" "09db3a7b6b4e0931d52327de1816574a2d7807dc8eb1507e40db441e24f8e6bb"} {"name" "code" "language" "kotlin" "path" "madp_score_orbits_code_.kt" "lines" 10 "characters" 612 "sha256" "d234c05b0cb26efd96812ad7cc26d12adaa2413c477daa4259b118d6f68de802"}]}
+{"id" "madp_score_orbits" "index" 7 "name" "Fischinger orbits" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Fischinger orbits" "_tombstone" false "frame" #afield/rect [840.0 70.0 200.0 150.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_score_orbits_notes_.md" "lines" 4 "characters" 207 "sha256" "09db3a7b6b4e0931d52327de1816574a2d7807dc8eb1507e40db441e24f8e6bb"} {"name" "code" "language" "kotlin" "path" "madp_score_orbits_code_.kt" "lines" 11 "characters" 620 "sha256" "944133bd14ff012a856f3e571768930e155ab4248d378b66dfdd68e8893563b7"}]}
 ```
 
 ```markdown [field-property box="madp_score_orbits" name="notes" path="madp_score_orbits_notes_.md"]
@@ -439,7 +484,8 @@ score {
     draw.line(c, q, stroke = "rgba(245, 202, 92, 0.45)", width = 1.6)
     draw.circle(q, 7 + thisRMS * 14, fill = "rgba(245, 202, 92, 0.92)")
 
-    if (onSubdivision(3, "bell")) sound("/dough/play/note/72/duration/0.12/s/sine/gain/0.15/lpf/2600/release/0.1/verb/0.42", minInterval = 0.08)
+    if (onSubdivision(3, "bell"))
+        sound("/dough/play/note/72/duration/0.12/s/sine/gain/0.15/lpf/2600/release/0.1/verb/0.42", minInterval = 0.08)
 }
 ```
 

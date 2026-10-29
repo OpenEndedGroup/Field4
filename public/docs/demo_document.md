@@ -55,8 +55,9 @@ fun look(cx: Double, cy: Double, z: Double) {
 
 // Ease the camera to (cx, cy, z): the centre in a straight line, the zoom at an even rate.
 fun glide(cx: Double, cy: Double, z: Double, ms: Int) {
-    val (x0, y0, z0) = js("const c = window.fieldCanvasFlight.camera(); return [c.x, c.y, c.zoom].join(',')")
-        .split(",").map { it.toDouble() }
+    val (x0, y0, z0) = js("const c = window.fieldCanvasFlight.camera(); return [c.x, c.y, c.zoom].join(',')").split(",").map {
+        it.toDouble()
+    }
     val cx0 = (W / 2 - x0) / z0
     val cy0 = (H / 2 - y0) / z0
     val n = (ms / 40).coerceAtLeast(1)
@@ -71,7 +72,11 @@ fun glide(cx: Double, cy: Double, z: Double, ms: Int) {
 // The pointer moves in small timed steps, as a hand does.
 fun hand(from: Pair<Double, Double>, to: Pair<Double, Double>, steps: Int, stepMs: Long = 40) {
     for (k in 1..steps) {
-        ui.moveMouse(from.first + (to.first - from.first) * k / steps, from.second + (to.second - from.second) * k / steps, 1)
+        ui.moveMouse(
+            from.first + (to.first - from.first) * k / steps,
+            from.second + (to.second - from.second) * k / steps,
+            1,
+        )
         ui.pause(stepMs)
     }
 }
@@ -86,20 +91,33 @@ fun drag(from: Pair<Double, Double>, to: Pair<Double, Double>, steps: Int = 30) 
 }
 
 // Where a box is on the page, by name.
-fun boxAt(name: String, fx: Double = 0.5, fy: Double = 0.5): Pair<Double, Double> =
-    xy("const b = [...document.querySelectorAll('.box')].find(b => b.name === '" + name + "'); const r = b.getBoundingClientRect(); return [r.left + r.width * " + fx + ", r.top + r.height * " + fy + "].join(',')")
+fun boxAt(name: String, fx: Double = 0.5, fy: Double = 0.5): Pair<Double, Double> = xy(
+    "const b = [...document.querySelectorAll('.box')].find(b => b.name === '" +
+        name +
+        "'); const r = b.getBoundingClientRect(); return [r.left + r.width * " +
+        fx +
+        ", r.top + r.height * " +
+        fy +
+        "].join(',')",
+)
 
 // An iframe's centre on the page, by a fragment of its URL.
-fun frameAt(src: String): Pair<Double, Double> =
-    xy("const f = [...document.querySelectorAll('iframe')].filter(f => (f.src || '').indexOf('" + src + "') >= 0 && f.getBoundingClientRect().width > 0).pop(); const r = f.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2].join(',')")
+fun frameAt(src: String): Pair<Double, Double> = xy(
+    "const f = [...document.querySelectorAll('iframe')].filter(f => (f.src || '').indexOf('" +
+        src +
+        "') >= 0 && f.getBoundingClientRect().width > 0).pop(); const r = f.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2].join(',')",
+)
 
 // Click empty canvas, so no box is selected and the code editor goes away; again if it is still there.
-fun editorShowing(): Boolean =
-    js("const e = document.querySelector('.monaco-editor .view-lines'); if (!e) return false; const r = e.getBoundingClientRect(); if (r.width < 50) return false; const h = document.elementFromPoint(r.left + r.width / 2, r.top + Math.min(r.height / 2, 200)); return !!(h && h.closest('.monaco-editor'))") == "true"
+fun editorShowing(): Boolean = js(
+    "const e = document.querySelector('.monaco-editor .view-lines'); if (!e) return false; const r = e.getBoundingClientRect(); if (r.width < 50) return false; const h = document.elementFromPoint(r.left + r.width / 2, r.top + Math.min(r.height / 2, 200)); return !!(h && h.closest('.monaco-editor'))",
+) == "true"
 
 fun deselect() {
     for (attempt in 0 until 4) {
-        val p = xy("for (let y = 0.94; y > 0.1; y -= 0.05) for (let x = 0.03; x < 0.97; x += 0.03) { const e = document.elementFromPoint(innerWidth * x, innerHeight * y); if (e && !e.closest('.box, .outputArea, iframe, .monaco-editor, .monaco-editor-container, .disclosure, svg, button, input, .excalidraw')) return [innerWidth * x, innerHeight * y].join(','); } return '4,4'")
+        val p = xy(
+            "for (let y = 0.94; y > 0.1; y -= 0.05) for (let x = 0.03; x < 0.97; x += 0.03) { const e = document.elementFromPoint(innerWidth * x, innerHeight * y); if (e && !e.closest('.box, .outputArea, iframe, .monaco-editor, .monaco-editor-container, .disclosure, svg, button, input, .excalidraw')) return [innerWidth * x, innerHeight * y].join(','); } return '4,4'",
+        )
         ui.clickAt(p.first, p.second)
         ui.pause(250)
         if (!editorShowing()) return
@@ -112,11 +130,17 @@ fun deselect() {
 ui.waitForSelector("iframe[src*='/threejs?']", 30000.0)
 ui.waitForSelector("iframe[src*='/keyframe?']", 30000.0)
 var tries = 0
-while (js("const f = [...document.querySelectorAll('iframe')].filter(f => (f.src || '').indexOf('/keyframe?') >= 0).pop(); return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0") != "4" && tries++ < 80) ui.pause(250)
+while (
+    js(
+        "const f = [...document.querySelectorAll('iframe')].filter(f => (f.src || '').indexOf('/keyframe?') >= 0).pop(); return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0",
+    ) != "4" && tries++ < 80
+) ui.pause(250)
 
 // Keep the page producing frames: the recorder only gets a new one when this page paints, and the
 // panels repaint inside their own frames. One pixel, all but transparent.
-ui.eval("const k = document.createElement('div'); k.style = 'position:fixed;left:0;top:0;width:1px;height:1px;pointer-events:none;z-index:2147483647'; document.body.appendChild(k); let on = false; (function tick() { on = !on; k.style.opacity = on ? '0.011' : '0.010'; requestAnimationFrame(tick); })(); return 'ok'")
+ui.eval(
+    "const k = document.createElement('div'); k.style = 'position:fixed;left:0;top:0;width:1px;height:1px;pointer-events:none;z-index:2147483647'; document.body.appendChild(k); let on = false; (function tick() { on = !on; k.style.opacity = on ? '0.011' : '0.010'; requestAnimationFrame(tick); })(); return 'ok'",
+)
 
 // 0. The whole document.
 look(2700.0, 640.0, 0.2)
@@ -138,7 +162,11 @@ ui.pause(700)
 // 3. The editable flower: pull a control point out, then another.
 glide(1520.0, 1110.0, 1.0, 2400)
 val handle = { pick: String ->
-    xy("const b = [...document.querySelectorAll('.box')].find(b => b.name === 'editable flower'); const cs = [...b.querySelectorAll('.outputArea svg circle')].map(c => c.getBoundingClientRect()).filter(r => r.width > 0).map(r => [r.left + r.width / 2, r.top + r.height / 2]); cs.sort((a, c) => " + pick + "); return cs[0].join(',')")
+    xy(
+        "const b = [...document.querySelectorAll('.box')].find(b => b.name === 'editable flower'); const cs = [...b.querySelectorAll('.outputArea svg circle')].map(c => c.getBoundingClientRect()).filter(r => r.width > 0).map(r => [r.left + r.width / 2, r.top + r.height / 2]); cs.sort((a, c) => " +
+            pick +
+            "); return cs[0].join(',')",
+    )
 }
 val right = handle("c[0] - a[0]")
 drag(right, right.first + 110 to right.second + 70, 40)
@@ -155,7 +183,8 @@ ui.pause(3600)
 
 // 5. The keyframe editor: add a key while the playhead plays, then drag it.
 glide(2560.0, 1130.0, 1.15, 2600)
-ui.eval("""
+ui.eval(
+    """
   const frame = [...document.querySelectorAll('iframe')].filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
   const d = frame.contentDocument;
   const fr = frame.getBoundingClientRect();
@@ -168,7 +197,9 @@ ui.eval("""
     key: i => keys()[i].join(',')
   };
   return 'ok';
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 val added = xy("return window.__kf.pos(3.2, 0.8)")
 hand(added.first - 200 to added.second + 60, added, 14)
 ui.pause(300)
@@ -218,7 +249,8 @@ ui.pause(500)
 ui.eval("window.drawingLayerSetTool('selection'); window.toggleDrawingLayer(); return 'ok'")
 ui.pause(900)
 
-// 8. Inline visualizers: select the metrics box, so its editor opens, and launch it from there; each call draws beside its line.
+// 8. Inline visualizers: select the metrics box, so its editor opens, and launch it from there; each call draws beside
+// its line.
 glide(3450.0, 980.0, 1.0, 2600)
 ui.click("demo_metrics")
 ui.pause(600)
@@ -238,17 +270,6 @@ ui.pause(1500)
 ```
 
 ## Making it again
-
-Field's documentation build makes the film. It replays `demo_document.yaml` into an empty document
-in this checkout's Field desktop app, then runs the script above, which moves the camera and the
-mouse the way a person would, while Field records the window. The build only films it on macOS with
-`FIELD_DOCS_CAPTURE_PROFILES=macos-electron`, because the spiral's frames only reach a page in
-Field's desktop app. On any other machine the build keeps the film it already has.
-
-```diffstatic {data-lang=bash}
-FIELD_DOCS_CAPTURE_PROFILES=macos-electron FIELD_DOCS_RUNNER_MODE=always \
-  uv run --project . --group docs python tools/build_zensical_docs.py --page demo_document.md
-```
 
 To open the document itself, replay the transcript with the [backdoor](automating_field.md):
 
@@ -271,3 +292,14 @@ The feel benchmark times the same replay, as its `demo-document` scenario
     selected and opens its editor, so the script clicks empty canvas afterwards to close it again.
     The home page shows the film behind a veil, tilted in CSS (`.field-homepage-video` in
     `stylesheets/extra.css`); the file itself is the flat window.
+
+    Field's documentation build makes the film. It replays `demo_document.yaml` into an empty document
+    in this checkout's Field desktop app, then runs the script above, which moves the camera and the
+    mouse the way a person would, while Field records the window. The build only films it on macOS with
+    `FIELD_DOCS_CAPTURE_PROFILES=macos-electron`, because the spiral's frames only reach a page in
+    Field's desktop app. On any other machine the build keeps the film it already has.
+
+    ```diffstatic {data-lang=bash}
+    FIELD_DOCS_CAPTURE_PROFILES=macos-electron FIELD_DOCS_RUNNER_MODE=always \
+      uv run --project . --group docs python tools/build_zensical_docs.py --page demo_document.md
+    ```

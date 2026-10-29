@@ -2864,6 +2864,13 @@ fun registerBuiltinCommands() {
                 exportDocumentToDownload()
             }
         },{
+            id:'publish-document-web',
+            label:"Publish document for the web (.zip)",
+            detail:"Download code, notes and captured output areas as a static website",
+            run: () => {
+                window.fieldPublishDocument()
+            }
+        },{
             id:'export-ipynb',
             label:"Export notebook (.ipynb)",
             detail:"Download the selected python-root box column as a Jupyter notebook",

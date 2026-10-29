@@ -7,6 +7,26 @@ import afield.ui.output.controlGroup
 import org.json.JSONObject
 
 /**
+ * Where a message from a browser head lands when it names a box rather than a run.
+ *
+ * A head reaches Field over the WebSocket Field already has, and every message it sends carries an
+ * address. `RemoteJS.kt`'s dispatcher tries those addresses in turn and [handle] is its last
+ * claimant, so a `false` from here is what makes a message unrecognised. What reaches it is whatever
+ * the head has to say about a box while no reply channel is open: `display`, the `slider` and
+ * `checkbox` a box asked for, and output a timer or an event handler printed after the run returned.
+ * A Kotlin→JS box arrives here as well, and [routeLateOutput] maps its generated-JavaScript line back
+ * to the editor on the way through.
+ *
+ * None of those messages carries a box, only the code name the head evaluated the source under.
+ * [handle] and [routeLateOutput] resolve it through [boxFor], and take that lookup as a parameter so
+ * a test can supply a box directly.
+ *
+ * In the other direction this file writes JavaScript as text for the transport to evaluate in the
+ * head: [stopScript] when a box is stopped, [controlScript] when a control drawn here is moved.
+ * `dev_docs/REMOTEJS_BOX_PARITY.md` measures the whole surface against a Kotlin box's.
+ */
+
+/**
  * The parts of the box contract a RemoteJS box gets from messages its head sends *outside* a run's
  * reply channel: `display(channel, html)`, `slider` / `checkbox`, and output printed after the run
  * finished (a timer, an event handler, an animation frame). See `dev_docs/REMOTEJS_BOX_PARITY.md`.
@@ -26,6 +46,10 @@ object RemoteJsBoxSurface {
         return codeName.substringAfter("|", "").ifEmpty { null }
     }
 
+    /**
+     * The [Box] whose uid a [target] code name carries, looked for across the boxes of every open
+     * session, or null when none of them has it.
+     */
     fun boxFor(codeName: String?): Box? {
         val uid = uidOf(codeName) ?: return null
         return sessions.values.firstNotNullOfOrNull { session -> session.boxes.values.firstOrNull { it.id == uid } }
@@ -84,6 +108,11 @@ object RemoteJsBoxSurface {
         return true
     }
 
+    /**
+     * Draws the controls a head asked for on `box`, one [controlGroup] per `channel`, and hands each
+     * move to `invokeControl`. A spec whose `kind` is neither `slider` nor `checkbox` draws nothing,
+     * and the rest of its group is drawn as usual.
+     */
     fun applyControls(box: Box, specs: List<JSONObject>, invokeControl: (String, Any) -> Unit) {
         specs.groupBy { it.optString("channel", "controls") }.forEach { (channel, group) ->
             box.controlGroup(channel) {

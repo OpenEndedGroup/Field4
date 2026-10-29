@@ -1014,7 +1014,7 @@ def clear_output(wait=False, channel=None):
     box = PythonInterface.thisBox
     if not box:
         return
-    from afield import OutputsKt
+    from afield.ui.output import OutputsKt
     if channel:
         OutputsKt.displayClear(box, channel)
     else:
@@ -1094,7 +1094,7 @@ class FileUpload:
     def value(self):
         ""${'"'}Returns uploaded files as a tuple of dicts with keys: name, type, size, content (bytes).""${'"'}
         if self._control_id:
-            from afield import OutputsKt
+            from afield.ui.output import OutputsKt
             entries = OutputsKt.getFileUploadData(self._control_id)
             if entries is not None:
                 result = []
@@ -1237,7 +1237,7 @@ _FIELD_EMBED_CHANNEL = "browser"
 def _field_embed_show(box, iframe_html):
     box.display(_FIELD_EMBED_CHANNEL, iframe_html)
     try:
-        from afield import OutputsKt
+        from afield.ui.output import OutputsKt
         OutputsKt.displayOpen(box, _FIELD_EMBED_CHANNEL)
     except Exception:
         pass

@@ -342,6 +342,24 @@ class KotlinInterface2(
     /** Reruns served by [rerunCache] instead of a compile. */
     val rerunCacheHits: Int get() = rerunCache.hits
 
+    /** Field's own compiler warnings ([ShadowedSnippetNameDiagnostics]) by rerun-cache key, so a cache hit shows them again. */
+    private val fieldWarningsByKey = HashMap<String, List<ScriptDiagnostic>>()
+
+    /** Sends this compile's Field warnings to the box's editor, through the output its run wired up. */
+    private fun publishFieldWarnings(warnings: List<ScriptDiagnostic>) {
+        val box = associatedBox as? Box ?: return
+        warnings.forEach { d ->
+            val l = d.location
+            box.output.warningProxy(d.message, l?.start?.line ?: 0, l?.start?.col ?: -1, l?.end?.line ?: -1, l?.end?.col ?: -1)
+        }
+    }
+
+    private fun fieldWarnings(r: ResultWithDiagnostics<*>): List<ScriptDiagnostic> =
+        if (r !is ResultWithDiagnostics.Success) emptyList()
+        else (r.reports + messageCollector.diagnostics)
+            .filter { it.severity == ScriptDiagnostic.Severity.WARNING && it.message.contains(ShadowedSnippetNameDiagnostics.MESSAGE_MARK) }
+            .distinctBy { Triple(it.message, it.location?.start?.line, it.location?.start?.col) }
+
     /**
      * [compile], except that an exact rerun of a source this engine already compiled — same
      * expanded text, source property and implicit receivers, nothing it binds to redeclared since —
@@ -366,7 +384,7 @@ class KotlinInterface2(
                         "info,kotlin,perf",
                         "\t\t compile cache hit engine=KotlinInterface2 filePrefix=$filePrefix property=$sourceProperty hits=${rerunCache.hits} misses=${rerunCache.misses} compiles=$compileCount preview=${compileSnippetPreview(s)}"
                     )
-                    ResultWithDiagnostics.Success(reuse.snippet)
+                    ResultWithDiagnostics.Success(reuse.snippet).also { publishFieldWarnings(fieldWarningsByKey[key].orEmpty()) }
                 } else {
                     lprintln(
                         "info,kotlin,perf",
@@ -424,8 +442,10 @@ class KotlinInterface2(
             ?: throwable.javaClass.name
     }
 
-    private fun compilerExceptionDiagnostic(throwable: Throwable): ScriptDiagnostic {
+    private fun compilerExceptionDiagnostic(throwable: Throwable, source: String): ScriptDiagnostic {
         val chain = throwable.causeChain()
+        val boxMemberInClass = SnippetClassReceiverCrash.matches(chain.map { it.message })
+        val site = if (boxMemberInClass) SnippetClassReceiverCrash.locate(source) else null
         val root = chain.lastOrNull() ?: throwable
         val hasImplicitReceiverFailure = chain.any {
             it.message?.contains("SCRIPT_IMPLICIT_RECEIVER") == true ||
@@ -445,6 +465,8 @@ class KotlinInterface2(
                 append(firstMessageLine(root))
             }
 
+            if (boxMemberInClass) append(SnippetClassReceiverCrash.explain(site))
+
             if (hasImplicitReceiverFailure) {
                 append("\n\nK2 could not codegen a named function that captures the script's implicit Box receiver. ")
                 append("Make that receiver explicit, for example `fun Box.show() { ... }`, ")
@@ -457,7 +479,7 @@ class KotlinInterface2(
             message,
             ScriptDiagnostic.Severity.ERROR,
             null,
-            null,
+            site?.let { SourceCode.Location(SourceCode.Position(it.line, it.column)) },
             throwable
         )
     }
@@ -508,7 +530,7 @@ class KotlinInterface2(
                 context.debugScripts.discard(snapshot)
                 lprintln("error,kotlin", "compiler exception while compiling snippet")
                 lprintln("error,kotlin", t.stackTraceToString())
-                r = ResultWithDiagnostics.Failure(compilerExceptionDiagnostic(t))
+                r = ResultWithDiagnostics.Failure(compilerExceptionDiagnostic(t, s))
             }
         }
         compileNanos += ns
@@ -518,6 +540,9 @@ class KotlinInterface2(
             context.debugScripts.discard(snapshot)
         }
         val result = r!!
+        val warnings = fieldWarnings(result)
+        if (cacheKey != null) { if (warnings.isEmpty()) fieldWarningsByKey.remove(cacheKey) else fieldWarningsByKey[cacheKey] = warnings }
+        publishFieldWarnings(warnings)
         if (result is ResultWithDiagnostics.Success) {
             codeUseSnippetIds[result.value] = snippetId
             // Every successful compile is registered, cached or not: its declarations may shadow a cached entry's.
@@ -541,6 +566,10 @@ class KotlinInterface2(
     }
 
 
+    /** How a stall report names this engine's box (see [afield.runtime.lifecycle.BoxInterrupt]). */
+    private fun interruptLabel(): String =
+        (associatedBox as? Box)?.let { "'${it.name}' (${it.id})" } ?: "box code"
+
     suspend fun evaluate(
         e: LinkedSnippet<out CompiledScript>, updateContext: Boolean = false
     ): ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>> {
@@ -558,6 +587,7 @@ class KotlinInterface2(
                     }
                 }
 
+                afield.runtime.lifecycle.BoxInterrupt.instrument(e.get(), interruptLabel())
                 r = evaluator.eval(e, evalConfig)
                 if (r is ResultWithDiagnostics.Success) {
                     val evalResult = r.value.get().result
@@ -619,6 +649,7 @@ class KotlinInterface2(
                     }
                 }
 
+                afield.runtime.lifecycle.BoxInterrupt.instrument(e.get(), interruptLabel())
                 r = evaluator.eval(e, evalConfig)
                 if (r is ResultWithDiagnostics.Success) {
                     val evalResult = r.value.get().result
@@ -695,10 +726,10 @@ class KotlinInterface2(
 
     /**
      * Which backend actually served the most recent [complete] call, and the [AaCompletionClient.Outcome]
-     * detail that decided it. [complete] already logs both; this makes them ASSERTABLE, which a test that
-     * means to exercise the AA chain needs: a K1 fallback answers a name position with thousands of names,
-     * so "the candidate I wanted is in the list" can be satisfied entirely by the fallback and still read
-     * as a green AA result. `CompletionAaE2EProbe` is what this exists for.
+     * detail that decided it. [complete] logs both; reading them here lets a test assert which backend
+     * answered, which a test of the AA chain needs: a K1 fallback answers a name position with thousands
+     * of names, so "the candidate I wanted is in the list" can be satisfied by the fallback alone and
+     * still read as a green AA result. `CompletionAaE2EProbe` asserts it.
      */
     @Volatile
     var lastCompletionBackend: KotlinEngineConfig.CompletionBackend? = null
@@ -709,7 +740,7 @@ class KotlinInterface2(
         private set
 
     /**
-     * Completion intentionally delegates to the K1 IDE-services path.
+     * Completion delegates to the K1 IDE-services path.
      * K2 remains the execution backend, but autocomplete needs compiler-grade
      * language semantics rather than partial handwritten Analysis API coverage.
      */
@@ -851,6 +882,9 @@ class KotlinInterface2(
     }
 
     private var k1CompletionDelegate: KotlinInterface? = null
+
+    /** The completion delegate built so far, for `KotlinEngineReleaseSmokeTest`. */
+    internal fun k1CompletionDelegateForTest(): KotlinInterface? = k1CompletionDelegate
     private var k1CompletionDelegateBootstrapped = false
     private var k1CompletionDelegatePreambleFingerprint: Int? = null
     private val k1CompletionDelegateMutex = Mutex()
@@ -891,6 +925,8 @@ class KotlinInterface2(
             created.associatedBox = associatedBox
             k1CompletionDelegate = created
             k1CompletionDelegateBootstrapped = false
+            // Asked for after this engine was disposed: it compiles nothing, and holds no project.
+            if (disposed) created.dispose()
 
             if (!k1CompletionDelegateBootstrapped) {
                 val implicits = if (box != null) listOf(box) else emptyList()
@@ -2937,8 +2973,8 @@ class KotlinInterface2(
     }
 
     /**
-     * Run the stdlib bootstrap (intro) without the [bootstrapReady] gate — it is what opens
-     * the gate — and release the gate afterwards, whatever happened, so nothing waits forever.
+     * Run the stdlib bootstrap (intro) without waiting on the `bootstrapReady` gate, since this call
+     * is what opens it, and release it afterwards whatever happened, so nothing waits forever.
      */
     override suspend fun bootstrap(
         s: String,
@@ -3125,6 +3161,8 @@ class KotlinInterface2(
     override fun dispose() {
         disposed = true
         if (compilationStateUsers.get() == 0) releaseCompilationState()
+        // Its own compiler project, which nothing else releases.
+        k1CompletionDelegate?.dispose()
     }
 
     @Volatile
@@ -3201,7 +3239,20 @@ class KotlinInterface2(
          * classloader, so only the compiler ever sees it.
          */
         val compilerPluginArgs: List<String> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-            witherPluginArgs + dataFramePluginArgs
+            witherPluginArgs + dataFramePluginArgs + shadowedNamePluginArgs
+        }
+
+        /**
+         * Field's own checker for box-level names that a lambda's receiver shadows
+         * ([ShadowedSnippetNameDiagnostics]). Disable with `-Dafield.shadowedNameWarning=false`.
+         */
+        private val shadowedNamePluginArgs: List<String> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+            if (System.getProperty("afield.shadowedNameWarning", "true") != "true") return@lazy emptyList()
+            runCatching { listOf("-Xplugin=${ShadowedSnippetNameCheckerPlugin.jar.absolutePath}") }
+                .getOrElse { e ->
+                    lprintln("warning,kotlin", "shadowed-name checker not enabled: ${e.message}")
+                    emptyList()
+                }
         }
 
         /**

@@ -419,6 +419,8 @@ data class FieldPreferences(
     val validate: Boolean = true,
     val quietMode: Boolean = false,
     val autoOpenLastDocumentInDesktop: Boolean = false,
+    /** Compile box code so a box that never returns can be interrupted (`afield.runtime.lifecycle.BoxInterrupt`). */
+    val boxInterrupt: Boolean = true,
     val editorPropertyStickiness: String = "none",
     val oscEditorEnabled: Boolean = false,
     val oscEditorPort: Int = 9001,
@@ -957,9 +959,28 @@ fun startingPointsDir(): File? {
     return null
 }
 
-/** The hand-authored graphics curriculum shares the Starting points entry path with transcripts. */
-private fun canonicalGraphicsStartingPoint(): File? = startingPointsDir()?.parentFile
-    ?.resolve("canonical_graphics")?.takeIf { File(it, SavingContext.METADATA_EDN).isFile }
+/**
+ * Saved documents offered as starting points as they are, rather than materialized from a transcript:
+ * name to path relative to `public/docs/assets`. A transcript cannot carry what these are worth
+ * opening for (a conversation's study revisions, held variants, tool I/O and chat), so the welcome
+ * screen lists, searches and copies the document itself. `public/docs/agent_transcripts.md` gives
+ * each one an entry under its `bundled` section, which `AgentTranscriptIndexGuard` holds equal to
+ * this map.
+ */
+val BUNDLED_DOCUMENT_STARTING_POINTS: Map<String, String> = linkedMapOf(
+    "canonical_graphics" to "canonical_graphics",
+    "stacksl_conversation_ink" to "../../../dev_docs/agents/demos/stacksl_conversation_ink",
+    "stacksl_conversation_tiles" to "../../../dev_docs/agents/demos/stacksl_conversation_tiles",
+    "stacksl_conversation_aurora" to "../../../dev_docs/agents/demos/stacksl_conversation_aurora",
+)
+
+/** The [BUNDLED_DOCUMENT_STARTING_POINTS] present beside [startingPointsDir], in registry order. */
+private fun bundledDocumentStartingPoints(): List<File> {
+    val assets = startingPointsDir()?.parentFile ?: return emptyList()
+    return BUNDLED_DOCUMENT_STARTING_POINTS.mapNotNull { (name, rel) ->
+        File(assets, rel).canonicalFile.takeIf { it.name == name && File(it, SavingContext.METADATA_EDN).isFile }
+    }
+}
 
 /** Welcome cards for the bundled starting points, tagged `kind = "starting-point"`. Empty when none. */
 fun startingPoints(): List<WelcomeEntry> {
@@ -967,11 +988,10 @@ fun startingPoints(): List<WelcomeEntry> {
     val now = System.currentTimeMillis()
     val savingContext = SavingContext()
     val candidates = welcomeDirCandidates(dir.absolutePath, emptyList()).toMutableList()
-    canonicalGraphicsStartingPoint()?.let { graphics ->
-        val metadata = File(graphics, SavingContext.METADATA_EDN)
-        candidates.add(0, WelcomeDirCandidate(graphics.name, graphics, metadata,
-            metadata.lastModified(), metadata.length()))
-    }
+    candidates.addAll(0, bundledDocumentStartingPoints().map { document ->
+        val metadata = File(document, SavingContext.METADATA_EDN)
+        WelcomeDirCandidate(document.name, document, metadata, metadata.lastModified(), metadata.length())
+    })
     return candidates.distinctBy { it.filename }
         .mapNotNull { summarizeWelcomeCandidate(it, now, savingContext) }
         .map { it.copy(kind = "starting-point") }
@@ -1087,7 +1107,7 @@ fun searchStartingPoints(
         maxMatchesPerDocument = maxMatchesPerDocument,
         maxScanMillis = maxScanMillis,
         cancellationCheck = cancellationCheck,
-        additionalDocuments = listOfNotNull(canonicalGraphicsStartingPoint())
+        additionalDocuments = bundledDocumentStartingPoints()
     )
     return response.copy(documents = response.documents.map { it.copy(kind = "starting-point") })
 }
@@ -1672,18 +1692,18 @@ fun updateDocumentTags(base: String, filename: String, tags: List<String>): Docu
 }
 
 /**
- * Copy a bundled starting point (a transcript or the canonical graphics curriculum) into the
+ * Copy a bundled starting point (a transcript or a [BUNDLED_DOCUMENT_STARTING_POINTS] document) into the
  * user's workspace under a fresh, non-colliding name and return it, so the welcome screen can offer
  * "open" on a read-only bundled scene without ever mutating the bundle. Reuses the same recursive
  * copy [duplicateWorkspaceDocument] uses (skipping `backups`/`.git`/`versions.edn`).
  */
 fun openStartingPointIntoWorkspace(base: String, name: String): DuplicateDocumentResponse {
     val cleanName = validateWorkspaceDocumentName(name)
-    // The graphics curriculum is explicitly registered; other docs assets are not opening roots.
-    // Remaining starting points live in the transcript and template roots.
+    // Bundled documents are explicitly registered; other docs assets and demos are not opening
+    // roots. Remaining starting points live in the transcript and template roots.
     val roots = listOfNotNull(startingPointsDir()) + documentTemplateRoots()
     if (roots.isEmpty()) throw IllegalArgumentException("no starting points are available")
-    val sourceDir = canonicalGraphicsStartingPoint()?.takeIf { it.name == cleanName }
+    val sourceDir = bundledDocumentStartingPoints().firstOrNull { it.name == cleanName }
         ?: roots.asSequence()
         .map { root -> root to File(root, cleanName).canonicalFile }
         .firstOrNull { (root, dir) ->

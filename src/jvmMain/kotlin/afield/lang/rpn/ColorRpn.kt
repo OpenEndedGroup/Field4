@@ -24,6 +24,25 @@ import kotlin.math.sqrt
 import kotlin.math.tan
 
 /**
+ * A reverse-Polish language whose programs are pictures: tokens push numbers and colours onto a
+ * stack, the program runs once per pixel of a square, and what is left on the stack is that
+ * pixel's colour.
+ *
+ * [ColorRpn] is the language, and it is small enough to read in one sitting: four variables for
+ * where the pixel is, twenty-five words, and no way to fail. Compiling a program gives a
+ * [ColorRpnProgram], which reports the colour at one point, renders a square at any size on all
+ * cores, or hands back PNG bytes that `display` shows as an image.
+ *
+ * ```kotlin
+ * display("main", ColorRpn.compile("x 9 * sin 0.18 +  y 0.55 +  0.62  hsl").png(256))
+ * ```
+ *
+ * The rest of the family builds a search on top: `ColorRpnGenome.kt` breeds one program from two,
+ * and `ColorRpnEvolution.kt` puts a grid of the results in a box for you to pick from. The
+ * language is described word by word on [ColorRpn] below.
+ */
+
+/**
  * The colour expression language of the madp *GA* demo (`ga.html`): a reverse-Polish program run
  * once per pixel, whose result is a colour. It is the genome of interactive evolution in the manner
  * of Karl Sims' *Genetic Images* (see `ColorRpnGenome` and `afield.study.search.EyeEvolution`), and
@@ -318,15 +337,16 @@ object ColorRpn {
 
 /**
  * A compiled [ColorRpn] program.
- *
- * @property source the text it was compiled from
- * @property tokens the tokens it kept, normalised (lower case, numbers as [ColorRpn.format] writes them);
- *   two programs with the same [normalized] draw the same picture
- * @property unknown the tokens it skipped
  */
 class ColorRpnProgram internal constructor(
+    /** The text it was compiled from. */
     val source: String,
+    /**
+     * The tokens it kept, normalised: lower case, numbers as [ColorRpn.format] writes them. Two
+     * programs with the same [normalized] draw the same picture.
+     */
     val tokens: List<String>,
+    /** The tokens it skipped, in the order they appeared. An unknown word is dropped, not an error. */
     val unknown: List<String>,
     private val ops: IntArray,
     private val data: DoubleArray,
@@ -375,6 +395,7 @@ class ColorRpnProgram internal constructor(
     /** [render] encoded as PNG bytes, which `display(...)` shows as an image. */
     fun png(size: Int): ByteArray = PngEncoder.encode(render(size), size, size)
 
+    /** The program as [normalized], which is what the demo's captions print. */
     override fun toString(): String = normalized
 
     private fun radius(x: Double, y: Double): Double {

@@ -10,7 +10,8 @@ import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VkQueryPoolCreateInfo
 import java.util.WeakHashMap
 
-/** How long a lighting pass took on the GPU, timed per swapchain image.
+/**
+ * How long a lighting pass took on the GPU, timed per swapchain image.
  *
  * Two timestamps per image, top of pipe to bottom, reused once the renderer has waited on that
  * image's fence. Each `begin` collects the previous result if it is available, so reading one never
@@ -19,7 +20,8 @@ import java.util.WeakHashMap
  * The queries are a slice of a pool shared with other timers (`TimestampSlabs`), not a pool of
  * their own: KosmicKrisp backs every `VkQueryPool` with a Metal counter heap, and a process gets
  * 32 of those, each at most 4096 timestamps (measured, SDK 1.4.363, M1 Max), which a pool per timer
- * exhausts. A timer that cannot get a slice records nothing. */
+ * exhausts. A timer that cannot get a slice records nothing.
+ */
 
 /** One lighting pass's timer: `begin` and `end` around the pass, `samples` for what it measured. */
 internal class LightingGpuTimer(private val renderer: Renderer,queueFamily: Int=renderer.graphQueue.queueFamilyIndex) : AutoCloseable {

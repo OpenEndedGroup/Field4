@@ -29,7 +29,7 @@ import kotlin.reflect.jvm.isAccessible
  * patch.graphPaths("**").where { (it.get() as? Float ?: 0f) > 0.5f }
  * ```
  *
- * This package is deliberately domain-agnostic: it knows nothing about audio, and in
+ * This package is domain-agnostic: it knows nothing about audio, and in
  * particular it does not touch the runloop. The synth-specific parameter head (`ParamSet`,
  * modulation, supplier binding) lives in `afield.audio.synth` and is layered on top via
  * `PathSet.params()`.
@@ -65,28 +65,22 @@ data class LiveGraphEdge(
     constructor(name: String, getter: () -> Any?) : this(name, getter, null)
 }
 
-/**
- * Traversal policy.
- *
- * @param includePrivate reflect over private properties too, forcing accessibility.
- * @param includeNulls retained for source compatibility and now honoured: when false,
- *   edges whose current value is null are recorded but not returned. (It was previously
- *   read only by an unreachable code path, so nulls always appeared.)
- * @param maxDepth how many edges deep to expand.
- * @param maxRefs hard bound on collected refs; the walk stops cleanly once reached, which
- *   keeps a densely-shared DAG from blowing up now that aliases are expanded.
- * @param descendInto refines the "should I open this value up?" policy. It receives the
- *   value *and* the default decision, so a caller can prune without silently losing the
- *   built-in guards — `{ value, byDefault -> byDefault && value !is Osc }` — or deliberately
- *   opt into something the default refuses — `{ value, byDefault -> byDefault || value is String }`.
- *   Taking the default as an argument is what stops a one-line prune from accidentally
- *   reflecting into `String` and reporting `name/length`.
- */
+/** Traversal policy. */
 data class GraphWalkOptions(
+    /** Reflect over private properties too, forcing accessibility on each one. */
     val includePrivate: Boolean = false,
+    /** With this off, a slot whose current value is null is walked through but left out of the result. */
     val includeNulls: Boolean = true,
+    /** How many edges deep to expand. */
     val maxDepth: Int = 32,
+    /** Hard bound on collected refs; the walk stops cleanly once it is reached, rather than failing. */
     val maxRefs: Int = 200_000,
+    /**
+     * Refines the "should I open this value up?" policy. It receives the value *and* the default
+     * decision, so `{ value, byDefault -> byDefault && value !is Osc }` tightens the default rather
+     * than replacing it. Taking the default as an argument is how a one-line prune avoids reflecting
+     * into `String` and reporting `name/length`.
+     */
     val descendInto: ((value: Any, byDefault: Boolean) -> Boolean)? = null
 )
 

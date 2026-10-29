@@ -23,9 +23,9 @@ import kotlin.math.*
  * construction, indexing and packing are all checkable headlessly, which is what
  * `PathTraceTestMain` does.
  *
- * `PathTraceMaterial` is linear-light throughout — no sRGB anywhere in the struct — and carries
+ * `PathTraceMaterial` is linear-light throughout, with no sRGB anywhere in the struct, and carries
  * the transmission parameters as well as the metallic-roughness ones, so glass is a material rather
- * than a separate path. Its one geometric precondition is worth reading before debugging a dark
+ * than a separate path. It carries one geometric precondition, and breaking it shows up as a dark
  * result: solid (non-thin-walled) glass assumes closed, outward-wound, non-overlapping meshes,
  * because the attenuation distance is measured between surface crossings.
  *
@@ -33,8 +33,8 @@ import kotlin.math.*
  * distribution the sampler draws from, which is why an environment is a snapshot like the geometry
  * is: changing it changes a precomputed table. `PathTraceTexture` decodes through stb_image and
  * TinyEXR and keeps its pixels linear, sRGB-decoding base colour while leaving
- * metallic-roughness alone — the asymmetry glTF requires, and the one
- * `PathTraceGltfGpuSmoke` checks against known byte values.
+ * metallic-roughness alone. That asymmetry is what glTF requires, and `PathTraceGltfGpuSmoke`
+ * checks it against known byte values.
  */
 
 /** Linear-light surface materials. Solid glass requires closed, outward-wound, non-overlapping meshes. */

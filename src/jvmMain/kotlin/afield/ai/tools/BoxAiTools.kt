@@ -26,8 +26,6 @@ import kotlin.reflect.jvm.javaType
 import kotlin.reflect.typeOf
 
 /**
- * # Box-authored AI tools
- *
  * A box contributes tools to its document's AI agents with `aiTool(name) { }`, an idempotent
  * Kotlin DSL that serves both the in-app chat and external MCP agents. A tool is a
  * `suspend` block that runs with the box in scope, can span many frames, and has its

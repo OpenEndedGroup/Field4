@@ -64,16 +64,15 @@ import kotlin.math.sqrt
  * Values are conventionally in `0..1` for colour data, but nothing enforces that — gradient,
  * Laplacian and flow images are signed and unbounded, and [toBufferedImage] clamps only at the
  * moment of conversion.
- *
- * @property width  pixels across, >= 1
- * @property height pixels down, >= 1
- * @property channels 1 (scalar/gray), 3 (RGB) or 4 (RGBA)
- * @property data interleaved samples, `data[(y * width + x) * channels + c]`
  */
 class Img(
+    /** Pixels across; at least 1. */
     val width: Int,
+    /** Pixels down; at least 1. */
     val height: Int,
+    /** 1 (scalar/gray), 3 (RGB) or 4 (RGBA); the constructor rejects anything else. */
     val channels: Int,
+    /** Interleaved samples, `data[(y * width + x) * channels + c]`. */
     val data: FloatArray
 ) : ToHTML {
 

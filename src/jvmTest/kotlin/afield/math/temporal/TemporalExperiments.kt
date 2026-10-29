@@ -119,12 +119,12 @@ class TemporalExperiments {
             for (rw in listOf(3.0, 6.0)) if (!skipOracle) {
                 val p = Improviser(o, seed = 1, jumpProbability = 0.15, reuseWeight = rw).take(samples)
                 measure(fixture, "Oracle-reuse${rw.toInt()}", p.output, "segments %d reuse %.2f coverage %.2f joinRough %.2f accelKS %.3f".format(
-                    p.segments.size, p.reuse(), p.coverage(fixture.length), joinRoughness(fixture, p), accelKs(fixture, p.output)))
+                    p.segments.size, p.sourceReuse(), p.coverage(fixture.length), joinRoughness(fixture, p), accelKs(fixture, p.output)))
             }
             for (policy in if (skipOracle) emptyList() else Policy.entries) {
                 val p = Improviser(o, seed = 1, policy = policy, jumpProbability = 0.15).take(samples)
                 measure(fixture, policy.name, p.output, "segments %d reuse %.2f coverage %.2f joinRough %.2f accelKS %.3f maxCorr %.2f holds %d".format(
-                    p.segments.size, p.reuse(), p.coverage(fixture.length), joinRoughness(fixture, p), accelKs(fixture, p.output), p.correction.max(), p.segments.count { it.reason == Reason.Hold }))
+                    p.segments.size, p.sourceReuse(), p.coverage(fixture.length), joinRoughness(fixture, p), accelKs(fixture, p.output), p.correction.max(), p.segments.count { it.reason == Reason.Hold }))
                 val big = p.segments.filter { it.correction > 0.5 }.groupingBy { it.reason }.eachCount()
                 if (big.isNotEmpty()) rows.add("${fixture.name}\t${policy.name}\tcorrections > 0.5 by reason: $big")
                 save("${fixture.name}-${policy.name}-source", Trajectory.of(rate, "source" to p.source.toList()))
@@ -150,7 +150,7 @@ class TemporalExperiments {
                         val imp = Improviser(o, seed = 1, jumpProbability = 0.15, judge = judge, judgeMode = mode, judgeWeight = k, vetoRatio = k, reuseWeight = reuseWeight)
                         val hp = imp.take(samples)
                         measure(fixture, "Oracle+$short-$label", hp.output, "segments %d reuse %.2f coverage %.2f joinRough %.2f accelKS %.3f judged %d changed %d vetoed %d stayed %d".format(
-                            hp.segments.size, hp.reuse(), hp.coverage(fixture.length), joinRoughness(fixture, hp), accelKs(fixture, hp.output),
+                            hp.segments.size, hp.sourceReuse(), hp.coverage(fixture.length), joinRoughness(fixture, hp), accelKs(fixture, hp.output),
                             imp.judgedDecisions, imp.judgeChanged, imp.judgeVetoed, imp.judgeStayed))
                         save("${fixture.name}-Oracle+$short-$label-source", Trajectory.of(rate, "source" to hp.source.toList()))
                     }

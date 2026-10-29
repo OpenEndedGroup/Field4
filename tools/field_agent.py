@@ -1,9 +1,11 @@
-"""Which coding agent Field's tools hand work to: `claude` (Claude Code) or `codex` (Codex CLI).
+"""Which coding agent Field's tools hand work to: `claude` (Claude Code), `codex` (Codex CLI), or `field`
+(Field's own AI4, through `tools/field_repo_agent.py`: repo tools confined to the working directory, no shell;
+with edits, a bounded allow-list of named commands to reproduce and confirm a fix).
 
 The landing queue's fixer and its `huh?`/`bouncy?`, the docs-notes revision pass, and the
 docs-pass page's terminals all ask here. The choice is, first match:
 
-1. `FIELD_AGENT=claude|codex` in the environment;
+1. `FIELD_AGENT=claude|codex|field` in the environment;
 2. the first word of `~/.afield/agent` (one machine-wide file, so a launchd lander that never sees
    your shell's environment agrees with it);
 3. `claude`.
@@ -18,7 +20,8 @@ import os
 import shutil
 from pathlib import Path
 
-AGENTS = ("claude", "codex")
+AGENTS = ("claude", "codex", "field")
+REPO_AGENT = Path(__file__).resolve().parent / "field_repo_agent.py"
 DEFAULT = "claude"
 AGENT_FILE = Path.home() / ".afield" / "agent"
 INSTALL_DIRS = (Path.home() / ".local" / "bin", Path.home() / ".claude" / "local", Path("/opt/homebrew/bin"), Path("/usr/local/bin"))
@@ -54,6 +57,14 @@ def headless_argv(agent: str | None = None, *, edits: bool = False) -> list[str]
     the agent is not installed. With [edits] it may edit files and run commands in its working
     directory without asking: there is nobody to ask."""
     agent = agent or configured_agent()
+    if agent == "field":
+        # AI4 in a running (or backdoor-started) Field; it reads the prompt on stdin like the others.
+        # Confined to the cwd: it reads everything there and, with [edits], writes everything but .git
+        # and may run the fixer's named commands (scoped Gradle tasks, tools/test_*.py, tools/check_*.py,
+        # read-only git; RepoCommandTools.kt). A caller that knows which files a job owns passes
+        # narrower globs to field_repo_agent itself.
+        import sys
+        return [sys.executable, str(REPO_AGENT), "--root", "."] + (["--write", "**", "--run", "fixer"] if edits else [])
     exe = find_executable(agent)
     if exe is None:
         return None
@@ -71,4 +82,4 @@ def headless_argv(agent: str | None = None, *, edits: bool = False) -> list[str]
 def describe(agent: str | None = None) -> str:
     """`claude -p` or `codex exec`: how the tools say who they asked."""
     agent = agent or configured_agent()
-    return "codex exec" if agent == "codex" else "claude -p"
+    return {"codex": "codex exec", "field": "Field AI4"}.get(agent, "claude -p")

@@ -1,6 +1,6 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
 import afield.graphics.render.neural.OpenDlssNrStudy
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.lab by Inheritance<OpenDlssNrStudy>() /**/
 val Once.lab by Onceing<OpenDlssNrStudy>() /**/
 val Why.lab by Whying() /**/

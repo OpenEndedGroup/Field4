@@ -262,8 +262,8 @@ object VisionPoseLatency {
     }
 
     /**
-     * Drops every span, ping and device report, and forgets the clock offset. For tests, and before
-     * a measurement run.
+     * Clears every span, ping and device report, and the clock-offset estimate with them, so a
+     * measurement run starts from nothing. The offset has to be re-acquired after this.
      */
     fun reset() {
         spans.clear()

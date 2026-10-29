@@ -196,6 +196,10 @@ SIDECAR_START_DEADLINE_SEC = float(os.environ.get("AFIELD_DOCS_SIDECAR_START_TIM
 # serving (`(AA→K1: <why>)`) -- only the latter is a defect in a capture.
 COMPLETION_AA_FALLBACK_RE = re.compile(r"^.*completion backend=K1.*\(AA→K1:.*$", re.MULTILINE)
 COMPLETION_BACKEND_RE = re.compile(r"completion backend=(\w+)")
+# How long a completion capture waits for Field's `completion backend=` line to reach the log file.
+COMPLETION_LOG_SETTLE_SEC = 5.0
+# The docs build's runloop-watchdog interrupt (BoxInterrupt.Watchdog), 5 minutes; Field's default is 30 s.
+DOCS_RUNLOOP_WATCHDOG_INTERRUPT_MS = 300_000
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 RUNNER_MODE_ALIASES = {
     "incremental": "incremental",
@@ -941,6 +945,29 @@ class CacheEntry:
     metadata: dict[str, Any] | None = None
 
 
+def asset_fingerprint(path: Path, previous: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    """Size, mtime and sha256 of a cached asset, or None when it is gone.
+
+    A cache entry certifies the bytes its capture published. Recording them lets a later run tell
+    that the file at that path is no longer those bytes (a `git stash`, a checkout of `main`'s
+    copy, a hand edit) and capture again, instead of passing the stale file as a cache hit. The
+    hash is reused while size and mtime are unchanged, so saving the cache does not reread 1 GB.
+    """
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    if not path.is_file():
+        return None
+    if previous and previous.get("size") == stat.st_size and previous.get("mtime_ns") == stat.st_mtime_ns:
+        return dict(previous)
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return {"size": stat.st_size, "mtime_ns": stat.st_mtime_ns, "sha256": digest.hexdigest()}
+
+
 class RunnerState:
     def __init__(self, config: Any) -> None:
         self.config = config
@@ -1261,8 +1288,16 @@ class RunnerState:
 
         Only an `AA→K1` fallback fails. A build that deliberately selects K1
         (`-Dafield.kotlin.completion=k1`) logs `(backend=k1)` and is left alone.
+
+        The backend line can reach the log file after the drive has returned -- in a full build it
+        landed behind the next drive's code -- so the slice is re-read for up to
+        COMPLETION_LOG_SETTLE_SEC before concluding no completion was requested.
         """
         slice_text = self._shared_log_since(log_offset)
+        deadline = time.monotonic() + COMPLETION_LOG_SETTLE_SEC
+        while not COMPLETION_BACKEND_RE.search(slice_text) and time.monotonic() < deadline:
+            time.sleep(0.2)
+            slice_text = self._shared_log_since(log_offset)
         fallbacks = COMPLETION_AA_FALLBACK_RE.findall(slice_text)
         if fallbacks:
             # Field's log is written for a terminal, so the channel tag arrives wrapped in ANSI. Strip it:
@@ -1664,7 +1699,10 @@ class RunnerState:
         extra_env = {
             "AFIELD_DOCS_ANNOTATIONS_STORE": str(
                 self.repo_root / "build" / "field-docs-runner-annotations.json"
-            )
+            ),
+            # The runloop watchdog interrupts box code that holds the runloop this long. Docs examples
+            # may compute for a while in their body, and each capture already has its own timeout.
+            "AFIELD_RUNLOOP_WATCHDOG_INTERRUPT_MS": str(DOCS_RUNLOOP_WATCHDOG_INTERRUPT_MS),
         }
         committed_drafts = self.repo_root / "tools" / "docs_runner_inputs" / "generated_completion_docs.json"
         if committed_drafts.is_file():
@@ -2191,6 +2229,8 @@ class RunnerState:
 
         cache: dict[str, str] = {}
         metadata: dict[str, dict[str, Any]] = {}
+        fingerprints: dict[str, dict[str, Any]] = {}
+        dropped = 0
         for key, value in entries.items():
             cache_key = str(key)
             if isinstance(value, str):
@@ -2201,10 +2241,20 @@ class RunnerState:
             digest = value.get("digest")
             if not isinstance(digest, str):
                 continue
+            recorded = value.get("asset")
+            if isinstance(recorded, dict):
+                current = asset_fingerprint(Path(cache_key), recorded)
+                if current is None or current.get("sha256") != recorded.get("sha256"):
+                    dropped += 1
+                    continue
+                fingerprints[cache_key] = current
             cache[cache_key] = digest
             entry_metadata = value.get("metadata")
             if isinstance(entry_metadata, dict):
                 metadata[cache_key] = entry_metadata
+        if dropped:
+            LOG.info("Field docs runner cache: %d entries dropped, their asset is no longer the bytes they certified", dropped)
+        self._asset_fingerprints = fingerprints
         return cache, metadata
 
     def save(self) -> None:
@@ -2213,15 +2263,19 @@ class RunnerState:
         if not self.dirty:
             return
         entries: dict[str, Any] = {}
+        fingerprints = getattr(self, "_asset_fingerprints", {})
         for cache_key, digest in self.cache.items():
             metadata = self.cache_metadata.get(cache_key)
-            if metadata is None:
+            asset = asset_fingerprint(Path(cache_key), fingerprints.get(cache_key))
+            if metadata is None and asset is None:
                 entries[cache_key] = digest
             else:
-                entries[cache_key] = {
-                    "digest": digest,
-                    "metadata": metadata,
-                }
+                entries[cache_key] = {"digest": digest}
+                if metadata is not None:
+                    entries[cache_key]["metadata"] = metadata
+                if asset is not None:
+                    entries[cache_key]["asset"] = fingerprints[cache_key] = asset
+        self._asset_fingerprints = fingerprints
         payload = {
             "version": SCRIPT_VERSION,
             "mode": self.runner_mode,

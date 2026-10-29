@@ -606,16 +606,3 @@ Memory is the library's own `malloc`, via its `manifold_alloc_*` / `manifold_del
 than an FFM `Arena`. A confined `Arena` can only be used from the thread that made it, and a `Solid`
 built in a box is routinely read from the runloop thread; a shared one costs a thread handshake to
 close. `malloc` has neither problem, and the `Cleaner` sits behind it.
-
-??? aside "Agents: writing FFM descriptors by hand"
-    Nothing checks them. A `size_t` declared as an `int`, a struct return declared as a pointer, an
-    argument in the wrong position — all of them compile, link, and return *something*. The failure
-    mode is a plausible wrong number, not an error.
-
-    Two places in this API where `manifoldc.h` is the only warning. `manifold_slice` and
-    `manifold_project` return `ManifoldPolygons*`, **not** `ManifoldCrossSection*`; since every
-    constructor here builds into memory the caller allocated, handing `slice` a cross-section-sized
-    buffer constructs the wrong object in it, and the first read aborts the process inside libc++
-    with `mutex lock failed` and no Java stack at all. And `manifold_ray_cast` reports its hit
-    distance as a **fraction of the origin-to-end segment**, so a hit 4 units away on a ray of
-    length `1e4` arrives as `4.0e-4`.

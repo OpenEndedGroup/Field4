@@ -10,22 +10,43 @@ import kotlin.math.roundToInt
 import kotlin.random.Random
 
 /**
- * How the GA demo breeds [ColorRpn] programs. The defaults are the demo's.
+ * The breeding rules for [ColorRpn] programs: what a child of two programs is, and the eight
+ * mutations that make one.
  *
- * @property mutationRate scales how many mutations a child gets: about `mutationRate × targetLength
- *   × (0.45..0.85)`, and at least one with probability `mutationRate × 2.5` when that rounds to none
- * @property targetLength the length a child is nudged toward, give or take two tokens (4..96)
- * @property seedSplice the chance that a child, before mutating, takes a slice of one to three
- *   tokens from the other parent
- * @property weights the relative frequency of each mutation, by the names [ColorRpnGenome.mutations] uses
- * @property nudgeLength whether a child is grown or trimmed toward [targetLength] after mutating;
- *   `false` leaves it as long as its mutations made it
+ * [ColorRpnBreeding] is the knobs, with the madp GA demo's values as the defaults: how many
+ * mutations a child gets, the length it is nudged toward, the chance of splicing a slice out of
+ * the other parent, and how often each of the eight mutations is chosen. [ColorRpnGenome] applies
+ * them, and because it implements [GenomeOps] the same genome drives both halves of
+ * `afield.study.search`: the picture grid of `EyeEvolution.kt`, where you pick the parents, and
+ * the scored drivers of `PopulationSearch.kt`, where an [Objective] picks them.
+ *
+ * A mutation can produce a program that makes no sense, and nothing rejects it. [ColorRpn] reads
+ * any token sequence as some picture, which is what lets a search of this space run without a
+ * validity test.
+ */
+
+/**
+ * How the GA demo breeds [ColorRpn] programs. The defaults are the demo's.
  */
 data class ColorRpnBreeding(
+    /**
+     * Scales how many mutations a child gets: about `mutationRate × targetLength × (0.45..0.85)`,
+     * and at least one with probability `mutationRate × 2.5` when that rounds to none.
+     */
     val mutationRate: Double = 0.12,
+    /** The length a child is nudged toward, give or take two tokens (4..96). */
     val targetLength: Int = 18,
+    /**
+     * The chance that a child, before mutating, takes a slice of one to three tokens from the
+     * other parent.
+     */
     val seedSplice: Double = 0.42,
+    /** The relative frequency of each mutation, by the names [ColorRpnGenome.mutations] uses. */
     val weights: Map<String, Double> = DEFAULT_WEIGHTS,
+    /**
+     * Whether a child is grown or trimmed toward [targetLength] after mutating; `false` leaves it
+     * as long as its mutations made it.
+     */
     val nudgeLength: Boolean = true,
 ) {
     companion object {
@@ -55,14 +76,26 @@ data class ColorRpnBreeding(
  */
 class ColorRpnGenome(val breeding: ColorRpnBreeding = ColorRpnBreeding()) : GenomeOps<List<String>> {
 
+    /** A [randomProgram] of [ColorRpnBreeding.targetLength] tokens. */
     override fun random(rng: Random): List<String> = randomProgram(breeding.targetLength, rng)
 
+    /**
+     * One [Variation] per mutation named in [ColorRpnBreeding.weights], each applying only that
+     * mutation. The weights are not consulted here — `evolve` picks uniformly among the
+     * operators — so they shape [crossover]'s children and not a mutation-only search.
+     */
     override val mutations: List<Variation<List<String>>> = breeding.weights.keys.map { name ->
         Variation(name) { g: List<String>, rng: Random -> g.toMutableList().also { apply(name, it, g, rng) } }
     }
 
+    /** The tokens of [child], dropping the mutation names it also reports. */
     override fun crossover(a: List<String>, b: List<String>, rng: Random): List<String> = child(a, b, rng).tokens
 
+    /**
+     * The genome compiled and renormalised, so two token lists that draw the same picture share one
+     * evaluation. Tokens the language does not know are dropped by compiling, so they never
+     * distinguish two genomes.
+     */
     override fun signature(g: List<String>): String = ColorRpn.compile(g.joinToString(" ")).normalized
 
     /** A child and the names of the mutations that made it (the demo's tile caption, e.g. `seed+num+op`). */

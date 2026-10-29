@@ -80,44 +80,108 @@ fun loadParticleVideo(path: String): ParticleVideo = loadParticleVideo(File(path
 /** Loads and validates complete particle lifecycles, indexing samples by frame and identity. */
 fun loadParticleVideo(file: File): ParticleVideo = ParticleVideo.read(file)
 
-/** Sample and retirement flags. Several reasons can apply to the same sample or retirement. */
+/**
+ * Sample and retirement flags. Several reasons can apply to the same sample or retirement, and the
+ * four conditions a sample can carry retire the particle once they have held for the run's grace
+ * frames, which is why they appear in [ParticleTrack.endFlags] as well.
+ */
 object ParticleFlags {
+    /** The first sample of a trajectory. Its velocity is zero, there being no earlier position. */
     const val BORN = 1
+    /** The flow estimate for this frame scored too low to use, so the particle held its position
+     * with zero velocity rather than jumping to a bad match. */
     const val UNCERTAIN = 2
+    /** An older particle is nearer than the birth spacing. Of a crowded pair only the younger one
+     * carries this, so the flags count encounters rather than particles. */
     const val CROWDED = 4
+    /** The colour under the particle has drifted further from its birth colour than the run allows. */
     const val COLOR = 8
+    /** The particle is moving slower than the still-speed threshold, which is off unless set. */
     const val STILL = 16
+    /** A retirement: the particle reached the edge of the image. */
     const val LOST = 32
+    /** A retirement into a nearby identity that has lived at least as long, which `mergedInto`
+     * names; the younger of the two is always the one that goes. */
     const val MERGED = 64
+    /** A retirement at the end of the clip, which says nothing about how the tracking went. */
     const val EOF = 128
 }
 
 /** One identity at one processed video frame. Position and velocity use pixels, with y down. */
 data class ParticleSample(
-    val id: Long, val frame: Int, val flags: Int,
-    val x: Float, val y: Float, val vx: Float, val vy: Float,
-    val red: Float, val green: Float, val blue: Float,
-    val confidence: Float, val forwardBackwardError: Float, val residual: Float,
-    val texture: Float, val colorDelta: Float,
+    /** The identity this sample belongs to, stable for as long as the particle lives. */
+    val id: Long,
+    /** The processed frame it was taken on, counted from zero. */
+    val frame: Int,
+    /** The [ParticleFlags] bits set for this sample. */
+    val flags: Int,
+    /** Position across the processed image, in pixels. */
+    val x: Float,
+    /** Position down the processed image, in pixels, measured from the top. */
+    val y: Float,
+    /** Horizontal displacement since the previous frame, in pixels. */
+    val vx: Float,
+    /** Vertical displacement since the previous frame, in pixels. */
+    val vy: Float,
+    /** Red under the particle on this frame, 0 to 1, as the video stores it rather than linearised. */
+    val red: Float,
+    /** Green under the particle on this frame, 0 to 1. */
+    val green: Float,
+    /** Blue under the particle on this frame, 0 to 1. */
+    val blue: Float,
+    /** How much the estimator trusts this match, 0 to 1: a heuristic built from
+     * [ParticleSample.forwardBackwardError], [ParticleSample.residual] and [ParticleSample.texture] rather than a calibrated probability. Below
+     * the run's threshold the sample is marked uncertain. */
+    val confidence: Float,
+    /** How far tracking forward and then back again misses the starting point, in pixels. */
+    val forwardBackwardError: Float,
+    /** Brightness difference between the two matched windows, as a root mean square over 0 to 1. */
+    val residual: Float,
+    /** How much structure the window had to match on, as the weaker gradient direction's strength
+     * per pixel; flat regions score near zero, and the neural tracker records -1 for all of them. */
+    val texture: Float,
+    /** Distance from the particle's birth colour, by the same measure the colour limit uses. */
+    val colorDelta: Float,
 ) {
     /** Fresh Field vector; mutating it does not modify the mapped track data. */
     val position: Vec3 get() = vec(x, y, 0)
     /** Displacement per processed frame, not pixels per second. Birth and uncertain samples have zero velocity. */
     val velocity: Vec3 get() = vec(vx, vy, 0)
+    /** Whether this sample held its position instead of following a flow estimate. */
     val uncertain: Boolean get() = flags and ParticleFlags.UNCERTAIN != 0
 }
 
 /** A committed trajectory, including its retirement reason and optional surviving merge identity. */
 data class ParticleTrack(
-    val id: Long, val firstFrame: Int, val lastFrame: Int, val samples: Int,
-    val endFrame: Int, val endFlags: Int, val mergedInto: Long?,
+    /** The identity, which no later particle reuses. */
+    val id: Long,
+    /** The frame the particle was born on. */
+    val firstFrame: Int,
+    /** The frame of its last recorded sample. */
+    val lastFrame: Int,
+    /** How many samples the file holds for it, never fewer than the run's minimum track length. */
+    val samples: Int,
+    /** The frame its retirement was recorded on, which is [ParticleTrack.lastFrame] or a later frame. */
+    val endFrame: Int,
+    /** Why it was retired, as [ParticleFlags] bits. */
+    val endFlags: Int,
+    /** The identity it was merged into, or null if it ended some other way. */
+    val mergedInto: Long?,
 )
 
 /** Ways to color the same geometry: source RGB, deterministic identity, or heuristic confidence. */
 enum class ParticleColor { SAMPLED, IDENTITY, CONFIDENCE }
 
 /** A frame of sampled particles. Retired and newly born identities can both appear at a transition. */
-data class ParticleFrame(val index: Int, val seconds: Double, val samples: List<ParticleSample>) {
+data class ParticleFrame(
+    /** The recorded frame this came from, and the earlier of the two when samples are interpolated. */
+    val index: Int,
+    /** Movie time in seconds: the scrubbed time for an interpolated frame, [ParticleFrame.index] over the frame
+     * rate for a recorded one. */
+    val seconds: Double,
+    /** The particles present, in the order the file records them. */
+    val samples: List<ParticleSample>
+) {
     /** Point geometry for node-color-aware drawing, including Vulkan. Use [ParticleVideo.image] for 2D output. */
     fun points(scale: Double = 1.0, pointSize: Double = 2.0, color: ParticleColor = ParticleColor.SAMPLED): FLine {
         require(scale.isFinite() && scale > 0 && pointSize.isFinite() && pointSize > 0)
@@ -155,12 +219,24 @@ internal fun particleColor(sample: ParticleSample, mode: ParticleColor): Vec4 = 
  * consistency heuristic, not a calibrated probability; neural samples use texture = -1.
  */
 class ParticleVideo private constructor(
+    /** The mapped file, as an absolute path. */
     val file: File,
-    val width: Int, val height: Int, val fps: Double, val frameCount: Int,
-    val seed: Long, val recordCount: Long,
+    /** Width of the processed image, which is the frame these coordinates are in. */
+    val width: Int,
+    /** Height of the processed image. */
+    val height: Int,
+    /** Processed frames per second, which is what turns a frame index into movie time. */
+    val fps: Double,
+    /** How many frames were processed, whatever the source clip's own length. */
+    val frameCount: Int,
+    /** The seed the run was given, recorded so the same particles can be laid down again. */
+    val seed: Long,
+    /** Samples and retirements in the file together, which is not a count of particles. */
+    val recordCount: Long,
     private val data: ByteBuffer,
     private val byFrame: Array<IntArray>,
     private val byTrack: Map<Long, IntArray>,
+    /** Every committed trajectory, in the order the particles were retired. */
     val tracks: List<ParticleTrack>,
 ) {
     /** Playback duration including the last frame's display interval. */

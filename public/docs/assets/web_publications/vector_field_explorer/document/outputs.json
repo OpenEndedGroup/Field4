@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T20:53:21.204Z",
+  "documentName": "vector_field_explorer",
+  "outputs": [
+    {
+      "uid": "vector_field_swirls",
+      "channel": "controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 469,
+      "height": 60,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "vector_field_swirls",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 632,
+      "height": 500,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "vector_field_leaf",
+      "channel": "controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 469,
+      "height": 60,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "vector_field_leaf",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 368,
+      "height": 350,
+      "path": "outputs/3.html"
+    }
+  ]
+}

@@ -59,7 +59,7 @@ import kotlin.reflect.KType
  *
  *  * [scanForStaleClasses] is a shallow, best-effort look at what an engine is holding, so the
  *    common case — a box with a personal object in a top-level `val` — gets caught and reset up
- *    front. It is deliberately incomplete (see its own docs) and makes no attempt to be otherwise.
+ *    front. It is incomplete; its own docs list what it does not look at.
  *  * [staleLayerDiagnosis] catches what the scan missed, at the moment it actually breaks, and says
  *    so in English. Because recovery is a one-click reset rather than a debugging session, the scan
  *    does not have to be good — it only has to keep most boxes from visibly hiccuping.
@@ -116,9 +116,16 @@ data class PersonalReloadReport(
  * execution otherwise; [installPersonalReloadAction] goes through [inMain] for exactly this reason.
  */
 fun reloadPersonal(): PersonalReloadReport {
-    check(System.getProperty("afield.kit.packages").isNullOrBlank()) {
-        "This host loaded kit runtimes. Restart Field to replace their classes and native dependencies."
+    // Kit runtimes live in this layer: clean them up before it goes, start them again from the new one.
+    val kitDocuments = afield.document.workspace.KitRuntime.suspendForReload()
+    try {
+        return reloadPersonalLayer()
+    } finally {
+        afield.document.workspace.KitRuntime.resumeAfterReload(kitDocuments)
     }
+}
+
+private fun reloadPersonalLayer(): PersonalReloadReport {
     val examined = documents.values.flatMap { it.boxes.values }
         .filter { !it.getPropertyRaw("_tombstone").isTrue() }
 
@@ -193,7 +200,7 @@ private const val PEEL_LIMIT = 64
  * and of function signatures, the current value of each declaration, and one level inside any
  * container those land in.
  *
- * What it deliberately does not do:
+ * What it does not do:
  *
  *  * **Call anything.** Values come from the snapshot [KotlinContext] already holds, never from a
  *    getter — a `val x get() = …` or a `by lazy` would otherwise run user code in the middle of a

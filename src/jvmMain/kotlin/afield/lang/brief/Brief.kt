@@ -73,6 +73,12 @@ object Brief {
 // Diagnostics
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * Whether a diagnostic stops the compile.
+ *
+ * One error anywhere makes [compileBrief] throw [BriefException] with all of them; a warning rides
+ * along in [BriefProgram.diagnostics] and the program is still usable.
+ */
 enum class BriefSeverity { ERROR, WARNING }
 
 /**
@@ -84,11 +90,17 @@ enum class BriefSeverity { ERROR, WARNING }
  * from [message] so a UI can show one and not the other.
  */
 data class BriefDiagnostic(
+    /** Whether this stops the compile. */
     val severity: BriefSeverity,
+    /** 1-based line in the source as handed to [compileBrief], `#brief` tag line included. */
     val line: Int,
+    /** 1-based column of the offending text on that line. */
     val column: Int,
+    /** How many characters the offending text runs to, for underlining it. */
     val span: Int,
+    /** What is wrong, with no position in it; [format] prepends that. */
     val message: String,
+    /** What to do about it, where there is something to say. */
     val hint: String? = null,
 ) {
     /** `3:8 error: unknown line 'spien' — did you mean 'spine'?`, the form a box prints. */
@@ -99,6 +111,7 @@ data class BriefDiagnostic(
         hint?.let { append(" — ").append(it) }
     }
 
+    /** [format], so printing a diagnostic gives the located form rather than the data class one. */
     override fun toString(): String = format()
 }
 
@@ -165,6 +178,7 @@ data class BriefSpan(val line: Int, val column: Int, val length: Int)
 
 /** A name as written, with where it was written — so an unresolved name can point at itself. */
 data class BriefName(val text: String, val at: BriefSpan) {
+    /** The name as written, so a diagnostic can interpolate it without reaching for [text]. */
     override fun toString(): String = text
 }
 
@@ -178,17 +192,23 @@ enum class BriefElementKind(val noun: String) {
 
 /** A declaration statement. */
 sealed interface BriefDeclaration {
+    /** The name this statement declares, located so a redeclaration can point at the second one. */
     val name: BriefName
+
+    /** Which of the four namespaces the name goes into; each subtype fixes its own. */
     val kind: BriefElementKind
 
+    /** `point west at (0, 0)` — the one declaration that carries coordinates. `z` defaults to 0. */
     data class Point(override val name: BriefName, val x: Double, val y: Double, val z: Double) : BriefDeclaration {
         override val kind get() = BriefElementKind.POINT
     }
 
+    /** `line spine from west to east` — two endpoints, by name, resolved in the second pass. */
     data class Line(override val name: BriefName, val a: BriefName, val b: BriefName) : BriefDeclaration {
         override val kind get() = BriefElementKind.LINE
     }
 
+    /** `plane roof through a b c` — three points, by name. */
     data class Plane(
         override val name: BriefName,
         val a: BriefName,
@@ -198,6 +218,7 @@ sealed interface BriefDeclaration {
         override val kind get() = BriefElementKind.PLANE
     }
 
+    /** `panel bay corners a b c d` — four corners, by name, which resolution requires to be distinct. */
     data class Panel(
         override val name: BriefName,
         val a: BriefName,
@@ -220,8 +241,10 @@ enum class BriefComparison(val symbol: String) { EQ("="), AT_LEAST(">="), AT_MOS
  * cosine was wanted deserves to be told.
  */
 sealed interface BriefTerm {
+    /** Where the term was written, so an equation can underline the half that is wrong. */
     val at: BriefSpan
 
+    /** A number. `value` is in radians when a `deg` suffix was written, and `radians` records that. */
     data class Literal(val value: Double, val radians: Boolean, override val at: BriefSpan) : BriefTerm
 
     /** `spine.length`, `roof.area`, `ridge.z`. */
@@ -233,9 +256,10 @@ sealed interface BriefTerm {
 
 /** The relation half of a constraint statement. */
 sealed interface BriefRelation {
+    /** Where the relation starts: the first token after the strength, if one was written. */
     val at: BriefSpan
 
-    /** `left <cmp> right` — a relation over properties. */
+    /** `left (comparison) right` — a relation over properties. */
     data class Equation(
         val left: BriefTerm,
         val comparison: BriefComparison,
@@ -262,9 +286,13 @@ sealed interface BriefRelation {
 
 /** One `strength relation` line. [strengthWritten] is null when the statement took the default. */
 data class BriefConstraint(
+    /** The weight the statement's residuals carry, already resolved from the word or the number. */
     val strength: Double,
+    /** The strength exactly as typed, or null where the statement took the verb's default. */
     val strengthWritten: String?,
+    /** The relation half: an equation over properties, or a predicate over elements. */
     val relation: BriefRelation,
+    /** Where the whole statement starts, strength included. [BriefRelation.at] skips it. */
     val at: BriefSpan,
 ) {
     /** The source line, reconstructed enough for a residual report to name the statement. */
@@ -382,6 +410,7 @@ object BriefVerbs {
         "loose", "above-ground", "none", "deg",
     )
 
+    /** The ladder words, from [BriefStrength], so the parser and the editor read one list. */
     val strengths: Set<String> = BriefStrength.byWord.keys
 
     /** Everything a program may not use as a name. */
@@ -509,10 +538,15 @@ internal class BriefLexer(private val source: String) {
  * reference a property of the *resolver* rather than a special case in the grammar.
  */
 data class BriefSyntax(
+    /** The declaration statements, in source order, with nothing resolved against anything. */
     val declarations: List<BriefDeclaration>,
+    /** The `strength relation` statements, in source order. */
     val constraints: List<BriefConstraint>,
+    /** The `settle` directive, or null for the vocabulary's own default. The last one written wins. */
     val settle: BriefSettle?,
+    /** The `robust` directive, or null, which leaves the brief on plain least squares. */
     val robust: BriefRobust?,
+    /** What the parser complained about. The lexer's complaints are joined in by [compileBrief]. */
     val diagnostics: List<BriefDiagnostic>,
 )
 

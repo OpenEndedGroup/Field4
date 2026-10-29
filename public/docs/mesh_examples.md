@@ -575,7 +575,7 @@ showMeshGrid(
 | a shape from an equation | `marchingCubes(field, boundsAround(radius = r), resolution)` | Extracts the zero surface of a scalar field within the supplied bounds. Increase resolution to resolve finer geometry, at greater sampling cost. |
 | is this mesh usable? | `println(mesh.summary())` | Reports mesh counts, extent and topology measurements. Inspect it before treating imported geometry as a closed solid. |
 | a mesh from a photo or a heightfield | `img.toHeightfieldMesh(scale = 0.25)` or `heightfieldMesh(nx, nz) { x, z -> h }` | Builds a sampled height surface from image values or a function. The result is a heightfield rather than a closed volume. |
-| a lathed profile | `revolveMesh(profile, segments)` | Revolves a profile around an axis. Segment count controls angular tessellation. |
+| a lathed profile | `revolveMesh(profile, axis, segments)` | Revolves a profile around `RevolveAxis.Y` or `RevolveAxis.Z`. Segment count controls angular tessellation. |
 | a swept tube along a path | `tubeMesh(fline, radius, sides, samples)` | Sweeps a polygonal cross-section along the path. Radius sets thickness, sides sets the cross-section detail and samples sets path resolution. |
 | smooth without shrinking | `taubinSmooth(iterations = 30, lambda = 0.6, mu = -0.63)` | Alternates smoothing passes to reduce shrinkage. Compare the result with the original when feature preservation matters. |
 | more detail | `loopSubdivide(2)` | Subdivides triangle connectivity twice. This adds mesh detail and changes the surface; it does not recover detail absent from the source. |

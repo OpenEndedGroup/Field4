@@ -66,3 +66,51 @@ with the box; any exception just skips that poll.
 - Column view keeps the old column width (260px) and fixed-ish styling; no type-ahead.
 - No UI regression in `tools/run_ui_regressions.py` yet; `window.inspectorTreeState()`,
   `window.inspectorColumnsState()` and `window.logsEmbedState()` exist as probes for one.
+
+## Renderer browsing (2026-10-27)
+
+`registerRendererBrowsingAdapters()` (`rendererBrowsing.kt`) is now called from
+`installInspectorHandler`, so `column("r", renderer)` / `tree("r", renderer)` open a Renderer as
+targets in recording order (preTargets, modules, meshModules, others), modules with parameters,
+`shaders` (stage -> source), uniforms/texture bindings and meshes, plus `cpu` (CPUSpan p1..p99).
+Facts that cost time:
+
+- The inspector shows `html()` only for leaves. A Browsable with a `dir()` never shows its card, so
+  every adapter is registered through `reg<T>` / `withSummaryRow`, which prepends a `summary` leaf
+  row holding the card; an empty `dir()` becomes a leaf.
+- The removed Map/Iterable adapters were dead (the inspector pages maps/iterables before adapters).
+- Thread ownership: `dir()`/`html()` run inside `Inspector.handle`, which runs `inMain`, the same
+  Runloop thread as the frame record/submit. `version()` runs on the poll timer and reads only
+  scalars; frame-counter versions are divided by `LIVE_FRAMES` (60) so cards refresh about 1 Hz.
+- `browser.html` `reopenNode` used to clear every column right of a changed node, so a node whose
+  version moves every second (the renderer root) folded the reader's path each second. It now
+  keeps them while the selected row is still listed.
+- `column(..., width = px, open = "a/b/c")`: a pixel panel width, and a path opened on load.
+  `open` exists because a docs `capture="ui"` drive under `graphics-context=true` could not get
+  inspector replies during `ui.pause` (columns stayed empty); opening during the setup
+  transcript's `wait` works. Root-caused 2026-10-28: replies were never lost. The same commit's
+  `reopenNode` fix was the cause: before it, the renderer root's version tick (about 1 Hz) folded
+  every column right of the root. Measured through a `drive` under a live renderer: with the old
+  `reopenNode` restored, a clicked `render` column was there 250 ms after the click and gone 3 s
+  later; with the fix, it stays. Non-graphics values and a reloaded iframe answered during
+  `ui.pause` either way. `open=` is still useful but is not a workaround.
+- Demo: `dev_docs/agents/transcripts/renderer_browsing.yaml`; capture:
+  `docs_capture/renderer_column.yaml` -> `visualizers.md#browsing-the-renderer`.
+
+## Registration and ordering (2026-10-28)
+
+- Every adapter registration goes through `registerAllBrowsingAdapters()` (`browsing.kt`), called by
+  `installInspectorHandler`. `registerAssimpBrowsingAdapters()` had never been called, so an
+  `AIScene`, `GltfModel`, `MeshInstance` or `TRS` browsed by reflection. `InspectorTest` scans
+  `src/jvmMain` for `fun register*BrowsingAdapters(` and fails on one that is not called from
+  there. Demo: `dev_docs/agents/transcripts/assimp_browsing.yaml`.
+- Output panels came out in different orders, and a burst of `display()` lost panels. There were
+  three causes in `sendWithOutputBackPressure` (`Server.kt`): one `GlobalScope.launch` per frame,
+  so frames to one socket raced each other; a frame that got a slot went ahead of older buffered
+  frames; and the 4-deep rolling buffer evicted `set-output` frames just as it evicts `println` lines.
+  Now each session sends FIFO (`OrderedSessionSender`). A frame joins the buffer tail and the head
+  drains, under the pressure lock. A `set-output` replaces its own panel's buffered frame and is
+  never evicted. Probe: 6 boxes each running `display()` on 12 channels read `abcdefghijkl` every
+  time (two runs). With only the FIFO sender, the same probe gave `abcdefghikl`.
+- Renderer column capture: the panel was 1700 px wide but its box sat at x = 380 in a
+  1900 px viewport, so the clip lost the card on the right. The box now sits at x = 40, under the triangle.

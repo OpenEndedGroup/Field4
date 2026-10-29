@@ -70,6 +70,11 @@ expect:
  *    Y, with Z1 to Z4 covering the name-based forms that reach the same path.
  * 5. **A statement-level call to a function with no `callableId`**: a local function, or a member
  *    of a local or anonymous class, which Wither's IR pass has to tolerate. Cases LF1 to LF9.
+ * 6. **A class or object that reaches the box receiver**, such as
+ *    `class C { fun g() { println("hi") } }` -- a bare `println` or `display` is a member of the box.
+ *    The REPL lowering makes no class capturing, so the read had no snippet `this` and crashed with
+ *    "Unexpected script transformation state"; the fork now reads the snippet's own instance from the
+ *    REPL state. Cases CR1 to CR6; CR6 constructs the class from a later snippet.
  *
  * One case is still open: a declaration from an earlier snippet can shadow a later one of the
  * same name, and the test records that behaviour rather than asserting a fix.
@@ -606,6 +611,21 @@ object ReplSnippetDeclarationsSmokeTest {
             """.trimIndent(),
             expected = "= 42"
         )
+
+        println("-- a class or object that reaches the box receiver --")
+        case("CR1 println inside a class member", null,
+            "class C { fun g(): Int { println(\"from C\"); return 42 } }\nC().g()", expected = "42")
+        case("CR2 display inside a class member", null,
+            "class C { fun g(): Int { display(\"from C\"); return 42 } }\nC().g()", expected = "42")
+        case("CR3 a lambda property of a class", null,
+            "class C { val f = { println(\"from f\"); 42 } }\nC().f()", expected = "42")
+        case("CR4 an object", null,
+            "object O { fun g(): Int { println(\"from O\"); return 42 } }\nO.g()", expected = "42")
+        case("CR5 the box's own property, read inside a class", null,
+            "class C { fun g() = name == thisBoxName }\nval thisBoxName = name\nC().g()", expected = "true")
+        case("CR6 a class declared in one snippet, constructed in the next",
+            "class C(val n: Int) { fun g(): Int { println(\"from C\"); return n } }",
+            "C(42).g()", expected = "42")
 
         println("-- the real keyCamera delegate, as five published sites spell it --")
         compilesOnly(

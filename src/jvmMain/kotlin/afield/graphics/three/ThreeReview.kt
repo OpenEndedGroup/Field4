@@ -23,7 +23,8 @@ import java.security.MessageDigest
 import java.time.Instant
 import java.util.UUID
 
-/** Geometry identity for a three-dimensional view: what a review note is pinned to.
+/**
+ * Geometry identity for a three-dimensional view: what a review note is pinned to.
  *
  * A note survives anything that is only presentation. Callback and session IDs, hover colour, style
  * and label are left out of the digest, so orbiting, relighting and relaunching identical geometry
