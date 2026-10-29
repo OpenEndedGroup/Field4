@@ -5,6 +5,7 @@ import afield.app.protocol.GoJobs
 import afield.app.diagnostics.BoxOutputLog
 import afield.app.diagnostics.LatencySpans
 import afield.runtime.kotlin.SpareEngines
+import afield.runtime.kotlin.KotlinInterface2
 import afield.runtime.macros.gatherPreambleUpwards
 import afield.graphics.shader.normalizePreambleText
 import afield.app.diagnostics.ProfileOrigin
@@ -496,6 +497,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         if (previous === engine) return
         ki = engine
         if (previous != null) {
+            if (previous is KotlinInterface2 && engine is KotlinInterface2) previous.handCompletionDelegateTo(engine)
             try {
                 previous.dispose()
             } catch (t: Throwable) {

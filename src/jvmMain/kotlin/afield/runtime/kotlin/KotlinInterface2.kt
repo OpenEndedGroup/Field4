@@ -889,6 +889,48 @@ class KotlinInterface2(
     private var k1CompletionDelegatePreambleFingerprint: Int? = null
     private val k1CompletionDelegateMutex = Mutex()
 
+    /**
+     * Give this engine's K1 completion delegate to [next], the same box's next engine, instead of
+     * disposing it with this one. The delegate holds the intro and the box's preamble and nothing of
+     * this engine's history, so it serves [next] as it is (and is rebuilt there if the preamble has
+     * changed). Otherwise every run of a box built a new one: a K1 compile of the whole intro, ~130
+     * ms of CPU beside the run's own compile.
+     *
+     * Asynchronous, because the delegate is usually still being built when the box's next run
+     * replaces this engine (an edit warms completion just before the run): the handover waits for
+     * that build. Call before [dispose], which then leaves the delegate alone. The delegate is
+     * disposed instead when its build failed, or [next] has built its own meanwhile or is disposed.
+     */
+    @OptIn(DelicateCoroutinesApi::class)
+    internal fun handCompletionDelegateTo(next: KotlinInterface2) {
+        if (next === this) return
+        completionDelegateHandedOn = true
+        GlobalScope.launch(Dispatchers.Default) {
+            val (delegate, fingerprint) = k1CompletionDelegateMutex.withLock {
+                val d = k1CompletionDelegate
+                k1CompletionDelegate = null
+                if (d != null && (!k1CompletionDelegateBootstrapped || d.isDisposed)) {
+                    d.dispose()
+                    null to null
+                } else d to k1CompletionDelegatePreambleFingerprint
+            }
+            if (delegate == null) return@launch
+            val kept = next.k1CompletionDelegateMutex.withLock {
+                if (next.k1CompletionDelegate != null || next.disposed) return@withLock false
+                next.k1CompletionDelegate = delegate
+                next.k1CompletionDelegateBootstrapped = true
+                next.k1CompletionDelegatePreambleFingerprint = fingerprint
+                delegate.associatedBox = next.associatedBox
+                true
+            }
+            if (!kept) delegate.dispose()
+            lprintln("info,ki,startup", "K1 completion delegate for $filePrefix ${if (kept) "handed to the next engine" else "disposed: the next engine has its own"}")
+        }
+    }
+
+    @Volatile
+    private var completionDelegateHandedOn = false
+
     private suspend fun k1CompletionDelegate(): KotlinInterface {
         return k1CompletionDelegateMutex.withLock {
             val existing = k1CompletionDelegate
@@ -3161,8 +3203,8 @@ class KotlinInterface2(
     override fun dispose() {
         disposed = true
         if (compilationStateUsers.get() == 0) releaseCompilationState()
-        // Its own compiler project, which nothing else releases.
-        k1CompletionDelegate?.dispose()
+        // Its own compiler project, which nothing else releases, unless it is being handed on.
+        if (!completionDelegateHandedOn) k1CompletionDelegate?.dispose()
     }
 
     @Volatile
