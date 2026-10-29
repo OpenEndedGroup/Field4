@@ -41,55 +41,172 @@ import java.util.Properties
 /** A self-contained runtime package. Each starting point is an ordinary Field document directory. */
 @Serializable
 data class KitPackageManifest(
+    /** Pinned at `field.kit.package.v1`. [KitPackages.read] refuses a manifest declaring any other schema. */
     val schema: String = "field.kit.package.v1",
+    /**
+     * Names the kit wherever one is named: the `packages/<id>/` snapshot folder, the registry entry, the
+     * `kit-<id>` workspace project and `-Dafield.kit.revisions`. A letter or digit, then up to 127 more
+     * characters from `A-Za-z0-9._-`.
+     */
     val id: String,
+    /** The kit's name in Welcome's kit library, which `read` requires to be non-blank. */
     val title: String,
+    /** Prose for the library entry, and what `GET /api/kits/guide` renders when [guide] is blank. */
     val description: String = "",
+    /**
+     * The kit author's own version string. `read` requires it to be non-blank and nothing else reads it: a
+     * snapshot is keyed by [InstalledKit.revision], a hash of the package's contents.
+     */
     val version: String,
+    /**
+     * Package-relative path to a markdown file served as the kit's guide. `read` requires the file to exist
+     * when this is set, and [description] stands in when it is blank.
+     */
     val guide: String = "",
+    /**
+     * The classpath, dependency, native-library and lifecycle declarations, which reach a host through the
+     * `runtime.properties` launch profile rather than the registry, so registering a kit adds nothing to the
+     * host that registered it.
+     */
     val runtime: KitPackageRuntime = KitPackageRuntime(),
+    /**
+     * The documents this kit offers to copy, keyed by a name of the same shape as [id]. `read` requires at
+     * least one, and requires each [KitStartingPoint.path] to hold a Field document.
+     */
     val startingPoints: Map<String, KitStartingPoint> = emptyMap(),
+    /**
+     * Package-relative directory of files the kit's documents read at run time.
+     * [KitInstances.sharedResources] resolves it against the revision a document recorded, not against the
+     * newest installed one.
+     */
     val sharedResources: String = "",
+    /**
+     * Seeds `preferences.json` for the `kit-<id>` project. [KitInstances.create] writes it when it creates
+     * that project, so a later revision's changed preferences do not reach a project that already exists.
+     */
     val preferences: Map<String, String> = emptyMap(),
+    /**
+     * Set for a kit that brings its own launcher and workspace ([KitDedicatedHost]). Such a kit contributes
+     * no runtime to the calling host: [KitRuntime.start] skips it and the launch profile records an empty
+     * [KitPackageRuntime] in its place.
+     */
     val host: KitDedicatedHost? = null
 )
 
 /** Runtime declarations are consumed at the next build/restart, never injected into a running host. */
 @Serializable
 data class KitPackageRuntime(
+    /**
+     * Package-relative directories of Kotlin sources and resources compiled into the personal class layer by
+     * the next build. `read` requires each to hold a `kotlin/` or a `resources/` folder.
+     */
     val extensionDirs: List<String> = emptyList(),
+    /** Package-relative JAR files added to the extension classpath; `read` requires each to exist. */
     val jars: List<String> = emptyList(),
+    /**
+     * Maven coordinates the launcher's Gradle build resolves. `read` refuses a `SNAPSHOT` or a `latest`
+     * version, and installing refuses a set of kits asking for two versions of one `group:artifact`.
+     */
     val dependencies: List<String> = emptyList(),
+    /**
+     * Native library directories per platform, keyed as [KitPackages.platform] spells it (`macos-arm64`,
+     * `linux-x64` and so on). Only the running platform's entry is written to the launch profile, and two
+     * kits may not supply different bytes under one library filename.
+     */
     val nativeDirectories: Map<String, List<String>> = emptyMap(),
+    /**
+     * System properties the launcher passes to the host, with `${kit}` replaced by the snapshot directory.
+     * `read` rejects a key beginning `afield.kit` or naming a classpath property, and two kits may not ask
+     * for different values of one key.
+     */
     val systemProperties: Map<String, String> = emptyMap(),
+    /**
+     * Fully qualified name of a [KitLifecycle] class, instantiated from the personal class layer when the
+     * host starts. Empty leaves the kit with a lifecycle whose four methods do nothing.
+     */
     val lifecycle: String = ""
 )
 
 /** A named, versioned seed; [launch] names boxes to launch in order on first open and explicit activation. */
 @Serializable
-data class KitStartingPoint(val title: String, val path: String, val description: String = "", val launch: List<String> = emptyList())
+data class KitStartingPoint(
+    /** This starting point's name in the kit library, which `read` requires to be non-blank. */
+    val title: String,
+    /**
+     * Package-relative directory of the seed document, which `read` requires to hold a `metadata.edn` or a
+     * `metadata.json`.
+     */
+    val path: String,
+    /** Optional prose about this starting point. */
+    val description: String = "",
+    /**
+     * Box names to launch in this order, read back by [KitRuntime.launchBoxes]. `read` requires them
+     * non-blank and distinct, and launching requires exactly one live box per name.
+     */
+    val launch: List<String> = emptyList()
+)
 
 /** One immutable package snapshot registered on this machine. Old revisions remain for existing instances. */
 @Serializable
-data class InstalledKit(val id: String, val revision: String, val runtimeRevision: String, val directory: String, val source: String)
+data class InstalledKit(
+    /** The manifest's [KitPackageManifest.id], which is also the registry key this entry replaces. */
+    val id: String,
+    /**
+     * Hash over the path and content of every file the manifest declares, and the name of the snapshot
+     * folder. Registering unchanged source resolves to the snapshot that already exists.
+     */
+    val revision: String,
+    /**
+     * Hash over the runtime declarations and the files they name alone, so two revisions that differ only
+     * in a starting point share it. [KitRuntime.activate] refuses a document recorded against another one.
+     */
+    val runtimeRevision: String,
+    /** Canonical path of the installed snapshot, under `packages/<id>/<revision>/` in the kits directory. */
+    val directory: String,
+    /**
+     * The folder the package was registered from, which Welcome's **Update** registers again, and matches
+     * against the bundled starter kits to leave out one that is already installed.
+     */
+    val source: String
+)
 
+/** One registered kit as Welcome lists it: the registry entry, its manifest, and whether this host runs it. */
 @Serializable
 data class KitPackageStatus(
+    /** The registry entry this status is about. */
     val installed: InstalledKit,
+    /** The snapshot's manifest, or null when reading it threw, which is also when [state] is `error`. */
     val manifest: KitPackageManifest?,
+    /**
+     * `active` when this host loaded this revision, `error` when startup or a read failed, and
+     * `restart-required` for a registered revision this host has not loaded.
+     */
     val state: String,
+    /** The failure, when [state] is `error`, and empty otherwise. */
     val message: String = ""
 )
 
 /** Registry and immutable snapshots used by Welcome and by the launcher's Gradle runtime profile. */
 object KitPackages {
+    /** The manifest filename a kit package folder is recognised by. */
     const val MANIFEST = "field-kit.json"
     private val mapper = jacksonObjectMapper()
     private val safeName = Regex("[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}")
     private val skipped = setOf(".git", "backups", "backup", ".field-kit-instance.json", ".field-kit-first-open", "versions.edn", ".DS_Store")
+
+    /**
+     * Where the registry, the launch profile and the installed snapshots live: the `afield.kits.dir` system
+     * property, else `AFIELD_KITS_DIR`, else `~/.afield/kits`. Read on each access, so a property set after
+     * start takes effect, and the folder is created when something writes to it rather than here.
+     */
     val directory: File get() = File(System.getProperty("afield.kits.dir")
         ?: System.getenv("AFIELD_KITS_DIR") ?: File(System.getProperty("user.home"), ".afield/kits").path)
 
+    /**
+     * Reads `field-kit.json` from [root] and validates every declaration in it, throwing with the first
+     * problem it finds rather than returning a partial manifest. Each path is checked for containment and
+     * for the file or folder it promises, so a manifest that reads is one whose package is complete.
+     */
     fun read(root: File): KitPackageManifest {
         val manifest = mapper.readValue(File(root, MANIFEST), KitPackageManifest::class.java)
         require(manifest.schema == "field.kit.package.v1") { "Unsupported kit package schema: ${manifest.schema}" }
@@ -129,6 +246,7 @@ object KitPackages {
         return File(base, path).canonicalFile.also { require(it.toPath().startsWith(base.toPath())) { "Kit path escapes its package: $path" } }
     }
 
+    /** The SHA-256 of a file's bytes as 64 hex characters, read in 64 KiB blocks so package size does not matter. */
     fun hash(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")
         file.inputStream().use { input -> val buffer = ByteArray(65536); while (true) { val n = input.read(buffer); if (n < 0) break; digest.update(buffer, 0, n) } }
@@ -168,10 +286,21 @@ object KitPackages {
     private fun runtimeHash(root: File, m: KitPackageManifest): String = digest(inventory(root, runtimeRoots(root, m)) +
         ("runtime" to mapper.writeValueAsString(m.runtime)))
 
+    /**
+     * The [InstalledKit.runtimeRevision] a package folder would register under, covering the runtime
+     * declarations and the files they name. Reads and validates the manifest on the way, so it throws on a
+     * package [read] would reject.
+     */
     fun runtimeRevision(root: File): String = runtimeHash(root, read(root))
+
+    /**
+     * The SHA-256 of a string's bytes as hex. Its one use is the identity of a [WorkspaceProjectScope]'s
+     * box, which hashes the project directory's canonical path.
+     */
     fun hashText(text: String): String = MessageDigest.getInstance("SHA-256").digest(text.toByteArray())
         .joinToString("") { "%02x".format(it) }
 
+    /** The registry as `registry.json` has it, one entry per kit id, and empty when nothing is registered. */
     @Synchronized
     fun installed(): List<InstalledKit> {
         val registry = File(directory, "registry.json")
@@ -231,6 +360,11 @@ object KitPackages {
         }
     }
 
+    /**
+     * Drops a kit from the registry and rewrites the launch profile without it. The installed snapshots stay
+     * on disk and so do the documents made from them, so a host that has already loaded the kit goes on
+     * running it until it restarts.
+     */
     @Synchronized
     fun remove(id: String) = locked { save(installed().filterNot { it.id == id }) }
 
@@ -273,6 +407,10 @@ object KitPackages {
         writeJson(File(directory, "registry.json"), kits)
     }
 
+    /**
+     * Writes [value] as pretty-printed JSON through a uniquely named temporary file and an atomic move, so a
+     * reader of [file] sees either the previous contents or the new ones. Parent directories are created.
+     */
     fun writeJson(file: File, value: Any) {
         file.parentFile.mkdirs()
         val temp = File(file.parentFile, file.name + ".tmp-" + java.util.UUID.randomUUID())
@@ -280,9 +418,19 @@ object KitPackages {
         finally { temp.delete() }
     }
 
+    /**
+     * The revision this host actually loaded for each kit id, parsed from the `afield.kit.revisions` the
+     * launcher passed in as `id@revision` pairs. Empty in a host the launcher did not start, which is what
+     * leaves every registered kit reporting `restart-required`.
+     */
     fun active(): Map<String, String> = System.getProperty("afield.kit.revisions").orEmpty().split(',').filter { '@' in it }
         .associate { it.substringBefore('@') to it.substringAfter('@') }
 
+    /**
+     * One [KitPackageStatus] per registered kit, which is what Welcome's **Kits** area lists. Pass
+     * [KitRuntime.errors] as [errors] to have a kit whose startup threw report `error` with its message;
+     * a kit whose snapshot will not read reports `error` too, with a null manifest.
+     */
     fun statuses(errors: Map<String, String> = emptyMap()): List<KitPackageStatus> {
         val active = active()
         return installed().map { kit ->
@@ -292,6 +440,11 @@ object KitPackages {
         }
     }
 
+    /**
+     * How this machine is spelled in [KitPackageRuntime.nativeDirectories]: one of `macos`, `windows` or
+     * `linux`, a hyphen, then `arm64` or `x64`. Anything that is not macOS or Windows reads as `linux`, and
+     * anything that is not AArch64 reads as `x64`.
+     */
     fun platform(): String {
         val os = System.getProperty("os.name").lowercase().let { when { "mac" in it || "darwin" in it -> "macos"; "win" in it -> "windows"; else -> "linux" } }
         val arch = System.getProperty("os.arch").lowercase().let { if (it in listOf("aarch64", "arm64")) "arm64" else "x64" }

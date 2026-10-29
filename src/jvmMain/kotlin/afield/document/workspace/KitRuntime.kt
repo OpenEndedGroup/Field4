@@ -40,9 +40,25 @@ import java.util.concurrent.ConcurrentHashMap
 
 /** Implement in a kit's Kotlin extension; startup/cleanup belong to the host, activation to a document. */
 interface KitLifecycle {
+    /**
+     * Called once when the host loads this kit, before any of its documents open. Throwing here cleans the
+     * kit up and leaves it reporting an error in Welcome, rather than failing the host.
+     */
     fun startup(context: KitHostContext) {}
+
+    /**
+     * Called as each of the kit's documents opens, inside that document's root box context, so a box API
+     * that reads the current box works. Throwing deactivates the document again and leaves it inactive.
+     */
     fun activate(context: KitDocumentContext) {}
+
+    /** Called as a document's session goes away. A failure here is logged and does not stop the teardown. */
     fun deactivate(context: KitDocumentContext) {}
+
+    /**
+     * Called as the host shuts down or reloads the personal layer, after every document has been
+     * deactivated, and in reverse load order across kits. Shutdown allows four seconds for all of them.
+     */
     fun cleanup(context: KitHostContext) {}
 }
 
@@ -60,8 +76,19 @@ object KitRuntime {
     private val problems = ConcurrentHashMap<String, String>()
     private var started = false
     private var shutdownHookInstalled = false
+
+    /**
+     * A snapshot of why each kit is not running, keyed by kit id, and by the package directory instead for a
+     * kit whose manifest would not read far enough to have one. [KitPackages.statuses] takes this to turn a
+     * registered kit into an `error` row in Welcome.
+     */
     val errors: Map<String, String> get() = problems.toMap()
 
+    /**
+     * Loads every kit the launcher captured in `afield.kit.packages` and calls [KitLifecycle.startup] on
+     * each, in the order the launch profile lists them. Returns at once if the kits are already started,
+     * skips a dedicated-host kit, and records a kit that throws in [errors] instead of propagating it.
+     */
     @Synchronized
     fun start() {
         if (started) return
@@ -119,6 +146,13 @@ object KitRuntime {
         }
     }
 
+    /**
+     * Runs [KitLifecycle.activate] for a document that carries a [KitInstanceRecord], inside its root box
+     * context. Does nothing for an ephemeral document, for one already active, or for one with no record,
+     * and throws when the kit is not loaded or when this host holds a different runtime revision from the
+     * one the document recorded, naming both. A failed activation is deactivated again and recorded in
+     * [errors] before the error is rethrown.
+     */
     @Synchronized
     fun activate(info: SessionInformation) {
         if (info.ephemeral || activeDocuments.containsKey(info.filename)) return
@@ -139,6 +173,11 @@ object KitRuntime {
         }
     }
 
+    /**
+     * Runs [KitLifecycle.deactivate] for a document [activate] made active, and drops it from the active
+     * set. A document that is not active is ignored, and a lifecycle that throws is logged rather than
+     * raised, so one kit cannot hold up closing a document.
+     */
     @Synchronized
     fun deactivate(info: SessionInformation) {
         val context = activeDocuments.remove(info.filename) ?: return
@@ -146,6 +185,11 @@ object KitRuntime {
             .onFailure { lprintln("error,kits", "${context.host.kit.id} deactivate failed: ${it.message}") }
     }
 
+    /**
+     * Deactivates every live document, then calls [KitLifecycle.cleanup] on each kit in reverse load order,
+     * logging rather than raising a failure so one kit cannot strand the rest. Leaves the kits unstarted, so
+     * a later [start] loads them again from the classes as they then are.
+     */
     @Synchronized
     fun shutdown() {
         activeDocuments.values.toList().forEach { deactivate(it.document) }
@@ -156,6 +200,14 @@ object KitRuntime {
         started = false
     }
 
+    /**
+     * The boxes a kit document's starting point asks Field to run, in the order it names them, and null for
+     * a document with no [KitInstanceRecord]. The names come from the revision the document recorded rather
+     * than from the newer compatible one this host may hold, and a name matched by anything other than
+     * exactly one live box throws rather than guessing. `scheduleAutorunBoxes` takes this list to keep the
+     * ordinary autorun sweep off these boxes; what launches them is the first open of a copy and Welcome's
+     * explicit activation.
+     */
     @Synchronized
     fun launchBoxes(info: SessionInformation): List<Box>? {
         val record = KitInstances.record(File(info.filename)) ?: return null
