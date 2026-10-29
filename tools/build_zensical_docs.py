@@ -733,7 +733,7 @@ def normalize_over_climbing_refs(*, markdown: str, page_path: Path, docs_dir: Pa
     helpfully writes the `../` itself gets a second one, and its refs leave the site. That is
     invisible while the site is served at `/`, because `..` clamps at the server root -- and it is a
     404 the moment the site is served under a path prefix, which is exactly how this one is
-    published (`site_url: http://openendedgroup.com/Field4/`). Measured before this existed:
+    published (`site_url: https://openendedgroup.com/field4/`). Measured before this existed:
     `rectsl_examples.md`'s 12 `<img src="../assets/rectsl/...">` rendered as `../../assets/...` and
     404'd under a simulated `/Field4/` prefix, while `rectsl_cheatsheet.md`'s three `<img
     src="assets/rectsl/...">` -- the same construct, written file-relative -- served 200.

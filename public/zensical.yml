@@ -599,6 +599,6 @@ extra_javascript:
   - assets/code-diff-player/code-diff-player.js
   - assets/code-diff-player/field-doc-export.js
 
-site_url: http://openendedgroup.com/Field4/
+site_url: https://openendedgroup.com/field4/
 site_dir: field4
   
