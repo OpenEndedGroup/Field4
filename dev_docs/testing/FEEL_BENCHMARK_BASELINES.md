@@ -6,4 +6,53 @@ allows each step before calling it a regression. Method, scenarios and spans:
 [FEEL_BENCHMARKS.md](FEEL_BENCHMARKS.md). Times are client wall clock, command sent to verdict.
 A baseline changes only by `feel_bench.py baseline`, in its own commit.
 
-No baselines yet.
+## mi2-2.local
+
+Apple M1 Max, 10 cores, 64 GB. Commit `68cf3329a`; runs 20261028-035613, 20261028-043055, 20261029-040020; 100 reps, 10 cold rounds, think 1.0 s.
+
+### `kotlin-println`
+
+| Step | n | median ms | p90 ms | p99 ms | band (median / p90) | where the time goes |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| first run | 1 | 846 |  |  | ±15% / ±25% | execute.all 870, kotlin.compile 579, engine.reset 561 |
+| same code again | 1 | 177 |  |  | ±15% / ±25% | execute.all 168, kotlin.compile 144, engine.reset 47 |
+| warm | 100 | 121 | 159 | 174 | ±15% / ±25% | execute.all 112, kotlin.compile 88, engine.reset 22 |
+| edit | 100 | 101 | 143 | 155 | ±15% / ±25% | execute.all 93, kotlin.compile 75, engine.reset 20 |
+| cold first run | 10 | 817 | 934 |  | ±15% / ±25% | execute.all 788, kotlin.compile 605, engine.reset 498 |
+
+### `first-steps`
+
+| Step | n | median ms | p90 ms | p99 ms | band (median / p90) | where the time goes |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| first launch | 1 | 428 |  |  | ±15% / ±25% | launch.all 419, kotlin.compile 376, kotlin.eval 11 |
+| edit | 100 | 27.8 | 33.4 | 48.2 | ±54% / ±46% | execute.fragment 32, kotlin.compile 20, kotlin.eval 5 |
+| stop | 1 | 8.6 |  |  | ±32% / ±25% |  |
+| second launch | 1 | 116 |  |  | ±26% / ±25% | launch.all 109, kotlin.compile 85, kotlin.eval 7 |
+| warm | 100 | 80.2 | 90.4 | 105 | ±15% / ±25% | launch.all 73, kotlin.compile 52, kotlin.eval 6 |
+| cold first launch | 10 | 887 | 902 |  | ±15% / ±25% | launch.all 837, kotlin.compile 532, engine.bootstrapWait 131 |
+
+### `first-graphics`
+
+| Step | n | median ms | p90 ms | p99 ms | band (median / p90) | where the time goes |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| renderer launch | 1 | 1,213 |  |  | ±15% / ±25% | launch.all 1,160, kotlin.eval 867, kotlin.compile 264 |
+| renderer first frames | 1 | 425 |  |  | ±31% / ±25% | renderer.firstRender 164 |
+| triangle first launch | 1 | 559 |  |  | ±81% / ±25% | launch.all 552, kotlin.compile 283, shader.compile 115 |
+| triangle frames | 1 | 326 |  |  | ±111% / ±25% |  |
+| triangle relaunch (same) | 1 | 180 |  |  | ±36% / ±25% | launch.all 173, kotlin.compile 108, kotlin.eval 16 |
+| shader-reload | 100 | 6.8 | 9.7 | 24.0 | ±234% / ±195% | shader.reload 7, shader.compile 3 |
+| shader-update | 100 | 8.4 | 15.7 | 20.0 | ±364% / ±183% | shader.update 14, shader.compile 3 |
+| shader-relaunch | 100 | 178 | 195 | 208 | ±15% / ±25% | launch.all 163, kotlin.compile 84, kotlin.eval 16 |
+| edit | 100 | 223 | 246 | 259 | ±15% / ±25% | launch.all 211, kotlin.compile 133, kotlin.eval 17 |
+| cold renderer launch | 10 | 1,617 | 1,649 |  | ±15% / ±25% | launch.all 1,500, kotlin.eval 750, kotlin.compile 510 |
+| cold renderer first frames | 10 | 368 | 369 |  | ±50% / ±51% | renderer.firstRender 75 |
+| cold triangle first launch | 10 | 736 | 748 |  | ±15% / ±25% | launch.all 732, kotlin.compile 485, shader.compile 103 |
+| cold triangle frames | 10 | 319 | 332 |  | ±83% / ±76% |  |
+
+### `demo-document`
+
+| Step | n | median ms | p90 ms | p99 ms | band (median / p90) | where the time goes |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| replay in a fresh document | 1 | 5,132 |  |  | ±15% / ±25% (1 run) | transcript.run 5,120, kotlin.compile 5,089, engine.bootstrap 3,798 |
+| warm | 4 | 3,268 | 3,812 |  | ±15% / ±25% (1 run) | kotlin.compile 3,664, transcript.run 3,257, engine.bootstrap 2,667 |
+| cold replay in a fresh document | 10 | 5,970 | 6,048 |  | ±15% / ±25% (1 run) | transcript.run 5,954, kotlin.compile 3,923, transcript.launchGroup 3,307 |
