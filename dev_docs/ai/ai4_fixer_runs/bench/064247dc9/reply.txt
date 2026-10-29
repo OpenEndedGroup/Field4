@@ -1,0 +1,3 @@
+Moved the misplaced KDoc back above `terminalExecutable`, changing only two lines in one file. Source inspection confirms both comments now directly precede their declarations; Gradle is unavailable, and no Python check covers this guard.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "configurable-agent", "reason": "The branch inserted fieldAgent beneath terminalExecutable's KDoc, and moving that comment back to its declaration removes the reported STACKED condition."}

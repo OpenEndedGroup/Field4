@@ -1,0 +1,198 @@
+{
+ "taskId": "task-025ad37d",
+ "mode": "live",
+ "provider": "openai",
+ "model": "gpt-6.1-sol",
+ "verdict": "unchecked",
+ "checks": [],
+ "toolCalls": [
+  {
+   "index": 1,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":220,\"path\":\"AGENTS.md\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-220 of 552\",\"path\":\"AGENTS.md\",\"text\":\"1\\t# AField / Field\u00b74 \u2014 Repo Guide for Agents\\n2\\t\\n3\\tA corrective paragraph in this file is a bug report against a tool, and it stays only until the\\n4\\ttool enforces it. When you add a \\\"do not\\\", name the tool change that would retire it. Histories\\n5\\tof rules that became code live in\\n6\\t[`dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md`](dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md).\\n7\\t\\n8\\t---\\n9\\t\\n10\\t## 1. What this is\\n11\\t\\n12\\t**Field\u00b74** is a Kotlin live-coding environment for graphics and exploratory dat... [921 more chars]"
+  },
+  {
+   "index": 2,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":300,\"path\":\"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-300 of 509\",\"path\":\"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt\",\"text\":\"1\\tpackage afield.tools.docs\\n2\\t\\n3\\timport afield.tools.docs.index.KDocExtractor\\n4\\timport afield.runtime.completion.KotlinSourceIndex\\n5\\timport java.io.File\\n6\\timport kotlin.system.exitProcess\\n7\\t\\n8\\t/*\\n9\\tFIELD_TEST\\n10\\tid: docs.kdoc-attachment.guard\\n11\\trunner: jvm-main\\n12\\tentrypoint: afield.tools.docs.KDocAttachmentGuard\\n13\\ttags: [smoke, docs, reference, kdoc, verification]\\n14\\ttimeoutSec: 180\\n15\\texpect:\\n16\\t  exitCode: 0\\n17\\t  stdoutContains:\\n18\\t... [921 more chars]"
+  },
+  {
+   "index": 3,
+   "tool": "RepoListFilesRequest",
+   "arguments": "{\"glob\":\"tools/*kdoc*\"}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"0 file(s)\",\"files\":[],\"complete\":true}"
+  },
+  {
+   "index": 4,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[],\"command\":\"git-status\",\"timeoutSec\":10}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= status --short --branch\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":86,\"output\":\"## HEAD (no branch)\\n\",\"outputBytes\":20,\"truncated\":false}"
+  },
+  {
+   "index": 5,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":552,\"path\":\"AGENTS.md\",\"startLine\":350}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 350-552 of 552\",\"path\":\"AGENTS.md\",\"text\":\"350\\t\\n351\\t- Each box has an output area of resizable \\\"disclosure\\\" panels, one per channel.\\n352\\t- `display(\\\"channel\\\", \\\"<b>hello</b>\\\")` (`HasOutput`/`DefaultOutput` in `afield/outputs.kt`) goes\\n353\\t  through the `displayProxy` installed by execution (`execution.kt` \u2192 `Set_output` in `rpc.kt`);\\n354\\t  the frontend inserts the HTML and runs its `<script>` tags (`afield/outputareas.kt` +\\n355\\t  `src/commonMain/resources/outputareas2.js`).\\n356\\t- `print`/`println` and the `_print(...)`/`_println(...)` macros a... [921 more chars]"
+  },
+  {
+   "index": 6,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":120,\"path\":\"src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-120 of 2662\",\"path\":\"src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\",\"text\":\"1\\tpackage afield.tools.docs\\n2\\t\\n3\\timport afield.runtime.completion.KotlinSourceIndex\\n4\\timport java.io.File\\n5\\timport kotlin.system.exitProcess\\n6\\t\\n7\\t/*\\n8\\tFIELD_TEST\\n9\\tid: docs.codebase-reference.generate\\n10\\trunner: jvm-main\\n11\\tentrypoint: afield.tools.docs.StdlibReferenceGenerator\\n12\\ttags: [smoke, docs, reference, stdlib, verification]\\n13\\ttimeoutSec: 360\\n14\\texpect:\\n15\\t  exitCode: 0\\n16\\t  stdoutContains:\\n17\\t    - \\\"StdlibReferenceGenerato... [921 more chars]"
+  },
+  {
+   "index": 7,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":390,\"path\":\"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt\",\"startLine\":300}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 300-390 of 509\",\"path\":\"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt\",\"text\":\"300\\t                }\\n301\\t                continue\\n302\\t            }\\n303\\t\\n304\\t            if (KDocExtractor.parseDeclaration(trimmed) != null) return null\\n305\\t\\n306\\t            if (trimmed.startsWith(\\\"package \\\") || trimmed.startsWith(\\\"import \\\") || trimmed == \\\"package\\\") {\\n307\\t                return Verdict.Benign(\\\"file header above the package directive\\\", i + 1)\\n308\\t            }\\n309\\t            return Verdict.Hit(\\n310\\t                Finding(... [921 more chars]"
+  },
+  {
+   "index": 8,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"tools/*.py\",\"ignoreCase\":true,\"maxMatches\":50,\"query\":\"kdoc\",\"regex\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"stopped at 50 matches\",\"matches\":[{\"path\":\"tools/check_box_idioms.py\",\"line\":101,\"text\":\"# reference pages are generated from KDoc. Widen this once the refactor lands.\"},{\"path\":\"tools/check_doc_site_links.py\",\"line\":222,\"text\":\"#                                          published as a paragraph because its KDoc indent was\"},{\"path\":\"tools/check_staged_generated_artifacts.py\",\"line\":393,\"text\":\"        \\\"codebase reference and KDoc worklist\\\",\"},{\"path\":\"tools/check_staged_generated_artifacts.py\",\"line\":395,\"text\":\"        (\\\"public/docs/reference\\\", \\\"dev_docs/kdoc_... [921 more chars]"
+  },
+  {
+   "index": 9,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"1eff3d30d24e9974b1b521348b66c819fe9d317f\",\"--\",\"src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\"],\"command\":\"git-diff\",\"timeoutSec\":10}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv 1eff3d30d24e9974b1b521348b66c819fe9d317f -- src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":25,\"output\":\"diff --git a/src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt b/src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\\nindex 367bcfd2c3..82ffeb9f71 100644\\n--- a/src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\\n+++ b/src/jvmMain/kotlin/afield/t... [921 more chars]"
+  },
+  {
+   "index": 10,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"tools/*.py\",\"ignoreCase\":true,\"maxMatches\":100,\"query\":\"attachment|stacked|parseDeclaration\",\"regex\":true}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"26 match(es) in 190 file(s)\",\"matches\":[{\"path\":\"tools/check_staged_generated_artifacts.py\",\"line\":397,\"text\":\"    Guard(\\\"checkKDocAttachment\\\", \\\"KDoc attachment\\\", _kotlin_source),\"},{\"path\":\"tools/field_backdoor.py\",\"line\":196,\"text\":\"# load of 35-40 usually answered in 0.03-0.6 s and sometimes in 1.7 s, and attachments read that as \\\"no Field server is\"},{\"path\":\"tools/field_backdoor.py\",\"line\":797,\"text\":\"    def refuse_unverifiable_attachment(self) -> None:\"},{\"path\":\"tools/field_backdoor.py\",\"line\":856,\"text\":\"            self.refuse_unverifiable_attachment()... [921 more chars]"
+  },
+  {
+   "index": 11,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":1710,\"path\":\"src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\",\"startLine\":1610}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1610-1710 of 2662\",\"path\":\"src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\",\"text\":\"1610\\t    }\\n1611\\t\\n1612\\t    // \u2500\u2500 cross-references \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\\n1613\\t\\n1614\\t    /**\\n1615\\t     * Where a KDoc `[Symbol]` reference is allowed to point, resolved in two steps.\\n1616\\t     *\\n1617\\t     * A reference resolves **inside the file that wrote it** first, and against the whole corpus only\\n1618\\t     * if that fails. Both halves earn their place. The corpus-wide half is what lets one fil... [921 more chars]"
+  },
+  {
+   "index": 12,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":160,\"path\":\"tools/test_check_staged_generated_artifacts.py\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-160 of 485\",\"path\":\"tools/test_check_staged_generated_artifacts.py\",\"text\":\"1\\timport os\\n2\\timport shutil\\n3\\timport subprocess\\n4\\timport tempfile\\n5\\timport unittest\\n6\\timport unittest.mock\\n7\\tfrom pathlib import Path\\n8\\t\\n9\\tfrom tools.check_staged_generated_artifacts import (\\n10\\t    _PERSONAL_BOUNDARY_REL,\\n11\\t    _REFERENCE_GENERATOR_REL,\\n12\\t    _SOURCE_ROOTS_DECL,\\n13\\t    PersonalBoundaryCorpusUnreadable,\\n14\\t    ReferenceRootsUnreadable,\\n15\\t    _personal_boundary_corpus,\\n16\\t    _parse_reference_source_roots,\\n17\\t    _reference_input,\\n1... [921 more chars]"
+  },
+  {
+   "index": 13,
+   "tool": "RepoListFilesRequest",
+   "arguments": "{\"glob\":\"src/jvmTest/**/*KDoc*\"}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"0 file(s)\",\"files\":[],\"complete\":true}"
+  },
+  {
+   "index": 14,
+   "tool": "RepoListFilesRequest",
+   "arguments": "{\"glob\":\"**/AGENTS.md\"}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"267 file(s)\",\"files\":[\"dev_docs/agents/demos/alife_walls/AGENTS.md\",\"dev_docs/agents/demos/browse_embeds/AGENTS.md\",\"dev_docs/agents/demos/certified_envelope/AGENTS.md\",\"dev_docs/agents/demos/chart_clip/AGENTS.md\",\"dev_docs/agents/demos/chart_primitive/AGENTS.md\",\"dev_docs/agents/demos/completion_rank_at_scale/AGENTS.md\",\"dev_docs/agents/demos/confluence_grid/AGENTS.md\",\"dev_docs/agents/demos/frame_history_reprojection/AGENTS.md\",\"dev_docs/agents/demos/function_conversation/AGENTS.md\",\"dev_docs/agents/demos/function_conversation_example/AGENTS.md\",\"dev_docs/agents/de... [921 more chars]"
+  },
+  {
+   "index": 15,
+   "tool": "RepoWriteFileRequest",
+   "arguments": "{\"content\":\"import re\\nimport unittest\\nfrom pathlib import Path\\n\\n\\nclass ReferenceKDocAttachmentTest(unittest.TestCase):\\n    def test_anchor_comments_attach_to_their_classes(self):\\n        source = (Path(__file__).resolve().parents[1] / \\\"src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\\\").read_text()\\n        docs = {name: doc for doc, name in re.findall(\\n            r\\\"/\\\\*\\\\*((?:(?!/\\\\*\\\\*).)*?)\\\\*/\\\\s*internal (?:data )?class (\\\\w+)\\\", source, re.S)}\\n        self.assertIn(\\\"Where a KDoc\\\", docs.get(\\\"TypeAnchors\\\", \\\"\\\"))\\n        self.assertIn(\\\"One published declar... [167 more chars]",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"wrote tools/test_reference_kdoc_attachment.py (645 chars)\",\"path\":\"tools/test_reference_kdoc_attachment.py\",\"text\":\"\",\"totalLines\":0,\"truncated\":false}"
+  },
+  {
+   "index": 16,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"tools/test_reference_kdoc_attachment.py\"],\"command\":\"python-test\",\"timeoutSec\":60}",
+   "ok": false,
+   "result": "{\"success\":false,\"message\":\"exit 1\",\"command\":\"uv run --project . --group backdoor python tools/test_reference_kdoc_attachment.py\",\"exitCode\":1,\"timedOut\":false,\"elapsedMs\":74,\"output\":\"F\\n======================================================================\\nFAIL: test_anchor_comments_attach_to_their_classes (__main__.ReferenceKDocAttachmentTest.test_anchor_comments_attach_to_their_classes)\\n----------------------------------------------------------------------\\nTraceback (most recent call last):\\n  File \\\"/Users/marc/field4-worktrees/2026-10-29-1-ai4-fixer-bench/.nightly-tmp/replay/tools/te... [368 more chars]"
+  },
+  {
+   "index": 17,
+   "tool": "RepoPatchFileRequest",
+   "arguments": "{\"newText\":\"\",\"oldText\":\"    /**\\n     * One published declaration as [TypeAnchors] sees it: where it lives, what a KDoc reference\\n     * may call it, and the `page.md#anchor` its row carries.\\n     *\\n     * @param owner the type a member is declared in (`Owner` of `Owner.member`), null at top level\\n     * @param receiver an extension's receiver type, simple name, null for anything else\\n     * @param isType a type heading rather than a table row; only these resolve through an unknown\\n     *   capitalised qualifier, see [TypeAnchors.resolveReference]\\n     */\\n    internal data class Ancho... [486 more chars]",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"replaced 1 occurrence(s) in src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\",\"path\":\"src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\",\"text\":\"\",\"totalLines\":0,\"truncated\":false}"
+  },
+  {
+   "index": 18,
+   "tool": "RepoPatchFileRequest",
+   "arguments": "{\"newText\":\"    /**\\n     * One published declaration as [TypeAnchors] sees it: where it lives, what a KDoc reference\\n     * may call it, and the `page.md#anchor` its row carries.\\n     *\\n     * @param owner the type a member is declared in (`Owner` of `Owner.member`), null at top level\\n     * @param receiver an extension's receiver type, simple name, null for anything else\\n     * @param isType a type heading rather than a table row; only these resolve through an unknown\\n     *   capitalised qualifier, see [TypeAnchors.resolveReference]\\n     */\\n    internal data class AnchorEntry(\\n    ... [672 more chars]",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"replaced 1 occurrence(s) in src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\",\"path\":\"src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\",\"text\":\"\",\"totalLines\":0,\"truncated\":false}"
+  },
+  {
+   "index": 19,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"tools/test_reference_kdoc_attachment.py\"],\"command\":\"python-test\",\"timeoutSec\":60}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"uv run --project . --group backdoor python tools/test_reference_kdoc_attachment.py\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":100,\"output\":\".\\n----------------------------------------------------------------------\\nRan 1 test in 0.004s\\n\\nOK\\n\",\"outputBytes\":98,\"truncated\":false}"
+  },
+  {
+   "index": 20,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"--stat\"],\"command\":\"git-diff\",\"timeoutSec\":10}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv --stat\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":54,\"output\":\" .../afield/tools/docs/StdlibReferenceGenerator.kt  | 44 +++++++++++-----------\\n 1 file changed, 22 insertions(+), 22 deletions(-)\\n\",\"outputBytes\":131,\"truncated\":false}"
+  },
+  {
+   "index": 21,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"--\",\"src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\"],\"command\":\"git-diff\",\"timeoutSec\":10}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv -- src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":21,\"output\":\"diff --git a/src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt b/src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\\nindex 82ffeb9f7..70a7a9fb8 100644\\n--- a/src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\\n+++ b/src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\\n@@ -... [921 more chars]"
+  },
+  {
+   "index": 22,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":1680,\"path\":\"src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\",\"startLine\":1612}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1612-1680 of 2662\",\"path\":\"src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\",\"text\":\"1612\\t    // \u2500\u2500 cross-references \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\\n1613\\t\\n1614\\t    /**\\n1615\\t     * One published declaration as [TypeAnchors] sees it: where it lives, what a KDoc reference\\n1616\\t     * may call it, and the `page.md#anchor` its row carries.\\n1617\\t     *\\n1618\\t     * @param owner the type a member is declared in (`Owner` of `Owner.member`), null at top level\\n1619\\t     * @param receiver an extension'... [921 more chars]"
+  },
+  {
+   "index": 23,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":30,\"path\":\"tools/test_reference_kdoc_attachment.py\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-16 of 16\",\"path\":\"tools/test_reference_kdoc_attachment.py\",\"text\":\"1\\timport re\\n2\\timport unittest\\n3\\tfrom pathlib import Path\\n4\\t\\n5\\t\\n6\\tclass ReferenceKDocAttachmentTest(unittest.TestCase):\\n7\\t    def test_anchor_comments_attach_to_their_classes(self):\\n8\\t        source = (Path(__file__).resolve().parents[1] / \\\"src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt\\\").read_text()\\n9\\t        docs = {name: doc for doc, name in re.findall(\\n10\\t            r\\\"/\\\\*\\\\*((?:(?!/\\\\*\\\\*).)*?)\\\\*/\\\\s*internal (?:data )?class (\\\\w+)\\\", source, re.S)... [277 more chars]"
+  }
+ ],
+ "finalText": "Fixed the stacked KDoc in `StdlibReferenceGenerator.kt` by moving the intervening declarations; the Python regression test failed before the fix and passes afterward. Gradle verification remains unavailable in this checkout.\n\nFIXER-VERDICT: {\"verdict\": \"fix\", \"culprit\": \"docs/kdoc-symbol-links-2\", \"reason\": \"The branch inserted declarations between TypeAnchors and its KDoc; relocating them restores correct attachment, verified by a failing-then-passing Python regression test.\"}",
+ "rounds": 11,
+ "maxToolRounds": 40,
+ "hitToolRoundCap": false,
+ "elapsedMs": 80700,
+ "inputTokens": 697760,
+ "outputTokens": 2622,
+ "cacheReadTokens": 634053,
+ "documentName": "scratch",
+ "misuseCalls": 1,
+ "lessons": true,
+ "documentRef": "49b60e24-c350-440c-9faa-922b15d8f6bb",
+ "programs": true,
+ "contextPlacement": "developer-once+input",
+ "repoWritten": [
+  "tools/test_reference_kdoc_attachment.py",
+  "src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt",
+  "src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt"
+ ],
+ "repoRuns": [
+  "git-status  -> 0",
+  "git-diff 1eff3d30d24e9974b1b521348b66c819fe9d317f -- src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt -> 0",
+  "python-test tools/test_reference_kdoc_attachment.py -> 1",
+  "python-test tools/test_reference_kdoc_attachment.py -> 0",
+  "git-diff --stat -> 0",
+  "git-diff -- src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt -> 0"
+ ]
+}

@@ -1,0 +1,3 @@
+Moved `markLane`’s `@Synchronized` annotation onto its own line so its KDoc attaches correctly, as confirmed by inspecting the guard and extractor logic. Gradle was unavailable; the Python test could not start because of `ModuleNotFoundError: tools`.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "handoffs/code-20261015-2234", "reason": "The branch placed documented markLane on an annotation-prefixed line that the extractor skips, fixed by separating the annotation from the declaration."}

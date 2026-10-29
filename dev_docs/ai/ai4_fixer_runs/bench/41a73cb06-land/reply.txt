@@ -1,0 +1,3 @@
+Changed only the fence opener in `public/docs/editing_from_outside.md` to `diffstatic {data-lang=text}`, matching the guard’s prescribed fix. All five related Python fence-marker tests passed; the JVM guard could not run because Gradle is unavailable.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "nightly/2026-10-18/3-external-edit-guide", "reason": "The branch added a bare text fence; the one-line replacement matches the guard source, and related Python tests pass, though Gradle is unavailable."}

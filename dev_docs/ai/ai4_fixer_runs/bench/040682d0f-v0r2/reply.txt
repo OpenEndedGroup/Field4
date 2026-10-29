@@ -1,0 +1,3 @@
+Added the documented `importlib` public root and restored KDoc attachment for `applyToMesh` and `fitGradient` across three files (44 changed lines). Source inspection confirms the mechanical fixes; Gradle is unavailable, and no Python checker covers these checks, so execution remains unverified.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "handoffs/code-20261015-2234", "reason": "The branch omitted Python's importlib root from the allowlist and inserted declarations between two existing KDoc blocks and their functions."}

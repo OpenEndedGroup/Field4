@@ -1,0 +1,14 @@
+diff --git a/dev_docs/physics/CREATURE_EVOLUTION.md b/dev_docs/physics/CREATURE_EVOLUTION.md
+index d4286899f..3413605f5 100644
+--- a/dev_docs/physics/CREATURE_EVOLUTION.md
++++ b/dev_docs/physics/CREATURE_EVOLUTION.md
+@@ -1,8 +1,6 @@
+ # Creature evolution (`afield.simulation.creatures`)
+ 
+-A genetic algorithm that evolves 2D creatures. It began as a water-bug search in
+-`src/personal/kotlin/organic/gp/` (`Creatures.kt`, `CreatureEvolutionExample.kt`, package `organic.gp`;
+-the personal copy is still there and is independent of this one). It now lives in
++A genetic algorithm that evolves 2D creatures. The library lives in
+ `src/jvmMain/kotlin/afield/simulation/creatures/Creatures.kt`, and the starting point is the
+ `evolving_water_bugs` transcript.
+ 

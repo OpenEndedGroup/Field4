@@ -1,0 +1,3 @@
+Added the missing `stacksl-regions` ledger row and updated `Server.kt`’s count to 53. Static verification using the test’s matching rules passes for all 135 commands and 20 file counts; JVM tests could not run because Gradle is unavailable.
+
+FIXER-VERDICT: {"verdict":"fix","culprit":"handoffs/code-20261016-1144","reason":"The branch added stacksl-regions without its inventory row or updated per-file count, and the minimal ledger correction passes static comparison against the test's rules."}

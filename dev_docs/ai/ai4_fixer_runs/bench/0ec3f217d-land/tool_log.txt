@@ -1,0 +1,30 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":110,"path":"dev_docs/SPREADSHEET_CONSTRAINTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":230,"path":"dev_docs/impossibility_claims.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":558,"path":"AGENTS.md","startLine":221}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":60,"query":"impossibility","regex":false}
+[field] ok  RepoSearchRequest {"glob":"src/**/spreadsheet*.kt","ignoreCase":false,"maxMatches":60,"query":"SpreadsheetEvalHelpers","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"src/jvmTest/kotlin/afield/tools/docs/ImpossibilityClaimContractTest.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":525,"path":"src/jvmMain/kotlin/afield/data/table/spreadsheet.kt","startLine":390}
+[field] ok  RepoReadFileRequest {"endLine":1465,"path":"src/jvmMain/kotlin/afield/data/table/spreadsheet.kt","startLine":1320}
+[field] ERR RepoReadFileRequest {"endLine":320,"path":"src/jvmMain/kotlin/afield/tools/docs/ImpossibilityClaimGuard.kt","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*"}
+[field] ok  RepoListFilesRequest {"glob":"**/*Impossibility*"}
+[field] ok  RepoSearchRequest {"glob":"dev_docs/*.md","ignoreCase":false,"maxMatches":25,"query":"internal","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":140,"path":"tools/check_staged_generated_artifacts.py","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":320,"path":"src/jvmTest/kotlin/afield/tools/docs/ImpossibilityClaimGuard.kt","startLine":170}
+[field] ok  RepoReadFileRequest {"endLine":142,"path":"dev_docs/MARF_FIELD_CLOCKS.md","startLine":115}
+[field] ok  RepoSearchRequest {"glob":"src/jvmTest/kotlin/afield/tools/docs/CitationGuard.kt","ignoreCase":false,"maxMatches":40,"query":"anchor","regex":false}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":false,"maxMatches":30,"query":"citationGates","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":440,"path":"src/jvmTest/kotlin/afield/tools/docs/ImpossibilityClaimGuard.kt","startLine":320}
+[field] ok  RepoPatchFileRequest {"newText":"- **The formula REPL cannot see `internal`.** Functions the formula source calls must be public\n  (`SpreadsheetEvalHelpers.sqrt` etc.); an internal
+[field] ok  RepoReadFileRequest {"endLine":580,"path":"src/jvmTest/kotlin/afield/tools/docs/ImpossibilityClaimGuard.kt","startLine":495}
+[field] ok  RepoReadFileRequest {"endLine":190,"path":"src/jvmTest/kotlin/afield/tools/docs/CitationGuard.kt","startLine":135}
+[field] ok  RepoReadFileRequest {"endLine":275,"path":"src/jvmTest/kotlin/afield/tools/docs/CitationGuard.kt","startLine":215}
+[field] ok  RepoRunCommandRequest {"args":["--","dev_docs/SPREADSHEET_CONSTRAINTS.md"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/data/table/spreadsheet.kt","ignoreCase":false,"maxMatches":10,"query":"private val compiler = KotlinInterface2","regex":false
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/data/table/spreadsheet.kt","ignoreCase":false,"maxMatches":10,"query":"@JvmStatic fun sqrt(x: Any?)","regex":false}
+[field] ok  RepoListFilesRequest {"glob":"**/spreadsheet.kt"}
+[field] ok  RepoReadFileRequest {"endLine":74,"path":"dev_docs/SPREADSHEET_CONSTRAINTS.md","startLine":64}
+[field] model=openai/gpt-6.1-sol rounds=9/40 wall=58s tokens in=488167 out=1799 cacheRead=430865 wrote=['dev_docs/SPREADSHEET_CONSTRAINTS.md'] ran=['git-status  -> 0', 'git-diff -- dev_docs/SPREADSHEET_CONSTRAINTS.md -> 0'] verdict=unchecked error=-

@@ -1,0 +1,3 @@
+Changed the fixture’s `package x` to `package afield.example`, preserving all line-number assertions; source inspection confirms `afield` is permitted by the guard. Tests remain unverified: Gradle is unavailable, and the related Python suite failed to start with `ModuleNotFoundError: tools`.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "claude/ai4-attach-lines", "reason": "The branch introduced a synthetic package outside the public roots, corrected with a one-line fixture change without altering the guard or test assertions."}

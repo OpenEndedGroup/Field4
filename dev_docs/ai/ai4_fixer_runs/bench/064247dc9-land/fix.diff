@@ -1,0 +1,20 @@
+diff --git a/src/jvmMain/kotlin/afield/server/terminal.kt b/src/jvmMain/kotlin/afield/server/terminal.kt
+index c6f81bcc1..733fc04c8 100644
+--- a/src/jvmMain/kotlin/afield/server/terminal.kt
++++ b/src/jvmMain/kotlin/afield/server/terminal.kt
+@@ -131,7 +131,6 @@ internal fun handoffSessionWorktree(checkout: Path, batch: String): Path? = runC
+         ?.get("worktree")?.jsonPrimitive?.content?.let { Path.of(it) }
+ }.getOrNull()?.takeIf { Files.isDirectory(it) }
+ 
+-/** [name] on PATH or in the usual install places: a Field started from the Dock has a thin PATH. */
+ /**
+  * The coding agent Field starts: `claude` or `codex`. `FIELD_AGENT` in the environment, else the first
+  * word of `~/.afield/agent`, else `claude`; `tools/field_agent.py` reads the same two places, so the
+@@ -143,6 +142,7 @@ internal fun fieldAgent(env: Map<String, String> = System.getenv(), file: Path =
+     return listOf(env["FIELD_AGENT"].orEmpty(), fromFile).map { it.trim().lowercase() }.firstOrNull { it in agents } ?: "claude"
+ }
+ 
++/** [name] on PATH or in the usual install places: a Field started from the Dock has a thin PATH. */
+ internal fun terminalExecutable(name: String): String {
+     val home = System.getProperty("user.home")
+     val candidates = System.getenv("PATH").orEmpty().split(java.io.File.pathSeparator).filter { it.isNotBlank() }.map { Paths.get(it, name) } +

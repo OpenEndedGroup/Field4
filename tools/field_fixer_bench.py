@@ -297,7 +297,8 @@ def grade(case: dict, root: Path, specs: list[list[str]]) -> dict:
     passed, note = run_checks(specs, root) if ours else (False, "no edit")
     # This checkout's compiled checker does not see an edit to the check's own source, which is what
     # a guard-widening "fix" is; name it rather than let it read as a plain red.
-    names = {s[1].split(".")[-1] + ".kt" for s in specs if s[0] != "python"} | {s[1] for s in specs if s[0] == "python"}
+    # (A Python check runs from the scratch tree, so it does see the edit: only compiled checks count.)
+    names = {s[1].split(".")[-1] + ".kt" for s in specs if s[0] != "python"}
     edited_check = sorted(t for t in touched if Path(t).name in names or t in names)
     return {"diff": ours, "touched": touched, "identical": identical or same_files, "similarity": round(ratio, 2),
             "lander_problem": problem, "check_pass": passed, "check_note": note, "edited_check": edited_check}
@@ -314,6 +315,22 @@ def ensure_scratch(rev: str) -> Path:
         env = {**os.environ, "GIT_LFS_SKIP_SMUDGE": "1"}
         subprocess.run(["git", "worktree", "add", "--detach", str(SCRATCH), rev], cwd=REPO, check=True, env=env)
     return SCRATCH
+
+
+def slim(data: dict, keep: int = 600) -> dict:
+    """The AgentTaskResult without the goal (prompt.md has it) and with each tool result cut to its
+    head: what was called and roughly what came back, not every file AI4 read."""
+    out = {k: v for k, v in data.items() if k != "goal"}
+    calls = []
+    for call in data.get("toolCalls", []):
+        call = dict(call)
+        for k, v in call.items():
+            text = v if isinstance(v, str) else json.dumps(v)
+            if k not in ("tool", "ok") and len(text) > keep:
+                call[k] = text[:keep] + f"... [{len(text) - keep} more chars]"
+        calls.append(call)
+    out["toolCalls"] = calls
+    return out
 
 
 def run_case(case: dict, args) -> dict:
@@ -353,6 +370,8 @@ def run_case(case: dict, args) -> dict:
     (out / "reply.txt").write_text(done.stdout, encoding="utf-8")
     (out / "tool_log.txt").write_text(done.stderr, encoding="utf-8")
     data = json.loads((out / "result.json").read_text()) if (out / "result.json").exists() else {}
+    if data:
+        (out / "result.json").write_text(json.dumps(slim(data), indent=1), encoding="utf-8")
     verdict = land._fixer_verdict(done.stdout) or {}
     g = grade(case, root, specs)
     (out / "fix.diff").write_text(g.pop("diff"), encoding="utf-8")
@@ -377,7 +396,7 @@ def outcome(r: dict) -> str:
         return "rejected"
     if r.get("identical"):
         return "identical"
-    if r.get("edited_check"):
+    if [e for e in r.get("edited_check") or [] if e.endswith(".kt")]:
         return "edited the check"
     if r.get("controls") and r.get("check_pass"):
         return "check passes"
@@ -387,14 +406,31 @@ def outcome(r: dict) -> str:
 
 
 def table(rows: list[dict]) -> str:
-    out = ["| case | branch | check (controls) | AI4 | outcome | sim | files | rounds | tokens in/out | wall |",
-           "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
-    for r in rows:
-        checks = ", ".join(s[1].split(".")[-1].split("/")[-1] for s in r["checks"]) or "none"
-        ctl = "ok" if r["controls"] else "n/a"
-        out.append(f"| `{r['id']}`{r.get('suffix', '')} | {r['branch']} | {checks} ({ctl}) | {r.get('ai4_verdict')} | "
-                   f"**{outcome(r)}** | {r['similarity']} | {len(r['touched'])} | {r.get('rounds')} | "
-                   f"{r.get('input_tokens')}/{r.get('output_tokens')} | {r['wall_s']} s |")
+    """One line per case: the check it is graded by, then each brief's outcome (similarity) and the
+    cost of its last run. Repeat runs (a `--suffix` other than the brief's corpus tag) are listed
+    after the table, one line each."""
+    def check_name(r: dict) -> str:
+        return ", ".join(s[1].split(".")[-1].split("/")[-1] + (" (scoped)" if s[0] == "main-scoped" else "")
+                         for s in r["checks"]) or "none"
+    corpus = [r for r in rows if r.get("suffix", "") in ("", "-land")]
+    repeats = [r for r in rows if r not in corpus]
+    by_id: dict[str, dict] = {}
+    for r in corpus:
+        by_id.setdefault(r["id"], {"row": r})[r.get("context", "v0")] = r
+    out = ["| case | branch | graded by | v0 brief | land brief | rounds | tokens in / out | wall |",
+           "| --- | --- | --- | --- | --- | --- | --- | --- |"]
+    for cid, d in by_id.items():
+        last = d.get("land") or d.get("v0")
+        cell = lambda r: f"**{outcome(r)}** ({r['similarity']})" if r else "not run"
+        out.append(f"| `{cid}` | {last['branch']} | {check_name(last)} | {cell(d.get('v0'))} | {cell(d.get('land'))} | "
+                   f"{last.get('rounds')} | {last.get('input_tokens')} / {last.get('output_tokens')} | {last['wall_s']} s |")
+    if repeats:
+        out.append("")
+        out.append("Repeats:")
+        out.append("")
+        for r in repeats:
+            out.append(f"- `{r['id']}{r['suffix']}` ({r.get('context')} brief): **{outcome(r)}** ({r['similarity']}), "
+                       f"{r.get('rounds')} rounds, {r['wall_s']} s")
     return "\n".join(out)
 
 

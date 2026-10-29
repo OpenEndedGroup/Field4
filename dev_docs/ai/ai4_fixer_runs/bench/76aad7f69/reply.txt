@@ -1,0 +1,3 @@
+Restored three collection literals across two documentation files. `tools/check_box_idioms.py` now passes with exit 0; Gradle is unavailable in this replay.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "handoffs/code-20261016-1144", "reason": "The branch replaced three existing collection literals with listOf calls; restoring them makes the idiom checker pass."}

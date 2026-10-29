@@ -1,0 +1,32 @@
+diff --git a/src/jvmMain/kotlin/afield/audio/synth/SonicPiPatterns.kt b/src/jvmMain/kotlin/afield/audio/synth/SonicPiPatterns.kt
+index 7c3431c79..85786bb1a 100644
+--- a/src/jvmMain/kotlin/afield/audio/synth/SonicPiPatterns.kt
++++ b/src/jvmMain/kotlin/afield/audio/synth/SonicPiPatterns.kt
+@@ -572,13 +572,6 @@ fun sonicPiProgram(
+     )
+ }
+ 
+-/**
+- * The events of [pattern] over the first [cycles] cycles, in playing order.
+- *
+- * The single enumeration both the emitter and the piano roll use, so the two cannot disagree about
+- * which fragment of a note crossing a bar line is the one that strikes. `eventSequence` already
+- * answers that (only the onset fragment, widened back to its whole); this only bounds it.
+- */
+ /** How far [patternPeriod] looks: a pattern that has not repeated by then is treated as not repeating. */
+ internal const val SONIC_PI_PERIOD_SEARCH = 16
+ 
+@@ -601,6 +594,13 @@ internal fun <A> patternPeriod(pattern: PatPattern<A>): Int? {
+     return null
+ }
+ 
++/**
++ * The events of [pattern] over the first [cycles] cycles, in playing order.
++ *
++ * The single enumeration both the emitter and the piano roll use, so the two cannot disagree about
++ * which fragment of a note crossing a bar line is the one that strikes. `eventSequence` already
++ * answers that (only the onset fragment, widened back to its whole); this only bounds it.
++ */
+ internal fun <A> patternEventsForCycles(pattern: PatPattern<A>, cycles: Int): List<PatEvent<A>> {
+     val limit = PatQ.of(cycles)
+     val out = mutableListOf<PatEvent<A>>()

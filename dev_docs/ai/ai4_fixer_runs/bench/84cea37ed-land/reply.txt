@@ -1,0 +1,3 @@
+Moved the misplaced KDoc back above `videoCapturePreparation`; only one file changed, with no executable-code changes. Source inspection confirms both comments now attach directly to their intended functions; Gradle is unavailable, and no Python checker covers this guard.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "fix/three-turntable-video", "reason": "The branch inserted a helper between an existing KDoc and its function, creating stacked KDocs; moving the original comment restores correct attachment."}

@@ -1,0 +1,15 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**","ignoreCase":false,"maxMatches":60,"query":"checkKDocAttachment","regex":false}
+[field] ok  RepoRunCommandRequest {"args":["29a3f47e2996d62f684e5b647b3444fcbf24d787","--","src/jvmMain/kotlin/afield/audio/synth/SonicPi.kt","src/jvmMain/kotlin/afield/audio/synth/SonicPiPatter
+[field] ok  RepoListFilesRequest {"glob":"tools/*kdoc*"}
+[field] ok  RepoReadFileRequest {"endLine":280,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":100,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":625,"path":"src/jvmMain/kotlin/afield/audio/synth/SonicPiPatterns.kt","startLine":565}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":400}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":40,"query":"kdoc|stacked","regex":true}
+[field] ok  RepoPatchFileRequest {"newText":"/** How far [patternPeriod] looks: a pattern that has not repeated by then is treated as not repeating. */","oldText":"/**\n * The events of [patter
+[field] ok  RepoPatchFileRequest {"newText":"/**\n * The events of [pattern] over the first [cycles] cycles, in playing order.\n *\n * The single enumeration both the emitter and the piano roll
+[field] ok  RepoRunCommandRequest {"args":["--","src/jvmMain/kotlin/afield/audio/synth/SonicPiPatterns.kt"],"command":"git-diff","timeoutSec":20}
+[field] ok  RepoReadFileRequest {"endLine":612,"path":"src/jvmMain/kotlin/afield/audio/synth/SonicPiPatterns.kt","startLine":572}
+[field] ERR RepoRunCommandRequest {"args":["tools/test_check_staged_generated_artifacts.py"],"command":"python-test","timeoutSec":120}
+[field] model=openai/gpt-6.1-sol rounds=7/40 wall=41s tokens in=274998 out=1370 cacheRead=238457 wrote=['src/jvmMain/kotlin/afield/audio/synth/SonicPiPatterns.kt', 'src/jvmMain/kotlin/afield/audio/synth/SonicPiPatterns.kt'] ran=['git-diff 29a3f47e2996d62f684e5b647b3444fcbf24d787 -- src/jvmMain/kotlin/afield/audio/synth/SonicPi.kt src/jvmMain/kotlin/afield/audio/synth/SonicPiPatterns.kt src/jvmMain/kotlin/afield/audio/synth/PatMiniNotation.kt src/jvmMain/kotlin/afield/geometry/polytope/Parameters.kt -> 0', 'git-diff -- src/jvmMain/kotlin/afield/audio/synth/SonicPiPatterns.kt -> 0', 'python-test tools/test_check_staged_generated_artifacts.py -> 1'] verdict=unchecked error=-

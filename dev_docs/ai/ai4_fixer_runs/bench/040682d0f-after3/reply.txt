@@ -1,0 +1,3 @@
+Fixed both KDoc attachments and the embedded Python import false positive across three files (44 changed lines), without modifying guards. Source inspection confirms the corrections match the guard rules; Gradle is unavailable here, so tests could not be rerun.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "handoffs/code-20261015-2234", "reason": "The branch introduced two mechanically misplaced KDocs and an embedded Python import false positive, corrected without behavior changes or guard exemptions."}

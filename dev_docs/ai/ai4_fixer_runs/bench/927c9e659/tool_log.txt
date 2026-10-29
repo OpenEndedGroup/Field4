@@ -1,0 +1,14 @@
+[field] ok  RepoReadFileRequest {"endLine":200,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":310,"path":"public/docs/three_output.md","startLine":240}
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"src/jvmTest/kotlin/afield/tools/docs/DocsFenceTreatmentTest.kt","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":60,"query":"diffstatic","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":201}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*docs*.py"}
+[field] ok  RepoReadFileRequest {"endLine":70,"path":"tools/check_box_idioms.py","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":["--","public/docs/three_output.md"],"command":"git-diff","timeoutSec":20}
+[field] ok  RepoSearchRequest {"glob":"tools/check_*.py","ignoreCase":true,"maxMatches":50,"query":"fence","regex":false}
+[field] ok  RepoPatchFileRequest {"newText":"```diffstatic {data-lang=kotlin}\nthree {\n    mesh(vase, wireframe = false, cullBackFaces = false,","oldText":"```kotlin\nthree {\n    mesh(vase, w
+[field] ok  RepoReadFileRequest {"endLine":274,"path":"public/docs/three_output.md","startLine":257}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-diff","timeoutSec":20}
+[field] ok  RepoSearchRequest {"glob":"public/docs/three_output.md","ignoreCase":false,"maxMatches":20,"query":"^```[A-Za-z0-9_+#-]*\\s*$","regex":true}
+[field] model=openai/gpt-6.1-sol rounds=6/40 wall=34s tokens in=246876 out=931 cacheRead=211006 wrote=['public/docs/three_output.md'] ran=['git-diff -- public/docs/three_output.md -> 0', 'git-diff  -> 0'] verdict=unchecked error=-

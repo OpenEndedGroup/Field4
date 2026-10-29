@@ -1,0 +1,3 @@
+Added one evidence citation in the handoff’s heading claim unit, verified against the camera dispatch and guard source. Tests could not be rerun because Gradle is unavailable and no Python checker covers this contract.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "docs/language-p3-shared", "reason": "The new handoff omitted evidence from its heading claim unit, repaired by adding one verified source citation without changing behavior or guards."}

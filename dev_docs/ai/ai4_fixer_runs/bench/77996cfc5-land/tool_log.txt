@@ -1,0 +1,18 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":1360,"path":"src/jvmMain/kotlin/afield/document/workspace/dir.kt","startLine":1270}
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**/*","ignoreCase":false,"maxMatches":50,"query":"KDocAttachment","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":350}
+[field] ok  RepoReadFileRequest {"endLine":330,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":205}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":60,"query":"kdoc","regex":false}
+[field] ok  RepoRunCommandRequest {"args":["f903419088fba11d6a37a4248fee508976201018","f3248592c675","--","src/jvmMain/kotlin/afield/document/workspace/dir.kt"],"command":"git-diff","timeoutSec"
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":30}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*.py"}
+[field] ok  RepoReadFileRequest {"endLine":205,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":95}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":100,"query":"attachment|parseDeclaration|mis-attached","regex":true}
+[field] ok  RepoPatchFileRequest {"newText":"    // Listed names for additionalDocuments that differ from their directory's, by canonical path.","oldText":"    /** Listed names for [additionalD
+[field] ok  RepoReadFileRequest {"endLine":467,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":365}
+[field] ok  RepoReadFileRequest {"endLine":1328,"path":"src/jvmMain/kotlin/afield/document/workspace/dir.kt","startLine":1316}
+[field] ok  RepoRunCommandRequest {"args":["--","src/jvmMain/kotlin/afield/document/workspace/dir.kt"],"command":"git-diff","timeoutSec":30}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":30}
+[field] model=openai/gpt-6.1-sol rounds=5/40 wall=31s tokens in=230431 out=1083 cacheRead=189918 wrote=['src/jvmMain/kotlin/afield/document/workspace/dir.kt'] ran=['git-diff f903419088fba11d6a37a4248fee508976201018 f3248592c675 -- src/jvmMain/kotlin/afield/document/workspace/dir.kt -> 0', 'git-status  -> 0', 'git-diff -- src/jvmMain/kotlin/afield/document/workspace/dir.kt -> 0', 'git-status  -> 0'] verdict=unchecked error=-

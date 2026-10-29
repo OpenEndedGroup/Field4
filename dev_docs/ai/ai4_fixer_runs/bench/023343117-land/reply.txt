@@ -1,0 +1,3 @@
+Renamed the synthetic packages to `afield.example` and `afield.demo`, updating matching paths and expected text in two files. Source inspection confirms the flagged roots are gone, and `check_box_idioms.py` passed; JVM verification was unavailable, and the Python boundary-selection suite failed to start due to an import-path error.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "codex/kit-library", "reason": "The branch introduced synthetic package declarations outside the public roots, corrected mechanically by placing them under afield and updating matching references."}

@@ -1,0 +1,230 @@
+{
+ "taskId": "task-567f6974",
+ "mode": "live",
+ "provider": "openai",
+ "model": "gpt-6.1-sol",
+ "verdict": "unchecked",
+ "checks": [],
+ "toolCalls": [
+  {
+   "index": 1,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":200,\"path\":\"AGENTS.md\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-200 of 552\",\"path\":\"AGENTS.md\",\"text\":\"1\\t# AField / Field\u00b74 \u2014 Repo Guide for Agents\\n2\\t\\n3\\tA corrective paragraph in this file is a bug report against a tool, and it stays only until the\\n4\\ttool enforces it. When you add a \\\"do not\\\", name the tool change that would retire it. Histories\\n5\\tof rules that became code live in\\n6\\t[`dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md`](dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md).\\n7\\t\\n8\\t---\\n9\\t\\n10\\t## 1. What this is\\n11\\t\\n12\\t**Field\u00b74** is a Kotlin live-coding environment for graphics and exploratory dat... [921 more chars]"
+  },
+  {
+   "index": 2,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"tools/test_guard_corpora.py\"],\"command\":\"python-test\",\"timeoutSec\":120}",
+   "ok": false,
+   "result": "{\"success\":false,\"message\":\"exit 1\",\"command\":\"uv run --project . --group backdoor python tools/test_guard_corpora.py\",\"exitCode\":1,\"timedOut\":false,\"elapsedMs\":76,\"output\":\"Traceback (most recent call last):\\n  File \\\"/Users/marc/field4-worktrees/2026-10-29-1-ai4-fixer-bench/.nightly-tmp/replay/tools/test_guard_corpora.py\\\", line 43, in <module>\\n    from tools import guard_corpora as gc\\nModuleNotFoundError: No module named 'tools'\\n\",\"outputBytes\":259,\"truncated\":false}"
+  },
+  {
+   "index": 3,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":260,\"path\":\"tools/test_guard_corpora.py\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-156 of 156\",\"path\":\"tools/test_guard_corpora.py\",\"text\":\"1\\t#!/usr/bin/env python3\\n2\\t\\\"\\\"\\\"`dev_docs/GUARD_CORPORA.md`'s numbers are re-derived, not typed \u2014 and this is what says so.\\n3\\t\\n4\\tThe page exists to name one defect: *a guard whose failure message states a rule over one population\\n5\\twhile the guard enforces it over a smaller one.* It was published on 2026-09-20 and was false in\\n6\\tfive rows the next morning, **against its own published re-derivation commands** \u2014 `tools/test_*.py`\\n7\\tsaid 29 against 31, `*Guard*.kt` + `*ContractTest.kt` said 2... [921 more chars]"
+  },
+  {
+   "index": 4,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":280,\"path\":\"tools/guard_corpora.py\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-237 of 237\",\"path\":\"tools/guard_corpora.py\",\"text\":\"1\\t#!/usr/bin/env python3\\n2\\t\\\"\\\"\\\"Re-derive the population tables in `dev_docs/GUARD_CORPORA.md` instead of typing them.\\n3\\t\\n4\\tThat page was written on 2026-09-20 to name one defect \u2014 *a guard whose failure message states a\\n5\\trule over one population while the guard enforces it over a smaller one* \u2014 and it was false in five\\n6\\trows within twenty-four hours, against **its own published re-derivation commands**. `tools/test_*.py`\\n7\\tsaid 29 and was 31; `*Guard*.kt` + `*ContractTest.kt` said 28 and was... [921 more chars]"
+  },
+  {
+   "index": 5,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[],\"command\":\"git-status\",\"timeoutSec\":20}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= status --short --branch\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":114,\"output\":\"## HEAD (no branch)\\n\",\"outputBytes\":20,\"truncated\":false}"
+  },
+  {
+   "index": 6,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":260,\"path\":\"dev_docs/GUARD_CORPORA.md\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-260 of 291\",\"path\":\"dev_docs/GUARD_CORPORA.md\",\"text\":\"1\\t# What each guard actually looks at\\n2\\t\\n3\\tWritten 20 September 2026, after the fourth independent report in eight days of the same shape of\\n4\\tdefect: **a guard whose failure message names a rule over one population while the guard enforces it\\n5\\tover a smaller one.** Four agents found four instances on three different nights, none of them\\n6\\tlooking for the family.\\n7\\t\\n8\\tThe point of this page is not the list. It is the two questions to ask of any guard in this tree,\\n9\\tand how to get the nu... [921 more chars]"
+  },
+  {
+   "index": 7,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":120,\"path\":\"tools/test_demo_build_scripts.py\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-120 of 269\",\"path\":\"tools/test_demo_build_scripts.py\",\"text\":\"1\\t#!/usr/bin/env python3\\n2\\t\\\"\\\"\\\"Hold each demo's `build.yaml` to the document it claims to have built.\\n3\\t\\n4\\tNine of the twenty-one documents under `dev_docs/agents/demos/` ship an agent-authored\\n5\\t`build.yaml` beside the saved `metadata.edn`, and each one says, in its own description, some\\n6\\tversion of \\\"this transcript is what built this document; re-running it rebuilds it\\\". Nothing\\n7\\tchecked that. On 2026-09-18 the promotion sweep (`ad06001ac`) discovered by hand that two of the\\n8... [921 more chars]"
+  },
+  {
+   "index": 8,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":110,\"path\":\"tools/test_inventory_box_code.py\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-110 of 128\",\"path\":\"tools/test_inventory_box_code.py\",\"text\":\"1\\t\\\"\\\"\\\"The census must retain inline-only code and respect container language/context.\\\"\\\"\\\"\\n2\\timport json\\n3\\tfrom pathlib import Path\\n4\\timport tempfile\\n5\\timport unittest\\n6\\t\\n7\\tfrom tools.inventory_box_code import Inventory\\n8\\t\\n9\\t\\n10\\tclass InventoryTest(unittest.TestCase):\\n11\\t    def census(self, files):\\n12\\t        temp = tempfile.TemporaryDirectory()\\n13\\t        self.addCleanup(temp.cleanup)\\n14\\t        root = Path(temp.name)\\n15\\t        for path, text in files.items():\\n16... [921 more chars]"
+  },
+  {
+   "index": 9,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"94d81abe357fa7d110f4321250b42c94dac871be\",\"--\",\"tools/test_demo_build_scripts.py\",\"dev_docs/GUARD_CORPORA.md\",\"src/jvmTest/kotlin/afield/tools/docs/AgentDemoRegistrationTest.kt\"],\"command\":\"git-diff\",\"timeoutSec\":20}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv 94d81abe357fa7d110f4321250b42c94dac871be -- tools/test_demo_build_scripts.py dev_docs/GUARD_CORPORA.md src/jvmTest/kotlin/afield/tools/docs/AgentDemoRegistrationTest.kt\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":37,\"output\":\"diff --git a/dev_docs/GUARD_CORPORA.md b/dev_docs/GUARD_CORPORA.md\\nindex 49e196ea7..911f5ed90 100644\\n--- a/dev_docs/GUARD_CORPORA.md\\n+++ b/dev_docs/GUARD_CORPORA.md\\n@@ -85,14 +85,14 @@ property that makes a page like this ch... [921 more chars]"
+  },
+  {
+   "index": 10,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"tools/test_*.py\",\"ignoreCase\":false,\"maxMatches\":35,\"query\":\"sys.path.insert\",\"regex\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"stopped at 35 matches\",\"matches\":[{\"path\":\"tools/test_agent_check_parse.py\",\"line\":18,\"text\":\"    sys.path.insert(0, str(TOOLS))  # field_backdoor imports its siblings by bare name\"},{\"path\":\"tools/test_automation_workspace.py\",\"line\":11,\"text\":\"    sys.path.insert(0, str(PUBLIC_DIR))\"},{\"path\":\"tools/test_backdoor_managed_startup.py\",\"line\":21,\"text\":\"sys.path.insert(0, str(REPO_PATH))\"},{\"path\":\"tools/test_backdoor_managed_startup.py\",\"line\":22,\"text\":\"sys.path.insert(0, str(REPO_PATH / \\\"tools\\\"))\"},{\"path\":\"tools/test_backdoor_managed_startup.py\",\"line\":23,\"text\"... [921 more chars]"
+  },
+  {
+   "index": 11,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"tools/test_field_backdoor.py\",\"tools.test_guard_corpora\"],\"command\":\"python-test\",\"timeoutSec\":120}",
+   "ok": false,
+   "result": "{\"success\":false,\"message\":\"exit 1\",\"command\":\"uv run --project . --group backdoor python tools/test_field_backdoor.py tools.test_guard_corpora\",\"exitCode\":1,\"timedOut\":false,\"elapsedMs\":341,\"output\":\"E\\n======================================================================\\nERROR: tools (unittest.loader._FailedTest.tools)\\n----------------------------------------------------------------------\\nAttributeError: module '__main__' has no attribute 'tools'\\n\\n----------------------------------------------------------------------\\nRan 1 test in 0.000s\\n\\nFAILED (errors=1)\\n\",\"outputBytes\":364,\"trun... [13 more chars]"
+  },
+  {
+   "index": 12,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"tools/test_field_backdoor.py\",\"discover\",\"-s\",\"tools\",\"-p\",\"test_guard_corpora.py\"],\"command\":\"python-test\",\"timeoutSec\":120}",
+   "ok": false,
+   "result": "{\"success\":false,\"message\":\"'-s' is not a unittest name (Class or Class.test_method)\",\"command\":\"python-test\",\"exitCode\":null,\"timedOut\":false,\"elapsedMs\":0,\"output\":\"\",\"outputBytes\":0,\"truncated\":false}"
+  },
+  {
+   "index": 13,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"tools/check_*.py\",\"ignoreCase\":false,\"maxMatches\":40,\"query\":\"guard_corpora|unittest|sys.path|argparse\",\"regex\":true}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"30 match(es) in 12 file(s)\",\"matches\":[{\"path\":\"tools/check_box_idioms.py\",\"line\":62,\"text\":\"import argparse\"},{\"path\":\"tools/check_box_idioms.py\",\"line\":451,\"text\":\"def scoped_paths(args: argparse.Namespace) -> list[str] | None:\"},{\"path\":\"tools/check_box_idioms.py\",\"line\":461,\"text\":\"    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)\"},{\"path\":\"tools/check_box_idioms.py\",\"line\":466,\"text\":\"    parser.add_argument(\\\"--root\\\", type=Path, default=REPO_ROOT, help=argparse.SUPPRESS)\"},{\"path\":\"tools/check_doc_... [921 more chars]"
+  },
+  {
+   "index": 14,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"tools/test_demo_build_scripts.py\"],\"command\":\"python-test\",\"timeoutSec\":120}",
+   "ok": false,
+   "result": "{\"success\":false,\"message\":\"exit 1\",\"command\":\"uv run --project . --group backdoor python tools/test_demo_build_scripts.py\",\"exitCode\":1,\"timedOut\":false,\"elapsedMs\":219,\"output\":\"..F\\n======================================================================\\nFAIL: test_the_corpus_is_where_it_was_measured (__main__.DemoBuildScriptTest.test_the_corpus_is_where_it_was_measured)\\nA demo that gains or loses a build script should make someone look at this file.\\n----------------------------------------------------------------------\\nTraceback (most recent call last):\\n  File \\\"/Users/marc/field4-workt... [620 more chars]"
+  },
+  {
+   "index": 15,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"tools/test_*.py\",\"ignoreCase\":false,\"maxMatches\":40,\"query\":\"guard_corpora|import tools|from tools import\",\"regex\":true}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"23 match(es) in 83 file(s)\",\"matches\":[{\"path\":\"tools/test_ai_tool_usage.py\",\"line\":10,\"text\":\"from tools import ai_tool_usage as usage\"},{\"path\":\"tools/test_check_offline_assets.py\",\"line\":41,\"text\":\"from tools import check_offline_assets as checker\"},{\"path\":\"tools/test_check_staged_generated_artifacts.py\",\"line\":86,\"text\":\"                     \\\"tools/docs_voice/check_anchors.py\\\", \\\"tools/test_guard_corpora.py\\\",\"},{\"path\":\"tools/test_check_study_tools.py\",\"line\":21,\"text\":\"from tools import check_study_tools as checker\"},{\"path\":\"tools/test_check_test_tree_write... [921 more chars]"
+  },
+  {
+   "index": 16,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":170,\"path\":\"tools/test_demo_build_scripts.py\",\"startLine\":120}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 120-170 of 269\",\"path\":\"tools/test_demo_build_scripts.py\",\"text\":\"120\\t    # opens a Window. It was parked under `artifacts/` for one day to avoid editing a file a\\n121\\t    # concurrent session held, and nothing under `artifacts/` is named by any registry in the tree.\\n122\\t    # 2026-10-10: GP instruments. No build.yaml (the transcript lives in dev_docs/agents/transcripts).\\n123\\t    \\\"gp_instruments\\\",\\n124\\t    \\\"gp_drawing\\\",\\n125\\t    # 2026-10-12: inspector embeds. No build.yaml (the transcript lives in dev_docs/agents/transcripts).\\n126\\t    \\\"browse_em... [921 more chars]"
+  },
+  {
+   "index": 17,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"public/docs/agent_transcripts.md\",\"ignoreCase\":false,\"maxMatches\":10,\"query\":\"python_box_parity\",\"regex\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"2 match(es) in 1 file(s)\",\"matches\":[{\"path\":\"public/docs/agent_transcripts.md\",\"line\":2175,\"text\":\"### python_box_parity\"},{\"path\":\"public/docs/agent_transcripts.md\",\"line\":2186,\"text\":\"[Open \u2197](offline.html?file=assets/agent_transcripts/python_box_parity/metadata.edn)\"}],\"complete\":true,\"filesSearched\":1}"
+  },
+  {
+   "index": 18,
+   "tool": "RepoPatchFileRequest",
+   "arguments": "{\"newText\":\"    \\\"pattern_condense\\\",\\n    \\\"python_box_parity\\\",\\n    \\\"python_cells\\\",\",\"oldText\":\"    \\\"pattern_condense\\\",\\n    \\\"python_cells\\\",\",\"path\":\"tools/test_demo_build_scripts.py\",\"replaceAll\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"replaced 1 occurrence(s) in tools/test_demo_build_scripts.py\",\"path\":\"tools/test_demo_build_scripts.py\",\"text\":\"\",\"totalLines\":0,\"truncated\":false}"
+  },
+  {
+   "index": 19,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"public/docs/agent_transcripts.md\",\"ignoreCase\":false,\"maxMatches\":500,\"query\":\"^### [a-z0-9_]+$\",\"regex\":true}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"234 match(es) in 1 file(s)\",\"matches\":[{\"path\":\"public/docs/agent_transcripts.md\",\"line\":79,\"text\":\"### staged_project\"},{\"path\":\"public/docs/agent_transcripts.md\",\"line\":89,\"text\":\"### stipple_sheet\"},{\"path\":\"public/docs/agent_transcripts.md\",\"line\":98,\"text\":\"### particle_video_reader\"},{\"path\":\"public/docs/agent_transcripts.md\",\"line\":106,\"text\":\"### hello_display\"},{\"path\":\"public/docs/agent_transcripts.md\",\"line\":114,\"text\":\"### ai4_iframe_hello\"},{\"path\":\"public/docs/agent_transcripts.md\",\"line\":122,\"text\":\"### marf_field_clocks\"},{\"path\":\"public/docs/agent_tr... [921 more chars]"
+  },
+  {
+   "index": 20,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":130,\"path\":\"tools/test_refactor_session.py\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-130 of 162\",\"path\":\"tools/test_refactor_session.py\",\"text\":\"1\\t\\\"\\\"\\\"Session delivery exercises real files, commands and journals without landing the real repo.\\\"\\\"\\\"\\n2\\timport copy\\n3\\timport json\\n4\\tfrom pathlib import Path\\n5\\timport subprocess\\n6\\timport sys\\n7\\tfrom unittest.mock import patch\\n8\\t\\n9\\timport unittest\\n10\\tfrom tools import test_refactor_pass as fixtures\\n11\\tfrom tools.test_refactor_pass import ReviewEngine\\n12\\tfrom tools.refactoring import session\\n13\\tfrom tools.refactoring.core import RefactorError, make_plan, save_json\\n14\\tfrom t... [921 more chars]"
+  },
+  {
+   "index": 21,
+   "tool": "RepoPatchFileRequest",
+   "arguments": "{\"newText\":\"import sys\\nsys.path.insert(0, str(Path(__file__).resolve().parent.parent))\\nfrom tools import guard_corpora as gc\",\"oldText\":\"from tools import guard_corpora as gc\",\"path\":\"tools/test_guard_corpora.py\",\"replaceAll\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"replaced 1 occurrence(s) in tools/test_guard_corpora.py\",\"path\":\"tools/test_guard_corpora.py\",\"text\":\"\",\"totalLines\":0,\"truncated\":false}"
+  },
+  {
+   "index": 22,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"tools/test_guard_corpora.py\"],\"command\":\"python-test\",\"timeoutSec\":120}",
+   "ok": false,
+   "result": "{\"success\":false,\"message\":\"exit 1\",\"command\":\"uv run --project . --group backdoor python tools/test_guard_corpora.py\",\"exitCode\":1,\"timedOut\":false,\"elapsedMs\":374,\"output\":\"...F.\\n======================================================================\\nFAIL: test_the_generated_block_is_what_the_commands_say_today (__main__.GuardCorporaTest.test_the_generated_block_is_what_the_commands_say_today)\\nThe page's tables are the output of its own commands, byte for byte.\\n----------------------------------------------------------------------\\nTraceback (most recent call last):\\n  File \\\"/Users/marc/... [881 more chars]"
+  },
+  {
+   "index": 23,
+   "tool": "RepoPatchFileRequest",
+   "arguments": "{\"newText\":\"| entries on `public/docs/agent_transcripts.md` | 234 |\",\"oldText\":\"| entries on `public/docs/agent_transcripts.md` | 233 |\",\"path\":\"dev_docs/GUARD_CORPORA.md\",\"replaceAll\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"replaced 1 occurrence(s) in dev_docs/GUARD_CORPORA.md\",\"path\":\"dev_docs/GUARD_CORPORA.md\",\"text\":\"\",\"totalLines\":0,\"truncated\":false}"
+  },
+  {
+   "index": 24,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"tools/test_guard_corpora.py\"],\"command\":\"python-test\",\"timeoutSec\":120}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"uv run --project . --group backdoor python tools/test_guard_corpora.py\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":417,\"output\":\".....\\n----------------------------------------------------------------------\\nRan 5 tests in 0.322s\\n\\nOK\\n\",\"outputBytes\":103,\"truncated\":false}"
+  },
+  {
+   "index": 25,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"tools/test_demo_build_scripts.py\"],\"command\":\"python-test\",\"timeoutSec\":120}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"uv run --project . --group backdoor python tools/test_demo_build_scripts.py\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":196,\"output\":\"...\\n----------------------------------------------------------------------\\nRan 3 tests in 0.105s\\n\\nOK\\n\",\"outputBytes\":101,\"truncated\":false}"
+  },
+  {
+   "index": 26,
+   "tool": "RepoPatchFileRequest",
+   "arguments": "{\"newText\":\"from tools import guard_corpora as gc\",\"oldText\":\"import sys\\nsys.path.insert(0, str(Path(__file__).resolve().parent.parent))\\nfrom tools import guard_corpora as gc\",\"path\":\"tools/test_guard_corpora.py\",\"replaceAll\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"replaced 1 occurrence(s) in tools/test_guard_corpora.py\",\"path\":\"tools/test_guard_corpora.py\",\"text\":\"\",\"totalLines\":0,\"truncated\":false}"
+  },
+  {
+   "index": 27,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[],\"command\":\"git-diff\",\"timeoutSec\":20}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":70,\"output\":\"diff --git a/dev_docs/GUARD_CORPORA.md b/dev_docs/GUARD_CORPORA.md\\nindex 911f5ed90..59c9624e3 100644\\n--- a/dev_docs/GUARD_CORPORA.md\\n+++ b/dev_docs/GUARD_CORPORA.md\\n@@ -89,7 +89,7 @@ property that makes a page like this checkable by a person at all.\\n | transcripts, recursive | 269 | `find dev_docs/agents/transcripts -name '*.yaml' -o -name '*.yml'` | what `AgentTranscriptLayoutGuard` walks... [921 more chars]"
+  }
+ ],
+ "finalText": "Added the missing `python_box_parity` corpus entry and corrected the stale index count from 233 to 234. Both targeted Python suites passed (8 tests total); the temporary import-path adjustment was removed, leaving only two one-line fixes.\n\nFIXER-VERDICT: {\"verdict\": \"fix\", \"culprit\": \"nightly/2026-10-15/1-python-box-parity\", \"reason\": \"The branch added python_box_parity without updating the Python corpus registry and left the generated index-entry count stale; both targeted suites now pass.\"}",
+ "rounds": 17,
+ "maxToolRounds": 40,
+ "hitToolRoundCap": false,
+ "elapsedMs": 117563,
+ "inputTokens": 768672,
+ "outputTokens": 3030,
+ "cacheReadTokens": 720179,
+ "documentName": "scratch",
+ "misuseCalls": 5,
+ "lessons": true,
+ "documentRef": "94b68ca8-0491-48f5-8e85-f5df3d5588db",
+ "programs": true,
+ "contextPlacement": "developer-once+input",
+ "repoWritten": [
+  "tools/test_demo_build_scripts.py",
+  "tools/test_guard_corpora.py",
+  "dev_docs/GUARD_CORPORA.md",
+  "tools/test_guard_corpora.py"
+ ],
+ "repoRuns": [
+  "python-test tools/test_guard_corpora.py -> 1",
+  "git-status  -> 0",
+  "git-diff 94d81abe357fa7d110f4321250b42c94dac871be -- tools/test_demo_build_scripts.py dev_docs/GUARD_CORPORA.md src/jvmTest/kotlin/afield/tools/docs/AgentDemoRegistrationTest.kt -> 0",
+  "python-test tools/test_field_backdoor.py tools.test_guard_corpora -> 1",
+  "python-test tools/test_demo_build_scripts.py -> 1",
+  "python-test tools/test_guard_corpora.py -> 1",
+  "python-test tools/test_guard_corpora.py -> 0",
+  "python-test tools/test_demo_build_scripts.py -> 0",
+  "git-diff  -> 0"
+ ]
+}

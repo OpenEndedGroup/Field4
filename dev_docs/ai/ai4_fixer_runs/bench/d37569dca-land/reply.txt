@@ -1,0 +1,3 @@
+Moved `Raster`’s KDoc back above its class in `ChartGallery.kt`, removing the branch’s stacked-comment error without changing behavior. Source inspection confirms the attachment matches the guard’s rules; execution verification was blocked by unavailable Gradle and a Python `ModuleNotFoundError: tools`.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "handoffs/code-20261015-2234", "reason": "The branch inserted staleCommittedFigures beneath Raster’s KDoc, and moving that comment back to its class mechanically removes the stacked-block finding."}

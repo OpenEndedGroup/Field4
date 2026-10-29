@@ -1,0 +1,3 @@
+Moved the parameter documentation into the function’s KDoc as `@param placeControlIds`; the diff confirms a documentation-only change in one file. Guard-source review confirms the attachment is now valid, but Gradle is unavailable and no Python check covers this guard.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "handoffs/code-20261016-1144", "reason": "The branch added KDoc above an unsupported bare parameter, now moved into the function's KDoc as an @param entry; verification was limited to source inspection because Gradle is unavailable."}

@@ -505,6 +505,15 @@ cap live (the tests do). Not run through a real `tools/land.py` round: that need
 on `FIELD_AGENT=field`, and the lander checkout must have this branch. A cold Gradle build in the
 fixer's worktree is still bounded only by the 900 s cap, inside `FIXER_MINUTES` (15).
 
+## The fixer job measured over history (2026-10-29)
+
+`tools/field_fixer_bench.py` replays every past `Lander fixup:` commit through AI4 with the lander's
+own brief and grades it with the real failing check (controls: red on the bounced tip, green on the
+fixup). Of the 30 cases a cheap check can grade, AI4 passed 29 with either brief, 17 byte-identical to
+the lander's fix. The one measured failure that was AI4's own — widening `PersonalBoundaryTest`'s
+allowlist instead of fixing the flagged string, 3/3 runs — is gone with a new `FIXER_PROMPT` rule
+(3/3 correct). Results, failure modes and how to replay: [AI4_FIXER_BENCH.md](AI4_FIXER_BENCH.md).
+
 ## What is not done
 
 - ~~No native box screenshot tool~~: done 2026-09-30 (`ViewBoxOutputRequest`).
