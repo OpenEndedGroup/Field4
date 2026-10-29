@@ -150,8 +150,12 @@ uv run --project . --group backdoor python tools/field_fixer_bench.py table
 ```
 
 `run --corpus` is the nightly form: every case whose controls hold, about 45 minutes. Per-case
-artifacts (prompt, `AgentTaskResult`, tool log, reply, diff) are in `ai4_fixer_runs/bench/<id>[suffix]/`,
-one JSON line per run in `ai4_fixer_runs/bench/results.jsonl`. The Field demo
+artifacts (`AgentTaskResult`, tool log, reply, diff) are in `ai4_fixer_runs/bench/<id>[suffix]/`,
+one JSON line per run in `ai4_fixer_runs/bench/results.jsonl`. The brief (`prompt.md`) is not
+committed, since `field_fixer_bench.py` rebuilds it from the fixup commit. Neither are the diffs of
+the four cases that fixed the personal-boundary guard (023343117, 040682d0f, 36addffcd, 96753d9c2):
+they quote private paths and fixture packages that `PersonalBoundaryTest` refuses in tracked files,
+so re-run those cases to see them. The Field demo
 `dev_docs/ai/ai4_fixer_bench_demo.yaml` shows the table and one case's diffs from those files.
 
 The classpath step is the clumsy part: the bench reads `.nightly-tmp/test.cp`. A Gradle task that
