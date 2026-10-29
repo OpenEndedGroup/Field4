@@ -14,14 +14,17 @@ package afield.geometry.euclid
  * val c = Elements.prop1(Segment2(point2(100, 200), point2(220, 200)))
  * val triangle = c.result
  * lines(c.toFLines(width = 520.0, height = 400.0), w = 520.0, h = 400.0)  // the plate, fitted to the output
- * lines += c.toFLines(upTo = 2)  // only the first two steps, for stepping through
- * lines += c.toFLines(style = ByrneStyle.WORKING)  // cited propositions' working too
  * ```
+ *
+ * `toFLines(upTo = 2)` draws only the first two steps, for stepping through a proof, and
+ * `toFLines(style = ByrneStyle.WORKING)` shows the working of the propositions this one cites.
  *
  * Every step is built only from the intersections of circles and straight lines in `Euclid.kt`;
  * nothing is placed by a formula the proposition does not use. Where Euclid says "take any point",
- * the choice here is fixed so the same input always draws the same figure.
+ * the choice here is fixed, so the same input always draws the same figure; [Elements.solutions]
+ * enumerates the others.
  */
+
 import afield.geometry.path.FLine
 import afield.geometry.path.byDashing
 import afield.graphics.render.color
@@ -69,7 +72,7 @@ enum class Role {
     AREA,
 }
 
-/** One drawn element of a construction: a [shape] in [color] playing [role], perhaps lettered with [label]. */
+/** One drawn element of a construction: a `shape` in `color` playing `role`, perhaps lettered with `label`. */
 data class Figure(val shape: Shape2, val color: Byrne, val label: String? = null, val role: Role = Role.GIVEN)
 
 /**
@@ -83,24 +86,39 @@ data class Pen(val width: Double, val dash: Double = 0.0, val alpha: Double = 1.
  *
  * The defaults follow Byrne's plates: given lines solid, the result heavier, compass circles thin,
  * and straight construction lines (the joins and productions a proof makes on the way) dotted.
- * Cited propositions draw only what they produce; set [cited] to a pen to show their working as
- * well, faded behind the main figure ([WORKING] does this). Areas are filled at [areas]' alpha. [paper] is the sheet behind the figure,
- * or null for none. [thickness] is the base stroke width; null, the default, takes it from the
- * figure's size, so diagrams drawn at any scale (or fitted to an output) look alike. Letters are italic serif, [labelSize] thicknesses tall, set [labelDistance]
- * thicknesses up and to the right of their point.
+ * Letters are italic serif. Every size here is in multiples of [thickness], so a diagram drawn at
+ * any scale, or fitted to an output, looks the same.
  */
 data class ByrneStyle(
+    /** Base stroke width; null, the default, takes it from the size of the figure, or of the output. */
     val thickness: Double? = null,
+    /** Pen for what the proposition is handed, and for the lines its proof keeps. */
     val given: Pen = Pen(1.0),
+    /** Pen for what the proposition was asked to make. */
     val result: Pen = Pen(1.6),
+    /** Pen for the compass circles and arcs a construction draws. */
     val circles: Pen = Pen(0.6),
+    /** Pen for the straight lines a construction draws: its joins and productions. */
     val constructionLines: Pen = Pen(0.6, dash = 2.0),
+    /**
+     * Pen for the steps of a cited proposition; null, the default, drops them, so a citation shows
+     * only what it produced. [WORKING] sets it, faded behind the main figure.
+     */
     val cited: Pen? = null,
+    /** Fill for coloured areas; only its [Pen.alpha] is read, since an area is filled rather than stroked. */
     val areas: Pen = Pen(0.0, alpha = 0.8),
+    /** The dot drawn at a lettered point. */
     val pointSize: Double = 0.8,
+    /** Whether a point's letter is drawn beside it. */
     val labels: Boolean = true,
+    /** Letter height. */
     val labelSize: Double = 7.2,
+    /** How far up and to the right of its point a letter sits. */
     val labelDistance: Double = 2.76,
+    /**
+     * The sheet behind the figure, as red, green and blue, and the colour of the halo behind each
+     * letter; null for neither.
+     */
     val paper: Triple<Double, Double, Double>? = Triple(0.96, 0.93, 0.85),
 ) {
     companion object {
@@ -355,6 +373,7 @@ class Proof internal constructor() {
     /** Where [a] and [b] cross; a branch where they do not is dropped (or, called plainly, fails naming [what]). */
     fun meet(a: Shape2, b: Shape2, what: String = "construction"): List<Point2> = afield.geometry.euclid.meet(a, b, what)
 
+    /** The distance from this point to [o]. */
     fun Point2.dist(o: Point2) = (o - this).length
 
     /** Equal to a relative tolerance, for [check]. */
@@ -363,8 +382,13 @@ class Proof internal constructor() {
     /** The angle at [v] between the arms through [a] and [b], in [0, π]. */
     fun angleAt(v: Point2, a: Point2, b: Point2) = afield.geometry.euclid.angleAt(v, a, b)
 
+    /** The mean of [ps]. */
     fun centroid(vararg ps: Point2) = afield.geometry.euclid.centroid(*ps)
+
+    /** True when [q]'s four sides are equal and its diagonal is one side times √2, for [check]. */
     fun isSquare(q: Quadrilateral2) = afield.geometry.euclid.isSquare(q)
+
+    /** True when [p] has [n] equal, non-zero sides and every interior angle of an [n]-gon, for [check]. */
     fun isRegular(p: Polygon2, n: Int) = afield.geometry.euclid.isRegular(p, n)
 
     /** Of [points], the one farthest from [from]: where a line through [from] leaves a circle. */

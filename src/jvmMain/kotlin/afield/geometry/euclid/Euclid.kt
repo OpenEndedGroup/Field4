@@ -1,8 +1,8 @@
 package afield.geometry.euclid
 
 /**
- * Fun with Euclid's elements: points, lines, rays, segments, circles and arcs in the plane, with
- * every pairwise intersection, closest point and distance, and the classical constructions
+ * Plane geometry in the classical sense: points, lines, rays, segments, circles, arcs and polygons,
+ * with every pairwise intersection, closest point and distance, and the standard constructions
  * (perpendicular bisectors, angle bisectors, circumcircles, incircles, tangents).
  *
  * ```kotlin
@@ -10,7 +10,7 @@ package afield.geometry.euclid
  * val s = Segment2(point2(-80, 10), point2(80, 30))
  * val hits = s.intersect(c).points           // the two places the segment crosses the circle
  * val (onS, onC) = s.closestPoints(Circle2(point2(0, 200), 20.0))
- * lines += c.toFLine()
+ * lines(c.toFLine(), s.toFLine())
  * ```
  *
  * Everything is immutable and computed in `Double`. `Vec2` converts in and out with
@@ -18,7 +18,7 @@ package afield.geometry.euclid
  * `closestPoints` and `distanceTo` work for any pair, including a shape with itself.
  *
  * Robustness: comparisons use a distance tolerance of [Euclid.epsilon] times the size of the inputs
- * (one plus the largest coordinate or radius involved), so tangencies, touching endpoints and
+ * (one plus the largest coordinate involved, and any radius), so tangencies, touching endpoints and
  * collinear or co-circular overlaps are reported as such rather than lost to rounding.
  * Overlaps come back as shapes in [Intersection2.overlaps] (a shared piece of a line or of a
  * circle), not as a single point. Degenerate inputs are treated as what they are: a zero-length
@@ -27,6 +27,7 @@ package afield.geometry.euclid
  * Arcs run from [Arc2.start] through a signed [Arc2.sweep] in radians: positive is
  * counter-clockwise in a y-up frame (clockwise on a y-down screen).
  */
+
 import afield.geometry.path.FLine
 import afield.math.linalg.Vec2
 import kotlin.math.PI
@@ -75,16 +76,19 @@ data class Point2(val x: Double, val y: Double) : Shape2 {
     /** Unit vector in this direction; the zero vector stays zero. */
     fun normalized(): Point2 = length.let { if (it == 0.0) this else this / it }
 
+    /** This point turned [radians] counter-clockwise (in a y-up frame) about [about]. */
     fun rotated(radians: Double, about: Point2 = ORIGIN): Point2 {
         val c = cos(radians); val s = sin(radians)
         val dx = x - about.x; val dy = y - about.y
         return Point2(about.x + c * dx - s * dy, about.y + s * dx + c * dy)
     }
 
+    /** The point [t] of the way from this to [o]. */
     fun lerp(o: Point2, t: Double) = Point2(x + (o.x - x) * t, y + (o.y - y) * t)
 
     fun midpoint(o: Point2) = lerp(o, 0.5)
 
+    /** This point as a [Vec2], in `Float`. */
     fun toVec2() = Vec2(x.toFloat(), y.toFloat())
 
     override fun toFLine(extent: Double): FLine =
@@ -102,6 +106,7 @@ data class Point2(val x: Double, val y: Double) : Shape2 {
 /** A [Point2] from any numbers. */
 fun point2(x: Number, y: Number) = Point2(x.toDouble(), y.toDouble())
 
+/** This vector as a [Point2], in `Double`. */
 fun Vec2.toPoint2() = Point2(x.toDouble(), y.toDouble())
 
 /**
@@ -133,8 +138,9 @@ sealed interface Shape2 {
     fun toFLine(extent: Double = 1000.0): FLine
 }
 
-/** The infinite line through [point] in [direction] (any nonzero length). */
+/** The infinite line through `point` in `direction` (any nonzero length). */
 data class Line2(val point: Point2, val direction: Point2) : Shape2 {
+    /** `point` plus [t] times [direction], so [t] counts whole direction vectors rather than distance. */
     fun at(t: Double) = point + direction * t
 
     /** Distance to [p], positive on the left of [direction] (counter-clockwise side). */
@@ -189,6 +195,7 @@ data class Line2(val point: Point2, val direction: Point2) : Shape2 {
 
 /** The half-line from [origin] in [direction]. */
 data class Ray2(val origin: Point2, val direction: Point2) : Shape2 {
+    /** [origin] plus [t] times [direction]; the ray itself is [t] of zero and above. */
     fun at(t: Double) = origin + direction * t
     val line get() = Line2(origin, direction)
 
@@ -200,6 +207,7 @@ data class Ray2(val origin: Point2, val direction: Point2) : Shape2 {
 
 /** The finite segment from [a] to [b]. */
 data class Segment2(val a: Point2, val b: Point2) : Shape2 {
+    /** The point [t] of the way from [a] to [b]; the segment itself is [t] in 0..1. */
     fun at(t: Double) = a.lerp(b, t)
     val length get() = (b - a).length
     val midpoint get() = a.midpoint(b)
@@ -375,7 +383,7 @@ data class Arc2(val center: Point2, val radius: Double, val start: Double, val s
 
 /**
  * The closed polygon through [points] in order. Intersections and distances are with its boundary,
- * its edges; [contains] asks about its inside.
+ * its edges; [Polygon2.contains] asks about its inside.
  */
 data class Polygon2(val points: List<Point2>) : Shape2 {
     constructor(vararg points: Point2) : this(points.toList())
