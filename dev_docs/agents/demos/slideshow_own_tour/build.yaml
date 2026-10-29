@@ -1,0 +1,59 @@
+name: slideshow_own_tour
+description: >
+  A three-step guide over two boxes that already exist in the document: the "tour of your own
+  document" example from public/docs/interactive_guides.md. Run numbers and squares, then run
+  tour and follow the Next links; each step selects the box it describes by name with
+  selectBoxByName, and step two opens squares at line 3 with that line marked.
+docs:
+  - page: interactive_guides.md
+    why: "The tour-of-your-own-document example, as a document you can replay."
+operations:
+  - create:
+      box: sot_numbers
+      name: numbers
+      frame: { x: 60.0, y: 300.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Ten numbers for squares to use.
+          val numbers = (1..10).toList()
+          println(numbers)
+  - create:
+      box: sot_squares
+      name: squares
+      frame: { x: 60.0, y: 420.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Squares of the numbers 1 to 10.
+          val numbers = (1..10).toList()
+          val squares = numbers.map { it * it }
+          println(squares)
+  - create:
+      box: sot_tour
+      name: tour
+      frame: { x: 60.0, y: 140.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          val show = slideShow {
+              step("Data") {
+                  markdownNote("## `numbers` makes the data\n[[next]]")
+                  selectBoxByName("numbers")
+              }
+              step("The work") {
+                  markdownNote("## Line 3 squares each number\n[[back]] [[next]]")
+                  selectBoxByName("squares", line = 3, highlight = 3)
+              }
+              step("Done") {
+                  markdownNote("## Run `squares` to see the result\n[[home:Start again]] [[finish]]")
+              }
+          }
+
+          runBlocking { show.start() }
+  - execute:
+      box: sot_numbers
+      property: code
+  - execute:
+      box: sot_squares
+      property: code
+  - execute:
+      box: sot_tour
+      property: code
