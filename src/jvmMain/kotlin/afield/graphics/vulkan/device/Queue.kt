@@ -17,7 +17,14 @@ import java.nio.IntBuffer
 import java.nio.LongBuffer
 
 open class Queue(private val device: Device, queueFamilyIndex: Int, queueIndex: Int) {
+    /**
+     * The Vulkan queue family this queue was taken from. [SwapChain] compares it against the
+     * presentation queue's: images are shared `CONCURRENT` when they differ and `EXCLUSIVE` when
+     * every queue touching them is from one family.
+     */
     val queueFamilyIndex: Int
+
+    /** The raw `VkQueue` handle, for the LWJGL calls Field has no wrapper for. */
     var vkQueue: VkQueue
 
     init {
@@ -30,6 +37,13 @@ open class Queue(private val device: Device, queueFamilyIndex: Int, queueIndex: 
         }
     }
 
+    /**
+     * Submit command buffers, waiting on `waitSemaphores` at the stages `dstStageMasks` names and
+     * signalling `signalSemaphores` when they complete. `fence` is optional and is what the CPU
+     * waits on to learn the work has finished. Taken under `Queue.globalQueueLock`, and refused
+     * outright once [Device.closeSubmissions] has run, so work is never queued against buffers a renderer
+     * teardown is about to free.
+     */
     fun submit(
         commandBuffers: PointerBuffer?, waitSemaphores: LongBuffer?, dstStageMasks: IntBuffer?,
         signalSemaphores: LongBuffer?, fence: afield.graphics.vulkan.device.Fence?
@@ -63,6 +77,11 @@ open class Queue(private val device: Device, queueFamilyIndex: Int, queueIndex: 
         }
     }
 
+    /**
+     * Block until everything already submitted to this queue has finished. Held under
+     * `Queue.globalQueueLock`, so a submit from another thread either lands before the wait or
+     * blocks until it returns.
+     */
     fun waitIdle() {
         synchronized(globalQueueLock) {
             VK10.vkQueueWaitIdle(vkQueue)
@@ -74,6 +93,11 @@ open class Queue(private val device: Device, queueFamilyIndex: Int, queueIndex: 
         val globalQueueLock = Any()
     }
 
+    /**
+     * A queue from the first family that offers graphics **and** compute. Field asks for both
+     * together so one queue can run a draw and a dispatch, and construction fails rather than
+     * falling back if no family offers both.
+     */
     class GraphicsQueue(device: Device, queueIndex: Int) :
         Queue(device, getGraphicsQueueFamilyIndex(device), queueIndex) {
         companion object {
@@ -99,6 +123,10 @@ open class Queue(private val device: Device, queueFamilyIndex: Int, queueIndex: 
         }
     }
 
+    /**
+     * A queue from the first family that offers compute, graphics or not. On a device whose first
+     * compute family is also its graphics family this is the same family [Queue.GraphicsQueue] picks.
+     */
     class ComputeQueue(device: Device, queueIndex: Int) :
         Queue(device, getGraphicsQueueFamilyIndex(device), queueIndex) {
         companion object {
@@ -124,6 +152,11 @@ open class Queue(private val device: Device, queueFamilyIndex: Int, queueIndex: 
         }
     }
 
+    /**
+     * A queue from the first family that can present to `surface`. Presentation support is a
+     * property of the family and the surface together, so this is asked per window rather than
+     * read off the device.
+     */
     class PresentQueue(device: Device, surface: Surface, queueIndex: Int) :
         Queue(device, getPresentQueueFamilyIndex(device, surface), queueIndex) {
         companion object {

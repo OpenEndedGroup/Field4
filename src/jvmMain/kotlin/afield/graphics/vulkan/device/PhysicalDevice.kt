@@ -12,21 +12,45 @@ import afield.graphics.vulkan.util.vkCheck
 
 class PhysicalDevice private constructor(vkPhysicalDevice: VkPhysicalDevice) {
     private var vkDeviceExtensions: VkExtensionProperties.Buffer
+
+    /** The device's memory heaps and types, as an allocator reads them to choose a memory type. */
     var vkMemoryProperties: VkPhysicalDeviceMemoryProperties
+
+    /** The raw `VkPhysicalDevice` handle, for the LWJGL calls Field has no wrapper for. */
     var vkPhysicalDevice: VkPhysicalDevice
+
+    /** The Vulkan 1.0 core feature set. Later feature structs are queried where they are needed. */
     var vkPhysicalDeviceFeatures: VkPhysicalDeviceFeatures
+
+    /** Limits, device name, API version and driver version, queried once at construction. */
     var vkPhysicalDeviceProperties: VkPhysicalDeviceProperties
+
+    /**
+     * One entry per queue family, carrying its capability flags, queue count and timestamp-valid
+     * bits. This is the list [Queue.GraphicsQueue], [Queue.ComputeQueue] and [Queue.PresentQueue]
+     * search for a family to take a queue from.
+     */
     var vkQueueFamilyProps: VkQueueFamilyProperties.Buffer
 
     /** `VkDriverId` of the ICD behind this device, e.g. [VK12.VK_DRIVER_ID_MOLTENVK]; 0 if unknown. */
     var driverId: Int = 0
         private set
+
+    /**
+     * The driver's own name for itself, which is what Field prints for the device it picked. Empty
+     * on a device reporting less than Vulkan 1.2, where the driver properties are not queried at all.
+     */
     var driverName: String = ""
         private set
+
+    /** The driver's version string, in whatever form it chooses. Empty on the same devices [driverName] is. */
     var driverInfo: String = ""
         private set
 
+    /** [driverId] is MoltenVK's. Nothing in Field reads this; the driver choice is made on [driverId] itself. */
     val isMoltenVK: Boolean get() = driverId == VK12.VK_DRIVER_ID_MOLTENVK
+
+    /** [driverId] is Mesa's KosmicKrisp. Nothing in Field reads this; see [isMoltenVK]. */
     val isKosmicKrisp: Boolean get() = driverId == VK12.VK_DRIVER_ID_MESA_KOSMICKRISP
 
     init {
@@ -78,6 +102,10 @@ class PhysicalDevice private constructor(vkPhysicalDevice: VkPhysicalDevice) {
         }
     }
 
+    /**
+     * Free the five native property structs. Called for every enumerated device that is not
+     * selected, as well as for the selected one when its renderer tears down.
+     */
     fun cleanup() {
         vkMemoryProperties.free()
         vkPhysicalDeviceFeatures.free()
@@ -86,6 +114,10 @@ class PhysicalDevice private constructor(vkPhysicalDevice: VkPhysicalDevice) {
         vkPhysicalDeviceProperties.free()
     }
 
+    /**
+     * The name the device reports for itself, which is also what [Options.preferredDevice] is
+     * matched against when choosing between several GPUs.
+     */
     val deviceName: String
         get() = vkPhysicalDeviceProperties.deviceNameString()
 
@@ -204,6 +236,10 @@ class PhysicalDevice private constructor(vkPhysicalDevice: VkPhysicalDevice) {
         }
     }
 
+    /**
+     * Whether the device enumerated `name` among its extensions. This asks what the device offers,
+     * not what Field enabled; [Device.enabledExtensions] is the second question.
+     */
     fun hasDeviceExtension(name: String): Boolean {
         val count = vkDeviceExtensions.capacity()
         for (i in 0 until count) {
@@ -212,6 +248,12 @@ class PhysicalDevice private constructor(vkPhysicalDevice: VkPhysicalDevice) {
         return false
     }
 
+    /**
+     * True unless `profilingEnabled` and the device has no `VK_KHR_performance_query`, printing
+     * what is missing either way. A missing `VK_EXT_host_query_reset` is reported as a warning and
+     * does not fail the check. Nothing in Field calls this; [Device.performanceQueryEnabled] is the
+     * answer the renderer actually reads.
+     */
     fun requireExtensionsIfProfiling(profilingEnabled: Boolean): Boolean {
         if (!profilingEnabled) return true
         // swapchain already required by your code

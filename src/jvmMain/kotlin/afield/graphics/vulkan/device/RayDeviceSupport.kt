@@ -13,13 +13,30 @@ import org.lwjgl.vulkan.*
 /** Physical support, separate from Device's enabled features. Field already requires Vulkan 1.3,
  * which supplies buffer-device-address, descriptor-indexing, SPIR-V 1.4 and float-control dependencies. */
 data class RayDeviceSupport(
+    /** `VK_KHR_acceleration_structure` is in the device's extension list. */
     val accelerationExtension: Boolean,
+    /** `VK_KHR_deferred_host_operations` is present, which acceleration-structure builds depend on. */
     val deferredHostOperations: Boolean,
+    /** `VK_KHR_ray_query` is in the device's extension list. */
     val queryExtension: Boolean,
+    /** `VK_KHR_ray_tracing_pipeline` is in the device's extension list. */
     val pipelineExtension: Boolean,
+    /** The `bufferDeviceAddress` feature, which shader-side acceleration-structure access needs. */
     val bufferDeviceAddress: Boolean,
+    /**
+     * The `accelerationStructure` feature. Only queried when [accelerationExtension] holds, so a
+     * device missing the extension reports this false as well.
+     */
     val accelerationStructure: Boolean,
+    /**
+     * The `rayQuery` feature — tracing from an ordinary compute or fragment shader. Only queried
+     * when [queryExtension] holds.
+     */
     val rayQuery: Boolean,
+    /**
+     * The `rayTracingPipeline` feature — raygen, hit and miss shader stages. Only queried when
+     * [pipelineExtension] holds.
+     */
     val rayTracingPipeline: Boolean
 ) {
     val accelerationUsable get() = accelerationExtension && deferredHostOperations && bufferDeviceAddress && accelerationStructure
