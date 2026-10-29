@@ -278,3 +278,6 @@ tools/katex-bundle/node_modules/
 !src/jvmMain/kotlin/afield/study/build/*.kt
 !src/jvmTest/kotlin/afield/study/build/
 !src/jvmTest/kotlin/afield/study/build/*.kt
+
+# The fixer bench rebuilds each brief from the fixup commit; keep only what AI4 produced.
+dev_docs/ai/ai4_fixer_runs/bench/*/prompt.md
