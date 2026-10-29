@@ -23,17 +23,50 @@ import kotlin.math.pow
  * the stable registration key for the window poll callback.
  */
 class KeyCamera(
+    /** The renderer whose window is read for held keys and whose poll loop runs the controls. */
     val renderer: Renderer = fromContext(),
+    /**
+     * The camera the keys move. **R** puts its position, target, up vector and field of view back to
+     * what they were when this [KeyCamera] was built, along with [decay], [movementSpeed] and
+     * [rotationSpeed].
+     */
     val camera: Camera = fromContext(),
+    /**
+     * The key this registration takes in the window's poll map. Building a second [KeyCamera] under
+     * the same name replaces the first rather than adding a second set of controls, which is how
+     * re-running a box leaves one.
+     */
     val name: String = "__keycamera__",
     private val acceptPhysicalKeys: Boolean = true,
 ) {
 
-    // key → (currentAmount, action)
+    /**
+     * The motion still owed, as action key to amount and what to do with it. Holding a key sets its
+     * amount back to 1 every poll; each poll then decays the amount, calls the action with it, and
+     * drops the entry once it falls below 0.01 — which is the glide that carries on after the key
+     * comes up. Adding an entry here moves the camera exactly as a key would.
+     */
     var actions = mutableMapOf<String, Pair<Double, (Double) -> Unit>>()
+
+    /**
+     * The decay in force for each action, for overriding [decay] on one of them. An action with no
+     * entry takes [decay] the next time it runs, and pressing its key clears the entry, so a value
+     * set here governs the glide of a key that is already down.
+     */
     var perActionDecays = mutableMapOf<String, Double>()
 
+    /**
+     * How much of an action's amount survives one 60 Hz frame, raised to the power of the frame's
+     * share of 1/60 s so the glide lasts the same wall-clock time at any frame rate. Lower stops
+     * sooner; 1 never stops.
+     */
     var decay = 0.95
+
+    /**
+     * How far one 60 Hz frame of a movement key travels, as a fraction of the camera's distance to
+     * its target, so the same keystroke moves less the closer you are. Turning has its own
+     * [rotationSpeed].
+     */
     var movementSpeed = 0.01
     /** Scale for keyboard yaw, pitch and roll; larger values turn the camera faster. */
     var rotationSpeed = 0.05
