@@ -2212,28 +2212,28 @@
     },
     "assets/agent_transcripts/petri_tala_layout/metadata.edn": {
       "captureDigest": "4922bf78986077d52bc6fd50098fb5a7043066bf6f51f472927f50cba41685f5",
-      "capturedAt": "2026-10-28T20:59:25.792Z",
+      "capturedAt": "2026-10-29T15:24:00.843Z",
       "channels": 5,
       "file": "assets/web_publications/petri_tala_layout/document/metadata.edn",
       "files": {
-        "assets/web_publications/petri_tala_layout/document/metadata.edn": "b4b25bc15b6ede66a4c48408841e13d6ad4b100ef64016252e7e14a7ff538117",
-        "assets/web_publications/petri_tala_layout/document/outputs.json": "792a8339317d9ac64be074b794194ebd92f6c225576e96e00ab6c8840aad2f3d",
-        "assets/web_publications/petri_tala_layout/outputs/0.html": "1d7e2709fbe18a8e72750dc7ade5244fff6287b4969bc7276e18eb3a1bdc6a3e",
-        "assets/web_publications/petri_tala_layout/outputs/1.html": "0404486e2a6fe41a4467fa359ff7f2bdd14e0bf37d979ff59225f2029a0d4dc8",
-        "assets/web_publications/petri_tala_layout/outputs/2.html": "1d7e2709fbe18a8e72750dc7ade5244fff6287b4969bc7276e18eb3a1bdc6a3e",
-        "assets/web_publications/petri_tala_layout/outputs/3.html": "0404486e2a6fe41a4467fa359ff7f2bdd14e0bf37d979ff59225f2029a0d4dc8",
-        "assets/web_publications/petri_tala_layout/outputs/4.html": "17166ed5f0359131893afcd6abe46c4f305c56ec54023666ab316f4f243dc20f"
+        "assets/web_publications/petri_tala_layout/document/metadata.edn": "6cb0090dc404ab81a9ef48658d3caedff334e7dc470c53e6300740143e7f765a",
+        "assets/web_publications/petri_tala_layout/document/outputs.json": "5ad59216fcfcaac4aa3e0376ae187c3adac43e3fda47870c49c43be74d5b2868",
+        "assets/web_publications/petri_tala_layout/outputs/0.html": "4119d6c28e3113797bcf5d4533f6ff9270dc19c8471a5bcc2d6ad9b206547375",
+        "assets/web_publications/petri_tala_layout/outputs/1.html": "f4bf262d9794bc8bc564e56cb43f5f5c427c2653d88e35bc7fa57c6270e26a1a",
+        "assets/web_publications/petri_tala_layout/outputs/2.html": "4119d6c28e3113797bcf5d4533f6ff9270dc19c8471a5bcc2d6ad9b206547375",
+        "assets/web_publications/petri_tala_layout/outputs/3.html": "f4bf262d9794bc8bc564e56cb43f5f5c427c2653d88e35bc7fa57c6270e26a1a",
+        "assets/web_publications/petri_tala_layout/outputs/4.html": "4bbc4595bdfc9eb5139bfd547a6a63cff13ef633313963fdf88c969c153a9e7a"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/petri_tala_layout/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/petri_tala_layout.yaml": "1a4ebed0a12feb54b7a1ba93a8e3ca46079503ded21f7ba926f08ac56a36b121",
+        "dev_docs/agents/transcripts/petri_tala_layout.yaml": "830433626cce560da28f9f39d1399f34ea42737a69947583c012508df1412f5d",
         "public/docs/assets/agent_transcripts/petri_tala_layout/guides/petri_nets-drawing-a-net.md": "65700f2cea3f4119f0d876587b617b53eeb090a8c634a4a944b2e2aa58058e8c",
-        "public/docs/assets/agent_transcripts/petri_tala_layout/metadata.edn": "f28fa8580e8a763666d65890646418a622acd873f1a06e3518c54bf434775647",
+        "public/docs/assets/agent_transcripts/petri_tala_layout/metadata.edn": "7f67d8adce0d23fac1e1a63fd139e9870a5c5207a87ab2d3996cea5914ce2582",
         "public/docs/assets/agent_transcripts/petri_tala_layout/petri_tala_force_code_.kt": "abba907ee7bac65e16804eb6ca73fbb30d1ac5524249b631a45d02620e4a3400",
-        "public/docs/assets/agent_transcripts/petri_tala_layout/petri_tala_status_code_.kt": "8b529f548efd3d2051f1411cdd5bc20cc074f0b5d136af25b19fb872a7d8d76b",
+        "public/docs/assets/agent_transcripts/petri_tala_layout/petri_tala_status_code_.kt": "adfbd4aca179023e8d4ed2d7344f716c7b96211cd90c89389f97b26fdc287230",
         "public/docs/assets/agent_transcripts/petri_tala_layout/petri_tala_tala_code_.kt": "8bfb5305ba1e24bb163b30b13656f22a08e75c71f023cf15afb264e02dd7adf7"
       }
     },
