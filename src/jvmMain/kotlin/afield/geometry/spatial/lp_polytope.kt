@@ -306,19 +306,30 @@ private fun solveSym3(h: DoubleArray, g0: Double, g1: Double, g2: Double): Doubl
 
 /**
  * One step of a 3-D trajectory: the 3-D [LpSample].
- *
- * @property scale the method's own measure, as for [LpSample]: μ for [centralPath] and
- *   [primalDual], the dual norm for [pdhg], `√det P` for [ellipsoid], the remaining volume for
- *   [cuttingPlanes], `NaN` for [simplexWalk].
  */
 data class LpSample3(
+    /** The iterate's x. */
     val x: Double,
+    /** The iterate's y. */
     val y: Double,
+    /** The iterate's z. */
     val z: Double,
+    /** The step number, starting at 0. */
     val iteration: Int,
+    /** `c·x` with `c` the normalised objective direction. */
     val objective: Double,
+    /** The largest constraint violation, zero for a feasible iterate. */
     val violation: Double,
+    /**
+     * The method's own measure, as for [LpSample]: μ for [centralPath] and [primalDual], the dual
+     * norm for [pdhg], `√det P` for [ellipsoid], the remaining volume for [cuttingPlanes], `NaN`
+     * for [simplexWalk].
+     */
     val scale: Double,
+    /**
+     * What kind of step this is: the method's name, or for [ellipsoid] which cut was taken —
+     * `feasibility-cut`, `objective-cut`, or `final` at the last step.
+     */
     val tag: String,
 ) {
     /** The iterate as a [Vec3], for drawing. */

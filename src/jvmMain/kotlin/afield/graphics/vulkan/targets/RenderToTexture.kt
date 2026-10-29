@@ -44,64 +44,103 @@ import java.util.concurrent.atomic.AtomicInteger
 
 /** Configuration for a [RenderToTexture]: size, formats, attachments, clearing and depth, set in its constructor block. */
 data class RTTParameters(
+    /** Width of every attachment, in pixels. */
     var width: Int = 1024,
+    /** Height of every attachment, in pixels. */
     var height: Int = 1024,
+    /** Mip levels on the color attachments; more than one asks for [generateColorMipmaps]. */
     var mipLevels: Int = 1,
+    /** The `VK_FORMAT_*` used for any color attachment [colorFormats] does not name. */
     var format: Int = VK_FORMAT_B8G8R8A8_SRGB,
+    /** How many color attachments to create. */
     var colorAttachments: Int = 1,
+    /** Per-attachment formats; empty uses [format] throughout, and a list must be [colorAttachments] long. */
     var colorFormats: List<Int> = emptyList(),
-    var colorLayerCount: Int = 1,                   // single layer count for all color attachments; 0 -> infer from external views
-    var forceColorArrayView: Boolean = false,       // expose color attachments as sampler2DArray even for a single layer
-    var viewports: List<afield.app.protocol.Rect> = emptyList(), // optional viewport array override
-    var multiviewViewMask: Int = 0,                 // non-zero enables VK_KHR_multiview / dynamic-rendering multiview
-    var externalColorViews: Map<Int, HasImageView> = emptyMap(), // optional externally-owned attachments by slot
+    /** Single layer count for all color attachments; 0 infers it from the external views. */
+    var colorLayerCount: Int = 1,
+    /** Expose color attachments as `sampler2DArray` even for a single layer. */
+    var forceColorArrayView: Boolean = false,
+    /** Optional viewport array override. */
+    var viewports: List<afield.app.protocol.Rect> = emptyList(),
+    /** Non-zero enables `VK_KHR_multiview` / dynamic-rendering multiview. */
+    var multiviewViewMask: Int = 0,
+    /** Optional externally-owned attachments, by slot. */
+    var externalColorViews: Map<Int, HasImageView> = emptyMap(),
+    /** The RGBA the color attachments are cleared to when [clearFirst]. */
     var clearColor: Vec4 = vec(0, 0, 0, 1),
 
     // --- Color QoL ---
-    var clearFirst: Boolean = true,                 // if false, LOAD previous contents
+    /** Clear the color attachments at the start of the pass; false loads the previous contents instead. */
+    var clearFirst: Boolean = true,
+    /** The color attachments' `VK_ATTACHMENT_STORE_OP_*`. */
     var colorStoreOp: Int = VK_ATTACHMENT_STORE_OP_STORE,
-    var colorSampled: Boolean = true,               // controls usage & final transition
+    /** Whether the result will be sampled, which controls usage flags and the final transition. */
+    var colorSampled: Boolean = true,
 
-    // Allow the produced color image to be used as a transfer source/destination.
-    // Useful for mirroring / copying into OpenXR swapchains.
+    /**
+     * Allow the produced color image to be used as a transfer source — mirroring, or copying into
+     * an OpenXR swapchain.
+     */
     var colorTransferSrc: Boolean = true,
+    /** Allow the produced color image to be used as a transfer destination. */
     var colorTransferDst: Boolean = false,
     /** Opt in when an external compute pass writes the color attachment as a storage image. */
     var colorStorage: Boolean = false,
 
-    // Automatic mip generation for color (when mipLevels > 1)
+    /** Generate the color mip chain automatically, when [mipLevels] is more than one. */
     var generateColorMipmaps: Boolean = true,
-    var mipBlitFilter: Int = VK_FILTER_LINEAR,      // auto-downgraded to NEAREST if linear not supported
+    /** Filter for the mip-generating blits; downgraded to `VK_FILTER_NEAREST` where linear is unsupported. */
+    var mipBlitFilter: Int = VK_FILTER_LINEAR,
 
     // --- Depth/Stencil options ---
+    /** Create a depth (by default depth+stencil) attachment and depth-test against it. */
     var useDepth: Boolean = true,
-    var depthFormat: Int = Options.defaultDepthFormat,//Options.defaultDepthFormat, // depth+stencil by default
+    /** The depth attachment's `VK_FORMAT_*`; depth+stencil by default. */
+    var depthFormat: Int = Options.defaultDepthFormat,
+    /** The depth value cleared to when [depthLoadOp] clears. */
     var clearDepth: Float = 1f,
+    /** The stencil value cleared to when [depthLoadOp] clears. */
     var clearStencil: Int = 0,
+    /** The depth attachment's `VK_ATTACHMENT_LOAD_OP_*`. */
     var depthLoadOp: Int = VK_ATTACHMENT_LOAD_OP_CLEAR,
+    /** The depth attachment's `VK_ATTACHMENT_STORE_OP_*`. */
     var depthStoreOp: Int = VK_ATTACHMENT_STORE_OP_STORE,
-    var depthSampled: Boolean = false,              // set true only if you intend to sample the depth later
+    /** Set true only if you intend to sample the depth later. */
+    var depthSampled: Boolean = false,
+    /**
+     * Name for this target in Vulkan debug labels; empty synthesizes one from a counter and the
+     * allocation site.
+     */
     var debugName: String = "",
 
-    // Create color attachments with IOSurface-exportable backing (MoltenVK) so the RTT can be
-    // handed zero-copy to a hardware video encoder (field-encode). Opt-in; macOS/MoltenVK only.
+    /**
+     * Create color attachments with IOSurface-exportable backing (MoltenVK) so the target can be
+     * handed zero-copy to a hardware video encoder (field-encode). Opt-in; macOS/MoltenVK only.
+     */
     var exportMetalIOSurface: Boolean = false,
 
-    // Back color attachment 0 with an externally-created IOSurface (its IOSurfaceRef pointer),
-    // instead of exporting one. Preferred for streaming: an IOSurfaceCreate-born surface carries a
-    // real pixelFormat that CoreVideo/VideoToolbox can wrap (MoltenVK's export leaves it 0).
-    // macOS/MoltenVK only; the surface's format/size must match this RTT's.
+    /**
+     * Back color attachment 0 with an externally-created IOSurface, given as its `IOSurfaceRef`
+     * pointer, instead of exporting one. Preferred for streaming: an `IOSurfaceCreate`-born
+     * surface carries a real `pixelFormat` that CoreVideo/VideoToolbox can wrap, where MoltenVK's
+     * export leaves it 0. macOS/MoltenVK only; the surface's format and size must match this
+     * target's.
+     */
     var importMetalIOSurface: Long = 0,
 
-    // Create color attachments with opaque-fd-exportable backing (VK_KHR_external_memory_fd) so
-    // the RTT can be handed zero-copy to NVENC via CUDA external memory import (field-encode-linux).
-    // Opt-in; Linux/NVIDIA only. See VulkanExternalMemory.kt.
+    /**
+     * Create color attachments with opaque-fd-exportable backing (`VK_KHR_external_memory_fd`) so
+     * the target can be handed zero-copy to NVENC through CUDA external memory import
+     * (field-encode-linux). Opt-in; Linux/NVIDIA only; see [VulkanExternalMemory].
+     */
     var exportOpaqueFd: Boolean = false,
 
-    // Create color attachments with dma-buf-exportable backing and a driver-chosen DRM format
-    // modifier, so the RTT can be handed to any dma-buf importer — including Field's own
-    // external-browser receiver, which is how that receiver is testable without a browser.
-    // Opt-in; Linux only. See LinuxDmaBufExport.kt.
+    /**
+     * Create color attachments with dma-buf-exportable backing and a driver-chosen DRM format
+     * modifier, so the target can be handed to any dma-buf importer — including Field's own
+     * external-browser receiver, which is what makes that receiver testable without a browser.
+     * Opt-in; Linux only; see [LinuxDmaBufExport].
+     */
     var exportDmaBuf: Boolean = false
 )
 
