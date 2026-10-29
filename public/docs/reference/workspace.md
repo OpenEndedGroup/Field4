@@ -2134,21 +2134,21 @@ batches instead of finishing a query nobody will read.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="templating-kt--templating"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">templating</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/templating/#L325) |  |
+| <a id="templating-kt--templating"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">templating</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/templating/#L397) |  |
 
 ### Top-level values { #templating-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="templating-kt--templateservers"></a>[<code class="highlight"><span class="k">val</span> <span class="n">templateServers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/app/server/templating/#L79) | Remote metadata-template servers, read once from `AFIELD_TEMPLATE_SERVERS` or, when the environment variable is absent, `afield.templateServers`. |
+| <a id="templating-kt--templateservers"></a>[<code class="highlight"><span class="k">val</span> <span class="n">templateServers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/app/server/templating/#L81) | Remote metadata-template servers, read once from `AFIELD_TEMPLATE_SERVERS` or, when the environment variable is absent, `afield.templateServers`. |
 
 ### RemoteTemplate { #templating-kt-remotetemplate }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RemoteTemplate</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">has&#95;edn</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/templating/#L60)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RemoteTemplate</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">has&#95;edn</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/templating/#L62)
 
 ### TemplateMetadata { #templating-kt-templatemetadata }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TemplateMetadata</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">lastModified</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">boxDocumentation</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;template&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/templating/#L63)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TemplateMetadata</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">lastModified</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">boxDocumentation</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;template&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/templating/#L65)
 
 | Declaration | Summary |
 | --- | --- |
