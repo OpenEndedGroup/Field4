@@ -100,6 +100,8 @@ object KotlinToJsCompiler {
         val mode: Mode,
         /** raw compiler log, kept for spike-time debugging */
         val rawLog: String,
+        /** The v3 source map of [js] (generated JS → prepared Kotlin lines), when the compiler wrote one. */
+        val sourceMap: String? = null,
     ) {
         internal fun remapDiagnostics(source: PreparedSource): Result = copy(
             diagnostics = diagnostics.map { diagnostic ->
@@ -465,7 +467,8 @@ object KotlinToJsCompiler {
             outputDir = jsDir.absolutePath
             this.moduleName = moduleName
             irModuleName = moduleName
-            sourceMap = false
+            // Kept so runtime errors and console.log in the head map back to the editor line.
+            sourceMap = true
             if (cacheDir != null) {
                 cacheDir.mkdirs()
                 cacheDirectory = cacheDir.absolutePath
@@ -477,8 +480,10 @@ object KotlinToJsCompiler {
         if (e2 != ExitCode.OK || !js.exists()) {
             return Result(null, collector.diagnostics, false, Mode.IN_PROCESS, collector.log())
         }
-        return Result(js.readText(), collector.diagnostics, true, Mode.IN_PROCESS, collector.log())
+        return Result(js.readText(), collector.diagnostics, true, Mode.IN_PROCESS, collector.log(), sourceMapOf(js))
     }
+
+    private fun sourceMapOf(js: File): String? = File(js.path + ".map").takeIf { it.exists() }?.readText()
 
     private fun K2JSCompilerArguments.applyProfile(profile: Profile) {
         when (profile) {
@@ -587,12 +592,13 @@ object KotlinToJsCompiler {
             "-ir-output-dir", jsDir.absolutePath,
             "-ir-output-name", moduleName,
             "-Xir-module-name=$moduleName",
+            "-source-map",
             *profileArgs,
             *cacheArgs,
         )
         val log = log1 + log2
         if (!js.exists()) return Result(null, parseDiagnostics(log), false, Mode.SUBPROCESS, log)
-        return Result(js.readText(), parseDiagnostics(log), true, Mode.SUBPROCESS, log)
+        return Result(js.readText(), parseDiagnostics(log), true, Mode.SUBPROCESS, log, sourceMapOf(js))
     }
 
     private fun runCompiler(javaBin: String, classpath: String, vararg compilerArgs: String): String {

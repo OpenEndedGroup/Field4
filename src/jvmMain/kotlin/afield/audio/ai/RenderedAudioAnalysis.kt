@@ -63,11 +63,27 @@ import kotlin.math.roundToInt
  * Keep the code itself in the Field document and put concise render parameters here.
  */
 data class RenderedAudioFile(
+    /**
+     * The WAV on disk. It must exist, end in `.wav`, and be longer than the 44 bytes of a bare
+     * header, all checked when this value is made rather than when the upload starts.
+     */
     val path: Path,
+    /**
+     * Which Field system wrote the bytes. The render functions here use `Pat`, `Dirt`, `Dough`,
+     * `Faust` and `Sonic Pi`; anything non-blank is accepted.
+     */
     val generator: String,
+    /** Frames per second, positive, or null where it is not known. [RenderedAudioFile.existing] reads it from the header. */
     val sampleRate: Int? = null,
+    /** Channel count, positive, or null where it is not known. [RenderedAudioFile.existing] reads it from the header. */
     val channels: Int? = null,
+    /** Length in seconds, positive, or null where it is not known. [RenderedAudioFile.existing] reads it from the header. */
     val durationSeconds: Double? = null,
+    /**
+     * Render parameters to carry beside the bytes, for a box drawing a provenance line. Each render
+     * function adds keys of its own first, such as `cycles` and `cps` for Pat, so a key given here
+     * replaces the function's.
+     */
     val provenance: Map<String, String> = emptyMap(),
 ) {
     init {
@@ -132,14 +148,27 @@ internal fun wavHeaderFacts(path: Path): WavHeaderFacts? = runCatching {
 }.getOrNull()
 
 /** One named analysis request, retained beside its accepted job and final result. */
-data class NamedAudioAnalysis(val label: String, val operation: ModelOperation) {
+data class NamedAudioAnalysis(
+    /**
+     * Short name for this leg. [standardAudioAnalyses] uses `beats`, `monophonic pitch` and
+     * `polyphonic pitch`. It reaches [CompletedAudioAnalysis] and the progress callbacks so a
+     * caller can tell the legs apart; [RenderedAudioAnalysis.visualizationHtml] is handed only the
+     * results, and names its lanes from those.
+     */
+    val label: String,
+    /** The request this leg submits. */
+    val operation: ModelOperation,
+) {
     init { require(label.isNotBlank()) { "analysis label must not be blank" } }
 }
 
 /** A completed leg of a rendered-audio analysis fan-out. */
 data class CompletedAudioAnalysis(
+    /** The [NamedAudioAnalysis.label] this leg was requested under. */
     val label: String,
+    /** What the service said when it took the job, including the job id progress was watched on. */
     val accepted: JobAccepted,
+    /** The durable result the job finished with. */
     val result: AnalysisResult,
 )
 
@@ -148,10 +177,21 @@ data class CompletedAudioAnalysis(
  * durable results. This is suitable for storing on a Field node without making Python authoritative.
  */
 data class RenderedAudioAnalysis(
+    /** The local WAV that was uploaded, with the generator name and provenance it was made with. */
     val render: RenderedAudioFile,
+    /** The immutable service asset those bytes became. */
     val asset: AudioAsset,
+    /**
+     * The asset's WAV representation the analyses ran against: its `canonical_project` WAV where
+     * there is one, otherwise the first WAV it has.
+     */
     val sourceRepresentation: AssetRepresentation,
+    /**
+     * The window actually analysed. Its duration is clamped to what is left of the render after
+     * [AssetRegion.startSeconds], so it can be shorter than the one asked for.
+     */
     val region: AssetRegion,
+    /** One entry per leg of the fan-out, in the order the requests were listed. */
     val analyses: List<CompletedAudioAnalysis>,
 ) {
     /** Source waveform and every analysis lane on one shared, bidirectional time cursor. */

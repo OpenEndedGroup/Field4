@@ -103,6 +103,7 @@ The crib:
 | One smoke test | `... tools/run_field_tests.py --id <catalog-id>` (also `--tag`, `--runner jvm-main`) |
 | Browser UI regressions | `uv run --project . --group backdoor python tools/run_ui_regressions.py` (`--id <regression>` for one) |
 | One browser screenshot | `uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright --command 'new-box --name Visual' --command 'run @last --value "display(\"main\", \"<div>hello</div>\")"' --command 'screenshot-box @last /tmp/field-smoke.png'` |
+| Drive or probe frontend UI (panels, shortcuts, DOM rects) | `... tools/field_backdoor.py --json --with-playwright --command 'page-eval --body --file probe.js' --command 'screenshot-window /tmp/out.png'` |
 | Feel benchmark (first run, reruns, edits, shader compiles; `dev_docs/testing/FEEL_BENCHMARKS.md`) | `uv run --project . --group backdoor python tools/feel_bench.py run` (then `... compare`) |
 | Docs native prerequisites | `./gradlew buildDocsNativePrerequisites` (Ceres, TetGen, the pinned Dirt-Samples subset; checks Manifold and JEP; checksummed downloads shared across worktrees) |
 | Docs HTML only | `FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean` |
@@ -344,8 +345,10 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
   built this way (`afield/graphics/shader/shaders.kt`), which is why shader graphs compose through
   box connections.
 - `fromContext<T>()` (in `afield.document.context`, `src/jvmMain/kotlin/afield/document/context/Mesh_context.kt`)
-  finds the nearest `T` by searching the executing `Box` (`Box.context`), its `properties`, its
-  script variables (`box.ki.context.vars`), then each parent in turn. Use
+  finds the nearest `T` by searching the executing `Box` (`Box.context`), its `properties`, then
+  each ancestor generation in turn (properties, then script variables `box.ki.context.vars`). The
+  asking box's own script variables are skipped unless `includeLocalVariables = true`, or
+  `val r = fromContext<R>()` would find its own previous answer on every later run. Use
   `fromContextWithNameOrNull<T>("name")` for a specific named value. A missing `Renderer` is
   usually topology, not timing: the renderer parent was not launched, the box is not connected
   beneath it, or the lookup happened after an async boundary. Fix the graph or capture the

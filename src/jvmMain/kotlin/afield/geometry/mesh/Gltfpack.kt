@@ -7,13 +7,17 @@ import java.nio.file.Files
 import java.util.concurrent.TimeUnit
 
 /**
- * Shrinking an exported GLB with gltfpack, meshoptimizer's glTF optimiser.
+ * The optional gltfpack step between a GLB and the disk.
  *
- * [Gltfpack] is the whole of it: one gltfpack process per GLB, run with [Gltfpack.DEFAULT_ARGS],
- * the arguments the madp geometry toolbox exports with. It is an optional extra. Without a gltfpack
- * on disk [Gltfpack.available] is false and Field's GLB writers emit the file uncompressed, so code
- * that wants a smaller GLB only when one is cheap calls [Gltfpack.compressIfSmaller] and never
- * asks whether the tool is there.
+ * Field writes binary glTF in two places, and both offer the bytes here first: [writeGlb], for a
+ * geometry recipe, and the three viewer's **Export GLB**, which posts to `POST /three-gltfpack`. The
+ * object below is all there is to it: where to find a gltfpack, whether there is one, and two
+ * ways to run it.
+ *
+ * Nothing breaks without the tool. [compressIfSmaller], which the file writers use, returns the GLB
+ * it was handed when gltfpack is missing, fails, or saves nothing, and the route answers 404 so the
+ * viewer keeps its uncompressed export. [compress] is the strict version, for a caller that would
+ * rather hear about the failure.
  */
 
 /**

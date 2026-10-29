@@ -69,7 +69,7 @@ data class ThreeDrawStyle(
     val wireframe: Boolean = false,
     /** Wireframe colour as `[r, g, b, a]` in `[0, 1]`, or `null` for the viewer's default. */
     val wireframeColor: FloatArray? = null,
-    /** Shade per triangle rather than per vertex — a faceted look, and honest about a coarse mesh. */
+    /** Shade per triangle rather than per vertex — a faceted look that shows a coarse mesh instead of smoothing it over. */
     val flatShading: Boolean = false,
     /** Multiplied into the per-vertex alpha. */
     val opacity: Float = 1f,
@@ -258,11 +258,6 @@ enum class ThreeSurfaceHitKind {
  * known. `FLineIntersection`'s `u`/`v` are a *surface parameterisation* of a quad and are a different
  * animal; the names collide because both are "where in the element", and [w] is the tell that this one
  * is barycentric.
- *
- * @property frontFacing whether the ray met the triangle's front face — its winding normal pointing
- * back towards the camera. `false` means you clicked the inside of the model, which is either a
- * deliberate look through an open shell or the thing that makes a mesh appear to have holes. Nothing in
- * the FLine record corresponds, because an FLine fill is a sheet and has no inside.
  */
 data class ThreeSurfaceHit(
     /** [ThreeDrawable.id], or empty when the author did not name the drawable. */
@@ -271,6 +266,7 @@ data class ThreeSurfaceHit(
     val label: String? = null,
     /** The drawable's ordinal in the payload — the sibling of `FLineIntersection.lineIndex`. */
     val drawableIndex: Int = -1,
+    /** Which part of the triangle was hit: a corner, an edge, the interior, or [ThreeSurfaceHitKind.UNKNOWN]. */
     val kind: ThreeSurfaceHitKind = ThreeSurfaceHitKind.UNKNOWN,
     /** Where the ray met the surface, in the scene's own coordinates. */
     val position: Vec3,
@@ -296,6 +292,12 @@ data class ThreeSurfaceHit(
     val v: Double = Double.NaN,
     /** Barycentric weight of the third corner. `u + v + w == 1`. */
     val w: Double = Double.NaN,
+    /**
+     * Whether the ray met the triangle's front face — its winding normal pointing back towards the
+     * camera. `false` means you clicked the inside of the model, which is either a deliberate look
+     * through an open shell or the thing that makes a mesh appear to have holes. Nothing in the
+     * FLine record corresponds, because an FLine fill is a sheet and has no inside.
+     */
     val frontFacing: Boolean = true,
     /** The three corners of the hit triangle, in the mesh's winding order. */
     val triangle: List<Vec3> = emptyList(),

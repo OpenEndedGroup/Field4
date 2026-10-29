@@ -18,6 +18,31 @@ import afield.tools.automation.OperationTranscript
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * The AI4 tool surface as an external agent sees it: the same registry the chat panel uses, wired
+ * to one attached document, with every target named outright.
+ *
+ * Building a context for a session assembles what a tool call will need: compiling and evaluating
+ * Kotlin against a box, reading, writing and replaying operation macros, semantic retrieval over
+ * the indexed corpora, text and symbol search across the workspace, the runtime providers for
+ * shader reload and render-window capture, whatever tools the document's own boxes declare, and the
+ * agent memory kept per document. The backdoor and the MCP bridge both call it, and so do the tests
+ * that pin a tool's answer.
+ *
+ * Targeting is the one place it differs from the chat panel. A chat tool may mean "the box whose
+ * chat is open"; here a box is named by uid, by a name unique in the document, or by an `afield://`
+ * reference, and there is no current-box fallback. A name matching two boxes is refused with the
+ * count rather than resolved to either, because replaying a macro over the wrong box is the one
+ * failure here that edits a document. A name matching nothing still falls through to the literal
+ * uid, which is how a document root reaches its box and how a typo earns the provider's own
+ * message. Passing a focus box names the box whose chat is to be played, which is how a backdoor
+ * call reproduces what the panel would have answered.
+ *
+ * Workspace text search is rooted at the attached document, the workspace and this checkout's
+ * `src`, never at the process working directory, and refuses to run on Field's [Runloop] because it
+ * reads disk.
+ */
+
 /** Shared AI4 registry for external agents; targets must be explicit in this context. */
 internal object Ai4BackdoorTools {
     private val memoryByDocument = ConcurrentHashMap<String, AgentMemoryState>()
@@ -51,7 +76,7 @@ internal object Ai4BackdoorTools {
             refResolver = refResolver,
             boxByIdOrNull = boxByIdOrNull,
             stagedOrCurrentSource = { target, property, explicit ->
-                explicit ?: (target.getPropertyRaw(property) as? String)?.takeIf { it.isNotBlank() }
+                explicit?.takeIf { it.isNotBlank() } ?: (target.getPropertyRaw(property) as? String)?.takeIf { it.isNotBlank() }
             }
         )
 

@@ -37,6 +37,40 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.test.*
 
 class FileManagerFallbackTest {
+    @Test fun documentFileResolutionHonorsReadOnlySessions() {
+        val temp = Files.createTempDirectory("file-resolution-readonly").toFile().canonicalFile
+        try {
+            val lookups: List<(FieldFileManager) -> Unit> = listOf(
+                { manager -> assertEquals(manager.documentDirectory.resolve("files"), manager.documentFilesDirectory) },
+                { manager -> assertEquals(manager.documentDirectory.resolve("files/data.csv"), manager.path("data.csv")) },
+                { manager -> assertEquals(manager.documentDirectory.resolve("files/data.csv"), manager.path("%document/data.csv")) },
+                { manager -> assertFailsWith<IllegalStateException> { manager.path("*.csv") } },
+            )
+            for ((readOnly, ephemeral) in listOf(false to false, true to false, false to true)) {
+                for ((index, lookup) in lookups.withIndex()) {
+                    val document = File(temp, "doc-$readOnly-$ephemeral-$index").apply { mkdirs() }
+                    val root = Box("root")
+                    val session = SessionInformation(document.absolutePath, document.name, ConcurrentHashMap(), root,
+                        readOnly = readOnly, ephemeral = ephemeral)
+                    root.inside = session
+                    session.boxes[root.id] = root
+                    val manager = FileManager.forSession(session)
+                    lookup(manager)
+                    assertEquals(!readOnly, File(document, "files").isDirectory,
+                        "lookup $index: readOnly=$readOnly, ephemeral=$ephemeral")
+                    val asset = File(document, "files/data.csv").apply {
+                        parentFile.mkdirs()
+                        writeText("existing data")
+                    }
+                    assertEquals("existing data", manager.file("data.csv").readText())
+                    assertEquals(asset, manager.file("%document/data.csv"))
+                }
+            }
+        } finally {
+            temp.deleteRecursively()
+        }
+    }
+
     @Test fun precedenceReplacementRemovalAndHistory() {
         val temp = Files.createTempDirectory("file-fallback").toFile().canonicalFile
         val name = "helper-${temp.name}.bin"

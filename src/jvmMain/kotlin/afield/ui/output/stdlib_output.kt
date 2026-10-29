@@ -81,26 +81,16 @@ import java.nio.IntBuffer
 import kotlin.reflect.KProperty
 
 /**
- * The general-purpose helpers that every Field box already has in scope.
+ * HTML-safe syntax colouring for a value printed into a box output.
  *
- * Box code is compiled with the standard imports in `intro` in its preamble and with `Box` as an
- * implicit receiver, so everything here — including the `Box.` extensions — can be called
- * unqualified from inside a box.
+ * [highlightSyntax] escapes a string and wraps its numbers, punctuation and brackets in spans, so
+ * the result reads as code rather than as prose. It is purely lexical and language-agnostic: it
+ * finds floats, integers, single punctuation characters and brackets, and knows nothing of
+ * keywords, strings or comments. Everything else is escaped, so the result is always safe to drop
+ * into HTML. `String.h` and `String.ss` are the same call, shorter.
  *
- * The substantial part is the property-delegate machinery that `prop` and `@exported` generate
- * against: [Delegation] (stores on the receiver's own property bag), [Inheritance] (walks up
- * `parents` until some ancestor has the property, otherwise throws
- * [MissingInheritedPropertyException] with a message naming the property and the box), and
- * [InheritanceFromContext] (same walk, but prefers each box's live Kotlin variables over raw
- * properties).
- *
- * The rest is small conveniences: graph access (`named`, `+=` / `-=` for
- * connect/disconnect, `__m` markers); execution control (`begin`, `end`, [start], [animate],
- * `aside`, `cell`); frame-presentation logging ([frameLogStart], [frameLogStop],
- * [frameLogMark], [frameLogLine]); matrix and buffer building ([mat4], [mat3], `FloatBuffer.add`,
- * `IntBuffer.add`, `ByteBuffer.putf16`); and terse numeric/collection/string shorthands
- * (`Number.f` / `.i` / `.l` / `.d`, [fa], [ia], `Int.alphas`, `String.times`, `List.m` / `.s`,
- * `String.r`, and [highlightSyntax] behind `String.h` / `String.ss`).
+ * One of the `stdlib` files, which the `intro` preamble star-imports into every box, so everything
+ * here can be called unqualified, with `Box` as the implicit receiver.
  */
 
 private fun escapeSyntaxHtml(input: String): String {

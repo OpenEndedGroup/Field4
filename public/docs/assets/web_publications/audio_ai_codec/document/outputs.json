@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T17:38:21.459Z",
+  "documentName": "audio_ai_codec",
+  "outputs": [
+    {
+      "uid": "encodec_reconstruction_microscope",
+      "channel": "main",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [
+        "plotly",
+        "svg",
+        "canvas-image"
+      ],
+      "width": 1070,
+      "height": 980,
+      "path": "outputs/0.html"
+    }
+  ]
+}

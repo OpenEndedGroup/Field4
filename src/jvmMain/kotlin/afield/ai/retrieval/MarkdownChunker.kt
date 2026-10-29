@@ -3,14 +3,16 @@ package afield.ai.retrieval
 /**
  * Markdown cut into the pieces semantic search indexes and an embedder can read whole.
  *
- * Measured over `public/docs` on 2026-10-22 (14,961 sections), the old cut — every `#` line starts a section,
- * the section's raw text is its body — had four faults: 843 "headings" were comment lines inside code fences;
- * the generated reference pages carried 368k `<span class=…>` tags into the text; 4,389 sections were longer
- * than the ~512 tokens the embedder reads, so their ends were never embedded; and a section knew nothing of
- * the page or heading it sat under ("Kotlin side", of what?). Here headings count only outside fences, each
- * chunk carries its breadcrumb, markup outside code is reduced to its text, and long sections are split on
- * paragraph boundaries.
+ * Four things go wrong when a page is cut on its `#` lines and indexed raw, and each has an answer here.
+ * A `#` line inside a code fence is a comment rather than a heading, so headings count only outside
+ * fences. The generated reference pages carry their `<span class=…>` markup into the indexed text, so
+ * markup outside code is reduced to the text it wraps. A section longer than the window the embedder
+ * reads (around 512 tokens, which `DEFAULT_MAX_CHARS` approximates) loses its end, so a long section is
+ * split on paragraph boundaries. And a section alone says nothing about where it sits ("Kotlin side", of
+ * what?), so every chunk carries a breadcrumb of page title, parent headings and its own.
  */
+
+/** Cuts a Markdown page into indexable sections, each with its breadcrumb and source line span. */
 internal object MarkdownChunker {
     data class Chunk(
         /** The section's own heading. */

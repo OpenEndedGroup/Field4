@@ -9,6 +9,16 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
 
+/**
+ * The connection check behind the local-model panel on Field's welcome page.
+ *
+ * Field asks the endpoint for its OpenAI-style model list at `/models`, from the server JVM, so no code
+ * is sent and no inference runs. The answer says whether the endpoint replied, which model ids it lists,
+ * and whether the one chosen in the panel is among them; a non-200 reply, or a body that is not a model
+ * list, fails with that as the reason rather than as a missing model. A saved key is reused only for the
+ * endpoint it was saved against, and a cloud credential is never offered to a local one.
+ */
+
 /** Checks discovery from the Field JVM, without sending code or running inference. */
 internal fun checkLocalAiConnection(request: LocalAiConnectionRequest): LocalAiConnectionStatus {
     val base = normalizeLocalAiBaseUrl(request.baseUrl)

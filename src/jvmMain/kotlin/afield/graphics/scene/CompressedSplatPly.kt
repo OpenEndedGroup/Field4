@@ -14,6 +14,17 @@ import kotlin.math.ln
 import kotlin.math.sqrt
 
 /**
+ * Reads PlayCanvas's quantized `.compressed.ply` splat files back into ordinary per-splat floats.
+ *
+ * Nothing upstream of this file has to know the format exists. `readPlyAsFloatTable` recognises the
+ * schema from the file's own header and routes here, and what comes back carries the columns an
+ * uncompressed 3D Gaussian splatting PLY would have given, in the same conventions. The unpacking
+ * itself is [CompressedSplatPly]: the per-chunk ranges, the bit layouts, and the inverse of each
+ * quantization. `readRaw` hands back the packed words instead, for a tool that wants to repack a
+ * file rather than draw it.
+ */
+
+/**
  * The PlayCanvas *compressed PLY* — the `.compressed.ply` that
  * [splat-transform](https://github.com/playcanvas/splat-transform) writes and that SuperSplat and
  * the PlayCanvas engine read back.

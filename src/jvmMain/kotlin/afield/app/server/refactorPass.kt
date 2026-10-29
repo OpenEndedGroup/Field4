@@ -19,6 +19,22 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
+/**
+ * The server side of the refactor-pass review panel: two routes that drive `tools/refactor_pass.py`
+ * in the docs-improvement checkout, one job at a time.
+ *
+ * `GET /api/refactor-pass` answers status, a review item, a change or the delivery diff by running
+ * the CLI and parsing its JSON; `POST` starts an action, or cancels the running one. Both refuse a
+ * request that is not a same-site docs client, because the answers carry private workspace source.
+ *
+ * No part of a request reaches a shell. The browser sends an action name and fields, and
+ * `refactorPassArguments` rebuilds the argument list from a fixed set of actions, so a field that
+ * fails its length, character-class or absolute-path check yields no command at all. A started job
+ * streams its output to a log file under the checkout's `.field-backdoor/refactor-pass/jobs`,
+ * keeping the last 24,000 characters in memory for the panel to poll; a query that has not answered
+ * in a minute is killed along with its descendants and reported as a timeout.
+ */
+
 /** CLI-backed private refactor review; the browser never supplies a shell command. */
 @Serializable
 internal data class RefactorPassAction(

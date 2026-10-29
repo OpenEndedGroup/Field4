@@ -8,26 +8,34 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Loading a kit package's Kotlin lifecycle, and attaching it to the documents made from that kit.
+ * Loads each installed kit runtime once per host, then attaches and detaches documents against it.
+ * [KitRuntime.start] reads the package directories the launcher captured in `afield.kit.packages`,
+ * instantiates each manifest's `runtime.lifecycle` class from the personal class layer and calls
+ * [KitLifecycle.startup]. A kit whose startup throws is cleaned up, recorded in [KitRuntime.errors]
+ * and shown as an error in Welcome rather than failing the host. Opening a document that carries a
+ * [KitInstanceRecord] calls [KitRuntime.activate], which resolves the document's
+ * [WorkspaceProjectScope] and runs [KitLifecycle.activate] inside its root box context; tearing that
+ * session down calls [KitLifecycle.deactivate].
  *
- * [KitRuntime.start] runs once as the server comes up, over the package directories the launcher
- * captured in `afield.kit.packages` rather than over whatever [KitPackages.installed] says now: the
- * classpath this JVM has is the one those directories described when it was built. For each it
- * reads the manifest, instantiates the `runtime.lifecycle` class named there through
- * [afield.app.settings.PersonalLayer]'s loader, and calls [KitLifecycle.startup]. A kit whose
- * startup throws is cleaned up and recorded in [KitRuntime.errors], where Welcome shows it as that
- * kit's state, and the others still load. A kit carrying a [KitDedicatedHost] block is skipped,
- * since it runs in its own host. A shutdown hook deactivates documents and cleans the kits up in
- * reverse, with four seconds to finish.
+ * Those package directories come from the profile Gradle read at launch, not from the registry as it
+ * stands now, so a kit installed or updated since this host started is invisible here until a
+ * restart.
+ * [KitRuntime.activate] enforces the matching condition directly: a document records the runtime
+ * revision it was created against, and activation refuses when this host loaded a different one,
+ * naming both.
  *
- * [KitRuntime.activate] runs when a document loads, and only for one carrying a
- * [KitInstanceRecord]. It refuses when the record's runtime revision is not this host's, because
- * the document was created against a package whose extension code this host may not have on its
- * classpath, and it hands [KitLifecycle.activate] both the document and its
- * [WorkspaceProjectScope], so state shared by a kit's documents outlives any one of them.
- * [KitRuntime.launchBoxes] resolves the recorded starting point's launch names against the live
- * document, requiring exactly one box for each, and reads those names from the revision the
- * document was created from rather than from the newer revision this host may have loaded.
+ * [KitRuntime.launchBoxes] answers what a starting point asks Field to run. It reads `launch` from
+ * the revision the *document* recorded rather than from the newer compatible one this host may
+ * hold, so a kit that has since renamed or reordered its boxes cannot change what an existing
+ * document launches, and it insists on exactly one live box per name instead of guessing. A
+ * shutdown hook deactivates every live document and calls [KitLifecycle.cleanup] in reverse load
+ * order, with four seconds to finish.
+ *
+ * Reloading the personal layer (`reloadPersonal()`) goes through [suspendForReload] and
+ * [resumeAfterReload]: every kit is deactivated and cleaned up, the layer is replaced, and the kits
+ * start again from the new classes, reactivating the documents that were open. The package
+ * directories themselves are still the launch profile's, so installing or removing a kit needs a
+ * restart, as does a native library a kit has already loaded.
  */
 
 /** Implement in a kit's Kotlin extension; startup/cleanup belong to the host, activation to a document. */
@@ -51,6 +59,7 @@ object KitRuntime {
     private val activeDocuments = ConcurrentHashMap<String, KitDocumentContext>()
     private val problems = ConcurrentHashMap<String, String>()
     private var started = false
+    private var shutdownHookInstalled = false
     val errors: Map<String, String> get() = problems.toMap()
 
     @Synchronized
@@ -76,11 +85,38 @@ object KitRuntime {
                 loaded[id] = Loaded(context, lifecycle)
             }.onFailure { problems[id] = it.message ?: it.javaClass.simpleName; lprintln("error,kits", "$id startup failed: ${problems[id]}") }
         }
-        if (directories.isNotEmpty()) Runtime.getRuntime().addShutdownHook(Thread({
+        // A reload calls start again; the hook is the host's, so it is added once.
+        if (directories.isNotEmpty() && !shutdownHookInstalled) Runtime.getRuntime().addShutdownHook(Thread({
             val worker = Thread({ shutdown() }, "field-kit-cleanup-worker").apply { isDaemon = true }
             worker.start(); worker.join(4000)
             if (worker.isAlive) System.err.println("Field kit cleanup exceeded 4 seconds; exiting.")
-        }, "field-kit-cleanup"))
+        }, "field-kit-cleanup")).also { shutdownHookInstalled = true }
+    }
+
+    /**
+     * The documents active now, for [resumeAfterReload]; deactivates them and cleans up every kit.
+     * Null when the kits were never started, so there is nothing to resume.
+     */
+    @Synchronized
+    fun suspendForReload(): List<SessionInformation>? {
+        if (!started) return null
+        val documents = activeDocuments.values.map { it.document }
+        shutdown()
+        return documents
+    }
+
+    /**
+     * Starts the kits again, from the personal layer as it is now, and reactivates [documents].
+     * A document that will not reactivate is reported in [errors] and left inactive.
+     */
+    @Synchronized
+    fun resumeAfterReload(documents: List<SessionInformation>?) {
+        if (documents == null) return
+        start()
+        documents.forEach { info ->
+            runCatching { activate(info) }
+                .onFailure { lprintln("error,kits", "${info.documentName} did not reactivate after the reload: ${it.message}") }
+        }
     }
 
     @Synchronized

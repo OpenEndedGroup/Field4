@@ -5,27 +5,27 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * The index that makes recombination possible: a Factor Oracle over a continuous recording, which
- * finds where that recording repeats itself and links those places together.
+ * Building a Variable Markov Oracle over a recording, and asking it where a performance could
+ * continue from.
  *
- * `build` is the way in. It takes a [Trajectory], turns it into scaled value-and-velocity frames
- * with [GestureFeatures], and decides for itself how close two frames have to be to count as the
- * same symbol, by scanning candidate thresholds and keeping the one whose information rate is
- * highest. The threshold is the oracle's one real parameter, and the rate falls to nearly zero at
- * both ends of its range: too small and no two frames are ever the same, too large and they all
- * are. `thresholdScan` returns every candidate with its rate, so that choice can be plotted.
+ * [VariableMarkovOracle] indexes a [Trajectory] once, in its constructor, and then answers three
+ * kinds of question about it. Its suffix links (`sfx`) and repeated-suffix lengths (`lrs`) say
+ * where the material repeats itself, which is what [Improviser] walks. `cue` ranks positions by
+ * how well the samples before them match a window of recent history, over any subset of channels,
+ * which is how a performer's input finds a place in memory. `bridges` finds the nearest moments
+ * in other episodes, where suffix links rarely reach, so several separately recorded takes can
+ * be played as one memory.
  *
- * The built oracle is read in three ways. Its suffix links say, for each sample, where the longest
- * repeat of the material leading up to that sample ends, which is what an [Improviser] follows
- * when it jumps. `cue` goes the other way, ranking the places in memory whose recent past best
- * matches a passage handed to it, over whichever channels are asked for, so a performer driving
- * two channels can pull the rest of the memory towards them; each answer is a [Cue]. `bridges`
- * covers what the suffix links cannot, since separately recorded takes rarely share context: for a
- * sample it gives up to three nearest moments in the other episodes, computed over all pairs of
- * samples on first use, and nothing at all for a recording with one episode.
+ * The one parameter that matters is the threshold at which two frames count as the same symbol,
+ * and `build` chooses it rather than asking for it: it constructs an oracle at each of a range of
+ * candidate thresholds and keeps the one with the highest total information rate. That rate is
+ * near zero at both ends of the range, since a threshold too small finds no repeats and one too
+ * large makes everything a repeat, so the choice is a peak rather than a limit.
  *
- * Tests: `VmoReferenceTest` against pinned output from the reference package, and
- * `VariableMarkovOracleTest`.
+ * The construction is a Kotlin port of Cheng-i Wang's reference Python `vmo` package, kept in
+ * Kotlin so an oracle can be built and queried inside the frame loop.
+ * `VmoReferenceTest` checks the suffix links, the repeat lengths and the summed information rate
+ * against a fixture generated from the pinned package.
  */
 
 /**

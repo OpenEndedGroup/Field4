@@ -18,6 +18,18 @@ import java.net.URLEncoder
 import java.util.UUID
 import javax.imageio.ImageIO
 
+/**
+ * Independent viewer captures for the geometry review tools: a picture of a three.js view taken without
+ * moving the one the user is looking at.
+ *
+ * Each capture opens its own browser context on that view's page, applies the request's view state
+ * (explode, hidden parts, x-ray, section plane, camera, picks and regions) through the page's inspector
+ * API, waits for a frame to render, screenshots, and returns the image alongside the resulting state,
+ * source list and part tree. The geometry's revision digest is read before and after, so a capture is
+ * always of the revision the request named and a change in between is reported rather than photographed.
+ * Captures collect in the box-output capture directory, where the hundred newest are kept.
+ */
+
 /** Short-lived, independent viewer contexts: no user browser navigation or shared capture-page state. */
 internal object GeometryViewCapture {
     fun capture(request: InspectGeometryViewRequest, prepared: Map<String, Any?>): GeometryToolResult {

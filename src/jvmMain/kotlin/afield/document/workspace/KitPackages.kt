@@ -9,30 +9,33 @@ import java.security.MessageDigest
 import java.util.Properties
 
 /**
- * The machine-wide registry of kit packages, and the immutable snapshots it installs them into.
+ * The registry of kit packages installed on this machine, and the immutable snapshot each
+ * registration copies out of a package's source folder. A kit package is a directory holding a
+ * `field-kit.json` that names one or more starting points, each of them an ordinary saved Field
+ * document, beside optional Kotlin sources, JARs, pinned Maven coordinates, native libraries and a
+ * lifecycle class. `public/docs/kits.md` is the user's page. The smaller role-kit model, which
+ * describes shared box code and assets inside one document, is [Kits].
  *
- * A kit package is a directory with a [KitPackageManifest] in its `field-kit.json`: one or more
- * starting points, each an ordinary Field document directory, together with whatever Kotlin
- * extension source, JARs, pinned Maven coordinates and native libraries those documents need.
- * [KitPackages.install] validates the manifest, hashes every file the manifest reaches, copies them
- * under [KitPackages.directory] (`~/.afield/kits` unless `afield.kits.dir` or `AFIELD_KITS_DIR`
- * says otherwise) and rehashes the copy before registering it. A revision is the hash of that file
- * inventory, so an existing revision is never rewritten and documents created from it keep the
- * bytes they were created from. No code from the package runs here.
+ * [KitPackages.read] validates a manifest and [KitPackages.install] copies the package to
+ * `packages/<id>/<revision>/` under `~/.afield/kits` (`afield.kits.dir` or `AFIELD_KITS_DIR` moves
+ * that root). The revision is a SHA-256 over the path and content hash of every declared file, so
+ * registering unchanged source resolves to the snapshot that already exists, and a document goes on
+ * reading the revision it recorded after a newer one arrives. Installation reads JSON and copies
+ * bytes; it runs nothing the package ships.
  *
- * Registration writes two files beside the snapshots. `registry.json` is what
- * [KitPackages.installed] and Welcome read. `runtime.properties` is for `build.gradle.kts`, which
- * turns it into the next launch's extension roots, classpath, `java.library.path` and `-D`
- * properties, so a kit's runtime reaches Field through a restart rather than through the running
- * host. [KitPackages.active] reads back the revisions this process did launch with, which is how
- * [KitPackages.statuses] tells an active kit from one waiting for a restart.
+ * Two files carry the registry to the next start of Field. `registry.json` lists the
+ * [InstalledKit] snapshots, and `runtime.properties` is a launch profile that `build.gradle.kts`
+ * reads to assemble the extension classpath, resolve the pinned dependencies, extend
+ * `java.library.path` and pass `-Dafield.kit.packages` and `-Dafield.kit.revisions` to the host,
+ * which is where [KitRuntime] picks the same set up again. A kit registered inside a running host
+ * therefore reports `restart-required` from [KitPackages.statuses] until its revision turns up in
+ * [KitPackages.active]; those statuses are what Welcome's **Kits** area lists.
  *
- * Two rules keep a package self-contained and its classpath buildable. [KitPackages.child]
- * resolves every manifest path canonically and refuses one that leaves the package; a symbolic
- * link under any path the manifest names is refused outright. And a second kit may not contradict
- * the first: conflicting versions of one Maven coordinate, two values for one system property, or
- * two different native libraries with the same filename each fail registration rather than the
- * launch.
+ * [KitPackages.child] is the containment rule every path here goes through: package-relative, no
+ * `..`, and canonicalised, so neither a path nor a symlink inside the package can reach a file
+ * outside it. Because one host loads every installed runtime together, installing also refuses a
+ * set of kits that disagree about a dependency's version, about the value of a runtime system
+ * property, or about the contents of two native libraries with the same filename.
  */
 
 /** A self-contained runtime package. Each starting point is an ordinary Field document directory. */
@@ -70,7 +73,6 @@ data class KitStartingPoint(val title: String, val path: String, val description
 @Serializable
 data class InstalledKit(val id: String, val revision: String, val runtimeRevision: String, val directory: String, val source: String)
 
-/** One row of Welcome's kit list: `active`, `restart-required` or `error`, with the reason. */
 @Serializable
 data class KitPackageStatus(
     val installed: InstalledKit,

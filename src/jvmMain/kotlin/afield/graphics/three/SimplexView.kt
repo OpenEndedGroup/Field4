@@ -1,4 +1,24 @@
 @file:afield.runtime.completion.CompletionCategory("Graphics")
+/**
+ * An orbitable picture of a handful of embeddings and the distances between them, in a box's output.
+ *
+ * [SimplexView] wraps one of the `three` viewers and draws what the madp `tetra` page draws: a
+ * coloured sphere per point, an edge per pair, the point numbers and edge lengths written onto the
+ * picture, and a table of the pairs in the corner. [simplexView] opens one and hands it back, so
+ * [SimplexView.show] can replace the simplex underneath without resetting the camera you orbited
+ * to; [showSimplex] is the one-call form, for a picture that is drawn once. Before the first
+ * simplex arrives the view holds a regular tetrahedron with no lengths on it, and [SimplexView.dim]
+ * greys the current picture while a newer one is being worked out.
+ *
+ * What is drawn is an [EmbeddingSimplex], which places the vectors in 3D so that the drawn edges
+ * are their pairwise distances: exactly so for four points or fewer, a best fit above that. The
+ * note in the corner says which of the two you are looking at, and quotes the stress when it is
+ * the second.
+ *
+ * ```kotlin
+ * showSimplex(embeddingSimplex(listOf(clipEncode("cat"), clipEncode("dog"), clipEncode("car"))))
+ * ```
+ */
 
 package afield.graphics.three
 
@@ -12,21 +32,6 @@ import afield.math.linalg.vec
 import afield.math.statistics.EmbeddingSimplex
 import afield.math.statistics.embeddingSimplex
 import kotlin.math.pow
-
-/**
- * An [EmbeddingSimplex] drawn as a picture you can take hold of: a sphere per point, an edge per
- * pair, and each edge's length written on it.
- *
- * [Box.simplexView] opens the view and hands back a [SimplexView] to [SimplexView.show] each new
- * simplex into. It keeps its camera between them, so the picture can be orbited while it changes
- * underneath, and [SimplexView.dim] greys what is on screen while a newer one is being worked out.
- * [Box.showSimplex] does both in one call, for a picture drawn once. Until the first
- * [SimplexView.show] the view holds a regular tetrahedron with no lengths.
- *
- * The drawing follows the madp `tetra` page: one colour per point, a table of the pairs with bars in
- * the corner, a slow turn that stops when you take hold of it, and an optional flag at both ends of
- * every edge colouring that edge by its rank among the edges meeting there.
- */
 
 /**
  * An [EmbeddingSimplex] drawn as the madp `tetra` page draws it: a coloured sphere per point, an edge

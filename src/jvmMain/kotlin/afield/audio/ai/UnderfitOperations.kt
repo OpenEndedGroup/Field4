@@ -126,18 +126,47 @@ data class UnderfitLoraCheckpoint(
     }
 }
 
-/** Stable Audio 3 sampling controls honored by the pinned Underfit worker. */
+/**
+ * Stable Audio 3 sampling controls honored by the pinned Underfit worker.
+ *
+ * Each knob is range-checked here and then passed through under the snake_case key named below.
+ * What a knob does to the sound is the worker's sampler, not Field's: these bounds are what the JVM
+ * can check before a request is built, and they reject a value the worker would have refused later.
+ */
 data class UnderfitGenerationControls(
+    /** How many denoising steps the sampler takes. Between 1 and 1000. Sent as `steps`. */
     val steps: Int = 8,
+    /** Classifier-free guidance strength. Non-negative and finite. Sent as `cfg`. */
     val cfg: Double = 1.0,
+    /**
+     * How far generation may travel from the source audio, between zero and one: zero preserves the
+     * source and one approaches a fresh text-conditioned sample. Sent as `init_noise_level`.
+     */
     val initNoiseLevel: Double = 0.65,
+    /**
+     * Names one of the worker's samplers. Null leaves the key out of the request, so the worker
+     * picks; a blank string is rejected here. Sent as `sampler_type`.
+     */
     val samplerType: String? = null,
+    /**
+     * Start of the denoising range over which guidance applies. The pair must satisfy
+     * `0 <= cfgIntervalMin <= cfgIntervalMax <= 1`. Sent as `cfg_interval_min`.
+     */
     val cfgIntervalMin: Double = 0.0,
+    /** End of that range, at or after [cfgIntervalMin] and at most one. Sent as `cfg_interval_max`. */
     val cfgIntervalMax: Double = 1.0,
+    /** Guidance rescaling. Non-negative and finite. Sent as `cfg_rescale`. */
     val cfgRescale: Double = 0.0,
+    /** Guidance norm threshold. Non-negative and finite. Sent as `cfg_norm_threshold`. */
     val cfgNormThreshold: Double = 0.0,
+    /** Duration padding, in seconds. Non-negative and finite. Sent as `duration_padding_seconds`. */
     val durationPaddingSeconds: Double = 6.0,
+    /** APG guidance scale. Non-negative and finite. Sent as `apg_scale`. */
     val apgScale: Double = 1.0,
+    /**
+     * Whether the worker decodes in chunks. Null leaves the key out of the request, so the worker
+     * picks. Sent as `chunked_decode`.
+     */
     val chunkedDecode: Boolean? = null,
 ) {
     init {

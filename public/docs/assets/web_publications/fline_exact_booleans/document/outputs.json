@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T21:07:25.126Z",
+  "documentName": "fline_exact_booleans",
+  "outputs": [
+    {
+      "uid": "fline-exact-booleans",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "fline-exact-offsets",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    }
+  ]
+}

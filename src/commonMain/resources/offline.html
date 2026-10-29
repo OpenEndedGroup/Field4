@@ -9,6 +9,17 @@
     <link rel="stylesheet" href="iosevka.css">
     <link rel="stylesheet" href="outputareas.css">
     <style>
+        .published-outputs { position:absolute; left:0; top:100%; padding-top:8px; cursor:auto; text-align:left; }
+        .published-output { background:transparent; border:0; margin-bottom:6px; color:#ddd; }
+        .published-output summary { position:relative; display:block; width:max-content; padding:4px 8px; min-height:24px; background:#000; cursor:pointer; font:italic 12px "Iosevka Web",monospace; }
+        .published-output summary::-webkit-details-marker { display:none; }
+        .published-output summary::before { content:''; position:absolute; left:-18px; top:8px; width:0; height:0; border-top:5px solid transparent; border-bottom:5px solid transparent; border-left:7px solid #000; }
+        .published-output[open] > summary::before { transform:rotate(90deg); }
+        .published-output summary:hover { background:#191919; }
+        .published-output summary:hover::before { border-left-color:#ddd; }
+        .published-output:focus, .published-output summary:focus { outline:none; box-shadow:none; }
+        .published-output iframe { display:block; width:100%; border:0; background:#000; }
+        .published-output-warning { padding:6px 10px; max-width:640px; color:#aaa; font-size:12px; user-select:text; }
         body {
             font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif;
             font-weight: 300;
@@ -105,9 +116,11 @@
             padding: 8px;
             display: block;
             text-align: center;
-            white-space: nowrap;
-            overflow: visible;
-            word-break: normal;
+            max-width: 100%;
+            max-height: 100%;
+            white-space: normal;
+            overflow: hidden;
+            overflow-wrap: anywhere;
             hyphens: manual;
         }
 
@@ -117,10 +130,11 @@
             right: 5px;
             height: calc(100vh - 10px);
             width: min(calc(70vw - 10px), 900px);
+            max-width: calc(100vw - 10px);
             border: 5px solid black;
             border-radius: 5px;
             padding: 5px;
-            background: #1e1e1e;
+            background: #000;
             z-index: 19;
             display: none;
             opacity: 0;
@@ -135,12 +149,44 @@
             transform: translateX(0);
         }
 
-        .monaco-editor {
+        #editor {
             width: 100%;
             flex: 1 1 auto;
             min-height: 0;
             font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif !important;
         }
+
+        #editor .monaco-editor { outline: none !important; }
+
+        .editor-resize-handle {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: -5px;
+            width: 14px;
+            z-index: 22;
+            cursor: ew-resize;
+            touch-action: none;
+            outline: none;
+        }
+
+        .editor-resize-handle::after {
+            content: '';
+            position: absolute;
+            left: 3px;
+            top: 16px;
+            bottom: 16px;
+            width: 4px;
+            border-radius: 3px;
+            background: #aaa;
+            opacity: 0;
+            transition: opacity 120ms ease;
+        }
+
+        .editor-resize-handle:hover::after,
+        .editor-resize-handle:focus-visible::after,
+        html.editor-resizing .editor-resize-handle::after { opacity: 1; }
+        html.editor-resizing, html.editor-resizing * { cursor: ew-resize !important; user-select: none !important; }
 
         .literate-view {
             display: none;
@@ -171,21 +217,24 @@
         }
 
         .view-toggle button {
-            padding: 3px 8px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3px;
+            background: transparent;
+            border: 0;
             border-radius: 3px;
-            color: var(--field-text);
+            color: #aaa;
             cursor: pointer;
-            font-size: 10px;
-            line-height: 1.1;
             height: 23px;
-            min-width: 64px;
+            width: 24px;
         }
 
-        .view-toggle button:hover {
-            background: rgba(255, 255, 255, 0.14);
+        .view-toggle button:hover, .view-toggle button[aria-pressed="true"] {
+            color: #eee;
+            background: rgba(255, 255, 255, 0.08);
         }
+        .view-toggle button:focus-visible { outline: 1px solid #777; outline-offset: 2px; }
 
         .property-tab {
             padding: 4px 8px;
@@ -208,16 +257,19 @@
             border-color: var(--field-cyan);
         }
 
-        /* Make Monaco line numbers lighter and smaller */
+        #editor .margin { background:#000 !important; border-right:8px solid #1e1e1e; }
+        #editor .margin-view-overlays { font-size:70% !important; }
+        /* Small folio numbers, centred inside Monaco's own full-height line boxes. */
         .monaco-editor .margin-view-overlays .line-numbers {
-            color: rgba(255, 255, 255, 0.3) !important;
-            font-size: 10px !important;
-            line-height: 1.2;
-            transform: translateY(-1px);
+            color: rgba(255, 255, 255, 0.63) !important;
+            font-size:70% !important;
+            display:flex;
+            align-items:center;
+            justify-content:flex-end;
         }
 
         .monaco-editor .margin-view-overlays .line-numbers.active-line-number {
-            color: rgba(var(--field-cyan-rgb), 0.6) !important;
+            color: rgba(255, 255, 255, 0.9) !important;
         }
 
         .lit-code-block {
@@ -329,18 +381,10 @@
             pointer-events: none;
         }
 
-        .panel-title {
-            align-self: center;
-            padding: 3px 10px 3px 6px;
-            color: var(--field-cyan);
-            font-size: 12px;
-            white-space: nowrap;
-        }
-
         .property-tabs {
             flex: 0 0 auto;
             flex-wrap: wrap;
-            padding-right: 70px;
+            padding-right: 30px;
         }
 
         /* A box's notes, as Markdown, above its code. */
@@ -474,10 +518,11 @@
     </div>
 
     <div class="monaco-editor-container" id="editor-container">
+        <div class="editor-resize-handle" id="editor-resize-handle" role="separator" aria-label="Resize editor" aria-orientation="vertical" aria-controls="editor-container" tabindex="0"></div>
         <div class="property-tabs" id="property-tabs"></div>
-        <div class="view-toggle"><button id="literate-toggle">reader</button></div>
+        <div class="view-toggle"><button id="literate-toggle" type="button" aria-label="Toggle reader view" aria-pressed="false" title="Show reader view"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7c-2-2-6-2-9-1v14c3-1 7-1 9 1 2-2 6-2 9-1V6c-3-1-7-1-9 1Z"/><path d="M12 7v14"/></svg></button></div>
         <div class="notes-view" id="notes-view"></div>
-        <div class="monaco-editor" id="editor"></div>
+        <div id="editor"></div>
         <div class="literate-view" id="literate-view"></div>
     </div>
 
@@ -489,6 +534,7 @@
 
     <script type="text/javascript" src="./min/vs/loader.js"></script>
     <script src="edn-parser.js"></script>
+    <script src="offline-outputs.js"></script>
     <script src="offline-viewer.js"></script>
 </body>
 </html>

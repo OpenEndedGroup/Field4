@@ -37,6 +37,7 @@ The run exits non-zero when a step fails.
 | `kotlin-println` | a new box running `println("hello")` | first run, same code again, warm reruns, edit + rerun (a new literal each time) |
 | `first-steps` | `templates/first-steps`, the welcome page's "Start here" | first launch, Alt+Enter `var petals = N` while it runs (`execute-fragment`), stop, second launch, warm relaunches |
 | `first-graphics` | `templates/first-graphics`, "Next: native graphics" | renderer launch, its first frames, triangle launch, its frames, same relaunch, fragment edit + Reload Shader, fragment edit + Update Shader, fragment edit + relaunch, Kotlin edit + relaunch |
+| `demo-document` | `dev_docs/agents/transcripts/demo_document.yaml`, the [demo document](../../public/docs/demo_document.md) | the whole transcript replayed into a fresh, empty document by one `macro run` (every create, connect, execute and launch, to its last `await`), then once more into another |
 
 The shader steps send what the editor sends. Alt+Enter in a `fragment`/`vertex` editor (and
 alt-r) is `set-string` with the edited text and then `perform-action moduleHere_reload`;
@@ -80,6 +81,9 @@ names the source records.
 | `pipeline.update` | the same, for a module rebuilding its pipeline |
 | `renderer.firstRender` | the first `render()` of a `Renderer.run` invocation |
 | `renderer.toFirstFrame` | `Renderer` construction to the end of its first frame (starts before the launch step, so the harness attributes it to no step; it is in the raw spans) |
+| `transcript.run` | one `macro run` of an operation transcript, `detail` its name |
+| `transcript.op` | one transcript operation other than a launch, `box` the box it names, `detail` macro and verb |
+| `transcript.launchGroup` | a run of consecutive `launch` operations, applied as one awaited batch, `detail` macro and boxes |
 
 ## Baseline, 2026-10-23
 
@@ -148,6 +152,65 @@ retired box disposes its spare; a spare older than a classpath change is refused
 
 The think time matters: with steps back to back (`--think 0`), the next run arrives while the
 spare is still being built and waits for most of it.
+
+## The demo document, 2026-10-24
+
+`--scenario demo-document --reps 2`, Apple M1 Max, **on battery**, commit `93752ed5c`. The
+transcript makes 20 boxes and launches 6 of them; a step is the one `macro run`.
+
+| Step | wall | `transcript.op` (39) | `transcript.launchGroup` (3) | engines | `kotlin.compile` (44) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| replay in a fresh document (cold JVM) | 19237 | 13107 | 6074 | 20 built, bootstrap 69211 summed | 75759 summed, max 5310 |
+| replay again, another fresh document | 5491 | 3732 | 1743 | 20 built, bootstrap 5015 summed | 7169 summed, max 341 |
+
+The summed spans are larger than the wall time because engines bootstrap and compile on several
+threads at once. Each box that runs gets its own engine, so 20 bootstraps in a cold JVM are most of
+the first replay; the second replay pays ~250 ms per engine. Renderer, shader and pipeline work is
+under 1 s of the cold replay. `/api/perf/spans` has each `transcript.op` with its box, for the
+per-box split.
+
+## The ratchet, 2026-10-29
+
+Each machine that has run the benchmark enough has a committed baseline,
+`dev_docs/testing/feel_baselines/<host>.json`, shown in
+[FEEL_BENCHMARK_BASELINES.md](FEEL_BENCHMARK_BASELINES.md). `check` compares a run with it:
+
+```bash
+uv run --project . --group backdoor python tools/feel_bench.py run --reps 100 --cold-runs 10 --require-ac --max-load 4
+uv run --project . --group backdoor python tools/feel_bench.py noise R1.json R2.json R3.json    # each step's spread across runs
+uv run --project . --group backdoor python tools/feel_bench.py baseline R1.json R2.json R3.json # writes the baseline and the page
+uv run --project . --group backdoor python tools/feel_bench.py check [RESULT.json] [--page out.md]
+```
+
+A step's band is three times the largest deviation of one run's median (and p90) from the median
+of the runs, never under ±15% (median) / ±25% (p90). `check` calls a step **regressed** when it
+leaves the band by more than 5 ms, **faster** when its median leaves it downwards (re-baseline if
+that was deliberate), and fails on a step that failed or is missing. A step is baselined from the
+runs that measured it, so one that failed in one run keeps a baseline from the others; a step only
+one run measured gets the minimum band, marked "(1 run)" on the page. `--require-ac` and
+`--max-load` skip a run (exit 3) on battery or a busy machine. Ledger rows hold each run's summary,
+which is all `baseline` and `check` read, so a ledger line saved as a file stands in for a lost
+result file.
+
+The first baseline (mi2-2, M1 Max) is three 100-rep runs with 10 cold rounds, 2026-10-28 03:56 and
+04:31 at `112212f6c` and 2026-10-29 04:00 at `68cf3329a`. A load average under 4 was reached only
+after 03:50 on both nights. What the three runs showed:
+
+- **Kotlin steps repeat to a few percent.** Warm reruns, edits, cold first runs and launches move
+  2–5% run to run, so their bands sit at the minimum.
+- **The shader loop is noise in milliseconds.** Reload 5.8 / 12.1 / 6.8 ms and update 7.5 / 18.6 /
+  8.4 ms make ±200–360% bands; the 5 ms floor is what keeps them meaningful.
+- **Frame steps moved together in the third run.** Cold triangle frames 318 / 319 / 408 ms, cold
+  renderer first frames 366 / 368 / 428 ms. Between the two commits nothing but docs changed under
+  `graphics/vulkan` and `four`, so this is the machine or its display between nights; it widens
+  those bands to ±50–110% until more nights show which is normal.
+- **`demo-document` has one run.** The first two runs failed it because their worktree had not built
+  `libfield_browser_bridge.dylib` (`./gradlew buildFieldBrowserBridge`), so its band is the minimum.
+- **100 reps found a leak.** The first attempts died of OOM around edit 55 of `first-graphics`: every
+  Kotlin edit of a launched box rebuilt the K2 engine's K1 completion delegate (its preamble
+  fingerprint changed because gathered imports were reversed each launch) and the old one was never
+  released (IntelliJ's static `Disposer` held its compiler project). Fixed in `112212f6c`; the heap
+  now grows ~2.5 MB per edit, from K2 REPL snippet history.
 
 ## What the baseline says to fix next
 

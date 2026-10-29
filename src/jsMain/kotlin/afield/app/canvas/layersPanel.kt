@@ -71,7 +71,8 @@ fun refreshLayersPanel(force: Boolean = false) {
     // getAllLayers() only sees layers a box names; a box that names none is on "default".
     val all = (getAllLayers() + boxes.flatMap { layersOf(it) }).filter { it.isNotBlank() }.distinct().sorted()
     val counts = all.associateWith { layer -> boxes.count { layer in layersOf(it) } }
-    val signature = listOf(all, counts, visibleLayers.sorted(), activeLayer, selected.size).toString()
+    val marks = drawingElementCount()
+    val signature = listOf(all, counts, visibleLayers.sorted(), activeLayer, selected.size, marks, drawingLayerVisible).toString()
     if (!force && signature == layersPanelSignature) return
     layersPanelSignature = signature
 
@@ -125,9 +126,31 @@ fun refreshLayersPanel(force: Boolean = false) {
         panel.body.appendChild(card)
     }
 
+    // The drawing layer (Excalidraw) is a layer too once it holds something: an eye, but no
+    // radio or Solo, since boxes cannot be put on it.
+    if (marks > 0) {
+        val card = el("div", "field-panel-card layer-row" + if (drawingLayerVisible) "" else " is-empty", null)
+        val head = el("div", "field-panel-card-head", null)
+        val eye = panelButton("", "Show or hide the drawing (Alt+D draws)") {
+            setDrawingLayerVisible(!drawingLayerVisible)
+            refreshLayersPanel(force = true)
+        }
+        eye.classList.add("layer-eye")
+        if (drawingLayerVisible) eye.classList.add("is-on")
+        eye.innerHTML = EYE_ICON
+        head.appendChild(eye)
+        head.appendChild(el("span", "", null))
+        head.appendChild(el("span", "layer-name", "drawing"))
+        head.appendChild(el("span", "field-panel-meta", if (marks == 1) "1 mark" else "$marks marks"))
+        head.appendChild(el("span", "", null))
+        card.appendChild(head)
+        panel.body.appendChild(card)
+    }
+
     val footer = el("div", "field-panel-actions layer-footer", null)
     footer.appendChild(panelButton("Show all", "Show every layer") {
         applyLayerSelection(all.toSet().ifEmpty { setOf("default") }, activeLayer)
+        setDrawingLayerVisible(true)
         refreshLayersPanel(force = true)
     })
     val target = activeLayer

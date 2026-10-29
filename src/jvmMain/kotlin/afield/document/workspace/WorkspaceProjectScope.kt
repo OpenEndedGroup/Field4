@@ -8,25 +8,27 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * What several documents in one workspace project share: a parent box, a preferences file and a
- * folder of files.
+ * The shared box and the persistent preferences a workspace project gives every document in it. The
+ * folder side of a project lives in `dir.kt`: a directory under the workspace's `_projects/` with a
+ * `contents.edn` membership list, a `preferences.json` and a `files/` folder, listed by
+ * `listWorkspaceProjects`. This file is the part of it that is live in a running host. Each
+ * [WorkspaceProjectScope] owns an invisible [Box] whose id is `project:` followed by a hash of the
+ * project directory, and `attachRootToMetaroot` parents a document's root box beneath the scopes it
+ * belongs to instead of directly beneath the global metaroot. A property set on that box is
+ * therefore inherited by every box in every document of the project, which is how a kit shares
+ * settings and runtime objects between its documents.
  *
- * A project is a directory under the workspace's `_projects`, listed by [listWorkspaceProjects].
- * [WorkspaceProjectScope] gives it a [Box] that is invisible on the canvas and parented to
- * [afield.document.graph.metaroot], so a property set there is inherited by every document attached
- * to the project, exactly as any other parent's would be. The box's id comes from the project
- * directory's canonical path and [WorkspaceProjectScopes] hands out one scope per directory, so
- * reattaching a document finds the same box rather than a new one.
+ * From box code `projectScopes()` is the way in: `projectScopes().single().setPreference("theme",
+ * "dark")` writes a preference that outlives the host, and [WorkspaceProjectScope.preferences]
+ * reads a snapshot of them back. A project box never reaches a document's `metadata.edn`, because
+ * persistence filters it and the metaroot out of the saved `parents` and `children`. A document
+ * whose project is absent attaches to the metaroot instead, with nothing dangling in its saved
+ * graph.
  *
- * [WorkspaceProjectScope.preferences] reads `preferences.json` in that directory and
- * [WorkspaceProjectScope.setPreference] writes it, which is the part that survives a restart; the
- * same map is mirrored onto the project box as `projectPreferences`, where box code reaches it
- * through inheritance. [WorkspaceProjectScope.files] is a folder for assets several documents want.
- * From a box, [projectScopes] lists the scopes above it, ordinarily one for a document made from a
- * kit package.
- *
- * A project root is canvas furniture rather than document content, so persistence drops it from the
- * parent and child sets it writes, asking [WorkspaceProjectScopes.isProjectRoot].
+ * [WorkspaceProjectScopes] keeps one scope per project directory for the life of the host, so two
+ * documents in one project see the same box identity rather than two copies of it. Documents
+ * created by [KitInstances.create] land in a `kit-<id>` project and ordinarily have exactly one
+ * scope, but nothing stops a document from belonging to several.
  */
 
 /** One workspace project's shared parent, persistent preferences and shared files. */

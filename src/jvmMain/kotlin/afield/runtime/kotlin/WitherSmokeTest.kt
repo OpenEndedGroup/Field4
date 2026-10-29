@@ -38,10 +38,10 @@ expect:
  * `io.github.kyay10.wither.with(x)` turns `x` into an implicit receiver for the rest of the
  * enclosing block, and its IR pass rewrites the receiver-less member accesses that follow.
  *
- * The load-bearing assertion is `testReceiverInjection`: a bare `greet()` with no explicit
+ * `testReceiverInjection` is the assertion that decides the run: a bare `greet()` with no explicit
  * receiver only resolves if Wither injected the `Greeter` receiver. Without the plugin the
- * snippet fails to compile ("unresolved reference 'greet'"), so a green run proves the plugin
- * is actually registered into the REPL's compilation config and doing work end-to-end.
+ * snippet fails to compile (`unresolved reference 'greet'`), so a green run shows that the plugin
+ * is registered into the REPL's compilation config and working end to end.
  *
  * `testPlainEvalStillWorks` is the regression half: turning the plugin on must not disturb
  * ordinary snippet evaluation.

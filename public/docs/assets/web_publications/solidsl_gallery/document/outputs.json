@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T21:08:38.802Z",
+  "documentName": "solidsl_gallery",
+  "outputs": [
+    {
+      "uid": "refusals",
+      "channel": "hybrid",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 728,
+      "height": 478,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "cross_check",
+      "channel": "exact",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 708,
+      "height": 448,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "cross_check",
+      "channel": "marched",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 708,
+      "height": 448,
+      "path": "outputs/2.html"
+    }
+  ]
+}

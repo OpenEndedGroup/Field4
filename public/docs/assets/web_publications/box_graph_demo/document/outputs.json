@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T20:59:47.829Z",
+  "documentName": "box_graph_demo",
+  "outputs": [
+    {
+      "uid": "bgdemo_bloom",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 40,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "bgdemo_sketch",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 293,
+      "height": 40,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "bgdemo_sibling",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 40,
+      "path": "outputs/2.html"
+    }
+  ]
+}

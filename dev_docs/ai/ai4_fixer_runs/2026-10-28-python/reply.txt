@@ -1,0 +1,3 @@
+Updated one test expectation to match the branch’s renamed agent label. All 10 tests in `tools/test_field_agent.py` now pass; the full guard was not run.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "nightly/2026-10-28/1-scratch-bounce", "reason": "The branch changed the agent display label but left its exact-string test expectation unchanged."}

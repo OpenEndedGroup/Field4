@@ -2,6 +2,7 @@ package afield.examples.mesh
 
 import afield.media.image.Img
 import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.RevolveAxis
 import afield.geometry.mesh.TriMesh
 import afield.math.linalg.Vec2
 import afield.math.linalg.Vec3
@@ -501,6 +502,7 @@ object MeshGallery {
                     Vec2(0f, -0.7f), Vec2(0.42f, -0.7f), Vec2(0.12f, -0.55f), Vec2(0.1f, 0.1f),
                     Vec2(0.42f, 0.28f), Vec2(0.46f, 0.7f), Vec2(0f, 0.7f),
                 ),
+                RevolveAxis.Y,
                 64,
             )
             val coil = tubeMesh(helix(), radius = 0.11, sides = 16, caps = true)
@@ -522,7 +524,7 @@ object MeshGallery {
             Figure(
                 listOf(
                     Cell("extrudeMesh(concave L, 0.7)", prism, facts = facts(prism)),
-                    Cell("revolveMesh(profile, 64)", goblet, facts = facts(goblet)),
+                    Cell("revolveMesh(profile, RevolveAxis.Y, 64)", goblet, facts = facts(goblet)),
                     Cell("tubeMesh(helix, sides = 16)", coil, facts = facts(coil)),
                     Cell("heightfieldMesh(72, 72) { … }", dunes, MeshView(width = CELL_W, height = CELL_H, pitchDegrees = 34.0), facts = facts(dunes)),
                     Cell("Img.toHeightfieldMesh()", relief, MeshView(width = CELL_W, height = CELL_H, pitchDegrees = 42.0), facts = facts(relief)),

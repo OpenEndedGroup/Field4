@@ -78,6 +78,53 @@ object RemoteLifecycleKotlinJs {
         }
 
         fun animate(callback: (HeadFrame) -> Unit) = onFrame(callback)
+
+        // The box surface field.js installs for Javascript boxes, bound rather than rebuilt: the
+        // head names the box from the calling stack frame, so display and controls reach this box.
+        @kotlin.js.JsName("display")
+        private external fun __fieldDisplay(channel: String, html: String)
+
+        @kotlin.js.JsName("slider")
+        private external fun __fieldSlider(label: String, callback: (Double) -> Unit, options: dynamic): Double
+
+        @kotlin.js.JsName("checkbox")
+        private external fun __fieldCheckbox(label: String, callback: (Boolean) -> Unit, options: dynamic): Boolean
+
+        /** The browser's own timer; output printed from it still reaches the box. */
+        external fun setTimeout(callback: () -> Unit, milliseconds: Int): Int
+
+        fun display(channel: String, html: String) = __fieldDisplay(channel, html)
+        fun display(html: String) = __fieldDisplay("main", html)
+
+        fun slider(
+            label: String,
+            min: Double = 0.0,
+            max: Double = 1.0,
+            step: Double = 0.01,
+            initialValue: Double = (min + max) / 2,
+            channel: String = "controls",
+            onUpdate: (Double) -> Unit,
+        ): Double {
+            val options: dynamic = js("({})")
+            options.min = min
+            options.max = max
+            options.step = step
+            options.value = initialValue
+            options.channel = channel
+            return __fieldSlider(label, onUpdate, options)
+        }
+
+        fun checkbox(
+            label: String,
+            initialValue: Boolean = false,
+            channel: String = "controls",
+            onUpdate: (Boolean) -> Unit,
+        ): Boolean {
+            val options: dynamic = js("({})")
+            options.value = initialValue
+            options.channel = channel
+            return __fieldCheckbox(label, onUpdate, options)
+        }
     """.trimIndent()
 
     val completionDeclarations: String = """
@@ -93,5 +140,10 @@ object RemoteLifecycleKotlinJs {
         fun keepAlive(): Unit = TODO()
         fun onFrame(callback: Function1<HeadFrame, Unit>): Unit = TODO()
         fun animate(callback: Function1<HeadFrame, Unit>): Unit = TODO()
+        fun setTimeout(callback: Function0<Unit>, milliseconds: Int): Int = TODO()
+        fun display(channel: String, html: String): Unit = TODO()
+        fun display(html: String): Unit = TODO()
+        fun slider(label: String, min: Double = 0.0, max: Double = 1.0, step: Double = 0.01, initialValue: Double = (min + max) / 2, channel: String = "controls", onUpdate: Function1<Double, Unit>): Double = TODO()
+        fun checkbox(label: String, initialValue: Boolean = false, channel: String = "controls", onUpdate: Function1<Boolean, Unit>): Boolean = TODO()
     """.trimIndent()
 }

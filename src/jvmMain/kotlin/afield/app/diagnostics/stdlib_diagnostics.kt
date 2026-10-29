@@ -83,26 +83,17 @@ import java.nio.IntBuffer
 import kotlin.reflect.KProperty
 
 /**
- * The general-purpose helpers that every Field box already has in scope.
+ * The frame-presentation log: per-frame graphics timing, written to a file while it runs.
  *
- * Box code is compiled with the standard imports in `intro` in its preamble and with `Box` as an
- * implicit receiver, so everything here — including the `Box.` extensions — can be called
- * unqualified from inside a box.
+ * [frameLogStart] begins recording and returns the path, choosing one if you do not give it one,
+ * and the log keeps growing until [frameLogStop] closes it. [frameLogMark] drops a named marker
+ * tied to a frame boundary, so an event can be lined up against the frame that was slow, and
+ * [frameLogLine] appends free text with no frame attached. The `waitAfterPresent` argument changes
+ * what is measured rather than how it is reported: each frame waits for the present to complete,
+ * which gives true per-frame numbers at some cost to throughput.
  *
- * The substantial part is the property-delegate machinery that `prop` and `@exported` generate
- * against: [Delegation] (stores on the receiver's own property bag), [Inheritance] (walks up
- * `parents` until some ancestor has the property, otherwise throws
- * [MissingInheritedPropertyException] with a message naming the property and the box), and
- * [InheritanceFromContext] (same walk, but prefers each box's live Kotlin variables over raw
- * properties).
- *
- * The rest is small conveniences: graph access (`named`, `+=` / `-=` for
- * connect/disconnect, `__m` markers); execution control (`begin`, `end`, [start], [animate],
- * `aside`, `cell`); frame-presentation logging ([frameLogStart], [frameLogStop],
- * [frameLogMark], [frameLogLine]); matrix and buffer building ([mat4], [mat3], `FloatBuffer.add`,
- * `IntBuffer.add`, `ByteBuffer.putf16`); and terse numeric/collection/string shorthands
- * (`Number.f` / `.i` / `.l` / `.d`, [fa], [ia], `Int.alphas`, `String.times`, `List.m` / `.s`,
- * `String.r`, and [highlightSyntax] behind `String.h` / `String.ss`).
+ * One of the `stdlib` files, which the `intro` preamble star-imports into every box, so everything
+ * here can be called unqualified, with `Box` as the implicit receiver.
  */
 
 /**

@@ -1,9 +1,10 @@
 /**
  * Runs one image file through [OpenDlssNrPass] and shows the result on screen.
  *
- * [OpenDlssNrImage] loads the image, requires [OpenDlssNrSupport.availability] to be ready, and after
- * [OpenDlssNrImage.install] evaluates the pass each frame under the renderer, with `controls` for the network and
- * `exposure`, `gamma` and `offset` for grading afterwards.
+ * [OpenDlssNrImage] loads the image and requires [OpenDlssNrSupport.availability] to be ready. After
+ * [OpenDlssNrImage.install] it evaluates the pass each frame under the renderer, with `controls`
+ * for the network and `exposure`, `gamma` and `offset` for grading the result as it reaches the
+ * screen.
  */
 
 package afield.graphics.render.neural

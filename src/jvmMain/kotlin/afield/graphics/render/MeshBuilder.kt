@@ -5,26 +5,29 @@ import afield.graphics.shader.Introspected
 import org.lwjgl.BufferUtils
 
 /**
- * Filling a [Mesh]'s vertex and index buffers from Kotlin, by two routes.
+ * Two ways of writing vertices into a `Mesh`, of which one is wired up.
  *
- * [MeshBuilder] is the imperative one: append vertices and triangles into growable [VertexData]
- * buffers in any order, and they are uploaded in one pass the next time the mesh is drawn.
- * `Mesh.builder { }` opens one.
+ * [writeSuperMap] is the live one, and it is where `m.set(4, 2) { … }` in a shader box comes from. It
+ * reads a vertex shader's introspected inputs and returns Kotlin source: a `MappedStructure` holding
+ * one buffer field per input, and a `Mesh.set(numVert, numTriangle)` extension that resizes the mesh
+ * and maps all of those buffers at once, so the lambda can assign them by the names the shader itself
+ * declares. `insertForShader` calls this whenever a `moduleHere` box's vertex and fragment shaders
+ * compile, and appends the text to that box's preamble.
  *
- * [writeSuperMap] is the generated one. It reads a vertex shader's declared inputs and returns
- * Kotlin source for a `mesh.set(numVert, numTriangle) { }` that maps every input buffer at once and
- * names each one. [afield.graphics.shader.insertForShader] puts that source in a shader box's
- * preamble, so `set` knows the names a particular shader uses. [writeVertexData] generates a
- * per-vertex `write(...)` for the same inputs; nothing in the tree calls it.
+ * [MeshBuilder], [VertexData] and [writeVertexData] are the other way: stage vertex bytes on the CPU
+ * through generated `write(...)` calls, then copy them into the mesh's buffers in one pass. `Mesh`
+ * constructs a [MeshBuilder] for every mesh and offers it as `builder { }`, but nothing in the tree
+ * calls [writeVertexData] to generate those `write` methods, and nothing calls the internal
+ * `closeAndApply` that copies the staged bytes across, so vertices staged this way never reach the
+ * mesh. `m.set` is the route to use.
  */
 
 /**
- * Kotlin source for a `Mesh.set(numVert, numTriangle) { }` that maps every one of the shader's
- * input buffers at once and binds each to a `FloatBuffer` named after its input, with the index
- * buffer as `tri`.
+ * The `MappedStructure` and `Mesh.set` source text for a vertex shader's inputs `v`, as one line.
  *
- * Returned as one line of semicolon-separated declarations, since it is spliced into a box's
- * preamble rather than compiled on its own.
+ * Returned as Kotlin to be compiled in the box's own preamble rather than as a function to call,
+ * because the field names and their buffer types are the shader's, so they do not exist until it has
+ * been introspected.
  */
 fun writeSuperMap(v: List<Introspected.Input>): String {
 
@@ -52,15 +55,15 @@ fun writeSuperMap(v: List<Introspected.Input>): String {
     """.trimIndent().replace("\n", "; ").replace(";;", ";").replace(";;", ";").trimIndent()
 }
 
-// this just didn't work out
+// Everything from here down is the staging path that did not work out; the file overview says why.
+// Written as a line comment so that a declaration inserted below it does not adopt it as its KDoc.
 
 // subclasses have actual accessors
 /**
- * A growable byte buffer and the count of items written into it.
+ * A growable byte buffer for one vertex attribute, with the number of vertices written to it.
  *
- * [MeshBuilder] keeps one per shader input location plus one for triangle indices, which is how a
- * recipe can append in any order without knowing the final vertex count first. [checkCapacity]
- * grows the buffer when the next write would not fit.
+ * [VertexData.checkCapacity] reallocates when the next write would not fit. [VertexData.rewind] zeroes the vertex count and
+ * leaves the buffer's own position alone, so a staged attribute is re-counted rather than cleared.
  */
 class VertexData {
     var cap = 16
@@ -90,10 +93,12 @@ class VertexData {
 }
 
 /**
- * Kotlin source for a `MeshBuilder.write(...)` taking one argument per shader input and appending a
- * vertex to each buffer.
+ * The `MeshBuilder.write(...)` source text for a vertex shader's inputs `n`: one parameter per input,
+ * defaulted, writing into that input's own [VertexData].
  *
- * Nothing in the tree calls this; [writeSuperMap] is the route a shader box's preamble takes.
+ * Throws for an input whose type is a struct rather than a scalar or vector, since there is no single
+ * Kotlin parameter to stand for one. Nothing in the tree calls this, so the `write` it describes is
+ * not generated anywhere.
  */
 fun writeVertexData(n: List<Introspected.Input>): String {
     var args = mutableListOf<String>()
@@ -125,15 +130,16 @@ fun writeVertexData(n: List<Introspected.Input>): String {
 
 
 /**
- * Accumulates a mesh's vertices and triangles on the CPU and writes them into [target] in one pass.
+ * Stages one mesh's vertices and triangles in host memory, with a slot for each of sixteen shader
+ * input locations.
  *
- * [getDataAndCheckCapacity] hands out a [VertexData] per shader input location, which is what the
- * generated `write(...)` in a shader box's preamble appends through. [tri] and [quad] index
- * backwards from the vertices just written, so a recipe never tracks indices itself.
+ * [MeshBuilder.tri] and [MeshBuilder.quad] index backwards from the vertex written most recently, so a face can be emitted
+ * straight after the vertices it uses and a caller never tracks an index itself. Attribute slots are
+ * created on demand by [MeshBuilder.getDataAndCheckCapacity], which the generated `write` methods call, and the
+ * count held by location 0 is what every other slot is measured against.
  *
- * The write happens the next time [target] is drawn, and only if a count has moved: either the
- * vertices or the triangles differ from the mesh's current size, or the mesh has no buffers yet.
- * Rewriting the same number of vertices with different positions therefore uploads nothing.
+ * The staged bytes reach its `target` mesh only through the internal `closeAndApply`, which nothing calls; the
+ * file overview has the rest.
  */
 class MeshBuilder(val target: Mesh) {
 

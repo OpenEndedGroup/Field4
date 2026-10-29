@@ -1,0 +1,223 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T20:57:08.526Z",
+  "documentName": "pattern_language_composition",
+  "outputs": [
+    {
+      "uid": "pat_demo_signals",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 611,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "pat_demo_signals",
+      "channel": "live",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 359,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "pat_demo_structure",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 527,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "pat_demo_playground",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 359,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "pat_demo_playground",
+      "channel": "drums",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "pat_demo_playground",
+      "channel": "bass",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "pat_demo_playground",
+      "channel": "pad",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "pat_demo_voice_leading",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 443,
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "pat_demo_voice_leading",
+      "channel": "sound",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/8.html"
+    },
+    {
+      "uid": "pat_demo_parameter",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 527,
+      "path": "outputs/9.html"
+    },
+    {
+      "uid": "pat_demo_parameter",
+      "channel": "sound",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/10.html"
+    },
+    {
+      "uid": "pat_demo_groove",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 695,
+      "path": "outputs/11.html"
+    },
+    {
+      "uid": "pat_demo_groove",
+      "channel": "swing",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/12.html"
+    },
+    {
+      "uid": "pat_demo_groove",
+      "channel": "euclid",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/13.html"
+    },
+    {
+      "uid": "pat_demo_gain",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 275,
+      "path": "outputs/14.html"
+    },
+    {
+      "uid": "pat_demo_gain",
+      "channel": "sound",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/15.html"
+    },
+    {
+      "uid": "pat_demo_mini_notation",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 863,
+      "path": "outputs/16.html"
+    },
+    {
+      "uid": "pat_demo_mini_notation",
+      "channel": "dot",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/17.html"
+    }
+  ]
+}

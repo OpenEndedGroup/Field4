@@ -37,6 +37,17 @@ class TerminalCommandTest {
     }
 
     @Test
+    fun fieldsOwnAgentRunsOnePromptThroughFieldRepoAgent() {
+        assertEquals("field", fieldAgent(mapOf("FIELD_AGENT" to "FIELD"), Path.of("/nonexistent")))
+        val p = terminalPlan(TerminalLaunch("claude", "fix the typo"), checkout, FIELD_AI4_AGENT, "/bin/uv", sessionWorktree = sessions).getOrThrow()
+        assertEquals(checkout, p.directory)
+        assertEquals(listOf("/bin/uv", "run"), p.argv.take(2))
+        assertTrue("tools/field_repo_agent.py" in p.argv)
+        assertEquals("fix the typo", p.argv.last(), "the text is only ever the prompt argument")
+        assertTrue(terminalPlan(TerminalLaunch("claude"), checkout, FIELD_AI4_AGENT, sessionWorktree = sessions).isFailure, "AI4 has no interactive client")
+    }
+
+    @Test
     fun aCodexTerminalIsTitledCodex() {
         val p = terminalPlan(TerminalLaunch("claude"), checkout, "/opt/homebrew/bin/codex", sessionWorktree = sessions).getOrThrow()
         assertEquals(TerminalPlan(listOf("/opt/homebrew/bin/codex"), checkout, "codex"), p)

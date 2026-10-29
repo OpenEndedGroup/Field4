@@ -4,21 +4,22 @@ import afield.ui.output.FieldMarkdown
 import kotlinx.html.*
 
 /**
- * The receiver of a presentation step's `audience { }` block: standard kotlinx.html builders, with
- * Markdown, a stylesheet and two image layouts added.
+ * The HTML an audience slide is written in: kotlinx.html's builders, with scoped Markdown,
+ * stylesheets and two picture layouts added.
  *
- * [AudienceBuilder] is a `DIV` of class `field-slide`, so every ordinary HTML tag is in scope and
- * `+"text"` is escaped by the library. `.md` renders a string through Field's Markdown renderer
- * ([FieldMarkdown]) into an [AudienceMarkdown], which unary plus inserts with its generated tags
- * intact, and the nested `div` here keeps both available inside it.
- * [AudienceBuilder.stylesheet] loads a CSS file from the document's `files/` directory and marks it
- * so Refresh slide can fetch the saved file again without recompiling the talk.
+ * [SlideStepBuilder.audience] runs its block against an [AudienceBuilder], which is a kotlinx.html
+ * `DIV` carrying the slide's class, so every standard tag works inside it, along with Kotlin's own
+ * loops, functions and completion. Text added with `+` is escaped by the library; `"# Heading".md`
+ * renders Markdown instead, and the unary plus on the [AudienceMarkdown] it returns inserts the
+ * generated tags unescaped. That pair is how one slide mixes written prose with built HTML.
  *
- * [AudienceBuilder.fullScreenImage] fills the window with a picture and its credit, and
- * [AudienceBuilder.imageBeside] sets that pair beside HTML or Markdown content on either side. Both
- * take an [AudienceImageFit] and emit the `field-image-full`, `field-image-beside` and
- * `field-image-text` classes a stylesheet can override. The audience page styles the fragment and
- * runs no script in it; a slide that needs scripts uses a webpage surface instead.
+ * Use [AudienceBuilder.div] rather than kotlinx.html's own `div` for a nested container, since only
+ * this one keeps the Markdown syntax available inside it. [AudienceBuilder.stylesheet] links a CSS
+ * file from the document's files directory; the audience fetches it past the browser cache each time
+ * a slide is drawn, so an edit to it appears on Refresh slide.
+ * [AudienceBuilder.fullScreenImage] and [AudienceBuilder.imageBeside] are the picture layouts. Both
+ * want alt text and take an optional visible credit, and [AudienceImageFit] chooses between
+ * containing the whole picture and cropping it to fill.
  */
 
 /** A rendered Markdown fragment, inserted with unary plus inside [AudienceBuilder]. */
@@ -47,6 +48,15 @@ class AudienceBuilder internal constructor(
         require(source.isNotBlank()) { "A stylesheet needs a filename or URL" }
         LINK(attributesMapOf("rel", "stylesheet", "href", source), consumer).visit {
             attributes["data-field-presentation-style"] = ""
+        }
+    }
+
+    /** Fade this text, image or group in on forward entry; Back shows its completed state. */
+    fun fadeIn(durationMs: Int = 350, delayMs: Int = 0, block: AudienceBuilder.() -> Unit) {
+        require(durationMs in 0..10_000 && delayMs in 0..60_000) { "Use a fade of 0–10000 ms and a delay of 0–60000 ms" }
+        div(classes = "field-fade-in") {
+            style = "--field-fade-duration:${durationMs}ms;--field-fade-delay:${delayMs}ms"
+            block()
         }
     }
 

@@ -13,10 +13,31 @@ import afield.graphics.vulkan.targets.RenderToTexture
  */
 
 /** IDs refer to source render frames, including frames not accepted by inference. */
-data class StreamDiffusionFrame(val id: Long, val timeNanos: Long, val generation: Long)
+data class StreamDiffusionFrame(
+    /** Counts every frame the view rendered, whether or not it was sent to the worker. */
+    val id: Long,
+    /** That frame's `sourceTimeNanos` reading, which the worker returns with its result. */
+    val timeNanos: Long,
+    /** The session generation the frame belongs to; it changes on every reset. */
+    val generation: Long
+)
+/**
+ * What a correspondence is wanted for: putting the newest result on the frame being rendered,
+ * blending that result with the one before it, or carrying the worker's latent noise along the
+ * motion instead of drawing it afresh.
+ */
 enum class StreamDiffusionMotionUse { DISPLAY, HISTORY, NOISE }
+
+/**
+ * One question for the provider: where in an earlier frame were the pixels of a later one? A view
+ * asks it up to three times a frame, once for each use, and never for a frame it has not announced.
+ */
 data class StreamDiffusionMotionRequest(
-    val current: StreamDiffusionFrame, val reference: StreamDiffusionFrame,
+    /** The frame to map from: the one being rendered now, or a result that has just arrived. */
+    val current: StreamDiffusionFrame,
+    /** The frame to map to, which is always one the provider has already seen. */
+    val reference: StreamDiffusionFrame,
+    /** Which of the three the answer is for; they differ in how far [StreamDiffusionMotionRequest.reference] lies behind. */
     val use: StreamDiffusionMotionUse
 )
 
@@ -31,6 +52,11 @@ data class StreamDiffusionMotionRequest(
 interface StreamDiffusionMotionProvider {
     /** Called after every source draw, before requests; retain only bounded frame state. */
     fun onFrame(frame: StreamDiffusionFrame) {}
+    /**
+     * Records the work that fills a correspondence texture for one request, and returns it, or null
+     * when this pair of frames cannot be mapped. The target is checked against the source extent
+     * and the RGBA32F format before anything samples it, so a wrong one is refused rather than read.
+     */
     fun record(command: CommandBuffer, request: StreamDiffusionMotionRequest): RenderToTexture?
     /**
      * Optional display hole fill, called immediately after a successful DISPLAY record.

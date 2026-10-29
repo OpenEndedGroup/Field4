@@ -1991,6 +1991,16 @@ function ensureAiChat(container, uid, property) {
                         rewindConversation(Number(turn.dataset.aiTurn), turn.dataset.aiText || "", turnAction.dataset.aiAction === "edit");
                         return;
                 }
+                const answer = target.closest(".ai-chat-question-choice");
+                if (answer) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (answer.disabled) return;
+                        // The agent's question is answered by the person's next message: send the choice as one.
+                        textarea.value = answer.dataset.aiAnswer || answer.textContent || "";
+                        submitPrompt();
+                        return;
+                }
                 const button = target.closest(".ai-chat-copy");
                 if (!button) return;
                 const block = button.closest(".ai-chat-code-block");

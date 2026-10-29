@@ -9,20 +9,27 @@ import kotlinx.html.visitAndFinalize
 import java.net.URI
 
 /**
- * Showing a guide to an audience: a second display carrying slides, a live webpage, a video or
- * another Field document, while the presenter's own window keeps the source and the notes.
+ * Giving a talk from a Field document: [Box.presentation] builds the same steps a `slideShow` does,
+ * and each step can carry a slide for a separate audience display.
  *
- * [presentation] builds the same [SlideShowBuilder] a guide does, with a title and a cross-fade
- * duration, and [SlideShowInstance.present] opens the audience display in Field's Electron app. A
- * step's notes, callbacks and annotations stay the guide's; what the audience sees is whichever
- * `audience` verb the step calls. `audience { }` builds an HTML fragment with [AudienceBuilder],
- * while `audienceHtml` and `audienceMarkdown` take one ready made. [audienceWebpage],
- * [audienceYouTube] and [audienceDocument] give the window a real page, a YouTube embed or a
- * document in the workspace instead, each able to sit in a fractional rect of the window rather
- * than fill it.
+ * A step's audience surface is HTML, a real webpage, a YouTube embed, or another document in the
+ * workspace. Write the HTML with [SlideStepBuilder.audience] for kotlinx.html's type-safe builders
+ * (see [AudienceBuilder]), with [SlideStepBuilder.audienceHtml] for a fragment you already have, or
+ * with [SlideStepBuilder.audienceMarkdown]. [SlideStepBuilder.audienceWebpage] and
+ * [SlideStepBuilder.audienceYouTube] put a page or a video in an isolated native Electron view, and
+ * [SlideStepBuilder.audienceDocument] opens another workspace document with its own editor, outputs
+ * and guide. A step with no audience surface shows its note HTML, templates and all, so a guide
+ * written for a reader presents without being rewritten.
  *
- * A step that sets no audience surface shows its note HTML. Running the box again keeps the current
- * step where it can.
+ * [SlideShowInstance.present] starts the talk. Each step publishes a `presentation-state` message to
+ * the windows showing the host box's document, and Field's Electron app opens the audience and
+ * presenter windows from it; in a browser the document and its guides still work, but there is no
+ * separate display. Running the host box again rebuilds the talk and keeps the current step where it
+ * can. Anything bound for Electron is checked before it gets there: a webpage needs an HTTP or HTTPS
+ * URL with a host, a document a plain name in the current workspace, a video the eleven-character
+ * YouTube id, and a fractional rect has to sit inside the audience window.
+ *
+ * [Presenting with Field](../presentation_studio.md) is the guide to writing one.
  */
 
 /** Options for showing a guide on a separate audience display. */
@@ -47,6 +54,8 @@ fun Box.presentation(
     val instance = builder.build()
     require(instance.steps.isNotEmpty()) { "A presentation needs at least one step" }
     instance.resumeStep = previous?.takeIf { it.slideshowId == instance.slideshowId }?.currentStepIndex ?: -1
+    instance.resumeStepId = previous?.currentStep?.id
+    instance.resumeCue = previous?.currentCueIndex ?: 0
     slideShow = instance
     return instance
 }
@@ -55,14 +64,50 @@ fun Box.presentation(
 fun SlideShowInstance.present() {
     if (presentationOptions == null) presentationOptions = PresentationOptions(hostBox.name.ifBlank { "Field presentation" })
     inMain(Box.boxContextElement(hostBox)) {
-        goToStep(resumeStep.takeIf { it >= 0 }?.coerceAtMost(steps.lastIndex) ?: currentStepIndex.coerceAtLeast(0))
+        val index = steps.indexOfFirst { it.id == resumeStepId }.takeIf { it >= 0 }
+            ?: resumeStep.takeIf { it >= 0 }?.coerceAtMost(steps.lastIndex) ?: currentStepIndex.coerceAtLeast(0)
+        goToStep(index, resumeCue)
     }
 }
 
 /** Standard kotlinx.html builders; text is escaped by the library. No JavaScript build is needed. */
-fun SlideStepBuilder.audience(block: AudienceBuilder.() -> Unit) {
+fun SlideStepBuilder.audience(block: AudienceBuilder.() -> Unit): AudienceContent {
+    val content = audienceFragment(block)
+    audienceContent = content
+    return content
+}
+
+/** Reusable slide content. Keep one copy of the markup and shared image paths across slides. */
+fun audienceFragment(block: AudienceBuilder.() -> Unit): AudienceContent {
     val consumer = createHTML()
-    audienceHtml(AudienceBuilder(consumer).visitAndFinalize(consumer, block))
+    return AudienceContent(html = AudienceBuilder(consumer).visitAndFinalize(consumer, block))
+}
+
+/** Show a reusable HTML fragment without changing its content. */
+fun SlideStepBuilder.audience(content: AudienceContent) { audienceContent = content }
+
+/** Repeat HTML content dimmed behind a new layer; native webpages and documents stay separate surfaces. */
+fun SlideStepBuilder.audienceOver(previous: AudienceContent, dimPrevious: Double = 0.25, block: AudienceBuilder.() -> Unit) {
+    audienceContent = layerAudience(previous, audienceFragment(block), dimPrevious)
+}
+
+/** A cue that retains the preceding HTML view underneath a new layer. */
+fun SlideStepBuilder.reveal(title: String, dimPrevious: Double = 0.25, block: AudienceBuilder.() -> Unit) {
+    val previousCue = build().cues.lastOrNull()
+    val previous = previousCue?.audienceProvider ?: previousCue?.audience?.let { { it } }
+        ?: audienceProvider ?: audienceContent?.let { { it } }
+        ?: error("A reveal needs an HTML audience view first")
+    val addition = audienceFragment(block)
+    // Validate the surface now; providers are read again when Refresh reloads the slide.
+    layerAudience(previous(), addition, dimPrevious)
+    cue(title) { audienceProvider = { layerAudience(previous(), addition, dimPrevious) } }
+}
+
+internal fun layerAudience(previous: AudienceContent, addition: AudienceContent, opacity: Double): AudienceContent {
+    require(previous.type == "html" && addition.type == "html") { "Build layers need HTML slides; use a normal cue for webpages or Field documents" }
+    require(opacity.isFinite() && opacity in 0.0..1.0) { "dimPrevious must be between 0 and 1" }
+    require(previous.html.length + addition.html.length <= 2_000_000) { "Layered slide exceeds 2 MB" }
+    return AudienceContent(html = """<div class="field-slide-stack"><div class="field-slide-layer field-retained" inert aria-hidden="true" style="opacity:$opacity"><div class="field-slide-content">${previous.html}</div></div><div class="field-slide-layer"><div class="field-slide-content">${addition.html}</div></div></div>""")
 }
 
 /** Set an HTML fragment for the audience. Use [audience] for type-safe, escaped HTML construction. */

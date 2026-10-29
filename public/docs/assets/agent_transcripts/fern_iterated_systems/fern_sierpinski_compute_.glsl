@@ -25,9 +25,9 @@ bool shouldDraw(State s) {
 
 vec4 color(State s) {
     vec4 palette[3] = vec4[](
-        rgba(255, 184, 108, 0.35),
-        rgba(139, 233, 253, 0.35),
-        rgba(255, 121, 198, 0.35)
+    rgba(255, 184, 108, 0.35),
+    rgba(139, 233, 253, 0.35),
+    rgba(255, 121, 198, 0.35)
     );
     return palette[int(s.data.x)];
 }

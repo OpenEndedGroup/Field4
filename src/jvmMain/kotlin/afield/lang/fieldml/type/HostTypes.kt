@@ -208,11 +208,11 @@ object FieldMLHostTypes {
     // ---- named arguments ---------------------------------------------------------------------
 
     /**
-     * The type-level twin of `FieldMLHostBridge.callMethodNamed`, and deliberately weaker than its
-     * positional counterpart in one respect: it resolves on the argument *names* alone and ignores
-     * their types.
+     * The type-level twin of `FieldMLHostBridge.callMethodNamed`, weaker than its positional
+     * counterpart in one respect: it resolves on the argument *names* alone and ignores their
+     * types.
      *
-     * That is not laziness, it is where the information is. A name set is usually far more selective
+     * The names are where the information is. A name set is usually far more selective
      * than an arity — most overload sets differ in what they are called, not just in how many — and
      * the value-level scoring that would break a remaining tie has to agree with what the runtime
      * does, which for a named call is `chooseNamed`. Rather than keep a third scorer in step, this
@@ -532,7 +532,8 @@ object FieldMLHostTypes {
      * then turns the function that comes back into a proxy of the result interface in its turn. So
      * `fun a b -> …` really is a `Function1<A, Function1<B, C>>`. When the result is *not* a
      * functional interface, the extra parameter means the JVM is handed a function where it wants a
-     * value, and that fails on the first call — which is worth saying at compile time.
+     * value, and that fails on the first call — which the type checker can report before the
+     * program runs.
      *
      * A `suspend` type's own return is erased to `Object` and says nothing; its declared result
      * lives inside the trailing `Continuation`, which is what [FieldMLHostBridge.suspendShape] digs
@@ -587,6 +588,10 @@ object FieldMLHostTypes {
      * violate on its first run. Nullability is not visible to plain reflection (JetBrains'
      * `@Nullable` is `CLASS`-retention), so this is the one place that reaches for `kotlin-reflect`:
      * once per method, cached, and falling back to non-null when the metadata cannot be read.
+     *
+     * A `@JvmOverloads` overload has no metadata of its own (`kotlinFunction` is null), but it returns
+     * what the full function returns, so it borrows the answer from the same-named methods of its
+     * class that return the same erased type. Any one of them being nullable makes it nullable.
      */
     private fun resultTypeOf(method: java.lang.reflect.Method): Type =
         if (returnsNullable(method)) opaque else fieldMLTypeOf(method.genericReturnType)
@@ -595,7 +600,11 @@ object FieldMLHostTypes {
 
     private fun returnsNullable(method: java.lang.reflect.Method): Boolean =
         nullableReturns.getOrPut(method) {
-            runCatching { method.kotlinFunction?.returnType?.isMarkedNullable }.getOrNull() ?: false
+            val own = runCatching { method.kotlinFunction }.getOrNull()
+            if (own != null) return@getOrPut own.returnType.isMarkedNullable
+            method.declaringClass.methods
+                .filter { it != method && it.name == method.name && it.returnType == method.returnType }
+                .any { runCatching { it.kotlinFunction?.returnType?.isMarkedNullable }.getOrNull() == true }
         }
 
     /** Members `hostGet` can read, for completion. Static members when [receiver] is a class handle. */

@@ -1,0 +1,23 @@
+Field Handwriting — new implementation, 2026.
+
+Inspired by and compatible with:
+Carter, Shan; Ha, David; Johnson, Ian; Olah, Chris.
+Experiments in Handwriting with a Neural Network. Distill (2016).
+https://doi.org/10.23915/distill.00004
+https://github.com/distillpub/post--handwriting
+Pinned upstream commit: 65862bc4aa572d405f3e3cbd930eb885159aac29
+
+The upstream reference source includes Copyright 2018 Google LLC notices and
+Apache-2.0 code licensing. Its repository README assigns article content
+CC-BY-4.0; a verbatim copy of its LICENSE is in third_party/DISTILL-LICENSE.
+The published weights are included as weights/distill-b64.json with their
+upstream provenance; weights/distill.pt is a mechanically converted derivative.
+No exclusive licensing status for the model weights beyond the repository's
+published licensing is asserted. Credit the upstream authors when reusing them.
+The test reference data are generated outputs from the original JavaScript
+implementation, not IAM corpus examples. No IAM training dataset is included.
+
+New source files are licensed under the Apache License, Version 2.0 (LICENSE).
+The new implementation changes the runtime to PyTorch, explicitly reorders
+LSTM gates, incorporates the forget bias, exposes state and random generators,
+and adds training, transactional JSONL serving, Kotlin integration, and a lab.

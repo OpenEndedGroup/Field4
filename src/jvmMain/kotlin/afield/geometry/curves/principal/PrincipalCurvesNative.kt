@@ -1,3 +1,25 @@
+/**
+ * Finding `field_principal_curves` on this machine, and calling into it once found.
+ *
+ * [PrincipalCurvesLibrary] is the half that answers without loading anything: the library's file
+ * name on this OS, the paths it is looked for in, whether one of them exists, and the Gradle task
+ * and per-OS shell commands that build it. `NativeGeometry` registers it as a
+ * [NativeGeometryCapability], so the welcome page's Geometry extensions panel can report on the
+ * library whether or not it is installed. The path is resolved afresh on every read, so a library
+ * built during a live session is picked up by the next box run.
+ *
+ * The other half, internal to the package, binds the C ABI declared in
+ * `native/field-principal-curves/src/field_principal_curves.h` with java.lang.foreign: one lazy
+ * downcall handle per `fpc_` entry point, the solver's parameter struct laid out by hand with its
+ * padding, and a 512-byte buffer that each call which can fail carries down and reads a message out
+ * of when it reports failure. Reading the fit back out (the node and edge arrays, the energies, the
+ * per-point assignments, the per-node statistics) takes no error buffer. The first symbol lookup
+ * checks `fpc_abi_version` against the version this binding expects and refuses a library that
+ * disagrees, naming the task that rebuilds it.
+ *
+ * [PrincipalCurves] is the API over it, and its only caller.
+ */
+
 package afield.geometry.curves.principal
 
 import afield.geometry.network.NativeGeometryCapability
@@ -15,23 +37,6 @@ import java.lang.foreign.ValueLayout.JAVA_LONG
 import java.lang.invoke.MethodHandle
 import java.nio.file.Path
 import kotlin.io.path.exists
-
-/**
- * The bridge to `field_principal_curves`, the C++ solver behind
- * [afield.geometry.curves.principal.PrincipalCurves]: where the shared library is, and a
- * `java.lang.foreign` binding to its C ABI.
- *
- * Field runs without the library, so [PrincipalCurvesLibrary] is what the rest of Field asks before
- * reaching for a curve: the paths it tried, the line the welcome page shows, and the build advice
- * an `UnsatisfiedLinkError` carries when it was never built. [PrincipalCurvesLibrary.resolvedPath]
- * is not cached, so a library built during a live session is picked up by the next box run, and
- * the binding refuses one whose ABI version does not match the constant this file was written
- * against.
- *
- * The C side owns the fitted graph; Kotlin holds a `MemorySegment` handle and copies node
- * positions, edges, per-point assignments and per-node statistics out on demand.
- * [afield.geometry.curves.principal.PrincipalForest] is the type a box actually sees.
- */
 
 /**
  * Where `field_principal_curves` is, and whether it is there. Field runs without it; [describe] says how

@@ -117,20 +117,37 @@ import kotlin.math.roundToInt
  * and reported, never repaired into something the model did not write.
  */
 fun interface StackSLProposer {
+    /** Answer one round with candidate programs, and what the round cost. */
     fun propose(request: StackSLProposalRequest): StackSLProposalReply
 }
 
 /** What one watchmaker round is shown. */
 data class StackSLProposalRequest(
+    /**
+     * The target's own name, which the prompt never includes: `spot` or `rings` would say what to
+     * draw. It is here so that a person reading a request knows which target it is for.
+     */
     val targetName: String,
+    /** The target's colours written as numbers, which the prompt gives in place of its name. */
     val targetColours: String,
+    /** The stage's metric in words — pixel, LPIPS, or both, and over what grid. */
     val metric: String,
+    /**
+     * A name for each entry of [StackSLParentView.cases], in the same order: one per region of the
+     * LPIPS and pixel grids. Empty when the stage scores whole pictures.
+     */
     val caseLabels: List<String>,
+    /** The generation this round belongs to. */
     val generation: Int,
+    /** Generations since the best program improved, so a model can tell a stalled search from a moving one. */
     val stalled: Int,
+    /** The leaders, best first, numbered as they are labelled on the sheet. */
     val parents: List<StackSLParentView>,
+    /** How many programs this round asks for. */
     val proposals: Int,
+    /** The longest a proposed program may be, in words; a longer one is refused unrendered. */
     val maxTokens: Int,
+    /** What became of the previous round's proposals, which the prompt reports back. */
     val lastRound: List<StackSLProposalOutcome>,
     /** The target and the parents, numbered as in [parents]: [StackSLEvolution.thumbnailSheet]. */
     val sheetPng: ByteArray,
@@ -140,21 +157,32 @@ data class StackSLProposalRequest(
      */
     val preview: ((List<String>) -> StackSLPreview)? = null
 ) {
+    /** [sheetPng] as a `data:` URL, which is the form the model is sent it in. */
     val sheetDataUrl: String get() = "data:image/png;base64," + Base64.getEncoder().encodeToString(sheetPng)
 }
 
 /** What some programs draw: the target and each program at 64 px, `P1`, `P2`..., and one status line per program. */
 class StackSLPreview(val sheetPng: ByteArray, val status: List<String>) {
+    /** [sheetPng] as a `data:` URL, which is the form the model is sent it in. */
     val sheetDataUrl: String get() = "data:image/png;base64," + Base64.getEncoder().encodeToString(sheetPng)
 }
 
 /** One leader as the watchmaker sees it. */
 data class StackSLParentView(
+    /** Its place among the leaders, from 1, matching its label on the sheet. */
     val rank: Int,
+    /** The program itself, as the model is asked to edit it. */
     val program: String,
+    /** The objective's own score, on whatever scale the stage's metric uses. */
     val fitness: Double,
+    /**
+     * [fitness] rescaled so that 0 is a flat fill of the target's mean colour and 1 is exact. This
+     * is the number the prompt leads with, because a raw fitness means nothing across stages.
+     */
     val skill: Double,
+    /** Per-region scores, named in order by [StackSLProposalRequest.caseLabels]. */
     val cases: List<Double>,
+    /** The operator that produced it — a blind mutation, a crossover, or an earlier watchmaker round. */
     val origin: String
 )
 
@@ -163,33 +191,50 @@ data class StackSLProposal(val parent: Int?, val program: String, val why: Strin
 
 /** What a round returned, and what it cost. */
 data class StackSLProposalReply(
+    /** The programs the round produced, in the order they were written. Empty when nothing parsed. */
     val proposals: List<StackSLProposal>,
+    /** What the round cost: calls, tokens and time. */
     val usage: StackSLModelUsage = StackSLModelUsage(),
     /** Lines that could not be read, or a failure, said plainly. */
     val problem: String? = null,
+    /** The reply verbatim, so a round that parsed badly can still be read. */
     val raw: String = ""
 )
 
 /** What happened to one offered program. [rank] is its place overall when it stayed, else `null`. */
 data class StackSLProposalOutcome(
+    /** The program as it was offered, normalised. */
     val program: String = "",
+    /** The label it was offered under: `watchmaker:new` for one written from scratch, `watchmaker:edit` for an edit. */
     val origin: String = "",
+    /** What it scored, or `null` if it never got a score — refused, or already in the cache. */
     val fitness: Double? = null,
+    /** Its [fitness] rescaled as [StackSLParentView.skill] is, or `null` when there is no fitness. */
     val skill: Double? = null,
+    /** Its place among all programs when it was kept, counting from 1; `null` when it was not. */
     val rank: Int? = null,
+    /** Why it was refused, or `null` if it entered the population. */
     val problem: String? = null,
+    /** The model's own one-line reason for proposing it, carried through unchanged. */
     val why: String = ""
 )
 
 /** Model calls and tokens, summed. */
 data class StackSLModelUsage(
+    /** Which model answered. [plus] keeps the newer name when it is not blank. */
     val model: String = "",
+    /** How many times the model was called, a failed call included. */
     val calls: Int = 0,
+    /** Input tokens across those calls, [cachedTokens] among them. */
     val inputTokens: Long = 0,
+    /** Input tokens the provider served from its prompt cache; see [uncachedTokens]. */
     val cachedTokens: Long = 0,
+    /** Tokens the model wrote. */
     val outputTokens: Long = 0,
+    /** Milliseconds spent waiting on the model. */
     val millis: Long = 0
 ) {
+    /** The two tallies added, field by field; see [model] for the one field that is not summed. */
     operator fun plus(o: StackSLModelUsage) = StackSLModelUsage(
         o.model.ifBlank { model }, calls + o.calls, inputTokens + o.inputTokens, cachedTokens + o.cachedTokens,
         outputTokens + o.outputTokens, millis + o.millis
@@ -198,6 +243,7 @@ data class StackSLModelUsage(
     /** Input tokens not served from the cache: the part that is paid for in full. */
     val uncachedTokens: Long get() = inputTokens - cachedTokens
 
+    /** The model, the calls, the token split and the time, as the run's notes print it. */
     override fun toString(): String =
         "$model: $calls call(s), $inputTokens input ($cachedTokens cached, $uncachedTokens not), $outputTokens output, %.1f s".format(millis / 1000.0)
 }
@@ -207,13 +253,22 @@ data class StackSLModelUsage(
  * (`AFIELD_AI_WATCHMAKER_MODEL`).
  */
 class StackSLWatchmaker(
+    /** Which model to ask; `AFIELD_AI_WATCHMAKER_MODEL` overrides the configured fast model. */
     val model: String = Ai4ModelDefaults.envOrDefault("AFIELD_AI_WATCHMAKER_MODEL", Ai4ModelDefaults.fastModel()),
+    /** How much the model is asked to think per round. Low, because a round is one small picture and a few hundred words. */
     val reasoning: LlmReasoningEffort = LlmReasoningEffort.LOW,
+    /** The ceiling on one reply, which is a few dozen one-line programs. */
     val maxOutputTokens: Long = 6000
 ) : StackSLProposer {
 
     private val bridge: LlmBridge by lazy { createLlmBridge(model, SilentLog, reasoning) }
 
+    /**
+     * Ask the model for one round, and the second pass when
+     * [StackSLProposalRequest.preview] is given. A call that throws comes back as a reply with no
+     * proposals and the failure in [StackSLProposalReply.problem], so a round the provider refused
+     * costs the search a generation rather than ending it.
+     */
     override fun propose(request: StackSLProposalRequest): StackSLProposalReply {
         val t0 = System.currentTimeMillis()
         val state = runCatching {

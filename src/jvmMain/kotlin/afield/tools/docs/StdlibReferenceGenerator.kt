@@ -22,7 +22,7 @@ expect:
  *
  * ### Why this exists, and why it is not Dokka
  *
- * `20e64da5` removed Dokka on purpose: the durable facts belong in KDoc beside the code, and a
+ * Dokka was removed in `20e64da5`, because the durable facts belong in KDoc beside the code and a
  * generated wall of one-page-per-symbol HTML is not documentation anyone reads. Field already has
  * two *interactive* ways into that KDoc — the completion panel's recursive code browser
  * (`public/docs/completion_doc_browser.md`) and the semantic index — but both need you to already
@@ -37,11 +37,11 @@ expect:
  * panel can resolve. Only the signature text is re-read from source here (the index stores names
  * and lines, not signatures); see [signatureAt].
  *
- * ### Honesty rules
+ * ### What it will not invent
  *
- * - Nothing is invented. Every summary is the first paragraph of a real KDoc comment; a symbol
- *   with no KDoc is listed with an empty summary rather than a guessed one.
- * - `[Symbol]` KDoc references are linkified only when the target is a type this reference
+ * - Every summary is the first paragraph of a real KDoc comment; a symbol with no KDoc is listed
+ *   with an empty summary rather than a guessed one.
+ * - A KDoc reference in square brackets is linkified only when the target is a type this reference
  *   actually emits — the same "links only appear when they resolve" rule the completion panel
  *   follows. Everything else degrades to plain inline code.
  * - The "see also" links from a reference section to a worked-example page are *evidence-based*:
@@ -52,10 +52,9 @@ expect:
  *
  * The first KDoc block in a file is treated as the *file's* overview when it ends before the first
  * declaration **and** is separated from that declaration by at least one blank or comment line —
- * and it is then not also shown as that declaration's own summary. Verified against the corpus:
- * `spectral.kt`, `voronoi.kt` and `wfc.kt` have genuine file-level blocks and are picked up;
- * `booleannetworks.kt`'s opening KDoc sits flush against `data class BoolNode` and is correctly
- * left attached to it.
+ * and it is then not also shown as that declaration's own summary. A block written flush against
+ * its declaration stays that declaration's own KDoc, of which only the first paragraph is
+ * published; the file's "what it is" cell on the index then has nothing to fill it with.
  *
  * ### Running it
  *
@@ -73,6 +72,8 @@ expect:
  * JVM step, and a generated reference is only trustworthy if an API change shows up as a reviewable
  * diff.
  */
+
+/** Emits `public/docs/reference/` from the KDoc in `src/`, or drift-checks the committed pages. */
 object StdlibReferenceGenerator {
 
     /** Repo-relative home of the committed reference pages. */
@@ -705,7 +706,7 @@ object StdlibReferenceGenerator {
     /** Docs pages that are not worked examples and would only add noise as "see also" targets. */
     private val EVIDENCE_PAGE_BLOCKLIST = setOf(
         "index.md", "installation.md", "survivalGuide.md", "funFeatures.md", "aiFeatures.md",
-        "staging.md", "building_and_testing.md", "sketch1.md", "sketch2.md",
+        "staging.md", "building_and_testing.md",
     )
 
     @JvmStatic
@@ -1244,7 +1245,9 @@ object StdlibReferenceGenerator {
             if (depth <= 0) {
                 val next = lines.getOrNull(index)?.trim().orEmpty()
                 val continues = next.startsWith(":") || next.startsWith(",") ||
-                    next.startsWith("where ") || builder.trim().endsWith("=")
+                    next.startsWith("where ") || builder.trim().endsWith("=") ||
+                    (kind == "class" && Regex("""^(?:(?:public|private|protected|internal)\s+)?constructor\b""")
+                        .containsMatchIn(next))
                 if (!continues) break
             }
         }
@@ -1581,8 +1584,34 @@ object StdlibReferenceGenerator {
         } ?: emptyList()
 
     /**
+     * The parameter names of one signature, as a KDoc written above it refers to them.
+     *
+     * `vararg`, `crossinline`, an annotation and a constructor's `val`/`var` are all stripped, so
+     * `fun f(vararg xs: Int)` gives `xs`; a backticked name is unwrapped. See
+     * [TypeAnchors.resolveReference] for what the set is for.
+     *
+     * Only a segment carrying its own `:` counts, which is what keeps a function *type* out. On
+     * `val handler: (Box) -> Unit` the first `(` [splitSignature] finds belongs to the type, so its
+     * one segment is the bare `Box`; reading that as a parameter would take `Box` out of scope for
+     * the whole summary.
+     */
+    internal fun parameterNames(signature: String): Set<String> =
+        splitSignature(signature)?.second.orEmpty().mapNotNull { param ->
+            if (':' !in param) return@mapNotNull null
+            param.substringBefore(':')
+                .trim().substringAfterLast(' ').trim('`')
+                .takeIf { it.matches(Regex("""[A-Za-z_]\w*""")) }
+        }.toSet()
+
+    /**
      * A signature split into everything before the parameter list, the top-level parameters, and
      * everything after — respecting nesting, so `(Fn) -> Double` and `Map<String, Int>` survive.
+     *
+     * The `>` of an arrow closes nothing, which has to be said explicitly because the same scan
+     * counts the `>` of a generic argument. Reading an arrow as a closing bracket brings the depth
+     * to zero at the first function-typed parameter and cuts the list off there:
+     * `keyframeSlider(…, get: () -> Double, set: (Double) -> Unit)` reported `get` as its last
+     * parameter and `tryAll` reported three of its eight.
      */
     private fun splitSignature(signature: String): Triple<String, List<String>, String>? {
         val open = signature.indexOf('(')
@@ -1595,12 +1624,15 @@ object StdlibReferenceGenerator {
             when (ch) {
                 '(', '[', '<' -> { depth++; if (depth > 1) current.append(ch) }
                 ')', ']', '>' -> {
-                    depth--
-                    if (depth == 0) {
-                        if (current.isNotBlank()) params += current.toString()
-                        return Triple(signature.substring(0, open), params, signature.substring(i + 1))
+                    if (ch == '>' && i > open && signature[i - 1] == '-') current.append(ch)
+                    else {
+                        depth--
+                        if (depth == 0) {
+                            if (current.isNotBlank()) params += current.toString()
+                            return Triple(signature.substring(0, open), params, signature.substring(i + 1))
+                        }
+                        current.append(ch)
                     }
-                    current.append(ch)
                 }
                 ',' -> if (depth == 1) { params += current.toString(); current.setLength(0) } else current.append(ch)
                 else -> current.append(ch)
@@ -1751,10 +1783,25 @@ object StdlibReferenceGenerator {
          *
          * Null both when nothing matches and when the qualifier contradicts the match; the caller
          * renders inline code either way.
+         *
+         * [locals] are the names the referring KDoc settles in its own scope before any index is
+         * consulted — in practice the parameter names of the declaration it sits above. Kotlin
+         * resolves a parameter name to the parameter, so a name in this set resolves to nothing and
+         * publishes as plain code.
+         *
+         * Without it a `[param]` reference reaches the index at all, because a parameter is not a
+         * declaration in any file: it misses [byFile] and [corpus] answers with whatever top-level
+         * symbol happens to share the name. `leniaFromLifeRule(rule: LifeRule)` in
+         * `alife_continuous.kt` names its own parameter in its summary, and the row published on the
+         * alife page sent that name to `rewritedsl.kt`'s rewrite-rule builder on the workspace page.
+         * 885 published links across 25 pages pointed off their own page this way.
+         *
+         * The set applies to a bare reference only: `[Owner.name]` still names a member, whatever
+         * the row's parameters are called.
          */
-        fun resolveReference(raw: String, file: String?): String? {
+        fun resolveReference(raw: String, file: String?, locals: Set<String> = emptySet()): String? {
             val simple = raw.substringAfterLast('.')
-            if (simple == raw) return lookup(simple, file)?.target
+            if (simple == raw) return if (raw in locals) null else lookup(simple, file)?.target
             val qualifier = raw.substringBeforeLast('.').substringAfterLast('.')
             val key = "$qualifier.$simple"
             (file?.let { qualifiedByFile[it]?.get(key) } ?: qualifiedCorpus[key])?.let { return it.target }
@@ -1863,7 +1910,6 @@ object StdlibReferenceGenerator {
         return documents.associate { doc ->
             val kept = doc.evidenceTokens().filter { tokenOwners[it]?.size == 1 }
             val patterns = kept.associateWith { (kind, name) ->
-                val escaped = Regex.escape(name)
                 // Two tightenings, each fixing a measured false claim:
                 //  - `\b` on the call form. Unanchored, `ply(` matched `apply(`, `run(` matched
                 //    `rerun(`, `range(` matched `arrange(`, `cosine(` matched `cosineInterp(` and
@@ -1873,7 +1919,7 @@ object StdlibReferenceGenerator {
                 //    are code text as far as this index is concerned, and English prose inside them
                 //    ("seed cosine (grey) → target sine", "full range (chebyshev clamps)") was
                 //    matching. Kotlin allows `f (x)`; this corpus never writes it.
-                if (kind == "call") Regex("\\b$escaped\\(") else Regex("\\b$escaped\\b")
+                EvidenceTokenMatcher(kind, name)
             }
             if (debugFor != null && doc.relativePath.endsWith(debugFor)) {
                 println("EVIDENCE-DEBUG ${doc.relativePath} unique tokens: $kept")
@@ -1889,6 +1935,15 @@ object StdlibReferenceGenerator {
                 .take(MAX_EVIDENCE_LINKS)
             doc.relativePath to hits
         }
+    }
+
+    /** Exact evidence matching, with a cheap necessary condition before scanning with a regex. */
+    internal class EvidenceTokenMatcher(kind: String, private val name: String) {
+        private val pattern = Regex.escape(name).let { escaped ->
+            if (kind == "call") Regex("\\b$escaped\\(") else Regex("\\b$escaped\\b")
+        }
+
+        fun containsMatchIn(code: String): Boolean = name in code && pattern.containsMatchIn(code)
     }
 
     private val FENCED_BLOCK = Regex("(?s)```.*?```")
@@ -2025,7 +2080,7 @@ object StdlibReferenceGenerator {
             val anchor = anchors[key]?.takeIf { emitted.add(key) }?.let { "<a id=\"$it\"></a>" }.orEmpty()
             appendLine(
                 "| $anchor$declaration${overloadBadge(row)} | " +
-                    "${escapeCell(linkify(row.summary, typeAnchors, doc))} |"
+                    "${escapeCell(linkify(row.summary, typeAnchors, doc, parameterNames(signature)))} |"
             )
         }
         appendLine()
@@ -2159,7 +2214,7 @@ object StdlibReferenceGenerator {
             // the resolved ones, because this column is a one-line gist sitting between two columns
             // that are already all links.
             val gist = doc.overview
-                ?.let { firstSentence(it) }
+                ?.let { overviewGist(it) }
                 ?.let { stripLinks(linkify(it, typeAnchors, doc)) }
                 .orEmpty()
             val examples = evidenceLinks(doc, evidence).orEmpty()
@@ -2601,18 +2656,26 @@ object StdlibReferenceGenerator {
      * An ordinary markdown link written in a KDoc is left alone: the lookahead for `(` is what stops
      * `[Lygia](https://lygia.xyz)` becoming `` `Lygia` ``(https://lygia.xyz) with the URL dangling as
      * prose. `SourcePageGenerator.linkifySymbols` draws the same line for the same reason.
+     *
+     * [locals] names what this text resolves for itself — the parameters of the row it summarises.
+     * See [TypeAnchors.resolveReference].
      */
-    private fun linkify(text: String, typeAnchors: TypeAnchors, doc: SourceDocument?): String {
+    private fun linkify(
+        text: String,
+        typeAnchors: TypeAnchors,
+        doc: SourceDocument?,
+        locals: Set<String> = emptySet(),
+    ): String {
         if (text.isBlank()) return text
         val alternate = Regex("""\[([^\]\[]+)]\[([A-Za-z_][\w.]*)]""")
         val simple = Regex("""\[([A-Za-z_][\w.]*)](?!\()""")
         var out = alternate.replace(text) { m ->
-            val target = typeAnchors.resolveReference(m.groupValues[2], doc?.relativePath)
+            val target = typeAnchors.resolveReference(m.groupValues[2], doc?.relativePath, locals)
             if (target != null) "[${m.groupValues[1]}]($target)" else "`${m.groupValues[1]}`"
         }
         out = simple.replace(out) { m ->
             val raw = m.groupValues[1]
-            val target = typeAnchors.resolveReference(raw, doc?.relativePath)
+            val target = typeAnchors.resolveReference(raw, doc?.relativePath, locals)
             if (target != null) "[`$raw`]($target)" else "`$raw`"
         }
         return out
@@ -2627,6 +2690,21 @@ object StdlibReferenceGenerator {
         val stop = Regex("""[.!?](\s|$)""").find(flat) ?: return flat
         return flat.substring(0, stop.range.first + 1)
     }
+
+    /**
+     * The index's "What it is" cell for a file overview that opens with a Markdown heading.
+     *
+     * [firstSentence] takes the overview's first paragraph as written, so an overview whose first
+     * line is `#### What this file is` published its hashes into the table cell, markup and all.
+     * Dropping the marker keeps the heading's own words, which is what a one-line title already is;
+     * taking the paragraph below it instead would promote prose written as a body, and several of
+     * those read as a sentence fragment or open on a colon.
+     *
+     * The heading stays in the page body, where `demoteHeadings` re-levels it under the generated
+     * file heading.
+     */
+    private fun overviewGist(text: String): String =
+        firstSentence(text.replaceFirst(Regex("""^\s*#{1,6}\s+"""), ""))
 
     /** Escape markdown (links, inline code preserved) for a table cell. */
     private fun escapeCell(text: String): String = text.replace("|", "\\|").replace("\n", " ")

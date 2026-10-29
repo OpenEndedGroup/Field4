@@ -31,9 +31,9 @@
  * once they go negative — the minimum is therefore `min(w_max, 1)`, which is always positive. No
  * division ever approaches zero, including under extrapolation, where some weights *are* negative.
  *
- * Three things the fold alone gets wrong, and this file handles on purpose — see [DiscreteBlend],
+ * Three things the fold alone gets wrong, and this file handles — see [DiscreteBlend],
  * [MissingSlots] and [SweepConfig.preserveNumericKind]. All three are recorded per render rather
- * than assumed, because an archive you cannot interrogate later is a wasted night.
+ * than assumed, so a later pass over the archive can see which of them applied to any given render.
  *
  * ## What a night survives
  *
@@ -316,9 +316,8 @@ data class SweepConfig(
 
     /**
      * Stop while this many bytes are still free on the archive's filesystem. Eight gigabytes by
-     * default, which is generous on purpose: an overnight sweep of GPU stills is a *rate* of disk
-     * consumption, and the thing that goes wrong is not the archive being large but the machine
-     * having nothing left at 4am.
+     * default: an overnight sweep of GPU stills is a *rate* of disk consumption, and the thing that
+     * goes wrong is not the archive being large but the machine having nothing left at 4am.
      */
     val minFreeBytes: Long = 8L shl 30,
 
@@ -411,8 +410,8 @@ data class SweepRenderManifest(
     val anchor: String,
     /**
      * The parent this blend was pushed *away* from, for an extrapolated render — a different key
-     * from [anchor], and deliberately so: the earliest version of this gave one key both jobs, and
-     * produced blends wearing the palette of the look they had just fled.
+     * from [anchor], which is where the discrete lanes and numeric types come from. One key in both
+     * roles would push a blend away from the look it then inherits.
      */
     val extrapolationPole: String? = null,
     /**
@@ -758,7 +757,7 @@ class KeyframeSweep(
      * The index is a projection, not the record: it is appended to as renders finish, so a process
      * killed between a manifest write and its append leaves it one line short, and two runs over one
      * archive interleave rather than merge. The manifests are authoritative; this makes the index
-     * agree with them again. Cheap enough to call before an offline pass, and the honest thing to do
+     * agree with them again. Cheap enough to call before an offline pass, and the first thing to run
      * after a crash.
      */
     fun reindex(): Int {

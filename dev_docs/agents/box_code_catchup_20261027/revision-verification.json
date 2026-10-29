@@ -1,0 +1,21 @@
+{
+  "method": "Convertible factory/helper occurrences in parsed Kotlin bodies: frozen HEAD minus final source; comments, strings and fold directives excluded by transformation parser.",
+  "counts": {
+    "collectionLiterals": 73,
+    "fixedDecimalHelpers": 9
+  },
+  "paths": [
+    "dev_docs/agents/transcripts/a_pen_that_sees.yaml",
+    "dev_docs/agents/transcripts/ai4_repo_tools.yaml",
+    "dev_docs/agents/transcripts/madp_chargrid.yaml",
+    "dev_docs/agents/transcripts/madp_geometry.yaml",
+    "dev_docs/agents/transcripts/madp_line.yaml",
+    "dev_docs/agents/transcripts/madp_score.yaml",
+    "dev_docs/agents/transcripts/offline_viewer_demo.yaml",
+    "dev_docs/agents/transcripts/teaching_a_pen.yaml",
+    "public/docs/a_pen_that_sees.md",
+    "public/docs/boolean_networks_examples.md",
+    "public/docs/sorting_networks_examples.md",
+    "public/docs/teaching_a_pen.md"
+  ]
+}

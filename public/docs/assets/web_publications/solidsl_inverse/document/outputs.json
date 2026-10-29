@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T17:42:00.261Z",
+  "documentName": "solidsl_inverse",
+  "outputs": [
+    {
+      "uid": "inverse",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "inverse",
+      "channel": "seed",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 668,
+      "height": 438,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "inverse",
+      "channel": "fitted",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 668,
+      "height": 438,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "inverse",
+      "channel": "target",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 668,
+      "height": 438,
+      "path": "outputs/3.html"
+    }
+  ]
+}

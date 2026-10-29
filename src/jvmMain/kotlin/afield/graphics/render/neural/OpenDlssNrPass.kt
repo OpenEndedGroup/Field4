@@ -27,8 +27,8 @@ import kotlin.math.abs
 
 /** What a Vulkan sampler returns. SRGB-format views already decode, so use LINEAR_LDR for those. */
 enum class OpenDlssNrColorEncoding { SRGB_CODE, LINEAR_LDR, LINEAR_HDR }
-/** Style is the network condition, independently of grading after the pass. Tone/structure are
- * deliberately unrestricted within finite binary16 range: -10..30 is useful for image exploration.
+/** Style is the network condition, independently of grading after the pass. Tone and structure take
+ * any finite binary16 value: -10..30 is useful for image exploration.
  * Skin is active only with autoMask; negative skin inherits structure. Fixed seed is the default. */
 data class OpenDlssNrControls(val seed: Int=1,val style: Int=1,val tone: Float=1f,val structure: Float=1f,
     val skin: Float=-1f,val autoMask: Boolean=false,val intensity: Float=1f,val temporal: Boolean=false) {

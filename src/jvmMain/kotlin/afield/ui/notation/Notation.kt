@@ -586,8 +586,8 @@ class NotationBuilder internal constructor(private val owner: Box, private val k
 
     var stroke: String = "#1e1e1e"
     var fill: String = "transparent"
-    var strokeWidth: Double = 2.0
-    var roughness: Double = 1.0
+    var strokeWidth: Double = 1.0
+    var roughness: Double = 0.0
     var opacity: Double = 100.0
     var dashed: Boolean = false
     var fontSize: Double = 20.0
@@ -726,7 +726,6 @@ class NotationBuilder internal constructor(private val owner: Box, private val k
         var e = base(id, type, x.toDouble(), y.toDouble(), w.toDouble(), h.toDouble(), name, stroke, fill)
             .with("opacity" to JsonPrimitive(opacity))
         if (fillStyle != null && fill != "transparent") e = e.with("fillStyle" to JsonPrimitive(fillStyle))
-        if (type == "rectangle") e = e.with("roundness" to buildJsonObject { put("type", JsonPrimitive(3)) })
         val ref = add(e)
         if (label != null) addLabel(ref.id, label, e.worldBounds())
         return ref
@@ -763,7 +762,7 @@ class NotationBuilder internal constructor(private val owner: Box, private val k
             "text" to JsonPrimitive(text),
             "originalText" to JsonPrimitive(text),
             "fontSize" to JsonPrimitive(size),
-            "fontFamily" to JsonPrimitive(5),
+            "fontFamily" to JsonPrimitive(IOSEVKA_FONT_FAMILY),
             "textAlign" to JsonPrimitive("left"),
             "verticalAlign" to JsonPrimitive("top"),
             "containerId" to jsonString(containerId),
@@ -845,9 +844,14 @@ class NotationBuilder internal constructor(private val owner: Box, private val k
     private fun boundsOf(id: String): Rect? =
         made.firstOrNull { it.string("id") == id }?.worldBounds() ?: view.scene[id]?.worldBounds()
 
+    // Field's Iosevka, which tools/excalidraw-bundle/build.mjs adds to Excalidraw's font table at id 42.
+    // It is monospace: every glyph of the semi-condensed face advances 0.456 em.
+    private val IOSEVKA_FONT_FAMILY = 42
+    private val IOSEVKA_ADVANCE = 0.456
+
     private fun measure(text: String, size: Double): Pair<Double, Double> {
         val lines = text.split('\n')
-        return (lines.maxOf { it.length } * size * 0.55).coerceAtLeast(size) to lines.size * size * 1.25
+        return (lines.maxOf { it.length } * size * IOSEVKA_ADVANCE).coerceAtLeast(size) to lines.size * size * 1.25
     }
 
     internal fun sample(fline: FLine): List<Vec2> {

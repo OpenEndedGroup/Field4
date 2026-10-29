@@ -94,8 +94,10 @@ class SourceBackedBlockSelfBoxReentry(box: Box, source: String) : IllegalStateEx
 )
 
 /**
- * A saved block asked to hydrate on its own box's engine while that box's body is running. Evaluating it
- * there would run the body again, so it is an error, raised before anything runs twice.
+ * A saved expression asked to hydrate on its own box's engine while that box's body is running.
+ * Evaluating it there would run the body again, so it is an error, raised before anything runs twice.
+ * A [SourceBackedBlock] no longer raises it (it hydrates on a side engine instead); the `@{...}`
+ * route of `rewriteKotlin` still does.
  */
 class SourceBackedBlockDuringOwnBody(box: Box, source: String) : IllegalStateException(
     "This saved block (source '${source.take(80).replace('\n', ' ')}') belongs to box '${box.name}', whose " +
@@ -108,26 +110,20 @@ class SourceBackedBlockDuringOwnBody(box: Box, source: String) : IllegalStateExc
  *
  * The `sourceBlock { ... }` macro creates these with both a live lambda and the
  * block body source. Persisted copies rehydrate by evaluating [source] inside
- * the original box context.
+ * the original box context, on first call.
  *
- * **Do not invoke a rehydrating block from inside its own box's running code.** [hydrate] compiles
- * and evaluates a snippet on [boxId]'s engine, and asking that engine to evaluate while it is
- * already mid-evaluation **re-runs the box body that is running** — which hydrates again, once per
- * level, until the stack gives out. Measured at 327 nested runs of one body and 355 seconds on
- * `dev_docs/agents/transcripts/keyframe_code_blend.yaml` before that box was split in two, off a
- * single compile of the body: the body was re-*evaluated*, not recompiled.
+ * A block that arrived from a keyframe file or from
+ * [afield.animation.keyframes.CodeBlendPlan.runtimeSource] is a rehydrating one, and can be called
+ * from anywhere, including its own box's running code. Hydrating on [boxId]'s own engine while that
+ * engine is mid-evaluation **re-runs the box body that is running** (327 nested runs and 355 seconds,
+ * measured on `dev_docs/agents/transcripts/keyframe_code_blend.yaml`), so while the body runs the
+ * block is compiled on a separate engine for that box instead: the box as receiver and Field's
+ * standard imports, which is all a self-contained source such as a blend needs. A block that names
+ * the body's own declarations cannot hydrate there; call it once the body has finished.
  *
- * **Guarded since 2026-09-09:** the second hydration for a box on one thread throws
- * [SourceBackedBlockSelfBoxReentry], whose message names the ways out. That breaks the recursion, so
- * the body runs twice rather than 327 times — but twice is still once too many, and anything the body
- * does before the invocation happens twice, so the split below remains the shape to write.
- *
- * Hydrating into a box that is **idle** is fine and does not re-run anything, which is what the
- * split in that transcript relies on — `kfb_kotlin_run` builds a block whose box is `kfb_kotlin` and
- * invokes it, and `kfb_kotlin`'s body runs exactly once. A block that arrived from a keyframe file or
- * from [afield.animation.keyframes.CodeBlendPlan.runtimeSource] is a rehydrating one; invoke it from a frame loop,
- * a control callback, or another box. A block the `sourceBlock` macro made in *this* execution
- * carries a live lambda and never hydrates, so it is safe to call immediately.
+ * The second hydration for a box on one thread still throws [SourceBackedBlockSelfBoxReentry], the
+ * guard against any other route into the same recursion. A block the `sourceBlock` macro made in
+ * *this* execution carries a live lambda and never hydrates.
  */
 class SourceBackedBlock<out T>(
     val boxId: String,
@@ -152,8 +148,8 @@ class SourceBackedBlock<out T>(
         val box = sourceBackedBlockBox(boxId)
             ?: throw IllegalStateException("Cannot hydrate source-backed block; box '$boxId' is not loaded.")
 
-        // Refuse to hydrate on this box's engine while its own body is running: it would run the body again.
-        if (afield.runtime.execution.BoxBodyRun.isRunning(boxId)) throw SourceBackedBlockDuringOwnBody(box, source)
+        // While this box's body is running, its own engine would run the body again; compile on a side engine instead.
+        if (afield.runtime.execution.BoxBodyRun.isRunning(boxId)) return hydrateOnSideEngine(box)
         // Refuse the second hydration for this box on this thread — see [SourceBackedBlockSelfBoxReentry].
         // Logged as well as thrown: the throw lands inside a *re-entrant* run of the box body, and
         // whatever instantiates the snippet chain absorbs it without reporting, so the throw alone is
@@ -190,6 +186,33 @@ class SourceBackedBlock<out T>(
         return { function.invoke() }
     }
 
+    /**
+     * Hydrates on [sideEngineFor] the box rather than its own engine, for a block invoked from inside
+     * that box's running body. The block's source is self-contained (a blend's is fully qualified), so
+     * it needs the box as receiver and the standard imports, not the body's own declarations.
+     */
+    private fun hydrateOnSideEngine(box: Box): () -> Any? {
+        val engine = sideEngineFor(box)
+        val errors = mutableListOf<String>()
+        val result = synchronized(engine) {
+            engine.execAndWait(
+                "{\n$source\n}",
+                onCompileError = { d -> d.forEach { errors += "${it.message} ${it.location ?: ""}".trim() } },
+                onEvalError = { d -> d.forEach { errors += it.message } },
+                onEvalException = { throw it },
+                implicits = listOf(box),
+            )
+        }
+        if (errors.isNotEmpty()) {
+            errors.forEach { lprintln("error,source-block", "compile: $it") }
+            throw IllegalStateException("Could not compile source-backed block in box '${box.name}' (${box.id}): ${errors.first()}")
+        }
+        val value = (result as? ResultValue.Value)?.value
+        val function = value as? Function0<*>
+            ?: throw IllegalStateException("Source-backed block in box '$boxId' evaluated to ${value?.javaClass?.name ?: result}, not Function0.")
+        return { function.invoke() }
+    }
+
     private fun compileLambda(box: Box): afield.runtime.kotlin.PreparedSnippet {
         val lambdaSource = "{\n$source\n}"
         val expanded = runCatching { box.ki.applyMacros(box, lambdaSource, skipMacros = setOf("sourceBlock")) }
@@ -210,6 +233,22 @@ class SourceBackedBlock<out T>(
     override fun toString(): String = "SourceBackedBlock(boxId=$boxId, source=${source.take(80).replace('\n', ' ')})"
 }
 
+
+/**
+ * One engine per box for blocks hydrated while that box's body runs (see [SourceBackedBlock]): the box
+ * as implicit receiver and Field's standard imports, separate from the box's own engine so nothing
+ * there re-enters. Made on first need; dropped with the box.
+ */
+private val sideEngines = java.util.WeakHashMap<Box, afield.runtime.kotlin.KotlinInterface2>()
+
+private fun sideEngineFor(box: Box): afield.runtime.kotlin.KotlinInterface2 = synchronized(sideEngines) {
+    sideEngines.getOrPut(box) {
+        afield.runtime.kotlin.KotlinInterface2(
+            implicitReceivers = listOf(kotlin.script.experimental.api.KotlinType(Box::class)),
+            filePrefix = "SBB_${box.id.filter { it.isLetterOrDigit() }.take(12)}_",
+        ).also { it.execAndWait(afield.document.graph.intro, { }, { }, { throw it }, listOf(box)) }
+    }
+}
 
 fun <T> sourceBackedBlock(boxId: String, source: String): SourceBackedBlock<T> =
     SourceBackedBlock(boxId, source)

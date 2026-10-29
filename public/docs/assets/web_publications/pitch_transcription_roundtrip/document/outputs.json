@@ -1,0 +1,195 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T20:57:36.046Z",
+  "documentName": "pitch_transcription_roundtrip",
+  "outputs": [
+    {
+      "uid": "pitch_roundtrip_register",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1196,
+      "height": 309,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "pitch_roundtrip_register",
+      "channel": "resolution",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 382,
+      "height": 40,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "pitch_roundtrip_register",
+      "channel": "verdict",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 40,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "pitch_roundtrip_register",
+      "channel": "recovered",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 433,
+      "height": 40,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "pitch_roundtrip_legato",
+      "channel": "the counterfactual",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 464,
+      "height": 59,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "pitch_roundtrip_legato",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1196,
+      "height": 309,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "pitch_roundtrip_refusal",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1196,
+      "height": 309,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "pitch_roundtrip_refusal",
+      "channel": "named",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 40,
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "pitch_roundtrip_refusal",
+      "channel": "verdict",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 478,
+      "height": 40,
+      "path": "outputs/8.html"
+    },
+    {
+      "uid": "pitch_roundtrip_refusal",
+      "channel": "warnings",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 474,
+      "height": 59,
+      "path": "outputs/9.html"
+    },
+    {
+      "uid": "pitch_roundtrip_refusal",
+      "channel": "how it knows",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 478,
+      "height": 72,
+      "path": "outputs/10.html"
+    },
+    {
+      "uid": "pitch_roundtrip_clean",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1196,
+      "height": 309,
+      "path": "outputs/11.html"
+    },
+    {
+      "uid": "pitch_roundtrip_clean",
+      "channel": "authored",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 246,
+      "height": 40,
+      "path": "outputs/12.html"
+    },
+    {
+      "uid": "pitch_roundtrip_clean",
+      "channel": "recovered",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 309,
+      "height": 40,
+      "path": "outputs/13.html"
+    },
+    {
+      "uid": "pitch_roundtrip_clean",
+      "channel": "pitch error",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 474,
+      "height": 72,
+      "path": "outputs/14.html"
+    },
+    {
+      "uid": "pitch_roundtrip_clean",
+      "channel": "summary",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 478,
+      "height": 72,
+      "path": "outputs/15.html"
+    },
+    {
+      "uid": "pitch_roundtrip_guide",
+      "channel": "guide",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 461,
+      "height": 535,
+      "path": "outputs/16.html"
+    },
+    {
+      "uid": "pitch_roundtrip_guide",
+      "channel": "resolution",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 474,
+      "height": 46,
+      "path": "outputs/17.html"
+    }
+  ]
+}

@@ -211,8 +211,80 @@ fun textPropertyValue(box: Box, property: String, value: String): Any {
 /** Comma-separated membership used by the frontend and server visibility intersection. */
 var Box.layers by Delegation<String>(defaultValue = { "default" })
 
-/** Persisted frame overrides keyed by layer; updated when the session leaves an active layer. */
-var Box.layerFrames by Delegation<MutableMap<String, Rect>>(defaultValue = { mutableMapOf() })
+/**
+ * Persisted frame overrides keyed by layer; updated when the session leaves an active layer.
+ *
+ * Reads return a view that marks the document dirty on every write through it, so box code's
+ * `layerFrames[layer] = rect` saves like any other edit; the stored value stays a plain map. The
+ * fingerprint tripwire (`DocumentShutdownFlush`, channel `warning,persistence`) caught that
+ * in-place write in a live session on 2026-10-23 (N1022-2).
+ */
+var Box.layerFrames: MutableMap<String, Rect>
+    get() {
+        @Suppress("UNCHECKED_CAST")
+        val stored = getPropertyRaw("layerFrames") as? MutableMap<String, Rect>
+            ?: (mutableMapOf<String, Rect>().also { setPropertyRaw("layerFrames", it) })
+        return PersistentMapView(this, "layerFrames", stored)
+    }
+    set(value) {
+        setPropertyRaw("layerFrames", if (value is PersistentMapView<String, Rect>) value.backing else value)
+    }
+
+/** A [MutableMap] over [backing] that tells [box] its persistent property [property] changed on each write. */
+internal class PersistentMapView<K, V>(
+    private val box: Box,
+    private val property: String,
+    val backing: MutableMap<K, V>,
+) : MutableMap<K, V> by backing {
+    private fun changed() = box.notePersistentChange(property)
+    override fun put(key: K, value: V): V? = backing.put(key, value).also { if (it != value) changed() }
+    override fun putAll(from: Map<out K, V>) { backing.putAll(from); if (from.isNotEmpty()) changed() }
+    override fun remove(key: K): V? = backing.remove(key).also { if (it != null) changed() }
+    override fun clear() { if (backing.isNotEmpty()) { backing.clear(); changed() } }
+    // Writes through the entry, key and value views mark too (N1023-5): `entries.removeIf { ... }`,
+    // `keys.retainAll(...)`, an iterator's `remove()`, `entry.setValue(...)`.
+    override val entries: MutableSet<MutableMap.MutableEntry<K, V>>
+        get() = MarkingSet(backing.entries, ::changed) { MarkingEntry(it, ::changed) }
+    override val keys: MutableSet<K> get() = MarkingSet(backing.keys, ::changed) { it }
+    override val values: MutableCollection<V> get() = MarkingCollection(backing.values, ::changed) { it }
+    override fun equals(other: Any?): Boolean = backing == other
+    override fun hashCode(): Int = backing.hashCode()
+    override fun toString(): String = backing.toString()
+}
+/** A view of a map's entry, key or value collection that calls [changed] after each removal through it. */
+internal open class MarkingCollection<T>(
+    private val backing: MutableCollection<T>,
+    protected val changed: () -> Unit,
+    private val wrap: (T) -> T,
+) : MutableCollection<T> by backing {
+    override fun iterator(): MutableIterator<T> = object : MutableIterator<T> {
+        val inner = backing.iterator()
+        override fun hasNext() = inner.hasNext()
+        override fun next(): T = wrap(inner.next())
+        override fun remove() { inner.remove(); changed() }
+    }
+    override fun remove(element: T): Boolean = backing.remove(element).also { if (it) changed() }
+    override fun removeAll(elements: Collection<T>): Boolean = backing.removeAll(elements.toSet()).also { if (it) changed() }
+    override fun retainAll(elements: Collection<T>): Boolean = backing.retainAll(elements.toSet()).also { if (it) changed() }
+    override fun removeIf(filter: java.util.function.Predicate<in T>): Boolean = backing.removeIf(filter).also { if (it) changed() }
+    override fun clear() { if (backing.isNotEmpty()) { backing.clear(); changed() } }
+    override fun equals(other: Any?): Boolean = backing == other
+    override fun hashCode(): Int = backing.hashCode()
+    override fun toString(): String = backing.toString()
+}
+
+internal class MarkingSet<T>(backing: MutableSet<T>, changed: () -> Unit, wrap: (T) -> T) :
+    MarkingCollection<T>(backing, changed, wrap), MutableSet<T>
+
+/** A map entry whose [setValue] calls [changed] when the value differs. */
+internal class MarkingEntry<K, V>(private val inner: MutableMap.MutableEntry<K, V>, private val changed: () -> Unit) :
+    MutableMap.MutableEntry<K, V> by inner {
+    override fun setValue(newValue: V): V = inner.setValue(newValue).also { if (it != newValue) changed() }
+    override fun equals(other: Any?): Boolean = inner == other
+    override fun hashCode(): Int = inner.hashCode()
+    override fun toString(): String = inner.toString()
+}
+
 var Box.templateId by Delegation<String?>(defaultValue = { null }) // tracks which template this box was created from
 
 const val METAROOT_ID = "metaroot"
@@ -407,8 +479,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
 
     /**
      * Install [engine] as this box's engine, disposing the one it replaces and forgetting what that one
-     * had run — the single way to swap engines, for the sites that used to assign `ki = makeKI…` and
-     * leak the old K2 compilation state (the `reset` action, execute-all, [afield.workspace.copyBox]).
+     * had run — the single way to swap engines, and what the `reset` action, execute-all and
+     * [afield.workspace.copyBox] all go through. Assigning `ki` directly leaks the old engine's K2
+     * compilation state.
      *
      * Only an engine that was actually built is disposed, so a box that never ran costs nothing, and
      * installing the engine already current is a no-op: `makeKIHere` hands back the existing engine for
@@ -440,8 +513,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     var frame by Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onFrameChange)
 
     /**
-     * A colour the canvas lays over this box, to show some state of it at a glance: a CSS colour
-     * such as `"hsla(28, 80%, 56%, 0.2)"` or `"rgba(255, 184, 108, 0.15)"`, or `""` for none.
+     * A colour the canvas lays over this box, to show some state of it: a CSS colour such as
+     * `"hsla(28, 80%, 56%, 0.2)"` or `"rgba(255, 184, 108, 0.15)"`, or `""` for none.
      *
      * The colour, at its own alpha, washes the box, over the running stripes and under its title;
      * the same colour made nearly opaque edges it and glows faintly. Change it as often as you

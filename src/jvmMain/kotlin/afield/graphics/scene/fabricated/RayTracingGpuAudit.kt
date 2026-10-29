@@ -39,6 +39,32 @@ expect:
   stdoutNotContains: ["VUID-"]
   stderrNotContains: ["VUID-"]
 */
+
+/**
+ * The ray-tracing audit: one JVM entrypoint that drives Field's path-tracing and ray-pipeline
+ * smokes against a real GPU and writes down what it found.
+ *
+ * This is the `four.raytracing.gpu-audit` catalog test. There is no document on disk and no Field
+ * server: the audit opens a window, builds a [Renderer], makes a bare `Box` for the smokes to run
+ * under, and steps the frame loop itself, resuming each check only between complete frames,
+ * because the renderer records with a `runBlocking` of its own. Every stage writes its verdict and
+ * elapsed time into `report.json` as it finishes, so a run that dies part way through still says
+ * where it got to.
+ *
+ * The stages selected by default are `seams`, `base`, `camera`, `temporal`, `fog` and `pipeline`;
+ * `--all` adds `emitters`, `medium` for participating media, and `benchmark`, and `--stage=NAME`
+ * runs a single one. A device
+ * with no `VK_KHR_ray_tracing_pipeline` records the pipeline stage as SKIPPED and its reason,
+ * unless `--require-pipeline` says to fail there instead, and `--fallback` turns the optional
+ * ray-tracing negotiation off so the ordinary compute path is what gets measured.
+ *
+ * The pipeline stage reads pixels rather than checking that a file was written: a UV gradient
+ * against the value its dispatch should have computed, a barycentric triangle that has to reach
+ * all three vertex colours, checker geometry that has to come out both dark and light, and a
+ * sphere whose traced image has to change when its instance transform moves and come back
+ * identical when the transform is put back.
+ */
+
 /** Runs the existing Field renderer and readback smokes on one thread, without a saved document.
  * Default: seams, base/glTF/glass, camera, temporal, fog, pipeline captures.
  * --all adds emitters, medium and GPU benchmarks.

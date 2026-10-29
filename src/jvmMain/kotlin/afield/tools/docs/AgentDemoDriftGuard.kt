@@ -5,12 +5,13 @@ import java.io.File
 import kotlin.system.exitProcess
 
 /**
- * Keeps loadable documents under `dev_docs/agents/demos/` honest about their loose source files.
+ * Checks that each loadable document under `dev_docs/agents/demos/` agrees with the loose source
+ * files beside it.
  *
  * A `#afield/file-inline` property has two copies: the fallback embedded in `metadata.edn`, and the
- * loose file beside it. Field deliberately prefers the loose file, so an edited demo can run
- * correctly while its supposedly canonical metadata remains stale. This guard compares the two
- * byte-for-byte. `--write` refreshes the inline fallbacks through [SavingContext]'s real EDN codec.
+ * loose file beside it. Field prefers the loose file, so an edited demo can run correctly while the
+ * metadata that is supposed to be canonical stays stale. This guard compares the two
+ * byte-for-byte. `--write` refreshes the inline fallbacks through the EDN codec in [SavingContext].
  *
  * `--write` rewrites `metadata.edn` for every document it visits, and re-encoding is not always
  * byte-identical to what is committed — a hand-edited artifact can carry `\uXXXX` escapes that the
@@ -19,6 +20,8 @@ import kotlin.system.exitProcess
  * `--only <document>[,<document>…]` narrows the run to the documents named after the directory
  * under `dev_docs/agents/demos`, so adding a demo touches that demo alone.
  */
+
+/** Compares each demo's `#afield/file-inline` fallbacks with the loose files beside them. */
 object AgentDemoDriftGuard {
     private const val DEMOS_REL = "dev_docs/agents/demos"
 

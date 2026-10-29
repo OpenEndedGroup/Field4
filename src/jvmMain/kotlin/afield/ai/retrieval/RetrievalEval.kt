@@ -7,15 +7,16 @@ import java.nio.file.Path
 /**
  * How well documentation search answers the questions the repository already asks of it.
  *
- * Nothing here is written for the test. Queries and answers come from two sources the authors wrote for
- * readers: the text of every cross-link between authored docs pages (`[drawing with FLines](fline_examples.md)`
- * is a query whose answer is `fline_examples.md`; the standard anchor-text method), and the `docs: why` lines
- * of the agent transcripts (`dev_docs/agents/transcripts/<name>.yaml`), each of which says what a page explains.
- * An anchor whose text points at three or more different pages ("API") is ambiguous and is left out; the
- * page a link sits on is not counted against it, since it contains the anchor text by construction.
- *
- * Begun 2026-10-22, when every vector in the index turned out to be zero and doc search had never been measured.
+ * Queries and answers come from two sources the authors wrote for readers rather than for a benchmark:
+ * the text of every cross-link between authored docs pages (`[drawing with FLines](fline_examples.md)`
+ * is a query whose answer is `fline_examples.md`; the standard anchor-text method), and the `why` text
+ * of each `docs:` entry in the agent transcripts (`dev_docs/agents/transcripts/<name>.yaml`), each of
+ * which says what a page explains. An anchor is left out when its text is generic (`here`, `this page`,
+ * `api`) or points at three or more different pages; the page a link sits on is not counted against it,
+ * since it contains the anchor text by construction.
  */
+
+/** Query sets built from the repository's own prose, and the hit@1, hit@5 and MRR over them. */
 object RetrievalEval {
     data class Case(val set: String, val query: String, val pages: Set<String>, val excludePage: String = "")
 

@@ -205,6 +205,24 @@ class KitPackagesTest {
         } finally { detachRootFromMetaroot(info.root) }
     }
 
+    @Test fun aReloadCleansUpEveryKitAndReactivatesItsOpenDocuments() {
+        val kit = KitPackages.install(packageAt(lifecycle = KitLifecycleFixture::class.java.name)); active(kit)
+        val workspace = workspace(); KitInstances.create(workspace, kit.id, "talk", "lecture")
+        assertEquals(null, KitRuntime.suspendForReload(), "nothing to suspend before the kits start")
+        KitRuntime.start()
+        val info = document(workspace, "lecture")
+        try {
+            KitRuntime.activate(info)
+            val open = KitRuntime.suspendForReload()
+            KitRuntime.resumeAfterReload(open)
+            assertEquals(
+                listOf("startup", "activate:lecture", "deactivate:lecture", "cleanup", "startup", "activate:lecture"),
+                KitLifecycleFixture.events,
+            )
+            assertTrue(KitRuntime.errors.isEmpty(), "${KitRuntime.errors}")
+        } finally { detachRootFromMetaroot(info.root) }
+    }
+
     @Test fun aFailedStartupCleansItsPartialResourcesAndReportsTheError() {
         val kit = KitPackages.install(packageAt(lifecycle = KitFailedStartupFixture::class.java.name)); active(kit)
         KitRuntime.start()

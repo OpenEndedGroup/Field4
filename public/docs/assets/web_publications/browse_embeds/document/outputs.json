@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T21:03:40.651Z",
+  "documentName": "browse_embeds",
+  "outputs": [
+    {
+      "uid": "column_box",
+      "channel": "columns",
+      "open": true,
+      "warnings": [
+        "Lazy inspector: only the materialized rows and current view are captured"
+      ],
+      "kinds": [],
+      "width": 200,
+      "height": 228,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "logs_box",
+      "channel": "logs",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 311,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "live_box",
+      "channel": "live",
+      "open": true,
+      "warnings": [
+        "Lazy inspector: only the materialized rows and current view are captured"
+      ],
+      "kinds": [],
+      "width": 200,
+      "height": 228,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "tree_box",
+      "channel": "tree",
+      "open": true,
+      "warnings": [
+        "Lazy inspector: only the materialized rows and current view are captured"
+      ],
+      "kinds": [],
+      "width": 200,
+      "height": 228,
+      "path": "outputs/3.html"
+    }
+  ]
+}

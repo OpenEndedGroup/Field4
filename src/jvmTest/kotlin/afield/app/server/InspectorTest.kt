@@ -265,5 +265,67 @@ class InspectorTest {
         assertTrue(html.contains("src='/tree?root=abc&maxh=300'"), html)
         assertTrue(html.contains("width:100%"))
         assertTrue(html.trim().endsWith("</iframe>"))
+        assertTrue(inspectorIframe("/browse?root=abc", 300, width = 900).contains("width:900px"))
+    }
+
+    @Test
+    fun `renderer adapters are registered and render graphics values as cards`() {
+        registerRendererBrowsingAdapters()
+        registerRendererBrowsingAdapters() // idempotent
+        val r = root(afield.graphics.vulkan.device.ProfilingOptions(enabled = true, perfCounters = false))
+        val text = r.toString()
+        assertEquals("leaf", r.str("type"), text)
+        assertTrue(text.contains("ProfilingOptions"), text)
+        assertTrue(text.contains("perfCounters"), text)
+        assertTrue(text.contains("false"), text)
+    }
+
+    @Test
+    fun `a graphics node with children shows its card as the first summary row`() {
+        val node = object : Browsable {
+            override fun heading() = "Target"
+            override fun dir() = linkedMapOf<String, Any?>("modules" to listOf(1, 2))
+            override fun html() = "<div>card body</div>"
+        }
+        val wrapped = withSummaryRow(node)
+        val r = root(wrapped)
+        assertEquals("dir", r.str("type"))
+        val entries = rows(open(r.str("id")))
+        assertEquals(listOf("summary", "modules"), entries.map { it.name })
+        val summary = open(entries.first().id)
+        assertEquals("leaf", summary.str("type"))
+        assertTrue(summary.toString().contains("card body"), summary.toString())
+    }
+
+    @Test
+    fun `renderer adapters leave plain maps to the paged directory`() {
+        registerRendererBrowsingAdapters()
+        val r = root(linkedMapOf("a" to 1, "b" to 2))
+        assertEquals("dir", r.str("type"))
+        assertEquals(listOf("a", "b"), rows(open(r.str("id"))).map { it.name })
+    }
+
+    @Test
+    fun `the server's adapter registration reaches the Assimp and glTF adapters`() {
+        registerAllBrowsingAdapters()
+        val trs = afield.graphics.scene.GltfSupport.TRS(
+            afield.math.linalg.Vector3f(1f, 2f, 3f), afield.math.linalg.Quaternionf(), afield.math.linalg.Vector3f(1f, 1f, 1f)
+        )
+        val adapted = assertNotNull(BrowsableAdapters.adapt(trs, null, null), "no adapter for GltfSupport.TRS")
+        assertEquals("Transform", adapted.heading())
+    }
+
+    @Test
+    fun `every register-BrowsingAdapters function is called from registerAllBrowsingAdapters`() {
+        val src = java.io.File("src/jvmMain/kotlin")
+        assertTrue(src.isDirectory, "run from the repo root: ${src.absolutePath}")
+        val defined = src.walkTopDown().filter { it.extension == "kt" }
+            .flatMap { Regex("""\bfun\s+(register\w*BrowsingAdapters)\s*\(""").findAll(it.readText()).map { m -> m.groupValues[1] } }
+            .toSortedSet()
+        assertTrue("registerRendererBrowsingAdapters" in defined, defined.toString())
+        val browsing = java.io.File(src, "afield/app/server/browsing.kt").readText()
+        val body = browsing.substringAfter("fun registerAllBrowsingAdapters()").substringBefore("\n}\n")
+        val missing = defined.filter { it != "registerAllBrowsingAdapters" && !Regex("""\b$it\s*\(\s*\)""").containsMatchIn(body) }
+        assertTrue(missing.isEmpty(), "defined but never registered with the server: $missing")
     }
 }

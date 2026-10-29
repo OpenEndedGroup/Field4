@@ -1,4 +1,21 @@
 @file:Suppress("unused")
+/**
+ * The evidence run behind Field's CPU glTF skinning: `./gradlew --no-daemon runSkinningEvidence`.
+ *
+ * It writes the rigged fixture out as glTF, loads it back through the real Assimp path, and prints
+ * what came back with the population each number was measured over: the skeleton and its clips, the
+ * influence weights after the four-wide cap, whether the bind pose is bit-identical to the
+ * unskinned mesh, and the displacement through the bend. A second, harder fixture covers the cases
+ * that are easy to get wrong: a translated node that glTF says to ignore for a skinned mesh, a
+ * shear whose correct vertex normal is known in closed form, and a vertex with six influences for
+ * the cap to discard from. The run ends with a throughput figure in nanoseconds per vertex, with
+ * and without exact inverse-transpose normals.
+ *
+ * Frames go to `dev_docs/agents/evidence/skinning/` for a person to look at, named by
+ * [SkinningEvidence.frames] so the sequence reads in sorted order, and the numbers are the ones
+ * `dev_docs/SKINNED_CHARACTERS.md` quotes. [GpuSkinningEvidence] is the same exercise for the
+ * compute-shader path.
+ */
 
 package afield.graphics.scene
 
@@ -12,20 +29,6 @@ import afield.math.linalg.Vec3
 import afield.geometry.mesh.bounds
 import afield.geometry.mesh.renderPng
 import java.io.File
-
-/**
- * The `runSkinningEvidence` task: it rebuilds the rigged glTF fixtures, measures skeletal skinning
- * against them, and writes frames of the deformation.
- *
- * `./gradlew --no-daemon runSkinningEvidence` writes [RiggedFixture]'s bending cylinder and
- * [StressFixture]'s sheared plate, loads both back through the Assimp path, prints every number
- * `dev_docs/SKINNED_CHARACTERS.md` quotes alongside the population it was measured over, and
- * renders the posed meshes into `dev_docs/agents/evidence/skinning/`.
- * [SkinningEvidence.frames] names the cylinder sequence, and [SkinningEvidence.anchor] is the pair of
- * tiny triangles merged into every render so a sequence is framed identically: [MeshView]'s distance
- * is in multiples of the mesh's own bounding-sphere radius, so without an anchor each frame would
- * reframe itself and the cylinder would never appear to move.
- */
 
 /**
  * Regenerate the rigged fixture, measure the skinning, and write frames a person can look at.

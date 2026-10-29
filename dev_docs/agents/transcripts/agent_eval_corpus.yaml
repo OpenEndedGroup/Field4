@@ -1,0 +1,51 @@
+name: agent_eval_corpus
+description: |
+  **The agent eval corpus, inspected from a box.** `AgentEvalCorpus` mines eval tasks for Field's own agent
+  from these transcripts: every box a transcript ran whole, that prints or displays, and that needs no renderer,
+  audio, files or clock becomes a task whose goal is its name, parents and leading comment, whose setup is its
+  ancestors, whose solution is its real code, and whose checks are the output it gave twice in a row.
+
+    - **What was mined.** Counts of tasks by kind and split, and why the rest of the boxes were dropped.
+    - **One task.** A sampled task's goal and checks, as the agent receives them.
+
+  Re-mine with `field_backdoor.py agent-eval --calibrate`; run with `agent-eval --corpus heldout --sample 20 --seed 1`.
+  Write-up: `dev_docs/ai/IN_FIELD_AGENT_HARNESS.md` ("Mined corpus").
+operations:
+  - create:
+      box: corpus_summary
+      name: "What was mined"
+      frame: { x: 60.0, y: 40.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          /* The checked-in corpus: tasks by kind and split, and the reasons boxes were not mined. */
+          val corpus = AgentEvalCorpus.load()
+          println("${corpus.tasks.size} tasks from ${corpus.transcripts} transcripts (${corpus.codeBoxes} code boxes)")
+          val rows =
+              corpus.tasks
+                  .groupingBy { it.kind + " / " + it.split }
+                  .eachCount()
+                  .toSortedMap()
+                  .entries
+                  .joinToString("") { "<tr><td>${it.key}</td><td>${it.value}</td></tr>" }
+          val dropped =
+              corpus.rejectionCounts().entries.take(12).joinToString("") { "<tr><td>${it.key}</td><td>${it.value}</td></tr>" }
+          display(
+              "main",
+              "<table><tr><th>kind / split</th><th>tasks</th></tr>$rows</table>" +
+                  "<table><tr><th>dropped because</th><th>boxes</th></tr>$dropped</table>",
+          )
+  - create:
+      box: corpus_one_task
+      name: "One task"
+      frame: { x: 60.0, y: 240.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          /* One held-out task, drawn by seed: the goal and the checks the agent is judged by. */
+          val task = AgentEvalCorpus.select(AgentEvalCorpus.load(), "heldout", 1, seed = 3).first()
+          println(task.id + " (" + task.kind + ")")
+          println(task.request.goal)
+          task.request.checks.forEach { println("  check " + it.kind + " " + it.box + " " + it.text) }
+  - execute: { box: corpus_summary, property: code }
+  - await: {}
+  - execute: { box: corpus_one_task, property: code }
+  - await: {}

@@ -15,16 +15,16 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
- * Writing a [SplatCloud] out as a PlayCanvas `.compressed.ply`, and quantizing one without writing
- * anything.
+ * How an edited splat cloud leaves Field, in the PlayCanvas `.compressed.ply` format it arrived in.
  *
- * [CompressedSplatPlyWriter] is the encoding half of [CompressedSplatPly], so a cloud that has been
- * cropped, filtered, decimated or merged on the CPU can leave in the format it arrived in.
- * [CompressedSplatPlyWriter.write] puts one on disk; [CompressedSplatPlyWriter.quantize] runs the
- * same encoder into the [CompressedSplatPly.RawSplats] that [SplatRaster] and a live GPU upload
- * take, so a preview of an edit is the same picture as its save. Both sort into Morton order first
- * by default: position, scale and colour are quantized per chunk of 256 against that chunk's own
- * bounds, so an arbitrary order leaves every chunk bounding the whole scene.
+ * Box code reaches the object below through [SplatCloud.write] for a file and
+ * [SplatCloud.toRawSplats] for the packed tables a renderer uploads. Both run the same encoder over
+ * the same ordering, so what a preview shows and what a save contains are quantized alike.
+ * [CompressedSplatPly] is the reader this inverts.
+ *
+ * Quantization is per chunk of 256 splats against that chunk's own bounds, which makes a splat's
+ * accuracy a question of how tightly its neighbours in *file order* bound it. That is what
+ * [CompressedSplatPlyWriter.write]'s default Morton sort is for.
  */
 
 /**
@@ -61,7 +61,7 @@ object CompressedSplatPlyWriter {
     const val SCALE_LOG_LIMIT = 20f
 
     /**
-     * Write [cloud] to [file].
+     * Write `cloud` to `file`.
      *
      * @param mortonSort reorder into Morton (Z-curve) order first, so each chunk of 256 covers a
      *   small spatial cell and the per-chunk quantization stays tight. Off only makes sense when the

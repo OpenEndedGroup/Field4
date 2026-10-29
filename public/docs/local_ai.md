@@ -22,7 +22,8 @@ Start the model server first, then open `/welcome` in Field and expand **AI**.
 6. Click **Save**, then open a box's AI4 chat and send a short prompt.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1400x1300" clip-selector="#docs-local-ai-crop" screenshot="assets/local_ai/welcome-local.png" padding="6" wait="0" timeout="120" embed=true hidden=true name="welcome-local-ai" alt="Welcome's AI settings with Local selected, an API base URL on gpu-host, an optional API key, Check connection, agent model qwen3.8-27b, and empty fast and fallback fields that use the agent model."}
-ui.eval("""
+ui.eval(
+    """
     document.getElementById("docs-local-ai-frame")?.remove()
     document.getElementById("docs-local-ai-crop")?.remove()
     const frame = document.createElement("iframe")
@@ -31,11 +32,15 @@ ui.eval("""
     frame.style.cssText = "position:fixed;left:0;top:0;width:1400px;height:1300px;border:0;background:#111;z-index:2147483000"
     document.body.appendChild(frame)
     return true
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 var localReady = false
 for (i in 0 until 80) {
     ui.pause(250)
-    localReady = ui.eval("""
+    localReady =
+        ui.eval(
+                """
         const d = document.getElementById("docs-local-ai-frame")?.contentDocument
         const panel = d?.getElementById("ai-settings-details")
         if (!panel || /checking/i.test(d.getElementById("ai-settings-summary").textContent)) return false
@@ -49,12 +54,16 @@ for (i in 0 until 80) {
         d.getElementById("ai-fallback-model").value = ""
         panel.scrollIntoView({block:"start"})
         return !d.getElementById("local-ai-controls").hidden
-    """.trimIndent()).toString() == "true"
+    """
+                    .trimIndent(),
+            )
+            .toString() == "true"
     if (localReady) break
 }
 check(localReady) { "Local AI settings did not load" }
 ui.pause(1200)
-ui.eval("""
+ui.eval(
+    """
     const frame = document.getElementById("docs-local-ai-frame")
     const d = frame.contentDocument
     const panel = d.getElementById("ai-settings-details").getBoundingClientRect()
@@ -67,7 +76,9 @@ ui.eval("""
         "px;height:" + (last.bottom - panel.top + 4) + "px"
     document.body.appendChild(crop)
     return true
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 ```
 
 Use the address appropriate to where Field's backend runs:

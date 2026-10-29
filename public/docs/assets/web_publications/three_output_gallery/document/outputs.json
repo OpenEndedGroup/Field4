@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T20:52:36.605Z",
+  "documentName": "three_output_gallery",
+  "outputs": [
+    {
+      "uid": "three-output-grid",
+      "channel": "grid",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 868,
+      "height": 768,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "three-output-scene",
+      "channel": "gyroid",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 768,
+      "height": 478,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "three-output-renderers",
+      "channel": "three.js - the default",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 528,
+      "height": 408,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "three-output-renderers",
+      "channel": "the CPU rasterizer",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 532,
+      "height": 466,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "three-output-winding",
+      "channel": "three.js",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 480,
+      "height": 388,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "three-output-winding",
+      "channel": "the CPU rasterizer",
+      "open": false,
+      "warnings": [],
+      "kinds": [],
+      "width": 468,
+      "height": 445,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "three-output-turntable",
+      "channel": "turntable",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 1552,
+      "height": 298,
+      "path": "outputs/6.html"
+    }
+  ]
+}

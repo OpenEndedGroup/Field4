@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T21:03:46.507Z",
+  "documentName": "pattern_condense",
+  "outputs": [
+    {
+      "uid": "condense_from_audio",
+      "channel": "roll",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 359,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "condense_from_audio",
+      "channel": "played",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "condense_from_audio",
+      "channel": "condensed",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "condense_from_audio",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 479,
+      "height": 318,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "condense_basics",
+      "channel": "roll",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 779,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "condense_basics",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 480,
+      "height": 371,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "condense_invents_nothing",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 479,
+      "height": 258,
+      "path": "outputs/6.html"
+    }
+  ]
+}

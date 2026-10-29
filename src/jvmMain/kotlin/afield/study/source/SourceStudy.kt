@@ -75,9 +75,9 @@ import kotlinx.coroutines.launch
  * What the language adds is one function, [SourceStudy]'s `admit`: compile and check a candidate,
  * returning a value (whatever the language's tools need — a composition, a compiled shader report)
  * or throwing [StudyRejection] with a message a person or a model can act on. The StackSL, RectSL,
- * stack.auto and function studies are all adapters over it; `FunctionStudy` predated it and kept a
- * private copy of the protocol until 2026-09-29, with the same file layout, so a revision directory
- * written before then still reads.
+ * stack.auto and function studies are all adapters over it. `FunctionStudy` keeps the file layout it
+ * used while it carried its own private copy of the protocol, so a revision directory written by that
+ * older code still reads.
  *
  * ### On disk
  *
@@ -403,24 +403,6 @@ object BoxStudies {
         box.output.retainedAreas.control("open", channel)
         afield.ui.output.sendBoxOutput(box, afield.app.protocol.Message("set-output").payload(afield.app.protocol.Set_output(box.id, "outputarea", channel, html)))
         afield.ui.output.sendBoxOutput(box, afield.app.protocol.Message("output-control").payload(afield.app.protocol.OutputControl(uid = box.id, action = "open", channel = channel)))
-    }
-
-    /** How long a page that has just attached is given to receive its boxes before their cards follow. */
-    private const val REPLAY_DELAY_MS = 2500L
-
-    /**
-     * Replay the current output inventory to a newly attached [session] after its boxes arrive.
-     * Library cards and ordinary output share this inventory, including replacements and clears.
-     * The frontend's normal output replay also uses it; neither path resurrects a cleared card.
-     */
-    @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
-    fun replayTo(session: io.ktor.websocket.WebSocketSession, document: afield.app.server.SessionInformation) {
-        kotlinx.coroutines.GlobalScope.launch {
-            kotlinx.coroutines.delay(REPLAY_DELAY_MS)
-            document.boxes.values.toList().forEach { box ->
-                box.output.retainedAreas.snapshot(box.id).forEach { afield.app.protocol._send(session, it) }
-            }
-        }
     }
 
     /**

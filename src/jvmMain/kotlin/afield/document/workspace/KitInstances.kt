@@ -5,23 +5,26 @@ import kotlinx.serialization.Serializable
 import java.io.File
 
 /**
- * Making a document from a kit package's starting point, and bringing it up to a newer revision.
+ * A document copied from a kit's starting point, the record of what it received, and the three-way
+ * comparison that updates it. [KitInstances.create] copies a starting point into the workspace,
+ * puts the new document in a `kit-<id>` workspace project, and writes `.field-kit-instance.json`:
+ * the kit id, the package and runtime revisions, the starting point, the project, and a hash of
+ * every file the copy began from. Those hashes are the baseline; the document's files are its own
+ * from then on.
  *
- * [KitInstances.create] copies the starting point's document directory into the workspace, drops
- * the package manifest from the copy, and writes a [KitInstanceRecord] into
- * `.field-kit-instance.json`: the kit, the revision and runtime revision it was made from, the
- * starting point, the project, and a hash for every seed file. It also makes the `kit-<id>`
- * workspace project on first use and seeds that project's preferences from the manifest, so every
- * document from one kit shares a parent and a preferences file. Creating is refused unless the
- * installed revision is the one this host launched with.
+ * [KitInstances.inspect] reads three hashes for each path (the baseline, the document's file now,
+ * and the same path in the installed starting point) and labels the difference `update`,
+ * `edited-here`, `remove` or `conflict`, a conflict being both sides changed since the baseline.
+ * [KitInstances.migrate] then applies that plan or none of it. It refuses outright while any path
+ * conflicts, copies every file it is about to write or delete into `backups/kit-<uuid>` first,
+ * restores from those copies if a write fails partway, and rewrites the record last, so a failed
+ * update leaves the document on the revision it already had.
  *
- * That per-file baseline is what makes an update a three-way comparison rather than an overwrite.
- * [KitInstances.inspect] reads the record's hash, the document's hash and the installed seed's hash
- * for every path either side knows, and labels each `update`, `remove`, `edited-here` or
- * `conflict`, the last meaning both sides have changed it since the baseline.
- * [KitInstances.migrate] refuses while any conflict stands, copies every file it is about to write
- * or delete into `backups/kit-<uuid>` inside the document, and restores that backup if a write
- * fails partway. The caller closes the document first; this writes files, not a loaded session.
+ * A document reads shared resources from the package revision it recorded rather than the newest
+ * installed one ([KitInstances.sharedResources]), which is also why `.field-kit-instance.json` has
+ * to travel with the document's other files: without it a host has no kit to compare the document
+ * against, and it opens as an ordinary workspace document. The equivalent for a role kit inside a
+ * single document is [Kits].
  */
 
 /** The seed revision and file baselines this document actually received. */
@@ -29,9 +32,11 @@ import java.io.File
 data class KitInstanceRecord(val kit: String, val revision: String, val runtimeRevision: String,
     val startingPoint: String, val project: String, val files: Map<String, String>)
 
+/** One path and what an update would do to it: `update`, `edited-here`, `remove` or `conflict`. */
 @Serializable
 data class KitInstanceChange(val path: String, val state: String)
 
+/** An update preview: the revision on offer, every path that differs, and the conflicts that block it. */
 @Serializable
 data class KitInstanceInspection(val document: String, val record: KitInstanceRecord, val availableRevision: String,
     val changes: List<KitInstanceChange>, val conflicts: List<String>)

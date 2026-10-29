@@ -26,28 +26,26 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Mistral's pretrained Timestral forecaster behind the [TemporalSession] interface, so a box can
- * continue a signal from its recent history alone, with no recording to remember and no training
- * step.
+ * Mistral's pretrained Timestral forecaster behind this package's session interface, running in a
+ * Python worker that Field starts and owns.
  *
- * The model runs in its own Python process rather than inside Field, started through `uv` from
- * the pinned dependencies of `python/fieldtemporal/timestral_worker.py`, so PyTorch never loads
- * into the JVM or into the Python-box environment. `propose` sends the request's history across
- * as float32 and returns the median as its proposal with a quantile envelope around it. Those
- * quantiles are per-step marginals, describing the uncertainty at each step rather than a set of
- * whole futures, which is why this session offers no sampled alternatives.
+ * [TimestralSession] has never seen the signal it is continuing and needs no training step: it
+ * reads the recent history and returns a median forecast with a quantile envelope around it. The
+ * model runs in a separate process under `uv run --script`, in an environment uv builds from the
+ * worker script's own pinned dependencies, so Torch never loads into Field or into the venv the
+ * Python boxes share. Field talks to the worker over length-prefixed frames on its standard
+ * input and output, one worker per session, and a session created inside a box run stops its
+ * worker when the box stops or re-runs.
  *
- * Nothing downloads until `install` is called, and that call blocks on the download. `status`
- * starts nothing and answers beforehand whether a session could start without the network, as a
- * [ProviderStatus] carrying both the cause and the fix when it could not, so a box can ask before
- * it builds anything. Afterwards a worker honours `AFIELD_OFFLINE=1`. A session
- * created inside a box run belongs to that run, and its worker exits when the box stops or
- * re-runs.
+ * Because the model is optional, this file also answers whether it can be used at all. `status`
+ * reports whether `uv`, the worker script and the checkpoint are all present, without starting
+ * anything, and names the step that would supply the first one missing; [ProviderStatus] is that
+ * answer. Nothing downloads until `install` is called.
  *
- * Pair it with [RecedingHorizon] to step a forecast from a frame loop without ever waiting on
- * one, or with [ForecastJudge] to have it rate an [Improviser]'s proposals rather than produce
- * samples itself. Tests: `TimestralSessionTest`, which needs the downloaded checkpoint and so
- * runs only with `AFIELD_TIMESTRAL_TEST=1`.
+ * The forecast's quantiles are per-sample marginals, so this session offers no sampled
+ * alternatives: drawing each step independently from its own quantile would invent a dependence
+ * between steps that the model never predicted. `TimestralSessionTest` exercises a real worker,
+ * and only when `AFIELD_TIMESTRAL_TEST=1` and the checkpoint is already installed.
  */
 
 /** Where an optional provider stands, with the reason when it is not usable. */

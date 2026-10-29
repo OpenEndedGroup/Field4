@@ -40,12 +40,36 @@ object Sacn {
     /** UDP port for all E1.31 traffic: 5568 (ACN_SDT_MULTICAST_PORT). */
     const val PORT = 5568
 
+    /** Root-layer vector of a data packet, at byte 18: `0x04`. */
     const val VECTOR_ROOT_E131_DATA = 0x00000004
+
+    /**
+     * Root-layer vector of a synchronization or a discovery packet, at byte 18: `0x08`. E1.31 calls
+     * both of those extended packets, and the framing vector below says which one it is.
+     */
     const val VECTOR_ROOT_E131_EXTENDED = 0x00000008
+
+    /** Framing-layer vector of a data packet, at byte 40: `0x02`. */
     const val VECTOR_E131_DATA_PACKET = 0x00000002
+
+    /** Framing-layer vector of a synchronization packet, at byte 40: `0x01`. */
     const val VECTOR_E131_EXTENDED_SYNCHRONIZATION = 0x00000001
+
+    /**
+     * Framing-layer vector of a universe discovery packet, at byte 40: `0x02`.
+     *
+     * A data packet carries the same framing vector, so neither byte 18 nor byte 40 identifies a
+     * packet alone; reading the pair is what tells the three kinds apart.
+     */
     const val VECTOR_E131_EXTENDED_DISCOVERY = 0x00000002
+
+    /**
+     * DMP-layer vector of a data packet, at byte 117: `0x02`, Set Property. It is the only DMP
+     * vector E1.31 defines for streaming DMX, and a data packet that does not carry it is dropped.
+     */
     const val VECTOR_DMP_SET_PROPERTY = 0x02
+
+    /** Vector of a discovery packet's innermost PDU, at byte 114: `0x01`, a list of universes. */
     const val VECTOR_UNIVERSE_DISCOVERY_UNIVERSE_LIST = 0x00000001
 
     /** Options bit 7: preview data — for visualisers, not for driving lights. */

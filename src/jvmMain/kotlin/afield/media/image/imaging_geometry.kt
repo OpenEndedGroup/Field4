@@ -103,9 +103,18 @@ import kotlin.random.Random
  * Maps `(x, y) -> (a*x + c*y + e, b*x + d*y + f)`.
  */
 data class Affine2D(
-    val a: Double, val b: Double,
-    val c: Double, val d: Double,
-    val e: Double, val f: Double
+    /** Output x per unit of input x: the horizontal scale, where there is no rotation or shear. */
+    val a: Double,
+    /** Output y per unit of input x: the vertical shear. */
+    val b: Double,
+    /** Output x per unit of input y: the horizontal shear. */
+    val c: Double,
+    /** Output y per unit of input y: the vertical scale, where there is no rotation or shear. */
+    val d: Double,
+    /** Translation along x, added after the linear part. */
+    val e: Double,
+    /** Translation along y, added after the linear part. */
+    val f: Double
 ) {
     /** Apply to a point. */
     fun apply(x: Double, y: Double): Pair<Double, Double> = (a * x + c * y + e) to (b * x + d * y + f)
@@ -192,10 +201,11 @@ data class Affine2D(
  *
  * Homographies are defined only up to scale; [normalized] divides by `m8` (or by the Frobenius norm
  * if `m8` is ~0) so two equal transforms compare equal numerically.
- *
- * @property m nine coefficients, row-major
  */
-class Homography(val m: DoubleArray) {
+class Homography(
+    /** The nine coefficients, row-major; exactly nine, or the constructor throws. */
+    val m: DoubleArray
+) {
     init { require(m.size == 9) { "a homography needs 9 coefficients, got ${m.size}" } }
 
     /** Map a point; returns `(x', y')` after the perspective divide. */
@@ -406,11 +416,16 @@ private fun hartleyNormalize(pts: List<Vec2>): Pair<List<Vec2>, Homography> {
 
 /**
  * Result of [findHomographyRansac].
- * @property homography the model refit on the inlier set
- * @property inliers indices (into the input lists) of the correspondences that agree with it
- * @property iterations how many random samples were actually drawn
  */
-class RansacFit(val homography: Homography, val inliers: List<Int>, val iterations: Int) {
+class RansacFit(
+    /** The model refit by least squares on the inlier set, not the minimal sample that found it. */
+    val homography: Homography,
+    /** Indices, into the input correspondence lists, of the pairs that agree with [homography]. */
+    val inliers: List<Int>,
+    /** How many random minimal samples were actually drawn. */
+    val iterations: Int
+) {
+    /** Size of the consensus set. */
     val inlierCount: Int get() = inliers.size
 
     /** Inlier fraction of the supplied correspondences. */
@@ -571,20 +586,28 @@ fun Img.warpQuadToRect(quad: List<Vec2>, outWidth: Int, outHeight: Int, bilinear
 
 /**
  * One tracked point's motion, as produced by [opticalFlowLK].
- *
- * @property x0/[y0] position in the first frame
- * @property x1/[y1] position in the second frame (sub-pixel)
- * @property ok `false` if the solve was ill-conditioned or the point left the image — a tracker
- *   that never reports failure is lying
- * @property error mean absolute residual over the tracking window after convergence
  */
 data class FlowVector(
-    val x0: Double, val y0: Double,
-    val x1: Double, val y1: Double,
+    /** Column in the first frame, as supplied to the tracker. */
+    val x0: Double,
+    /** Row in the first frame, as supplied to the tracker. */
+    val y0: Double,
+    /** Column in the second frame, sub-pixel. */
+    val x1: Double,
+    /** Row in the second frame, sub-pixel. */
+    val y1: Double,
+    /**
+     * `false` if the solve was ill-conditioned or the point left the image. Check it before
+     * reading [x1] and [y1]: a failed track still reports a position.
+     */
     val ok: Boolean,
+    /** Mean absolute residual over the tracking window after convergence. */
     val error: Double
 ) {
+    /** Horizontal displacement in pixels, positive rightwards. */
     val dx: Double get() = x1 - x0
+
+    /** Vertical displacement in pixels, positive downwards. */
     val dy: Double get() = y1 - y0
 
     /** Displacement magnitude in pixels. */
@@ -598,7 +621,14 @@ data class FlowVector(
 }
 
 /** The result of a sparse optical-flow run. */
-class FlowField(val vectors: List<FlowVector>) : Iterable<FlowVector> {
+class FlowField(
+    /**
+     * Every vector the producer emitted, failed tracks included: one per input point for
+     * [opticalFlowLK], one per grid cell for [opticalFlowBlockMatch].
+     */
+    val vectors: List<FlowVector>
+) : Iterable<FlowVector> {
+    /** Every vector, converged or not; [tracked] is the filtered view. */
     override fun iterator(): Iterator<FlowVector> = vectors.iterator()
 
     /** Only the vectors whose track converged. */

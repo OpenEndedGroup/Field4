@@ -14,6 +14,26 @@ import java.security.MessageDigest
 import java.util.Base64
 import javax.imageio.ImageIO
 
+/**
+ * Stores the screenshots a geometry review note carries as PNG files beside the document rather than
+ * as base64 inside it.
+ *
+ * The browser sends a context image and a crop of it, each as a data URL, with the viewport and crop
+ * rectangle they were taken from. Kept in the note, those would put megabytes of base64 into a text
+ * property that is saved, versioned and diffed on every edit. `store` writes each image into the
+ * document's `.geometry-review` directory under its own SHA-256 and returns the note's metadata with
+ * a `/three-review-image` URL in place of the bytes, so a second note of the same pixels adds a
+ * reference and no file.
+ *
+ * The validation is what makes those files safe to serve back. The images have to agree with the
+ * note about geometry digest, view and panel; the payload has to be a PNG by signature and by
+ * decoding, at the dimensions the browser declared, within 1600 px for the context image and 1024 px
+ * for the crop; no image may exceed two million bytes and the directory may not exceed sixty-four
+ * million. `read` answers only for a 64-character hex name that one of the notes it was handed
+ * actually cites, so the route cannot be talked into returning a path of the caller's choosing or an
+ * image belonging to another view.
+ */
+
 /** Bounded PNG sidecars keep screenshots out of the document's text property. */
 internal object ThreeReviewEvidence {
     private const val MAX_IMAGE_BYTES = 2_000_000

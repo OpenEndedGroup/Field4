@@ -4279,22 +4279,26 @@ This example rewrites a nested graph in two ways: it changes a descendant `saw` 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fn-rewrite-language-plot.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fn-rewrite-language-plot"}
 :::static
-with(Functions) {
-    val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..3.0)
-    val changed =
-        base.rewriteKotlin(
-            """
+// A rewrite with @{...} blocks compiles them in this box, so it runs after the box's code has
+// finished: go { } starts once this run returns.
+go {
+    with(Functions) {
+        val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..3.0)
+        val changed =
+            base.rewriteKotlin(
+                """
 #fnrewrite
 sin/*/saw => op=triangle
 sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}
 **/[role=amplitude] => *= @{if (parentOp == "sin") 0.75 else 1.0}
 """,
-        )
-    base.withName("before rewrite").plot(0.0..3.0, channel = "before", heightPx = 240, title = "before rewrite")
-    changed.withName("after rewrite").plot(0.0..3.0, channel = "after", heightPx = 240, title = "after rewrite")
-    (changed - base)
-        .withName("rewrite delta")
-        .plot(0.0..3.0, channel = "delta", heightPx = 220, title = "after - before")
+            )
+        base.withName("before rewrite").plot(0.0..3.0, channel = "before", heightPx = 240, title = "before rewrite")
+        changed.withName("after rewrite").plot(0.0..3.0, channel = "after", heightPx = 240, title = "after rewrite")
+        (changed - base)
+            .withName("rewrite delta")
+            .plot(0.0..3.0, channel = "delta", heightPx = 220, title = "after - before")
+    }
 }
 ```
 

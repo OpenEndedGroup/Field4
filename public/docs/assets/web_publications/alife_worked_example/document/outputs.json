@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T21:00:45.723Z",
+  "documentName": "alife_worked_example",
+  "outputs": [
+    {
+      "uid": "alife_elementary",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 556,
+      "height": 482,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "alife_gray_scott",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 820,
+      "height": 594,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "alife_cyclic",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 442,
+      "height": 482,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "alife_lenia",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 634,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "alife_lsystem",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 892,
+      "height": 642,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "alife_life",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 238,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "alife_physarum",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 554,
+      "height": 306,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "alife_bridges",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 892,
+      "height": 642,
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "alife_dla",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 892,
+      "height": 330,
+      "path": "outputs/8.html"
+    },
+    {
+      "uid": "alife_boids",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 642,
+      "height": 682,
+      "path": "outputs/9.html"
+    }
+  ]
+}

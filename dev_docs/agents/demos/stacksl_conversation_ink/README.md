@@ -14,10 +14,10 @@ from its GPU. (The study tools were a box in the document then; they are library
 | 03-water | Asked for light moving through the water with the ink untouched; a patch with an exact ink guard, proved by a stage comparison at 0, 8, 20 and 40 s. | r5 |
 | 04-export | Asked for a still and a clip; a 2048² still at 20 s and a 12 s clip from 20 s, 512 px at 24 fps, into `files/`. | r5 |
 
-To look at it: copy this folder into your workspace and open it; the window opens and draws the
+To look at it: open `stacksl_conversation_ink` from Starting points on the welcome screen, which
+puts a copy in your workspace; the window opens and draws the
 program, and the program box shows its study card. The recorded chat is in the program box's AI4 chat, and the card shows
-the revision history. Continuing the chat adds to this document's history, which is why a copy is
-better than opening it in place.
+the revision history.
 
 What is here:
 

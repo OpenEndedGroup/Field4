@@ -106,8 +106,8 @@ import afield.geometry.path.polylineFrom
  *
  * Every partitioner in `graph_connectivity.kt`, `dirichlet.kt`, `contours.kt` and `clustering.kt`
  * answers with *structure* — cell vertex rings, circular arcs, triangle index triples, cluster
- * labels — and none of them answers with geometry. This file is the missing hop: one `toFLines` per
- * result type, so a Voronoi diagram, an Apollonius cell, a Delaunay triangulation or a k-medoids
+ * labels — and none of them answers with geometry. This file converts each of them: one `toFLines`
+ * per result type, so a Voronoi diagram, an Apollonius cell, a Delaunay triangulation or a k-medoids
  * partition lands in the same drawing, animation and export machinery as anything drawn by hand.
  * It is the plane counterpart of `mesh_field.kt`, which does the same job for `TriMesh`.
  *

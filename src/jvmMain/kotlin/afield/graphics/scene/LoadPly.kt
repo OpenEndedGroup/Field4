@@ -12,31 +12,38 @@ import java.nio.ByteOrder
 import java.nio.FloatBuffer
 
 /**
- * Reading a PLY file as a flat table of floats: [readPlyAsFloatTable] parses the header and returns
- * one row per element in a [PlyFloatTable], every scalar property widened to a float.
+ * Reads one element of a PLY file as a flat table of floats, addressed by property name.
  *
- * Columns are addressed by the names the file declares (`x`, `nx`, `red`, `f_dc_0`), so a caller
- * takes the columns it wants instead of matching a fixed vertex layout. That is what a Gaussian
- * splat PLY needs, and it is how the splat renderers read one. PlayCanvas `.compressed.ply` files
- * are decompressed on the way through by [CompressedSplatPly], so they arrive with the columns an
- * uncompressed file would have had. Triangle meshes go the other way, through [PlySupport].
+ * This is the column-oriented half of Field's PLY support, and the Gaussian splat path reads
+ * through it: `gaussianSplats` and `SplatCloud.read` both arrive at `readPlyAsFloatTable`, then ask
+ * for the columns they want by name. Every scalar property is widened to a float whatever it was on
+ * disk, and list properties are read past and dropped, so a mesh's faces do not survive the trip.
+ * For triangles, and a module to draw them with, load through `PlySupport.loadPly` instead.
  *
- * ASCII and binary PLY are both read, in either byte order. List properties are stepped over rather
- * than stored, since a fixed-stride table has nowhere to put a variable-length row.
+ * A compressed PlayCanvas splat file is recognised from its header and decompressed on the way
+ * through, so a caller sees the same columns either way; see [CompressedSplatPly].
  */
 
 /**
- * One PLY element as a fixed-stride float table: [offsets] maps each scalar property to its column,
- * and [buffer] holds [rowCount] rows of [stride] floats.
+ * One PLY element as rows of floats: a shared [buffer], a [stride] in floats, and the column each
+ * property name sits at.
+ *
+ * Nothing here copies. A column is an offset into a row, so reading a value is one index
+ * calculation, and `subsetFloatBufferColumns` is the one method that allocates.
  */
 data class PlyFloatTable(
+    /** Column index per property name, in the order the file's header declared them. */
     val offsets: Map<String, Int>,
+    /** Floats per row, which is the number of scalar properties the element had. */
     val stride: Int,
+    /** Every row end to end, `rowCount` × [stride] floats. */
     val buffer: FloatBuffer
 ) {
+    /** The property names, in column order. */
     val columns: List<String>
         get() = offsets.entries.sortedBy { it.value }.map { it.key }
 
+    /** How many of the element's entries the buffer holds. Throws if its length is not a whole number of rows. */
     val rowCount: Int
         get() {
             require(stride > 0) { "PLY float table has no scalar properties" }
@@ -47,19 +54,28 @@ data class PlyFloatTable(
             return totalFloats / stride
         }
 
+    /** Whether the element carried this property, which is how an optional column is tested for. */
     fun hasColumn(name: String): Boolean = name in offsets
 
+    /** This property's column index, or an error naming every column the file does have. */
     fun columnOffset(name: String): Int =
         offsets[name] ?: throw IllegalArgumentException("Field '$name' not found. Available fields: ${columns.joinToString()}")
 
+    /** One value, by row and property name. Bounds-checked on the row, and throws on an unknown name. */
     fun floatAt(row: Int, field: String): Float {
         require(row in 0 until rowCount) { "row $row out of bounds for $rowCount-row PLY table" }
         return buffer.get(row * stride + columnOffset(field))
     }
 
+    /** The same, returning null for a column the file does not have rather than throwing. */
     fun floatAtOrNull(row: Int, field: String): Float? =
         offsets[field]?.let { buffer.get(row * stride + it) }
 
+    /**
+     * The first of these property names the file has. PLY spells some quantities more than one way,
+     * colour as `red` or `diffuse_red` and transparency as `alpha` or `diffuse_alpha`, and this
+     * takes whichever of a list is present.
+     */
     fun firstFloatAtOrNull(row: Int, fields: Iterable<String>): Float? {
         for (field in fields) {
             val value = floatAtOrNull(row, field)
@@ -68,6 +84,11 @@ data class PlyFloatTable(
         return null
     }
 
+    /**
+     * Returns this table if it has all of these columns, and otherwise throws naming both the
+     * missing ones and the columns the file does have. The splat readers call it as the first thing
+     * they do with a table, so a wrong file fails by name rather than by arithmetic.
+     */
     fun requireColumns(vararg fields: String): PlyFloatTable {
         val missing = fields.filterNot(offsets::containsKey)
         require(missing.isEmpty()) {
@@ -76,6 +97,11 @@ data class PlyFloatTable(
         return this
     }
 
+    /**
+     * A fresh buffer holding only these columns, in the order asked for, packed to that narrower
+     * stride. Nothing in the tree calls this yet; it is here for narrowing a wide table down to the
+     * few columns a GPU buffer wants.
+     */
     fun subsetFloatBufferColumns(selectedFields: List<String>): FloatBuffer {
         val rows = rowCount
         val newColCount = selectedFields.size
@@ -188,6 +214,7 @@ fun readPlyAsFloatTable(
     }
 }
 
+/** Reads a file and prints its columns, row count and float count. A look at a PLY, from a box. */
 fun testPly(fn: String): PlyFloatTable {
     val table = readPlyAsFloatTable(fn)
     println("Columns (${table.stride}): ${table.columns}")

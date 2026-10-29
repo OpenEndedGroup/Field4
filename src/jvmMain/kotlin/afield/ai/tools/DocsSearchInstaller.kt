@@ -51,18 +51,19 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import java.util.concurrent.ConcurrentHashMap
 
-private val docsSearchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
 /**
- * Installs the `docs_search_input` Field message handler.
+ * The server side of the documentation search box: the `docs_search_input` Field message handler.
  *
  * The prefix of `Message.uid` before `_` is the browser session key. One
- * [DocsSearchBridge.SearchState] is retained per key for the lifetime of this
- * installer; there is no eviction or explicit reset message. Work runs on the
- * process-wide IO scope and replies are marshalled through [inMain]. Phase 1 is
- * provisional HTML and phase 20 is terminal HTML. The incoming phase is not
- * consulted.
+ * [DocsSearchBridge.SearchState] is retained per key for the lifetime of this installer; there is no
+ * eviction and no reset message, though every state is dropped when the AI provider settings change.
+ * Work runs on the process-wide IO scope and replies are marshalled through [inMain]. Phase 1 is
+ * provisional HTML and phase 20 is terminal HTML. The incoming phase is not consulted.
  */
+
+private val docsSearchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+/** Installs the `docs_search_input` handler, which answers a query with provisional then final HTML. */
 fun installDocsSearch() {
     var docsSearchBridge: DocsSearchBridge? = null
     val searchStateBySession = ConcurrentHashMap<String, DocsSearchBridge.SearchState>()

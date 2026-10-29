@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T20:54:15.065Z",
+  "documentName": "marf_field_clocks",
+  "outputs": [
+    {
+      "uid": "marf_clocks_refused",
+      "channel": "verdict",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 474,
+      "height": 768,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "marf_clocks_steps",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1000,
+      "height": 368,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "marf_clocks_steps",
+      "channel": "key",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 480,
+      "height": 213,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "marf_clocks_ledger",
+      "channel": "ledger",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 475,
+      "height": 590,
+      "path": "outputs/3.html"
+    }
+  ]
+}

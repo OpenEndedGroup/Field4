@@ -76,6 +76,30 @@ expect:
     # truncation here is a cap that has stopped fitting the classpath, not a passing run.
     - "receiver-index truncated"
 */
+
+/**
+ * Runs Field's completion chain end to end against the Analysis-API sidecar, inside a live Field
+ * JVM: a box's gathered preamble and this JVM's classpath go out over HTTP and the candidates come
+ * back.
+ *
+ * The probe switches the active backend to `AA`, builds a parent and a child box so the child
+ * completes with an inherited preamble, and asks for candidates at a series of carets. Every check
+ * names the backend that answered, read from `KotlinInterface2.lastCompletionBackend`, so an answer
+ * the K1 fallback produced counts as a failure however good its candidates look. The fallback
+ * offers every name in position, thousands of them, which is enough to satisfy a check for a
+ * present candidate while the sidecar is still building its session.
+ *
+ * A sidecar is required, and the smoke runner supplies one. By hand, point the probe at one with
+ * `-Dafield.completion.sidecarUrl`, `AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL`, or a
+ * `build/completion-corpus/sidecar-url.txt`; with no sidecar it exits 3 and never prints its
+ * `AA E2E DONE` marker, so the smoke gate reads an unreachable chain as a failure rather than as a
+ * skip. A cold sidecar indexes the whole classpath before it can answer anything, which takes
+ * minutes on the first request of its life and almost nothing once a running Field or an earlier
+ * probe has paid for it, so waiting for the session is itself one of the checks. A run whose
+ * candidate list came back truncated fails too: a receiver index too small for the classpath in
+ * front of it drops real members, and nothing in the answer says which.
+ */
+
 /**
  * STAGE D live end-to-end: exercises the REAL KI2 → AA-sidecar completion chain in a running Field JVM.
  * Sets `activeCompletionBackend = AA`, builds a parent→child box pair with an inherited preamble (as

@@ -65,9 +65,12 @@ object BoxOutputChannelGuard {
     /**
      * Python's `slider`/`checkbox` queue a spec instead of displaying, and `PythonInterface` renders
      * every queued spec of one channel into a single `controlGroup`, so two of them on one channel
-     * are one panel, not a lost figure.
+     * are one panel, not a lost figure. A box running in the browser head (beneath a RemoteJS or
+     * Kotlin-to-head root) does the same: the head posts its specs as `box.controls` and
+     * `RemoteJsBoxSurface.applyControls` groups them by channel.
      */
-    private val PYTHON_GROUPED_CONTROLS = setOf("slider", "checkbox")
+    private val GROUPED_CONTROLS = setOf("slider", "checkbox")
+    private val HEAD_ROOT_FLAGS = setOf("isRemoteJSRoot", "isKotlinJsRoot")
 
     private val CALL_AT = Regex("""([A-Za-z_]\w*)\s*\(""")
     private val BOX_FUN = Regex("""\bfun\s+Box\.(\w+)\s*\(""")
@@ -122,10 +125,10 @@ object BoxOutputChannelGuard {
 
         var boxes = 0
         var emissions = 0
-        val pythonSources = mutableSetOf<String>()
+        val groupedControlSources = mutableSetOf<String>()
         fun check(source: String, code: String, forwardedChannelName: String? = null) {
             boxes++
-            val boxHelpers = if (source in pythonSources) helpers - PYTHON_GROUPED_CONTROLS else helpers
+            val boxHelpers = if (source in groupedControlSources) helpers - GROUPED_CONTROLS else helpers
             val found = topLevelEmissions(code, boxHelpers, channelFirst, forwardedChannelName)
             emissions += found.topLevel.size
             found.topLevel.groupBy { it.channel }
@@ -141,7 +144,7 @@ object BoxOutputChannelGuard {
                 }
         }
 
-        for ((source, code) in transcriptBoxCode(File(repo, TRANSCRIPTS_REL), problems, pythonSources)) check(source, code)
+        for ((source, code) in transcriptBoxCode(File(repo, TRANSCRIPTS_REL), problems, groupedControlSources)) check(source, code)
         for ((source, code) in demoBoxCode(File(repo, DEMOS_REL))) check(source, code)
         for ((source, code, param) in libraryHelperBodies(File(repo, LIBRARY_REL))) check(source, code, param)
 
@@ -344,7 +347,7 @@ object BoxOutputChannelGuard {
     private fun transcriptBoxCode(
         dir: File,
         problems: MutableList<String>,
-        pythonSources: MutableSet<String>,
+        groupedControlSources: MutableSet<String>,
     ): List<Pair<String, String>> {
         if (!dir.isDirectory) {
             problems.add("no transcript corpus at ${dir.absolutePath}")
@@ -361,21 +364,42 @@ object BoxOutputChannelGuard {
                     is Map<*, *> -> (loaded["operations"] as? List<*>) ?: (loaded["ops"] as? List<*>) ?: emptyList<Any?>()
                     else -> emptyList<Any?>()
                 }
+                val headRoots = mutableSetOf<String>()
+                val children = mutableMapOf<String, MutableList<String>>()
                 for (rawOperation in operations) {
                     val operation = rawOperation as? Map<*, *> ?: continue
                     val verb = operation.keys.firstOrNull()?.toString()?.lowercase() ?: continue
+                    if (verb == "connect") {
+                        val edge = operation.values.firstOrNull() as? Map<*, *> ?: continue
+                        val parent = edge["parent"]?.toString() ?: continue
+                        val child = edge["child"]?.toString() ?: continue
+                        children.getOrPut(parent) { mutableListOf() }.add(child)
+                        continue
+                    }
                     if (verb !in CREATE_VERBS) continue
                     val payload = operation.values.firstOrNull() as? Map<*, *> ?: continue
                     val box = (payload["box"] ?: payload["uid"] ?: payload["id"])?.toString() ?: continue
                     val properties = payload["properties"] as? Map<*, *> ?: continue
+                    if (HEAD_ROOT_FLAGS.any { properties[it]?.toString() == "true" }) headRoots.add(box)
                     val raw = properties["code"]?.toString() ?: continue
                     // A Lua box's helpers replace their channel exactly as Kotlin's do, so it is
                     // scanned, but its comments start with `--`, which maskCommentsAndStrings does
                     // not know: `-- lines(...) draws them` read as a second lines() call.
                     val lua = properties["code_language"]?.toString()?.trim()?.equals("lua", ignoreCase = true) == true
                     val python = properties["code_language"]?.toString()?.trim()?.equals("python", ignoreCase = true) == true
-                    if (python) pythonSources.add("${file.name}#$box")
+                    if (python) groupedControlSources.add("${file.name}#$box")
                     result.add("${file.name}#$box" to if (lua) blankLuaLineComments(raw) else raw)
+                }
+                // Everything beneath a head root runs in the head. A demo materialized from this
+                // transcript is named after it, so its `<box>_code_.kt` sidecars share the verdict.
+                val inHead = headRoots.toMutableSet()
+                val frontier = ArrayDeque(headRoots)
+                while (frontier.isNotEmpty()) {
+                    for (child in children[frontier.removeFirst()].orEmpty()) if (inHead.add(child)) frontier.add(child)
+                }
+                for (box in inHead) {
+                    groupedControlSources.add("${file.name}#$box")
+                    groupedControlSources.add("${file.nameWithoutExtension}/${box}_code_.kt")
                 }
             }
         return result

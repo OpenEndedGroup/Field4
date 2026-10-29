@@ -13,15 +13,21 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * The `geometry { }` recipe language and the types a recipe names: [GeometryBuilder], which emits
- * triangles through a transform stack, and the [GeometryScene] of parts it builds.
+ * A recipe language for triangle meshes: emit triangles through a transform stack with a current
+ * colour and a current material, and get back a scene of named, shaded parts.
  *
- * A box usually runs a recipe through [afield.graphics.three.geometry], which draws the scene in a
- * studio-lit `three` view, or [afield.graphics.three.animateGeometry], which runs it again every
- * frame. [geometryScene] builds the same scene with no view attached, for code that wants the
- * [GeometryPart] list itself. [GeometryMaterial] and [GeometrySide] are what [GeometryBuilder.mat]
- * sets, [GeometryView] what [GeometryBuilder.view] sets, and [GeometryVertex],
- * [GeometryProfilePoint] and [GeometryTubeSection] are what the emitters take and return.
+ * [GeometryBuilder] is the language and [GeometryScene] is what a recipe builds: [GeometryPart]s,
+ * each an unindexed [TriMesh] with its own [GeometryMaterial] and a normal per triangle, plus the
+ * [GeometryView] that says how the scene asks to be shown. The usual way to run a recipe is
+ * [afield.graphics.three.geometry], which draws it in a studio-lit `three` view in a box output,
+ * or [afield.graphics.three.animateGeometry], which runs it again every frame with the recipe's
+ * `t` moving. [geometryScene] builds the same scene with no viewer, for code that wants the mesh
+ * rather than the picture.
+ *
+ * From there, [GeometryScene.toTriMesh] joins the parts into one mesh for the rest of
+ * `afield.geometry.mesh`, [writeGlb] writes a still as glTF, and [writeGlbAnimation] records a
+ * recipe played over time, which needs every frame to emit the same parts with the same vertex
+ * counts.
  */
 
 /**
@@ -74,12 +80,18 @@ import kotlin.math.sqrt
  *
  * [rand] is the toolbox's linear congruential generator and [noise] its Perlin noise with the same
  * permutation table, so `seed(18)` grows the same crystal bloom here as in the browser.
- *
- * @property t seconds since an animation started; `0` for a still. See [afield.graphics.three.animateGeometry].
- * @property frame frames since an animation started.
- * @property dt seconds between frames.
  */
-class GeometryBuilder(val t: Double = 0.0, val frame: Int = 0, val dt: Double = 1.0 / 60) {
+class GeometryBuilder(
+    /**
+     * Seconds since an animation started; `0` for a still. See
+     * [afield.graphics.three.animateGeometry].
+     */
+    val t: Double = 0.0,
+    /** Frames since an animation started. */
+    val frame: Int = 0,
+    /** Seconds between frames. */
+    val dt: Double = 1.0 / 60,
+) {
 
     /** A full turn, `2π`. */
     val TAU: Double = 2 * PI
@@ -488,14 +500,23 @@ enum class GeometrySide { FRONT, BACK, DOUBLE }
  * [linearColor] and [linearEmissive] are what a renderer shades with.
  */
 data class GeometryMaterial(
+    /** The base colour as sRGB `r, g, b` in `0..1`; the part's vertex colours multiply it. */
     val color: FloatArray = floatArrayOf(1f, 1f, 1f),
+    /** 0 is a mirror, 1 is chalk. */
     val roughness: Double = 0.68,
+    /** 0 is a dielectric (plastic, clay, wood), 1 is a metal. */
     val metalness: Double = 0.04,
+    /** A colour the surface glows with, sRGB, scaled by [emissiveIntensity]. */
     val emissive: FloatArray = floatArrayOf(0f, 0f, 0f),
+    /** How strongly [emissive] glows. 0 leaves the surface unlit from within. */
     val emissiveIntensity: Double = 0.0,
+    /** Below 1 is see-through. */
     val opacity: Double = 1.0,
+    /** Which faces draw; double-sided by default, as in the toolbox. */
     val side: GeometrySide = GeometrySide.DOUBLE,
+    /** Draw the triangle edges over the surface. */
     val wireframe: Boolean = false,
+    /** Shade each triangle flat rather than smoothing across them. */
     val flat: Boolean = true,
 ) {
     /** The base colour, linear. */
@@ -525,9 +546,13 @@ class GeometryTubeSection(val x: Double, val y: Double, val z: Double, val radiu
 
 /** How a [GeometryScene] asks to be shown. See [GeometryBuilder.view]. */
 data class GeometryView(
+    /** The background, as a CSS hex string. */
     val background: String = "#050607",
+    /** Whether the studio ground is drawn. */
     val ground: Boolean = true,
+    /** Whether the grid on the ground is drawn. */
     val grid: Boolean = true,
+    /** The ground's height. The toolbox's presets are all built to stand on `-1.25`. */
     val groundY: Double = -1.25,
 )
 
@@ -542,8 +567,16 @@ class GeometryPart(val name: String, val material: GeometryMaterial, val mesh: T
  * Each part's mesh is unindexed — three vertices per triangle — with each triangle's own normal, which
  * is the faceted look the toolbox has. [toTriMesh] joins the parts for code that wants one mesh.
  */
-class GeometryScene(val parts: List<GeometryPart>, val view: GeometryView) {
+class GeometryScene(
+    /** The parts, in the order they were emitted. */
+    val parts: List<GeometryPart>,
+    /** How the scene asks to be shown. */
+    val view: GeometryView,
+) {
+    /** Triangles across every part. */
     val triangleCount: Int get() = parts.sumOf { it.mesh.triangleCount }
+
+    /** Vertices across every part: three per triangle, since the parts are unindexed. */
     val vertexCount: Int get() = parts.sumOf { it.mesh.vertexCount }
 
     /** Every part in one mesh, materials aside. */

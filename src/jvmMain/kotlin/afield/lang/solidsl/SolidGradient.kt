@@ -145,7 +145,7 @@ fun interface ADField2 {
  *
  * A leaf that has been *bound* to a parameter comes back as that parameter's tape variable, so a
  * derivative flows into it. Everything else comes back as a tape constant, which costs one tape node
- * and contributes no derivative — the honest encoding of "this number is a literal".
+ * and contributes no derivative, which is what "this number is a literal" means on a tape.
  *
  * [pathsAsked] exists to be checked. It is the only mechanism by which [SolidExpr.numericSlots] (the
  * census a caller binds against) and [SolidExpr.toADField] (the lowering that consumes the binding)
@@ -462,9 +462,9 @@ class SolidParamSpec internal constructor(
      * blend's `k` is a denominator that [SolidExpr.SmoothUnion]'s field clamps at `1e-9`, which means
      * a `k` below that is silently a hard union with a zero derivative.
      *
-     * The threshold is deliberately loose (`1e-6` against a lowering that breaks at `1e-12`) because
-     * the seed is a *starting* point: a descent moves, and refusing only the exactly-broken value
-     * would let the first step arrive there.
+     * The threshold is loose — `1e-6` against a lowering that breaks at `1e-12` — because the seed
+     * is a *starting* point: a descent moves, and refusing only the exactly-broken value would let
+     * the first step arrive there.
      */
     private fun singularityRefusal(name: String, matched: List<SolidNumericSlot>, seed: Double): String? {
         val bad = matched.firstOrNull { slot ->
@@ -1133,7 +1133,8 @@ internal fun adBox2(px: AD, py: AD, hx: AD, hy: AD): AD {
  * `if (qy < 0) r1 else r2` cap selection, and the `s` inside/outside sign. Both are discrete choices
  * that flip only where the field is continuous across them — the cap choice at `z = 0`, where the
  * frustum's two radii are being interpolated anyway, and the sign at the surface, where the value is
- * zero. `t`'s clamp to `[0, 1]` is the honest zero-derivative one.
+ * zero. `t`'s clamp to `[0, 1]` carries no derivative wherever it is active, which is correct
+ * rather than a compromise: past either end of the segment the nearest point stops moving.
  */
 internal fun adCappedConeZ(px: AD, py: AD, pz: AD, h: AD, r1: AD, r2: AD): AD {
     val qx = hypot(px, py)
@@ -1211,9 +1212,9 @@ private fun adEulerMatrixTranspose(xDeg: AD, yDeg: AD, zDeg: AD): List<AD> {
 // ==============================================================================================
 
 /**
- * The simple type name a path segment uses. Deliberately *not* `this::class.simpleName`: a name in a
- * printed path is part of this file's contract, and a rename or a `@JvmName` should not silently
- * change every path a caller has written down.
+ * The simple type name a path segment uses. Spelled out here rather than taken from
+ * `this::class.simpleName`: a name in a printed path is part of this file's contract, and a rename
+ * or a `@JvmName` should not silently change every path a caller has written down.
  */
 internal fun SolidExpr.nodeName(): String = when (this) {
     is SolidExpr.Sphere -> "Sphere"

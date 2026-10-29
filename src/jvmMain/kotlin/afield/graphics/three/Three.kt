@@ -582,7 +582,7 @@ internal fun BoundsTracker.include(d: ThreeDrawable) {
 }
 
 /**
- * [MeshView]'s four camera numbers, which [ThreeCameraSpec] deliberately mirrors one for one, plus the
+ * [MeshView]'s four camera numbers, which [ThreeCameraSpec] mirrors one for one, plus the
  * viewer's own [ThreeCameraSpec.padding], which [MeshView] has no use for.
  */
 fun MeshView.toThreeCameraSpec(padding: Double = 1.06): ThreeCameraSpec =

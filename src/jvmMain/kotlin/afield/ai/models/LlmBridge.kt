@@ -11,7 +11,7 @@ import afield.ai.conversation.AiChatModelIdentity
 import com.openai.models.ReasoningEffort
 
 /**
- * Provider-neutral seam for the IDE agent loop.
+ * The interface the IDE agent loop talks to, with one implementation per provider.
  *
  * Both the OpenAI/OpenRouter engine ([OpenAiIdeCodexBridge], via [OpenAiLlmBridge])
  * and the Anthropic engine ([AnthropicBridge]) implement this, so [IdeChatHelpers]
@@ -20,8 +20,8 @@ import com.openai.models.ReasoningEffort
  *
  * The state/result types are the ones [OpenAiIdeCodexBridge] already defines — they
  * carry no OpenAI-SDK types in their signatures, so they double as the neutral
- * currency here. The typealiases below give them provider-neutral names without
- * moving the declarations (which 13 files reference).
+ * currency here. The typealiases below give them provider-neutral names without moving
+ * the declarations their callers already reference.
  */
 
 typealias LlmThreadState = OpenAiIdeCodexBridge.ThreadState

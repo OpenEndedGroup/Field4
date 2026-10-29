@@ -17,8 +17,8 @@ void eachPair(Particle other, Pair pair) {
 
 void update() {
     vec2 anchor = mouseInside
-        ? mouse
-        : vec2(width * 0.5 + cos(t * 0.23) * 120.0, height * 0.5 + sin(t * 0.31) * 88.0);
+    ? mouse
+    : vec2(width * 0.5 + cos(t * 0.23) * 120.0, height * 0.5 + sin(t * 0.31) * 88.0);
 
     vec2 away = p.pos - anchor;
     float dist = length(away);

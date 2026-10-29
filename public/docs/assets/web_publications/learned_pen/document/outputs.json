@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T21:05:57.983Z",
+  "documentName": "learned_pen",
+  "outputs": [
+    {
+      "uid": "lp_continue",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "lp_cells",
+      "channel": "liveliest",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 408,
+      "height": 40,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "lp_cells",
+      "channel": "controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 469,
+      "height": 60,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "lp_cell",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "lp_draw",
+      "channel": "pen controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 536,
+      "height": 116,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "lp_draw",
+      "channel": "draw here",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 548,
+      "height": 288,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "lp_futures",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "lp_expects",
+      "channel": "controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 469,
+      "height": 60,
+      "path": "outputs/7.html"
+    }
+  ]
+}

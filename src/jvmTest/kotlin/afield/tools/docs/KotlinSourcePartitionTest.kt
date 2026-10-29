@@ -18,6 +18,31 @@ import kotlin.test.assertTrue
 class KotlinSourcePartitionTest {
 
     @Test
+    fun `a wrapped primary constructor belongs to its class header`() {
+        val source = """
+            class Voice
+            internal constructor(
+                val frequency: Double,
+            ) {
+                val level = 1.0
+                constructor() : this(440.0)
+                fun render() {
+                    val local = level
+                }
+            }
+            fun sibling() = 0
+        """.trimIndent()
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition))
+        assertEquals(source.split("\n"), KotlinSourcePartition.reconstruct(partition))
+        val voice = declaration(partition, "Voice")
+        assertEquals(lineOf(source, ") {"), voice.bodyOpenLine)
+        assertEquals(listOf("level", "constructor", "render"), voice.children
+            .filter { it.kind == KotlinSourcePartition.Kind.DECLARATION }.map { it.name })
+        assertEquals(2, partition.spans.count { it.kind == KotlinSourcePartition.Kind.DECLARATION })
+    }
+
+    @Test
     fun `an ordinary file tiles, reconstructs and balances`() {
         val source = """
             package afield.example

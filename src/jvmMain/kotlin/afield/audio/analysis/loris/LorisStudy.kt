@@ -6,6 +6,18 @@ import kotlin.math.PI
 import kotlin.math.pow
 import kotlin.math.sin
 
+/**
+ * One worked Loris gesture, written in the same breakpoint arithmetic that LorisTransforms.kt
+ * applies one edit at a time.
+ *
+ * [spectralWhirlpool] reshapes a window of a [LorisModel] rather than the whole of it. A `sin²` bell
+ * rises and falls across the window, so the edit begins and ends at zero and every breakpoint
+ * outside the window is returned unchanged. Under that bell each partial sweeps four times through
+ * ±18 semitones, its amplitude is shuttered at 12 Hz, and its noise bandwidth is pushed towards 0.85
+ * at the peak: a vibrato that turns breathy in the middle and settles again. Pass the result to
+ * [LorisClient.synthesize] to hear it.
+ */
+
 /** Example gesture: smooth local ±18-semitone sweeps, 12 Hz amplitude shutters and noisy peaks. */
 fun LorisModel.spectralWhirlpool(startSeconds: Double = 6.0, durationSeconds: Double = 3.0): LorisModel {
     require(startSeconds.isFinite() && durationSeconds.isFinite() && startSeconds >= 0 && durationSeconds > 0)

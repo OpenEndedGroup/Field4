@@ -561,8 +561,10 @@ internal object FLineExact {
         FLineBooleanOp.Xor -> { w -> (w[0] != 0) != (w[1] != 0) }
     }
 
-    fun awt(a: FLine, b: FLine, op: FLineBooleanOp): FLine {
-        val a1 = Area(FLinesAndJavaShapes.flineToJavaShape(a)); val a2 = Area(FLinesAndJavaShapes.flineToJavaShape(b))
+    /** The AWT boolean. [stroke] reads a line with `thickness`/`thicken` as its stroke outline; otherwise its style is ignored. */
+    fun awt(a: FLine, b: FLine, op: FLineBooleanOp, stroke: Boolean = false): FLine {
+        fun shape(f: FLine) = if (stroke) FLinesAndJavaShapes.flineToJavaShape(f) else FLinesAndJavaShapes.flineToJavaShape_notThickened(f)
+        val a1 = Area(shape(a)); val a2 = Area(shape(b))
         when (op) {
             FLineBooleanOp.Union -> a1.add(a2)
             FLineBooleanOp.Intersect -> a1.intersect(a2)
@@ -572,9 +574,9 @@ internal object FLineExact {
         return FLinesAndJavaShapes.javaShapeToFLine(a1)
     }
 
-    fun boolean(a: FLine, b: FLine, op: FLineBooleanOp): FLineBooleanResult {
-        val fallback = { why: String -> FLineBooleanResult(awt(a, b, op), false, why) }
-        if (a.thicken != null || a.thickness != null || b.thicken != null || b.thickness != null)
+    fun boolean(a: FLine, b: FLine, op: FLineBooleanOp, stroke: Boolean = false): FLineBooleanResult {
+        val fallback = { why: String -> FLineBooleanResult(awt(a, b, op, stroke), false, why) }
+        if (stroke && (a.thicken != null || a.thickness != null || b.thicken != null || b.thickness != null))
             return fallback("thickened operand (stroke outline) goes through AWT")
         return try {
             val ca = a.exactContours(); val cb = b.exactContours()
@@ -787,9 +789,11 @@ internal object FLineExact {
  * Boolean [op] of this filled region with [other], keeping the curves: the result's cubics are
  * pieces of the operands' cubics, cut exactly where the outlines cross. Falls back to the
  * java.awt.geom.Area answer when the exact engine cannot produce a result it trusts (see
- * [FLineBooleanResult.fallbackReason]). Both lines are read as filled, non-zero, in the xy plane.
+ * [FLineBooleanResult.fallbackReason]). Both lines are read as filled, non-zero, in the xy plane,
+ * whatever their `thickness` or `thicken`; [stroke] reads a styled line as its stroke outline instead
+ * (through Area).
  */
-fun FLine.booleanExact(other: FLine, op: FLineBooleanOp): FLineBooleanResult = FLineExact.boolean(this, other, op)
+fun FLine.booleanExact(other: FLine, op: FLineBooleanOp, stroke: Boolean = false): FLineBooleanResult = FLineExact.boolean(this, other, op, stroke)
 
 /** the open xy subpaths of a line as cubic chains (not closed). */
 internal fun FLine.exactOpenChains(): List<Pair<List<XBez>, Boolean>> {

@@ -142,7 +142,11 @@ internal object ManifoldNative {
     // Handles
     // ==========================================================================================
 
+    /** Every descriptor a handle was bound with, by symbol, for [ManifoldHeaderCheck]. */
+    internal val boundDescriptors = java.util.concurrent.ConcurrentHashMap<String, FunctionDescriptor>()
+
     private fun handle(name: String, descriptor: FunctionDescriptor): MethodHandle {
+        boundDescriptors[name] = descriptor
         val symbol = lookup.find(name).orElseThrow {
             UnsatisfiedLinkError(
                 "libmanifoldc has no symbol $name — this is Manifold " +

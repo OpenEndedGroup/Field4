@@ -24,18 +24,21 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * The curve and drawing vocabulary a living stroke is written in: noise, resampling, curve
- * arithmetic, and the verbs that turn a list of points into a line.
+ * The drawing vocabulary of a living stroke: Perlin noise, curve maths, and the verbs that turn a
+ * list of points into an [FLine].
  *
- * The verbs are methods of [StrokeVerbs], which [Stroke] extends, so inside an [eachStroke] block
- * they are plain calls. A curve is a `List<Vec2>`; `polyline`, `smooth`, `arcs` and `dots` turn one
- * into an [FLine], and the list of FLines a stroke's `draw { t -> }` returns is what it draws that
- * frame.
+ * [StrokeVerbs] carries the verbs, and [Stroke] inherits it, so `eachStroke { }` code calls them
+ * directly. Some are short names over the shared geometry: `smooth` is [catmullRomCentripetal] and
+ * `atomize` is [FLine.byAtomizing], while `wiggle` and `transformTo` have a curve form of their own
+ * and a line form that calls [FLine.byWiggling] and [FLine.byTransformingTo]. The noise, the
+ * resampling and the rest of the curve arithmetic are this file's own.
  *
- * The three properties this file adds to [FLine] and its nodes are read by the stroke layer rather
- * than by the verbs. `overshoot`, set on a line or on the node that ends a subpath, draws each open
- * end a short way past where it stops; `ignore` keeps a line out of what [Stroke.closestOutput]
- * searches.
+ * The three [FLine] properties here are read by the stroke layer rather than by any verb.
+ * [FLine.overshoot] runs each open subpath of a line past its ends, a node's `overshoot` overrides
+ * that for the subpath it ends, and [FLine.ignore] keeps a line out of the point index
+ * [Stroke.closestOutput] searches, so a guide or a stitch does not attract the strokes around it.
+ *
+ * `StrokeVerbsTest` pins the resampling, the curve maths and the noise.
  */
 
 /**

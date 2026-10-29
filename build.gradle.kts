@@ -1376,6 +1376,12 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     // reversed. Both copies are needed and neither is redundant.
     jvmArgs("--add-exports=java.desktop/com.sun.media.sound=ALL-UNNAMED")
 
+    // A test that compiles Kotlin the way a box does (`KotlinInterface2`, e.g. `SpreadsheetTest`
+    // evaluating formulas) attaches resolved Maven jars to the app class loader through
+    // `URLClassLoader.addURL`, which needs `java.net` opened, as `requiredRunJvmArgs()` opens it for
+    // Field. Without it the engine's constructor throws InaccessibleObjectException.
+    jvmArgs("--add-opens=java.base/java.net=ALL-UNNAMED")
+
     // Where libphonon is, for the Steam Audio tests. Passed unconditionally and harmlessly: the
     // property only says where to look, and nothing loads until a test touches the bindings. On a
     // clone that has never run `fetchSteamAudioNatives` the directory is simply absent, and
@@ -2356,6 +2362,13 @@ val checkRefactorEngine = tasks.register<Exec>("checkRefactorEngine") {
     commandLine(wrapper + listOf("--no-daemon", "--console=plain", "-p", "tools/refactor-engine", "test", "installDist"))
 }
 
+tasks.register<Exec>("checkDocsPublications") {
+    group = "verification"
+    description = "Checks captured docs against their sources and accounts for every supported publication recipe, without launching Field."
+    workingDir = rootDir
+    commandLine("uv", "run", "--project", ".", "--group", "backdoor", "--frozen", "python", "tools/docs_publications.py", "check")
+}
+
 tasks.register<Exec>("checkPythonTools") {
     dependsOn(checkRefactorEngine)
     group = "verification"
@@ -2501,6 +2514,7 @@ tasks.named("check") {
     dependsOn("checkPythonTools")
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
+    dependsOn("checkDocsPublications")
     dependsOn("checkAgentTranscriptLayouts")
     dependsOn("checkBoxOutputChannels")
     dependsOn("checkCompletionCorpusFixtures")
@@ -2545,6 +2559,7 @@ tasks.register("docsGates") {
     dependsOn("checkSourcePages")
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
+    dependsOn("checkDocsPublications")
     dependsOn("checkAgentTranscriptLayouts")
     dependsOn("checkBoxOutputChannels")
     dependsOn("checkCompletionCorpusFixtures")
@@ -4141,7 +4156,7 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 }
 
 // One callable preparation gate for every native dependency declared by a documentation fence.
-// Ceres, TetGen, libpd, the native browser bridge and the Electron runtime are built here, and the
+// Ceres, TetGen, SolidCraft, libpd, the native browser bridge and the Electron runtime are built here, and the
 // pinned Dirt-Samples subset is fetched; Manifold and
 // JEP remain system/interpreter dependencies and the checker reports their exact resolved paths
 // and remedies. The source archives used by the downloaded builds live in the shared per-user
@@ -4159,6 +4174,7 @@ tasks.register<Exec>("buildDocsNativePrerequisites") {
     group = "documentation"
     description = "Builds and verifies all native dependencies required by documentation captures."
     dependsOn(buildCeresRedistributable, buildTetgenNative, buildMorseSmaleNative, buildPrincipalCurvesNative, buildPolyvectorNative, buildPaintNative, buildLibpdNative, buildCsoundNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples, fetchSteamAudioNatives, "buildLorisNative", buildD2LayoutHelper)
+    dependsOn("buildSolidCraftNative")
     commandLine(rootPythonCommand + listOf("tools/check_docs_native_prerequisites.py"))
 }
 

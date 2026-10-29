@@ -129,8 +129,8 @@ any of `box` / `uid` / `id` / `target`.
 | `edit` (`set`, `set-string`) | Change a text-like property | `box`, `property`, `from`, `to` |
 | `move` (`frame`, `set-rect`) | Move/resize a box | `box`, `to` (or `frame`) |
 | `connect` / `disconnect` | Change parent→child graph topology | `parent`, `child` |
-| `execute` (`execute-fragment`) | Run a code fragment **once**, awaited | `box`, `property`, `code` |
-| `launch` (`launch-all`, `launch-fragment`) | Launch code as a running job; Kotlin-only groups use the awaited batch path | `box`, `property`, `code`, `strand` |
+| `execute` (`execute-fragment`) | Run a code fragment **once**, awaited | `box`, `property`, `code` (a snippet) or `recordedCode` + `line`, `codeSource` |
+| `launch` (`launch-all`, `launch-fragment`) | Launch the box's **current** code as a running job; Kotlin-only groups use the awaited batch path | `box`, `property`, `strand`, `codeSource` |
 | `stop` (`stop-all`, `stop-box`) | Stop a running job | `box` |
 | `wait` | Sleep, or wait N real runloop frames | `millis`/`ms`/`seconds`, `frames`, `pending` |
 | `await` (`sync`, `settle`, `wait-pending`) | **Barrier**: drain all pending fragments/launches | `wait: pending` |
@@ -227,14 +227,33 @@ pressing `g` in the UI. For Field 4, a graphics example box must be connected
 
 ### execute vs launch
 
-Both run code and fall back to the box's **stored** code when the
-op carries no inline `code:` — so a `create` that sets `code`, followed by a bare
-`execute`/`launch`, runs that stored code:
+A macro runs against the document as it is when you replay it, not as it was when the macro
+was written or recorded. A whole-box `launch` (`type: launch`, `code` or `all`, the default for
+`launch`/`launch-all`) always runs the box's **current** `property`. A `code:` on such an op is
+ignored: older recordings copied the box's code into every launch, and that copy went stale as
+soon as the box was edited (a recording made before `target.apply()` became `+target` kept
+launching the old line and failed to compile). A `create` that sets `code`, followed by a bare
+`launch`, runs that stored code:
 
 ```yaml
 - create:  { box: b, properties: { code: 'println("stored")' } }
-- launch:  { box: b, property: code }   # runs the stored code — no need to repeat it
+- launch:  { box: b, property: code }   # runs whatever b's code is when this op runs
 ```
+
+Fragments (`type: fragment`, the default for `execute`, `execute-fragment` and
+`launch-fragment`) are different, because the op itself names the code:
+
+- **An explicit `code:`** runs as written, in the box's context: this is how a transcript runs a
+  probe or one-off snippet that is not in the box.
+- **A recorded fragment** carries `recordedCode:` and `line:` (0-based). The replay looks for
+  that text in the box's current code and runs it where it now is (the occurrence nearest the
+  recorded line); if it is gone, it runs the same number of lines starting at `line` in the
+  current code. A bare `execute` with neither runs the whole current property.
+
+`codeSource: recorded` on any `execute`/`launch` opts out: the op's `code:` (or
+`recordedCode:`) runs exactly as written, for a macro that must replay what ran then. When a
+replay runs something other than what was recorded (the box changed, a fragment moved), it logs
+why on `info,operation-transcript`; `MacroReplayCode` (`MacroReplayCode.kt`) holds the rules.
 
 - **`execute`** runs a fragment once and returns (`executeFragmentAndWait` — it joins,
   so it does not stall a headless server). Use it for one-shot setup or a computed result.
@@ -525,7 +544,7 @@ not just its edits:
 | type in a property | `edit {box, property, from, to}` | `set-string` |
 | `g` (connect) / disconnect | `connect` / `disconnect {parent, child}` | `-connect` / `-disconnect` in `Boxes.kt` |
 | delete | `delete {box, name}` | `-delete-box` |
-| run / launch / stop | `execute` / `launch` / `stop` | `executing.kt` |
+| run / launch / stop | `execute {box, property, line, recordedCode}` / `launch {box, property}` / `stop` | `executing.kt` |
 
 A new box's first values fold into its `create`: the canvas sends a new box's name, frame and
 code at once, and the server handles them concurrently, so whichever arrives first makes the
@@ -534,6 +553,13 @@ create's `name`, `frame` and `properties`. Before this, the recorder had no `cre
 `connect` or `disconnect` at all, and a recording replayed into a fresh document as edits of
 boxes that did not exist (`applied=2 skipped=5`, zero boxes). A saved recording drops idle waits
 (the person's pauses) and keeps only waits right after an `execute` / `launch`.
+
+A recorded `launch` does not copy the box's code: it names the box, and a replay launches
+whatever that box holds then, so a recording stays usable as the document changes. It keeps a
+`recordedCode:` only when what ran was not the box's stored code (a fragment launch, or code sent
+with the launch); an `execute` keeps the fragment as `recordedCode:` so the replay can find it
+again (see [execute vs launch](#execute-vs-launch)). Recordings saved before 2026-10-24 carry a
+`code:` on every launch; whole-box launches now ignore it.
 
 `MacroRecordReplayRoundTripTest` (jvmTest) records through the same calls the handlers make,
 saves, replays into a fresh document, and compares every live box's name, frame, code and

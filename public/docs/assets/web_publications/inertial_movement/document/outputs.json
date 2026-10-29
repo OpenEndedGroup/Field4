@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T17:37:42.090Z",
+  "documentName": "inertial_movement",
+  "outputs": [
+    {
+      "uid": "inertial_vs_restarting",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "movement_playground",
+      "channel": "movement",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 40,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "movement_playground",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 542,
+      "height": 397,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "inertial_hello",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 716,
+      "height": 458,
+      "path": "outputs/3.html"
+    }
+  ]
+}

@@ -3,14 +3,18 @@
   "id": "presentation",
   "title": "Presentations",
   "description": "Teach with editable slides, shared media, live webpages and real Field documents.",
-  "version": "1.0",
+  "version": "1.2",
   "guide": "guides/HANDOFF.md",
   "startingPoints": {
     "presentation": {
       "title": "Teaching with Field",
       "path": ".",
       "description": "A working talk with Markdown, images, CSS, a live document, guides and a saved macro.",
-      "launch": ["Teaching guide", "Live Field", "Presentation"]
+      "launch": [
+        "Teaching guide",
+        "Live Field",
+        "Presentation"
+      ]
     }
   }
 }

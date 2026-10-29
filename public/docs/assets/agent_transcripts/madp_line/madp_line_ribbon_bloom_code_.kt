@@ -27,6 +27,6 @@ eachStroke(trail = 0.08) {
         val spine = smooth(base)
         spine.color = rgba(255, 255, 255, 0.35)
         spine.overshoot = 10.0
-        listOf(fill, outline, spine)
+        [fill, outline, spine]
     }
 }

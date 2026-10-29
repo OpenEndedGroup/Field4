@@ -10,24 +10,28 @@ import java.net.http.HttpResponse
 import java.time.Duration
 
 /**
- * Registering a project that already has its own launcher and workspace, without changing either.
+ * The compatibility route for a project that already has its own launcher, workspace and document
+ * conventions and wants to appear in Welcome's kit library without adopting Field's. Such a kit
+ * declares a `host` block in its `field-kit.json` naming a launcher script, a loopback HTTP endpoint
+ * and the workspace that launcher owns, and Field then treats it as something to start rather than
+ * something to load: none of its runtime declarations join the calling host's classpath, and its
+ * documents keep whatever versioning scheme the project already uses.
  *
- * Some of what a kit package would describe already exists as a checkout with a `field.sh`, its own
- * documents and its own runtime. A manifest with a [KitDedicatedHost] block says so: it names the
- * launcher to run, the loopback HTTP endpoint that project serves on, and the workspace that
- * endpoint has to report. Registration validates and hashes those and nothing more, and the current
- * host leaves such a kit's runtime out of its own classpath profile, so the project's files are not
- * rewritten and its code is not loaded here.
+ * [KitDedicatedHosts.open] is the whole action, and it runs only from an explicit **Open kit host**
+ * or **Create in kit host** in Welcome, never from adding a kit. It probes `/api/instance-info` at
+ * the declared endpoint first and reuses a host that is already up, refusing outright when a
+ * different workspace answers there; otherwise it runs the launcher from the kit's source directory
+ * with Field's own port and path variables stripped from the environment, appends its output to
+ * `logs/<id>.log` under the kits directory, and polls for up to three minutes. Creating a document
+ * is then a POST to that host's own starting-point API, so the running project copies the seed by
+ * its own rules and hands back the URL to open.
  *
- * [KitDedicatedHosts.open] is the only thing that starts it, from an explicit action in Welcome. It
- * asks the endpoint's `/api/instance-info` whether a Field is already serving the expected
- * workspace and refuses outright if a different workspace answers there. If none is, it checks that
- * the launcher where the project lives still hashes to the copy installed under the registry, runs
- * it from there with the environment variables that would otherwise point it at this Field's ports,
- * workspace, extensions and Electron profile removed, and waits up to three minutes for the
- * endpoint to come up, reporting the launcher's log if it exits first. What comes back is a URL
- * into that host: its Welcome page, or a document the host itself created from the named starting
- * point.
+ * Two checks hold the arrangement together. [KitPackages.read] calls [KitDedicatedHosts.validate] on
+ * every manifest, so a non-loopback endpoint, a query string, user info in the URL, or a launcher
+ * path escaping the package is refused when the kit is added rather than when it is run. And
+ * [KitDedicatedHosts.open] compares the launcher's hash in the source directory against the one in
+ * the installed snapshot, so the script that executes is the script that was there when the kit was
+ * added.
  */
 
 /** Compatibility for an existing project launcher. Its original workspace and runtime remain authoritative. */

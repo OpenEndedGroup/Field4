@@ -26,48 +26,98 @@ package afield.lang.fieldml.type
 /** An inferred FieldML type. */
 sealed interface Type
 
+/** The type of an integer. */
 data object TInt : Type
+
+/** The type of a floating-point number. */
 data object TFloat : Type
+
+/** The type of a boolean. */
 data object TBool : Type
+
+/** The type of a string. */
 data object TString : Type
+
+/** The type with one value, which is what `()` has. */
 data object TUnit : Type
 
+/**
+ * A unification variable, identified by the number inference gave it.
+ *
+ * The id is what a [Scheme] quantifies and restricts; the `'a` a reader sees is a name a
+ * [TypePrinter] assigns for its own lifetime, not anything stored here.
+ */
 data class TVar(val id: Int) : Type
 
+/**
+ * A function from one argument to one result.
+ *
+ * Arrows take a single argument, matching the curried application the parser builds, so a function
+ * of two arguments is `TFun(a, TFun(b, c))`.
+ */
 data class TFun(
     val from: Type,
     val to: Type,
 ) : Type
 
+/** A record type: a field name for each of its fields' types. */
 data class TRecord(
     val fields: Map<String, Type>,
 ) : Type
 
+/** A tuple type, in the order the elements were written. */
 data class TTuple(
     val elements: List<Type>,
 ) : Type
 
+/** A list type, which is homogeneous: every element has the one `element` type. */
 data class TList(
     val element: Type,
 ) : Type
 
+/** A data type declared by a `type` declaration, applied to as many arguments as it takes. */
 data class TAdt(
     val name: String,
     val arguments: List<Type>,
 ) : Type
 
+/**
+ * A JVM type reached over the host bridge.
+ *
+ * The `name` is what `FieldMLHostTypes` reflects on to answer what the type has on it, and what it
+ * shortens for display.
+ */
 data class THost(
     val name: String,
 ) : Type
 
+/**
+ * A type together with the variables generalised over it, and any restriction on what they may
+ * become.
+ *
+ * The restrictions are how the prelude gives one scheme to a function that would otherwise need one
+ * per type: `abs`, `min`, `max` and `clamp` have a single numeric scheme each, and `dot`, `vlength`,
+ * `normalize` and `mix` a single vector one.
+ */
 data class Scheme(
+    /** The [TVar] ids generalised over `body`. An empty set is a type with nothing to instantiate. */
     val quantified: Set<Int>,
+    /** The type being generalised. */
     val body: Type,
+    /** Quantified ids that may only be instantiated to `Int` or `Float`. */
     val numeric: Set<Int> = emptySet(),
     /** Quantified ids that may only be instantiated to `Vec2`/`Vec3`/`Vec4`. */
     val vector: Set<Int> = emptySet(),
 )
 
+/**
+ * Renders a [Type] back to the two forms a reader sees.
+ *
+ * A printer names unification variables `'a`, `'b`, … in order of first appearance and keeps those
+ * names for its own lifetime, so two types printed by one printer agree about which variable is
+ * which, while two printers each start again at `'a`. Print the types that should agree with each
+ * other through the same instance.
+ */
 class TypePrinter {
     private val names = mutableMapOf<Int, String>()
 
@@ -98,6 +148,12 @@ class TypePrinter {
             else -> print(type)
         }
 
+    /**
+     * The fully parenthesised form, with brackets around every arrow.
+     *
+     * This is what diagnostics and a box's inline result use, where the shape of a type matters more
+     * than how it reads. Use [printSignature] for anything shown as a signature.
+     */
     fun print(type: Type): String =
         when (type) {
             TInt -> "Int"

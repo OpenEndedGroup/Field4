@@ -292,25 +292,34 @@ class KotlinJsExecution : BoxExecution {
         strand: String,
         reply: (Message) -> Unit,
     ) {
-        configureOutputProxies(inside, reply)
+        // The receipt every engine owes an awaited run (ExecutionVerdict.kt). Before 2026-10-24 a
+        // Kotlin→JS run published none, so every backdoor `run` of one timed out, errors included.
+        val trace = ExecutionTrace.forEngine(inside, execute, if (launchable) "launch" else "run", reply)
+        configureOutputProxies(inside, trace.reply)
+        val settle = KotlinJsReceipt(trace)
 
         val selection = try {
             KotlinJsHeadProfiles.resolveForBox(inside, code)
         } catch (e: IllegalArgumentException) {
             inside.output.errorProxy(e.message ?: "Invalid Kotlin/JS head marker", "code", 0)
+            settle.finish(false, e.message ?: "Invalid Kotlin/JS head marker")
             return
         }
         val connected = selection.profile.connectedHeadCount()
 
-        if (connected == 0 && selection.profile != KotlinJsHeadProfiles.visionMetal)
+        if (connected == 0 && selection.profile != KotlinJsHeadProfiles.visionMetal) {
+            // Nothing would run it; this used to compile, warn in a toast and report success.
             notify("Warning! no connected ${selection.profile.id} heads", "kotlinjs")
-        else if (connected == 0)
+            inside.output.errorProxy(RemoteJsBoxSurface.NO_HEAD, "code", -1)
+            settle.finish(false, RemoteJsBoxSurface.NO_HEAD)
+            return
+        } else if (connected == 0)
             notify("compiling Kotlin → ${selection.profile.id}; program will replay when the head connects", "kotlinjs")
         else
             notify("compiling Kotlin → ${selection.profile.id} for $connected head(s)", "kotlinjs")
 
         if (!launchable) {
-            runFragment(inside, execute, code, selection)
+            runFragment(inside, execute, code, selection, settle)
             return
         }
 
@@ -351,9 +360,11 @@ class KotlinJsExecution : BoxExecution {
                     launchable = true,
                     selectedHead = selection,
                     lifecycleName = lifecycleName,
-                    onResponse = tracker::onResponse,
+                    onResponse = { response -> settle.observe(response, launch = true); tracker.onResponse(response) },
                     sendGate = tracker::sendIfActive,
                 )
+                if (!sent) settle.finish(false, "Kotlin → JS did not compile, or the launch was replaced")
+                else if (selection.profile == KotlinJsHeadProfiles.visionMetal && connected == 0) settle.finish(true)
                 tracker.deliveryFinished(
                     sent = sent,
                     durableWithoutResponse = false,
@@ -362,6 +373,7 @@ class KotlinJsExecution : BoxExecution {
                 lprintln("error,kotlinjs", e.stackTraceToString())
                 notify("Kotlin → JS failed: ${e.message}", "kotlinjs_error")
                 inside.output.errorProxy(e.message ?: "compile error", "code", 0)
+                settle.finish(false, e.message ?: "compile error")
                 tracker.cancel()
             }
         }
@@ -372,6 +384,7 @@ class KotlinJsExecution : BoxExecution {
         execute: Execute,
         code: String,
         selection: KotlinJsHeadSelection,
+        settle: KotlinJsReceipt,
     ) {
         val watermark = ++inside.fragmentGeneration
         send(Message("is-running").payload(IsRunning(execute.uid, true, watermark, "__fragment__")))
@@ -385,21 +398,48 @@ class KotlinJsExecution : BoxExecution {
         }
         kotlinJsCompilePool.submit {
             try {
-                compileAndSendKotlin(
+                val sent = compileAndSendKotlin(
                     inside,
                     code,
                     launchable = false,
                     selectedHead = selection,
                     fragmentContext = fragmentContext,
+                    onResponse = { response -> settle.observe(response, launch = false); response.kind != "ERROR" && response.kind != "RUN-STOP" },
                 )
+                if (!sent) settle.finish(false, "Kotlin → JS did not compile")
+                else if (selection.profile == KotlinJsHeadProfiles.visionMetal) settle.finish(true)
             } catch (e: Exception) {
                 lprintln("error,kotlinjs", e.stackTraceToString())
                 notify("Kotlin → JS failed: ${e.message}", "kotlinjs_error")
                 inside.output.errorProxy(e.message ?: "compile error", "code", 0)
+                settle.finish(false, e.message ?: "compile error")
             } finally {
                 send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
             }
         }
+    }
+}
+
+/**
+ * Finishes a Kotlin→JS run's [ExecutionTrace] once, from the first head reply that ends it: the
+ * module's own terminal SUCCESS (or, for a Launch, its RUN-START), or an ERROR.
+ */
+internal class KotlinJsReceipt(private val trace: ExecutionTrace) {
+    private var done = false
+
+    fun observe(response: KotlinJsHeadResponse, launch: Boolean) {
+        when {
+            response.kind == "ERROR" -> finish(false)
+            response.kind == "SUCCESS" && response.terminal -> finish(true)
+            launch && response.kind == "RUN-START" -> finish(true)
+        }
+    }
+
+    @Synchronized
+    fun finish(success: Boolean, reason: String = "") {
+        if (done) return
+        done = true
+        trace.finish(success, reason)
     }
 }
 

@@ -135,7 +135,10 @@ data class StudyBuildRecord(
 /** Files produced inside the attempt directory, and verification facts supplied by the recipe. */
 data class StudyBuildProduct(val files: List<String>, val facts: Map<String, Any?> = emptyMap())
 
-/** Explain who supplies a stage's missing inputs, including intentionally idle, optional stages. */
+/**
+ * Explain who supplies a stage's missing inputs. An optional stage with nothing proposed to test
+ * says so here, so it reads as idle rather than blocked.
+ */
 data class StudyBuildInputHelp(val label: String, val message: String) {
     init { require(label.isNotBlank() && message.isNotBlank()) { "Input help needs a label and an explanation" } }
 }

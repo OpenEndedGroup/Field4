@@ -1,17 +1,17 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
-import afield.math.linalg.Vector2f
-import afield.graphics.vulkan.targets.RenderToTexture
-import afield.graphics.texture.HasImageView
-import java.nio.*
-import arrow.core.right
-import arrow.core.left
-import afield.graphics.shader.*
-import afield.graphics.scene.*
-import afield.graphics.render.*
-import afield.document.context.*
-import afield.graphics.vulkan.buffers.*
 import afield.graphics.vulkan.targets.PingPongRenderToTexture
+import afield.graphics.vulkan.buffers.*
+import afield.document.context.*
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import arrow.core.left
+import arrow.core.right
+import java.nio.*
+import afield.graphics.texture.HasImageView
+import afield.graphics.vulkan.targets.RenderToTexture
+import afield.math.linalg.Vector2f
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.flowSession by Inheritance<AutoCloseable>() /**/
 val Once.flowSession by Onceing<AutoCloseable>() /**/
 val Why.flowSession by Whying() /**/

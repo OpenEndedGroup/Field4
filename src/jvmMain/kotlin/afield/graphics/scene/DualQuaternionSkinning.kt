@@ -11,6 +11,26 @@ import kotlin.math.abs
 import kotlin.math.sqrt
 
 /**
+ * The second of Field's two skinning blends: joint motions averaged as dual quaternions, for rigs
+ * that twist far enough to break the usual one.
+ *
+ * Most callers arrive here without naming the file. [GltfSkinning.skin] is the entry point, and
+ * passing it `SkinningOptions(method = SkinningMethod.DUAL_QUATERNION)` hands the vertices
+ * straight to [DualQuaternionSkinning.skin], which takes the same arguments and returns the same
+ * type. Linear blending averages the joint matrices, which is what every other engine defaults to
+ * and what the GPU path does by default; it holds up until two influences disagree by a large
+ * rotation, at which point the average of two rotations stops being a rotation and the
+ * cross-section of a twisted limb flattens. Averaging rigid motions instead keeps it round.
+ *
+ * Three things qualify that, and [DualQuaternionSkinning] sets out each of them with its
+ * measurement. A dual quaternion is a rigid motion and nothing else, so a joint that scales or
+ * shears needs a residual matrix carried beside it. Two influences stored with opposite signs
+ * cancel rather than average, unless one of them is chosen as a pivot and the others are flipped
+ * to agree with it. And the comparison with linear blending is a trade rather than a win: this
+ * bulges a joint ring where linear blending pinches it.
+ */
+
+/**
  * Dual quaternion linear blending — the skinning method that does not collapse a twisted joint.
  *
  * [GltfSkinning.skin] averages *matrices*. That is right for positions under small rotations and

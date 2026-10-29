@@ -23,6 +23,21 @@ expect:
   stdoutContains:
     - "All tests PASSED"
 */
+
+/**
+ * Twelve checks over Field's PLY readers, as a standalone program that needs no Vulkan device.
+ *
+ * It writes its own files into a temporary directory and reads them back: ASCII and binary meshes
+ * in both byte orders, a point cloud, a file carrying neither colours nor normals, the float-table
+ * view ([PlyFloatTable]), and the compressed Gaussian-splat format. One of those compressed files
+ * has its packed words written out as literal bit patterns, so the reader is measured against the
+ * format rather than against a second implementation of it; the others are round-tripped through
+ * the writer.
+ *
+ * Each check prints a line and the run ends in `All tests PASSED`, which is what the smoke catalog
+ * matches on as `four.ply-loader.smoke`.
+ */
+
 /**
  * Unit tests for PLY loader that don't require graphics context
  */
@@ -30,6 +45,11 @@ object PlyLoaderUnitTest {
     
     private val testDir = File(System.getProperty("java.io.tmpdir"), "ply_test")
     
+    /**
+     * Write the small PLY files the checks read, into `ply_test` under the system temporary
+     * directory. [runTests] calls this itself; call it directly to leave the files somewhere a
+     * viewer can open them.
+     */
     fun createTestFiles() {
         testDir.mkdirs()
         
@@ -153,6 +173,10 @@ end_header
         file.writeBytes(headerBytes + buffer.array())
     }
     
+    /**
+     * Run every check, printing a pass or fail line for each, and return whether all of them
+     * passed. A failing check does not stop the others, so one run reports every problem it finds.
+     */
     fun runTests(): Boolean {
         var allPassed = true
         
@@ -710,7 +734,7 @@ end_header
         (1.0 / (1.0 + kotlin.math.exp(-logit.toDouble()))).toFloat()
 }
 
-// Main function for running tests standalone
+/** Runs [PlyLoaderUnitTest.runTests] and exits 0 when every check passed, 1 otherwise. */
 fun main() {
     val success = PlyLoaderUnitTest.runTests()
     System.exit(if (success) 0 else 1)

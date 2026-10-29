@@ -5,7 +5,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.KaIdeApi
-import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.standalone.buildStandaloneAnalysisAPISession
 import org.jetbrains.kotlin.analysis.api.symbols.findTopLevelCallables
 import org.jetbrains.kotlin.analysis.project.structure.builder.buildKtLibraryModule
@@ -40,6 +39,7 @@ data class AaDumpFixture(
     val member: String,
     val isDot: Boolean,
     val prefix: String,
+    val source: String,
     val note: String,
     val candidates: List<AaDumpCandidate>,
 )
@@ -113,7 +113,7 @@ object CompletionSpike {
 
         // De-risk: can findTopLevelCallables resolve a binary-library top-level function by exact name?
         @OptIn(KaExperimentalApi::class, KaIdeApi::class)
-        analyze(contextFile) {
+        withAnalysis(contextFile) {
             for (probe in listOf("kotlin.collections" to "map", "afield.simulation.automata" to "toggleNetwork")) {
                 val n = findTopLevelCallables(FqName(probe.first), Name.identifier(probe.second)).count()
                 System.err.println("[selftest] findTopLevelCallables(${probe.first}, ${probe.second}) = $n")
@@ -144,7 +144,7 @@ object CompletionSpike {
                 val hit = if (member.isEmpty()) result.candidates.isEmpty()
                     else result.candidates.any { it.name == member }
                 if (hit) surfaced++
-                dump += AaDumpFixture(label, member, isDot, prefix, result.note,
+                dump += AaDumpFixture(label, member, isDot, prefix, code, result.note,
                     result.candidates.map { AaDumpCandidate(it.name, it.kind.name, it.returnType, it.container) })
                 println("────────────────────────────────────────")
                 println("[$label]  ${if (isDot) "DOT" else "NAME"}  prefix='$prefix'  intended .$member  ${if (hit) "✓" else "✗"}  (${result.candidates.size} cands)${if (result.note.isNotBlank()) "  <${result.note}>" else ""}")

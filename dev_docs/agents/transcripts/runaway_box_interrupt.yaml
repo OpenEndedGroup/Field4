@@ -1,0 +1,33 @@
+name: runaway_box_interrupt
+description: Two boxes. Run 'Runaway Loop' (it never returns; Field throws out of it after about five seconds, or at once with Interrupt Running Box), then run 'After The Runaway', which prints normally. The runs are left to you because an interrupted run is an error, which stops a transcript.
+docs:
+  - page: running_code.md
+    why: "Section 'Code that never returns' explains the watchdog and Interrupt Running Box."
+operations:
+  - create:
+      box: agent_runaway_loop
+      name: Runaway Loop
+      frame:
+        x: 80.0
+        y: 80.0
+        w: 320.0
+        h: 120.0
+      properties:
+        code: |
+          // This loop never ends. After about five seconds Field throws out of it
+          // ("Box interrupted: ..."); run Interrupt Running Box to stop it sooner.
+          var i = 0L
+          while (true) {
+              i++
+          }
+  - create:
+      box: agent_after_runaway
+      name: After The Runaway
+      frame:
+        x: 440.0
+        y: 80.0
+        w: 320.0
+        h: 120.0
+      properties:
+        code: |
+          markdown("main", "Field is running again: 6 * 7 = ${6 * 7}")

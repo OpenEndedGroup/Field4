@@ -125,7 +125,12 @@ data class AttachmentResponse(
     val nextOffset: Int? = null,
     val isExcerpt: Boolean = false,
     val searchMatched: Boolean? = null,
-    val matchOffset: Int? = null
+    val matchOffset: Int? = null,
+    /** 1-based line of [offset] and of [matchOffset]: offsets are not line numbers, so cite these. */
+    val startLine: Int? = null,
+    val matchLine: Int? = null,
+    /** When `find` missed: up to eight `line: text` rows containing its longest identifier. */
+    val nearMatches: List<String> = emptyList()
 )
 
 // Kotlin-only tools ---------------------------------------------------------
@@ -242,6 +247,7 @@ data class EditFileResponse(val success: Boolean, val message: String? = null)
 data class CompileKotlinRequest(
     @JsonPropertyDescription("Which box: its name or uid, or its file ref afield://<document>/<box uid>/code exactly as ListContents reports it. Empty = the box this chat belongs to, where there is one.")
     val file: String = "",
+    @param:JsonPropertyDescription("Optional replacement source to compile instead of the box's code. Omit it, or leave it empty, to compile the box's saved code.")
     val source: String? = null,
     val runSetupBlocks: Boolean = true
 )
@@ -641,6 +647,23 @@ class AgentMemoryState {
     private val checklist = mutableListOf<ChecklistItem>()
     private var nextChecklistId = 1
 
+    // Turn counter and the turn the checklist last changed in: a list set in round 1 and never touched again
+    // was re-shown at every turn's end as if current, and read as "nothing done" (2026-10-28).
+    private var turn = 0
+    private var checklistChangedInTurn = -1
+
+    /** Called when an agent turn starts. */
+    fun beginTurn() = lock.write { turn++ }
+
+    /** `"2 of 6 done, 1 in progress"`, plus `"; not updated this turn"` when it is stale; null when empty. */
+    fun checklistSummary(): String? = lock.read {
+        if (checklist.isEmpty()) return@read null
+        val done = checklist.count { it.status == "done" }
+        val active = checklist.count { it.status == "in_progress" }
+        "$done of ${checklist.size} done" + (if (active > 0) ", $active in progress" else "") +
+            if (checklistChangedInTurn < turn) "; not updated this turn" else ""
+    }
+
     /**
      * The scratchpad and checklist as they are, for the session tree: memory is branch state, so a rewound
      * conversation gets back the memory of the turn it was rewound to (AiSessionTree).
@@ -708,6 +731,7 @@ class AgentMemoryState {
     }
 
     fun updateChecklist(request: ChecklistUpdateRequest): ChecklistResult = lock.write {
+        checklistChangedInTurn = turn
         fun normalizedStatus(raw: String): String = when (raw.trim().lowercase()) {
             "done", "complete", "completed", "checked" -> "done"
             "in_progress", "in-progress", "active", "doing" -> "in_progress"
@@ -804,9 +828,11 @@ class AgentMemoryState {
     fun checklistMarkdown(): String = lock.read {
         if (checklist.isEmpty()) return@read ""
         buildString {
-            appendLine("**Checklist**")
+            append("**Checklist**")
+            if (checklistChangedInTurn < turn) append(" _(not updated this turn)_")
+            appendLine()
             checklist.forEach { item ->
-                append(if (item.status == "done") "- [x] " else "- [ ] ")
+                append(when (item.status) { "done" -> "- [x] "; "in_progress" -> "- [~] "; else -> "- [ ] " })
                 append(item.text)
                 append(" ")
                 append("`#${item.id}`")
@@ -879,7 +905,12 @@ interface CarriesToolImages {
 @AgentToolMeta("symbols", effects = [ToolEffect.FILESYSTEM_READ])
 data class WorkspaceSymbolSearch(val query: String, val limit: Int = 25, val includeRelatedContext: Boolean = false)
 
-data class WorkspaceSymbolSearchResult(val matches: List<WorkspaceSymbolMatch>)
+data class WorkspaceSymbolSearchResult(
+    val matches: List<WorkspaceSymbolMatch>,
+    /** Source files saved since the index was built whose text contains the query; their symbols may be missing above. */
+    val unindexedMatches: List<String> = emptyList(),
+    val message: String = ""
+)
 data class WorkspaceSymbolMatch(
     val symbol: String,
     val kind: String,
@@ -933,6 +964,10 @@ data class ToolExecutionContext(
     // Optional extra tools
     val workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
     val workspaceSearch: ((WorkspaceSearchRequest) -> WorkspaceSearchResult)? = null,
+    /** The `repo` tools over one checkout ([RepoFileTools]); only a headless job with a repo scope wires it. */
+    val repoFiles: RepoFileTools? = null,
+    /** The `repo` command tool ([RepoCommandTools]) over [repoFiles]' root; only a job that allows commands wires it. */
+    val repoCommands: RepoCommandTools? = null,
 
     /** What this conversation is about, when it is about one box: see [ToolFocus]. */
     val focus: ToolFocus? = null,

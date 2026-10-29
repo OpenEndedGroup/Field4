@@ -9,16 +9,20 @@ import afield.math.linalg.Vec4
 import kotlin.math.hypot
 
 /**
- * The wire format of the stroke layer: a document's living strokes as the JSON one window draws.
+ * What a window is sent to draw the stroke layer: every living stroke's lines as compact JSON, and
+ * the point index the strokes use to find each other.
  *
- * [StrokeSketch] calls `encode` once per published frame, giving it every stroke's lines and the
- * width its pen uses for a line that sets no `thickness`, and sends the result as
- * `stroke-layer-frame` to each window showing the document; `strokeLayer.kt` in the frontend draws
- * it. Colour, dot radius and the overshoot ticks are worked out here rather than on the page, so the
- * FLine properties a stroke sets are read in this file.
+ * [StrokeSketch] calls both. [StrokeLayerFrames.indexedPositions] runs once per stroke per physics
+ * step, over the lines that stroke has just drawn, and the flat x, y array it returns is what
+ * [Stroke.closestOutput] searches on the step after. [StrokeLayerFrames.encode] runs once per
+ * published frame, and its JSON reaches every window showing the document as `stroke-layer-frame`;
+ * `strokeLayer.kt` in the frontend draws it.
  *
- * `indexedPositions` is the other half, flattening a stroke's lines into the array of x, y pairs that
- * [Stroke.closestOutput] searches, with lines marked `ignore` left out.
+ * Only what a canvas needs crosses the wire. Coordinates are world units rounded to a tenth, colours
+ * arrive as CSS rather than as vectors, and a per-node colour or dot radius is sent only when some
+ * node sets one. Overshoot ticks ([FLine.overshoot]) are worked out here and sent as finished
+ * segments. `StrokeVerbsTest` asserts the paths, colours, dots and ticks of a frame, and that an
+ * ignored line stays out of the index.
  */
 
 /**

@@ -353,6 +353,38 @@ def _superseded_by(queue: Path, item: dict) -> dict | None:
     return later[0] if later else None
 
 
+def _content_on_main(item: dict) -> bool:
+    """The bounced commit's changes are already on `main`: merging it now would change nothing.
+    True when it was merged into a branch that landed, and also when its changes were copied onto
+    one with new SHAs (cherry-picked, or a subset of a bigger branch). Such a bounce needs nobody."""
+    sha = item.get("sha")
+    if not sha:
+        return False
+    repo = _primary(Path.cwd())
+    if _ok(repo, "merge-base", "--is-ancestor", sha, "refs/heads/main"):
+        return True
+    if not _ok(repo, "cat-file", "-e", f"{sha}^{{commit}}"):
+        return False
+    merged = subprocess.run(["git", "merge-tree", "--write-tree", "refs/heads/main", sha], cwd=repo,
+                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    return merged.returncode == 0 and merged.stdout.split("\n", 1)[0] == _git(repo, "rev-parse", "refs/heads/main^{tree}")
+
+
+def _branch_gone(item: dict) -> bool:
+    """Its branch has been deleted, so nobody is going to fix and re-enqueue it: abandoned on purpose."""
+    branch = item.get("branch")
+    return bool(branch) and not _ok(_primary(Path.cwd()), "show-ref", "--verify", "--quiet", f"refs/heads/{branch}")
+
+
+def _settled(item: dict) -> str | None:
+    """Why a bounce with no later landing of its own branch still needs nobody, or None if it does."""
+    if _content_on_main(item):
+        return "its changes reached main another way"
+    if _branch_gone(item):
+        return "its branch was deleted"
+    return None
+
+
 def _describe(state: str, item: dict, queue: Path | None = None) -> str:
     if _is_doc(item):
         head = f"{item['id']}  docs for {item['checkout']}  by {item['by']}"
@@ -423,6 +455,10 @@ def _describe(state: str, item: dict, queue: Path | None = None) -> str:
             lines[0] = f"resolved {head}"
             lines.append(f"         bounced {_span(_since(item.get('finished')))} ago, then landed as {fixed['id']} "
                          f"-> main {fixed.get('landed_as', '')[:9]}")
+            return "\n".join(lines)
+        if why := _settled(item):
+            lines[0] = f"resolved {head}"
+            lines.append(f"         bounced {_span(_since(item.get('finished')))} ago; {why}")
             return "\n".join(lines)
         lines.append(f"         {_span(_since(item.get('finished')))} ago: {' '.join(str(item.get('reason', '?')).split())}")
         lines.append(f"         log: {item.get('log', '')}")
@@ -562,8 +598,8 @@ def _stranded_bounces(queue: Path, hours: float) -> list[dict]:
             continue
         if _superseded_by(queue, item) or item.get("branch") in queued:
             continue
-        # Landed some other way (merged into another branch that landed): not stranded.
-        if _ok(_primary(Path.cwd()), "merge-base", "--is-ancestor", item["sha"], "refs/heads/main"):
+        # Landed some other way, or its branch was deleted: not stranded.
+        if _settled(item):
             continue
         out.append(item)
     # One per branch: the newest attempt is the one that matters.
@@ -847,8 +883,8 @@ def _pretty_status(queue: Path, recent: int) -> None:
                   f"  {st.dim(ago + ' ago')}" + (st.dim(f" \u00b7 took {_span(took)} \u00b7 {how}") if took is not None else ""))
             if item.get("fixup"):
                 print(f"      {fixed_line(item)}")
-        elif _superseded_by(queue, item):
-            continue  # bounced, then landed: history, not news
+        elif _superseded_by(queue, item) or _settled(item):
+            continue  # bounced, then landed (or landed another way, or abandoned): history, not news
         else:
             reason = " ".join(str(item.get("reason", "?")).split())
             print(f"  {st.red(g['bounce'])} {who(item)}  {st.dim(ago + ' ago')}")

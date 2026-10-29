@@ -39,9 +39,23 @@ object ArtNet {
     /** Protocol revision this implementation writes into `ProtVerHi/Lo`: 14. */
     const val PROTOCOL_VERSION = 14
 
+    /**
+     * ArtPoll OpCode, `0x2000`: "which nodes are out there". A [DmxInput] answers one with an
+     * ArtPollReply unless `answerPolls` is off.
+     */
     const val OP_POLL = 0x2000
+
+    /** ArtPollReply OpCode, `0x2100`: a node describing itself, in answer to an ArtPoll. */
     const val OP_POLL_REPLY = 0x2100
+
+    /** ArtDmx OpCode, `0x5000`: one universe of slot data. */
     const val OP_DMX = 0x5000
+
+    /**
+     * ArtSync OpCode, `0x5200`: output the ArtDmx frames you are holding, now. Art-Net 4 nodes
+     * buffer frames once they have seen one of these and drop back to immediate output after four
+     * seconds without one.
+     */
     const val OP_SYNC = 0x5200
 
     /** Size of the ArtDmx header before the slot data. */
@@ -348,6 +362,7 @@ value class PortAddress(val value: Int) {
     /** The `SubUni` byte of ArtDmx: SubNet in the high nibble, Universe in the low. */
     val subUni: Int get() = value and 0xff
 
+    /** `Net:SubNet:Universe` in decimal, the way Art-Net addresses are written: universe 1 is `0:0:1`. */
     override fun toString() = "$net:$subNet:$universe"
 
     companion object {

@@ -53,7 +53,7 @@ import java.util.concurrent.CopyOnWriteArrayList
  *
  * # The three things this example is trying to demonstrate
  *
- *  1. **A gate that really gates.** Both tools are unavailable until a search root is added. A tool set
+ *  1. **A gate on the tool set.** Both tools are unavailable until a search root is added. A tool set
  *     that is always on costs its schema on every request in every conversation, including the ones
  *     that have nothing to do with it.
  *  2. **A result that summarises itself.** Both results implement [SummarisesForToolLog], so the tool
@@ -78,8 +78,8 @@ object GeometryAgentTools {
      * Extensions [meshFromAnyFile] can open, lower-cased and without the dot.
      *
      * Kept as data rather than derived from the loaders, because the loaders' own dispatch has an
-     * `else -> assimpToTriMesh(path)` branch that will *try* anything. Listing what we mean to offer is
-     * more honest to a model than offering everything and failing on `.txt`.
+     * `else -> assimpToTriMesh(path)` branch that will *try* anything. Listing what we mean to offer
+     * tells a model which extensions will open, rather than letting it reach for `.txt` and get an error.
      */
     val LOADABLE_EXTENSIONS: Set<String> =
         setOf("obj", "stl", "ply", "glb", "gltf", "fbx", "dae", "3ds", "blend", "off")
@@ -98,14 +98,14 @@ object GeometryAgentTools {
         if (roots.none { it == canonical }) roots.add(canonical)
     }
 
-    /** Take every root away, which also closes the gate. Symmetric with [addSearchRoot], and for tests. */
+    /** Take every root away, which also makes [enabled] false. Symmetric with [addSearchRoot], and for tests. */
     fun clearSearchRoots() = roots.clear()
 
     /** The roots, canonicalised, in the order they were added. */
     fun searchRoots(): List<File> = roots.toList()
 
     /**
-     * The gate both tools share: is there anywhere to look?
+     * Whether there is anywhere to look at all. Both tools check this before they run.
      *
      * Asked on every turn, which is why it is a field check and not a directory walk.
      */

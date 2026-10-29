@@ -1,0 +1,30 @@
+name: remotejs_print
+description: >
+  Capture for docs/remotejs.md. A Javascript language root embeds the browser head on the canvas
+  with remoteAr(); a Javascript child prints with print and console.log and ends on a value. The
+  docs runner opens the child's editor, runs it (run-box) and screenshots the inline output.
+operations:
+  - create:
+      box: remotejs_print_root
+      name: "Javascript root"
+      frame: { x: 60.0, y: 40.0, w: 300.0, h: 90.0 }
+      properties:
+        mainLanguage: remotejs
+        isRemoteJSRoot: true
+        code: |
+          remoteAr(width = 480, height = 270)
+  - execute: { box: remotejs_print_root, property: code }
+  - wait: { millis: 8000 }
+  - create:
+      box: remotejs_print_box
+      name: "hello from the browser"
+      frame: { x: 60.0, y: 700.0, w: 360.0, h: 120.0 }
+      properties:
+        code_language: Javascript
+        code: |
+          print("hello from the browser")
+          console.log(`the head is ${window.innerWidth} pixels wide`)
+          const shapes = ["circle", "square", "triangle"]
+          shapes.map(s => s.toUpperCase())
+  - connect: { parent: remotejs_print_root, child: remotejs_print_box }
+  - wait: { frames: 2 }

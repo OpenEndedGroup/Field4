@@ -140,7 +140,7 @@ points only ever land on the Sierpinski triangle. Colour shows which corner the 
 step went towards, so each third of the triangle is a half-size copy of the whole.
 
 ```edn [field-box id="fern_sierpinski" role="properties"]
-{"id" "fern_sierpinski" "index" 2 "name" "Sierpinski triangle" "parents" ["root" "fern_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fern_renderer"} "name" "Sierpinski triangle" "_tombstone" false "frame" #afield/rect [640.0 660.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "fern_sierpinski_notes_.md" "lines" 6 "characters" 365 "sha256" "ca9c457d4987a709b556ed63ad8e9325e0dca85583f3faf69ffd4bf8fab379fa"} {"name" "code" "language" "kotlin" "path" "fern_sierpinski_code_.kt" "lines" 17 "characters" 592 "sha256" "a1d2665ba9d22eefa8710c62b8fe3af29fbf9c2f054b10bf33ca8b767d1f91c8"} {"name" "compute" "language" "glsl" "path" "fern_sierpinski_compute_.glsl" "lines" 37 "characters" 800 "sha256" "be24fc3e7d2faa1e20235bb058fe448fd71b1f94d1a92f579adce8b3bca3e4d9"}]}
+{"id" "fern_sierpinski" "index" 2 "name" "Sierpinski triangle" "parents" ["root" "fern_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fern_renderer"} "name" "Sierpinski triangle" "_tombstone" false "frame" #afield/rect [640.0 660.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "fern_sierpinski_notes_.md" "lines" 6 "characters" 365 "sha256" "ca9c457d4987a709b556ed63ad8e9325e0dca85583f3faf69ffd4bf8fab379fa"} {"name" "code" "language" "kotlin" "path" "fern_sierpinski_code_.kt" "lines" 17 "characters" 592 "sha256" "a1d2665ba9d22eefa8710c62b8fe3af29fbf9c2f054b10bf33ca8b767d1f91c8"} {"name" "compute" "language" "glsl" "path" "fern_sierpinski_compute_.glsl" "lines" 37 "characters" 788 "sha256" "c8434e43c45f4e6f9e664f3c1e2a428d45fed1960f9b0ef7e2f239262b14bf81"}]}
 ```
 
 ```markdown [field-property box="fern_sierpinski" name="notes" path="fern_sierpinski_notes_.md"]
@@ -200,9 +200,9 @@ bool shouldDraw(State s) {
 
 vec4 color(State s) {
     vec4 palette[3] = vec4[](
-        rgba(255, 184, 108, 0.35),
-        rgba(139, 233, 253, 0.35),
-        rgba(255, 121, 198, 0.35)
+    rgba(255, 184, 108, 0.35),
+    rgba(139, 233, 253, 0.35),
+    rgba(255, 121, 198, 0.35)
     );
     return palette[int(s.data.x)];
 }
@@ -231,7 +231,7 @@ Flames are shown as log density, so the tone map is LOG: sparse threads and dens
 knots stay visible together.
 
 ```edn [field-box id="fern_flame" role="properties"]
-{"id" "fern_flame" "index" 3 "name" "flame-style IFS" "parents" ["root" "fern_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fern_renderer"} "name" "flame-style IFS" "_tombstone" false "frame" #afield/rect [40.0 660.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "fern_flame_notes_.md" "lines" 10 "characters" 514 "sha256" "037a353863eac1f05944990ff8fea3185dddbae243187942a0c0e5a2ec7b27d6"} {"name" "code" "language" "kotlin" "path" "fern_flame_code_.kt" "lines" 20 "characters" 655 "sha256" "54742fc653e2ee787b45a538fe737aa8f7f342b6c895d808e00956e7bc77f19e"} {"name" "compute" "language" "glsl" "path" "fern_flame_compute_.glsl" "lines" 50 "characters" 1242 "sha256" "ebb9e662dfc42e91b0cb13b025e02bdff82e810faf9227ca64d1313f7d20c323"}]}
+{"id" "fern_flame" "index" 3 "name" "flame-style IFS" "parents" ["root" "fern_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fern_renderer"} "name" "flame-style IFS" "_tombstone" false "frame" #afield/rect [40.0 660.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "fern_flame_notes_.md" "lines" 10 "characters" 514 "sha256" "037a353863eac1f05944990ff8fea3185dddbae243187942a0c0e5a2ec7b27d6"} {"name" "code" "language" "kotlin" "path" "fern_flame_code_.kt" "lines" 20 "characters" 655 "sha256" "54742fc653e2ee787b45a538fe737aa8f7f342b6c895d808e00956e7bc77f19e"} {"name" "compute" "language" "glsl" "path" "fern_flame_compute_.glsl" "lines" 53 "characters" 1254 "sha256" "b5878a1aec7ec1e50c4e0613c32e2936a5861cbf0d26cba7bae286e8777d1b14"}]}
 ```
 
 ```markdown [field-property box="fern_flame" name="notes" path="fern_flame_notes_.md"]
@@ -288,15 +288,18 @@ void step(inout State s, float dt) {
         p = swirl(affine(p, 0.72, 0.07, -0.05, 0.72, 0.0, 0.55));
         tint = 0.08;
         s.data.y = 0.0;
-    } else if (r < 0.82) {
+    }
+    else if (r < 0.82) {
         p = handkerchief(affine(p, 0.43, -0.45, 0.48, 0.45, 0.22, 0.92));
         tint = 0.42;
         s.data.y = 1.0;
-    } else if (r < 0.94) {
+    }
+    else if (r < 0.94) {
         p = spherical(affine(p, -0.38, 0.34, 0.36, 0.42, -0.28, 1.18));
         tint = 0.68;
         s.data.y = 2.0;
-    } else {
+    }
+    else {
         p = linear(affine(p, 0.18, 0.0, 0.0, 0.18, 0.0, 0.14));
         tint = 0.94;
         s.data.y = 3.0;
@@ -343,7 +346,7 @@ box's compute tab; edit it and the shader reloads.
 Low fade keeps the whole leaf; low fps shows it building up at random.
 
 ```edn [field-box id="fern_barnsley" role="properties"]
-{"id" "fern_barnsley" "index" 4 "name" "Barnsley fern" "parents" ["root" "fern_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fern_renderer"} "name" "Barnsley fern" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "fern_barnsley_notes_.md" "lines" 57 "characters" 3511 "sha256" "e52fceb04c29422e455753e00be039fc1bc5ca402627ee33bcec34cd25c23daf"} {"name" "code" "language" "kotlin" "path" "fern_barnsley_code_.kt" "lines" 20 "characters" 642 "sha256" "465350835ba6b09747ec8601dc4cc9e52a769a222658aa11312db7f4c3daec9e"} {"name" "compute" "language" "glsl" "path" "fern_barnsley_compute_.glsl" "lines" 50 "characters" 1341 "sha256" "f0e03c524d4dc2951538a9dd57f13ba63d625d61cbaca0da29b8e1535dee9b1d"}]}
+{"id" "fern_barnsley" "index" 4 "name" "Barnsley fern" "parents" ["root" "fern_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fern_renderer"} "name" "Barnsley fern" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "fern_barnsley_notes_.md" "lines" 57 "characters" 3511 "sha256" "e52fceb04c29422e455753e00be039fc1bc5ca402627ee33bcec34cd25c23daf"} {"name" "code" "language" "kotlin" "path" "fern_barnsley_code_.kt" "lines" 20 "characters" 642 "sha256" "465350835ba6b09747ec8601dc4cc9e52a769a222658aa11312db7f4c3daec9e"} {"name" "compute" "language" "glsl" "path" "fern_barnsley_compute_.glsl" "lines" 53 "characters" 1329 "sha256" "32b40c7b0f4ad43154427cd5a02875a9261a9a52c115e3f6f9356b161ec08b23"}]}
 ```
 
 ```markdown [field-property box="fern_barnsley" name="notes" path="fern_barnsley_notes_.md"]
@@ -444,15 +447,18 @@ void step(inout State s, float dt) {
     vec2 p = s.pos.xy;
     float r = random();
     if (r < 0.01) {
-        s.pos.xy = affine(p, 0.0, 0.0, 0.0, 0.16, 0.0, 0.0);      // the stem
+        s.pos.xy = affine(p, 0.0, 0.0, 0.0, 0.16, 0.0, 0.0); // the stem
         s.data.x = 0.0;
-    } else if (r < 0.86) {
-        s.pos.xy = affine(p, 0.85, 0.04, -0.04, 0.85, 0.0, 1.6);  // the next leaflet up
+    }
+    else if (r < 0.86) {
+        s.pos.xy = affine(p, 0.85, 0.04, -0.04, 0.85, 0.0, 1.6); // the next leaflet up
         s.data.x = 1.0;
-    } else if (r < 0.93) {
-        s.pos.xy = affine(p, 0.2, -0.26, 0.23, 0.22, 0.0, 1.6);   // the left leaflet
+    }
+    else if (r < 0.93) {
+        s.pos.xy = affine(p, 0.2, -0.26, 0.23, 0.22, 0.0, 1.6); // the left leaflet
         s.data.x = 2.0;
-    } else {
+    }
+    else {
         s.pos.xy = affine(p, -0.15, 0.28, 0.26, 0.24, 0.0, 0.44); // the right leaflet
         s.data.x = 3.0;
     }
@@ -469,10 +475,10 @@ bool shouldDraw(State s) {
 
 vec4 color(State s) {
     vec4 palette[4] = vec4[](
-        rgba(140, 255, 190, 0.35),
-        rgba(94, 255, 140, 0.40),
-        rgba(195, 255, 140, 0.32),
-        rgba(70, 220, 120, 0.34)
+    rgba(140, 255, 190, 0.35),
+    rgba(94, 255, 140, 0.40),
+    rgba(195, 255, 140, 0.32),
+    rgba(70, 220, 120, 0.34)
     );
     return palette[int(s.data.x)];
 }

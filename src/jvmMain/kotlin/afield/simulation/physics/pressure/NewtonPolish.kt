@@ -3,6 +3,18 @@ package afield.simulation.physics.pressure
 import kotlin.math.*
 import afield.math.functions.DenseDoubleOps
 
+/**
+ * The optional Newton step that finishes an inflation solve: [NewtonPolish] takes the positions
+ * L-BFGS reached and drives the free-node force residual down further.
+ *
+ * [InflationSolver] runs it once per pressure step, and only when that residual sits above the
+ * step's acceptance gate but close to it. Curvature enters as Hessian-vector products built from
+ * central differences of the gradient, two energy evaluations each, so no Hessian is ever
+ * assembled. The conjugate-gradient inner solve is preconditioned by the energy diagonal from
+ * [MinimumSearch] and truncated at the trust-region boundary or on negative curvature, and anchors
+ * with no stiffness stay out of the free set. [SolveOptions] carries the flag that turns it off.
+ */
+
 /** Truncated preconditioned CG in a trust region. A final force correction, not a stability certificate. */
 object NewtonPolish {
     fun improve(model:Envelope,initial:DoubleArray,fraction:Double,options:SolveOptions,

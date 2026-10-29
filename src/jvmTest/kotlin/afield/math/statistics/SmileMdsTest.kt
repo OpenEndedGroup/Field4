@@ -164,29 +164,36 @@ class SmileMdsTest {
     }
 
     /**
-     * All four entry points advertised `dimensions >= 1` and none of them accepted it.
-     *
-     * `MDS.Options` and `TSNE.Options` both throw `Invalid dimension of feature space: 1` for
-     * `d < 2` (Smile 5.0.1), so a caller who read the `require` message got a different exception
-     * with a different message from inside Smile. The floor now says 2 in all four places.
+     * `MDS.Options` and `TSNE.Options` both throw `Invalid dimension of feature space: 1` for `d < 2`
+     * (Smile 5.0.1). MDS takes one dimension anyway, through the LAPACK path, and it is the first
+     * column of the two-dimensional fit; t-SNE still refuses, with the wrapper's message rather than
+     * Smile's.
      */
     @Test
-    fun oneDimensionalProjectionsAreRefusedByTheWrapperNotBySmile() {
+    fun mdsProjectsToOneDimensionAndTsneRefusesInItsOwnWords() {
         val vectors = Array(8) { row -> DoubleArray(4) { column -> kotlin.math.sin(row * 0.3 + column) + 2.0 } }
         val distances = Array(8) { a -> DoubleArray(8) { b -> abs(a - b).toDouble() } }
 
+        val pairs: List<Pair<Array<DoubleArray>, Array<DoubleArray>>> = listOf(
+            smileMds(vectors, dimensions = 1).coordinates to smileMds(vectors, dimensions = 2).coordinates,
+            smileMdsDistances(distances, dimensions = 1).coordinates to smileMdsDistances(distances, dimensions = 2).coordinates,
+        )
+        for ((one, two) in pairs) {
+            assertEquals(1, one[0].size)
+            val sign = if (one[0][0] * two[0][0] < 0.0) -1.0 else 1.0
+            for (row in one.indices) assertEquals(two[row][0], sign * one[row][0], 1e-6, "row $row")
+        }
+
         listOf(
-            { smileMds(vectors, dimensions = 1) },
-            { smileMdsDistances(distances, dimensions = 1) },
             { smileTsne(vectors, dimensions = 1, perplexity = 3.0) },
             { smileTsneDistances(distances, dimensions = 1, perplexity = 3.0) },
         ).forEachIndexed { index, call ->
-            val refusal = assertFailsWith<IllegalArgumentException>("entry point $index accepted dimensions = 1") {
+            val refusal = assertFailsWith<IllegalArgumentException>("t-SNE entry point $index accepted dimensions = 1") {
                 call()
             }
             assertTrue(
                 refusal.message.orEmpty().contains("between 2 and"),
-                "entry point $index refused with Smile's message rather than ours: ${refusal.message}",
+                "t-SNE entry point $index refused with Smile's message rather than ours: ${refusal.message}",
             )
         }
     }

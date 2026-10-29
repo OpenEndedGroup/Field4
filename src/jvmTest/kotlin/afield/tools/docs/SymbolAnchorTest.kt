@@ -13,7 +13,8 @@ import kotlin.test.assertNull
  * [StdlibReferenceGenerator.TypeAnchors] once indexed types only, so `[topLevelFun]`, `[Type.member]`
  * and `[Receiver.extension]` published as plain code. These pin what the widened index links and,
  * as importantly, what it still refuses: a name two files define, a member named bare from
- * another file, and a member of a type this reference does not emit.
+ * another file, a member of a type this reference does not emit, and a name the referring row
+ * takes as its own parameter.
  */
 class SymbolAnchorTest {
 
@@ -76,6 +77,59 @@ class SymbolAnchorTest {
         assertEquals("alife.md#alife-kt--polarization", anchors.resolveReference("afield.alife.polarization", other))
         // A known qualifier from another file contradicts the match.
         assertNull(anchors.resolveReference("Box.polarization", other))
+    }
+
+    @Test
+    fun `a parameter name resolves in its own scope, not against the corpus`() {
+        // `polarization` is a top-level function of another file, so bare it links from anywhere —
+        // except from a row whose own parameter is called that.
+        assertEquals("alife.md#alife-kt--polarization", anchors.resolveReference("polarization", other))
+        assertNull(anchors.resolveReference("polarization", other, setOf("polarization")))
+        // A qualified reference names a member whatever a parameter is called.
+        assertEquals(
+            "core.md#boxes-kt--box--children",
+            anchors.resolveReference("Box.children", other, setOf("children", "Box")),
+        )
+        // And a name the row does not take as a parameter is unaffected.
+        assertEquals("alife.md#alife-kt--polarization", anchors.resolveReference("polarization", other, setOf("steps")))
+    }
+
+    @Test
+    fun `parameter names are read from the signature`() {
+        assertEquals(
+            setOf("totalSteps"),
+            StdlibReferenceGenerator.parameterNames("fun Box.animateEvolution(totalSteps: Int)"),
+        )
+        assertEquals(
+            setOf("xs", "seed", "onStep"),
+            StdlibReferenceGenerator.parameterNames(
+                "fun walk(vararg xs: Int, seed: Long = 0L, crossinline onStep: (i: Int) -> Unit)"
+            ),
+        )
+        // A constructor's `val`, an annotation and a backticked name all reduce to the name.
+        assertEquals(
+            setOf("line", "in"),
+            StdlibReferenceGenerator.parameterNames("class Span(val line: Int, @JvmField `in`: String)"),
+        )
+        // A signature with no parameter list has no parameters.
+        assertEquals(emptySet<String>(), StdlibReferenceGenerator.parameterNames("val Box.frame: Rect"))
+        // And a function type is not a parameter list, so `Box` stays linkable from the summary.
+        assertEquals(emptySet<String>(), StdlibReferenceGenerator.parameterNames("val handler: (Box) -> Unit"))
+        // An arrow is not a closing bracket: every parameter after the first function-typed one
+        // used to be invisible here, which left `set` linking to an unrelated `set` elsewhere.
+        assertEquals(
+            setOf("name", "get", "set"),
+            StdlibReferenceGenerator.parameterNames(
+                "fun slider(name: String, get: () -> Double, set: (Double) -> Unit)"
+            ),
+        )
+        assertEquals(
+            setOf("candidates", "check", "facts"),
+            StdlibReferenceGenerator.parameterNames(
+                "fun <T> tryAll(candidates: List<Candidate>, check: (String) -> Admission<T>, " +
+                    "facts: (value: T) -> Map<String, Any?>): Trial"
+            ),
+        )
     }
 
     @Test

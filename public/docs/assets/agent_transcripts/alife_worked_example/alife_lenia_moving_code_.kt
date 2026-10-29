@@ -12,7 +12,6 @@ fun fields(a: Img, b: Img, n: Int) = [
     "mu 0.12, step %d: mass %.4f".format(n, b.mean()) to b.colormap("inferno", 0f, 1f).upscaleNearest(6),
 ]
 
-
 // The same cells, with the growth curve centred at 0.12 instead of 0.15.
 val lowMu = leniaRuleFromCatalogue(radius = 13, t = 10.0, mu = 0.12, sigma = 0.015)
 

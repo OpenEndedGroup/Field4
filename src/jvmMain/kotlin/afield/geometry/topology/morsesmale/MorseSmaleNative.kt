@@ -1,3 +1,30 @@
+/**
+ * Finding `field_morse_smale` on this machine, and calling into it once found.
+ *
+ * [MorseSmaleLibrary] is the half that answers without loading anything: the library's file name on
+ * this OS, the paths it is looked for in, whether one of them exists, and the Gradle task and
+ * per-OS shell commands that build it. `NativeGeometry` registers it as a
+ * [NativeGeometryCapability], so the welcome page's Geometry extensions panel can report on the
+ * library whether or not it is installed. The path is resolved afresh on every read, so a library
+ * built during a live session is picked up by the next box run.
+ *
+ * The other half, internal to the package, binds the C ABI declared in
+ * `native/field-morse-smale/src/field_morse_smale.h` with java.lang.foreign: one lazy downcall
+ * handle per `fms_` entry point, and a 512-byte buffer that building a complex and simplifying one
+ * carry down and read a message out of when they hand back nothing. The counts and read-outs take
+ * no error buffer. The first symbol lookup checks `fms_abi_version` against the version this
+ * binding expects and refuses a library that disagrees, naming the task that rebuilds it.
+ *
+ * Two kinds of native object pass through here, and only one of them is the caller's to free.
+ * Building a complex hands back an address that must be freed exactly once, and reading it copies
+ * the critical points, the cancellation order, the persistence pairs and the stage timings out
+ * into Kotlin arrays in one pass. Simplifying at a threshold builds a second native object, a view;
+ * that call copies the surviving nodes, the separatrix arcs with their traced paths, and the basin
+ * and peak segmentation out of it, then frees the view before returning.
+ *
+ * [MorseSmale] is the API over it, and its only caller.
+ */
+
 package afield.geometry.topology.morsesmale
 
 import afield.geometry.network.NativeGeometryCapability
@@ -15,24 +42,6 @@ import java.lang.foreign.ValueLayout.JAVA_LONG
 import java.lang.invoke.MethodHandle
 import java.nio.file.Path
 import kotlin.io.path.exists
-
-/**
- * The bridge to `field_morse_smale`, the C++ solver behind
- * [afield.geometry.topology.morsesmale.MorseSmale]: where the shared library is, and a
- * `java.lang.foreign` binding to its C ABI.
- *
- * Field runs without the library, so [MorseSmaleLibrary] is what the rest of Field asks before
- * reaching for a complex: the paths it tried, the line the welcome page shows, and the build
- * advice an `UnsatisfiedLinkError` carries when it was never built. [MorseSmaleLibrary.resolvedPath]
- * is not cached, so a library built during a live session is picked up by the next box run, and
- * the binding refuses one whose ABI version does not match the constant this file was written
- * against.
- *
- * The C side owns the computed complex; Kotlin holds a `MemorySegment` handle and copies critical
- * points, separatrices and the persistence hierarchy out on demand. That is what lets
- * [afield.geometry.topology.morsesmale.MorseSmaleComplex.simplify] answer at a new persistence
- * threshold from the same handle, without recomputing the gradient.
- */
 
 /**
  * Where `field_morse_smale` is, and whether it is there. Field runs without it; [describe] says how

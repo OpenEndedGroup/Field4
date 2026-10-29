@@ -162,9 +162,9 @@ import kotlin.math.sqrt
  *
  * # AWT and the main run loop
  *
- * `imaging_field.kt:417` explains why `montage` captions with a bitmap table instead of
- * `Graphics2D.drawString`: on macOS, touching the AWT font manager pulls in AppKit, which competes
- * with GLFW for the main run loop, and `Server.main` never initialises the toolkit. This
+ * `imaging_field.kt` captions `montage` with a bitmap table instead of `Graphics2D.drawString`, for
+ * a reason that reaches this file: on macOS, touching the AWT font manager pulls in AppKit, which
+ * competes with GLFW for the main run loop, and `Server.main` never initialises the toolkit. This
  * family cannot avoid the font manager — it *is* the font manager — so it contains the hazard in one
  * place, [Typefaces.warm], whose KDoc carries the measured stack trace and the conclusion:
  *
@@ -199,11 +199,14 @@ internal val typographyFrc: FontRenderContext = FontRenderContext(AffineTransfor
  * Immutable, and cheap to derive from ([atSize], [withKerning]) because the underlying `java.awt.Font`
  * is shared and the glyph cache is keyed by the AWT font, so two `Typeface`s over the same font at
  * the same size share their extracted outlines.
- *
- * @property awtFont the AWT font, exposed — anything AWT can do to a font (attributes,
- *   transforms, `deriveFont`) is available, and [Typeface.of] wraps the result back up.
  */
-class Typeface internal constructor(val awtFont: Font) {
+class Typeface internal constructor(
+    /**
+     * The AWT font, exposed: anything AWT can do to a font (attributes, transforms, `deriveFont`)
+     * is available, and [Typeface.of] wraps the result back up.
+     */
+    val awtFont: Font,
+) {
 
     /** Point size, as a `Double` — `awtFont.size` truncates to `Int`. */
     val size: Double = awtFont.size2D.toDouble()
@@ -545,15 +548,24 @@ fun typefaceFromFile(path: String, size: Number = 64.0): Typeface = Typefaces.fr
  *
  * The polygon does **not** repeat its first point at the end — the ring closes implicitly, which is
  * what every consumer here (`FloatEarcut`, point-in-polygon, the scanline filler) wants.
- *
- * @property depth how many other rings of the same glyph contain this one. 0 for the bowl of `o`, 1
- *   for its counter. Even is an outer contour, odd is a hole.
- * @property signedArea `½Σ(xᵢyᵢ₊₁ − xᵢ₊₁yᵢ)` in text space; positive for outer rings and negative
- *   for holes, per the convention this file enforces. Its magnitude is the ring's area in square
- *   text-space units.
  */
-class GlyphContour internal constructor(val points: List<Vec2>, val depth: Int) {
+class GlyphContour internal constructor(
+    /**
+     * The ring as a polygon in text space, flattened to the tolerance the extraction asked for, and
+     * wound so that [signedArea] agrees with [depth]. The first point is not repeated at the end.
+     */
+    val points: List<Vec2>,
+    /**
+     * How many other rings of the same glyph contain this one. 0 for the bowl of `o`, 1 for its
+     * counter. Even is an outer contour, odd is a hole.
+     */
+    val depth: Int,
+) {
 
+    /**
+     * `½Σ(xᵢyᵢ₊₁ − xᵢ₊₁yᵢ)` in text space; positive for outer rings and negative for holes, per the
+     * convention this file enforces. Its magnitude is the ring's area in square text-space units.
+     */
     val signedArea: Double = run {
         var sum = 0.0
         for (i in points.indices) {
@@ -607,21 +619,34 @@ class GlyphContour internal constructor(val points: List<Vec2>, val depth: Int) 
  *    point-sampling bridges consume.
  *  - [outline] — one `moveTo`-led subpath per contour, with the font's real cubics (quadratics
  *    promoted, because `FLine` has no quadratic node). What you draw.
- *
- * @property glyphCode the font's own glyph id, not a character code — a ligature has one code and
- *   several characters.
- * @property chars the characters that produced this glyph the first time it was extracted.
- * @property advance how far the pen moves after this glyph, in text-space units. Whitespace has an
- *   advance and no contours.
- * @property bounds tight bounds of the outline (an empty rect at the origin for whitespace), which
- *   is the *visual* box — [advance] is generally wider, and italics can overhang it.
  */
 class Glyph internal constructor(
+    /**
+     * The font's own glyph id, not a character code: a ligature has one code and several
+     * characters, and the same code means different letters in different fonts.
+     */
     val glyphCode: Int,
+    /** The characters that produced this glyph the first time it was extracted. */
     val chars: String,
+    /**
+     * How far the pen moves after this glyph, in text-space units. Whitespace has an advance and no
+     * contours.
+     */
     val advance: Double,
+    /**
+     * The rings as polygons, in the font's own order, depth-classified and winding-normalised. This
+     * is what the mesh, SDF, raster and point-sampling bridges consume.
+     */
     val contours: List<GlyphContour>,
+    /**
+     * The same rings in the same order, one `moveTo`-led subpath each, keeping the font's real
+     * cubics. This is what you draw, and its subpaths run in step with [contours].
+     */
     val outline: FLine,
+    /**
+     * Tight bounds of the outline (an empty rect at the origin for whitespace), which is the
+     * *visual* box: [advance] is generally wider, and italics can overhang it.
+     */
     val bounds: Rect,
 ) {
     /** True for a space, a tab, or any glyph the font draws nothing for. */
@@ -920,13 +945,25 @@ enum class TextAlign { LEFT, CENTER, RIGHT }
  * so [pivot] is in the glyph's own coordinates and defaults to the centre of its visual bounds —
  * which means a bare `rotation = 0.3` spins each letter about itself rather than about its baseline
  * corner, and looks like what you meant.
- *
- * @property charIndex index into the laid-out string of the first character this glyph renders.
  */
 class PlacedGlyph internal constructor(
+    /**
+     * The outline being placed, shared with every other placement of the same glyph in the same
+     * font and size. Do not expect to own it.
+     */
     val glyph: Glyph,
+    /**
+     * Where layout put this glyph, in the layout's text space: on its line's baseline, with the
+     * alignment shift already in it. Fixed for the life of the placement — [offset] is the handle
+     * that moves it.
+     */
     val origin: Vec2,
+    /** Which of [TextLayout.lines] this glyph is on, counting from 0. */
     val lineIndex: Int,
+    /**
+     * Index into the laid-out string of the first character this glyph renders. Line breaks count,
+     * so this indexes [TextLayout.text] rather than [TextLine.text].
+     */
     val charIndex: Int,
 ) {
     /** Extra translation, in text-space units, applied after layout. */
@@ -983,12 +1020,32 @@ class PlacedGlyph internal constructor(
     override fun toString(): String = "PlacedGlyph('${text}' @ ${"%.1f".format(origin.x)},${"%.1f".format(origin.y)})"
 }
 
-/** One baseline's worth of a layout. */
+/**
+ * One baseline's worth of a layout.
+ *
+ * There is one of these per `\n`-separated run of the laid-out string, including the empty ones: a
+ * blank line is a `TextLine` with no glyphs and zero width, and it still takes up its baseline.
+ */
 class TextLine internal constructor(
+    /** Which line this is, counting from 0, and the [PlacedGlyph.lineIndex] its glyphs carry. */
     val index: Int,
+    /** This line's own characters, without the line break that ended it. */
     val text: String,
+    /**
+     * This line's baseline in the layout's text space: `index` times the layout's
+     * [TextLayout.lineHeight], so the first line's baseline is at 0 and later lines are at
+     * increasing y, which is downwards.
+     */
     val baselineY: Double,
+    /**
+     * How far the pen travelled across this line, tracking between glyphs included and the gap
+     * after the last glyph excluded. It is not the inked width — an italic `f` can overhang it.
+     */
     val advanceWidth: Double,
+    /**
+     * The glyphs on this baseline, in reading order. They are the same objects as the matching
+     * stretch of [TextLayout.glyphs], so a handle set through either is set for both.
+     */
     val glyphs: List<PlacedGlyph>,
 )
 
@@ -999,12 +1056,25 @@ class TextLine internal constructor(
  * handles, which is the split that matters — a layout is computed once and animated many times.
  */
 class TextLayout internal constructor(
+    /** The string that was laid out, line breaks and all. */
     val text: String,
+    /** The typeface it was laid out in, which is where [ascent], [descent] and the glyphs come from. */
     val typeface: Typeface,
+    /**
+     * Every placement in the layout, in reading order across all lines. This is what [eachGlyph]
+     * walks and what the geometry bridges read.
+     */
     val glyphs: List<PlacedGlyph>,
+    /** The lines, in order, one per `\n`-separated run of [TextLayout.text], empty lines included. */
     val lines: List<TextLine>,
+    /** The extra advance after every glyph that was asked for, in text-space units. */
     val tracking: Double,
+    /**
+     * Baseline-to-baseline distance in text-space units — the resolved value, `typeface.lineHeight`
+     * times the `lineSpacing` [layoutText] was given, not the multiplier.
+     */
     val lineHeight: Double,
+    /** Where each line sits relative to the widest one. */
     val align: TextAlign,
 ) {
     /** Positive, from the typeface. */

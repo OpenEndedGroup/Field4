@@ -75,9 +75,10 @@ import kotlin.math.sqrt
  * #### What all four do before Smile sees anything
  *
  * Values have to be finite; a supplied matrix has to be square, non-negative, symmetric to 1e-9 and
- * zero on the diagonal; `dimensions` has to be at least 2 and below the number of rows. The floor
- * of 2 is Smile's own, and the wrapper refuses first so the message names the argument you passed
- * rather than arriving from inside `MDS.Options`.
+ * zero on the diagonal; `dimensions` has to be below the number of rows, and at least 1 for MDS
+ * and 2 for t-SNE. Smile's `MDS.Options` refuses one dimension, so MDS fits that case through the
+ * LAPACK path; the wrappers refuse first so the message names the argument you passed rather than
+ * arriving from inside Smile.
  *
  * Memory is quadratic in the number of points before any fitting starts, because the dissimilarity
  * matrix is dense: 191 MiB of `double` at 5000 points, 3 GiB at 20 000. Sample a long trajectory
@@ -318,8 +319,8 @@ fun smileMds(
     require(vectors.size >= 2) { "smileMds: at least two vectors are required" }
     val inputDimensions = vectors.first().size
     require(inputDimensions > 0) { "smileMds: vectors must not be empty" }
-    require(dimensions in 2 until vectors.size) {
-        "smileMds: dimensions must be between 2 and vectors.size - 1"
+    require(dimensions in 1 until vectors.size) {
+        "smileMds: dimensions must be between 1 and vectors.size - 1"
     }
     vectors.forEachIndexed { row, vector ->
         require(vector.size == inputDimensions) {
@@ -388,7 +389,7 @@ fun smileMdsDistances(
     label: String = "precomputed",
     positiveCorrection: Boolean = true,
 ): SmileMdsProximityProjection {
-    validateDistanceMatrix(distances, dimensions, "smileMdsDistances")
+    validateDistanceMatrix(distances, dimensions, "smileMdsDistances", minimumDimensions = 1)
     val model = fitClassicalMds(distances, dimensions, positiveCorrection)
     return SmileMdsProximityProjection(
         model.coordinates, model.scores, model.proportion, label, positiveCorrection,
@@ -502,10 +503,11 @@ private fun validateDistanceMatrix(
     dimensions: Int,
     caller: String,
     minimumRows: Int = 2,
+    minimumDimensions: Int = 2,
 ) {
     require(distances.size >= minimumRows) { "$caller: at least $minimumRows rows are required" }
-    require(dimensions in 2 until distances.size) {
-        "$caller: dimensions must be between 2 and distances.size - 1"
+    require(dimensions in minimumDimensions until distances.size) {
+        "$caller: dimensions must be between $minimumDimensions and distances.size - 1"
     }
     distances.forEachIndexed { row, values ->
         require(values.size == distances.size) {
@@ -636,7 +638,9 @@ private fun fitClassicalMds(
     dimensions: Int,
     positiveCorrection: Boolean,
 ): ClassicalMdsFit {
-    if (arpackAvailable) {
+    // Smile's MDS.Options refuses one dimension; the LAPACK transcription has no such floor, and the
+    // one-dimensional fit is the leading eigenvector of the same matrix.
+    if (arpackAvailable && dimensions >= 2) {
         try {
             val model = MDS.fit(proximity, MDS.Options(dimensions, positiveCorrection))
             return ClassicalMdsFit(model.coordinates(), model.scores(), model.proportion())

@@ -17,6 +17,23 @@ import java.util.concurrent.Executors
 import kotlin.random.Random
 
 /**
+ * Interactive evolution: a grid of pictures in a box's output panel, where clicking the ones you
+ * like breeds the next generation. The fitness function is the person looking at it.
+ *
+ * This is the half of `afield.study.search` that scores nothing itself. `PopulationSearch.kt`
+ * spends a budget of evaluations against an [Objective]; this file spends your attention instead.
+ * Both describe a genome with the same [GenomeOps], so a genome written for one drives the other
+ * unchanged, and [breedFrom] is the shared rule for turning a pair of parents into a child.
+ *
+ * [EyeEvolution] holds the grid, the current parents and every earlier set; [evolveByEye] puts
+ * one in a box and hands it back; [EyeSetting] is a number the grid's toolbar shows and lets you
+ * turn between generations. Nothing here knows what a genome is beyond the four functions you
+ * supply for breeding it, drawing it, naming it and labelling its tile. In this tree the genome it
+ * is used with is [afield.lang.rpn.ColorRpn], and `ColorRpnEvolution.kt` is the worked example of
+ * wiring one up.
+ */
+
+/**
  * Interactive evolution, where the eye is the fitness function: a grid of tiles in a box's output
  * panel (the parents first, then their children), and clicking [EyeEvolution.pick] tiles makes
  * them the next parents and breeds again. This is the loop of Karl Sims' *Genetic Images* and of
@@ -294,13 +311,25 @@ class Offspring<G>(val genome: G, val note: String = "")
  * breeds a new generation from the same parents. [choices], when given, makes it a menu.
  */
 class EyeSetting(
+    /** Identifies the control in the toolbar; the browser sends it back to say which one moved. */
     val name: String,
+    /** The current value, which the toolbar shows and a change replaces. */
     var value: Double,
+    /**
+     * The smallest value this accepts. A value arriving from the toolbar is clamped into
+     * [min]`..`[max], including when [choices] is a menu, so a menu entry outside the range is
+     * silently pulled back into it.
+     */
     val min: Double,
+    /** The largest value this accepts; see [min] for the clamp. */
     val max: Double,
+    /** The number field's increment. Ignored when [choices] makes this a menu. */
     val step: Double = 1.0,
+    /** When non-empty, the control is a menu of exactly these values rather than a number field. */
     val choices: List<Double> = emptyList(),
+    /** The text shown beside the control; [name] by default. */
     val label: String = name,
+    /** Called with the new value once it is clamped, before the next generation is bred. */
     val onChange: (Double) -> Unit,
 ) {
     internal companion object {

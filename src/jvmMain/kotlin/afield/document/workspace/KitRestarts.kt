@@ -5,23 +5,25 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * Building the next launch's kit classpath while the current Field keeps running.
+ * Builds the classpath a kit needs before stopping the Field that asked for it, so a build that
+ * fails leaves Welcome running and able to say why. Adding a kit package registers a snapshot but
+ * loads nothing: its Kotlin extensions, pinned dependencies and native libraries reach a host only
+ * through the launch profile [KitPackages] writes, which is why **Restart Field** in Welcome's kit
+ * area has to compile and resolve before the restart rather than after it.
  *
- * A kit's extension source, JARs and dependencies only reach Field through a launch, from the
- * profile [KitPackages] writes for the build, so taking a newly installed kit into use means a
- * restart. [KitRestarts.prepare] does the build first: on a daemon thread it runs the checkout's
- * Gradle wrapper for `jvmJar dumpFieldLaunch -PfieldServerOnly=true`, logging to
- * `logs/restart.log` under the kits directory, and calls back to stop and relaunch the host only
- * when that exits cleanly. A kit that does not compile therefore leaves the running Field alone and
- * the failure readable in Welcome instead of taking the host down with it. The build is given
- * twenty minutes, `AFIELD_OFFLINE` passes `--offline` through to it, and an installation with no
- * launcher or build wrapper beside it is refused before any of this starts.
- *
- * [KitRestarts.status] is what Welcome polls while the build runs: a phase, a message for the
- * reader, and the path of that log.
+ * [KitRestarts.prepare] checks that this installation has both a launcher (`field.sh`, or
+ * `field.ps1` on Windows) and a Gradle wrapper, then runs `gradlew jvmJar dumpFieldLaunch
+ * -PfieldServerOnly=true` on a daemon thread, adding `--offline` when `AFIELD_OFFLINE` is set and
+ * appending to `logs/restart.log` under the kits directory. The current host keeps serving
+ * throughout. A non-zero exit, or a build still going after twenty minutes, leaves
+ * [KitRestarts.status] at phase `failed` with the message and the log path and no restart happens;
+ * only a clean build invokes the `ready` callback, which flushes pending document saves, stops the
+ * server and relaunches the launcher with `--server-only`. Welcome polls
+ * `GET /api/kits/restart-status` while the build runs, and the Electron or browser window it polled
+ * from reconnects to the new host once the restart completes.
  */
 
-/** Phase and log of the kit runtime build: `idle`, `building`, `restarting` or `failed`. */
+/** The phase Welcome is showing: `idle`, `building`, `restarting` or `failed`, with its log path. */
 @Serializable
 data class KitRestartStatus(val running: Boolean = false, val phase: String = "idle", val message: String = "", val log: String = "")
 

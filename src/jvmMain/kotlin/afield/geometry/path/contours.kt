@@ -147,11 +147,13 @@ import kotlin.math.sqrt
  * than leaving it to the direction a multiplication rounded — which matters because every bilinear
  * field lands there exactly.
  *
- * The segment stitcher is O(m^2) in the number of segments, so very high grid resolutions get
- * expensive.
+ * # Stitching and winding
+ *
+ * Each crossing is computed once and keyed by its grid edge, as `marchingCubes` keys its shared
+ * vertices, so segments are chained by key in time linear in their number. Every segment is
+ * oriented with the inside on its left, so a closed contour comes back counter-clockwise around an
+ * inside region and clockwise around a hole in one: summed signed areas give the inside's true area.
  */
-
-private data class Vec2Segment(val a: Vec2, val b: Vec2)
 
 /**
  * A 2D `FLine` flattened into the point/edge graph that [pointEdgeScalarField2D] contours, plus the
@@ -491,7 +493,14 @@ fun generateIsoContours(
         }
     }
 
-    val segments = mutableListOf<Vec2Segment>()
+    val segments = mutableListOf<KeyedSegment>()
+
+    // Every crossing is computed once, on its edge in a fixed direction, and keyed by that edge, so
+    // the two cells that share it use the identical point and the stitcher joins by key, not distance.
+    // Horizontal edge (i, j)-(i+1, j) is key 2 * (j * (nx + 1) + i); vertical (i, j)-(i, j+1) is that + 1.
+    val crossingPoints = HashMap<Long, Vec2>()
+    fun hKey(i: Int, j: Int) = 2L * (j.toLong() * (nx + 1) + i)
+    fun vKey(i: Int, j: Int) = hKey(i, j) + 1
 
     /**
      * Which side of the iso level a corner is on: strictly below is *inside*.
@@ -540,13 +549,19 @@ fun generateIsoContours(
             val p3 = vec(x0, y1)
 
             // Collect intersections along edges in a consistent order:
-            // bottom (p0-p1), right (p1-p2), top (p2-p3), left (p3-p0)
-            val pts = mutableListOf<Vec2>()
+            // bottom (p0-p1), right (p1-p2), top (p2-p3), left (p3-p0). Each is also marked by whether
+            // the walk around the cell leaves the inside there; pairing always joins a leaving crossing
+            // to an entering one, and orienting each segment leaving -> entering keeps the inside on
+            // its left, so outer boundaries run counter-clockwise and holes clockwise.
+            val pts = mutableListOf<Crossing>()
+            fun crossing(key: Long, a: Vec2, b: Vec2, va: Double, vb: Double, leaving: Boolean) {
+                pts += Crossing(key, crossingPoints.getOrPut(key) { interp(a, b, va, vb) }, leaving)
+            }
 
-            if (crosses(v0, v1)) pts += interp(p0, p1, v0, v1)
-            if (crosses(v1, v2)) pts += interp(p1, p2, v1, v2)
-            if (crosses(v2, v3)) pts += interp(p2, p3, v2, v3)
-            if (crosses(v3, v0)) pts += interp(p3, p0, v3, v0)
+            if (crosses(v0, v1)) crossing(hKey(i, j), p0, p1, v0, v1, inside(v0))
+            if (crosses(v1, v2)) crossing(vKey(i + 1, j), p1, p2, v1, v2, inside(v1))
+            if (crosses(v2, v3)) crossing(hKey(i, j + 1), p3, p2, v3, v2, inside(v2))
+            if (crosses(v3, v0)) crossing(vKey(i, j), p0, p3, v0, v3, inside(v3))
 
             when (pts.size) {
                 0 -> {
@@ -554,7 +569,7 @@ fun generateIsoContours(
                 }
                 2 -> {
                     // Single segment through cell
-                    segments += Vec2Segment(pts[0], pts[1])
+                    segments += KeyedSegment.of(pts[0], pts[1])
                 }
                 4 -> {
                     // The saddle cell: the four corners alternate inside/outside, so the two
@@ -588,11 +603,11 @@ fun generateIsoContours(
                         (saddle < 0.0) == (s0 < 0.0)
                     }
                     if (pairingP) {
-                        segments += Vec2Segment(pts[0], pts[1])
-                        segments += Vec2Segment(pts[2], pts[3])
+                        segments += KeyedSegment.of(pts[0], pts[1])
+                        segments += KeyedSegment.of(pts[2], pts[3])
                     } else {
-                        segments += Vec2Segment(pts[0], pts[3])
-                        segments += Vec2Segment(pts[1], pts[2])
+                        segments += KeyedSegment.of(pts[0], pts[3])
+                        segments += KeyedSegment.of(pts[1], pts[2])
                     }
                 }
                 else -> {
@@ -608,7 +623,7 @@ fun generateIsoContours(
     }
 
     // Now stitch segments into polylines
-    return stitchSegmentsIntoPolylines(segments, max(dx, dy))
+    return stitchKeyedSegments(segments)
 }
 
 /**
@@ -777,79 +792,49 @@ fun generateSmoothIsoContours(
    Segment stitching
    ========================== */
 
-/**
- * Turn disjoint line segments into polylines by greedily joining endpoints
- * that are closer than a small epsilon.
- *
- * This is O(m^2) in the number of segments, which is fine for
- * moderate grids. If you crank resolution way up and it becomes
- * a bottleneck, a spatial hash / k-d tree would fix it.
- */
-private fun stitchSegmentsIntoPolylines(
-    segments: List<Vec2Segment>,
-    gridScale: Double
-): List<List<Vec2>> {
-    if (segments.isEmpty()) return emptyList()
+/** A marching-squares crossing: its grid edge, where it is, and whether the walk around the cell leaves the inside there. */
+private class Crossing(val key: Long, val point: Vec2, val leaving: Boolean)
 
-    val unused = segments.toMutableList()
-    val contours = mutableListOf<MutableList<Vec2>>()
-
-    // Epsilon scaled to grid size
-    val eps = gridScale * 1e-6
-
-    fun pointsClose(a: Vec2, b: Vec2): Boolean {
-        val dx = a.x - b.x
-        val dy = a.y - b.y
-        return dx * dx + dy * dy <= eps * eps
+/** One contour segment, from the crossing where its cell's walk leaves the inside to the one where it enters. */
+private class KeyedSegment(val fromKey: Long, val from: Vec2, val toKey: Long, val to: Vec2) {
+    companion object {
+        fun of(a: Crossing, b: Crossing): KeyedSegment {
+            check(a.leaving != b.leaving) { "marching squares paired two crossings of the same kind" }
+            return if (a.leaving) KeyedSegment(a.key, a.point, b.key, b.point) else KeyedSegment(b.key, b.point, a.key, a.point)
+        }
     }
+}
 
-    while (unused.isNotEmpty()) {
-        val seg = unused.removeLast()
-        val poly = mutableListOf(seg.a, seg.b)
+/**
+ * Chain oriented segments into polylines by grid-edge identity: linear in the number of segments.
+ *
+ * An interior crossing edge ends exactly one segment and starts exactly one, so chains are followed
+ * through a map. Open contours (those that start on the boundary of the grid) come first, each from
+ * its first segment; what is left is closed loops, which come back without a repeated last point.
+ * Every polyline keeps the inside on its left.
+ */
+private fun stitchKeyedSegments(segments: List<KeyedSegment>): List<List<Vec2>> {
+    if (segments.isEmpty()) return emptyList()
+    val byStart = HashMap<Long, KeyedSegment>(segments.size * 2)
+    for (s in segments) check(byStart.put(s.fromKey, s) == null) { "two contour segments start on one grid edge" }
+    val ends = HashSet<Long>(segments.size * 2).apply { segments.forEach { add(it.toKey) } }
+    val used = HashSet<KeyedSegment>(segments.size * 2)
+    val contours = ArrayList<List<Vec2>>()
 
-        var extended = true
-        while (extended) {
-            extended = false
-            var i = unused.size - 1
-            while (i >= 0) {
-                val s = unused[i]
-                val start = poly.first()
-                val end = poly.last()
-
-                when {
-                    pointsClose(s.a, end) -> {
-                        poly.add(s.b)
-                        unused.removeAt(i)
-                        extended = true
-                    }
-                    pointsClose(s.b, end) -> {
-                        poly.add(s.a)
-                        unused.removeAt(i)
-                        extended = true
-                    }
-                    pointsClose(s.a, start) -> {
-                        poly.add(0, s.b)
-                        unused.removeAt(i)
-                        extended = true
-                    }
-                    pointsClose(s.b, start) -> {
-                        poly.add(0, s.a)
-                        unused.removeAt(i)
-                        extended = true
-                    }
-                }
-                i--
-            }
+    fun follow(first: KeyedSegment) {
+        val poly = arrayListOf(first.from)
+        var s: KeyedSegment? = first
+        while (s != null && used.add(s)) {
+            poly += s.to
+            s = byStart[s.toKey]
         }
-
-        // If the curve is closed, drop duplicated endpoint
-        if (poly.size > 2 && pointsClose(poly.first(), poly.last())) {
-            poly.removeAt(poly.size - 1)
-        }
-
+        // a loop arrives back at its own first point; leave it implicit
+        if (s != null && s === first) poly.removeAt(poly.size - 1)
         contours += poly
     }
 
+    for (s in segments) if (s.fromKey !in ends && s !in used) follow(s)
+    for (s in segments) if (s !in used) follow(s)
     return contours
 }
 

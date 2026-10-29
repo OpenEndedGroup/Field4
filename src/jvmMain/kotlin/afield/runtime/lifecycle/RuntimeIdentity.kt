@@ -49,8 +49,9 @@ data class NativeLibraryIdentity(val path: String, val sha256: String)
 class RuntimeIdentityMismatch(message: String, val differences: List<String>) : IllegalStateException(message)
 
 /**
- * Which compiled classes and native libraries a result was made with, as hashes, so a host that
- * loaded other code is refused instead of quietly producing something else.
+ * Which compiled classes and native libraries a result was made with, as hashes, so that a host
+ * which has loaded different code is rejected by [RuntimeIdentity.verify] rather than returning a
+ * different answer.
  *
  * Pin the code that does the work once, when you have checked its results, and keep the pin with
  * the kit or the document (`files/runtime-identity.json`):

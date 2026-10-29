@@ -47,15 +47,17 @@ From `notes`
 WebRTC shader jam
 
 ```edn [field-box id="webrtc_publish_shader" role="properties"]
-{"id" "webrtc_publish_shader" "index" 1 "name" "publish a shader" "parents" ["root" "webrtc_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "webrtc_renderer"} "name" "publish a shader" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "webrtc_publish_shader_code_.kt" "lines" 23 "characters" 708 "sha256" "d86fd6fe7825042629ad63c3f8b54c76cb834062650d752bbc20ed7e5f271e51"} {"name" "notes" "language" "markdown" "path" "webrtc_publish_shader_notes_.md" "lines" 43 "characters" 1747 "sha256" "3a7b70d91fd4cf938223968e66fab7f0d01ecec726575568620f5ada5818eddd"} {"name" "vertex" "language" "glsl" "path" "webrtc_publish_shader_vertex_.glsl" "lines" 6 "characters" 106 "sha256" "7270a97f3cbaae098ffd43be2431591d87417f94d449cd9a01207a1c60fc2eb6"} {"name" "fragment" "language" "glsl" "path" "webrtc_publish_shader_fragment_.glsl" "lines" 16 "characters" 489 "sha256" "74159cc699e630c09c9c75ba30480e36684adb01e78c9034d655d3cc0c640d7b"}]}
+{"id" "webrtc_publish_shader" "index" 1 "name" "publish a shader" "parents" ["root" "webrtc_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "webrtc_renderer"} "name" "publish a shader" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "webrtc_publish_shader_code_.kt" "lines" 25 "characters" 705 "sha256" "26b7f408670562fac5a5b43aacc3be9c5f9c9cdf8ea5622a505e4739d3cf9e57"} {"name" "notes" "language" "markdown" "path" "webrtc_publish_shader_notes_.md" "lines" 43 "characters" 1747 "sha256" "3a7b70d91fd4cf938223968e66fab7f0d01ecec726575568620f5ada5818eddd"} {"name" "vertex" "language" "glsl" "path" "webrtc_publish_shader_vertex_.glsl" "lines" 6 "characters" 106 "sha256" "7270a97f3cbaae098ffd43be2431591d87417f94d449cd9a01207a1c60fc2eb6"} {"name" "fragment" "language" "glsl" "path" "webrtc_publish_shader_fragment_.glsl" "lines" 17 "characters" 585 "sha256" "99d306b6c193e5f76a0982fc0149c26e701395cc049cbad515af4b428b177b6f"}]}
 ```
 
 ```kotlin [field-property box="webrtc_publish_shader" name="code" path="webrtc_publish_shader_code_.kt"]
 import afield.media.webrtc.webrtcSink
 
-// Published as login/field-shader: your aaaframe login, or this computer's user name on
-// Field's own relay. A browser ShaderTrinket receives it by that name. To join a class,
-// run WebRTCNetwork.join("https://<your aaaframe>") once; Field asks you to sign in.
+/*
+Published as login/field-shader: your aaaframe login, or this computer's user name on
+Field's own relay. A browser ShaderTrinket receives it by that name. To join a class,
+run WebRTCNetwork.join("https://<your aaaframe>") once; Field asks you to sign in.
+*/
 @exported val sink = webrtcSink("field-shader", 640, 360)
 
 val module = moduleHere { +sink }
@@ -139,6 +141,7 @@ layout(push_constant) uniform constants {
     vec4 clock;
 } pc;
 
+// Falling masks invert an increasing smoothstep; reversed edges are undefined in GLSL.
 void main() {
     vec2 uv = (gl_FragCoord.xy - vec2(320.0, 180.0)) / 180.0;
     float t = pc.clock.x;
@@ -146,7 +149,7 @@ void main() {
     float a = atan(uv.y, uv.x);
     float rings = 0.5 + 0.5 * sin(10.0 * r - 3.0 * t + 4.0 * sin(3.0 * a + t));
     vec3 tint = 0.5 + 0.5 * cos(vec3(0.0, 2.1, 4.2) + t + 2.0 * r);
-    color = vec4(tint * rings * smoothstep(1.6, 0.2, r), 1.0);
+    color = vec4(tint * rings * (1.0 - smoothstep(0.2, 1.6, r)), 1.0);
 }
 ```
 

@@ -31,6 +31,22 @@ import afield.ui.visualization.geometryReviewSurfacesOwnedBy
 import afield.graphics.three.threeViewsOwnedBy
 import kotlinx.serialization.json.*
 
+/**
+ * What a study build's reviewers said, collected from the boxes that own the review surfaces.
+ *
+ * A build's outputs get reviewed where everything else does — the three-view panels and the geometry
+ * review surfaces a box owns — so this gathers the notes a build run left behind and a build card
+ * can show them without the reviewing machinery knowing that builds exist. A note is kept when it
+ * names one of the run ids asked for and its kind is an error, a warning or a question; notes are
+ * deduplicated by their source box and note id, first one wins.
+ *
+ * What comes back points at the discussion rather than restating it: ids for the note, the view and
+ * the two boxes, a count of replies, and the first 240 characters of the text for a label. A source
+ * whose surfaces have stopped is read too, from the review notes saved on the box itself, which is
+ * how a finished run keeps its history; those are marked as not live, and their staleness is left
+ * unanswered rather than guessed.
+ */
+
 /** A link to the existing discussion, never a second copy of its content or build verdict. */
 internal data class StudyBuildFinding(
     val runId: String, val noteId: String, val viewId: String, val sourceBox: String,

@@ -611,7 +611,10 @@ class Ai4CodeToolProviders(
                 file = fileRefFor(docName, ref.uid, ref.property),
                 message = "Unknown box '${ref.uid}'. Give `file` as the box's name or uid, or as afield://$docName/<box uid>/code."
             )
-        val source = stagedOrCurrentSource(target, ref.property, req.source)
+        // A blank `source` means "the box's code", not "compile nothing": on 2026-10-28 a local model passed
+        // source="" and got success with no diagnostics for a box that did not compile, then believed it.
+        val explicit = req.source?.takeIf { it.isNotBlank() }
+        val source = stagedOrCurrentSource(target, ref.property, explicit)
             ?: return@compileKotlin CompileKotlinResult(
                 success = false,
                 file = fileRefFor(docName, target.id, ref.property),
@@ -699,7 +702,7 @@ class Ai4CodeToolProviders(
         val changedNames = changed.filter { it.changed || it.cacheChanged }.joinToString(", ") { it.property }
         val message = buildString {
             append(if (success) "Kotlin compiled successfully" else "Kotlin compile failed")
-            append(" for ${target.id}; snippets=$snippetsCompiled")
+            append(" for ${target.id}: ${source.length} chars of ${if (explicit != null) "the given source" else "the box's code"}; snippets=$snippetsCompiled")
             if (changedNames.isNotBlank()) append("; setup changed: $changedNames")
         }
         lprintln("info,ai4", message)
@@ -2481,9 +2484,14 @@ fun installAi4() {
                         latestProgressOpen = false,
                         additions = additions
                     )
-                    // It ends with the waiting row, saved with the wait itself; StudyBuildAwaits resumes the chat.
-                    val next = if (suspension == null) rendered else
-                        rendered.trimEnd() + "\n" + awaits.suspend(sessionInfo, box, suspension, exec.property, exec.maxToolRounds).row
+                    // It ends with the waiting row, saved with the wait itself; StudyBuildAwaits resumes the chat. A
+                    // question needs no one to resume it: its row asks, and the person's next message is the answer.
+                    val next = if (suspension == null) rendered else buildString {
+                        append(rendered.trimEnd())
+                        if (suspension.jobs.isNotEmpty())
+                            append("\n").append(awaits.suspend(sessionInfo, box, suspension, exec.property, exec.maxToolRounds).row)
+                        suspension.question?.let { append("\n").append(afield.ai.conversation.AiChatBlock.questionRow(it.question, it.choices)) }
+                    }
                     saveHistory(next)
                     sendToPanel(next)
                     val changedEntries = provisionalDelta(provisionalBeforeAi, provisionalEntries(docPath))
@@ -2504,7 +2512,8 @@ fun installAi4() {
                             )
                         )
                     }
-                    notify(if (suspension != null) "Waiting for builds without the model; the chat carries on when they finish."
+                    notify(if (suspension?.question != null) "The AI has a question for you in the chat."
+                        else if (suspension != null) "Waiting for builds without the model; the chat carries on when they finish."
                         else "Reply ready in the chat.", "AI4")
                 } else if (editResult != null) {
                     threadByKey[conversationKey] = editResult.threadState

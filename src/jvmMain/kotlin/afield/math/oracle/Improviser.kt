@@ -7,35 +7,31 @@ import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /**
- * Playing a [VariableMarkovOracle]'s memory forward, one sample at a time, so that a recording
- * continues in its own style for as long as it is asked to.
+ * Playing a sequence memory back as a new performance: when to leave the passage being played,
+ * how to join the next one, and how to tell whether what came out still resembles the recording.
  *
- * [Improviser] follows the recording sample by sample and, once it has stayed on a passage long
- * enough to count as a phrase, may jump to another place that shares the same recent context.
- * Candidates are scored by how much context they share, how far the join would be, and how
- * recently their material was last played, and one is drawn from a seeded softmax over those
- * scores. A jump whose join would need too large a correction, or that leaves too little of its
- * episode to play, is refused rather than smoothed over; the correction an accepted join does
- * need fades out over `joinTime` seconds and is recorded rather than hidden. [Policy] switches
- * between this and two baselines: looping the recording, and matching recent history with no
- * oracle structure.
+ * [Improviser] advances one sample at a time. It follows the recording, and once it has stayed on
+ * a passage for at least a phrase it may jump to another that shares context, joining the two
+ * with a correction that starts at the discontinuity and fades out. Every sample it emits is
+ * taken from the memory, and [Performance] records where from: the memory position behind each
+ * output sample, the size of the correction applied there, which channels the performer held, and
+ * a [Segment] wherever the source changed, carrying the [Reason] it changed.
  *
- * Nothing is invented. On a channel the performer has not taken over, and wherever a continuation
- * is available to play, each output sample is a sample of the recording plus that fading join
- * correction. [Performance] is both the result and the record of it, holding the output beside
- * the memory position behind every sample, the correction applied there, and which channels were
- * performed, with one [Segment] per stretch and a [Reason] for why it began. It also measures the
- * outcome: how much of the output replays a passage it played recently and how much of the
- * memory is reached at all, how much the output repeats itself whatever its source in memory,
- * how rough the joins are against the recording, and
- * how far the output's distribution of acceleration has moved from the recording's.
+ * [Performance] also carries the measurements, since whether a recombination still sounds like
+ * the recording is not something the player can answer about itself. `reuse` and `coverage` count
+ * memory positions; `outputRepetition` looks at the output alone, and so sees a loop assembled
+ * from copies of one gesture taken from different places in memory, which `reuse` cannot;
+ * `joinRoughness` and `accelerationDistance` compare the result against the original recording.
  *
- * A [ContinuationJudge] is a second opinion, asked at every jump decision to rate each
- * candidate's next few seconds, and [JudgeMode] decides whether its loss joins the score or only
- * removes candidates. `afield.math.temporal.ForecastJudge` supplies one from a forecasting model.
+ * [ContinuationJudge] is declared here and implemented elsewhere: a second opinion that rates
+ * proposed continuations, which [Improviser] either folds into its own scores or, in veto mode,
+ * uses only to drop candidates. `afield.math.temporal.ForecastJudge` is the one that ships. A
+ * judge can change which passage is played next; it proposes no samples of its own.
  *
- * A step allocates nothing beyond the recent-history buffer, so playback can run inside a frame
- * loop. Tests: `VariableMarkovOracleTest`, `SeveralTakesTest`, `ContinuationJudgeTest`.
+ * [Policy] selects between the oracle and two baselines (jumping to the nearest match in recent
+ * history, with no oracle structure, and looping each episode unchanged), so a recombination can
+ * be compared against doing less. Tests: `VariableMarkovOracleTest`, `SeveralTakesTest` and
+ * `ContinuationJudgeTest`.
  */
 
 /** How an [Improviser] chooses where to go next. */
@@ -108,7 +104,7 @@ class Performance(
     fun sourceSeconds(): List<Double> = source.map { if (it < 0) Double.NaN else it / output.sampleRate }
 
     /** Fraction of output samples whose source passage was played at least once before within [window] samples. */
-    fun reuse(window: Int = (output.sampleRate * 10).toInt()): Double {
+    fun sourceReuse(window: Int = (output.sampleRate * 10).toInt()): Double {
         var r = 0
         for (t in source.indices) {
             val s = source[t]; if (s < 0) continue
@@ -127,7 +123,7 @@ class Performance(
      * [channels] (all by default; pick a few for a wide trajectory), with the output resampled to
      * [rate] Hz to keep the comparison cheap.
      *
-     * [reuse] counts memory positions, so a loop made of copies of the same gesture from different
+     * [sourceReuse] counts memory positions, so a loop made of copies of the same gesture from different
      * places in memory does not show up there; it shows up here.
      */
     fun outputRepetition(window: Double = 2.0, threshold: Double = 0.25, channels: List<Int> = output.channels.indices.toList(), rate: Double = 10.0): Double {
@@ -193,7 +189,7 @@ class Performance(
         d
     }
 
-    override fun toString() = "Performance(${output.length} samples, ${segments.size} segments, reuse=${"%.2f".format(reuse())})"
+    override fun toString() = "Performance(${output.length} samples, ${segments.size} segments, sourceReuse=${"%.2f".format(sourceReuse())})"
 }
 
 /**

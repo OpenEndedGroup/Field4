@@ -1,3 +1,30 @@
+/**
+ * Finding `field_polyvector` on this machine, and calling into it once found.
+ *
+ * [PolyvectorLibrary] is the half that answers without loading anything: the library's file name on
+ * this OS, the paths it is looked for in, whether one of them exists, and the Gradle task and
+ * per-OS shell commands that build it. Its Windows list is empty, which is how a
+ * [NativeGeometryCapability] says the build does not cover that OS yet, so the welcome page's
+ * Geometry extensions panel offers no install route there. The path is resolved afresh on every
+ * read, so a library built during a live session is picked up by the next box run.
+ *
+ * The other half, internal to the package, binds the C ABI declared in
+ * `native/field-polyvector/src/field_polyvector.h` with java.lang.foreign: one lazy downcall handle
+ * per `fpv_` entry point, two parameter structs laid out by hand with their padding (one for the
+ * field fit, one for the trace, following the split in [FrameFieldParameters] and
+ * [TraceParameters]), and a 512-byte buffer that the field fit and the trace carry down and read a
+ * message out of when either reports failure. The read-outs take no error buffer. The first symbol
+ * lookup checks `fpv_abi_version` against the version this binding expects and refuses a library
+ * that disagrees, naming the task that rebuilds it.
+ *
+ * Reading a result copies it out of native memory into Kotlin arrays: the ink mask, the per-pixel
+ * weight, the two directions and the singularities as one snapshot of the field, the streamlines
+ * and the final curves as polylines, and the field and trace milliseconds the library times for
+ * itself.
+ *
+ * [Polyvector] is the API over it, and its only caller.
+ */
+
 package afield.geometry.vectorize.polyvector
 
 import afield.geometry.network.NativeGeometryCapability
@@ -16,22 +43,6 @@ import java.lang.foreign.ValueLayout.JAVA_LONG
 import java.lang.invoke.MethodHandle
 import java.nio.file.Path
 import kotlin.io.path.exists
-
-/**
- * The bridge to `field_polyvector`, the C++ line-drawing vectorizer behind
- * [afield.geometry.vectorize.polyvector.Polyvector]: where the shared library is, and a
- * `java.lang.foreign` binding to its C ABI.
- *
- * Field runs without the library, so [PolyvectorLibrary] is what the rest of Field asks before
- * reaching for a vectorization: the paths it tried, the line the welcome page shows, and the build
- * advice an `UnsatisfiedLinkError` carries when it was never built. [PolyvectorLibrary.resolvedPath]
- * is not cached, so a library built during a live session is picked up by the next box run, and
- * the binding refuses one whose ABI version does not match the constant this file was written
- * against.
- *
- * Building it needs OpenCV, Boost and Eigen alongside cmake. [PolyvectorLibrary.install] carries no
- * Windows commands, which is how a capability says that platform is not supported yet.
- */
 
 /**
  * Where `field_polyvector` is, and whether it is there. Field runs without it; [describe] says how
@@ -83,8 +94,10 @@ object PolyvectorLibrary : NativeGeometryCapability {
     override val isAvailable: Boolean get() = resolvedPath != null
 
     val HOW_TO_BUILD: String
-        get() = "Build it with `./gradlew buildPolyvectorNative` (needs cmake and a C++17 compiler, no other " +
-            "dependencies), or point -Dafield.polyvector.library / AFIELD_POLYVECTOR_LIBRARY at a $fileName."
+        get() = "Build it with `./gradlew buildPolyvectorNative` (needs cmake, a C++17 compiler, OpenCV, " +
+            "Boost and Eigen; macOS: `brew install cmake opencv boost eigen`; Debian/Ubuntu: " +
+            "`sudo apt install build-essential cmake libopencv-dev libboost-dev libeigen3-dev`), " +
+            "or point -Dafield.polyvector.library / AFIELD_POLYVECTOR_LIBRARY at a $fileName."
 
     override fun describe(): String = resolvedPath?.let {
         runCatching { "polyvector: ${PolyvectorNative.version()} at $it" }

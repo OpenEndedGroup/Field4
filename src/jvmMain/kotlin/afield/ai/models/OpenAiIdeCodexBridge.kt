@@ -397,6 +397,7 @@ class OpenAiIdeCodexBridge(
             promoted = ctx.promoted ?: state.promotedTools,
             progress = ctx.progress ?: onProgress?.let { p -> { line: String -> p(ProgressUpdate(title = line, phase = "tool")) } },
         )
+        callCtx.agentMemory?.beginTurn()
         // The calls the provider holds that it has no outputs for yet, and the outputs this turn has for
         // them so far. A turn that fails while there are any leaves an output for each to the next one.
         var openCalls: List<PendingToolCall> = emptyList()
@@ -693,7 +694,10 @@ class OpenAiIdeCodexBridge(
                     toolOutputs += ResponseInputItem.ofMessage(builder.build())
                 }
             }
-            // A tool ended the turn (AwaitStudyBuildsRequest): no follow-up request. The outputs go with the
+            roundBudgetNote(rounds + 1, maxToolRounds, callCtx.agentMemory?.checklistSummary())?.let { note ->
+                toolOutputs += buildMessageItem(ResponseInputItem.Message.Role.USER, note)
+            }
+            // A tool ended the turn (AwaitStudyBuildsRequest, AskUserQuestionRequest): no follow-up request. The outputs go with the
             // next turn, and whatever the person wrote meanwhile stays in the inbox, which becomes a turn of its own.
             // An image a co-scheduled call returned is not carried over; its JSON output is.
             TurnSuspension.of(roundResults)?.let { awaited ->
@@ -702,7 +706,7 @@ class OpenAiIdeCodexBridge(
                 else state.suspendedRound = SuspendedRound(roundOutputs.toList())
                 openCalls = emptyList()
                 rounds++
-                info("turn suspended after round $rounds: waiting for ${awaited.jobs.size} build job(s) without the model")
+                info("turn suspended after round $rounds: waiting for ${awaited.describe()} without the model")
                 toolIo("turn_suspended", mapOf("round" to rounds, "jobIds" to awaited.jobs.map { it.jobId },
                     "deadlineMs" to awaited.deadlineMs, "pendingCallIds" to roundOutputs.map { it.callId }))
             }
@@ -1120,7 +1124,7 @@ class OpenAiIdeCodexBridge(
                 ) {
                     val attempt = ledger.attempt()
                     try {
-                        createResponseOnce(prepared, onTextDelta?.let { sink -> { chunk -> emittedText = true; sink(chunk) } }, attempt).also { response ->
+                        createResponseOnce(prepared, onTextDelta?.let { sink -> { chunk -> emittedText = true; sink(chunk) } }, attempt, onProgress).also { response ->
                             attempt.response(response)
                             validateModelResponse(response)
                             attempt.finish()
@@ -1175,12 +1179,17 @@ class OpenAiIdeCodexBridge(
         }
     }
 
-    private fun createResponseOnce(params: ResponseCreateParams, onTextDelta: ((String) -> Unit)?, attempt: AiRequestLedger.Attempt): Response {
-        if (onTextDelta == null) return responses.create(params)
+    private fun createResponseOnce(
+        params: ResponseCreateParams, onTextDelta: ((String) -> Unit)?, attempt: AiRequestLedger.Attempt,
+        onProgress: ((ProgressUpdate) -> Unit)? = null
+    ): Response {
+        if (onTextDelta == null) return responses.create(templateSafe(params))
         val acc = ResponseAccumulator.create()
-        val stream = asyncResponses.createStreaming(params)
+        val stream = asyncResponses.createStreaming(templateSafe(params))
+        val activity = StreamActivity(onProgress)
         try {
             stream.subscribe({ event ->
+                activity.observe(event)
                 // The accumulator only yields completed responses. Error/failed/incomplete
                 // events need explicit handling or their cause becomes "Completed response
                 // is not yet received", hiding both rate-limit recovery and useful feedback.
@@ -1200,6 +1209,55 @@ class OpenAiIdeCodexBridge(
         } finally {
             stream.close()
         }
+    }
+
+    /**
+     * Turns the stream's invisible deltas (reasoning, tool-call arguments) into a progress line, at most
+     * once a second, so a long generation reads as work rather than a stall. On 2026-10-28 a local model
+     * spent minutes writing a large tool call under nothing but "Waiting for model".
+     */
+    private class StreamActivity(private val onProgress: ((ProgressUpdate) -> Unit)?) {
+        private val started = System.nanoTime()
+        private var lastReport = 0L
+        private var reasoningChars = 0
+        private var toolChars = 0
+        private var textChars = 0
+
+        fun observe(event: com.openai.models.responses.ResponseStreamEvent) {
+            if (onProgress == null) return
+            event.reasoningTextDelta().ifPresent { reasoningChars += it.delta().length }
+            event.reasoningSummaryTextDelta().ifPresent { reasoningChars += it.delta().length }
+            event.functionCallArgumentsDelta().ifPresent { toolChars += it.delta().length }
+            event.customToolCallInputDelta().ifPresent { toolChars += it.delta().length }
+            event.outputTextDelta().ifPresent { textChars += it.delta().length }
+            val now = System.nanoTime()
+            if (now - lastReport < 1_000_000_000L || reasoningChars + toolChars == 0) return
+            lastReport = now
+            val seconds = (now - started) / 1_000_000_000L
+            val doing = when {
+                toolChars > 0 -> "Writing a tool call · ${kilo(toolChars)} chars"
+                else -> "Thinking · ${kilo(reasoningChars)} chars"
+            }
+            val detail = listOfNotNull(
+                "${seconds}s",
+                reasoningChars.takeIf { it > 0 && toolChars > 0 }?.let { "thought ${kilo(it)} chars" },
+                textChars.takeIf { it > 0 }?.let { "answered ${kilo(it)} chars" }
+            ).joinToString(" · ")
+            onProgress.invoke(ProgressUpdate(doing, detail, phase = "model"))
+        }
+
+        private fun kilo(n: Int) = if (n < 1000) "$n" else "%.1fk".format(n / 1000.0)
+    }
+
+    /** Every request passes here; see [localTemplateSafeInput]. */
+    private fun templateSafe(params: ResponseCreateParams): ResponseCreateParams {
+        if (runtimeConfig.provider != "local") return params
+        val input = params.input().orElse(null)?.takeIf { it.isResponse() }?.asResponse() ?: return params
+        val (safe, moved) = localTemplateSafeInput(input)
+        if (moved.isEmpty()) return params
+        warn("local request: ${moved.size} system/developer message(s) after the first item sent as user: " +
+            moved.joinToString("; ") { it })
+        return params.toBuilder().input(ResponseCreateParams.Input.ofResponse(safe)).build()
     }
 
     private fun validateModelResponse(response: Response) {
@@ -1251,7 +1309,12 @@ class OpenAiIdeCodexBridge(
         // where it keeps the cached prefix. As `instructions` it made this request read nothing from cache:
         // 100,750 of 100,823 input tokens were uncached on house-machine-11.
         val inputItems = pendingCalls.map { notRunOutput(it.callId(), it.name()) } +
-            buildMessageItem(ResponseInputItem.Message.Role.DEVELOPER, FORCED_FINAL_INSTRUCTION)
+            // Qwen's chat template (llama.cpp maps developer to system) raises on a system message after the
+            // first, so this stop crashed a local turn with HTTP 500 on 2026-10-28 instead of summarizing it.
+            buildMessageItem(
+                if (runtimeConfig.provider == "local") ResponseInputItem.Message.Role.USER else ResponseInputItem.Message.Role.DEVELOPER,
+                FORCED_FINAL_INSTRUCTION
+            )
 
         val builder = ResponseCreateParams.builder()
             .model(chatModel)
@@ -1670,6 +1733,48 @@ class OpenAiIdeCodexBridge(
     }
 
     companion object {
+        /**
+         * Local chat templates (Qwen's, via llama.cpp, which maps developer to system) raise "System message
+         * must be at the beginning" on any system message after the first item, and the turn dies with HTTP
+         * 500. It happened twice on 2026-10-28, once from the forced-final stop and once from a source not
+         * yet identified, so the rule is enforced here rather than at each call site: a later system or
+         * developer message goes as a user message. Returns the input and, for each moved item, its index
+         * and opening text, so the log names the source.
+         */
+        internal fun localTemplateSafeInput(items: List<ResponseInputItem>): Pair<List<ResponseInputItem>, List<String>> {
+            val moved = mutableListOf<String>()
+            val safe = items.mapIndexed { index, item ->
+                val message = item.message().orElse(null)
+                val role = message?.role()
+                if (index == 0 || message == null ||
+                    (role != ResponseInputItem.Message.Role.SYSTEM && role != ResponseInputItem.Message.Role.DEVELOPER)) item
+                else {
+                    val text = message.content().mapNotNull { it.inputText().orElse(null)?.text() }.joinToString(" ")
+                    moved += "#$index ${role}: ${text.take(80).replace('\n', ' ')}"
+                    ResponseInputItem.ofMessage(message.toBuilder().role(ResponseInputItem.Message.Role.USER).build())
+                }
+            }
+            return safe to moved
+        }
+
+        /**
+         * From halfway through a turn's tool budget, tell the model how much is left: on 2026-10-28 a local
+         * model spent 17 of 24 rounds reading, wrote its code in round 18, and reached the cap before the
+         * code had compiled once. It could not plan against a budget it never saw.
+         */
+        internal fun roundBudgetNote(used: Int, max: Int, checklist: String? = null): String? {
+            val left = max - used
+            if (used * 2 < max || left < 0) return null
+            val base = if (left <= 3) "Tool round $used of $max: $left left in this turn. Run and check what you have now; " +
+                "leave the last round for a fix, not new reading."
+            else "Tool round $used of $max: $left left in this turn. Leave rounds to run what you write and look at it."
+            return base + when {
+                checklist == null -> ""
+                "not updated" in checklist -> " Checklist: $checklist; update it as items finish."
+                else -> " Checklist: $checklist."
+            }
+        }
+
         internal fun retryDelayMsForRateLimitMessage(message: String, multiplier: Double = 1.5): Long? {
             if (!Regex("(?i)rate[ _-]?limit|\\b429\\b|slow_down|server_is_overloaded").containsMatchIn(message)) return null
             val hintedMs = retryHintMs(message) ?: return null

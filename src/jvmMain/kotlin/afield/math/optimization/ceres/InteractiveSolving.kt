@@ -48,7 +48,9 @@ data class InteractionPolicy(
     val settleIterations: Int = 24,
     /** Length of the per-opcode cost array; 128 clears every opcode, unlike [SolveOptions]' default of 64. */
     val metricCapacity: Int = 128,
+    /** Whether a drag frame asks for per-opcode costs. Off, because nothing reads them mid-gesture. */
     val metricsDuringDrag: Boolean = false,
+    /** Whether the settle pass asks for them, which is where a "what is still fighting" readout comes from. */
     val metricsOnRelease: Boolean = true,
 ) {
     init {
@@ -87,7 +89,9 @@ data class InteractionPolicy(
  * for tools and diagnostics; the solver never looks at it.
  */
 class MutablePointCloud(
+    /** The live array, `3 * pointCount` long. Held, not copied: a solve writes its answer over it. */
     val values: DoubleArray,
+    /** One optional label per point, for tools and diagnostics. The solver never reads it. */
     val names: List<String?> = List(values.size / 3) { null },
 ) {
     init {
@@ -96,19 +100,25 @@ class MutablePointCloud(
         require(values.all { it.isFinite() }) { "point coordinates must be finite" }
     }
 
+    /** Points, not doubles: a third of [values]`.size`, fixed for the life of the cloud. */
     val pointCount: Int = values.size / 3
 
+    /** One coordinate, without building a [Vec3]. */
     fun x(point: PointId): Double = values[offset(point)]
 
+    /** One coordinate, without building a [Vec3]. */
     fun y(point: PointId): Double = values[offset(point) + 1]
 
+    /** One coordinate, without building a [Vec3]. */
     fun z(point: PointId): Double = values[offset(point) + 2]
 
+    /** A point as a [Vec3]. Allocates, so a per-frame loop usually wants [x], [y], [z] instead. */
     fun get(point: PointId): Vec3 {
         val i = offset(point)
         return Vec3(values[i], values[i + 1], values[i + 2])
     }
 
+    /** Move a point. Both the index and the three coordinates are checked. */
     fun set(point: PointId, x: Double, y: Double, z: Double) {
         require(x.isFinite() && y.isFinite() && z.isFinite()) { "point coordinates must be finite" }
         val i = offset(point)
@@ -117,6 +127,7 @@ class MutablePointCloud(
         values[i + 2] = z
     }
 
+    /** Move a point, from a [Vec3]. */
     fun set(point: PointId, value: Vec3) = set(point, value.x, value.y, value.z)
 
     /**
@@ -133,6 +144,7 @@ class MutablePointCloud(
         into[offset + 2] = values[i + 2]
     }
 
+    /** The inverse of [copyPoint]: read three coordinates out of an arbitrary array into a point. */
     fun setPointFrom(point: PointId, source: DoubleArray, offset: Int) {
         set(point, source[offset], source[offset + 1], source[offset + 2])
     }
@@ -170,6 +182,7 @@ class MutablePriorWeights private constructor(val values: DoubleArray) {
         require(values.all { it.isFinite() && it >= 0.0 }) { "prior weights must be finite and non-negative" }
     }
 
+    /** How many points this covers; it must match the cloud the compiled solver was built for. */
     val pointCount: Int = values.size / 3
 
     /** One weight over every point and axis — the baseline a gesture then departs from. */
@@ -178,6 +191,7 @@ class MutablePriorWeights private constructor(val values: DoubleArray) {
         values.fill(weight)
     }
 
+    /** One point's three axis weights, which is how a drag is expressed on one axis and not another. */
     fun set(point: PointId, x: Double, y: Double, z: Double) {
         requireWeightForInteractive(x)
         requireWeightForInteractive(y)
@@ -188,6 +202,7 @@ class MutablePriorWeights private constructor(val values: DoubleArray) {
         values[i + 2] = z
     }
 
+    /** One point, the same weight on all three axes, which is the usual form of a drag or a release. */
     fun set(point: PointId, weight: Double) = set(point, weight, weight, weight)
 
     /** A detached copy for the allocating [CompiledCeresSolver.solve] path. */

@@ -46,7 +46,39 @@ import org.lwjgl.vulkan.VK10
 import java.nio.file.Path
 import java.nio.file.Paths
 
+/**
+ * Loading a model file onto the GPU, with its materials and textures.
+ *
+ * `gltfModelHere("model.glb") { }` in a box is the usual case: the call
+ * expands the way `moduleHere` does, into a graphics module carrying the bundled glTF shaders at the
+ * end of this file, and hands back that module together with the loaded [GltfSupport.GltfModel].
+ * [GltfSupport.loadGltfBasic] is the same load without a module, for code bringing its own shaders.
+ *
+ * The name says glTF and the importer is Assimp, so the formats are Assimp's: glTF and GLB, and also
+ * FBX, DAE, OBJ, STL and PLY. A load returns one [GltfSupport.MeshInstance] per mesh in the node tree,
+ * each carrying host-side vertex and index buffers in the fixed 12-float layout those shaders read
+ * (position, normal, uv, colour), its material, and the node's animation track resampled at a fixed
+ * rate, which this file's `sample` extension interpolates at whatever time you ask for.
+ *
+ * Two things catch callers out. [GltfSupport.GltfLoadConfig]'s `loadTextures` is on by default and
+ * that path asks the box context for a [Renderer], so a load taking the default arguments cannot run
+ * outside a live renderer; pass `GltfLoadConfig(loadTextures = false)` for geometry alone, as
+ * [assimpToTriMesh] does. And a [GltfSupport.MeshInstance]'s `bindPose` is a
+ * translation/rotation/scale triple, which cannot hold the mirror or shear a glTF node transform is
+ * allowed to carry; `bindMatrix`, documented at length below, is the full 4×4 the loader also keeps.
+ */
+
 // the idea here is that this module can be customized (at least the first time!) for the (first?) model inside the gltf
+/**
+ * `gltfModelHere("model.glb") { }` in box code: a graphics module for that file, carrying the bundled
+ * glTF shaders, together with the model the importer read.
+ *
+ * The declared signature takes only the parameters block because the filename is a macro argument.
+ * [registerGLTFLoader] registers the rewrite, which turns the call into `_gltfModelHere` plus the
+ * preamble a module needs, so calling the function as declared throws instead.
+ * `gltfModelWithTextureHere` is the same with the textured fragment shader, binding the first mesh's
+ * material textures as its `uTextures` array.
+ */
 fun Box.gltfModelHere(p: Parameters.() -> Unit): Pair<ModulePointer, List<GltfSupport.GltfModel>> {
     throw MacroRegistry.MacroNotExpandedException("gltfModelHere should not be callable directly, but should be expanded as a macro")
 }

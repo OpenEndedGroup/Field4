@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T21:00:04.836Z",
+  "documentName": "wfc_worked_example",
+  "outputs": [
+    {
+      "uid": "wfc_scalar_field",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 552,
+      "height": 1194,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "wfc_scalar_field",
+      "channel": "contours",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "wfc_inline_view",
+      "channel": "a. mid-collapse",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 512,
+      "height": 259,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "wfc_inline_view",
+      "channel": "b. contradicted",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 512,
+      "height": 396,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "wfc_simple_tiled",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 592,
+      "height": 1206,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "wfc_neighborhoods",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 241,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "wfc_collapse",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 751,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "wfc_by_hand",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 472,
+      "height": 330,
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "wfc_circuit",
+      "channel": "tiles",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 540,
+      "height": 74,
+      "path": "outputs/8.html"
+    },
+    {
+      "uid": "wfc_circuit",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 760,
+      "height": 492,
+      "path": "outputs/9.html"
+    },
+    {
+      "uid": "wfc_overlapping",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 572,
+      "height": 600,
+      "path": "outputs/10.html"
+    }
+  ]
+}
