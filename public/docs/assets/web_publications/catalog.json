@@ -776,6 +776,29 @@
         "public/docs/assets/agent_transcripts/control_surface_laws/metadata.edn": "f73f058f3e1fa4fb5791bae3c16c38456969f942384212091620d17036a34803"
       }
     },
+    "assets/agent_transcripts/controls_surface/metadata.edn": {
+      "captureDigest": "4922bf78986077d52bc6fd50098fb5a7043066bf6f51f472927f50cba41685f5",
+      "capturedAt": "2026-10-29T14:48:26.370Z",
+      "channels": 3,
+      "file": "assets/web_publications/controls_surface/document/metadata.edn",
+      "files": {
+        "assets/web_publications/controls_surface/document/metadata.edn": "5f51db3bbf637a8bd85cefa8a556e3ec554686d960fa1f17535e7dad671a1adf",
+        "assets/web_publications/controls_surface/document/outputs.json": "ae229e34fd4f7c409a8919f5fd34898ef713663026c25124c3f72f1210f763cb",
+        "assets/web_publications/controls_surface/outputs/0.html": "27ec07706156c402168d4e07b16a777fed199dee0201b45ce1c3cc30730f106a",
+        "assets/web_publications/controls_surface/outputs/1.html": "20659c1d4a210a6f6d29449ddf246ffab14765f74196902e5f0a41561d7549a7",
+        "assets/web_publications/controls_surface/outputs/2.html": "d57c7c87f79c17c9d9db9faf90e5cf7577fa9584b9d3d898525a9dfe8fa966db"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/controls_surface/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/controls_surface.yaml": "b0e9f8a92fa40ed7b235f5d6e419635890a90a9eae7cffcb2d3db32041dcab23",
+        "public/docs/assets/agent_transcripts/controls_surface/metadata.edn": "d8b48c5a9325027ac84f84af6d1c1d8dcd7d7c7ebbc4b3bff3d15c842a8718f2",
+        "public/docs/assets/agent_transcripts/controls_surface/rerender_code_.kt": "11bf4014e380a625b19afe2da738e0077b4b12d75699755d0177a1981c95bfc2",
+        "public/docs/assets/agent_transcripts/controls_surface/surface_code_.kt": "1c58622b2e0718c980b2e76a643a5a6172847382887e5d45ffbfe5cc85888411"
+      }
+    },
     "assets/agent_transcripts/drawn_morph/metadata.edn": {
       "captureDigest": "4922bf78986077d52bc6fd50098fb5a7043066bf6f51f472927f50cba41685f5",
       "capturedAt": "2026-10-28T17:37:38.132Z",
