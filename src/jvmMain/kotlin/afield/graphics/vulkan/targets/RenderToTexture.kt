@@ -145,14 +145,23 @@ data class RTTParameters(
 )
 
 /**
- * single-buffered offscreen target (with multi-buffered commandbuffers), supporting N color attachments.
- * Optional depth+stencil buffer for depth testing while rendering to texture.
+ * An offscreen target holding one set of color attachments, any number of them, which its modules
+ * draw into and other modules sample as textures. Optionally a depth+stencil attachment as well, to
+ * depth-test against while rendering. The attachments are single-buffered, so reading last frame's
+ * output while writing this one is [PingPongRenderToTexture]'s job rather than this class's.
  */
 open class RenderToTexture(
+    /** The renderer whose device allocates the attachments and whose swapchain depth sets [numImages]. */
     val renderer: Renderer = fromContext(),
     parameters: RTTParameters.() -> Unit = {}
 ) : Target, HasImageView, HasImageViewArray, HasDefaultTextureSampler, PreparesSampledImages {
 
+    /**
+     * The [RTTParameters] this target was built with. The images were created from them at
+     * construction, so changing a size or format here does not reallocate; the per-frame fields
+     * ([RTTParameters.clearFirst], [RTTParameters.clearColor], [RTTParameters.colorStoreOp],
+     * [RTTParameters.depthLoadOp], [RTTParameters.viewports]) are re-read each time the pass records.
+     */
     var parameters = RTTParameters().apply(parameters)
     override var defaultSampler: TextureSampler? = null
     private val debugName = parametersDebugName()
@@ -195,19 +204,35 @@ open class RenderToTexture(
     override val imageView: ImageView
         get() = imageViewArray.first().imageView
 
-    val colorImageRefs: MutableList<Image?>          // null when external view has no underlying Image
-    val colorImageHandles: MutableList<Long>         // always the underlying VkImage handle
+    /**
+     * The [Image] behind each color attachment, in slot order. An entry is null where the slot
+     * came from [RTTParameters.externalColorViews] and that view has no `Image` of its own, so
+     * read [colorImageHandles] when all you need is the Vulkan handle.
+     */
+    val colorImageRefs: MutableList<Image?>
+
+    /** The `VkImage` handle of each color attachment, external slots included; its size is the number of attachments, which every module registered here has to declare. */
+    val colorImageHandles: MutableList<Long>
     protected val mutableImageViewArray: MutableList<HasImageView>
     private val sampledMip0ImageViewArray: MutableList<HasImageView>
     protected val attachmentImageViews: MutableList<ImageView>
     override val imageViewArray: List<HasImageView>
         get() = if (usesFullSampledMipChain()) mutableImageViewArray else sampledMip0ImageViewArray
+
+    /** The resolved `VK_FORMAT_*` of each color attachment: [RTTParameters.colorFormats] when it was given, otherwise [RTTParameters.format] repeated. A module's declared formats have to match this list exactly. */
     val colorFormats: List<Int>
+
+    /** Array layers in each color attachment. [RTTParameters.colorLayerCount] when positive; 0 takes the count from the external views, which all have to agree. */
     val colorLayerCount: Int
 
     // depth (optional)
+    /** The depth(+stencil) attachment's view, or null when [RTTParameters.useDepth] is off. Its aspect mask covers stencil too for a combined format, which is why sampling uses [depthSampledImageView]. */
     var depthImageView: ImageView? = null
+
+    /** A depth-aspect-only view of the same image, for sampling the depth result. It is a second view only when the format carries stencil and [RTTParameters.depthSampled] is set; otherwise it is [depthImageView] itself, and null when there is no depth attachment. */
     var depthSampledImageView: ImageView? = null
+
+    /** The depth(+stencil) image, or null when [RTTParameters.useDepth] is off. It carries [colorLayerCount] layers so a multiview or layered pass can depth-test. */
     var depthImage: Image? = null
 
     // Track current layouts across frames (base color level and depth).
@@ -226,8 +251,13 @@ open class RenderToTexture(
     protected var colorFormatLinearBlit: BooleanArray = booleanArrayOf()
     protected var chosenMipFilter: IntArray = intArrayOf()
 
+    /** The attachment width the images were created at, read back from [parameters]. */
     val width: Int get() = parameters.width
+
+    /** The attachment height the images were created at, read back from [parameters]. */
     val height: Int get() = parameters.height
+
+    /** Mip levels on the color attachments. Above one, the sampled views cover the whole chain once the mips have been generated, and only mip 0 before that. */
     val mipLevels: Int get() = parameters.mipLevels
 
     private fun usesFullSampledMipChain(): Boolean {
@@ -239,6 +269,13 @@ open class RenderToTexture(
         }
     }
 
+    /**
+     * The modules drawn into this target, by name, recorded in insertion order. Add with
+     * `rtt += "name" to module`, which checks the module's attachment count, formats, view mask
+     * and viewport count against this target first; a module written for the window fails that
+     * check until `+target` appears in its own parameters. Adding a module under a name already
+     * here replaces it without moving it in the order.
+     */
     var modules = mutableMapOf<String, ModulePointer>()
 
     private data class FileSaveRequest(
@@ -627,9 +664,18 @@ open class RenderToTexture(
         return requireNotNull(rgba)
     }
 
+    /**
+     * One primary command buffer per swapchain image, allocated at construction. The pass itself
+     * records into the command buffer handed to `render`, so these are for code that submits a
+     * target on its own; nothing in this class submits them, and a caller that allocated a target
+     * outside the renderer's frame loop frees them along with the target.
+     */
     var commandBuffers: Array<CommandBuffer>
+
+    /** One fence per swapchain image, created already signalled, to pair with [commandBuffers] in the same off-frame submission. */
     var fences: Array<afield.graphics.vulkan.device.Fence>
 
+    /** How many command buffers and fences this target holds: the renderer's swapchain image count, read once at construction. The attachments themselves are single-buffered; [PingPongRenderToTexture] is the variant that rings them. */
     val numImages = renderer.swapChain.imageViews.size
 
     init {
