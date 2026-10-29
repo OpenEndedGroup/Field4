@@ -1,14 +1,14 @@
 # Experimenting with AI4
 
+What happens if you give an agent a new tool halfway through a conversation? In Field you can
+write that tool in a box, run it, and ask the agent to use it straight away. You can also change
+the instructions and state it works with, rewind a conversation, and try another branch.
+
+We'll do that with an agent that paints, then look at ways to inspect and measure the experiment.
+
 *The document on this page is the [ai4_paint_studio](agent_transcripts.md#ai4_paint_studio)
 starting point: the Studio box from [AI4 Paints](ai4_painting.md) and the Scribbler box shown
 below. It needs the paint library (`./gradlew buildPaintNative`) and an AI provider.*
-
-An experiment with an AI agent in Field lives in a document. The tools the agent can call, what it
-is told at the start of each request, the commands it answers to and the state it works on are all
-box code, and you edit them while the conversation runs. Every request is kept in a tree you can
-rewind and branch, and the experiment's own state goes back with it. You can see what the agent was
-sent, and measure what a change did, in the same document.
 
 ## A tool written in the middle of a conversation
 
@@ -64,12 +64,10 @@ chat commands, checks before and after each call, and state that follows the con
 
 ## Many calls at once
 
-The painter did not spend a request on each of the 43 scribbles in the second painting. It wrote
-four short JavaScript programs over the Studio's tools, one per stage, and Field ran them: each
-program called `scribble` as often as it needed and came back with a single result. In the chat each
-program is one line, and opening the line shows every call it made and how long each took. The
-pictures the painter took of the canvas between stages appear in the chat too, as in the window
-above:
+For the second painting, the painter wrote four short JavaScript programs using the Studio's
+tools. Each called `scribble` as often as it needed and returned one result. Open a program's line
+in the chat to see its individual calls and their timings; the pictures taken between stages appear
+there too:
 
 ![the AI Chat panel with one program's trace open: the header "RunToolProgramRequest finished (4355 ms)", eleven lines each reading "scribble" with its outline coordinates, colour and density and a time between 203 and 837 ms, then "program ok: 11 call(s), 0 failed, 4355 ms", and below it a line of the turn's last calls: paint_stroke, paint_dab, paint_look and paint_hang, each finished](assets/ai4_experiments/chat.jpg)
 

@@ -13,6 +13,7 @@ import zipfile
 import shlex
 import base64
 import struct
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,6 +21,26 @@ DOCS = ROOT / "public/docs"
 PUBLICATIONS = DOCS / "assets/web_publications"
 CATALOG = PUBLICATIONS / "catalog.json"
 PILOTS = ("fline_examples", "three_output_gallery")
+
+
+def publication_node() -> str | None:
+    """Find a working Node for real Kotlin/JS previews, including Gradle's shared install."""
+    explicit = os.environ.get('AFIELD_NODE') or os.environ.get('NODE')
+    if explicit:
+        return explicit
+    executable = 'node.exe' if os.name == 'nt' else 'bin/node'
+    homes = [ROOT / '.gradle', Path(os.environ.get('GRADLE_USER_HOME', str(Path.home()/'.gradle')))]
+    candidates = [shutil.which('node')]
+    candidates += [str(p) for home in homes for p in sorted((home/'nodejs').glob(f'*/{executable}'), reverse=True)]
+    candidates += [str(p) for p in sorted((Path.home()/'.nvm/versions/node').glob('*/bin/node'), reverse=True)]
+    for candidate in dict.fromkeys(p for p in candidates if p):
+        try:
+            result = subprocess.run([candidate, '--version'], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0 and re.match(r'v(\d+)', result.stdout) and int(result.stdout.split('.')[0][1:]) >= 14:
+                return candidate
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+    return None
 
 
 def digest(path: Path) -> str:
@@ -347,6 +368,9 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
                                      workspace=str(workspace), logger=log, default_timeout=180)
             key = 'AFIELD_RUNLOOP_WATCHDOG_INTERRUPT_MS'
             previous = os.environ.get(key)
+            previous_node = os.environ.get('AFIELD_NODE')
+            if node := publication_node():
+                os.environ['AFIELD_NODE'] = node
             os.environ[key] = str(watchdog_ms)
             try:
                 try:
@@ -356,6 +380,10 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
                         os.environ.pop(key, None)
                     else:
                         os.environ[key] = previous
+                    if previous_node is None:
+                        os.environ.pop('AFIELD_NODE', None)
+                    else:
+                        os.environ['AFIELD_NODE'] = previous_node
                 if client.managed_process is None:
                     raise RuntimeError("Capture needs a free automation port and its own Field server")
                 await client.connect()

@@ -73,6 +73,22 @@ class RatchetTest(unittest.TestCase):
         self.assertEqual(steps["noisy"]["tolMedianPct"], 90.0)
         self.assertGreater(steps["noisy"]["tolP90Pct"], feel_bench.MIN_P90_PCT)
 
+    def test_a_step_that_failed_in_one_run_is_baselined_from_the_others(self) -> None:
+        runs = [result("1", a=(100.0, 120.0), flaky=(50.0, 60.0)),
+                result("2", a=(101.0, 121.0), flaky=(52.0, 61.0)),
+                result("3", a=(102.0, 122.0), flaky=(54.0, 62.0))]
+        runs[0]["summary"]["s"]["flaky"] = {"n": 1, "failed": 1}
+        steps = feel_bench.make_baseline(runs)["steps"]["s"]
+        self.assertEqual(steps["a"]["runs"], 3)
+        self.assertEqual(steps["flaky"]["runs"], 2)
+        self.assertEqual(steps["flaky"]["wallMs"], 53.0)
+
+    def test_a_step_only_one_run_measured_gets_the_minimum_band(self) -> None:
+        runs = [result("1", a=(100.0, 120.0), once=(10.0, 12.0)), result("2", a=(100.0, 120.0), once=(10.0, 12.0))]
+        runs[0]["summary"]["s"]["once"] = {"n": 1, "failed": 1}
+        once = feel_bench.make_baseline(runs)["steps"]["s"]["once"]
+        self.assertEqual((once["runs"], once["tolMedianPct"]), (1, feel_bench.MIN_MEDIAN_PCT))
+
     def test_check_flags_regressions_and_improvements_outside_the_band_only(self) -> None:
         baseline = feel_bench.make_baseline([result("1", same=(100.0, 120.0), slower=(100.0, 120.0), quicker=(100.0, 120.0), tiny=(10.0, 12.0))])
         head = result("2", same=(110.0, 140.0), slower=(130.0, 150.0), quicker=(70.0, 90.0), tiny=(14.0, 15.0))

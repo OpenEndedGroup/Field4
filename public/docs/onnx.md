@@ -1,8 +1,9 @@
 # Depth and CLIP: neural vision in a box
 
-`afield.ai.inference.onnx` binds two pretrained vision models. Depth Anything V2 Small reads one photograph and
-predicts how far away everything in it is; CLIP embeds images and text into a shared 512-dimensional
-space, so a picture can be scored against a written prompt with no training and no label set.
+Give Field a photograph and ask how far away things are, or compare an image with a description
+you've written. Two pretrained vision models make this possible: Depth Anything V2 Small predicts
+depth from a photograph, and CLIP puts images and text in a shared 512-dimensional space. With
+CLIP you can score a picture against a prompt without training a model or supplying a label set.
 
 Both run on the ONNX Runtime JNI artifact (`com.microsoft.onnxruntime:onnxruntime`, 1.27.0), which is
 on the classpath already because [semantic search](semantic_index.md) embeds text with it. The weights
@@ -351,7 +352,8 @@ image↔text cosine in the figure sits between about 0.15 and 0.27, including th
 carry information, and a threshold on a raw cosine that works for one scene will fail on the next.
 
 `classify(candidates)` asks the question in a form that has an answer: it softmaxes the cosines *against each
-other* and returns probabilities that sum to 1, most likely first. `best()` is its first element.
+other* and returns scores that sum to 1, highest first. They compare this particular set of prompts;
+they are not calibrated probabilities. `best()` is its first element.
 `logitScale` only changes how peaked the distribution is; it cannot change the ranking.
 
 ### Projecting onto an axis between two prompts

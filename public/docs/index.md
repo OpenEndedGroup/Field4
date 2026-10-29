@@ -2,6 +2,12 @@
 
  _Field·4_ is an experimental, live-coding environment for new media art, VR, music and data-visualization. Although _Field_ began as a research project at MIT's Media Lab in 2001, this new version is currently in "early preview"—your help in developing it is deeply appreciated. It's all new code, incubated during UChicago's winter 2026 _VR Production class_  after a successful 2025 trial in the _Augmented Reality in the Garden_ and _Remaking Movies_ classes.
 
+If you want to get your hands on it, [install Field](installation.md) and make a
+[first moving drawing](first_steps.md). If you'd rather look around first, take the
+[Tour](funFeatures.md), or follow an idea from one medium into another in the
+[Long Way Round](chains.md). Looking for a particular call? Start with
+[what's already in the box](reference/index.md).
+
 _Field·4_ works on MacOS, Windows and Linux, supports a high performance [Vulkan](https://www.vulkan.org/) graphics system for desktop graphics, and has bindings for local (that is Desktop) [OpenXR](https://www.khronos.org/openxr/) on supported platforms as we as remote (that is JavaScript / WebXR) on devices that support WebXR. There is also a small native front end for the [Apple Vision Pro](vision.md).
 
 The primary programming language for this version of Field is [Kotlin](https://kotlinlang.org/) for desktop, which we've gone to some effort to bend into a language and runtime that is both a joy to experiment in and fast enough to make real things with. Kotlin, together with [Vulkan GLSL](https://www.khronos.org/opengl/wiki/OpenGL_Shading_Language), is the primary combination of languages used daily in Field. In addition, there are bindings for other languages, include [Clojure](https://clojure.org/) (as a JVM language), [Python](python.md) (via the [JEP project](https://github.com/ninia/jep)), [Lua](lua.md) (via [LuaJIT](https://luajit.org)), [JavaScript](remotejs.md) that executes remotely in-browser or on mobile for [Three.js](https://threejs.org/)-based [WebXR](https://immersive-web.github.io/webxr/) and a great many other languages. These extensions usually have autocomplete, AI assistance, live preview and some kind of interopation with the rest of Field's supported languages.

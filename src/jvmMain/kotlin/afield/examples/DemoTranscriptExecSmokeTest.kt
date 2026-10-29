@@ -96,6 +96,8 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        // Loads a committed glTF fixture through Assimp and opens column()/tree() on it; no renderer.
+        "assimp_browsing",
         // stacksl_examples.md's fitting demo: fits a StackSL program's literals on the CPU.
         "stacksl_fit_demo",
         // ai4_chat_archive.md's demo: reads the example chat under public/docs/assets by checkout path.

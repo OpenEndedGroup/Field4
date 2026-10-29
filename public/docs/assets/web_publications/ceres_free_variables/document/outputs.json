@@ -1,8 +1,18 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-28T21:07:48.119Z",
+  "capturedAt": "2026-10-29T15:49:00.952Z",
   "documentName": "ceres_free_variables",
   "outputs": [
+    {
+      "uid": "ceres_free_variables_planes",
+      "channel": "ceres",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 475,
+      "height": 159,
+      "path": "outputs/0.html"
+    },
     {
       "uid": "ceres_free_variables_planes",
       "channel": "solid",
@@ -12,18 +22,18 @@
         "three"
       ],
       "width": 480,
-      "height": 568,
-      "path": "outputs/0.html"
+      "height": 528,
+      "path": "outputs/1.html"
     },
     {
-      "uid": "ceres_free_variables_planes",
-      "channel": "plane",
+      "uid": "ceres_free_variables_sphere",
+      "channel": "fit",
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 474,
-      "height": 112,
-      "path": "outputs/1.html"
+      "width": 479,
+      "height": 113,
+      "path": "outputs/2.html"
     },
     {
       "uid": "ceres_free_variables_sphere",
@@ -34,17 +44,7 @@
         "three"
       ],
       "width": 480,
-      "height": 528,
-      "path": "outputs/2.html"
-    },
-    {
-      "uid": "ceres_free_variables_sphere",
-      "channel": "fit",
-      "open": true,
-      "warnings": [],
-      "kinds": [],
-      "width": 479,
-      "height": 270,
+      "height": 488,
       "path": "outputs/3.html"
     }
   ]

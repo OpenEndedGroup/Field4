@@ -111,8 +111,8 @@ A session accepts every invitation it receives, from any machine on the network.
 
 ## Not supported
 
-- No recovery journal is sent. A note lost on a bad Wi-Fi link stays lost, as it would over a
-  dropped DIN cable; a journal a peer sends is ignored. On a wired network this does not come up.
+- No recovery journal is sent. A note lost on a bad link stays lost, and a journal sent by a peer
+  is ignored. A wired connection reduces the chance of packet loss.
 - Timestamps in incoming packets are reported but not used to schedule playback: messages are
   delivered as they arrive.
 - A session does not notice a peer that disappears without saying goodbye; it stays in `peers`

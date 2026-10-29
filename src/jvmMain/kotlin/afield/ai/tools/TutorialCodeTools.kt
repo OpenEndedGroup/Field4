@@ -14,27 +14,39 @@ import java.io.File
  * `public/docs/assets/canonical_graphics/`. Semantic search indexes them box by box as its `tutorials` corpus,
  * the way it indexes a workspace; this tool is a query on that corpus, grouped by document (by lesson for the
  * graphics curriculum, whose boxes are its lessons), with each document's description and docs links from its
- * transcript and the code files to read. A local model asked to draw with FLines spent ten lookups on symbols
- * when tutorials such as `fline_measure` already showed how (2026-10-22).
+ * transcript and the code files to read. A match names files rather than quoting them: read one with
+ * [AttachmentRequest] to see the box code itself.
  */
 
+/**
+ * Ask for tutorials by what they do. The answer is a [TutorialCodeSearchResult].
+ */
 @JsonClassDescription("Find Field's tutorial code: about 260 worked examples of box code, by what they do, e.g. query = `draw FLines`, `GLSL compute shader on the renderer`, `slider controls`. Returns each match's name, what it shows, the docs pages it illustrates, and its box code files: read one with AttachmentRequest(file=...) to see working box code before writing your own. If nothing matches it fails with success=false and suggests plainer words; it is unavailable when semantic search is not running. Prefer this to guessing an API from Field's source.")
 @AgentToolMeta("search", effects = [ToolEffect.FILESYSTEM_READ])
 data class TutorialCodeSearchRequest(
+    /** What to make or learn, in plain words, matched against the `tutorials` corpus rather than by keyword. */
     @param:JsonPropertyDescription("What you want to make or learn, in plain words.")
     val query: String,
+    /** How many tutorials to return; anything outside 1..12 is clamped into it. */
     @param:JsonPropertyDescription("Tutorials to return, 1..12.")
     val limit: Int = 6
 )
 
+/** One tutorial that matched, with the files a reader would open next. */
 data class TutorialCodeMatch(
+    /** The tutorial document's name, or `canonical_graphics` and the lesson box's name for one lesson. */
     val name: String,
+    /** What the document's transcript says it shows, to 400 characters, empty when it says nothing. */
     val description: String,
+    /** Names of the boxes inside it that matched, up to six. */
     val boxes: List<String>,
+    /** The docs pages it illustrates, each as `page: why` from the transcript, up to four. */
     val docs: List<String>,
+    /** Paths of its box code and shader files, up to eight, for [AttachmentRequest] to read. */
     val codeFiles: List<String>
 )
 
+/** The tool's answer: `success` is false both for a failed search and for a search that matched nothing. */
 data class TutorialCodeSearchResult(val success: Boolean, val message: String, val matches: List<TutorialCodeMatch>)
 
 internal object TutorialCode {

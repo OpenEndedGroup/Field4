@@ -38,9 +38,11 @@ import kotlin.math.sqrt
 
 /**
  * A 1-D convolution kernel: [taps] centred on the middle element (so the length is normally odd).
- * @property taps the weights, index `radius` is the centre.
  */
-class Kernel1D(val taps: FloatArray) {
+class Kernel1D(
+    /** The weights; index [radius] is the centre tap. */
+    val taps: FloatArray
+) {
     init { require(taps.isNotEmpty()) { "Kernel1D needs at least one tap" } }
 
     /** Half-width; index `radius` in [taps] is the centre tap. */
@@ -70,17 +72,27 @@ class Kernel1D(val taps: FloatArray) {
 
 /**
  * A dense 2-D convolution kernel, [width] x [height], centred (odd dimensions expected).
- * @property weights row-major, `weights[y * width + x]`.
  */
-class Kernel2D(val width: Int, val height: Int, val weights: FloatArray) {
+class Kernel2D(
+    /** Taps across; at least 1, and odd if the kernel is to have a true centre. */
+    val width: Int,
+    /** Taps down; at least 1, and odd if the kernel is to have a true centre. */
+    val height: Int,
+    /** The weights, row-major: `weights[y * width + x]`. */
+    val weights: FloatArray
+) {
     init {
         require(width >= 1 && height >= 1) { "Kernel2D must be at least 1x1" }
         require(weights.size == width * height) { "Kernel2D needs ${width * height} weights, got ${weights.size}" }
     }
 
+    /** Half-width; column [radiusX] holds the centre tap. */
     val radiusX: Int get() = width / 2
+
+    /** Half-height; row [radiusY] holds the centre tap. */
     val radiusY: Int get() = height / 2
 
+    /** Sum of the weights — 1 for a normalised smoothing kernel, 0 for a derivative kernel. */
     fun sum(): Float { var s = 0f; for (w in weights) s += w; return s }
 
     /** 180-degree rotation — the difference between convolution and correlation. */
@@ -710,16 +722,22 @@ fun Img.unsharpMask(sigma: Double = 1.5, amount: Double = 1.0, threshold: Float 
 
 /**
  * A gradient field: per-pixel partial derivatives of a scalar image.
- * @property dx derivative along +x (rightwards), 1-channel
- * @property dy derivative along +y (**downwards**, matching image coordinates), 1-channel
  */
-class Gradient(val dx: Img, val dy: Img) {
+class Gradient(
+    /** Derivative along +x (rightwards), 1-channel. */
+    val dx: Img,
+    /** Derivative along +y (**downwards**, matching image coordinates), 1-channel. */
+    val dy: Img
+) {
     init {
         require(dx.channels == 1 && dy.channels == 1) { "Gradient components must be 1-channel" }
         require(dx.sameShapeAs(dy)) { "Gradient dx/dy shapes must match" }
     }
 
+    /** Width of either component; the constructor requires them to agree. */
     val width: Int get() = dx.width
+
+    /** Height of either component; the constructor requires them to agree. */
     val height: Int get() = dx.height
 
     /** Per-pixel `sqrt(dx² + dy²)`. */
@@ -972,7 +990,10 @@ fun Img.pyrUp(targetWidth: Int = width * 2, targetHeight: Int = height * 2, sigm
  * A Gaussian pyramid: `levels[0]` is the original, each subsequent level is [pyrDown] of the last.
  * Stops early if a level would fall below [minSize] on either axis.
  */
-class GaussianPyramid(val levels: List<Img>) {
+class GaussianPyramid(
+    /** Coarsening octaves, finest first: `levels[0]` is the source image. At least one. */
+    val levels: List<Img>
+) {
     init { require(levels.isNotEmpty()) { "a pyramid needs at least one level" } }
 
     /** Number of octaves, including the base. */
@@ -981,6 +1002,7 @@ class GaussianPyramid(val levels: List<Img>) {
     /** The full-resolution base. */
     val base: Img get() = levels.first()
 
+    /** Octave [i], counting from 0 at full resolution. */
     operator fun get(i: Int): Img = levels[i]
 
     override fun toString(): String =
@@ -1005,7 +1027,12 @@ fun Img.gaussianPyramid(levels: Int = 4, sigma: Double = 1.0, minSize: Int = 8):
  * coarsest low-pass. [reconstruct] inverts the decomposition (to within the blur's precision),
  * which is exactly the invariant the unit test checks.
  */
-class LaplacianPyramid(val bands: List<Img>, val residual: Img) {
+class LaplacianPyramid(
+    /** Band-pass detail, finest first: `bands[0]` is at the source resolution. Signed. */
+    val bands: List<Img>,
+    /** The coarsest low-pass, left over once every band has been subtracted. */
+    val residual: Img
+) {
 
     /** Number of detail bands. */
     val size: Int get() = bands.size

@@ -1,6 +1,8 @@
 # RectSL cheatsheet
 
-RectSL is Field's rectangle scene language. It creates animated rectangle geometry on the CPU, samples exact object state for analysis, and lowers sampled scenes into Field 4 buffers. StackSL is the material language: RectSL decides where rectangles are and what object/material metadata they carry; StackSL decides how a material shades.
+RectSL is Field's language for building scenes from animated rectangles. It creates geometry on
+the CPU, lets you sample the objects' state, and sends the scene to Field 4 buffers for drawing.
+Use StackSL alongside it to describe how the materials shade.
 
 Every section below carries a short snippet and a pointer into
 [RectSL examples](rectsl_examples.md), where the same words appear as complete, rendered

@@ -1,9 +1,8 @@
 # How to make sound in Field
 
-You want to hear something. There is more than one way, and this page maps all of them.
-
-**Ten things in Field make samples. Five things carry samples out of the process. Four bring them
-in.**
+Want to play a rhythm, build a synthesizer, work with another sound application, or write audio
+to a file? Field has several ways to make and route sound. Start with the task closest to yours,
+then follow the links for the details.
 
 ---
 
@@ -25,7 +24,7 @@ in.**
   once libpd is built. [Pure Data](pure_data.md).
 * **"I want to write an orchestra and score."** → `csound`. Use Csound as a box language or call it
   from Kotlin; build libcsound once. [Csound](csound.md).
-* **"I want to write music, not DSP."** → `sonic-pi`. [Sonic Pi](sonic_pi.md).
+* **"I want to write music in Sonic Pi."** → `sonic-pi`. [Sonic Pi](sonic_pi.md).
 * **"I want it in a file, or in a docs page."** → the `wav-file` sink. Offline, deterministic.
 * **"I want a player in the box's output."** → the `box-output-player` sink.
 * **"I want it out of the speakers, now."** → return `audio(signal)` from the box and the

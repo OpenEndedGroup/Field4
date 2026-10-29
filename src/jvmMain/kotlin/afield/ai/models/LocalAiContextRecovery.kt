@@ -7,6 +7,20 @@ import com.openai.errors.OpenAIServiceException
 import com.openai.models.responses.ResponseInputItem
 
 /**
+ * Recovery from a local model that cannot fit the conversation: when a self-hosted, OpenAI-compatible
+ * provider rejects a request for exceeding its context window, Field shortens the history and retries
+ * rather than failing the turn.
+ *
+ * [isLocalContextRecoveryFailure] recognises that case from the exception chain, including the empty
+ * answer some servers return in place of an error, and returns false for a cancelled turn or a response
+ * that was already partly delivered. [shortenLocalHistory] then drops older exchanges until the request
+ * is about half its original size, measured in characters, while keeping the seeded start of the
+ * conversation, the current prompt, and any tool call whose output is still pending; it adds a
+ * developer-role note saying that older exchanges were omitted and that completed tool work has not been
+ * replayed. Two rounds are allowed, and the failure after them is [LocalContextRecoveryExhausted].
+ */
+
+/**
  * The local model still failed after [createResponse]'s two history reductions. A distinct type so
  * that context fitting above it (`createFittedResponse`) can learn the window from the error without
  * starting a third round of retries.

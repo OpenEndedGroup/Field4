@@ -1,36 +1,36 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-28T21:08:07.486Z",
+  "capturedAt": "2026-10-29T15:49:15.258Z",
   "documentName": "paint_canvas",
   "outputs": [
     {
       "uid": "paint_flow_field",
-      "channel": "main",
+      "channel": "output",
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 912,
-      "height": 651,
+      "width": 469,
+      "height": 45,
       "path": "outputs/0.html"
     },
     {
       "uid": "paint_pencil_drawing",
-      "channel": "main",
+      "channel": "output",
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 912,
-      "height": 608,
+      "width": 469,
+      "height": 45,
       "path": "outputs/1.html"
     },
     {
       "uid": "paint_first_strokes",
-      "channel": "main",
+      "channel": "output",
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 912,
-      "height": 571,
+      "width": 469,
+      "height": 45,
       "path": "outputs/2.html"
     }
   ]

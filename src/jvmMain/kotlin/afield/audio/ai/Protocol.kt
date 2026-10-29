@@ -203,6 +203,184 @@ data class WaveformSummary(
 )
 
 /**
+ * How one part of a gesture board reaches the sound, which the board always says out loud.
+ *
+ * Protocol version 1 fixes the route for each kind of element rather than letting a caller choose:
+ * a prompt region is [COMPILED], an event or a curve is [EVALUATIVE], and `validateGestureBoard`
+ * rejects a board that says otherwise. So this value is read far more often than it is set.
+ */
+@Serializable
+enum class GestureDelivery {
+    /** Passed to the model as a native condition. A board's base prompt arrives this way. */
+    @SerialName("direct") DIRECT,
+
+    /** Turned into something the model does take: wording folded into the global prompt, chords, drums, or several bounded requests. */
+    @SerialName("compiled") COMPILED,
+
+    /** Not sent at all. Candidates are generated, measured against it, and ranked or retried. */
+    @SerialName("evaluative") EVALUATIVE,
+
+    /** Applied to the audio after generation, through tokens, splicing or decoding. */
+    @SerialName("transformative") TRANSFORMATIVE,
+}
+
+/** What a [GestureCurve] traces over the length of a board. Each is scored on a normalized 0..1 scale. */
+@Serializable
+enum class GestureCurveKind {
+    /** How much is happening: events per unit time. */
+    @SerialName("density") DENSITY,
+
+    /** How much the sound is moving, against how static it is. */
+    @SerialName("activity") ACTIVITY,
+
+    /** How high the sound sits. */
+    @SerialName("register") REGISTER,
+
+    /** How much high-frequency content it carries. */
+    @SerialName("brightness") BRIGHTNESS,
+}
+
+/** One breakpoint of a [GestureCurve]. */
+@Serializable
+data class GesturePoint(
+    /** When this breakpoint falls, in seconds from the start of the board, and inside its duration. */
+    @SerialName("time_seconds")
+    val timeSeconds: Double,
+    /** What the curve is worth there, between zero and one. */
+    val value: Double,
+)
+
+/** A shape asked of one quality of the sound over the length of a board. */
+@Serializable
+data class GestureCurve(
+    /** What to call this curve. Must not be blank, and no two curves on a board may share it. */
+    val name: String,
+    /** Which quality it traces. */
+    val kind: GestureCurveKind,
+    /** The breakpoints, at least two of them, in strictly increasing time order. */
+    val points: List<GesturePoint>,
+    /** How much this curve counts against the others when candidates are ranked. In `(0, 10]`. */
+    val weight: Double = 1.0,
+    /** Fixed at [GestureDelivery.EVALUATIVE] in protocol version 1: candidates are measured against the curve, not conditioned on it. */
+    val delivery: GestureDelivery = GestureDelivery.EVALUATIVE,
+)
+
+/** A moment the sound is asked to mark. */
+@Serializable
+data class GestureEvent(
+    /** When the accent is wanted, in seconds from the start of the board, and no later than its duration. */
+    @SerialName("time_seconds")
+    val timeSeconds: Double,
+    /** What to call this event. Must not be blank. */
+    val label: String,
+    /** How pronounced the accent should be, between zero and one. */
+    val strength: Double = 1.0,
+    /** How much this event counts against the others when candidates are ranked. In `(0, 10]`. */
+    val weight: Double = 1.0,
+    /** Fixed at [GestureDelivery.EVALUATIVE] in protocol version 1: a candidate is rewarded for an onset near [GestureEvent.timeSeconds]. */
+    val delivery: GestureDelivery = GestureDelivery.EVALUATIVE,
+)
+
+/** Words asked of one stretch of the board. */
+@Serializable
+data class GesturePromptRegion(
+    /** Where the stretch begins, in seconds from the start of the board. Not negative. */
+    @SerialName("start_seconds")
+    val startSeconds: Double,
+    /** How long it runs, in seconds. Positive, and it must end within the board's duration. */
+    @SerialName("duration_seconds")
+    val durationSeconds: Double,
+    /** What to ask for over that stretch. Must not be blank. */
+    val text: String,
+    /** How much this region counts against the others. In `(0, 10]`. */
+    val weight: Double = 1.0,
+    /**
+     * Fixed at [GestureDelivery.COMPILED] in protocol version 1. The times are written into the
+     * global prompt as words, so the model is told about them rather than timed by them.
+     */
+    val delivery: GestureDelivery = GestureDelivery.COMPILED,
+)
+
+/** Everything asked of one generated sound, with each part's route to the audio attached. */
+@Serializable
+data class GestureBoard(
+    /** How long the generated sound is to be, in seconds. Positive, and every element must fall inside it. */
+    @SerialName("duration_seconds")
+    val durationSeconds: Double,
+    /** Words that apply throughout, sent to the model as its global text condition. */
+    @SerialName("base_prompt")
+    val basePrompt: String = "",
+    /** Words that apply to particular stretches, folded into the prompt in time order. */
+    @SerialName("prompt_regions")
+    val promptRegions: List<GesturePromptRegion> = emptyList(),
+    /** Moments to mark. They score candidates rather than condition them. */
+    val events: List<GestureEvent> = emptyList(),
+    /** Shapes to follow, used the same way. Their names must be unique across the board. */
+    val curves: List<GestureCurve> = emptyList(),
+    /** Anything else to carry alongside. Field does not read it; it travels with the board. */
+    val metadata: JsonObject = JsonObject(emptyMap()),
+)
+
+/** One line of the account a compilation gives of how a board's element reaches the sound. */
+@Serializable
+data class GestureBinding(
+    /** The element this line is about, by its own label, curve name, or `base prompt` / `prompt 1`. */
+    val name: String,
+    /** Which sort of element it was: `text`, `prompt_region`, `event`, or the curve's kind. */
+    val kind: String,
+    /** The route it took. */
+    val delivery: GestureDelivery,
+    /** What it reached, such as `backend text condition` or `candidate onset-flux score`. */
+    val target: String,
+    /** A sentence saying what that route does, written to be shown to whoever built the board. */
+    val explanation: String,
+)
+
+/** A board put forward for compilation, with the operation and parameters it is meant for. */
+@Serializable
+data class GestureCompileRequest(
+    /** The board to compile. */
+    val board: GestureBoard,
+    /** Which operation it is destined for. */
+    val operation: String = "generate.style",
+    /** Parameters to merge into the compiled request. A `prompt` here leads the effective prompt. */
+    val parameters: JsonObject = JsonObject(emptyMap()),
+)
+
+/** What a board turns into, next to an account of how each part of it got there. */
+@Serializable
+data class GestureCompilation(
+    /** The board that was compiled, unchanged. */
+    val board: GestureBoard,
+    /** The operation it was compiled for. */
+    val operation: String,
+    /**
+     * The prompt the model will actually see: the caller's own prompt, then the base prompt, then
+     * each region as `from 1.5s to 3s: …`, joined with `; then `.
+     */
+    @SerialName("effective_prompt")
+    val effectivePrompt: String,
+    /** The parameters as sent, with the effective prompt, the duration and the compilation version added. */
+    val parameters: JsonObject,
+    /** One entry per element of the board, saying where it ended up. */
+    val bindings: List<GestureBinding>,
+)
+
+/** How well one generated candidate answered the board it was asked for. */
+@Serializable
+data class GestureEvaluation(
+    /** The single number candidates are ranked by. */
+    @SerialName("overall_score")
+    val overallScore: Double,
+    /** A score per scored element, keyed by its event label or curve name. */
+    @SerialName("lane_scores")
+    val laneScores: Map<String, Double> = emptyMap(),
+    /** The measurements those scores were computed from, keyed by feature name. */
+    @SerialName("feature_summary")
+    val featureSummary: Map<String, Double> = emptyMap(),
+)
+
+/**
  * A request for the service to do something — the one type you build by hand, or nearly.
  *
  * The operation vocabulary is Field's rather than any model library's:
@@ -212,97 +390,6 @@ data class WaveformSummary(
  * their arguments in the JVM and fill [parameters] with the keys the matching backend expects.
  * Build one of these directly only for an operation that has no constructor yet.
  */
-@Serializable
-enum class GestureDelivery {
-    @SerialName("direct") DIRECT,
-    @SerialName("compiled") COMPILED,
-    @SerialName("evaluative") EVALUATIVE,
-    @SerialName("transformative") TRANSFORMATIVE,
-}
-
-@Serializable
-enum class GestureCurveKind {
-    @SerialName("density") DENSITY,
-    @SerialName("activity") ACTIVITY,
-    @SerialName("register") REGISTER,
-    @SerialName("brightness") BRIGHTNESS,
-}
-
-@Serializable
-data class GesturePoint(
-    @SerialName("time_seconds") val timeSeconds: Double,
-    val value: Double,
-)
-
-@Serializable
-data class GestureCurve(
-    val name: String,
-    val kind: GestureCurveKind,
-    val points: List<GesturePoint>,
-    val weight: Double = 1.0,
-    val delivery: GestureDelivery = GestureDelivery.EVALUATIVE,
-)
-
-@Serializable
-data class GestureEvent(
-    @SerialName("time_seconds") val timeSeconds: Double,
-    val label: String,
-    val strength: Double = 1.0,
-    val weight: Double = 1.0,
-    val delivery: GestureDelivery = GestureDelivery.EVALUATIVE,
-)
-
-@Serializable
-data class GesturePromptRegion(
-    @SerialName("start_seconds") val startSeconds: Double,
-    @SerialName("duration_seconds") val durationSeconds: Double,
-    val text: String,
-    val weight: Double = 1.0,
-    val delivery: GestureDelivery = GestureDelivery.COMPILED,
-)
-
-@Serializable
-data class GestureBoard(
-    @SerialName("duration_seconds") val durationSeconds: Double,
-    @SerialName("base_prompt") val basePrompt: String = "",
-    @SerialName("prompt_regions") val promptRegions: List<GesturePromptRegion> = emptyList(),
-    val events: List<GestureEvent> = emptyList(),
-    val curves: List<GestureCurve> = emptyList(),
-    val metadata: JsonObject = JsonObject(emptyMap()),
-)
-
-@Serializable
-data class GestureBinding(
-    val name: String,
-    val kind: String,
-    val delivery: GestureDelivery,
-    val target: String,
-    val explanation: String,
-)
-
-@Serializable
-data class GestureCompileRequest(
-    val board: GestureBoard,
-    val operation: String = "generate.style",
-    val parameters: JsonObject = JsonObject(emptyMap()),
-)
-
-@Serializable
-data class GestureCompilation(
-    val board: GestureBoard,
-    val operation: String,
-    @SerialName("effective_prompt") val effectivePrompt: String,
-    val parameters: JsonObject,
-    val bindings: List<GestureBinding>,
-)
-
-@Serializable
-data class GestureEvaluation(
-    @SerialName("overall_score") val overallScore: Double,
-    @SerialName("lane_scores") val laneScores: Map<String, Double> = emptyMap(),
-    @SerialName("feature_summary") val featureSummary: Map<String, Double> = emptyMap(),
-)
-
 @Serializable
 data class ModelOperation(
     /** The dotted operation name, e.g. `generate.style`; an unknown one is `UNSUPPORTED_OPERATION`. */
@@ -797,37 +884,80 @@ data class AnalysisPreview(
 /** One immutable, source-adjacent window in the indexed audio corpus. */
 @Serializable
 data class CorpusSegment(
+    /** The index's own identifier for this window, which [previousSegmentId] and [nextSegmentId] refer to. */
     val id: String,
-    @SerialName("asset_id") val assetId: String,
-    @SerialName("start_seconds") val startSeconds: Double,
-    @SerialName("duration_seconds") val durationSeconds: Double,
-    @SerialName("scale_seconds") val scaleSeconds: Double,
-    @SerialName("previous_segment_id") val previousSegmentId: String? = null,
-    @SerialName("next_segment_id") val nextSegmentId: String? = null,
-    @SerialName("descriptor_representation_id") val descriptorRepresentationId: String? = null,
+    /** The recording the window was cut from. */
+    @SerialName("asset_id")
+    val assetId: String,
+    /** Where the window starts in that recording, in seconds. */
+    @SerialName("start_seconds")
+    val startSeconds: Double,
+    /** How long the window is, in seconds. */
+    @SerialName("duration_seconds")
+    val durationSeconds: Double,
+    /**
+     * The window length this part of the index was built at. One recording is usually indexed at
+     * several scales at once, and a window is only ever compared with others of its own.
+     */
+    @SerialName("scale_seconds")
+    val scaleSeconds: Double,
+    /** The window before this one in the same recording at the same scale, or null at the start. */
+    @SerialName("previous_segment_id")
+    val previousSegmentId: String? = null,
+    /** The window after it, or null at the end. Following these is how a splice keeps going. */
+    @SerialName("next_segment_id")
+    val nextSegmentId: String? = null,
+    /** The representation holding this window's descriptor vector, where the index kept one. */
+    @SerialName("descriptor_representation_id")
+    val descriptorRepresentationId: String? = null,
+    /** Anything else the indexer recorded about the window. */
     val metadata: JsonObject = JsonObject(emptyMap()),
 )
 
 /** A retrieved corpus window together with its grouped distance and playable representations. */
 @Serializable
 data class CorpusNeighbour(
+    /** The window that was found. */
     val segment: CorpusSegment,
+    /** Its weighted distance from the query. Smaller is closer, and the results arrive in this order. */
     val distance: Double,
-    @SerialName("group_distances") val groupDistances: Map<String, Double> = emptyMap(),
+    /**
+     * The distance within each descriptor group on its own, keyed `harmony`, `pitch`, `texture`,
+     * `rhythm` and `dynamics`. These say what the window was matched *on*, which a single number
+     * cannot: two neighbours at the same distance can agree on rhythm and disagree on harmony.
+     */
+    @SerialName("group_distances")
+    val groupDistances: Map<String, Double> = emptyMap(),
+    /** The window's own audio, which is what makes a result auditionable rather than only rankable. */
     val audio: AssetRepresentation,
-    @SerialName("splice_preview") val splicePreview: AssetRepresentation? = null,
+    /** The query with this window spliced into it, where the service rendered one. */
+    @SerialName("splice_preview")
+    val splicePreview: AssetRepresentation? = null,
 )
 
 /** Bounded metadata for a corpus index or nearest-neighbour result. */
 @Serializable
 data class CorpusPreview(
+    /**
+     * Which corpus operation this came from, and so which list below is filled: `analysis.embed`
+     * populates [segments], `analysis.find_neighbours` populates [neighbours].
+     */
     val operation: String,
+    /** The window that was indexed or searched with. */
     val query: AssetRegion,
-    @SerialName("scale_seconds") val scaleSeconds: Double? = null,
-    @SerialName("indexed_segment_count") val indexedSegmentCount: Int = 0,
+    /** The scale the operation worked at, where it worked at a single one. */
+    @SerialName("scale_seconds")
+    val scaleSeconds: Double? = null,
+    /** How many windows the index holds, which is the pool a retrieval searched. */
+    @SerialName("indexed_segment_count")
+    val indexedSegmentCount: Int = 0,
+    /** The windows an indexing run produced. Empty for a retrieval. */
     val segments: List<CorpusSegment> = emptyList(),
+    /** What a retrieval found, nearest first. Empty for an indexing run. */
     val neighbours: List<CorpusNeighbour> = emptyList(),
+    /** The descriptor-group weights the distances were measured with, keyed as in [CorpusNeighbour.groupDistances]. */
     val weights: Map<String, Double> = emptyMap(),
+    /** Headline numbers for the run, for showing above the results. */
     val summary: JsonObject = JsonObject(emptyMap()),
 )
 

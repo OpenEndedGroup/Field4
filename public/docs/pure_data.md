@@ -6,8 +6,8 @@ boxes, audio and messages flowing down the wires. Field runs Pd patches through
 same audio engine as Faust and `patSynth`, Field sends messages to its `[r]` objects, and whatever its
 `[s]` objects send comes back to Kotlin.
 
-A Pd patch is plain text, so a patch can be written straight into a box as well as opened from a
-`.pd` file drawn in Pd itself.
+A Pd patch is plain text. You can write one straight into a box or open a `.pd` file made in Pd
+itself.
 
 ## Building libpd
 

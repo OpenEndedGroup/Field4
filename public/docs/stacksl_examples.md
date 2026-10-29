@@ -1242,8 +1242,8 @@ The 2D `fbm` falls slightly short of 1, so `fbm 0.5 -` is not quite centred on
 zero; used as a force, that small bias adds up to a drift. Use `fbm3` when the
 centre matters.
 
-`curl3` is divergence-free to rounding error, not approximately, so particles
-pushed by it do not bunch up over time.
+`curl3` is divergence-free to rounding error. A particle simulation can still accumulate
+error from its timestep and integration method.
 
 A particle force:
 

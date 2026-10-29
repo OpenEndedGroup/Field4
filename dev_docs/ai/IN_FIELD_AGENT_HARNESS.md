@@ -433,10 +433,77 @@ the name, which is what the prompt asks for.
 
 Failure modes seen or expected: a model that never reads a file's header (now refused for `DO NOT
 EDIT`, not for other generated-file conventions); no shell, so a prompt that says "run the docs build"
-or "run Gradle" cannot be obeyed (the fixer in `land.py` needs exactly that, and was not tried); a
+or "run Gradle" cannot be obeyed (the fixer in `land.py` needs exactly that, and was not tried; the
+command tool below, 2026-10-28, answers it for named gates); a
 prompt as an argv element (`docs_notes` passes it so) is bounded by `ARG_MAX`; the backdoor's own
 timeout must cover a cold Field start; and AI4's turn goes through the box-chat instructions, which talk
 about boxes it does not need here.
+
+## A bounded command tool, so AI4 can be the lander's fixer (2026-10-28)
+
+The repo tools could read and patch but not run anything, so AI4 could neither reproduce a red nor
+confirm its fix. `RepoRunCommandRequest` (`afield/ai/tools/RepoCommandTools.kt`, namespace `repo`) runs
+one *named* command in the job's root. It is not a shell:
+
+- **Templates.** `RepoCommandTemplates.ALL` maps a name to a fixed argv prefix and a check for the
+  model's `args`: `gradle` (`./gradlew --console=plain` + task names matching a task-path regex, minus
+  `clean`/`wrapper`/`run*`/`publish*`/`init`/`generateLocalKeystore`, plus `--tests <filter>`,
+  `--offline`, `--continue`, `--rerun`; every other option, including `--stop`, `-D`, `-I`, `-p`, is
+  refused), `python-test` (`uv run --project . --group backdoor python` + a readable
+  `tools/test_*.py`/`python/**/test_*.py` + unittest names), `check` (the same + one
+  `tools/check_*.py`, no options), `git-status`, `git-diff` (`--stat`/`--cached`/`--name-only`/
+  `--name-status`, revisions, `--` then confined paths), `git-log` (`-n 1..999`, default 20), `git-show`
+  (one revision), and `land-precheck` (`uv run python tools/land.py precheck`; not in the fixer's set,
+  because it merges `main` in and out of the tree). git runs with `--no-pager`, `--no-ext-diff`,
+  `--no-textconv`, `-c core.fsmonitor=false`, `-c diff.external=`. Paths go through
+  `RepoFileTools.resolve`, so a command can name only files the job may read.
+- **Process.** argv list, cwd = root, stdin closed; environment = the Field JVM's minus `GIT_*`,
+  `VIRTUAL_ENV` (uv warns and ignores it; seen on the first live run) and
+  `AFIELD_VERIFICATION_LOCK_OWNER`, plus `AFIELD_VERIFICATION_LOCK=fail`, `GIT_TERMINAL_PROMPT=0`,
+  `GIT_PAGER=cat`. One command at a time per job.
+- **Verification lock.** A live process holding `<root>/.field-backdoor/verification.lock` refuses the
+  run with the owner's record, unless it is an ancestor of the Field JVM (the job's own runner); a dead
+  pid is stale. `AFIELD_VERIFICATION_LOCK=fail` makes a Gradle child stop rather than wait 30 minutes
+  past the tool's own cap if the lock is taken mid-run.
+- **Caps.** Wall clock: the template's default (Gradle 900 s, Python 600 s, git 60 s, precheck 1800 s),
+  or the call's `timeoutSec`, clamped to the job's `repoCommandMaxSec` (default 900, 10..3600). On
+  timeout the tree is stopped deepest first (TERM, 3 s, KILL) from `ProcessHandle.descendants()`,
+  sparing any process whose command line says `GradleDaemon`: daemons are shared by every checkout,
+  and killing the client cancels its build. Output: stdout+stderr merged, the first 8 KB and the last
+  bytes up to 48 KB kept, the middle dropped and counted (`outputBytes`, `truncated`).
+- **Wiring.** `AgentTaskRequest.repoCommands` (names) and `repoCommandMaxSec`; result `repoRuns`
+  (`name args -> exit|timeout`); the prompt lists the allowed commands with their templates and says to
+  reproduce before editing and confirm after. Backdoor: `agent-task ... --repo-command NAME
+  --repo-command-max-sec N`. CLI: `field_repo_agent.py --run NAME` (repeatable; `--run fixer` =
+  `RepoCommandTemplates.FIXER_SET`, mirrored in `FIXER_COMMANDS` and pinned by `test_field_agent.py`),
+  `--run-max-sec` / `FIELD_AGENT_RUN_MAX_SEC`. `field_agent.headless_argv("field", edits=True)`, which
+  `tools/land.py`'s fixer runs, now passes `--write '**' --run fixer`; read-only `huh?` gets no commands.
+- **Tests.** `RepoCommandToolsTest` (11): argv built from checked slots; refusals (`--stop`, `clean`,
+  `runJvm`, `-D`, `-I`, `;` in a task, `$(...)` in a filter, unlisted scripts, unknown git options,
+  oversize `-n`); path confinement against the read list; only the job's names run; cwd, verbatim `A*`
+  (no shell expanded it) and environment seen from inside the child; non-zero exit reported, stderr
+  merged; a 1 s timeout stops a backgrounded grandchild `sleep 300`; the job cap clamps; head+tail
+  output cap; a live foreign lock refuses, our own pid and a dead pid do not.
+
+### The live runs
+
+`openai/gpt-6.1-sol` (`AFIELD_AI_PROVIDER=openai`; the configured local qwen3.8-27b was unreachable,
+`OpenAIIoException: Request failed`), Field started by the backdoor on port 9601, the lander's own
+`FIXER_PROMPT` filled from `tools/land.py`, and the exact argv `field_agent.headless_argv(edits=True)`
+returns with `FIELD_AGENT=field`. Transcripts (prompt, full `AgentTaskResult`, tool log, reply, diff) are
+in `dev_docs/ai/ai4_fixer_runs/`.
+
+| Bounce | Rounds | Wall | Tokens in / out (cache read) | Commands it ran | Outcome |
+| --- | --- | --- | --- | --- | --- |
+| Constructed, Python: a branch renamed `describe("field")` but not its test (`2026-10-28-python/`) | 7 / 40 | 39 s | 151,754 / 508 (130,841) | git-diff, python-test → 1, patch, python-test → 0, git-diff | right one-line test fix, `FIXER-VERDICT` fix, culprit right; `land._fixer_verdict` parses it |
+| Constructed, Gradle: a branch changed git-log's default to 30 but not `RepoCommandToolsTest` (`2026-10-28-gradle/`) | 6 / 40 | 43 s | 187,787 / 645 (161,837) | git-diff, `gradle jvmTest --tests …` → 1 (4 s, warm), patch, same → 0 (6 s), git-diff | right one-line fix, verdict fix |
+| Real, replayed read-only: `claude/handwriting-pen`'s 2026-10-26 bounce, `DocsFenceTreatmentTest`, on its failing tip `04e486575` (`2026-10-28-replay-learned-pen/`) | 5 / 40 | 31 s | 151,246 / 655 (126,645) | git commands only (Gradle withheld: cold checkout, disk at 13 GB free) | four fence openers changed; **byte-identical** to the lander's real fixup `64c03befa`; it said the test was not rerun |
+
+What this does not show: all three were the easy kind (the failure text names the fix), and the two
+constructed ones were written by the same agent that built the tool. No run hit the timeout or output
+cap live (the tests do). Not run through a real `tools/land.py` round: that needs the launchd lander
+on `FIELD_AGENT=field`, and the lander checkout must have this branch. A cold Gradle build in the
+fixer's worktree is still bounded only by the 900 s cap, inside `FIXER_MINUTES` (15).
 
 ## What is not done
 

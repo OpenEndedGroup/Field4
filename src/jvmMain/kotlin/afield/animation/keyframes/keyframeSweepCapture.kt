@@ -4,7 +4,7 @@
  * The GPU half of a keyframe sweep: turning one blended look into the still and the short clip that
  * a night's archive is actually made of.
  *
- * [KeyframeSweep] is renderer-free on purpose — it blends, it records, it calls your callback. But
+ * [KeyframeSweep] is renderer-free: it blends, it records, it calls your callback. But
  * *most* callbacks do the same two things, and they are the two things with traps in them: an
  * offscreen readback that can come back empty, and a frame sequence that has to be muxed by a tool
  * which may not be installed. So they live here once rather than in every sweep.

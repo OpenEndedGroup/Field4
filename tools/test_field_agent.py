@@ -65,7 +65,8 @@ class FieldAgentTest(unittest.TestCase):
         self.assertEqual(argv[0], sys.executable)
         self.assertTrue(argv[1].endswith("field_repo_agent.py"))
         self.assertEqual(argv[2:], ["--root", "."], "read-only unless edits: no --write glob")
-        self.assertEqual(field_agent.headless_argv("field", edits=True)[-2:], ["--write", "**"])
+        self.assertEqual(field_agent.headless_argv("field", edits=True)[4:], ["--write", "**", "--run", "fixer"],
+                         "with edits AI4 may also run the fixer's named commands")
         self.assertEqual(field_agent.describe("field"), "Field AI4")
 
 
@@ -78,6 +79,33 @@ class FieldRepoAgentTest(unittest.TestCase):
         task = argv[argv.index("--command") + 1]
         self.assertEqual(task, "agent-task --goal-file /g.md --repo-root /r --max-rounds 7 --timeout 100 "
                                "--repo-read '**' --repo-write a.md --repo-write 'b/*' --model m")
+
+    def test_runs_become_named_repo_commands_with_a_cap(self) -> None:
+        import field_repo_agent
+        argv = field_repo_agent.build_backdoor_argv(root=Path("/r"), read=["**"], write=[], goal_file=Path("/g.md"), model="",
+                                                    max_rounds=7, port="", timeout=100, runs=["fixer", "gradle", "land-precheck"],
+                                                    run_max_sec=120)
+        task = argv[argv.index("--command") + 1].split()
+        names = [task[i + 1] for i, a in enumerate(task) if a == "--repo-command"]
+        self.assertEqual(names, [*field_repo_agent.FIXER_COMMANDS, "land-precheck"], "fixer expands, duplicates drop")
+        self.assertEqual(task[task.index("--repo-command-max-sec") + 1], "120")
+        bare = field_repo_agent.build_backdoor_argv(root=Path("/r"), read=["**"], write=[], goal_file=Path("/g.md"), model="",
+                                                    max_rounds=7, port="", timeout=100)
+        self.assertNotIn("--repo-command", bare[bare.index("--command") + 1], "no --run, no command tool")
+
+    def test_fixer_set_matches_the_kotlin_templates(self) -> None:
+        import re
+        import field_repo_agent
+        src = (Path(__file__).resolve().parent.parent / "src/jvmMain/kotlin/afield/ai/tools/RepoCommandTools.kt").read_text()
+        kotlin = re.search(r"FIXER_SET: List<String> = listOf\(([^)]*)\)", src).group(1)
+        self.assertEqual(tuple(re.findall(r'"([\w-]+)"', kotlin)), field_repo_agent.FIXER_COMMANDS)
+        templates = set(re.findall(r'RepoCommandTemplate\("([\w-]+)"', src))
+        self.assertTrue(set(field_repo_agent.FIXER_COMMANDS) <= templates)
+
+    def test_backdoor_forwards_repo_commands(self) -> None:
+        src = (Path(__file__).resolve().parent / "field_backdoor.py").read_text()
+        self.assertIn('payload["repoCommands"] = list(args.repo_command)', src)
+        self.assertIn('payload["repoCommandMaxSec"] = args.repo_command_max_sec', src)
 
     def test_result_is_found_in_backdoor_json(self) -> None:
         import field_repo_agent

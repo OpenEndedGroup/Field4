@@ -2,9 +2,6 @@
 
 <!-- capture-sources: src/jvmMain/kotlin/afield/geometry/path/contours.kt src/jvmMain/kotlin/afield/geometry/spatial/ -->
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference:
-[Graphics](reference/graphics.md) and [Data](reference/data.md).*
-
 Given a set of points, much of what you might do with them comes down to one question: which part
 of the plane belongs to which point, and where are the boundaries between them?
 
@@ -1101,7 +1098,7 @@ two bands stay apart at `k = 2`. The number after the semicolon in `SINGLE`'s ca
 cluster at `k = 2`, and it is **43**, not 82: the third straggler joins the band it was already
 nearest.
 
-Chaining happens only when the bridge is *denser than the groups it bridges*. Along a band the
+Here the bridge is too sparse to join the bands early. Along a band the
 nearest-neighbour spacing is about 0.25; the shortest hop from a straggler to the far band is about
 0.55. Single linkage merges the cheapest pair available at every step, so every within-band link is
 used up long before any gap-crossing one, and there is no `k` at which the chain wins. It takes
@@ -1521,3 +1518,6 @@ Convert graphs, cells or clusters into Field drawings and interactive views.
 Source: `src/jvmMain/kotlin/afield/geometry/path/contours.kt`,
 `afield/geometry/spatial/voronoi.kt` and `spatial_field.kt`, `afield/math/statistics/dirichlet.kt`
 and `clustering.kt`, and the JTS-backed corner of `afield/data/graph/graph_connectivity.kt`.
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference:
+[Graphics](reference/graphics.md) and [Data](reference/data.md).*

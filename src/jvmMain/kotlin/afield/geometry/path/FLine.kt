@@ -187,6 +187,33 @@ internal fun FLine.planePoint(x: Number, y: Number, z: Number = 0): Vec3 {
  * Use [moveTo], [lineTo], [cubicTo], and [close] to build geometry. Builders return
  * [FLine] for chaining; use [here] to access the most recently added [Node] when you
  * need per-instruction properties (for example, `color` or `pointSize`).
+ *
+ * # Drawing attributes
+ *
+ * How a line is drawn is not on this class: each attribute is an extension property declared in
+ * `afield/graphics/render/StandardDrawing.kt`, imported one by one from `afield.graphics.render`
+ * (`import afield.graphics.render.color`).
+ *
+ * | property | type, default | what it does |
+ * | --- | --- | --- |
+ * | `color` | `Vector4f`, opaque white | RGBA in `0..1` for stroke, fill and dots; set with `vec(r, g, b, a)` |
+ * | `thickness` | `Double?`, unset (1.0) | stroke width in the line's own units (pixels in 2D) |
+ * | `stroked` | `Boolean`, `true` | draw the outline at `thickness` |
+ * | `filled` | `Boolean`, `false` | flood closed subpaths with `color` |
+ * | `pointed` | `Boolean`, `false` | draw a dot at every node |
+ * | `pointSize` | `Double`, `1.0` | dot size; `Node.pointSize` overrides it per node |
+ * | `thicken` | `Stroke?`, unset | an AWT stroke (dashes, tapers); only the Java2D shape path honours it, so for dashes on screen use `byDashing` |
+ *
+ * `Node.color` sets one node's colour, for gradients. A box draws lines with `lines(listOf(a, b), w = 400.0, h = 300.0)`.
+ *
+ * ```kotlin
+ * import afield.graphics.render.color
+ * import afield.graphics.render.thickness
+ *
+ * val f = FLine().moveTo(0, 0).lineTo(100, 50)
+ * f.color = vec(1.0, 1.0, 1.0, 0.5)   // translucent white
+ * f.thickness = 2.0
+ * ```
  */
 @Serializable(with = FLineSerializer::class)
 // The paragraph above already tells a reader which members matter; this tells the completion popup the

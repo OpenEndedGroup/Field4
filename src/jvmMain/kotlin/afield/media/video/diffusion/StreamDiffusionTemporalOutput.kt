@@ -13,6 +13,21 @@ import afield.graphics.texture.HasImageViewArray
 import afield.graphics.texture.PreparesSampledImages
 import org.lwjgl.vulkan.VK10.*
 
+/**
+ * The temporal half of a diffusion view: it holds the last two results the worker returned and
+ * renders the texture the view publishes.
+ *
+ * Results arrive late and in groups, so geometry has moved on by the time a frame can be shown.
+ * Given a [StreamDiffusionMotionProvider], a [StreamDiffusionView] routes its output through this
+ * file to settle both ends of that delay; without one it publishes the worker's output directly.
+ * Each arriving result is written into one of two history targets while the other is read, blended
+ * with the previous result where the provider's correspondence agrees and both came from the same
+ * worker generation, and the carried colours are clamped to the 3x3 neighbourhood of the fresh ones
+ * so a stroke that moved does not trail. The display target reprojects the newest history onto the
+ * current frame and mixes it with the live source where confidence runs out; with no correspondence
+ * for the current frame it shows that history as it stands.
+ */
+
 /** Two history targets at their source times, plus a display target at the current render time. */
 internal class StreamDiffusionTemporalOutput(
     private val renderer: Renderer, private val source: RenderToTexture,

@@ -178,9 +178,9 @@ canvas.glaze(rgb(0.6, 0.45, 0.2), coats = 0.12) // a thin warm varnish over the 
 display("main", canvas.png())
 ```
 
-The strokes are drawn by code here, from a seeded random hand, so that the page rebuilds the same
-way. The painting part reads them back from a region of the drawing, `notation.strokes.filter {
-it.bounds.intersects(region) }`, so strokes you draw in that region with the pen are painted too.
+Code draws the strokes in this example. The painting box reads them from a region of the drawing
+with `notation.strokes.filter { it.bounds.intersects(region) }`, so it can paint strokes you draw
+there by hand too.
 
 ## Step by step
 
@@ -595,8 +595,8 @@ is what a drawing program's pressure setting is.
 
 ## Strokes that cross
 
-Wet paint mixes with what is on the canvas the way pigment does, not the way light does. Here four
-yellow and red pairs of bands are each crossed by one stroke. In the first, ultramarine goes straight
+Wet paint picks up and mixes with paint already on the canvas. Here four pairs of yellow and red
+bands are each crossed by one stroke. In the first, ultramarine goes straight
 across the wet bands and turns green over the yellow and dark over the red. In the second the same
 blue crosses the same bands after `dry()`, and sits on top of them as a transparent film. In the
 third a clean, dry hog-hair brush with no paint of its own is dragged through: it picks up the

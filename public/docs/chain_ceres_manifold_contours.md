@@ -1,10 +1,11 @@
 # A polytope, canonicalised, and sliced into layers
 
-This page builds a polytope from Conway notation, makes it canonical, turns it into a closed solid,
-and slices it into the layers a 3D printer would print. `afield.geometry.polytope` holds the Conway
-operator algebra and the two ways of making a form canonical (an iteration, and a solver built on
-Ceres). `afield.geometry.solid.manifold` does exact geometry on closed solids. `Solid.slice` cuts a solid with a
-plane and returns the 2D contours.
+Start with a polytope in Conway notation and you can turn it into a stack of slices, like the
+layers a 3D printer would print. Along the way we'll make the shape canonical and check what the
+slices tell us about the resulting solid.
+
+`afield.geometry.polytope` builds and canonicalises the shape; `afield.geometry.solid.manifold`
+handles the closed solid. `Solid.slice` cuts it with a plane and returns the 2D contours.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/stack.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="layer_stack_trace study converged" embed=true hidden=true timeout="300" requires="manifold" name="elsewhere-layer_stack_trace" alt="Forty-eight extruded slices of canonical `gC`, scaled to volume one. Colour follows height; the small gaps make the individual layers visible." macro-file="../../dev_docs/agents/transcripts/polytope_layer_stack_path_trace.yaml" capture-box="layer_stack_trace" capture-profile="linux-nvidia"}
 // Built and launched from dev_docs/agents/transcripts/polytope_layer_stack_path_trace.yaml.
@@ -331,9 +332,9 @@ and the differences in the plot come from the shape, not from a rotation.
 
 ## `kkC`, and the solver that reaches it
 
-A midpoint Riemann sum over the layer areas has to return the volume the layers came from, and the
-two numbers share no code: the area integral works on regions in 2D, Manifold's `volume` on the
-surface in 3D. When the sum comes out wrong, the fault is in the solid, not the slicer.
+As the layers get thinner, a midpoint Riemann sum over their areas should approach the volume of
+the solid. The two calculations share no code: the area integral works on regions in 2D, while
+Manifold's `volume` works on the surface in 3D. Comparing them can reveal a problem with the solid.
 
 Every form above sums correctly. `kkC` (kis applied twice to the cube) is a polytope that
 `canonicalize()` cannot make canonical, and

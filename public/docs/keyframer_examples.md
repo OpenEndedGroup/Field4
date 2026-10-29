@@ -1,11 +1,5 @@
 # Keyframes: capturing, persisting and replaying live state
 
-*Every `keyframer.kt` declaration used below is listed, with its KDoc, in the codebase reference:
-[`keyframer.kt`](reference/graphics.md#keyframer-kt). The two supporting types the examples lean on,
-`afield.graphics.vulkan.buffers.Structure` and `afield.graphics.vulkan.util.CameraPose`, are not: they live in
-Field 4, which the [reference](reference/index.md) leaves to
-[Field 4 Graphics](afield_four_graphics.md).*
-
 Live coding has a specific kind of loss built into it. You push sliders around for twenty minutes,
 arrive somewhere good, and then the thing you arrived at exists only as the current contents of a
 running process. Reload the shader and it is gone. Close the document and it is gone. Try to
@@ -22,7 +16,7 @@ example over on
 This page is the rest of it: what a scope can watch, why a camera move is a screw motion, how saving
 works and what survives it, and how a captured look becomes source.
 
-Almost everything below runs on the CPU, without a renderer.
+Almost everything below runs on the CPU, without a renderer. The [keyframer reference](reference/graphics.md#keyframer-kt) lists the declarations with their KDoc.
 
 ??? aside "Why most of this page needs no GPU"
     `Structure` is constructible bare

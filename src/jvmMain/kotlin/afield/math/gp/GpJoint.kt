@@ -32,25 +32,40 @@ class GpJoint internal constructor(
             }
         }
     }
+    /** How many query points this joint covers. Every array here has this length. */
     val size: Int get() = mu.size
+    /** The mean at each query point. A copy. */
     val mean: DoubleArray get() = mu.copyOf()
+    /** The marginal variance at each query point: the diagonal of [covariance]. */
     val variance: DoubleArray get() = DoubleArray(size) { cov[it][it] }
+    /** The whole covariance matrix, symmetrised on construction. A copy of every row. */
     val covariance: Array<DoubleArray> get() = Array(size) { cov[it].copyOf() }
+    /** One covariance entry, without copying the matrix [covariance] would hand back. */
     fun covarianceAt(i: Int, j: Int): Double = cov[i][j]
     /** Pivoted, rank-revealing factor: no independent jitter is added to samples. */
     private val factor by lazy { gpPsdFactor(cov, relativeTolerance, absoluteTolerance) }
+    /**
+     * The rank of that factor, which is how many standard normals a draw consumes. Below
+     * [size] when the query points leave the covariance rank-deficient — repeated points, or
+     * a distribution pinned exactly by the observations.
+     */
     val samplingRank: Int get() = factor.rank
     /** Maximum unrepresented marginal variance (numerical rank truncation only). */
     val samplingResidualVariance: Double get() = factor.residual
+    /** One correlated draw at every query point. The same seed always gives the same draw. */
     fun sample(seed: Long): DoubleArray = sample(gpRandom(seed))
+    /**
+     * One correlated draw, taking its randomness from [random] and advancing it by
+     * [samplingRank] normals. Call it repeatedly on one generator for independent draws.
+     */
     fun sample(random: Random): DoubleArray {
         val f = factor
         val z = DoubleArray(f.rank) { random.nextGaussian() }
         return DoubleArray(size) { i -> var value = mu[i]; for (j in z.indices) value += f.rows[i][j] * z[j]; value }
     }
     /**
-     * A draw whose departure from the mean is scaled by [spread]: 0 is the mean, 1 an honest
-     * sample, above 1 an exaggerated one. Same seed, same direction of departure.
+     * A draw whose departure from the mean is scaled by [spread]: 0 is the mean, 1 a draw from
+     * the distribution itself, above 1 an exaggerated one. Same seed, same direction of departure.
      */
     fun sample(seed: Long, spread: Double): DoubleArray {
         require(spread.isFinite())

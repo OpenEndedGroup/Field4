@@ -104,19 +104,20 @@ import kotlin.math.max
  * many** of its neighbours are alive, not on which.
  *
  * `B3/S23` is Conway's Life — born on exactly 3 live neighbours, survives on 2 or 3.
- *
- * @property birth neighbour counts at which a dead cell becomes alive
- * @property survive neighbour counts at which a live cell stays alive
- * @property radius Chebyshev (or, with [vonNeumann], Manhattan) neighbourhood radius; 1 is the
- *   classic 8-cell Moore neighbourhood, larger radii give the "Larger than Life" family
- * @property vonNeumann `true` counts only the diamond `|dx| + |dy| <= radius` instead of the square
- * @property notation the `B…/S…` string this rule was parsed from, or a reconstruction of it
  */
 class LifeRule(
+    /** Neighbour counts at which a dead cell becomes alive. */
     val birth: Set<Int>,
+    /** Neighbour counts at which a live cell stays alive. */
     val survive: Set<Int>,
+    /**
+     * Chebyshev (or, with [vonNeumann], Manhattan) neighbourhood radius; 1 is the classic 8-cell Moore
+     * neighbourhood, larger radii give the "Larger than Life" family.
+     */
     val radius: Int = 1,
+    /** `true` counts only the diamond `|dx| + |dy| <= radius` instead of the square. */
     val vonNeumann: Boolean = false,
+    /** The `B…/S…` string this rule was parsed from, or a reconstruction of it. */
     val notation: String = "B${birth.sorted().joinToString("")}/S${survive.sorted().joinToString("")}"
 ) {
     init {
@@ -303,19 +304,20 @@ fun IntGrid.history(rule: LifeRule, generations: Int): List<IntGrid> {
 
 /**
  * Result of running an automaton until it repeats.
- *
- * @property period the cycle length, or 0 if none was found within the step budget
- * @property firstSeenAt the generation the repeated state was first reached (so `period == 1` and
- *   `firstSeenAt == 0` means the seed was already a still life)
- * @property generations how many generations were actually stepped
- * @property finalState the grid at [generations]
- * @property population the population at each generation, `0..generations`
  */
 class CycleReport(
+    /** The cycle length, or 0 if none was found within the step budget. */
     val period: Int,
+    /**
+     * The generation the repeated state was first reached (so `period == 1` and `firstSeenAt == 0` means the
+     * seed was already a still life).
+     */
     val firstSeenAt: Int,
+    /** How many generations were actually stepped. */
     val generations: Int,
+    /** The grid at [generations]. */
     val finalState: IntGrid,
+    /** The population at each generation, `0..generations`. */
     val population: IntArray
 ) {
     /** `true` when a repeat was found within the budget. */
@@ -439,16 +441,15 @@ fun IntGrid.centeredOn(width: Int, height: Int, wrap: Boolean = true): IntGrid =
  * field of spiral cores, and once it has, every cell advances every step forever. That "every cell
  * advances every step" is a measurable statement, and [cyclicAdvanceFraction] is how this family makes
  * it (a random soup sits far below 1; a spiral field sits at 1).
- *
- * @property states cycle length, >= 2
- * @property threshold how many neighbours in the successor state are needed to advance
- * @property radius neighbourhood radius
- * @property vonNeumann use the diamond neighbourhood rather than the square
  */
 class CyclicRule(
+    /** Cycle length, >= 2. */
     val states: Int,
+    /** How many neighbours in the successor state are needed to advance. */
     val threshold: Int = 1,
+    /** Neighbourhood radius. */
     val radius: Int = 1,
+    /** Use the diamond neighbourhood rather than the square. */
     val vonNeumann: Boolean = false
 ) {
     init {
@@ -647,16 +648,17 @@ fun longestRunLength(bits: IntArray): Int {
 /**
  * A cubic lattice of integer cell states — the 3-D counterpart of [IntGrid], stored
  * `cells[(z * height + y) * width + x]`.
- *
- * @property width/[height]/[depth] extents, each >= 1
- * @property cells state per voxel
- * @property wrap `true` for a 3-torus; otherwise outside counts as state 0
  */
 class IntVolume(
+    /** Cells across, >= 1. */
     val width: Int,
+    /** Cells down, >= 1. */
     val height: Int,
+    /** Cells deep, >= 1. */
     val depth: Int,
+    /** State per voxel. */
     val cells: IntArray,
+    /** `true` for a 3-torus; otherwise outside counts as state 0. */
     val wrap: Boolean = false
 ) {
     init {
@@ -747,11 +749,13 @@ class IntVolume(
  * A 3-D outer-totalistic rule over the 26-voxel Moore neighbourhood — the direct generalisation of
  * [LifeRule]. Notation is the same `B…/S…`, with counts up to 26, so `B5/S45` is written
  * `LifeRule3D(setOf(5), setOf(4, 5))`.
- *
- * @property birth neighbour counts at which an empty voxel fills
- * @property survive neighbour counts at which a filled voxel stays filled
  */
-class LifeRule3D(val birth: Set<Int>, val survive: Set<Int>) {
+class LifeRule3D(
+    /** Neighbour counts at which an empty voxel fills. */
+    val birth: Set<Int>,
+    /** Neighbour counts at which a filled voxel stays filled. */
+    val survive: Set<Int>
+) {
     init {
         require(birth.all { it in 0..26 }) { "3-D birth counts must be within 0..26, got $birth" }
         require(survive.all { it in 0..26 }) { "3-D survive counts must be within 0..26, got $survive" }

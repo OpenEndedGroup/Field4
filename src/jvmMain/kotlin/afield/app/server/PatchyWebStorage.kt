@@ -35,6 +35,22 @@ import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * The HTTP side of a Patchy editor that edits a `.psd` on disk: one route pair, addressed by an
+ * opaque output-binding id rather than by a path.
+ *
+ * [patchyWeb] registers a binding when a box opens a document file and drops it again when the run
+ * stops, so the browser never names a path and a stale id resolves to nothing. Registration refuses
+ * anything that is not a `.psd` inside that document's own `files` directory, both requests are
+ * refused unless they are same-site, and a write to a read-only document is refused as well.
+ *
+ * Writes are compare-and-swap on the file's content hash. A GET returns the hash with the bytes, a
+ * PUT has to send the hash it is replacing, and a PUT whose hash does not match the file on disk is
+ * answered with a conflict rather than overwriting whatever arrived in the meantime. The new bytes
+ * have to open with a PSD signature and fit the size limit, and they land through a temporary file
+ * moved into place rather than by writing over the original.
+ */
+
 /** Opaque output-binding IDs are the only browser address for a box's PSD file. */
 internal object PatchyWebStorage {
     private data class Entry(val binding: OutputRequestBinding, val document: File, val file: File)

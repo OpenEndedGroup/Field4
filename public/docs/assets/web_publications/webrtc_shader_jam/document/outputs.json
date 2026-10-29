@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T15:50:22.846Z",
+  "documentName": "webrtc_shader_jam",
+  "outputs": [
+    {
+      "uid": "webrtc_renderer",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 1920,
+      "height": 1080,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

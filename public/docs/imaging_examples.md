@@ -14,9 +14,8 @@ field lands in the same drawing, animation and export machinery as anything you 
 Scalar responses colour-map through the same [`Colormaps`](rectsl_examples.md) tables RectSL uses.
 And `Img` implements `ToHTML`, so evaluating one in a box shows the picture, not `Img@3f1a2b`.
 
-Everything here is arithmetic you could have written out by hand. For the two questions you cannot
-(how far away is this, and what is it a picture *of*), see [depth and CLIP](onnx.md), which runs
-neural models over the same RGBA bytes an `Img` converts to in a dozen lines.
+For learned estimates of depth and image content, see [depth and CLIP](onnx.md), which runs
+neural models over the same RGBA bytes an `Img` can produce.
 
 ## The value type
 
@@ -32,8 +31,8 @@ distance), 3 (RGB) or 4 (RGBA); nothing else.
 
 Three choices change what the numbers mean:
 
-- **Float, not bytes.** Every operation is float math. Nothing quantises mid-pipeline, so a
-  twelve-stage chain does not accumulate rounding steps; clamping happens once, on output.
+- **Float, not bytes.** Every operation is float math. Operations keep floating-point values through the pipeline instead of quantising to bytes
+  at every stage; clamping happens on output.
 - **Signed where it should be.** Gradients, Laplacians and differences legitimately go negative and
   are left that way. `colormapDiverging(...)` is the right way to look at them.
 - **Gradients are in true units-per-pixel.** The Sobel derivative factor is `[-1, 0, 1]/2` and the

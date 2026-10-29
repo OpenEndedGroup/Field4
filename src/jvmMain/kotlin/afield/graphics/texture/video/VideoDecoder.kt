@@ -33,6 +33,11 @@ import kotlin.math.min
  */
 class VideoDecoder(
     private val videoPath: String,
+    /**
+     * Pixel layout [decodeNextFrame] produces: P010 for display video, RGBA8 for a movie whose
+     * R/G/B channels carry numbers rather than colour. Fixed at construction, because [open]
+     * configures the FFmpeg scaler for it.
+     */
     val outputFormat: VideoDecodeFormat = VideoDecodeFormat.P010
 ) : AutoCloseable {
     private var formatContext: AVFormatContext? = null
@@ -42,13 +47,33 @@ class VideoDecoder(
     private var frame: AVFrame? = null
     private var frameOutput: AVFrame? = null
 
+    /**
+     * Index of the stream [open] decodes, or -1 before a successful open. [open] takes the first
+     * stream the container reports as video, and fails if there is none.
+     */
     var videoStreamIndex: Int = -1
+
+    /** Frame width in pixels, read from the stream's codec parameters by [open], and 0 until then. */
     var width: Int = 0
         private set
+
+    /** Frame height in pixels, read from the stream's codec parameters by [open], and 0 until then. */
     var height: Int = 0
         private set
+
+    /**
+     * Length of the video stream in seconds: its declared duration scaled by its time base, and
+     * 0.0 until [open] reads the header. A container that declares no duration stores a sentinel
+     * that is scaled like any other number, so check for a positive value before trusting it.
+     */
     var duration: Double = 0.0
         private set
+
+    /**
+     * Average frame rate the stream declares, in frames per second, and 0.0 when the container
+     * gives none. [VideoTexture] falls back to a 0.033 s frame interval rather than dividing by a
+     * non-positive rate.
+     */
     var fps: Double = 0.0
         private set
 
@@ -423,20 +448,51 @@ enum class VideoDecodeFormat { P010, RGBA8 }
  * can be reused without waiting for garbage collection.
  */
 class VideoFrame(
+    /** Frame width in pixels, the [VideoDecoder.width] of the decoder that produced it. */
     val width: Int,
+    /** Frame height in pixels, the [VideoDecoder.height] of the decoder that produced it. */
     val height: Int,
+    /** Which planes carry data: P010 fills both, RGBA8 fills [plane0] and leaves [plane1] empty. */
     val format: VideoDecodeFormat,
+    /**
+     * Luma samples for a P010 frame, or the whole image for an RGBA8 one. Rows are tightly packed
+     * however much padding FFmpeg's working frame carried, so an upload needs no source stride.
+     */
     val plane0: ByteBuffer,
+    /**
+     * Interleaved chroma samples at half the width and half the height for a P010 frame, and an
+     * empty buffer for an RGBA8 one.
+     */
     val plane1: ByteBuffer,
+    /**
+     * Bytes per row of [plane0]: twice the width for P010 luma, four times for RGBA8. Rows are
+     * packed, so this is the row width rather than a padded pitch.
+     */
     val plane0Stride: Int,
+    /**
+     * Bytes per row of [plane1], which for P010 is the same as [plane0Stride] because a chroma row
+     * holds half as many samples at twice the size. 0 for an RGBA8 frame.
+     */
     val plane1Stride: Int,
+    /**
+     * When this frame is shown, in seconds: FFmpeg's best-effort timestamp scaled by the stream's
+     * time base. [VideoFrameIndex.decoded] turns it into a frame number.
+     */
     val timestamp: Double,
     private val release: () -> Unit = {}
 ) : AutoCloseable {
     private val released = AtomicBoolean()
+
+    /** [plane0] under its P010 name. For an RGBA8 frame this is the colour image, not luma. */
     val lumaData: ByteBuffer get() = plane0
+
+    /** [plane1] under its P010 name, so it is the empty buffer for an RGBA8 frame. */
     val chromaData: ByteBuffer get() = plane1
+
+    /** [plane0Stride] under its P010 name. */
     val lumaStride: Int get() = plane0Stride
+
+    /** [plane1Stride] under its P010 name, so it is 0 for an RGBA8 frame. */
     val chromaStride: Int get() = plane1Stride
 
     override fun close() {

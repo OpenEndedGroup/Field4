@@ -1,7 +1,8 @@
 # A photograph, closed and mounted
 
-This page turns one photograph into a printable object. `afield.ai.inference.onnx` runs the Depth Anything V2
-Small model, which predicts how far away everything in a still image is. Field's imaging functions
+A photograph holds a view of a room, but no explicit depth. Here we'll use one to make a printable
+object. The Depth Anything V2 Small model, run through `afield.ai.inference.onnx`, predicts how far
+away everything in the image is. Field's imaging functions
 normalise and smooth that prediction, its mesh functions turn it into triangles, and
 `afield.geometry.solid.manifold` closes and combines the result as a solid. The
 [photo_to_solid_chain](agent_transcripts.md#photo_to_solid_chain) starting point has the whole
@@ -150,9 +151,9 @@ genus `0, −1, −2, −3` while `decompose()` gives `1, 2, 3, 4` parts.
 
 ## The limits of this route
 
-The relief is not a portrait. Monocular depth of an interior gives a basin, and a lithophane of a
-face would want a subject where the near surface is the subject rather than the walls. Nothing in the
-route changes; only the photograph does.
+This interior becomes a basin because the near surfaces surround the distant wall. To make a
+lithophane of a face, start with a photograph where the subject is the near surface; the same steps
+can then turn its depth map into a relief.
 
 ## Where the code is
 

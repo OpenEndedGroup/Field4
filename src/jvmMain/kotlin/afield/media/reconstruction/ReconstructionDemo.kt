@@ -1,10 +1,12 @@
 /**
  * A small editable raster scene for trying DLAA and DLSS super resolution without ray tracing.
  *
- * [ReconstructionDemo] renders color, depth and motion at the input resolution recommended for its [ReconstructionMode]
- * and hands them to [DlssReconstruction]. Leave `mode` null to see the unjittered source at output resolution. `reload`
- * swaps in new vertex and fragment shaders, and `reset` discards reconstruction history after a scene edit.
+ * [ReconstructionDemo] renders color, depth and motion at the input resolution recommended for its
+ * [ReconstructionMode] and hands the three to [DlssReconstruction]. Leave `mode` null to see the
+ * unjittered source at output resolution. `reload` swaps in new vertex and fragment shaders, and
+ * `reset` discards reconstruction history after a scene edit.
  */
+
 package afield.media.reconstruction
 
 import afield.graphics.render.Mesh

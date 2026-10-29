@@ -184,8 +184,9 @@ fun searchWorkspaceSymbols(
 }
 
 /**
- * `.kt` files under the index root's src/ that are newer than their index record (or have none) and
- * contain [name] literally, at most ten. On 2026-10-28 a local model asked for `drawn` an hour after
+ * `.kt` files under the index root's src/ saved after the index was built (and after their own record)
+ * that contain [name] literally, at most ten. A file with no record is not enough: the index never covers
+ * some trees (`src/personal/verification`, tests), and listing those on every search was noise. On 2026-10-28 a local model asked for `drawn` an hour after
  * `Shape2.drawn` was written, got eight unrelated hits, and could not tell the index was behind.
  */
 internal fun unindexedFilesMentioning(index: KotlinSourceIndexDb, name: String, limit: Int = 10): List<String> {
@@ -199,7 +200,7 @@ internal fun unindexedFilesMentioning(index: KotlinSourceIndexDb, name: String, 
             paths.filter { it.toString().endsWith(".kt") && Files.isRegularFile(it) }
                 .filter { path ->
                     val mtime = Files.getLastModifiedTime(path).toMillis()
-                    mtime > (recorded[path.normalize().toString()] ?: Long.MIN_VALUE)
+                    mtime > index.updatedAtEpochMs && mtime > (recorded[path.normalize().toString()] ?: Long.MIN_VALUE)
                 }
                 .filter { runCatching { Files.readString(it).contains(name) }.getOrDefault(false) }
                 .limit(limit.toLong())

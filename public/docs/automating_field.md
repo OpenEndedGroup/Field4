@@ -1,15 +1,13 @@
 # Automating Field
 
-Everything you do to a Field document (creating a box, editing its code, wiring one box
-into another, running it, stopping it) is an *operation*. Field can record those
-operations, replay them, and let programs perform them from outside. There are three
-ways to use that:
+You can record a sequence of actions in Field and play it back: make a box, write some code,
+connect it to another box, then run the lot again in a new document. A recording is a *macro*,
+and you can edit it as well as replay it.
 
-- **Macros** — a saved sequence of operations you can replay on a document.
-- **The OperationTranscript format** — the small YAML language those operations are
-  written in, so a macro is something you (or an agent) can read, write, and share.
-- **The backdoor** — a command-line way for scripts and AI agents to drive a running
-  Field: build documents, run code, capture output and errors, and take screenshots.
+Macros are written in a small YAML language called **OperationTranscript**. Each action is an
+*operation*, so you and your agents can read, write and share the same recordings. Scripts and
+agents can also use the command-line **backdoor** to build documents, run code, inspect output
+and errors, and take screenshots.
 
 The backdoor reaches Field over the same command channel Field's own editor uses, so it can do
 whatever that channel can do. Which defences stand in front of that channel, and what each one
@@ -46,11 +44,10 @@ or `execute` with no inline code simply runs the code the box already has. A `la
 runs the box's code as it is when the macro runs, so a macro that launches boxes keeps working
 after you edit them; an `execute` with its own `code:` runs that snippet in the box.
 
-Because the transcript is just data, a macro is legible: you can open one, see what it
-does, change a name or a value, and run your version. Field records what you do as you
-work, so you can turn a sequence you just performed into a macro and replay it elsewhere.
-The [Agent transcript gallery](agent_transcripts.md) is a whole corpus of them: documents agents
-built from a blank canvas this way, each one a transcript you can open, run and change.
+You can open a transcript, see what it does, change a name or value, and run your version. Or
+record a sequence as you work and replay it elsewhere. The
+[Agent transcript gallery](agent_transcripts.md) has documents built from a blank canvas this way;
+you can open them, run them and make them your own.
 
 The **Macro Recorder** panel (in the command palette) is where that recording happens. Name
 the macro, press **Record**, and work as normal: making a box, typing its code, dragging it,
@@ -92,14 +89,12 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --scra
   --command 'macro run greeter'
 ```
 
-The result tells you what happened: how many operations applied, whether anything failed,
-and an `output` list with the `println` text of every box that ran, tagged by box and
-line. That is how a script *knows* the code ran, and it is where compile errors and
-exceptions appear. Running a box that isn't there, or that has no code, comes back as a
-failure that names the box, never as a silent skip.
+The result reports how many operations applied and whether any failed. Its `output` list contains
+what each box printed, tagged by box and line, along with compile errors and exceptions. If a box
+is missing or has no code, the failure names it.
 
-The backdoor also captures pictures — a single box, the editor, the whole window, or the
-native Field 4 graphics window — which is how this site's figures are made. It
+The backdoor also captures pictures of a single box, the editor, the whole window, or the
+native Field 4 graphics window. Many of this site's figures are made this way. It
 records short videos of the first three. The native graphics window is stills only.
 
 [What a Capture Can and Cannot Show](capture_limits.md) lists what a capture cannot see, and
@@ -107,6 +102,7 @@ the reply fields that tell you when you have hit one of those limits.
 
 ## Where to go next
 
+- [Where to Go Next](staging.md) completes the Tour with a map of the rest of the documentation.
 - [How these pages are built](staging.md#how-these-pages-are-built) says how the docs
   build itself uses this machinery.
 - [Building & Testing](building_and_testing.md) covers the backdoor as a test harness.

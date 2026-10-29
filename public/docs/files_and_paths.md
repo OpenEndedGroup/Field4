@@ -1,9 +1,10 @@
 # File management
 
-A Field document is a folder, and it can be copied, moved into a project, or sent to somebody else.
-A path like `File("/Users/you/Desktop/scan.ply")` stops working as soon as it is. Instead, give
-Field a short name and it finds the file for you: in the document first, then in the workspace
-projects the document belongs to, then in any other directories you have registered.
+A Field document is a folder that you can copy, move into a project, or send to somebody else.
+If your code reads a file, you'll probably want that file to travel with it. Put it in the document
+and give Field its name; Field looks there first, then in the document's workspace projects and
+any other directories you have registered. A machine-specific path such as
+`File("/Users/you/Desktop/scan.ply")` would need changing when the document moves.
 
 ## Reading a file by name
 
@@ -36,7 +37,7 @@ val c = files.path("data.csv")
 
 ## Where a plain name is looked for
 
-In order, first existing file winning:
+Field searches these locations in order and uses the first file it finds:
 
 1. `files/` inside the document folder;
 2. `files/` inside each workspace project the document belongs to, which lives at
@@ -144,9 +145,9 @@ val anyScan = "**/*.ply".file // first .ply under the document, then under the p
 val inFolder = "scans/*.ply".file
 ```
 
-Sorting first makes the choice repeatable between runs, but a glob is still a poor way to ask for
-one specific file. Note that a glob matching nothing throws, where a plain name matching nothing
-gives you a path to write to: there is no sensible path to invent for a pattern.
+Sorting makes the choice repeatable, though a glob is a poor way to name one specific file. If a
+glob matches nothing, resolution throws: Field cannot turn a pattern into a destination for a new
+file. Use a plain name when you want to create one.
 
 ## Paths that skip all of this
 
@@ -157,10 +158,9 @@ through:
 val big = "~/Datasets/city.laz".file
 ```
 
-Use these when the file genuinely lives outside the document, such as a dataset too large to copy
-in, and accept that the document stops being self-contained at that point. If the same outside
-directory comes up more than once, register it as a named root instead and the document at least
-says what it is looking for.
+Use an explicit path for a file that lives outside the document, such as a dataset too large to
+copy in. Someone opening the document on another machine will need to provide that file and adjust
+the path. If you refer to the same external directory more than once, give it a name as a root.
 
 ## When resolution fails
 

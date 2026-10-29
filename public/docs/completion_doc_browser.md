@@ -1,11 +1,9 @@
 # Browsing code from the completion panel
 
-When you trigger autocomplete (`ctrl-space`), the panel on the right of the
-popup is clickable. Every `[Symbol]` cross-reference in a KDoc comment, and the
-`source …:line` footer at the bottom of a card, is a live link. Click one and
-the panel *re-renders as that symbol's own card*: the same category header, the
-same highlighted signature, the same rendered documentation. A small back /
-forward control with a breadcrumb trail appears so you can retrace your steps.
+Press `ctrl-space` for autocomplete and you can explore the documentation without leaving the
+editor. Click a `[Symbol]` reference in a KDoc comment or the `source …:line` link at the bottom
+of a card. The panel opens that symbol's own signature and documentation; back, forward and a
+breadcrumb trail help you find your way back.
 
 Links only appear when they resolve. A `[Symbol]` that Field can't find stays
 plain, bracketed text.
@@ -64,11 +62,8 @@ at the bottom of the card is a link too, to the line where `vec` is defined.
 
 ## Following a link
 
-Click `[Vec2]` and the panel hops to the `Vec2` card. Nothing about the editor
-or your code changes — only the documentation panel re-renders, now showing
-`Vec2`'s own signature (it is a `typealias`) and its documentation. A floating
-control has appeared in the corner with a `‹` / `›` pair and a breadcrumb trail
-that reads back to where you started:
+Click `[Vec2]` to open its card, with the type alias and its documentation. Your code stays
+where it is. A back/forward control and breadcrumb trail appear in the corner:
 
 ![The doc panel after following the Vec2 link: the Vec2 card with a back-forward and breadcrumb control](assets/docpanel-breadcrumb.png)
 
@@ -95,9 +90,8 @@ directory.
 
 ## Browsing the full index
 
-The panel resolves symbols; it doesn't list them, so it can't help with a
-question you can't yet name. [What's already in the box](reference/index.md) is
-the index for that: the same declarations, laid out to browse. Anything listed
-there links here too.
+To browse declarations when you don't yet know a name, open
+[What's already in the box](reference/index.md). It lists the same declarations and links to
+their documentation.
 
 Next on the Tour, [Connecting Boxes](tour_connecting_boxes.md) puts one box beneath another so the child can read what its parent publishes.

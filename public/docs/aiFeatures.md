@@ -1,13 +1,13 @@
 # AI features
 
-Every AI feature in Field works from where you already are. The box you have
-selected and the spot your cursor sits in travel with the request; what changes
-between features is what you are asking for. `ctrl/command-4` starts a
-conversation about a box, `ctrl/command-3` asks for an edit at one place in the
-editor, `ctrl-space` mixes AI candidates into ordinary completion, and
-`ai("...")` fills in a function body from its signature. None of it works until Field has a provider
-to talk to, so configure OpenAI, OpenRouter, Anthropic or a [local model server](local_ai.md) from
-[`/welcome`](history_overview.md) or from the environment first.
+Ask a question about the box you're working in, ask for an edit at the cursor, or let AI suggest
+what to write next. Field includes the selected box and cursor position with your request, so the
+conversation starts where your work already is.
+
+Start a conversation with `ctrl/command-4`, ask for an edit with `ctrl/command-3`, or press
+`ctrl-space` to mix AI suggestions into ordinary completion. You can also use `ai("...")` to fill
+in a function body from its signature. First, configure OpenAI, OpenRouter, Anthropic or a
+[local model server](local_ai.md) from [`/welcome`](history_overview.md) or from the environment.
 
 ## Chat about one box
 
@@ -34,12 +34,10 @@ whole turns); saved images remain visible but must be attached again for fresh i
 
 ### Writing while it works
 
-You can keep typing while a reply is in progress. A message sent then appears at
-the end of the conversation marked *queued*, and the model reads it after the
-step it is on, between one tool call and the next, so you can correct or redirect
-a long task without waiting for it to finish. Once read, the message moves to the
-point in the reply where the model saw it. If the reply finishes first, the queued
-message is sent as your next message; several queued messages go together.
+You can send a correction or a new instruction while AI4 is working. Your message appears at the
+end of the conversation marked *queued*. The model reads it between tool calls, and the message
+moves to the point in the reply where it was read. If the reply finishes first, Field sends the
+queued message as your next message; several queued messages go together.
 
 ### Waiting for long builds
 
@@ -56,12 +54,13 @@ branches. Saved extension snapshots also keep the browser available after reopen
 Ordinary chat history alone does not show this control. Select a node to inspect it.
 The current position has a cyan circle and a **current** label; selecting another node only browses it.
 
-**Reference in chat** adds a compact title and exact identity to your draft. AI4
-retrieves the saved contents with `StateReadRequest` only when needed. To discuss two states, choose **Keep for comparison**, select another,
-and choose **Discuss differences**. Your existing draft is preserved and nothing is
-sent automatically. The open tree updates as saved states appear, preserving your selection
-and draft. Refresh also reads the saved histories again. Long histories have
-Older/Newer pages; an edge whose parent is outside the page is labelled.
+Choose **Reference in chat** to add the selected state to your draft. AI4 can then retrieve its
+contents when needed. To compare two states, choose **Keep for comparison**, select the second,
+and choose **Discuss differences**. Field keeps your draft and waits for you to send it.
+
+The tree updates as states are saved, keeping your selection and draft. You can also refresh it
+or use Older/Newer to page through a long history; edges whose parents are outside the current
+page are labelled.
 
 Conversation nodes show their recorded extension snapshot identities. They do not
 claim to be complete document backups. Providers explain their own coverage, such
@@ -251,13 +250,12 @@ replacement.
 The tools a chat already has, with a worked call for the common ones, are listed on
 [AI4's built-in tools](ai4_tools.md).
 
-Everything above is Field's AI working on Field's own material: boxes, code,
-errors. A tool lets it work on *yours*. You write an ordinary Kotlin class and an
-ordinary Kotlin lambda, register the pair, and from the next turn onward the
-model can call it by name, with arguments it chose, and read what you return.
+You can give AI4 tools for your own work. Write a Kotlin class and a lambda,
+register them together, and on the next turn the model can call your tool by name
+and read what it returns.
 
-The whole surface is `afield.ai.tools.AgentToolExtensions`. Nothing needs to be
-edited in Field to add a tool: the registration goes the other way.
+The API is `afield.ai.tools.AgentToolExtensions`; you can register a tool directly
+from a box.
 
 ### The smallest version
 
@@ -482,7 +480,7 @@ left it when the document opens. Leave it off for state the document saves itsel
 
 ### Returning something the model can read — and see
 
-Two optional interfaces, both worth implementing:
+Two optional interfaces let the tool report what it did and return images:
 
 - `SummarisesForToolLog`: one line for Field's tool I/O log. Without it the
   log records only your result's class name, so you cannot tell a turn

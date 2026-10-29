@@ -1,6 +1,9 @@
 # A learned shader function
 
-A small network can approximate a function that is expensive to evaluate at every pixel. This experiment trains an animated color function with a hard-edged vertical stripe outside Field, then evaluates its frozen weights inside a Vulkan shader. The function, training recipe, weights, and error view are all inspectable. You can also train directly on your own `moduleHere()` output: its GLSL stays in Field.
+A small network can approximate a function evaluated at every pixel. Here we'll train one on an
+animated colour function with a hard-edged stripe, then run the trained network in a Vulkan shader.
+You can inspect the function, training recipe, weights and error, or train on your own
+`moduleHere()` output while keeping its GLSL in Field.
 
 ![Original function, learned approximation, and amplified RGB error](assets/learned_shader/cooperative.png)
 

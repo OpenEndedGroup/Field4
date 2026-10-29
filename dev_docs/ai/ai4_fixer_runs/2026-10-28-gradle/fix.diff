@@ -1,0 +1,13 @@
+diff --git a/src/jvmTest/kotlin/afield/ai/tools/RepoCommandToolsTest.kt b/src/jvmTest/kotlin/afield/ai/tools/RepoCommandToolsTest.kt
+index 6bd10e171..e293cd62e 100644
+--- a/src/jvmTest/kotlin/afield/ai/tools/RepoCommandToolsTest.kt
++++ b/src/jvmTest/kotlin/afield/ai/tools/RepoCommandToolsTest.kt
+@@ -37,7 +37,7 @@ class RepoCommandToolsTest {
+         assertEquals("tools/check_thing.py", f.build("check", "tools/check_thing.py").last())
+         val diff = f.build("git-diff", "--stat", "main...HEAD", "--", "docs/a.md")
+         assertEquals(listOf("--stat", "main...HEAD", "--", "docs/a.md"), diff.takeLast(4))
+-        assertTrue(f.build("git-log").containsAll(listOf("-n", "20")))
++        assertTrue(f.build("git-log").containsAll(listOf("-n", "30")))
+         assertEquals(listOf("-n", "5"), f.build("git-log", "-n", "5").takeLast(2))
+     }
+ 

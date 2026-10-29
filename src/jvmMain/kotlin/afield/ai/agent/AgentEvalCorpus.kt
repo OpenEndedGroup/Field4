@@ -10,27 +10,31 @@ import org.yaml.snakeyaml.Yaml
 import java.io.File
 
 /**
- * Eval tasks mined from the operation transcripts under `dev_docs/agents/transcripts/`, rather than written by hand.
+ * The agent eval corpus: tasks mined from the operation transcripts under `dev_docs/agents/transcripts/`
+ * rather than written by hand.
  *
- * [InFieldAgentEvals] is seventeen tasks; a pass rate over seventeen moves 6% per task. The transcripts hold
- * about a thousand boxes whose code somebody wrote and ran on purpose, so each runnable one is a task:
+ * [InFieldAgentEvals] is seventeen tasks, so a pass rate over it moves 6% per task. The transcripts hold
+ * about a thousand boxes that someone wrote and ran as real work, so each runnable one is a task:
  *
  * - **goal**: make a box of this name, under these parents, that does what the box's own leading comment
  *   says, and whose output includes what the real box printed or displayed;
  * - **setup**: the box's ancestors in its transcript, created with their code and run in order;
- * - **solution**: the box's real code (`NewBoxRequest` + `RunBoxRequest`/`LaunchBoxRequest`), so the corpus
- *   is its own scripted floor;
- * - **checks**: derived from what the solution actually said when run, twice ([calibrate]): only output
- *   that came out the same both times becomes a check.
+ * - **solution**: the box's real code (`NewBoxRequest` + `RunBoxRequest`/`LaunchBoxRequest`), so every task
+ *   carries a known-good answer to measure an agent against;
+ * - **checks**: derived from what the solution said when run, twice: only output that came out the same
+ *   both times becomes a check.
  *
- * Mining is two stages. [mine] is static — YAML only — and rejects a box with a reason (never executed by its
- * transcript, needs a renderer / audio / the clock / files, prints nothing). [calibrate] needs a live Field
- * and turns each surviving candidate into a [CorpusTask], or rejects it (`solution-fails`, `no-stable-output`).
- * The calibrated corpus is checked in as [CHECKOUT_PATH], so an eval run does not re-mine.
+ * Mining is two stages. [mine] is static, YAML only, and rejects a box with a reason (never executed by its
+ * transcript, needs a renderer / audio / the clock / files, prints nothing). Stage two runs each surviving
+ * candidate's solution twice in a live Field and hands the pair to [calibrate], which either accepts it as a
+ * [CorpusTask] or rejects it (`solution-fails`, `no-stable-output`). The calibrated corpus is checked in as
+ * [CHECKOUT_PATH], so an eval run does not re-mine.
  *
  * The split is fixed by the task id ([splitOf]): about a third of the tasks are `heldout`, never shown to
  * [AgentLessons.distil] when the protocol is followed (distil from a `train` run, measure on `heldout`).
  */
+
+/** Mining, calibration, and the checked-in form of the corpus. */
 object AgentEvalCorpus {
 
     const val CHECKOUT_PATH = "src/jvmMain/resources/ai4/agent_eval_corpus.json"

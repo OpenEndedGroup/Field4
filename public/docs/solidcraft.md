@@ -1,10 +1,12 @@
 # SolidCraft: edit the design, then see the part
 
-[SolidCraft](https://github.com/tangency-labs/solidcraft) is a parametric CAD engine. Field's optional
-`afield.geometry.solid.solidcraft` binding opens a saved design or [builds one from code](#build-a-part-from-code), changes a named
-parameter, evaluates its feature tree, and returns B-rep measurements or a triangle mesh for display. It can also export STEP, binary
-STL, and the edited SolidCraft design. This is a small first binding across SolidCraft's geometry,
-kernel, document, and I/O crates (L0–L3), alongside Field's [Manifold](manifold.md) mesh-solid API.
+Open a parametric design, change a dimension in a box, and see the resulting part. Field's optional
+[SolidCraft](https://github.com/tangency-labs/solidcraft) binding can open a saved design or
+[build one from code](#build-a-part-from-code), evaluate its feature tree, and return B-rep
+measurements or a triangle mesh. You can export STEP, binary STL, or the edited design itself.
+
+The binding lives in `afield.geometry.solid.solidcraft`, alongside Field's
+[Manifold](manifold.md) mesh-solid API.
 
 Open [solidcraft_intro](agent_transcripts.md#solidcraft_intro) from the welcome screen. Its one box
 uses a design bundled with Field: a 40 × 30 mm sketch, an extrusion whose depth is `width / 2`, a

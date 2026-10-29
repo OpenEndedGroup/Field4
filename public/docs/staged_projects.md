@@ -1,9 +1,10 @@
 # Start a staged project
 
-A staged project is a way of working with an agent on something that is built in steps, where each
-step takes a while and a mistake in an early one spoils everything after it: a building, a level, a
-machine part. The starting point on this page is a level for a puzzle shooter-looter, small enough to
-build in seconds.
+Some projects are built in stages: a building, a game level, a machine part. An early change can
+make later results stale, and rebuilding everything can take a while. A staged project gives you
+and an agent a way to keep track of the source and the results it produces.
+
+We'll try it on a puzzle shooter-looter level small enough to build in seconds.
 
 The document is set up like this:
 
@@ -148,11 +149,10 @@ ui.waitForSelector("text=seed 5", 180000.0)
 ui.pause(1500)
 ```
 
-Seed 3 is the one to look at. Its doors moved so that the deepest loot point is two doors in, the
-rule gives nothing an epic placement, and the rule's own check refuses the level. Nothing about the
-level as it is says so; only a variant does. A variant whose placement waits behind the gate is worth
-the same look, since the rule never sees that level at all. Run the corpus before calling a change
-done. It asks no model, so it costs only the time the stages take.
+Look at seed 3: its deepest loot point is now two doors in, so the rule assigns nothing an epic
+placement and its check refuses the level. That problem only appears in the variant. A placement
+waiting behind the gate also deserves a look, since the rule never gets to evaluate it. Running the
+corpus needs no model; the time it takes depends on the stages.
 
 ## Work with the agent
 
@@ -162,9 +162,8 @@ Ask the agent in any box's chat. It can read the brief in `guides/start-here.md`
 `loot.*` tools. When a stage takes minutes rather than seconds, it can end its turn and let Field
 wait for the build, as [Let AI4 Wait for Long Builds](ai4_long_builds.md) describes.
 
-The brief ends by asking the agent to evaluate the results, not only the checks, because an agent
-shown only checks stops working once they pass. Ask it what it sees in the paths and the
-placement, and look at them yourself.
+The brief asks the agent to look at the results as well as the checks. Ask what it sees in the
+paths and placement, and explore them yourself.
 
 ## Make it yours
 

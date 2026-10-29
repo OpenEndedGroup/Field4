@@ -45,9 +45,9 @@ showImgGrid(
 )
 ```
 
-Six hills give seven tracks: one hill's track ended when it passed close to another, and a new
-track started when they parted. That is the tracker reporting what the topology did, not a mistake.
-While two hills overlap, they really are one peak.
+Six hills give seven tracks: one track ended when its hill passed close to another, and a new one
+started when they parted. In this example the overlap produces a single peak, so the tracker records
+the merge and the later split.
 
 !!! note "Needs the Morse–Smale library"
     The examples compute Morse–Smale complexes, which need the optional library: see the welcome

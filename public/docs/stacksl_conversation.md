@@ -154,8 +154,7 @@ changes nothing. The check refuses programs that do not compile, unbalanced defi
 
 A stage comparison (`mode=stage`) renders both programs only up to a chosen line and compares what
 that line produced. A recolour that leaves the field before the palette identical proves it did not
-move the geometry. A stage that leaves nothing but the program's input tells two programs apart
-from nothing, and the result says so.
+move the geometry. If the stage leaves only the program's input, it cannot distinguish the two programs; the result says so.
 
 ### Adding a tool of your own
 

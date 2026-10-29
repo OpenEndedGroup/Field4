@@ -9,6 +9,20 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
 
+/**
+ * One slot of the GPU memory a diffusion session shares with its worker: a device-local buffer and
+ * a timeline semaphore, both exported to the worker as file descriptors.
+ *
+ * A [StreamDiffusionSession] allocates a ring of these for the frames it sends and another for the
+ * results it reads back, passes their descriptors over a Unix socket, and afterwards exchanges
+ * only slot indices and semaphore values with the worker. Pixels are written and read by the GPU at
+ * both ends: a slot is a dedicated device-local allocation and is never mapped for the CPU. Its
+ * barrier moves the buffer between Field's graphics queue and the external queue CUDA works on, and
+ * the device UUID it reports names the GPU the worker is to import onto. Construction asks the
+ * driver whether it can export this buffer and this kind of semaphore, and fails rather than
+ * handing over a descriptor the worker cannot use.
+ */
+
 /** One dedicated device-local buffer and one exportable timeline semaphore. Never host mapped. */
 internal class SharedGpuSlot(private val renderer: Renderer, val bytes: Long) : AutoCloseable {
     val device = renderer.device

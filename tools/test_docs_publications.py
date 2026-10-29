@@ -7,11 +7,26 @@ import unittest
 import zipfile
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
+from types import SimpleNamespace
 
 import docs_publications as publications
 
 
 class DocsPublicationsTest(unittest.TestCase):
+    def test_capture_uses_shared_managed_node_when_path_node_cannot_start(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            node = root/'home/.gradle/nodejs/node-v24.0.0/bin/node'
+            node.parent.mkdir(parents=True)
+            node.write_text('managed runtime fixture')
+            with patch.multiple(publications, ROOT=root/'repo'), \
+                 patch.dict(publications.os.environ, {}, clear=True), \
+                 patch.object(Path, 'home', return_value=root/'home'), \
+                 patch.object(publications.shutil, 'which', return_value='/broken/node'), \
+                 patch.object(publications.subprocess, 'run', side_effect=[
+                     SimpleNamespace(returncode=1, stdout=''), SimpleNamespace(returncode=0, stdout='v24.0.0\n')]):
+                self.assertEqual(publications.publication_node(), str(node))
+
     def test_native_recipes_reuse_real_docs_captures_without_executing_compile_only(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

@@ -1061,7 +1061,7 @@ second.
 
 ## How a construction is styled
 
-A proposition says what each element is for, not how to draw it. Every figure has one of three
+A proposition says what each element is for, not how to draw it. Every figure has one of four
 roles:
 
 - **given**: what the proposition is handed, and lines it draws and keeps. Solid.

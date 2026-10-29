@@ -1,9 +1,14 @@
 # Graphics on the GPU
 
-The "4" in Field·4 is its renderer: Vulkan, driven from boxes. Boxes on the GPU work the
-way the ones on the earlier pages do. You write a few lines of Kotlin, run the box, and the
-picture changes while it runs. The difference is that some of a box's properties are now shaders,
-and what the box draws usually appears in a native window rather than in its output panel.
+The "4" in Field·4 is its Vulkan renderer, driven from boxes. Write a few lines of Kotlin, launch
+the box, and you can change the picture while it runs. You'll also write shaders in box properties;
+the result usually appears in a native window, though you can draw into an output panel too.
+
+For the native window you'll need a working Vulkan driver and a desktop session. Welcome's
+**Vulkan** panel can check the machine; [installation](installation.md) has platform details.
+If you haven't connected boxes yet, [Connecting Boxes](tour_connecting_boxes.md) shows the gesture
+used below. The [first graphics starting point](first_steps.md#next-a-native-graphics-window) is a
+shorter way to open a window and draw a triangle.
 
 ## A renderer, and a box beneath it
 
@@ -167,9 +172,8 @@ renderer += moduleHere {
 }
 ```
 
-It is the same pattern as the square, with more of it. The vertex shader now declares a colour
-input as well as a position, so the mesh has `col` beside `pos`. It also takes the camera's two
-matrices as push constants, so the mesh has `p` and `m`:
+The vertex shader now declares a colour input as well as a position, so the mesh has `col` beside
+`pos`. It also takes the camera's two matrices as push constants, giving the mesh `p` and `m`:
 
 ```diffstatic {data-lang=glsl}
 #version 450
@@ -236,3 +240,6 @@ A web browser, including Field's HTTP mirror, shows a message in place of the fr
   `LoadedTexture`, ...).
 - [Graphics in an Output Area](four_in_output_areas.md) has more on the view in the panel: sizes,
   re-running, sharing it between boxes, and Linux.
+
+Next on the Tour, [Looking at Data](tour_data.md) starts with values you can inspect in a box and
+works up to a live GPU probe.

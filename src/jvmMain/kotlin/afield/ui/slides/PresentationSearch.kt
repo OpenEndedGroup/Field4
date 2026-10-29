@@ -7,6 +7,21 @@ import javax.swing.text.html.HTML
 import javax.swing.text.html.HTMLEditorKit
 import javax.swing.text.html.parser.ParserDelegator
 
+/**
+ * Reduces a slide to the plain text a presenter can search, by reading the audience HTML the talk
+ * would actually show.
+ *
+ * The slideshow calls `text` for every step when a client asks for search text, and caches the
+ * result for the built talk. It parses the HTML with the JDK's own parser, drops `<style>` and
+ * `<script>` subtrees, keeps image `alt` text, and adds the one identifying string of the other
+ * audience types: a document name, or a webpage or video URL. A step with no audience content at
+ * all falls back to its presenter note. The result is capped at 16 384 characters.
+ *
+ * Indexing stays on authored content. The presenter-note fallback is taken as written rather than
+ * with its template functions evaluated, because those can run user code, and a step whose audience
+ * provider throws (a slide file not written yet) is skipped so the rest of the talk still opens.
+ */
+
 /** Authored audience text only: indexing never starts a guest, invokes callbacks or fetches a URL. */
 internal object PresentationSearch {
     const val MAX_TEXT = 16_384

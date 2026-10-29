@@ -1,8 +1,8 @@
 # Connecting an output iframe to its box
 
-An interactive output can send JSON requests to a live Kotlin callback through Field's existing
-WebSocket connection. `outputRequests` creates a binding on a box. It does not start a server or
-allocate a port. It uses the same `/ws` transport as the viewers and inspectors.
+A page in a box's output can ask the box's Kotlin code to do something: update a model, for
+example, or return the result of an edit. `outputRequests` connects the page to a callback on the
+box, using JSON over Field's existing WebSocket connection.
 
 Register the callback in the source box:
 

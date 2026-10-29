@@ -1,10 +1,10 @@
 # AI documentation polish
 
-When completion shows a Kotlin declaration that has no KDoc, Field asks a fast model for a short
-description and shows that in the completion popup. These drafts are kept in a cache. Polishing
-turns them into real KDoc in the source, so they reach the reference pages and stop depending on
-a model. The work happens in the same [documentation revision pass](docs_notes.md) that handles
-your notes on the docs.
+When you encounter a Kotlin declaration without KDoc, Field can ask a fast model for a short
+description and show it in the completion popup. Field keeps these drafts in a cache, where they
+can be reviewed and turned into KDoc in the source. Once there, the descriptions also reach the
+reference pages. The work happens in the same [documentation revision pass](docs_notes.md) that
+handles your notes on the docs.
 
 ## Polishing the drafts
 
@@ -125,17 +125,15 @@ The terminal equivalent of the import is:
 uv run python tools/docs_notes.py import-drafts
 ```
 
-From there a draft is worked like any other note. **Drain the queue** runs one agent per Kotlin
-file in the pass's worktree. Put `@kdoc-draft` in the tags box to drain only the drafts. The agent
-gets the draft, the declaration, the writing rules (`dev_docs/agents/DOCS_WRITING_RULES.md`),
-the memories earlier agents left on that file, and any note of yours on the same KDoc, which
-takes precedence over the draft.
+From there, a draft is handled like any other note. **Drain the queue** runs one agent per Kotlin
+file; enter `@kdoc-draft` in the tags box to work only on drafts. The agent receives the draft,
+the declaration, the writing rules and relevant notes, including any note you left on the same
+KDoc. Your note takes precedence.
 
-The agent treats a draft as a suggestion. It reads the declaration and its callers, keeps the
-parts that hold up, corrects the rest, and writes the KDoc. When a declaration needs no KDoc, it
-resolves the draft without writing any. Completion then stops showing that draft. When it cannot
-settle what the code does, it asks you a question, which appears under *Questions for you*. You
-review the diff, rebuild, commit and land as in any pass.
+The agent checks the draft against the declaration and its callers, then writes or corrects the
+KDoc. If the declaration needs none, it resolves the draft without adding text. If it cannot work
+out what the code does, it asks under *Questions for you*. You can then review the diff and finish
+the pass.
 
 Only declarations in this repository are drafted, in any source set under `src/`, including
 `src/personal`. A declaration from a dependency's sources jar is never sent to the model and never

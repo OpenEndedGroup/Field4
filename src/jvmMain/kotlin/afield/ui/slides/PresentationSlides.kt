@@ -11,6 +11,24 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 
+/**
+ * The on-disk format for a talk's editable slides, and the two `slides(...)` builders that read a
+ * deck into a slideshow.
+ *
+ * A deck is a `files/<name>.slides.json` inside the presentation document: a schema string, a
+ * stylesheet path, and a list of slides carrying Markdown for the audience, presenter notes, an
+ * optional section path and an optional list of reveals. `validated()` bounds every field of it (at
+ * most 1000 uniquely identified slides, 100 000 characters of Markdown each, 100 reveals), and both
+ * reading and writing run it.
+ *
+ * [PresentationSlideFiles] is the file side, shared by Kotlin box code and by AI4's slide tools in
+ * [PresentationTools]. A write names the revision it read, so a deck edited underneath a caller is
+ * refused rather than overwritten, and every path is checked to stay inside the document's `files/`
+ * directory.
+ *
+ * A deck carries Markdown and no code; a live action stays an explicit Kotlin guide step.
+ */
+
 /** Editable content for a talk. Live actions remain explicit Kotlin guide steps. */
 @Serializable
 data class PresentationSlides(

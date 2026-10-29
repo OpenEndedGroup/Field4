@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T15:52:01.560Z",
+  "documentName": "youtube_kaleidoscope",
+  "outputs": [
+    {
+      "uid": "youtube_kaleidoscope_renderer",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 2560,
+      "height": 1440,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

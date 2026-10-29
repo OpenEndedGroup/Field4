@@ -726,10 +726,10 @@ class KotlinInterface2(
 
     /**
      * Which backend actually served the most recent [complete] call, and the [AaCompletionClient.Outcome]
-     * detail that decided it. [complete] already logs both; this makes them ASSERTABLE, which a test that
-     * means to exercise the AA chain needs: a K1 fallback answers a name position with thousands of names,
-     * so "the candidate I wanted is in the list" can be satisfied entirely by the fallback and still read
-     * as a green AA result. `CompletionAaE2EProbe` is what this exists for.
+     * detail that decided it. [complete] logs both; reading them here lets a test assert which backend
+     * answered, which a test of the AA chain needs: a K1 fallback answers a name position with thousands
+     * of names, so "the candidate I wanted is in the list" can be satisfied by the fallback alone and
+     * still read as a green AA result. `CompletionAaE2EProbe` asserts it.
      */
     @Volatile
     var lastCompletionBackend: KotlinEngineConfig.CompletionBackend? = null
@@ -740,7 +740,7 @@ class KotlinInterface2(
         private set
 
     /**
-     * Completion intentionally delegates to the K1 IDE-services path.
+     * Completion delegates to the K1 IDE-services path.
      * K2 remains the execution backend, but autocomplete needs compiler-grade
      * language semantics rather than partial handwritten Analysis API coverage.
      */
@@ -2973,8 +2973,8 @@ class KotlinInterface2(
     }
 
     /**
-     * Run the stdlib bootstrap (intro) without the [bootstrapReady] gate — it is what opens
-     * the gate — and release the gate afterwards, whatever happened, so nothing waits forever.
+     * Run the stdlib bootstrap (intro) without waiting on the `bootstrapReady` gate, since this call
+     * is what opens it, and release it afterwards whatever happened, so nothing waits forever.
      */
     override suspend fun bootstrap(
         s: String,
