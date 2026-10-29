@@ -588,7 +588,8 @@ private fun BoxScreenshotRequest.toPlaywrightArg(): Map<String, Any?> = mapOf(
     "openOutputs" to openOutputs,
     "expectOutputs" to expectOutputs,
     "preserveSelection" to preserveSelection,
-    "includeNotifications" to includeNotifications
+    "includeNotifications" to includeNotifications,
+    "openDetails" to openDetails
 )
 
 private fun WindowScreenshotRequest.toPlaywrightArg(): Map<String, Any?> = mapOf(
@@ -1660,7 +1661,8 @@ suspend fun captureBoxScreenshot(info: SessionInformation, request: AgentBoxScre
                 openOutputs = request.openOutputs,
                 expectOutputs = request.expectOutputs,
                 preserveSelection = request.preserveSelection,
-                includeNotifications = request.includeNotifications
+                includeNotifications = request.includeNotifications,
+                openDetails = request.openDetails
             )
         )
     }.getOrElse {

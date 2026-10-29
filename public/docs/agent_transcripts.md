@@ -522,7 +522,7 @@ Each box evaluates one `afield.math.linalg` value; on execute its
 output shows the terse text head plus a small inline SVG thumbnail the `ValueVisualizer` draws: an
 auto-scaled arrow for vectors (isometric for `vec3`), a diverging heatmap grid for matrices.
 
-![A map of mat3, mat4 and quaternion values, each with its terse text head and a diverging heatmap grid beside it](assets/value_visualizers/linalg_map.png)
+![A map of mat3, mat4 and quaternion values, each with its terse text head and a diverging heatmap grid beside it](assets/visualizers-linalg-map.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/linalg_thumbnails_demo/metadata.edn)
 
@@ -1093,7 +1093,7 @@ caption admits it) and once as accumulator peaks. `FlowField` draws failed track
 rather than hiding them, and `ComponentLabelling` rotates hue by the golden ratio so adjacent label
 ids get unrelated colours.
 
-![An image with a NaN block and one infinity, both painted magenta, counted in the card and excluded from the statistics that set the range](assets/imaging_visualizers/img_non_finite.png)
+![An image with a NaN block and one infinity, both painted magenta, counted in the card and excluded from the statistics that set the range](assets/visualizers-img-non-finite.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/imaging_visualizers_demo/metadata.edn)
 
