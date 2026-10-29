@@ -519,6 +519,12 @@ class FieldGraphTools(
         }
     }
 
+    /** [SymbolAtRequest]: the box is found where the graph lives; resolving runs off it, as the editor hover does. */
+    fun symbolAt(req: SymbolAtRequest): SymbolAtResult {
+        val box = host.onOwner(info) { resolve(req.box) }
+        return SymbolAt.describe(box, req)
+    }
+
     fun connect(req: ConnectBoxesRequest): FieldGraphResult = host.onOwner(info) {
         val parent = resolve(req.parent)
         val child = resolve(req.child)
@@ -722,6 +728,7 @@ internal fun registerFieldGraphTools(tools: ToolRegistry) {
     tools.register(LaunchBoxRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.launch(req) }
     tools.register(StopBoxRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.stop(req) }
     tools.register(ReadBoxOutputRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.readOutput(req) }
+    tools.register(SymbolAtRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.symbolAt(req) }
     tools.register(ViewBoxOutputRequest::class.java, { ctx -> ctx.fieldGraph?.seesOutput == true }) { ctx, req -> ctx.fieldGraph!!.viewOutput(req) }
 }
 
@@ -729,5 +736,5 @@ internal fun registerFieldGraphTools(tools: ToolRegistry) {
 val fieldGraphToolNames: List<String> = listOf(
     ListBoxesRequest::class, NewBoxRequest::class, DeleteBoxRequest::class, SetBoxPropertyRequest::class,
     GetBoxPropertyRequest::class, PatchBoxTextRequest::class, ConnectBoxesRequest::class, DisconnectBoxesRequest::class, RunBoxRequest::class,
-    LaunchBoxRequest::class, StopBoxRequest::class, ReadBoxOutputRequest::class, ViewBoxOutputRequest::class
+    LaunchBoxRequest::class, StopBoxRequest::class, ReadBoxOutputRequest::class, ViewBoxOutputRequest::class, SymbolAtRequest::class
 ).map { it.java.simpleName }

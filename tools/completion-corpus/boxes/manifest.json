@@ -60,6 +60,7 @@
   {"doc": "aperture_playground", "box": "aperture_sprites", "codeSha256": "f565f91e1bbe9141", "codeLines": 15, "receivers": ["afield.document.graph.Box"], "preamble": "aperture_playground__aperture_sprites.preamble.kt"},
   {"doc": "arclength_spacing_demo", "box": "arclength_dashes", "codeSha256": "1372bfb02721e86d", "codeLines": 79, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "arclength_spacing_demo", "box": "arclength_ticks", "codeSha256": "9011e41d9afac639", "codeLines": 105, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "assimp_browsing", "box": "assimp_scene", "codeSha256": "52782ea07752c1a4", "codeLines": 8, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "audio_ai_analysis", "box": "analyse_nancy", "codeSha256": "4582717451f11f02", "codeLines": 76, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "audio_ai_analysis", "box": "analysis_guide", "codeSha256": "84a9430c65837c3b", "codeLines": 12, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "audio_ai_analysis", "box": "analysis_visualizer_gallery", "codeSha256": "ebc793de7c3db5cf", "codeLines": 19, "receivers": ["afield.document.graph.Box"], "preamble": ""},

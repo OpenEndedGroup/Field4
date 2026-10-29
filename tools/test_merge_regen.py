@@ -23,6 +23,20 @@ def git(repo: Path, *args: str) -> str:
 
 
 class MergeRegenTest(unittest.TestCase):
+    def test_publications_refresh_outside_gradle_and_are_staged(self) -> None:
+        sys.path.insert(0, str(SCRIPT.parent))
+        import merge_regen
+        guards = merge_regen.guards_for_paths({'public/docs/assets/web_publications/catalog.json'})
+        with mock.patch.object(merge_regen, '_git', return_value='') as git_call, \
+             mock.patch.object(merge_regen, 'guards_for_paths', return_value=guards), \
+             mock.patch.object(merge_regen.subprocess, 'run', return_value=mock.Mock(returncode=0)) as run, \
+             mock.patch('conversation_packagers.repackage_stale', return_value=(0, [])):
+            code, _ = merge_regen.regenerate(self.repo, {'public/docs/assets/web_publications/catalog.json'})
+        self.assertEqual(code, 0)
+        self.assertTrue(any(call.args[0][-2:] == [str(self.repo/'tools/docs_publications.py'), 'sync']
+                            for call in run.call_args_list))
+        git_call.assert_any_call(self.repo, 'add', '-A', '--', 'public/docs/assets/web_publications')
+
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.repo = Path(self._tmp.name)

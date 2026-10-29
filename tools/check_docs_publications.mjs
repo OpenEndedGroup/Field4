@@ -34,6 +34,7 @@ try {
     await mkdir(evidence,{recursive:true});
     let ctx=await context(), page=await ctx.newPage();
     for (const [slug,source] of [['fline_examples','fline_examples'],['three_output','three_output_gallery']]) {
+        console.log(`Checking ${slug} embed`);
         await page.goto(new URL(slug+'/',base).href);
         const iframe=page.locator(`iframe[src*="file=assets/${source}/metadata.edn"]`);
         await iframe.scrollIntoViewIfNeeded();
@@ -47,17 +48,17 @@ try {
             const tab=await frame.locator('.published-output summary').first().evaluate(n=>({w:n.offsetWidth,panel:n.parentElement.offsetWidth}));
             assert.ok(tab.w<tab.panel,'Output header should be a tab');
         } else {
+            console.log('Framing the Three.js pilot');
             await frame.evaluate(()=>{
                 const box=currentBoxes.find(b=>b.id==='three-output-scene');
                 frameWorldRect(FieldOfflineOutputs.bounds(box),1,20);
             });
-            let viewer;
-            const deadline=Date.now()+30000;
-            while(Date.now()<deadline && !viewer){
-                for(const f of page.frames())if(await f.evaluate(()=>!!window.FieldViewer?.captureStatus().ready).catch(()=>false)){viewer=f;break;}
-                if(!viewer)await page.waitForTimeout(100);
-            }
-            assert.ok(viewer,'The Three.js embed has no rendered geometry');
+            const scene=frame.locator('.box[data-box-id="three-output-scene"] .published-output iframe');
+            const output=await (await scene.elementHandle()).contentFrame();
+            await output.locator('iframe').first().waitFor();
+            const viewer=await (await output.locator('iframe').first().elementHandle()).contentFrame();
+            await viewer.waitForFunction(()=>!!window.FieldViewer?.captureStatus().ready,null,{timeout:30000});
+            console.log('Checking Three.js orbit');
             const before=await viewer.evaluate(()=>FieldInspector.snapshot().camera),r=await viewer.locator('#canvas-wrap canvas').boundingBox();
             await page.mouse.move(r.x+r.width*.45,r.y+r.height*.5);await page.mouse.down();
             await page.mouse.move(r.x+r.width*.7,r.y+r.height*.65,{steps:10});await page.mouse.up();
@@ -66,8 +67,10 @@ try {
             assert.ok(after.some((v,i)=>Math.abs(v-before[i])>.01),'Published geometry did not orbit');
             await viewer.locator('#xray-toggle').click();assert.equal(await viewer.evaluate(()=>FieldInspector.snapshot().xray),true);
         }
+        console.log(`Capturing ${slug} evidence`);
         await iframe.screenshot({path:resolve(evidence,slug+'.png')});
     }
+    console.log('Checking gallery viewer placement and replacement');
     await page.goto(new URL('agent_transcripts/',base).href);
     const gallery=Object.keys(registry.documents).filter(p=>p.startsWith('assets/agent_transcripts/'));
     assert.ok(gallery.length>=2);
@@ -91,12 +94,19 @@ try {
     for(const [source,entry] of Object.entries(registry.documents)){
         const manifest=await (await fetch(new URL(entry.outputs,base))).json();
         const parent=new URL('../',new URL(entry.outputs,base));
-        for(const output of manifest.outputs)if(output.path)channels.push({source,channel:output.channel,url:new URL(output.path,parent).href});
+        for(const output of manifest.outputs)if(output.path)channels.push({source,channel:output.channel,kinds:output.kinds,url:new URL(output.path,parent).href});
     }
     for(let i=0;i<channels.length;i++){
         if(i%20===0){if(ctx)await ctx.close();ctx=await context({width:1200,height:900});page=await ctx.newPage();}
         const channel=channels[i];
-        try {await page.goto(channel.url);await ready(page);}
+        try {
+            await page.goto(channel.url);await ready(page);
+            if(channel.source==='assets/agent_transcripts/inertial_movement/metadata.edn' && channel.kinds.includes('plotly')){
+                const fonts=await page.locator('.js-plotly-plot text').evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n).fontFamily));
+                assert.ok(fonts.length && fonts.every(f=>f.includes('Iosevka')),'Published Plotly lost the Field typeface');
+                assert.ok(await page.evaluate(()=>document.fonts.check('300 12px "Iosevka Web"')),'Publication font did not load');
+            }
+        }
         catch(error){throw new Error(`${channel.source} / ${channel.channel}: ${error.message}`);}
         if((i+1)%20===0)console.log(`Verified ${i+1}/${channels.length} captured channels`);
     }

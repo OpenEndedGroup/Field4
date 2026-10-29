@@ -8,8 +8,8 @@ You can click and type into that tab with the mouse and keyboard, aim at it with
 controller, drive it from code, and hand it to any ordinary mesh, shader or render pass.
 
 You can also drive the tab without rendering its pixels: navigation, input, JavaScript, CDP and the
-page bridge work without a renderer or GPU. That lets a test, a docs build or a data box use a
-browser. See [a browser you do not have to
+page bridge work without a renderer or GPU. That lets a test,
+a docs build or a data box use a browser. See [a browser you do not have to
 render](#a-browser-you-do-not-have-to-render).
 
 ## A browser in a native window

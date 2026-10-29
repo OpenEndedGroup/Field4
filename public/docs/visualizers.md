@@ -881,6 +881,21 @@ check(columns() >= 6) { inFrame("return d.body.innerText.slice(0, 600)") }
 check("shaders" in inFrame("return d.body.innerText")) { inFrame("return d.body.innerText") }
 ```
 
+### Browsing a glTF scene
+
+A scene file opens the same way. `GltfSupport.loadModel` gives Assimp's own view of a glTF (or any
+file Assimp reads), and `column(...)` or `tree(...)` lists its root node with its transform and
+children, then its meshes, materials and animations. A `GltfModel` loaded for drawing browses as its
+meshes, each with its buffers, material, texture slots and transform.
+
+```diffstatic {data-lang=kotlin}
+import afield.graphics.scene.GltfSupport
+
+val scene = GltfSupport.loadModel("dev_docs/agents/fixtures/path_tracing/transforms.gltf")!!
+column("columns", scene, width = 1300)
+tree("tree", scene, width = 700)
+```
+
 For a live log in an output panel, use `logs(...)`. This box shows the `demo` channel and logs a
 small job into it; rows with the same block ID are grouped under the block's first line:
 

@@ -4273,7 +4273,7 @@ only ever rendered if someone asks for it.
 
 `src/jvmMain/kotlin/afield/ui/visualization/ValueVisualizer.kt` — [read the source](source/jvmMain/afield/ui/visualization/ValueVisualizer/)
 
-**Used in:** [Visualizers, Displays, and Little Instruments](../visualizers.md), [Agent transcript gallery](../agent_transcripts.md), [DataFrames in a Box](../dataframe.md)
+**Used in:** [Agent transcript gallery](../agent_transcripts.md), [DataFrames in a Box](../dataframe.md), [Visualizers, Displays, and Little Instruments](../visualizers.md)
 
 ### Top-level functions { #valuevisualizer-kt-functions }
 
