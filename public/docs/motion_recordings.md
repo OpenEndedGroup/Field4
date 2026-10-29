@@ -283,7 +283,7 @@ frames {
         dancer.prompt("A person walks forward.")
         dancer.route(path, 8.seconds)
         playMotion(dancer, 8.seconds) { snapshot ->
-            showMotion(snapshot.frame, dancer.skeleton, overlays=listOf(path), follow=true)
+            showMotion(snapshot.frame, dancer.skeleton, overlays=[path], follow=true)
             displayOpen("motion")
         }
     }
@@ -319,10 +319,10 @@ import afield.animation.mocap.*
 // Change to "live", "closd" or "route" to compare the other recordings.
 val experiment = "ardy"
 val sources = when (experiment) {
-    "live" -> listOf("Skip" to "ardy-live-skip", "Run" to "ardy-live-run", "Recoil" to "ardy-live-recoil")
-    "closd" -> listOf("Baseline" to "closd-baseline-seed0", "Weak tether" to "closd-weak-seed0", "Strong tether" to "closd-capped-seed0")
-    "route" -> listOf("4 steps" to "ardy-path", "10 steps" to "ardy-path-10steps")
-    else -> listOf("Run" to "ardy-run-seed0", "Jump" to "ardy-jump-seed0", "Somersault" to "ardy-somersault-seed0")
+    "live" -> ["Skip" to "ardy-live-skip", "Run" to "ardy-live-run", "Recoil" to "ardy-live-recoil"]
+    "closd" -> ["Baseline" to "closd-baseline-seed0", "Weak tether" to "closd-weak-seed0", "Strong tether" to "closd-capped-seed0"]
+    "route" -> ["4 steps" to "ardy-path", "10 steps" to "ardy-path-10steps"]
+    else -> ["Run" to "ardy-run-seed0", "Jump" to "ardy-jump-seed0", "Somersault" to "ardy-somersault-seed0"]
 }
 val takes = sources.map { (_, file) -> MotionRecording(("%docs/assets/motion_recordings/$file.f4motion").path) }
 val clips = takes.map { it.clip() }
@@ -400,10 +400,10 @@ import afield.animation.mocap.*
 // Change to "live", "closd" or "route" to compare the other recordings.
 val experiment = "closd"
 val sources = when (experiment) {
-    "live" -> listOf("Skip" to "ardy-live-skip", "Run" to "ardy-live-run", "Recoil" to "ardy-live-recoil")
-    "closd" -> listOf("Baseline" to "closd-baseline-seed0", "Weak tether" to "closd-weak-seed0", "Strong tether" to "closd-capped-seed0")
-    "route" -> listOf("4 steps" to "ardy-path", "10 steps" to "ardy-path-10steps")
-    else -> listOf("Run" to "ardy-run-seed0", "Jump" to "ardy-jump-seed0", "Somersault" to "ardy-somersault-seed0")
+    "live" -> ["Skip" to "ardy-live-skip", "Run" to "ardy-live-run", "Recoil" to "ardy-live-recoil"]
+    "closd" -> ["Baseline" to "closd-baseline-seed0", "Weak tether" to "closd-weak-seed0", "Strong tether" to "closd-capped-seed0"]
+    "route" -> ["4 steps" to "ardy-path", "10 steps" to "ardy-path-10steps"]
+    else -> ["Run" to "ardy-run-seed0", "Jump" to "ardy-jump-seed0", "Somersault" to "ardy-somersault-seed0"]
 }
 val takes = sources.map { (_, file) -> MotionRecording(("%docs/assets/motion_recordings/$file.f4motion").path) }
 val clips = takes.map { it.clip() }
@@ -480,10 +480,10 @@ import afield.animation.mocap.*
 // Change to "live", "closd" or "route" to compare the other recordings.
 val experiment = "route"
 val sources = when (experiment) {
-    "live" -> listOf("Skip" to "ardy-live-skip", "Run" to "ardy-live-run", "Recoil" to "ardy-live-recoil")
-    "closd" -> listOf("Baseline" to "closd-baseline-seed0", "Weak tether" to "closd-weak-seed0", "Strong tether" to "closd-capped-seed0")
-    "route" -> listOf("4 steps" to "ardy-path", "10 steps" to "ardy-path-10steps")
-    else -> listOf("Run" to "ardy-run-seed0", "Jump" to "ardy-jump-seed0", "Somersault" to "ardy-somersault-seed0")
+    "live" -> ["Skip" to "ardy-live-skip", "Run" to "ardy-live-run", "Recoil" to "ardy-live-recoil"]
+    "closd" -> ["Baseline" to "closd-baseline-seed0", "Weak tether" to "closd-weak-seed0", "Strong tether" to "closd-capped-seed0"]
+    "route" -> ["4 steps" to "ardy-path", "10 steps" to "ardy-path-10steps"]
+    else -> ["Run" to "ardy-run-seed0", "Jump" to "ardy-jump-seed0", "Somersault" to "ardy-somersault-seed0"]
 }
 val takes = sources.map { (_, file) -> MotionRecording(("%docs/assets/motion_recordings/$file.f4motion").path) }
 val clips = takes.map { it.clip() }
