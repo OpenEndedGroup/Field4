@@ -1,0 +1,29 @@
+:::fold imports and recording
+import afield.animation.mocap.*
+val clip = MotionRecording("%docs/assets/motion_recordings/ardy-live-skip.f4motion".path).clip()
+val started = AnimationClock.nowSeconds()
+:::endfold
+
+loop {
+    val elapsed = AnimationClock.nowSeconds() - started
+    val duration = clip.endTime - clip.startTime
+    val snapshot = clip.sample(clip.startTime + elapsed % duration)
+    val pose = snapshot.frame.executed
+    val bones = pose.bones(clip.skeleton).apply {
+        color=vec(.94,.96,1.0,1.0); thickness=3.0
+        pointed=true; pointSize=.8
+    }
+    three(channel="motion", height=480, width=700) {
+        lines(bones)
+        camera(yaw=35.0, pitch=12.0, padding=2.6) // Room for the whole skipping gesture.
+        followCamera(vec(pose.root[0], pose.root[1], pose.root[2]), halfLifeSeconds=.4,
+            epoch="${(elapsed/duration).toInt()}:${snapshot.frame.episode}")
+        title("ARDY · skipping · ${"%.2f".format(snapshot.frame.time)} s")
+        helpers(true)
+    }
+    markdown("status", "**ARDY · skipping**\n\n" +
+        "Six uninterrupted seconds from the interactive session. Prompt: A person skips forward. " +
+        "Four denoising steps; original poses and session timestamps retained.")
+    displayOpen("motion"); displayOpen("status")
+    delay(16)
+}

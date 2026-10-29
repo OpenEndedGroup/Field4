@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-216 source file(s), 686 public symbol(s), 302 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+218 source file(s), 690 public symbol(s), 304 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -321,7 +321,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L931) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L944) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -1857,6 +1857,20 @@ Step two of the neural-particle pilot: that a buffer of particles integrated on 
 | <a id="newmain8-writetoimage-kt--newmain8-writetoimage--running"></a>[<code class="highlight"><span class="k">var</span> <span class="n">running</span></code>](source/jvmMain/afield/examples/four/NewMain8_writeToImage/#L196) |  |
 | <a id="newmain8-writetoimage-kt--newmain8-writetoimage--run"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain8_writeToImage/#L198) |  |
 
+## OpenDlssNrLiveEditSmoke.kt { #opendlssnrliveeditsmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/OpenDlssNrLiveEditSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/OpenDlssNrLiveEditSmoke/)
+
+### OpenDlssNrLiveEditSmoke { #opendlssnrliveeditsmoke-kt-opendlssnrliveeditsmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">OpenDlssNrLiveEditSmoke</span></code>](source/jvmMain/afield/examples/four/OpenDlssNrLiveEditSmoke/#L43)
+
+Live edits that used to need a box rerun. [`OpenDlssNrStudy.reload`](graphics.md#opendlssnrstudy-kt--opendlssnrstudy--reload) with a new varying between the stages rebuilds the source and the next frames draw with it; with the native library present, a pass added to a Fabricate post stack leaves that stack when it closes. Without the library the reload half still runs, in source mode.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="opendlssnrliveeditsmoke-kt--opendlssnrliveeditsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/OpenDlssNrLiveEditSmoke/#L65) |  |
+
 ## OpenDlssNrTeardownSmoke.kt { #opendlssnrteardownsmoke-kt }
 
 `src/jvmMain/kotlin/afield/examples/four/OpenDlssNrTeardownSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/OpenDlssNrTeardownSmoke/)
@@ -1996,6 +2010,20 @@ Real analytic coverage, alpha and immutable atlas replacement on the GPU.
 | Declaration | Summary |
 | --- | --- |
 | <a id="slugrendersmoke-kt--slugrendersmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/SlugRenderSmoke/#L43) |  |
+
+## StereoPackingSmokeTest.kt { #stereopackingsmoketest-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/StereoPackingSmokeTest.kt` — [read the source](source/jvmMain/afield/examples/four/StereoPackingSmokeTest/)
+
+### StereoPackingSmokeTest { #stereopackingsmoketest-kt-stereopackingsmoketest }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">StereoPackingSmokeTest</span></code>](source/jvmMain/afield/examples/four/StereoPackingSmokeTest/#L33)
+
+Checks the first packed-image sampling, eye draw count, and eye aspect on a non-square window.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="stereopackingsmoketest-kt--stereopackingsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StereoPackingSmokeTest/#L35) |  |
 
 ## EvolveWorkedExample.kt { #evolveworkedexample-kt }
 
@@ -2239,7 +2267,7 @@ Headless **capture gallery** for the `afield.media.image` imaging / computer-vis
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="imaginggallery-kt--imaginggallery--panel"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">Panel</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">build</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Figure</span><span class="p">)</span></code>](source/jvmMain/afield/examples/imaging/ImagingGallery/#L129) | One gallery figure: a `name` (its PNG filename), a `title`, a list of captioned image `tiles`, optional vector `overlays` drawn on top of a named tile, and a `check` that must pass for the run to succeed. |
+| <a id="imaginggallery-kt--imaginggallery--panel"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">Panel</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">build</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Figure</span><span class="p">)</span></code>](source/jvmMain/afield/examples/imaging/ImagingGallery/#L129) | One gallery figure: a `name` (its PNG filename), a `title`, a list of captioned image `tiles`, optional vector [`overlays`](animation.md#motionview-kt--overlays) drawn on top of a named tile, and a `check` that must pass for the run to succeed. |
 | <a id="imaginggallery-kt--imaginggallery--tile"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">Tile</span><span class="p">(</span><span class="k">val</span> <span class="n">caption</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">img</span><span class="p">:</span> <span class="nc">Img</span><span class="p">,</span> <span class="k">val</span> <span class="n">overlays</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Overlay</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">zoom</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span></code>](source/jvmMain/afield/examples/imaging/ImagingGallery/#L142) | A captioned raster tile. |
 | <a id="imaginggallery-kt--imaginggallery--overlay"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">Overlay</span><span class="p">(</span><span class="k">val</span> <span class="n">lines</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Color</span><span class="p">,</span> <span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">1.4f</span><span class="p">,</span> <span class="k">val</span> <span class="n">dots</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/examples/imaging/ImagingGallery/#L170) | Vector geometry drawn over a tile, in that tile's image coordinates. |
 | <a id="imaginggallery-kt--imaginggallery--figure"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">Figure</span><span class="p">(</span><span class="k">val</span> <span class="n">tiles</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Tile</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">summary</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/examples/imaging/ImagingGallery/#L173) | A built figure: the tiles to lay out plus a one-line factual summary printed to stdout. |

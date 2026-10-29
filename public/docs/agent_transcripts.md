@@ -4172,6 +4172,85 @@ See [Learn from a shader on the GPU](gpu_shader_learning.md).
 
 [Open →](offline.html?file=assets/agent_transcripts/gpu_shader_learning/metadata.edn)
 
+### motion_recording_probe
+
+Scrub a one-metre coordinate probe, play its recorded poses and inspect the reset at two seconds.
+This diagnostic two-joint clip uses the portable motion API; it does not run ARDY or CLoSD.
+See [motion recordings](motion_recordings.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/motion_recording_probe/metadata.edn)
+
+### motion_closd_recording
+
+Replay a real CLoSD foot-tether/release performance, scrub its recorded time and orbit the executed
+body beside the planner's reference. This starting point needs neither CLoSD nor Isaac Gym.
+See [motion recordings](motion_recordings.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/motion_closd_recording/metadata.edn)
+
+### motion_resistance_replay
+
+Watch genuine stronger-tether CLoSD motion with reference/executed poses, force and stretch, and a
+smoothed follow camera. This replay needs no models. See [Generative Mocap — ARDY and CLoSD](motion_recordings.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/motion_resistance_replay/metadata.edn)
+
+### motion_tether_score
+
+A short Kotlin movement score: walk, attach a named foot, continue walking, release. Requires
+optional CLoSD setup. See [writing a score](motion_recordings.md#write-a-movement-score).
+
+[Open →](offline.html?file=assets/agent_transcripts/motion_tether_score/metadata.edn)
+
+### motion_closd_live
+
+Give CLoSD an intention, attach a named rigid body to a point tether, apply a torso impulse and
+release or reset it. Sessions record automatically in the document's files. Requires the optional
+CLoSD environment and `FIELD_MOTION_HOME`; see [motion recordings](motion_recordings.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/motion_closd_live/metadata.edn)
+
+### motion_ardy_path
+
+Timed ARDY routes. Live Core27 motion, timed FLine routes and sparse model conditioning. Requires the optional ARDY environment and cached prompts or the CPU encoder service. No physical attachment is implied.
+
+[Open →](offline.html?file=assets/agent_transcripts/motion_ardy_path/metadata.edn)
+
+### motion_ardy_intentions
+
+Changing ARDY intentions. Live Core27 motion, timed FLine routes and sparse model conditioning. Requires the optional ARDY environment and cached prompts or the CPU encoder service. No physical attachment is implied.
+
+[Open →](offline.html?file=assets/agent_transcripts/motion_ardy_intentions/metadata.edn)
+
+### motion_ardy_foot
+
+ARDY kinematic foot restriction. Live Core27 motion, timed FLine routes and sparse model conditioning. Requires the optional ARDY environment and cached prompts or the CPU encoder service. No physical attachment is implied.
+
+[Open →](offline.html?file=assets/agent_transcripts/motion_ardy_foot/metadata.edn)
+
+### motion_recorded_results
+
+Compare recorded ARDY movement, CLoSD tether trials and ARDY route failures in an editable Field 3D renderer. No model installation. Change `experiment` in the box to select a comparison.
+
+[Open →](offline.html?file=assets/agent_transcripts/motion_recorded_results/metadata.edn)
+
+### motion_ardy_demo_replay
+
+Play the interactive ARDY skipping take in Field, with editable Kotlin code and a following camera. No model installation.
+
+[Open →](offline.html?file=assets/agent_transcripts/motion_ardy_demo_replay/metadata.edn)
+
+### stereo_rtt_composite
+
+[An editable stereo RTT composite](stereo_rtt_composite.md): three wireframe cubes, a floor and
+resolution chart render once per eye, then pass through FXAA into both the desktop mirror and,
+optionally, an OpenXR headset. The five-box graph starts in desktop preview mode; its guide gives
+the launch order and the explicit headset switch. The FXAA shader clamps every tap to its own eye
+and the output checkbox compares the same image with and without AA. Requires Vulkan; compiled
+without opening a window in CI, with a real desktop capture on the walkthrough page.
+
+[Open →](offline.html?file=assets/agent_transcripts/stereo_rtt_composite/metadata.edn)
+
 ## Saved documents
 
 <!-- transcript-index: bundled -->

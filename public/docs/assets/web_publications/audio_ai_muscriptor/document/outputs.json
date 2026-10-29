@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T15:37:43.916Z",
+  "capturedAt": "2026-10-29T22:33:13.488Z",
   "documentName": "audio_ai_muscriptor",
   "outputs": [
     {
@@ -9,7 +9,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 455,
+      "width": 461,
       "height": 430,
       "path": "outputs/0.html"
     },
@@ -26,16 +26,16 @@
     {
       "uid": "muscriptor_visualizer_gallery",
       "channel": "transcription",
-      "open": true,
+      "open": false,
       "warnings": [
         "Live media omitted"
       ],
       "kinds": [
-        "plotly",
-        "svg"
+        "svg",
+        "plotly"
       ],
       "width": 1048,
-      "height": 816,
+      "height": 710,
       "path": "outputs/2.html"
     }
   ]

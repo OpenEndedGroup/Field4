@@ -27,16 +27,16 @@ class FeatureSelectorTest {
 
     @Test fun failedNvidiaProbeHidesOnlyNvidiaFeaturesAndKeepsCatalogNumbers() {
         val choices = options(nvidia = false)
-        assertFalse(choices.any { it.extra.id in setOf("dlss", "opendlssnr", "diffusion", "syphon") })
+        assertFalse(choices.any { it.extra.id in setOf("dlss", "opendlssnr", "diffusion", "syphon", "ardy", "closd") })
         assertEquals(13, choices.first { it.extra.id == "shaders" }.number)
         assertTrue(choices.any { it.extra.id == "tracker" })
         assertTrue(options().any { it.extra.id == "diffusion" })
     }
 
     @Test fun macAndWindowsRespectPlatformFilters() {
-        assertFalse(options("mac").any { it.extra.id in setOf("syphon", "dlss", "diffusion", "opendlssnr") })
+        assertFalse(options("mac").any { it.extra.id in setOf("syphon", "dlss", "diffusion", "opendlssnr", "ardy", "closd") })
         val windows = options("windows")
-        assertFalse(windows.any { it.extra.id in setOf("syphon", "csound", "tracker") })
+        assertFalse(windows.any { it.extra.id in setOf("syphon", "csound", "tracker", "ardy", "closd") })
         assertTrue("cl" in windows.first { it.extra.id == "tetgen" }.prerequisites)
         assertTrue("python" in windows.first { it.extra.id == "python" }.prerequisites)
         for (platform in listOf("mac", "linux", "windows")) {

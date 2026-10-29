@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T15:40:11.480Z",
+  "capturedAt": "2026-10-29T22:35:19.127Z",
   "documentName": "close_node_demo",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 918,
-      "height": 627,
+      "height": 633,
       "path": "outputs/0.html"
     },
     {
@@ -24,7 +24,7 @@
         "svg"
       ],
       "width": 918,
-      "height": 627,
+      "height": 633,
       "path": "outputs/1.html"
     }
   ]

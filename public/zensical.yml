@@ -30,6 +30,7 @@ nav:
     - A Tour:
       - What Field Is: funFeatures.md
       - Frames and the Animation Loop: animation_time_model.md
+      - Generative Mocap — ARDY and CLoSD: motion_recordings.md
       - Drawing with FLines: fline_examples.md
       # Straight after FLines, because a stroke read from the drawing is an FLine: the box that
       # listens turns each pen stroke into one and draws an answer back. The drawing layer (Alt+D)
@@ -419,6 +420,7 @@ nav:
       - Kotlin in the Head: kotlin_in_the_head.md
       - Apple Vision Pro (WiP): vision.md
       - Geometry in the Headset: vision_geometry.md
+      - Stereo RTT composite: stereo_rtt_composite.md
       - ImGui as a VR Panel: imgui_vr_panel.md
   - AI & Agents:
     # First, ahead of the explanations: a showcase of whole documents agents built from a blank
@@ -463,6 +465,7 @@ nav:
       - Math: reference/math.md
       - Data: reference/data.md
       - Graphics: reference/graphics.md
+      - Animation: reference/animation.md
       - Output: reference/output.md
       - Renderers: reference/renderers.md
       - Polytopes: reference/polytopes.md

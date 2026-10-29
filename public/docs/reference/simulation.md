@@ -49,7 +49,7 @@ video recording of a score plays at the right speed.
 
 [<code class="highlight"><span class="k">class</span> <span class="nc">ScoreBehaviour</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">body</span><span class="p">:</span> <span class="nc">ScoreFrame</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/animation/motion/Score/#L45)
 
-What [`score`](simulation.md#score-kt--score) arms: `body`, called with a fresh [`ScoreFrame`](simulation.md#score-kt-scoreframe) each frame the playhead is over [`box`](simulation.md#score-kt--scoreframe--box).
+What [`score`](simulation.md#score-kt--score) arms: [`body`](animation.md#motionauthoring-kt--body), called with a fresh [`ScoreFrame`](simulation.md#score-kt-scoreframe) each frame the playhead is over [`box`](simulation.md#score-kt--scoreframe--box).
 
 | Declaration | Summary |
 | --- | --- |

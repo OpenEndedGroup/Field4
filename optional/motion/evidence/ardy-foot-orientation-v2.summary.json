@@ -1,0 +1,49 @@
+{
+  "mode": "foot-orientation",
+  "frames": 120,
+  "fps": 20.0,
+  "coldSeconds": 4.004220397910103,
+  "rootDisplacementM": [
+    0.027073211269453168,
+    0.021206200122833252,
+    3.6734513242263347
+  ],
+  "advanceP50Ms": 1.0944829555228353,
+  "advanceP95Ms": 26.717541040852666,
+  "generationEvents": [
+    {
+      "type": "generation",
+      "time": 0.0,
+      "revision": 2,
+      "generationMs": 159.46520294528455,
+      "encodingMs": 0.20028406288474798,
+      "historyFrames": 0,
+      "horizonFrames": 40,
+      "postprocess": false
+    },
+    {
+      "type": "generation",
+      "time": 2.0,
+      "revision": 3,
+      "generationMs": 51.16894096136093,
+      "encodingMs": 0.1731140073388815,
+      "historyFrames": 40,
+      "horizonFrames": 40,
+      "postprocess": false
+    },
+    {
+      "type": "generation",
+      "time": 4.0,
+      "revision": 4,
+      "generationMs": 24.342556949704885,
+      "encodingMs": 0.1400810433551669,
+      "historyFrames": 80,
+      "horizonFrames": 40,
+      "postprocess": false
+    }
+  ],
+  "targetResidualMeanM": 0.2004262294234606,
+  "targetResidualMaxM": 0.6466326398252039,
+  "commandToVisibleMeasured": false,
+  "visualInspection": false
+}

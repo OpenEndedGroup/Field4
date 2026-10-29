@@ -1,0 +1,52 @@
+{
+  "checks": [
+    {
+      "ok": true,
+      "renderedFrames": 109,
+      "follow": {
+        "enabled": true,
+        "epoch": "7300143639acc0b4243dd56cf9e60400ab347847bcd65a446803fa4edd9bd971:0:0",
+        "current": [
+          -0.14566210586360726,
+          0.9274461199407144,
+          0.23383306471669185
+        ],
+        "target": [
+          -0.15756022930145264,
+          0.9316797852516174,
+          0.23614902794361115
+        ]
+      },
+      "cameraDisplacement": 0.01611579436567303,
+      "orbitOffsetBefore": [
+        2.527521601506443,
+        0.6558505284928295,
+        -1.7697896783626883
+      ],
+      "orbitOffsetAfter": [
+        2.5275216015064434,
+        0.6558505284928294,
+        -1.769789678362687
+      ],
+      "orbitAndDollyPreserved": true
+    },
+    {
+      "ok": true,
+      "knobs": [
+        {
+          "label": "Stiffness N/m"
+        },
+        {
+          "label": "Damping N s/m"
+        },
+        {
+          "label": "Force cap N"
+        }
+      ],
+      "activeStatus": "L_Ankle: 0.4 cm stretch \u00b7 28 / 2500 N",
+      "releaseObserved": true,
+      "paused": true
+    }
+  ],
+  "date": "2026-10-20"
+}

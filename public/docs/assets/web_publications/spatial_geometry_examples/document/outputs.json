@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T15:38:01.768Z",
+  "capturedAt": "2026-10-29T22:33:31.487Z",
   "documentName": "spatial_geometry_examples",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 938,
-      "height": 727,
+      "height": 733,
       "path": "outputs/0.html"
     },
     {
@@ -24,7 +24,7 @@
         "svg"
       ],
       "width": 938,
-      "height": 727,
+      "height": 733,
       "path": "outputs/1.html"
     },
     {
@@ -36,7 +36,7 @@
         "svg"
       ],
       "width": 938,
-      "height": 727,
+      "height": 733,
       "path": "outputs/2.html"
     },
     {
@@ -48,7 +48,7 @@
         "svg"
       ],
       "width": 938,
-      "height": 727,
+      "height": 733,
       "path": "outputs/3.html"
     },
     {
@@ -60,7 +60,7 @@
         "svg"
       ],
       "width": 938,
-      "height": 871,
+      "height": 877,
       "path": "outputs/4.html"
     }
   ]

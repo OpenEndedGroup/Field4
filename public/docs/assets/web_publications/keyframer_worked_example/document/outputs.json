@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T15:44:53.937Z",
+  "capturedAt": "2026-10-29T22:40:24.417Z",
   "documentName": "keyframer_worked_example",
   "outputs": [
     {
@@ -26,11 +26,11 @@
     {
       "uid": "keyframe_updatecode",
       "channel": "code",
-      "open": true,
+      "open": false,
       "warnings": [],
       "kinds": [],
-      "width": 396,
-      "height": 158,
+      "width": 433,
+      "height": 148,
       "path": "outputs/2.html"
     },
     {
@@ -42,7 +42,7 @@
         "svg"
       ],
       "width": 958,
-      "height": 479,
+      "height": 482,
       "path": "outputs/3.html"
     },
     {
@@ -51,7 +51,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 457,
+      "width": 449,
       "height": 45,
       "path": "outputs/4.html"
     }

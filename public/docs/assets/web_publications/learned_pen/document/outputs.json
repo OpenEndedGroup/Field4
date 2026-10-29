@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T15:47:13.771Z",
+  "capturedAt": "2026-10-29T22:42:10.146Z",
   "documentName": "learned_pen",
   "outputs": [
     {
@@ -21,7 +21,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 408,
+      "width": 373,
       "height": 40,
       "path": "outputs/1.html"
     },

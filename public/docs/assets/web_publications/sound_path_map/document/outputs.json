@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T15:34:00.731Z",
+  "capturedAt": "2026-10-29T22:30:44.683Z",
   "documentName": "sound_path_map",
   "outputs": [
     {
@@ -51,13 +51,13 @@
     {
       "uid": "sound_map_compare",
       "channel": "plot",
-      "open": true,
+      "open": false,
       "warnings": [],
       "kinds": [
         "plotly"
       ],
-      "width": 712,
-      "height": 458,
+      "width": 714,
+      "height": 457,
       "path": "outputs/3.html"
     }
   ]

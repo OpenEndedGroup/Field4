@@ -565,6 +565,17 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // Interactive playback loops and optional ARDY/CLoSD workers; portable APIs have JVM tests.
+        "motion_recording_probe",
+        "motion_closd_recording",
+        "motion_resistance_replay",
+        "motion_tether_score",
+        "motion_closd_live",
+        "motion_ardy_path",
+        "motion_ardy_intentions",
+        "motion_ardy_foot",
+        "motion_recorded_results",
+        "motion_ardy_demo_replay",
         // Spins a box in while (true) on purpose until the watchdog interrupts it (~5 s); the
         // runtime.runaway-box-interrupt.smoke FIELD_TEST runs the same escape.
         "runaway_box_interrupt",
@@ -788,6 +799,8 @@ object DemoTranscriptExecSmokeTest {
         // JavaScript on one.
         "madp_boids",
         "imgui_vr_panel",
+        // Desktop Vulkan stereo/FXAA; OpenXR is opt-in. Live capture is on its public page.
+        "stereo_rtt_composite",
         // A hidden Electron window renders Field itself into Chromium shared textures; the live
         // macOS replay crosses IOSurface Mach rights and samples them in Vulkan. CI compiles the
         // self-contained starting scene without starting Electron or opening a native window.

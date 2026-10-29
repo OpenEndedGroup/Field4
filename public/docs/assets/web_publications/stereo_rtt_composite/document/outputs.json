@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:46:37.552Z",
+  "documentName": "stereo_rtt_composite",
+  "outputs": [
+    {
+      "uid": "stereo_present",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 2176,
+      "height": 1088,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

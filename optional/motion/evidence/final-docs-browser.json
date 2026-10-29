@@ -1,0 +1,105 @@
+[
+  {
+    "ok": true,
+    "command": "page-eval --file /home/marc/temp/mocap/demo/probe-remote.js",
+    "data": {
+      "ok": true,
+      "action": "pageEval",
+      "documentName": "Motion-ARDY-Recording",
+      "scratch": false,
+      "sessionKey": "/home/marc/temp/mocap/polish-workspace/Motion-ARDY-Recording",
+      "result": {
+        "url": "https://100.110.104.26:9498/index.html?file=Motion-ARDY-Recording",
+        "labels": [],
+        "viewers": [
+          {
+            "frames": 2,
+            "ready": false
+          }
+        ],
+        "hasPlay": false
+      }
+    },
+    "events": [],
+    "timedOut": false
+  },
+  {
+    "ok": true,
+    "command": "page-eval --file /home/marc/temp/mocap/demo/probe-docs.js",
+    "data": {
+      "ok": true,
+      "action": "pageEval",
+      "documentName": "Motion-ARDY-Recording",
+      "scratch": false,
+      "sessionKey": "/home/marc/temp/mocap/polish-workspace/Motion-ARDY-Recording",
+      "result": {
+        "title": "Generative Mocap \u2014 ARDY and CLoSD",
+        "headings": [
+          "Open a recording",
+          "Run a live body",
+          "Write a movement score",
+          "Follow the moving body",
+          "Give ARDY an intention",
+          "Give ARDY a route",
+          "Recorded results"
+        ],
+        "videos": [
+          {
+            "src": "http://100.110.104.26:9499/Field4/assets/motion_recordings/resistance-follow.mp4",
+            "status": 200,
+            "width": 1616,
+            "height": 1170,
+            "ready": 4
+          },
+          {
+            "src": "http://100.110.104.26:9499/Field4/assets/motion_recordings/movement-score.mp4",
+            "status": 200,
+            "width": 1600,
+            "height": 1290,
+            "ready": 4
+          },
+          {
+            "src": "http://100.110.104.26:9499/Field4/assets/motion_recordings/camera-follow.mp4",
+            "status": 200,
+            "width": 1600,
+            "height": 1080,
+            "ready": 4
+          },
+          {
+            "src": "http://100.110.104.26:9499/Field4/assets/motion_recordings/ardy-live-skipping.mp4",
+            "status": 200,
+            "width": 1600,
+            "height": 1290,
+            "ready": 4
+          },
+          {
+            "src": "http://100.110.104.26:9499/Field4/assets/motion_recordings/ardy-field-review.mp4",
+            "status": 200,
+            "width": 2000,
+            "height": 1214,
+            "ready": 4
+          },
+          {
+            "src": "http://100.110.104.26:9499/Field4/assets/motion_recordings/closd-field-review.mp4",
+            "status": 200,
+            "width": 2000,
+            "height": 1250,
+            "ready": 4
+          },
+          {
+            "src": "http://100.110.104.26:9499/Field4/assets/motion_recordings/ardy-route-comparison.mp4",
+            "status": 200,
+            "width": 2000,
+            "height": 1214,
+            "ready": 4
+          }
+        ],
+        "scorePlayed": true,
+        "rawFold": false,
+        "rawKotlinFence": false
+      }
+    },
+    "events": [],
+    "timedOut": false
+  }
+]

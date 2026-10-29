@@ -1,0 +1,26 @@
+{
+  "mode": "trap",
+  "frames": 270,
+  "duration": 9.000000469386578,
+  "coldSeconds": 18.716881641419604,
+  "advanceP50Ms": 65.96442998852581,
+  "advanceP95Ms": 96.84109000954777,
+  "events": {
+    "applied": 2,
+    "planner": 4,
+    "reset": 1,
+    "termination": 1,
+    "tetherPhysics": 336
+  },
+  "maxPrefixResidualM": 0.0,
+  "meanTrackingErrorM": 0.27629256102775523,
+  "maxTetherForceN": 2213.6846358877274,
+  "attachTime": 0.1,
+  "releaseTime": 8.0,
+  "meanTetherErrorM": 0.04190546423660664,
+  "maxTetherErrorM": 0.2655676686925768,
+  "finalTetherErrorM": 0.16069716558720612,
+  "totalTetherWorkJ": -829.1615933680724,
+  "commandToVisibleMeasured": false,
+  "visualInspection": false
+}
