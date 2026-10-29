@@ -107,9 +107,10 @@ internal fun executeAllRequest(
             if (originSessionInfo == null) thisSessionInfo.remove() else thisSessionInfo.set(originSessionInfo)
             FlightRecorder.recordExecuteEntrypoint("execute-all", box, exec)
             // experimental
+            box.properties["_preamble"] = "" // remove record of previous preamble line execs
+            // (A spare that already ran the preamble records it again here.)
             if (box.ke is KotlinExecution)
                 box.replaceKi(LatencySpans.time("engine.reset", box = box.id) { makeKIHere(box, reason = "execute-all handler reset") })
-            box.properties["_preamble"] = "" // remove record of previous preamble line execs
             box.properties["_introduction"] = "" // ditto for introduction
             box.properties.remove("_attic")
             box.ke.executeAll(box, exec, timedReply)

@@ -66,6 +66,7 @@ names the source records.
 | `engine.bootstrapWait` | an `exec` waiting on the engine's bootstrap gate (non-zero when a box runs before its async bootstrap finished) |
 | `engine.reset` | `execute-all`'s `makeKIHere`: the replacement engine, a spare's preamble or a whole create + bootstrap + preamble |
 | `engine.spare` | building a box's spare engine in the background after a run's verdict (`SpareEngines`; its bootstrap is a separate `engine.bootstrap`) |
+| `engine.sparePrelude` | a spare running the box's imports-only preamble and a warm-up compile, so the run skips both (`sparePreludes` in `Boxes.kt`) |
 | `kotlin.compile` | one K2 snippet compile (`detail` kind and length) |
 | `kotlin.compile.cacheHit` | an instant: the rerun compile cache served the snippet |
 | `kotlin.eval` | one snippet evaluation |
