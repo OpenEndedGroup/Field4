@@ -43,7 +43,7 @@ sys.path.insert(0, str(HERE))
 import land  # noqa: E402
 
 OUT = REPO / "dev_docs" / "ai" / "ai4_fixer_runs" / "bench"
-SCRATCH = REPO / ".nightly-tmp" / "replay"
+SCRATCH = Path(os.environ.get("FIELD_FIXER_BENCH_SCRATCH", REPO / ".nightly-tmp" / "replay"))
 CP_FILE = REPO / ".nightly-tmp" / "test.cp"
 RUNS = ["python-test", "check", "git-status", "git-diff", "git-log", "git-show"]
 
@@ -100,14 +100,15 @@ def _fq_class(root: Path, simple: str) -> str | None:
 
 
 def check_spec(case: dict, root: Path) -> list[list[str]]:
-    """The failing checks, as [kind, arg] pairs: junit <class>, main <class>, python <argv...>."""
+    """The failing checks, as [kind, arg] pairs: junit <class>, main <class>, python <argv...>.
+    JUnit and main classes are resolved in *this* checkout, whose compiled classes run them."""
     specs: list[list[str]] = []
     log = Path(case["log"]) if case.get("log") else None
     failures = log.with_suffix(".failures.txt") if log else None
     text = case["reason"]
     if failures and failures.exists():
         for simple in dict.fromkeys(re.findall(r"^## (\w+)\.", failures.read_text(errors="replace"), re.M)):
-            fq = _fq_class(root, simple)
+            fq = _fq_class(REPO, simple)
             if fq:
                 specs.append(["junit", fq])
     if "checkKDocAttachment" in text:
@@ -122,8 +123,9 @@ def check_spec(case: dict, root: Path) -> list[list[str]]:
                 specs.append(["python", str(path.relative_to(root))])
     if "Python corpus tests" in text:
         specs.append(["python", "tools/test_demo_build_scripts.py"])
-    for named in re.findall(r"\b([A-Z]\w+Test)\b", text):
-        fq = _fq_class(root, named)
+    # Only the test the message says now passes ("makes XTest pass"), not a test file it edited.
+    for named in re.findall(r"\b([A-Z]\w+Test)\b(?=[^.;]{0,40}?\bpass)", text):
+        fq = _fq_class(REPO, named)
         if fq and ["junit", fq] not in specs:
             specs.append(["junit", fq])
     return specs
