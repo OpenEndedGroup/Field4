@@ -67,6 +67,8 @@ open class PointAccumulationSettings {
 
     /** The target's size in pixels; 0 means the renderer's window. */
     var width: Int = 0
+
+    /** The other half of that size; 0 means the renderer's window. Fixed once the accumulation runs. */
     var height: Int = 0
 
     /** The float format of the accumulation. 16-bit float is enough while [fade] is above zero. */
@@ -75,7 +77,10 @@ open class PointAccumulationSettings {
     /** How much of the picture disappears each frame, 0..1. 0 keeps everything ever plotted. */
     var fade: Double = 0.05
 
+    /** How a point combines with what is already there — [PointBlend.ADDITIVE] light, or [PointBlend.ALPHA] paint. */
     var blend: PointBlend = PointBlend.ADDITIVE
+
+    /** How the accumulated light is brought back into `0` to `1` for display; see [PointToneMap]. */
     var toneMap: PointToneMap = PointToneMap.EXPONENTIAL
 
     /** Multiplies the accumulated light before the tone map. */

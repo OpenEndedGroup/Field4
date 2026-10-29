@@ -24,9 +24,21 @@ import kotlin.math.sqrt
  * All vectors are reused; copy them when retaining a sample across frames.
  */
 class BinocularGazeIntersection(
+    /**
+     * The smallest angle between the two rays that still gives a depth, in degrees. Nearer to
+     * parallel than this the closest-approach solve is ill-conditioned, so [status] becomes
+     * [Status.PARALLEL] and no point is written. Must be above 0 and below 90.
+     */
     val minimumAngleDegrees: Double = 0.25,
+    /**
+     * How far [leftPoint] and [rightPoint] may be apart, in metres, before the rays count as
+     * missing each other and [status] becomes [Status.RAYS_MISS]. Skew rays always leave some gap;
+     * this is how much of it to forgive.
+     */
     val maximumSeparation: Double = 0.03,
+    /** Nearest accepted depth along either ray, in metres. Closer gives [Status.OUT_OF_RANGE]. */
     val minimumDistance: Double = 0.05,
+    /** Farthest accepted depth along either ray, in metres. Beyond it, [Status.OUT_OF_RANGE]. */
     val maximumDistance: Double = 8.0,
 ) {
     enum class Status { NO_TRACKING, INVALID_RAY, PARALLEL, BEHIND_EYES, OUT_OF_RANGE, RAYS_MISS, VALID }
@@ -38,22 +50,52 @@ class BinocularGazeIntersection(
         require(maximumDistance.isFinite() && maximumDistance > minimumDistance)
     }
 
+    /** Why the last [update] or [solve] accepted or rejected a depth. [Status.NO_TRACKING] until the first call. */
     var status = Status.NO_TRACKING
         private set
+
+    /** True only for [Status.VALID] — the one check to make before using [position]. */
     val valid: Boolean get() = status == Status.VALID
+
+    /**
+     * True when both rays were finite, long enough to normalize and had distinct origins, so
+     * [leftDirection] and [rightDirection] are meaningful. The convergence tests come after this,
+     * so a pair of usable rays that converge badly leaves this true while [valid] is false.
+     */
     var raysValid = false
         private set
+
+    /** Midpoint of [leftPoint] and [rightPoint] — where to put an object the viewer is looking at. */
     val position = Vec3()
+
+    /** The point on the left eye's ray closest to the right eye's ray. */
     val leftPoint = Vec3()
+
+    /** The point on the right eye's ray closest to the left eye's ray. */
     val rightPoint = Vec3()
+
+    /** Unit forward direction of the left eye's ray, as the last solve normalized it. */
     val leftDirection = Vec3()
+
+    /** Unit forward direction of the right eye's ray, as the last solve normalized it. */
     val rightDirection = Vec3()
+
+    /** Distance from the left eye to [leftPoint], in metres. Negative means the convergence is behind the eye. */
     var leftDistance = Double.NaN
         private set
+
+    /** Distance from the right eye to [rightPoint], in metres. Negative means behind the eye. */
     var rightDistance = Double.NaN
         private set
+
+    /** Gap between [leftPoint] and [rightPoint], in metres — how far the two rays missed by. */
     var separation = Double.NaN
         private set
+
+    /**
+     * Angle between the two rays, in degrees. Written before the convergence tests, so it is
+     * readable even when the rays were too close to parallel to intersect.
+     */
     var angleDegrees = Double.NaN
         private set
     private val minimumSinSquared = sin(Math.toRadians(minimumAngleDegrees)).let { it * it }
