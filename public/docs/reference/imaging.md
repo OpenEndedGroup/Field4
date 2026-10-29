@@ -828,7 +828,7 @@ and anything needing a model file.
 
 `src/jvmMain/kotlin/afield/media/image/imaging.kt` — [read the source](source/jvmMain/afield/media/image/imaging/)
 
-**Used in:** [Imaging and computer vision](../imaging_examples.md), [Wave Function Collapse examples](../wfc_examples.md), [Merge trees and contour trees](../contour_trees.md)
+**Used in:** [Imaging and computer vision](../imaging_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Wave Function Collapse examples](../wfc_examples.md)
 
 ### Top-level functions { #imaging-kt-functions }
 
@@ -1282,7 +1282,7 @@ family is that it works headless in a box with nothing installed.
 
 `src/jvmMain/kotlin/afield/media/image/imaging_geometry.kt` — [read the source](source/jvmMain/afield/media/image/imaging_geometry/)
 
-**Used in:** [Imaging and computer vision](../imaging_examples.md)
+**Used in:** [Imaging and computer vision](../imaging_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md)
 
 ### Top-level functions { #imaging-geometry-kt-functions }
 
