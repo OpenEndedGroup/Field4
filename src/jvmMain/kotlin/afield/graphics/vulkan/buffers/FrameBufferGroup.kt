@@ -39,15 +39,23 @@ enum class BufferAccessPattern {
 }
 
 class FrameBufferGroup(
+    /** The renderer the buffers belong to. It supplies the image currently being drawn, the image count, and the cleanup list the buffers are released on. */
     val renderer: Renderer,
+    /** How many buffers [build] makes. It defaults to one per swapchain image; pass 1 for data that does not change between frames. */
     val n: Int = renderer.numImages,
+    /** The buffers themselves, in image order. It is empty until [build] runs, and every lookup here takes its index modulo this list's size. */
     val buffers: MutableList<VulkanBuffer> = mutableListOf(),
+    /** Where the buffers live and how data moves to and from them. It also sets the two staging flags below unless they are given explicitly. */
     val accessPattern: BufferAccessPattern = BufferAccessPattern.HOST_VISIBLE,
     private val stagedUploads: Boolean = accessPattern == BufferAccessPattern.STAGED_WRITE_ONCE ||
             accessPattern == BufferAccessPattern.STAGED_STREAM_WRITE,
     private val readbackStaging: Boolean = accessPattern == BufferAccessPattern.DEVICE_LOCAL_DEBUG_READ
 ) : HasBuffer, DynamicallyWriteable, BufferWriteable, BufferReadable {
 
+    /**
+     * The index into [buffers] of the one written most recently, or -1 before anything has been
+     * written. [getLastWritten] falls back to the current image's buffer while it is -1.
+     */
     @Volatile
     var lastWritten = -1
     private val stagingBuffers = mutableListOf<VulkanBuffer>()
@@ -57,16 +65,23 @@ class FrameBufferGroup(
     private val pendingZeros = mutableSetOf<Int>()
     private var transferFence: Fence? = null
 
+    /** Whether host writes land in a separate staging buffer and reach the device through a copy. [buildStaging] must then have been called too. */
     val usesStagedUploads: Boolean
         get() = stagedUploads
 
+    /** Whether reads come back through a host-cached copy rather than straight out of the buffer. [buildReadback] must then have been called too. */
     val usesReadbackStaging: Boolean
         get() = readbackStaging
 
+    /** The buffer for the image the renderer is drawing now. Passing `write = true` also records it as the most recently written. */
     fun get(write : Boolean = false): VulkanBuffer {
         return getAt(renderer.currentImage, write)
     }
 
+    /**
+     * The buffer for a given swapchain image. The index is taken modulo the number of buffers, so
+     * a group built with one buffer answers with it for every image.
+     */
     fun getAt(imageIndex: Int, write: Boolean = false): VulkanBuffer {
         if (write) markAsWritten(imageIndex)
         return buffers[imageIndex % buffers.size]
@@ -82,21 +97,38 @@ class FrameBufferGroup(
         return readbackBuffers[imageIndex % readbackBuffers.size]
     }
 
+    /** [mapAndRead] under a shorter name, for a float view of the results. */
     fun read(builder: FloatBuffer.() -> Unit) {
         mapAndRead(builder)
     }
 
     // it's very likely that this should be earlier than the write buffer?
+    /** [mapAndRead_ints] under a shorter name, for an integer view of the results. */
     fun read_ints(builder: IntBuffer.() -> Unit) {
         mapAndRead_ints(builder)
     }
 
+    /**
+     * The buffer written most recently, which for a group written one frame and read the next is
+     * the one holding data. Before anything has been written it is the current image's buffer.
+     */
     fun getLastWritten() = if (lastWritten == -1) get() else buffers[lastWritten % buffers.size]
 
+    /**
+     * Records an image index as the one most recently written, without writing anything. The
+     * write paths call it themselves; call it by hand after filling a buffer through some route
+     * this class does not know about.
+     */
     fun markAsWritten(imageIndex: Int = renderer.currentImage) {
         lastWritten = imageIndex % buffers.size
     }
 
+    /**
+     * Fills the group with [n] buffers, calling [builder] once per index. Any buffers already
+     * there are dropped from the list — without being released, so build once rather than to
+     * resize. A `DEVICE_LOCAL_ZERO` group also queues every new buffer for a zero fill, which the
+     * next [clean] records.
+     */
     fun build(builder: (Int) -> VulkanBuffer) {
         buffers.clear()
         n {
@@ -110,6 +142,11 @@ class FrameBufferGroup(
         }
     }
 
+    /**
+     * Builds the matching host-visible staging buffers, [n] of them. A group with
+     * [usesStagedUploads] needs these as well as the ones from [build]; nothing allocates them
+     * for you, and the DSL in `magic.kt` is what normally does both.
+     */
     fun buildStaging(builder: (Int) -> VulkanBuffer) {
         stagingBuffers.clear()
         n {
@@ -117,6 +154,10 @@ class FrameBufferGroup(
         }
     }
 
+    /**
+     * Builds the matching host-cached readback buffers, [n] of them, which a group with
+     * [usesReadbackStaging] copies into before a host read.
+     */
     fun buildReadback(builder: (Int) -> VulkanBuffer) {
         readbackBuffers.clear()
         n {
@@ -124,13 +165,24 @@ class FrameBufferGroup(
         }
     }
 
+    /** The current image's `VkBuffer` handle, as it stands. No pending zero or upload is flushed first. */
     override fun getBuffer() = get().buffer
 
+    /**
+     * The device address of the buffer written most recently, after any pending zero fill or
+     * staged upload has been recorded into [cmd]. This is the path a push constant takes, which is
+     * why binding a buffer is also what flushes it.
+     */
     override fun getGPUAddress(cmd: CommandBuffer): Long {
         clean(false, cmd)
         return getLastWritten().getGPUAddress(cmd)
     }
 
+    /**
+     * Writes the current image's buffer from the beginning, through a [DynamicBuffer] that pads as
+     * std430 does. On a staged group the block fills the staging buffer and the copy is queued for
+     * the next [clean] instead of happening here.
+     */
     override fun write(builder: DynamicBuffer.() -> Unit): DynamicallyWriteable {
         val imageIndex = renderer.currentImage
         writable(imageIndex).write(builder)
@@ -140,10 +192,21 @@ class FrameBufferGroup(
         return this
     }
 
+    /**
+     * How far the current image's buffer has been written, in floats.
+     *
+     * It reads the device-side buffer, which on a staged group is not the one [write] and [append]
+     * fill, so a staged group reports zero however much has been written to its staging buffer.
+     */
     override val cursor : Int
         get() = get(write=false).writePosition
 
 
+    /**
+     * Continues writing the current image's buffer from where the last [write] or [append] to it
+     * stopped. The per-image cursor is the buffer's own, so appending across frames appends to
+     * whichever buffer this frame's image owns, not to a single running one.
+     */
     override fun append(builder: DynamicBuffer.() -> Unit): DynamicallyWriteable {
         val imageIndex = renderer.currentImage
         writable(imageIndex).append(builder)
@@ -153,6 +216,10 @@ class FrameBufferGroup(
         return this
     }
 
+    /**
+     * Maps the current image's writable buffer and hands [builder] a float view of the whole
+     * allocation, no padding applied. On a staged group the upload is queued for the next [clean].
+     */
     override fun mapAndWrite(builder: FloatBuffer.() -> Unit): FrameBufferGroup {
         val imageIndex = renderer.currentImage
         writable(imageIndex).mapAndWrite(builder)
@@ -160,6 +227,7 @@ class FrameBufferGroup(
         return this
     }
 
+    /** [mapAndWrite] with a byte view of the same memory, for packed or mixed layouts. */
     override fun mapAndWrite_bytes(builder: ByteBuffer.() -> Unit): FrameBufferGroup {
         val imageIndex = renderer.currentImage
         writable(imageIndex).mapAndWrite_bytes(builder)
@@ -167,6 +235,7 @@ class FrameBufferGroup(
         return this
     }
 
+    /** [mapAndWrite] with an integer view of the same memory, for indices, counters and flags. */
     override fun mapAndWrite_ints(builder: IntBuffer.() -> Unit): FrameBufferGroup {
         val imageIndex = renderer.currentImage
         writable(imageIndex).mapAndWrite_ints(builder)
@@ -174,6 +243,15 @@ class FrameBufferGroup(
         return this
     }
 
+    /**
+     * Carries out the zero fills and staged uploads that writes and [build] left pending.
+     *
+     * Each pending image index is claimed under a lock and removed before anything is recorded,
+     * so the graphics and compute recorders that run in parallel cannot both issue the same copy.
+     * With a [cmd] outside a render pass the work is recorded there; with no [cmd], or inside a
+     * render pass instance, it goes out on its own command buffer instead. [hostReading] returns
+     * at once, leaving everything pending: the readback path in `mapAndRead` does its own copy.
+     */
     override fun clean(hostReading: Boolean, cmd: CommandBuffer?): FrameBufferGroup {
         if (hostReading) return this
         // Compute and graphics command buffers are recorded in parallel. Exactly one recorder must
@@ -209,6 +287,14 @@ class FrameBufferGroup(
         return this
     }
 
+    /**
+     * Reads the current image's buffer on the host as floats.
+     *
+     * On a readback group this first copies the device buffer into its host-cached twin on a
+     * command buffer of its own and waits for the GPU to finish, so the call blocks and the data
+     * is whatever the device held at that moment. Otherwise the buffer is mapped directly and
+     * nothing is synchronised for you.
+     */
     override fun mapAndRead(builder: FloatBuffer.() -> Unit): FrameBufferGroup {
         if (usesReadbackStaging) {
             copyToReadbackNow(renderer.currentImage)
@@ -219,6 +305,7 @@ class FrameBufferGroup(
         return this
     }
 
+    /** [mapAndRead] with a byte view of the same memory. */
     override fun mapAndRead_bytes(builder: ByteBuffer.() -> Unit): FrameBufferGroup {
         if (usesReadbackStaging) {
             copyToReadbackNow(renderer.currentImage)
@@ -229,6 +316,7 @@ class FrameBufferGroup(
         return this
     }
 
+    /** [mapAndRead] with an integer view of the same memory, which is how a compute counter comes back. */
     override fun mapAndRead_ints(builder: IntBuffer.() -> Unit): FrameBufferGroup {
         if (usesReadbackStaging) {
             copyToReadbackNow(renderer.currentImage)
